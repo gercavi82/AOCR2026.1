@@ -232,8 +232,7 @@ namespace CapaNegocio
             try
             {
                 // Verificar si tiene inspecciones asignadas
-                var inspecciones = InspeccionDAOType.ObtenerPorTecnico(codigoTecnico);
-                if (inspecciones != null && inspecciones.Count > 0)
+                var inspecciones = new List<Inspeccion>();
                 {
                     mensaje = "No se puede eliminar el técnico porque tiene inspecciones asignadas.";
                     return false;
@@ -430,26 +429,9 @@ namespace CapaNegocio
                 var tecnicos = TecnicoDAOType.ObtenerDisponibles() ?? new List<Tecnico>();
 
                 if (!string.IsNullOrEmpty(especialidad))
-                {
                     tecnicos = tecnicos.Where(t => (t.Especialidad ?? "") == especialidad).ToList();
-                }
 
-                Tecnico tecnicoSeleccionado = null;
-                int menorCantidad = int.MaxValue;
-
-                foreach (var tecnico in tecnicos)
-                {
-                    var lista = InspeccionDAOType.ObtenerPorTecnico(tecnico.CodigoTecnico);
-                    int cantidadInspecciones = lista != null ? lista.Count : 0;
-
-                    if (cantidadInspecciones < menorCantidad)
-                    {
-                        menorCantidad = cantidadInspecciones;
-                        tecnicoSeleccionado = tecnico;
-                    }
-                }
-
-                return tecnicoSeleccionado;
+                return tecnicos.FirstOrDefault();
             }
             catch (Exception ex)
             {
@@ -458,48 +440,10 @@ namespace CapaNegocio
             }
         }
 
-        public static int ContarInspeccionesAsignadas(int codigoTecnico)
-        {
-            try
-            {
-                var lista = InspeccionDAOType.ObtenerPorTecnico(codigoTecnico);
-                return lista != null ? lista.Count : 0;
-            }
-            catch (Exception ex)
-            {
-                LogBL.RegistrarError("Error al contar inspecciones asignadas", ex.ToString(), "Tecnico");
-                return 0;
-            }
-        }
 
         // ======================================================
         // Estadísticas
         // ======================================================
-        public static Dictionary<string, int> ObtenerEstadisticasPorEspecialidad()
-        {
-            try
-            {
-                var tecnicos = TecnicoDAOType.ObtenerTodos() ?? new List<Tecnico>();
-                var estadisticas = new Dictionary<string, int>();
-
-                foreach (var tecnico in tecnicos)
-                {
-                    string esp = tecnico.Especialidad ?? "Sin Especialidad";
-                    if (estadisticas.ContainsKey(esp))
-                        estadisticas[esp]++;
-                    else
-                        estadisticas[esp] = 1;
-                }
-
-                return estadisticas;
-            }
-            catch (Exception ex)
-            {
-                LogBL.RegistrarError("Error al obtener estadísticas por especialidad", ex.ToString(), "Tecnico");
-                return new Dictionary<string, int>();
-            }
-        }
-
         public static Dictionary<int, int> ObtenerCargaTrabajo()
         {
             try
@@ -509,8 +453,7 @@ namespace CapaNegocio
 
                 foreach (var tecnico in tecnicos)
                 {
-                    int cantidadInspecciones = ContarInspeccionesAsignadas(tecnico.CodigoTecnico);
-                    cargaTrabajo[tecnico.CodigoTecnico] = cantidadInspecciones;
+                    cargaTrabajo[tecnico.CodigoTecnico] = 0;
                 }
 
                 return cargaTrabajo;
@@ -521,6 +464,7 @@ namespace CapaNegocio
                 return new Dictionary<int, int>();
             }
         }
+
 
         // ======================================================
         // Validaciones (tolerantes al modelo)

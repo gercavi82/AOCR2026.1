@@ -6,19 +6,6 @@ using CapaModelo;
 
 namespace CapaDatos.DAOs
 {
-    /// <summary>
-    /// DAO de Pago usando Npgsql + PostgreSQL
-    /// Compatible con .NET Framework 4.7.2
-    /// 
-    /// Tabla sugerida: aocr_tbpago
-    /// Columnas mínimas:
-    ///   codigopago        INT PK
-    ///   codigosolicitud   INT FK
-    ///   fechapago         TIMESTAMP NULL
-    ///   estado            VARCHAR
-    ///   numerotransaccion VARCHAR NULL
-    ///   montopago         NUMERIC NULL
-    /// </summary>
     public class PagoDAO
     {
         // ==========================================
@@ -44,7 +31,6 @@ namespace CapaDatos.DAOs
 
         // ==========================================
         // Mapeo a modelo Pago
-        // (solo propiedades que sabemos que existen)
         // ==========================================
         private static Pago Map(IDataRecord r)
         {
@@ -53,84 +39,63 @@ namespace CapaDatos.DAOs
             if (TieneColumna(r, "codigopago") && r["codigopago"] != DBNull.Value)
                 p.CodigoPago = Convert.ToInt32(r["codigopago"]);
 
-            // 🔧 AQUÍ ESTABA EL PROBLEMA (int? -> int)
-            if (TieneColumna(r, "codigosolicitud"))
-            {
-                if (r["codigosolicitud"] != DBNull.Value)
-                    p.CodigoSolicitud = Convert.ToInt32(r["codigosolicitud"]);
-                else
-                    p.CodigoSolicitud = 0; // o algún valor por defecto
-            }
+            if (TieneColumna(r, "codigosolicitud") && r["codigosolicitud"] != DBNull.Value)
+                p.CodigoSolicitud = Convert.ToInt32(r["codigosolicitud"]);
+
+            if (TieneColumna(r, "monto") && r["monto"] != DBNull.Value)
+                p.Monto = Convert.ToDecimal(r["monto"]);
+
+            if (TieneColumna(r, "metodopago") && r["metodopago"] != DBNull.Value)
+                p.MetodoPago = r["metodopago"].ToString();
 
             if (TieneColumna(r, "fechapago") && r["fechapago"] != DBNull.Value)
                 p.FechaPago = (DateTime?)Convert.ToDateTime(r["fechapago"]);
 
+            if (TieneColumna(r, "numerotransaccion") && r["numerotransaccion"] != DBNull.Value)
+                p.NumeroTransaccion = r["numerotransaccion"].ToString();
+
+            if (TieneColumna(r, "rutacomprobante") && r["rutacomprobante"] != DBNull.Value)
+                p.RutaComprobante = r["rutacomprobante"].ToString();
+
             if (TieneColumna(r, "estado") && r["estado"] != DBNull.Value)
                 p.Estado = r["estado"].ToString();
 
-            // Si tu modelo Pago tiene más propiedades (NumeroTransaccion, Monto, etc.),
-            // aquí puedes agregarlas sin problema, por ejemplo:
-            //
-            // if (TieneColumna(r, "numerotransaccion") && r["numerotransaccion"] != DBNull.Value)
-            //     p.NumeroTransaccion = r["numerotransaccion"].ToString();
-            //
-            // if (TieneColumna(r, "montopago") && r["montopago"] != DBNull.Value)
-            //     p.Monto = (decimal?)Convert.ToDecimal(r["montopago"]);
+            if (TieneColumna(r, "fechavalidacion") && r["fechavalidacion"] != DBNull.Value)
+                p.FechaValidacion = (DateTime?)Convert.ToDateTime(r["fechavalidacion"]);
+
+            if (TieneColumna(r, "usuariovalidacion") && r["usuariovalidacion"] != DBNull.Value)
+                p.UsuarioValidacion = Convert.ToInt32(r["usuariovalidacion"]);
+
+            if (TieneColumna(r, "observacionesvalidacion") && r["observacionesvalidacion"] != DBNull.Value)
+                p.ObservacionesValidacion = r["observacionesvalidacion"].ToString();
 
             return p;
         }
 
         // ==========================================
-        // Obtener POR ID
-        // (ya lo usas en PagoBL.ObtenerPorId)
+        // Obtener todos los pagos (pendientes o no)
         // ==========================================
-        public Pago ObtenerPorId(int codigoPago)
-        {
-            const string sql = @"
-                SELECT codigopago, codigosolicitud, fechapago, estado
-                FROM aocr_tbpago
-                WHERE codigopago = @id;";
-
-            using (var cn = CrearConexion())
-            using (var cmd = new NpgsqlCommand(sql, cn))
-            {
-                cmd.Parameters.AddWithValue("@id", codigoPago);
-                cn.Open();
-
-                using (var rd = cmd.ExecuteReader())
-                {
-                    if (rd.Read())
-                        return Map(rd);
-                }
-            }
-
-            return null;
-        }
-
-        // ==========================================
-        // Obtener POR SOLICITUD
-        // (corrige CS1061 en PagoBL.ObtenerPorSolicitud)
-        // ==========================================
-        public List<Pago> ObtenerPorSolicitud(int codigoSolicitud)
+        public List<Pago> ObtenerTodos()
         {
             var lista = new List<Pago>();
 
             const string sql = @"
-                SELECT codigopago, codigosolicitud, fechapago, estado
+                SELECT codigopago, codigosolicitud, monto, metodopago,
+                       fechapago, numerotransaccion, rutacomprobante,
+                       estado, fechavalidacion, usuariovalidacion, observacionesvalidacion
                 FROM aocr_tbpago
-                WHERE codigosolicitud = @sol
-                ORDER BY fechapago DESC, codigopago DESC;";
+                WHERE deletedat IS NULL
+                ORDER BY fechapago DESC, codigopago DESC;
+            ";
 
             using (var cn = CrearConexion())
             using (var cmd = new NpgsqlCommand(sql, cn))
             {
-                cmd.Parameters.AddWithValue("@sol", codigoSolicitud);
                 cn.Open();
-
-                using (var rd = cmd.ExecuteReader())
+                using (var dr = cmd.ExecuteReader())
                 {
-                    while (rd.Read())
-                        lista.Add(Map(rd));
+                    while (dr.Read())
+                        lista.Add(Map(dr));
                 }
             }
 
@@ -138,26 +103,88 @@ namespace CapaDatos.DAOs
         }
 
         // ==========================================
-        // INSERTAR
-        // (corrige CS1061 en PagoBL.Registrar)
+        // Obtener pago por ID
+        // ==========================================
+        public Pago ObtenerPorId(int codigoPago)
+        {
+            const string sql = @"
+                SELECT codigopago, codigosolicitud, monto, metodopago,
+                       fechapago, numerotransaccion, rutacomprobante,
+                       estado, fechavalidacion, usuariovalidacion, observacionesvalidacion
+                FROM aocr_tbpago
+                WHERE codigopago = @id;
+            ";
+
+            using (var cn = CrearConexion())
+            using (var cmd = new NpgsqlCommand(sql, cn))
+            {
+                cmd.Parameters.AddWithValue("@id", codigoPago);
+                cn.Open();
+
+                using (var dr = cmd.ExecuteReader())
+                {
+                    if (dr.Read())
+                        return Map(dr);
+                }
+            }
+            return null;
+        }
+
+        // ==========================================
+        // Obtener pagos por solicitud
+        // ==========================================
+        public List<Pago> ObtenerPorSolicitud(int codigoSolicitud)
+        {
+            var lista = new List<Pago>();
+
+            const string sql = @"
+                SELECT codigopago, codigosolicitud, monto, metodopago,
+                       fechapago, numerotransaccion, rutacomprobante,
+                       estado, fechavalidacion, usuariovalidacion, observacionesvalidacion
+                FROM aocr_tbpago
+                WHERE codigosolicitud = @sol
+                  AND deletedat IS NULL
+                ORDER BY fechapago DESC, codigopago DESC;
+            ";
+
+            using (var cn = CrearConexion())
+            using (var cmd = new NpgsqlCommand(sql, cn))
+            {
+                cmd.Parameters.AddWithValue("@sol", codigoSolicitud);
+                cn.Open();
+
+                using (var dr = cmd.ExecuteReader())
+                {
+                    while (dr.Read())
+                        lista.Add(Map(dr));
+                }
+            }
+            return lista;
+        }
+
+        // ==========================================
+        // Insertar nuevo pago
         // ==========================================
         public bool Insertar(Pago pago)
         {
             const string sql = @"
                 INSERT INTO aocr_tbpago
-                (codigosolicitud, fechapago, estado)
+                    (codigosolicitud, monto, metodopago, fechapago,
+                     numerotransaccion, rutacomprobante, estado)
                 VALUES
-                (@solicitud, @fechapago, @estado);";
+                    (@sol, @monto, @met, @fecha, @num, @ruta, @estado);
+            ";
 
             using (var cn = CrearConexion())
             using (var cmd = new NpgsqlCommand(sql, cn))
             {
-                cmd.Parameters.AddWithValue("@solicitud",
-                    (object)pago.CodigoSolicitud);
-                cmd.Parameters.AddWithValue("@fechapago",
-                    (object)pago.FechaPago ?? DBNull.Value);
-                cmd.Parameters.AddWithValue("@estado",
-                    (object)pago.Estado ?? DBNull.Value);
+                cmd.Parameters.AddWithValue("@sol", pago.CodigoSolicitud);
+                cmd.Parameters.AddWithValue("@monto", pago.Monto);
+                cmd.Parameters.AddWithValue("@met", (object)pago.MetodoPago ?? DBNull.Value);
+                cmd.Parameters.AddWithValue("@fecha", (object)pago.FechaPago ?? DBNull.Value);
+                cmd.Parameters.AddWithValue("@num", (object)pago.NumeroTransaccion ?? DBNull.Value);
+                cmd.Parameters.AddWithValue("@ruta", (object)pago.RutaComprobante ?? DBNull.Value);
+                cmd.Parameters.AddWithValue("@estado", (object)pago.Estado ?? DBNull.Value);
 
                 cn.Open();
                 return cmd.ExecuteNonQuery() > 0;
@@ -165,27 +192,38 @@ namespace CapaDatos.DAOs
         }
 
         // ==========================================
-        // ACTUALIZAR
-        // (ya lo usas en PagoBL.Actualizar)
+        // Actualizar un pago
         // ==========================================
         public bool Actualizar(Pago pago)
         {
             const string sql = @"
                 UPDATE aocr_tbpago
-                SET codigosolicitud = @solicitud,
-                    fechapago = @fechapago,
-                    estado = @estado
-                WHERE codigopago = @id;";
+                   SET codigosolicitud = @sol,
+                       monto = @monto,
+                       metodopago = @met,
+                       fechapago = @fecha,
+                       numerotransaccion = @num,
+                       rutacomprobante = @ruta,
+                       estado = @estado,
+                       fechavalidacion = @fechaval,
+                       usuariovalidacion = @usrval,
+                       observacionesvalidacion = @obs
+                 WHERE codigopago = @id;
+            ";
 
             using (var cn = CrearConexion())
             using (var cmd = new NpgsqlCommand(sql, cn))
             {
-                cmd.Parameters.AddWithValue("@solicitud",
-                    (object)pago.CodigoSolicitud);
-                cmd.Parameters.AddWithValue("@fechapago",
-                    (object)pago.FechaPago ?? DBNull.Value);
-                cmd.Parameters.AddWithValue("@estado",
-                    (object)pago.Estado ?? DBNull.Value);
+                cmd.Parameters.AddWithValue("@sol", pago.CodigoSolicitud);
+                cmd.Parameters.AddWithValue("@monto", pago.Monto);
+                cmd.Parameters.AddWithValue("@met", (object)pago.MetodoPago ?? DBNull.Value);
+                cmd.Parameters.AddWithValue("@fecha", (object)pago.FechaPago ?? DBNull.Value);
+                cmd.Parameters.AddWithValue("@num", (object)pago.NumeroTransaccion ?? DBNull.Value);
+                cmd.Parameters.AddWithValue("@ruta", (object)pago.RutaComprobante ?? DBNull.Value);
+                cmd.Parameters.AddWithValue("@estado", (object)pago.Estado ?? DBNull.Value);
+                cmd.Parameters.AddWithValue("@fechaval", (object)pago.FechaValidacion ?? DBNull.Value);
+                cmd.Parameters.AddWithValue("@usrval", (object)pago.UsuarioValidacion ?? DBNull.Value);
+                cmd.Parameters.AddWithValue("@obs", (object)pago.ObservacionesValidacion ?? DBNull.Value);
                 cmd.Parameters.AddWithValue("@id", pago.CodigoPago);
 
                 cn.Open();
@@ -194,80 +232,73 @@ namespace CapaDatos.DAOs
         }
 
         // ==========================================
-        // ExistePorNumeroTransaccion
-        // (corrige CS1061 en PagoBL.ExistePorNumeroTransaccion)
+        // Existe por número de transacción
         // ==========================================
         public bool ExistePorNumeroTransaccion(string numeroTransaccion)
         {
             const string sql = @"
                 SELECT COUNT(*)
-                FROM aocr_tbpago
-                WHERE numerotransaccion = @num;";
-
+                  FROM aocr_tbpago
+                 WHERE numerotransaccion = @num;
+            ";
             using (var cn = CrearConexion())
             using (var cmd = new NpgsqlCommand(sql, cn))
             {
                 cmd.Parameters.AddWithValue("@num", (object)numeroTransaccion ?? DBNull.Value);
                 cn.Open();
-
-                var n = Convert.ToInt32(cmd.ExecuteScalar());
-                return n > 0;
+                return Convert.ToInt32(cmd.ExecuteScalar()) > 0;
             }
         }
 
         // ==========================================
-        // ObtenerPagosValidadosHoy
-        // (corrige CS1061 en PagoBL.ObtenerPagosValidadosHoy)
+        // Obtener pagos validados hoy
         // ==========================================
         public List<Pago> ObtenerPagosValidadosHoy()
         {
             var lista = new List<Pago>();
-
             const string sql = @"
-                SELECT codigopago, codigosolicitud, fechapago, estado
+                SELECT codigopago, codigosolicitud, monto, metodopago,
+                       fechapago, numerotransaccion, rutacomprobante,
+                       estado, fechavalidacion, usuariovalidacion, observacionesvalidacion
                 FROM aocr_tbpago
-                WHERE estado = 'VALIDADO'
-                  AND DATE(fechapago) = CURRENT_DATE
-                ORDER BY fechapago DESC, codigopago DESC;";
+               WHERE estado = 'APROBADO'
+                 AND DATE(fechapago) = CURRENT_DATE
+            ORDER BY fechapago DESC, codigopago DESC;
+            ";
 
             using (var cn = CrearConexion())
             using (var cmd = new NpgsqlCommand(sql, cn))
             {
                 cn.Open();
-
-                using (var rd = cmd.ExecuteReader())
+                using (var dr = cmd.ExecuteReader())
                 {
-                    while (rd.Read())
-                        lista.Add(Map(rd));
+                    while (dr.Read())
+                        lista.Add(Map(dr));
                 }
             }
-
             return lista;
         }
 
         // ==========================================
-        // ObtenerMontoRecaudadoMes
-        // (corrige CS1061 en PagoBL.ObtenerMontoRecaudadoMes)
-        //
-        // Usa columna montopago; si en tu BD se llama distinto
-        // (ej. valortotal, totalpago), solo cambia el nombre.
+        // Obtener monto recaudado en mes/año
         // ==========================================
         public decimal ObtenerMontoRecaudadoMes(int anio, int mes)
         {
             const string sql = @"
-                SELECT COALESCE(SUM(montopago), 0)
-                FROM aocr_tbpago
-                WHERE EXTRACT(YEAR FROM fechapago) = @anio
-                  AND EXTRACT(MONTH FROM fechapago) = @mes
-                  AND estado = 'VALIDADO';";
+                SELECT COALESCE(SUM(monto), 0)
+                  FROM aocr_tbpago
+                 WHERE EXTRACT(YEAR FROM fechapago) = @anio
+                   AND EXTRACT(MONTH FROM fechapago) = @mes
+                   AND estado = 'APROBADO';
+            ";
 
             using (var cn = CrearConexion())
             using (var cmd = new NpgsqlCommand(sql, cn))
             {
                 cmd.Parameters.AddWithValue("@anio", anio);
                 cmd.Parameters.AddWithValue("@mes", mes);
-
                 cn.Open();
+
                 var valor = cmd.ExecuteScalar();
                 return valor != null && valor != DBNull.Value
                     ? Convert.ToDecimal(valor)

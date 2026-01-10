@@ -1,0 +1,43 @@
+﻿@model List<CapaModelo.Documento>
+
+@{
+    ViewBag.Title = "Revisión de Documentos";
+}
+
+<h3>Documentos Pendientes de Revisión</h3>
+
+<table class="table table-striped table-hover">
+    <thead>
+        <tr>
+            <th>Nombre</th>
+            <th>Tipo</th>
+            <th>Fecha Subida</th>
+            <th>Solicitante</th>
+            <th>Estado</th>
+            <th>Acciones</th>
+        </tr>
+    </thead>
+    <tbody>
+        @if (Model != null && Model.Any())
+        {
+            foreach (var doc in Model)
+            {
+                <tr>
+                    <td>@doc.NombreArchivo</td>
+                    <td>@doc.TipoDocumento</td>
+                    <td>@doc.FechaSubida?.ToString("dd/MM/yyyy HH:mm")</td>
+                    <td>@doc.CreatedBy</td>
+                    <td>@doc.Estado</td>
+                    <td>
+                        <a href="@Url.Action("Detalle", "Documento", new { id = doc.CodigoDocumento })" class="btn btn-sm btn-info">Ver</a>
+                        <a href="@Url.Action("Descargar", "Documento", new { id = doc.CodigoDocumento })" class="btn btn-sm btn-success">Descargar</a>
+                    </td>
+                </tr>
+            }
+        }
+        else
+        {
+            <tr><td colspan="6" class="text-center">No hay documentos pendientes.</td></tr>
+        }
+    </tbody>
+</table>

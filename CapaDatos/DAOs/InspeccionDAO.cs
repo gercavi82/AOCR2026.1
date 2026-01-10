@@ -7,91 +7,95 @@ using CapaModelo;
 
 namespace CapaDatos.DAOs
 {
-    /// <summary>
-    /// DAO de Inspección usando Dapper + PostgreSQL
-    /// Compatible con .NET Framework 4.7.2
-    ///
-    /// ✅ Versión estática para ser compatible con tus BL
-    /// ✅ Elimina el uso de Map() (ya no existe)
-    /// ✅ No mezcla ADO.NET manual con Dapper
-    /// </summary>
     public class InspeccionDAO
     {
-        // ✅ Conexión estática, compatible con llamadas estáticas del BL
-        private static NpgsqlConnection CrearConexion()
-        {
-            return ConexionDAO.CrearConexion();
-        }
+        private static NpgsqlConnection CrearConexion() => ConexionDAO.CrearConexion();
 
         // =========================================================
         // LISTAR POR SOLICITUD
         // =========================================================
-        public static List<Inspeccion> ObtenerPorSolicitud(int idSolicitud)
+        public static List<Inspeccion> ObtenerPorSolicitud(int codigoSolicitud)
         {
             using (var con = CrearConexion())
             {
                 con.Open();
 
                 const string sql = @"
-                    SELECT
-                        codigo_inspeccion AS CodigoInspeccion,
-                        codigo_solicitud  AS CodigoSolicitud,
-                        codigotecnico     AS CodigoTecnico,
-                        fecha_inspeccion  AS FechaInspeccion,
-                        inspector         AS Inspector,
-                        informe           AS Informe,
-                        resultado         AS Resultado,
-                        fecha_cierre      AS FechaCierre,
-                        created_at        AS CreatedAt,
-                        created_by        AS CreatedBy,
-                        updated_at        AS UpdatedAt,
-                        updated_by        AS UpdatedBy,
-                        deleted_at        AS DeletedAt,
-                        deleted_by        AS DeletedBy
-                    FROM aocr_tbinspeccion
-                    WHERE codigo_solicitud = @idSolicitud
-                      AND deleted_at IS NULL
-                    ORDER BY codigo_inspeccion DESC;";
+                SELECT
+                    codigo_inspeccion       AS CodigoInspeccion,
+                    codigo_solicitud        AS CodigoSolicitud,
+                    numero_inspeccion       AS NumeroInspeccion,
+                    tipo                    AS Tipo,
+                    fecha_programada        AS FechaProgramada,
+                    hora_programada         AS HoraProgramada,
+                    fecha_realizada         AS FechaRealizada,
+                    hora_inicio             AS HoraInicio,
+                    hora_fin                AS HoraFin,
+                    codigo_inspector        AS CodigoInspector,
+                    lugar                   AS Lugar,
+                    resultado               AS Resultado,
+                    comentarios             AS Comentarios,
+                    observaciones_generales AS ObservacionesGenerales,
+                    hallazgos_principales   AS HallazgosPrincipales,
+                    recomendaciones         AS Recomendaciones,
+                    estado                  AS Estado,
+                    completada              AS Completada,
+                    aprobada                AS Aprobada,
+                    created_at              AS CreatedAt,
+                    updated_at              AS UpdatedAt,
+                    created_by              AS CreatedBy,
+                    updated_by              AS UpdatedBy
+                FROM aocr_tbinspeccion
+                WHERE codigo_solicitud = @codigoSolicitud
+                ORDER BY codigo_inspeccion DESC;";
 
-                return con.Query<Inspeccion>(sql, new { idSolicitud }).ToList();
+                return con.Query<Inspeccion>(sql, new { codigoSolicitud }).ToList();
             }
         }
 
         // =========================================================
         // OBTENER POR ID
         // =========================================================
-        public static Inspeccion ObtenerPorId(int id)
+        public static Inspeccion ObtenerPorId(int codigoInspeccion)
         {
             using (var con = CrearConexion())
             {
                 con.Open();
 
                 const string sql = @"
-                    SELECT
-                        codigo_inspeccion AS CodigoInspeccion,
-                        codigo_solicitud  AS CodigoSolicitud,
-                        codigotecnico     AS CodigoTecnico,
-                        fecha_inspeccion  AS FechaInspeccion,
-                        inspector         AS Inspector,
-                        informe           AS Informe,
-                        resultado         AS Resultado,
-                        fecha_cierre      AS FechaCierre,
-                        created_at        AS CreatedAt,
-                        created_by        AS CreatedBy,
-                        updated_at        AS UpdatedAt,
-                        updated_by        AS UpdatedBy,
-                        deleted_at        AS DeletedAt,
-                        deleted_by        AS DeletedBy
-                    FROM aocr_tbinspeccion
-                    WHERE codigo_inspeccion = @id
-                      AND deleted_at IS NULL;";
+                SELECT
+                    codigo_inspeccion       AS CodigoInspeccion,
+                    codigo_solicitud        AS CodigoSolicitud,
+                    numero_inspeccion       AS NumeroInspeccion,
+                    tipo                    AS Tipo,
+                    fecha_programada        AS FechaProgramada,
+                    hora_programada         AS HoraProgramada,
+                    fecha_realizada         AS FechaRealizada,
+                    hora_inicio             AS HoraInicio,
+                    hora_fin                AS HoraFin,
+                    codigo_inspector        AS CodigoInspector,
+                    lugar                   AS Lugar,
+                    resultado               AS Resultado,
+                    comentarios             AS Comentarios,
+                    observaciones_generales AS ObservacionesGenerales,
+                    hallazgos_principales   AS HallazgosPrincipales,
+                    recomendaciones         AS Recomendaciones,
+                    estado                  AS Estado,
+                    completada              AS Completada,
+                    aprobada                AS Aprobada,
+                    created_at              AS CreatedAt,
+                    updated_at              AS UpdatedAt,
+                    created_by              AS CreatedBy,
+                    updated_by              AS UpdatedBy
+                FROM aocr_tbinspeccion
+                WHERE codigo_inspeccion = @codigoInspeccion;";
 
-                return con.QueryFirstOrDefault<Inspeccion>(sql, new { id });
+                return con.QueryFirstOrDefault<Inspeccion>(sql, new { codigoInspeccion });
             }
         }
 
         // =========================================================
-        // CREAR
+        // CREAR INSPECCIÓN
         // =========================================================
         public static int Crear(Inspeccion i)
         {
@@ -99,138 +103,120 @@ namespace CapaDatos.DAOs
             {
                 con.Open();
 
-                if (i == null) throw new ArgumentNullException(nameof(i));
+                if (!i.CreatedAt.HasValue)
+                    i.CreatedAt = DateTime.Now;
 
-                // Si en tu modelo estos campos pueden venir null,
-                // asegúrate de asignarlos antes de llamar al DAO.
-                if (!i.CreatedAt.HasValue) i.CreatedAt = DateTime.Now;
+                if (string.IsNullOrWhiteSpace(i.Estado))
+                    i.Estado = "SOLICITADA";
 
                 const string sql = @"
-                    INSERT INTO aocr_tbinspeccion
-                    (
-                        codigo_solicitud,
-                        codigotecnico,
-                        fecha_inspeccion,
-                        inspector,
-                        informe,
-                        resultado,
-                        created_at,
-                        created_by
-                    )
-                    VALUES
-                    (
-                        @CodigoSolicitud,
-                        @CodigoTecnico,
-                        @FechaInspeccion,
-                        @Inspector,
-                        @Informe,
-                        @Resultado,
-                        @CreatedAt,
-                        @CreatedBy
-                    )
-                    RETURNING codigo_inspeccion;";
+                INSERT INTO aocr_tbinspeccion
+                (
+                    codigo_solicitud,
+                    numero_inspeccion,
+                    tipo,
+                    fecha_programada,
+                    hora_programada,
+                    codigo_inspector,
+                    lugar,
+                    estado,
+                    completada,
+                    aprobada,
+                    created_at,
+                    created_by
+                )
+                VALUES
+                (
+                    @CodigoSolicitud,
+                    @NumeroInspeccion,
+                    @Tipo,
+                    @FechaProgramada,
+                    @HoraProgramada,
+                    @CodigoInspector,
+                    @Lugar,
+                    @Estado,
+                    COALESCE(@Completada,false),
+                    COALESCE(@Aprobada,false),
+                    @CreatedAt,
+                    @CreatedBy
+                )
+                RETURNING codigo_inspeccion;";
 
                 return con.ExecuteScalar<int>(sql, i);
             }
         }
 
         // =========================================================
-        // ACTUALIZAR INFORME
+        // ACTUALIZAR INSPECCIÓN (PLANIFICACIÓN)
         // =========================================================
-        public static int GuardarInforme(int idInspeccion, string informe, int codigoUsuario)
+        public static bool Actualizar(Inspeccion i)
         {
+            if (i == null || i.CodigoInspeccion <= 0)
+                return false;
+
             using (var con = CrearConexion())
             {
                 con.Open();
 
                 const string sql = @"
-                    UPDATE aocr_tbinspeccion
-                    SET informe = @informe,
-                        updated_at = CURRENT_TIMESTAMP,
-                        updated_by = @codigoUsuario
-                    WHERE codigo_inspeccion = @idInspeccion
-                      AND deleted_at IS NULL;";
+                UPDATE aocr_tbinspeccion
+                SET
+                    tipo                    = @Tipo,
+                    fecha_programada        = @FechaProgramada,
+                    hora_programada         = @HoraProgramada,
+                    lugar                   = @Lugar,
+                    comentarios             = @Comentarios,
+                    observaciones_generales = @ObservacionesGenerales,
+                    estado                  = @Estado,
+                    updated_at              = @UpdatedAt,
+                    updated_by              = @UpdatedBy
+                WHERE codigo_inspeccion = @CodigoInspeccion;";
 
-                return con.Execute(sql, new { idInspeccion, informe, codigoUsuario });
+                return con.Execute(sql, i) > 0;
             }
         }
 
         // =========================================================
-        // CERRAR INSPECCIÓN (APROBADA / RECHAZADA)
+        // CERRAR INSPECCIÓN
         // =========================================================
-        public static int CerrarInspeccion(int idInspeccion, string resultado, int codigoUsuario)
+        public static int CerrarInspeccion(int codigoInspeccion, string resultado, bool aprobada, int codigoUsuario)
         {
             using (var con = CrearConexion())
             {
                 con.Open();
 
                 const string sql = @"
-                    UPDATE aocr_tbinspeccion
-                    SET resultado = @resultado,
-                        fecha_cierre = CURRENT_TIMESTAMP,
-                        updated_at = CURRENT_TIMESTAMP,
-                        updated_by = @codigoUsuario
-                    WHERE codigo_inspeccion = @idInspeccion
-                      AND deleted_at IS NULL;";
+                UPDATE aocr_tbinspeccion
+                SET
+                    resultado = @resultado,
+                    aprobada = @aprobada,
+                    estado = 'CERRADA',
+                    updated_at = CURRENT_TIMESTAMP,
+                    updated_by = @codigoUsuario
+                WHERE codigo_inspeccion = @codigoInspeccion;";
 
-                return con.Execute(sql, new { idInspeccion, resultado, codigoUsuario });
+                return con.Execute(sql, new { codigoInspeccion, resultado, aprobada, codigoUsuario });
             }
         }
 
         // =========================================================
-        // SOFT DELETE
+        // GUARDAR INFORME PDF
         // =========================================================
-        public static int EliminarSoft(int idInspeccion, int codigoUsuario)
+        public static int GuardarInforme(int idInspeccion, string informePdf, int codigoUsuario)
         {
             using (var con = CrearConexion())
             {
                 con.Open();
 
                 const string sql = @"
-                    UPDATE aocr_tbinspeccion
-                    SET deleted_at = CURRENT_TIMESTAMP,
-                        deleted_by = @codigoUsuario
-                    WHERE codigo_inspeccion = @idInspeccion
-                      AND deleted_at IS NULL;";
+                UPDATE aocr_tbinspeccion
+                SET
+                    informe_pdf = @informePdf,
+                    updated_at = CURRENT_TIMESTAMP,
+                    updated_by = @codigoUsuario
+                WHERE codigo_inspeccion = @idInspeccion;";
 
-                return con.Execute(sql, new { idInspeccion, codigoUsuario });
-            }
-        }
-
-        // =========================================================
-        // OBTENER POR TÉCNICO
-        // =========================================================
-        public static List<Inspeccion> ObtenerPorTecnico(int codigoTecnico)
-        {
-            using (var con = CrearConexion())
-            {
-                con.Open();
-
-                // ✅ IMPORTANTE:
-                // - Confirmo el nombre de columna "codigotecnico"
-                // - Si tu tabla usa otro nombre, cámbialo aquí.
-                const string sql = @"
-                    SELECT
-                        codigo_inspeccion AS CodigoInspeccion,
-                        codigo_solicitud  AS CodigoSolicitud,
-                        codigotecnico     AS CodigoTecnico,
-                        fecha_inspeccion  AS FechaInspeccion,
-                        inspector         AS Inspector,
-                        informe           AS Informe,
-                        resultado         AS Resultado,
-                        fecha_cierre      AS FechaCierre,
-                        created_at        AS CreatedAt,
-                        created_by        AS CreatedBy,
-                        updated_at        AS UpdatedAt,
-                        updated_by        AS UpdatedBy,
-                        deleted_at        AS DeletedAt,
-                        deleted_by        AS DeletedBy
-                    FROM aocr_tbinspeccion
-                    WHERE codigotecnico = @codigoTecnico
-                      AND deleted_at IS NULL
-                    ORDER BY codigo_inspeccion DESC;";
-
-                return con.Query<Inspeccion>(sql, new { codigoTecnico }).ToList();
+                return con.Execute(sql, new { idInspeccion, informePdf, codigoUsuario });
             }
         }
     }

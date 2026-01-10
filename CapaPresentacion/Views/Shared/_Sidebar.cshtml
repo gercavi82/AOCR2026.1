@@ -112,13 +112,15 @@
                 <ul class="list-unstyled ml-2">
                     <li>
                         <i class="fas fa-check-double text-white-50 mr-2"></i>
-                        <a href="@Url.Action("ValidacionPagos", "Financiero")" class="text-light text-decoration-none hover-link">
+                        <a href="@Url.Action("Index", "Financiero")"
+                           class="text-light text-decoration-none hover-link">
                             Validación de Pagos
                         </a>
                     </li>
                 </ul>
             </div>
         }
+
 
         @if (rolActual == "Tecnico" || rolActual == "Administrador")
         {

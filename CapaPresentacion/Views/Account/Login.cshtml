@@ -12,7 +12,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <link rel="icon" type="image/png" sizes="16x16" href="@Url.Content("~/Content/imganes/logo2.jpg")" />
 
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.6.2/dist/css/bootstrap.min.css">
+    <!-- ✅ Bootstrap 5 -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+
+    <!-- FontAwesome (igual) -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
 
     <style>
@@ -112,8 +115,8 @@
                 {
                     @Html.AntiForgeryToken()
 
-                    <div class="form-group">
-                        <label class="small font-weight-bold">Usuario o Correo</label>
+                    <div class="mb-3">
+                        <label class="small fw-bold">Usuario o Correo</label>
                         @Html.TextBoxFor(m => m.Usuario, new {
                             @class = "form-control" + ((ViewData.ModelState["Usuario"] != null && ViewData.ModelState["Usuario"].Errors.Count > 0) ? " is-invalid" : ""),
                             placeholder = "Ej: juan.perez",
@@ -122,8 +125,8 @@
                         @Html.ValidationMessageFor(m => m.Usuario, "", new { @class = "text-danger small" })
                     </div>
 
-                    <div class="form-group">
-                        <label class="small font-weight-bold">Contraseña</label>
+                    <div class="mb-3">
+                        <label class="small fw-bold">Contraseña</label>
                         <div class="input-group">
                             @Html.PasswordFor(m => m.Contrasena, new {
                                 @class = "form-control" + ((ViewData.ModelState["Contrasena"] != null && ViewData.ModelState["Contrasena"].Errors.Count > 0) ? " is-invalid" : ""),
@@ -131,11 +134,9 @@
                                 placeholder = "••••••••",
                                 autocomplete = "current-password"
                             })
-                            <div class="input-group-append">
-                                <button class="btn btn-outline-secondary" type="button" onclick="togglePassword()">
-                                    <i class="fa fa-eye" id="toggleIcon"></i>
-                                </button>
-                            </div>
+                            <button class="btn btn-outline-secondary" type="button" onclick="togglePassword()">
+                                <i class="fa fa-eye" id="toggleIcon"></i>
+                            </button>
                         </div>
                         @Html.ValidationMessageFor(m => m.Contrasena, "", new { @class = "text-danger small" })
                     </div>
@@ -143,30 +144,31 @@
                     <div class="form-check mb-4">
                         <input class="form-check-input" type="checkbox" id="termsCheck" />
                         <label class="form-check-label small" for="termsCheck">
-                            He leído y acepto los <a class="link-inline" data-toggle="modal" data-target="#termsModal">Términos y Condiciones</a>
+                            He leído y acepto los
+                            <a class="link-inline" data-bs-toggle="modal" data-bs-target="#termsModal">Términos y Condiciones</a>
                         </label>
                     </div>
 
-                    <button class="btn btn-primary-grad btn-block py-2" type="submit" id="loginBtn" disabled>
-                        <i class="fa fa-sign-in-alt mr-1"></i> Ingresar al Sistema
+                    <button class="btn btn-primary-grad w-100 py-2" type="submit" id="loginBtn" disabled>
+                        <i class="fa fa-sign-in-alt me-1"></i> Ingresar al Sistema
                     </button>
                 }
 
                 <hr>
 
                 <div class="text-center small">
-                    <a class="link-inline" data-toggle="modal" data-target="#modalRegistroUsuario">
+                    <a class="link-inline" data-bs-toggle="modal" data-bs-target="#modalRegistroUsuario">
                         ¿No tienes cuenta? Regístrate
                     </a>
                 </div>
 
                 <div class="text-center mt-2 small">
-                    <a class="link-inline text-muted" data-toggle="modal" data-target="#forgotPasswordModal">Olvidé mi contraseña</a>
+                    <a class="link-inline text-muted" data-bs-toggle="modal" data-bs-target="#forgotPasswordModal">Olvidé mi contraseña</a>
                 </div>
 
                 <div class="text-center mt-2 small">
-                    <a class="link-inline text-muted" data-toggle="modal" data-target="#modalCuentasBancos">
-                        <i class="fa fa-university mr-1"></i> Cuentas Bancarias DGAC
+                    <a class="link-inline text-muted" data-bs-toggle="modal" data-bs-target="#modalCuentasBancos">
+                        <i class="fa fa-university me-1"></i> Cuentas Bancarias DGAC
                     </a>
                 </div>
 
@@ -180,17 +182,16 @@
 
     @Html.Partial("_ModalRegistroUsuario")
 
-    <div class="modal fade" id="modalCuentasBancos" tabindex="-1" role="dialog" aria-labelledby="modalCuentasBancosLabel" aria-hidden="true">
+    <!-- Modal Cuentas Bancarias -->
+    <div class="modal fade" id="modalCuentasBancos" tabindex="-1" aria-labelledby="modalCuentasBancosLabel" aria-hidden="true">
         <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
             <div class="modal-content">
 
                 <div class="modal-header bg-light">
                     <h5 class="modal-title" id="modalCuentasBancosLabel">
-                        <i class="fa fa-university mr-2"></i> Cuentas Bancarias DGAC
+                        <i class="fa fa-university me-2"></i> Cuentas Bancarias DGAC
                     </h5>
-                    <button type="button" class="close" data-dismiss="modal">
-                        <span>&times;</span>
-                    </button>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
                 </div>
 
                 <div class="modal-body">
@@ -198,130 +199,142 @@
                 </div>
 
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary btn-sm" data-dismiss="modal">Cerrar</button>
+                    <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cerrar</button>
                 </div>
 
             </div>
         </div>
     </div>
+
+    <!-- jQuery (solo por tus AJAX; BS5 no lo necesita) -->
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.6.2/dist/js/bootstrap.bundle.min.js"></script>
+
+    <!-- ✅ Bootstrap 5 Bundle -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 
     <script>
-    // 1. Cargar Roles desde PostgreSQL
-    function inicializarRolesDinamicos() {
-        const $select = $('#Rol');
-        if ($select.length && $select.children('option').length <= 1) {
-            $.ajax({
-                url: '@Url.Action("ObtenerRoles", "UsuarioRol")',
-                type: 'GET',
-                dataType: 'json',
-                success: function (data) {
-                    $select.empty().append('<option value="">-- Seleccione un Rol --</option>');
-                    $.each(data, function (i, item) {
-                        $select.append($('<option>', { value: item.Value, text: item.Text }));
-                    });
+        // Helpers BS5 Modals
+        function showBsModal(id) {
+            var el = document.getElementById(id);
+            if (!el) return;
+            var modal = bootstrap.Modal.getOrCreateInstance(el);
+            modal.show();
+        }
+
+        function hideBsModal(id) {
+            var el = document.getElementById(id);
+            if (!el) return;
+            var modal = bootstrap.Modal.getInstance(el);
+            if (modal) modal.hide();
+        }
+
+        // 1. Cargar Roles desde PostgreSQL
+        function inicializarRolesDinamicos() {
+            const $select = $('#Rol');
+            if ($select.length && $select.children('option').length <= 1) {
+                $.ajax({
+                    url: '@Url.Action("ObtenerRoles", "UsuarioRol")',
+                    type: 'GET',
+                    dataType: 'json',
+                    success: function (data) {
+                        $select.empty().append('<option value="">-- Seleccione un Rol --</option>');
+                        $.each(data, function (i, item) {
+                            $select.append($('<option>', { value: item.Value, text: item.Text }));
+                        });
+                    }
+                });
+            }
+        }
+
+        // 2. Cargar Empresas desde AS/400
+        function inicializarEmpresasAS400() {
+            const $selectEmp = $('#Empresa');
+            if ($selectEmp.length && $selectEmp.children('option').length <= 1) {
+                $.ajax({
+                    url: '@Url.Action("ObtenerEmpresas", "Empresa")',
+                    type: 'GET',
+                    dataType: 'json',
+                    success: function (data) {
+                        $selectEmp.empty().append('<option value="">-- Seleccione una empresa --</option>');
+                        $.each(data, function (i, item) {
+                            $selectEmp.append($('<option>', { value: item.Codigo, text: item.Nombre }));
+                        });
+                    },
+                    error: function (xhr) {
+                        console.error("Error empresas AS400:", xhr.responseText);
+                    }
+                });
+            }
+        }
+
+        $(document).ready(function () {
+            // Mostrar modal de cuentas bancarias al iniciar (BS5)
+            showBsModal('modalCuentasBancos');
+
+            // Control del botón de ingreso (términos y condiciones)
+            $('#termsCheck').on('change', function() {
+                $('#loginBtn').prop('disabled', !this.checked);
+            });
+
+            // Lógica para mostrar "Otro Rol"
+            $(document).on('change', '#Rol', function () {
+                var texto = $("#Rol option:selected").text().toUpperCase();
+                if (texto.indexOf("OTRO") >= 0) {
+                    $('#otroRolContainer').slideDown();
+                    $('#OtroRol').prop('required', true);
+                } else {
+                    $('#otroRolContainer').slideUp();
+                    $('#OtroRol').val('');
+                    $('#OtroRol').prop('required', false);
                 }
             });
-        }
-    }
+        });
 
-    // 2. Cargar Empresas desde AS/400 (IP 190.152.8.185)
-    function inicializarEmpresasAS400() {
-        const $selectEmp = $('#Empresa');
-        if ($selectEmp.length && $selectEmp.children('option').length <= 1) {
+        // Evento cuando se abre modal de registro (en BS5 sigue existiendo 'shown.bs.modal')
+        document.addEventListener('shown.bs.modal', function (event) {
+            if (event.target && event.target.id === 'modalRegistroUsuario') {
+                inicializarRolesDinamicos();
+                inicializarEmpresasAS400();
+            }
+        });
+
+        // Submit con FormData
+        $(document).on('submit', '#crearForm', function (e) {
+            e.preventDefault();
+            var formData = new FormData(this);
+
             $.ajax({
-                url: '@Url.Action("ObtenerEmpresas", "Empresa")',
-                type: 'GET',
-                dataType: 'json',
-                success: function (data) {
-                    $selectEmp.empty().append('<option value="">-- Seleccione una empresa --</option>');
-                    $.each(data, function (i, item) {
-                        // Usamos item.Codigo e item.Nombre que vienen del DAO de IBM
-                        $selectEmp.append($('<option>', { value: item.Codigo, text: item.Nombre }));
-                    });
+                url: '@Url.Action("RegistrarUsuario", "Usuario")',
+                type: 'POST',
+                data: formData,
+                contentType: false,
+                processData: false,
+                success: function (res) {
+                    alert(res.message);
+                    if (res.success) {
+                        hideBsModal('modalRegistroUsuario');
+                        $('#crearForm')[0].reset();
+                        $('#otroRolContainer').hide();
+                    }
                 },
-                error: function (xhr) {
-                    console.error("Error empresas AS400:", xhr.responseText);
+                error: function(xhr) {
+                    console.error("Error en registro:", xhr.responseText);
+                    alert("Error de conexión al intentar registrar.");
                 }
             });
-        }
-    }
-
-    $(document).ready(function () {
-        // Mostrar modal de cuentas bancarias al iniciar
-        $('#modalCuentasBancos').modal('show');
-
-        // Control del botón de ingreso (términos y condiciones)
-        $('#termsCheck').on('change', function() {
-            $('#loginBtn').prop('disabled', !this.checked);
         });
 
-        // ==========================================
-        // NUEVO: Lógica para mostrar "Otro Rol"
-        // ==========================================
-        $(document).on('change', '#Rol', function () {
-            var texto = $("#Rol option:selected").text().toUpperCase();
-            // Verificamos si contiene la palabra "OTRO"
-            if (texto.indexOf("OTRO") >= 0) {
-                $('#otroRolContainer').slideDown(); // Muestra el campo
-                $('#OtroRol').prop('required', true); // Lo hace obligatorio
+        function togglePassword() {
+            var input = document.getElementById('clave');
+            var icon = document.getElementById('toggleIcon');
+            if (input.type === 'password') {
+                input.type = 'text';
+                icon.classList.replace('fa-eye', 'fa-eye-slash');
             } else {
-                $('#otroRolContainer').slideUp();   // Oculta el campo
-                $('#OtroRol').val('');              // Limpia el texto
-                $('#OtroRol').prop('required', false); // Quita la obligatoriedad
+                input.type = 'password';
+                icon.classList.replace('fa-eye-slash', 'fa-eye');
             }
-        });
-    });
-
-    // Disparar las dos cargas cuando se abre el modal de registro
-    $('#modalRegistroUsuario').on('shown.bs.modal', function () {
-        inicializarRolesDinamicos(); // Habla con Postgres
-        inicializarEmpresasAS400();  // Habla con AS/400
-    });
-
-    // ==========================================
-    // CORREGIDO: Envío del formulario con ARCHIVOS (FormData)
-    // ==========================================
-    $('#crearForm').on('submit', function (e) {
-        e.preventDefault();
-
-        // IMPORTANTE: Usar FormData para enviar archivos (PDFs, imágenes)
-        var formData = new FormData(this);
-
-        $.ajax({
-            url: '@Url.Action("RegistrarUsuario", "Usuario")',
-            type: 'POST',
-            data: formData,
-            contentType: false, // Necesario para envío de archivos
-            processData: false, // Necesario para envío de archivos
-            success: function (res) {
-                alert(res.message);
-                if (res.success) {
-                    $('#modalRegistroUsuario').modal('hide');
-                    $('#crearForm')[0].reset();
-                    // Ocultamos el campo "Otro Rol" si quedó abierto
-                    $('#otroRolContainer').hide();
-                }
-            },
-            error: function(xhr) {
-                 console.error("Error en registro:", xhr.responseText);
-                 alert("Error de conexión al intentar registrar.");
-            }
-        });
-    });
-
-    function togglePassword() {
-        var input = document.getElementById('clave');
-        var icon = document.getElementById('toggleIcon');
-        if (input.type === 'password') {
-            input.type = 'text';
-            icon.classList.replace('fa-eye', 'fa-eye-slash');
-        } else {
-            input.type = 'password';
-            icon.classList.replace('fa-eye-slash', 'fa-eye');
         }
-    }
     </script>
 
 </body>

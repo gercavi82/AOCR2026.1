@@ -29,12 +29,12 @@ namespace CapaModelo
         public string TipoOperacion { get; set; }
         public string DescripcionOperacion { get; set; }
 
-        // ✅ CORRECCIÓN: Nombres exactos solicitados por el DAO (Errores 58, 59, 61, 147, 148, 150)
+       
         public DateTime? FechaInicioOperacion { get; set; }
         public DateTime? FechaFinOperacion { get; set; }
         public string ObservacionesGenerales { get; set; }
         public string Observaciones { get; set; } // Campo adicional si se usa en otras vistas
-
+        public DateTime? FechaRegistro { get; set; }
         // Auditoría y Control
         public int CodigoUsuario { get; set; }
         public int? CodigoTecnico { get; set; }

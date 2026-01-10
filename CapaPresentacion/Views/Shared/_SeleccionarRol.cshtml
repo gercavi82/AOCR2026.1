@@ -1,7 +1,7 @@
 ﻿@{
-    var roles = Session["TodosLosRoles"] as List<string>;
+    var roles = Session["Roles"] as List<string>;
     // Usamos el operador seguro para evitar nulos
-    var rolActual = (Session["Rol"] != null) ? Session["Rol"].ToString() : "";
+    var rolActual = Session["Rol"] as string;
 }
 
 @if (roles != null && roles.Count > 1)

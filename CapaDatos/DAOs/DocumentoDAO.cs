@@ -30,8 +30,8 @@ namespace CapaDatos.DAOs
 
                 const string sql = @"
                     SELECT 
-                        codigodocumento AS CodigoDocumento,
-                        codigosolicitud AS CodigoSolicitud,
+                        codigo_documento AS CodigoDocumento,
+                        codigo_solicitud AS CodigoSolicitud,
                         tipo_documento  AS TipoDocumento,
                         nombre_archivo  AS NombreArchivo,
                         ruta_archivo    AS RutaArchivo,
@@ -90,7 +90,7 @@ namespace CapaDatos.DAOs
                         codigosolicitud AS CodigoSolicitud,
                         tipo_documento  AS TipoDocumento,
                         nombre_archivo  AS NombreArchivo,
-                        ruta_archivo    AS RutaArchivo,
+                        ruta_guardada    AS RutaArchivo,
                         tamanio_archivo AS TamanioArchivo,
                         estado          AS Estado,
                         observaciones   AS Observaciones,

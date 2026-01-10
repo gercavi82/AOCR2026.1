@@ -7,7 +7,6 @@
     <link rel="stylesheet" href="@Url.Content("~/Content/css/dgac-theme.css")" />
 
     <style>
-        /* --- ESTILOS ESPECÍFICOS DE LA VISTA --- */
         body {
             background-color: #f4f7fa;
         }
@@ -68,6 +67,9 @@
             border: 1px solid #e2e8f0;
             cursor: pointer;
             transition: 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
         }
 
             .filter-tab.active {
@@ -80,6 +82,7 @@
             border-radius: 20px;
             font-weight: 600;
             font-size: 0.75rem;
+            display: inline-block;
         }
 
         .bg-aprobado {
@@ -106,36 +109,49 @@
 
 <div class="header-modern">
     <div>
-        <h3 class="m-0 font-weight-bold text-dark">Tablero de Control</h3>
+        <!-- ✅ BS5: fw-bold en vez de font-weight-bold -->
+        <h3 class="m-0 fw-bold text-dark">Tablero de Control</h3>
         <p class="text-muted m-0 small">Gestión de Certificados AOCR</p>
     </div>
 
-    <div class="btn-group">
-        <button type="button" class="btn btn-white-perfect dropdown-toggle" data-toggle="dropdown">
+    <!-- ✅ Dropdown BS5 -->
+    <div class="dropdown">
+        <button type="button"
+                class="btn btn-white-perfect dropdown-toggle"
+                data-bs-toggle="dropdown"
+                aria-expanded="false">
             <i class="bi bi-plus-lg text-info"></i> NUEVA SOLICITUD
         </button>
-        <div class="dropdown-menu dropdown-menu-right border-0 shadow-lg p-2">
-            <a class="dropdown-item rounded py-2" href="javascript:void(0)" onclick="window.cargarFormulario(null)">
-                <i class="bi bi-file-earmark-plus text-primary mr-2"></i> Emisión AOCR
-            </a>
-            <a class="dropdown-item rounded py-2" href="#">
-                <i class="bi bi-pencil-square text-info mr-2"></i> Modificación
-            </a>
-        </div>
+
+        <ul class="dropdown-menu dropdown-menu-end border-0 shadow-lg p-2">
+            <li>
+                <a class="dropdown-item rounded py-2"
+                   href="javascript:void(0)"
+                   onclick="window.cargarFormulario(null)">
+                    <i class="bi bi-file-earmark-plus text-primary me-2"></i> Emisión AOCR
+                </a>
+            </li>
+            <li>
+                <a class="dropdown-item rounded py-2" href="#">
+                    <i class="bi bi-pencil-square text-info me-2"></i> Modificación
+                </a>
+            </li>
+        </ul>
     </div>
 </div>
 
 <section class="content pt-4 px-3">
     <div class="container-fluid">
         <div class="d-flex justify-content-between align-items-center mb-3">
-            <div class="filter-tabs">
+            <div class="filter-tabs d-flex gap-2 flex-wrap">
                 <div class="filter-tab active" data-filter="all">Todos</div>
                 <div class="filter-tab" data-filter="tramite">En Trámite</div>
                 <div class="filter-tab" data-filter="aprobado">Aprobados</div>
                 <div class="filter-tab" data-filter="observado">Observados</div>
             </div>
 
-            <div class="input-group shadow-sm" style="width: 300px; border-radius: 20px; overflow: hidden; background: white;">
+            <div class="input-group shadow-sm"
+                 style="width: 300px; border-radius: 20px; overflow: hidden; background: white;">
                 <input type="text" id="searchInput" class="form-control border-0" placeholder="Buscar solicitud...">
             </div>
         </div>
@@ -149,7 +165,8 @@
                                 <th>ID</th>
                                 <th>Fecha</th>
                                 <th>Tipo</th>
-                                <th class="text-left pl-4">Compañía</th>
+                                <!-- ✅ BS5: text-start + ps-4 -->
+                                <th class="text-start ps-4">Compañía</th>
                                 <th>Estado Global</th>
                                 <th>Acción</th>
                             </tr>
@@ -162,26 +179,15 @@
     </div>
 </section>
 
-@* --- ÚNICO CONTENEDOR DEL MODAL --- *@
-<div class="modal fade" id="modalFormulario" tabindex="-1" role="dialog" aria-hidden="true" data-backdrop="static">
-    <div class="modal-dialog modal-xl modal-dialog-scrollable">
-        <div class="modal-content" style="border-radius: 12px; border: none;">
-            <div class="modal-header py-3" style="background: linear-gradient(135deg, var(--dgac-blue), var(--dgac-teal)); color: white;">
-                <h5 class="modal-title font-weight-bold"><i class="bi bi-window-stack mr-2"></i> Gestión de Solicitud AOCR</h5>
-                <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close">
-                    <span aria-hidden="true">&times;</span>
-                </button>
-            </div>
-            <div class="modal-body bg-light p-0" id="contenidoModal" style="min-height: 400px;">
-            </div>
-        </div>
-    </div>
-</div>
+@* ✅ NO PONGAS el modal aquí.
+    Ya existe en _LayoutAOCR.cshtml (id="modalFormulario") y su #contenidoModal.
+    Si lo duplicas, te falla el modal por IDs repetidos. *@
 
 @section scripts {
     <script>
-        $(document).ready(function () {
-            // 1. DATOS SIMULADOS
+        document.addEventListener("DOMContentLoaded", function () {
+
+            // 1) DATOS SIMULADOS
             var datosGlobales = [
                 { id: 105, fecha: '19/11/2025', tipo: 'EMISIÓN', comp: 'LATAM AIRLINES', st: 'Aprobado', cat: 'aprobado' },
                 { id: 104, fecha: '18/11/2025', tipo: 'RENOVACIÓN', comp: 'AVIANCA S.A.', st: 'Pendiente', cat: 'tramite' },
@@ -192,38 +198,68 @@
 
             function renderTable(datos) {
                 var html = '';
-                $.each(datos, function (i, item) {
-                    var badge = item.cat === 'aprobado' ? 'bg-aprobado' : (item.cat === 'observado' ? 'bg-observado' : 'bg-tramite');
-                    html += `<tr>
-                        <td class="font-weight-bold text-primary">${item.id}</td>
-                        <td>${item.fecha}</td>
-                        <td><span class="badge badge-light border">${item.tipo}</span></td>
-                        <td class="text-left pl-4">${item.comp}</td>
-                        <td><span class="badge-pill-custom ${badge}">${item.st}</span></td>
-                        <td>
-                            <button class="btn btn-sm btn-outline-secondary rounded-circle" onclick="window.cargarFormulario(${item.id})">
-                                <i class="bi bi-eye"></i>
-                            </button>
-                        </td>
-                    </tr>`;
+                datos.forEach(function (item) {
+                    var badge = (item.cat === 'aprobado')
+                        ? 'bg-aprobado'
+                        : (item.cat === 'observado')
+                            ? 'bg-observado'
+                            : 'bg-tramite';
+
+                    html += `
+                        <tr>
+                            <td class="fw-bold text-primary">${item.id}</td>
+                            <td>${item.fecha}</td>
+
+                            <!-- ✅ badge BS5 -->
+                            <td><span class="badge text-bg-light border">${item.tipo}</span></td>
+
+                            <td class="text-start ps-4">${item.comp}</td>
+
+                            <td><span class="badge-pill-custom ${badge}">${item.st}</span></td>
+
+                            <td>
+                                <button type="button"
+                                        class="btn btn-sm btn-outline-secondary rounded-circle"
+                                        onclick="window.cargarFormulario(${item.id})"
+                                        title="Ver">
+                                    <i class="bi bi-eye"></i>
+                                </button>
+                            </td>
+                        </tr>`;
                 });
-                $('#cuerpoTabla').html(html);
+
+                document.getElementById('cuerpoTabla').innerHTML = html;
             }
 
-            // 2. FUNCIÓN GLOBAL DE CARGA (Para Sidebar e Index)
-            window.cargarFormulario = function(idSolicitud) {
-                $('#modalFormulario').modal('show');
-                $('#contenidoModal').html('<div class="text-center p-5"><div class="spinner-border text-primary"></div><p class="mt-2 text-muted">Cargando Terminal AOCR...</p></div>');
+            // 2) FUNCIÓN GLOBAL DE CARGA (Bootstrap 5 Modal API + AJAX)
+            window.cargarFormulario = function (idSolicitud) {
+                const modalEl = document.getElementById('modalFormulario');
+                const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+                modal.show();
+
+                const contenido = document.getElementById('contenidoModal');
+                contenido.innerHTML = `
+                    <div class="text-center p-5">
+                        <div class="spinner-border text-primary"></div>
+                        <p class="mt-2 text-muted">Cargando Terminal AOCR...</p>
+                    </div>`;
 
                 $.ajax({
                     url: '@Url.Action("FormularioEmisionAOCR", "SolicitudAOCR")',
                     type: 'GET',
                     data: { oid: idSolicitud },
                     success: function (data) {
-                        $('#contenidoModal').hide().html(data).fadeIn(200);
+                        // efecto simple sin depender de jQuery fadeIn
+                        contenido.style.display = 'none';
+                        contenido.innerHTML = data;
+                        contenido.style.display = '';
                     },
                     error: function (xhr) {
-                        $('#contenidoModal').html('<div class="alert alert-danger m-3"><i class="bi bi-exclamation-triangle mr-2"></i> Error: No se pudo conectar con el servidor.</div>');
+                        contenido.innerHTML = `
+                            <div class="alert alert-danger m-3">
+                                <i class="bi bi-exclamation-triangle me-2"></i>
+                                Error: No se pudo conectar con el servidor.
+                            </div>`;
                         console.error("Detalle del error AJAX:", xhr.responseText);
                     }
                 });

@@ -142,9 +142,25 @@ namespace CapaPresentacion.Controllers
         public ActionResult Aprobar(string id)
         {
             var solicitud = _solicitudDAO.ObtenerPorCodigo(id);
+            if (solicitud == null) return HttpNotFound();
 
-            if (solicitud == null)
-                return HttpNotFound();
+            // ✅ Validar checklist (tabla checklist)
+            var stats = ChecklistDAO.ObtenerEstadisticasPorSolicitud(solicitud.CodigoSolicitud);
+
+            bool incompleto =
+                stats["Total"] == 0 ||
+                stats["SinEvaluar"] > 0 ||
+                stats["NoCumplen"] > 0;
+
+            if (incompleto)
+            {
+                TempData["NotificacionTipo"] = "error";
+                TempData["NotificacionMensaje"] =
+                    $"No se puede aprobar. Checklist incompleto: " +
+                    $"Total={stats["Total"]}, SinEvaluar={stats["SinEvaluar"]}, NoCumplen={stats["NoCumplen"]}.";
+
+                return RedirectToAction("RevisarSolicitudes");
+            }
 
             solicitud.Estado = "APROBADO_POR_INSPECTOR";
             solicitud.FechaRevisionInspector = DateTime.Now;
@@ -157,6 +173,7 @@ namespace CapaPresentacion.Controllers
 
             return RedirectToAction("RevisarSolicitudes");
         }
+
 
         [HttpPost]
         [Authorize(Roles = "Inspector")]

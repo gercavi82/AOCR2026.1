@@ -1,34 +1,68 @@
 ﻿@model CapaModelo.Inspeccion
-
-<h2>Detalle Inspección</h2>
-
-<table class="table table-bordered">
-    <tr><th>Solicitud</th><td>@Model.CodigoSolicitud</td></tr>
-    <tr><th>Inspector</th><td>@Model.Inspector</td></tr>
-    <tr><th>Fecha Programada</th><td>@Model.FechaProgramada</td></tr>
-    <tr><th>Estado</th><td>@Model.Estado</td></tr>
-</table>
-
-<h3>Informe</h3>
-
-@if (!string.IsNullOrEmpty(Model.InformeRuta))
-{
-    <p><a href="@Url.Content(Model.InformeRuta)" target="_blank">Ver Informe PDF</a></p>
+@{
+    ViewBag.Title = "Detalle Inspección";
+    Layout = "~/Views/Shared/_LayoutAOCR.cshtml";
 }
 
-<form method="post" enctype="multipart/form-data" action="@Url.Action("SubirInforme")">
-    @Html.Hidden("id", Model.CodigoInspeccion)
-    <input type="file" name="Informe" class="form-control" />
-    <button class="btn btn-primary mt-2">Subir Informe</button>
-</form>
+<h2 class="mb-3">Detalle Inspección</h2>
 
-<hr />
+<div class="card mb-3">
+    <div class="card-body">
+        <table class="table table-bordered mb-0">
+            <tr><th style="width:220px;">Código Inspección</th><td>@Model.CodigoInspeccion</td></tr>
+            <tr><th>Código Solicitud</th><td>@Model.CodigoSolicitud</td></tr>
+
+            <tr>
+                <th>Inspector Asignado (Código)</th>
+                <td>@(Model.CodigoInspector.HasValue ? Model.CodigoInspector.Value.ToString() : "No asignado")</td>
+            </tr>
+
+            <tr><th>Fecha Programada</th><td>@(Model.FechaProgramada.HasValue ? Model.FechaProgramada.Value.ToString("yyyy-MM-dd") : "-")</td></tr>
+            <tr><th>Estado</th><td>@Model.Estado</td></tr>
+        </table>
+    </div>
+</div>
+
+<h3 class="mt-4">Informe</h3>
+
+@if (!string.IsNullOrEmpty(Model.InformePdf))
+{
+    <div class="alert alert-success">
+        <a href="@Url.Content(Model.InformePdf)" target="_blank">Ver Informe PDF</a>
+    </div>
+}
+else
+{
+    <div class="alert alert-light">Aún no hay informe cargado.</div>
+}
+
+@* ✅ Subir informe: solo Inspector/Admin (el controller valida si es el asignado) *@
+@if (User.IsInRole("Inspector") || User.IsInRole("Administrador"))
+{
+    using (Html.BeginForm("SubirInforme", "Inspeccion", FormMethod.Post, new { enctype = "multipart/form-data" }))
+    {
+        @Html.AntiForgeryToken()
+        @Html.Hidden("id", Model.CodigoInspeccion)
+
+        <div class="mb-2">
+            <input type="file" name="Informe" class="form-control" accept="application/pdf" />
+        </div>
+
+        <button class="btn btn-primary">Subir Informe</button>
+    }
+}
+
+<hr class="my-4" />
 
 <h3>Hallazgos</h3>
 
-<a class="btn btn-warning" data-toggle="modal" data-target="#modalHallazgo">
-    Registrar Hallazgo
-</a>
+@* Botón para modal / o navegación a formulario *@
+@if (User.IsInRole("Inspector") || User.IsInRole("Administrador"))
+{
+    <button class="btn btn-warning" type="button" data-bs-toggle="modal" data-bs-target="#modalHallazgo">
+        Registrar Hallazgo
+    </button>
+}
 
 <table class="table table-striped mt-3">
     <thead>
@@ -36,23 +70,79 @@
             <th>Severidad</th>
             <th>Descripción</th>
             <th>Estado</th>
-            <th>Acción</th>
         </tr>
     </thead>
     <tbody>
-        @foreach (var h in ViewBag.Hallazgos)
+        @if (ViewBag.Hallazgos != null)
         {
-            <tr>
-                <td>@h.Severidad</td>
-                <td>@h.Descripcion</td>
-                <td>@h.Estado</td>
-                <td>
-                    @if (h.Estado == "PENDIENTE")
-                    {
-                        <a class="btn btn-success btn-sm">Corregido</a>
-                    }
-                </td>
-            </tr>
+            foreach (var h in ViewBag.Hallazgos)
+            {
+                <tr>
+                    <td>@h.Severidad</td>
+                    <td>@h.Descripcion</td>
+                    <td>@h.Estado</td>
+                </tr>
+            }
         }
     </tbody>
 </table>
+
+<hr class="my-4" />
+
+@* ✅ Cerrar Inspección: solo Jefatura/Admin *@
+@if (User.IsInRole("JefaturaTecnica") || User.IsInRole("Administrador"))
+{
+    <h3>Cierre de Inspección</h3>
+
+    using (Html.BeginForm("Cerrar", "Inspeccion", FormMethod.Post))
+    {
+        @Html.AntiForgeryToken()
+        @Html.Hidden("id", Model.CodigoInspeccion)
+
+        <div class="d-flex gap-2">
+            <button type="submit" name="resultado" value="APROBADO" class="btn btn-success">
+                Aprobar
+            </button>
+
+            <button type="submit" name="resultado" value="RECHAZADO" class="btn btn-danger">
+                Rechazar
+            </button>
+        </div>
+    }
+}
+
+@* Modal mínimo (si ya tienes uno mejor, puedes ignorar esto) *@
+<div class="modal fade" id="modalHallazgo" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Registrar Hallazgo</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+            </div>
+
+            <div class="modal-body">
+                @using (Html.BeginForm("RegistrarHallazgo", "Inspeccion", FormMethod.Post))
+                {
+                    @Html.AntiForgeryToken()
+                    @Html.Hidden("CodigoInspeccion", Model.CodigoInspeccion)
+
+                    <div class="mb-2">
+                        <label class="form-label">Severidad</label>
+                        <select name="Severidad" class="form-control">
+                            <option value="ALTA">ALTA</option>
+                            <option value="MEDIA">MEDIA</option>
+                            <option value="BAJA">BAJA</option>
+                        </select>
+                    </div>
+
+                    <div class="mb-2">
+                        <label class="form-label">Descripción</label>
+                        <textarea name="Descripcion" class="form-control" rows="3"></textarea>
+                    </div>
+
+                    <button class="btn btn-primary">Guardar</button>
+                }
+            </div>
+        </div>
+    </div>
+</div>

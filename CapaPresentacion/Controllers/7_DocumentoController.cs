@@ -520,6 +520,26 @@ namespace CapaPresentacion.Controllers
                     return "application/octet-stream";
             }
         }
+        // GET: Documento/RevisarDocumentos
+        [Authorize(Roles = "Administrador,Inspector")]
+        public ActionResult RevisarDocumentos()
+        {
+            try
+            {
+                var documentosPendientes = _documentoDAO.ObtenerTodos()
+                    ?.Where(d => d.Estado == "Pendiente")
+                    .OrderByDescending(d => d.FechaSubida)
+                    .ToList();
+
+                return View(documentosPendientes); // Vista: RevisarDocumentos.cshtml
+            }
+            catch (Exception ex)
+            {
+                TempData["Error"] = $"Error al cargar documentos: {ex.Message}";
+                return RedirectToAction("Index", "Home");
+            }
+        }
+
 
         #endregion
     }

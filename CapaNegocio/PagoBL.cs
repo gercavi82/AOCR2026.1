@@ -37,14 +37,12 @@ namespace CapaNegocio
             return _pagoDAO.Insertar(pago);
         }
 
-        // Overload simple
         public bool Actualizar(Pago pago)
         {
             if (pago == null || pago.CodigoPago <= 0) return false;
             return _pagoDAO.Actualizar(pago);
         }
 
-        // Overload con mensaje para mantener compatibilidad
         public bool Actualizar(Pago pago, out string mensaje)
         {
             mensaje = string.Empty;
@@ -75,6 +73,12 @@ namespace CapaNegocio
         public decimal ObtenerMontoRecaudadoMes(int año, int mes)
         {
             return _pagoDAO.ObtenerMontoRecaudadoMes(año, mes);
+        }
+
+        // ✅ NUEVO MÉTODO
+        public List<Pago> ObtenerTodos()
+        {
+            return _pagoDAO.ObtenerTodos();
         }
     }
 }

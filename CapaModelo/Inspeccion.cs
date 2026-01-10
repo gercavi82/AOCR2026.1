@@ -1,92 +1,41 @@
 ﻿using System;
-using System.ComponentModel.DataAnnotations;
-using System.ComponentModel.DataAnnotations.Schema;
 
 namespace CapaModelo
 {
-    /// <summary>
-    /// Modelo Inspección AOCR
-    /// Unificado para MVC5 + .NET Framework 4.7.2
-    /// Incluye alias FechaInspeccion para compatibilidad.
-    /// </summary>
-    [Table("aocr_tbinspeccion")]
     public class Inspeccion
     {
-        // =========================
-        // PK
-        // =========================
-        [Key]
-        [Column("codigoinspeccion")]
         public int CodigoInspeccion { get; set; }
-
-        // =========================
-        // FK Solicitud
-        // =========================
-        [Required]
-        [Column("codigosolicitud")]
         public int CodigoSolicitud { get; set; }
 
-        // =========================
-        // Fechas
-        // =========================
-        [Column("fechaprogramada")]
+        public string NumeroInspeccion { get; set; }
+        public string Tipo { get; set; }
+
         public DateTime? FechaProgramada { get; set; }
+        public TimeSpan? HoraProgramada { get; set; }
 
-        [Column("fechareal")]
-        public DateTime? FechaReal { get; set; }
+        public DateTime? FechaRealizada { get; set; }
+        public TimeSpan? HoraInicio { get; set; }
+        public TimeSpan? HoraFin { get; set; }
 
-        // ---------------------------------------
-        // Alias de compatibilidad
-        // Si en algún lado usabas "FechaInspeccion",
-        // ahora no romperá compilación.
-        // ---------------------------------------
-        [NotMapped]
-        public DateTime? FechaInspeccion
-        {
-            get => FechaReal ?? FechaProgramada;
-            set
-            {
-                // Si te asignan FechaInspeccion,
-                // lo razonable es tratarlo como FechaReal.
-                FechaReal = value;
-            }
-        }
+        // ✅ este es tu campo real de asignación
+        public int? CodigoInspector { get; set; }
 
-        // =========================
-        // Estado / Observaciones
-        // =========================
-        [MaxLength(30)]
-        [Column("estado")]
-        public string Estado { get; set; }  // EJ: PROGRAMADA, REALIZADA, ANULADA
+        public string Lugar { get; set; }
+        public string Resultado { get; set; }
+        public string Comentarios { get; set; }
+        public string ObservacionesGenerales { get; set; }
+        public string HallazgosPrincipales { get; set; }
+        public string Recomendaciones { get; set; }
 
-        [Column("observaciones", TypeName = "text")]
-        public string Observaciones { get; set; }
+        public string Estado { get; set; }
+        public bool? Completada { get; set; }
+        public bool? Aprobada { get; set; }
 
-        // =========================
-        // Auditoría
-        // =========================
-        [Column("createdat")]
         public DateTime? CreatedAt { get; set; }
-
-        [Column("updatedat")]
         public DateTime? UpdatedAt { get; set; }
-
-        [Column("deletedat")]
-        public DateTime? DeletedAt { get; set; }
-
-        [Column("createdby")]
         public int? CreatedBy { get; set; }
-
-        [Column("updatedby")]
         public int? UpdatedBy { get; set; }
+        public string InformePdf { get; set; }  // aocr_tbinspeccion.informe_pdf
 
-        [Column("deletedby")]
-        public int? DeletedBy { get; set; }
-
-        // =========================
-        // Navegación (si la usas)
-        // =========================
-        [ForeignKey("CodigoSolicitud")]
-        public virtual SolicitudAOCR Solicitud { get; set; }
     }
 }

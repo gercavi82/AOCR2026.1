@@ -1,7 +1,9 @@
 ﻿@model CapaModelo.Inspeccion
 
 @{
-    ViewBag.Title = "Planificación de Inspección";
+                /**/
+
+                ViewBag.Title = "Planificación de Inspección";
 }
 
 <h2><i class="glyphicon glyphicon-calendar"></i> Planificación de Inspección en Campo</h2>
@@ -14,13 +16,13 @@
     <div class="panel-body">
         <dl class="dl-horizontal">
             <dt>Inspección N°:</dt>
-            <dd>@Model.Id</dd>
+            <dd>@Model.CodigoInspeccion</dd>
+
             <dt>Solicitud N°:</dt>
-            <dd>@Model.SolicitudId</dd>
-            <dt>Inspector Principal:</dt>
-            <dd>@Model.InspectorPrincipal</dd>
-            <dt>Inspector de Apoyo:</dt>
-            <dd>@Model.InspectorApoyo</dd>
+            <dd>@Model.CodigoSolicitud</dd>
+
+            <dt>Inspector Asignado:</dt>
+            <dd>@Model.CodigoInspector</dd> <!-- O ViewBag.NombreInspector -->
         </dl>
     </div>
 </div>
@@ -28,7 +30,7 @@
 @using (Html.BeginForm("Planificacion", "Inspeccion", FormMethod.Post, new { @class = "form-horizontal" }))
 {
     @Html.AntiForgeryToken()
-    @Html.HiddenFor(m => m.Id)
+    @Html.HiddenFor(m => m.CodigoInspeccion)
 
     <div class="panel panel-primary">
         <div class="panel-heading">

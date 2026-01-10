@@ -11,6 +11,9 @@ namespace CapaPresentacion.Controllers
 {
     public class AccountController : Controller
     {
+        // ============================
+        // GET: Login
+        // ============================
         [AllowAnonymous]
         public ActionResult Login(string returnUrl)
         {
@@ -18,6 +21,9 @@ namespace CapaPresentacion.Controllers
             return View(new LoginViewModel());
         }
 
+        // ============================
+        // POST: Login
+        // ============================
         [HttpPost]
         [AllowAnonymous]
         [ValidateAntiForgeryToken]
@@ -30,7 +36,6 @@ namespace CapaPresentacion.Controllers
             Usuario usuario;
             List<string> roles;
 
-            // 1. Intentamos autenticar con la BD
             bool ok = UsuarioBL.Autenticar(
                 model.Usuario,
                 model.Contrasena,
@@ -45,27 +50,26 @@ namespace CapaPresentacion.Controllers
                 return View(model);
             }
 
-            // =========================================================================
-            // CORRECCIÓN 1: LÓGICA ESPECIAL PARA USU_ADMIN
-            // Si entra el admin supremo, ignoramos lo que diga la BD y le damos TODOS los roles
-            // =========================================================================
+            // 🔐 ADMIN SUPREMO
             if (usuario.NombreUsuario.Equals("USU_ADMIN", StringComparison.InvariantCultureIgnoreCase))
             {
-                // NOTA: Asegúrate que estos nombres sean IDÉNTICOS a los de tu Base de Datos
                 roles = new List<string>
                 {
                     "Administrador",
                     "Tecnico",
                     "Solicitante",
                     "Financiero",
-                    "Aprobador"
+                    "Inspector",
+                    "JefaturaTecnica",
+                    "Direccion",
+                    "CoordinacionLegal"
                 };
             }
-            // =========================================================================
 
-
-            // Preparamos los roles para la cookie
-            string rolesString = (roles != null && roles.Count > 0)
+            // ============================
+            // COOKIE DE AUTENTICACIÓN
+            // ============================
+            string rolesString = roles != null && roles.Count > 0
                 ? string.Join(",", roles)
                 : string.Empty;
 
@@ -91,35 +95,55 @@ namespace CapaPresentacion.Controllers
 
             Response.Cookies.Add(cookie);
 
-            // =========================================================================
-            // CORRECCIÓN 2: GUARDAR LA LISTA EN SESIÓN
-            // Sin esta línea, la vista _SeleccionarRol.cshtml siempre recibe null
-            // =========================================================================
+            // ============================
+            // ✅ SESIÓN (ESTO ES LO CLAVE)
+            // ============================
             Session["CodigoUsuario"] = usuario.Id;
             Session["NombreUsuario"] = usuario.NombreCompleto;
             Session["Correo"] = usuario.Email;
 
-            // Rol activo actual
-            Session["Rol"] = (roles != null && roles.Count > 0) ? roles[0] : null;
+            Session["Roles"] = roles;                 // 🔑 LISTA COMPLETA
+            Session["Rol"] = roles.Count > 0 ? roles[0] : null; // 🔑 ROL ACTIVO
 
-            // Lista completa para el menú desplegable (¡ESTO FALTABA!)
-            Session["TodosLosRoles"] = roles;
-            // =========================================================================
-
+            // ============================
+            // REDIRECCIÓN
+            // ============================
             if (!string.IsNullOrEmpty(returnUrl) && Url.IsLocalUrl(returnUrl))
                 return Redirect(returnUrl);
 
             return RedirectToAction("Index", "Home");
         }
 
+        // ============================
+        // CAMBIAR ROL
+        // ============================
+        [Authorize]
+        public ActionResult CambiarRol(string rolSeleccionado)
+        {
+            var roles = Session["Roles"] as List<string>;
+
+            if (roles != null && roles.Contains(rolSeleccionado))
+            {
+                Session["Rol"] = rolSeleccionado;
+            }
+
+            return RedirectToAction("Index", "Home");
+        }
+
+        // ============================
+        // LOGOUT
+        // ============================
         [Authorize]
         public ActionResult Logout()
         {
             FormsAuthentication.SignOut();
-            Session.Clear(); // Borra TodosLosRoles, Rol, Usuario, etc.
+            Session.Clear();
             return RedirectToAction("Login", "Account");
         }
 
+        // ============================
+        // RECUPERAR CONTRASEÑA
+        // ============================
         [HttpPost]
         [AllowAnonymous]
         public JsonResult EnviarRecuperar(string email)
@@ -133,6 +157,9 @@ namespace CapaPresentacion.Controllers
             return Json(new { ok = enviado, mensaje });
         }
 
+        // ============================
+        // MODAL REGISTRO
+        // ============================
         public ActionResult _ModalRegistroUsuario()
         {
             var model = new UsuarioCreateViewModel
@@ -140,21 +167,6 @@ namespace CapaPresentacion.Controllers
                 RolesDisponibles = RolBL.ObtenerActivos()
             };
             return PartialView("_ModalRegistroUsuario", model);
-        }
-
-        [Authorize]
-        public ActionResult CambiarRol(string rolSeleccionado)
-        {
-            // Recuperamos la lista que guardamos en el Login
-            var roles = Session["TodosLosRoles"] as List<string>;
-
-            // Verificamos que el usuario realmente tenga permiso para ese rol
-            if (roles != null && roles.Contains(rolSeleccionado))
-            {
-                Session["Rol"] = rolSeleccionado;
-            }
-
-            return RedirectToAction("Index", "Home");
         }
     }
 }

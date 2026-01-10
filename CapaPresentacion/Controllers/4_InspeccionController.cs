@@ -1,5 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
+using System.Web;
 using System.Web.Mvc;
 using CapaNegocio;
 using CapaModelo;
@@ -13,15 +15,17 @@ namespace CapaPresentacion.Controllers
         private readonly InspeccionBL _bl;
         private readonly HallazgoBL _hallazgoBL;
 
+        private const string ROL_ADMIN = "Administrador";
+        private const string ROL_COORD = "CoordinadorInspecciones";
+        private const string ROL_INSPECTOR = "Inspector";
+        private const string ROL_JEFATURA = "JefaturaTecnica";
+
         public InspeccionController()
         {
             _bl = new InspeccionBL();
             _hallazgoBL = new HallazgoBL();
         }
 
-        // =====================================
-        // Helpers de sesión
-        // =====================================
         private int ObtenerCodigoUsuario()
         {
             if (Session["CodigoUsuario"] != null &&
@@ -29,56 +33,62 @@ namespace CapaPresentacion.Controllers
             {
                 return id;
             }
-
             return 0;
         }
 
-        // =====================================
-        // GET: Inspeccion/Index
-        // (por ahora lista vacía, porque InspeccionBL NO tiene Listar())
-        // =====================================
+        private bool EsAdmin() => User != null && User.IsInRole(ROL_ADMIN);
+
+        private bool PuedeAccederInspeccion(Inspeccion ins)
+        {
+            if (ins == null) return false;
+            if (EsAdmin()) return true;
+
+            if (User.IsInRole(ROL_COORD) || User.IsInRole(ROL_JEFATURA))
+                return true;
+
+            var codigoUsuario = ObtenerCodigoUsuario();
+            if (User.IsInRole(ROL_INSPECTOR))
+            {
+                if (ins.CodigoInspector.HasValue && ins.CodigoInspector.Value == codigoUsuario)
+                    return true;
+            }
+
+            return false;
+        }
+
+        [Authorize(Roles = ROL_COORD + "," + ROL_INSPECTOR + "," + ROL_JEFATURA + "," + ROL_ADMIN)]
         public ActionResult Index()
         {
             var lista = new List<Inspeccion>();
             return View(lista);
         }
 
-        // =====================================
-        // GET: Inspeccion/Detalle/5
-        // =====================================
+        [Authorize(Roles = ROL_COORD + "," + ROL_INSPECTOR + "," + ROL_JEFATURA + "," + ROL_ADMIN)]
         public ActionResult Detalle(int id)
         {
-            // Usamos directamente el DAO porque InspeccionBL NO tiene "Obtener"
             var inspeccion = InspeccionDAO.ObtenerPorId(id);
-            if (inspeccion == null)
-                return HttpNotFound();
+            if (inspeccion == null) return HttpNotFound();
 
-            // Hallazgos asociados usando HallazgoBL
+            if (!PuedeAccederInspeccion(inspeccion))
+                return new HttpStatusCodeResult(403, "No autorizado para ver esta inspección.");
+
             ViewBag.Hallazgos = _hallazgoBL.ObtenerPorInspeccion(id);
-
             return View(inspeccion);
         }
 
-        // =====================================
-        // GET: Inspeccion/Crear?codigoSolicitud=123
-        // =====================================
+        [Authorize(Roles = ROL_COORD + "," + ROL_ADMIN)]
         public ActionResult Crear(int codigoSolicitud)
         {
             var modelo = new Inspeccion
             {
                 CodigoSolicitud = codigoSolicitud
-                // FechaProgramada si existe en tu modelo:
-                // FechaProgramada = DateTime.Today.AddDays(1)
             };
 
             return View(modelo);
         }
 
-        // =====================================
-        // POST: Inspeccion/Crear
-        // Usa InspeccionBL.Crear(Inspeccion, int codigoUsuario)
-        // =====================================
         [HttpPost]
+        [Authorize(Roles = ROL_COORD + "," + ROL_ADMIN)]
         [ValidateAntiForgeryToken]
         public ActionResult Crear(Inspeccion model)
         {
@@ -92,61 +102,53 @@ namespace CapaPresentacion.Controllers
                 return View(model);
             }
 
-            // 🔴 ANTES: bool ok = _bl.Crear(model, codigoUsuario);
-            // ✅ AHORA (método estático):
             bool ok = InspeccionBL.Crear(model, codigoUsuario);
 
             if (ok)
-            {
                 return RedirectToAction("Detalle", new { id = model.CodigoInspeccion });
-            }
 
             ViewBag.Error = "No se pudo crear la inspección.";
             return View(model);
         }
 
-        // =====================================
-        // GET: Inspeccion/Editar/5
-        // =====================================
+        [Authorize(Roles = ROL_COORD + "," + ROL_ADMIN)]
         public ActionResult Editar(int id)
         {
             var inspeccion = InspeccionDAO.ObtenerPorId(id);
-            if (inspeccion == null)
-                return HttpNotFound();
+            if (inspeccion == null) return HttpNotFound();
 
             return View(inspeccion);
         }
 
-        // =====================================
-        // POST: Inspeccion/Editar
-        // =====================================
         [HttpPost]
+        [Authorize(Roles = ROL_COORD + "," + ROL_ADMIN)]
         [ValidateAntiForgeryToken]
         public ActionResult Editar(Inspeccion model)
         {
-            // Sin lógica en BL por ahora
-            ModelState.AddModelError("", "La edición de inspecciones aún no está implementada en la capa de negocio.");
+            ModelState.AddModelError("", "La edición de inspecciones aún no está implementada.");
             return View(model);
         }
 
-        // =====================================
-        // POST: Inspeccion/CambiarEstado
-        // =====================================
         [HttpPost]
+        [Authorize(Roles = ROL_JEFATURA + "," + ROL_COORD + "," + ROL_ADMIN)]
         [ValidateAntiForgeryToken]
         public ActionResult CambiarEstado(int id, string estado)
         {
-            TempData["Warning"] = "La funcionalidad de cambio de estado aún no está implementada en la capa de negocio.";
+            TempData["Warning"] = "La funcionalidad de cambio de estado aún no está implementada.";
             return RedirectToAction("Detalle", new { id });
         }
 
-        // =====================================
-        // POST: Inspeccion/SubirInforme
-        // =====================================
         [HttpPost]
+        [Authorize(Roles = ROL_INSPECTOR + "," + ROL_ADMIN)]
         [ValidateAntiForgeryToken]
         public ActionResult SubirInforme(int id)
         {
+            var inspeccion = InspeccionDAO.ObtenerPorId(id);
+            if (inspeccion == null) return HttpNotFound();
+
+            if (!PuedeAccederInspeccion(inspeccion))
+                return new HttpStatusCodeResult(403, "No autorizado para subir informe.");
+
             var archivo = Request.Files["Informe"];
             if (archivo != null && archivo.ContentLength > 0)
             {
@@ -162,10 +164,10 @@ namespace CapaPresentacion.Controllers
 
                 string rutaRelativa = $"{carpetaVirtual.TrimStart('~')}/{nombreArchivo}";
 
-                // Aquí podrías luego llamar a un método BL para asociar el PDF
-                // InspeccionBL.SubirInforme(id, rutaRelativa, ObtenerCodigoUsuario());
+                // Aquí podrías llamar a BL para guardar la ruta
+                // InspeccionBL.GuardarInforme(id, rutaRelativa, ObtenerCodigoUsuario());
 
-                TempData["Success"] = "Informe cargado en el servidor. Falta asociarlo en la lógica de negocio.";
+                TempData["Success"] = "Informe cargado. Falta asociarlo en la lógica de negocio.";
             }
             else
             {
@@ -175,46 +177,88 @@ namespace CapaPresentacion.Controllers
             return RedirectToAction("Detalle", new { id });
         }
 
-        // =====================================
-        // POST: Inspeccion/RegistrarHallazgo
-        // Usa HallazgoBL.Crear(Hallazgo, string usuario)
-        // =====================================
         [HttpPost]
+        [Authorize(Roles = ROL_INSPECTOR + "," + ROL_ADMIN)]
         [ValidateAntiForgeryToken]
         public ActionResult RegistrarHallazgo(Hallazgo h)
         {
             if (!ModelState.IsValid)
                 return RedirectToAction("Detalle", new { id = h.CodigoInspeccion });
 
+            var inspeccion = InspeccionDAO.ObtenerPorId(h.CodigoInspeccion);
+            if (inspeccion == null) return HttpNotFound();
+
+            if (!PuedeAccederInspeccion(inspeccion))
+                return new HttpStatusCodeResult(403, "No autorizado para registrar hallazgos.");
+
             var codigoUsuario = ObtenerCodigoUsuario();
             string usuarioNombre = User?.Identity?.Name ?? codigoUsuario.ToString();
 
             bool ok = _hallazgoBL.Crear(h, usuarioNombre);
 
-            if (ok)
-            {
-                TempData["Success"] = "Hallazgo registrado correctamente.";
-                return RedirectToAction("Detalle", new { id = h.CodigoInspeccion });
-            }
-
-            TempData["Error"] = "Error al registrar hallazgo.";
+            TempData[ok ? "Success" : "Error"] = ok ? "Hallazgo registrado correctamente." : "Error al registrar hallazgo.";
             return RedirectToAction("Detalle", new { id = h.CodigoInspeccion });
         }
 
-        // =====================================
-        // GET: Inspeccion/Cerrar/5
-        // Usa InspeccionBL.CerrarInspeccion(int, string, int)
-        // =====================================
-        public ActionResult Cerrar(int id)
+        [HttpPost]
+        [Authorize(Roles = ROL_JEFATURA + "," + ROL_ADMIN)]
+        [ValidateAntiForgeryToken]
+        public ActionResult Cerrar(int id, string resultado)
         {
-            var codigoUsuario = ObtenerCodigoUsuario();
-            string usuarioNombre = User?.Identity?.Name ?? codigoUsuario.ToString();
+            var inspeccion = InspeccionDAO.ObtenerPorId(id);
+            if (inspeccion == null) return HttpNotFound();
 
-            // 🔴 ANTES: _bl.CerrarInspeccion(id, usuarioNombre);
-            // ✅ AHORA (método estático con firma real):
-            InspeccionBL.CerrarInspeccion(id, usuarioNombre, codigoUsuario);
+            var codigoUsuario = ObtenerCodigoUsuario();
+
+            bool ok = InspeccionBL.CerrarInspeccion(id, resultado, codigoUsuario);
+
+            TempData[ok ? "Success" : "Error"] = ok
+                ? "Inspección cerrada correctamente."
+                : "No se pudo cerrar la inspección.";
 
             return RedirectToAction("Detalle", new { id });
+        }
+
+        // ✅ ✅ ✅ POST Planificación CORRECTO
+        [HttpPost]
+        [Authorize(Roles = ROL_COORD + "," + ROL_ADMIN)]
+        [ValidateAntiForgeryToken]
+        public ActionResult Planificacion(int CodigoInspeccion, DateTime fechaInspeccion, TimeSpan horaInicio,
+                                          int duracionEstimada, string ubicacion, string latitud, string longitud,
+                                          string tipoInspeccion, string alcance, string equiposNecesarios,
+                                          string contactoSitio, string telefonoContacto, string observaciones)
+        {
+            var inspeccion = InspeccionDAO.ObtenerPorId(CodigoInspeccion);
+            if (inspeccion == null)
+            {
+                TempData["Error"] = "No se encontró la inspección.";
+                return RedirectToAction("Index");
+            }
+
+            inspeccion.FechaProgramada = fechaInspeccion;
+            inspeccion.HoraProgramada = horaInicio;
+            inspeccion.Lugar = ubicacion;
+            inspeccion.Tipo = tipoInspeccion;
+            inspeccion.ObservacionesGenerales = observaciones;
+            inspeccion.Comentarios = $"Contacto: {contactoSitio} - Tel: {telefonoContacto}. Equipos: {equiposNecesarios}";
+            inspeccion.HallazgosPrincipales = alcance;
+
+            if (!string.IsNullOrWhiteSpace(latitud) || !string.IsNullOrWhiteSpace(longitud))
+            {
+                inspeccion.Comentarios += $" Coordenadas: {latitud}, {longitud}";
+            }
+
+            inspeccion.Estado = "PROGRAMADA";
+            inspeccion.UpdatedAt = DateTime.Now;
+            inspeccion.UpdatedBy = ObtenerCodigoUsuario();
+
+            bool ok = InspeccionBL.Actualizar(inspeccion);
+
+            TempData[ok ? "Success" : "Error"] = ok
+                ? "Planificación guardada correctamente."
+                : "Error al guardar la planificación.";
+
+            return RedirectToAction("Detalle", new { id = CodigoInspeccion });
         }
     }
 }

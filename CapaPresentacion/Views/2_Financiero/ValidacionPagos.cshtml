@@ -1,7 +1,7 @@
 ﻿@model CapaModelo.Pago
 
 @{
-    ViewBag.Title = "Validar Pago";
+    ViewBag.Title = "Validacion Pagos";
 }
 
 <h2><i class="glyphicon glyphicon-usd"></i> Validar Pago</h2>
@@ -14,15 +14,16 @@
     <div class="panel-body">
         <dl class="dl-horizontal">
             <dt>Solicitud N°:</dt>
-            <dd>@Model.SolicitudId</dd>
+            <dd>@Model.CodigoSolicitud</dd>
+
             <dt>Operador:</dt>
-            <dd>@Model.NombreOperador</dd>
+            <dd>@Model.Solicitud?.NombreOperador</dd> <!-- Solo si lo asignas desde el controlador -->
+
             <dt>Monto:</dt>
             <dd>$@Model.Monto.ToString("N2")</dd>
+
             <dt>Fecha de Pago:</dt>
-            <dd>@Model.FechaPago.ToString("dd/MM/yyyy")</dd>
-            <dt>Número de Factura:</dt>
-            <dd>@Model.NumeroFactura</dd>
+            <dd>@Model.FechaPago?.ToString("dd/MM/yyyy")</dd>
         </dl>
     </div>
 </div>
@@ -30,7 +31,7 @@
 @using (Html.BeginForm("ValidarPago", "Financiero", FormMethod.Post, new { @class = "form-horizontal" }))
 {
     @Html.AntiForgeryToken()
-    @Html.HiddenFor(m => m.Id)
+    @Html.HiddenFor(m => m.CodigoPago)
 
     <div class="panel panel-primary">
         <div class="panel-heading">
