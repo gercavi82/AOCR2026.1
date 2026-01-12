@@ -199,6 +199,11 @@ namespace CapaNegocio
             var total = _solicitudDAO.ListarActivas().Count(s => s.FechaSolicitud.Year == year);
             return $"AOCR-{year}-{(total + 1):D5}";
         }
+        public List<SolicitudAOCR> ObtenerTodos()
+        {
+            return _solicitudDAO.ObtenerTodos();
+        }
+
 
         #endregion
     }

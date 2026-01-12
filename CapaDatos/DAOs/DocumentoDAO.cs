@@ -7,105 +7,101 @@ using CapaModelo;
 
 namespace CapaDatos.DAOs
 {
-    /// <summary>
-    /// DAO de Documentos (PostgreSQL + Dapper)
-    /// Compatible con .NET Framework 4.7.2
-    /// </summary>
     public class DocumentoDAO
     {
-        // ✅ No instanciar ConexionDAO si ahora es estático
         private NpgsqlConnection CrearConexion()
         {
             return ConexionDAO.CrearConexion();
         }
 
         // ============================================================
-        // OBTENER TODOS
+        // 1. OBTENER TODOS
         // ============================================================
         public List<Documento> ObtenerTodos()
         {
             using (var con = CrearConexion())
             {
                 con.Open();
-
+                // Mapeo EXACTO según tu imagen de BD
                 const string sql = @"
                     SELECT 
                         codigo_documento AS CodigoDocumento,
                         codigo_solicitud AS CodigoSolicitud,
-                        tipo_documento  AS TipoDocumento,
-                        nombre_archivo  AS NombreArchivo,
-                        ruta_archivo    AS RutaArchivo,
-                        tamanio_archivo AS TamanioArchivo,
-                        estado          AS Estado,
-                        observaciones   AS Observaciones,
-                        fecha_subida    AS FechaSubida,
-                        usuario_registro AS UsuarioRegistro
+                        tipo_documento   AS TipoDocumento,
+                        nombre_archivo   AS NombreArchivo,
+                        ruta_guardada    AS RutaArchivo,    -- OJO: En BD es ruta_guardada
+                        tamano_bytes     AS TamanioArchivo, -- OJO: En BD es tamano_bytes
+                        estado           AS Estado,
+                        observaciones    AS Observaciones,
+                        fecha_carga      AS FechaSubida,    -- OJO: En BD es fecha_carga
+                        created_by       AS UsuarioRegistro, -- OJO: Asumo created_by
+                        extension        AS ExtensionArchivo
                     FROM aocr_tbdocumento
-                    ORDER BY fecha_subida DESC;";
+                    ORDER BY fecha_carga DESC;";
 
                 return con.Query<Documento>(sql).ToList();
             }
         }
 
         // ============================================================
-        // OBTENER POR ID
+        // 2. OBTENER POR ID
         // ============================================================
         public Documento ObtenerPorId(int id)
         {
             using (var con = CrearConexion())
             {
                 con.Open();
-
                 const string sql = @"
-                    SELECT
-                        codigodocumento AS CodigoDocumento,
-                        codigosolicitud AS CodigoSolicitud,
-                        tipo_documento  AS TipoDocumento,
-                        nombre_archivo  AS NombreArchivo,
-                        ruta_archivo    AS RutaArchivo,
-                        tamanio_archivo AS TamanioArchivo,
-                        estado          AS Estado,
-                        observaciones   AS Observaciones,
-                        fecha_subida    AS FechaSubida,
-                        usuario_registro AS UsuarioRegistro
+                    SELECT 
+                        codigo_documento AS CodigoDocumento,
+                        codigo_solicitud AS CodigoSolicitud,
+                        tipo_documento   AS TipoDocumento,
+                        nombre_archivo   AS NombreArchivo,
+                        ruta_guardada    AS RutaArchivo,
+                        tamano_bytes     AS TamanioArchivo,
+                        estado           AS Estado,
+                        observaciones    AS Observaciones,
+                        fecha_carga      AS FechaSubida,
+                        created_by       AS UsuarioRegistro,
+                        extension        AS ExtensionArchivo
                     FROM aocr_tbdocumento
-                    WHERE codigodocumento = @id;";
+                    WHERE codigo_documento = @id;";
 
                 return con.QueryFirstOrDefault<Documento>(sql, new { id });
             }
         }
 
         // ============================================================
-        // LISTAR POR SOLICITUD
+        // 3. OBTENER POR SOLICITUD
         // ============================================================
         public List<Documento> ObtenerPorSolicitud(int solicitudId)
         {
             using (var con = CrearConexion())
             {
                 con.Open();
-
                 const string sql = @"
-                    SELECT
-                        codigodocumento AS CodigoDocumento,
-                        codigosolicitud AS CodigoSolicitud,
-                        tipo_documento  AS TipoDocumento,
-                        nombre_archivo  AS NombreArchivo,
+                    SELECT 
+                        codigo_documento AS CodigoDocumento,
+                        codigo_solicitud AS CodigoSolicitud,
+                        tipo_documento   AS TipoDocumento,
+                        nombre_archivo   AS NombreArchivo,
                         ruta_guardada    AS RutaArchivo,
-                        tamanio_archivo AS TamanioArchivo,
-                        estado          AS Estado,
-                        observaciones   AS Observaciones,
-                        fecha_subida    AS FechaSubida,
-                        usuario_registro AS UsuarioRegistro
+                        tamano_bytes     AS TamanioArchivo,
+                        estado           AS Estado,
+                        observaciones    AS Observaciones,
+                        fecha_carga      AS FechaSubida,
+                        created_by       AS UsuarioRegistro,
+                        extension        AS ExtensionArchivo
                     FROM aocr_tbdocumento
-                    WHERE codigosolicitud = @solicitudId
-                    ORDER BY fecha_subida DESC;";
+                    WHERE codigo_solicitud = @solicitudId
+                    ORDER BY fecha_carga DESC;";
 
                 return con.Query<Documento>(sql, new { solicitudId }).ToList();
             }
         }
 
         // ============================================================
-        // CREAR
+        // 4. CREAR (INSERTAR)
         // ============================================================
         public int Crear(Documento d)
         {
@@ -113,120 +109,101 @@ namespace CapaDatos.DAOs
             {
                 con.Open();
 
-                // defensivo por si viene nulo desde capa superior
-                if (d.FechaSubida == null)
-                    d.FechaSubida = DateTime.Now;
+                if (d.FechaSubida == null) d.FechaSubida = DateTime.Now;
+
+                // Aseguramos que la extensión no sea nula si viene del modelo
+                string ext = d.ExtensionArchivo ?? "";
+                if (string.IsNullOrEmpty(ext) && !string.IsNullOrEmpty(d.NombreArchivo))
+                {
+                    ext = System.IO.Path.GetExtension(d.NombreArchivo);
+                }
 
                 const string sql = @"
                     INSERT INTO aocr_tbdocumento
                     (
-                        codigosolicitud,
-                        tipo_documento,
-                        nombre_archivo,
-                        ruta_archivo,
-                        tamanio_archivo,
-                        estado,
-                        observaciones,
-                        fecha_subida,
-                        usuario_registro
+                        codigo_solicitud, 
+                        tipo_documento, 
+                        nombre_archivo, 
+                        ruta_guardada,      -- BD: ruta_guardada
+                        tamano_bytes,       -- BD: tamano_bytes
+                        estado, 
+                        observaciones, 
+                        fecha_carga,        -- BD: fecha_carga
+                        created_by,         -- BD: created_by
+                        extension           -- BD: extension
                     )
                     VALUES
                     (
-                        @CodigoSolicitud,
-                        @TipoDocumento,
-                        @NombreArchivo,
-                        @RutaArchivo,
-                        @TamanioArchivo,
-                        @Estado,
-                        @Observaciones,
-                        @FechaSubida,
-                        @UsuarioRegistro
+                        @CodigoSolicitud, 
+                        @TipoDocumento, 
+                        @NombreArchivo, 
+                        @RutaArchivo,       -- Viene del Modelo C#
+                        @TamanioArchivo,    -- Viene del Modelo C#
+                        @Estado, 
+                        @Observaciones, 
+                        @FechaSubida,       -- Viene del Modelo C#
+                        @UsuarioRegistro,   -- Viene del Modelo C#
+                        @ext                -- Variable local calculada arriba
                     )
-                    RETURNING codigodocumento;";
+                    RETURNING codigo_documento;";
 
-                return con.ExecuteScalar<int>(sql, d);
+                // Pasamos un objeto anónimo para incluir la variable 'ext' extra
+                return con.ExecuteScalar<int>(sql, new
+                {
+                    d.CodigoSolicitud,
+                    d.TipoDocumento,
+                    d.NombreArchivo,
+                    d.RutaArchivo,
+                    d.TamanioArchivo,
+                    d.Estado,
+                    d.Observaciones,
+                    d.FechaSubida,
+                    d.UsuarioRegistro,
+                    ext
+                });
             }
         }
 
+        // Wrapper bool para compatibilidad con BL/Controller
+        public bool Insertar(Documento d)
+        {
+            try { return Crear(d) > 0; }
+            catch (Exception) { return false; }
+        }
+
         // ============================================================
-        // ACTUALIZAR
+        // 5. ACTUALIZAR
         // ============================================================
         public bool Actualizar(Documento d)
         {
             using (var con = CrearConexion())
             {
                 con.Open();
-
                 const string sql = @"
                     UPDATE aocr_tbdocumento SET
-                        tipo_documento  = @TipoDocumento,
-                        nombre_archivo  = @NombreArchivo,
-                        ruta_archivo    = @RutaArchivo,
-                        tamanio_archivo = @TamanioArchivo,
-                        estado          = @Estado,
-                        observaciones   = @Observaciones
-                    WHERE codigodocumento = @CodigoDocumento;";
+                        tipo_documento = @TipoDocumento,
+                        nombre_archivo = @NombreArchivo,
+                        ruta_guardada  = @RutaArchivo,    -- BD: ruta_guardada
+                        tamano_bytes   = @TamanioArchivo, -- BD: tamano_bytes
+                        estado         = @Estado,
+                        observaciones  = @Observaciones
+                    WHERE codigo_documento = @CodigoDocumento;";
 
                 return con.Execute(sql, d) > 0;
             }
         }
 
         // ============================================================
-        // ELIMINAR (HARD DELETE)
+        // 6. ELIMINAR
         // ============================================================
         public bool Eliminar(int id)
         {
             using (var con = CrearConexion())
             {
                 con.Open();
-
-                const string sql = @"DELETE FROM aocr_tbdocumento WHERE codigodocumento = @id;";
-
+                const string sql = @"DELETE FROM aocr_tbdocumento WHERE codigo_documento = @id;";
                 return con.Execute(sql, new { id }) > 0;
             }
         }
-        // ============================================================
-        // INSERTAR (wrapper para Crear) - COMPATIBILIDAD CON CONTROLLER
-        // ============================================================
-        public bool Insertar(Documento d)
-        {
-            // Reutiliza la lógica existente de Crear
-            return Crear(d) > 0;
-        }
-
-        // Opcional: si en algún punto usaste Agregar(...) en el controller
-        // también queda cubierto con este alias:
-        public bool Agregar(Documento d)
-        {
-            return Crear(d) > 0;
-        }
-
-        public Documento ObtenerUltimoBorradorPorSolicitud(int solicitudId)
-        {
-            using (var con = CrearConexion())
-            {
-                con.Open();
-                const string sql = @"
-            SELECT
-                codigodocumento AS CodigoDocumento,
-                codigosolicitud AS CodigoSolicitud,
-                tipo_documento  AS TipoDocumento,
-                nombre_archivo  AS NombreArchivo,
-                ruta_archivo    AS RutaArchivo,
-                tamanio_archivo AS TamanioArchivo,
-                estado          AS Estado,
-                observaciones   AS Observaciones,
-                fecha_subida    AS FechaSubida,
-                usuario_registro AS UsuarioRegistro
-            FROM aocr_tbdocumento
-            WHERE codigosolicitud = @solicitudId 
-              AND tipo_documento = 'BORRADOR_AOCR'
-            ORDER BY fecha_subida DESC
-            LIMIT 1;";
-
-                return con.QueryFirstOrDefault<Documento>(sql, new { solicitudId });
-            }
-        }
-
     }
 }

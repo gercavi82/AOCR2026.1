@@ -241,6 +241,7 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Contexto\AocrDbContext.cs" />
     <Compile Include="DAOs\ArchivoDAO.cs" />
     <Compile Include="DAOs\AuditoriaDAO.cs" />
     <Compile Include="DAOs\AeronaveDAO.cs" />

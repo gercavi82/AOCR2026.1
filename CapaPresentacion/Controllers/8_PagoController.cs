@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Web;
 using System.Web.Mvc;
@@ -16,14 +17,12 @@ namespace CapaPresentacion.Controllers
         // ============================================================
         public ActionResult Detalle(int solicitudId)
         {
-            // En tu BL, ObtenerPorSolicitud ya se usa como lista en FinancieroController
             var pagos = _bl.ObtenerPorSolicitud(solicitudId);
-
             if (pagos == null)
-                pagos = new System.Collections.Generic.List<Pago>();
+                pagos = new List<Pago>();
 
             ViewBag.SolicitudId = solicitudId;
-            return View(pagos);   // <- la vista debería ser @model List<Pago>
+            return View(pagos);
         }
 
         // ============================================================
@@ -41,25 +40,22 @@ namespace CapaPresentacion.Controllers
                     string rutaVirtual = carpetaVirtual + nombreArchivo;
                     string rutaFisica = Server.MapPath(rutaVirtual);
 
-                    // Crear carpeta si no existe
                     var carpetaFisica = Path.GetDirectoryName(rutaFisica);
                     if (!Directory.Exists(carpetaFisica))
                     {
                         Directory.CreateDirectory(carpetaFisica);
                     }
 
-                    // Guardar archivo
                     archivo.SaveAs(rutaFisica);
 
-                    // Actualizar pago en BD
                     var pago = _bl.ObtenerPorId(id);
                     if (pago != null)
                     {
-                        var codigoUsuario = int.Parse(Session["CodigoUsuario"]?.ToString() ?? "0");
+                        string usuario = Session["CodigoUsuario"]?.ToString() ?? "SISTEMA";
 
                         pago.RutaComprobante = rutaVirtual;
-                        pago.UpdatedBy = codigoUsuario;
-                        pago.UpdatedAt = DateTime.Now;
+                        pago.UsuarioValidacion = usuario;
+                        pago.FechaValidacion = DateTime.Now;
 
                         _bl.Actualizar(pago);
                     }
@@ -80,18 +76,14 @@ namespace CapaPresentacion.Controllers
         {
             try
             {
-                var codigoUsuario = int.Parse(Session["CodigoUsuario"]?.ToString() ?? "0");
+                string usuario = Session["CodigoUsuario"]?.ToString() ?? "SISTEMA";
                 var pago = _bl.ObtenerPorId(id);
 
                 if (pago != null)
                 {
                     pago.Estado = "APROBADO";
                     pago.FechaValidacion = DateTime.Now;
-                    pago.UsuarioValidacion = codigoUsuario;
-                    pago.UpdatedBy = codigoUsuario;
-                    pago.UpdatedAt = DateTime.Now;
-                    // Si tienes campo ObservacionesValidacion puedes dejarlo nulo o texto fijo
-                    // pago.ObservacionesValidacion = "Pago aprobado desde módulo de pagos.";
+                    pago.UsuarioValidacion = usuario;
 
                     _bl.Actualizar(pago);
                     TempData["Success"] = "Pago aprobado correctamente.";
@@ -122,17 +114,15 @@ namespace CapaPresentacion.Controllers
                     return RedirectToAction("Detalle", new { solicitudId });
                 }
 
-                var codigoUsuario = int.Parse(Session["CodigoUsuario"]?.ToString() ?? "0");
+                string usuario = Session["CodigoUsuario"]?.ToString() ?? "SISTEMA";
                 var pago = _bl.ObtenerPorId(id);
 
                 if (pago != null)
                 {
                     pago.Estado = "RECHAZADO";
                     pago.FechaValidacion = DateTime.Now;
-                    pago.UsuarioValidacion = codigoUsuario;
+                    pago.UsuarioValidacion = usuario;
                     pago.ObservacionesValidacion = motivo;
-                    pago.UpdatedBy = codigoUsuario;
-                    pago.UpdatedAt = DateTime.Now;
 
                     _bl.Actualizar(pago);
                     TempData["Success"] = "Pago rechazado correctamente.";

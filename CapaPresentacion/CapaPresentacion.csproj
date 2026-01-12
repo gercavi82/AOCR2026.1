@@ -2634,8 +2634,8 @@
     <Content Include="Views\SolicitudAOCR\Create.cshtml" />
     <Content Include="Views\SolicitudAOCR\Index.cshtml" />
     <Content Include="Views\SolicitudAOCR\Detalle.cshtml" />
-    <Content Include="Views\2_Financiero\GestionarViaticos.cshtml" />
-    <Content Include="Views\2_Financiero\ValidacionPagos.cshtml" />
+    <Content Include="Views\Financiero\GestionarViaticos.cshtml" />
+    <Content Include="Views\Financiero\ValidacionPagos.cshtml" />
     <Content Include="Views\Shared\_Sidebar.cshtml" />
     <Content Include="Views\3_Tecnico\AsignarInspector.cshtml" />
     <Content Include="Views\3_Tecnico\VerificarDoc.cshtml" />
@@ -2697,9 +2697,10 @@
     <Content Include="Views\Shared\_SeleccionarRol.cshtml" />
     <Content Include="Views\SolicitudAOCR\ResultadoInspeccion.cshtml" />
     <Content Include="Views\Documento\RevisarDocumentos.cshtml" />
-    <Content Include="Views\2_Financiero\Index.cshtml" />
-    <Content Include="Views\2_Financiero\RevisarSolicitud.cshtml" />
-    <Content Include="Views\2_Financiero\ListaPagos.cshtml" />
+    <Content Include="Views\Financiero\Index.cshtml" />
+    <Content Include="Views\Financiero\RevisarSolicitud.cshtml" />
+    <Content Include="Views\Financiero\ListaPagos.cshtml" />
+    <Content Include="Views\Financiero\ValidarPago.cshtml" />
   </ItemGroup>
   <ItemGroup>
     <Folder Include="App_Data\" />

@@ -1,12 +1,12 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Web;
 using System.Web.Mvc;
 using System.Web.Optimization;
 using System.Web.Routing;
 using System.Web.Security;
 using System.Security.Principal;
-using System.Linq;
 using Dapper;
 using CapaDatos.DAOs;
 
@@ -24,43 +24,43 @@ namespace CapaPresentacion
 
         protected void Application_AuthenticateRequest(object sender, EventArgs e)
         {
-            // 1. Verificar si hay una identidad autenticada
-            if (HttpContext.Current.User == null || !HttpContext.Current.User.Identity.IsAuthenticated)
+            HttpCookie authCookie = Context.Request.Cookies[FormsAuthentication.FormsCookieName];
+
+            if (authCookie == null || string.IsNullOrEmpty(authCookie.Value))
                 return;
 
-            if (HttpContext.Current.User.Identity is FormsIdentity identity)
+            FormsAuthenticationTicket authTicket;
+            try
             {
-                try
-                {
-                    // 2. Leer el ticket y obtener roles del campo UserData (Método optimizado)
-                    FormsAuthenticationTicket ticket = identity.Ticket;
-                    string userData = ticket.UserData;
-
-                    string[] roles;
-
-                    if (!string.IsNullOrEmpty(userData))
-                    {
-                        // Si el ticket ya tiene los roles (vienen del AccountController)
-                        roles = userData.Split(new char[] { ',' }, StringSplitOptions.RemoveEmptyEntries);
-                    }
-                    else
-                    {
-                        // Si por alguna razón el ticket está vacío, los buscamos en la DB
-                        roles = GetRolesFromDB(identity.Name);
-                    }
-
-                    // 3. Crear el Principal con los roles inyectados
-                    HttpContext.Current.User = new GenericPrincipal(identity, roles);
-                }
-                catch (Exception)
-                {
-                    // En caso de error, asignar principal sin roles para evitar caídas
-                    HttpContext.Current.User = new GenericPrincipal(identity, new string[] { });
-                }
+                authTicket = FormsAuthentication.Decrypt(authCookie.Value);
             }
+            catch
+            {
+                return; // Cookie corrupta o inválida
+            }
+
+            if (authTicket == null || authTicket.Expired)
+                return;
+
+            string[] roles;
+
+            if (!string.IsNullOrEmpty(authTicket.UserData))
+            {
+                roles = authTicket.UserData.Split(new char[] { ',' }, StringSplitOptions.RemoveEmptyEntries);
+            }
+            else
+            {
+                // Fallback: cargar roles desde la base de datos
+                roles = GetRolesFromDB(authTicket.Name);
+            }
+
+            var identity = new GenericIdentity(authTicket.Name);
+            var principal = new GenericPrincipal(identity, roles);
+
+            Context.User = principal;
+            System.Threading.Thread.CurrentPrincipal = principal;
         }
 
-        // Método movido DENTRO de la clase MvcApplication
         private string[] GetRolesFromDB(string username)
         {
             try
@@ -68,7 +68,6 @@ namespace CapaPresentacion
                 using (var cn = ConexionDAO.CrearConexion())
                 {
                     cn.Open();
-                    // SQL CORREGIDO para PostgreSQL: Casteo ::text para evitar errores de tipo
                     string sql = @"
                         SELECT r.descripcion
                         FROM usuario u

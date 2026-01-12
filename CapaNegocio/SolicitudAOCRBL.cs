@@ -88,24 +88,7 @@ namespace CapaNegocio
             }
         }
 
-        // =====================================================
-        // 6. Eliminar solicitud (si aplica)
-        // =====================================================
-        public static bool Eliminar(int id, out string mensaje)
-        {
-            try
-            {
-                bool ok = new SolicitudAOCRDAO().Eliminar(id, out mensaje);
-                return ok;
-            }
-            catch (Exception ex)
-            {
-                mensaje = "Error al eliminar: " + ex.Message;
-                return false;
-            }
-        }
-
-        // =====================================================
+         // =====================================================
         // 7. Listar todas las solicitudes (para panel administrador)
         // =====================================================
         public static List<SolicitudAOCR> ListarActivas()

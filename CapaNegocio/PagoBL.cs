@@ -14,6 +14,11 @@ namespace CapaNegocio
             _pagoDAO = new PagoDAO();
         }
 
+        public List<Pago> ObtenerTodos()
+        {
+            return _pagoDAO.ObtenerTodos();
+        }
+
         public List<Pago> ObtenerPorSolicitud(int codigoSolicitud)
         {
             return _pagoDAO.ObtenerPorSolicitud(codigoSolicitud);
@@ -28,7 +33,7 @@ namespace CapaNegocio
         {
             if (pago == null) return false;
 
-            if (pago.FechaPago == null)
+            if (pago.FechaPago == DateTime.MinValue)
                 pago.FechaPago = DateTime.Now;
 
             if (string.IsNullOrWhiteSpace(pago.Estado))
@@ -43,19 +48,30 @@ namespace CapaNegocio
             return _pagoDAO.Actualizar(pago);
         }
 
-        public bool Actualizar(Pago pago, out string mensaje)
+        // =====================================================
+        // ✅ CORREGIDO: Método de validación con campos correctos
+        // =====================================================
+        public bool ProcesarPago(int idPago, string nuevoEstado, string observaciones, string usuarioResponsable)
         {
-            mensaje = string.Empty;
-
             try
             {
-                var ok = Actualizar(pago);
-                mensaje = ok ? "Pago actualizado correctamente." : "No se pudo actualizar el pago.";
-                return ok;
+                var pago = _pagoDAO.ObtenerPorId(idPago);
+                if (pago == null) return false;
+
+                if (pago.Estado == "APROBADO" || pago.Estado == "RECHAZADO")
+                {
+                    return false;
+                }
+
+                pago.Estado = nuevoEstado;
+                pago.ObservacionesValidacion = observaciones;
+                pago.UsuarioValidacion = usuarioResponsable;
+                pago.FechaValidacion = DateTime.Now;
+
+                return _pagoDAO.Actualizar(pago);
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                mensaje = "Error: " + ex.Message;
                 return false;
             }
         }
@@ -73,12 +89,6 @@ namespace CapaNegocio
         public decimal ObtenerMontoRecaudadoMes(int año, int mes)
         {
             return _pagoDAO.ObtenerMontoRecaudadoMes(año, mes);
-        }
-
-        // ✅ NUEVO MÉTODO
-        public List<Pago> ObtenerTodos()
-        {
-            return _pagoDAO.ObtenerTodos();
         }
     }
 }
