@@ -9,6 +9,9 @@ namespace CapaDatos.DAOs
         private static readonly string _cs =
             ConfigurationManager.ConnectionStrings["AOCRConnection"].ConnectionString;
 
+        // ✅ Agregado: para compatibilidad con InspeccionDAO
+        public static string CadenaConexion => _cs;
+
         // =========================
         // NUEVO ESTILO (Dapper)
         // =========================
@@ -29,8 +32,6 @@ namespace CapaDatos.DAOs
 
         // =========================
         // ESTILO LEGADO (ADO.NET)
-        // Mantén esto para que NO explote
-        // el resto de DAOs antiguos.
         // =========================
         public static NpgsqlConnection ObtenerConexion()
         {

@@ -190,8 +190,8 @@
     <Compile Include="Controllers\HistorialEstadoController.cs" />
     <Compile Include="Controllers\FinancieroController.cs" />
     <Compile Include="Controllers\5_DireccionController.cs" />
-    <Compile Include="Controllers\4_InspeccionController.cs" />
-    <Compile Include="Controllers\3_TecnicoController.cs" />
+    <Compile Include="Controllers\InspeccionController.cs" />
+    <Compile Include="Controllers\TecnicoController.cs" />
     <Compile Include="Controllers\6_CertificadoController.cs" />
     <Compile Include="Controllers\7_DocumentoController.cs" />
     <Compile Include="Controllers\8_PagoController.cs" />
@@ -207,6 +207,8 @@
     <Compile Include="Global.asax.cs">
       <DependentUpon>Global.asax</DependentUpon>
     </Compile>
+    <Compile Include="Models\ResultadoInspeccionVM.cs" />
+    <Compile Include="Models\ProgramarInspeccionVM.cs" />
     <Compile Include="Models\DashboardViewModel.cs" />
     <Compile Include="Models\UsuarioRegistroViewModel.cs" />
     <Compile Include="Models\UsuarioCreateViewModel.cs" />
@@ -2615,6 +2617,10 @@
     <Content Include="Views\Account\_ModalRegistroUsuario.cshtml" />
     <Content Include="Scripts\modernizr-2.8.3.js" />
     <Content Include="Views\Account\Login.cshtml" />
+    <Content Include="Views\Inspeccion\Planificacion.cshtml" />
+    <Content Include="Views\Tecnico\AsignarInspector.cshtml" />
+    <Content Include="Views\Tecnico\Index.cshtml" />
+    <Content Include="Views\Tecnico\VerificarDoc.cshtml" />
     <Content Include="Web.config">
       <SubType>Designer</SubType>
     </Content>
@@ -2637,15 +2643,12 @@
     <Content Include="Views\Financiero\GestionarViaticos.cshtml" />
     <Content Include="Views\Financiero\ValidacionPagos.cshtml" />
     <Content Include="Views\Shared\_Sidebar.cshtml" />
-    <Content Include="Views\3_Tecnico\AsignarInspector.cshtml" />
-    <Content Include="Views\3_Tecnico\VerificarDoc.cshtml" />
-    <Content Include="Views\4_Inspeccion\Planificacion.cshtml" />
-    <Content Include="Views\4_Inspeccion\Detalle.cshtml" />
-    <Content Include="Views\4_Inspeccion\Crear.cshtml" />
-    <Content Include="Views\4_Inspeccion\Index.cshtml" />
-    <Content Include="Views\10_Hallazgo\Index.cshtml" />
-    <Content Include="Views\10_Hallazgo\Crear.cshtml" />
-    <Content Include="Views\10_Hallazgo\Editar.cshtml" />
+    <Content Include="Views\Inspeccion\Detalle.cshtml" />
+    <Content Include="Views\Tecnico\Crear.cshtml" />
+    <Content Include="Views\Inspeccion\Index.cshtml" />
+    <Content Include="Views\Hallazgo\Index.cshtml" />
+    <Content Include="Views\Hallazgo\Crear.cshtml" />
+    <Content Include="Views\Hallazgo\Editar.cshtml" />
     <Content Include="Views\Certificado\Detalle.cshtml" />
     <Content Include="Views\Rol\Index.cshtml" />
     <Content Include="Views\Rol\Crear.cshtml" />

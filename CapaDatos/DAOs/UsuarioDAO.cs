@@ -130,21 +130,34 @@ namespace CapaDatos.DAOs
         // ==========================================
         // OBTENER TÉCNICOS
         // ==========================================
-        public static List<Usuario> ObtenerTecnicos()
+        public static List<Usuario> ListarPorRol(string rol)
         {
-            return ObtenerPorRol("Tecnico");
-        }
-
-        public static List<Usuario> ObtenerPorRol(string rolBuscado)
-        {
-            using (var conn = new NpgsqlConnection(GetConnectionString()))
+            var lista = new List<Usuario>();
+            using (var cn = new NpgsqlConnection(GetConnectionString()))
             {
-                string sql = @"SELECT idusuario AS Id, nombreusuario AS NombreCompleto, rol
-                               FROM usuario
-                               WHERE rol = @rol AND estadoactividad = '1'";
-
-                return conn.Query<Usuario>(sql, new { rol = rolBuscado }).AsList();
+                cn.Open();
+                string sql = @"SELECT * FROM usuario WHERE LOWER(rol) = LOWER(@rol)";
+                using (var cmd = new NpgsqlCommand(sql, cn))
+                {
+                    cmd.Parameters.AddWithValue("@rol", rol);
+                    using (var rd = cmd.ExecuteReader())
+                    {
+                        while (rd.Read())
+                        {
+                            lista.Add(new Usuario
+                            {
+                                IdUsuario = Convert.ToInt32(rd["idusuario"]),
+                                NombreUsuario = rd["nombreusuario"].ToString(),
+                                ApellidoUsuario = rd["apellidousuario"].ToString(),
+                                Rol = rd["rol"].ToString()
+                            });
+                        }
+                    }
+                }
             }
+            return lista;
         }
+
+
     }
 }

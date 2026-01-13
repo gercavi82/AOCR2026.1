@@ -130,6 +130,7 @@ namespace CapaPresentacion.Controllers
 
             return View(_solicitudDAO.ObtenerPorUsuario(Convert.ToInt32(Session["CodigoUsuario"])));
         }
+
         public ActionResult RevisarSolicitudes()
         {
             var pendientes = _solicitudDAO.ObtenerPendientesRevision();
@@ -141,7 +142,11 @@ namespace CapaPresentacion.Controllers
         [ValidateAntiForgeryToken]
         public ActionResult Aprobar(string id)
         {
-            var solicitud = _solicitudDAO.ObtenerPorCodigo(id);
+            // ✅ FIX CS1503: convertir string -> int de forma segura
+            if (!int.TryParse(id, out int idSolicitud))
+                return HttpNotFound();
+
+            var solicitud = _solicitudDAO.ObtenerPorCodigo(idSolicitud);
             if (solicitud == null) return HttpNotFound();
 
             // ✅ Validar checklist (tabla checklist)
@@ -174,13 +179,16 @@ namespace CapaPresentacion.Controllers
             return RedirectToAction("RevisarSolicitudes");
         }
 
-
         [HttpPost]
         [Authorize(Roles = "Inspector")]
         [ValidateAntiForgeryToken]
         public ActionResult Observar(string id, string observacion)
         {
-            var solicitud = _solicitudDAO.ObtenerPorCodigo(id);
+            // ✅ FIX CS1503: convertir string -> int de forma segura
+            if (!int.TryParse(id, out int idSolicitud))
+                return HttpNotFound();
+
+            var solicitud = _solicitudDAO.ObtenerPorCodigo(idSolicitud);
 
             if (solicitud == null)
                 return HttpNotFound();
@@ -195,14 +203,15 @@ namespace CapaPresentacion.Controllers
             TempData["NotificacionTipo"] = "warning";
             TempData["NotificacionMensaje"] = "Solicitud marcada como observada.";
 
-            return RedirectToAction("RevisarSolicitudes");
-
-            // Enviar notificación por correo
-            EmailHelper.EnviarEmail(
-                solicitud.Email,
-                "Observación a su Solicitud AOCR",
-                $"Estimado operador,<br><br>Su solicitud <strong>#{solicitud.CodigoSolicitud}</strong> ha sido <b>observada</b>.<br><br><b>Observación:</b> {observacion}<br><br>Por favor revise y actualice su información.<br><br>Saludos."
-            );
+            // ✅ FIX: antes tenías un return RedirectToAction() aquí y el correo quedaba inalcanzable
+            if (!string.IsNullOrWhiteSpace(solicitud.Email))
+            {
+                EmailHelper.EnviarEmail(
+                    solicitud.Email,
+                    "Observación a su Solicitud AOCR",
+                    $"Estimado operador,<br><br>Su solicitud <strong>#{solicitud.CodigoSolicitud}</strong> ha sido <b>observada</b>.<br><br><b>Observación:</b> {observacion}<br><br>Por favor revise y actualice su información.<br><br>Saludos."
+                );
+            }
 
             return RedirectToAction("RevisarSolicitudes");
         }
@@ -250,6 +259,7 @@ namespace CapaPresentacion.Controllers
                 return RedirectToAction("Index");
             }
         }
+
         [HttpPost]
         [Authorize(Roles = "JefaturaTecnica")]
         public ActionResult ValidarTecnicamente(int id)
@@ -274,7 +284,6 @@ namespace CapaPresentacion.Controllers
             return RedirectToAction("Detalle", new { id });
         }
 
-
         [HttpPost]
         [Authorize(Roles = "JefaturaTecnica")]
         public ActionResult RechazarTecnicamente(int id, string observacion)
@@ -298,6 +307,7 @@ namespace CapaPresentacion.Controllers
 
             return RedirectToAction("Detalle", new { id });
         }
+
         private int ObtenerUsuarioActualId()
         {
             if (Session["CodigoUsuario"] != null && int.TryParse(Session["CodigoUsuario"].ToString(), out int idUsuario))
@@ -307,6 +317,7 @@ namespace CapaPresentacion.Controllers
 
             throw new Exception("No se pudo obtener el ID del usuario actual.");
         }
+
         public ActionResult Detalle(int id)
         {
             var solicitud = _solicitudDAO.ObtenerPorId(id);
@@ -318,6 +329,7 @@ namespace CapaPresentacion.Controllers
 
             return View(solicitud);
         }
+
         [Authorize(Roles = "CoordinacionLegal")]
         public ActionResult RevisarLegalizacion()
         {
@@ -364,6 +376,7 @@ namespace CapaPresentacion.Controllers
 
             return RedirectToAction("RevisarLegalizacion");
         }
+
         [HttpPost]
         [Authorize(Roles = "CoordinacionLegal")]
         [ValidateAntiForgeryToken]
@@ -412,6 +425,7 @@ namespace CapaPresentacion.Controllers
 
             return RedirectToAction("RevisarLegalizacion");
         }
+
         [Authorize(Roles = "Inspector,Administrador")]
         public ActionResult SolicitarInspeccion(int id)
         {
@@ -427,7 +441,5 @@ namespace CapaPresentacion.Controllers
 
             return RedirectToAction("Detalle", new { id });
         }
-
-
     }
 }

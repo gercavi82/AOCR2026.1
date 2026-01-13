@@ -1,9 +1,17 @@
 ﻿@model CapaModelo.Inspeccion
 
 @{
-                /**/
+    ViewBag.Title = "Planificación de Inspección";
+    Layout = "~/Views/Shared/_LayoutAOCR.cshtml";
+}
 
-                ViewBag.Title = "Planificación de Inspección";
+@if (Model == null)
+{
+    <div class="alert alert-danger">
+        <strong>Error:</strong> No se recibió la inspección (Model llegó null).<br />
+        Verifica que el controlador esté enviando: <code>return View(..., inspeccion);</code>
+    </div>
+    return;
 }
 
 <h2><i class="glyphicon glyphicon-calendar"></i> Planificación de Inspección en Campo</h2>
@@ -22,7 +30,7 @@
             <dd>@Model.CodigoSolicitud</dd>
 
             <dt>Inspector Asignado:</dt>
-            <dd>@Model.CodigoInspector</dd> <!-- O ViewBag.NombreInspector -->
+            <dd>@(Model.CodigoInspector.HasValue ? Model.CodigoInspector.Value.ToString() : "No asignado")</dd>
         </dl>
     </div>
 </div>
@@ -30,38 +38,56 @@
 @using (Html.BeginForm("Planificacion", "Inspeccion", FormMethod.Post, new { @class = "form-horizontal" }))
 {
     @Html.AntiForgeryToken()
-    @Html.HiddenFor(m => m.CodigoInspeccion)
+
+    @* IMPORTANTE: tu Action Planificacion recibe (int codigoInspeccion, ...) *@
+    <input type="hidden" name="codigoInspeccion" value="@Model.CodigoInspeccion" />
 
     <div class="panel panel-primary">
         <div class="panel-heading">
             <h3 class="panel-title">Detalles de la Planificación</h3>
         </div>
+
         <div class="panel-body">
             <div class="form-group">
                 <label class="col-md-3 control-label">Fecha de Inspección *</label>
                 <div class="col-md-9">
-                    <input type="date" name="fechaInspeccion" class="form-control" min="@DateTime.Now.ToString("yyyy-MM-dd")" required />
+                    <input type="date" name="fechaInspeccion"
+                           class="form-control"
+                           min="@DateTime.Now.ToString("yyyy-MM-dd")"
+                           value="@(Model.FechaProgramada.HasValue ? Model.FechaProgramada.Value.ToString("yyyy-MM-dd") : "")"
+                           required />
                 </div>
             </div>
 
             <div class="form-group">
                 <label class="col-md-3 control-label">Hora de Inicio *</label>
                 <div class="col-md-9">
-                    <input type="time" name="horaInicio" class="form-control" required />
+                    <input type="time" name="horaInicio"
+                           class="form-control"
+                           value="@(Model.HoraProgramada.HasValue ? Model.HoraProgramada.Value.ToString(@"hh\:mm") : "")"
+                           required />
                 </div>
             </div>
 
             <div class="form-group">
                 <label class="col-md-3 control-label">Duración Estimada (horas) *</label>
                 <div class="col-md-9">
-                    <input type="number" name="duracionEstimada" class="form-control" min="1" max="24" value="4" required />
+                    <input type="number" name="duracionEstimada"
+                           class="form-control"
+                           min="1" max="24"
+                           value="@(Model.DuracionEstimada.HasValue ? Model.DuracionEstimada.Value.ToString() : "4")"
+                           required />
                 </div>
             </div>
 
             <div class="form-group">
                 <label class="col-md-3 control-label">Ubicación *</label>
                 <div class="col-md-9">
-                    <input type="text" name="ubicacion" class="form-control" placeholder="Dirección completa del lugar de inspección" required />
+                    <input type="text" name="ubicacion"
+                           class="form-control"
+                           placeholder="Dirección completa del lugar de inspección"
+                           value="@(Model.Lugar ?? "")"
+                           required />
                 </div>
             </div>
 
@@ -70,10 +96,12 @@
                 <div class="col-md-9">
                     <div class="row">
                         <div class="col-md-6">
-                            <input type="text" name="latitud" class="form-control" placeholder="Latitud" />
+                            <input type="text" name="latitud" class="form-control" placeholder="Latitud"
+                                   value="@(Model.Latitud ?? "")" />
                         </div>
                         <div class="col-md-6">
-                            <input type="text" name="longitud" class="form-control" placeholder="Longitud" />
+                            <input type="text" name="longitud" class="form-control" placeholder="Longitud"
+                                   value="@(Model.Longitud ?? "")" />
                         </div>
                     </div>
                 </div>
@@ -84,25 +112,28 @@
                 <div class="col-md-9">
                     <select name="tipoInspeccion" class="form-control" required>
                         <option value="">Seleccione...</option>
-                        <option value="Inicial">Inicial</option>
-                        <option value="Renovacion">Renovación</option>
-                        <option value="Seguimiento">Seguimiento</option>
-                        <option value="Extraordinaria">Extraordinaria</option>
+                        <option value="Inicial" @(Model.Tipo == "Inicial" ? "selected" : "")>Inicial</option>
+                        <option value="Renovacion" @(Model.Tipo == "Renovacion" ? "selected" : "")>Renovación</option>
+                        <option value="Seguimiento" @(Model.Tipo == "Seguimiento" ? "selected" : "")>Seguimiento</option>
+                        <option value="Extraordinaria" @(Model.Tipo == "Extraordinaria" ? "selected" : "")>Extraordinaria</option>
                     </select>
                 </div>
             </div>
 
+            @* En tu Controller tú haces: inspeccion.HallazgosPrincipales = alcance *@
             <div class="form-group">
                 <label class="col-md-3 control-label">Alcance de la Inspección *</label>
                 <div class="col-md-9">
-                    <textarea name="alcance" class="form-control" rows="4" placeholder="Describa el alcance y objetivos de la inspección..." required></textarea>
+                    <textarea name="alcance" class="form-control" rows="4"
+                              placeholder="Describa el alcance y objetivos de la inspección..." required>@(Model.HallazgosPrincipales ?? "")</textarea>
                 </div>
             </div>
 
             <div class="form-group">
                 <label class="col-md-3 control-label">Equipos/Herramientas Necesarias</label>
                 <div class="col-md-9">
-                    <textarea name="equiposNecesarios" class="form-control" rows="3" placeholder="Liste los equipos y herramientas necesarias..."></textarea>
+                    <textarea name="equiposNecesarios" class="form-control" rows="3"
+                              placeholder="Liste los equipos y herramientas necesarias..."></textarea>
                 </div>
             </div>
 
@@ -117,7 +148,8 @@
             <div class="form-group">
                 <label class="col-md-3 control-label">Observaciones</label>
                 <div class="col-md-9">
-                    <textarea name="observaciones" class="form-control" rows="3" placeholder="Observaciones adicionales..."></textarea>
+                    <textarea name="observaciones" class="form-control" rows="3"
+                              placeholder="Observaciones adicionales...">@(Model.ObservacionesGenerales ?? "")</textarea>
                 </div>
             </div>
 
@@ -133,7 +165,8 @@
             <button type="submit" class="btn btn-primary btn-lg">
                 <i class="glyphicon glyphicon-ok"></i> Guardar Planificación
             </button>
-            <a href="@Url.Action("Index", "Home")" class="btn btn-default btn-lg">
+
+            <a href="@Url.Action("Detalle", "Inspeccion", new { id = Model.CodigoInspeccion })" class="btn btn-default btn-lg">
                 <i class="glyphicon glyphicon-arrow-left"></i> Cancelar
             </a>
         </div>

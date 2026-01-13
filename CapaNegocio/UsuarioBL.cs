@@ -106,7 +106,7 @@ namespace CapaNegocio
         {
             try
             {
-                return UsuarioDAO.ObtenerTecnicos();
+                return UsuarioDAO.ListarPorRol("TECNICO");
             }
             catch
             {
@@ -133,5 +133,22 @@ namespace CapaNegocio
                 return sb.ToString();
             }
         }
+        // ================================
+        // 5. Obtener Inspectores / Técnicos
+        // ================================
+        public static List<Usuario> ObtenerInspectores()
+        {
+            try
+            {
+                // Rol según tu base de datos
+                return UsuarioDAO.ListarPorRol("TECNICO");
+            }
+            catch
+            {
+                return new List<Usuario>();
+            }
+        }
+
+
     }
 }

@@ -1,4 +1,8 @@
-﻿@model CapaModelo.Inspeccion
+﻿@inherits System.Web.Mvc.WebViewPage<CapaModelo.Inspeccion>
+@using System
+@using System.Linq
+@using System.Collections.Generic
+
 @{
     ViewBag.Title = "Detalle Inspección";
     Layout = "~/Views/Shared/_LayoutAOCR.cshtml";
@@ -17,18 +21,25 @@
                 <td>@(Model.CodigoInspector.HasValue ? Model.CodigoInspector.Value.ToString() : "No asignado")</td>
             </tr>
 
-            <tr><th>Fecha Programada</th><td>@(Model.FechaProgramada.HasValue ? Model.FechaProgramada.Value.ToString("yyyy-MM-dd") : "-")</td></tr>
-            <tr><th>Estado</th><td>@Model.Estado</td></tr>
+            <tr>
+                <th>Fecha Programada</th>
+                <td>@(Model.FechaProgramada.HasValue ? Model.FechaProgramada.Value.ToString("yyyy-MM-dd") : "-")</td>
+            </tr>
+
+            <tr>
+                <th>Estado</th>
+                <td>@(string.IsNullOrWhiteSpace(Model.Estado) ? "-" : Model.Estado)</td>
+            </tr>
         </table>
     </div>
 </div>
 
 <h3 class="mt-4">Informe</h3>
 
-@if (!string.IsNullOrEmpty(Model.InformePdf))
+@if (!string.IsNullOrWhiteSpace(Model.RutaInforme))
 {
     <div class="alert alert-success">
-        <a href="@Url.Content(Model.InformePdf)" target="_blank">Ver Informe PDF</a>
+        <a href="@Url.Content("~" + Model.RutaInforme)" target="_blank" rel="noopener">Ver Informe PDF</a>
     </div>
 }
 else
@@ -36,19 +47,19 @@ else
     <div class="alert alert-light">Aún no hay informe cargado.</div>
 }
 
-@* ✅ Subir informe: solo Inspector/Admin (el controller valida si es el asignado) *@
 @if (User.IsInRole("Inspector") || User.IsInRole("Administrador"))
 {
-    using (Html.BeginForm("SubirInforme", "Inspeccion", FormMethod.Post, new { enctype = "multipart/form-data" }))
+    using (Html.BeginForm("SubirInforme", "Inspeccion", System.Web.Mvc.FormMethod.Post, new { enctype = "multipart/form-data" }))
     {
         @Html.AntiForgeryToken()
         @Html.Hidden("id", Model.CodigoInspeccion)
 
         <div class="mb-2">
             <input type="file" name="Informe" class="form-control" accept="application/pdf" />
+            <small class="text-muted">Solo PDF.</small>
         </div>
 
-        <button class="btn btn-primary">Subir Informe</button>
+        <button type="submit" class="btn btn-primary">Subir Informe</button>
     }
 }
 
@@ -56,7 +67,6 @@ else
 
 <h3>Hallazgos</h3>
 
-@* Botón para modal / o navegación a formulario *@
 @if (User.IsInRole("Inspector") || User.IsInRole("Administrador"))
 {
     <button class="btn btn-warning" type="button" data-bs-toggle="modal" data-bs-target="#modalHallazgo">
@@ -73,9 +83,14 @@ else
         </tr>
     </thead>
     <tbody>
-        @if (ViewBag.Hallazgos != null)
+        @{
+            // Si tu BL devuelve List<Hallazgo>, esto igual funciona por dynamic.
+            var hallazgos = ViewBag.Hallazgos as IEnumerable<dynamic>;
+        }
+
+        @if (hallazgos != null && hallazgos.Any())
         {
-            foreach (var h in ViewBag.Hallazgos)
+            foreach (var h in hallazgos)
             {
                 <tr>
                     <td>@h.Severidad</td>
@@ -84,34 +99,33 @@ else
                 </tr>
             }
         }
+        else
+        {
+            <tr>
+                <td colspan="3" class="text-center text-muted">Sin hallazgos registrados.</td>
+            </tr>
+        }
     </tbody>
 </table>
 
 <hr class="my-4" />
 
-@* ✅ Cerrar Inspección: solo Jefatura/Admin *@
 @if (User.IsInRole("JefaturaTecnica") || User.IsInRole("Administrador"))
 {
     <h3>Cierre de Inspección</h3>
 
-    using (Html.BeginForm("Cerrar", "Inspeccion", FormMethod.Post))
+    using (Html.BeginForm("Cerrar", "Inspeccion", System.Web.Mvc.FormMethod.Post))
     {
         @Html.AntiForgeryToken()
         @Html.Hidden("id", Model.CodigoInspeccion)
 
         <div class="d-flex gap-2">
-            <button type="submit" name="resultado" value="APROBADO" class="btn btn-success">
-                Aprobar
-            </button>
-
-            <button type="submit" name="resultado" value="RECHAZADO" class="btn btn-danger">
-                Rechazar
-            </button>
+            <button type="submit" name="resultado" value="APROBADO" class="btn btn-success">Aprobar</button>
+            <button type="submit" name="resultado" value="RECHAZADO" class="btn btn-danger">Rechazar</button>
         </div>
     }
 }
 
-@* Modal mínimo (si ya tienes uno mejor, puedes ignorar esto) *@
 <div class="modal fade" id="modalHallazgo" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog">
         <div class="modal-content">
@@ -121,14 +135,14 @@ else
             </div>
 
             <div class="modal-body">
-                @using (Html.BeginForm("RegistrarHallazgo", "Inspeccion", FormMethod.Post))
+                @using (Html.BeginForm("RegistrarHallazgo", "Inspeccion", System.Web.Mvc.FormMethod.Post))
                 {
                     @Html.AntiForgeryToken()
                     @Html.Hidden("CodigoInspeccion", Model.CodigoInspeccion)
 
                     <div class="mb-2">
                         <label class="form-label">Severidad</label>
-                        <select name="Severidad" class="form-control">
+                        <select name="Severidad" class="form-select">
                             <option value="ALTA">ALTA</option>
                             <option value="MEDIA">MEDIA</option>
                             <option value="BAJA">BAJA</option>
@@ -137,10 +151,12 @@ else
 
                     <div class="mb-2">
                         <label class="form-label">Descripción</label>
-                        <textarea name="Descripcion" class="form-control" rows="3"></textarea>
+                        <textarea name="Descripcion" class="form-control" rows="3" required></textarea>
                     </div>
 
-                    <button class="btn btn-primary">Guardar</button>
+                    <input type="hidden" name="Estado" value="ABIERTO" />
+
+                    <button type="submit" class="btn btn-primary">Guardar</button>
                 }
             </div>
         </div>

@@ -14,6 +14,7 @@ namespace CapaModelo
         public DateTime? FechaCreacion { get; set; }
         public DateTime? FechaUltimaConexion { get; set; }
         public string CodigoUsuario { get; set; }
-
+        public int IdUsuario { get; set; }
+        public string ApellidoUsuario { get; set; }
     }
 }

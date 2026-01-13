@@ -1,223 +1,311 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
-using Dapper;
 using Npgsql;
 using CapaModelo;
 
 namespace CapaDatos.DAOs
 {
-    public class InspeccionDAO
+    public static class InspeccionDAO
     {
-        private static NpgsqlConnection CrearConexion() => ConexionDAO.CrearConexion();
+        private static string CS => ConexionDAO.CadenaConexion;
 
-        // =========================================================
-        // LISTAR POR SOLICITUD
-        // =========================================================
-        public static List<Inspeccion> ObtenerPorSolicitud(int codigoSolicitud)
+        // ✅ Tabla real
+        private const string TABLA = "public.aocr_tbinspeccion";
+
+        public static Inspeccion ObtenerPorId(int id)
         {
-            using (var con = CrearConexion())
+            using (var conn = new NpgsqlConnection(CS))
             {
-                con.Open();
+                conn.Open();
 
-                const string sql = @"
-                SELECT
-                    codigo_inspeccion       AS CodigoInspeccion,
-                    codigo_solicitud        AS CodigoSolicitud,
-                    numero_inspeccion       AS NumeroInspeccion,
-                    tipo                    AS Tipo,
-                    fecha_programada        AS FechaProgramada,
-                    hora_programada         AS HoraProgramada,
-                    fecha_realizada         AS FechaRealizada,
-                    hora_inicio             AS HoraInicio,
-                    hora_fin                AS HoraFin,
-                    codigo_inspector        AS CodigoInspector,
-                    lugar                   AS Lugar,
-                    resultado               AS Resultado,
-                    comentarios             AS Comentarios,
-                    observaciones_generales AS ObservacionesGenerales,
-                    hallazgos_principales   AS HallazgosPrincipales,
-                    recomendaciones         AS Recomendaciones,
-                    estado                  AS Estado,
-                    completada              AS Completada,
-                    aprobada                AS Aprobada,
-                    created_at              AS CreatedAt,
-                    updated_at              AS UpdatedAt,
-                    created_by              AS CreatedBy,
-                    updated_by              AS UpdatedBy
-                FROM aocr_tbinspeccion
-                WHERE codigo_solicitud = @codigoSolicitud
-                ORDER BY codigo_inspeccion DESC;";
+                string sql = $@"
+                    SELECT
+                        codigo_inspeccion,
+                        codigo_solicitud,
+                        codigo_inspector,
+                        fecha_programada,
+                        hora_programmada,   -- ⚠️ cambia a hora_programada si aplica
+                        lugar,
+                        tipo,
+                        observaciones_generales,
+                        comentarios,
+                        hallazgos_principales,
+                        estado,
+                        resultado,
+                        created_at,
+                        created_by,
+                        updated_at,
+                        updated_by
+                    FROM {TABLA}
+                    WHERE codigo_inspeccion = @id;
+                ";
 
-                return con.Query<Inspeccion>(sql, new { codigoSolicitud }).ToList();
+                using (var cmd = new NpgsqlCommand(sql, conn))
+                {
+                    cmd.Parameters.AddWithValue("@id", id);
+
+                    using (var dr = cmd.ExecuteReader())
+                    {
+                        if (!dr.Read()) return null;
+
+                        return new Inspeccion
+                        {
+                            CodigoInspeccion = dr.GetInt32(0),
+                            CodigoSolicitud = dr.GetInt32(1),
+                            CodigoInspector = dr.IsDBNull(2) ? (int?)null : dr.GetInt32(2),
+                            FechaProgramada = dr.IsDBNull(3) ? (DateTime?)null : dr.GetDateTime(3),
+                            HoraProgramada = dr.IsDBNull(4) ? (TimeSpan?)null : dr.GetTimeSpan(4),
+                            Lugar = dr.IsDBNull(5) ? null : dr.GetString(5),
+                            Tipo = dr.IsDBNull(6) ? null : dr.GetString(6),
+                            ObservacionesGenerales = dr.IsDBNull(7) ? null : dr.GetString(7),
+                            Comentarios = dr.IsDBNull(8) ? null : dr.GetString(8),
+                            HallazgosPrincipales = dr.IsDBNull(9) ? null : dr.GetString(9),
+                            Estado = dr.IsDBNull(10) ? null : dr.GetString(10),
+                            Resultado = dr.IsDBNull(11) ? null : dr.GetString(11),
+                            CreatedAt = dr.IsDBNull(12) ? (DateTime?)null : dr.GetDateTime(12),
+                            CreatedBy = dr.IsDBNull(13) ? (int?)null : dr.GetInt32(13),
+                            UpdatedAt = dr.IsDBNull(14) ? (DateTime?)null : dr.GetDateTime(14),
+                            UpdatedBy = dr.IsDBNull(15) ? (int?)null : dr.GetInt32(15)
+                        };
+                    }
+                }
             }
         }
 
-        // =========================================================
-        // OBTENER POR ID
-        // =========================================================
-        public static Inspeccion ObtenerPorId(int codigoInspeccion)
+        public static List<Inspeccion> ListarTodas()
         {
-            using (var con = CrearConexion())
+            var lista = new List<Inspeccion>();
+
+            using (var conn = new NpgsqlConnection(CS))
             {
-                con.Open();
+                conn.Open();
 
-                const string sql = @"
-                SELECT
-                    codigo_inspeccion       AS CodigoInspeccion,
-                    codigo_solicitud        AS CodigoSolicitud,
-                    numero_inspeccion       AS NumeroInspeccion,
-                    tipo                    AS Tipo,
-                    fecha_programada        AS FechaProgramada,
-                    hora_programada         AS HoraProgramada,
-                    fecha_realizada         AS FechaRealizada,
-                    hora_inicio             AS HoraInicio,
-                    hora_fin                AS HoraFin,
-                    codigo_inspector        AS CodigoInspector,
-                    lugar                   AS Lugar,
-                    resultado               AS Resultado,
-                    comentarios             AS Comentarios,
-                    observaciones_generales AS ObservacionesGenerales,
-                    hallazgos_principales   AS HallazgosPrincipales,
-                    recomendaciones         AS Recomendaciones,
-                    estado                  AS Estado,
-                    completada              AS Completada,
-                    aprobada                AS Aprobada,
-                    created_at              AS CreatedAt,
-                    updated_at              AS UpdatedAt,
-                    created_by              AS CreatedBy,
-                    updated_by              AS UpdatedBy
-                FROM aocr_tbinspeccion
-                WHERE codigo_inspeccion = @codigoInspeccion;";
+                string sql = $@"
+                    SELECT
+                        codigo_inspeccion,
+                        codigo_solicitud,
+                        codigo_inspector,
+                        fecha_programada,
+                        estado,
+                        resultado
+                    FROM {TABLA}
+                    ORDER BY codigo_inspeccion DESC;
+                ";
 
-                return con.QueryFirstOrDefault<Inspeccion>(sql, new { codigoInspeccion });
+                using (var cmd = new NpgsqlCommand(sql, conn))
+                using (var dr = cmd.ExecuteReader())
+                {
+                    while (dr.Read())
+                    {
+                        lista.Add(new Inspeccion
+                        {
+                            CodigoInspeccion = dr.GetInt32(0),
+                            CodigoSolicitud = dr.GetInt32(1),
+                            CodigoInspector = dr.IsDBNull(2) ? (int?)null : dr.GetInt32(2),
+                            FechaProgramada = dr.IsDBNull(3) ? (DateTime?)null : dr.GetDateTime(3),
+                            Estado = dr.IsDBNull(4) ? null : dr.GetString(4),
+                            Resultado = dr.IsDBNull(5) ? null : dr.GetString(5)
+                        });
+                    }
+                }
             }
+
+            return lista;
         }
 
-        // =========================================================
-        // CREAR INSPECCIÓN
-        // =========================================================
+        public static List<Inspeccion> ListarPorInspector(int codigoInspector)
+        {
+            var lista = new List<Inspeccion>();
+
+            using (var conn = new NpgsqlConnection(CS))
+            {
+                conn.Open();
+
+                string sql = $@"
+                    SELECT
+                        codigo_inspeccion,
+                        codigo_solicitud,
+                        codigo_inspector,
+                        fecha_programada,
+                        estado,
+                        resultado
+                    FROM {TABLA}
+                    WHERE codigo_inspector = @ci
+                    ORDER BY fecha_programada DESC NULLS LAST, codigo_inspeccion DESC;
+                ";
+
+                using (var cmd = new NpgsqlCommand(sql, conn))
+                {
+                    cmd.Parameters.AddWithValue("@ci", codigoInspector);
+
+                    using (var dr = cmd.ExecuteReader())
+                    {
+                        while (dr.Read())
+                        {
+                            lista.Add(new Inspeccion
+                            {
+                                CodigoInspeccion = dr.GetInt32(0),
+                                CodigoSolicitud = dr.GetInt32(1),
+                                CodigoInspector = dr.IsDBNull(2) ? (int?)null : dr.GetInt32(2),
+                                FechaProgramada = dr.IsDBNull(3) ? (DateTime?)null : dr.GetDateTime(3),
+                                Estado = dr.IsDBNull(4) ? null : dr.GetString(4),
+                                Resultado = dr.IsDBNull(5) ? null : dr.GetString(5)
+                            });
+                        }
+                    }
+                }
+            }
+
+            return lista;
+        }
+
+        // CREA y DEVUELVE ID
         public static int Crear(Inspeccion i)
         {
-            using (var con = CrearConexion())
+            using (var conn = new NpgsqlConnection(CS))
             {
-                con.Open();
+                conn.Open();
 
-                if (!i.CreatedAt.HasValue)
-                    i.CreatedAt = DateTime.Now;
+                string sql = $@"
+                    INSERT INTO {TABLA}
+                        (codigo_solicitud, codigo_inspector, estado, created_at, created_by, updated_at, updated_by)
+                    VALUES
+                        (@sol, @insp, @estado, NOW(), @by, NOW(), @by)
+                    RETURNING codigo_inspeccion;
+                ";
 
-                if (string.IsNullOrWhiteSpace(i.Estado))
-                    i.Estado = "SOLICITADA";
+                using (var cmd = new NpgsqlCommand(sql, conn))
+                {
+                    cmd.Parameters.AddWithValue("@sol", i.CodigoSolicitud);
+                    cmd.Parameters.AddWithValue("@insp", (object)i.CodigoInspector ?? DBNull.Value);
+                    cmd.Parameters.AddWithValue("@estado", string.IsNullOrWhiteSpace(i.Estado) ? "CREADA" : i.Estado);
+                    cmd.Parameters.AddWithValue("@by", i.CreatedBy ?? 0);
 
-                const string sql = @"
-                INSERT INTO aocr_tbinspeccion
-                (
-                    codigo_solicitud,
-                    numero_inspeccion,
-                    tipo,
-                    fecha_programada,
-                    hora_programada,
-                    codigo_inspector,
-                    lugar,
-                    estado,
-                    completada,
-                    aprobada,
-                    created_at,
-                    created_by
-                )
-                VALUES
-                (
-                    @CodigoSolicitud,
-                    @NumeroInspeccion,
-                    @Tipo,
-                    @FechaProgramada,
-                    @HoraProgramada,
-                    @CodigoInspector,
-                    @Lugar,
-                    @Estado,
-                    COALESCE(@Completada,false),
-                    COALESCE(@Aprobada,false),
-                    @CreatedAt,
-                    @CreatedBy
-                )
-                RETURNING codigo_inspeccion;";
-
-                return con.ExecuteScalar<int>(sql, i);
+                    return Convert.ToInt32(cmd.ExecuteScalar());
+                }
             }
         }
 
-        // =========================================================
-        // ACTUALIZAR INSPECCIÓN (PLANIFICACIÓN)
-        // =========================================================
         public static bool Actualizar(Inspeccion i)
         {
-            if (i == null || i.CodigoInspeccion <= 0)
-                return false;
-
-            using (var con = CrearConexion())
+            using (var conn = new NpgsqlConnection(CS))
             {
-                con.Open();
+                conn.Open();
 
-                const string sql = @"
-                UPDATE aocr_tbinspeccion
-                SET
-                    tipo                    = @Tipo,
-                    fecha_programada        = @FechaProgramada,
-                    hora_programada         = @HoraProgramada,
-                    lugar                   = @Lugar,
-                    comentarios             = @Comentarios,
-                    observaciones_generales = @ObservacionesGenerales,
-                    estado                  = @Estado,
-                    updated_at              = @UpdatedAt,
-                    updated_by              = @UpdatedBy
-                WHERE codigo_inspeccion = @CodigoInspeccion;";
+                string sql = $@"
+                    UPDATE {TABLA}
+                    SET
+                        codigo_inspector = @insp,
+                        fecha_programada = @fp,
+                        hora_programmada = @hp,  -- ⚠️ cambia a hora_programada si aplica
+                        lugar = @lug,
+                        tipo = @tipo,
+                        observaciones_generales = @obs,
+                        comentarios = @com,
+                        hallazgos_principales = @hall,
+                        estado = @estado,
+                        updated_at = NOW(),
+                        updated_by = @uby
+                    WHERE codigo_inspeccion = @id;
+                ";
 
-                return con.Execute(sql, i) > 0;
+                using (var cmd = new NpgsqlCommand(sql, conn))
+                {
+                    cmd.Parameters.AddWithValue("@insp", (object)i.CodigoInspector ?? DBNull.Value);
+                    cmd.Parameters.AddWithValue("@fp", (object)i.FechaProgramada ?? DBNull.Value);
+                    cmd.Parameters.AddWithValue("@hp", (object)i.HoraProgramada ?? DBNull.Value);
+
+                    cmd.Parameters.AddWithValue("@lug", (object)i.Lugar ?? "");
+                    cmd.Parameters.AddWithValue("@tipo", (object)i.Tipo ?? "");
+
+                    cmd.Parameters.AddWithValue("@obs", (object)i.ObservacionesGenerales ?? "");
+                    cmd.Parameters.AddWithValue("@com", (object)i.Comentarios ?? "");
+                    cmd.Parameters.AddWithValue("@hall", (object)i.HallazgosPrincipales ?? "");
+
+                    cmd.Parameters.AddWithValue("@estado", (object)i.Estado ?? "CREADA");
+
+                    cmd.Parameters.AddWithValue("@uby", i.UpdatedBy ?? 0);
+                    cmd.Parameters.AddWithValue("@id", i.CodigoInspeccion);
+
+                    return cmd.ExecuteNonQuery() > 0;
+                }
             }
         }
 
-        // =========================================================
-        // CERRAR INSPECCIÓN
-        // =========================================================
-        public static int CerrarInspeccion(int codigoInspeccion, string resultado, bool aprobada, int codigoUsuario)
+        public static bool CambiarEstado(int id, string estado, int updatedBy)
         {
-            using (var con = CrearConexion())
+            using (var conn = new NpgsqlConnection(CS))
             {
-                con.Open();
+                conn.Open();
 
-                const string sql = @"
-                UPDATE aocr_tbinspeccion
-                SET
-                    resultado = @resultado,
-                    aprobada = @aprobada,
-                    estado = 'CERRADA',
-                    updated_at = CURRENT_TIMESTAMP,
-                    updated_by = @codigoUsuario
-                WHERE codigo_inspeccion = @codigoInspeccion;";
+                string sql = $@"
+                    UPDATE {TABLA}
+                    SET estado = @estado,
+                        updated_at = NOW(),
+                        updated_by = @uby
+                    WHERE codigo_inspeccion = @id;
+                ";
 
-                return con.Execute(sql, new { codigoInspeccion, resultado, aprobada, codigoUsuario });
+                using (var cmd = new NpgsqlCommand(sql, conn))
+                {
+                    cmd.Parameters.AddWithValue("@estado", estado);
+                    cmd.Parameters.AddWithValue("@uby", updatedBy);
+                    cmd.Parameters.AddWithValue("@id", id);
+
+                    return cmd.ExecuteNonQuery() > 0;
+                }
             }
         }
 
-        // =========================================================
-        // GUARDAR INFORME PDF
-        // =========================================================
-        public static int GuardarInforme(int idInspeccion, string informePdf, int codigoUsuario)
+        public static bool Cerrar(int id, string resultado, int updatedBy)
         {
-            using (var con = CrearConexion())
+            using (var conn = new NpgsqlConnection(CS))
             {
-                con.Open();
+                conn.Open();
 
-                const string sql = @"
-                UPDATE aocr_tbinspeccion
-                SET
-                    informe_pdf = @informePdf,
-                    updated_at = CURRENT_TIMESTAMP,
-                    updated_by = @codigoUsuario
-                WHERE codigo_inspeccion = @idInspeccion;";
+                string sql = $@"
+                    UPDATE {TABLA}
+                    SET estado = 'CERRADA',
+                        resultado = @res,
+                        updated_at = NOW(),
+                        updated_by = @uby
+                    WHERE codigo_inspeccion = @id;
+                ";
 
-                return con.Execute(sql, new { idInspeccion, informePdf, codigoUsuario });
+                using (var cmd = new NpgsqlCommand(sql, conn))
+                {
+                    cmd.Parameters.AddWithValue("@res", (object)resultado ?? "");
+                    cmd.Parameters.AddWithValue("@uby", updatedBy);
+                    cmd.Parameters.AddWithValue("@id", id);
+
+                    return cmd.ExecuteNonQuery() > 0;
+                }
             }
         }
+        public static bool GuardarInforme(int id, string rutaInforme, int updatedBy)
+        {
+            using (var conn = new NpgsqlConnection(CS))
+            {
+                conn.Open();
+
+                string sql = $@"
+            UPDATE {TABLA}
+            SET ruta_informe = @ruta,
+                updated_at = NOW(),
+                updated_by = @uby
+            WHERE codigo_inspeccion = @id;
+        ";
+
+                using (var cmd = new NpgsqlCommand(sql, conn))
+                {
+                    cmd.Parameters.AddWithValue("@ruta", (object)rutaInforme ?? "");
+                    cmd.Parameters.AddWithValue("@uby", updatedBy);
+                    cmd.Parameters.AddWithValue("@id", id);
+
+                    return cmd.ExecuteNonQuery() > 0;
+                }
+            }
+        }
+
     }
 }

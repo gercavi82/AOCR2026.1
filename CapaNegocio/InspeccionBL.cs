@@ -5,89 +5,72 @@ using CapaModelo;
 
 namespace CapaNegocio
 {
-    public class InspeccionBL
+    public static class InspeccionBL
     {
-        // ======================================================
-        // LISTAR POR SOLICITUD
-        // ======================================================
-        public static List<Inspeccion> ObtenerPorSolicitud(int idSolicitud)
+        public static Inspeccion ObtenerPorId(int id)
         {
-            if (idSolicitud <= 0)
-                throw new Exception("El código de solicitud es inválido.");
-
-            return InspeccionDAO.ObtenerPorSolicitud(idSolicitud);
+            if (id <= 0) throw new ArgumentException("ID inválido.");
+            return InspeccionDAO.ObtenerPorId(id);
         }
 
-        // ======================================================
-        // CREAR INSPECCIÓN
-        // ======================================================
-        public static bool Crear(Inspeccion i, int codigoUsuario)
+        public static List<Inspeccion> ListarTodas()
         {
-            if (i == null)
-                throw new Exception("Datos de inspección inválidos.");
-
-            if (codigoUsuario <= 0)
-                throw new Exception("Código de usuario inválido.");
-
-            i.CreatedAt = DateTime.Now;
-            i.CreatedBy = codigoUsuario;
-
-            return InspeccionDAO.Crear(i) > 0;
+            return InspeccionDAO.ListarTodas();
         }
 
-        // ======================================================
-        // GUARDAR INFORME DE INSPECCIÓN
-        // ======================================================
-        public static bool GuardarInforme(int idInspeccion, string informe, int codigoUsuario)
+        public static List<Inspeccion> ListarPorInspector(int codigoInspector)
         {
-            if (idInspeccion <= 0)
-                throw new Exception("ID de inspección inválido.");
-
-            if (codigoUsuario <= 0)
-                throw new Exception("Código de usuario inválido.");
-
-            if (string.IsNullOrWhiteSpace(informe))
-                throw new Exception("El informe no puede estar vacío.");
-
-            return InspeccionDAO.GuardarInforme(idInspeccion, informe, codigoUsuario) > 0;
+            if (codigoInspector <= 0) return new List<Inspeccion>();
+            return InspeccionDAO.ListarPorInspector(codigoInspector);
         }
 
-        // ======================================================
-        // CERRAR INSPECCIÓN (APROBADO / RECHAZADO)
-        // ======================================================
-        public static bool CerrarInspeccion(int idInspeccion, string resultado, int codigoUsuario)
+        // ✅✅✅ FALTABA ESTE MÉTODO
+        public static bool Crear(Inspeccion model, int codigoUsuario)
         {
-            if (idInspeccion <= 0)
-                throw new Exception("ID de inspección inválido.");
+            if (model == null) throw new ArgumentNullException(nameof(model));
+            if (model.CodigoSolicitud <= 0) throw new Exception("Código de solicitud inválido.");
 
-            if (codigoUsuario <= 0)
-                throw new Exception("Código de usuario inválido.");
+            model.CreatedBy = codigoUsuario;
+            model.UpdatedBy = codigoUsuario;
+            if (string.IsNullOrWhiteSpace(model.Estado))
+                model.Estado = "CREADA";
 
-            if (string.IsNullOrWhiteSpace(resultado))
-                throw new Exception("Resultado inválido.");
+            int id = InspeccionDAO.Crear(model);
+            model.CodigoInspeccion = id;
 
-            resultado = resultado.Trim().ToUpperInvariant();
-
-            bool aprobada;
-            if (resultado == "APROBADO")
-                aprobada = true;
-            else if (resultado == "RECHAZADO")
-                aprobada = false;
-            else
-                throw new Exception("Resultado inválido. Debe ser 'APROBADO' o 'RECHAZADO'.");
-
-            return InspeccionDAO.CerrarInspeccion(idInspeccion, resultado, aprobada, codigoUsuario) > 0;
+            return id > 0;
         }
 
-        // ======================================================
-        // ACTUALIZAR INSPECCIÓN (Planificación)
-        // ======================================================
-        public static bool Actualizar(Inspeccion i)
+        public static bool Actualizar(Inspeccion model)
         {
-            if (i == null || i.CodigoInspeccion <= 0)
-                throw new Exception("Datos de inspección inválidos.");
+            if (model == null) throw new ArgumentNullException(nameof(model));
+            if (model.CodigoInspeccion <= 0) throw new Exception("Código de inspección inválido.");
 
-            return InspeccionDAO.Actualizar(i); // ✅ Corregido: ya retorna bool
+            return InspeccionDAO.Actualizar(model);
+        }
+
+        public static bool CambiarEstado(int id, string estado, int updatedBy)
+        {
+            if (id <= 0) throw new Exception("ID inválido.");
+            if (string.IsNullOrWhiteSpace(estado)) throw new Exception("Estado requerido.");
+
+            return InspeccionDAO.CambiarEstado(id, estado, updatedBy);
+        }
+
+        public static bool GuardarInforme(int id, string rutaInforme, int updatedBy)
+        {
+            if (id <= 0) throw new Exception("ID inválido.");
+            if (string.IsNullOrWhiteSpace(rutaInforme)) throw new Exception("Ruta de informe requerida.");
+
+            return InspeccionDAO.GuardarInforme(id, rutaInforme, updatedBy);
+        }
+
+        public static bool CerrarInspeccion(int id, string resultado, int updatedBy)
+        {
+            if (id <= 0) throw new Exception("ID inválido.");
+            if (string.IsNullOrWhiteSpace(resultado)) throw new Exception("Resultado requerido.");
+
+            return InspeccionDAO.Cerrar(id, resultado, updatedBy);
         }
     }
 }
