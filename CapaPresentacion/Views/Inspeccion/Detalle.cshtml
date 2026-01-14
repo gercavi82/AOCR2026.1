@@ -10,7 +10,7 @@
 
 @if (Model == null)
 {
-<div class="alert alert-danger">No se recibió el modelo de inspección.</div>
+    <div class="alert alert-danger">No se recibió el modelo de inspección.</div>
     return;
 }
 
@@ -18,7 +18,7 @@
     <div class="card-body">
         <table class="table table-bordered mb-0">
             <tr><th style="width:220px;">Código Inspección</th><td>@Model.CodigoInspeccion</td></tr>
-            <tr><th>Código Solicitud</th><td>@Model.CodigoSolicitud</td></tr>
+            <tr><th>Código Solicitud</th><td>@(Model != null ? Model.CodigoSolicitud.ToString() : "-")</td></tr>
 
             <tr>
                 <th>Inspector Asignado (Código)</th>
@@ -27,11 +27,11 @@
 
             <tr>
                 <th>Fecha Programada</th>
-                <td>@(Model.FechaProgramada.HasValue ? Model.FechaProgramada.Value.ToString("yyyy-MM-dd") : "-")</td>
+                <td>@(Model != null && Model.FechaProgramada.HasValue ? Model.FechaProgramada.Value.ToString("yyyy-MM-dd") : "-")</td>
             </tr>
 
-            <tr><th>Estado</th><td>@(string.IsNullOrWhiteSpace(Model.Estado) ? "-" : Model.Estado)</td></tr>
-            <tr><th>Resultado</th><td>@(string.IsNullOrWhiteSpace(Model.Resultado) ? "-" : Model.Resultado)</td></tr>
+            <tr><th>Estado</th><td>@(Model != null && !string.IsNullOrWhiteSpace(Model.Estado) ? Model.Estado : "-")</td></tr>
+            <tr><th>Resultado</th><td>@(Model != null && !string.IsNullOrWhiteSpace(Model.Resultado) ? Model.Resultado : "-")</td></tr>
         </table>
     </div>
 </div>
@@ -40,22 +40,22 @@
 
 @if (!string.IsNullOrWhiteSpace(Model.RutaInforme))
 {
-<div class="alert alert-success d-flex align-items-center justify-content-between">
-    <div>
-        <strong>Informe cargado.</strong>
-        <div class="small text-muted">@Model.RutaInforme</div>
-    </div>
+    <div class="alert alert-success d-flex align-items-center justify-content-between">
+        <div>
+            <strong>Informe cargado.</strong>
+            <div class="small text-muted">@Model.RutaInforme</div>
+        </div>
 
-    <a class="btn btn-outline-primary"
-       href="@Url.Action(" VerInforme", "Inspeccion" , new { id=Model.CodigoInspeccion })"
-       target="_blank" rel="noopener">
-        Ver PDF
-    </a>
-</div>
+        <a class="btn btn-outline-primary"
+           href="@Url.Action("VerInforme", "Inspeccion", new { id = Model.CodigoInspeccion })"
+           target="_blank" rel="noopener">
+            Ver PDF
+        </a>
+    </div>
 }
 else
 {
-<div class="alert alert-light">Aún no hay informe cargado.</div>
+    <div class="alert alert-light">Aún no hay informe cargado.</div>
 }
 
 @if (User.IsInRole("Inspector") || User.IsInRole("Administrador"))
@@ -65,13 +65,13 @@ else
         @Html.AntiForgeryToken()
         @Html.Hidden("id", Model.CodigoInspeccion)
 
-<div class="mb-2">
-    <label class="form-label">Subir informe (PDF)</label>
-    <input type="file" name="Informe" class="form-control" accept="application/pdf" required />
-    <small class="text-muted">Tamaño máximo sugerido: 10 MB</small>
-</div>
+        <div class="mb-2">
+            <label class="form-label">Subir informe (PDF)</label>
+            <input type="file" name="Informe" class="form-control" accept="application/pdf" required />
+            <small class="text-muted">Tamaño máximo sugerido: 10 MB</small>
+        </div>
 
-<button class="btn btn-primary">Subir Informe</button>
+        <button class="btn btn-primary">Subir Informe</button>
     }
 }
 
@@ -81,87 +81,87 @@ else
 
 @if (User.IsInRole("Inspector") || User.IsInRole("Administrador"))
 {
-<button class="btn btn-warning" type="button" data-bs-toggle="modal" data-bs-target="#modalHallazgo">
-    Registrar Hallazgo
-</button>
+    <button class="btn btn-warning" type="button" data-bs-toggle="modal" data-bs-target="#modalHallazgo">
+        Registrar Hallazgo
+    </button>
 }
 
 @{
-    var hallazgos = ViewBag.Hallazgos as IEnumerable<dynamic>
-    ;
-    }
+    var hallazgos = ViewBag.Hallazgos as IEnumerable<dynamic>;
+}
 
-    <table class="table table-striped mt-3">
-        <thead>
-            <tr>
-                <th>Severidad</th>
-                <th>Descripción</th>
-                <th>Estado</th>
-            </tr>
-        </thead>
-        <tbody>
-            @if (hallazgos != null && hallazgos.Any())
-            {
+<table class="table table-striped mt-3">
+    <thead>
+        <tr>
+            <th>Severidad</th>
+            <th>Descripción</th>
+            <th>Estado</th>
+        </tr>
+    </thead>
+    <tbody>
+        @if (hallazgos != null && hallazgos.Any())
+        {
             foreach (var h in hallazgos)
             {
-            <tr>
-                <td>@(h.Severidad ?? "-")</td>
-                <td>@(h.Descripcion ?? "-")</td>
-                <td>@(h.Estado ?? "-")</td>
-            </tr>
+                <tr>
+                    <td>@(h.Severidad ?? "-")</td>
+                    <td>@(h.Descripcion ?? "-")</td>
+                    <td>@(h.Estado ?? "-")</td>
+                </tr>
             }
-            }
-            else
-            {
+        }
+        else
+        {
             <tr>
                 <td colspan="3" class="text-center text-muted">No hay hallazgos registrados.</td>
             </tr>
-            }
-        </tbody>
-    </table>
+        }
+    </tbody>
+</table>
 
-    <hr class="my-4" />
+<hr class="my-4" />
 
-    @if (User.IsInRole("CoordinadorInspecciones") || User.IsInRole("Administrador"))
-    {
+@if (User.IsInRole("CoordinadorInspecciones") || User.IsInRole("Administrador"))
+{
     <a class="btn btn-primary"
-       href="@Url.Action(" Planificacion", "Inspeccion" , new { id=Model.CodigoInspeccion })">
+       href="@Url.Action("Planificacion", "Inspeccion", new { id = Model.CodigoInspeccion })">
         Planificar Inspección
     </a>
-    }
+}
 
-    @if (User.IsInRole("JefaturaTecnica") || User.IsInRole("Administrador"))
-    {
+@if (User.IsInRole("JefaturaTecnica") || User.IsInRole("Administrador"))
+{
     <h3 class="mt-4">Cierre de Inspección</h3>
 
     using (Html.BeginForm("Cerrar", "Inspeccion", FormMethod.Post))
     {
-    @Html.AntiForgeryToken()
-    @Html.Hidden("id", Model.CodigoInspeccion)
+        @Html.AntiForgeryToken()
+        @Html.Hidden("id", Model.CodigoInspeccion)
 
-    <div class="d-flex gap-2">
-        <button type="submit" name="resultado" value="APROBADO" class="btn btn-success">
-            Aprobar
-        </button>
+        <div class="d-flex gap-2">
+            <button type="submit" name="resultado" value="APROBADO" class="btn btn-success">
+                Aprobar
+            </button>
 
-        <button type="submit" name="resultado" value="RECHAZADO" class="btn btn-danger">
-            Rechazar
-        </button>
-    </div>
+            <button type="submit" name="resultado" value="RECHAZADO" class="btn btn-danger">
+                Rechazar
+            </button>
+        </div>
     }
-    }
+}
 
-    <div class="modal fade" id="modalHallazgo" tabindex="-1" aria-hidden="true">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title">Registrar Hallazgo</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
-                </div>
+<!-- Modal para registrar hallazgo -->
+<div class="modal fade" id="modalHallazgo" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Registrar Hallazgo</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+            </div>
 
-                <div class="modal-body">
-                    @using (Html.BeginForm("RegistrarHallazgo", "Inspeccion", FormMethod.Post))
-                    {
+            <div class="modal-body">
+                @using (Html.BeginForm("RegistrarHallazgo", "Inspeccion", FormMethod.Post))
+                {
                     @Html.AntiForgeryToken()
                     @Html.Hidden("CodigoInspeccion", Model.CodigoInspeccion)
 
@@ -180,8 +180,8 @@ else
                     </div>
 
                     <button class="btn btn-primary">Guardar</button>
-                    }
-                </div>
+                }
             </div>
         </div>
     </div>
+</div>

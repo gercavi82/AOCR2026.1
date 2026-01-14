@@ -87,11 +87,23 @@ namespace CapaNegocio
             catch { return false; }
         }
 
-        // 12. Asignar inspectores (CORREGIDO: Delega al DAO)
+        // 12. Asignar inspectores
         public static bool AsignarInspectores(int id, int principal, int? apoyo, DateTime fecha, string obs, out string mensaje)
         {
-            // Ya no hay código SQL aquí, se movió al DAO para evitar errores de Npgsql en esta capa
             return new SolicitudAOCRDAO().AsignarInspectores(id, principal, apoyo, fecha, obs, out mensaje);
+        }
+
+        // 13. Método adicional requerido por el controlador
+        public static bool Actualizar(SolicitudAOCR solicitud)
+        {
+            try
+            {
+                return new SolicitudAOCRDAO().Actualizar(solicitud);
+            }
+            catch (Exception)
+            {
+                return false;
+            }
         }
     }
 }

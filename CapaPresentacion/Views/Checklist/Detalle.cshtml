@@ -1,24 +1,32 @@
-﻿@model Checklist
+﻿@model CapaModelo.Checklist
+@using System.Globalization
 @{
     ViewData["Title"] = "Detalle de Checklist";
-}
 
+    var items = ViewBag.Items as List<CapaModelo.ChecklistItem>;
+    var completados = items?.Count(i => i.Cumple == true) ?? 0;
+    var total = items?.Count ?? 0;
+    var pendientes = total - completados;
+    var porcentaje = total > 0 ? (int)((double)completados / total * 100) : 0;
+}
 <div class="container">
     <div class="row justify-content-center">
         <div class="col-md-10">
-            <div class="card shadow">
+            <div class="card shadow-sm mb-4">
                 <div class="card-header bg-info text-white">
                     <h4 class="mb-0"><i class="fas fa-clipboard-check"></i> Detalle de Checklist</h4>
                 </div>
                 <div class="card-body">
-                    <div class="row">
-                        <div class="col-md-6">
-                            <dl class="row">
-                                <dt class="col-sm-4">ID:</dt>
-                                <dd class="col-sm-8">@Model.Id</dd>
 
-                                <dt class="col-sm-4">Título:</dt>
-                                <dd class="col-sm-8"><strong>@Model.Titulo</strong></dd>
+                    <!-- Datos Generales -->
+                    <div class="row mb-4">
+                        <div class="col-md-6">
+                            <dl class="row mb-0">
+                                <dt class="col-sm-4">ID:</dt>
+                                <dd class="col-sm-8">@Model.CodigoChecklist</dd>
+
+                                <dt class="col-sm-4">Sección:</dt>
+                                <dd class="col-sm-8">@Model.Seccion</dd>
 
                                 <dt class="col-sm-4">Estado:</dt>
                                 <dd class="col-sm-8">
@@ -28,125 +36,117 @@
                                     }
                                     else
                                     {
-                                        <span class="badge bg-danger">Inactivo</span>
+                                        <span class="badge bg-secondary">Inactivo</span>
                                     }
                                 </dd>
 
-                                <dt class="col-sm-4">Fecha Creación:</dt>
-                                <dd class="col-sm-8">@Model.FechaCreacion.ToString("dd/MM/yyyy HH:mm")</dd>
+                                <dt class="col-sm-4">Creado:</dt>
+                                <dd class="col-sm-8">@Model.CreatedAt?.ToString("dd/MM/yyyy HH:mm", CultureInfo.InvariantCulture)</dd>
 
                                 <dt class="col-sm-4">Usuario:</dt>
-                                <dd class="col-sm-8">@Model.UsuarioId</dd>
+                                <dd class="col-sm-8">@Model.CreatedBy</dd>
                             </dl>
                         </div>
-
                         <div class="col-md-6">
-                            <h5 class="mb-3">Descripción</h5>
+                            <h5>Descripción</h5>
                             <p class="text-muted">
-                                @if (!string.IsNullOrEmpty(Model.Descripcion))
-                                {
-                                    @Model.Descripcion
-                                }
-                                else
-                                {
-                                    <em>Sin descripción</em>
-                                }
+                                @(!string.IsNullOrWhiteSpace(Model.Descripcion) ? Model.Descripcion : "Sin descripción")
                             </p>
                         </div>
                     </div>
 
-                    <hr />
+                    <!-- Ítems del Checklist -->
+                    <h5 class="mt-3"><i class="fas fa-tasks"></i> Ítems</h5>
 
-                    <!-- Items del Checklist -->
-                    <div class="mt-4">
-                        <h5 class="mb-3"><i class="fas fa-list-check"></i> Items del Checklist</h5>
-                        <div class="list-group">
-                            <div class="list-group-item d-flex justify-content-between align-items-center">
-                                <div>
-                                    <input type="checkbox" class="form-check-input me-2">
-                                    <span>Verificar documentación de seguridad</span>
+                    @if (items != null && items.Any())
+                    {
+                        <div class="list-group mb-4">
+                            @foreach (var item in items)
+                            {
+                                var cumple = item.Cumple == true;
+                                <div class="list-group-item d-flex justify-content-between align-items-center">
+                                    <div>
+                                        <input type="checkbox" class="form-check-input me-2" disabled @(cumple ? "checked" : "") />
+                                        <span class="@(cumple ? "text-decoration-line-through text-success" : "")">
+                                            @item.Descripcion
+                                        </span>
+                                    </div>
+                                    <span class="badge @(cumple ? "bg-success" : "bg-warning text-dark")">
+                                        @(cumple ? "Completado" : "Pendiente")
+                                    </span>
                                 </div>
-                                <span class="badge bg-warning">Pendiente</span>
-                            </div>
-                            <div class="list-group-item d-flex justify-content-between align-items-center">
-                                <div>
-                                    <input type="checkbox" class="form-check-input me-2" checked>
-                                    <span class="text-decoration-line-through">Revisar permisos de acceso</span>
-                                </div>
-                                <span class="badge bg-success">Completado</span>
-                            </div>
-                            <div class="list-group-item d-flex justify-content-between align-items-center">
-                                <div>
-                                    <input type="checkbox" class="form-check-input me-2">
-                                    <span>Auditar logs del sistema</span>
-                                </div>
-                                <span class="badge bg-warning">Pendiente</span>
-                            </div>
-                            <div class="list-group-item d-flex justify-content-between align-items-center">
-                                <div>
-                                    <input type="checkbox" class="form-check-input me-2">
-                                    <span>Validar respaldos de información</span>
-                                </div>
-                                <span class="badge bg-warning">Pendiente</span>
-                            </div>
+                            }
                         </div>
+                    }
+                    else
+                    {
+                        <div class="alert alert-warning">
+                            <i class="fas fa-exclamation-circle"></i> No hay ítems registrados en este checklist.
+                        </div>
+                    }
 
-                        <div class="mt-3">
+                    <!-- Progreso -->
+                    @if (total > 0)
+                    {
+                        <div class="mb-4">
+                            <label>Progreso:</label>
                             <div class="progress" style="height: 25px;">
-                                <div class="progress-bar bg-success" role="progressbar"
-                                     style="width: 25%;" aria-valuenow="25" aria-valuemin="0" aria-valuemax="100">
-                                    25% Completado (1/4)
+                                <div class="progress-bar bg-success"
+                                     role="progressbar"
+                                     style="width: @porcentaje%;"
+                                     aria-valuenow="@porcentaje"
+                                     aria-valuemin="0"
+                                     aria-valuemax="100">
+                                    @porcentaje% Completado (@completados/@total)
                                 </div>
                             </div>
                         </div>
-                    </div>
-
-                    <hr />
+                    }
 
                     <!-- Estadísticas -->
-                    <div class="row mt-4">
+                    <div class="row mb-4">
                         <div class="col-md-4">
-                            <div class="card text-center bg-light">
+                            <div class="card text-center border-primary">
                                 <div class="card-body">
-                                    <h3 class="text-primary">4</h3>
-                                    <p class="mb-0">Total Items</p>
+                                    <h3 class="text-primary">@total</h3>
+                                    <p class="mb-0">Total de Ítems</p>
                                 </div>
                             </div>
                         </div>
                         <div class="col-md-4">
-                            <div class="card text-center bg-light">
+                            <div class="card text-center border-success">
                                 <div class="card-body">
-                                    <h3 class="text-success">1</h3>
-                                    <p class="mb-0">Completados</p>
+                                    <h3 class="text-success">@completados</h3>
+                                    <p class="mb-0">Ítems Completados</p>
                                 </div>
                             </div>
                         </div>
                         <div class="col-md-4">
-                            <div class="card text-center bg-light">
+                            <div class="card text-center border-warning">
                                 <div class="card-body">
-                                    <h3 class="text-warning">3</h3>
+                                    <h3 class="text-warning">@pendientes</h3>
                                     <p class="mb-0">Pendientes</p>
                                 </div>
                             </div>
                         </div>
                     </div>
 
-                    <hr />
-
+                    <!-- Acciones -->
                     <div class="d-flex justify-content-between">
                         <a asp-action="Index" class="btn btn-secondary">
                             <i class="fas fa-arrow-left"></i> Volver
                         </a>
                         <div>
-                            <a asp-action="Editar" asp-route-id="@Model.Id" class="btn btn-warning">
+                            <a asp-action="Editar" asp-route-id="@Model.CodigoChecklist" class="btn btn-warning me-2">
                                 <i class="fas fa-edit"></i> Editar
                             </a>
-                            <a asp-controller="Informe" asp-action="Crear" asp-route-checklistId="@Model.Id"
-                               class="btn btn-info">
+                            <a asp-controller="Informe" asp-action="Crear" asp-route-checklistId="@Model.CodigoChecklist"
+                               class="btn btn-primary">
                                 <i class="fas fa-file-alt"></i> Generar Informe
                             </a>
                         </div>
                     </div>
+
                 </div>
             </div>
         </div>

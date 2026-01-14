@@ -95,6 +95,9 @@
     <Reference Include="Rotativa, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
       <HintPath>..\packages\Rotativa.1.7.3\lib\net461\Rotativa.dll</HintPath>
     </Reference>
+    <Reference Include="Select.Pdf, Version=25.2.0.0, Culture=neutral, PublicKeyToken=e0ae9f6e27a97018, processorArchitecture=MSIL">
+      <HintPath>..\packages\Select.Pdf.25.2.0\lib\net40\Select.Pdf.dll</HintPath>
+    </Reference>
     <Reference Include="System" />
     <Reference Include="System.Buffers, Version=4.0.3.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51, processorArchitecture=MSIL">
       <HintPath>..\packages\System.Buffers.4.5.1\lib\net461\System.Buffers.dll</HintPath>
@@ -189,7 +192,7 @@
     <Compile Include="Controllers\SolicitudController.cs" />
     <Compile Include="Controllers\HistorialEstadoController.cs" />
     <Compile Include="Controllers\FinancieroController.cs" />
-    <Compile Include="Controllers\5_DireccionController.cs" />
+    <Compile Include="Controllers\DireccionController.cs" />
     <Compile Include="Controllers\InspeccionController.cs" />
     <Compile Include="Controllers\TecnicoController.cs" />
     <Compile Include="Controllers\6_CertificadoController.cs" />
@@ -2630,7 +2633,9 @@
     <Content Include="Web.Release.config">
       <DependentUpon>Web.config</DependentUpon>
     </Content>
-    <Content Include="Views\Web.config" />
+    <Content Include="Views\Web.config">
+      <SubType>Designer</SubType>
+    </Content>
     <Content Include="Views\_ViewStart.cshtml" />
     <Content Include="Views\Shared\Error.cshtml" />
     <Content Include="Views\Shared\_LayoutAOCR.cshtml" />
@@ -2704,6 +2709,11 @@
     <Content Include="Views\Financiero\RevisarSolicitud.cshtml" />
     <Content Include="Views\Financiero\ListaPagos.cshtml" />
     <Content Include="Views\Financiero\ValidarPago.cshtml" />
+    <Content Include="Views\Tecnico\ListaChequeo.cshtml" />
+    <Content Include="Views\Checklist\EmitirAOCR.cshtml" />
+    <Content Include="Views\Checklist\Legalizar.cshtml" />
+    <Content Include="Views\Checklist\ValidacionFinal.cshtml" />
+    <Content Include="Views\Certificado\CertificadoPDF.cshtml" />
   </ItemGroup>
   <ItemGroup>
     <Folder Include="App_Data\" />
