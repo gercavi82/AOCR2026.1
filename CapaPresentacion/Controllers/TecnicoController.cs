@@ -6,16 +6,12 @@ using CapaDatos.DAOs;
 
 namespace CapaPresentacion.Controllers
 {
-    [Authorize] // No restringas aquí para no bloquear otras acciones por rol
+    [Authorize]
     public class TecnicoController : Controller
     {
-        // ✅ Según tu error, tu carpeta REAL parece ser: Views/Tecnico
-        // Si NO es esa, cámbiala a la carpeta real (por ejemplo: "~/Views/Tecnico/")
         private const string VIEWS_TECNICO = "~/Views/Tecnico/";
+        private readonly SolicitudBL _solicitudBL = new SolicitudBL(); // ✅ Agregado
 
-        // =======================================================
-        // LISTADO
-        // =======================================================
         [Authorize(Roles = "Tecnico,Administrador")]
         public ActionResult Index()
         {
@@ -23,9 +19,6 @@ namespace CapaPresentacion.Controllers
             return View(VIEWS_TECNICO + "Index.cshtml", lista);
         }
 
-        // =======================================================
-        // CREAR
-        // =======================================================
         [Authorize(Roles = "Administrador")]
         public ActionResult Crear()
         {
@@ -53,9 +46,6 @@ namespace CapaPresentacion.Controllers
             return RedirectToAction("Index");
         }
 
-        // =======================================================
-        // EDITAR
-        // =======================================================
         [Authorize(Roles = "Administrador")]
         public ActionResult Editar(int id)
         {
@@ -92,9 +82,6 @@ namespace CapaPresentacion.Controllers
             return RedirectToAction("Index");
         }
 
-        // =======================================================
-        // ELIMINAR
-        // =======================================================
         [Authorize(Roles = "Administrador")]
         public ActionResult Eliminar(int id)
         {
@@ -110,9 +97,6 @@ namespace CapaPresentacion.Controllers
             return RedirectToAction("Index");
         }
 
-        // =======================================================
-        // ASIGNAR INSPECTOR (GET)
-        // =======================================================
         [HttpGet]
         [Authorize(Roles = "Tecnico,Administrador,CoordinadorInspecciones")]
         public ActionResult AsignarInspector(int? solicitudId)
@@ -123,7 +107,7 @@ namespace CapaPresentacion.Controllers
                 return RedirectToAction("Index");
             }
 
-            var solicitud = SolicitudAOCRBL.ObtenerPorId(solicitudId.Value);
+            var solicitud = _solicitudBL.ObtenerDetalle(solicitudId.Value); // ✅ Actualizado
             if (solicitud == null)
             {
                 TempData["Error"] = "Solicitud no encontrada.";
@@ -136,9 +120,6 @@ namespace CapaPresentacion.Controllers
             return View(VIEWS_TECNICO + "AsignarInspector.cshtml", solicitud);
         }
 
-        // =======================================================
-        // ASIGNAR INSPECTOR (POST)
-        // =======================================================
         [HttpPost]
         [Authorize(Roles = "Tecnico,Administrador,CoordinadorInspecciones")]
         [ValidateAntiForgeryToken]
@@ -153,13 +134,15 @@ namespace CapaPresentacion.Controllers
 
             try
             {
+                int usuarioId = Convert.ToInt32(Session["CodigoUsuario"]); // ✅ Usuario actual
                 string mensaje;
-                bool ok = SolicitudAOCRBL.AsignarInspectores(
+
+                bool ok = _solicitudBL.AsignarTecnico(
                     solicitudId,
                     inspectorPrincipal,
-                    inspectorApoyo,
                     fechaInspeccion,
                     observaciones,
+                    usuarioId,
                     out mensaje
                 );
 
@@ -176,6 +159,26 @@ namespace CapaPresentacion.Controllers
             }
         }
 
-       
+        [HttpGet]
+        [Authorize(Roles = "Tecnico,Administrador,CoordinadorInspecciones")]
+        public ActionResult ListaChequeo(int? id)
+        {
+            if (!id.HasValue || id.Value <= 0)
+            {
+                TempData["Error"] = "ID de solicitud no válido.";
+                return RedirectToAction("Index");
+            }
+
+            var modelo = ChecklistBL.ObtenerPorSolicitud(id.Value);
+
+            if (modelo == null)
+            {
+                TempData["Error"] = "No se encontró el checklist para esta solicitud.";
+                return RedirectToAction("Index");
+            }
+
+            ViewBag.SolicitudId = id.Value;
+            return View(VIEWS_TECNICO + "ListaChequeo.cshtml", modelo);
+        }
     }
 }

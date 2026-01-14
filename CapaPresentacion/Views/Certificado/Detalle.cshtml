@@ -1,54 +1,90 @@
 ﻿@model CapaModelo.Certificado
+@{
+    ViewBag.Title = "Detalle de Certificado";
+}
 
 <h2>Certificado AOCR</h2>
 
+<!-- Mensajes del controlador -->
+@if (TempData["OK"] != null)
+{
+    <div class="alert alert-success">@TempData["OK"]</div>
+}
+@if (TempData["Error"] != null)
+{
+    <div class="alert alert-danger">@TempData["Error"]</div>
+}
+@if (TempData["Info"] != null)
+{
+    <div class="alert alert-info">@TempData["Info"]</div>
+}
+
+<!-- Si NO existe certificado aún -->
 @if (Model == null)
 {
-    <div class="alert alert-info">
-        No existe certificado.
-        <a class="btn btn-success" href="@Url.Action("Generar", new { solicitudId = ViewBag.SolicitudId })">
-            Generar Certificado
-        </a>
+    <div class="alert alert-warning">
+        No existe certificado generado para esta solicitud.
     </div>
+
+    <h4>Generar Certificado</h4>
+    @using (Html.BeginForm("Generar", "Certificado", FormMethod.Post))
+    {
+        @Html.AntiForgeryToken()
+        @Html.Hidden("solicitudId", ViewBag.SolicitudId)
+
+        <div class="form-group">
+            <label>Firmado por (obligatorio)</label>
+            <input type="text" name="firmadoPor" class="form-control" required />
+        </div>
+
+        <button type="submit" class="btn btn-primary">
+            <i class="glyphicon glyphicon-certificate"></i> Generar Certificado
+        </button>
+    }
 }
 else
 {
-    <table class="table table-bordered">
+    <table class="table table-bordered table-striped">
         <tr><th>Número</th><td>@Model.NumeroCertificado</td></tr>
-        <tr><th>Emitido</th><td>@Model.FechaEmision</td></tr>
-        <tr><th>Vence</th><td>@Model.FechaVencimiento</td></tr>
+        <tr><th>Emitido</th><td>@Model.FechaEmision?.ToString("dd/MM/yyyy")</td></tr>
+        <tr><th>Vence</th><td>@Model.FechaVencimiento?.ToString("dd/MM/yyyy")</td></tr>
         <tr><th>Vigencia (años)</th><td>@Model.VigenciaAnios</td></tr>
-        <tr><th>Estado</th><td>@Model.Estado</td></tr>
-        <tr><th>Firmado Por</th><td>@Model.FirmadoPor</td></tr>
-        <tr><th>Condiciones</th><td>@Model.CondicionesEspeciales</td></tr>
-        <tr><th>Código Verificación</th><td>@Model.CodigoVerificacion</td></tr>
+        <tr><th>Estado</th><td><span class="label label-success">@Model.Estado</span></td></tr>
+        <tr><th>Firmado por</th><td>@Model.FirmadoPor</td></tr>
+        <tr><th>Condiciones especiales</th><td>@Model.CondicionesEspeciales</td></tr>
+        <tr><th>Código de verificación</th><td><code>@Model.CodigoVerificacion</code></td></tr>
         <tr>
-            <th>PDF</th>
+            <th>Archivo PDF</th>
             <td>
-                @if (!string.IsNullOrEmpty(Model.RutaPdf))
+                @if (!string.IsNullOrWhiteSpace(Model.RutaPdf))
                 {
-                    <a class="btn btn-primary" href="@Url.Action("DescargarPDF", new { id = Model.CodigoCertificado })">
-                        Descargar PDF
+                    <a class="btn btn-success" href="@Url.Action("DescargarPDF", "Certificado", new { id = Model.CodigoCertificado })" target="_blank">
+                        <i class="glyphicon glyphicon-download-alt"></i> Descargar PDF
                     </a>
                 }
                 else
                 {
-                    <span class="text-warning">No cargado</span>
+                    <span class="text-warning">PDF no cargado aún.</span>
                 }
             </td>
         </tr>
     </table>
 
     <hr />
+    <h4>Subir nuevo PDF firmado digitalmente</h4>
 
-    <h4>Subir PDF</h4>
     @using (Html.BeginForm("SubirPDF", "Certificado", FormMethod.Post, new { enctype = "multipart/form-data" }))
     {
+        @Html.AntiForgeryToken()
         @Html.Hidden("id", Model.CodigoCertificado)
         @Html.Hidden("solicitudId", Model.CodigoSolicitud)
 
-        <input type="file" name="archivo" class="form-control" />
-        <br />
-        <button class="btn btn-success">Subir</button>
+        <div class="form-group">
+            <input type="file" name="archivo" class="form-control" accept="application/pdf" required />
+        </div>
+
+        <button type="submit" class="btn btn-info">
+            <i class="glyphicon glyphicon-upload"></i> Subir PDF Firmado
+        </button>
     }
 }

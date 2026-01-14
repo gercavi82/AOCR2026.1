@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Transactions;
 using CapaModelo;
 using CapaDatos.DAOs;
 
@@ -7,15 +8,21 @@ namespace CapaNegocio
 {
     public static class SolicitudAOCRBL
     {
-        // 1. Crear Solicitud
+        private static readonly SolicitudAOCRDAO _dao = new SolicitudAOCRDAO();
+
+        // =====================================================
+        // CREACIÓN
+        // =====================================================
+
         public static int CrearSolicitud(SolicitudAOCR solicitud, out string mensaje)
         {
             try
             {
                 solicitud.FechaSolicitud = DateTime.Now;
                 solicitud.Estado = "PENDIENTE";
-                int id = new SolicitudAOCRDAO().InsertarConReturn(solicitud);
-                mensaje = "Solicitud creada exitosamente.";
+
+                int id = _dao.InsertarConReturn(solicitud);
+                mensaje = id > 0 ? "Solicitud creada exitosamente." : "No se pudo generar el ID de solicitud.";
                 return id;
             }
             catch (Exception ex)
@@ -25,73 +32,119 @@ namespace CapaNegocio
             }
         }
 
-        // 2. Obtener solicitudes por usuario
+        public static bool GuardarSolicitudIntegral(SolicitudAOCR solicitud, List<ChecklistItem> aeronaves, out string mensaje)
+        {
+            using (var scope = new TransactionScope())
+            {
+                try
+                {
+                    int idSolicitud = CrearSolicitud(solicitud, out mensaje);
+                    if (idSolicitud <= 0) return false;
+
+                    // Guardar aeronaves (si aplica)
+                    // AeronaveDAO.Insertar(...);
+
+                    scope.Complete();
+                    mensaje = $"Solicitud #{idSolicitud} registrada con éxito.";
+                    return true;
+                }
+                catch (Exception ex)
+                {
+                    mensaje = "Falla técnica en el guardado masivo: " + ex.Message;
+                    return false;
+                }
+            }
+        }
+
+        // =====================================================
+        // CONSULTAS
+        // =====================================================
+
         public static List<SolicitudAOCR> ListarPorUsuario(int codigoUsuario)
-        {
-            return new SolicitudAOCRDAO().ObtenerPorUsuario(codigoUsuario);
-        }
+            => _dao.ObtenerPorUsuario(codigoUsuario);
 
-        // 3. Obtener por ID
         public static SolicitudAOCR ObtenerPorId(int id)
-        {
-            return new SolicitudAOCRDAO().ObtenerPorId(id);
-        }
+            => _dao.ObtenerPorId(id);
 
-        // 4. Actualizar solicitud
-        public static bool ActualizarSolicitud(SolicitudAOCR solicitud, out string mensaje)
+        public static List<SolicitudAOCR> ObtenerPorEstado(string estado)
+            => _dao.ObtenerPorEstado(estado);
+
+        public static List<SolicitudAOCR> ListarPendientesRevision()
+            => _dao.ObtenerPendientesRevision();
+
+        // =====================================================
+        // ACTUALIZACIÓN GENERAL
+        // =====================================================
+
+        public static bool ActualizarEstado(SolicitudAOCR solicitud)
         {
             try
             {
-                bool ok = new SolicitudAOCRDAO().ActualizarGeneral(solicitud);
-                mensaje = ok ? "Solicitud actualizada correctamente." : "No se pudo actualizar la solicitud.";
-                return ok;
+                solicitud.UpdatedAt = DateTime.Now;
+                return _dao.ActualizarGeneral(solicitud);
             }
-            catch (Exception ex)
+            catch
             {
-                mensaje = "Error al actualizar: " + ex.Message;
                 return false;
             }
         }
 
-        // 5. Cambiar estado
         public static bool CambiarEstado(int idSolicitud, string nuevoEstado, int codigoUsuario, string observaciones, out string mensaje)
         {
             try
             {
-                bool ok = new SolicitudAOCRDAO().CambiarEstado(idSolicitud, nuevoEstado, codigoUsuario, observaciones);
+                bool ok = _dao.CambiarEstado(idSolicitud, nuevoEstado, codigoUsuario, observaciones);
                 mensaje = ok ? "Estado actualizado correctamente." : "No fue posible cambiar el estado.";
                 return ok;
             }
             catch (Exception ex)
             {
-                mensaje = "Error cambiando estado: " + ex.Message;
+                mensaje = "Error en el flujo de estados: " + ex.Message;
                 return false;
             }
         }
 
-        public static List<SolicitudAOCR> ListarActivas() => new SolicitudAOCRDAO().ListarActivas();
-
-        public static List<SolicitudAOCR> ListarPorEstado(string estado) => new SolicitudAOCRDAO().ObtenerPorEstado(estado);
-
-        public static List<SolicitudAOCR> ListarPendientesRevision() => new SolicitudAOCRDAO().ObtenerPendientesRevision();
-
-        public static List<SolicitudAOCR> ListarParaValidacionJefatura() => new SolicitudAOCRDAO().ObtenerParaValidacionJefatura();
-
-        // 11. Marcar Para Inspeccion
         public static bool MarcarParaInspeccion(int idSolicitud)
         {
             try
             {
-                return new SolicitudAOCRDAO().CambiarEstado(idSolicitud, "INSPECCION_SOLICITADA", 0, "Cambio automático por sistema");
+                return _dao.CambiarEstado(idSolicitud, "INSPECCION_SOLICITADA", 0, "Cambio automático por sistema");
             }
-            catch { return false; }
+            catch
+            {
+                return false;
+            }
         }
 
-        // 12. Asignar inspectores (CORREGIDO: Delega al DAO)
-        public static bool AsignarInspectores(int id, int principal, int? apoyo, DateTime fecha, string obs, out string mensaje)
+        // =====================================================
+        // INSPECCIONES
+        // =====================================================
+
+        public static bool AsignarInspeccion(
+            int solicitudId,
+            int inspectorId,
+            DateTime fecha,
+            TimeSpan hora,
+            string lugar,
+            string comentarios,
+            int usuarioId,
+            out string mensaje)
         {
-            // Ya no hay código SQL aquí, se movió al DAO para evitar errores de Npgsql en esta capa
-            return new SolicitudAOCRDAO().AsignarInspectores(id, principal, apoyo, fecha, obs, out mensaje);
+            if (fecha.Date < DateTime.Today)
+            {
+                mensaje = "La fecha programada no puede ser anterior a hoy.";
+                return false;
+            }
+
+            return _dao.AsignarInspeccion(
+                solicitudId,
+                inspectorId,
+                fecha,
+                hora,
+                lugar,
+                comentarios,
+                usuarioId,
+                out mensaje);
         }
     }
 }

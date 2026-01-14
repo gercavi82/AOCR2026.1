@@ -949,40 +949,45 @@
 </script>
 <script>
   function guardarFormulario() {
-    const vm = {
-      Solicitud: {
-        CodigoSolicitud: parseInt($('#codigoSolicitud').val() || "0"),
-        NombreOperador: $('#nombreOperador').val(),
-        RepresentanteLegal: $('#nombreRepresentante').val(),
-        CedulaRepresentante: $('#rucRepresentante').val(),
-        Direccion: $('#direccionEcuador').val(),
-        Telefono: $('#telefonoOperador').val(),
-        Ruc: $('#rucOperador').val(),
-        RazonSocial: $('#razonSocial').val(),
-        TipoOperacion: $('#tipoOperacion').val(),
-        DescripcionOperacion: $('#descripcionOperacion').val(),
-        ObservacionesGenerales: $('#observacionesGenerales').val()
-      },
-      Banco: $('#banco').val(),
-      NumeroComprobante: $('#numeroComprobante').val(),
-      Aeronaves: window.aeronavesSeleccionadas || [] // (si ya manejas un array global)
-    };
 
-    $.ajax({
-      url: '@Url.Action("FormularioCompleto", "SolicitudAOCR")',
-      type: 'POST',
-      data: JSON.stringify(vm),
-      contentType: 'application/json; charset=utf-8',
-      success: function (r) {
-        if (r && r.success) {
-          Swal.fire('OK', r.mensaje, 'success').then(() => location.reload());
-        } else {
-          Swal.fire('Error', (r ? r.mensaje : 'Error inesperado'), 'error');
-        }
-      },
-      error: function () {
-        Swal.fire('Error', 'No se pudo guardar la solicitud.', 'error');
+  const token = $('input[name="__RequestVerificationToken"]').val();
+
+  const vm = {
+    Solicitud: {
+      CodigoSolicitud: parseInt($('#codigoSolicitud').val() || "0"),
+      // Ajusta IDs a los que realmente existen en tu HTML:
+      RepresentanteLegal: $('#nombreRepresentante').val(),
+      CedulaRepresentante: $('#rucRepresentante').val(),
+      Direccion: $('#direccionEcuador').val(),
+      Telefono: $('#telefonoEcuador').val(),
+      Correo: $('#emailEcuador').val(),
+
+      // Ejemplo: si tienes tipoOperacion y descripcionOperacion, usa los IDs reales
+      TipoOperacion: $('#tipoOperacion').val(),
+      DescripcionOperacion: $('#resumenOperaciones').val()
+    },
+    Banco: $('#banco').val(),
+    NumeroComprobante: $('#numeroComprobante').val(),
+    Aeronaves: window.aeronavesSeleccionadas || []
+  };
+
+  $.ajax({
+    url: '@Url.Action("FormularioCompleto", "SolicitudAOCR")',
+    type: 'POST',
+    headers: { 'RequestVerificationToken': token },
+    data: JSON.stringify(vm),
+    contentType: 'application/json; charset=utf-8',
+    success: function (r) {
+      if (r && r.success) {
+        Swal.fire('OK', r.mensaje, 'success');
+      } else {
+        Swal.fire('Error', (r ? r.mensaje : 'Error inesperado'), 'error');
       }
-    });
-  }
+    },
+    error: function () {
+      Swal.fire('Error', 'No se pudo guardar la solicitud.', 'error');
+    }
+  });
+}
+
 </script>

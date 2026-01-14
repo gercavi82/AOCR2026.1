@@ -1,0 +1,119 @@
+﻿@model CapaModelo.Certificado
+@{
+    Layout = null;
+    var fecha = DateTime.Now;
+}
+
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8" />
+    <title>Certificado AOCR</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            font-size: 12pt;
+            color: #333;
+            margin: 40px;
+        }
+
+        h1, h2, h3 {
+            text-align: center;
+            color: #003366;
+        }
+
+        .section {
+            margin-top: 30px;
+        }
+
+        .bold {
+            font-weight: bold;
+        }
+
+        .box {
+            border: 2px solid #003366;
+            padding: 15px;
+            margin-top: 10px;
+        }
+
+        .label {
+            display: inline-block;
+            font-weight: bold;
+            width: 200px;
+        }
+
+        .footer {
+            margin-top: 60px;
+            font-size: 10pt;
+            text-align: center;
+            border-top: 1px solid #ccc;
+            padding-top: 20px;
+        }
+
+        .signature {
+            margin-top: 50px;
+            text-align: center;
+        }
+
+        .qr {
+            float: right;
+            border: 1px solid #333;
+            padding: 5px;
+        }
+
+        .clearfix::after {
+            content: "";
+            display: block;
+            clear: both;
+        }
+    </style>
+</head>
+<body>
+    <h1>REPÚBLICA DEL ECUADOR</h1>
+    <h2>Dirección General de Aviación Civil</h2>
+    <h3>CERTIFICADO DE OPERADOR AÉREO - AOCR</h3>
+
+    <div class="section box">
+        <p><span class="label">Número de Certificado:</span> @Model.NumeroCertificado</p>
+        <p><span class="label">Emitido el:</span> @Model.FechaEmision.ToString("dd/MM/yyyy")</p>
+        <p><span class="label">Válido hasta:</span> @Model.FechaVencimiento.ToString("dd/MM/yyyy")</p>
+        <p><span class="label">Estado:</span> @Model.Estado</p>
+        <p><span class="label">Firmado por:</span> @Model.FirmadoPor</p>
+    </div>
+
+    <div class="section">
+        <p style="text-align: justify;">
+            En cumplimiento de la normativa aeronáutica vigente y tras haber completado exitosamente todos los procesos técnicos, operativos y legales requeridos, se certifica que el operador ha sido autorizado para realizar operaciones de aviación comercial dentro del territorio nacional y conforme a los acuerdos internacionales suscritos.
+        </p>
+    </div>
+
+    @if (!string.IsNullOrWhiteSpace(Model.CondicionesEspeciales))
+    {
+        <div class="section box">
+            <strong>Condiciones Especiales:</strong>
+            <p>@Model.CondicionesEspeciales</p>
+        </div>
+    }
+
+    <div class="section clearfix">
+        <div class="qr">
+            <img src="@Url.Content("~/Content/images/qr_code.png")" width="100" height="100" alt="QR Code" />
+            <p style="font-size: 8pt;">Código: @Model.CodigoVerificacion</p>
+        </div>
+        <p>
+            Este certificado es válido mientras se mantenga el cumplimiento de los requisitos exigidos por la autoridad aeronáutica. Cualquier alteración o uso indebido será sancionado conforme a la ley.
+        </p>
+    </div>
+
+    <div class="signature">
+        <p>__________________________________________</p>
+        <p><strong>@Model.FirmadoPor</strong></p>
+        <p>Director General de Aviación Civil</p>
+    </div>
+
+    <div class="footer">
+        Dirección General de Aviación Civil – Quito, Ecuador<br />
+        www.aviacioncivil.gob.ec – Tel: (02) 294 4336
+    </div>
+</body>
+</html>

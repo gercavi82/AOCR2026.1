@@ -7,27 +7,17 @@ using CapaModelo;
 
 namespace CapaDatos.DAOs
 {
-    /// <summary>
-    /// DAO de Historial de Estados - AOCR
-    /// Arquitectura: Instancia (Corregido)
-    /// </summary>
     public class HistorialEstadoDAO
     {
-        // =========================================================
-        // Conexión
-        // =========================================================
         private NpgsqlConnection CrearConexion()
         {
             var cs = ConfigurationManager.ConnectionStrings["AOCRConnection"]?.ConnectionString;
             if (string.IsNullOrWhiteSpace(cs))
-                throw new Exception("No existe la cadena de conexión 'AOCRConnection' en el config.");
+                throw new Exception("Cadena de conexión faltante.");
 
             return new NpgsqlConnection(cs);
         }
 
-        // =========================================================
-        // Mapeo
-        // =========================================================
         private HistorialEstado Map(IDataRecord r)
         {
             return new HistorialEstado
@@ -42,13 +32,9 @@ namespace CapaDatos.DAOs
             };
         }
 
-        // =========================================================
-        // 1) Obtener todo el historial por solicitud
-        // =========================================================
         public List<HistorialEstado> ObtenerPorSolicitud(int codigoSolicitud)
         {
             var list = new List<HistorialEstado>();
-
             const string sql = @"
                 SELECT codigohistorial, codigosolicitud, estadoanterior, estadonuevo,
                        codigousuario, observaciones, fechacambio
@@ -61,20 +47,15 @@ namespace CapaDatos.DAOs
             {
                 cmd.Parameters.AddWithValue("@id", codigoSolicitud);
                 cn.Open();
-
                 using (var rd = cmd.ExecuteReader())
                 {
                     while (rd.Read())
                         list.Add(Map(rd));
                 }
             }
-
             return list;
         }
 
-        // =========================================================
-        // 2) Obtener el último cambio de una solicitud
-        // =========================================================
         public HistorialEstado ObtenerUltimoCambio(int codigoSolicitud)
         {
             const string sql = @"
@@ -90,24 +71,18 @@ namespace CapaDatos.DAOs
             {
                 cmd.Parameters.AddWithValue("@id", codigoSolicitud);
                 cn.Open();
-
                 using (var rd = cmd.ExecuteReader())
                 {
                     if (rd.Read())
                         return Map(rd);
                 }
             }
-
             return null;
         }
 
-        // =========================================================
-        // 3) Obtener por estado nuevo
-        // =========================================================
         public List<HistorialEstado> ObtenerPorEstado(string estadoNuevo)
         {
             var list = new List<HistorialEstado>();
-
             const string sql = @"
                 SELECT codigohistorial, codigosolicitud, estadoanterior, estadonuevo,
                        codigousuario, observaciones, fechacambio
@@ -120,24 +95,18 @@ namespace CapaDatos.DAOs
             {
                 cmd.Parameters.AddWithValue("@estado", (object)estadoNuevo ?? DBNull.Value);
                 cn.Open();
-
                 using (var rd = cmd.ExecuteReader())
                 {
                     while (rd.Read())
                         list.Add(Map(rd));
                 }
             }
-
             return list;
         }
 
-        // =========================================================
-        // 4) Obtener por usuario que realizó el cambio
-        // =========================================================
         public List<HistorialEstado> ObtenerPorUsuario(int codigoUsuario)
         {
             var list = new List<HistorialEstado>();
-
             const string sql = @"
                 SELECT codigohistorial, codigosolicitud, estadoanterior, estadonuevo,
                        codigousuario, observaciones, fechacambio
@@ -150,24 +119,18 @@ namespace CapaDatos.DAOs
             {
                 cmd.Parameters.AddWithValue("@user", codigoUsuario);
                 cn.Open();
-
                 using (var rd = cmd.ExecuteReader())
                 {
                     while (rd.Read())
                         list.Add(Map(rd));
                 }
             }
-
             return list;
         }
 
-        // =========================================================
-        // 5) Obtener por rango de fechas
-        // =========================================================
         public List<HistorialEstado> ObtenerPorFecha(DateTime desde, DateTime hasta)
         {
             var list = new List<HistorialEstado>();
-
             const string sql = @"
                 SELECT codigohistorial, codigosolicitud, estadoanterior, estadonuevo,
                        codigousuario, observaciones, fechacambio
@@ -182,14 +145,12 @@ namespace CapaDatos.DAOs
                 cmd.Parameters.AddWithValue("@desde", desde);
                 cmd.Parameters.AddWithValue("@hasta", hasta);
                 cn.Open();
-
                 using (var rd = cmd.ExecuteReader())
                 {
                     while (rd.Read())
                         list.Add(Map(rd));
                 }
             }
-
             return list;
         }
 
@@ -200,63 +161,51 @@ namespace CapaDatos.DAOs
             return ObtenerPorFecha(desde, hasta);
         }
 
-        // =========================================================
-        // 7) Registrar un cambio de estado
-        // =========================================================
-        public bool RegistrarCambio(
-            int codigoSolicitud,
-            string estadoAnterior,
-            string estadoNuevo,
-            int codigoUsuario,
-            string observaciones)
+        public bool RegistrarCambio(int codigoSolicitud, string estadoAnterior, string estadoNuevo, int codigoUsuario, string observaciones)
         {
-            const string sql = @"
-                INSERT INTO aocr_tbhistorialestado
-                (codigosolicitud, estadoanterior, estadonuevo, codigousuario, observaciones, fechacambio)
-                VALUES
-                (@sol, @ant, @nuevo, @user, @obs, @fecha);";
-
-            using (var cn = CrearConexion())
-            using (var cmd = new NpgsqlCommand(sql, cn))
+            try
             {
-                cmd.Parameters.AddWithValue("@sol", codigoSolicitud);
-                cmd.Parameters.AddWithValue("@ant", (object)estadoAnterior ?? DBNull.Value);
-                cmd.Parameters.AddWithValue("@nuevo", (object)estadoNuevo ?? DBNull.Value);
-                cmd.Parameters.AddWithValue("@user", codigoUsuario);
-                cmd.Parameters.AddWithValue("@obs", (object)observaciones ?? DBNull.Value);
-                cmd.Parameters.AddWithValue("@fecha", DateTime.Now);
+                const string sql = @"
+                    INSERT INTO aocr_tbhistorialestado
+                    (codigosolicitud, estadoanterior, estadonuevo, codigousuario, observaciones, fechacambio)
+                    VALUES
+                    (@sol, @ant, @nuevo, @user, @obs, @fecha);";
 
-                cn.Open();
-                return cmd.ExecuteNonQuery() > 0;
+                using (var cn = CrearConexion())
+                using (var cmd = new NpgsqlCommand(sql, cn))
+                {
+                    cmd.Parameters.AddWithValue("@sol", codigoSolicitud);
+                    cmd.Parameters.AddWithValue("@ant", (object)estadoAnterior ?? DBNull.Value);
+                    cmd.Parameters.AddWithValue("@nuevo", (object)estadoNuevo ?? DBNull.Value);
+                    cmd.Parameters.AddWithValue("@user", codigoUsuario);
+                    cmd.Parameters.AddWithValue("@obs", (object)observaciones ?? DBNull.Value);
+                    cmd.Parameters.AddWithValue("@fecha", DateTime.Now);
+
+                    cn.Open();
+                    return cmd.ExecuteNonQuery() > 0;
+                }
+            }
+            catch (Exception ex)
+            {
+                throw new Exception("Error al registrar historial: " + ex.Message);
             }
         }
 
-        // =========================================================
-        // Insertar (Modelo completo)
-        // =========================================================
         public bool Insertar(HistorialEstado modelo)
         {
             if (modelo == null) return false;
 
-            const string sql = @"
-        INSERT INTO aocr_tbhistorialestado
-        (codigosolicitud, estadoanterior, estadonuevo, codigousuario, observaciones, fechacambio)
-        VALUES
-        (@sol, @ant, @nuevo, @user, @obs, @fecha);";
+            // Corrección CS1503: Validar y convertir int? a int
+            if (!modelo.CodigoSolicitud.HasValue || !modelo.CodigoUsuario.HasValue)
+                return false;  // No insertar si valores null
 
-            using (var cn = CrearConexion())
-            using (var cmd = new NpgsqlCommand(sql, cn))
-            {
-                cmd.Parameters.AddWithValue("@sol", modelo.CodigoSolicitud);
-                cmd.Parameters.AddWithValue("@ant", (object)modelo.EstadoAnterior ?? DBNull.Value);
-                cmd.Parameters.AddWithValue("@nuevo", (object)modelo.EstadoNuevo ?? DBNull.Value);
-                cmd.Parameters.AddWithValue("@user", modelo.CodigoUsuario);
-                cmd.Parameters.AddWithValue("@obs", (object)modelo.Observaciones ?? DBNull.Value);
-                cmd.Parameters.AddWithValue("@fecha", modelo.FechaCambio == DateTime.MinValue ? DateTime.Now : modelo.FechaCambio);
-
-                cn.Open();
-                return cmd.ExecuteNonQuery() > 0;
-            }
+            return RegistrarCambio(
+                modelo.CodigoSolicitud.Value,  // Conversión segura
+                modelo.EstadoAnterior,
+                modelo.EstadoNuevo,
+                modelo.CodigoUsuario.Value,   // Conversión segura
+                modelo.Observaciones
+            );
         }
     }
 }

@@ -1,0 +1,43 @@
+﻿@model List<CapaModelo.ListaChequeo>
+@{
+    ViewBag.Title = "Lista de Chequeo";
+    Layout = "~/Views/Shared/_LayoutAOCR.cshtml";
+}
+
+<h2 class="mb-3">Lista de Chequeo</h2>
+
+@if (TempData["Error"] != null)
+{
+    <div class="alert alert-danger">@TempData["Error"]</div>
+}
+
+@if (Model != null && Model.Count > 0)
+{
+    <table class="table table-bordered table-striped">
+        <thead class="table-dark">
+            <tr>
+                <th>#</th>
+                <th>Título</th>
+                <th>Responsable</th>
+                <th>Fecha de Registro</th>
+                <th>Estado</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var item in Model)
+            {
+                <tr>
+                    <td>@item.Codigo</td>
+                    <td>@item.Titulo</td>
+                    <td>@item.Responsable</td>
+                    <td>@item.FechaRegistro.ToString("yyyy-MM-dd")</td>
+                    <td>@item.Estado</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+else
+{
+    <div class="alert alert-info">No hay elementos en la lista de chequeo.</div>
+}

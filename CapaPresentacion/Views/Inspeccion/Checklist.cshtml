@@ -1,0 +1,110 @@
+﻿@model IEnumerable<CapaModelo.ChecklistItem>
+@{
+    ViewBag.Title = "Ejecución de Checklist";
+    Layout = "~/Views/Shared/_LayoutAOCR.cshtml";
+    int solicitudId = ViewBag.SolicitudId;
+}
+
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h2><i class="bi bi-card-checklist"></i> Inspección Técnica: Checklist</h2>
+        <span class="badge bg-primary">Solicitud ID: @solicitudId</span>
+    </div>
+
+    <div class="card shadow-sm">
+        <div class="card-header bg-dark text-white">
+            <h5 class="mb-0">Evaluación de Cumplimiento Normativo</h5>
+        </div>
+        <div class="card-body">
+            <form id="formChecklist">
+                <input type="hidden" id="solicitudId" value="@solicitudId" />
+
+                <table class="table table-hover align-middle" id="tablaChecklist">
+                    <thead class="table-light">
+                        <tr>
+                            <th style="width: 5%">#</th>
+                            <th style="width: 40%">Descripción del Ítem</th>
+                            <th style="width: 25%">Resultado</th>
+                            <th style="width: 30%">Observaciones / Hallazgos</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var item in Model)
+                        {
+                            <tr class="item-row" data-id="@item.CodigoItem">
+                                <td><strong>@item.ItemNumero</strong></td>
+                                <td>@item.Descripcion</td>
+                                <td>
+                                    <div class="btn-group" role="group">
+                                        <input type="radio" class="btn-check" name="cumple_@item.CodigoItem" id="si_@item.CodigoItem" value="true" autocomplete="off">
+                                        <label class="btn btn-outline-success btn-sm" for="si_@item.CodigoItem">Sí</label>
+
+                                        <input type="radio" class="btn-check" name="cumple_@item.CodigoItem" id="no_@item.CodigoItem" value="false" autocomplete="off">
+                                        <label class="btn btn-outline-danger btn-sm" for="no_@item.CodigoItem">No</label>
+
+                                        <input type="radio" class="btn-check" name="cumple_@item.CodigoItem" id="na_@item.CodigoItem" value="" autocomplete="off" checked>
+                                        <label class="btn btn-outline-secondary btn-sm" for="na_@item.CodigoItem">N/A</label>
+                                    </div>
+                                </td>
+                                <td>
+                                    <textarea class="form-control form-control-sm txt-obs" rows="1" placeholder="Detalle hallazgos..."></textarea>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+
+                <div class="text-end mt-4">
+                    <a href="@Url.Action("Index", "Inspeccion")" class="btn btn-secondary">Cancelar</a>
+                    <button type="button" id="btnGuardar" class="btn btn-primary px-5">
+                        <i class="bi bi-save"></i> Guardar Checklist
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        $(document).ready(function () {
+            $("#btnGuardar").click(function () {
+                let items = [];
+                let solicitudId = $("#solicitudId").val();
+
+                // Recolectar datos de cada fila
+                $(".item-row").each(function () {
+                    let row = $(this);
+                    let itemId = row.data("id");
+                    let cumpleVal = row.find('input[type="radio"]:checked').val();
+
+                    items.push({
+                        CodigoSolicitud: solicitudId,
+                        CodigoItem: itemId,
+                        Cumple: cumpleVal === "" ? null : (cumpleVal === "true"),
+                        Observaciones: row.find(".txt-obs").val()
+                    });
+                });
+
+                // Envío masivo mediante AJAX
+                $.ajax({
+                    url: '@Url.Action("GuardarChecklist", "Inspeccion")',
+                    type: 'POST',
+                    contentType: 'application/json',
+                    data: JSON.stringify(items),
+                    success: function (response) {
+                        if (response.success) {
+                            alert("¡Checklist guardado exitosamente!");
+                            window.location.href = '@Url.Action("Detalle", "Inspeccion")/' + solicitudId;
+                        } else {
+                            alert("Error: " + response.message);
+                        }
+                    },
+                    error: function () {
+                        alert("Error crítico al conectar con el servidor.");
+                    }
+                });
+            });
+        });
+    </script>
+}
