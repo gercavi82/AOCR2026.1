@@ -1,102 +1,101 @@
-﻿using System;
+﻿using CapaModelo;
+using Npgsql;
+using System;
 using System.Collections.Generic;
 using System.Configuration;
-using System.Data;
-using Npgsql;
-using CapaModelo;
 
 namespace CapaDatos.DAOs
 {
-    public class ChecklistDAO
+    public static class ChecklistDAO
     {
-        public static string ConnectionString =>
-            ConfigurationManager.ConnectionStrings["AOCRConnection"]?.ConnectionString
-            ?? throw new InvalidOperationException("Conexión no configurada.");
+        // Usamos una propiedad para no repetir la cadena de conexión
+        private static string ConnectionString => ConfigurationManager.ConnectionStrings["AOCRConnection"].ConnectionString;
 
-        // ========================================================
-        // MÉTODOS SOLICITADOS POR BL (CORREGIDOS)
-        // ========================================================
-
-        public static List<Checklist> ObtenerActivos()
+        public static void Insertar(ChecklistItem item)
         {
-            var lista = new List<Checklist>();
+            if (item == null) throw new ArgumentNullException(nameof(item));
+
             using (var cn = new NpgsqlConnection(ConnectionString))
             {
-                const string sql = "SELECT * FROM aocr_tbchecklist WHERE activo = true";
-                var cmd = new NpgsqlCommand(sql, cn);
                 cn.Open();
-                using (var rd = cmd.ExecuteReader())
+                string sql = @"INSERT INTO checklist (codigosolicitud, descripcion, cumple) 
+                               VALUES (@CodigoSolicitud, @Descripcion, @Cumple);";
+
+                using (var cmd = new NpgsqlCommand(sql, cn))
                 {
-                    while (rd.Read()) { /* Tu lógica de mapeo */ }
+                    cmd.Parameters.AddWithValue("@CodigoSolicitud", item.CodigoSolicitud);
+                    cmd.Parameters.AddWithValue("@Descripcion", (object)item.Descripcion ?? DBNull.Value);
+
+                    // CORRECCIÓN: Manejo seguro de Nullable bool
+                    cmd.Parameters.AddWithValue("@Cumple", item.Cumple.HasValue ? (object)item.Cumple.Value : DBNull.Value);
+
+                    cmd.ExecuteNonQuery();
+                }
+            }
+        }
+
+        public static List<ChecklistItem> ObtenerPorSolicitud(int codigoSolicitud)
+        {
+            var lista = new List<ChecklistItem>();
+
+            using (var cn = new NpgsqlConnection(ConnectionString))
+            {
+                cn.Open();
+                string sql = @"SELECT codigosolicitud, descripcion, cumple FROM checklist WHERE codigosolicitud = @CodigoSolicitud;";
+
+                using (var cmd = new NpgsqlCommand(sql, cn))
+                {
+                    cmd.Parameters.AddWithValue("@CodigoSolicitud", codigoSolicitud);
+                    using (var dr = cmd.ExecuteReader())
+                    {
+                        while (dr.Read())
+                        {
+                            lista.Add(new ChecklistItem
+                            {
+                                CodigoSolicitud = dr.GetInt32(0),
+                                Descripcion = dr.IsDBNull(1) ? null : dr.GetString(1),
+                                // CORRECCIÓN: Cast explícito a bool?
+                                Cumple = dr.IsDBNull(2) ? (bool?)null : dr.GetBoolean(2)
+                            });
+                        }
+                    }
                 }
             }
             return lista;
         }
 
-        // FIX CS0117: ObtenerPorId
-        public static Checklist ObtenerPorId(int id)
+        public static Dictionary<string, int> ObtenerEstadisticasPorSolicitud(int codigoSolicitud)
         {
+            var resultado = new Dictionary<string, int>
+            {
+                { "Cumplen", 0 }, { "NoCumplen", 0 }, { "SinEvaluar", 0 }, { "Total", 0 }
+            };
+
             using (var cn = new NpgsqlConnection(ConnectionString))
             {
-                const string sql = "SELECT * FROM aocr_tbchecklist WHERE codigo_checklist = @id";
-                var cmd = new NpgsqlCommand(sql, cn);
-                cmd.Parameters.AddWithValue("@id", id);
                 cn.Open();
-                // Retornar objeto mapeado
-                return null; // Cambiar por tu mapeador
+                string sql = @"SELECT cumple FROM checklist WHERE codigosolicitud = @CodigoSolicitud;";
+
+                using (var cmd = new NpgsqlCommand(sql, cn))
+                {
+                    cmd.Parameters.AddWithValue("@CodigoSolicitud", codigoSolicitud);
+                    using (var dr = cmd.ExecuteReader())
+                    {
+                        while (dr.Read())
+                        {
+                            if (dr.IsDBNull(0))
+                                resultado["SinEvaluar"]++;
+                            else if (dr.GetBoolean(0))
+                                resultado["Cumplen"]++;
+                            else
+                                resultado["NoCumplen"]++;
+
+                            resultado["Total"]++;
+                        }
+                    }
+                }
             }
+            return resultado;
         }
-
-        // FIX CS0117: ObtenerPorSolicitud
-        public static List<ChecklistItem> ObtenerPorSolicitud(int codigoSolicitud)
-        {
-            var lista = new List<ChecklistItem>();
-            using (var cn = new NpgsqlConnection(ConnectionString))
-            {
-                const string sql = "SELECT * FROM aocr_tbchecklist_item WHERE codigo_solicitud = @id";
-                var cmd = new NpgsqlCommand(sql, cn);
-                cmd.Parameters.AddWithValue("@id", codigoSolicitud);
-                cn.Open();
-                using (var rd = cmd.ExecuteReader()) { /* Mapear */ }
-            }
-            return lista;
-        }
-
-        // FIX CS0117: ObtenerEstadisticasPorSolicitud
-        public static Dictionary<string, int> ObtenerEstadisticasPorSolicitud(int id)
-        {
-            var stats = new Dictionary<string, int> { { "Cumple", 0 }, { "NoCumple", 0 }, { "Pendiente", 0 } };
-            // Tu lógica de conteo aquí...
-            return stats;
-        }
-
-        // FIX CS1501: EliminarLogico con 2 argumentos
-        public static bool EliminarLogico(int id, string usuario)
-        {
-            using (var cn = new NpgsqlConnection(ConnectionString))
-            {
-                const string sql = "UPDATE aocr_tbchecklist SET activo = false WHERE codigo_checklist = @id";
-                var cmd = new NpgsqlCommand(sql, cn);
-                cmd.Parameters.AddWithValue("@id", id);
-                cn.Open();
-                return cmd.ExecuteNonQuery() > 0;
-            }
-        }
-
-        // FIX CS0117: InsertarResultado
-        public static bool InsertarResultado(ChecklistItem item, NpgsqlConnection cn, NpgsqlTransaction trans)
-        {
-            const string sql = "INSERT INTO aocr_tbchecklist_item (codigo_solicitud, descripcion, cumple) VALUES (@sol, @des, @cum)";
-            using (var cmd = new NpgsqlCommand(sql, cn, trans))
-            {
-                cmd.Parameters.AddWithValue("@sol", item.CodigoSolicitud);
-                cmd.Parameters.AddWithValue("@des", item.Descripcion);
-                cmd.Parameters.AddWithValue("@cum", (object)item.Cumple ?? DBNull.Value);
-                return cmd.ExecuteNonQuery() > 0;
-            }
-        }
-
-        public static bool Insertar(Checklist obj) { /* Tu código */ return true; }
-        public static bool Actualizar(Checklist obj) { /* Tu código */ return true; }
     }
 }

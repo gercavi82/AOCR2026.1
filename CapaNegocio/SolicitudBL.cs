@@ -1,199 +1,187 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Transactions;
 using CapaDatos.DAOs;
 using CapaModelo;
 
 namespace CapaNegocio
 {
+    /// <summary>
+    /// Lógica de Negocio para el Sistema AOCR
+    /// Maneja las validaciones y el flujo entre la Presentación y los Datos.
+    /// </summary>
     public class SolicitudBL
     {
         private readonly SolicitudAOCRDAO _solicitudDAO;
         private readonly HistorialEstadoDAO _historialDAO;
-        private readonly DocumentoDAO _documentoDAO;
-
-        private static readonly HashSet<string> EstadosPermitidos = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
-        {
-            "PENDIENTE",
-            "EN_REVISION",
-            "OBSERVADO",
-            "APROBADO",
-            "RECHAZADO",
-            "ANULADO"
-        };
 
         public SolicitudBL()
         {
             _solicitudDAO = new SolicitudAOCRDAO();
             _historialDAO = new HistorialEstadoDAO();
-            _documentoDAO = new DocumentoDAO();
         }
 
         #region Consultas y Listados
 
         public List<SolicitudAOCR> ObtenerTodasActivas()
-            => _solicitudDAO.ListarActivas();
-
-        public List<SolicitudAOCR> ObtenerTodos()
-            => _solicitudDAO.ObtenerTodos();
-
-        public List<SolicitudAOCR> ObtenerPorUsuario(int codigoUsuario)
         {
-            if (codigoUsuario <= 0) return new List<SolicitudAOCR>();
-            return _solicitudDAO.ObtenerPorUsuario(codigoUsuario);
+            return _solicitudDAO.ListarActivas();
         }
 
+        // Resuelve error CS1061 en FinancieroController
         public SolicitudAOCR ObtenerDetalle(int codigoSolicitud)
         {
             if (codigoSolicitud <= 0) return null;
             return _solicitudDAO.ObtenerPorId(codigoSolicitud);
         }
 
-        #endregion
-
-        #region Historial
-
-        /// <summary>
-        /// Firma REAL en tu DAO: RegistrarCambio(int codigoSolicitud, string anterior, string nuevo, int usuario, string obs)
-        /// </summary>
-        private void RegistrarHistorial(int codigoSolicitud, string estadoAnterior, string estadoNuevo, int codigoUsuario, string observacion)
+        public List<SolicitudAOCR> ObtenerPorUsuario(int codigoUsuario)
         {
-            _historialDAO.RegistrarCambio(
-                codigoSolicitud,                 // ✅ int
-                estadoAnterior,
-                estadoNuevo,
-                codigoUsuario,                   // ✅ int
-                observacion ?? ""
-            );
+            return _solicitudDAO.ObtenerPorUsuario(codigoUsuario);
         }
 
         #endregion
 
-        #region Creación / Guardado Integral
+        #region Operaciones de Creación y Edición
 
-        /// <summary>
-        /// Compatibilidad con Controller: crea una solicitud básica.
-        /// </summary>
-        public bool Crear(SolicitudAOCR solicitud, int usuarioId, out string mensaje)
-        {
-            int id = GuardarSolicitudCompleta(solicitud, null, usuarioId, out mensaje);
-            return id > 0;
-        }
-
-        /// <summary>
-        /// Guarda solicitud + aeronaves + historial dentro de una transacción.
-        /// </summary>
-        public int GuardarSolicitudCompleta(SolicitudAOCR modelo, List<Aeronave> aeronaves, int usuarioId, out string mensaje)
+        // Resuelve error CS1061 en SolicitudController
+        public bool Crear(SolicitudAOCR modelo, int codigoUsuario, out string mensaje)
         {
             mensaje = "";
-
-            if (usuarioId <= 0)
+            try
             {
-                mensaje = "Usuario inválido.";
-                return 0;
-            }
+                if (modelo == null) { mensaje = "Datos de solicitud inválidos."; return false; }
 
-            var (okSol, errSol) = ValidarSolicitud(modelo);
-            if (!okSol)
-            {
-                mensaje = errSol;
-                return 0;
-            }
+                modelo.CodigoUsuario = codigoUsuario;
+                modelo.Estado = "BORRADOR";
+                modelo.FechaSolicitud = DateTime.Now;
+                modelo.CreatedAt = DateTime.Now;
+                modelo.CreatedBy = codigoUsuario.ToString();
 
-            var (okAer, errAer) = ValidarAeronaves(aeronaves);
-            if (!okAer)
-            {
-                mensaje = errAer;
-                return 0;
-            }
+                if (string.IsNullOrWhiteSpace(modelo.NumeroSolicitud))
+                    modelo.NumeroSolicitud = GenerarNumeroSolicitud(DateTime.Now.Year);
 
-            var txOptions = new TransactionOptions
-            {
-                IsolationLevel = IsolationLevel.ReadCommitted,
-                Timeout = TimeSpan.FromSeconds(60)
-            };
+                int id = _solicitudDAO.InsertarConReturn(modelo);
 
-            using (var scope = new TransactionScope(TransactionScopeOption.Required, txOptions))
-            {
-                try
+                if (id > 0)
                 {
-                    // Valores controlados por servidor (seguridad / integridad)
-                    modelo.CodigoUsuario = usuarioId;
-                    modelo.FechaSolicitud = DateTime.Now;
-                    modelo.Estado = "PENDIENTE";
-
-                    if (string.IsNullOrWhiteSpace(modelo.NumeroSolicitud))
-                        modelo.NumeroSolicitud = GenerarNumeroSolicitudSeguro(DateTime.Now.Year);
-
-                    // 1) Cabecera
-                    int idSolicitud = _solicitudDAO.InsertarConReturn(modelo);
-                    if (idSolicitud <= 0)
-                    {
-                        mensaje = "No se pudo registrar la solicitud.";
-                        return 0;
-                    }
-
-                    // 2) Detalle aeronaves (DAO estático según tu proyecto)
-                    if (aeronaves != null && aeronaves.Any())
-                    {
-                        foreach (var nave in aeronaves)
-                        {
-                            if (nave == null) continue;
-                            nave.CodigoSolicitud = idSolicitud;
-                            AeronaveDAO.Insertar(nave);
-                        }
-                    }
-
-                    // 3) Historial inicial
-                    RegistrarHistorial(idSolicitud, null, "PENDIENTE", usuarioId, "Registro inicial del trámite.");
-
-                    scope.Complete();
-                    mensaje = "Trámite registrado con éxito.";
-                    return idSolicitud;
+                    _historialDAO.RegistrarCambio(id, null, "BORRADOR", codigoUsuario, "Creación inicial del trámite.");
+                    mensaje = "Solicitud creada correctamente.";
+                    return true;
                 }
-                catch (Exception ex)
-                {
-                    mensaje = "Error al registrar (transacción revertida): " + ex.Message;
-                    return 0;
-                }
+
+                mensaje = "No se pudo insertar el registro en la base de datos.";
+                return false;
             }
+            catch (Exception ex)
+            {
+                mensaje = "Error en Capa de Negocio: " + ex.Message;
+                return false;
+            }
+        }
+
+        // Resuelve error CS1061 en FinancieroController
+        public bool Actualizar(SolicitudAOCR modelo, int codigoUsuario, out string mensaje)
+        {
+            mensaje = "";
+            var actual = _solicitudDAO.ObtenerPorId(modelo.CodigoSolicitud);
+
+            if (actual == null) { mensaje = "Solicitud no encontrada."; return false; }
+
+            modelo.UpdatedAt = DateTime.Now;
+            modelo.UpdatedBy = codigoUsuario.ToString();
+
+            // Aquí llamamos al método del DAO que actualiza los campos generales
+            bool ok = _solicitudDAO.ActualizarGeneral(modelo);
+
+            if (ok) mensaje = "Cambios guardados con éxito.";
+            else mensaje = "Error al intentar actualizar los datos.";
+
+            return ok;
         }
 
         #endregion
 
-        #region Actualización / Permisos
+        #region Gestión de Flujos y Estados
 
+        // Resuelve error CS1061 en SolicitudController
+        public bool Enviar(int codigoSolicitud, int codigoUsuario, bool esAdmin, out string mensaje)
+        {
+            mensaje = "";
+            var solicitud = _solicitudDAO.ObtenerPorId(codigoSolicitud);
+
+            if (solicitud == null) { mensaje = "Trámite no encontrado."; return false; }
+            if (!esAdmin && solicitud.CodigoUsuario != codigoUsuario) { mensaje = "No tiene permisos sobre esta solicitud."; return false; }
+
+            if (solicitud.Estado != "BORRADOR") { mensaje = "Solo puede enviar solicitudes en estado BORRADOR."; return false; }
+
+            bool ok = _solicitudDAO.CambiarEstado(codigoSolicitud, "ENVIADO", codigoUsuario, "El usuario ha enviado la solicitud a revisión.");
+            mensaje = ok ? "Solicitud enviada a la DGAC." : "Error al procesar el envío.";
+            return ok;
+        }
+
+        public bool AsignarTecnico(int codigoSolicitud, int codigoTecnico, int codigoUsuario, out string mensaje)
+        {
+            mensaje = "";
+            bool ok = _solicitudDAO.ActualizarTecnico(codigoSolicitud, codigoTecnico, codigoUsuario);
+
+            if (ok)
+            {
+                _historialDAO.RegistrarCambio(codigoSolicitud, "ASIGNADO", "ASIGNADO", codigoUsuario, $"Técnico asignado (ID: {codigoTecnico})");
+                mensaje = "Inspector asignado correctamente.";
+            }
+            else { mensaje = "No se pudo realizar la asignación."; }
+
+            return ok;
+        }
+
+        // Resuelve error CS1061 en SolicitudController (Baja lógica)
+        public bool EliminarSoft(int codigoSolicitud, int codigoUsuario, out string mensaje)
+        {
+            mensaje = "";
+            var solicitud = _solicitudDAO.ObtenerPorId(codigoSolicitud);
+            if (solicitud == null) { mensaje = "Registro no encontrado."; return false; }
+
+            bool ok = _solicitudDAO.CambiarEstado(codigoSolicitud, "ELIMINADO", codigoUsuario, "Eliminación lógica solicitada por el usuario.");
+            mensaje = ok ? "Registro eliminado con éxito." : "Error al intentar eliminar.";
+            return ok;
+        }
+
+        // ==========================================
+        // Actualizar con 4 argumentos (Resuelve Error CS1501)
+        // ==========================================
         public bool Actualizar(SolicitudAOCR modelo, int codigoUsuario, out string mensaje, bool esAdmin = false)
         {
             mensaje = "";
-
-            if (codigoUsuario <= 0) { mensaje = "Usuario inválido."; return false; }
-            if (modelo == null || modelo.CodigoSolicitud <= 0) { mensaje = "Datos inválidos."; return false; }
-
             try
             {
                 var actual = _solicitudDAO.ObtenerPorId(modelo.CodigoSolicitud);
-                if (actual == null) { mensaje = "Solicitud no encontrada."; return false; }
-
-                // Seguridad: propietario o admin
-                if (!esAdmin && actual.CodigoUsuario != codigoUsuario)
+                if (actual == null)
                 {
-                    mensaje = "No tiene permisos para modificar este registro.";
+                    mensaje = "Solicitud no encontrada.";
                     return false;
                 }
 
-                // Blindaje: no permitir cambio de dueño / número desde UI
-                modelo.CodigoUsuario = actual.CodigoUsuario;
-                if (!string.IsNullOrWhiteSpace(actual.NumeroSolicitud))
-                    modelo.NumeroSolicitud = actual.NumeroSolicitud;
+                // Validación de seguridad: Solo el dueño o un Admin pueden editar
+                if (!esAdmin && actual.CodigoUsuario != codigoUsuario)
+                {
+                    mensaje = "No tiene permisos para modificar esta solicitud.";
+                    return false;
+                }
 
-                // Auditoría
+                // Regla de negocio: Solo editar si está en BORRADOR (opcional, según tu flujo)
+                if (!esAdmin && actual.Estado != "BORRADOR")
+                {
+                    mensaje = "La solicitud ya no se puede editar porque está en estado: " + actual.Estado;
+                    return false;
+                }
+
                 modelo.UpdatedAt = DateTime.Now;
                 modelo.UpdatedBy = codigoUsuario.ToString();
 
                 bool ok = _solicitudDAO.ActualizarGeneral(modelo);
-                mensaje = ok ? "Datos actualizados correctamente." : "No se pudo actualizar el registro.";
+                if (ok) mensaje = "Solicitud actualizada correctamente.";
+
                 return ok;
             }
             catch (Exception ex)
@@ -202,91 +190,20 @@ namespace CapaNegocio
                 return false;
             }
         }
-
         #endregion
 
-        #region Cambio de estado
+        #region Métodos de Apoyo
 
-        public bool CambiarEstado(int id, string nuevoEstado, int usuarioId, string observaciones, out string mensaje)
+        public string GenerarNumeroSolicitud(int year)
         {
-            mensaje = "";
-
-            if (id <= 0) { mensaje = "ID inválido."; return false; }
-            if (usuarioId <= 0) { mensaje = "Usuario inválido."; return false; }
-
-            nuevoEstado = (nuevoEstado ?? "").Trim().ToUpperInvariant();
-            if (!EstadosPermitidos.Contains(nuevoEstado))
-            {
-                mensaje = "Estado no permitido.";
-                return false;
-            }
-
-            try
-            {
-                // Si tu DAO devuelve bool, está OK
-                bool ok = _solicitudDAO.CambiarEstado(id, nuevoEstado, usuarioId, observaciones ?? "");
-                if (!ok)
-                {
-                    mensaje = "No se pudo cambiar el estado.";
-                    return false;
-                }
-
-                // Historial (si quieres estadoAnterior, puedes consultarlo antes)
-                RegistrarHistorial(id, null, nuevoEstado, usuarioId, observaciones);
-
-                mensaje = "Estado actualizado.";
-                return true;
-            }
-            catch (Exception ex)
-            {
-                mensaje = "Error al cambiar estado: " + ex.Message;
-                return false;
-            }
-        }
-
-        #endregion
-
-        #region Validaciones / Apoyo
-
-        private (bool ok, string error) ValidarSolicitud(SolicitudAOCR modelo)
-        {
-            if (modelo == null) return (false, "Datos inválidos.");
-
-            if (string.IsNullOrWhiteSpace(modelo.TipoSolicitud))
-                return (false, "Debe seleccionar el tipo de solicitud.");
-
-            if (string.IsNullOrWhiteSpace(modelo.TipoOperacion))
-                return (false, "Debe seleccionar el tipo de operación.");
-
-            if (!string.IsNullOrWhiteSpace(modelo.Estado) && !EstadosPermitidos.Contains(modelo.Estado))
-                return (false, "Estado inválido.");
-
-            return (true, "");
-        }
-
-        private (bool ok, string error) ValidarAeronaves(List<Aeronave> aeronaves)
-        {
-            if (aeronaves == null) return (true, "");
-
-            if (aeronaves.Count > 50)
-                return (false, "Demasiadas aeronaves (límite 50).");
-
-            foreach (var a in aeronaves)
-            {
-                if (a == null) return (false, "Lista de aeronaves inválida.");
-                if (string.IsNullOrWhiteSpace(a.Matricula))
-                    return (false, "Toda aeronave debe tener matrícula.");
-            }
-
-            return (true, "");
-        }
-
-        public string GenerarNumeroSolicitudSeguro(int year)
-        {
-            // Producción real: se recomienda SEQUENCE/tabla correlativos + bloqueo
-            var total = _solicitudDAO.ObtenerTodos().Count(s => s.FechaSolicitud.Year == year);
+            var total = _solicitudDAO.ListarActivas().Count(s => s.FechaSolicitud.Year == year);
             return $"AOCR-{year}-{(total + 1):D5}";
         }
+        public List<SolicitudAOCR> ObtenerTodos()
+        {
+            return _solicitudDAO.ObtenerTodos();
+        }
+
 
         #endregion
     }

@@ -1,5 +1,4 @@
-﻿@model CapaModelo.Checklist
-
+﻿@model Checklist
 @{
     ViewData["Title"] = "Editar Checklist";
 }
@@ -13,27 +12,28 @@
                 </div>
                 <div class="card-body">
                     <form asp-action="Editar" method="post">
-                        <input asp-for="CodigoChecklist" type="hidden" />
-                        <input asp-for="CreatedAt" type="hidden" />
+                        <input asp-for="Id" type="hidden" />
+                        <input asp-for="FechaCreacion" type="hidden" />
 
                         <div class="row">
                             <div class="col-md-8 mb-3">
-                                <label asp-for="Seccion" class="form-label">Título del Checklist *</label>
-                                <input asp-for="Seccion" class="form-control" required />
-                                <span asp-validation-for="Seccion" class="text-danger"></span>
+                                <label asp-for="Titulo" class="form-label">Título del Checklist *</label>
+                                <input asp-for="Titulo" class="form-control" required />
+                                <span asp-validation-for="Titulo" class="text-danger"></span>
                             </div>
                             <div class="col-md-4 mb-3">
-                                <label asp-for="CreatedBy" class="form-label">Usuario Responsable *</label>
-                                <select asp-for="CreatedBy" class="form-select" required>
+                                <label asp-for="UsuarioId" class="form-label">Usuario Responsable *</label>
+                                <select asp-for="UsuarioId" class="form-select" required>
                                     <option value="">Seleccione...</option>
                                     @foreach (var usuario in ViewBag.Usuarios)
                                     {
-                                        <option value="@usuario.Id" @(usuario.Id == Model.CreatedBy ? "selected" : "")>
+                                        <option value="@usuario.Id"
+                                                @(usuario.Id == Model.UsuarioId ? "selected" : "")>
                                             @usuario.Nombres @usuario.Apellidos
                                         </option>
                                     }
                                 </select>
-                                <span asp-validation-for="CreatedBy" class="text-danger"></span>
+                                <span asp-validation-for="UsuarioId" class="text-danger"></span>
                             </div>
                         </div>
 
@@ -47,8 +47,7 @@
                             <div class="col-md-6 mb-3">
                                 <label class="form-label">Fecha de Creación</label>
                                 <input type="text" class="form-control"
-                                       value="@(Model.CreatedAt?.ToString("dd/MM/yyyy HH:mm") ?? "N/D")"
-                                       readonly />
+                                       value="@Model.FechaCreacion.ToString("dd/MM/yyyy HH:mm")" readonly>
                             </div>
                             <div class="col-md-6 mb-3">
                                 <label class="form-label">Estado</label>

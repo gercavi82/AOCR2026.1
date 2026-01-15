@@ -12,101 +12,86 @@ namespace CapaPresentacion.Controllers
         private readonly CertificadoBL _bl = new CertificadoBL();
 
         // ============================================================
-        // MOSTRAR DETALLE DEL CERTIFICADO POR SOLICITUD
+        //        MOSTRAR DETALLE DEL CERTIFICADO POR SOLICITUD
         // ============================================================
         public ActionResult Detalle(int solicitudId)
         {
             var certificado = _bl.ObtenerPorSolicitud(solicitudId);
-            ViewBag.SolicitudId = solicitudId;
 
-            if (certificado == null)
-                TempData["Info"] = "Aún no se ha generado el certificado.";
+            ViewBag.SolicitudId = solicitudId;
 
             return View(certificado);
         }
 
         // ============================================================
-        // GENERAR CERTIFICADO CON FIRMA OBLIGATORIA
+        //        GENERAR CERTIFICADO AUTOMÁTICAMENTE
         // ============================================================
-        [HttpPost]
-        [ValidateAntiForgeryToken]
-        public ActionResult Generar(int solicitudId, string firmadoPor)
+        public ActionResult Generar(int solicitudId)
         {
-            if (string.IsNullOrWhiteSpace(firmadoPor))
-            {
-                TempData["Error"] = "El nombre del firmante es obligatorio para generar el certificado.";
-                return RedirectToAction("Detalle", new { solicitudId });
-            }
+            string usuario = User?.Identity?.Name ?? "Sistema";
 
-            try
-            {
-                // Validación: ¿Ya existe certificado?
-                var existente = _bl.ObtenerPorSolicitud(solicitudId);
-                if (existente != null)
-                {
-                    TempData["Error"] = "Ya existe un certificado generado para esta solicitud.";
-                    return RedirectToAction("Detalle", new { solicitudId });
-                }
+            int id = _bl.GenerarCertificado(solicitudId, usuario);
 
-                int id = _bl.GenerarCertificado(solicitudId, firmadoPor.Trim());
-
-                TempData["OK"] = "Certificado generado exitosamente.";
-                return RedirectToAction("Detalle", new { solicitudId });
-            }
-            catch (Exception ex)
-            {
-                TempData["Error"] = "Error al generar certificado: " + ex.Message;
-                return RedirectToAction("Detalle", new { solicitudId });
-            }
+            return RedirectToAction("Detalle", new { solicitudId });
         }
 
         // ============================================================
-        // SUBIR PDF DE CERTIFICADO FIRMADO DIGITALMENTE
+        //                   SUBIR PDF DE CERTIFICADO
         // ============================================================
         [HttpPost]
-        [ValidateAntiForgeryToken]
         public ActionResult SubirPDF(int id, int solicitudId, HttpPostedFileBase archivo)
         {
             try
             {
                 if (archivo == null || archivo.ContentLength == 0)
-                    throw new Exception("Debe seleccionar un archivo PDF.");
+                {
+                    TempData["Error"] = "Debe seleccionar un archivo PDF.";
+                    return RedirectToAction("Detalle", new { solicitudId });
+                }
 
+                // Validar extensión
                 string extension = Path.GetExtension(archivo.FileName).ToLower();
                 if (extension != ".pdf")
-                    throw new Exception("Solo se permiten archivos con extensión PDF.");
+                {
+                    TempData["Error"] = "Solo se permiten archivos PDF.";
+                    return RedirectToAction("Detalle", new { solicitudId });
+                }
 
+                // Construcción de ruta segura
                 string carpeta = "~/PDF/Certificados/";
-                string nombreArchivo = $"certificado_{id}.pdf";
+                string nombreArchivo = $"{id}.pdf";
                 string rutaRelativa = carpeta + nombreArchivo;
+
                 string rutaFisica = Server.MapPath(rutaRelativa);
 
+                // Crear carpeta si no existe
                 string carpetaFisica = Path.GetDirectoryName(rutaFisica);
                 if (!Directory.Exists(carpetaFisica))
                     Directory.CreateDirectory(carpetaFisica);
 
+                // Guardar archivo
                 archivo.SaveAs(rutaFisica);
 
-                bool actualizado = _bl.SubirPDF(id, rutaRelativa);
-                if (!actualizado)
-                    throw new Exception("No se pudo actualizar la ruta del certificado en la base de datos.");
+                // Registrar en BD
+                _bl.SubirPDF(id, rutaRelativa);
 
-                TempData["OK"] = "Archivo PDF subido y registrado correctamente.";
+                TempData["OK"] = "Archivo PDF subido correctamente.";
             }
             catch (Exception ex)
             {
-                TempData["Error"] = "Error al subir el PDF: " + ex.Message;
+                TempData["Error"] = "Error al subir PDF: " + ex.Message;
             }
 
             return RedirectToAction("Detalle", new { solicitudId });
         }
 
         // ============================================================
-        // DESCARGAR CERTIFICADO EN PDF
+        //                   DESCARGAR PDF DE CERTIFICADO
         // ============================================================
         public ActionResult DescargarPDF(int id)
         {
             var cert = _bl.Obtener(id);
+
             if (cert == null)
                 return Content("El certificado no existe.");
 
@@ -114,10 +99,11 @@ namespace CapaPresentacion.Controllers
                 return Content("El archivo PDF no está registrado.");
 
             string rutaFisica = Server.MapPath(cert.RutaPdf);
+
             if (!System.IO.File.Exists(rutaFisica))
                 return Content("El archivo PDF no se encuentra en el servidor.");
 
-            return File(rutaFisica, "application/pdf", $"AOCR-{cert.CodigoCertificado}.pdf");
+            return File(rutaFisica, "application/pdf", "certificado.pdf");
         }
     }
 }
