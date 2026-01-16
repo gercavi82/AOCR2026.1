@@ -193,8 +193,8 @@
     <Compile Include="Controllers\InspeccionController.cs" />
     <Compile Include="Controllers\TecnicoController.cs" />
     <Compile Include="Controllers\6_CertificadoController.cs" />
-    <Compile Include="Controllers\7_DocumentoController.cs" />
-    <Compile Include="Controllers\8_PagoController.cs" />
+    <Compile Include="Controllers\DocumentoController.cs" />
+    <Compile Include="Controllers\PagoController.cs" />
     <Compile Include="Controllers\9_HallazgoController.cs" />
     <Compile Include="Controllers\ChecklistController.cs" />
     <Compile Include="Controllers\LogController.cs" />
@@ -207,6 +207,7 @@
     <Compile Include="Global.asax.cs">
       <DependentUpon>Global.asax</DependentUpon>
     </Compile>
+    <Compile Include="Models\PagoFinancieroVM.cs" />
     <Compile Include="Models\ResultadoInspeccionVM.cs" />
     <Compile Include="Models\ProgramarInspeccionVM.cs" />
     <Compile Include="Models\DashboardViewModel.cs" />

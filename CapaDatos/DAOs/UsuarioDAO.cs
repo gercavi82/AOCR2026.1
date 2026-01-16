@@ -1,17 +1,15 @@
 ﻿using System;
 using System.Collections.Generic;
-using Npgsql;
-using CapaModelo;
-using Dapper;
+using System.Data;
 using System.Linq;
+using Npgsql;
+using Dapper;
+using CapaModelo;
 
 namespace CapaDatos.DAOs
 {
     public static class UsuarioDAO
     {
-        // ==========================================
-        // CONFIGURACIÓN DE CONEXIÓN
-        // ==========================================
         private static readonly string Host = "172.20.16.55";
         private static readonly int Puerto = 5432;
         private static readonly string BaseDatos = "dgac_des";
@@ -22,38 +20,69 @@ namespace CapaDatos.DAOs
             $"Host={Host};Port={Puerto};Database={BaseDatos};Username={UsuarioDB};Password={Clave};";
 
         // ==========================================
-        // AUTENTICACIÓN: OBTENER POR LOGIN
+        // LOGIN: por usuario o correo
         // ==========================================
         public static Usuario ObtenerPorNombreUsuario(string loginInput)
         {
             using (var conn = new NpgsqlConnection(GetConnectionString()))
             {
-                // Mapeamos las columnas de la DB a las propiedades de tu clase Usuario
-                string sql = @"SELECT idusuario AS Id, 
-                                      codigousuario AS NombreUsuario, 
-                                      correo AS Email, 
-                                      clave AS Contrasena, 
-                                      nombreusuario AS NombreCompleto, 
-                                      rol AS Rol,
-                                      (estadoactividad = '1') AS Activo
-                               FROM usuario 
-                               WHERE (codigousuario = @p1 OR correo = @p1) LIMIT 1";
+                string sql = @"
+                    SELECT 
+                        idusuario     AS Id,
+                        codigousuario AS CodigoUsuario,
+                        codigousuario AS NombreUsuario,
+                        correo        AS Email,
+                        clave         AS Contrasena,
+                        nombreusuario AS NombreCompleto,
+                        rol           AS Rol,
+                        (estadoactividad = '1') AS Activo
+                    FROM usuario
+                    WHERE (codigousuario = @p1 OR correo = @p1)
+                    LIMIT 1;";
 
-                return conn.QueryFirstOrDefault<Usuario>(sql, new { p1 = loginInput });
+                var u = conn.QueryFirstOrDefault<Usuario>(sql, new { p1 = loginInput });
+
+                // (Opcional) Completar NombreCompleto si en tu DB existe apellido y no viene concatenado
+                // Si nombreusuario ya es el nombre completo, puedes ignorar esto.
+                return u;
             }
         }
 
         // ==========================================
-        // OBTENER ROLES (Sincronizado con BL)
+        // ✅ OBTENER POR ID (lo necesitabas en el Controller)
         // ==========================================
-        /// <summary>
-        /// Obtiene la lista de roles activos para un usuario dado su ID numérico.
-        /// </summary>
+        public static Usuario ObtenerPorId(int idUsuario)
+        {
+            using (var conn = new NpgsqlConnection(GetConnectionString()))
+            {
+                string sql = @"
+                    SELECT 
+                        idusuario     AS Id,
+                        codigousuario AS CodigoUsuario,
+                        codigousuario AS NombreUsuario,
+                        correo        AS Email,
+                        clave         AS Contrasena,
+                        nombreusuario AS NombreCompleto,
+                        apellidousuario AS ApellidoUsuario,
+                        rol           AS Rol,
+                        (estadoactividad = '1') AS Activo,
+                        fechacreado::timestamp AS FechaCreacion,
+                        fechaultimaconexion AS FechaUltimaConexion
+                    FROM usuario
+                    WHERE idusuario = @id
+                    LIMIT 1;";
+
+                return conn.QueryFirstOrDefault<Usuario>(sql, new { id = idUsuario });
+            }
+        }
+
+        // ==========================================
+        // ROLES: tabla usuario_rol + rol (fallback a usuario.rol)
+        // ==========================================
         public static List<string> ObtenerRoles(int idUsuario)
         {
             using (var conn = new NpgsqlConnection(GetConnectionString()))
             {
-                // JOIN: Conectamos el ID numérico (usuario) con el código de texto (usuario_rol)
                 string sql = @"
                     SELECT r.descripcion
                     FROM usuario u
@@ -65,15 +94,12 @@ namespace CapaDatos.DAOs
 
                 var roles = conn.Query<string>(sql, new { id = idUsuario }).AsList();
 
-                // Si no hay roles en la tabla intermedia, devolvemos el rol básico de la tabla usuario (fallback)
                 if (roles.Count == 0)
                 {
                     string sqlFallback = "SELECT rol FROM usuario WHERE idusuario = @id";
                     var rolBasico = conn.QueryFirstOrDefault<string>(sqlFallback, new { id = idUsuario });
-                    if (!string.IsNullOrEmpty(rolBasico))
-                    {
+                    if (!string.IsNullOrWhiteSpace(rolBasico))
                         roles.Add(rolBasico);
-                    }
                 }
 
                 return roles;
@@ -81,54 +107,7 @@ namespace CapaDatos.DAOs
         }
 
         // ==========================================
-        // CREAR USUARIO
-        // ==========================================
-        public static int Crear(Usuario usuario)
-        {
-            using (var conn = new NpgsqlConnection(GetConnectionString()))
-            {
-                string sql = @"INSERT INTO usuario (codigousuario, clave, correo, estadoactividad, nombreusuario, rol) 
-                               VALUES (@NombreUsuario, @Contrasena, @Email, '1', @NombreCompleto, @Rol) 
-                               RETURNING idusuario";
-
-                return conn.ExecuteScalar<int>(sql, usuario);
-            }
-        }
-
-        // ==========================================
-        // RESTABLECER CONTRASEÑA
-        // ==========================================
-        public static bool RestablecerContrasena(string email, string nuevaClave, out string mensaje)
-        {
-            using (var conn = new NpgsqlConnection(GetConnectionString()))
-            {
-                string sql = "UPDATE usuario SET clave = @clave WHERE LOWER(correo) = LOWER(@correo)";
-                var rows = conn.Execute(sql, new { clave = nuevaClave, correo = email });
-
-                if (rows > 0)
-                {
-                    mensaje = "Contraseña restablecida con éxito.";
-                    return true;
-                }
-                mensaje = "El correo no existe.";
-                return false;
-            }
-        }
-
-        // ==========================================
-        // ACTUALIZAR ÚLTIMA CONEXIÓN
-        // ==========================================
-        public static void ActualizarUltimaConexion(int idUsuario)
-        {
-            using (var conn = new NpgsqlConnection(GetConnectionString()))
-            {
-                string sql = "UPDATE usuario SET fechaultimaconexion = CURRENT_TIMESTAMP WHERE idusuario = @id";
-                conn.Execute(sql, new { id = idUsuario });
-            }
-        }
-
-        // ==========================================
-        // OBTENER TÉCNICOS
+        // LISTAR POR ROL (tu método)
         // ==========================================
         public static List<Usuario> ListarPorRol(string rol)
         {
@@ -146,10 +125,13 @@ namespace CapaDatos.DAOs
                         {
                             lista.Add(new Usuario
                             {
-                                IdUsuario = Convert.ToInt32(rd["idusuario"]),
-                                NombreUsuario = rd["nombreusuario"].ToString(),
-                                ApellidoUsuario = rd["apellidousuario"].ToString(),
-                                Rol = rd["rol"].ToString()
+                                // OJO: tu modelo tiene Id e IdUsuario. Usa Id como estándar.
+                                Id = rd["idusuario"] == DBNull.Value ? 0 : Convert.ToInt32(rd["idusuario"]),
+                                CodigoUsuario = rd["codigousuario"] == DBNull.Value ? "" : rd["codigousuario"].ToString(),
+                                NombreUsuario = rd["nombreusuario"] == DBNull.Value ? "" : rd["nombreusuario"].ToString(),
+                                ApellidoUsuario = rd["apellidousuario"] == DBNull.Value ? "" : rd["apellidousuario"].ToString(),
+                                Rol = rd["rol"] == DBNull.Value ? "" : rd["rol"].ToString(),
+                                Email = rd["correo"] == DBNull.Value ? "" : rd["correo"].ToString()
                             });
                         }
                     }
@@ -157,7 +139,83 @@ namespace CapaDatos.DAOs
             }
             return lista;
         }
+        // ==========================================
+        // ✅ CREAR USUARIO (lo necesitaba UsuarioBL)
+        // ==========================================
+        public static int Crear(Usuario usuario)
+        {
+            if (usuario == null) throw new ArgumentNullException(nameof(usuario));
 
+            using (var conn = new NpgsqlConnection(GetConnectionString()))
+            {
+                conn.Open();
+
+                string sql = @"
+            INSERT INTO usuario
+                (codigousuario, clave, correo, estadoactividad, nombreusuario, rol, fechacreado)
+            VALUES
+                (@CodigoUsuario, @Contrasena, @Email, '1', @NombreCompleto, @Rol, NOW())
+            RETURNING idusuario;";
+
+                // Si no te mandan CodigoUsuario pero sí NombreUsuario, lo usamos como fallback
+                if (string.IsNullOrWhiteSpace(usuario.CodigoUsuario) && !string.IsNullOrWhiteSpace(usuario.NombreUsuario))
+                    usuario.CodigoUsuario = usuario.NombreUsuario;
+
+                return conn.ExecuteScalar<int>(sql, usuario);
+            }
+        }
+
+        // ==========================================
+        // ✅ RESTABLECER CONTRASEÑA (lo necesitaba UsuarioBL)
+        // ==========================================
+        public static bool RestablecerContrasena(string email, string nuevaClave, out string mensaje)
+        {
+            if (string.IsNullOrWhiteSpace(email))
+            {
+                mensaje = "Debe indicar un correo.";
+                return false;
+            }
+
+            using (var conn = new NpgsqlConnection(GetConnectionString()))
+            {
+                conn.Open();
+
+                string sql = @"UPDATE usuario
+                       SET clave = @clave
+                       WHERE LOWER(correo) = LOWER(@correo);";
+
+                int rows = conn.Execute(sql, new { clave = nuevaClave, correo = email.Trim() });
+
+                if (rows > 0)
+                {
+                    mensaje = "Contraseña restablecida con éxito.";
+                    return true;
+                }
+
+                mensaje = "El correo no existe.";
+                return false;
+            }
+        }
+
+        // ==========================================
+        // ✅ ACTUALIZAR ÚLTIMA CONEXIÓN (lo necesitaba SesionBL y UsuarioBL)
+        // ==========================================
+        public static void ActualizarUltimaConexion(int idUsuario)
+        {
+            if (idUsuario <= 0) return;
+
+            using (var conn = new NpgsqlConnection(GetConnectionString()))
+            {
+                conn.Open();
+
+                // Si tu columna se llama distinto (ej: fechaultimaconexion), aquí ya está contemplada
+                string sql = @"UPDATE usuario
+                       SET fechaultimaconexion = NOW()
+                       WHERE idusuario = @id;";
+
+                conn.Execute(sql, new { id = idUsuario });
+            }
+        }
 
     }
 }

@@ -7,26 +7,48 @@ namespace CapaModelo
         public int CodigoPago { get; set; }
         public int CodigoSolicitud { get; set; }
 
-        // Número de transacción, mapeado desde "numero_factura" en la base de datos
-        public string NumeroTransaccion { get; set; }
+        // En tu sistema a veces le dicen NumeroTransaccion, aquí usamos NumeroFactura
+        public string NumeroFactura { get; set; }
 
-        public decimal Monto { get; set; }
+        public decimal? Monto { get; set; }
         public string Moneda { get; set; }
+
         public string Concepto { get; set; }
         public string MetodoPago { get; set; }
-
-        // Estado: PENDIENTE, APROBADO, RECHAZADO
         public string Estado { get; set; }
 
         public DateTime? FechaPago { get; set; }
         public DateTime? FechaValidacion { get; set; }
 
-        public string UsuarioValidacion { get; set; } // validado_por
-        public string ObservacionesValidacion { get; set; } // observaciones
+        // Campo real
+        public string ValidadoPor { get; set; }
 
-        public string RutaComprobante { get; set; }
+        // Campo real
+        public string Observaciones { get; set; }
 
-        // Relación opcional con la solicitud
-        public SolicitudAOCR Solicitud { get; set; }
+        // Campo real (ruta del comprobante)
+        public string ComprobanteRuta { get; set; }
+
+        // =========================================================
+        // ✅ ALIAS (COMPATIBILIDAD con controllers/BL antiguos)
+        // =========================================================
+        public string UsuarioValidacion
+        {
+            get => ValidadoPor;
+            set => ValidadoPor = value;
+        }
+
+        public string ObservacionesValidacion
+        {
+            get => Observaciones;
+            set => Observaciones = value;
+        }
+
+        // Algunos lugares usan RutaComprobante
+        public string RutaComprobante
+        {
+            get => ComprobanteRuta;
+            set => ComprobanteRuta = value;
+        }
     }
 }

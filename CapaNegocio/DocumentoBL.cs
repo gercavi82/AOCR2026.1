@@ -26,10 +26,14 @@ namespace CapaNegocio
 
         #region CRUD Principal
 
+        // ✅ Si tu DocumentoDAO NO tiene ObtenerTodos(), elimina este método o créalo en DAO.
+        // (Te lo dejo pero comentado para que no te rompa compilación si no existe)
+        /*
         public List<Documento> ObtenerTodos()
         {
             return _documentoDAO.ObtenerTodos();
         }
+        */
 
         public Documento ObtenerPorId(int id)
         {
@@ -54,35 +58,44 @@ namespace CapaNegocio
             // Regla de Negocio: Solo permitir adjuntos en ciertos estados
             string[] estadosPermitidos = { "PENDIENTE", "EN_REVISION", "DOCUMENTOS_COMPLETOS", "BORRADOR" };
             if (!estadosPermitidos.Contains(solicitud.Estado))
-            {
                 throw new Exception($"No se pueden agregar documentos. La solicitud está en estado: {solicitud.Estado}");
-            }
 
-            documento.FechaSubida = DateTime.Now;
+            // ✅ Ajuste a tu modelo real
+            documento.FechaCarga = DateTime.Now;
             documento.Estado = "PENDIENTE";
+            documento.Validado = false;
 
             return _documentoDAO.Crear(documento) > 0;
         }
 
-        public bool Eliminar(int id)
+        // ✅ Este método depende de que exista MarcarComoEliminado o similar en DAO
+        // Si en tu DAO tienes MarcarComoEliminado, úsalo. Si tienes Eliminar(id), ajusta.
+        public bool Eliminar(int id, string rutaFisicaOpcional = null, string usuario = "sistema")
         {
             var documento = _documentoDAO.ObtenerPorId(id);
             if (documento == null) throw new Exception("Documento no encontrado");
 
-            // Borrado físico del archivo si existe
-            if (!string.IsNullOrEmpty(documento.RutaArchivo) && File.Exists(documento.RutaArchivo))
+            // Borrado físico (si tú guardas una ruta física)
+            // Importante: en DB tú guardas RutaGuardada (web), NO necesariamente ruta física.
+            // Si quieres borrar físico: pásame la ruta física desde el Controller o arma el MapPath.
+            var rutaFisica = rutaFisicaOpcional;
+
+            if (!string.IsNullOrWhiteSpace(rutaFisica) && File.Exists(rutaFisica))
             {
-                try { File.Delete(documento.RutaArchivo); }
-                catch { /* Log error de IO pero continuar con borrado lógico */ }
+                try { File.Delete(rutaFisica); }
+                catch { /* Log IO si quieres */ }
             }
 
-            return _documentoDAO.Eliminar(id);
+            // ✅ Borrado lógico por estado (recomendado)
+            return _documentoDAO.MarcarComoEliminado(id, usuario);
         }
 
         #endregion
 
         #region Gestión de Flujo de Aprobación
 
+        // ✅ Para aprobar/rechazar necesitas un método Actualizar(doc) en DocumentoDAO.
+        // Si no lo tienes, dímelo y te lo implemento.
         public bool Aprobar(int documentoId, string usuario, string observaciones = null)
         {
             var documento = _documentoDAO.ObtenerPorId(documentoId);
@@ -90,12 +103,12 @@ namespace CapaNegocio
 
             documento.Estado = "APROBADO";
             documento.Observaciones = observaciones;
+            documento.Validado = true;
 
             bool ok = _documentoDAO.Actualizar(documento);
 
             if (ok)
             {
-                // Disparador automático: Verifica si la solicitud cambia de estado
                 VerificarDocumentosCompletos(documento.CodigoSolicitud, usuario);
             }
 
@@ -112,6 +125,7 @@ namespace CapaNegocio
 
             documento.Estado = "RECHAZADO";
             documento.Observaciones = motivo;
+            documento.Validado = false;
 
             return _documentoDAO.Actualizar(documento);
         }
@@ -130,7 +144,8 @@ namespace CapaNegocio
             if (!_extensionesPermitidas.Contains(ext))
                 throw new Exception($"Extensión {ext} no permitida. Use: " + string.Join(", ", _extensionesPermitidas));
 
-            if (d.TamanioArchivo.HasValue && d.TamanioArchivo.Value > TAMANIO_MAXIMO)
+            // ✅ Ajuste a tu modelo real: TamanoBytes
+            if (d.TamanoBytes.HasValue && d.TamanoBytes.Value > TAMANIO_MAXIMO)
                 throw new Exception("El archivo excede el límite de 10MB");
         }
 
@@ -148,17 +163,25 @@ namespace CapaNegocio
 
                 if (solicitud != null && solicitud.Estado == "EN_REVISION")
                 {
-                    // ✅ CORRECCIÓN ERROR CS1503: Convertimos string 'usuario' a int
+                    // convertir usuario (string) a int
                     int idUsuarioReal;
                     if (!int.TryParse(usuario, out idUsuarioReal))
-                    {
-                        idUsuarioReal = 1; // ID por defecto (Sistema/Admin) en caso de error
-                    }
+                        idUsuarioReal = 1; // sistema
 
-                    _solicitudAOCRDAO.CambiarEstado(solicitudId, "DOCUMENTOS_COMPLETOS", idUsuarioReal, "Sistema: Todos los documentos aprobados.");
+                    _solicitudAOCRDAO.CambiarEstado(
+                        solicitudId,
+                        "DOCUMENTOS_COMPLETOS",
+                        idUsuarioReal,
+                        "Sistema: Todos los documentos aprobados."
+                    );
                 }
             }
         }
+        public List<Documento> ObtenerTodos()
+        {
+            return _documentoDAO.ObtenerTodos();
+        }
+
 
         #endregion
     }

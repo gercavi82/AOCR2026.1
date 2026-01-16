@@ -1,4 +1,6 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
 using CapaDatos.DAOs;
 using CapaModelo;
 
@@ -20,8 +22,17 @@ namespace CapaNegocio
 
         public bool Crear(AeronaveSolicitud a, int codigoUsuario)
         {
+            if (a == null) return false;
+
             a.UsuarioRegistro = codigoUsuario.ToString();
-            int id = _dao.Crear(a);
+
+            // Si no te llega FechaRegistro, la seteamos
+            if (!a.FechaRegistro.HasValue)
+                a.FechaRegistro = DateTime.Now;
+
+            // ✅ Usamos el usuario como created_by
+            int id = _dao.Crear(a, a.UsuarioRegistro);
+
             return id > 0;
         }
 
@@ -35,11 +46,21 @@ namespace CapaNegocio
             // Borra todas y vuelve a insertar
             _dao.EliminarPorSolicitud(codigoSolicitud);
 
-            foreach (var a in lista)
+            if (lista == null || lista.Count == 0)
+                return true; // no hay nada que insertar
+
+            // Limpieza mínima: sin matrícula no insertamos
+            var aeronavesValidas = lista
+                .Where(a => a != null && !string.IsNullOrWhiteSpace(a.Matricula))
+                .ToList();
+
+            foreach (var a in aeronavesValidas)
             {
                 a.CodigoSolicitud = codigoSolicitud;
                 a.UsuarioRegistro = codigoUsuario.ToString();
-                _dao.Crear(a);
+                a.FechaRegistro = a.FechaRegistro ?? DateTime.Now;
+
+                _dao.Crear(a, a.UsuarioRegistro);
             }
 
             return true;

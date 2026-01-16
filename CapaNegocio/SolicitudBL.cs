@@ -196,8 +196,12 @@ namespace CapaNegocio
 
         public string GenerarNumeroSolicitud(int year)
         {
-            var total = _solicitudDAO.ListarActivas().Count(s => s.FechaSolicitud.Year == year);
+            var total = _solicitudDAO
+     .ListarActivas()
+     .Count(s => s.FechaSolicitud.HasValue && s.FechaSolicitud.Value.Year == year);
+
             return $"AOCR-{year}-{(total + 1):D5}";
+
         }
         public List<SolicitudAOCR> ObtenerTodos()
         {

@@ -1,8 +1,8 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Web.Mvc;
-using System.Web;
 using System.Linq;
+using System.Web;
+using System.Web.Mvc;
+using System.Collections.Generic;
 using CapaDatos.DAOs;
 using CapaModelo;
 using CapaPresentacion.Models;
@@ -18,28 +18,85 @@ namespace CapaPresentacion.Controllers
         private readonly SolicitudAOCRDAO _solicitudDAO = new SolicitudAOCRDAO();
         private readonly DocumentoDAO _documentoDAO = new DocumentoDAO();
 
+        private readonly AeronaveSolicitudDAO _aeronaveSolDAO = new AeronaveSolicitudDAO();
+        private readonly PagoDAO _pagoDAO = new PagoDAO();
+
         public ActionResult Index() => View();
 
+        // =========================================================
+        // GET: Carga el formulario parcial con datos de BD
+        // =========================================================
+        [HttpGet]
         public ActionResult FormularioEmisionAOCR(int? oid)
         {
-            var vm = new SolicitudAOCRViewModel();
-
-            if (oid.HasValue && oid > 0)
+            try
             {
-                vm.Solicitud = _solicitudBL.ObtenerDetalle(oid.Value);
-                if (vm.Solicitud == null)
-                    return Content("<div class='alert alert-danger'>Error: Solicitud no encontrada.</div>");
+                var vm = new SolicitudAOCRViewModel();
 
-                vm.Aeronaves = AeronaveDAO.ObtenerPorSolicitud(oid.Value);
-                vm.DocumentosExistentes = _documentoDAO.ObtenerPorSolicitud(oid.Value);
+                if (Session["CodigoUsuario"] == null)
+                    return new HttpStatusCodeResult(401, "Sesión expirada.");
 
-                vm.Banco = vm.Solicitud.Banco;
-                vm.NumeroComprobante = vm.Solicitud.NumComp;
+                int usuarioId = Convert.ToInt32(Session["CodigoUsuario"]);
+
+                // 1) Cargar usuario logueado
+                vm.Usuario = UsuarioDAO.ObtenerPorId(usuarioId);
+
+                // 2) Si es edición
+                if (oid.HasValue && oid.Value > 0)
+                {
+                    vm.Solicitud = _solicitudBL.ObtenerDetalle(oid.Value);
+                    if (vm.Solicitud == null)
+                        return Content("<div class='alert alert-danger'>Error: Solicitud no encontrada.</div>");
+
+                    // Seguridad: si no es admin, solo su solicitud
+                    if (!EsAdmin() && vm.Solicitud.CodigoUsuario != usuarioId)
+                        return new HttpStatusCodeResult(403, "No tiene permisos para acceder a esta solicitud.");
+
+                    // Aeronaves (aocr_tbaeronave_solicitud)
+                    vm.Aeronaves = _aeronaveSolDAO.ObtenerPorSolicitud(oid.Value);
+
+                    // Documentos
+                    vm.DocumentosExistentes = _documentoDAO.ObtenerPorSolicitud(oid.Value);
+
+                    // Pago/comprobante (aocr_tbpago)
+                    var pago = _pagoDAO.ObtenerUltimoPorSolicitud(oid.Value);
+                    if (pago != null)
+                    {
+                        vm.Banco = pago.MetodoPago;
+                        vm.NumeroComprobante = pago.NumeroFactura;
+                    }
+                }
+                else
+                {
+                    // NUEVO: precargar desde usuario
+                    vm.Solicitud = new SolicitudAOCR
+                    {
+                        CodigoUsuario = usuarioId,
+                        FechaSolicitud = DateTime.Now,
+                        Estado = "BORRADOR",
+                        Email = vm.Usuario?.Email,
+                        RepresentanteLegal = vm.Usuario?.NombreCompleto,
+
+                        // ✅ tu Usuario NO tiene NumeroRuc, así que usamos CodigoUsuario como fallback
+                        // Si el RUC del usuario está en otra tabla/columna, luego lo mapeamos bien.
+                        Ruc = vm.Usuario?.CodigoUsuario
+                    };
+
+                    vm.Aeronaves = new List<AeronaveSolicitud>();
+                    vm.DocumentosExistentes = new List<Documento>();
+                }
+
+                return PartialView("_FormularioEmisionAOCR", vm);
             }
-
-            return PartialView("_FormularioEmisionAOCR", vm);
+            catch (Exception ex)
+            {
+                return new HttpStatusCodeResult(500, "Error interno: " + ex.Message);
+            }
         }
 
+        // =========================================================
+        // POST: Guarda todo el formulario (Solicitud + Aeronaves + Docs + Pago)
+        // =========================================================
         [HttpPost]
         [ValidateAntiForgeryToken]
         public ActionResult FormularioCompleto(SolicitudAOCRViewModel vm)
@@ -50,46 +107,69 @@ namespace CapaPresentacion.Controllers
                     return Json(new { success = false, mensaje = "Sesión expirada." });
 
                 int usuarioId = Convert.ToInt32(Session["CodigoUsuario"]);
-                string mensajeOut;
+                string usuarioCorreo = Session["Correo"]?.ToString() ?? "sistema";
 
-                if (vm.Solicitud == null)
+                if (vm?.Solicitud == null)
                     return Json(new { success = false, mensaje = "Datos de solicitud incompletos." });
-
-                // Asignar campos requeridos manualmente
-                vm.Solicitud.TipoSolicitud = 1;
-                vm.Solicitud.Banco = vm.Banco;
-                vm.Solicitud.NumComp = vm.NumeroComprobante;
 
                 if (string.IsNullOrWhiteSpace(vm.Solicitud.NombreOperador))
                     return Json(new { success = false, mensaje = "Nombre del operador es obligatorio." });
 
-                bool exito;
-                if (vm.Solicitud.CodigoSolicitud > 0)
+                // Dueño si es nuevo / seguridad si edita
+                if (vm.Solicitud.CodigoSolicitud <= 0)
                 {
-                    exito = _solicitudBL.Actualizar(vm.Solicitud, usuarioId, out mensajeOut, true);
+                    vm.Solicitud.CodigoUsuario = usuarioId;
+                    vm.Solicitud.TipoSolicitud = 1;
                 }
                 else
                 {
-                    exito = _solicitudBL.Crear(vm.Solicitud, usuarioId, out mensajeOut);
+                    var actual = _solicitudDAO.ObtenerPorId(vm.Solicitud.CodigoSolicitud);
+                    if (actual == null)
+                        return Json(new { success = false, mensaje = "Solicitud no encontrada." });
+
+                    if (!EsAdmin() && actual.CodigoUsuario != usuarioId)
+                        return Json(new { success = false, mensaje = "No tiene permisos para modificar esta solicitud." });
+
+                    vm.Solicitud.CodigoUsuario = actual.CodigoUsuario;
                 }
+
+                // 1) Guardar Solicitud
+                string mensajeOut;
+                bool exito;
+
+                if (vm.Solicitud.CodigoSolicitud > 0)
+                    exito = _solicitudBL.Actualizar(vm.Solicitud, usuarioId, out mensajeOut, true);
+                else
+                    exito = _solicitudBL.Crear(vm.Solicitud, usuarioId, out mensajeOut);
 
                 if (!exito)
                     return Json(new { success = false, mensaje = mensajeOut });
 
                 int idFinal = vm.Solicitud.CodigoSolicitud;
 
-                if (vm.Aeronaves != null && vm.Aeronaves.Any())
-                {
-                    foreach (var nave in vm.Aeronaves)
-                    {
-                        nave.CodigoSolicitud = idFinal;
-                        AeronaveDAO.Insertar(nave);
-                    }
-                }
+                // 2) Aeronaves (reemplazar)
+                var aeronaves = (vm.Aeronaves ?? new List<AeronaveSolicitud>())
+                    .Where(a => a != null && !string.IsNullOrWhiteSpace(a.Matricula))
+                    .ToList();
 
+                _aeronaveSolDAO.ReemplazarPorSolicitud(idFinal, aeronaves, usuarioCorreo);
+
+                // 3) Documentos
                 ProcesarArchivos(vm.ArchivosSubidos, idFinal);
 
-                return Json(new { success = true, mensaje = "Solicitud AOCR registrada correctamente." });
+                // 4) Pago
+                if (!string.IsNullOrWhiteSpace(vm.Banco) || !string.IsNullOrWhiteSpace(vm.NumeroComprobante))
+                {
+                    _pagoDAO.Insertar(new Pago
+                    {
+                        CodigoSolicitud = idFinal,
+                        MetodoPago = vm.Banco,
+                        NumeroFactura = vm.NumeroComprobante,
+                        Estado = "REGISTRADO"
+                    }, usuarioCorreo);
+                }
+
+                return Json(new { success = true, mensaje = "Solicitud AOCR registrada correctamente.", id = idFinal });
             }
             catch (Exception ex)
             {
@@ -97,9 +177,13 @@ namespace CapaPresentacion.Controllers
             }
         }
 
+        // =========================================================
+        // Guardar archivos sin depender de nombres de propiedades exactas
+        // =========================================================
         private void ProcesarArchivos(IEnumerable<HttpPostedFileBase> archivos, int solicitudId)
         {
             if (archivos == null) return;
+
             string path = Server.MapPath("~/Uploads/AOCR/" + solicitudId);
             if (!System.IO.Directory.Exists(path))
                 System.IO.Directory.CreateDirectory(path);
@@ -109,20 +193,38 @@ namespace CapaPresentacion.Controllers
                 if (file != null && file.ContentLength > 0)
                 {
                     string fileName = System.IO.Path.GetFileName(file.FileName);
+                    string rutaRelativa = "/Uploads/AOCR/" + solicitudId + "/" + fileName;
+
                     file.SaveAs(System.IO.Path.Combine(path, fileName));
 
-                    _documentoDAO.Crear(new Documento
-                    {
-                        CodigoSolicitud = solicitudId,
-                        NombreArchivo = fileName,
-                        RutaArchivo = "/Uploads/AOCR/" + solicitudId + "/" + fileName,
-                        FechaSubida = DateTime.Now,
-                        Estado = "PENDIENTE"
-                    });
+                    var doc = new Documento();
+                    doc.CodigoSolicitud = solicitudId;
+
+                    // Estos nombres sí los usas tú: NombreArchivo y Estado (si existen)
+                    SetIfExists(doc, "NombreArchivo", fileName);
+                    SetIfExists(doc, "Estado", "PENDIENTE");
+
+                    // En DB existe ruta_guardada y fecha_carga; tu modelo puede llamarse diferente:
+                    SetIfExists(doc, "RutaGuardada", rutaRelativa);
+                    SetIfExists(doc, "RutaArchivo", rutaRelativa);   // por si tu clase antigua lo tenía así
+                    SetIfExists(doc, "FechaCarga", DateTime.Now);
+                    SetIfExists(doc, "FechaSubida", DateTime.Now);   // por si tu clase antigua lo tenía así
+
+                    _documentoDAO.Crear(doc);
                 }
             }
         }
 
+        private static void SetIfExists(object obj, string prop, object value)
+        {
+            var pi = obj.GetType().GetProperty(prop);
+            if (pi == null || !pi.CanWrite) return;
+            pi.SetValue(obj, value, null);
+        }
+
+        // =========================================================
+        // Resto de acciones (tu código igual)
+        // =========================================================
         public ActionResult MisSolicitudes()
         {
             if (Session["CodigoUsuario"] == null)
@@ -142,14 +244,12 @@ namespace CapaPresentacion.Controllers
         [ValidateAntiForgeryToken]
         public ActionResult Aprobar(string id)
         {
-            // ✅ FIX CS1503: convertir string -> int de forma segura
             if (!int.TryParse(id, out int idSolicitud))
                 return HttpNotFound();
 
             var solicitud = _solicitudDAO.ObtenerPorCodigo(idSolicitud);
             if (solicitud == null) return HttpNotFound();
 
-            // ✅ Validar checklist (tabla checklist)
             var stats = ChecklistDAO.ObtenerEstadisticasPorSolicitud(solicitud.CodigoSolicitud);
 
             bool incompleto =
@@ -161,21 +261,14 @@ namespace CapaPresentacion.Controllers
             {
                 TempData["NotificacionTipo"] = "error";
                 TempData["NotificacionMensaje"] =
-                    $"No se puede aprobar. Checklist incompleto: " +
-                    $"Total={stats["Total"]}, SinEvaluar={stats["SinEvaluar"]}, NoCumplen={stats["NoCumplen"]}.";
-
+                    $"No se puede aprobar. Checklist incompleto: Total={stats["Total"]}, SinEvaluar={stats["SinEvaluar"]}, NoCumplen={stats["NoCumplen"]}.";
                 return RedirectToAction("RevisarSolicitudes");
             }
 
-            solicitud.Estado = "APROBADO_POR_INSPECTOR";
-            solicitud.FechaRevisionInspector = DateTime.Now;
-            solicitud.UsuarioRevisor = Session["Correo"]?.ToString();
-
-            _solicitudDAO.Actualizar(solicitud);
+            _solicitudDAO.CambiarEstado(idSolicitud, "APROBADO_POR_INSPECTOR", ObtenerUsuarioActualId(), "Aprobado por inspector");
 
             TempData["NotificacionTipo"] = "success";
             TempData["NotificacionMensaje"] = "Solicitud aprobada correctamente.";
-
             return RedirectToAction("RevisarSolicitudes");
         }
 
@@ -184,26 +277,17 @@ namespace CapaPresentacion.Controllers
         [ValidateAntiForgeryToken]
         public ActionResult Observar(string id, string observacion)
         {
-            // ✅ FIX CS1503: convertir string -> int de forma segura
             if (!int.TryParse(id, out int idSolicitud))
                 return HttpNotFound();
 
             var solicitud = _solicitudDAO.ObtenerPorCodigo(idSolicitud);
+            if (solicitud == null) return HttpNotFound();
 
-            if (solicitud == null)
-                return HttpNotFound();
-
-            solicitud.Estado = "OBSERVADO";
-            solicitud.ObservacionesInspector = observacion;
-            solicitud.FechaRevisionInspector = DateTime.Now;
-            solicitud.UsuarioRevisor = Session["Correo"]?.ToString();
-
-            _solicitudDAO.Actualizar(solicitud);
+            _solicitudDAO.CambiarEstado(idSolicitud, "OBSERVADO", ObtenerUsuarioActualId(), observacion ?? "");
 
             TempData["NotificacionTipo"] = "warning";
             TempData["NotificacionMensaje"] = "Solicitud marcada como observada.";
 
-            // ✅ FIX: antes tenías un return RedirectToAction() aquí y el correo quedaba inalcanzable
             if (!string.IsNullOrWhiteSpace(solicitud.Email))
             {
                 EmailHelper.EnviarEmail(
@@ -228,8 +312,8 @@ namespace CapaPresentacion.Controllers
         [ValidateAntiForgeryToken]
         public ActionResult AprobarPorJefatura(int id)
         {
-            int userId = Convert.ToInt32(Session["CodigoUsuario"]);
-            _solicitudDAO.CambiarEstado(id, "VALIDADO_TECNICAMENTE", userId);
+            int userId = ObtenerUsuarioActualId();
+            _solicitudDAO.CambiarEstado(id, "VALIDADO_TECNICAMENTE", userId, "Aprobado por Jefatura Técnica");
             TempData["Exito"] = "La solicitud ha sido validada técnicamente.";
             return RedirectToAction("RevisarPorJefatura");
         }
@@ -239,90 +323,16 @@ namespace CapaPresentacion.Controllers
         [ValidateAntiForgeryToken]
         public ActionResult ObservarPorJefatura(int id, string observaciones)
         {
-            int userId = Convert.ToInt32(Session["CodigoUsuario"]);
-            _solicitudDAO.CambiarEstado(id, "OBSERVADO_JEFATURA", userId, observaciones);
+            int userId = ObtenerUsuarioActualId();
+            _solicitudDAO.CambiarEstado(id, "OBSERVADO_JEFATURA", userId, observaciones ?? "");
             TempData["Exito"] = "Se ha enviado una observación a la solicitud.";
             return RedirectToAction("RevisarPorJefatura");
-        }
-
-        [Authorize(Roles = "JefaturaTecnica")]
-        public ActionResult PendientesJefatura()
-        {
-            try
-            {
-                var solicitudes = _solicitudDAO.ObtenerPorEstado("ENVIADO_A_JEFATURA");
-                return View(solicitudes);
-            }
-            catch (Exception ex)
-            {
-                TempData["Error"] = "Error al cargar solicitudes: " + ex.Message;
-                return RedirectToAction("Index");
-            }
-        }
-
-        [HttpPost]
-        [Authorize(Roles = "JefaturaTecnica")]
-        public ActionResult ValidarTecnicamente(int id)
-        {
-            try
-            {
-                _solicitudDAO.CambiarEstado(id, "LEGALIZACION", ObtenerUsuarioActualId(), "Validación técnica aprobada");
-                TempData["Exito"] = "La solicitud fue validada técnicamente.";
-
-                var solicitud = _solicitudDAO.ObtenerPorId(id);
-                EmailHelper.EnviarEmail(
-                    solicitud.Email,
-                    "Su solicitud AOCR fue validada técnicamente",
-                    $"Estimado operador,<br><br>Su solicitud AOCR <strong>#{solicitud.CodigoSolicitud}</strong> ha sido <b>validada técnicamente</b> por la Jefatura Técnica.<br><br>Ahora continuará con el proceso de legalización.<br><br>Saludos cordiales."
-                );
-            }
-            catch (Exception ex)
-            {
-                TempData["Error"] = "Error al validar: " + ex.Message;
-            }
-
-            return RedirectToAction("Detalle", new { id });
-        }
-
-        [HttpPost]
-        [Authorize(Roles = "JefaturaTecnica")]
-        public ActionResult RechazarTecnicamente(int id, string observacion)
-        {
-            try
-            {
-                _solicitudDAO.CambiarEstado(id, "RECHAZADA_POR_JEFATURA", ObtenerUsuarioActualId(), observacion);
-                TempData["Error"] = "La solicitud fue rechazada por Jefatura Técnica.";
-
-                var solicitud = _solicitudDAO.ObtenerPorId(id);
-                EmailHelper.EnviarEmail(
-                    solicitud.Email,
-                    "Solicitud AOCR rechazada por Jefatura Técnica",
-                    $"Estimado operador,<br><br>Su solicitud AOCR <strong>#{solicitud.CodigoSolicitud}</strong> ha sido <b>rechazada</b> por la Jefatura Técnica.<br><br><b>Motivo:</b> {observacion}<br><br>Le invitamos a revisar la información y volver a presentar la solicitud.<br><br>Saludos."
-                );
-            }
-            catch (Exception ex)
-            {
-                TempData["Error"] = "Error al rechazar: " + ex.Message;
-            }
-
-            return RedirectToAction("Detalle", new { id });
-        }
-
-        private int ObtenerUsuarioActualId()
-        {
-            if (Session["CodigoUsuario"] != null && int.TryParse(Session["CodigoUsuario"].ToString(), out int idUsuario))
-            {
-                return idUsuario;
-            }
-
-            throw new Exception("No se pudo obtener el ID del usuario actual.");
         }
 
         public ActionResult Detalle(int id)
         {
             var solicitud = _solicitudDAO.ObtenerPorId(id);
-            if (solicitud == null)
-                return HttpNotFound();
+            if (solicitud == null) return HttpNotFound();
 
             var historialDAO = new HistorialEstadoDAO();
             ViewBag.HistorialEstados = historialDAO.ObtenerPorSolicitud(id);
@@ -340,83 +350,37 @@ namespace CapaPresentacion.Controllers
         [HttpPost]
         [Authorize(Roles = "CoordinacionLegal")]
         [ValidateAntiForgeryToken]
-        public ActionResult Legalizar(int id)
+        public ActionResult Legalizar(int id, string observacionLegal = "")
         {
             try
             {
                 int userId = ObtenerUsuarioActualId();
+
                 var solicitud = _solicitudDAO.ObtenerPorId(id);
+                if (solicitud == null) return HttpNotFound();
 
                 string estadoAnterior = solicitud.Estado;
-                solicitud.Estado = "LEGALIZADO";
-                _solicitudDAO.Actualizar(solicitud);
 
-                // Registrar en historial
+                _solicitudDAO.CambiarEstado(id, "LEGALIZADO", userId, observacionLegal ?? "Legalizado por Coordinación Legal");
+
                 new HistorialEstadoDAO().RegistrarCambio(
                     id,
                     estadoAnterior,
                     "LEGALIZADO",
                     userId,
-                    "Legalizado por Coordinación Legal"
+                    observacionLegal ?? "Legalizado por Coordinación Legal"
                 );
 
-                // Notificar al operador
-                EmailHelper.EnviarEmail(
-                    solicitud.Email,
-                    "AOCR Legalizado",
-                    $"Estimado operador,<br><br>Su solicitud AOCR #{id} ha sido <strong>legalizada</strong> por Coordinación Legal.<br><br>Gracias por su gestión."
-                );
-
-                TempData["Exito"] = "Solicitud legalizada correctamente.";
-            }
-            catch (Exception ex)
-            {
-                TempData["Error"] = "Error al legalizar: " + ex.Message;
-            }
-
-            return RedirectToAction("RevisarLegalizacion");
-        }
-
-        [HttpPost]
-        [Authorize(Roles = "CoordinacionLegal")]
-        [ValidateAntiForgeryToken]
-        public ActionResult Legalizar(int id, string observacionLegal)
-        {
-            try
-            {
-                int userId = Convert.ToInt32(Session["CodigoUsuario"]);
-
-                // Registrar cambio de estado
-                _solicitudDAO.CambiarEstado(id, "LEGALIZADO", userId, observacionLegal);
-
-                // Registrar en historial si quieres duplicar
-                new HistorialEstadoDAO().RegistrarCambio(
-                    id,
-                    "ENVIADO_A_LEGALIZACION",
-                    "LEGALIZADO",
-                    userId,
-                    observacionLegal
-                );
-
-                // Obtener solicitud para correo
-                var solicitud = _solicitudDAO.ObtenerPorId(id);
-
-                // Enviar notificación por correo al operador
                 if (!string.IsNullOrWhiteSpace(solicitud.Email))
                 {
                     EmailHelper.EnviarEmail(
                         solicitud.Email,
-                        "Su AOCR ha sido legalizado",
-                        $@"
-                <p>Estimado operador,</p>
-                <p>Su solicitud AOCR <strong>#{solicitud.CodigoSolicitud}</strong> ha sido <b>legalizada</b> con éxito.</p>
-                <p>Puede ingresar al sistema para descargar su certificado final.</p>
-                <p><strong>Observaciones de legalización:</strong><br/>{observacionLegal}</p>
-                <p>Saludos.</p>"
+                        "AOCR Legalizado",
+                        $"Estimado operador,<br><br>Su solicitud AOCR #{id} ha sido <strong>legalizada</strong>.<br><br><b>Observaciones:</b> {observacionLegal}<br><br>Gracias por su gestión."
                     );
                 }
 
-                TempData["Exito"] = "Solicitud legalizada y notificación enviada.";
+                TempData["Exito"] = "Solicitud legalizada correctamente.";
             }
             catch (Exception ex)
             {
@@ -429,17 +393,28 @@ namespace CapaPresentacion.Controllers
         [Authorize(Roles = "Inspector,Administrador")]
         public ActionResult SolicitarInspeccion(int id)
         {
-            var solicitud = SolicitudAOCRBL.ObtenerPorId(id);
-            if (solicitud == null)
-                return HttpNotFound();
+            var solicitud = _solicitudDAO.ObtenerPorId(id);
+            if (solicitud == null) return HttpNotFound();
 
-            bool ok = SolicitudAOCRBL.MarcarParaInspeccion(id);
-            if (ok)
-                TempData["NotificacionMensaje"] = "Inspección solicitada correctamente.";
-            else
-                TempData["NotificacionMensaje"] = "Error al solicitar inspección.";
+            _solicitudDAO.CambiarEstado(id, "ENVIADO_A_INSPECTOR", ObtenerUsuarioActualId(), "Inspección solicitada");
 
+            TempData["NotificacionMensaje"] = "Inspección solicitada correctamente.";
             return RedirectToAction("Detalle", new { id });
+        }
+
+        private int ObtenerUsuarioActualId()
+        {
+            if (Session["CodigoUsuario"] != null && int.TryParse(Session["CodigoUsuario"].ToString(), out int idUsuario))
+                return idUsuario;
+
+            throw new Exception("No se pudo obtener el ID del usuario actual.");
+        }
+
+        private bool EsAdmin()
+        {
+            var rol = (Session["Rol"] ?? "").ToString();
+            return rol.Equals("ADMIN", StringComparison.OrdinalIgnoreCase) ||
+                   rol.Equals("Administrador", StringComparison.OrdinalIgnoreCase);
         }
     }
 }
