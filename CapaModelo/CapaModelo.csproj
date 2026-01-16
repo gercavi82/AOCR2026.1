@@ -47,6 +47,7 @@
     <Compile Include="Auditoria.cs" />
     <Compile Include="Certificado.cs" />
     <Compile Include="Aeronave.cs" />
+    <Compile Include="ContactoEcuadorPG.cs" />
     <Compile Include="Checklist.cs" />
     <Compile Include="AeronaveSolicitud.cs" />
     <Compile Include="ChecklistItem.cs" />

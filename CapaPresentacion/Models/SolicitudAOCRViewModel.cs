@@ -7,8 +7,6 @@ namespace CapaPresentacion.Models
     public class SolicitudAOCRViewModel
     {
         public SolicitudAOCR Solicitud { get; set; } = new SolicitudAOCR();
-
-        // OJO: usa Aeronave (si tu modelo actual es Aeronave) o AeronaveSolicitud (si usas la tabla aocr_tbaeronave_solicitud)
         public List<AeronaveSolicitud> Aeronaves { get; set; } = new List<AeronaveSolicitud>();
 
         public List<Documento> DocumentosExistentes { get; set; } = new List<Documento>();
@@ -20,7 +18,13 @@ namespace CapaPresentacion.Models
         // Uploads
         public IEnumerable<HttpPostedFileBase> ArchivosSubidos { get; set; }
 
-        // Usuario logueado (si lo usas en la vista para autorrelleno)
+        // Usuario logueado
         public Usuario Usuario { get; set; }
+
+        // ✅ AGREGAR ESTO (porque tu vista los usa)
+        public string CorreoContactoEcuador { get; set; }
+        public string DireccionOperadorVM { get; set; }
+        public string TelefonoOperadorVM { get; set; }
+        public string CorreoOperadorVM { get; set; }
     }
 }
