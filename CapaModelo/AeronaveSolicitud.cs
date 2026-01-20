@@ -14,9 +14,5 @@ namespace CapaModelo
         public string EtapaRuido { get; set; }
         public DateTime? FechaRegistro { get; set; }
         public string UsuarioRegistro { get; set; }
-
-        // ✅ AGREGAR ESTO (porque la vista los usa)
-        public decimal? PesoMaximo { get; set; }
-        public string CodigoOACI { get; set; }
     }
 }

@@ -17,28 +17,11 @@ namespace CapaPresentacion.Controllers
         private readonly SolicitudBL _solicitudBL = new SolicitudBL();
         private readonly SolicitudAOCRDAO _solicitudDAO = new SolicitudAOCRDAO();
         private readonly DocumentoDAO _documentoDAO = new DocumentoDAO();
-        private readonly UsuarioPGDAO _usuarioPgDao = new UsuarioPGDAO();
-        // Postgres DAOs
-        private readonly ContactoEcuadorPGDAO _contactoPgDao = new ContactoEcuadorPGDAO();
-        private readonly SolicitudPGDAO _solicitudPgDao = new SolicitudPGDAO();
-        private readonly AeronaveSolicitudPGDAO _aeronavePgDao = new AeronaveSolicitudPGDAO();
 
-        // Legado / app actual
         private readonly AeronaveSolicitudDAO _aeronaveSolDAO = new AeronaveSolicitudDAO();
         private readonly PagoDAO _pagoDAO = new PagoDAO();
 
         public ActionResult Index() => View();
-
-        // =========================================================
-        // (NO BORRAR) Placeholder antiguo: RENOMBRADO para evitar CS0111
-        // =========================================================
-        [HttpGet]
-        public JsonResult ObtenerContactoEcuador_Legacy(int codigoSolicitud)
-        {
-            // Endpoint legacy (si alguien lo llamaba antes). Mantengo para no "eliminar nada".
-            return Json(new { success = false, mensaje = "Legacy endpoint. Use ObtenerContactoEcuador." },
-                        JsonRequestBehavior.AllowGet);
-        }
 
         // =========================================================
         // GET: Carga el formulario parcial con datos de BD
@@ -91,15 +74,12 @@ namespace CapaPresentacion.Controllers
                         CodigoUsuario = usuarioId,
                         FechaSolicitud = DateTime.Now,
                         Estado = "BORRADOR",
-
-                        // Nota: si tu proyecto está en C# 5 y tu Usuario NO soporta ?.,
-                        // esto compila si tu proyecto usa C# 6+. Si estás en C# 5, cambia a ternarios.
-                        Email = (vm.Usuario != null) ? vm.Usuario.Email : null,
-                        RepresentanteLegal = (vm.Usuario != null) ? vm.Usuario.NombreCompleto : null,
+                        Email = vm.Usuario?.Email,
+                        RepresentanteLegal = vm.Usuario?.NombreCompleto,
 
                         // ✅ tu Usuario NO tiene NumeroRuc, así que usamos CodigoUsuario como fallback
                         // Si el RUC del usuario está en otra tabla/columna, luego lo mapeamos bien.
-                        Ruc = (vm.Usuario != null) ? vm.Usuario.CodigoUsuario : null
+                        Ruc = vm.Usuario?.CodigoUsuario
                     };
 
                     vm.Aeronaves = new List<AeronaveSolicitud>();
@@ -127,9 +107,9 @@ namespace CapaPresentacion.Controllers
                     return Json(new { success = false, mensaje = "Sesión expirada." });
 
                 int usuarioId = Convert.ToInt32(Session["CodigoUsuario"]);
-                string usuarioCorreo = (Session["Correo"] != null) ? Session["Correo"].ToString() : "sistema";
+                string usuarioCorreo = Session["Correo"]?.ToString() ?? "sistema";
 
-                if (vm == null || vm.Solicitud == null)
+                if (vm?.Solicitud == null)
                     return Json(new { success = false, mensaje = "Datos de solicitud incompletos." });
 
                 if (string.IsNullOrWhiteSpace(vm.Solicitud.NombreOperador))
@@ -237,8 +217,6 @@ namespace CapaPresentacion.Controllers
 
         private static void SetIfExists(object obj, string prop, object value)
         {
-            if (obj == null) return;
-
             var pi = obj.GetType().GetProperty(prop);
             if (pi == null || !pi.CanWrite) return;
             pi.SetValue(obj, value, null);
@@ -438,97 +416,5 @@ namespace CapaPresentacion.Controllers
             return rol.Equals("ADMIN", StringComparison.OrdinalIgnoreCase) ||
                    rol.Equals("Administrador", StringComparison.OrdinalIgnoreCase);
         }
-
-        // =========================================================
-        // Postgres: Contacto Ecuador
-        // =========================================================
-        [HttpGet]
-        public JsonResult ObtenerContactoEcuador(int codigoSolicitud)
-        {
-            try
-            {
-                var c = _contactoPgDao.ObtenerPorSolicitud(codigoSolicitud);
-
-                if (c == null)
-                    return Json(new { success = true, data = (object)null }, JsonRequestBehavior.AllowGet);
-
-                return Json(new
-                {
-                    success = true,
-                    data = new
-                    {
-                        nombreRepresentante = c.NombreRepresentante,
-                        rucRepresentante = c.RucRepresentante,
-                        direccion = c.Direccion,
-                        telefono = c.Telefono,
-                        correo = c.Correo
-                    }
-                }, JsonRequestBehavior.AllowGet);
-            }
-            catch (Exception ex)
-            {
-                return Json(new { success = false, mensaje = ex.Message }, JsonRequestBehavior.AllowGet);
-            }
-        }
-
-        // =========================================================
-        // Postgres: datos del formulario (si los necesitas por AJAX)
-        // =========================================================
-        [HttpGet]
-        public JsonResult ObtenerDatosFormulario(int codigoSolicitud)
-        {
-            var sol = _solicitudPgDao.ObtenerSolicitudPorCodigo(codigoSolicitud);
-            var aeronaves = _aeronavePgDao.ObtenerPorSolicitud(codigoSolicitud);
-
-            return Json(new
-            {
-                success = (sol != null),
-                solicitud = sol,
-                aeronaves = aeronaves
-            }, JsonRequestBehavior.AllowGet);
-        }
-        [HttpGet]
-        public JsonResult ObtenerUsuarioLogueadoPG()
-        {
-            try
-            {
-                if (Session["CodigoUsuario"] == null)
-                    return Json(new { success = false, mensaje = "Sesión expirada." }, JsonRequestBehavior.AllowGet);
-
-                int idUsuario = Convert.ToInt32(Session["CodigoUsuario"]);
-
-                var u = _usuarioPgDao.ObtenerPorId(idUsuario);
-
-                if (u == null)
-                    return Json(new { success = false, mensaje = "Usuario no encontrado en Postgres." }, JsonRequestBehavior.AllowGet);
-
-                return Json(new
-                {
-                    success = true,
-                    data = new
-                    {
-                        idUsuario = GetProp(u, "IdUsuario"),
-                        codigoUsuario = GetProp(u, "CodigoUsuario"),
-                        nombre = GetProp(u, "Nombre"),
-                        apellido = GetProp(u, "Apellido"),
-                        correo = GetProp(u, "Email"),
-                        ruc = GetProp(u, "NumeroRuc"),
-                        cargo = GetProp(u, "Cargo"),
-                        codigorol = GetProp(u, "CodigoRol")
-                    }
-                }, JsonRequestBehavior.AllowGet);
-            }
-            catch (Exception ex)
-            {
-                return Json(new { success = false, mensaje = ex.Message }, JsonRequestBehavior.AllowGet);
-            }
-        }
-
-        private static object GetProp(object obj, string prop)
-        {
-            var pi = obj.GetType().GetProperty(prop);
-            return (pi == null) ? null : pi.GetValue(obj, null);
-        }
-
     }
 }

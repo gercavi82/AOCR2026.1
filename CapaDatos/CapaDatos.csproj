@@ -242,7 +242,6 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Contexto\AocrDbContext.cs" />
-    <Compile Include="DAOs\ContactoEcuadorPGDAO.cs" />
     <Compile Include="DAOs\ArchivoDAO.cs" />
     <Compile Include="DAOs\AuditoriaDAO.cs" />
     <Compile Include="DAOs\AeronaveDAO.cs" />
@@ -251,10 +250,6 @@
     <Compile Include="DAOs\ChecklistItemDAO.cs" />
     <Compile Include="DAOs\ChecklistSolicitudDAO.cs" />
     <Compile Include="DAOs\EmpresaAS400DAO.cs" />
-    <Compile Include="DAOs\AeronaveSolicitudPGDAO.cs" />
-    <Compile Include="DAOs\olicitudPGDAO.cs" />
-    <Compile Include="DAOs\AeronaveSolicitudPostgresDAO.cs" />
-    <Compile Include="DAOs\UsuarioPGDAO.cs" />
     <Compile Include="DAOs\SolicitudAOCRDAO.cs" />
     <Compile Include="DAOs\ViaticoDAO.cs" />
     <Compile Include="DAOs\UsuarioRolDAO.cs" />
