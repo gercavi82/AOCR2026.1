@@ -185,6 +185,7 @@
     <Compile Include="Controllers\AccountController.cs" />
     <Compile Include="Controllers\HistorialController.cs" />
     <Compile Include="Controllers\OperadorController.cs" />
+    <Compile Include="Controllers\OrdenRecaudacionController.cs" />
     <Compile Include="Controllers\SolicitudAOCRController.cs" />
     <Compile Include="Controllers\SolicitudController.cs" />
     <Compile Include="Controllers\HistorialEstadoController.cs" />
@@ -204,9 +205,11 @@
     <Compile Include="Controllers\UsuarioController.cs" />
     <Compile Include="Controllers\RolController.cs" />
     <Compile Include="Controllers\HomeController.cs" />
+    <Compile Include="Filters\RequireOrdenRecaudacionAttribute.cs" />
     <Compile Include="Global.asax.cs">
       <DependentUpon>Global.asax</DependentUpon>
     </Compile>
+    <Compile Include="Models\OrdenRecaudacionViewModel.cs" />
     <Compile Include="Models\PagoFinancieroVM.cs" />
     <Compile Include="Models\ResultadoInspeccionVM.cs" />
     <Compile Include="Models\ProgramarInspeccionVM.cs" />
@@ -2705,6 +2708,7 @@
     <Content Include="Views\Financiero\RevisarSolicitud.cshtml" />
     <Content Include="Views\Financiero\ListaPagos.cshtml" />
     <Content Include="Views\Financiero\ValidarPago.cshtml" />
+    <Content Include="Views\OrdenRecaudacion\Nueva.cshtml" />
   </ItemGroup>
   <ItemGroup>
     <Folder Include="App_Data\" />
