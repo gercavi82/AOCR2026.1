@@ -248,6 +248,9 @@
     <Compile Include="DAOs\ChecklistDAO.cs" />
     <Compile Include="DAOs\AeronaveSolicitudDAO.cs" />
     <Compile Include="DAOs\ChecklistItemDAO.cs" />
+    <Compile Include="DAOs\DatosPDF.cs" />
+    <Compile Include="DAOs\OrdenRecaudacionPdfDto.cs" />
+    <Compile Include="DAOs\IOrdenRecaudacionDAO.cs" />
     <Compile Include="DAOs\ChecklistSolicitudDAO.cs" />
     <Compile Include="DAOs\EmpresaAS400DAO.cs" />
     <Compile Include="DAOs\OrdenRecaudacionDAO.cs" />

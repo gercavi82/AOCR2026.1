@@ -1,83 +1,67 @@
-﻿using System.ComponentModel.DataAnnotations;
-using System.ComponentModel;
-using System;
-using System.Collections.Generic;
+﻿using System;
+using System.ComponentModel.DataAnnotations;
+
 namespace CapaPresentacion.Models.ViewModels
 {
-    public class OrdenRecaudacionViewModel : IValidatableObject
+    public class OrdenRecaudacionViewModel
     {
-        [Required(ErrorMessage = "El concepto principal es obligatorio.")]
-        [Display(Name = "Concepto Principal")]
-        [StringLength(50, ErrorMessage = "El código del concepto no puede exceder los 50 caracteres.")]
-        [RegularExpression(@"^[A-Z_]+$", ErrorMessage = "Solo se permiten letras mayúsculas y guiones bajos.")]
+        public int Id { get; set; } // ✅ AGREGAR ESTA PROPIEDAD
+
+        [Required(ErrorMessage = "El código de solicitud es requerido")]
+        [Display(Name = "Código de Solicitud")]
+        public string CodigoSolicitud { get; set; }
+
+        [Required(ErrorMessage = "El concepto es requerido")]
+        [Display(Name = "Concepto")]
+        public int ConceptoId { get; set; }
+
+        [Display(Name = "Código del Concepto Principal")]
         public string ConceptoPrincipalCodigo { get; set; }
 
-        [Display(Name = "Código de Solicitud")]
-        [Range(0, int.MaxValue, ErrorMessage = "El código de solicitud debe ser un número positivo.")]
-        [DefaultValue(0)]
-        public int? CodigoSolicitud { get; set; }
-
-        [Required(ErrorMessage = "El número de estaciones es obligatorio.")]
-        [Display(Name = "Estaciones a Inspeccionar")]
-        [Range(0, 50, ErrorMessage = "El número de estaciones debe estar entre 0 y 50.")]
-        [DefaultValue(0)]
+        [Required(ErrorMessage = "El número de estaciones es requerido")]
+        [Range(0, 50, ErrorMessage = "Las estaciones deben estar entre 0 y 50")]
+        [Display(Name = "Número de Estaciones")]
         public int Estaciones { get; set; }
 
-        [Required(ErrorMessage = "El número de días es obligatorio.")]
-        [Display(Name = "Días de Viáticos")]
-        [Range(0, 30, ErrorMessage = "El número de días debe estar entre 0 y 30.")]
-        [DefaultValue(0)]
+        [Required(ErrorMessage = "El número de días es requerido")]
+        [Range(0, 30, ErrorMessage = "Los días deben estar entre 0 y 30")]
+        [Display(Name = "Número de Días")]
         public int Dias { get; set; }
 
-        [Display(Name = "Observaciones / Referencia")]
-        [StringLength(500, ErrorMessage = "Las observaciones no pueden exceder los 500 caracteres.")]
-        [DataType(DataType.MultilineText)]
+        [Display(Name = "Observaciones")]
+        [StringLength(500, ErrorMessage = "Las observaciones no pueden exceder los 500 caracteres")]
         public string Observacion { get; set; }
 
-        [ScaffoldColumn(false)]
-        public string TokenSeguridad { get; set; }
+        // ✅ AGREGAR ESTAS PROPIEDADES PARA DETALLE:
+        [Display(Name = "Número de Orden")]
+        public string NumeroOrden { get; set; }
 
-        [ScaffoldColumn(false)]
-        public string IpCliente { get; set; }
+        [Display(Name = "Fecha de Creación")]
+        public DateTime FechaCreacion { get; set; }
 
-        [ScaffoldColumn(false)]
-        public DateTime FechaSolicitud { get; set; } = DateTime.Now;
+        [Display(Name = "Estado")]
+        public string Estado { get; set; }
 
-        public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
-        {
-            var resultados = new List<ValidationResult>();
+        [Display(Name = "Subtotal")]
+        public decimal Subtotal { get; set; }
 
-            // Validación personalizada: Si hay estaciones, debe haber al menos un día
-            if (Estaciones > 0 && Dias == 0)
-            {
-                resultados.Add(new ValidationResult(
-                    "Si especifica estaciones para inspección, debe indicar al menos un día de viáticos.",
-                    new[] { nameof(Dias) }));
-            }
+        [Display(Name = "Administración")]
+        public decimal Admin { get; set; }
 
-            // Validación personalizada: El código de solicitud debe tener un formato específico si se proporciona
-            if (CodigoSolicitud.HasValue && CodigoSolicitud.Value > 0)
-            {
-                if (CodigoSolicitud.Value.ToString().Length < 5)
-                {
-                    resultados.Add(new ValidationResult(
-                        "El código de solicitud debe tener al menos 5 dígitos.",
-                        new[] { nameof(CodigoSolicitud) }));
-                }
-            }
+        [Display(Name = "Total")]
+        public decimal Total { get; set; }
 
-            // Validación de Observaciones si se proporcionan
-            if (!string.IsNullOrWhiteSpace(Observacion))
-            {
-                if (Observacion.Contains("<script>") || Observacion.Contains("javascript:"))
-                {
-                    resultados.Add(new ValidationResult(
-                        "Las observaciones contienen contenido no permitido.",
-                        new[] { nameof(Observacion) }));
-                }
-            }
+        // Propiedades para mostrar en la vista
+        [Display(Name = "Valor Base")]
+        public decimal ValorBase { get; set; }
 
-            return resultados;
-        }
+        [Display(Name = "Inspección")]
+        public decimal Inspeccion { get; set; }
+
+        [Display(Name = "Viáticos")]
+        public decimal Viaticos { get; set; }
+
+        [Display(Name = "Gastos Administrativos")]
+        public decimal GastosAdmin { get; set; }
     }
 }

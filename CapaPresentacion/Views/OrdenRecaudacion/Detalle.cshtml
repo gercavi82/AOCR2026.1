@@ -1,0 +1,258 @@
+﻿@model CapaPresentacion.Models.ViewModels.OrdenRecaudacionViewModel
+
+@{
+    ViewBag.Title = "Detalle de Orden: " + Model.NumeroOrden;
+    var datosCompletos = ViewBag.DatosCompletos as dynamic;
+    var ordenId = ViewBag.OrdenId as int? ?? 0;
+}
+
+<div class="container">
+    <div class="row">
+        <div class="col-md-12">
+            <h2>
+                <i class="fas fa-file-invoice"></i> Orden: @Model.NumeroOrden
+                <span class="badge badge-@(Model.Estado == " COMPLETADA" ? "success" :
+                      Model.Estado= ="PAGADA" ? "primary" :
+                      Model.Estado= ="BORRADOR" ? "warning" : "secondary" ) float-right">
+                    @Model.Estado
+                </span>
+            </h2>
+            <hr />
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h4><i class="fas fa-info-circle"></i> Información General</h4>
+                </div>
+                <div class="card-body">
+                    <dl class="row">
+                        <dt class="col-sm-4">Número de Orden:</dt>
+                        <dd class="col-sm-8">@Model.NumeroOrden</dd>
+
+                        <dt class="col-sm-4">Fecha de Creación:</dt>
+                        <dd class="col-sm-8">@Model.FechaCreacion.ToString("dd/MM/yyyy HH:mm")</dd>
+
+                        <dt class="col-sm-4">Estado Actual:</dt>
+                        <dd class="col-sm-8">
+                            <span class="badge badge-@(Model.Estado == " COMPLETADA" ? "success" : "warning" )">
+                                @Model.Estado
+                            </span>
+                        </dd>
+
+                        @if (!string.IsNullOrEmpty(Model.Observacion))
+                        {
+                        <dt class="col-sm-4">Observaciones:</dt>
+                        <dd class="col-sm-8">@Model.Observacion</dd>
+                        }
+                    </dl>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-header bg-success text-white">
+                    <h4><i class="fas fa-dollar-sign"></i> Resumen Financiero</h4>
+                </div>
+                <div class="card-body">
+                    <table class="table table-sm table-borderless">
+                        <tr>
+                            <td>Subtotal:</td>
+                            <td class="text-right">@Model.Subtotal.ToString("C2")</td>
+                        </tr>
+                        <tr>
+                            <td>Administración:</td>
+                            <td class="text-right">@Model.Admin.ToString("C2")</td>
+                        </tr>
+                        <tr class="table-active">
+                            <td><strong>TOTAL:</strong></td>
+                            <td class="text-right"><strong>@Model.Total.ToString("C2")</strong></td>
+                        </tr>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Sección de Detalles si existen -->
+    @if (datosCompletos != null && datosCompletos.Detalles != null && datosCompletos.Detalles.Count > 0)
+    {
+    <div class="row mt-4">
+        <div class="col-md-12">
+            <div class="card">
+                <div class="card-header bg-info text-white">
+                    <h4><i class="fas fa-list"></i> Detalles de la Orden</h4>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-striped table-hover">
+                            <thead>
+                                <tr>
+                                    <th>#</th>
+                                    <th>Código</th>
+                                    <th>Concepto</th>
+                                    <th>Cantidad</th>
+                                    <th class="text-right">Valor Unitario</th>
+                                    <th class="text-right">Valor Total</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @{
+                                int counter = 1;
+                                foreach (var detalle in datosCompletos.Detalles)
+                                {
+                                <tr>
+                                    <td>@counter</td>
+                                    <td>@detalle.CodigoConcepto</td>
+                                    <td>@detalle.NombreConcepto</td>
+                                    <td>@detalle.Cantidad</td>
+                                    <td class="text-right">@detalle.ValorUnitario.ToString("C2")</td>
+                                    <td class="text-right">@detalle.ValorTotal.ToString("C2")</td>
+                                </tr>
+                                counter++;
+                                }
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    }
+
+    <!-- Botones de Acción -->
+    <div class="row mt-4">
+        <div class="col-md-12">
+            <div class="btn-toolbar" role="toolbar">
+                <div class="btn-group mr-2" role="group">
+                    <a href="@Url.Action(" Index", "Dashboard" )" class="btn btn-secondary">
+                        <i class="fas fa-arrow-left"></i> Volver al Dashboard
+                    </a>
+                </div>
+
+                <div class="btn-group mr-2" role="group">
+                    <!-- Enlace para ver PDF -->
+                    @if (ordenId > 0)
+                    {
+                    <a href="@Url.Action(" VerPDF", "OrdenRecaudacion" , new { id=ordenId })"
+                       class="btn btn-info" target="_blank">
+                        <i class="fas fa-eye"></i> Ver PDF
+                    </a>
+
+                    <a href="@Url.Action(" DescargarPDF", "OrdenRecaudacion" , new { id=ordenId })"
+                       class="btn btn-primary">
+                        <i class="fas fa-download"></i> Descargar PDF
+                    </a>
+
+                    <!-- Botón para enviar por email -->
+                    <button type="button" class="btn btn-warning" data-toggle="modal" data-target="#emailModal">
+                        <i class="fas fa-envelope"></i> Enviar por Email
+                    </button>
+                    }
+                </div>
+
+                @if (Model.Estado == "BORRADOR")
+                {
+                <div class="btn-group" role="group">
+                    <a href="@Url.Action(" Editar", "Orden" , new { id=ordenId })"
+                       class="btn btn-outline-warning">
+                        <i class="fas fa-edit"></i> Editar Orden
+                    </a>
+                </div>
+                }
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal para enviar email -->
+@if (ordenId > 0)
+{
+<div class="modal fade" id="emailModal" tabindex="-1" role="dialog" aria-labelledby="emailModalLabel" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="emailModalLabel">
+                    <i class="fas fa-envelope"></i> Enviar Orden por Email
+                </h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <form id="formEmail">
+                    <input type="hidden" name="ordenId" value="@ordenId" />
+                    <div class="form-group">
+                        <label for="emailDestino">Email Destino:</label>
+                        <input type="email" class="form-control" id="emailDestino" name="emailDestino"
+                               placeholder="ejemplo@empresa.com" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="asunto">Asunto:</label>
+                        <input type="text" class="form-control" id="asunto" name="asunto"
+                               value="Orden de Recaudación - @Model.NumeroOrden">
+                    </div>
+                    <div class="form-group">
+                        <label for="mensaje">Mensaje:</label>
+                        <textarea class="form-control" id="mensaje" name="mensaje" rows="3">
+Adjunto se encuentra la Orden de Recaudación @Model.NumeroOrden.
+
+Saludos cordiales,
+Sistema AOCR - DGAC
+                            </textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary" onclick="enviarEmail()">
+                    <i class="fas fa-paper-plane"></i> Enviar Email
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+}
+
+@section Scripts {
+<script>
+        function enviarEmail() {
+            const formData = $('#formEmail').serialize();
+
+            $.ajax({
+                url: '@Url.Action("EnviarOrdenPorEmail", "OrdenRecaudacion")',
+                type: 'POST',
+                data: formData,
+                success: function(response) {
+                    if (response.success) {
+                        alert('✅ ' + response.message);
+                        $('#emailModal').modal('hide');
+                        $('#formEmail')[0].reset();
+                    } else {
+                        alert('❌ ' + response.message);
+                    }
+                },
+                error: function() {
+                    alert('❌ Error al enviar el email. Intente nuevamente.');
+                }
+            });
+        }
+
+        $(document).ready(function() {
+            console.log('Orden cargada: @Model.NumeroOrden');
+
+            // Opcional: cargar más detalles via AJAX si es necesario
+            @*
+            $.get('@Url.Action("ObtenerDetallesOrden", "Orden", new { id = ViewBag.OrdenId })', function(data) {
+                if (data.success) {
+                    // Actualizar tabla de detalles
+                }
+            });
+            *@
+        });
+</script>
+}

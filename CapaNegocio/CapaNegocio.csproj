@@ -69,7 +69,6 @@
     <Compile Include="Helpers\EmailHelper.cs" />
     <Compile Include="Helpers\FileHelper.cs" />
     <Compile Include="Helpers\PasswordHelper.cs" />
-    <Compile Include="Helpers\PdfGenerator.cs" />
     <Compile Include="Helpers\ValidationHelper.cs" />
     <Compile Include="SolicitudAOCRBL.cs" />
     <Compile Include="UsuarioRolBL.cs" />
