@@ -1,0 +1,196 @@
+﻿@{
+    ViewBag.Title = "Orden de Recaudación Requerida";
+    Layout = "~/Views/Shared/_LayoutAOCR.cshtml";
+}
+
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-md-10 col-lg-8">
+            <div class="card shadow-lg border-0">
+                <div class="card-header bg-warning text-dark py-3">
+                    <h4 class="mb-0">
+                        <i class="fas fa-exclamation-triangle me-2"></i>
+                        Requisito Obligatorio: Orden de Recaudación
+                    </h4>
+                </div>
+
+                <div class="card-body p-4">
+                    <div class="alert alert-info border-info">
+                        <h5 class="alert-heading">
+                            <i class="fas fa-info-circle me-2"></i>Información Importante
+                        </h5>
+                        <p class="mb-0">
+                            Para acceder al Sistema de Certificación Aérea (AOCR), primero debe generar
+                            una <strong>Orden de Recaudación</strong> según los servicios requeridos.
+                        </p>
+                        <hr>
+                        <p class="small mb-0">
+                            <i class="fas fa-check-circle text-success me-1"></i>
+                            Este es un requisito obligatorio establecido por la
+                            <strong>Dirección de Certificación Aeronáutica y Vigilancia Continua</strong>
+                            según Resolución 066/2010.
+                        </p>
+                    </div>
+
+                    @if (ViewBag.TieneOrdenBorrador)
+                    {
+                        <div class="alert alert-warning border-warning">
+                            <h5 class="alert-heading">
+                                <i class="fas fa-edit me-2"></i>¡Tiene una orden pendiente!
+                            </h5>
+                            <p>
+                                Ya inició una orden de recaudación que se encuentra en estado <span class="badge bg-secondary">BORRADOR</span>.
+                            </p>
+                            <div class="mt-3">
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <p class="mb-1"><strong>Número:</strong> @ViewBag.NumeroOrden</p>
+                                        <p class="mb-1"><strong>Fecha:</strong> @ViewBag.FechaCreacion</p>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <p class="mb-1"><strong>Total:</strong> @ViewBag.Total</p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="mt-3">
+                                <a href="@Url.Action("Detalle", "Orden", new { id = ViewBag.OrdenId })"
+                                   class="btn btn-warning btn-lg">
+                                    <i class="fas fa-edit me-2"></i> Completar Orden Pendiente
+                                </a>
+                            </div>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="text-center py-4">
+                            <h4 class="text-primary mb-4">¿Qué desea hacer?</h4>
+
+                            <div class="row g-4">
+                                <div class="col-md-6">
+                                    <div class="card h-100 border-primary shadow-sm hover-shadow">
+                                        <div class="card-body text-center p-4">
+                                            <div class="mb-3">
+                                                <i class="fas fa-file-invoice-dollar fa-3x text-primary"></i>
+                                            </div>
+                                            <h5 class="card-title text-primary mb-3">
+                                                Generar Nueva Orden
+                                            </h5>
+                                            <p class="card-text text-muted">
+                                                Cree una nueva orden de recaudación para los servicios que requiera.
+                                            </p>
+                                            <a href="@Url.Action("Nueva", "OrdenRecaudacion")"
+                                               class="btn btn-primary btn-lg w-100 mt-3">
+                                                <i class="fas fa-plus-circle me-2"></i> Crear Nueva Orden
+                                            </a>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="col-md-6">
+                                    <div class="card h-100 border-secondary shadow-sm hover-shadow">
+                                        <div class="card-body text-center p-4">
+                                            <div class="mb-3">
+                                                <i class="fas fa-history fa-3x text-secondary"></i>
+                                            </div>
+                                            <h5 class="card-title text-secondary mb-3">
+                                                Ver Historial
+                                            </h5>
+                                            <p class="card-text text-muted">
+                                                Revise sus órdenes de recaudación anteriores o en proceso.
+                                            </p>
+                                            <a href="@Url.Action("MisOrdenes", "Orden")"
+                                               class="btn btn-secondary btn-lg w-100 mt-3">
+                                                <i class="fas fa-list me-2"></i> Ver Mis Órdenes
+                                            </a>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    }
+
+                    <div class="mt-5 pt-4 border-top">
+                        <h5 class="text-muted mb-3">
+                            <i class="fas fa-file-pdf me-2"></i>Formatos de Referencia:
+                        </h5>
+                        <div class="row">
+                            <div class="col-md-4 mb-3">
+                                <div class="card h-100 border">
+                                    <div class="card-body">
+                                        <h6 class="card-title">
+                                            <i class="fas fa-plane text-primary me-2"></i>
+                                            Renovación AOCR
+                                        </h6>
+                                        <p class="small text-muted mb-2">Valor: $3,300.00</p>
+                                        <a href="@Url.Content("~/Content/formatos/2.1_OR_174-signed.pdf")"
+                                           target="_blank" class="btn btn-outline-primary btn-sm w-100">
+                                            <i class="fas fa-external-link-alt me-1"></i> Ver Ejemplo
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-4 mb-3">
+                                <div class="card h-100 border">
+                                    <div class="card-body">
+                                        <h6 class="card-title">
+                                            <i class="fas fa-plane-arrival text-success me-2"></i>
+                                            Incremento Aeronave
+                                        </h6>
+                                        <p class="small text-muted mb-2">Valor: $1,600.00</p>
+                                        <a href="@Url.Content("~/Content/formatos/OR-105.pdf")"
+                                           target="_blank" class="btn btn-outline-success btn-sm w-100">
+                                            <i class="fas fa-external-link-alt me-1"></i> Ver Ejemplo
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-4 mb-3">
+                                <div class="card h-100 border">
+                                    <div class="card-body">
+                                        <h6 class="card-title">
+                                            <i class="fas fa-edit text-warning me-2"></i>
+                                            Modificación Sin Incremento
+                                        </h6>
+                                        <p class="small text-muted mb-2">Valor: $80.00</p>
+                                        <a href="@Url.Content("~/Content/formatos/OR-561.pdf")"
+                                           target="_blank" class="btn btn-outline-warning btn-sm w-100">
+                                            <i class="fas fa-external-link-alt me-1"></i> Ver Ejemplo
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="alert alert-light border mt-4">
+                        <h6 class="mb-2">
+                            <i class="fas fa-question-circle me-2 text-info"></i>
+                            ¿Necesita ayuda?
+                        </h6>
+                        <p class="small mb-0">
+                            Si tiene dudas sobre qué concepto seleccionar o cómo completar la orden,
+                            puede contactar al área de Financiero al
+                            <strong>02-398-2900 ext. 123</strong> o escribir a
+                            <a href="mailto:financiero@dgac.gob.ec">financiero@dgac.gob.ec</a>.
+                        </p>
+                    </div>
+                </div>
+
+                <div class="card-footer bg-light text-center py-3">
+                    <p class="small text-muted mb-0">
+                        <i class="fas fa-shield-alt me-1"></i>
+                        Sistema de Gestión de Certificación Aérea - DGAC Ecuador
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .hover-shadow:hover {
+        transform: translateY(-5px);
+        transition: transform 0.3s ease;
+        box-shadow: 0 10px 25px rgba(0,0,0,0.1) !important;
+    }
+</style>

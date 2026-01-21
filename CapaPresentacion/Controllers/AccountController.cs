@@ -1,11 +1,13 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Web;
 using System.Web.Mvc;
 using System.Web.Security;
 using CapaModelo;
 using CapaNegocio;
 using CapaPresentacion.Models;
+using CapaDatos.DAOs; // Añadir para usar OrdenRecaudacionDAO
 
 namespace CapaPresentacion.Controllers
 {
@@ -44,14 +46,15 @@ namespace CapaPresentacion.Controllers
                 out mensaje
             );
 
-            if (!ok)
+            if (!ok || usuario == null)
             {
-                ModelState.AddModelError("", mensaje);
+                ModelState.AddModelError("", string.IsNullOrWhiteSpace(mensaje) ? "Credenciales inválidas." : mensaje);
                 return View(model);
             }
 
             // 🔐 ADMIN SUPREMO
-            if (usuario.NombreUsuario.Equals("USU_ADMIN", StringComparison.InvariantCultureIgnoreCase))
+            if (!string.IsNullOrWhiteSpace(usuario.NombreUsuario) &&
+                usuario.NombreUsuario.Equals("USU_ADMIN", StringComparison.InvariantCultureIgnoreCase))
             {
                 roles = new List<string>
                 {
@@ -66,16 +69,15 @@ namespace CapaPresentacion.Controllers
                 };
             }
 
+            roles = roles ?? new List<string>();
+            string rolesString = roles.Count > 0 ? string.Join(",", roles.Distinct()) : string.Empty;
+
             // ============================
             // COOKIE DE AUTENTICACIÓN
             // ============================
-            string rolesString = roles != null && roles.Count > 0
-                ? string.Join(",", roles)
-                : string.Empty;
-
             var ticket = new FormsAuthenticationTicket(
                 1,
-                usuario.NombreUsuario,
+                usuario.NombreUsuario ?? model.Usuario ?? "usuario",
                 DateTime.Now,
                 DateTime.Now.AddMinutes(60),
                 model.Recordarme,
@@ -87,7 +89,9 @@ namespace CapaPresentacion.Controllers
 
             var cookie = new HttpCookie(FormsAuthentication.FormsCookieName, encrypted)
             {
-                HttpOnly = true
+                HttpOnly = true,
+                Secure = Request.IsSecureConnection,
+                SameSite = SameSiteMode.Lax
             };
 
             if (model.Recordarme)
@@ -96,22 +100,49 @@ namespace CapaPresentacion.Controllers
             Response.Cookies.Add(cookie);
 
             // ============================
-            // ✅ SESIÓN (ESTO ES LO CLAVE)
+            // ✅ SESIÓN (CLAVE)
             // ============================
-            Session["CodigoUsuario"] = usuario.Id;
-            Session["NombreUsuario"] = usuario.NombreCompleto;
+            Session["IdUsuario"] = usuario.Id;
+            Session["NombreUsuario"] = !string.IsNullOrWhiteSpace(usuario.NombreCompleto) ? usuario.NombreCompleto : (usuario.NombreUsuario ?? "Usuario");
             Session["Correo"] = usuario.Email;
 
-            Session["Roles"] = roles;                 // 🔑 LISTA COMPLETA
-            Session["Rol"] = roles.Count > 0 ? roles[0] : null; // 🔑 ROL ACTIVO
+            Session["Roles"] = roles;
+            Session["Rol"] = roles.Count > 0 ? roles[0] : null;
 
             // ============================
-            // REDIRECCIÓN
+            // 🔄 VERIFICACIÓN DE ORDEN DE RECAUDACIÓN
             // ============================
-            if (!string.IsNullOrEmpty(returnUrl) && Url.IsLocalUrl(returnUrl))
+            var ordenDAO = new OrdenRecaudacionDAO();
+
+            // 1. Verificar si tiene orden generada o pagada
+            bool tieneOrdenGeneradaOPagada = ordenDAO.ExisteORGeneradaOPagada(usuario.Id);
+
+            // 2. Verificar si tiene orden en borrador
+            bool tieneOrdenBorrador = ordenDAO.ExisteORMinima(usuario.Id);
+
+            // Guardar estado en sesión para uso posterior
+            Session["TieneOrdenGenerada"] = tieneOrdenGeneradaOPagada;
+            Session["TieneOrdenBorrador"] = tieneOrdenBorrador;
+
+            // ============================
+            // REDIRECCIÓN SEGURA CON VERIFICACIÓN DE ORDEN
+            // ============================
+            if (!tieneOrdenGeneradaOPagada)
+            {
+                // No tiene orden válida, redirigir a verificación de orden
+                return RedirectToAction("Obligatoria", "OrdenRecaudacion");
+            }
+
+            // Si tiene orden válida, proceder con redirección normal
+            return RedirectToLocal(returnUrl);
+        }
+
+        private ActionResult RedirectToLocal(string returnUrl)
+        {
+            if (!string.IsNullOrWhiteSpace(returnUrl) && Url.IsLocalUrl(returnUrl))
                 return Redirect(returnUrl);
 
-            return RedirectToAction("Index", "Home");
+            return RedirectToAction("Index", "Dashboard");
         }
 
         // ============================
@@ -120,12 +151,10 @@ namespace CapaPresentacion.Controllers
         [Authorize]
         public ActionResult CambiarRol(string rolSeleccionado)
         {
-            var roles = Session["Roles"] as List<string>;
+            var roles = Session["Roles"] as List<string> ?? new List<string>();
 
-            if (roles != null && roles.Contains(rolSeleccionado))
-            {
+            if (!string.IsNullOrWhiteSpace(rolSeleccionado) && roles.Contains(rolSeleccionado))
                 Session["Rol"] = rolSeleccionado;
-            }
 
             return RedirectToAction("Index", "Home");
         }
@@ -138,6 +167,20 @@ namespace CapaPresentacion.Controllers
         {
             FormsAuthentication.SignOut();
             Session.Clear();
+            Session.Abandon();
+
+            if (Request.Cookies[FormsAuthentication.FormsCookieName] != null)
+            {
+                var c = new HttpCookie(FormsAuthentication.FormsCookieName)
+                {
+                    Expires = DateTime.Now.AddDays(-1),
+                    HttpOnly = true,
+                    Secure = Request.IsSecureConnection,
+                    SameSite = SameSiteMode.Lax
+                };
+                Response.Cookies.Add(c);
+            }
+
             return RedirectToAction("Login", "Account");
         }
 
@@ -148,13 +191,13 @@ namespace CapaPresentacion.Controllers
         [AllowAnonymous]
         public JsonResult EnviarRecuperar(string email)
         {
-            if (string.IsNullOrEmpty(email))
+            if (string.IsNullOrWhiteSpace(email))
                 return Json(new { ok = false, mensaje = "Debe ingresar un correo electrónico válido." });
 
             string mensaje;
-            bool enviado = UsuarioBL.RestablecerContrasenaPorEmail(email, out mensaje);
+            bool enviado = UsuarioBL.RestablecerContrasenaPorEmail(email.Trim(), out mensaje);
 
-            return Json(new { ok = enviado, mensaje });
+            return Json(new { ok = enviado, mensaje = mensaje });
         }
 
         // ============================
@@ -167,6 +210,36 @@ namespace CapaPresentacion.Controllers
                 RolesDisponibles = RolBL.ObtenerActivos()
             };
             return PartialView("_ModalRegistroUsuario", model);
+        }
+
+        // ============================
+        // VERIFICAR ESTADO ORDEN (para AJAX)
+        // ============================
+        [Authorize]
+        public JsonResult VerificarEstadoOrden()
+        {
+            try
+            {
+                int idUsuario = Session["IdUsuario"] != null ? Convert.ToInt32(Session["IdUsuario"]) : 0;
+
+                if (idUsuario <= 0)
+                    return Json(new { tieneOrden = false, mensaje = "Sesión expirada" }, JsonRequestBehavior.AllowGet);
+
+                var ordenDAO = new OrdenRecaudacionDAO();
+                bool tieneOrden = ordenDAO.ExisteORGeneradaOPagada(idUsuario);
+                bool tieneBorrador = ordenDAO.ExisteORMinima(idUsuario);
+
+                return Json(new
+                {
+                    tieneOrdenGenerada = tieneOrden,
+                    tieneOrdenBorrador = tieneBorrador,
+                    redireccionar = !tieneOrden
+                }, JsonRequestBehavior.AllowGet);
+            }
+            catch (Exception ex)
+            {
+                return Json(new { error = ex.Message }, JsonRequestBehavior.AllowGet);
+            }
         }
     }
 }

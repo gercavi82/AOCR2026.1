@@ -1,46 +1,98 @@
-﻿@{
-    ViewBag.Title = "Nueva Orden AOCR";
+﻿@model CapaPresentacion.Models.ViewModels.OrdenRecaudacionViewModel
+@{
+    ViewBag.Title = "Generar Orden de Recaudación";
     Layout = "~/Views/Shared/_LayoutAOCR.cshtml";
 }
 
-<div class="container py-5">
-    <div class="card shadow border-0">
-        <div class="card-header bg-dark text-white">
-            <h4 class="mb-0"><i class="fas fa-calculator me-2"></i> Generar Orden de Recaudación</h4>
-        </div>
-        <div class="card-body">
-            @Html.AntiForgeryToken()
-            <div class="row">
-                <div class="col-md-7">
-                    <div class="mb-3">
-                        <label class="fw-bold">Concepto Principal</label>
-                        <select id="concepto" class="form-control calc-trigger">
-                            <option value="EMISION_AOCR" data-p="3300">Emisión AOCR ($3,300.00)</option>
-                            <option value="RENOVACION_AOCR" data-p="3300">Renovación AOCR ($3,300.00)</option>
-                            <option value="MODIF_INC_AERONAVE" data-p="1600">Modificación (Con Aeronaves) ($1,600.00)</option>
-                            <option value="MODIF_SIN_INC" data-p="80">Modificación Administrativa ($80.00)</option>
-                        </select>
-                    </div>
-                    <div class="row">
-                        <div class="col-md-6 mb-3">
-                            <label class="fw-bold">Estaciones</label>
-                            <input type="number" id="estaciones" class="form-control calc-trigger" value="0" min="0" />
-                        </div>
-                        <div class="col-md-6 mb-3">
-                            <label class="fw-bold">Días de Viáticos</label>
-                            <input type="number" id="dias" class="form-control calc-trigger" value="0" min="0" />
-                        </div>
-                    </div>
+<div class="container-fluid py-4">
+    <div class="row justify-content-center">
+        <div class="col-lg-10">
+            <div class="card shadow-lg border-0">
+                <div class="card-header bg-dark text-white py-3">
+                    <h4 class="mb-0">
+                        <i class="fas fa-file-invoice-dollar me-2 text-info"></i>
+                        Generar Orden de Recaudación
+                    </h4>
                 </div>
-                <div class="col-md-5 bg-light p-3 rounded">
-                    <h5 class="border-bottom pb-2">RESUMEN DGAC</h5>
-                    <div class="d-flex justify-content-between"><span>Tasa:</span><span id="resTasa">$0.00</span></div>
-                    <div class="d-flex justify-content-between"><span>Inspección ($500):</span><span id="resInsp">$0.00</span></div>
-                    <div class="d-flex justify-content-between"><span>Viáticos ($80):</span><span id="resViat">$0.00</span></div>
-                    <div class="d-flex justify-content-between text-info font-italic"><span>Admin (8%):</span><span id="resAdmin">$0.00</span></div>
-                    <hr />
-                    <div class="d-flex justify-content-between h4 text-primary"><strong>TOTAL:</strong><strong id="resTotal">$0.00</strong></div>
-                    <button id="btnCrear" class="btn btn-success w-100 mt-3">PROCESAR ORDEN</button>
+
+                <div class="card-body p-4">
+                    @using (Html.BeginForm("Crear", "OrdenRecaudacion", FormMethod.Post, new { id = "formOrden" }))
+                    {
+                    @Html.AntiForgeryToken()
+
+                    <div class="row">
+                        <!-- Formulario -->
+                        <div class="col-md-7">
+                            <div class="mb-3">
+                                <label class="form-label fw-bold">Concepto Principal</label>
+                                <select id="concepto" name="ConceptoPrincipalCodigo" class="form-select" required>
+                                    <option value="">Seleccione un concepto</option>
+                                    <option value="EMISION_AOCR">Emisión de AOCR ($3,300.00)</option>
+                                    <option value="RENOVACION_AOCR">Renovación de AOCR ($3,300.00)</option>
+                                    <option value="MODIF_INC_AERONAVE">Modificación con incremento aeronave ($1,600.00)</option>
+                                    <option value="MODIF_SIN_INC">Modificación sin incremento equipo de vuelo ($80.00)</option>
+                                </select>
+                                <div class="invalid-feedback">Por favor seleccione un concepto.</div>
+                            </div>
+
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label fw-bold">Estaciones a Inspeccionar</label>
+                                    <input type="number" id="estaciones" name="Estaciones"
+                                           class="form-control" value="0" min="0" max="50" required>
+                                    <div class="form-text">Tarifa: $500.00 por estación</div>
+                                </div>
+
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label fw-bold">Días de Viáticos</label>
+                                    <input type="number" id="dias" name="Dias"
+                                           class="form-control" value="0" min="0" max="30" required>
+                                    <div class="form-text">$80.00 por día + 8% gastos admin.</div>
+                                </div>
+                            </div>
+
+                            <div class="mb-3">
+                                <label class="form-label fw-bold">Código de Solicitud</label>
+                                <input type="number" id="codigoSolicitud" name="CodigoSolicitud"
+                                       class="form-control" min="0" placeholder="Opcional">
+                            </div>
+
+                            <div class="mb-3">
+                                <label class="form-label fw-bold">Observaciones</label>
+                                <textarea id="observacion" name="Observacion" class="form-control"
+                                          rows="3" maxlength="500" placeholder="Observaciones adicionales..."></textarea>
+                                <div class="form-text">Máximo 500 caracteres</div>
+                            </div>
+                        </div>
+
+                        <!-- Cálculo -->
+                        <div class="col-md-5">
+                            <div class="card bg-light border-0 shadow-sm">
+                                <div class="card-header bg-white">
+                                    <h5 class="mb-0 text-dark">
+                                        <i class="fas fa-calculator me-2"></i> Liquidación Oficial
+                                    </h5>
+                                </div>
+                                <div class="card-body">
+                                    <table class="table table-sm table-borderless">
+                                        <tr><td>Tasa Principal:</td><td class="text-end fw-bold" id="resTasa">$0.00</td></tr>
+                                        <tr><td>Inspección (<span id="resEst">0</span> est.):</td><td class="text-end fw-bold" id="resInsp">$0.00</td></tr>
+                                        <tr><td>Viáticos (<span id="resDia">0</span> días):</td><td class="text-end fw-bold" id="resViat">$0.00</td></tr>
+                                        <tr class="text-info"><td>Gastos Admin. (8%):</td><td class="text-end fw-bold" id="resAdmin">$0.00</td></tr>
+                                        <tr class="border-top border-dark">
+                                            <td class="pt-3"><h5 class="text-primary mb-0">TOTAL:</h5></td>
+                                            <td class="pt-3 text-end"><h3 class="text-primary mb-0" id="resTotal">$0.00</h3><small class="text-muted">USD</small></td>
+                                        </tr>
+                                    </table>
+
+                                    <button type="submit" id="btnCrear" class="btn btn-primary btn-lg w-100 mt-4">
+                                        <i class="fas fa-check-circle me-2"></i> Generar Orden
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    }
                 </div>
             </div>
         </div>
@@ -48,49 +100,91 @@
 </div>
 
 @section Scripts {
-    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-    <script>
-        function calcular() {
-            const pBase = parseFloat($('#concepto option:selected').data('p'));
-            const nEst = parseInt($('#estaciones').val()) || 0;
-            const nDia = parseInt($('#dias').val()) || 0;
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
-            const tInsp = nEst * 500;
-            const tViat = nDia * 80;
-            const tAdmin = tViat * 0.08;
-            const total = pBase + tInsp + tViat + tAdmin;
+<script>
+    const tarifasBase = {
+        'EMISION_AOCR': 3300.00,
+        'RENOVACION_AOCR': 3300.00,
+        'MODIF_INC_AERONAVE': 1600.00,
+        'MODIF_SIN_INC': 80.00
+    };
 
-            $('#resTasa').text('$' + pBase.toFixed(2));
-            $('#resInsp').text('$' + tInsp.toFixed(2));
-            $('#resViat').text('$' + tViat.toFixed(2));
-            $('#resAdmin').text('$' + tAdmin.toFixed(2));
+    function calcularTotales() {
+        try {
+            const concepto = $('#concepto').val();
+            const estaciones = parseInt($('#estaciones').val()) || 0;
+            const dias = parseInt($('#dias').val()) || 0;
+
+            if (estaciones < 0) $('#estaciones').val(0);
+            if (dias < 0) $('#dias').val(0);
+            if (estaciones > 50) $('#estaciones').val(50);
+            if (dias > 30) $('#dias').val(30);
+
+            const valorBase = tarifasBase[concepto] || 0;
+            const inspeccion = estaciones * 500.00;
+            const viaticos = dias * 80.00;
+            const gastosAdmin = viaticos * 0.08;
+            const total = valorBase + inspeccion + viaticos + gastosAdmin;
+
+            $('#resTasa').text('$' + valorBase.toFixed(2));
+            $('#resInsp').text('$' + inspeccion.toFixed(2));
+            $('#resViat').text('$' + viaticos.toFixed(2));
+            $('#resAdmin').text('$' + gastosAdmin.toFixed(2));
             $('#resTotal').text('$' + total.toFixed(2));
+            $('#resEst').text(estaciones);
+            $('#resDia').text(dias);
+
+        } catch (error) {
+            console.error('Error en cálculo:', error);
         }
+    }
 
-        $('.calc-trigger').on('input change', calcular);
-        $(document).ready(calcular);
+    $(document).ready(function () {
+        calcularTotales();
 
-        $('#btnCrear').on('click', function() {
-            const btn = $(this);
-            btn.prop('disabled', true).text('Procesando...');
+        $('#concepto, #estaciones, #dias').on('change input', calcularTotales);
+
+        $('#formOrden').on('submit', function (e) {
+            e.preventDefault();
+
+            if (!$('#concepto').val()) {
+                Swal.fire('Error', 'Por favor seleccione un concepto.', 'error');
+                return false;
+            }
+
+            const btn = $('#btnCrear');
+            btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin me-2"></i> Procesando...');
+
             $.ajax({
                 url: '@Url.Action("Crear", "OrdenRecaudacion")',
                 type: 'POST',
-                data: {
-                    __RequestVerificationToken: $('input[name="__RequestVerificationToken"]').val(),
-                    ConceptoPrincipalCodigo: $('#concepto').val(),
-                    Estaciones: $('#estaciones').val(),
-                    Dias: $('#dias').val()
-                },
-                success: function(r) {
-                    if(r.success) {
-                        Swal.fire('Éxito', 'Orden creada', 'success').then(() => window.location.href='/Home/Index');
+                data: $(this).serialize(),
+                success: function (response) {
+                    if (response.success) {
+                        Swal.fire({
+                            icon: 'success',
+                            title: '¡Orden Creada!',
+                            html: `Orden #${response.ordenId} generada exitosamente.<br>${response.mensaje}`,
+                            confirmButtonText: 'Aceptar'
+                        }).then(() => {
+                            if (response.redireccion) {
+                                window.location.href = response.redireccion;
+                            } else {
+                                window.location.href = '@Url.Action("Index", "Home")';
+                            }
+                        });
                     } else {
-                        Swal.fire('Error', r.mensaje, 'error');
-                        btn.prop('disabled', false).text('PROCESAR ORDEN');
+                        Swal.fire('Error', response.mensaje, 'error');
+                        btn.prop('disabled', false).html('<i class="fas fa-check-circle me-2"></i> Generar Orden');
                     }
+                },
+                error: function () {
+                    Swal.fire('Error', 'Error de conexión con el servidor.', 'error');
+                    btn.prop('disabled', false).html('<i class="fas fa-check-circle me-2"></i> Generar Orden');
                 }
             });
         });
-    </script>
+    });
+</script>
 }

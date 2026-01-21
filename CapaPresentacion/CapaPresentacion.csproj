@@ -2708,7 +2708,7 @@
     <Content Include="Views\Financiero\RevisarSolicitud.cshtml" />
     <Content Include="Views\Financiero\ListaPagos.cshtml" />
     <Content Include="Views\Financiero\ValidarPago.cshtml" />
-    <Content Include="Views\OrdenRecaudacion\Nueva.cshtml" />
+    <Content Include="Views\OrdenRecaudacion\Obligatoria.cshtml" />
   </ItemGroup>
   <ItemGroup>
     <Folder Include="App_Data\" />
