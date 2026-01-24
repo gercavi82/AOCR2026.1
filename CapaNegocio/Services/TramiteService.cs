@@ -1,86 +1,152 @@
 ﻿using System;
 using System.Collections.Generic;
-using CapaDatos.DAOs;
+using System.Linq;
+using CapaDatos.Repositories;
 using CapaModelo;
 
 namespace CapaNegocio.Services
 {
     public class TramiteService
     {
-        private readonly SolicitudDAO _solicitudDAO;
-        private readonly DocumentoDAO _documentoDAO;
+        private readonly ISolicitudRepository _solicitudRepository;
+        private readonly IDocumentoRepository _documentoRepository;
 
         public TramiteService()
         {
-            _solicitudDAO = new SolicitudDAO();
-            _documentoDAO = new DocumentoDAO();
+            _solicitudRepository = new SolicitudRepository();
+            _documentoRepository = new DocumentoRepository();
         }
 
-        // 1. Crear Solicitud
-        public ResultadoOperacion CrearSolicitud(SolicitudAOCR solicitud)
+        // 1. Agregar documento
+        public ResultadoOperacion AgregarDocumento(int codigoSolicitud, Documento documento, string usuario)
         {
-            if (_solicitudDAO.Crear(solicitud))
-                return ResultadoOperacion.Ok(new { SolicitudId = solicitud.Id }, "Solicitud creada exitosamente.");
-
-            return ResultadoOperacion.Error("No se pudo crear la solicitud.");
-        }
-
-        // 2. Agregar documento
-        public ResultadoOperacion AgregarDocumento(int solicitudId, Documento doc)
-        {
-            doc.SolicitudId = solicitudId;
-
-            if (_documentoDAO.Agregar(doc))
-                return ResultadoOperacion.Ok(null, "Documento cargado.");
-
-            return ResultadoOperacion.Error("Error al cargar el documento.");
-        }
-
-        // 3. Solicitud está lista para revisión documental
-        public ResultadoOperacion EnviarDocumentos(int solicitudId)
-        {
-            var solicitud = _solicitudDAO.ObtenerPorId(solicitudId);
-            if (solicitud == null)
-                return ResultadoOperacion.Error("Solicitud no encontrada.");
-
-            solicitud.Estado = "EN_REVISION_DOCUMENTAL";
-
-            if (_solicitudDAO.Actualizar(solicitud))
-                return ResultadoOperacion.Ok(null, "Documentos enviados a revisión.");
-
-            return ResultadoOperacion.Error("Error al actualizar estado.");
-        }
-
-        // 4. Revisión documental - se detectaron observaciones
-        public ResultadoOperacion SolicitarSubsanacion(int solicitudId, string observaciones)
-        {
-            var solicitud = _solicitudDAO.ObtenerPorId(solicitudId);
-            if (solicitud == null)
-                return ResultadoOperacion.Error("Solicitud no encontrada.");
-
-            solicitud.Estado = "SUBSANACION";
-
-            if (_solicitudDAO.Actualizar(solicitud))
-                return ResultadoOperacion.Ok(null, "Se solicitó subsanación.");
-
-            return ResultadoOperacion.Error("No se pudo solicitar subsanación.");
-        }
-
-        // 5. Subsanar
-        public ResultadoOperacion Subsanar(int solicitudId, List<Documento> documentos)
-        {
-            foreach (var d in documentos)
+            try
             {
-                d.SolicitudId = solicitudId;
-                _documentoDAO.Agregar(d);
+                if (documento == null)
+                    return ResultadoOperacion.Error("El documento no puede ser nulo.");
+
+                var solicitud = _solicitudRepository.ObtenerPorId(codigoSolicitud);
+                if (solicitud == null)
+                    return ResultadoOperacion.Error("Solicitud no encontrada.");
+
+                documento.CodigoSolicitud = codigoSolicitud;
+                documento.FechaCarga = DateTime.Now;
+                documento.Estado = "PENDIENTE";
+                documento.Validado = false;
+                documento.UsuarioRegistro = usuario;
+                documento.Version = 1;
+
+                int codigoDocumento = _documentoRepository.Crear(documento);
+
+                if (codigoDocumento > 0)
+                {
+                    return ResultadoOperacion.Ok(new { Codigo = codigoDocumento }, "Documento cargado exitosamente.");
+                }
+
+                return ResultadoOperacion.Error("Error al persistir el documento en la base de datos.");
             }
-
-            var solicitud = _solicitudDAO.ObtenerPorId(solicitudId);
-            solicitud.Estado = "EN_REVISION_DOCUMENTAL";
-
-            _solicitudDAO.Actualizar(solicitud);
-
-            return ResultadoOperacion.Ok(null, "Subsanación cargada con éxito.");
+            catch (Exception ex)
+            {
+                return ResultadoOperacion.Error("Error al agregar documento: " + ex.Message);
+            }
         }
+
+        // 2. Subsanar documentos (Flujo de Corrección DGAC)
+        public ResultadoOperacion SubsanarDocumentos(int codigoSolicitud, List<Documento> documentos, string usuario, string observaciones)
+        {
+            try
+            {
+                var solicitud = _solicitudRepository.ObtenerPorId(codigoSolicitud);
+                if (solicitud == null) return ResultadoOperacion.Error("Solicitud no encontrada.");
+
+                if (solicitud.Estado != "SUBSANACION")
+                    return ResultadoOperacion.Error("La solicitud no se encuentra en fase de subsanación.");
+
+                if (documentos == null || !documentos.Any())
+                    return ResultadoOperacion.Error("Debe cargar al menos un archivo para subsanar.");
+
+                foreach (var doc in documentos)
+                {
+                    doc.CodigoSolicitud = codigoSolicitud;
+                    doc.FechaCarga = DateTime.Now;
+                    doc.Estado = "SUBSANACION";
+                    doc.UsuarioRegistro = usuario;
+                    _documentoRepository.Crear(doc);
+                }
+
+                solicitud.Estado = "EN_REVISION_DOCUMENTAL";
+                solicitud.FechaSubsanacion = DateTime.Now;
+                _solicitudRepository.Actualizar(solicitud);
+
+                return ResultadoOperacion.Ok(null, "Documentos de subsanación enviados a revisión.");
+            }
+            catch (Exception ex)
+            {
+                return ResultadoOperacion.Error("Error en proceso de subsanación: " + ex.Message);
+            }
+        }
+
+        // 3. Validar un documento individualmente
+        public ResultadoOperacion ValidarDocumento(int codigoDocumento, bool esValido, string obs, string usuario)
+        {
+            try
+            {
+                bool resultado = _documentoRepository.ValidarDocumento(codigoDocumento, esValido, obs, usuario);
+
+                if (resultado)
+                {
+                    string msg = esValido ? "Documento aprobado." : "Documento rechazado para subsanación.";
+                    return ResultadoOperacion.Ok(null, msg);
+                }
+                return ResultadoOperacion.Error("No se pudo actualizar el estado de validación.");
+            }
+            catch (Exception ex)
+            {
+                return ResultadoOperacion.Error("Error al validar: " + ex.Message);
+            }
+        }
+
+        // 4. Consultas de documentos
+        public ResultadoOperacion ObtenerDocumentosPorSolicitud(int codigoSolicitud)
+        {
+            try
+            {
+                var lista = _documentoRepository.ObtenerPorSolicitud(codigoSolicitud);
+                return ResultadoOperacion.Ok(lista, "Lista de documentos obtenida.");
+            }
+            catch (Exception ex)
+            {
+                return ResultadoOperacion.Error("Error al consultar documentos: " + ex.Message);
+            }
+        }
+
+        // 5. Verificación de flujo completo
+        public ResultadoOperacion VerificarCierreRevision(int codigoSolicitud)
+        {
+            try
+            {
+                var documentos = _documentoRepository.ObtenerPorSolicitud(codigoSolicitud);
+
+                if (documentos == null || documentos.Count == 0)
+                    return ResultadoOperacion.Ok(new { Listo = false }, "No hay documentos cargados.");
+
+                // ✅ bool? -> bool (null se considera false)
+                bool todosValidados = documentos.All(d => d.Validado == true);
+
+                // ✅ defensivo: evitar null en Estado
+                bool tieneRechazados = documentos.Any(d => string.Equals(d.Estado, "RECHAZADO", StringComparison.OrdinalIgnoreCase));
+
+                return ResultadoOperacion.Ok(new
+                {
+                    Finalizado = todosValidados,
+                    RequiereSubsanacion = tieneRechazados
+                }, "Análisis de estado completado.");
+            }
+            catch (Exception ex)
+            {
+                return ResultadoOperacion.Error("Error al verificar estado: " + ex.Message);
+            }
+        }
+
     }
 }

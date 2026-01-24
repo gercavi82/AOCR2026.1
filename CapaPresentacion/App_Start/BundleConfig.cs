@@ -6,63 +6,63 @@ namespace CapaPresentacion
     {
         public static void RegisterBundles(BundleCollection bundles)
         {
-            // jQuery core
-            bundles.Add(new ScriptBundle("~/bundles/jquery").Include(
-                "~/Scripts/jquery-{version}.js"));
+            // En DEBUG puedes dejar false, en PROD true
+            BundleTable.EnableOptimizations = !System.Web.HttpContext.Current.IsDebuggingEnabled;
 
-            // jQuery Validation
-            bundles.Add(new ScriptBundle("~/bundles/jqueryval").Include(
-                "~/Scripts/jquery.validate*"));
-
-            // Modernizr - usar solo para desarrollo
-            bundles.Add(new ScriptBundle("~/bundles/modernizr").Include(
-                "~/Scripts/modernizr-*"));
-
-            // Bootstrap + Plugins JS
-            bundles.Add(new ScriptBundle("~/bundles/bootstrap").Include(
-                "~/Content/plugins/jquery/jquery.min.js",
-                "~/Content/plugins/bootstrap/js/bootstrap.bundle.min.js",
-
-                // DataTables
-                "~/Content/plugins/datatables/jquery.dataTables.min.js",
-                "~/Content/plugins/datatables-bs4/js/dataTables.bootstrap4.min.js",
-                "~/Content/plugins/datatables-responsive/js/dataTables.responsive.min.js",
-                "~/Content/plugins/datatables-responsive/js/responsive.bootstrap4.min.js",
-                "~/Content/plugins/datatables-buttons/js/dataTables.buttons.min.js",
-                "~/Content/plugins/datatables-buttons/js/buttons.bootstrap4.min.js",
-                "~/Content/plugins/datatables-buttons/js/buttons.html5.min.js",
-                "~/Content/plugins/datatables-buttons/js/buttons.print.min.js",
-                "~/Content/plugins/datatables-buttons/js/buttons.colVis.min.js",
-
-                // Utilidades
-                "~/Content/plugins/jszip/jszip.min.js",
-                "~/Content/plugins/pdfmake/pdfmake.min.js",
-                "~/Content/plugins/pdfmake/vfs_fonts.js",
-                "~/Content/plugins/sweetalert2/sweetalert2.min.js",
-
-                // AdminLTE y lógica personalizada
-                "~/Content/dist/js/adminlte.min.js",
-                "~/Content/dist/js/dgac.js"
-            ));
-
-            // Estilos principales
+            // ======================
+            // CSS
+            // ======================
             bundles.Add(new StyleBundle("~/Content/css").Include(
-                "~/Content/plugins/fontawesome-free/css/all.min.css",
-                "~/Content/dist/css/adminlte.min.css",
-                "~/Content/dist/css/dgac.css"
+                "~/Content/bootstrap.min.css",
+                "~/Content/adminlte.min.css",
+                "~/Content/site.css",
+                "~/Content/fontawesome-all.min.css"
             ));
 
-            // Estilos de plugins
             bundles.Add(new StyleBundle("~/Content/plugins-css").Include(
-                "~/Content/plugins/datatables-bs4/css/dataTables.bootstrap4.min.css",
-                "~/Content/plugins/datatables-responsive/css/responsive.bootstrap4.min.css",
-                "~/Content/plugins/datatables-buttons/css/buttons.bootstrap4.min.css",
-                "~/Content/plugins/sweetalert2/sweetalert2.min.css"
+                // DataTables Bootstrap 5 (local)
+                "~/Content/DataTables/css/dataTables.bootstrap5.min.css",
+                "~/Content/DataTables/css/responsive.bootstrap5.min.css",
+
+                "~/Content/sweetalert2/sweetalert2.min.css",
+                "~/Content/select2/css/select2.min.css",
+                "~/Content/toastr/toastr.min.css"
             ));
 
-            // Validación extra
-            bundles.Add(new ScriptBundle("~/Content/plugins-js").Include(
-                "~/Scripts/jquery.validate.min.js"
+            // ======================
+            // JS (ORDEN CRÍTICO)
+            // ======================
+            bundles.Add(new ScriptBundle("~/bundles/jquery").Include(
+                "~/Scripts/jquery-3.6.4.min.js"
+            ));
+
+            bundles.Add(new ScriptBundle("~/bundles/bootstrap").Include(
+                "~/Scripts/bootstrap.bundle.min.js"
+            ));
+
+            bundles.Add(new ScriptBundle("~/bundles/jqueryval").Include(
+                "~/Scripts/jquery.validate.min.js",
+                "~/Scripts/jquery.validate.unobtrusive.min.js"
+            ));
+
+            bundles.Add(new ScriptBundle("~/bundles/datatables").Include(
+                "~/Scripts/DataTables/jquery.dataTables.min.js",
+                "~/Scripts/DataTables/dataTables.bootstrap5.min.js",
+                "~/Scripts/DataTables/dataTables.responsive.min.js",
+                "~/Scripts/DataTables/responsive.bootstrap5.min.js"
+            ));
+
+            bundles.Add(new ScriptBundle("~/bundles/plugins").Include(
+                "~/Scripts/sweetalert2/sweetalert2.min.js",
+                "~/Scripts/select2/select2.full.min.js",
+                "~/Scripts/toastr/toastr.min.js",
+                "~/Scripts/adminlte.min.js"
+            ));
+
+            bundles.Add(new ScriptBundle("~/bundles/app").Include(
+                "~/Scripts/app/global.js",
+                "~/Scripts/app/notifications.js",
+                "~/Scripts/app/forms.js"
             ));
         }
     }

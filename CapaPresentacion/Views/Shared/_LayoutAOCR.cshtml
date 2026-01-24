@@ -1,526 +1,650 @@
 ﻿<!DOCTYPE html>
-<html lang="es">
+<html lang="es" data-theme="light">
 <head>
-    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <!-- Meta tags esenciales -->
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes" />
+    <meta name="description" content="Sistema AOCR - Dirección General de Aviación Civil Ecuador" />
+    <meta name="author" content="DGAC Ecuador" />
+    <meta name="keywords" content="DGAC, Aviación Civil, Ecuador, AOCR, Órdenes de Recaudación" />
 
-    <link rel="icon" type="image/png" sizes="16x16" href="@Url.Content("~/Content/imagenes/logo2.jpg")" />
+    <!-- CSP simplificado (compatible con DataTables y plugins) -->
+    @if (HttpContext.Current.IsDebuggingEnabled)
+    {
+        <meta http-equiv="Content-Security-Policy"
+              content="default-src 'self' https:;
+                       script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://code.jquery.com;
+                       style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com;
+                       img-src 'self' data: https:;
+                       font-src 'self' https: https://cdnjs.cloudflare.com;
+                       connect-src 'self' https:;" />
+    }
+    else
+    {
+        <meta http-equiv="Content-Security-Policy"
+              content="default-src 'self' https:;
+                       script-src 'self' https://cdn.jsdelivr.net https://code.jquery.com;
+                       style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net;
+                       img-src 'self' data: https:;
+                       font-src 'self' https://cdn.jsdelivr.net;
+                       connect-src 'self' https:;" />
+    }
+
+    <!-- Preconexiones para mejorar performance -->
+    <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+    <link rel="dns-prefetch" href="https://cdn.jsdelivr.net">
+
     <title>@ViewBag.Title - DGAC Sistema AOCR</title>
 
-    <!-- Bootstrap 5 (reemplaza las versiones anteriores) -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Favicon con múltiples formatos y fallbacks -->
+    <link rel="icon" type="image/x-icon" href="@Url.Content("~/Content/imagenes/favicon.ico")"
+          onerror="this.href='data:image/x-icon;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAACXBIWXMAAA7EAAAOxAGVKw4bAAABfklEQVQ4jY2Tv0tVYRTFf9/3Pdd7vQb2cP0BhVlkiGRlIUYRDn8FBS6CQ7i4OIkgBFHgIo6+haogbWk2gTi4lJOS3YcNQU6F+F7fPX3jfclL+A6Hc87nnMM5B3KSASDpOFAHysB34IOkfSfZnQIDwGtgBvh7QW8PqElaO2VgrwMzgHHG3gBNYFVST1JfQNI08BQYAF8k/RkSJwG3gS1J7aEFwAHgC+AHyZKOJH0BuoVdDViR1L9Ahjt5z3p8qecp3lW7wCVJ7y7yZ0VNK8AekEryIx/MuwDXgZ+Snp00cqcB1BwDZ4H7kuYz9qokA9M2M9xJgM9AZ0QS57L/Am6Y2Q7Ql9ST1J3sDvAC+Bj/9i9iLWChMHoy2Q3gDvAFmC/s3gKzkZ4uOxw6wGdJS7kGkQOgk9U6C7wGXgH3JM2a2U3gHvAEeFZoAGWgDHyT9Ge0B/vAY+AScBN4CNwCdoBnkr4mklYlrYzIl4H3wEvg7zj9z8gT/wFQzM1NY3dQQQAAAABJRU5ErkJggg=='" />
+    <link rel="apple-touch-icon" href="@Url.Content("~/Content/imagenes/apple-touch-icon.png")">
 
-    <!-- Bootstrap Icons -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet" />
+    <!-- CSS Bundles con fallback directo -->
+    @if (BundleTable.EnableOptimizations)
+    {
+        @Styles.Render("~/Content/css")
+        @Styles.Render("~/Content/plugins-css")
+    }
+    else
+    {
+        <!-- Bootstrap 5 CSS -->
+        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css">
 
-    <!-- Font Awesome (opcional, para compatibilidad) -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+        <!-- Font Awesome -->
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
-    <!-- SweetAlert2 para notificaciones -->
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
+        <!-- AdminLTE CSS -->
+        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/admin-lte@3.2/dist/css/adminlte.min.css">
 
-    <!-- AdminLTE (si lo estás usando) -->
-    @Styles.Render("~/Content/css")
-    @Styles.Render("~/Content/plugins-css")
+        <!-- DataTables CSS -->
+        <link rel="stylesheet" href="https://cdn.datatables.net/1.13.4/css/dataTables.bootstrap5.min.css">
+        <link rel="stylesheet" href="https://cdn.datatables.net/responsive/2.4.1/css/responsive.bootstrap5.min.css">
 
-    <!-- Estilos personalizados -->
+        <!-- CSS Personalizado -->
+        <link href="@Url.Content("~/Content/Site.css")" rel="stylesheet" />
+    }
+
+    <!-- Estilos personalizados críticos (inline para performance) -->
     <style>
         :root {
-            --dgac-teal: #0C7C86;
-            --dgac-blue: #1B4F72;
-            --dgac-dark: #1f2937;
-            --dgac-gray: #f4f6f9;
+            --dgac-primary: #1B4F72;
+            --dgac-secondary: #0C7C86;
             --dgac-success: #28a745;
             --dgac-warning: #ffc107;
             --dgac-danger: #dc3545;
+            --dgac-light: #f8f9fa;
+            --dgac-dark: #343a40;
+            --transition-fast: 0.2s ease;
         }
 
-        body {
-            background-color: var(--dgac-gray);
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-        }
-
-        .main-sidebar {
-            background-color: var(--dgac-dark) !important;
-        }
-
-        .brand-link {
-            background-color: var(--dgac-blue) !important;
-            border-bottom: 1px solid rgba(255,255,255,0.1) !important;
-        }
-
-        .nav-link {
-            color: var(--dgac-blue) !important;
-            font-weight: 600;
-        }
-
-        .hero-logo {
-            max-height: 80px;
-            width: auto;
-            background: rgba(255, 255, 255, 0.9);
-            padding: 8px;
-            border-radius: 8px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
-        }
-
-        /* Indicador de orden de recaudación */
-        .orden-indicator {
-            position: relative;
-            display: inline-flex;
-            align-items: center;
-        }
-
-        .orden-badge {
-            position: absolute;
-            top: -5px;
-            right: -10px;
-            width: 20px;
-            height: 20px;
-            border-radius: 50%;
-            font-size: 12px;
+        /* Loader global crítico */
+        #global-loader {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: white;
+            z-index: 9999;
             display: flex;
             align-items: center;
             justify-content: center;
+            flex-direction: column;
         }
 
-        .badge-orden-success {
-            background-color: var(--dgac-success);
-            color: white;
+        .loader-spinner {
+            width: 50px;
+            height: 50px;
+            border: 5px solid #f3f3f3;
+            border-top: 5px solid var(--dgac-primary);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
         }
 
-        .badge-orden-warning {
-            background-color: var(--dgac-warning);
-            color: black;
-        }
-
-        .badge-orden-danger {
-            background-color: var(--dgac-danger);
-            color: white;
-        }
-
-        /* Animaciones */
-        @@keyframes pulse {
+        @@keyframes spin {
             0% {
-                transform: scale(1);
-            }
-
-            50% {
-                transform: scale(1.05);
+                transform: rotate(0deg);
             }
 
             100% {
-                transform: scale(1);
+                transform: rotate(360deg);
             }
         }
 
-        .pulse-animation {
-            animation: pulse 2s infinite;
+        /* Fallback para imágenes */
+        .img-fallback {
+            background: linear-gradient(135deg, var(--dgac-primary), var(--dgac-secondary));
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            text-transform: uppercase;
         }
 
-        /* Modal mejorado */
-        .modal-xl-custom {
-            max-width: 95%;
+        /* Estado de carga */
+        body.waiting {
+            cursor: wait !important;
         }
 
-        .toast-container {
-            z-index: 9999;
-        }
-
-        /* Sidebar mejorado */
-        .sidebar-dark-primary .nav-sidebar > .nav-item > .nav-link.active {
-            background-color: var(--dgac-teal);
-            border-left: 4px solid var(--dgac-blue);
-        }
-
-        /* Responsive adjustments */
-        @@media (max-width: 768px) {
-            .navbar-nav .dropdown-menu {
-                position: absolute;
-                right: 0;
-                left: auto;
+            body.waiting::after {
+                content: '';
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                background: rgba(255, 255, 255, 0.7);
+                z-index: 9998;
             }
+
+        /* Accesibilidad */
+        @@media (prefers-reduced-motion: reduce) {
+            * {
+                animation-duration: 0.01ms !important;
+                animation-iteration-count: 1 !important;
+                transition-duration: 0.01ms !important;
+            }
+        }
+
+        .sr-only {
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            padding: 0;
+            margin: -1px;
+            overflow: hidden;
+            clip: rect(0, 0, 0, 0);
+            white-space: nowrap;
+            border: 0;
         }
     </style>
 
-    @* Permite que las vistas inyecten estilos personalizados *@
     @RenderSection("Styles", required: false)
 </head>
-<body class="hold-transition sidebar-mini layout-fixed layout-navbar-fixed">
 
-    <!-- Toast para notificaciones -->
-    <div class="toast-container position-fixed top-0 end-0 p-3">
-        <div id="liveToast" class="toast" role="alert" aria-live="assertive" aria-atomic="true">
-            <div class="toast-header">
-                <strong class="me-auto" id="toastTitle">Notificación</strong>
-                <button type="button" class="btn-close" data-bs-dismiss="toast" aria-label="Close"></button>
+<body class="hold-transition sidebar-mini layout-fixed layout-navbar-fixed">
+    <!-- CSRF Token -->
+    <input type="hidden" id="__RequestVerificationToken"
+           name="__RequestVerificationToken"
+           value="@Html.AntiForgeryToken()" />
+
+    <!-- Global Loader -->
+    <div id="global-loader">
+        <div class="loader-spinner"></div>
+        <div class="mt-3 text-muted">Cargando sistema AOCR...</div>
+    </div>
+
+    <!-- Session timeout warning -->
+    <div id="session-timeout-warning" class="modal fade" data-bs-backdrop="static" data-bs-keyboard="false">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header bg-warning">
+                    <h5 class="modal-title"><i class="fas fa-clock me-2"></i>Sesión por expirar</h5>
+                </div>
+                <div class="modal-body text-center">
+                    <p>Su sesión expirará en <span id="session-countdown" class="fw-bold">5:00</span> minutos.</p>
+                    <p>¿Desea extender la sesión?</p>
+                </div>
+                <div class="modal-footer justify-content-center">
+                    <button type="button" class="btn btn-outline-secondary me-2" id="btn-logout-now">
+                        <i class="fas fa-sign-out-alt me-1"></i> Cerrar Sesión
+                    </button>
+                    <button type="button" class="btn btn-primary" id="btn-extend-session">
+                        <i class="fas fa-sync-alt me-1"></i> Extender Sesión
+                    </button>
+                </div>
             </div>
-            <div class="toast-body" id="toastMessage"></div>
         </div>
     </div>
 
     <div class="wrapper">
         <!-- Navbar Principal -->
         <nav class="main-header navbar navbar-expand navbar-white navbar-light border-bottom">
-            <!-- Left navbar links -->
+            <!-- Botón sidebar -->
             <ul class="navbar-nav">
                 <li class="nav-item">
-                    <a class="nav-link" data-widget="pushmenu" href="#" role="button">
-                        <i class="bi bi-list"></i>
+                    <a class="nav-link" data-widget="pushmenu" href="#" role="button"
+                       aria-label="Alternar menú lateral">
+                        <i class="fas fa-bars"></i>
                     </a>
                 </li>
                 <li class="nav-item d-none d-sm-inline-block">
                     <span class="nav-link text-dark fw-bold">
                         <i class="fas fa-plane me-1 text-primary"></i>
-                        Dirección General de Aviación Civil - Ecuador
+                        <span id="org-name">Dirección General de Aviación Civil - Ecuador</span>
                     </span>
                 </li>
             </ul>
 
-            <!-- Right navbar links -->
+            <!-- Controles derecho -->
             <ul class="navbar-nav ms-auto">
-                <!-- Indicador de estado de orden -->
-                @if (User.Identity.IsAuthenticated)
-                {
-                    var tieneOrdenGenerada = Session["TieneOrdenGenerada"] as bool? ?? false;
-                    var tieneOrdenBorrador = Session["TieneOrdenBorrador"] as bool? ?? false;
-
-                    <li class="nav-item dropdown me-3">
-                        <a class="nav-link dropdown-toggle orden-indicator" href="#" id="ordenDropdown"
-                           role="button" data-bs-toggle="dropdown" aria-expanded="false">
-                            <i class="fas fa-file-invoice-dollar me-1"></i>
-                            <span>Orden</span>
-                            @if (tieneOrdenGenerada)
-                            {
-                                <span class="orden-badge badge-orden-success">
-                                    <i class="fas fa-check"></i>
-                                </span>
-                            }
-                            else if (tieneOrdenBorrador)
-                            {
-                                <span class="orden-badge badge-orden-warning pulse-animation">
-                                    <i class="fas fa-exclamation"></i>
-                                </span>
-                            }
-                            else
-                            {
-                                <span class="orden-badge badge-orden-danger pulse-animation">
-                                    <i class="fas fa-times"></i>
-                                </span>
-                            }
-                        </a>
-                        <ul class="dropdown-menu" aria-labelledby="ordenDropdown">
-                            <li>
-                                <a class="dropdown-item @(!tieneOrdenGenerada ? "fw-bold text-danger" : "")"
-                                   href="@Url.Action("bligatoria", "OrdenRecaudacion")">
-                                    <i class="fas fa-clipboard-check me-2"></i>
-                                    @if (tieneOrdenGenerada)
-                                    {
-                                        <span>Orden Generada ✓</span>
-                                    }
-                                    else if (tieneOrdenBorrador)
-                                    {
-                                        <span>Orden en Borrador ⚠</span>
-                                    }
-                                    else
-                                    {
-                                        <span>¡Orden Requerida!</span>
-                                    }
-                                </a>
-                            </li>
-                            <li><hr class="dropdown-divider"></li>
-                            <li>
-                                <a class="dropdown-item" href="@Url.Action("Nueva", "OrdenRecaudacion")">
-                                    <i class="fas fa-plus-circle me-2"></i> Nueva Orden
-                                </a>
-                            </li>
-                            <li>
-                                <a class="dropdown-item" href="@Url.Action("MisOrdenes", "Orden")">
-                                    <i class="fas fa-history me-2"></i> Mis Órdenes
-                                </a>
-                            </li>
-                        </ul>
-                    </li>
-                }
-
-                <!-- Menú de usuario -->
-                <li class="nav-item dropdown user-menu">
-                    <a href="#" class="nav-link dropdown-toggle" data-bs-toggle="dropdown">
-                        <img src="@Url.Content("~/Content/imagenes/user.png")"
-                             class="user-image img-circle elevation-1"
-                             alt="User"
-                             style="width: 32px; height: 32px;">
-                        <span class="d-none d-md-inline ms-2">@Session["NombreUsuario"]</span>
+                <!-- Notificaciones -->
+                <li class="nav-item dropdown me-2">
+                    <a class="nav-link" data-bs-toggle="dropdown" href="#" role="button"
+                       aria-haspopup="true" aria-expanded="false">
+                        <i class="far fa-bell"></i>
+                        <span class="badge bg-danger position-absolute top-0 start-100 translate-middle rounded-pill"
+                              id="notification-count">0</span>
                     </a>
-                    <ul class="dropdown-menu dropdown-menu-end border-0 shadow">
-                        <li class="dropdown-header bg-light py-2">
-                            <div class="d-flex align-items-center">
-                                <img src="@Url.Content("~/Content/imagenes/user.png")"
-                                     class="img-circle elevation-1 me-2"
-                                     style="width: 40px; height: 40px;">
-                                <div>
-                                    <h6 class="mb-0">@Session["NombreUsuario"]</h6>
-                                    <small class="text-muted">@Session["Rol"]</small>
+                    <div class="dropdown-menu dropdown-menu-lg dropdown-menu-end">
+                        <span class="dropdown-header">Notificaciones</span>
+                        <div class="dropdown-divider"></div>
+                        <div id="notification-list">
+                            <a href="#" class="dropdown-item">
+                                <i class="fas fa-info-circle me-2"></i> No hay notificaciones
+                            </a>
+                        </div>
+                        <div class="dropdown-divider"></div>
+                        <a href="@Url.Action("Notificaciones", "Usuario")" class="dropdown-item dropdown-footer">
+                            Ver todas las notificaciones
+                        </a>
+                    </div>
+                </li>
+
+                <!-- Menú Usuario -->
+                <li class="nav-item dropdown user-menu">
+                    <a href="#" class="nav-link dropdown-toggle" data-bs-toggle="dropdown"
+                       aria-haspopup="true" aria-expanded="false">
+                        @{
+                            var avatarUrl = Url.Content("~/Content/imagenes/user.png");
+                            var avatarAlt = Session["NombreUsuario"] as string ?? "Usuario";
+                            var defaultAvatar = Url.Content("~/Content/imagenes/user-default.png");
+                        }
+                        <img src="@avatarUrl"
+                             class="user-image img-circle elevation-1"
+                             alt="@avatarAlt"
+                             width="32" height="32"
+                             onerror="this.onerror=null; this.src='@defaultAvatar'; this.classList.add('img-fallback'); this.textContent='@avatarAlt[0]';">
+                        <span class="d-none d-md-inline ms-2" id="user-display-name">@avatarAlt</span>
+                    </a>
+                    <div class="dropdown-menu dropdown-menu-lg dropdown-menu-end">
+                        <div class="user-header bg-light p-3 text-center">
+                            <img src="@avatarUrl"
+                                 class="img-circle elevation-2 mb-2"
+                                 alt="@avatarAlt"
+                                 width="90" height="90"
+                                 onerror="this.onerror=null; this.src='@defaultAvatar'; this.classList.add('img-fallback'); this.textContent='@avatarAlt[0]';">
+                            <p class="mb-0">
+                                <span id="user-fullname" class="d-block">@Session["NombreUsuario"]</span>
+                                <small id="user-role" class="text-muted">@Session["Rol"]</small>
+                            </p>
+                        </div>
+                        <div class="user-footer p-3">
+                            <div class="row">
+                                <div class="col-6">
+                                    <a class="btn btn-default btn-block" href="@Url.Action("MiPerfil", "Usuario")">
+                                        <i class="fas fa-user me-1"></i> Perfil
+                                    </a>
+                                </div>
+                                <div class="col-6">
+                                    <a class="btn btn-danger btn-block" href="@Url.Action("Logout", "Account")"
+                                       id="logout-link">
+                                        <i class="fas fa-sign-out-alt me-1"></i> Salir
+                                    </a>
                                 </div>
                             </div>
-                        </li>
-                        <li><hr class="dropdown-divider"></li>
-                        <li>
-                            <a class="dropdown-item" href="@Url.Action("MiPerfil", "Usuario")">
-                                <i class="fas fa-user me-2"></i> Mi Perfil
-                            </a>
-                        </li>
-                        <li>
-                            <a class="dropdown-item" href="@Url.Action("CambiarContrasena", "Usuario")">
-                                <i class="fas fa-key me-2"></i> Cambiar Contraseña
-                            </a>
-                        </li>
-                        <li><hr class="dropdown-divider"></li>
-                        <li>
-                            <a class="dropdown-item text-danger" href="@Url.Action("Logout", "Account")">
-                                <i class="fas fa-sign-out-alt me-2"></i> Cerrar Sesión
-                            </a>
-                        </li>
-                    </ul>
+                        </div>
+                    </div>
                 </li>
             </ul>
         </nav>
 
         <!-- Sidebar -->
         <aside class="main-sidebar sidebar-dark-primary elevation-4">
-            <!-- Logo -->
-            <a href="@Url.Action("Index","Home")" class="brand-link">
-                <img src="@Url.Content("~/Content/imagenes/logo2.jpg")"
+            <a href="@Url.Action("Index","Home")" class="brand-link text-center">
+                <img src="@Url.Content("~/Content/imagenes/logo-dgac.svg")"
                      class="brand-image img-circle elevation-3"
-                     style="opacity: .9; width: 40px; height: 40px;" />
-                <span class="brand-text font-weight-light">DGAC - AOCR</span>
+                     alt="Logo DGAC" width="40" height="40"
+                     onerror="this.onerror=null; this.src='data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPGNpcmNsZSBjeD0iMjAiIGN5PSIyMCIgcj0iMjAiIGZpbGw9IiMxQjRGNzIiLz4KPHBhdGggZD0iTTIwIDEwTDI2IDI2SDE0TDIwIDEwWiIgZmlsbD0id2hpdGUiLz4KPC9zdmc+';">
+                <span class="brand-text fw-light">AOCR</span>
             </a>
 
-            <!-- Sidebar -->
             <div class="sidebar">
+                <!-- Información usuario sidebar -->
+                <div class="user-panel mt-3 pb-3 mb-3 d-flex">
+                    <div class="image">
+                        <img src="@avatarUrl"
+                             class="img-circle elevation-2"
+                             alt="@avatarAlt"
+                             width="40" height="40"
+                             onerror="this.onerror=null; this.src='@defaultAvatar'; this.classList.add('img-fallback'); this.textContent='@avatarAlt[0]';">
+                    </div>
+                    <div class="info">
+                        <a href="@Url.Action("MiPerfil", "Usuario")" class="d-block">@avatarAlt</a>
+                        <small class="text-muted">@Session["Rol"]</small>
+                    </div>
+                </div>
+
+                <!-- Menu Sidebar -->
                 @Html.Partial("_SideBar")
             </div>
         </aside>
 
-        <!-- Content Wrapper -->
+        <!-- Contenido Principal -->
         <div class="content-wrapper">
-            <!-- Content Header (Optional) -->
-            <div class="content-header">
+            <!-- Breadcrumb y título -->
+            <section class="content-header">
                 <div class="container-fluid">
-                    <div class="row mb-2">
+                    <div class="row align-items-center mb-2">
                         <div class="col-sm-6">
-                            <h1 class="m-0 text-dark">@ViewBag.Title</h1>
+                            <h1 class="m-0 text-dark">@Html.Encode(ViewBag.Title)</h1>
                         </div>
+
                         <div class="col-sm-6">
-                            <ol class="breadcrumb float-sm-right">
-                                <li class="breadcrumb-item"><a href="@Url.Action("Index","Home")">Inicio</a></li>
-                                <li class="breadcrumb-item active">@ViewBag.Title</li>
+                            @{
+                                var controllerObj = ViewContext.RouteData.Values["controller"];
+                                var controllerName = (controllerObj != null) ? controllerObj.ToString() : "";
+                                var title = (ViewBag.Title != null) ? ViewBag.Title.ToString() : "";
+                            }
+
+                            <ol class="breadcrumb float-sm-right" aria-label="Ruta de navegación">
+                                <li class="breadcrumb-item">
+                                    <a href="@Url.Action("Index","Home")">
+                                        <i class="fas fa-home"></i> Inicio
+                                    </a>
+                                </li>
+
+                                @* Mostrar controlador si NO es Home *@
+                                @if (!string.IsNullOrEmpty(controllerName) &&
+                                     !controllerName.Equals("Home", StringComparison.OrdinalIgnoreCase))
+                                {
+                                    <li class="breadcrumb-item">@Html.Encode(controllerName)</li>
+                                }
+
+                                <li class="breadcrumb-item active" aria-current="page">
+                                    @Html.Encode(title)
+                                </li>
                             </ol>
                         </div>
                     </div>
                 </div>
-            </div>
+            </section>
 
-            <!-- Main content -->
-            <div class="content pt-3 px-3">
+
+
+            <!-- Contenido -->
+            <section class="content px-3 pb-4">
                 @RenderBody()
-            </div>
+            </section>
         </div>
 
         <!-- Footer -->
-        <footer class="main-footer text-center border-top">
-            <strong>&copy; @DateTime.Now.Year DGAC Ecuador · Sistema AOCR</strong>
-            <div class="float-right d-none d-sm-inline-block">
-                <small>v1.0.0</small>
+        <footer class="main-footer text-center border-top pt-3 no-print">
+            <div class="container-fluid">
+                <div class="row">
+                    <div class="col-md-6 text-md-start">
+                        <strong>&copy; @DateTime.Now.Year DGAC Ecuador · Sistema AOCR</strong>
+                        <small class="d-block text-muted">
+                            v@(System.Reflection.Assembly.GetExecutingAssembly().GetName().Version)
+                        </small>
+                    </div>
+                    <div class="col-md-6 text-md-end">
+                        <small class="text-muted">
+                            <i class="fas fa-shield-alt"></i>
+                            @(HttpContext.Current.IsDebuggingEnabled ? "Desarrollo" : "Producción")
+                            · <span id="last-access-time">@DateTime.Now.ToString("dd/MM/yyyy HH:mm")</span>
+                        </small>
+                    </div>
+                </div>
             </div>
         </footer>
     </div>
 
-    <!-- Modal Principal -->
-    <div class="modal fade" id="modalFormulario" tabindex="-1" aria-hidden="true">
-        <div class="modal-dialog modal-xl-custom modal-dialog-scrollable">
-            <div class="modal-content border-0 shadow-lg">
-                <div class="modal-header bg-primary text-white">
-                    <h5 class="modal-title">
-                        <i class="fas fa-file-alt me-2"></i>
-                        <span id="modalTitle">Gestión AOCR</span>
-                    </h5>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
-                <div class="modal-body p-0" id="contenidoModal" style="min-height: 450px;">
-                    <div class="text-center p-5">
-                        <div class="spinner-border text-primary"></div>
-                        <p class="mt-3 text-muted">Cargando formulario...</p>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Scripts -->
-    <!-- jQuery -->
-    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-
-    <!-- Bootstrap 5 Bundle -->
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-
-    <!-- SweetAlert2 -->
-    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-
-    <!-- AdminLTE scripts (si los usas) -->
-    @Scripts.Render("~/bundles/jquery")
-    @Scripts.Render("~/bundles/bootstrap")
-    @Scripts.Render("~/Content/plugins-js")
-
-    <!-- Scripts personalizados -->
+    <!-- ========== SCRIPTS EN ORDEN CORRECTO ========== -->
+    <!-- 1. jQuery PRIMERO (con fallback robusto) -->
+    <script src="https://code.jquery.com/jquery-3.6.4.min.js"></script>
     <script>
-        // Función global para mostrar toast
-        function mostrarToast(titulo, mensaje, tipo = 'info') {
-            const toastEl = document.getElementById('liveToast');
-            const toastTitle = document.getElementById('toastTitle');
-            const toastMessage = document.getElementById('toastMessage');
+        // Fallback si CDN falla
+        if (!window.jQuery || typeof jQuery === 'undefined') {
+            console.warn('jQuery CDN falló, cargando localmente...');
+            document.write('<script src="@Url.Content("~/Scripts/jquery-3.6.4.min.js")"><\/script>');
 
-            // Configurar contenido
-            toastTitle.textContent = titulo;
-            toastMessage.textContent = mensaje;
-
-            // Configurar color según tipo
-            const toast = new bootstrap.Toast(toastEl);
-            toastEl.classList.remove('bg-success', 'bg-warning', 'bg-danger', 'bg-info');
-
-            switch(tipo) {
-                case 'success':
-                    toastEl.classList.add('bg-success', 'text-white');
-                    break;
-                case 'warning':
-                    toastEl.classList.add('bg-warning', 'text-dark');
-                    break;
-                case 'danger':
-                    toastEl.classList.add('bg-danger', 'text-white');
-                    break;
-                default:
-                    toastEl.classList.add('bg-info', 'text-white');
-            }
-
-            toast.show();
+            // Esperar a que cargue el local y luego cargar Bootstrap
+            var checkJQuery = setInterval(function() {
+                if (window.jQuery && typeof jQuery !== 'undefined') {
+                    clearInterval(checkJQuery);
+                    console.log('jQuery cargado localmente');
+                    loadBootstrap();
+                }
+            }, 100);
+        } else {
+            console.log('jQuery cargado desde CDN');
+            loadBootstrap();
         }
 
-        // Función para cargar formulario en modal
-        window.cargarFormulario = function (idSolicitud, titulo = 'Gestión AOCR') {
-            const modal = new bootstrap.Modal(document.getElementById('modalFormulario'));
-            const modalTitle = document.getElementById('modalTitle');
+        function loadBootstrap() {
+            // Cargar Bootstrap después de jQuery
+            var bootstrapScript = document.createElement('script');
+            bootstrapScript.src = 'https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js';
+            bootstrapScript.integrity = 'sha384-w76AqPfDkMBDXo30jS1Sgez6pr3x5MlQ1ZAGC+nuZB+EYdgRZgiwxhTBTkF7CXvN';
+            bootstrapScript.crossOrigin = 'anonymous';
 
-            // Configurar título
-            modalTitle.textContent = titulo;
+            bootstrapScript.onload = function() {
+                console.log('Bootstrap 5 cargado');
+                loadRemainingScripts();
+            };
 
-            // Mostrar modal con spinner
-            $('#contenidoModal').html(`
-                <div class="text-center p-5">
-                    <div class="spinner-border text-primary"></div>
-                    <p class="mt-3 text-muted">Cargando formulario...</p>
-                </div>
-            `);
+            bootstrapScript.onerror = function() {
+                console.error('Bootstrap CDN falló, cargando localmente...');
+                document.write('<script src="@Url.Content("~/Scripts/bootstrap.bundle.min.js")"><\/script>');
+                setTimeout(loadRemainingScripts, 100);
+            };
 
-            modal.show();
+            document.body.appendChild(bootstrapScript);
+        }
 
-            // Cargar contenido
-            $.ajax({
-                url: '@Url.Action("FormularioEmisionAOCR","SolicitudAOCR")',
-                data: { oid: idSolicitud },
-                type: "GET",
-                success: function (result) {
-                    $('#contenidoModal').html(result);
-                },
-                error: function (xhr, status, error) {
-                    $('#contenidoModal').html(`
-                        <div class="alert alert-danger m-3">
-                            <h5><i class="fas fa-exclamation-triangle me-2"></i>Error</h5>
-                            <p>No se pudo cargar el formulario. Por favor, intente nuevamente.</p>
-                            <small class="text-muted">${error}</small>
-                        </div>
-                    `);
-                }
+        function loadRemainingScripts() {
+            // Cargar scripts restantes después de Bootstrap
+            loadScript('https://cdn.datatables.net/1.13.4/js/jquery.dataTables.min.js', 'DataTables');
+            loadScript('https://cdn.datatables.net/1.13.4/js/dataTables.bootstrap5.min.js', 'DataTables Bootstrap');
+            loadScript('https://cdn.datatables.net/responsive/2.4.1/js/dataTables.responsive.min.js', 'DataTables Responsive');
+            loadScript('https://cdn.jsdelivr.net/npm/sweetalert2@11', 'SweetAlert2');
+            loadScript('https://cdn.jsdelivr.net/npm/admin-lte@3.2/dist/js/adminlte.min.js', 'AdminLTE');
+
+            // Validación jQuery (si no está en bundle)
+            if (!$.validator) {
+                loadScript('https://cdnjs.cloudflare.com/ajax/libs/jquery-validate/1.19.5/jquery.validate.min.js', 'jQuery Validate');
+                loadScript('https://cdnjs.cloudflare.com/ajax/libs/jquery-validation-unobtrusive/4.0.0/jquery.validate.unobtrusive.min.js', 'Unobtrusive');
+            }
+
+            // Scripts locales
+            loadScript('@Url.Content("~/Scripts/site.js")', 'Site JS');
+            loadScript('@Url.Content("~/Scripts/app.js")', 'App JS');
+        }
+
+        function loadScript(src, name) {
+            var script = document.createElement('script');
+            script.src = src;
+            script.async = false; // Importante para mantener orden
+            script.onload = function() { console.log(name + ' cargado'); };
+            script.onerror = function() { console.warn('Error cargando: ' + name); };
+            document.body.appendChild(script);
+        }
+    </script>
+
+    <!-- Configuración global AOCR -->
+    <script>
+        // Esperar a que jQuery esté disponible
+        var initApp = function() {
+            if (!window.jQuery) {
+                setTimeout(initApp, 100);
+                return;
+            }
+
+            $(document).ready(function() {
+                // Configuración global
+                window.AOCR_CONFIG = {
+                    apiBaseUrl: '@Url.Content("~/")',
+                    debug: @(HttpContext.Current.IsDebuggingEnabled ? "true" : "false"),
+                    uploadMaxSize: 10 * 1024 * 1024,
+                    sessionTimeout: 20 * 60 * 1000,
+                    user: {
+                        id: '@(Session["UserId"] ?? "")',
+                        name: '@(Session["NombreUsuario"] ?? "")',
+                        role: '@(Session["Rol"] ?? "")'
+                    }
+                };
+
+                // Ocultar loader
+                setTimeout(function() {
+                    $('#global-loader').fadeOut(300, function() {
+                        $(this).remove();
+                    });
+                }, 500);
+
+                // Inicializar componentes
+                initComponents();
+
+                // Inicializar gestión de sesión
+                initSessionManagement();
+
+                console.log('AOCR Sistema inicializado');
             });
         };
 
-        // Verificación periódica de orden de recaudación
-        function verificarOrdenRecaudacion() {
-            if ('@User.Identity.IsAuthenticated' === 'True') {
-                $.ajax({
-                    url: '@Url.Action("VerificarAccesoDashboard", "OrdenRecaudacion")',
-                    type: 'GET',
-                    success: function(response) {
-                        if (!response.accesoPermitido && response.redireccion) {
-                            // Solo redirigir si estamos en una página que requiere orden
-                            const currentPath = window.location.pathname.toLowerCase();
-                            const excludedPaths = ['/ordenrecaudacion/', '/account/', '/login'];
+        // Inicializar componentes
+        function initComponents() {
+            // Tooltips
+            $('[data-bs-toggle="tooltip"]').tooltip();
 
-                            const shouldRedirect = !excludedPaths.some(path => currentPath.includes(path));
+            // Confirmación para acciones peligrosas
+            $(document).on('click', '[data-confirm]', function(e) {
+                e.preventDefault();
+                var message = $(this).data('confirm') || '¿Está seguro?';
 
-                            if (shouldRedirect && !currentPath.includes('obligatoria')) {
-                                window.location.href = response.redireccion;
-                            }
-                        }
-                    },
-                    error: function() {
-                        console.log('Error verificando orden de recaudación');
-                    }
-                });
-            }
+                if (confirm(message)) {
+                    var href = $(this).attr('href');
+                    if (href) window.location.href = href;
+                }
+            });
+
+            // Auto-hide alerts
+            $('.alert-auto-hide').delay(5000).fadeOut(400);
         }
 
-        // Ejecutar verificación al cargar y periódicamente
-        $(document).ready(function() {
-            // Mostrar notificaciones de TempData
-            const tipo = '@TempData["NotificacionTipo"]';
-            const mensaje = '@TempData["NotificacionMensaje"]';
+        // Gestión de sesión
+        function initSessionManagement() {
+            var sessionTimer, warningTimer;
+            var WARNING_TIME = 5 * 60 * 1000;
+            var TOTAL_TIMEOUT = 25 * 60 * 1000;
 
-            if (mensaje) {
-                mostrarToast(
-                    tipo === 'success' ? 'Éxito' :
-                    tipo === 'warning' ? 'Advertencia' :
-                    tipo === 'danger' ? 'Error' : 'Información',
-                    mensaje,
-                    tipo
-                );
+            function resetSessionTimers() {
+                clearTimeout(sessionTimer);
+                clearTimeout(warningTimer);
+
+                warningTimer = setTimeout(showSessionWarning, TOTAL_TIMEOUT - WARNING_TIME);
+                sessionTimer = setTimeout(function() {
+                    window.location.href = '@Url.Action("Logout", "Account")?timeout=true';
+                }, TOTAL_TIMEOUT);
             }
 
-            // Verificar orden inicialmente
-            verificarOrdenRecaudacion();
+            function showSessionWarning() {
+                var modal = new bootstrap.Modal(document.getElementById('session-timeout-warning'));
+                var timeLeft = 300; // 5 minutos en segundos
+                var countdownEl = document.getElementById('session-countdown');
 
-            // Verificar periódicamente (cada 60 segundos)
-            setInterval(verificarOrdenRecaudacion, 60000);
+                function updateCountdown() {
+                    var minutes = Math.floor(timeLeft / 60);
+                    var seconds = timeLeft % 60;
+                    countdownEl.textContent = minutes + ':' + (seconds < 10 ? '0' : '') + seconds;
+                    timeLeft--;
 
-            // Configurar tooltips de Bootstrap
-            var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
-            var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
-                return new bootstrap.Tooltip(tooltipTriggerEl);
-            });
-        });
-
-        // Interceptar enlaces al dashboard para verificar orden
-        $(document).on('click', 'a[href*="Dashboard"], a[href*="Home/Index"]', function(e) {
-            if ('@User.Identity.IsAuthenticated' === 'True') {
-                const href = $(this).attr('href');
-                if (href && !href.includes('OrdenRecaudacion')) {
-                    e.preventDefault();
-
-                    $.ajax({
-                        url: '@Url.Action("VerificarAccesoDashboard", "OrdenRecaudacion")',
-                        type: 'GET',
-                        success: function(response) {
-                            if (response.accesoPermitido) {
-                                window.location.href = href;
-                            } else {
-                                window.location.href = response.redireccion || '@Url.Action("Obligatoria", "OrdenRecaudacion")';
-                            }
-                        }
-                    });
+                    if (timeLeft >= 0) {
+                        setTimeout(updateCountdown, 1000);
+                    } else {
+                        modal.hide();
+                        window.location.href = '@Url.Action("Logout", "Account")?timeout=true';
+                    }
                 }
+
+                modal.show();
+                updateCountdown();
+
+                $('#btn-extend-session').off('click').on('click', function() {
+                    $.post('@Url.Action("ExtenderSesion", "Account")')
+                        .done(function() {
+                            modal.hide();
+                            resetSessionTimers();
+                            alert('Sesión extendida exitosamente');
+                        })
+                        .fail(function() {
+                            window.location.href = '@Url.Action("Logout", "Account")';
+                        });
+                });
+
+                $('#btn-logout-now').off('click').on('click', function() {
+                    window.location.href = '@Url.Action("Logout", "Account")';
+                });
+            }
+
+            // Iniciar timers
+            resetSessionTimers();
+
+            // Reiniciar con actividad del usuario
+            $(document).on('click keypress mousemove', resetSessionTimers);
+        }
+
+        // Configuración AJAX global
+        $.ajaxSetup({
+            beforeSend: function(xhr) {
+                var token = $('#__RequestVerificationToken').val();
+                if (token) {
+                    xhr.setRequestHeader('RequestVerificationToken', token);
+                }
+                $('body').addClass('waiting');
+            },
+            complete: function() {
+                $('body').removeClass('waiting');
+            },
+            error: function(xhr) {
+                var message = 'Error en la comunicación con el servidor';
+
+                if (xhr.status === 401) {
+                    window.location.href = '@Url.Action("Login", "Account")';
+                    return;
+                }
+
+                if (xhr.status === 403) message = 'Acceso no autorizado';
+                if (xhr.status === 404) message = 'Recurso no encontrado';
+                if (xhr.status === 500) message = 'Error interno del servidor';
+
+                alert(message);
             }
         });
+
+        // Exponer funciones globales
+        window.AOCR = {
+            showAlert: function(title, message, type) {
+                if (window.Swal) {
+                    Swal.fire({
+                        icon: type || 'info',
+                        title: title,
+                        text: message
+                    });
+                } else {
+                    alert(title + ': ' + message);
+                }
+            },
+
+            formatCurrency: function(amount) {
+                return '$ ' + parseFloat(amount).toFixed(2).replace(/\d(?=(\d{3})+\.)/g, '$&,');
+            },
+
+            formatDate: function(dateStr) {
+                if (!dateStr) return '';
+                var date = new Date(dateStr);
+                return date.toLocaleDateString('es-EC');
+            }
+        };
+
+        // Iniciar la aplicación
+        setTimeout(initApp, 100);
     </script>
 
-    @RenderSection("scripts", required: false)
+    @RenderSection("Scripts", required: false)
 </body>
 </html>

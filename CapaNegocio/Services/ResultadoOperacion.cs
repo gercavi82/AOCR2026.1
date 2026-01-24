@@ -1,19 +1,22 @@
-﻿namespace CapaNegocio
+﻿namespace CapaNegocio.Services
 {
     public class ResultadoOperacion
     {
-        public bool Exito { get; set; }
-        public string Mensaje { get; set; }
-        public dynamic Datos { get; set; }
+        public bool Exitoso { get; private set; }
+        public string Mensaje { get; private set; }
+        public object Datos { get; private set; }
 
-        public static ResultadoOperacion Ok(dynamic datos = null, string mensaje = "")
+        private ResultadoOperacion(bool exitoso, string mensaje, object datos)
         {
-            return new ResultadoOperacion { Exito = true, Datos = datos, Mensaje = mensaje };
+            Exitoso = exitoso;
+            Mensaje = mensaje;
+            Datos = datos;
         }
 
-        public static ResultadoOperacion Error(string mensaje)
-        {
-            return new ResultadoOperacion { Exito = false, Mensaje = mensaje };
-        }
+        public static ResultadoOperacion Ok(object datos = null, string mensaje = "OK")
+            => new ResultadoOperacion(true, mensaje, datos);
+
+        public static ResultadoOperacion Error(string mensaje = "Error")
+            => new ResultadoOperacion(false, mensaje, null);
     }
 }

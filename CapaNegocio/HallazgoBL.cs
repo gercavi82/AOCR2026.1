@@ -1,205 +1,154 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Reflection;
 using CapaDatos.DAOs;
 using CapaModelo;
 
 namespace CapaNegocio
 {
+    /// <summary>
+    /// Lógica de negocio para Hallazgos.
+    /// Alineado a HallazgoDAO (Insertar, Actualizar, ObtenerPorInspeccion, CerrarHallazgo, ObtenerEstadisticas).
+    /// </summary>
     public class HallazgoBL
     {
         private readonly HallazgoDAO _hallazgoDAO;
+        private readonly InspeccionDAO _inspeccionDAO;
 
         public HallazgoBL()
         {
             _hallazgoDAO = new HallazgoDAO();
+            _inspeccionDAO = new InspeccionDAO(); // OJO: ahora es instancia (no static)
         }
 
-        // ============================================================
-        // LISTAR POR INSPECCIÓN
-        // ============================================================
-        public List<Hallazgo> ObtenerPorInspeccion(int idInspeccion)
+        // Constructor para testing / inyección
+        public HallazgoBL(HallazgoDAO hallazgoDAO, InspeccionDAO inspeccionDAO)
         {
-            if (idInspeccion <= 0)
-                throw new ArgumentException("ID de inspección inválido");
-
-            return _hallazgoDAO.ObtenerPorInspeccion(idInspeccion);
+            _hallazgoDAO = hallazgoDAO ?? throw new ArgumentNullException(nameof(hallazgoDAO));
+            _inspeccionDAO = inspeccionDAO ?? throw new ArgumentNullException(nameof(inspeccionDAO));
         }
 
-        // ============================================================
-        // OBTENER POR ID
-        // ============================================================
-        public Hallazgo ObtenerPorId(int id)
+        /// <summary>
+        /// Lista hallazgos por inspección.
+        /// </summary>
+        public List<Hallazgo> ObtenerPorInspeccion(int codigoInspeccion)
         {
-            if (id <= 0)
-                throw new ArgumentException("ID inválido");
-
-            return _hallazgoDAO.ObtenerPorId(id);
+            if (codigoInspeccion <= 0) return new List<Hallazgo>();
+            return _hallazgoDAO.ObtenerPorInspeccion(codigoInspeccion) ?? new List<Hallazgo>();
         }
 
-        // ============================================================
-        // CREAR HALLAZGO
-        // ============================================================
-        public bool Crear(Hallazgo h, string usuario)
+        /// <summary>
+        /// Inserta hallazgo (usa HallazgoDAO.Insertar).
+        /// </summary>
+        public int Crear(Hallazgo hallazgo, string usuario)
         {
-            ValidarHallazgo(h);
+            if (hallazgo == null) throw new ArgumentNullException(nameof(hallazgo));
+            if (hallazgo.CodigoInspeccion <= 0) throw new Exception("Código de inspección inválido.");
+            if (string.IsNullOrWhiteSpace(hallazgo.Descripcion)) throw new Exception("La descripción es obligatoria.");
 
-            // ✅ Verificar que la inspección exista (InspeccionDAO es static)
-            var inspeccion = InspeccionDAO.ObtenerPorId(h.CodigoInspeccion);
-            if (inspeccion == null)
-                throw new Exception("La inspección asociada no existe.");
+            // Validar que exista la inspección (InspeccionDAO es NO estático)
+            var inspeccion = _inspeccionDAO.ObtenerPorId(hallazgo.CodigoInspeccion);
+            if (inspeccion == null) throw new Exception("No existe la inspección asociada al hallazgo.");
 
-            // ✅ Normalizar severidad/criticidad si aplica
-            NormalizarSeveridadOCriticidad(h);
+            // Defaults de negocio
+            if (string.IsNullOrWhiteSpace(hallazgo.Criticidad)) hallazgo.Criticidad = "MEDIA";
+            if (string.IsNullOrWhiteSpace(hallazgo.Estado)) hallazgo.Estado = "ABIERTO";
 
-            h.FechaDeteccion = DateTime.Now;
-            h.CreatedAt = DateTime.Now;
-            h.CreatedBy = string.IsNullOrWhiteSpace(usuario) ? "SYSTEM" : usuario.Trim();
-            h.Estado = "ABIERTO";
+            // Auditoría (tu Hallazgo tiene CreatedBy/UpdatedBy como string)
+            hallazgo.CreatedBy = string.IsNullOrWhiteSpace(hallazgo.CreatedBy) ? (usuario ?? "SISTEMA") : hallazgo.CreatedBy;
+            hallazgo.UpdatedBy = string.IsNullOrWhiteSpace(hallazgo.UpdatedBy) ? (usuario ?? "SISTEMA") : hallazgo.UpdatedBy;
 
-            return _hallazgoDAO.Crear(h) > 0;
+            // Nota: en tu DAO, FechaDeteccion es DateTime? (en DAO), pero en el modelo es DateTime (no nullable)
+            // Si tu modelo aún tiene DateTime no-null, asegúrate de setearlo:
+            if (hallazgo.FechaDeteccion == default(DateTime))
+                hallazgo.FechaDeteccion = DateTime.Now;
+
+            int id = _hallazgoDAO.Insertar(hallazgo);
+            if (id <= 0) throw new Exception("No se pudo insertar el hallazgo.");
+
+            hallazgo.CodigoHallazgo = id;
+            return id;
         }
 
-        // ============================================================
-        // ACTUALIZAR HALLAZGO
-        // ============================================================
-        public bool Actualizar(Hallazgo h, string usuario)
+        /// <summary>
+        /// Actualiza hallazgo (usa HallazgoDAO.Actualizar).
+        /// </summary>
+        public bool Actualizar(Hallazgo hallazgo, string usuario)
         {
-            if (h == null || h.CodigoHallazgo <= 0)
-                throw new Exception("ID inválido para actualizar.");
+            if (hallazgo == null) throw new ArgumentNullException(nameof(hallazgo));
+            if (hallazgo.CodigoHallazgo <= 0) throw new Exception("Código de hallazgo inválido.");
 
-            ValidarHallazgo(h);
+            hallazgo.UpdatedBy = string.IsNullOrWhiteSpace(usuario) ? (hallazgo.UpdatedBy ?? "SISTEMA") : usuario;
+            hallazgo.UpdatedAt = DateTime.Now;
 
-            // ✅ Verificar que la inspección exista (InspeccionDAO es static)
-            var inspeccion = InspeccionDAO.ObtenerPorId(h.CodigoInspeccion);
-            if (inspeccion == null)
-                throw new Exception("La inspección asociada no existe.");
-
-            // ✅ Normalizar severidad/criticidad si aplica
-            NormalizarSeveridadOCriticidad(h);
-
-            h.UpdatedAt = DateTime.Now;
-            h.UpdatedBy = string.IsNullOrWhiteSpace(usuario) ? "SYSTEM" : usuario.Trim();
-
-            return _hallazgoDAO.Actualizar(h) > 0;
+            return _hallazgoDAO.Actualizar(hallazgo);
         }
 
-        // ============================================================
-        // CERRAR HALLAZGO
-        // ============================================================
-        public bool CerrarHallazgo(int idHallazgo, string usuario)
+        /// <summary>
+        /// Cierra hallazgo (usa HallazgoDAO.CerrarHallazgo).
+        /// </summary>
+        public bool Cerrar(int codigoHallazgo, string accionCorrectiva, string responsable, string usuario)
         {
-            var h = _hallazgoDAO.ObtenerPorId(idHallazgo);
+            if (codigoHallazgo <= 0) throw new Exception("Código de hallazgo inválido.");
+            if (string.IsNullOrWhiteSpace(accionCorrectiva)) throw new Exception("Acción correctiva es obligatoria.");
+            if (string.IsNullOrWhiteSpace(responsable)) throw new Exception("Responsable es obligatorio.");
 
-            if (h == null)
-                throw new Exception("Hallazgo no encontrado");
-
-            if (string.Equals(h.Estado, "CERRADO", StringComparison.OrdinalIgnoreCase))
-                throw new Exception("El hallazgo ya está cerrado");
-
-            h.Estado = "CERRADO";
-            h.FechaCierre = DateTime.Now;
-            h.UpdatedAt = DateTime.Now;
-            h.UpdatedBy = string.IsNullOrWhiteSpace(usuario) ? "SYSTEM" : usuario.Trim();
-
-            return _hallazgoDAO.Cerrar(h) > 0;
+            return _hallazgoDAO.CerrarHallazgo(
+                codigoHallazgo,
+                accionCorrectiva,
+                responsable,
+                string.IsNullOrWhiteSpace(usuario) ? "SISTEMA" : usuario
+            );
         }
 
-        // ============================================================
-        // ELIMINAR (SOFT DELETE)
-        // ============================================================
-        public bool Eliminar(int idHallazgo, string usuario)
+        /// <summary>
+        /// Estadísticas (usa HallazgoDAO.ObtenerEstadisticas).
+        /// </summary>
+        public Dictionary<string, int> ObtenerEstadisticas(int codigoInspeccion)
         {
-            var h = _hallazgoDAO.ObtenerPorId(idHallazgo);
+            if (codigoInspeccion <= 0)
+                return new Dictionary<string, int> { { "TOTAL", 0 } };
 
-            if (h == null)
-                throw new Exception("Hallazgo no encontrado");
-
-            return _hallazgoDAO.Eliminar(idHallazgo, string.IsNullOrWhiteSpace(usuario) ? "SYSTEM" : usuario.Trim()) > 0;
+            return _hallazgoDAO.ObtenerEstadisticas(codigoInspeccion)
+                   ?? new Dictionary<string, int> { { "TOTAL", 0 } };
         }
 
-        // ============================================================
-        // VALIDACIONES
-        // ============================================================
-        private void ValidarHallazgo(Hallazgo h)
+        // =========================================================
+        // ✅ Métodos opcionales para compatibilidad
+        // (Si tu BL anterior exigía ObtenerPorId / Eliminar)
+        // =========================================================
+
+        /// <summary>
+        /// Compat: si necesitas ObtenerPorId, lo resolvemos consultando por inspección
+        /// y filtrando (no ideal, pero compila sin tocar DAO).
+        /// RECOMENDADO: implementar un método real ObtenerPorId en el DAO.
+        /// </summary>
+        public Hallazgo ObtenerPorId(int codigoHallazgo, int codigoInspeccion)
         {
-            if (h == null)
-                throw new Exception("Datos inválidos.");
+            if (codigoHallazgo <= 0) return null;
+            if (codigoInspeccion <= 0) return null;
 
-            if (h.CodigoInspeccion <= 0)
-                throw new Exception("Debe asignarse a una inspección.");
+            var lista = _hallazgoDAO.ObtenerPorInspeccion(codigoInspeccion);
+            if (lista == null) return null;
 
-            if (string.IsNullOrWhiteSpace(h.Descripcion))
-                throw new Exception("Debe ingresar una descripción del hallazgo.");
+            foreach (var h in lista)
+                if (h != null && h.CodigoHallazgo == codigoHallazgo)
+                    return h;
 
-            // ✅ Soporta Criticidad o Severidad (según exista en tu modelo)
-            string sev = GetStringProp(h, "Criticidad");
-            if (string.IsNullOrWhiteSpace(sev))
-                sev = GetStringProp(h, "Severidad");
-
-            if (string.IsNullOrWhiteSpace(sev))
-                throw new Exception("Debe especificar criticidad/severidad (ALTA / MEDIA / BAJA).");
-
-            sev = sev.Trim().ToUpperInvariant();
-            if (sev != "ALTA" && sev != "MEDIA" && sev != "BAJA")
-                throw new Exception("Criticidad/Severidad inválida. Use: ALTA / MEDIA / BAJA.");
+            return null;
         }
 
-        // ============================================================
-        // NORMALIZACIÓN Criticidad/Severidad (evita datos sucios)
-        // ============================================================
-        private void NormalizarSeveridadOCriticidad(Hallazgo h)
+        /// <summary>
+        /// Compat: si tu BL antiguo tenía Eliminar, aquí puedes hacer "soft delete"
+        /// si tu tabla tiene deleted_at/deleted_by. Como NO lo tienes en tu DAO,
+        /// lo dejo como excepción controlada para no romper producción.
+        /// </summary>
+        public bool Eliminar(int codigoHallazgo, string usuario)
         {
-            // Toma el valor que exista
-            string val = GetStringProp(h, "Criticidad");
-            bool usaCriticidad = !string.IsNullOrWhiteSpace(val);
-
-            if (!usaCriticidad)
-                val = GetStringProp(h, "Severidad");
-
-            if (string.IsNullOrWhiteSpace(val))
-                return;
-
-            val = val.Trim().ToUpperInvariant();
-            if (val == "ALTO") val = "ALTA"; // tolerancia
-            if (val == "MEDIO") val = "MEDIA"; // tolerancia
-            if (val == "BAJO") val = "BAJA"; // tolerancia
-
-            // Escribe en la propiedad que exista
-            if (TieneProp(h, "Criticidad"))
-                SetStringProp(h, "Criticidad", val);
-
-            if (TieneProp(h, "Severidad"))
-                SetStringProp(h, "Severidad", val);
-        }
-
-        // ============================================================
-        // HELPERS REFLECTION (para no depender del nombre exacto)
-        // ============================================================
-        private bool TieneProp(object obj, string propName)
-        {
-            if (obj == null || string.IsNullOrWhiteSpace(propName)) return false;
-            var p = obj.GetType().GetProperty(propName, BindingFlags.Public | BindingFlags.Instance | BindingFlags.IgnoreCase);
-            return p != null;
-        }
-
-        private string GetStringProp(object obj, string propName)
-        {
-            if (obj == null || string.IsNullOrWhiteSpace(propName)) return null;
-            var p = obj.GetType().GetProperty(propName, BindingFlags.Public | BindingFlags.Instance | BindingFlags.IgnoreCase);
-            if (p == null) return null;
-            var v = p.GetValue(obj, null);
-            return v?.ToString();
-        }
-
-        private void SetStringProp(object obj, string propName, string value)
-        {
-            if (obj == null || string.IsNullOrWhiteSpace(propName)) return;
-            var p = obj.GetType().GetProperty(propName, BindingFlags.Public | BindingFlags.Instance | BindingFlags.IgnoreCase);
-            if (p == null) return;
-            if (!p.CanWrite) return;
-
-            p.SetValue(obj, value, null);
+            // Si realmente necesitas eliminar:
+            // - agrega columnas deleted_at/deleted_by
+            // - implementa EliminarSoft en DAO
+            // Por ahora NO lo invento para no tocar BD sin tu aprobación.
+            throw new NotSupportedException("Eliminar no está implementado en HallazgoDAO. Implementa un soft delete si lo necesitas.");
         }
     }
 }

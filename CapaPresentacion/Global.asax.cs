@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Linq;
 using System.Web;
 using System.Web.Mvc;
@@ -16,43 +15,29 @@ namespace CapaPresentacion
     {
         protected void Application_Start()
         {
+            // Dapper
+            Dapper.DefaultTypeMap.MatchNamesWithUnderscores = true;
+
             AreaRegistration.RegisterAllAreas();
+            FilterConfig.RegisterGlobalFilters(GlobalFilters.Filters);
             RouteConfig.RegisterRoutes(RouteTable.Routes);
             BundleConfig.RegisterBundles(BundleTable.Bundles);
-            FilterConfig.RegisterGlobalFilters(GlobalFilters.Filters);
         }
 
         protected void Application_AuthenticateRequest(object sender, EventArgs e)
         {
             HttpCookie authCookie = Context.Request.Cookies[FormsAuthentication.FormsCookieName];
-
-            if (authCookie == null || string.IsNullOrEmpty(authCookie.Value))
-                return;
+            if (authCookie == null || string.IsNullOrEmpty(authCookie.Value)) return;
 
             FormsAuthenticationTicket authTicket;
-            try
-            {
-                authTicket = FormsAuthentication.Decrypt(authCookie.Value);
-            }
-            catch
-            {
-                return; // Cookie corrupta o inválida
-            }
+            try { authTicket = FormsAuthentication.Decrypt(authCookie.Value); }
+            catch { return; }
 
-            if (authTicket == null || authTicket.Expired)
-                return;
+            if (authTicket == null || authTicket.Expired) return;
 
-            string[] roles;
-
-            if (!string.IsNullOrEmpty(authTicket.UserData))
-            {
-                roles = authTicket.UserData.Split(new char[] { ',' }, StringSplitOptions.RemoveEmptyEntries);
-            }
-            else
-            {
-                // Fallback: cargar roles desde la base de datos
-                roles = GetRolesFromDB(authTicket.Name);
-            }
+            string[] roles = (!string.IsNullOrEmpty(authTicket.UserData))
+                ? authTicket.UserData.Split(new[] { ',' }, StringSplitOptions.RemoveEmptyEntries)
+                : GetRolesFromDB(authTicket.Name);
 
             var identity = new GenericIdentity(authTicket.Name);
             var principal = new GenericPrincipal(identity, roles);

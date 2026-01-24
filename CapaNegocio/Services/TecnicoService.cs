@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using CapaDatos.DAOs;
 using CapaModelo;
 
@@ -11,72 +12,85 @@ namespace CapaNegocio.Services
 
         public TecnicoService()
         {
+            // Importante: InspeccionDAO y HallazgoDAO NO deben ser estáticos
             _inspeccionDAO = new InspeccionDAO();
             _hallazgoDAO = new HallazgoDAO();
         }
 
-        public bool AsignarInspector(int solicitudId, string inspector, DateTime fecha, string tipoInspeccion, string lugar)
+        // 1. Asignar Inspector
+        public bool AsignarInspector(int codigoSolicitud, int codigoInspector, DateTime fecha, string tipo, string lugar)
         {
-            var inspeccion = new Inspeccion
-            {
-                SolicitudId = solicitudId,
-                InspectorAsignado = inspector,
-                FechaProgramada = fecha,
-                TipoInspeccion = tipoInspeccion,
-                Lugar = lugar,
-                Estado = "PROGRAMADA"
-            };
+            Inspeccion inspeccion = new Inspeccion();
+            inspeccion.CodigoSolicitud = codigoSolicitud;
+            inspeccion.CodigoInspector = codigoInspector;
+            inspeccion.FechaProgramada = fecha;
+            inspeccion.Tipo = tipo;
+            inspeccion.Lugar = lugar;
+            inspeccion.Estado = "PROGRAMADA";
+            inspeccion.CreatedAt = DateTime.Now;
 
-            return _inspeccionDAO.Crear(inspeccion);
+            // Retorna true si el ID generado es mayor a 0
+            return _inspeccionDAO.Crear(inspeccion) > 0;
         }
 
-        public bool ProgramarInspeccion(int inspeccionId, DateTime fecha, string lugar)
+        // 2. Programar o Reprogramar
+        public bool ProgramarInspeccion(int codigoInspeccion, DateTime fecha, string lugar)
         {
-            var insp = _inspeccionDAO.ObtenerPorId(inspeccionId);
+            Inspeccion insp = _inspeccionDAO.ObtenerPorId(codigoInspeccion);
             if (insp == null) return false;
 
             insp.FechaProgramada = fecha;
             insp.Lugar = lugar;
             insp.Estado = "PROGRAMADA";
+            insp.UpdatedAt = DateTime.Now;
 
             return _inspeccionDAO.Actualizar(insp);
         }
 
-        public bool RegistrarListaChequeo(int inspeccionId, string[] items, bool[] cumple, string[] obs)
+        // 3. Registrar Hallazgos desde Lista de Chequeo
+        public bool RegistrarListaChequeo(int codigoInspeccion, string[] items, string criticidad, string usuario)
         {
-            for (int i = 0; i < items.Length; i++)
+            try
             {
-                var h = new Hallazgo
+                for (int i = 0; i < items.Length; i++)
                 {
-                    InspeccionId = inspeccionId,
-                    Item = items[i],
-                    Cumple = cumple[i],
-                    Observacion = obs[i]
-                };
+                    Hallazgo h = new Hallazgo();
+                    h.CodigoInspeccion = codigoInspeccion;
+                    h.Descripcion = items[i];
+                    h.Criticidad = criticidad;
+                    h.Estado = "ABIERTO";
+                    h.FechaDeteccion = DateTime.Now;
+                    h.CreatedBy = usuario;
+                    h.CreatedAt = DateTime.Now;
 
-                _hallazgoDAO.Agregar(h);
+                    _hallazgoDAO.Insertar(h);
+                }
+                return true;
             }
-
-            return true;
+            catch
+            {
+                return false;
+            }
         }
 
-        public bool FinalizarInspeccion(int inspeccionId, bool aprobada, string conc, string recom)
+        // 4. Finalizar Inspección y generar resultado
+        public bool FinalizarInspeccion(int codigoInspeccion, string resultado, string comentarios, string hallazgos)
         {
-            var insp = _inspeccionDAO.ObtenerPorId(inspeccionId);
+            Inspeccion insp = _inspeccionDAO.ObtenerPorId(codigoInspeccion);
             if (insp == null) return false;
 
-            insp.Aprobada = aprobada;
-            insp.Conclusiones = conc;
-            insp.Recomendaciones = recom;
-            insp.FechaInforme = DateTime.Now;
+            insp.Resultado = resultado; // Ejemplo: "CUMPLE" / "NO CUMPLE"
+            insp.Comentarios = comentarios;
+            insp.HallazgosPrincipales = hallazgos;
             insp.Estado = "FINALIZADA";
+            insp.UpdatedAt = DateTime.Now;
 
             return _inspeccionDAO.Actualizar(insp);
         }
 
         public Inspeccion ObtenerInspeccion(int id)
         {
-            return _inspeccionDAO.ObtenerInspeccionCompleta(id);
+            return _inspeccionDAO.ObtenerPorId(id);
         }
     }
 }

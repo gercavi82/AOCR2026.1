@@ -51,6 +51,12 @@
     <Compile Include="AeronaveSolicitud.cs" />
     <Compile Include="ChecklistItem.cs" />
     <Compile Include="ChecklistSolicitud.cs" />
+    <Compile Include="Common\ResultadoOperacion.cs" />
+    <Compile Include="OrdenRecaudacion\HistorialEstadoOrden.cs" />
+    <Compile Include="OrdenRecaudacion\ConceptoRecaudacion.cs" />
+    <Compile Include="OrdenRecaudacion\OrdenRecaudacion.cs" />
+    <Compile Include="OrdenRecaudacion\OrdenRecaudacionDetalle.cs" />
+    <Compile Include="OrdenRecaudacion\AocrDocumento.cs" />
     <Compile Include="Solicitud.cs" />
     <Compile Include="RepresentanteLegal.cs" />
     <Compile Include="Viatico.cs" />

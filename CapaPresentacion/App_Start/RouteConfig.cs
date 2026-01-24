@@ -9,13 +9,26 @@ namespace CapaPresentacion
         {
             routes.IgnoreRoute("{resource}.axd/{*pathInfo}");
 
+            // RUTA ESPECÍFICA para el Dashboard - debe ir ANTES de la ruta por defecto
+            routes.MapRoute(
+                name: "Dashboard",
+                url: "Dashboard",
+                defaults: new { controller = "Dashboard", action = "Index", id = UrlParameter.Optional }
+            );
+
+            // RUTA para Detalle de Orden - también específica
+            routes.MapRoute(
+                name: "OrdenDetalle",
+                url: "Orden/Detalle/{id}",
+                defaults: new { controller = "Orden", action = "Detalle", id = UrlParameter.Optional }
+            );
+
+            // RUTA POR DEFECTO - debe ir ÚLTIMA
             routes.MapRoute(
                 name: "Default",
                 url: "{controller}/{action}/{id}",
                 defaults: new { controller = "Home", action = "Index", id = UrlParameter.Optional }
             );
-
         }
     }
-
 }

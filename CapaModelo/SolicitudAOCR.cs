@@ -1,5 +1,6 @@
 ﻿using System;
-
+using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations.Schema;
 namespace CapaModelo
 {
     public class SolicitudAOCR
@@ -42,5 +43,54 @@ namespace CapaModelo
         public DateTime? FechaFinOperacion { get; set; }
         public string ObservacionesGenerales { get; set; }
 
+
+
+        public int Id { get; set; }
+        public int UsuarioId { get; set; }
+
+        public DateTime FechaCreacion { get; set; }
+        public DateTime? FechaEnvioRevision { get; set; }
+        public DateTime? FechaRevision { get; set; }
+        public DateTime? FechaSubsanacion { get; set; }
+        public DateTime? FechaAprobacion { get; set; }
+        public int? UsuarioRevisionId { get; set; }
+        public int? UsuarioAprobacionId { get; set; }
+        public List<Documento> Documentos { get; set; } = new List<Documento>();
+        public List<Pago> Pagos { get; set; } = new List<Pago>();
+        public List<Inspeccion> Inspecciones { get; set; } = new List<Inspeccion>();
+        public List<Observacion> ObservacionesLista { get; set; } = new List<Observacion>();
+        public List<HistorialEstado> HistorialEstados { get; set; } = new List<HistorialEstado>();
+        // =========================================================
+        // ✅ ALIAS / COMPATIBILIDAD (para Services antiguos)
+        // =========================================================
+
+        /// <summary>
+        /// Alias: algunos servicios usan FechaActualizacion, pero en el modelo real es UpdatedAt.
+        /// </summary>
+        [NotMapped]
+        public DateTime? FechaActualizacion
+        {
+            get => UpdatedAt;
+            set => UpdatedAt = value;
+        }
+
+        /// <summary>
+        /// Alias: nombre del director/autoridad que firma.
+        /// Si no existe en BD, se maneja como dato "de presentación".
+        /// (NoMapped para no afectar EF / migraciones).
+        /// </summary>
+        [NotMapped]
+        public string Director { get; set; }
+
+        /// <summary>
+        /// Alias: cargo del director/autoridad que firma.
+        /// (NoMapped para no afectar BD).
+        /// </summary>
+        [NotMapped]
+        public string CargoDirector { get; set; }
+
     }
+
+
+
 }

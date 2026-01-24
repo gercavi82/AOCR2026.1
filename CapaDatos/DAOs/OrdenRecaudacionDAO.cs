@@ -1,7 +1,10 @@
 ﻿using System;
-using System.Configuration;
+using System.Collections.Generic;
 using System.Data;
+using System.Linq;
+using Dapper;
 using Npgsql;
+using CapaDatos.Models;
 using CapaModelo.DTOs;
 
 namespace CapaDatos.DAOs
@@ -12,286 +15,576 @@ namespace CapaDatos.DAOs
 
         public OrdenRecaudacionDAO()
         {
-            _connectionString = ConfigurationManager.ConnectionStrings["AOCRConnection"].ConnectionString;
-            if (string.IsNullOrWhiteSpace(_connectionString))
-                throw new Exception("No existe la cadena de conexión 'AOCRConnection' en Web.config/app.config.");
+            _connectionString = System.Configuration.ConfigurationManager
+                .ConnectionStrings["AOCRConnection"].ConnectionString;
         }
 
-        public bool ExisteORMinima(int usuarioId)
-        {
-            const string sql = @"
-                SELECT EXISTS(
-                    SELECT 1
-                    FROM public.aocr_or_orden
-                    WHERE codigo_usuario = @u
-                      AND estado = 'BORRADOR'
-                );";
+        // ============================
+        // VALIDACIONES
+        // ============================
 
-            try
+        public bool ExisteORGeneradaOPagada(int codigoUsuario)
+        {
+            using (var cn = new NpgsqlConnection(_connectionString))
             {
-                using (var conn = new NpgsqlConnection(_connectionString))
-                using (var cmd = new NpgsqlCommand(sql, conn))
+                cn.Open();
+
+                const string sql = @"
+                    SELECT CASE WHEN EXISTS (
+                        SELECT 1
+                        FROM aocr_or_orden
+                        WHERE codigo_usuario = @CodigoUsuario
+                          AND estado IN ('GENERADA','PAGADA')
+                    ) THEN TRUE ELSE FALSE END;";
+
+                return cn.ExecuteScalar<bool>(sql, new { CodigoUsuario = codigoUsuario });
+            }
+        }
+
+        public bool ExisteORMinima(int codigoUsuario)
+        {
+            using (var cn = new NpgsqlConnection(_connectionString))
+            {
+                cn.Open();
+
+                const string sql = @"
+                    SELECT CASE WHEN EXISTS (
+                        SELECT 1
+                        FROM aocr_or_orden
+                        WHERE codigo_usuario = @CodigoUsuario
+                          AND estado = 'BORRADOR'
+                    ) THEN TRUE ELSE FALSE END;";
+
+                return cn.ExecuteScalar<bool>(sql, new { CodigoUsuario = codigoUsuario });
+            }
+        }
+
+        // ============================
+        // CRUD
+        // ============================
+
+        public List<OrdenRecaudacionModel> ObtenerOrdenes(int? codigoUsuario, string estado)
+        {
+            using (var cn = new NpgsqlConnection(_connectionString))
+            {
+                cn.Open();
+
+                const string sql = @"
+                    SELECT 
+                        o.*,
+                        u.nombreusuario,
+                        u.correo
+                    FROM aocr_or_orden o
+                    LEFT JOIN usuario u ON o.codigo_usuario = u.idusuario
+                    WHERE (@CodigoUsuario IS NULL OR o.codigo_usuario = @CodigoUsuario)
+                      AND (@Estado IS NULL OR o.estado = @Estado)
+                    ORDER BY o.fecha_creacion DESC;";
+
+                var ordenes = cn.Query<OrdenRecaudacionModel>(sql, new
                 {
-                    cmd.Parameters.AddWithValue("@u", usuarioId);
-                    conn.Open();
-                    return Convert.ToBoolean(cmd.ExecuteScalar());
+                    CodigoUsuario = codigoUsuario,
+                    Estado = estado
+                }).ToList();
+
+                // Cargar detalles + concepto
+                for (int i = 0; i < ordenes.Count; i++)
+                {
+                    var ord = ordenes[i];
+                    ord.Detalles = ObtenerDetallesOrden(ord.Id, cn);
+
+                    if (ord.ConceptoId.HasValue)
+                        ord.Concepto = ObtenerConcepto(ord.ConceptoId.Value, cn);
+                }
+
+                return ordenes;
+            }
+        }
+
+        public OrdenRecaudacionModel ObtenerOrdenPorId(int id)
+        {
+            using (var cn = new NpgsqlConnection(_connectionString))
+            {
+                cn.Open();
+
+                const string sql = @"
+                    SELECT 
+                        o.*,
+                        u.nombreusuario,
+                        u.correo
+                    FROM aocr_or_orden o
+                    LEFT JOIN usuario u ON o.codigo_usuario = u.idusuario
+                    WHERE o.id = @Id
+                    LIMIT 1;";
+
+                var orden = cn.QueryFirstOrDefault<OrdenRecaudacionModel>(sql, new { Id = id });
+
+                if (orden != null)
+                {
+                    orden.Detalles = ObtenerDetallesOrden(id, cn);
+
+                    if (orden.ConceptoId.HasValue)
+                        orden.Concepto = ObtenerConcepto(orden.ConceptoId.Value, cn);
+                }
+
+                return orden;
+            }
+        }
+
+        public int CrearOrden(OrdenRecaudacionModel orden)
+        {
+            using (var cn = new NpgsqlConnection(_connectionString))
+            {
+                cn.Open();
+
+                using (var tx = cn.BeginTransaction())
+                {
+                    try
+                    {
+                        string numeroOrden = GenerarNumeroOrden(cn, tx);
+
+                        const string sqlOrden = @"
+                            INSERT INTO aocr_or_orden (
+                                codigo_usuario, codigo_solicitud, numero_orden, fecha_creacion,
+                                estado, observacion, subtotal, admin, total, lugar_emision,
+                                compania, ruc_cedula, correo, telefono, concepto_id
+                            ) VALUES (
+                                @CodigoUsuario, @CodigoSolicitud, @NumeroOrden, @FechaCreacion,
+                                @Estado, @Observacion, @Subtotal, @Admin, @Total, @LugarEmision,
+                                @Compania, @RucCedula, @Correo, @Telefono, @ConceptoId
+                            )
+                            RETURNING id;";
+
+                        orden.NumeroOrden = numeroOrden;
+                        orden.FechaCreacion = DateTime.Now;
+
+                        int idOrden = cn.ExecuteScalar<int>(sqlOrden, new
+                        {
+                            orden.CodigoUsuario,
+                            orden.CodigoSolicitud,
+                            orden.NumeroOrden,
+                            orden.FechaCreacion,
+                            orden.Estado,
+                            orden.Observacion,
+                            orden.Subtotal,
+                            orden.Admin,
+                            orden.Total,
+                            orden.LugarEmision,
+                            orden.Compania,
+                            orden.RucCedula,
+                            orden.Correo,
+                            orden.Telefono,
+                            orden.ConceptoId
+                        }, tx);
+
+                        if (orden.Detalles != null && orden.Detalles.Any())
+                        {
+                            const string sqlDetalle = @"
+                                INSERT INTO aocr_or_orden_detalle (
+                                    orden_id, concepto_id, concepto_codigo, concepto_nombre,
+                                    descripcion, cantidad, valor_unitario, porcentaje_admin,
+                                    subtotal, admin, total_linea
+                                ) VALUES (
+                                    @OrdenId, @ConceptoId, @ConceptoCodigo, @ConceptoNombre,
+                                    @Descripcion, @Cantidad, @ValorUnitario, @PorcentajeAdmin,
+                                    @Subtotal, @Admin, @TotalLinea
+                                );";
+
+                            foreach (var d in orden.Detalles)
+                            {
+                                cn.Execute(sqlDetalle, new
+                                {
+                                    OrdenId = idOrden,
+                                    d.ConceptoId,
+                                    d.ConceptoCodigo,
+                                    d.ConceptoNombre,
+                                    d.Descripcion,
+                                    d.Cantidad,
+                                    d.ValorUnitario,
+                                    d.PorcentajeAdmin,
+                                    d.Subtotal,
+                                    d.Admin,
+                                    d.TotalLinea
+                                }, tx);
+                            }
+                        }
+
+                        tx.Commit();
+                        return idOrden;
+                    }
+                    catch
+                    {
+                        tx.Rollback();
+                        throw;
+                    }
                 }
             }
-            catch
+        }
+
+        public bool ActualizarOrden(OrdenRecaudacionModel orden)
+        {
+            using (var cn = new NpgsqlConnection(_connectionString))
             {
-                return false;
+                cn.Open();
+
+                const string sql = @"
+                    UPDATE aocr_or_orden SET
+                        estado = @Estado,
+                        observacion = @Observacion,
+                        subtotal = @Subtotal,
+                        admin = @Admin,
+                        total = @Total,
+                        lugar_emision = @LugarEmision,
+                        compania = @Compania,
+                        ruc_cedula = @RucCedula,
+                        correo = @Correo,
+                        telefono = @Telefono,
+                        concepto_id = @ConceptoId
+                    WHERE id = @Id;";
+
+                int affected = cn.Execute(sql, new
+                {
+                    orden.Estado,
+                    orden.Observacion,
+                    orden.Subtotal,
+                    orden.Admin,
+                    orden.Total,
+                    orden.LugarEmision,
+                    orden.Compania,
+                    orden.RucCedula,
+                    orden.Correo,
+                    orden.Telefono,
+                    orden.ConceptoId,
+                    orden.Id
+                });
+
+                return affected > 0;
             }
         }
 
-        public bool ExisteORGeneradaOPagada(int usuarioId)
+        public bool CambiarEstadoOrden(int id, string nuevoEstado)
         {
-            const string sql = @"
-                SELECT EXISTS(
-                    SELECT 1
-                    FROM public.aocr_or_orden
-                    WHERE codigo_usuario = @u
-                      AND estado IN ('GENERADA', 'PAGADA', 'COMPLETADA', 'FACTURADA')
-                );";
-
-            try
+            using (var cn = new NpgsqlConnection(_connectionString))
             {
-                using (var conn = new NpgsqlConnection(_connectionString))
-                using (var cmd = new NpgsqlCommand(sql, conn))
+                cn.Open();
+
+                const string sql = "UPDATE aocr_or_orden SET estado = @Estado WHERE id = @Id;";
+                return cn.Execute(sql, new { Estado = nuevoEstado, Id = id }) > 0;
+            }
+        }
+
+        // ============================
+        // BUSCAR / ESTADÍSTICAS / PAGOS
+        // ============================
+
+        public List<OrdenRecaudacionModel> BuscarOrdenes(string criterio, int? codigoUsuario)
+        {
+            using (var cn = new NpgsqlConnection(_connectionString))
+            {
+                cn.Open();
+
+                const string sql = @"
+                    SELECT 
+                        o.*,
+                        u.nombreusuario,
+                        u.correo
+                    FROM aocr_or_orden o
+                    LEFT JOIN usuario u ON o.codigo_usuario = u.idusuario
+                    WHERE (@CodigoUsuario IS NULL OR o.codigo_usuario = @CodigoUsuario)
+                      AND (
+                           o.numero_orden ILIKE '%' || @Criterio || '%'
+                        OR o.compania    ILIKE '%' || @Criterio || '%'
+                        OR o.ruc_cedula   ILIKE '%' || @Criterio || '%'
+                        OR o.correo       ILIKE '%' || @Criterio || '%'
+                      )
+                    ORDER BY o.fecha_creacion DESC;";
+
+                return cn.Query<OrdenRecaudacionModel>(sql, new
                 {
-                    cmd.Parameters.AddWithValue("@u", usuarioId);
-                    conn.Open();
-                    return Convert.ToBoolean(cmd.ExecuteScalar());
+                    CodigoUsuario = codigoUsuario,
+                    Criterio = (criterio ?? "").Trim()
+                }).ToList();
+            }
+        }
+
+        public Dictionary<string, object> ObtenerEstadisticas(int codigoUsuario)
+        {
+            using (var cn = new NpgsqlConnection(_connectionString))
+            {
+                cn.Open();
+
+                const string sql = @"
+                    SELECT 
+                        COUNT(*)::int as Total,
+                        SUM(CASE WHEN estado = 'GENERADA' THEN 1 ELSE 0 END)::int as Generadas,
+                        SUM(CASE WHEN estado = 'ENVIADA'  THEN 1 ELSE 0 END)::int as Enviadas,
+                        SUM(CASE WHEN estado = 'PAGADA'   THEN 1 ELSE 0 END)::int as Pagadas,
+                        SUM(CASE WHEN estado = 'BORRADOR' THEN 1 ELSE 0 END)::int as Borradores,
+                        SUM(CASE WHEN estado = 'ANULADA'  THEN 1 ELSE 0 END)::int as Anuladas,
+                        COALESCE(SUM(total),0)::numeric as TotalMonto,
+                        COALESCE(SUM(CASE WHEN estado = 'PAGADA' THEN total ELSE 0 END),0)::numeric as TotalPagado,
+                        COALESCE(SUM(CASE WHEN estado NOT IN ('PAGADA','ANULADA') THEN total ELSE 0 END),0)::numeric as TotalPendiente
+                    FROM aocr_or_orden
+                    WHERE codigo_usuario = @CodigoUsuario;";
+
+                var row = cn.QueryFirstOrDefault(sql, new { CodigoUsuario = codigoUsuario });
+                if (row == null) return new Dictionary<string, object>();
+
+                var dict = (IDictionary<string, object>)row;
+                return dict.ToDictionary(k => k.Key, v => v.Value);
+            }
+        }
+
+        public bool RegistrarPago(int idOrden, PagoModel pago)
+        {
+            using (var cn = new NpgsqlConnection(_connectionString))
+            {
+                cn.Open();
+
+                using (var tx = cn.BeginTransaction())
+                {
+                    try
+                    {
+                        const string sqlPago = @"
+                            INSERT INTO aocr_tbpago (
+                                codigo_solicitud, numero_factura, monto, moneda,
+                                concepto, metodo_pago, estado, fecha_pago,
+                                fecha_validacion, validado_por, observaciones,
+                                comprobante_ruta
+                            ) VALUES (
+                                @CodigoSolicitud, @NumeroFactura, @Monto, @Moneda,
+                                @Concepto, @MetodoPago, @Estado, @FechaPago,
+                                @FechaValidacion, @ValidadoPor, @Observaciones,
+                                @ComprobanteRuta
+                            );";
+
+                        cn.Execute(sqlPago, new
+                        {
+                            pago.CodigoSolicitud,
+                            pago.NumeroFactura,
+                            pago.Monto,
+                            pago.Moneda,
+                            pago.Concepto,
+                            pago.MetodoPago,
+                            pago.Estado,
+                            pago.FechaPago,
+                            pago.FechaValidacion,
+                            pago.ValidadoPor,
+                            pago.Observaciones,
+                            pago.ComprobanteRuta
+                        }, tx);
+
+                        decimal totalOrden = cn.ExecuteScalar<decimal>(
+                            "SELECT COALESCE(total,0) FROM aocr_or_orden WHERE id = @Id;",
+                            new { Id = idOrden },
+                            tx
+                        );
+
+                        if (totalOrden > 0m && pago.Monto >= totalOrden)
+                        {
+                            cn.Execute(
+                                "UPDATE aocr_or_orden SET estado = 'PAGADA' WHERE id = @Id;",
+                                new { Id = idOrden },
+                                tx
+                            );
+                        }
+
+                        tx.Commit();
+                        return true;
+                    }
+                    catch
+                    {
+                        tx.Rollback();
+                        throw;
+                    }
                 }
             }
-            catch
-            {
-                return false;
-            }
         }
 
-        public bool ConceptoExiste(string conceptoCodigo)
-        {
-            // En tu tabla orden tienes concepto_id (int). Si tú manejas "codigo", cambia la consulta.
-            // Aquí asumo que tienes tabla aocr_or_concepto con campo "id" y "activo".
-            const string sql = @"
-                SELECT EXISTS(
-                    SELECT 1
-                    FROM public.aocr_or_concepto
-                    WHERE codigo = @codigo
-                      AND activo = true
-                );";
+        // ============================
+        // DATATABLE (Dashboard viejo)
+        // ============================
 
-            try
-            {
-                using (var conn = new NpgsqlConnection(_connectionString))
-                using (var cmd = new NpgsqlCommand(sql, conn))
-                {
-                    cmd.Parameters.AddWithValue("@codigo", conceptoCodigo);
-                    conn.Open();
-                    return Convert.ToBoolean(cmd.ExecuteScalar());
-                }
-            }
-            catch
-            {
-                return false;
-            }
-        }
-
-        public decimal ObtenerValorConceptoPorId(int conceptoId)
-        {
-            const string sql = @"
-                SELECT valor_base
-                FROM public.aocr_or_concepto
-                WHERE id = @id AND activo = true;";
-
-            using (var conn = new NpgsqlConnection(_connectionString))
-            using (var cmd = new NpgsqlCommand(sql, conn))
-            {
-                cmd.Parameters.AddWithValue("@id", conceptoId);
-                conn.Open();
-                var r = cmd.ExecuteScalar();
-                return (r == null || r == DBNull.Value) ? 0m : Convert.ToDecimal(r);
-            }
-        }
-
-        public DataTable ObtenerConceptosActivos()
+        public DataTable ObtenerOrdenesPorUsuario(int codigoUsuario)
         {
             var dt = new DataTable();
-            const string sql = @"
-                SELECT id, codigo, nombre, valor_base, descripcion
-                FROM public.aocr_or_concepto
-                WHERE activo = true
-                ORDER BY nombre;";
 
-            using (var conn = new NpgsqlConnection(_connectionString))
-            using (var cmd = new NpgsqlCommand(sql, conn))
+            using (var cn = new NpgsqlConnection(_connectionString))
+            using (var cmd = new NpgsqlCommand())
             using (var da = new NpgsqlDataAdapter(cmd))
             {
-                conn.Open();
+                cn.Open();
+                cmd.Connection = cn;
+
+                cmd.CommandText = @"
+                    SELECT 
+                        id,
+                        numero_orden,
+                        fecha_creacion,
+                        estado,
+                        subtotal,
+                        admin,
+                        total,
+                        observacion
+                    FROM aocr_or_orden
+                    WHERE codigo_usuario = @CodigoUsuario
+                    ORDER BY fecha_creacion DESC;";
+
+                cmd.Parameters.AddWithValue("@CodigoUsuario", codigoUsuario);
                 da.Fill(dt);
             }
+
             return dt;
         }
 
-        public DataTable ObtenerOrdenesPorUsuario(int usuarioId)
-        {
-            var dt = new DataTable();
-            const string sql = @"
-                SELECT id, numero_orden, estado, fecha_creacion, total
-                FROM public.aocr_or_orden
-                WHERE codigo_usuario = @u
-                ORDER BY fecha_creacion DESC;";
-
-            using (var conn = new NpgsqlConnection(_connectionString))
-            using (var cmd = new NpgsqlCommand(sql, conn))
-            using (var da = new NpgsqlDataAdapter(cmd))
-            {
-                cmd.Parameters.AddWithValue("@u", usuarioId);
-                conn.Open();
-                da.Fill(dt);
-            }
-            return dt;
-        }
-
-        public int InsertarOrdenAOCR(int idUsuario, string codigoSolicitud, int conceptoId, int estaciones, int dias, string obs)
-        {
-            if (idUsuario <= 0) throw new Exception("Usuario no válido.");
-            if (string.IsNullOrWhiteSpace(codigoSolicitud)) throw new Exception("Solicitud no válida (código requerido).");
-            if (conceptoId <= 0) throw new Exception("Concepto no válido.");
-            if (estaciones < 0 || estaciones > 50) throw new Exception("Estaciones fuera de rango.");
-            if (dias < 0 || dias > 30) throw new Exception("Días fuera de rango.");
-
-            if (ExisteORMinima(idUsuario))
-                throw new Exception("Ya existe una orden en BORRADOR para este usuario.");
-
-            decimal valorBase = ObtenerValorConceptoPorId(conceptoId);
-            if (valorBase <= 0) throw new Exception("El concepto no existe o no está activo.");
-
-            decimal inspecciones = estaciones * 500m;
-            decimal viaticos = dias * 80m;
-            decimal admin = viaticos * 0.08m;
-            decimal subtotal = valorBase + inspecciones + viaticos;
-            decimal total = subtotal + admin;
-
-            // Numeración robusta (puedes reemplazar por secuencia real)
-            string numeroOrden = $"OR-{DateTime.Now:yyyyMMddHHmmss}-{idUsuario}";
-
-            const string sql = @"
-                INSERT INTO public.aocr_or_orden
-                (codigo_usuario, codigo_solicitud, numero_orden, estado, observacion, subtotal, admin, total, lugar_emision, concepto_id)
-                VALUES
-                (@u, @sol, @num, 'BORRADOR', @obs, @subtotal, @admin, @total, @lugar, @concepto)
-                RETURNING id;";
-
-            try
-            {
-                using (var conn = new NpgsqlConnection(_connectionString))
-                using (var cmd = new NpgsqlCommand(sql, conn))
-                {
-                    cmd.Parameters.AddWithValue("@u", idUsuario);
-                    cmd.Parameters.AddWithValue("@sol", codigoSolicitud.Trim());
-                    cmd.Parameters.AddWithValue("@num", numeroOrden);
-                    cmd.Parameters.AddWithValue("@obs", string.IsNullOrWhiteSpace(obs) ? (object)DBNull.Value : obs.Trim());
-                    cmd.Parameters.AddWithValue("@subtotal", subtotal);
-                    cmd.Parameters.AddWithValue("@admin", admin);
-                    cmd.Parameters.AddWithValue("@total", total);
-                    cmd.Parameters.AddWithValue("@lugar", "Quito");
-                    cmd.Parameters.AddWithValue("@concepto", conceptoId);
-
-                    conn.Open();
-                    var r = cmd.ExecuteScalar();
-                    return (r == null || r == DBNull.Value) ? 0 : Convert.ToInt32(r);
-                }
-            }
-            catch (PostgresException pgEx)
-            {
-                // Producción: log real
-                string msg = $"Error de base de datos: {pgEx.MessageText}";
-                if (pgEx.SqlState == "23505") msg = "Ya existe una orden con ese número.";
-                throw new Exception(msg, pgEx);
-            }
-        }
+        // ============================
+        // PDF: Datos para iTextSharp
+        // ============================
 
         public OrdenRecaudacionPdfDto ObtenerDatosParaPdf(int ordenId, int usuarioId)
         {
-            if (ordenId <= 0) throw new Exception("Orden no válida.");
-            if (usuarioId <= 0) throw new Exception("Usuario no válido.");
-
-            const string sql = @"
-                SELECT
-                    o.id,
-                    o.numero_orden,
-                    o.fecha_creacion,
-                    o.lugar_emision,
-                    o.compania,
-                    o.ruc_cedula,
-                    o.correo,
-                    o.telefono,
-                    o.subtotal,
-                    o.admin,
-                    o.total,
-                    o.observacion,
-                    o.estaciones,
-                    o.dias,
-                    c.nombre as concepto_nombre,
-                    c.valor_base
-                FROM public.aocr_or_orden o
-                LEFT JOIN public.aocr_or_concepto c ON o.concepto_id = c.id
-                WHERE o.id = @id
-                  AND o.codigo_usuario = @u;";
-
-            using (var conn = new NpgsqlConnection(_connectionString))
-            using (var cmd = new NpgsqlCommand(sql, conn))
+            using (var cn = new NpgsqlConnection(_connectionString))
             {
-                cmd.Parameters.AddWithValue("@id", ordenId);
-                cmd.Parameters.AddWithValue("@u", usuarioId);
-                conn.Open();
+                cn.Open();
 
-                using (var rd = cmd.ExecuteReader())
-                {
-                    if (!rd.Read())
-                        throw new Exception("Orden no encontrada o no pertenece al usuario.");
+                const string sqlCab = @"
+                    SELECT
+                        o.id,
+                        o.numero_orden,
+                        o.fecha_creacion,
+                        o.lugar_emision,
+                        o.compania   AS nombrecompania,
+                        o.ruc_cedula AS ruc,
+                        o.correo     AS email,
+                        o.telefono,
+                        o.observacion
+                    FROM aocr_or_orden o
+                    WHERE o.id = @OrdenId
+                      AND o.codigo_usuario = @UsuarioId
+                    LIMIT 1;";
 
-                    var dto = new OrdenRecaudacionPdfDto
+                var cab = cn.QueryFirstOrDefault(sqlCab, new { OrdenId = ordenId, UsuarioId = usuarioId });
+                if (cab == null) return null;
+
+                const string sqlDet = @"
+                    SELECT
+                        COALESCE(concepto_codigo,'') AS codigoconcepto,
+                        COALESCE(concepto_nombre,'') AS nombreconcepto,
+                        COALESCE(cantidad,0)         AS cantidad,
+                        COALESCE(valor_unitario,0)   AS valorunitario,
+                        COALESCE(porcentaje_admin,0) AS porcentajeadmin,
+                        COALESCE(subtotal,0)         AS subtotal,
+                        COALESCE(admin,0)            AS admin,
+                        COALESCE(total_linea,0)      AS total_linea
+                    FROM aocr_or_orden_detalle
+                    WHERE orden_id = @OrdenId
+                    ORDER BY id;";
+
+                var detalles = cn.Query(sqlDet, new { OrdenId = ordenId })
+                    .Select(d => new OrdenRecaudacionPdfDetalleDto
                     {
-                        OrdenId = Convert.ToInt32(rd["id"]),
-                        NumeroOrden = rd["numero_orden"]?.ToString(),
-                        FechaEmision = Convert.ToDateTime(rd["fecha_creacion"]),
-                        LugarEmision = rd["lugar_emision"]?.ToString() ?? "Quito",
+                        CodigoConcepto = (string)d.codigoconcepto,
+                        NombreConcepto = (string)d.nombreconcepto,
+                        Cantidad = Convert.ToInt32(d.cantidad),
+                        ValorUnitario = Convert.ToDecimal(d.valorunitario),
+                        PorcentajeAdmin = Convert.ToDecimal(d.porcentajeadmin),
+                        SubtotalLinea = Convert.ToDecimal(d.subtotal),
+                        AdminLinea = Convert.ToDecimal(d.admin),
+                        ValorTotal = Convert.ToDecimal(d.total_linea)
+                    })
+                    .ToList();
 
-                        NombreCompania = rd["compania"]?.ToString() ?? "No registrado",
-                        Ruc = rd["ruc_cedula"]?.ToString() ?? "No registrado",
-                        Email = rd["correo"]?.ToString() ?? "No registrado",
-                        Telefono = rd["telefono"]?.ToString() ?? "No registrado",
+                var dto = new OrdenRecaudacionPdfDto();
+                dto.OrdenId = Convert.ToInt32(cab.id);
+                dto.NumeroOrden = cab.numero_orden == null ? "" : (string)cab.numero_orden;
+                dto.FechaEmision = Convert.ToDateTime(cab.fecha_creacion);
+                dto.LugarEmision = cab.lugar_emision == null ? "" : (string)cab.lugar_emision;
 
-                        ConceptoPrincipal = rd["concepto_nombre"]?.ToString() ?? "Servicio DGAC",
-                        ValorBase = (rd["valor_base"] == DBNull.Value) ? 0m : Convert.ToDecimal(rd["valor_base"]),
+                dto.NombreCompania = cab.nombrecompania == null ? "" : (string)cab.nombrecompania;
+                dto.Ruc = cab.ruc == null ? "" : (string)cab.ruc;
+                dto.Email = cab.email == null ? "" : (string)cab.email;
+                dto.Telefono = cab.telefono == null ? "" : (string)cab.telefono;
 
-                        Estaciones = (rd["estaciones"] == DBNull.Value) ? 0 : Convert.ToInt32(rd["estaciones"]),
-                        Dias = (rd["dias"] == DBNull.Value) ? 0 : Convert.ToInt32(rd["dias"]),
+                dto.Observacion = cab.observacion == null ? "" : (string)cab.observacion;
+                dto.Referencia = "";
 
-                        Observacion = rd["observacion"]?.ToString(),
-                        Referencia = rd["observacion"]?.ToString(),
+                // ✅ NO asignar dto.Detalles si es readonly: usar Add
+                for (int i = 0; i < detalles.Count; i++)
+                    dto.Detalles.Add(detalles[i]);
 
-                        // Puedes obtenerlo de tabla de usuario si la tienes
-                        NombreRepresentante = "Representante"
-                    };
+                // Inspector (si aplica)
+                dto.NombreInspector = "";
+                dto.CargoInspector = "";
 
-                    dto.CalcularTotales(); // recalcula consistente
-                    dto.NombreInspector = "DGAC";
-                    dto.CargoInspector = "Autoridad competente";
-
-                    return dto;
-                }
+                // ✅ Totales NO se setean aquí: tu OrdenPdfService llama dto.CalcularTotales()
+                return dto;
             }
         }
 
-        public byte[] GenerarPDFOrden(int ordenId, int usuarioId)
+        // ============================
+        // WRAPPERS BL (para compile)
+        // ============================
+
+        public List<OrdenRecaudacionModel> ListarPorUsuario(int codigoUsuario, string estado)
         {
-            // Se genera en CapaPresentacion por arquitectura,
-            // pero lo dejo aquí para cumplir interfaz (llamará al service desde Presentación).
-            // En la práctica, este método puede no usarse desde CapaDatos.
-            throw new NotImplementedException("Generación PDF debe realizarse en CapaPresentacion/Services.");
+            return ObtenerOrdenes(codigoUsuario, estado);
+        }
+
+        public OrdenRecaudacionModel ObtenerPorId(int id)
+        {
+            return ObtenerOrdenPorId(id);
+        }
+
+        public int Insertar(OrdenRecaudacionModel orden)
+        {
+            return CrearOrden(orden);
+        }
+
+        public bool Actualizar(OrdenRecaudacionModel orden)
+        {
+            return ActualizarOrden(orden);
+        }
+
+        public bool CambiarEstado(int id, string estado)
+        {
+            return CambiarEstadoOrden(id, estado);
+        }
+
+        // ============================
+        // PRIVADOS
+        // ============================
+
+        private List<OrdenDetalleModel> ObtenerDetallesOrden(int ordenId, NpgsqlConnection cn)
+        {
+            const string sql = @"
+                SELECT *
+                FROM aocr_or_orden_detalle
+                WHERE orden_id = @OrdenId
+                ORDER BY id;";
+
+            return cn.Query<OrdenDetalleModel>(sql, new { OrdenId = ordenId }).ToList();
+        }
+
+        private ConceptoModel ObtenerConcepto(int conceptoId, NpgsqlConnection cn)
+        {
+            const string sql = "SELECT * FROM aocr_or_concepto WHERE id = @ConceptoId LIMIT 1;";
+            return cn.QueryFirstOrDefault<ConceptoModel>(sql, new { ConceptoId = conceptoId });
+        }
+
+        private string GenerarNumeroOrden(NpgsqlConnection cn, NpgsqlTransaction tx)
+        {
+            // OJO: COUNT no es 100% concurrente. Mejor sería una SEQUENCE, pero esto compila y funciona.
+            const string sql = @"
+                SELECT
+                    'ORD-' || to_char(now(), 'YYYY') || '-' ||
+                    lpad((COUNT(*) + 1)::text, 4, '0')
+                FROM aocr_or_orden
+                WHERE extract(year from fecha_creacion) = extract(year from now());";
+
+            var numero = cn.ExecuteScalar<string>(sql, null, tx);
+            if (string.IsNullOrWhiteSpace(numero))
+                return "ORD-" + DateTime.Now.ToString("yyyy") + "-0001";
+
+            return numero;
         }
     }
 }

@@ -1,208 +1,261 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
-using Dapper;
+using System.Data;
 using Npgsql;
 using CapaModelo;
 
 namespace CapaDatos.DAOs
 {
-    /// <summary>
-    /// DAO de Hallazgos usando Dapper + PostgreSQL
-    /// Compatible con .NET Framework 4.7.2
-    /// Usa ConexionDAO estático.
-    /// </summary>
     public class HallazgoDAO
     {
-        // ✅ NO instanciar ConexionDAO
-        private NpgsqlConnection CrearConexion()
+        private string CS => ConexionDAO.CadenaConexion;
+        private const string TABLA = "public.aocr_tbhallazgo";
+
+        // ✅ Método auxiliar para mapeo
+        private Hallazgo MapearDesdeDataReader(NpgsqlDataReader dr)
         {
-            return ConexionDAO.CrearConexion();
+            try
+            {
+                return new Hallazgo
+                {
+                    CodigoHallazgo = dr.GetInt32(dr.GetOrdinal("codigo_hallazgo")),
+                    CodigoInspeccion = dr.GetInt32(dr.GetOrdinal("codigo_inspeccion")),
+                    Descripcion = dr.IsDBNull(dr.GetOrdinal("descripcion")) ? null : dr.GetString(dr.GetOrdinal("descripcion")),
+                    Criticidad = dr.IsDBNull(dr.GetOrdinal("criticidad")) ? null : dr.GetString(dr.GetOrdinal("criticidad")),
+                    Estado = dr.IsDBNull(dr.GetOrdinal("estado")) ? null : dr.GetString(dr.GetOrdinal("estado")),
+                    AccionCorrectiva = dr.IsDBNull(dr.GetOrdinal("accion_correctiva")) ? null : dr.GetString(dr.GetOrdinal("accion_correctiva")),
+                    FechaDeteccion = dr.IsDBNull(dr.GetOrdinal("fecha_deteccion")) ? (DateTime?)null : dr.GetDateTime(dr.GetOrdinal("fecha_deteccion")),
+                    FechaCierre = dr.IsDBNull(dr.GetOrdinal("fecha_cierre")) ? (DateTime?)null : dr.GetDateTime(dr.GetOrdinal("fecha_cierre")),
+                    Responsable = dr.IsDBNull(dr.GetOrdinal("responsable")) ? null : dr.GetString(dr.GetOrdinal("responsable")),
+                    CreatedAt = dr.IsDBNull(dr.GetOrdinal("created_at")) ? (DateTime?)null : dr.GetDateTime(dr.GetOrdinal("created_at")),
+                    CreatedBy = dr.IsDBNull(dr.GetOrdinal("created_by")) ? null : dr.GetString(dr.GetOrdinal("created_by")),
+                    UpdatedAt = dr.IsDBNull(dr.GetOrdinal("updated_at")) ? (DateTime?)null : dr.GetDateTime(dr.GetOrdinal("updated_at")),
+                    UpdatedBy = dr.IsDBNull(dr.GetOrdinal("updated_by")) ? null : dr.GetString(dr.GetOrdinal("updated_by"))
+                };
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error al mapear hallazgo: {ex.Message}");
+                return null;
+            }
         }
 
-        // ============================================================
-        // LISTAR POR INSPECCIÓN
-        // ============================================================
+        // ✅ Insertar nuevo hallazgo
+        public int Insertar(Hallazgo hallazgo)
+        {
+            try
+            {
+                using (var conn = new NpgsqlConnection(CS))
+                {
+                    conn.Open();
+
+                    string sql = $@"
+                        INSERT INTO {TABLA}
+                        (codigo_inspeccion, descripcion, criticidad, estado, fecha_deteccion, created_at, created_by, updated_at, updated_by)
+                        VALUES
+                        (@codigoInspeccion, @descripcion, @criticidad, @estado, @fechaDeteccion, NOW(), @createdBy, NOW(), @updatedBy)
+                        RETURNING codigo_hallazgo;";
+
+                    using (var cmd = new NpgsqlCommand(sql, conn))
+                    {
+                        cmd.Parameters.AddWithValue("@codigoInspeccion", hallazgo.CodigoInspeccion);
+                        cmd.Parameters.AddWithValue("@descripcion", (object)hallazgo.Descripcion ?? DBNull.Value);
+                        cmd.Parameters.AddWithValue("@criticidad", (object)hallazgo.Criticidad ?? "MEDIA");
+                        cmd.Parameters.AddWithValue("@estado", (object)hallazgo.Estado ?? "ABIERTO");
+                        cmd.Parameters.AddWithValue("@fechaDeteccion", (object)hallazgo.FechaDeteccion ?? DateTime.Now);
+                        cmd.Parameters.AddWithValue("@createdBy", (object)hallazgo.CreatedBy ?? DBNull.Value);
+                        cmd.Parameters.AddWithValue("@updatedBy", (object)hallazgo.UpdatedBy ?? DBNull.Value);
+
+                        return Convert.ToInt32(cmd.ExecuteScalar());
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error en Insertar: {ex.Message}");
+                return 0;
+            }
+        }
+
+        // ✅ Actualizar hallazgo
+        public bool Actualizar(Hallazgo hallazgo)
+        {
+            try
+            {
+                using (var conn = new NpgsqlConnection(CS))
+                {
+                    conn.Open();
+
+                    string sql = $@"
+                        UPDATE {TABLA}
+                        SET
+                            descripcion = @descripcion,
+                            criticidad = @criticidad,
+                            estado = @estado,
+                            accion_correctiva = @accionCorrectiva,
+                            fecha_cierre = @fechaCierre,
+                            responsable = @responsable,
+                            updated_at = NOW(),
+                            updated_by = @updatedBy
+                        WHERE codigo_hallazgo = @codigoHallazgo;";
+
+                    using (var cmd = new NpgsqlCommand(sql, conn))
+                    {
+                        cmd.Parameters.AddWithValue("@descripcion", (object)hallazgo.Descripcion ?? DBNull.Value);
+                        cmd.Parameters.AddWithValue("@criticidad", (object)hallazgo.Criticidad ?? DBNull.Value);
+                        cmd.Parameters.AddWithValue("@estado", (object)hallazgo.Estado ?? DBNull.Value);
+                        cmd.Parameters.AddWithValue("@accionCorrectiva", (object)hallazgo.AccionCorrectiva ?? DBNull.Value);
+                        cmd.Parameters.AddWithValue("@fechaCierre", (object)hallazgo.FechaCierre ?? DBNull.Value);
+                        cmd.Parameters.AddWithValue("@responsable", (object)hallazgo.Responsable ?? DBNull.Value);
+                        cmd.Parameters.AddWithValue("@updatedBy", (object)hallazgo.UpdatedBy ?? DBNull.Value);
+                        cmd.Parameters.AddWithValue("@codigoHallazgo", hallazgo.CodigoHallazgo);
+
+                        int filasAfectadas = cmd.ExecuteNonQuery();
+                        return filasAfectadas > 0;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error en Actualizar: {ex.Message}");
+                return false;
+            }
+        }
+
+        // ✅ Obtener hallazgos por inspección
         public List<Hallazgo> ObtenerPorInspeccion(int codigoInspeccion)
         {
-            using (var con = CrearConexion())
+            var lista = new List<Hallazgo>();
+
+            try
             {
-                con.Open();
+                using (var conn = new NpgsqlConnection(CS))
+                {
+                    conn.Open();
 
-                const string sql = @"
-                    SELECT
-                        codigo_hallazgo     AS CodigoHallazgo,
-                        codigo_inspeccion   AS CodigoInspeccion,
-                        descripcion         AS Descripcion,
-                        criticidad          AS Criticidad,
-                        estado              AS Estado,
-                        fecha_deteccion     AS FechaDeteccion,
-                        fecha_cierre        AS FechaCierre,
-                        created_at          AS CreatedAt,
-                        created_by          AS CreatedBy,
-                        updated_at          AS UpdatedAt,
-                        updated_by          AS UpdatedBy,
-                        deleted_at          AS DeletedAt,
-                        deleted_by          AS DeletedBy
-                    FROM aocr_tbhallazgo
-                    WHERE codigo_inspeccion = @codigoInspeccion
-                      AND deleted_at IS NULL
-                    ORDER BY created_at DESC;";
+                    string sql = $@"
+                        SELECT *
+                        FROM {TABLA}
+                        WHERE codigo_inspeccion = @codigoInspeccion
+                        ORDER BY criticidad DESC, fecha_deteccion DESC;";
 
-                return con.Query<Hallazgo>(sql, new { codigoInspeccion }).ToList();
+                    using (var cmd = new NpgsqlCommand(sql, conn))
+                    {
+                        cmd.Parameters.AddWithValue("@codigoInspeccion", codigoInspeccion);
+
+                        using (var dr = cmd.ExecuteReader())
+                        {
+                            while (dr.Read())
+                            {
+                                var hallazgo = MapearDesdeDataReader(dr);
+                                if (hallazgo != null)
+                                    lista.Add(hallazgo);
+                            }
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error en ObtenerPorInspeccion: {ex.Message}");
+            }
+
+            return lista;
+        }
+
+        // ✅ Cerrar hallazgo
+        public bool CerrarHallazgo(int codigoHallazgo, string accionCorrectiva, string responsable, string usuario)
+        {
+            try
+            {
+                using (var conn = new NpgsqlConnection(CS))
+                {
+                    conn.Open();
+
+                    string sql = $@"
+                        UPDATE {TABLA}
+                        SET
+                            estado = 'CERRADO',
+                            accion_correctiva = @accionCorrectiva,
+                            responsable = @responsable,
+                            fecha_cierre = NOW(),
+                            updated_at = NOW(),
+                            updated_by = @updatedBy
+                        WHERE codigo_hallazgo = @codigoHallazgo;";
+
+                    using (var cmd = new NpgsqlCommand(sql, conn))
+                    {
+                        cmd.Parameters.AddWithValue("@accionCorrectiva", (object)accionCorrectiva ?? DBNull.Value);
+                        cmd.Parameters.AddWithValue("@responsable", (object)responsable ?? DBNull.Value);
+                        cmd.Parameters.AddWithValue("@updatedBy", (object)usuario ?? DBNull.Value);
+                        cmd.Parameters.AddWithValue("@codigoHallazgo", codigoHallazgo);
+
+                        return cmd.ExecuteNonQuery() > 0;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error en CerrarHallazgo: {ex.Message}");
+                return false;
             }
         }
 
-        // ============================================================
-        // OBTENER POR ID
-        // ============================================================
-        public Hallazgo ObtenerPorId(int id)
+        // ✅ Obtener estadísticas de hallazgos por inspección
+        public Dictionary<string, int> ObtenerEstadisticas(int codigoInspeccion)
         {
-            using (var con = CrearConexion())
+            var estadisticas = new Dictionary<string, int>
             {
-                con.Open();
+                { "TOTAL", 0 },
+                { "ALTA", 0 },
+                { "MEDIA", 0 },
+                { "BAJA", 0 },
+                { "ABIERTO", 0 },
+                { "CERRADO", 0 }
+            };
 
-                const string sql = @"
-                    SELECT
-                        codigo_hallazgo     AS CodigoHallazgo,
-                        codigo_inspeccion   AS CodigoInspeccion,
-                        descripcion         AS Descripcion,
-                        criticidad          AS Criticidad,
-                        estado              AS Estado,
-                        fecha_deteccion     AS FechaDeteccion,
-                        fecha_cierre        AS FechaCierre,
-                        created_at          AS CreatedAt,
-                        created_by          AS CreatedBy,
-                        updated_at          AS UpdatedAt,
-                        updated_by          AS UpdatedBy,
-                        deleted_at          AS DeletedAt,
-                        deleted_by          AS DeletedBy
-                    FROM aocr_tbhallazgo
-                    WHERE codigo_hallazgo = @id
-                      AND deleted_at IS NULL;";
-
-                return con.QueryFirstOrDefault<Hallazgo>(sql, new { id });
-            }
-        }
-
-        // ============================================================
-        // CREAR
-        // ============================================================
-        public int Crear(Hallazgo h)
-        {
-            using (var con = CrearConexion())
+            try
             {
-                con.Open();
+                using (var conn = new NpgsqlConnection(CS))
+                {
+                    conn.Open();
 
-                // ✅ Valores por defecto defensivos para DateTime (NO nullable)
-                if (h.FechaDeteccion == default(DateTime))
-                    h.FechaDeteccion = DateTime.Now;
+                    string sql = $@"
+                        SELECT 
+                            COUNT(*) as total,
+                            COUNT(CASE WHEN criticidad = 'ALTA' THEN 1 END) as alta,
+                            COUNT(CASE WHEN criticidad = 'MEDIA' THEN 1 END) as media,
+                            COUNT(CASE WHEN criticidad = 'BAJA' THEN 1 END) as baja,
+                            COUNT(CASE WHEN estado = 'ABIERTO' THEN 1 END) as abierto,
+                            COUNT(CASE WHEN estado = 'CERRADO' THEN 1 END) as cerrado
+                        FROM {TABLA}
+                        WHERE codigo_inspeccion = @codigoInspeccion;";
 
-                if (h.CreatedAt == default(DateTime))
-                    h.CreatedAt = DateTime.Now;
+                    using (var cmd = new NpgsqlCommand(sql, conn))
+                    {
+                        cmd.Parameters.AddWithValue("@codigoInspeccion", codigoInspeccion);
 
-                const string sql = @"
-                    INSERT INTO aocr_tbhallazgo
-                    (
-                        codigo_inspeccion,
-                        descripcion,
-                        criticidad,
-                        estado,
-                        fecha_deteccion,
-                        created_at,
-                        created_by
-                    )
-                    VALUES
-                    (
-                        @CodigoInspeccion,
-                        @Descripcion,
-                        @Criticidad,
-                        @Estado,
-                        @FechaDeteccion,
-                        @CreatedAt,
-                        @CreatedBy
-                    )
-                    RETURNING codigo_hallazgo;";
-
-                return con.ExecuteScalar<int>(sql, h);
+                        using (var dr = cmd.ExecuteReader())
+                        {
+                            if (dr.Read())
+                            {
+                                estadisticas["TOTAL"] = dr.IsDBNull(dr.GetOrdinal("total")) ? 0 : dr.GetInt32(dr.GetOrdinal("total"));
+                                estadisticas["ALTA"] = dr.IsDBNull(dr.GetOrdinal("alta")) ? 0 : dr.GetInt32(dr.GetOrdinal("alta"));
+                                estadisticas["MEDIA"] = dr.IsDBNull(dr.GetOrdinal("media")) ? 0 : dr.GetInt32(dr.GetOrdinal("media"));
+                                estadisticas["BAJA"] = dr.IsDBNull(dr.GetOrdinal("baja")) ? 0 : dr.GetInt32(dr.GetOrdinal("baja"));
+                                estadisticas["ABIERTO"] = dr.IsDBNull(dr.GetOrdinal("abierto")) ? 0 : dr.GetInt32(dr.GetOrdinal("abierto"));
+                                estadisticas["CERRADO"] = dr.IsDBNull(dr.GetOrdinal("cerrado")) ? 0 : dr.GetInt32(dr.GetOrdinal("cerrado"));
+                            }
+                        }
+                    }
+                }
             }
-        }
-
-        // ============================================================
-        // ACTUALIZAR
-        // ============================================================
-        public int Actualizar(Hallazgo h)
-        {
-            using (var con = CrearConexion())
+            catch (Exception ex)
             {
-                con.Open();
-
-                // ✅ Asignar siempre updated_at
-                h.UpdatedAt = DateTime.Now;
-
-                const string sql = @"
-                    UPDATE aocr_tbhallazgo SET
-                        descripcion = @Descripcion,
-                        criticidad  = @Criticidad,
-                        estado      = @Estado,
-                        updated_at  = @UpdatedAt,
-                        updated_by  = @UpdatedBy
-                    WHERE codigo_hallazgo = @CodigoHallazgo
-                      AND deleted_at IS NULL;";
-
-                return con.Execute(sql, h);
+                System.Diagnostics.Debug.WriteLine($"Error en ObtenerEstadisticas: {ex.Message}");
             }
-        }
 
-        // ============================================================
-        // CERRAR HALLAZGO
-        // ============================================================
-        public int Cerrar(Hallazgo h)
-        {
-            using (var con = CrearConexion())
-            {
-                con.Open();
-
-                // ✅ Asignar fechas de cierre/actualización
-                h.FechaCierre = DateTime.Now;
-                h.UpdatedAt = DateTime.Now;
-
-                const string sql = @"
-                    UPDATE aocr_tbhallazgo SET
-                        estado       = @Estado,
-                        fecha_cierre = @FechaCierre,
-                        updated_at   = @UpdatedAt,
-                        updated_by   = @UpdatedBy
-                    WHERE codigo_hallazgo = @CodigoHallazgo
-                      AND deleted_at IS NULL;";
-
-                return con.Execute(sql, h);
-            }
-        }
-
-        // ============================================================
-        // ELIMINAR (SOFT DELETE)
-        // ============================================================
-        public int Eliminar(int idHallazgo, string usuario)
-        {
-            const string sql = @"
-        UPDATE aocr_tbhallazgo
-        SET
-            deletedat = @deletedAt,
-            deletedby = @deletedBy
-        WHERE codigohallazgo = @id;";
-
-            using (var cn = CrearConexion())   // Usa tu mismo helper de conexión en HallazgoDAO
-            using (var cmd = new Npgsql.NpgsqlCommand(sql, cn))
-            {
-                cmd.Parameters.AddWithValue("@deletedAt", DateTime.Now);
-                cmd.Parameters.AddWithValue("@deletedBy", (object)usuario ?? DBNull.Value);
-                cmd.Parameters.AddWithValue("@id", idHallazgo);
-
-                cn.Open();
-                // Devuelve el número de filas afectadas (HallazgoBL espera > 0)
-                return cmd.ExecuteNonQuery();
-            }
+            return estadisticas;
         }
     }
 }

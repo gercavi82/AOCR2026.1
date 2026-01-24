@@ -1,470 +1,470 @@
 ﻿using System;
-using System.IO;
-using System.Web.Mvc;
-using CapaDatos.DAOs;
-using CapaPresentacion.Models.ViewModels;
-using System.Threading.Tasks;
-using System.Linq;
-using System.Data;
 using System.Collections.Generic;
-using System.Net.Mail;
-using System.Net;
 using System.Configuration;
+using System.IO;
+using System.Linq;
+using System.Web.Mvc;
+using Dapper;
+using Npgsql;
+using Newtonsoft.Json;
+
+using CapaDatos.DAOs;
+using CapaDatos.Models;
+using CapaPresentacion.Models;
+using CapaPresentacion.Services;
 
 namespace CapaPresentacion.Controllers
 {
     [Authorize]
     public class OrdenRecaudacionController : Controller
     {
-        private readonly IOrdenRecaudacionDAO _dao;
+        private readonly OrdenRecaudacionDAO _ordenDAO;
+        private readonly ConceptoDAO _conceptoDAO;
 
         public OrdenRecaudacionController()
         {
-            _dao = new OrdenRecaudacionDAO();
+            _ordenDAO = new OrdenRecaudacionDAO();
+            _conceptoDAO = new ConceptoDAO();
         }
 
-        // ============================
-        // PANTALLA OBLIGATORIA DESPUÉS DE LOGIN
-        // ============================
         [HttpGet]
         public ActionResult Obligatoria()
         {
-            try
-            {
-                int idUsuario = ObtenerIdUsuario();
-                if (idUsuario <= 0)
-                {
-                    TempData["Error"] = "Debe iniciar sesión.";
-                    return RedirectToAction("Login", "Account");
-                }
-
-                if (_dao.ExisteORGeneradaOPagada(idUsuario))
-                    return RedirectToAction("Index", "Dashboard");
-
-                bool tieneOrdenBorrador = _dao.ExisteORMinima(idUsuario);
-                ViewBag.TieneOrdenBorrador = tieneOrdenBorrador;
-
-                if (tieneOrdenBorrador)
-                {
-                    var dtOrdenes = _dao.ObtenerOrdenesPorUsuario(idUsuario);
-                    var ordenBorrador = dtOrdenes.AsEnumerable()
-                        .FirstOrDefault(row => (row.Field<string>("estado") ?? "") == "BORRADOR");
-
-                    if (ordenBorrador != null)
-                    {
-                        ViewBag.OrdenId = Convert.ToInt32(ordenBorrador["id"]);
-                        ViewBag.NumeroOrden = ordenBorrador["numero_orden"]?.ToString();
-                        ViewBag.FechaCreacion = Convert.ToDateTime(ordenBorrador["fecha_creacion"]).ToString("dd/MM/yyyy");
-                        ViewBag.Total = Convert.ToDecimal(ordenBorrador["total"]).ToString("C");
-                    }
-                }
-
-                var conceptos = _dao.ObtenerConceptosActivos();
-                var listaConceptos = new List<dynamic>();
-
-                if (conceptos != null && conceptos.Rows.Count > 0)
-                {
-                    listaConceptos = conceptos.AsEnumerable()
-                        .Take(4)
-                        .Select(row => new
-                        {
-                            id = row.Field<int>("id"),
-                            codigo = row.Field<string>("codigo"),
-                            nombre = row.Field<string>("nombre"),
-                            valor = row.Field<decimal>("valor_base")
-                        })
-                        .ToList<dynamic>();
-                }
-
-                ViewBag.ConceptosPrincipales = listaConceptos;
-                return View();
-            }
-            catch (Exception ex)
-            {
-                TempData["Error"] = $"Error: {ex.Message}";
-                return RedirectToAction("Login", "Account");
-            }
+            // Importante: en la vista usa: var tiene = (ViewBag.TieneOrdenBorrador as bool?) ?? false;
+            return View();
         }
 
-        // ============================
-        // NUEVA ORDEN
-        // ============================
+        public ActionResult Index(string estado = null, string buscar = null)
+        {
+            int codigoUsuario = ObtenerIdUsuario();
+            if (codigoUsuario <= 0) return RedirectToAction("Login", "Account");
+
+            List<OrdenRecaudacionModel> ordenes;
+
+            if (!string.IsNullOrEmpty(buscar))
+            {
+                ordenes = _ordenDAO.BuscarOrdenes(buscar, codigoUsuario);
+                ViewBag.Buscar = buscar;
+            }
+            else
+            {
+                ordenes = _ordenDAO.ObtenerOrdenes(codigoUsuario, estado);
+            }
+
+            ViewBag.Estados = new List<SelectListItem>
+            {
+                new SelectListItem { Value = "", Text = "Todos" },
+                new SelectListItem { Value = "BORRADOR", Text = "Borradores" },
+                new SelectListItem { Value = "GENERADA", Text = "Generadas" },
+                new SelectListItem { Value = "ENVIADA", Text = "Enviadas" },
+                new SelectListItem { Value = "PAGADA", Text = "Pagadas" },
+                new SelectListItem { Value = "ANULADA", Text = "Anuladas" }
+            };
+
+            ViewBag.EstadoSeleccionado = estado;
+            ViewBag.Estadisticas = _ordenDAO.ObtenerEstadisticas(codigoUsuario);
+
+            return View(ordenes);
+        }
+
+        public ActionResult Detalles(int id)
+        {
+            var orden = _ordenDAO.ObtenerOrdenPorId(id);
+            if (orden == null) return HttpNotFound();
+
+            int codigoUsuario = ObtenerIdUsuario();
+            if (codigoUsuario <= 0) return RedirectToAction("Login", "Account");
+
+            bool esAdmin = (User != null && User.IsInRole("ADMINISTRADOR"));
+            if (orden.CodigoUsuario != codigoUsuario && !esAdmin)
+                return RedirectToAction("AccesoDenegado", "Error");
+
+            ViewBag.Documentos = ObtenerDocumentosOrden(id);
+            ViewBag.Pagos = ObtenerPagosOrden(id);
+            ViewBag.HistorialEstados = ObtenerHistorialEstados(id);
+
+            return View(orden);
+        }
+
+        // ✅ GET: Nueva (DEVUELVE VM, NO MODEL)
         [HttpGet]
         public ActionResult Nueva()
         {
-            try
-            {
-                int idUsuario = ObtenerIdUsuario();
-                if (idUsuario <= 0)
-                {
-                    TempData["Error"] = "Debe iniciar sesión.";
-                    return RedirectToAction("Login", "Account");
-                }
+            int codigoUsuario = ObtenerIdUsuario();
+            if (codigoUsuario <= 0) return RedirectToAction("Login", "Account");
 
-                if (_dao.ExisteORMinima(idUsuario))
-                {
-                    TempData["Advertencia"] = "Ya tiene una orden en estado BORRADOR. Debe completarla primero.";
-                    return RedirectToAction("Obligatoria");
-                }
+            var vm = new OrdenRecaudacionNuevaVM();
+            vm.Orden.CodigoUsuario = codigoUsuario;
+            vm.Orden.NombreUsuario = (Session["NombreUsuario"] != null) ? Session["NombreUsuario"].ToString() : null;
+            vm.Orden.CorreoUsuario = (Session["Correo"] != null) ? Session["Correo"].ToString() : null;
+            vm.Orden.LugarEmision = "Quito";
+            vm.Orden.Estado = "BORRADOR";
+            vm.Orden.FechaCreacion = DateTime.Now;
 
-                return View(new OrdenRecaudacionViewModel());
-            }
-            catch (Exception ex)
-            {
-                TempData["Error"] = $"Error: {ex.Message}";
-                return RedirectToAction("Obligatoria");
-            }
+            vm.Conceptos = CargarConceptosVM();
+
+            return View(vm);
         }
 
-        // ============================
-        // CREAR ORDEN
-        // ============================
+        // ✅ POST: Nueva (RECIBE VM, NO MODEL)
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<JsonResult> Crear(OrdenRecaudacionViewModel model)
+        public ActionResult Nueva(OrdenRecaudacionNuevaVM vm)
         {
+            int codigoUsuario = ObtenerIdUsuario();
+            if (codigoUsuario <= 0) return RedirectToAction("Login", "Account");
+
+            if (vm == null) vm = new OrdenRecaudacionNuevaVM();
+            if (vm.Orden == null) vm.Orden = new OrdenRecaudacionModel();
+
+            // Siempre recargar conceptos si se retorna la vista por error
+            vm.Conceptos = CargarConceptosVM();
+
+            // Validaciones mínimas
+            if (string.IsNullOrWhiteSpace(vm.Orden.RucCedula))
+                ModelState.AddModelError("Orden.RucCedula", "RUC/Cédula es obligatorio.");
+
+            if (string.IsNullOrWhiteSpace(vm.Orden.Correo))
+                ModelState.AddModelError("Orden.Correo", "Correo es obligatorio.");
+
+            // Leer detalles
+            List<OrdenDetallePostVM> detallesPost;
             try
             {
-                if (!ModelState.IsValid)
-                {
-                    var errores = ModelState.Values.SelectMany(v => v.Errors)
-                        .Select(e => e.ErrorMessage)
-                        .Where(m => !string.IsNullOrWhiteSpace(m))
-                        .ToList();
-
-                    return Json(new { success = false, mensaje = "Errores de validación", errores });
-                }
-
-                int idUsuario = ObtenerIdUsuario();
-                if (idUsuario <= 0)
-                    return Json(new { success = false, mensaje = "Sesión expirada. Inicie sesión nuevamente." });
-
-                // ✅ Alineado a tu interfaz:
-                // InsertarOrdenAOCR(int idUsuario, string codigoSolicitud, int conceptoId, int estaciones, int dias, string obs)
-
-                string codigoSolicitud = (model.CodigoSolicitud ?? "").Trim();
-                if (string.IsNullOrWhiteSpace(codigoSolicitud))
-                    return Json(new { success = false, mensaje = "Solicitud no válida (Código de Solicitud vacío)." });
-
-                // Concepto: permitir recibir ConceptoId (preferido).
-                int conceptoId = model.ConceptoId;
-
-                // Compatibilidad: si tu front aún manda ConceptoPrincipalCodigo, intenta mapearlo a ID
-                if (conceptoId <= 0 && !string.IsNullOrWhiteSpace(model.ConceptoPrincipalCodigo))
-                {
-                    conceptoId = MapearConceptoIdPorCodigo(model.ConceptoPrincipalCodigo.Trim());
-                }
-
-                if (conceptoId <= 0)
-                    return Json(new { success = false, mensaje = "Debe seleccionar un concepto válido." });
-
-                if (model.Estaciones < 0 || model.Estaciones > 50)
-                    return Json(new { success = false, mensaje = "El número de estaciones debe estar entre 0 y 50." });
-
-                if (model.Dias < 0 || model.Dias > 30)
-                    return Json(new { success = false, mensaje = "El número de días debe estar entre 0 y 30." });
-
-                // Si ya existe borrador, corta por seguridad/flujo
-                if (_dao.ExisteORMinima(idUsuario))
-                    return Json(new { success = false, mensaje = "Ya tiene una orden BORRADOR. Complete esa orden primero." });
-
-                int ordenId = await Task.Run(() =>
-                    _dao.InsertarOrdenAOCR(
-                        idUsuario,
-                        codigoSolicitud,
-                        conceptoId,
-                        model.Estaciones,
-                        model.Dias,
-                        model.Observacion ?? ""
-                    ));
-
-                if (ordenId > 0)
-                {
-                    Session["TieneOrdenGenerada"] = true;
-                    Session["TieneOrdenBorrador"] = false;
-
-                    return Json(new
-                    {
-                        success = true,
-                        ordenId,
-                        mensaje = "✅ Orden creada exitosamente",
-                        // Ajusta si tu acción real se llama distinto
-                        redireccion = Url.Action("Obligatoria", "OrdenRecaudacion")
-                    });
-                }
-
-                return Json(new { success = false, mensaje = "No se pudo crear la orden." });
-            }
-            catch (Exception ex)
-            {
-                return Json(new { success = false, mensaje = ex.Message });
-            }
-        }
-
-        // ============================
-        // VALIDACIONES / ENDPOINTS JSON
-        // ============================
-        [HttpGet]
-        public JsonResult ValidarOrdenBorrador()
-        {
-            try
-            {
-                int idUsuario = ObtenerIdUsuario();
-                bool tieneBorrador = idUsuario > 0 && _dao.ExisteORMinima(idUsuario);
-                return Json(new { tieneBorrador }, JsonRequestBehavior.AllowGet);
+                detallesPost = string.IsNullOrWhiteSpace(vm.DetallesJson)
+                    ? new List<OrdenDetallePostVM>()
+                    : JsonConvert.DeserializeObject<List<OrdenDetallePostVM>>(vm.DetallesJson) ?? new List<OrdenDetallePostVM>();
             }
             catch
             {
-                return Json(new { tieneBorrador = false }, JsonRequestBehavior.AllowGet);
+                ModelState.AddModelError("", "El detalle de conceptos no es válido.");
+                return View(vm);
             }
-        }
 
-        [HttpGet]
-        public JsonResult ObtenerConceptos()
-        {
+            if (!detallesPost.Any())
+            {
+                ModelState.AddModelError("", "Debe agregar al menos un concepto a la orden.");
+                return View(vm);
+            }
+
+            if (!ModelState.IsValid)
+                return View(vm);
+
+            // Seguridad: no confiar en el cliente → recalcular en servidor usando DB
+            var conceptosDb = _conceptoDAO.ObtenerConceptos(true) ?? new List<ConceptoModel>();
+
+            var detallesGuardar = new List<OrdenDetalleModel>();
+            decimal subtotal = 0m, admin = 0m, total = 0m;
+
+            foreach (var d in detallesPost)
+            {
+                if (d == null) continue;
+
+                var c = conceptosDb.FirstOrDefault(x => x.Id == d.ConceptoId);
+                if (c == null) continue;
+
+                var cantidad = (d.Cantidad <= 0) ? 1 : d.Cantidad;
+
+                var valorUnit = c.ValorBase;
+                var porAdmin = c.PorcentajeAdmin; // aquí se asume 8 = 8%
+
+                var sub = cantidad * valorUnit;
+                var adm = Math.Round(sub * (porAdmin / 100m), 2);
+                var totLinea = Math.Round(sub + adm, 2);
+
+                subtotal += sub;
+                admin += adm;
+                total += totLinea;
+
+                detallesGuardar.Add(new OrdenDetalleModel
+                {
+                    ConceptoId = c.Id,
+                    ConceptoCodigo = c.Codigo,
+                    ConceptoNombre = c.Nombre,
+                    Cantidad = cantidad,
+                    ValorUnitario = valorUnit,
+                    PorcentajeAdmin = porAdmin,
+                    Subtotal = sub,
+                    Admin = adm,
+                    TotalLinea = totLinea
+                });
+            }
+
+            if (!detallesGuardar.Any())
+            {
+                ModelState.AddModelError("", "No hay detalles válidos para guardar.");
+                return View(vm);
+            }
+
+            vm.Orden.CodigoUsuario = codigoUsuario;
+            vm.Orden.Estado = "BORRADOR";
+            vm.Orden.FechaCreacion = DateTime.Now;
+
+            vm.Orden.Subtotal = Math.Round(subtotal, 2);
+            vm.Orden.Admin = Math.Round(admin, 2);
+            vm.Orden.Total = Math.Round(total, 2);
+
+            // Si tu modelo tiene lista Detalles, la asignas para que DAO lo use
+            vm.Orden.Detalles = detallesGuardar;
+
             try
             {
-                var conceptos = _dao.ObtenerConceptosActivos();
+                var idOrden = _ordenDAO.CrearOrden(vm.Orden);
 
-                var lista = conceptos.AsEnumerable()
-                    .Select(row => new
-                    {
-                        id = row.Field<int>("id"),
-                        codigo = row.Field<string>("codigo"),
-                        nombre = row.Field<string>("nombre"),
-                        valor = row.Field<decimal>("valor_base"),
-                        descripcion = row.Field<string>("descripcion")
-                    })
-                    .ToList();
-
-                return Json(new { success = true, conceptos = lista }, JsonRequestBehavior.AllowGet);
+                TempData["SuccessMessage"] = "Orden creada exitosamente";
+                return RedirectToAction("Detalles", new { id = idOrden });
             }
             catch (Exception ex)
             {
-                return Json(new { success = false, mensaje = $"Error al cargar conceptos: {ex.Message}" }, JsonRequestBehavior.AllowGet);
+                ModelState.AddModelError("", "Error al crear la orden: " + ex.Message);
+                return View(vm);
             }
         }
 
-        // ✅ Alineado a tu interfaz: ObtenerValorConceptoPorId(int conceptoId)
-        [HttpGet]
-        public JsonResult CalcularTotal(int conceptoId, int estaciones, int dias)
-        {
-            try
-            {
-                if (conceptoId <= 0) return Json(new { success = false, mensaje = "Concepto inválido" }, JsonRequestBehavior.AllowGet);
-                if (estaciones < 0 || estaciones > 50) return Json(new { success = false, mensaje = "Estaciones fuera de rango" }, JsonRequestBehavior.AllowGet);
-                if (dias < 0 || dias > 30) return Json(new { success = false, mensaje = "Días fuera de rango" }, JsonRequestBehavior.AllowGet);
+        // ====== Tus métodos existentes (igual) ======
 
-                decimal valorBase = _dao.ObtenerValorConceptoPorId(conceptoId);
-                decimal inspeccion = estaciones * 500m;
-                decimal viaticos = dias * 80m;
-                decimal gastosAdmin = viaticos * 0.08m;
-                decimal total = valorBase + inspeccion + viaticos + gastosAdmin;
-
-                return Json(new
-                {
-                    success = true,
-                    valorBase,
-                    inspeccion,
-                    viaticos,
-                    gastosAdmin,
-                    total
-                }, JsonRequestBehavior.AllowGet);
-            }
-            catch (Exception ex)
-            {
-                return Json(new { success = false, mensaje = $"Error en cálculo: {ex.Message}" }, JsonRequestBehavior.AllowGet);
-            }
-        }
-
-        // ============================
-        // VERIFICAR ACCESO AL DASHBOARD
-        // ============================
-        [HttpGet]
-        public JsonResult VerificarAccesoDashboard()
-        {
-            try
-            {
-                int idUsuario = ObtenerIdUsuario();
-                if (idUsuario <= 0)
-                {
-                    return Json(new
-                    {
-                        accesoPermitido = false,
-                        mensaje = "Sesión expirada",
-                        redireccion = Url.Action("Login", "Account")
-                    }, JsonRequestBehavior.AllowGet);
-                }
-
-                bool tieneOrden = _dao.ExisteORGeneradaOPagada(idUsuario);
-
-                return Json(new
-                {
-                    accesoPermitido = tieneOrden,
-                    tieneOrden,
-                    mensaje = tieneOrden ? "Acceso permitido" : "Requiere orden de recaudación",
-                    redireccion = tieneOrden ? "" : Url.Action("Obligatoria", "OrdenRecaudacion")
-                }, JsonRequestBehavior.AllowGet);
-            }
-            catch (Exception ex)
-            {
-                return Json(new
-                {
-                    accesoPermitido = false,
-                    mensaje = $"Error: {ex.Message}",
-                    redireccion = Url.Action("Login", "Account")
-                }, JsonRequestBehavior.AllowGet);
-            }
-        }
-
-        // ============================
-        // ENVIAR ORDEN POR EMAIL (PDF)
-        // ============================
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public JsonResult EnviarOrdenPorEmail(int ordenId, string emailDestino, string asunto, string mensaje)
+        public ActionResult Generar(int id)
         {
             try
             {
-                int idUsuario = ObtenerIdUsuario();
-                if (idUsuario <= 0)
-                    return Json(new { success = false, message = "Sesión expirada. Inicie sesión nuevamente." });
+                var orden = _ordenDAO.ObtenerOrdenPorId(id);
+                if (orden == null) return HttpNotFound();
 
-                if (ordenId <= 0)
-                    return Json(new { success = false, message = "Orden inválida." });
-
-                if (string.IsNullOrWhiteSpace(emailDestino))
-                    return Json(new { success = false, message = "Email destino es requerido." });
-
-                // Validación simple de email
-                try { var _ = new MailAddress(emailDestino); }
-                catch { return Json(new { success = false, message = "Email destino inválido." }); }
-
-                // ✅ Seguridad: el DAO debe validar ordenId + usuarioId
-                byte[] pdfBytes = _dao.GenerarPDFOrden(ordenId, idUsuario);
-                if (pdfBytes == null || pdfBytes.Length == 0)
-                    return Json(new { success = false, message = "No se pudo generar el PDF." });
-
-                string fromEmail = ConfigurationManager.AppSettings["SmtpFromEmail"];
-                string fromName = ConfigurationManager.AppSettings["SmtpFromName"] ?? "Sistema AOCR - DGAC";
-                string host = ConfigurationManager.AppSettings["SmtpHost"];
-                int port = int.Parse(ConfigurationManager.AppSettings["SmtpPort"] ?? "587");
-                bool enableSsl = bool.Parse(ConfigurationManager.AppSettings["SmtpEnableSsl"] ?? "true");
-                string user = ConfigurationManager.AppSettings["SmtpUser"];
-                string pass = ConfigurationManager.AppSettings["SmtpPass"];
-
-                if (string.IsNullOrWhiteSpace(fromEmail) || string.IsNullOrWhiteSpace(host) || string.IsNullOrWhiteSpace(user) || string.IsNullOrWhiteSpace(pass))
-                    return Json(new { success = false, message = "SMTP no está configurado en Web.config (AppSettings)." });
-
-                string safeSubject = string.IsNullOrWhiteSpace(asunto) ? "Orden de Recaudación - AOCR" : asunto.Trim();
-                string safeBody = string.IsNullOrWhiteSpace(mensaje) ? "Adjunto se envía la Orden de Recaudación." : mensaje.Trim();
-
-                using (var mailMessage = new MailMessage())
+                if (!string.Equals(orden.Estado, "BORRADOR", StringComparison.OrdinalIgnoreCase))
                 {
-                    mailMessage.From = new MailAddress(fromEmail, fromName);
-                    mailMessage.To.Add(emailDestino.Trim());
-                    mailMessage.Subject = safeSubject;
-                    mailMessage.Body = safeBody;
-                    mailMessage.IsBodyHtml = false;
-
-                    using (var pdfStream = new MemoryStream(pdfBytes))
-                    {
-                        var attachment = new Attachment(pdfStream, $"OrdenRecaudacion_{ordenId}.pdf", "application/pdf");
-                        mailMessage.Attachments.Add(attachment);
-
-                        using (var smtpClient = new SmtpClient(host, port))
-                        {
-                            smtpClient.Credentials = new NetworkCredential(user, pass);
-                            smtpClient.EnableSsl = enableSsl;
-                            smtpClient.Send(mailMessage);
-                        }
-                    }
+                    TempData["ErrorMessage"] = "Solo se pueden generar órdenes en estado BORRADOR";
+                    return RedirectToAction("Detalles", new { id = id });
                 }
 
-                return Json(new { success = true, message = "Email enviado correctamente." });
+                if (orden.Total <= 0)
+                {
+                    TempData["ErrorMessage"] = "La orden debe tener un total mayor a 0";
+                    return RedirectToAction("Detalles", new { id = id });
+                }
+
+                var ok = _ordenDAO.CambiarEstadoOrden(id, "GENERADA");
+                TempData[ok ? "SuccessMessage" : "ErrorMessage"] =
+                    ok ? "Orden generada exitosamente." : "Error al generar la orden.";
             }
             catch (Exception ex)
             {
-                return Json(new { success = false, message = $"Error al enviar email: {ex.Message}" });
+                TempData["ErrorMessage"] = "Error: " + ex.Message;
             }
+
+            return RedirectToAction("Detalles", new { id = id });
         }
 
-        // ============================
-        // HELPERS
-        // ============================
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public ActionResult Enviar(int id)
+        {
+            try
+            {
+                var orden = _ordenDAO.ObtenerOrdenPorId(id);
+                if (orden == null) return HttpNotFound();
+
+                if (!string.Equals(orden.Estado, "GENERADA", StringComparison.OrdinalIgnoreCase))
+                {
+                    TempData["ErrorMessage"] = "Solo se pueden enviar órdenes en estado GENERADA";
+                    return RedirectToAction("Detalles", new { id = id });
+                }
+
+                if (string.IsNullOrWhiteSpace(orden.Correo))
+                {
+                    TempData["ErrorMessage"] = "La orden no tiene correo del contribuyente";
+                    return RedirectToAction("Detalles", new { id = id });
+                }
+
+                var pdfBytes = new byte[0]; // TODO: genera el PDF real
+
+                var emailService = new EmailService();
+                var enviado = emailService.EnviarOrdenRecaudacion(orden, pdfBytes);
+
+                if (enviado)
+                {
+                    _ordenDAO.CambiarEstadoOrden(id, "ENVIADA");
+                    TempData["SuccessMessage"] = "Orden enviada exitosamente a " + orden.Correo;
+                }
+                else
+                {
+                    TempData["ErrorMessage"] = "No se pudo enviar el correo (revisa SMTP).";
+                }
+            }
+            catch (Exception ex)
+            {
+                TempData["ErrorMessage"] = "Error: " + ex.Message;
+            }
+
+            return RedirectToAction("Detalles", new { id = id });
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public ActionResult RegistrarPago(int id, PagoModel pago)
+        {
+            try
+            {
+                var orden = _ordenDAO.ObtenerOrdenPorId(id);
+                if (orden == null) return HttpNotFound();
+
+                if (pago == null || pago.Monto <= 0)
+                {
+                    TempData["ErrorMessage"] = "El monto debe ser mayor a 0";
+                    return RedirectToAction("Detalles", new { id = id });
+                }
+
+                // Seguridad archivo
+                if (pago.ComprobanteArchivo != null && pago.ComprobanteArchivo.ContentLength > 0)
+                {
+                    var ext = Path.GetExtension(pago.ComprobanteArchivo.FileName) ?? "";
+                    ext = ext.ToLowerInvariant();
+
+                    var permitidas = new[] { ".pdf", ".jpg", ".jpeg", ".png" };
+                    if (!permitidas.Contains(ext))
+                    {
+                        TempData["ErrorMessage"] = "Formato no permitido. Solo PDF/JPG/PNG.";
+                        return RedirectToAction("Detalles", new { id = id });
+                    }
+
+                    var maxBytes = 10 * 1024 * 1024; // 10MB
+                    if (pago.ComprobanteArchivo.ContentLength > maxBytes)
+                    {
+                        TempData["ErrorMessage"] = "Archivo demasiado grande (máx 10MB).";
+                        return RedirectToAction("Detalles", new { id = id });
+                    }
+
+                    var uploadPath = Server.MapPath("~/Uploads/Comprobantes/");
+                    if (!Directory.Exists(uploadPath)) Directory.CreateDirectory(uploadPath);
+
+                    var fileName = "PAGO_" + id + "_" + DateTime.Now.ToString("yyyyMMddHHmmss") + ext;
+                    var filePath = Path.Combine(uploadPath, fileName);
+
+                    pago.ComprobanteArchivo.SaveAs(filePath);
+                    pago.ComprobanteRuta = "/Uploads/Comprobantes/" + fileName;
+                }
+
+                pago.CodigoSolicitud = id;
+                pago.FechaPago = DateTime.Now;
+                pago.Estado = "Validado";
+                pago.ValidadoPor = (User != null) ? User.Identity.Name : "";
+                pago.FechaValidacion = DateTime.Now;
+
+                var ok = _ordenDAO.RegistrarPago(id, pago);
+                TempData[ok ? "SuccessMessage" : "ErrorMessage"] =
+                    ok ? "Pago registrado exitosamente" : "Error al registrar el pago";
+            }
+            catch (Exception ex)
+            {
+                TempData["ErrorMessage"] = "Error: " + ex.Message;
+            }
+
+            return RedirectToAction("Detalles", new { id = id });
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public ActionResult Anular(int id, string motivo)
+        {
+            try
+            {
+                var orden = _ordenDAO.ObtenerOrdenPorId(id);
+                if (orden == null) return HttpNotFound();
+
+                if (string.Equals(orden.Estado, "PAGADA", StringComparison.OrdinalIgnoreCase))
+                {
+                    TempData["ErrorMessage"] = "No se puede anular una orden ya pagada";
+                    return RedirectToAction("Detalles", new { id = id });
+                }
+
+                orden.Observacion = (orden.Observacion ?? "")
+                    + "\n\nANULADA: " + (motivo ?? "") + " (" + DateTime.Now.ToString("dd/MM/yyyy HH:mm") + ")";
+
+                _ordenDAO.ActualizarOrden(orden);
+                _ordenDAO.CambiarEstadoOrden(id, "ANULADA");
+
+                TempData["SuccessMessage"] = "Orden anulada exitosamente";
+            }
+            catch (Exception ex)
+            {
+                TempData["ErrorMessage"] = "Error: " + ex.Message;
+            }
+
+            return RedirectToAction("Detalles", new { id = id });
+        }
+
+        // ====== AUX ======
+
         private int ObtenerIdUsuario()
         {
-            if (Session["IdUsuario"] != null &&
-                int.TryParse(Session["IdUsuario"].ToString(), out int idUsuario))
-            {
-                return idUsuario;
-            }
+            object v1 = Session["UserId"];
+            object v2 = Session["IdUsuario"];
+
+            int id;
+            if (v1 != null && int.TryParse(v1.ToString(), out id)) return id;
+            if (v2 != null && int.TryParse(v2.ToString(), out id)) return id;
+
             return 0;
         }
 
-        private int MapearConceptoIdPorCodigo(string codigo)
+        private string Cs()
         {
-            try
-            {
-                var dt = _dao.ObtenerConceptosActivos();
-                var row = dt.AsEnumerable()
-                    .FirstOrDefault(r => string.Equals((r.Field<string>("codigo") ?? "").Trim(), codigo.Trim(), StringComparison.OrdinalIgnoreCase));
-
-                return row != null ? row.Field<int>("id") : 0;
-            }
-            catch
-            {
-                return 0;
-            }
+            // ✅ TU web.config tiene AOCRConnection
+            return ConfigurationManager.ConnectionStrings["AOCRConnection"].ConnectionString;
         }
-        [HttpGet]
-        public ActionResult Detalle(int id)
+
+        private List<ConceptoOptionVM> CargarConceptosVM()
         {
-            try
-            {
-                int idUsuario = ObtenerIdUsuario();
-                if (idUsuario <= 0)
+            var conceptos = _conceptoDAO.ObtenerConceptos(true) ?? new List<ConceptoModel>();
+
+            return conceptos
+                .OrderBy(x => x.Orden)
+                .ThenBy(x => x.Codigo)
+                .Select(x => new ConceptoOptionVM
                 {
-                    TempData["Error"] = "Sesión expirada. Inicie sesión nuevamente.";
-                    return RedirectToAction("Login", "Account");
-                }
-
-                if (id <= 0)
-                    return HttpNotFound("Orden inválida.");
-
-                // IMPORTANTE: que tu DAO valide que la orden pertenezca al usuario
-                var dto = _dao.ObtenerDatosParaPdf(id, idUsuario);
-                if (dto == null)
-                    return HttpNotFound("Orden no encontrada o no autorizada.");
-
-                return View(dto);
-            }
-            catch (Exception ex)
-            {
-                TempData["Error"] = "No se pudo cargar el detalle: " + ex.Message;
-                return RedirectToAction("Obligatoria");
-            }
+                    Id = x.Id,
+                    Codigo = x.Codigo,
+                    Nombre = x.Nombre,
+                    Valor = x.ValorBase,
+                    PorcentajeAdmin = x.PorcentajeAdmin
+                })
+                .ToList();
         }
-        [HttpGet]
-        public ActionResult DescargarPdf(int id)
+
+        private List<PagoModel> ObtenerPagosOrden(int idOrden)
         {
-            int idUsuario = ObtenerIdUsuario();
-            if (idUsuario <= 0)
-                return RedirectToAction("Login", "Account");
-
-            if (id <= 0)
-                return HttpNotFound();
-
-            var pdfBytes = _dao.GenerarPDFOrden(id, idUsuario);
-            if (pdfBytes == null || pdfBytes.Length == 0)
-                return HttpNotFound("No se pudo generar el PDF.");
-
-            var datos = _dao.ObtenerDatosParaPdf(id, idUsuario);
-            string fileName = $"OrdenRecaudacion_{(datos?.NumeroOrden ?? id.ToString())}.pdf";
-
-            return File(pdfBytes, "application/pdf", fileName);
+            using (var cn = new NpgsqlConnection(Cs()))
+            {
+                cn.Open();
+                var sql = "SELECT * FROM aocr_tbpago WHERE codigo_solicitud = @IdOrden ORDER BY fecha_pago DESC;";
+                return cn.Query<PagoModel>(sql, new { IdOrden = idOrden }).ToList();
+            }
         }
 
+        private List<DocumentoModel> ObtenerDocumentosOrden(int idOrden)
+        {
+            using (var cn = new NpgsqlConnection(Cs()))
+            {
+                cn.Open();
+                var sql = "SELECT * FROM aocr_tbdocumento WHERE codigo_solicitud = @IdOrden ORDER BY fecha_carga DESC;";
+                return cn.Query<DocumentoModel>(sql, new { IdOrden = idOrden }).ToList();
+            }
+        }
 
+        private List<dynamic> ObtenerHistorialEstados(int idOrden)
+        {
+            using (var cn = new NpgsqlConnection(Cs()))
+            {
+                cn.Open();
+                var sql =
+                    "SELECT estado_nuevo, fecha_cambio " +
+                    "FROM aocr_tbhistorial_estado " +
+                    "WHERE codigo_solicitud = @IdOrden " +
+                    "ORDER BY fecha_cambio DESC;";
+
+                return cn.Query<dynamic>(sql, new { IdOrden = idOrden }).ToList();
+            }
+        }
     }
 }

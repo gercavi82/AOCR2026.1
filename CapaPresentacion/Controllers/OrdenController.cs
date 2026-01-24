@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Data;
 using System.Linq;
 using System.Web.Mvc;
 using CapaDatos.DAOs;
@@ -29,65 +28,38 @@ namespace CapaPresentacion.Controllers
                     return RedirectToAction("Login", "Account");
                 }
 
-                // Obtener datos de la orden específica
-                var orden = ObtenerOrdenPorId(id, idUsuario);
+                // 1) Traer la orden por ID
+                var orden = _dao.ObtenerPorId(id);
 
-                if (orden == null)
+                // 2) Validar permisos (que sea del usuario logueado)
+                if (orden == null || orden.CodigoUsuario != idUsuario)
                 {
                     TempData["Error"] = "Orden no encontrada o no tiene permisos para verla.";
                     return RedirectToAction("Index", "Dashboard");
                 }
 
-                // Pasar datos adicionales a ViewBag
+                // 3) Map a ViewModel
+                var vm = new OrdenRecaudacionViewModel
+                {
+                    Id = orden.Id,
+                    NumeroOrden = orden.NumeroOrden ?? "",
+                    FechaCreacion = orden.FechaCreacion,
+                    Estado = orden.Estado ?? "",
+                    Subtotal = orden.Subtotal,
+                    Admin = orden.Admin,
+                    Total = orden.Total,
+                    Observacion = orden.Observacion ?? ""
+                };
+
                 ViewBag.OrdenId = id;
                 ViewBag.Mensaje = "Detalles de la orden";
 
-                return View(orden);
+                return View(vm);
             }
             catch (Exception ex)
             {
                 TempData["Error"] = $"Error al cargar la orden: {ex.Message}";
                 return RedirectToAction("Index", "Dashboard");
-            }
-        }
-
-        // ✅ MÉTODO CORREGIDO - Maneja DataTable correctamente
-        private OrdenRecaudacionViewModel ObtenerOrdenPorId(int idOrden, int idUsuario)
-        {
-            try
-            {
-                // Obtener DataTable con las órdenes del usuario
-                DataTable dtOrdenes = _dao.ObtenerOrdenesPorUsuario(idUsuario);
-
-                if (dtOrdenes != null && dtOrdenes.Rows.Count > 0)
-                {
-                    // Buscar la orden específica usando LINQ con DataTable
-                    var ordenRow = dtOrdenes.AsEnumerable()
-                        .FirstOrDefault(row => row.Field<int>("id") == idOrden);
-
-                    if (ordenRow != null)
-                    {
-                        return new OrdenRecaudacionViewModel
-                        {
-                            Id = ordenRow.Field<int>("id"),
-                            NumeroOrden = ordenRow.Field<string>("numero_orden") ?? "",
-                            FechaCreacion = ordenRow.Field<DateTime>("fecha_creacion"),
-                            Estado = ordenRow.Field<string>("estado") ?? "",
-                            Subtotal = ordenRow.Field<decimal>("subtotal"),
-                            Admin = ordenRow.Field<decimal>("admin"),
-                            Total = ordenRow.Field<decimal>("total"),
-                            Observacion = ordenRow.IsNull("observacion") ? "" : ordenRow.Field<string>("observacion")
-                        };
-                    }
-                }
-
-                return null;
-            }
-            catch (Exception ex)
-            {
-                // Log del error si es necesario
-                System.Diagnostics.Debug.WriteLine($"Error en ObtenerOrdenPorId: {ex.Message}");
-                return null;
             }
         }
 

@@ -15,6 +15,10 @@ namespace CapaPresentacion.Controllers
     {
         private readonly HallazgoBL _hallazgoBL;
 
+        // ✅ Inyección simple (no static)
+        private readonly InspeccionBL _inspeccionBL;
+        private readonly InspeccionDAO _inspeccionDAO;
+
         private const string ROL_ADMIN = "Administrador";
         private const string ROL_COORD = "CoordinadorInspecciones";
         private const string ROL_INSPECTOR = "Inspector";
@@ -29,6 +33,8 @@ namespace CapaPresentacion.Controllers
         public InspeccionController()
         {
             _hallazgoBL = new HallazgoBL();
+            _inspeccionBL = new InspeccionBL();
+            _inspeccionDAO = new InspeccionDAO();
         }
 
         private int ObtenerCodigoUsuario()
@@ -66,9 +72,9 @@ namespace CapaPresentacion.Controllers
             List<Inspeccion> lista;
 
             if (EsAdmin() || User.IsInRole(ROL_COORD) || User.IsInRole(ROL_JEFATURA))
-                lista = InspeccionBL.ListarTodas();
+                lista = _inspeccionBL.ListarTodas();
             else
-                lista = InspeccionBL.ListarPorInspector(ObtenerCodigoUsuario());
+                lista = _inspeccionBL.ListarPorInspector(ObtenerCodigoUsuario());
 
             return View("~/Views/Inspeccion/Index.cshtml", lista);
         }
@@ -81,7 +87,7 @@ namespace CapaPresentacion.Controllers
         {
             if (id <= 0) return new HttpStatusCodeResult(400, "ID inválido.");
 
-            var inspeccion = InspeccionDAO.ObtenerPorId(id);
+            var inspeccion = _inspeccionDAO.ObtenerPorId(id);
             if (inspeccion == null) return HttpNotFound("Inspección no encontrada.");
 
             if (!PuedeAccederInspeccion(inspeccion))
@@ -124,7 +130,9 @@ namespace CapaPresentacion.Controllers
                 return View("~/Views/Inspeccion/Crear.cshtml", model);
             }
 
-            bool ok = InspeccionBL.Crear(model, codigoUsuario);
+            // ✅ Crear ahora devuelve int (id)
+            int newId = _inspeccionBL.Crear(model, codigoUsuario);
+            bool ok = newId > 0;
 
             if (ok)
                 return RedirectToAction("Detalle", new { id = model.CodigoInspeccion });
@@ -141,7 +149,7 @@ namespace CapaPresentacion.Controllers
         {
             if (id <= 0) return new HttpStatusCodeResult(400, "ID inválido.");
 
-            var inspeccion = InspeccionDAO.ObtenerPorId(id);
+            var inspeccion = _inspeccionDAO.ObtenerPorId(id);
             if (inspeccion == null) return HttpNotFound("Inspección no encontrada.");
 
             return View("~/Views/Inspeccion/Editar.cshtml", inspeccion);
@@ -160,10 +168,12 @@ namespace CapaPresentacion.Controllers
             if (!ModelState.IsValid)
                 return View("~/Views/Inspeccion/Editar.cshtml", model);
 
+            int usuarioId = ObtenerCodigoUsuario();
             model.UpdatedAt = DateTime.Now;
-            model.UpdatedBy = ObtenerCodigoUsuario();
+            model.UpdatedBy = usuarioId;
 
-            bool ok = InspeccionBL.Actualizar(model);
+            // ✅ Ahora requiere updatedBy
+            bool ok = _inspeccionBL.Actualizar(model, usuarioId);
 
             TempData[ok ? "Success" : "Error"] = ok
                 ? "Inspección actualizada correctamente."
@@ -191,7 +201,7 @@ namespace CapaPresentacion.Controllers
             try
             {
                 int codigoUsuario = ObtenerCodigoUsuario();
-                bool ok = InspeccionBL.CambiarEstado(id, estado.Trim(), codigoUsuario);
+                bool ok = _inspeccionBL.CambiarEstado(id, estado.Trim(), codigoUsuario);
 
                 TempData[ok ? "Success" : "Error"] = ok
                     ? "Estado actualizado correctamente."
@@ -214,14 +224,13 @@ namespace CapaPresentacion.Controllers
         {
             if (id <= 0) return new HttpStatusCodeResult(400, "ID inválido.");
 
-            var inspeccion = InspeccionDAO.ObtenerPorId(id);
+            var inspeccion = _inspeccionDAO.ObtenerPorId(id);
             if (inspeccion == null)
                 return HttpNotFound("Inspección no encontrada.");
 
             if (!PuedeAccederInspeccion(inspeccion))
                 return new HttpStatusCodeResult(403, "No autorizado para ver el informe.");
 
-            // Preferido: RutaInforme (guárdalo así en BD)
             var rutaRelativa = inspeccion.RutaInforme;
 
             if (string.IsNullOrWhiteSpace(rutaRelativa))
@@ -255,7 +264,7 @@ namespace CapaPresentacion.Controllers
         {
             if (id <= 0) return new HttpStatusCodeResult(400, "ID inválido.");
 
-            var inspeccion = InspeccionDAO.ObtenerPorId(id);
+            var inspeccion = _inspeccionDAO.ObtenerPorId(id);
             if (inspeccion == null) return HttpNotFound("Inspección no encontrada.");
 
             if (!PuedeAccederInspeccion(inspeccion))
@@ -298,7 +307,7 @@ namespace CapaPresentacion.Controllers
             string rutaRelativa = "/Uploads/Inspecciones/" + nombreArchivo;
             int codigoUsuario = ObtenerCodigoUsuario();
 
-            bool ok = InspeccionBL.GuardarInforme(id, rutaRelativa, codigoUsuario);
+            bool ok = _inspeccionBL.GuardarInforme(id, rutaRelativa, codigoUsuario);
 
             TempData[ok ? "Success" : "Error"] = ok
                 ? "Informe cargado y asociado correctamente."
@@ -321,7 +330,7 @@ namespace CapaPresentacion.Controllers
             if (!ModelState.IsValid)
                 return RedirectToAction("Detalle", new { id = h.CodigoInspeccion });
 
-            var inspeccion = InspeccionDAO.ObtenerPorId(h.CodigoInspeccion);
+            var inspeccion = _inspeccionDAO.ObtenerPorId(h.CodigoInspeccion);
             if (inspeccion == null) return HttpNotFound("Inspección no encontrada.");
 
             if (!PuedeAccederInspeccion(inspeccion))
@@ -330,7 +339,9 @@ namespace CapaPresentacion.Controllers
             var codigoUsuario = ObtenerCodigoUsuario();
             string usuarioNombre = User?.Identity?.Name ?? codigoUsuario.ToString();
 
-            bool ok = _hallazgoBL.Crear(h, usuarioNombre);
+            // ✅ HallazgoBL.Crear devuelve int (según tu BL)
+            int idHallazgo = _hallazgoBL.Crear(h, usuarioNombre);
+            bool ok = idHallazgo > 0;
 
             TempData[ok ? "Success" : "Error"] = ok
                 ? "Hallazgo registrado correctamente."
@@ -349,11 +360,11 @@ namespace CapaPresentacion.Controllers
         {
             if (id <= 0) return new HttpStatusCodeResult(400, "ID inválido.");
 
-            var inspeccion = InspeccionDAO.ObtenerPorId(id);
+            var inspeccion = _inspeccionDAO.ObtenerPorId(id);
             if (inspeccion == null) return HttpNotFound("Inspección no encontrada.");
 
             var codigoUsuario = ObtenerCodigoUsuario();
-            bool ok = InspeccionBL.CerrarInspeccion(id, resultado, codigoUsuario);
+            bool ok = _inspeccionBL.CerrarInspeccion(id, resultado, codigoUsuario);
 
             TempData[ok ? "Success" : "Error"] = ok
                 ? "Inspección cerrada correctamente."
@@ -371,7 +382,7 @@ namespace CapaPresentacion.Controllers
         {
             if (id <= 0) return new HttpStatusCodeResult(400, "ID inválido.");
 
-            var inspeccion = InspeccionDAO.ObtenerPorId(id);
+            var inspeccion = _inspeccionDAO.ObtenerPorId(id);
             if (inspeccion == null) return HttpNotFound("Inspección no encontrada.");
 
             if (!PuedeAccederInspeccion(inspeccion))
@@ -404,7 +415,7 @@ namespace CapaPresentacion.Controllers
             if (codigoInspeccion <= 0)
                 return new HttpStatusCodeResult(400, "ID de inspección inválido.");
 
-            var inspeccion = InspeccionDAO.ObtenerPorId(codigoInspeccion);
+            var inspeccion = _inspeccionDAO.ObtenerPorId(codigoInspeccion);
             if (inspeccion == null)
             {
                 TempData["Error"] = "No se encontró la inspección.";
@@ -430,10 +441,13 @@ namespace CapaPresentacion.Controllers
                 $"Contacto: {contactoSitio} - Tel: {telefonoContacto}. Equipos: {equiposNecesarios}";
 
             inspeccion.Estado = "PROGRAMADA";
-            inspeccion.UpdatedAt = DateTime.Now;
-            inspeccion.UpdatedBy = ObtenerCodigoUsuario();
 
-            bool ok = InspeccionBL.Actualizar(inspeccion);
+            int usuarioId = ObtenerCodigoUsuario();
+            inspeccion.UpdatedAt = DateTime.Now;
+            inspeccion.UpdatedBy = usuarioId;
+
+            // ✅ Actualizar con updatedBy
+            bool ok = _inspeccionBL.Actualizar(inspeccion, usuarioId);
 
             TempData[ok ? "Success" : "Error"] = ok
                 ? "Planificación guardada correctamente."

@@ -3,6 +3,15 @@
     Layout = "~/Views/Shared/_LayoutAOCR.cshtml";
 }
 
+@section Styles{
+    <style>
+        .hover-shadow:hover {
+            transform: translateY(-5px);
+            transition: transform 0.3s ease;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1) !important;
+        }
+    </style>
+}
 <div class="container py-5">
     <div class="row justify-content-center">
         <div class="col-md-10 col-lg-8">
@@ -32,7 +41,7 @@
                         </p>
                     </div>
 
-                    @if (ViewBag.TieneOrdenBorrador)
+                    @if ((ViewBag.TieneOrdenBorrador as bool?) == true)
                     {
                         <div class="alert alert-warning border-warning">
                             <h5 class="alert-heading">

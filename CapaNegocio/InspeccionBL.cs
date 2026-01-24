@@ -5,72 +5,88 @@ using CapaModelo;
 
 namespace CapaNegocio
 {
-    public static class InspeccionBL
+    /// <summary>
+    /// Lógica de negocio para Inspecciones.
+    /// NO static para permitir inyección y test.
+    /// </summary>
+    public class InspeccionBL
     {
-        public static Inspeccion ObtenerPorId(int id)
+        private readonly InspeccionDAO _dao;
+
+        public InspeccionBL()
+        {
+            _dao = new InspeccionDAO();
+        }
+
+        public InspeccionBL(InspeccionDAO dao)
+        {
+            _dao = dao ?? throw new ArgumentNullException(nameof(dao));
+        }
+
+        public Inspeccion ObtenerPorId(int id)
         {
             if (id <= 0) throw new ArgumentException("ID inválido.");
-            return InspeccionDAO.ObtenerPorId(id);
+            return _dao.ObtenerPorId(id);
         }
 
-        public static List<Inspeccion> ListarTodas()
+        public List<Inspeccion> ListarTodas()
         {
-            return InspeccionDAO.ListarTodas();
+            // Si tu DAO aún no tiene ListarTodas(), lo implementamos abajo
+            return _dao.ListarTodas() ?? new List<Inspeccion>();
         }
 
-        public static List<Inspeccion> ListarPorInspector(int codigoInspector)
+        public List<Inspeccion> ListarPorInspector(int codigoInspector)
         {
             if (codigoInspector <= 0) return new List<Inspeccion>();
-            return InspeccionDAO.ListarPorInspector(codigoInspector);
+            return _dao.ListarPorInspector(codigoInspector) ?? new List<Inspeccion>();
         }
 
-        // ✅✅✅ FALTABA ESTE MÉTODO
-        public static bool Crear(Inspeccion model, int codigoUsuario)
+        public int Crear(Inspeccion model, int codigoUsuario)
         {
             if (model == null) throw new ArgumentNullException(nameof(model));
             if (model.CodigoSolicitud <= 0) throw new Exception("Código de solicitud inválido.");
 
             model.CreatedBy = codigoUsuario;
             model.UpdatedBy = codigoUsuario;
+
             if (string.IsNullOrWhiteSpace(model.Estado))
                 model.Estado = "CREADA";
 
-            int id = InspeccionDAO.Crear(model);
+            int id = _dao.Crear(model);
             model.CodigoInspeccion = id;
-
-            return id > 0;
+            return id;
         }
 
-        public static bool Actualizar(Inspeccion model)
+        public bool Actualizar(Inspeccion model, int updatedBy)
         {
             if (model == null) throw new ArgumentNullException(nameof(model));
             if (model.CodigoInspeccion <= 0) throw new Exception("Código de inspección inválido.");
 
-            return InspeccionDAO.Actualizar(model);
+            model.UpdatedBy = updatedBy;
+            model.UpdatedAt = DateTime.Now;
+
+            return _dao.Actualizar(model);
         }
 
-        public static bool CambiarEstado(int id, string estado, int updatedBy)
+        public bool CambiarEstado(int id, string estado, int updatedBy)
         {
             if (id <= 0) throw new Exception("ID inválido.");
             if (string.IsNullOrWhiteSpace(estado)) throw new Exception("Estado requerido.");
-
-            return InspeccionDAO.CambiarEstado(id, estado, updatedBy);
+            return _dao.CambiarEstado(id, estado, updatedBy);
         }
 
-        public static bool GuardarInforme(int id, string rutaInforme, int updatedBy)
+        public bool GuardarInforme(int id, string rutaInforme, int updatedBy)
         {
             if (id <= 0) throw new Exception("ID inválido.");
             if (string.IsNullOrWhiteSpace(rutaInforme)) throw new Exception("Ruta de informe requerida.");
-
-            return InspeccionDAO.GuardarInforme(id, rutaInforme, updatedBy);
+            return _dao.GuardarInforme(id, rutaInforme, updatedBy);
         }
 
-        public static bool CerrarInspeccion(int id, string resultado, int updatedBy)
+        public bool CerrarInspeccion(int id, string resultado, int updatedBy)
         {
             if (id <= 0) throw new Exception("ID inválido.");
             if (string.IsNullOrWhiteSpace(resultado)) throw new Exception("Resultado requerido.");
-
-            return InspeccionDAO.Cerrar(id, resultado, updatedBy);
+            return _dao.Cerrar(id, resultado, updatedBy);
         }
     }
 }

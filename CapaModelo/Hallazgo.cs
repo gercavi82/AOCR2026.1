@@ -11,11 +11,16 @@ namespace CapaModelo
         public string Criticidad { get; set; }   // ALTA / MEDIA / BAJA
         public string Estado { get; set; }       // ABIERTO | CERRADO
 
-        public DateTime FechaDeteccion { get; set; }
+        // ✅ En BD puede venir null, por eso debe ser nullable
+        public DateTime? FechaDeteccion { get; set; }
         public DateTime? FechaCierre { get; set; }
 
-        // AUDITORÍA
-        public DateTime CreatedAt { get; set; }
+        // ✅ Campos que el DAO usa (faltaban)
+        public string AccionCorrectiva { get; set; }
+        public string Responsable { get; set; }
+
+        // AUDITORÍA (en BD pueden venir null también)
+        public DateTime? CreatedAt { get; set; }
         public string CreatedBy { get; set; }
 
         public DateTime? UpdatedAt { get; set; }

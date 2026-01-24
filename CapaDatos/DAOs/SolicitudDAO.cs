@@ -589,7 +589,8 @@ namespace CapaDatos.DAOs
                             CodigoInspeccion = rd["codigoinspeccion"] != DBNull.Value ? Convert.ToInt32(rd["codigoinspeccion"]) : 0,
                             CodigoSolicitud = rd["codigosolicitud"] != DBNull.Value ? Convert.ToInt32(rd["codigosolicitud"]) : 0,
                             Estado = rd["estado"]?.ToString(),
-                            Observaciones = rd["observaciones"]?.ToString()
+                            ObservacionesGenerales = rd["observaciones"]?.ToString()
+
                         });
                     }
                 }

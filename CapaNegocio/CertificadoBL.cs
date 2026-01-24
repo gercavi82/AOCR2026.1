@@ -30,16 +30,15 @@ namespace CapaNegocio
                 CodigoSolicitud = solicitudId,
                 NumeroCertificado = "AOCR-" + DateTime.Now.Ticks,
                 FechaEmision = DateTime.Now,
-                VigenciaAnios = 1,
                 FechaVencimiento = DateTime.Now.AddYears(1),
                 Estado = "VIGENTE",
-                FirmadoPor = usuario,
-                CodigoVerificacion = Guid.NewGuid().ToString("N"),
-                RutaPdf = null
+                EmitidoPor = usuario,
+                RutaDocumento = null
             };
 
-            return _dao.Crear(cert);
+            return _dao.Crear(cert); // ✅ ahora Crear devuelve int
         }
+
 
         public bool SubirPDF(int id, string ruta)
         {
