@@ -7,15 +7,12 @@ using System.Web.Security;
 using CapaModelo;
 using CapaNegocio;
 using CapaPresentacion.Models;
-using CapaDatos.DAOs; // Añadir para usar OrdenRecaudacionDAO
+using CapaDatos.DAOs;
 
 namespace CapaPresentacion.Controllers
 {
     public class AccountController : Controller
     {
-        // ============================
-        // GET: Login
-        // ============================
         [AllowAnonymous]
         public ActionResult Login(string returnUrl)
         {
@@ -23,9 +20,6 @@ namespace CapaPresentacion.Controllers
             return View(new LoginViewModel());
         }
 
-        // ============================
-        // POST: Login
-        // ============================
         [HttpPost]
         [AllowAnonymous]
         [ValidateAntiForgeryToken]
@@ -58,22 +52,16 @@ namespace CapaPresentacion.Controllers
             {
                 roles = new List<string>
                 {
-                    "Administrador",
-                    "Tecnico",
-                    "Solicitante",
-                    "Financiero",
-                    "Inspector",
-                    "JefaturaTecnica",
-                    "Direccion",
-                    "CoordinacionLegal"
+                    "Administrador","Tecnico","Solicitante","Financiero","Inspector",
+                    "JefaturaTecnica","Direccion","CoordinacionLegal"
                 };
             }
 
             roles = roles ?? new List<string>();
-            string rolesString = roles.Count > 0 ? string.Join(",", roles.Distinct()) : string.Empty;
+            var rolesString = roles.Count > 0 ? string.Join(",", roles.Distinct(StringComparer.OrdinalIgnoreCase)) : string.Empty;
 
             // ============================
-            // COOKIE DE AUTENTICACIÓN
+            // COOKIE DE AUTENTICACIÓN (PRODUCCIÓN)
             // ============================
             var ticket = new FormsAuthenticationTicket(
                 1,
@@ -100,40 +88,35 @@ namespace CapaPresentacion.Controllers
             Response.Cookies.Add(cookie);
 
             // ============================
-            // ✅ SESIÓN (CLAVE)
+            // SESIÓN UNIFICADA (NO TOCAR)
             // ============================
+            Session["UserId"] = usuario.Id;
             Session["IdUsuario"] = usuario.Id;
-            Session["NombreUsuario"] = !string.IsNullOrWhiteSpace(usuario.NombreCompleto) ? usuario.NombreCompleto : (usuario.NombreUsuario ?? "Usuario");
+
+            Session["NombreUsuario"] = !string.IsNullOrWhiteSpace(usuario.NombreCompleto)
+                ? usuario.NombreCompleto
+                : (usuario.NombreUsuario ?? "Usuario");
+
             Session["Correo"] = usuario.Email;
 
             Session["Roles"] = roles;
             Session["Rol"] = roles.Count > 0 ? roles[0] : null;
+            Session["LastActivity"] = DateTime.Now;
 
             // ============================
-            // 🔄 VERIFICACIÓN DE ORDEN DE RECAUDACIÓN
+            // VERIFICACIÓN DE ORDEN
             // ============================
             var ordenDAO = new OrdenRecaudacionDAO();
 
-            // 1. Verificar si tiene orden generada o pagada
             bool tieneOrdenGeneradaOPagada = ordenDAO.ExisteORGeneradaOPagada(usuario.Id);
-
-            // 2. Verificar si tiene orden en borrador
             bool tieneOrdenBorrador = ordenDAO.ExisteORMinima(usuario.Id);
 
-            // Guardar estado en sesión para uso posterior
             Session["TieneOrdenGenerada"] = tieneOrdenGeneradaOPagada;
             Session["TieneOrdenBorrador"] = tieneOrdenBorrador;
 
-            // ============================
-            // REDIRECCIÓN SEGURA CON VERIFICACIÓN DE ORDEN
-            // ============================
             if (!tieneOrdenGeneradaOPagada)
-            {
-                // No tiene orden válida, redirigir a verificación de orden
                 return RedirectToAction("Obligatoria", "OrdenRecaudacion");
-            }
 
-            // Si tiene orden válida, proceder con redirección normal
             return RedirectToLocal(returnUrl);
         }
 
@@ -145,23 +128,22 @@ namespace CapaPresentacion.Controllers
             return RedirectToAction("Index", "Dashboard");
         }
 
-        // ============================
-        // CAMBIAR ROL
-        // ============================
         [Authorize]
         public ActionResult CambiarRol(string rolSeleccionado)
         {
             var roles = Session["Roles"] as List<string> ?? new List<string>();
 
-            if (!string.IsNullOrWhiteSpace(rolSeleccionado) && roles.Contains(rolSeleccionado))
-                Session["Rol"] = rolSeleccionado;
+            if (!string.IsNullOrWhiteSpace(rolSeleccionado) &&
+                roles.Contains(rolSeleccionado, StringComparer.OrdinalIgnoreCase))
+            {
+                // set rol exacto como está en la lista
+                var match = roles.First(r => r.Equals(rolSeleccionado, StringComparison.OrdinalIgnoreCase));
+                Session["Rol"] = match;
+            }
 
             return RedirectToAction("Index", "Home");
         }
 
-        // ============================
-        // LOGOUT
-        // ============================
         [Authorize]
         public ActionResult Logout()
         {
@@ -184,9 +166,6 @@ namespace CapaPresentacion.Controllers
             return RedirectToAction("Login", "Account");
         }
 
-        // ============================
-        // RECUPERAR CONTRASEÑA
-        // ============================
         [HttpPost]
         [AllowAnonymous]
         public JsonResult EnviarRecuperar(string email)
@@ -200,9 +179,7 @@ namespace CapaPresentacion.Controllers
             return Json(new { ok = enviado, mensaje = mensaje });
         }
 
-        // ============================
-        // MODAL REGISTRO
-        // ============================
+        [Authorize]
         public ActionResult _ModalRegistroUsuario()
         {
             var model = new UsuarioCreateViewModel
@@ -212,15 +189,16 @@ namespace CapaPresentacion.Controllers
             return PartialView("_ModalRegistroUsuario", model);
         }
 
-        // ============================
-        // VERIFICAR ESTADO ORDEN (para AJAX)
-        // ============================
+        // ✅ AJAX: verificación de orden (tu layout lo consulta)
+        [HttpGet]
         [Authorize]
         public JsonResult VerificarEstadoOrden()
         {
             try
             {
-                int idUsuario = Session["IdUsuario"] != null ? Convert.ToInt32(Session["IdUsuario"]) : 0;
+                int idUsuario = 0;
+                var v = Session["UserId"] ?? Session["IdUsuario"];
+                if (v != null) int.TryParse(v.ToString(), out idUsuario);
 
                 if (idUsuario <= 0)
                     return Json(new { tieneOrden = false, mensaje = "Sesión expirada" }, JsonRequestBehavior.AllowGet);
@@ -240,6 +218,16 @@ namespace CapaPresentacion.Controllers
             {
                 return Json(new { error = ex.Message }, JsonRequestBehavior.AllowGet);
             }
+        }
+
+        // ✅ tu layout llama POST /Account/ExtenderSesion
+        [HttpPost]
+        [Authorize]
+        [ValidateAntiForgeryToken]
+        public JsonResult ExtenderSesion()
+        {
+            Session["LastActivity"] = DateTime.Now;
+            return Json(new { ok = true });
         }
     }
 }

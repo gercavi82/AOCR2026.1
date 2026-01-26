@@ -290,8 +290,8 @@
     <Compile Include="DAOs\DocumentoDAO.cs" />
     <Compile Include="DAOs\FinancieroDAO.cs" />
     <Compile Include="DAOs\InspeccionDAO.cs" />
-    <Compile Include="Db\PgSql.cs" />
-    <Compile Include="Db\PgDbFactory.cs" />
+    <Compile Include="Infra\PgSql.cs" />
+    <Compile Include="Infra\DbFactory.cs" />
     <Compile Include="Models\PagoModel.cs" />
     <Compile Include="Models\ConceptoModel.cs" />
     <Compile Include="Models\DocumentoModel.cs" />

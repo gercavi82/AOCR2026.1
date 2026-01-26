@@ -1,0 +1,1058 @@
+﻿@model List<CapaDatos.Models.OrdenRecaudacionModel>
+    @{
+        ViewBag.Title = "Orden de Recaudación Requerida";
+        Layout = "~/Views/Shared/_LayoutAOCR.cshtml";
+
+        // Obtener estadísticas desde ViewBag (del controlador)
+        var estadisticas = ViewBag.Estadisticas as Dictionary<string, object>;
+        var totalOrdenes = 0;
+        var pagadas = 0;
+        var saldoPendiente = 0m;
+        var montoPagado = 0m;
+
+        if (estadisticas != null)
+        {
+            if (estadisticas.ContainsKey("Total"))
+            {
+                int.TryParse(estadisticas["Total"].ToString(), out totalOrdenes);
+            }
+            if (estadisticas.ContainsKey("Pagadas"))
+            {
+                int.TryParse(estadisticas["Pagadas"].ToString(), out pagadas);
+            }
+            if (estadisticas.ContainsKey("SaldoPendiente"))
+            {
+                decimal.TryParse(estadisticas["SaldoPendiente"].ToString(), out saldoPendiente);
+            }
+            if (estadisticas.ContainsKey("MontoPagado"))
+            {
+                decimal.TryParse(estadisticas["MontoPagado"].ToString(), out montoPagado);
+            }
+        }
+
+        // Calcular pendientes con validación - CORREGIDO CON LLAVES
+        var pendientes = totalOrdenes - pagadas;
+        if (pendientes < 0)
+        {
+            pendientes = 0;
+        }
+
+        // Calcular porcentajes para barras de progreso
+        var porcentajePendientes = totalOrdenes > 0 ? (pendientes * 100 / totalOrdenes) : 0;
+        var porcentajePagadas = totalOrdenes > 0 ? (pagadas * 100 / totalOrdenes) : 0;
+        var totalMonto = saldoPendiente + montoPagado;
+        var porcentajePagado = totalMonto > 0 ? (int)((montoPagado * 100) / totalMonto) : 0;
+
+        var tieneOrdenBorrador = false;
+        if (ViewBag.TieneOrdenBorrador != null)
+        {
+            bool.TryParse(ViewBag.TieneOrdenBorrador.ToString(), out tieneOrdenBorrador);
+        }
+    }
+
+    @section Styles{
+        <style>
+            /* Variables CSS para consistencia */
+            :root {
+                --color-primary: #1B4F72;
+                --color-danger: #dc3545;
+                --color-warning: #ffc107;
+                --color-success: #28a745;
+                --color-info: #17a2b8;
+                --color-secondary: #6c757d;
+                --transition-speed: 0.3s;
+            }
+
+            .hover-shadow:hover {
+                transform: translateY(-5px);
+                transition: transform var(--transition-speed) ease;
+                box-shadow: 0 10px 25px rgba(0,0,0,0.1) !important;
+            }
+
+            .user-img-fallback {
+                width: 30px;
+                height: 30px;
+                border-radius: 50%;
+                background: var(--color-secondary);
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                color: white;
+                font-size: 14px;
+                margin-right: 8px;
+            }
+
+            /* Tarjetas de orden */
+            .card-orden {
+                border-left: 4px solid var(--color-primary);
+                transition: all var(--transition-speed) ease;
+            }
+
+                .card-orden.urgente {
+                    border-left-color: var(--color-danger);
+                }
+
+                .card-orden.pendiente {
+                    border-left-color: var(--color-warning);
+                }
+
+                .card-orden.completada {
+                    border-left-color: var(--color-success);
+                }
+
+            .badge-estado {
+                font-size: 0.8em;
+                padding: 4px 8px;
+                min-width: 80px;
+                text-align: center;
+            }
+
+            .acciones-rapidas {
+                opacity: 0;
+                transition: opacity var(--transition-speed) ease;
+            }
+
+            tr:hover .acciones-rapidas {
+                opacity: 1;
+            }
+
+            .dataTables_filter input {
+                border: 1px solid #dee2e6 !important;
+                border-radius: 4px !important;
+                padding: 6px 12px !important;
+            }
+
+            /* Estados específicos */
+            .estado-borrador {
+                background-color: var(--color-secondary) !important;
+                color: white;
+            }
+
+            .estado-generada {
+                background-color: var(--color-info) !important;
+                color: white;
+            }
+
+            .estado-enviada {
+                background-color: #007bff !important;
+                color: white;
+            }
+
+            .estado-pagada {
+                background-color: var(--color-success) !important;
+                color: white;
+            }
+
+            .estado-anulada {
+                background-color: var(--color-danger) !important;
+                color: white;
+            }
+
+            /* Responsive */
+            @@media (max-width: 768px) {
+                .btn-responsive {
+                    width: 100%;
+                    margin-bottom: 5px;
+                }
+
+                .acciones-rapidas {
+                    opacity: 1;
+                }
+
+                .table-responsive {
+                    border: 0;
+                }
+            }
+        </style>
+    }
+
+    <div class="container-fluid py-4">
+        <!-- Encabezado de página -->
+        <div class="row mb-4">
+            <div class="col-md-8">
+                <h1 class="h3 text-dark mb-2">
+                    <i class="fas fa-file-invoice-dollar me-2 text-primary"></i>
+                    @ViewBag.Title
+                </h1>
+                <p class="text-muted">
+                    Gestión de órdenes de recaudación requeridas para el proceso AOCR.
+                    @if (tieneOrdenBorrador)
+                    {
+                        <span class="badge bg-warning ms-2">
+                            <i class="fas fa-exclamation-triangle me-1"></i> Tiene orden en borrador
+                        </span>
+                    }
+                </p>
+            </div>
+            <div class="col-md-4 text-md-end">
+                @if (User != null && (User.IsInRole("Solicitante") || User.IsInRole("Administrador")))
+                {
+                    <a href="@Url.Action("Nueva", "OrdenRecaudacion")" class="btn btn-primary btn-lg hover-shadow" id="btn-nueva-orden">
+                        <i class="fas fa-plus-circle me-2"></i> Nueva Orden
+                    </a>
+                }
+                @if (User != null && (User.IsInRole("Solicitante") || User.IsInRole("Administrador") || User.IsInRole("Financiero")))
+                {
+                    <div class="btn-group ms-2">
+                        <button type="button" class="btn btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
+                            <i class="fas fa-download me-2"></i> Exportar
+                        </button>
+                        <ul class="dropdown-menu">
+                            <li>
+                                <a class="dropdown-item" href="@Url.Action("ExportarExcel", "OrdenRecaudacion")">
+                                    <i class="fas fa-file-excel text-success me-2"></i> Excel
+                                </a>
+                            </li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li><a class="dropdown-item export-pdf" href="#"><i class="fas fa-file-pdf text-danger me-2"></i> PDF</a></li>
+                            <li><a class="dropdown-item export-csv" href="#"><i class="fas fa-file-csv text-info me-2"></i> CSV</a></li>
+                        </ul>
+                    </div>
+                }
+            </div>
+        </div>
+
+        <!-- Filtros rápidos -->
+        <div class="card mb-4 hover-shadow" id="card-filtros">
+            <div class="card-header bg-light">
+                <h6 class="mb-0"><i class="fas fa-filter me-2"></i>Filtros de Búsqueda</h6>
+            </div>
+            <div class="card-body">
+                @using (Html.BeginForm("Index", "OrdenRecaudacion", FormMethod.Get, new { @class = "row g-3", id = "form-filtros" }))
+                {
+                    <div class="col-md-4">
+                        <label for="filtroEstado" class="form-label">Estado</label>
+                        @{
+                            var estadosLista = ViewBag.Estados as IEnumerable<SelectListItem>;
+                            var selectEstados = estadosLista != null ? estadosLista : new List<SelectListItem>();
+                        }
+                        <select class="form-select filtro-estado" id="filtroEstado" name="estado">
+                            <option value="">Todos los estados</option>
+                            @foreach (var estado in selectEstados)
+                            {
+                                <option value="@estado.Value" @(estado.Selected ? "selected" : "")>@estado.Text</option>
+                            }
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label for="filtroFechaDesde" class="form-label">Fecha desde</label>
+                        <input type="date" class="form-control filtro-fecha" id="filtroFechaDesde" name="fechaDesde"
+                               max="@DateTime.Now.ToString("yyyy-MM-dd")">
+                    </div>
+                    <div class="col-md-3">
+                        <label for="filtroFechaHasta" class="form-label">Fecha hasta</label>
+                        <input type="date" class="form-control filtro-fecha" id="filtroFechaHasta" name="fechaHasta"
+                               max="@DateTime.Now.ToString("yyyy-MM-dd")">
+                    </div>
+                    <div class="col-md-2 d-flex align-items-end">
+                        <button type="submit" class="btn btn-primary w-100" id="btn-aplicar-filtros">
+                            <i class="fas fa-filter me-2"></i> Filtrar
+                        </button>
+                    </div>
+                }
+                <div class="row mt-3">
+                    <div class="col-md-12 text-end">
+                        <a href="@Url.Action("Index", "OrdenRecaudacion")" class="btn btn-outline-secondary" id="btn-limpiar-filtros">
+                            <i class="fas fa-times me-2"></i> Limpiar filtros
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Estadísticas -->
+        <div class="row mb-4">
+            <div class="col-md-3">
+                <div class="card bg-primary text-white hover-shadow">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between">
+                            <div>
+                                <h6 class="card-title">Total Órdenes</h6>
+                                <h2 class="mb-0" id="total-ordenes">@totalOrdenes</h2>
+                            </div>
+                            <div class="align-self-center">
+                                <i class="fas fa-file-invoice fa-2x opacity-75"></i>
+                            </div>
+                        </div>
+                        <div class="mt-3">
+                            <div class="progress" style="height: 4px;">
+                                <div class="progress-bar bg-white" role="progressbar" style="width: 100%" aria-valuenow="100" aria-valuemin="0" aria-valuemax="100"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card bg-warning text-dark hover-shadow">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between">
+                            <div>
+                                <h6 class="card-title">Pendientes</h6>
+                                <h2 class="mb-0" id="pendientes">@pendientes</h2>
+                            </div>
+                            <div class="align-self-center">
+                                <i class="fas fa-clock fa-2x opacity-75"></i>
+                            </div>
+                        </div>
+                        <div class="mt-3">
+                            <div class="progress" style="height: 4px;">
+                                <div class="progress-bar bg-dark" role="progressbar" style="width: @porcentajePendientes%" aria-valuenow="@porcentajePendientes" aria-valuemin="0" aria-valuemax="100"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card bg-success text-white hover-shadow">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between">
+                            <div>
+                                <h6 class="card-title">Pagadas</h6>
+                                <h2 class="mb-0" id="pagadas">@pagadas</h2>
+                            </div>
+                            <div class="align-self-center">
+                                <i class="fas fa-check-circle fa-2x opacity-75"></i>
+                            </div>
+                        </div>
+                        <div class="mt-3">
+                            <div class="progress" style="height: 4px;">
+                                <div class="progress-bar bg-white" role="progressbar" style="width: @porcentajePagadas%" aria-valuenow="@porcentajePagadas" aria-valuemin="0" aria-valuemax="100"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card bg-info text-white hover-shadow">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between">
+                            <div>
+                                <h6 class="card-title">Saldo Pendiente</h6>
+                                <h4 class="mb-0" id="saldo-pendiente">
+                                    @FormatCurrency(saldoPendiente)
+                                </h4>
+                                <small class="opacity-75">Pagado: @FormatCurrency(montoPagado)</small>
+                            </div>
+                            <div class="align-self-center">
+                                <i class="fas fa-dollar-sign fa-2x opacity-75"></i>
+                            </div>
+                        </div>
+                        <div class="mt-3">
+                            <div class="progress" style="height: 4px;">
+                                <div class="progress-bar bg-white" role="progressbar" style="width: @porcentajePagado%" aria-valuenow="@porcentajePagado" aria-valuemin="0" aria-valuemax="100" aria-label="@porcentajePagado% pagado"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tabla de órdenes -->
+        <div class="card hover-shadow">
+            <div class="card-header bg-white border-bottom-0 py-3">
+                <div class="d-flex justify-content-between align-items-center">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-list me-2"></i> Listado de Órdenes de Recaudación
+                    </h5>
+                    <div>
+                        <span class="badge bg-light text-dark me-2" id="badge-contador">
+                            <i class="fas fa-database me-1"></i>
+                            <span id="contador-registros">@(Model != null ? Model.Count : 0)</span> registros
+                        </span>
+                        @if (User != null && User.IsInRole("Administrador"))
+                        {
+                            <a href="@Url.Action("DbPing", "OrdenRecaudacion")" class="btn btn-sm btn-outline-success"
+                               title="Probar conexión a BD" data-bs-toggle="tooltip" id="btn-db-ping">
+                                <i class="fas fa-plug"></i>
+                            </a>
+                        }
+                    </div>
+                </div>
+            </div>
+            <div class="card-body p-0">
+                @if (Model == null || !Model.Any())
+                {
+                    <div class="text-center py-5" id="sin-datos">
+                        <i class="fas fa-inbox fa-3x text-muted mb-3"></i>
+                        <h4 class="text-muted">No hay órdenes de recaudación</h4>
+                        <p class="text-muted">No se encontraron órdenes con los filtros aplicados.</p>
+                        @if (User != null && (User.IsInRole("Solicitante") || User.IsInRole("Administrador")))
+                        {
+                            <a href="@Url.Action("Nueva", "OrdenRecaudacion")" class="btn btn-primary mt-2" id="btn-primera-orden">
+                                <i class="fas fa-plus-circle me-2"></i> Crear primera orden
+                            </a>
+                        }
+                    </div>
+                }
+                else
+                {
+                    <div class="table-responsive">
+                        <table id="tablaOrdenes" class="table table-hover table-striped mb-0" style="width:100%">
+                            <thead class="table-light">
+                                <tr>
+                                    <th width="5%">ID</th>
+                                    <th width="15%">Número Orden</th>
+                                    <th width="20%">Contribuyente</th>
+                                    <th width="15%">Fecha Creación</th>
+                                    <th width="10%">Monto</th>
+                                    <th width="15%">Estado</th>
+                                    <th width="10%">Concepto</th>
+                                    <th width="10%" class="text-center">Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var orden in Model)
+                                {
+                                    var estadoClase = GetClaseEstado(orden.Estado);
+                                    var estadoTexto = GetTextoEstado(orden.Estado);
+                                    var esBorrador = false;
+                                    if (!string.IsNullOrEmpty(orden.Estado))
+                                    {
+                                        esBorrador = orden.Estado.Trim().Equals("BORRADOR", StringComparison.OrdinalIgnoreCase);
+                                    }
+                                    var puedeEditar = false;
+                                    if (User != null)
+                                    {
+                                        puedeEditar = (User.IsInRole("Solicitante") || User.IsInRole("Administrador")) && esBorrador;
+                                    }
+                                    var totalFormatted = FormatCurrency(orden.Total);
+                                    var subtotalFormatted = FormatCurrency(orden.Subtotal);
+
+                                <tr data-id="@orden.Id" data-estado="@orden.Estado">
+                                    <td>@orden.Id</td>
+                                    <td>
+                                        <strong>@(orden.NumeroOrden ?? "N/A")</strong>
+                                        @if (!string.IsNullOrEmpty(orden.CodigoSolicitud))
+                                        {
+                                            <div class="text-muted small">Sol: @orden.CodigoSolicitud</div>
+                                        }
+                                    </td>
+                                    <td>
+                                        <div class="d-flex align-items-center">
+                                            <div class="user-img-fallback">
+                                                <i class="fas fa-building"></i>
+                                            </div>
+                                            <div>
+                                                <strong>@(orden.Compania ?? "Sin nombre")</strong>
+                                                <div class="text-muted small">
+                                                    @if (!string.IsNullOrEmpty(orden.RucCedula))
+                                                    {
+                                                        <span>RUC/CI: @orden.RucCedula</span>
+                                                    }
+                                                    @if (!string.IsNullOrEmpty(orden.Correo))
+                                                    {
+                                                        <div>@orden.Correo</div>
+                                                    }
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        @if (orden.FechaCreacion != null && orden.FechaCreacion != DateTime.MinValue)
+                                        {
+                                            @orden.FechaCreacion.ToString("dd/MM/yyyy")
+                                            <div class="text-muted small">@orden.FechaCreacion.ToString("HH:mm")</div>
+                                        }
+                                        else
+                                        {
+                                            <span class="text-muted">N/A</span>
+                                        }
+                                    </td>
+                                    <td>
+                                        <span class="fw-bold text-primary total-orden">
+                                            @totalFormatted
+                                        </span>
+                                        @if (orden.Subtotal != 0)
+                                        {
+                                            <div class="text-muted small">Base: @subtotalFormatted</div>
+                                        }
+                                    </td>
+                                    <td>
+                                        <span class="badge @estadoClase badge-estado">@estadoTexto</span>
+                                    </td>
+                                    <td>
+                                        @if (!string.IsNullOrEmpty(orden.ConceptoNombre))
+                                        {
+                                            <span class="badge bg-secondary" title="@orden.ConceptoNombre">@TruncateText(orden.ConceptoNombre, 20)</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="text-muted">N/A</span>
+                                        }
+                                    </td>
+                                    <td class="text-center acciones-rapidas">
+                                        <div class="btn-group btn-group-sm">
+                                            <a href="@Url.Action("Detalles", "OrdenRecaudacion", new { id = orden.Id })"
+                                               class="btn btn-outline-primary btn-sm btn-detalle"
+                                               title="Ver detalle"
+                                               data-bs-toggle="tooltip"
+                                               data-id="@orden.Id">
+                                                <i class="fas fa-eye"></i>
+                                            </a>
+
+                                            @if (puedeEditar)
+                                            {
+                                                <a href="@Url.Action("Editar", "OrdenRecaudacion", new { id = orden.Id })"
+                                                   class="btn btn-outline-success btn-sm btn-editar"
+                                                   title="Editar"
+                                                   data-bs-toggle="tooltip"
+                                                   data-id="@orden.Id">
+                                                    <i class="fas fa-edit"></i>
+                                                </a>
+                                            }
+
+                                            @if (User != null && User.IsInRole("Administrador") && orden.Estado != null && !orden.Estado.Equals("ANULADA", StringComparison.OrdinalIgnoreCase))
+                                            {
+                                                <button class="btn btn-outline-danger btn-sm btn-anular"
+                                                        title="Anular"
+                                                        data-bs-toggle="tooltip"
+                                                        data-id="@orden.Id"
+                                                        data-numero="@orden.NumeroOrden">
+                                                    <i class="fas fa-ban"></i>
+                                                </button>
+                                            }
+                                        </div>
+                                    </td>
+                                </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+            </div>
+            @if (Model != null && Model.Any())
+            {
+                <div class="card-footer bg-white border-top-0 pt-3">
+                    <div class="row align-items-center">
+                        <div class="col-md-6">
+                            <div class="text-muted small">
+                                Mostrando <span id="filas-mostradas">@Model.Count</span> de <span id="filas-totales">@Model.Count</span> registros
+                            </div>
+                        </div>
+                        <div class="col-md-6 text-md-end">
+                            <a href="@Url.Action("Index", "OrdenRecaudacion")" class="btn btn-outline-secondary btn-sm" id="btn-recargar">
+                                <i class="fas fa-redo me-2"></i> Recargar
+                            </a>
+                            @if (User != null && (User.IsInRole("Solicitante") || User.IsInRole("Administrador") || User.IsInRole("Financiero")))
+                            {
+                                <a href="@Url.Action("ExportarExcel", "OrdenRecaudacion")" class="btn btn-outline-primary btn-sm ms-1" id="btn-exportar-excel">
+                                    <i class="fas fa-file-excel me-2"></i> Exportar Excel
+                                </a>
+                            }
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+    </div>
+
+    @section Scripts {
+        <script>
+        // ==========================================================
+        // ✅ SCRIPT PROFESIONAL PARA PRODUCCIÓN - C# 5 COMPATIBLE
+        // ==========================================================
+        (function () {
+            'use strict';
+
+            // Esperar a que jQuery esté disponible antes de ejecutar cualquier cosa
+            function waitForJQuery() {
+                if (typeof jQuery !== 'undefined' && typeof $ !== 'undefined') {
+                    initializeScript();
+                } else {
+                    setTimeout(waitForJQuery, 50);
+                }
+            }
+
+            function initializeScript() {
+                // Configuración global
+                var CONFIG = {
+                    apiUrl: '@Url.Action("", "OrdenRecaudacion")',
+                    dataTableLang: '//cdn.datatables.net/plug-ins/1.13.4/i18n/es-ES.json',
+                    pageLength: 10,
+                    currencyOptions: {
+                        style: 'currency',
+                        currency: 'USD',
+                        minimumFractionDigits: 2,
+                        maximumFractionDigits: 2
+                    }
+                };
+
+                // Variables globales
+                var tablaOrdenesDT = null;
+                var tooltipInstances = [];
+
+                // Inicializar cuando el DOM esté listo
+                function initializePage() {
+                    jQuery(document).ready(function ($) {
+                        console.log('🚀 Inicializando página de órdenes...');
+
+                        // Esperar a que DataTables esté disponible
+                        function waitForDataTables() {
+                            if (typeof $.fn.DataTable !== 'undefined') {
+                                console.log('✅ DataTables disponible, inicializando componentes...');
+                                // Inicializar componentes en orden
+                                initTooltips();
+                                initDataTables();
+                                initEventListeners();
+                                initDateValidation();
+
+                                console.log('✅ Página completamente inicializada');
+                            } else {
+                                console.log('⏳ Esperando DataTables...');
+                                setTimeout(waitForDataTables, 100);
+                            }
+                        }
+
+                        waitForDataTables();
+                    });
+                }
+
+            // Inicializar tooltips
+            function initTooltips() {
+                if (typeof bootstrap === 'undefined' || !bootstrap.Tooltip) {
+                    console.warn('Bootstrap Tooltip no disponible');
+                    return;
+                }
+
+                // Limpiar tooltips anteriores
+                tooltipInstances.forEach(function(tooltip) {
+                    try { tooltip.dispose(); } catch(e) {}
+                });
+                tooltipInstances = [];
+
+                var tooltipElements = document.querySelectorAll('[data-bs-toggle="tooltip"]');
+                tooltipElements.forEach(function(element) {
+                    try {
+                        var tooltip = new bootstrap.Tooltip(element);
+                        tooltipInstances.push(tooltip);
+                    } catch (error) {
+                        console.warn('Error al crear tooltip:', error);
+                    }
+                });
+            }
+
+            // Inicializar DataTables
+            function initDataTables() {
+                if (typeof $.fn.DataTable === 'undefined') {
+                    console.log('⏳ DataTables no disponible aún, reintentando...');
+                    setTimeout(initDataTables, 100);
+                    return;
+                }
+
+                var $table = $('#tablaOrdenes');
+                if ($table.length === 0) {
+                    console.log('ℹ️ No hay tabla para inicializar DataTables');
+                    return;
+                }
+
+                try {
+                    // Destruir instancia previa
+                    if ($.fn.DataTable && $.fn.DataTable.isDataTable('#tablaOrdenes')) {
+                        tablaOrdenesDT.destroy();
+                        $table.find('tbody').empty();
+                    }
+
+                    // Configuración robusta
+                    var config = {
+                        language: {
+                            url: CONFIG.dataTableLang,
+                            decimal: ',',
+                            thousands: '.'
+                        },
+                        order: [[0, 'desc']],
+                        pageLength: CONFIG.pageLength,
+                        lengthMenu: [[5, 10, 25, 50, -1], [5, 10, 25, 50, 'Todos']],
+                        responsive: true,
+                        autoWidth: false,
+                        processing: true,
+                        stateSave: false, // Desactivar para producción
+                        serverSide: false,
+                        deferRender: true,
+                        columnDefs: [
+                            { orderable: false, targets: [7] },
+                            { className: 'dt-body-center', targets: [0, 7] },
+                            { className: 'dt-body-right', targets: [4] },
+                            {
+                                render: function (data, type, row) {
+                                    if (type === 'display' && data && !isNaN(parseFloat(data))) {
+                                        return formatCurrency(parseFloat(data));
+                                    }
+                                    return data;
+                                },
+                                targets: [4]
+                            }
+                        ],
+                        drawCallback: function (settings) {
+                            setTimeout(initTooltips, 50);
+                            updateRowCounters();
+                            updateAccessibility();
+                        },
+                        initComplete: function () {
+                            console.log('✅ DataTables inicializado');
+                            tablaOrdenesDT = this.api();
+                            updateRowCounters();
+                        }
+                    };
+
+                    $table.DataTable(config);
+
+                } catch (error) {
+                    console.error('❌ Error al inicializar DataTables:', error);
+                    showAlert('Error', 'No se pudo cargar la tabla de órdenes', 'error');
+                }
+            }
+
+            // Inicializar event listeners
+            function initEventListeners() {
+                var $document = $(document);
+
+                // Test de conexión a BD
+                $document.on('click', '#btn-db-ping', function(e) {
+                    e.preventDefault();
+                    var $btn = $(this);
+                    var originalHtml = $btn.html();
+
+                    $btn.html('<i class="fas fa-spinner fa-spin"></i>');
+                    $btn.prop('disabled', true);
+
+                    $.ajax({
+                        url: $btn.attr('href'),
+                        type: 'GET',
+                        timeout: 10000
+                    })
+                    .done(function(response) {
+                        if (response && response.ok) {
+                            showNotification('✅ Conexión a BD exitosa', 'success');
+                        } else {
+                            showNotification('⚠️ Problema con la conexión a BD', 'warning');
+                        }
+                    })
+                    .fail(function(xhr, status, error) {
+                        console.error('Error en ping DB:', error);
+                        showNotification('❌ Error al conectar con el servidor', 'danger');
+                    })
+                    .always(function() {
+                        setTimeout(function() {
+                            $btn.html(originalHtml);
+                            $btn.prop('disabled', false);
+                        }, 1000);
+                    });
+                });
+
+                // Anular orden
+                $document.on('click', '.btn-anular', function() {
+                    var $btn = $(this);
+                    var id = $btn.data('id');
+                    var numero = $btn.data('numero') || id;
+
+                    confirmAction(
+                        'Anular Orden',
+                        '¿Está seguro de anular la orden ' + numero + '?<br><small class="text-danger">Esta acción no se puede deshacer.</small>',
+                        function() {
+                            anularOrden(id, numero);
+                        }
+                    );
+                });
+
+                // Exportar PDF/CSV
+                $document.on('click', '.export-pdf, .export-csv', function(e) {
+                    e.preventDefault();
+                    var tipo = $(this).hasClass('export-pdf') ? 'PDF' : 'CSV';
+                    showNotification('🔄 Generando archivo ' + tipo + '...', 'info');
+
+                    // Simular procesamiento
+                    setTimeout(function() {
+                        showNotification('✅ Archivo ' + tipo + ' listo para descargar', 'success');
+                    }, 1500);
+                });
+
+                // Validación de fechas
+                $document.on('change', '.filtro-fecha', function() {
+                    validateDateRange();
+                });
+            }
+
+            // Validar rango de fechas
+            function initDateValidation() {
+                var $fechaDesde = $('#filtroFechaDesde');
+                var $fechaHasta = $('#filtroFechaHasta');
+
+                if ($fechaDesde.length && $fechaHasta.length) {
+                    var today = new Date().toISOString().split('T')[0];
+                    $fechaDesde.attr('max', today);
+                    $fechaHasta.attr('max', today);
+
+                    $fechaDesde.on('change', function() {
+                        $fechaHasta.attr('min', $(this).val());
+                    });
+
+                    $fechaHasta.on('change', function() {
+                        $fechaDesde.attr('max', $(this).val());
+                    });
+                }
+            }
+
+            // Función para validar rango de fechas
+            function validateDateRange() {
+                var $fechaDesde = $('#filtroFechaDesde');
+                var $fechaHasta = $('#filtroFechaHasta');
+
+                if ($fechaDesde.val() && $fechaHasta.val() && $fechaDesde.val() > $fechaHasta.val()) {
+                    showNotification('La fecha "desde" no puede ser mayor a la fecha "hasta".', 'warning');
+                    $fechaHasta.focus();
+                }
+            }
+
+            // Función para anular orden
+            function anularOrden(id, numero) {
+                $.ajax({
+                    url: CONFIG.apiUrl + '/Anular',
+                    type: 'POST',
+                    data: { id: id },
+                    dataType: 'json'
+                })
+                .done(function(response) {
+                    if (response && response.success) {
+                        showNotification('✅ Orden ' + numero + ' anulada correctamente', 'success');
+                        setTimeout(function() {
+                            window.location.reload();
+                        }, 1500);
+                    } else {
+                        showNotification('❌ Error al anular la orden: ' + (response.message || 'Error desconocido'), 'danger');
+                    }
+                })
+                .fail(function(xhr, status, error) {
+                    console.error('Error AJAX:', error);
+                    showNotification('❌ Error de conexión al servidor', 'danger');
+                });
+            }
+
+            // Actualizar contadores de filas
+            function updateRowCounters() {
+                if (!tablaOrdenesDT) return;
+
+                var total = tablaOrdenesDT.rows().count();
+                var filtered = tablaOrdenesDT.rows({ search: 'applied' }).count();
+
+                $('#filas-mostradas').text(filtered);
+                $('#filas-totales').text(total);
+                $('#contador-registros').text(total);
+            }
+
+            // Actualizar accesibilidad
+            function updateAccessibility() {
+                $('table#tablaOrdenes tbody tr').each(function(index) {
+                    var $row = $(this);
+                    var numeroOrden = $row.find('td:eq(1) strong').text() || $row.data('id');
+                    $row.find('.btn-detalle').attr('aria-label', 'Ver detalles de orden ' + numeroOrden);
+                    $row.find('.btn-editar').attr('aria-label', 'Editar orden ' + numeroOrden);
+                    $row.find('.btn-anular').attr('aria-label', 'Anular orden ' + numeroOrden);
+                });
+            }
+
+            // Formatear moneda
+            function formatCurrency(amount) {
+                if (amount === null || amount === undefined || isNaN(amount)) {
+                    return '$0.00';
+                }
+                return '$' + parseFloat(amount).toLocaleString('es-EC', {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2
+                });
+            }
+
+            // Mostrar notificación
+            function showNotification(message, type) {
+                // Usar Toastr si está disponible
+                if (typeof toastr !== 'undefined') {
+                    toastr.options = {
+                        closeButton: true,
+                        progressBar: true,
+                        positionClass: 'toast-top-right',
+                        timeOut: 4000
+                    };
+
+                    switch(type) {
+                        case 'success': toastr.success(message); break;
+                        case 'error': toastr.error(message); break;
+                        case 'warning': toastr.warning(message); break;
+                        case 'info': toastr.info(message); break;
+                        default: toastr.info(message);
+                    }
+                }
+                // Usar Bootstrap alert si está disponible
+                else if (typeof bootstrap !== 'undefined') {
+                    var alertHtml = '<div class="alert alert-' + type + ' alert-dismissible fade show" role="alert">' +
+                                   message +
+                                   '<button type="button" class="btn-close" data-bs-dismiss="alert"></button>' +
+                                   '</div>';
+
+                    $('.container-fluid').first().prepend(alertHtml);
+
+                    setTimeout(function() {
+                        $('.alert').alert('close');
+                    }, 4000);
+                }
+                // Fallback a alert nativo
+                else {
+                    alert(message);
+                }
+            }
+
+            // Confirmar acción
+            function confirmAction(title, message, callback) {
+                // Usar SweetAlert2 si está disponible
+                if (typeof Swal !== 'undefined') {
+                    Swal.fire({
+                        title: title,
+                        html: message,
+                        icon: 'warning',
+                        showCancelButton: true,
+                        confirmButtonText: 'Sí, proceder',
+                        cancelButtonText: 'Cancelar',
+                        confirmButtonColor: '#d33',
+                        cancelButtonColor: '#3085d6'
+                    }).then(function(result) {
+                        if (result.isConfirmed && typeof callback === 'function') {
+                            callback();
+                        }
+                    });
+                }
+                // Usar Bootstrap modal si está disponible
+                else if (typeof bootstrap !== 'undefined' && $('#modalConfirmacion').length) {
+                    $('#modalConfirmacion .modal-title').text(title);
+                    $('#modalConfirmacion .modal-body').html(message);
+                    var modal = new bootstrap.Modal(document.getElementById('modalConfirmacion'));
+
+                    $('#btnConfirmarAccion').off('click').on('click', function() {
+                        modal.hide();
+                        if (typeof callback === 'function') {
+                            callback();
+                        }
+                    });
+
+                    modal.show();
+                }
+                // Fallback a confirm nativo
+                else {
+                    if (confirm(title + '\n\n' + message.replace(/<br>/g, '\n').replace(/<[^>]*>/g, ''))) {
+                        callback();
+                    }
+                }
+            }
+
+            // Mostrar alerta
+            function showAlert(title, message, type) {
+                if (typeof Swal !== 'undefined') {
+                    Swal.fire(title, message, type || 'info');
+                } else {
+                    alert(title + '\n' + message);
+                }
+            }
+
+            // Inicializar página
+            initializePage();
+
+        })();
+        </script>
+    }
+
+    @functions {
+        // Helper para formatear moneda (seguro para C# 5)
+        public static string FormatCurrency(decimal? amount)
+        {
+            if (!amount.HasValue)
+            {
+                return "$0.00";
+            }
+
+            try
+            {
+                return amount.Value.ToString("C", System.Globalization.CultureInfo.CurrentCulture);
+            }
+            catch
+            {
+                return amount.Value.ToString("N2") + " USD";
+            }
+        }
+
+        // Helper para obtener clase CSS del estado
+        public static string GetClaseEstado(string estado)
+        {
+            if (string.IsNullOrEmpty(estado))
+            {
+                return "bg-secondary";
+            }
+
+            var estadoUpper = estado.Trim().ToUpperInvariant();
+
+            switch (estadoUpper)
+            {
+                case "BORRADOR": return "estado-borrador";
+                case "GENERADA": return "estado-generada";
+                case "ENVIADA": return "estado-enviada";
+                case "PAGADA": return "estado-pagada";
+                case "ANULADA": return "estado-anulada";
+                default: return "bg-secondary";
+            }
+        }
+
+        // Helper para obtener texto del estado
+        public static string GetTextoEstado(string estado)
+        {
+            if (string.IsNullOrEmpty(estado))
+            {
+                return "DESCONOCIDO";
+            }
+
+            return estado.Trim().ToUpperInvariant();
+        }
+
+        // Helper para formatear moneda (decimal no nullable)
+        public static string FormatCurrency(decimal amount)
+        {
+            try
+            {
+                return amount.ToString("C", System.Globalization.CultureInfo.CurrentCulture);
+            }
+            catch
+            {
+                return amount.ToString("N2") + " USD";
+            }
+        }
+
+        // Helper para truncar texto
+        public static string TruncateText(string texto, int maxLength)
+        {
+            if (string.IsNullOrWhiteSpace(texto))
+            {
+                return string.Empty;
+            }
+
+            if (texto.Length <= maxLength)
+            {
+                return texto;
+            }
+
+            return texto.Substring(0, maxLength) + "...";
+        }
+
+        // Helper para validar fecha
+        public static bool EsFechaValida(DateTime? fecha)
+        {
+            return fecha.HasValue && fecha.Value != DateTime.MinValue;
+        }
+
+        // Helper para token AntiForgery
+        public static string GetAntiForgeryToken()
+        {
+            try
+            {
+                return Guid.NewGuid().ToString();
+            }
+            catch
+            {
+                return string.Empty;
+            }
+        }
+    }

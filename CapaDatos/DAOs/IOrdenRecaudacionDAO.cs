@@ -7,30 +7,33 @@ namespace CapaDatos.DAOs
 {
     public interface IOrdenRecaudacionDAO
     {
-        // Validaciones flujo
+        // ===================== Validaciones de flujo =====================
         bool ExisteORGeneradaOPagada(int codigoUsuario);
         bool ExisteORMinima(int codigoUsuario);
 
-        // CRUD principal
+        // ===================== Dashboard / Listados ======================
+        List<OrdenRecaudacionModel> ListarPorUsuario(int codigoUsuario, string estado);
+
+        // ===================== CRUD principal ============================
         List<OrdenRecaudacionModel> ObtenerOrdenes(int? codigoUsuario, string estado);
         OrdenRecaudacionModel ObtenerOrdenPorId(int id);
         int CrearOrden(OrdenRecaudacionModel orden);
         bool ActualizarOrden(OrdenRecaudacionModel orden);
         bool CambiarEstadoOrden(int id, string nuevoEstado);
 
-        // Buscar / Estadísticas / Pagos
+        // ===================== Buscar / Estadísticas / Pagos ==============
         List<OrdenRecaudacionModel> BuscarOrdenes(string criterio, int? codigoUsuario);
         Dictionary<string, object> ObtenerEstadisticas(int codigoUsuario);
         bool RegistrarPago(int idOrden, PagoModel pago);
 
-        // Para Dashboard/Orden (si aún lo usas en DataTable)
+        // ===================== Legacy (si aún existe código viejo) ========
         DataTable ObtenerOrdenesPorUsuario(int codigoUsuario);
 
-        // Para PDF
+        // ===================== PDF =======================================
         OrdenRecaudacionPdfDto ObtenerDatosParaPdf(int ordenId, int usuarioId);
 
-        // Wrappers BL (para que compile cuando llamas _dao.ListarPorUsuario / ObtenerPorId / etc.)
-        List<OrdenRecaudacionModel> ListarPorUsuario(int codigoUsuario, string estado);
+        // ===================== Wrappers de compatibilidad =================
+        // (Para que compile si en otros lugares llamas: ObtenerPorId/Insertar/Actualizar/CambiarEstado)
         OrdenRecaudacionModel ObtenerPorId(int id);
         int Insertar(OrdenRecaudacionModel orden);
         bool Actualizar(OrdenRecaudacionModel orden);

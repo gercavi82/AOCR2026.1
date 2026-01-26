@@ -267,11 +267,15 @@
     <Compile Include="Controllers\UsuarioController.cs" />
     <Compile Include="Controllers\RolController.cs" />
     <Compile Include="Controllers\HomeController.cs" />
+    <Compile Include="Filters\SessionExpireAttribute.cs" />
+    <Compile Include="Filters\SecurityFilters.cs" />
     <Compile Include="Filters\RequireOrdenRecaudacionAttribute.cs" />
     <Compile Include="Global.asax.cs">
       <DependentUpon>Global.asax</DependentUpon>
     </Compile>
     <Compile Include="Models\OrdenRecaudacionNuevaVM.cs" />
+    <Compile Include="Models\ConceptoOptionVM.cs" />
+    <Compile Include="Models\Validation\RucCedulaValidationAttribute.cs" />
     <Compile Include="Models\ViewModels\OrdenRecaudacionPDFModel.cs" />
     <Compile Include="Models\OrdenRecaudacionMV.cs" />
     <Compile Include="Models\PagoFinancieroVM.cs" />
@@ -2668,6 +2672,9 @@
     <Content Include="Content\plugins\summernote\summernote.js.map" />
     <Content Include="Content\plugins\summernote\summernote.min.js.map" />
     <Content Include="Content\plugins\toastr\toastr.js.map" />
+    <Content Include="Scripts\app.js" />
+    <Content Include="Scripts\ordenes-config.js" />
+    <Content Include="Scripts\site.js" />
     <Content Include="Scripts\bootstrap.bundle.js" />
     <Content Include="Scripts\bootstrap.bundle.min.js" />
     <Content Include="Scripts\bootstrap.esm.js" />
@@ -2778,13 +2785,15 @@
     <Content Include="Views\Financiero\ListaPagos.cshtml" />
     <Content Include="Views\Financiero\ValidarPago.cshtml" />
     <Content Include="Views\OrdenRecaudacion\Obligatoria.cshtml" />
-    <Content Include="Views\OrdenRecaudacion\Detalle.cshtml" />
     <Content Include="Views\Dashboard\Index.cshtml" />
     <Content Include="Views\Parametro\EmitirAOCR.cshtml" />
     <Content Include="Views\Parametro\Legalizar.cshtml" />
     <Content Include="Views\Parametro\ValidacionFinal.cshtml" />
-    <Content Include="Views\OrdenRecaudacion\Index.cshtml" />
     <Content Include="Views\OrdenRecaudacion\Nueva.cshtml" />
+    <Content Include="Views\OrdenRecaudacion\Detalles.cshtml" />
+    <Content Include="Views\OrdenRecaudacion\Editar.cshtml" />
+    <Content Include="Views\Orden\Detalle.cshtml" />
+    <Content Include="Views\Orden\MisOrdenes.cshtml" />
   </ItemGroup>
   <ItemGroup>
     <Folder Include="App_Data\" />

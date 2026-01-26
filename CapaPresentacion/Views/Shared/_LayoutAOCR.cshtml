@@ -1,7 +1,6 @@
 ﻿<!DOCTYPE html>
 <html lang="es" data-theme="light">
 <head>
-    <!-- Meta tags esenciales -->
     <meta charset="utf-8" />
     <meta http-equiv="X-UA-Compatible" content="IE=edge" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes" />
@@ -10,26 +9,15 @@
     <meta name="keywords" content="DGAC, Aviación Civil, Ecuador, AOCR, Órdenes de Recaudación" />
 
     <!-- CSP simplificado (compatible con DataTables y plugins) -->
-    @if (HttpContext.Current.IsDebuggingEnabled)
-    {
-        <meta http-equiv="Content-Security-Policy"
-              content="default-src 'self' https:;
-                       script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://code.jquery.com;
-                       style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com;
-                       img-src 'self' data: https:;
-                       font-src 'self' https: https://cdnjs.cloudflare.com;
-                       connect-src 'self' https:;" />
-    }
-    else
-    {
-        <meta http-equiv="Content-Security-Policy"
-              content="default-src 'self' https:;
-                       script-src 'self' https://cdn.jsdelivr.net https://code.jquery.com;
-                       style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net;
-                       img-src 'self' data: https:;
-                       font-src 'self' https://cdn.jsdelivr.net;
-                       connect-src 'self' https:;" />
-    }
+    <meta http-equiv="Content-Security-Policy"
+          content="default-src 'self' https:;
+                   script-src 'self' 'unsafe-inline' 'unsafe-eval'
+                             https://cdn.jsdelivr.net https://code.jquery.com https://cdnjs.cloudflare.com https://cdn.datatables.net;
+                   style-src  'self' 'unsafe-inline'
+                             https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://cdn.datatables.net;
+                   img-src    'self' data: https:;
+                   font-src   'self' data: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net;
+                   connect-src 'self' https:;" />
 
     <!-- Preconexiones para mejorar performance -->
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
@@ -37,9 +25,15 @@
 
     <title>@ViewBag.Title - DGAC Sistema AOCR</title>
 
+    <!-- FontAwesome desde CDN compatible con CSP -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <!-- Bootstrap 5 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+
     <!-- Favicon con múltiples formatos y fallbacks -->
     <link rel="icon" type="image/x-icon" href="@Url.Content("~/Content/imagenes/favicon.ico")"
-          onerror="this.href='data:image/x-icon;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAACXBIWXMAAA7EAAAOxAGVKw4bAAABfklEQVQ4jY2Tv0tVYRTFf9/3Pdd7vQb2cP0BhVlkiGRlIUYRDn8FBS6CQ7i4OIkgBFHgIo6+haogbWk2gTi4lJOS3YcNQU6F+F7fPX3jfclL+A6Hc87nnMM5B3KSASDpOFAHysB34IOkfSfZnQIDwGtgBvh7QW8PqElaO2VgrwMzgHHG3gBNYFVST1JfQNI08BQYAF8k/RkSJwG3gS1J7aEFwAHgC+AHyZKOJH0BuoVdDViR1L9Ahjt5z3p8qecp3lW7wCVJ7y7yZ0VNK8AekEryIx/MuwDXgZ+Snp00cqcB1BwDZ4H7kuYz9qokA9M2M9xJgM9AZ0QS57L/Am6Y2Q7Ql9ST1J3sDvAC+Bj/9i9iLWChMHoy2Q3gDvAFmC/s3gKzkZ4uOxw6wGdJS7kGkQOgk9U6C7wGXgH3JM2a2U3gHvAEeFZoAGWgDHyT9Ge0B/vAY+AScBN4CNwCdoBnkr4mklYlrYzIl4H3wEvg7zj9z8gT/wFQzM1NY3dQQQAAAABJRU5ErkJggg=='" />
+          onerror="this.href='data:image/x-icon;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAACXBIWXMAAA7EAAAOxAGVKw4bAAABfklEQVQ4jY2Tv0tVYRTFf9/3Pdd7vQb2cP0BhVlkiGRlIUYRDn8FBS6CQ7i4OIkgBFHgIo6+haogbWk2gTi4lJOS3YcNQU6F+F7fPX3jfclL+A6Hc87nnMM5B3KSASDpOFAH3gFngL8X9PaAmqS1Uwb2OjADGGfsDdA0s1VJfUl9AUnTwFNgAHyR9GdInATcBrYktYcWAAeAL4AfJEs6kvQF6BZ2NWBFUv8CGe7kPevxpZ6neFftApckvbvInxU1rQB7QCrJj3ww7wJcB35Kena83DnIAdDJap0FXgOvgHttN3sE9AAAEABJREFUeNrtlWlsW2Uaxt9zvuMlXhIntZPGu+wkTdM0TZYW0rZ0I22h0MoCIhRQYaaCSr0BNJAQEpcxSCMhwYUZIIo0YwRCgJYhVUtpKUHZ0nQf23HiJW4c70u8OZ9fO3aSmab9ix8/xfru9z7P93zP+7zH6/8B0McN1sxkxh5TvN91WY0u1ap1Gq9HDVbzjq0P5KQ2i64z0LFq7yKk/hmG+39kZX9lXVf/B0bXePH3eyB9jfXuZ8GXlz8F59veew3Xw9ux8Kk/IHde9oLrge2ApJs27iBQWbqAM/0DAv9BxTUsq6r0vNeRWF9Zaf7gV/sG3rq/2aSwQNThQvJb8P6NsD0BxQdSGuQQn/oq2W+Y9e5nwby5BAPtP8BafzubN2xnoL2NdZt3MNB+4W7AdVuZedP0BdD6un7wtt50Q+/QhHRXU2X8V09+99+1mQ1aSZJcUX+E1CxS2A8S5tJqknE4/X9mKmoADIIBAAp1cxn4W1z1eUmpHk29mVmW0+SmJ8l3TC1h0zv3wvIcDN0gNBrh7dU4j27l2jdf4P7D97zUe/Q46zY/vkA1ejyeBdo0Cz4P3PcB3MPw1dLSE3l99tjO1f5Pdh/9HGuVixWWgrDLgT1eBZ4sDd3iYdXKBt4b0i8TvETu+2x96GFUKjU1tfX85o29HLp9Cx/V19FjdXBsPI42I0h77aBlGgqQpQp4wEyw9uRxtv/mZTb9/lXqN24mGgwKEkGKC/4D2qIP+RCLzrEAAAAASUVORK5CYII=';" />
     <link rel="apple-touch-icon" href="@Url.Content("~/Content/imagenes/apple-touch-icon.png")">
 
     <!-- CSS Bundles con fallback directo -->
@@ -50,12 +44,6 @@
     }
     else
     {
-        <!-- Bootstrap 5 CSS -->
-        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css">
-
-        <!-- Font Awesome -->
-        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-
         <!-- AdminLTE CSS -->
         <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/admin-lte@3.2/dist/css/adminlte.min.css">
 
@@ -167,10 +155,12 @@
 </head>
 
 <body class="hold-transition sidebar-mini layout-fixed layout-navbar-fixed">
-    <!-- CSRF Token -->
-    <input type="hidden" id="__RequestVerificationToken"
-           name="__RequestVerificationToken"
-           value="@Html.AntiForgeryToken()" />
+
+    <!-- ✅ CORRECCIÓN: AntiForgeryToken para AJAX (FORMA CORRECTA) -->
+    <!-- (no lo pongas dentro de value="", porque Html.AntiForgeryToken() devuelve un input completo) -->
+    <form id="__AjaxAntiForgeryForm" style="display:none;">
+        @Html.AntiForgeryToken()
+    </form>
 
     <!-- Global Loader -->
     <div id="global-loader">
@@ -258,7 +248,7 @@
                              class="user-image img-circle elevation-1"
                              alt="@avatarAlt"
                              width="32" height="32"
-                             onerror="this.onerror=null; this.src='@defaultAvatar'; this.classList.add('img-fallback'); this.textContent='@avatarAlt[0]';">
+                             onerror="this.onerror=null; this.src='@defaultAvatar';">
                         <span class="d-none d-md-inline ms-2" id="user-display-name">@avatarAlt</span>
                     </a>
                     <div class="dropdown-menu dropdown-menu-lg dropdown-menu-end">
@@ -267,7 +257,7 @@
                                  class="img-circle elevation-2 mb-2"
                                  alt="@avatarAlt"
                                  width="90" height="90"
-                                 onerror="this.onerror=null; this.src='@defaultAvatar'; this.classList.add('img-fallback'); this.textContent='@avatarAlt[0]';">
+                                 onerror="this.onerror=null; this.src='@defaultAvatar';">
                             <p class="mb-0">
                                 <span id="user-fullname" class="d-block">@Session["NombreUsuario"]</span>
                                 <small id="user-role" class="text-muted">@Session["Rol"]</small>
@@ -311,7 +301,7 @@
                              class="img-circle elevation-2"
                              alt="@avatarAlt"
                              width="40" height="40"
-                             onerror="this.onerror=null; this.src='@defaultAvatar'; this.classList.add('img-fallback'); this.textContent='@avatarAlt[0]';">
+                             onerror="this.onerror=null; this.src='@defaultAvatar';">
                     </div>
                     <div class="info">
                         <a href="@Url.Action("MiPerfil", "Usuario")" class="d-block">@avatarAlt</a>
@@ -348,7 +338,6 @@
                                     </a>
                                 </li>
 
-                                @* Mostrar controlador si NO es Home *@
                                 @if (!string.IsNullOrEmpty(controllerName) &&
                                      !controllerName.Equals("Home", StringComparison.OrdinalIgnoreCase))
                                 {
@@ -363,8 +352,6 @@
                     </div>
                 </div>
             </section>
-
-
 
             <!-- Contenido -->
             <section class="content px-3 pb-4">
@@ -395,87 +382,185 @@
     </div>
 
     <!-- ========== SCRIPTS EN ORDEN CORRECTO ========== -->
-    <!-- 1. jQuery PRIMERO (con fallback robusto) -->
-    <script src="https://code.jquery.com/jquery-3.6.4.min.js"></script>
+    <!-- ✅ CORRECCIÓN: jQuery PRIMERO, luego dependencias -->
+    <!-- 1. jQuery con fallback inmediato -->
+    <script src="@Url.Content("~/Scripts/jquery-3.7.1.min.js")"></script>
     <script>
-        // Fallback si CDN falla
-        if (!window.jQuery || typeof jQuery === 'undefined') {
-            console.warn('jQuery CDN falló, cargando localmente...');
-            document.write('<script src="@Url.Content("~/Scripts/jquery-3.6.4.min.js")"><\/script>');
-
-            // Esperar a que cargue el local y luego cargar Bootstrap
-            var checkJQuery = setInterval(function() {
-                if (window.jQuery && typeof jQuery !== 'undefined') {
-                    clearInterval(checkJQuery);
-                    console.log('jQuery cargado localmente');
-                    loadBootstrap();
-                }
-            }, 100);
-        } else {
-            console.log('jQuery cargado desde CDN');
-            loadBootstrap();
-        }
-
-        function loadBootstrap() {
-            // Cargar Bootstrap después de jQuery
-            var bootstrapScript = document.createElement('script');
-            bootstrapScript.src = 'https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js';
-            bootstrapScript.integrity = 'sha384-w76AqPfDkMBDXo30jS1Sgez6pr3x5MlQ1ZAGC+nuZB+EYdgRZgiwxhTBTkF7CXvN';
-            bootstrapScript.crossOrigin = 'anonymous';
-
-            bootstrapScript.onload = function() {
-                console.log('Bootstrap 5 cargado');
-                loadRemainingScripts();
-            };
-
-            bootstrapScript.onerror = function() {
-                console.error('Bootstrap CDN falló, cargando localmente...');
-                document.write('<script src="@Url.Content("~/Scripts/bootstrap.bundle.min.js")"><\/script>');
-                setTimeout(loadRemainingScripts, 100);
-            };
-
-            document.body.appendChild(bootstrapScript);
-        }
-
-        function loadRemainingScripts() {
-            // Cargar scripts restantes después de Bootstrap
-            loadScript('https://cdn.datatables.net/1.13.4/js/jquery.dataTables.min.js', 'DataTables');
-            loadScript('https://cdn.datatables.net/1.13.4/js/dataTables.bootstrap5.min.js', 'DataTables Bootstrap');
-            loadScript('https://cdn.datatables.net/responsive/2.4.1/js/dataTables.responsive.min.js', 'DataTables Responsive');
-            loadScript('https://cdn.jsdelivr.net/npm/sweetalert2@11', 'SweetAlert2');
-            loadScript('https://cdn.jsdelivr.net/npm/admin-lte@3.2/dist/js/adminlte.min.js', 'AdminLTE');
-
-            // Validación jQuery (si no está en bundle)
-            if (!$.validator) {
-                loadScript('https://cdnjs.cloudflare.com/ajax/libs/jquery-validate/1.19.5/jquery.validate.min.js', 'jQuery Validate');
-                loadScript('https://cdnjs.cloudflare.com/ajax/libs/jquery-validation-unobtrusive/4.0.0/jquery.validate.unobtrusive.min.js', 'Unobtrusive');
-            }
-
-            // Scripts locales
-            loadScript('@Url.Content("~/Scripts/site.js")', 'Site JS');
-            loadScript('@Url.Content("~/Scripts/app.js")', 'App JS');
-        }
-
-        function loadScript(src, name) {
-            var script = document.createElement('script');
-            script.src = src;
-            script.async = false; // Importante para mantener orden
-            script.onload = function() { console.log(name + ' cargado'); };
-            script.onerror = function() { console.warn('Error cargando: ' + name); };
-            document.body.appendChild(script);
+        if (!window.jQuery) {
+            console.warn('⚠️ jQuery local no cargó, intentando CDN...');
+            document.write('<script src="https://code.jquery.com/jquery-3.7.1.min.js"><\/script>');
         }
     </script>
 
-    <!-- Configuración global AOCR -->
+    <!-- 2. Bootstrap 5 JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"
+            integrity="sha384-w76AqPfDkMBDXo30jS1Sgez6pr3x5MlQ1ZAGC+nuZB+EYdgRZgiwxhTBTkF7CXvN"
+            crossorigin="anonymous"></script>
+
+    <!-- 3. Loader optimizado que espera jQuery -->
     <script>
-        // Esperar a que jQuery esté disponible
-        var initApp = function() {
-            if (!window.jQuery) {
-                setTimeout(initApp, 100);
+    // ✅ CARGA SEGURA DE DEPENDENCIAS
+    (function initScriptLoader() {
+        // Estado de carga
+        var loadedScripts = {
+            jquery: false,
+            bootstrap: false,
+            datatables: false,
+            sweetalert: false,
+            adminlte: false
+        };
+
+        // Verificar si jQuery ya está listo
+        function checkJQuery() {
+            if (window.jQuery && typeof jQuery !== 'undefined') {
+                loadedScripts.jquery = true;
+                console.log('✅ jQuery verificado');
+                checkBootstrap();
+            } else {
+                console.log('⏳ Esperando jQuery...');
+                setTimeout(checkJQuery, 50);
+            }
+        }
+
+        // Verificar si Bootstrap está listo
+        function checkBootstrap() {
+            if (window.bootstrap && typeof bootstrap !== 'undefined') {
+                loadedScripts.bootstrap = true;
+                console.log('✅ Bootstrap verificado');
+                loadDataTables();
+            } else {
+                console.log('⏳ Esperando Bootstrap...');
+                setTimeout(checkBootstrap, 50);
+            }
+        }
+
+        // Iniciar chequeo
+        checkJQuery();
+
+        function loadDataTables() {
+            console.log('📊 Cargando DataTables...');
+
+            // Cargar en orden secuencial
+            var dtScripts = [
+                'https://cdn.datatables.net/1.13.4/js/jquery.dataTables.min.js',
+                'https://cdn.datatables.net/1.13.4/js/dataTables.bootstrap5.min.js',
+                'https://cdn.datatables.net/responsive/2.4.1/js/dataTables.responsive.min.js'
+            ];
+
+            function loadNextScript(index) {
+                if (index >= dtScripts.length) {
+                    loadedScripts.datatables = true;
+                    console.log('✅ DataTables cargado');
+                    loadSweetAlert();
+                    return;
+                }
+
+                var script = document.createElement('script');
+                script.src = dtScripts[index];
+                script.async = false;
+
+                script.onload = function () {
+                    console.log('✅ ' + dtScripts[index].split('/').pop());
+                    loadNextScript(index + 1);
+                };
+
+                script.onerror = function () {
+                    console.warn('⚠️ Error cargando: ' + dtScripts[index]);
+                    loadNextScript(index + 1);
+                };
+
+                document.body.appendChild(script);
+            }
+
+            loadNextScript(0);
+        }
+
+        function loadSweetAlert() {
+            console.log('💫 Cargando SweetAlert...');
+            var script = document.createElement('script');
+            script.src = 'https://cdn.jsdelivr.net/npm/sweetalert2@11';
+            script.async = false;
+
+            script.onload = function () {
+                loadedScripts.sweetalert = true;
+                console.log('✅ SweetAlert2 cargado');
+                loadAdminLTE();
+            };
+
+            script.onerror = function () {
+                console.warn('⚠️ SweetAlert no se pudo cargar');
+                loadedScripts.sweetalert = false;
+                loadAdminLTE();
+            };
+
+            document.body.appendChild(script);
+        }
+
+        function loadAdminLTE() {
+            console.log('🎨 Cargando AdminLTE...');
+            var script = document.createElement('script');
+            script.src = 'https://cdn.jsdelivr.net/npm/admin-lte@3.2/dist/js/adminlte.min.js';
+            script.async = false;
+
+            script.onload = function () {
+                loadedScripts.adminlte = true;
+                console.log('✅ AdminLTE cargado');
+                loadLocalScripts();
+            };
+
+            script.onerror = function () {
+                console.warn('⚠️ AdminLTE no se pudo cargar');
+                loadedScripts.adminlte = false;
+                loadLocalScripts();
+            };
+
+            document.body.appendChild(script);
+        }
+
+        function loadLocalScripts() {
+            console.log('📁 Cargando scripts locales...');
+
+            // Cargar site.js
+            var siteScript = document.createElement('script');
+            siteScript.src = '@Url.Content("~/Scripts/site.js")';
+            siteScript.async = false;
+            siteScript.onload = function() {
+                console.log('✅ site.js cargado');
+                loadAppJS();
+            };
+            siteScript.onerror = function() {
+                console.warn('⚠️ site.js no se pudo cargar');
+                loadAppJS();
+            };
+            document.body.appendChild(siteScript);
+        }
+
+        function loadAppJS() {
+            // Cargar app.js
+            var appScript = document.createElement('script');
+            appScript.src = '@Url.Content("~/Scripts/app.js")';
+            appScript.async = false;
+            appScript.onload = function() {
+                console.log('✅ app.js cargado');
+                initializeAOCRSystem();
+            };
+            appScript.onerror = function() {
+                console.warn('⚠️ app.js no se pudo cargar');
+                initializeAOCRSystem();
+            };
+            document.body.appendChild(appScript);
+        }
+
+        function initializeAOCRSystem() {
+            console.log('🚀 Inicializando sistema AOCR...');
+
+            // Verificar dependencias mínimas
+            if (!loadedScripts.jquery) {
+                console.error('❌ jQuery no cargado - abortando inicialización');
                 return;
             }
 
-            $(document).ready(function() {
+            $(document).ready(function () {
                 // Configuración global
                 window.AOCR_CONFIG = {
                     apiBaseUrl: '@Url.Content("~/")',
@@ -489,45 +574,52 @@
                     }
                 };
 
-                // Ocultar loader
-                setTimeout(function() {
-                    $('#global-loader').fadeOut(300, function() {
-                        $(this).remove();
-                    });
-                }, 500);
+                // Ocultar loader global
+                $('#global-loader').fadeOut(300, function () {
+                    $(this).remove();
+                    console.log('✅ Loader ocultado');
+                });
 
-                // Inicializar componentes
-                initComponents();
-
-                // Inicializar gestión de sesión
+                // Inicializar componentes globales
+                initGlobalComponents();
                 initSessionManagement();
+                setupAjaxDefaults();
 
-                console.log('AOCR Sistema inicializado');
+                // Integración con site.js y app.js
+                integrateWithSiteJS();
+
+                console.log('✅ Sistema AOCR inicializado completamente');
+                console.log('📊 Dependencias:', loadedScripts);
             });
-        };
+        }
 
-        // Inicializar componentes
-        function initComponents() {
-            // Tooltips
-            $('[data-bs-toggle="tooltip"]').tooltip();
-
-            // Confirmación para acciones peligrosas
-            $(document).on('click', '[data-confirm]', function(e) {
-                e.preventDefault();
-                var message = $(this).data('confirm') || '¿Está seguro?';
-
-                if (confirm(message)) {
-                    var href = $(this).attr('href');
-                    if (href) window.location.href = href;
+        function initGlobalComponents() {
+            // Tooltips de Bootstrap 5
+            if (window.bootstrap && bootstrap.Tooltip) {
+                try {
+                    var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+                    tooltipTriggerList.forEach(function (el) {
+                        try {
+                            // Solo crear si no existe
+                            if (!el._tooltip) {
+                                new bootstrap.Tooltip(el);
+                            }
+                        } catch (e) {
+                            console.warn('Tooltip error:', e);
+                        }
+                    });
+                    console.log('✅ Tooltips globales inicializados:', tooltipTriggerList.length);
+                } catch (e) {
+                    console.error('Error inicializando tooltips:', e);
                 }
-            });
+            }
 
-            // Auto-hide alerts
+            // Alertas auto-ocultantes
             $('.alert-auto-hide').delay(5000).fadeOut(400);
         }
 
-        // Gestión de sesión
         function initSessionManagement() {
+            // Tu código existente de gestión de sesión
             var sessionTimer, warningTimer;
             var WARNING_TIME = 5 * 60 * 1000;
             var TOTAL_TIMEOUT = 25 * 60 * 1000;
@@ -537,114 +629,141 @@
                 clearTimeout(warningTimer);
 
                 warningTimer = setTimeout(showSessionWarning, TOTAL_TIMEOUT - WARNING_TIME);
-                sessionTimer = setTimeout(function() {
+                sessionTimer = setTimeout(function () {
                     window.location.href = '@Url.Action("Logout", "Account")?timeout=true';
                 }, TOTAL_TIMEOUT);
             }
 
             function showSessionWarning() {
-                var modal = new bootstrap.Modal(document.getElementById('session-timeout-warning'));
-                var timeLeft = 300; // 5 minutos en segundos
-                var countdownEl = document.getElementById('session-countdown');
-
-                function updateCountdown() {
-                    var minutes = Math.floor(timeLeft / 60);
-                    var seconds = timeLeft % 60;
-                    countdownEl.textContent = minutes + ':' + (seconds < 10 ? '0' : '') + seconds;
-                    timeLeft--;
-
-                    if (timeLeft >= 0) {
-                        setTimeout(updateCountdown, 1000);
-                    } else {
-                        modal.hide();
-                        window.location.href = '@Url.Action("Logout", "Account")?timeout=true';
-                    }
-                }
-
-                modal.show();
-                updateCountdown();
-
-                $('#btn-extend-session').off('click').on('click', function() {
-                    $.post('@Url.Action("ExtenderSesion", "Account")')
-                        .done(function() {
-                            modal.hide();
-                            resetSessionTimers();
-                            alert('Sesión extendida exitosamente');
-                        })
-                        .fail(function() {
-                            window.location.href = '@Url.Action("Logout", "Account")';
-                        });
-                });
-
-                $('#btn-logout-now').off('click').on('click', function() {
-                    window.location.href = '@Url.Action("Logout", "Account")';
-                });
-            }
-
-            // Iniciar timers
-            resetSessionTimers();
-
-            // Reiniciar con actividad del usuario
-            $(document).on('click keypress mousemove', resetSessionTimers);
-        }
-
-        // Configuración AJAX global
-        $.ajaxSetup({
-            beforeSend: function(xhr) {
-                var token = $('#__RequestVerificationToken').val();
-                if (token) {
-                    xhr.setRequestHeader('RequestVerificationToken', token);
-                }
-                $('body').addClass('waiting');
-            },
-            complete: function() {
-                $('body').removeClass('waiting');
-            },
-            error: function(xhr) {
-                var message = 'Error en la comunicación con el servidor';
-
-                if (xhr.status === 401) {
-                    window.location.href = '@Url.Action("Login", "Account")';
+                if (!window.bootstrap || !bootstrap.Modal) {
+                    console.warn('Bootstrap Modal no disponible para advertencia de sesión');
                     return;
                 }
 
-                if (xhr.status === 403) message = 'Acceso no autorizado';
-                if (xhr.status === 404) message = 'Recurso no encontrado';
-                if (xhr.status === 500) message = 'Error interno del servidor';
+                try {
+                    var modalElement = document.getElementById('session-timeout-warning');
+                    if (!modalElement) return;
 
-                alert(message);
-            }
-        });
+                    var modal = new bootstrap.Modal(modalElement);
+                    var timeLeft = 300;
+                    var countdownEl = document.getElementById('session-countdown');
 
-        // Exponer funciones globales
-        window.AOCR = {
-            showAlert: function(title, message, type) {
-                if (window.Swal) {
-                    Swal.fire({
-                        icon: type || 'info',
-                        title: title,
-                        text: message
+                    function updateCountdown() {
+                        var minutes = Math.floor(timeLeft / 60);
+                        var seconds = timeLeft % 60;
+                        if (countdownEl) {
+                            countdownEl.textContent = minutes + ':' + (seconds < 10 ? '0' : '') + seconds;
+                        }
+                        timeLeft--;
+
+                        if (timeLeft >= 0) {
+                            setTimeout(updateCountdown, 1000);
+                        } else {
+                            modal.hide();
+                            window.location.href = '@Url.Action("Logout", "Account")?timeout=true';
+                        }
+                    }
+
+                    modal.show();
+                    updateCountdown();
+
+                    $('#btn-extend-session').off('click').on('click', function () {
+                        $.post('@Url.Action("ExtenderSesion", "Account")')
+                            .done(function () {
+                                modal.hide();
+                                resetSessionTimers();
+                                // Usar Site.notify si existe, o AOCR.showAlert
+                                if (window.Site && Site.notify) {
+                                    Site.notify('Sesión extendida exitosamente', 'success');
+                                } else if (window.AOCR) {
+                                    AOCR.showAlert('Éxito', 'Sesión extendida', 'success');
+                                }
+                            })
+                            .fail(function () {
+                                window.location.href = '@Url.Action("Logout", "Account")';
+                            });
                     });
-                } else {
-                    alert(title + ': ' + message);
+
+                    $('#btn-logout-now').off('click').on('click', function () {
+                        window.location.href = '@Url.Action("Logout", "Account")';
+                    });
+
+                } catch (error) {
+                    console.error('Error en advertencia de sesión:', error);
                 }
-            },
+            }
 
-            formatCurrency: function(amount) {
+            resetSessionTimers();
+            $(document).on('click keypress mousemove', resetSessionTimers);
+        }
+
+        function setupAjaxDefaults() {
+            $.ajaxSetup({
+                beforeSend: function (xhr) {
+                    var token = $('#__AjaxAntiForgeryForm input[name="__RequestVerificationToken"]').val();
+                    if (token) {
+                        xhr.setRequestHeader('RequestVerificationToken', token);
+                    }
+                    $('body').addClass('waiting');
+                },
+                complete: function () {
+                    $('body').removeClass('waiting');
+                },
+                error: function (xhr) {
+                    var message = 'Error en la comunicación con el servidor';
+
+                    if (xhr.status === 401) {
+                        window.location.href = '@Url.Action("Login", "Account")';
+                        return;
+                    }
+                    if (xhr.status === 403) message = 'Acceso no autorizado';
+                    if (xhr.status === 404) message = 'Recurso no encontrado';
+                    if (xhr.status === 500) message = 'Error interno del servidor';
+
+                    // Usar Site.notify si existe, o alert
+                    if (window.Site && Site.notify) {
+                        Site.notify(message, 'error');
+                    } else {
+                        alert('Error: ' + message);
+                    }
+                }
+            });
+        }
+
+        function integrateWithSiteJS() {
+            // Combinar funcionalidades de Site y AOCR
+            if (!window.AOCR) window.AOCR = {};
+
+            // Si Site.notify existe, usarlo para AOCR.showAlert
+            if (window.Site && Site.notify) {
+                window.AOCR.showAlert = function(title, message, type) {
+                    Site.notify(title + ': ' + message, type);
+                };
+            } else {
+                window.AOCR.showAlert = function(title, message, type) {
+                    if (window.Swal) {
+                        Swal.fire({ icon: type || 'info', title: title, text: message });
+                    } else {
+                        alert(title + ': ' + message);
+                    }
+                };
+            }
+
+            // Funciones de utilidad
+            window.AOCR.formatCurrency = function (amount) {
                 return '$ ' + parseFloat(amount).toFixed(2).replace(/\d(?=(\d{3})+\.)/g, '$&,');
-            },
+            };
 
-            formatDate: function(dateStr) {
+            window.AOCR.formatDate = function (dateStr) {
                 if (!dateStr) return '';
                 var date = new Date(dateStr);
                 return date.toLocaleDateString('es-EC');
-            }
-        };
-
-        // Iniciar la aplicación
-        setTimeout(initApp, 100);
+            };
+        }
+    })();
     </script>
 
+    <!-- ✅ ÚNICA LLAMADA A RenderSection("Scripts") -->
     @RenderSection("Scripts", required: false)
 </body>
 </html>

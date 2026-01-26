@@ -89,6 +89,10 @@ namespace CapaModelo
         [NotMapped]
         public string CargoDirector { get; set; }
 
+        // ✅ Para auditoría en Postgres (aocr_tbsolicitud.created_by / updated_by)
+        public string UsuarioRegistro { get; set; }
+        public string UsuarioActualiza { get; set; }
+
     }
 
 
