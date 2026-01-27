@@ -1,0 +1,454 @@
+﻿@using CapaDatos.DAOs
+@* ~/Views/Shared/_Sidebar.cshtml *@
+<div class="sidebar bg-dark text-white p-3" style="min-height:100vh; width:250px;">
+    <div class="text-center mb-3 border-bottom pb-3">
+        <img src="@Url.Content("~/Content/imganes/logodgac.jpg")"
+             alt="DGAC Logo"
+             class="img-fluid shadow-sm"
+             style="max-height:70px; border-radius: 8px;" />
+
+        <div class="mt-3">
+            <span class="d-block font-weight-bold text-info" style="font-size: 0.85rem;">USUARIO ACTIVO</span>
+            <div class="text-light small">@Session["Correo"]</div>
+            <div class="mt-2">
+                @Html.Partial("_SeleccionarRol")
+            </div>
+        </div>
+    </div>
+
+    @{
+        var rolActual = Session["Rol"] != null ? Session["Rol"].ToString() : "";
+        int idUsuario = Session["IdUsuario"] != null ? Convert.ToInt32(Session["IdUsuario"]) : 0;
+
+        // Instancia del DAO para validar estados financieros
+        var daoOR = new OrdenRecaudacionDAO();
+        bool tieneOrdenGenerada = daoOR.ExisteORGeneradaOPagada(idUsuario);
+        bool tieneOrdenBorrador = daoOR.ExisteORMinima(idUsuario);
+
+        // Determinar si el usuario requiere orden para su rol
+        bool requiereOrden = rolActual == "Operador" || rolActual == "Solicitante" ||
+                            rolActual == "Inspector" || rolActual == "Tecnico" ||
+                            rolActual == "Administrador";
+
+        // Para roles administrativos/financieros, no requieren orden
+        bool esRolAdministrativo = rolActual == "Financiero" || rolActual == "JefaturaTecnica" ||
+                                  rolActual == "Direccion" || rolActual == "CoordinacionLegal";
+    }
+
+    <!-- Indicador de estado de orden -->
+    @if (requiereOrden)
+    {
+        <div class="alert @(tieneOrdenGenerada ? "alert-success" : tieneOrdenBorrador ? "alert-warning" : "alert-danger")
+             mb-3 py-2 small" role="alert">
+            <div class="d-flex align-items-center">
+                <i class="fas fa-file-invoice-dollar @(tieneOrdenGenerada ? "text-success" : tieneOrdenBorrador ? "text-warning" : "text-danger")
+                   mr-2"></i>
+                <div>
+                    @if (tieneOrdenGenerada)
+                    {
+                        <strong>Orden Generada ✓</strong>
+                        <div class="text-success small">Puede acceder al sistema</div>
+                    }
+                    else if (tieneOrdenBorrador)
+                    {
+                        <strong>Orden en Borrador ⚠</strong>
+                        <div class="text-warning small">
+                            <a href="@Url.Action("Obligatoria", "OrdenRecaudacion")" class="text-warning">Completar orden</a>
+                        </div>
+                    }
+                    else
+                    {
+                        <strong>Orden Requerida!</strong>
+                        <div class="text-danger small">
+                            <a href="@Url.Action("Obligatoria", "OrdenRecaudacion")" class="text-danger">Crear orden primero</a>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    }
+
+    <div class="menu-container">
+        <h6 class="text-uppercase text-muted font-weight-bold mb-3" style="font-size: 0.7rem; letter-spacing: 1px;">
+            Menú de Gestión
+        </h6>
+
+        @* ===================== ORDENES DE RECAUDACIÓN ===================== *@
+        <div class="nav-group mb-4">
+            <div class="text-primary small font-weight-bold mb-2">
+                <i class="fas fa-file-invoice-dollar mr-1"></i> ÓRDENES DE RECAUDACIÓN
+            </div>
+            <ul class="list-unstyled ml-2">
+                <li class="mb-2">
+                    <i class="fas fa-plus-circle @(tieneOrdenBorrador ? "text-warning" : "text-success") mr-2"></i>
+                    @if (tieneOrdenBorrador)
+                    {
+                        <a href="@Url.Action("Obligatoria", "OrdenRecaudacion")"
+                           class="text-warning text-decoration-none hover-link fw-bold">
+                            Completar Orden Pendiente
+                        </a>
+                    }
+                    else
+                    {
+                        <a href="@Url.Action("Nueva", "OrdenRecaudacion")"
+                           class="text-light text-decoration-none hover-link">
+                            Nueva Orden
+                        </a>
+                    }
+                </li>
+                <li class="mb-2">
+                    <i class="fas fa-history text-white-50 mr-2"></i>
+                    <a href="@Url.Action("MisOrdenes", "Orden")" class="text-light text-decoration-none hover-link">
+                        Mis Órdenes
+                    </a>
+                </li>
+                @if (esRolAdministrativo)
+                {
+                    <li class="mb-2">
+                        <i class="fas fa-list-alt text-white-50 mr-2"></i>
+                        <a href="@Url.Action("TodasOrdenes", "Financiero")" class="text-light text-decoration-none hover-link">
+                            Todas las Órdenes
+                        </a>
+                    </li>
+                }
+            </ul>
+        </div>
+
+        @* ===================== SOLICITANTE ===================== *@
+        @if (rolActual == "Operador" || rolActual == "Administrador" || rolActual == "Solicitante")
+        {
+            <div class="nav-group mb-4">
+                <div class="text-warning small font-weight-bold mb-2">
+                    <i class="fas fa-user-edit mr-1"></i> SOLICITANTE
+                </div>
+                <ul class="list-unstyled ml-2">
+                    @* Opciones técnicas bloqueadas hasta que exista una orden válida *@
+                    <li class="mb-2 @(tieneOrdenGenerada ? "" : "opacity-50")">
+                        <i class="fas fa-plus @(tieneOrdenGenerada ? "text-success" : "text-muted") mr-2"></i>
+                        @if (tieneOrdenGenerada)
+                        {
+                            <a href="javascript:void(0);" onclick="window.cargarFormulario(0)"
+                               class="text-light text-decoration-none hover-link">
+                                Nueva Solicitud AOCR
+                            </a>
+                        }
+                        else
+                        {
+                            <span class="text-muted small" title="Requiere Orden de Recaudación generada">
+                                Nueva Solicitud AOCR <i class="fas fa-lock ml-1"></i>
+                            </span>
+                        }
+                    </li>
+
+                    <li class="mb-2">
+                        <i class="fas fa-folder-open text-white-50 mr-2"></i>
+                        <a href="@Url.Action("Index", "SolicitudAOCR")" class="text-light text-decoration-none hover-link">
+                            Mis Solicitudes
+                        </a>
+                    </li>
+
+                    <li class="mb-2 @(tieneOrdenGenerada ? "" : "opacity-50")">
+                        <i class="fas fa-plane @(tieneOrdenGenerada ? "text-info" : "text-muted") mr-2"></i>
+                        @if (tieneOrdenGenerada)
+                        {
+                            <a href="@Url.Action("RegistrarAeronave", "Operador")" class="text-light text-decoration-none hover-link">
+                                Registrar Aeronave
+                            </a>
+                        }
+                        else
+                        {
+                            <span class="text-muted small">Registrar Aeronave <i class="fas fa-lock ml-1"></i></span>
+                        }
+                    </li>
+
+                    <li class="mb-2 @(tieneOrdenGenerada ? "" : "opacity-50")">
+                        <i class="fas fa-file-upload @(tieneOrdenGenerada ? "text-info" : "text-muted") mr-2"></i>
+                        @if (tieneOrdenGenerada)
+                        {
+                            <a href="@Url.Action("CargarDocumentos", "SolicitudAOCR")" class="text-light text-decoration-none hover-link">
+                                Cargar Documentos
+                            </a>
+                        }
+                        else
+                        {
+                            <span class="text-muted small">Cargar Documentos <i class="fas fa-lock ml-1"></i></span>
+                        }
+                    </li>
+                </ul>
+            </div>
+        }
+
+        @* ===================== INSPECCIÓN / TÉCNICA ===================== *@
+        @if (rolActual == "Inspector" || rolActual == "Administrador" || rolActual == "Tecnico")
+        {
+            <div class="nav-group mb-4">
+                <div class="text-info small font-weight-bold mb-2">
+                    <i class="fas fa-search mr-1"></i> GESTIÓN TÉCNICA
+                </div>
+                <ul class="list-unstyled ml-2">
+                    <li class="mb-2 @(tieneOrdenGenerada ? "" : "opacity-50")">
+                        <i class="fas fa-tasks @(tieneOrdenGenerada ? "text-white-50" : "text-muted") mr-2"></i>
+                        @if (tieneOrdenGenerada)
+                        {
+                            <a href="@Url.Action("RevisarSolicitudes", "SolicitudAOCR")" class="text-light text-decoration-none hover-link">
+                                Revisar Solicitudes
+                            </a>
+                        }
+                        else
+                        {
+                            <span class="text-muted small">Revisar Solicitudes <i class="fas fa-lock ml-1"></i></span>
+                        }
+                    </li>
+
+                    <li class="mb-2 @(tieneOrdenGenerada ? "" : "opacity-50")">
+                        <i class="fas fa-user-check @(tieneOrdenGenerada ? "text-white-50" : "text-muted") mr-2"></i>
+                        @if (tieneOrdenGenerada)
+                        {
+                            <a href="@Url.Action("AsignarInspector", "Tecnico")" class="text-light text-decoration-none hover-link">
+                                Asignar Inspector
+                            </a>
+                        }
+                        else
+                        {
+                            <span class="text-muted small">Asignar Inspector <i class="fas fa-lock ml-1"></i></span>
+                        }
+                    </li>
+
+                    <li class="mb-2 @(tieneOrdenGenerada ? "" : "opacity-50")">
+                        <i class="fas fa-clipboard-check @(tieneOrdenGenerada ? "text-success" : "text-muted") mr-2"></i>
+                        @if (tieneOrdenGenerada)
+                        {
+                            <a href="@Url.Action("RealizarInspeccion", "Inspector")" class="text-light text-decoration-none hover-link">
+                                Realizar Inspección
+                            </a>
+                        }
+                        else
+                        {
+                            <span class="text-muted small">Realizar Inspección <i class="fas fa-lock ml-1"></i></span>
+                        }
+                    </li>
+                </ul>
+            </div>
+        }
+
+        @* ===================== FINANCIERO ===================== *@
+        @if (rolActual == "Financiero" || rolActual == "Administrador")
+        {
+            <div class="nav-group mb-4">
+                <div class="text-success small font-weight-bold mb-2">
+                    <i class="fas fa-money-bill-wave mr-1"></i> ÁREA FINANCIERA
+                </div>
+                <ul class="list-unstyled ml-2">
+                    <li class="mb-2">
+                        <i class="fas fa-receipt text-white-50 mr-2"></i>
+                        <a href="@Url.Action("TodasOrdenes", "Financiero")" class="text-light text-decoration-none hover-link">
+                            Gestionar Órdenes
+                        </a>
+                    </li>
+                    <li class="mb-2">
+                        <i class="fas fa-check-circle text-white-50 mr-2"></i>
+                        <a href="@Url.Action("Index", "Financiero")" class="text-light text-decoration-none hover-link">
+                            Verificar Pagos
+                        </a>
+                    </li>
+                    <li class="mb-2">
+                        <i class="fas fa-file-invoice text-white-50 mr-2"></i>
+                        <a href="@Url.Action("GenerarReportes", "Financiero")" class="text-light text-decoration-none hover-link">
+                            Reportes Financieros
+                        </a>
+                    </li>
+                </ul>
+            </div>
+        }
+
+        @* ===================== COORDINACIÓN LEGAL ===================== *@
+        @if (rolActual == "CoordinacionLegal" || rolActual == "Administrador")
+        {
+            <div class="nav-group mb-4">
+                <div class="text-purple small font-weight-bold mb-2">
+                    <i class="fas fa-balance-scale mr-1"></i> COORDINACIÓN LEGAL
+                </div>
+                <ul class="list-unstyled ml-2">
+                    <li class="mb-2">
+                        <i class="fas fa-gavel text-white-50 mr-2"></i>
+                        <a href="@Url.Action("RevisarLegal", "CoordinacionLegal")" class="text-light text-decoration-none hover-link">
+                            Revisión Legal
+                        </a>
+                    </li>
+                    <li class="mb-2">
+                        <i class="fas fa-file-contract text-white-50 mr-2"></i>
+                        <a href="@Url.Action("GenerarCertificados", "CoordinacionLegal")" class="text-light text-decoration-none hover-link">
+                            Generar Certificados
+                        </a>
+                    </li>
+                </ul>
+            </div>
+        }
+
+        @* ===================== DIRECCIÓN / JEFATURA ===================== *@
+        @if (rolActual == "Direccion" || rolActual == "JefaturaTecnica" || rolActual == "Administrador")
+        {
+            <div class="nav-group mb-4">
+                <div class="text-danger small font-weight-bold mb-2">
+                    <i class="fas fa-user-tie mr-1"></i> DIRECCIÓN / JEFATURA
+                </div>
+                <ul class="list-unstyled ml-2">
+                    <li class="mb-2">
+                        <i class="fas fa-chart-line text-white-50 mr-2"></i>
+                        <a href="@Url.Action("DashboardGerencial", "Direccion")" class="text-light text-decoration-none hover-link">
+                            Dashboard Gerencial
+                        </a>
+                    </li>
+                    <li class="mb-2">
+                        <i class="fas fa-check-double text-white-50 mr-2"></i>
+                        <a href="@Url.Action("AprobarSolicitudes", "Direccion")" class="text-light text-decoration-none hover-link">
+                            Aprobar Solicitudes
+                        </a>
+                    </li>
+                    <li class="mb-2">
+                        <i class="fas fa-cogs text-white-50 mr-2"></i>
+                        <a href="@Url.Action("ConfiguracionSistema", "Administrador")" class="text-light text-decoration-none hover-link">
+                            Configuración Sistema
+                        </a>
+                    </li>
+                </ul>
+            </div>
+        }
+    </div>
+
+    <hr class="bg-secondary opacity-25" />
+
+    <div class="mt-auto">
+        <ul class="list-unstyled">
+            <li class="mb-2">
+                <i class="fas fa-home text-info mr-2"></i>
+                <a href="@Url.Action("Index", "Home")" class="text-light text-decoration-none hover-link">
+                    Dashboard Inicio
+                </a>
+            </li>
+
+            @if (!tieneOrdenGenerada && requiereOrden)
+            {
+                <li class="mb-2">
+                    <i class="fas fa-exclamation-triangle text-warning mr-2"></i>
+                    <a href="@Url.Action("Obligatoria", "OrdenRecaudacion")"
+                       class="text-warning fw-bold text-decoration-none hover-link">
+                        ⚠ Orden Requerida
+                    </a>
+                </li>
+            }
+
+            <li>
+                <i class="fas fa-sign-out-alt text-danger mr-2"></i>
+                <a href="@Url.Action("Logout", "Account")"
+                   class="text-danger font-weight-bold text-decoration-none hover-link">
+                    Cerrar Sesión
+                </a>
+            </li>
+        </ul>
+    </div>
+</div>
+
+<style>
+    .opacity-50 {
+        opacity: 0.5;
+    }
+
+    .pointer-events-none {
+        pointer-events: none;
+        cursor: not-allowed;
+    }
+
+    .hover-link {
+        transition: all 0.2s;
+        display: inline-block;
+        border-radius: 4px;
+        padding: 4px 8px;
+    }
+
+        .hover-link:hover {
+            color: #17a2b8 !important;
+            background-color: rgba(255, 255, 255, 0.1);
+            text-decoration: none;
+            transform: translateX(5px);
+        }
+
+    .sidebar {
+        box-shadow: 4px 0 10px rgba(0,0,0,0.1);
+        display: flex;
+        flex-direction: column;
+        z-index: 1000;
+        background: linear-gradient(180deg, #1f2937 0%, #111827 100%);
+    }
+
+    .nav-group {
+        border-left: 3px solid;
+        padding-left: 10px;
+    }
+
+        .nav-group:nth-child(2) {
+            border-color: #007bff;
+        }
+        /* Ordenes */
+        .nav-group:nth-child(3) {
+            border-color: #ffc107;
+        }
+        /* Solicitante */
+        .nav-group:nth-child(4) {
+            border-color: #17a2b8;
+        }
+        /* Técnica */
+        .nav-group:nth-child(5) {
+            border-color: #28a745;
+        }
+        /* Financiero */
+        .nav-group:nth-child(6) {
+            border-color: #6f42c1;
+        }
+        /* Legal */
+        .nav-group:nth-child(7) {
+            border-color: #dc3545;
+        }
+    /* Dirección */
+
+    .alert {
+        border: none;
+        border-radius: 6px;
+        font-size: 0.8rem;
+    }
+
+    .text-purple {
+        color: #6f42c1;
+    }
+</style>
+
+<script>
+    // Verificar estado de orden periódicamente
+    setInterval(function() {
+        $.ajax({
+            url: '@Url.Action("VerificarEstadoOrden", "Account")',
+            type: 'GET',
+            success: function(response) {
+                if (response.redireccionar) {
+                    // Si no tiene orden y está en una página que la requiere, redirigir
+                    const currentPath = window.location.pathname.toLowerCase();
+                    const allowedPaths = ['/ordenrecaudacion/', '/account/', '/login', '/obligatoria'];
+
+                    const shouldRedirect = !allowedPaths.some(path => currentPath.includes(path));
+
+                    if (shouldRedirect) {
+                        window.location.href = '@Url.Action("Obligatoria", "OrdenRecaudacion")';
+                    }
+                }
+            }
+        });
+    }, 30000); // Cada 30 segundos
+
+    // Mostrar tooltip para elementos bloqueados
+    $(document).ready(function() {
+        $('[title]').tooltip({
+            placement: 'right',
+            trigger: 'hover'
+        });
+    });
+</script>
