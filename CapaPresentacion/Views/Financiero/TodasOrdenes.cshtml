@@ -1,4 +1,4 @@
-@model List<CapaDatos.Models.OrdenRecaudacionModel>
+﻿@model List<CapaDatos.Models.OrdenRecaudacionModel>
 
 @{
     ViewBag.Title = "Todas las Órdenes de Recaudación";
@@ -41,9 +41,9 @@
                                     <td>@orden.Id</td>
                                     <td>@orden.NumeroOrden</td>
                                     <td>@orden.CodigoUsuario</td>
-                                    <td>@orden.FechaCreacion?.ToString("dd/MM/yyyy")</td>
+                                    <td>@orden.FechaCreacion.ToString("dd/MM/yyyy")</td>
                                     <td>@orden.Estado</td>
-                                    <td>@orden.Total?.ToString("C")</td>
+                                    <td>@orden.Total.ToString("C")</td>
                                     <td>
                                         <a href="@Url.Action("Detalles", "OrdenRecaudacion", new { id = orden.Id })"
                                            class="btn btn-sm btn-info">Ver Detalles</a>

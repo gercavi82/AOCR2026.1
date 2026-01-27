@@ -19,6 +19,15 @@ namespace CapaPresentacion.Controllers
         }
 
         // ============================================================
+        // DASHBOARD GERENCIAL
+        // ============================================================
+        [Authorize(Roles = "Direccion")]
+        public ActionResult DashboardGerencial()
+        {
+            return View();
+        }
+
+        // ============================================================
         // DETALLE
         // ============================================================
         public ActionResult Detalle(int id)
@@ -117,6 +126,156 @@ namespace CapaPresentacion.Controllers
                 TempData["error"] = ex.Message;
                 return RedirectToAction("Eliminar", new { id });
             }
+        }
+
+        // ============================================================
+        // APROBAR SOLICITUDES - DIRECCIÓN
+        // ============================================================
+        [Authorize(Roles = "Direccion")]
+        public ActionResult AprobarSolicitudes()
+        {
+            var solicitudesPendientes = SolicitudAOCRBL.ListarPorEstado("VALIDADO_TECNICAMENTE");
+            return View(solicitudesPendientes);
+        }
+
+        // ============================================================
+        // VALIDACIÓN FINAL
+        // ============================================================
+        [Authorize(Roles = "Direccion")]
+        public ActionResult ValidacionFinal(int id)
+        {
+            var solicitud = SolicitudAOCRBL.ObtenerPorId(id);
+            if (solicitud == null || solicitud.Estado != "VALIDADO_TECNICAMENTE")
+                return HttpNotFound("Solicitud no encontrada o no está lista para validación final");
+
+            return View(solicitud);
+        }
+
+        [HttpPost]
+        [Authorize(Roles = "Direccion")]
+        [ValidateAntiForgeryToken]
+        public ActionResult ValidacionFinal(int id, bool aprobada, string observaciones, string condicionesEspeciales, int vigencia)
+        {
+            try
+            {
+                var solicitud = SolicitudAOCRBL.ObtenerPorId(id);
+                if (solicitud == null || solicitud.Estado != "VALIDADO_TECNICAMENTE")
+                    return HttpNotFound("Solicitud no encontrada o no está lista para validación final");
+
+                int userId = ObtenerUsuarioActualId();
+
+                if (aprobada)
+                {
+                    // Cambiar estado a aprobado por dirección
+                    string mensaje;
+                    SolicitudAOCRBL.CambiarEstado(id, "APROBADO_POR_DIRECCION", userId, observaciones ?? "Aprobado por Dirección", out mensaje);
+
+                    TempData["success"] = "Solicitud aprobada correctamente. Pasará a legalización.";
+                    return RedirectToAction("Legalizar", new { id });
+                }
+                else
+                {
+                    // Rechazar solicitud
+                    string mensaje;
+                    SolicitudAOCRBL.CambiarEstado(id, "RECHAZADO_POR_DIRECCION", userId, observaciones ?? "Rechazado por Dirección", out mensaje);
+
+                    TempData["error"] = "Solicitud rechazada.";
+                    return RedirectToAction("AprobarSolicitudes");
+                }
+            }
+            catch (Exception ex)
+            {
+                TempData["error"] = "Error al procesar la validación: " + ex.Message;
+                return RedirectToAction("ValidacionFinal", new { id });
+            }
+        }
+
+        // ============================================================
+        // LEGALIZAR CERTIFICADO
+        // ============================================================
+        [Authorize(Roles = "Direccion")]
+        public ActionResult Legalizar(int id)
+        {
+            var solicitud = SolicitudAOCRBL.ObtenerPorId(id);
+            if (solicitud == null || solicitud.Estado != "APROBADO_POR_DIRECCION")
+                return HttpNotFound("Solicitud no encontrada o no está lista para legalización");
+
+            return View(solicitud);
+        }
+
+        [HttpPost]
+        [Authorize(Roles = "Direccion")]
+        [ValidateAntiForgeryToken]
+        public ActionResult Legalizar(int id, string firmaDirector, string selloOficial)
+        {
+            try
+            {
+                var solicitud = SolicitudAOCRBL.ObtenerPorId(id);
+                if (solicitud == null || solicitud.Estado != "APROBADO_POR_DIRECCION")
+                    return HttpNotFound("Solicitud no encontrada o no está lista para legalización");
+
+                int userId = ObtenerUsuarioActualId();
+
+                // Cambiar estado a legalizado
+                string mensaje;
+                SolicitudAOCRBL.CambiarEstado(id, "LEGALIZADO", userId, "Certificado legalizado y firmado", out mensaje);
+
+                TempData["success"] = "Certificado legalizado correctamente.";
+                return RedirectToAction("EmitirAOCR", new { id });
+            }
+            catch (Exception ex)
+            {
+                TempData["error"] = "Error al legalizar el certificado: " + ex.Message;
+                return RedirectToAction("Legalizar", new { id });
+            }
+        }
+
+        // ============================================================
+        // EMITIR CERTIFICADO AOCR
+        // ============================================================
+        [Authorize(Roles = "Direccion")]
+        public ActionResult EmitirAOCR(int id)
+        {
+            var solicitud = SolicitudAOCRBL.ObtenerPorId(id);
+            if (solicitud == null || solicitud.Estado != "LEGALIZADO")
+                return HttpNotFound("Solicitud no encontrada o no está lista para emisión");
+
+            return View(solicitud);
+        }
+
+        [HttpPost]
+        [Authorize(Roles = "Direccion")]
+        [ValidateAntiForgeryToken]
+        public ActionResult EmitirAOCRConfirm(int id)
+        {
+            try
+            {
+                var solicitud = SolicitudAOCRBL.ObtenerPorId(id);
+                if (solicitud == null || solicitud.Estado != "LEGALIZADO")
+                    return HttpNotFound("Solicitud no encontrada o no está lista para emisión");
+
+                int userId = ObtenerUsuarioActualId();
+
+                // Cambiar estado a emitido
+                string mensaje;
+                SolicitudAOCRBL.CambiarEstado(id, "CERTIFICADO_EMITIDO", userId, "Certificado AOCR emitido", out mensaje);
+
+                TempData["success"] = "Certificado AOCR emitido correctamente.";
+                return RedirectToAction("AprobarSolicitudes");
+            }
+            catch (Exception ex)
+            {
+                TempData["error"] = "Error al emitir el certificado: " + ex.Message;
+                return RedirectToAction("EmitirAOCR", new { id });
+            }
+        }
+
+        private int ObtenerUsuarioActualId()
+        {
+            if (Session["CodigoUsuario"] != null && int.TryParse(Session["CodigoUsuario"].ToString(), out int idUsuario))
+                return idUsuario;
+
+            throw new Exception("No se pudo obtener el ID del usuario actual.");
         }
     }
 }

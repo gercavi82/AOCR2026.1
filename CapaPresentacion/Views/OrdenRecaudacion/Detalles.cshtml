@@ -418,8 +418,10 @@
                         <div class="input-group">
                             <span class="input-group-text">$</span>
                             <input type="number" name="Monto" class="form-control"
-                                   step="0.01" min="0.01" max="@saldoPendiente"
-                                   value="@saldoPendiente" required />
+                                   step="0.01" min="0.01"
+                                   max="@(saldoPendiente.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture))"
+                                   value="@(saldoPendiente.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture))"
+                                   required />
                         </div>
                         <small class="text-muted">Saldo pendiente: $@saldoPendiente.ToString("#,##0.00")</small>
                     </div>
@@ -434,9 +436,6 @@
                             <option value="">Seleccione método...</option>
                             <option value="Transferencia">Transferencia Bancaria</option>
                             <option value="Depósito">Depósito</option>
-                            <option value="Cheque">Cheque</option>
-                            <option value="Efectivo">Efectivo</option>
-                            <option value="Tarjeta">Tarjeta de Crédito/Débito</option>
                         </select>
                     </div>
                     <div class="mb-3">

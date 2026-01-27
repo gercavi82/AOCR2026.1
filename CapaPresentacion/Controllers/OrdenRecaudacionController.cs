@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.IO;
 using System.Web;
 using System.Web.Mvc;
 using CapaDatos.DAOs;
@@ -263,10 +264,21 @@ namespace CapaPresentacion.Controllers
         }
 
         // POST: /OrdenRecaudacion/RegistrarPago/5
+        [HttpGet]
+        [Authorize(Roles = "Solicitante,Administrador")]
+        public ActionResult RegistrarPago(int id)
+        {
+            if (id <= 0)
+                return RedirectToAction("Index");
+
+            TempData["Error"] = "Debe registrar el pago desde el detalle de la orden.";
+            return RedirectToAction("Detalles", new { id = id });
+        }
+
         [HttpPost]
         [Authorize(Roles = "Solicitante,Administrador")]
         [ValidateAntiForgeryToken]
-        public ActionResult RegistrarPago(int id, decimal Monto, string NumeroFactura, string MetodoPago, HttpPostedFileBase ComprobanteArchivo, string Observaciones)
+        public ActionResult RegistrarPago(int id, string Monto, string NumeroFactura, string MetodoPago, HttpPostedFileBase ComprobanteArchivo, string Observaciones)
         {
             int idUsuario = GetUserId();
             if (idUsuario <= 0) return RedirectToAction("Login", "Account");
@@ -281,7 +293,16 @@ namespace CapaPresentacion.Controllers
                 return RedirectToAction("Detalles", new { id = id });
             }
 
-            if (Monto <= 0)
+            decimal montoValue;
+            var montoRaw = (Monto ?? Request["Monto"] ?? "").Trim();
+            if (!decimal.TryParse(montoRaw, System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.CurrentCulture, out montoValue) &&
+                !decimal.TryParse(montoRaw, System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out montoValue))
+            {
+                TempData["Error"] = "Monto inválido";
+                return RedirectToAction("Detalles", new { id = id });
+            }
+
+            if (montoValue <= 0)
             {
                 TempData["Error"] = "El monto debe ser mayor a cero";
                 return RedirectToAction("Detalles", new { id = id });
@@ -301,8 +322,61 @@ namespace CapaPresentacion.Controllers
 
             try
             {
-                // TODO: Aquí se debería guardar la información del pago en la base de datos
-                // Por ahora solo cambiamos el estado
+                // Guardar comprobante si existe
+                string comprobanteRuta = null;
+                if (ComprobanteArchivo != null && ComprobanteArchivo.ContentLength > 0)
+                {
+                    var ext = Path.GetExtension(ComprobanteArchivo.FileName) ?? "";
+                    ext = ext.ToLowerInvariant();
+                    if (ext != ".pdf" && ext != ".jpg" && ext != ".jpeg" && ext != ".png")
+                    {
+                        TempData["Error"] = "Formato de comprobante no permitido (PDF, JPG, PNG).";
+                        return RedirectToAction("Detalles", new { id = id });
+                    }
+
+                    if (ComprobanteArchivo.ContentLength > (10 * 1024 * 1024))
+                    {
+                        TempData["Error"] = "El comprobante supera el tamaño máximo permitido (10MB).";
+                        return RedirectToAction("Detalles", new { id = id });
+                    }
+
+                    var folderVirtual = "~/Content/documents/pagos";
+                    var folderFisico = Server.MapPath(folderVirtual);
+                    if (!Directory.Exists(folderFisico))
+                        Directory.CreateDirectory(folderFisico);
+
+                    var safeFile = $"pago_{id}_{DateTime.Now:yyyyMMddHHmmssfff}{ext}";
+                    var fullPath = Path.Combine(folderFisico, safeFile);
+                    ComprobanteArchivo.SaveAs(fullPath);
+                    comprobanteRuta = VirtualPathUtility.ToAbsolute($"{folderVirtual}/{safeFile}");
+                }
+
+                var pago = new PagoModel
+                {
+                    NumeroFactura = NumeroFactura,
+                    Monto = montoValue,
+                    Moneda = "USD",
+                    MetodoPago = MetodoPago,
+                    Estado = "Pendiente",
+                    FechaPago = DateTime.Now,
+                    Observaciones = Observaciones,
+                    ComprobanteRuta = comprobanteRuta
+                };
+
+                int codigoSolicitud;
+                if (!int.TryParse(orden.CodigoSolicitud ?? "", out codigoSolicitud))
+                {
+                    codigoSolicitud = orden.Id;
+                }
+
+                bool pagoOk = _dao.RegistrarPago(codigoSolicitud, pago);
+                if (!pagoOk)
+                {
+                    TempData["Error"] = "No se pudo registrar el pago en la base de datos.";
+                    return RedirectToAction("Detalles", new { id = id });
+                }
+
+                // Cambiar estado de la orden a PAGADA
                 bool result = _dao.CambiarEstadoOrden(id, "PAGADA");
                 if (result)
                 {

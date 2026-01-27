@@ -262,6 +262,7 @@
     <Compile Include="Controllers\ChecklistController.cs" />
     <Compile Include="Controllers\LogController.cs" />
     <Compile Include="Controllers\ParametroController.cs" />
+    <Compile Include="Controllers\AdministradorController.cs" />
     <Compile Include="Controllers\InformeController.cs" />
     <Compile Include="Controllers\UsuarioRolController.cs" />
     <Compile Include="Controllers\UsuarioController.cs" />
@@ -2673,8 +2674,6 @@
     <Content Include="Content\plugins\summernote\summernote.min.js.map" />
     <Content Include="Content\plugins\toastr\toastr.js.map" />
     <Content Include="Scripts\app.js" />
-    <Content Include="Scripts\ordenes-config.js" />
-    <Content Include="Scripts\site.js" />
     <Content Include="Scripts\bootstrap.bundle.js" />
     <Content Include="Scripts\bootstrap.bundle.min.js" />
     <Content Include="Scripts\bootstrap.esm.js" />
@@ -2692,6 +2691,8 @@
     <Content Include="Scripts\jquery.validate.min.js" />
     <Content Include="Scripts\jquery.validate.unobtrusive.js" />
     <Content Include="Scripts\jquery.validate.unobtrusive.min.js" />
+    <Content Include="Scripts\ordenes-config.js" />
+    <Content Include="Scripts\site.js" />
     <Content Include="Views\Account\_ModalRegistroUsuario.cshtml" />
     <Content Include="Scripts\modernizr-2.8.3.js" />
     <Content Include="Views\Account\Login.cshtml" />
@@ -2780,10 +2781,12 @@
     <Content Include="Views\Shared\_SeleccionarRol.cshtml" />
     <Content Include="Views\SolicitudAOCR\ResultadoInspeccion.cshtml" />
     <Content Include="Views\Documento\RevisarDocumentos.cshtml" />
+    <Content Include="Views\Direccion\DashboardGerencial.cshtml" />
     <Content Include="Views\Financiero\Index.cshtml" />
     <Content Include="Views\Financiero\RevisarSolicitud.cshtml" />
     <Content Include="Views\Financiero\ListaPagos.cshtml" />
     <Content Include="Views\Financiero\ValidarPago.cshtml" />
+    <Content Include="Views\Administrador\ConfiguracionSistema.cshtml" />
     <Content Include="Views\OrdenRecaudacion\Obligatoria.cshtml" />
     <Content Include="Views\Dashboard\Index.cshtml" />
     <Content Include="Views\Parametro\EmitirAOCR.cshtml" />

@@ -23,7 +23,13 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="dns-prefetch" href="https://cdn.jsdelivr.net">
 
-    <title>@ViewBag.Title - DGAC Sistema AOCR</title>
+    @{
+        var pageTitle = ViewBag.Title != null
+            ? System.Web.HttpUtility.HtmlDecode(System.Web.HttpUtility.HtmlDecode(ViewBag.Title.ToString()))
+            : "";
+    }
+
+    <title>@pageTitle - DGAC Sistema AOCR</title>
 
     <!-- FontAwesome desde CDN compatible con CSP -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -286,7 +292,7 @@
         <!-- Sidebar -->
         <aside class="main-sidebar sidebar-dark-primary elevation-4">
             <a href="@Url.Action("Index","Home")" class="brand-link text-center">
-                <img src="@Url.Content("~/Content/imagenes/logo-dgac.svg")"
+                <img src="@Url.Content("~/Content/imganes/logodgac.png")"
                      class="brand-image img-circle elevation-3"
                      alt="Logo DGAC" width="40" height="40"
                      onerror="this.onerror=null; this.src='data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPGNpcmNsZSBjeD0iMjAiIGN5PSIyMCIgcj0iMjAiIGZpbGw9IiMxQjRGNzIiLz4KPHBhdGggZD0iTTIwIDEwTDI2IDI2SDE0TDIwIDEwWiIgZmlsbD0id2hpdGUiLz4KPC9zdmc+';">
@@ -321,14 +327,13 @@
                 <div class="container-fluid">
                     <div class="row align-items-center mb-2">
                         <div class="col-sm-6">
-                            <h1 class="m-0 text-dark">@Html.Encode(ViewBag.Title)</h1>
+                            <h1 class="m-0 text-dark">@pageTitle</h1>
                         </div>
 
                         <div class="col-sm-6">
                             @{
                                 var controllerObj = ViewContext.RouteData.Values["controller"];
                                 var controllerName = (controllerObj != null) ? controllerObj.ToString() : "";
-                                var title = (ViewBag.Title != null) ? ViewBag.Title.ToString() : "";
                             }
 
                             <ol class="breadcrumb float-sm-right" aria-label="Ruta de navegación">
@@ -341,11 +346,11 @@
                                 @if (!string.IsNullOrEmpty(controllerName) &&
                                      !controllerName.Equals("Home", StringComparison.OrdinalIgnoreCase))
                                 {
-                                    <li class="breadcrumb-item">@Html.Encode(controllerName)</li>
+                                    <li class="breadcrumb-item">@controllerName</li>
                                 }
 
                                 <li class="breadcrumb-item active" aria-current="page">
-                                    @Html.Encode(title)
+                                    @pageTitle
                                 </li>
                             </ol>
                         </div>

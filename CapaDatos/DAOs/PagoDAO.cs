@@ -18,29 +18,87 @@ namespace CapaDatos.DAOs
             return new NpgsqlConnection(cs);
         }
 
-        // Mapear desde DataReader
+        // Mapear desde DataReader (tolerante a nombres legacy vs snake_case)
         private Pago MapPago(IDataRecord r)
         {
             return new Pago
             {
-                CodigoPago = r["codigopago"] != DBNull.Value ? Convert.ToInt32(r["codigopago"]) : 0,
-                CodigoSolicitud = r["codigosolicitud"] != DBNull.Value ? Convert.ToInt32(r["codigosolicitud"]) : 0,
-                NumeroComprobante = r["numerocomprobante"]?.ToString(),
-                Monto = r["monto"] != DBNull.Value ? Convert.ToDecimal(r["monto"]) : 0m,
-                FormaPago = r["formapago"]?.ToString(),
-                Banco = r["banco"]?.ToString(),
-                NumeroTransaccion = r["numerotransaccion"]?.ToString(),
-                Estado = r["estado"]?.ToString(),
-                FechaPago = r["fechapago"] != DBNull.Value ? (DateTime?)Convert.ToDateTime(r["fechapago"]) : null,
-                FechaValidacion = r["fechavalidacion"] != DBNull.Value ? (DateTime?)Convert.ToDateTime(r["fechavalidacion"]) : null,
-                FechaRechazo = r["fecharechazo"] != DBNull.Value ? (DateTime?)Convert.ToDateTime(r["fecharechazo"]) : null,
-                FechaAnulacion = r["fechaanulacion"] != DBNull.Value ? (DateTime?)Convert.ToDateTime(r["fechaanulacion"]) : null,
-                Observaciones = r["observaciones"]?.ToString(),
-                UsuarioRegistro = r["usuarioregistro"]?.ToString(),
-                UsuarioValidacion = r["usuariovalidacion"]?.ToString(),
-                UsuarioRechazo = r["usuariorechazo"]?.ToString(),
-                UsuarioAnulacion = r["usuarioanulacion"]?.ToString()
+                CodigoPago = GetInt(r, "codigopago", "codigo_pago", "id"),
+                CodigoSolicitud = GetInt(r, "codigosolicitud", "codigo_solicitud"),
+                NumeroComprobante = GetString(r, "numerocomprobante", "numero_factura"),
+                Monto = GetDecimal(r, "monto"),
+                Moneda = GetString(r, "moneda"),
+                Concepto = GetString(r, "concepto"),
+                FormaPago = GetString(r, "formapago", "metodo_pago"),
+                Banco = GetString(r, "banco"),
+                NumeroTransaccion = GetString(r, "numerotransaccion"),
+                Estado = GetString(r, "estado"),
+                FechaPago = GetDateTime(r, "fechapago", "fecha_pago"),
+                FechaValidacion = GetDateTime(r, "fechavalidacion", "fecha_validacion"),
+                FechaRechazo = GetDateTime(r, "fecharechazo", "fecha_rechazo"),
+                FechaAnulacion = GetDateTime(r, "fechaanulacion", "fecha_anulacion"),
+                Observaciones = GetString(r, "observaciones"),
+                UsuarioRegistro = GetString(r, "usuarioregistro", "usuario_registro"),
+                UsuarioValidacion = GetString(r, "usuariovalidacion", "validado_por", "usuario_validacion"),
+                UsuarioRechazo = GetString(r, "usuariorechazo", "usuario_rechazo"),
+                UsuarioAnulacion = GetString(r, "usuarioanulacion", "usuario_anulacion"),
+                ComprobanteRuta = GetString(r, "comprobante_ruta")
             };
+        }
+
+        private static bool HasColumn(IDataRecord r, string name)
+        {
+            for (var i = 0; i < r.FieldCount; i++)
+            {
+                if (string.Equals(r.GetName(i), name, StringComparison.OrdinalIgnoreCase))
+                    return true;
+            }
+
+            return false;
+        }
+
+        private static string GetString(IDataRecord r, params string[] names)
+        {
+            foreach (var name in names)
+            {
+                if (HasColumn(r, name) && r[name] != DBNull.Value)
+                    return r[name].ToString();
+            }
+
+            return null;
+        }
+
+        private static int GetInt(IDataRecord r, params string[] names)
+        {
+            foreach (var name in names)
+            {
+                if (HasColumn(r, name) && r[name] != DBNull.Value)
+                    return Convert.ToInt32(r[name]);
+            }
+
+            return 0;
+        }
+
+        private static decimal? GetDecimal(IDataRecord r, params string[] names)
+        {
+            foreach (var name in names)
+            {
+                if (HasColumn(r, name) && r[name] != DBNull.Value)
+                    return Convert.ToDecimal(r[name]);
+            }
+
+            return null;
+        }
+
+        private static DateTime? GetDateTime(IDataRecord r, params string[] names)
+        {
+            foreach (var name in names)
+            {
+                if (HasColumn(r, name) && r[name] != DBNull.Value)
+                    return Convert.ToDateTime(r[name]);
+            }
+
+            return null;
         }
 
         // Crear nuevo pago
@@ -48,11 +106,11 @@ namespace CapaDatos.DAOs
         {
             const string sql = @"
                 INSERT INTO aocr_tbpago 
-                (codigosolicitud, numerocomprobante, monto, formapago, banco, 
-                 numerotransaccion, estado, fechapago, observaciones, usuarioregistro)
+                (codigo_solicitud, numero_factura, monto, moneda, concepto, metodo_pago,
+                 estado, fecha_pago, fecha_validacion, validado_por, observaciones, comprobante_ruta)
                 VALUES 
-                (@codSolicitud, @numComp, @monto, @forma, @banco, 
-                 @numTrans, @estado, @fecha, @obs, @usuario)
+                (@codSolicitud, @numComp, @monto, @moneda, @concepto, @forma,
+                 @estado, @fecha, @fechaVal, @validadoPor, @obs, @comprobanteRuta)
                 RETURNING codigopago;";
 
             using (var cn = CrearConexion())
@@ -61,13 +119,15 @@ namespace CapaDatos.DAOs
                 cmd.Parameters.AddWithValue("@codSolicitud", pago.CodigoSolicitud);
                 cmd.Parameters.AddWithValue("@numComp", (object)pago.NumeroComprobante ?? DBNull.Value);
                 cmd.Parameters.AddWithValue("@monto", pago.Monto);
+                cmd.Parameters.AddWithValue("@moneda", (object)pago.Moneda ?? DBNull.Value);
+                cmd.Parameters.AddWithValue("@concepto", (object)pago.Concepto ?? DBNull.Value);
                 cmd.Parameters.AddWithValue("@forma", (object)pago.FormaPago ?? DBNull.Value);
-                cmd.Parameters.AddWithValue("@banco", (object)pago.Banco ?? DBNull.Value);
-                cmd.Parameters.AddWithValue("@numTrans", (object)pago.NumeroTransaccion ?? DBNull.Value);
                 cmd.Parameters.AddWithValue("@estado", (object)pago.Estado ?? "REGISTRADO");
                 cmd.Parameters.AddWithValue("@fecha", (object)pago.FechaPago ?? DateTime.Now);
+                cmd.Parameters.AddWithValue("@fechaVal", (object)pago.FechaValidacion ?? DBNull.Value);
+                cmd.Parameters.AddWithValue("@validadoPor", (object)pago.UsuarioValidacion ?? DBNull.Value);
                 cmd.Parameters.AddWithValue("@obs", (object)pago.Observaciones ?? DBNull.Value);
-                cmd.Parameters.AddWithValue("@usuario", (object)pago.UsuarioRegistro ?? DBNull.Value);
+                cmd.Parameters.AddWithValue("@comprobanteRuta", (object)pago.ComprobanteRuta ?? DBNull.Value);
 
                 cn.Open();
                 return Convert.ToInt32(cmd.ExecuteScalar());
@@ -80,21 +140,21 @@ namespace CapaDatos.DAOs
             const string sql = @"
                 UPDATE aocr_tbpago
                 SET
-                    numerocomprobante = @numComp,
+                    numero_factura = @numComp,
                     monto = @monto,
-                    formapago = @forma,
-                    banco = @banco,
-                    numerotransaccion = @numTrans,
+                    moneda = @moneda,
+                    concepto = @concepto,
+                    metodo_pago = @forma,
                     estado = @estado,
-                    fechapago = @fecha,
-                    fechavalidacion = @fechaVal,
-                    fecharechazo = @fechaRech,
-                    fechaanulacion = @fechaAnul,
+                    fecha_pago = @fecha,
+                    fecha_validacion = @fechaVal,
+                    fecha_rechazo = @fechaRech,
+                    fecha_anulacion = @fechaAnul,
                     observaciones = @obs,
-                    usuarioregistro = @usuarioReg,
-                    usuariovalidacion = @usuarioVal,
-                    usuariorechazo = @usuarioRech,
-                    usuarioanulacion = @usuarioAnul
+                    validado_por = @usuarioVal,
+                    usuario_rechazo = @usuarioRech,
+                    usuario_anulacion = @usuarioAnul,
+                    comprobante_ruta = @comprobanteRuta
                 WHERE codigopago = @id;";
 
             using (var cn = CrearConexion())
@@ -103,19 +163,19 @@ namespace CapaDatos.DAOs
                 cmd.Parameters.AddWithValue("@id", pago.CodigoPago);
                 cmd.Parameters.AddWithValue("@numComp", (object)pago.NumeroComprobante ?? DBNull.Value);
                 cmd.Parameters.AddWithValue("@monto", pago.Monto);
+                cmd.Parameters.AddWithValue("@moneda", (object)pago.Moneda ?? DBNull.Value);
+                cmd.Parameters.AddWithValue("@concepto", (object)pago.Concepto ?? DBNull.Value);
                 cmd.Parameters.AddWithValue("@forma", (object)pago.FormaPago ?? DBNull.Value);
-                cmd.Parameters.AddWithValue("@banco", (object)pago.Banco ?? DBNull.Value);
-                cmd.Parameters.AddWithValue("@numTrans", (object)pago.NumeroTransaccion ?? DBNull.Value);
                 cmd.Parameters.AddWithValue("@estado", pago.Estado);
                 cmd.Parameters.AddWithValue("@fecha", (object)pago.FechaPago ?? DBNull.Value);
                 cmd.Parameters.AddWithValue("@fechaVal", (object)pago.FechaValidacion ?? DBNull.Value);
                 cmd.Parameters.AddWithValue("@fechaRech", (object)pago.FechaRechazo ?? DBNull.Value);
                 cmd.Parameters.AddWithValue("@fechaAnul", (object)pago.FechaAnulacion ?? DBNull.Value);
                 cmd.Parameters.AddWithValue("@obs", (object)pago.Observaciones ?? DBNull.Value);
-                cmd.Parameters.AddWithValue("@usuarioReg", (object)pago.UsuarioRegistro ?? DBNull.Value);
                 cmd.Parameters.AddWithValue("@usuarioVal", (object)pago.UsuarioValidacion ?? DBNull.Value);
                 cmd.Parameters.AddWithValue("@usuarioRech", (object)pago.UsuarioRechazo ?? DBNull.Value);
                 cmd.Parameters.AddWithValue("@usuarioAnul", (object)pago.UsuarioAnulacion ?? DBNull.Value);
+                cmd.Parameters.AddWithValue("@comprobanteRuta", (object)pago.ComprobanteRuta ?? DBNull.Value);
 
                 cn.Open();
                 return cmd.ExecuteNonQuery() > 0;
@@ -150,8 +210,8 @@ namespace CapaDatos.DAOs
         {
             const string sql = @"
                 SELECT * FROM aocr_tbpago
-                WHERE codigosolicitud = @idSolicitud
-                ORDER BY fechapago DESC
+                WHERE codigo_solicitud = @idSolicitud
+                ORDER BY fecha_pago DESC
                 LIMIT 1;";
 
             using (var cn = CrearConexion())
@@ -177,8 +237,8 @@ namespace CapaDatos.DAOs
 
             const string sql = @"
                 SELECT * FROM aocr_tbpago
-                WHERE codigosolicitud = @idSolicitud
-                ORDER BY fechapago DESC;";
+                WHERE codigo_solicitud = @idSolicitud
+                ORDER BY fecha_pago DESC;";
 
             using (var cn = CrearConexion())
             using (var cmd = new NpgsqlCommand(sql, cn))
@@ -203,8 +263,8 @@ namespace CapaDatos.DAOs
 
             const string sql = @"
                 SELECT * FROM aocr_tbpago
-                WHERE fechapago BETWEEN @fechaInicio AND @fechaFin
-                ORDER BY fechapago DESC;";
+                WHERE fecha_pago BETWEEN @fechaInicio AND @fechaFin
+                ORDER BY fecha_pago DESC;";
 
             using (var cn = CrearConexion())
             using (var cmd = new NpgsqlCommand(sql, cn))
@@ -231,7 +291,7 @@ namespace CapaDatos.DAOs
             const string sql = @"
                 SELECT * FROM aocr_tbpago
                 WHERE estado = @estado
-                ORDER BY fechapago DESC;";
+                ORDER BY fecha_pago DESC;";
 
             using (var cn = CrearConexion())
             using (var cmd = new NpgsqlCommand(sql, cn))
@@ -254,7 +314,7 @@ namespace CapaDatos.DAOs
         {
             const string sql = @"
                 SELECT COUNT(*) FROM aocr_tbpago
-                WHERE codigosolicitud = @idSolicitud;";
+                WHERE codigo_solicitud = @idSolicitud;";
 
             using (var cn = CrearConexion())
             using (var cmd = new NpgsqlCommand(sql, cn))
@@ -280,7 +340,7 @@ namespace CapaDatos.DAOs
 
             const string sql = @"
                 SELECT * FROM aocr_tbpago
-                ORDER BY fechapago DESC;";
+                ORDER BY fecha_pago DESC;";
 
             using (var cn = CrearConexion())
             using (var cmd = new NpgsqlCommand(sql, cn))
@@ -329,8 +389,8 @@ namespace CapaDatos.DAOs
             const string sql = @"
                 SELECT *
                 FROM aocr_tbpago
-                WHERE fechavalidacion::date = CURRENT_DATE
-                ORDER BY fechavalidacion DESC;";
+                WHERE fecha_validacion::date = CURRENT_DATE
+                ORDER BY fecha_validacion DESC;";
 
             using (var cn = CrearConexion())
             using (var cmd = new NpgsqlCommand(sql, cn))
@@ -359,9 +419,9 @@ namespace CapaDatos.DAOs
             const string sql = @"
                 SELECT COALESCE(SUM(monto), 0)
                 FROM aocr_tbpago
-                WHERE fechavalidacion >= @inicio
-                  AND fechavalidacion < @fin
-                  AND (estado = 'VALIDADO' OR estado = 'APROBADO' OR fechavalidacion IS NOT NULL);";
+                WHERE fecha_validacion >= @inicio
+                  AND fecha_validacion < @fin
+                  AND (estado = 'VALIDADO' OR estado = 'APROBADO' OR fecha_validacion IS NOT NULL);";
 
             using (var cn = CrearConexion())
             using (var cmd = new NpgsqlCommand(sql, cn))

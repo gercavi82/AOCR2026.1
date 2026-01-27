@@ -423,32 +423,43 @@
 </style>
 
 <script>
-    // Verificar estado de orden periódicamente
-    setInterval(function() {
-        $.ajax({
-            url: '@Url.Action("VerificarEstadoOrden", "Account")',
-            type: 'GET',
-            success: function(response) {
-                if (response.redireccionar) {
-                    // Si no tiene orden y está en una página que la requiere, redirigir
-                    const currentPath = window.location.pathname.toLowerCase();
-                    const allowedPaths = ['/ordenrecaudacion/', '/account/', '/login', '/obligatoria'];
+    (function waitForJQuery() {
+        if (typeof jQuery === 'undefined') {
+            setTimeout(waitForJQuery, 50);
+            return;
+        }
 
-                    const shouldRedirect = !allowedPaths.some(path => currentPath.includes(path));
+        var $ = jQuery;
 
-                    if (shouldRedirect) {
-                        window.location.href = '@Url.Action("Obligatoria", "OrdenRecaudacion")';
+        // Verificar estado de orden periódicamente
+        setInterval(function() {
+            $.ajax({
+                url: '@Url.Action("VerificarEstadoOrden", "Account")',
+                type: 'GET',
+                success: function(response) {
+                    if (response.redireccionar) {
+                        // Si no tiene orden y está en una página que la requiere, redirigir
+                        var currentPath = window.location.pathname.toLowerCase();
+                        var allowedPaths = ['/ordenrecaudacion/', '/account/', '/login', '/obligatoria'];
+
+                        var shouldRedirect = !allowedPaths.some(function(path) {
+                            return currentPath.includes(path);
+                        });
+
+                        if (shouldRedirect) {
+                            window.location.href = '@Url.Action("Obligatoria", "OrdenRecaudacion")';
+                        }
                     }
                 }
-            }
-        });
-    }, 30000); // Cada 30 segundos
+            });
+        }, 30000); // Cada 30 segundos
 
-    // Mostrar tooltip para elementos bloqueados
-    $(document).ready(function() {
-        $('[title]').tooltip({
-            placement: 'right',
-            trigger: 'hover'
+        // Mostrar tooltip para elementos bloqueados
+        $(document).ready(function() {
+            $('[title]').tooltip({
+                placement: 'right',
+                trigger: 'hover'
+            });
         });
-    });
+    })();
 </script>
