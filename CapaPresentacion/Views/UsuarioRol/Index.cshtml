@@ -1,4 +1,7 @@
-﻿@model List<Usuario>
+﻿@inherits System.Web.Mvc.WebViewPage<List<Usuario>>
+@using CapaModelo
+@using System.Web.Mvc
+@using System.Web.Mvc.Html
 @{
     ViewData["Title"] = "Asignar Roles a Usuarios";
 }
@@ -65,3 +68,4 @@
         });
     </script>
 }
+

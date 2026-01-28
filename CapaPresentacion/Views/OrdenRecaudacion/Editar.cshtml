@@ -1,7 +1,10 @@
-@model CapaDatos.Models.OrdenRecaudacionModel
+﻿@inherits System.Web.Mvc.WebViewPage<CapaDatos.Models.OrdenRecaudacionModel>
+@using CapaModelo
+@using System.Web.Mvc
+@using System.Web.Mvc.Html
 @{
     Layout = "~/Views/Shared/_LayoutAOCR.cshtml";
-    ViewBag.Title = "Editar Orden de Recaudación";
+    ViewBag.Title = "Editar Orden de RecaudaciÃ³n";
 }
 
 <div class="row">
@@ -22,32 +25,32 @@
                 <div class="card-body">
                     @Html.ValidationSummary(false, "", new { @class = "alert alert-danger" })
 
-                    <!-- Información básica -->
+                    <!-- InformaciÃ³n bÃ¡sica -->
                     <div class="row mb-4">
                         <div class="col-md-6">
-                            <h5><i class="fas fa-info-circle me-2 text-primary"></i>Información General</h5>
+                            <h5><i class="fas fa-info-circle me-2 text-primary"></i>InformaciÃ³n General</h5>
 
                             <div class="mb-3">
-                                <label class="form-label">Lugar de Emisión</label>
+                                <label class="form-label">Lugar de EmisiÃ³n</label>
                                 @Html.TextBoxFor(m => m.LugarEmision, new { @class = "form-control", placeholder = "Ej: Quito" })
                                 @Html.ValidationMessageFor(m => m.LugarEmision, "", new { @class = "text-danger" })
                             </div>
 
                             <div class="mb-3">
-                                <label class="form-label">Compañía</label>
-                                @Html.TextBoxFor(m => m.Compania, new { @class = "form-control", placeholder = "Nombre de la compañía" })
+                                <label class="form-label">CompaÃ±Ã­a</label>
+                                @Html.TextBoxFor(m => m.Compania, new { @class = "form-control", placeholder = "Nombre de la compaÃ±Ã­a" })
                                 @Html.ValidationMessageFor(m => m.Compania, "", new { @class = "text-danger" })
                             </div>
 
                             <div class="mb-3">
-                                <label class="form-label">RUC/Cédula</label>
-                                @Html.TextBoxFor(m => m.RucCedula, new { @class = "form-control", placeholder = "RUC o Cédula" })
+                                <label class="form-label">RUC/CÃ©dula</label>
+                                @Html.TextBoxFor(m => m.RucCedula, new { @class = "form-control", placeholder = "RUC o CÃ©dula" })
                                 @Html.ValidationMessageFor(m => m.RucCedula, "", new { @class = "text-danger" })
                             </div>
                         </div>
 
                         <div class="col-md-6">
-                            <h5><i class="fas fa-user me-2 text-primary"></i>Información del Contribuyente</h5>
+                            <h5><i class="fas fa-user me-2 text-primary"></i>InformaciÃ³n del Contribuyente</h5>
 
                             <div class="mb-3">
                                 <label class="form-label">Nombre del Contribuyente</label>
@@ -56,14 +59,14 @@
                             </div>
 
                             <div class="mb-3">
-                                <label class="form-label">Correo Electrónico</label>
+                                <label class="form-label">Correo ElectrÃ³nico</label>
                                 @Html.TextBoxFor(m => m.Correo, new { @class = "form-control", type = "email", placeholder = "correo@ejemplo.com" })
                                 @Html.ValidationMessageFor(m => m.Correo, "", new { @class = "text-danger" })
                             </div>
 
                             <div class="mb-3">
-                                <label class="form-label">Teléfono</label>
-                                @Html.TextBoxFor(m => m.Telefono, new { @class = "form-control", placeholder = "Número de teléfono" })
+                                <label class="form-label">TelÃ©fono</label>
+                                @Html.TextBoxFor(m => m.Telefono, new { @class = "form-control", placeholder = "NÃºmero de telÃ©fono" })
                                 @Html.ValidationMessageFor(m => m.Telefono, "", new { @class = "text-danger" })
                             </div>
                         </div>
@@ -124,7 +127,7 @@
                                             <h4 class="text-primary">@string.Format("{0:C}", Model.Subtotal)</h4>
                                         </div>
                                         <div class="col-md-4">
-                                            <h6>Administración</h6>
+                                            <h6>AdministraciÃ³n</h6>
                                             <h4 class="text-info">@string.Format("{0:C}", Model.Admin)</h4>
                                         </div>
                                         <div class="col-md-4">
@@ -160,7 +163,7 @@
 @section Scripts {
     <script>
         $(document).ready(function () {
-            // Validación del formulario
+            // ValidaciÃ³n del formulario
             $('#formOrden').validate({
                 rules: {
                     LugarEmision: { required: true, maxlength: 100 },
@@ -173,29 +176,29 @@
                 },
                 messages: {
                     LugarEmision: {
-                        required: "El lugar de emisión es obligatorio",
-                        maxlength: "Máximo 100 caracteres"
+                        required: "El lugar de emisiÃ³n es obligatorio",
+                        maxlength: "MÃ¡ximo 100 caracteres"
                     },
                     Compania: {
-                        required: "La compañía es obligatoria",
-                        maxlength: "Máximo 100 caracteres"
+                        required: "La compaÃ±Ã­a es obligatoria",
+                        maxlength: "MÃ¡ximo 100 caracteres"
                     },
                     RucCedula: {
-                        required: "RUC/Cédula es obligatorio",
-                        minlength: "Mínimo 10 caracteres",
-                        maxlength: "Máximo 13 caracteres"
+                        required: "RUC/CÃ©dula es obligatorio",
+                        minlength: "MÃ­nimo 10 caracteres",
+                        maxlength: "MÃ¡ximo 13 caracteres"
                     },
                     NombreContribuyente: {
                         required: "El nombre del contribuyente es obligatorio",
-                        maxlength: "Máximo 200 caracteres"
+                        maxlength: "MÃ¡ximo 200 caracteres"
                     },
                     Correo: {
                         required: "El correo es obligatorio",
-                        email: "Formato de correo inválido",
-                        maxlength: "Máximo 100 caracteres"
+                        email: "Formato de correo invÃ¡lido",
+                        maxlength: "MÃ¡ximo 100 caracteres"
                     },
-                    Telefono: { maxlength: "Máximo 15 caracteres" },
-                    Observacion: { maxlength: "Máximo 500 caracteres" }
+                    Telefono: { maxlength: "MÃ¡ximo 15 caracteres" },
+                    Observacion: { maxlength: "MÃ¡ximo 500 caracteres" }
                 },
                 errorElement: 'div',
                 errorClass: 'invalid-feedback',
@@ -209,3 +212,7 @@
         });
     </script>
 }
+
+
+
+

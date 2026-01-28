@@ -1,4 +1,7 @@
-﻿@model CapaModelo.Direccion
+﻿@inherits System.Web.Mvc.WebViewPage<CapaModelo.Direccion>
+@using CapaModelo
+@using System.Web.Mvc
+@using System.Web.Mvc.Html
 @{
     ViewBag.Title = "Eliminar Dirección";
 }
@@ -21,3 +24,5 @@
     <button type="submit" class="btn btn-danger">Eliminar</button>
     <a href="@Url.Action("Index")" class="btn btn-secondary">Cancelar</a>
 }
+
+

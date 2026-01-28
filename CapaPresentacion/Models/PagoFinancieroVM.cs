@@ -1,4 +1,5 @@
-﻿using CapaModelo;
+using CapaDatos.Models;
+using CapaModelo;
 
 namespace CapaPresentacion.Models
 {
@@ -6,5 +7,6 @@ namespace CapaPresentacion.Models
     {
         public Pago Pago { get; set; }
         public SolicitudAOCR Solicitud { get; set; }
+        public OrdenRecaudacionModel Orden { get; set; }
     }
 }

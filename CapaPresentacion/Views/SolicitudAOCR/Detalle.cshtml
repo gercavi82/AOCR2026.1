@@ -1,4 +1,7 @@
-﻿@model CapaModelo.SolicitudAOCR
+﻿@inherits System.Web.Mvc.WebViewPage<CapaModelo.SolicitudAOCR>
+@using CapaModelo
+@using System.Web.Mvc
+@using System.Web.Mvc.Html
 
 @{
     ViewBag.Title = "Detalle de Solicitud AOCR";
@@ -198,5 +201,7 @@ else
 <div class="mt-4">
     @Html.ActionLink("Volver", "Index", null, new { @class = "btn btn-secondary" })
 </div>
+
+
 
 

@@ -1,4 +1,7 @@
-﻿@model List<Parametro>
+﻿@inherits System.Web.Mvc.WebViewPage<List<Parametro>>
+@using CapaModelo
+@using System.Web.Mvc
+@using System.Web.Mvc.Html
 @{
     ViewData["Title"] = "Gestión de Parámetros";
 }
@@ -610,3 +613,4 @@
         });
     </script>
 }
+

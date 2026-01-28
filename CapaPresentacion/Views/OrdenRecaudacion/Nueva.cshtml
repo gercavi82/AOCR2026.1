@@ -1,4 +1,7 @@
-﻿@model CapaPresentacion.Models.OrdenRecaudacionNuevaVM
+﻿@inherits System.Web.Mvc.WebViewPage<CapaPresentacion.Models.OrdenRecaudacionNuevaVM>
+@using CapaModelo
+@using System.Web.Mvc
+@using System.Web.Mvc.Html
 @{
     Layout = "~/Views/Shared/_LayoutAOCR.cshtml";
     ViewBag.Title = "Nueva Orden de Recaudación";
@@ -35,6 +38,28 @@
                     <div class="row mb-4">
                         <div class="col-md-6">
                             <h5><i class="fas fa-info-circle me-2 text-primary"></i>Información General</h5>
+
+                            <div class="mb-3">
+                                <label class="form-label">Solicitud</label>
+                                <select id="Orden_CodigoSolicitud" name="Orden.CodigoSolicitud" class="form-select" required="required">
+                                    <option value="">Seleccione una solicitud</option>
+                                    @foreach (var s in (Model.Solicitudes ?? new List<CapaPresentacion.Models.OrdenRecaudacionNuevaVM.SolicitudOptionVM>()))
+                                    {
+                                        var selected = (Model.Orden != null && Model.Orden.CodigoSolicitud.HasValue && Model.Orden.CodigoSolicitud.Value == s.Id)
+                                            ? "selected"
+                                            : null;
+                                        <option value="@s.Id"
+                                                @selected
+                                                data-ruc="@s.Ruc"
+                                                data-correo="@s.Correo"
+                                                data-telefono="@s.Telefono"
+                                                data-compania="@s.Compania">
+                                            @s.Label
+                                        </option>
+                                    }
+                                </select>
+                                @Html.ValidationMessageFor(m => m.Orden.CodigoSolicitud, "", new { @class = "text-danger" })
+                            </div>
 
                             <div class="mb-3">
                                 <label class="form-label">Lugar de Emisión</label>
@@ -175,9 +200,30 @@
 
 @section Scripts {
     <script>
-        $(function () {
+                        $(function () {
 
-            var detalles = [];
+                            var detalles = [];
+
+                            function aplicarSolicitudSeleccionada() {
+                                var $sel = $('#Orden_CodigoSolicitud');
+                                if ($sel.length === 0) return;
+
+                                var $opt = $sel.find('option:selected');
+                                var solicitudId = $opt.val();
+                                if (!solicitudId) {
+                                    return;
+                                }
+
+                                var compania = $opt.data('compania') || '';
+                                var ruc = $opt.data('ruc') || '';
+                                var correo = $opt.data('correo') || '';
+                                var telefono = $opt.data('telefono') || '';
+
+                                if (compania) $('#Orden_Compania').val(compania);
+                                if (ruc) $('#Orden_RucCedula').val(ruc);
+                                if (correo) $('#Orden_Correo').val(correo);
+                                if (telefono) $('#Orden_Telefono').val(telefono);
+                            }
 
             function toNumber(v) {
                 if (v === null || v === undefined) return 0;
@@ -232,7 +278,7 @@
                 $('#DetallesJson').val(JSON.stringify(payload));
             }
 
-            $('#btnAgregarConcepto').on('click', function () {
+                            $('#btnAgregarConcepto').on('click', function () {
                 var $opt = $('#ConceptoId option:selected');
                 var conceptoId = $opt.val();
                 var cantidad = toNumber($('#Cantidad').val() || 1);
@@ -289,17 +335,27 @@
                 actualizarTotales();
             });
 
-            $('#formOrden').on('submit', function (e) {
-                if (detalles.length === 0) {
-                    alert('Debe agregar al menos un concepto a la orden');
-                    e.preventDefault();
-                    return false;
-                }
-                actualizarCamposOcultos();
-                return true;
-            });
+                            $('#formOrden').on('submit', function (e) {
+                                if (detalles.length === 0) {
+                                    alert('Debe agregar al menos un concepto a la orden');
+                                    e.preventDefault();
+                                    return false;
+                                }
+                                actualizarCamposOcultos();
+                                return true;
+                            });
 
-        });
+                            $('#Orden_CodigoSolicitud').on('change', aplicarSolicitudSeleccionada);
+                            aplicarSolicitudSeleccionada();
+
+                        });
     </script>
 }
+
+
+
+
+
+
+
 

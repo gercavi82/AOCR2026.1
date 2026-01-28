@@ -82,11 +82,12 @@ namespace CapaDatos.Models
                 {
                     case "BORRADOR":
                         return "secondary"; // Gris
-                    case "GENERADA":
-                        return "primary"; // Azul
-                    case "ENVIADA":
+                    case "PENDIENTE":
+                        return "warning"; // Amarillo
+                    case "PROCESADA":
                         return "info"; // Azul claro
-                    case "PAGADA":
+                    case "FACTURADA":
+                    case "COMPLETADA":
                         return "success"; // Verde
                     case "ANULADA":
                         return "danger"; // Rojo

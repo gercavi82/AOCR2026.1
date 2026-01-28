@@ -101,30 +101,55 @@ namespace CapaPresentacion.Controllers
 
         #region Subir y Descargar
 
-        // GET: Documento/Subir/5
-        public ActionResult Subir(int solicitudId)
+        // Alias de compatibilidad: Documento/SubirDocumento
+        [HttpGet]
+        public ActionResult SubirDocumento(int? solicitudId)
         {
-            ViewBag.SolicitudId = solicitudId;
+            if (!solicitudId.HasValue || solicitudId.Value <= 0)
+            {
+                TempData["Error"] = "Debe especificar una solicitud válida para subir documentos.";
+                return RedirectToAction("Index", "SolicitudAOCR");
+            }
+
+            return RedirectToAction("Subir", new { solicitudId = solicitudId.Value });
+        }
+
+        // GET: Documento/Subir/5
+        public ActionResult Subir(int? solicitudId)
+        {
+            if (!solicitudId.HasValue || solicitudId.Value <= 0)
+            {
+                TempData["Error"] = "Debe especificar una solicitud válida para subir documentos.";
+                return RedirectToAction("Index", "SolicitudAOCR");
+            }
+
+            ViewBag.SolicitudId = solicitudId.Value;
             ViewBag.TiposDocumento = ObtenerTiposDocumento();
-            return View(new Documento { CodigoSolicitud = solicitudId });
+            return View(new Documento { CodigoSolicitud = solicitudId.Value });
         }
 
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public ActionResult Subir(int solicitudId, string tipoDocumento, HttpPostedFileBase archivo, string observaciones)
+        public ActionResult Subir(int? solicitudId, string tipoDocumento, HttpPostedFileBase archivo, string observaciones)
         {
             string rutaCompleta = null;
             try
             {
+                if (!solicitudId.HasValue || solicitudId.Value <= 0)
+                {
+                    TempData["Error"] = "Debe especificar una solicitud válida para subir documentos.";
+                    return RedirectToAction("Index", "SolicitudAOCR");
+                }
+
                 if (archivo == null || archivo.ContentLength == 0)
                 {
                     TempData["Error"] = "Seleccione un archivo válido.";
-                    return RedirectToAction("Subir", new { solicitudId });
+                    return RedirectToAction("Subir", new { solicitudId = solicitudId.Value });
                 }
 
                 // 1. Guardar físico (El Controller maneja el Stream HTTP)
                 string ext = Path.GetExtension(archivo.FileName);
-                string nombreFisico = $"{solicitudId}_{Guid.NewGuid()}{ext}";
+                string nombreFisico = $"{solicitudId.Value}_{Guid.NewGuid()}{ext}";
                 rutaCompleta = Path.Combine(_rutaDocumentos, nombreFisico);
 
                 archivo.SaveAs(rutaCompleta);
@@ -132,7 +157,7 @@ namespace CapaPresentacion.Controllers
                 // 2. Preparar objeto para la BL
                 var doc = new Documento
                 {
-                    CodigoSolicitud = solicitudId,
+                    CodigoSolicitud = solicitudId.Value,
                     TipoDocumento = tipoDocumento,
                     NombreArchivo = Path.GetFileName(archivo.FileName),
                     RutaArchivo = rutaCompleta,
@@ -145,14 +170,14 @@ namespace CapaPresentacion.Controllers
                 if (_documentoBL.Crear(doc))
                 {
                     TempData["Exito"] = "Documento subido correctamente.";
-                    return RedirectToAction("Lista", new { solicitudId });
+                    return RedirectToAction("Lista", new { solicitudId = solicitudId.Value });
                 }
                 else
                 {
                     // Si la BL dice que no (reglas de negocio), borramos el archivo físico
                     if (System.IO.File.Exists(rutaCompleta)) System.IO.File.Delete(rutaCompleta);
                     TempData["Error"] = "No se pudo guardar el documento.";
-                    return RedirectToAction("Subir", new { solicitudId });
+                    return RedirectToAction("Subir", new { solicitudId = solicitudId.Value });
                 }
             }
             catch (Exception ex)
@@ -162,7 +187,7 @@ namespace CapaPresentacion.Controllers
                     System.IO.File.Delete(rutaCompleta);
 
                 TempData["Error"] = $"Error: {ex.Message}";
-                return RedirectToAction("Subir", new { solicitudId });
+                return RedirectToAction("Subir", new { solicitudId = solicitudId.HasValue ? solicitudId.Value : 0 });
             }
         }
 

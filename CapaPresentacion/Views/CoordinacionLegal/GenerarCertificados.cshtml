@@ -1,0 +1,29 @@
+﻿@inherits System.Web.Mvc.WebViewPage
+@using CapaModelo
+@using System.Web.Mvc
+@using System.Web.Mvc.Html
+@{
+    Layout = "~/Views/Shared/_LayoutAOCR.cshtml";
+    ViewBag.Title = ViewBag.Title ?? "Generar Certificados";
+}
+
+<div class="content-wrapper">
+    <section class="content-header">
+        <div class="container-fluid">
+            <h1 class="m-0">@ViewBag.Title</h1>
+        </div>
+    </section>
+
+    <section class="content">
+        <div class="card">
+            <div class="card-body">
+                <p class="mb-2">MÃ³dulo de generaciÃ³n de certificados.</p>
+                <p class="text-muted mb-0">
+                    Seleccione una solicitud legalizada para generar o cargar el certificado.
+                </p>
+            </div>
+        </div>
+    </section>
+</div>
+
+

@@ -1,4 +1,7 @@
-﻿@model IEnumerable<CapaModelo.Direccion>
+﻿@inherits System.Web.Mvc.WebViewPage<IEnumerable<CapaModelo.Direccion>>
+@using CapaModelo
+@using System.Web.Mvc
+@using System.Web.Mvc.Html
 @{
     ViewBag.Title = "Listado de Direcciones";
 }
@@ -48,3 +51,5 @@
         }
     </tbody>
 </table>
+
+

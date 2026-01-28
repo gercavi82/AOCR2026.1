@@ -1,4 +1,8 @@
-﻿<!DOCTYPE html>
+﻿@inherits System.Web.Mvc.WebViewPage
+@using CapaModelo
+@using System.Web.Mvc.Html
+@using System.Web.Optimization
+<!DOCTYPE html>
 <html lang="es" data-theme="light">
 <head>
     <meta charset="utf-8" />
@@ -43,10 +47,10 @@
     <link rel="apple-touch-icon" href="@Url.Content("~/Content/imagenes/apple-touch-icon.png")">
 
     <!-- CSS Bundles con fallback directo -->
-    @if (BundleTable.EnableOptimizations)
+    @if (System.Web.Optimization.BundleTable.EnableOptimizations)
     {
-        @Styles.Render("~/Content/css")
-        @Styles.Render("~/Content/plugins-css")
+        @System.Web.Optimization.Styles.Render("~/Content/css")
+        @System.Web.Optimization.Styles.Render("~/Content/plugins-css")
     }
     else
     {
@@ -165,7 +169,7 @@
     <!-- ✅ CORRECCIÓN: AntiForgeryToken para AJAX (FORMA CORRECTA) -->
     <!-- (no lo pongas dentro de value="", porque Html.AntiForgeryToken() devuelve un input completo) -->
     <form id="__AjaxAntiForgeryForm" style="display:none;">
-        @Html.AntiForgeryToken()
+        @System.Web.Helpers.AntiForgery.GetHtml()
     </form>
 
     <!-- Global Loader -->
@@ -776,3 +780,8 @@
     @RenderSection("Scripts", required: false)
 </body>
 </html>
+
+
+
+
+

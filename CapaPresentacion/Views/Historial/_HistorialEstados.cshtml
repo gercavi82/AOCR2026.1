@@ -1,4 +1,7 @@
-﻿@model List<CapaModelo.HistorialEstado>
+﻿@inherits System.Web.Mvc.WebViewPage<List<CapaModelo.HistorialEstado>>
+@using CapaModelo
+@using System.Web.Mvc
+@using System.Web.Mvc.Html
 
 @if (Model == null || !Model.Any())
 {
@@ -53,3 +56,4 @@ else
                 border: 2px solid white;
             }
 </style>
+

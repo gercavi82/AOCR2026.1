@@ -2,10 +2,14 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.IO;
+using System.Configuration;
 using System.Web;
 using System.Web.Mvc;
+using System.Web.Script.Serialization;
 using CapaDatos.DAOs;
+using CapaDatos.Services;
 using CapaDatos.Models;
+using CapaNegocio;
 
 namespace CapaPresentacion.Controllers
 {
@@ -13,6 +17,9 @@ namespace CapaPresentacion.Controllers
     public class OrdenRecaudacionController : Controller
     {
         private readonly OrdenRecaudacionDAO _dao = new OrdenRecaudacionDAO();
+        private readonly OrdenRecaudacionBL _bl = new OrdenRecaudacionBL();
+        private readonly ConceptoDAO _conceptoDao = new ConceptoDAO();
+        private readonly SolicitudAOCRDAO _solicitudDao = new SolicitudAOCRDAO();
 
         // ✅ Para confirmar conexión real a DB (útil en producción)
         [Authorize(Roles = "Administrador,Financiero")]
@@ -68,7 +75,101 @@ namespace CapaPresentacion.Controllers
         public ActionResult Nueva()
         {
             var model = new CapaPresentacion.Models.OrdenRecaudacionNuevaVM();
-            // TODO: Cargar conceptos disponibles desde la base de datos
+            CargarConceptosNueva(model);
+            return View(model);
+        }
+
+        // POST: /OrdenRecaudacion/Nueva
+        [HttpPost]
+        [Authorize(Roles = "Solicitante,Administrador")]
+        [ValidateAntiForgeryToken]
+        public ActionResult Nueva(CapaPresentacion.Models.OrdenRecaudacionNuevaVM model)
+        {
+            int idUsuario = GetUserId();
+            if (idUsuario <= 0) return RedirectToAction("Login", "Account");
+
+            if (model == null)
+            {
+                model = new CapaPresentacion.Models.OrdenRecaudacionNuevaVM();
+                CargarConceptosNueva(model);
+                TempData["Error"] = "Datos inválidos.";
+                return View(model);
+            }
+
+            if (!ModelState.IsValid)
+            {
+                CargarConceptosNueva(model);
+                return View(model);
+            }
+
+            var detallesInput = ParseDetalles(model.DetallesJson);
+            if (detallesInput == null || detallesInput.Count == 0)
+            {
+                ModelState.AddModelError("", "Debe agregar al menos un concepto a la orden.");
+                CargarConceptosNueva(model);
+                return View(model);
+            }
+
+            var detalles = new List<OrdenDetalleModel>();
+            foreach (var d in detallesInput)
+            {
+                if (d.ConceptoId <= 0 || d.Cantidad <= 0) continue;
+
+                var concepto = _conceptoDao.ObtenerPorId(d.ConceptoId);
+                if (concepto == null) continue;
+
+                detalles.Add(new OrdenDetalleModel
+                {
+                    ConceptoId = concepto.Id,
+                    ConceptoCodigo = concepto.Codigo,
+                    ConceptoNombre = concepto.Nombre,
+                    Cantidad = d.Cantidad,
+                    ValorUnitario = concepto.ValorBase,
+                    PorcentajeAdmin = concepto.PorcentajeAdmin,
+                    Descripcion = concepto.Descripcion
+                });
+            }
+
+            if (detalles.Count == 0)
+            {
+                ModelState.AddModelError("", "Conceptos inválidos.");
+                CargarConceptosNueva(model);
+                return View(model);
+            }
+
+            if (model.Orden == null || !model.Orden.CodigoSolicitud.HasValue || model.Orden.CodigoSolicitud.Value <= 0)
+            {
+                ModelState.AddModelError("Orden.CodigoSolicitud", "Debe seleccionar una solicitud válida.");
+                CargarConceptosNueva(model);
+                return View(model);
+            }
+
+            var orden = new OrdenRecaudacionModel
+            {
+                CodigoUsuario = idUsuario,
+                CodigoSolicitud = model.Orden.CodigoSolicitud.Value.ToString(),
+                LugarEmision = model.Orden != null ? model.Orden.LugarEmision : null,
+                Compania = model.Orden != null ? model.Orden.Compania : null,
+                RucCedula = model.Orden != null ? model.Orden.RucCedula : (model.RucCedula ?? null),
+                NombreContribuyente = model.Orden != null && !string.IsNullOrWhiteSpace(model.Orden.NombreContribuyente)
+                    ? model.Orden.NombreContribuyente
+                    : (model.Orden != null ? model.Orden.Compania : null),
+                Correo = model.Orden != null ? model.Orden.Correo : null,
+                Telefono = model.Orden != null ? model.Orden.Telefono : null,
+                Observacion = model.Orden != null ? model.Orden.Observacion : null,
+                ConceptoId = detalles.First().ConceptoId,
+                Detalles = detalles
+            };
+
+            var resultado = _bl.CrearBorrador(orden);
+            if (resultado.Ok)
+            {
+                TempData["OK"] = "Orden creada correctamente.";
+                return RedirectToAction("Index");
+            }
+
+            ModelState.AddModelError("", resultado.Mensaje ?? "No se pudo crear la orden.");
+            CargarConceptosNueva(model);
             return View(model);
         }
 
@@ -81,6 +182,15 @@ namespace CapaPresentacion.Controllers
             var orden = _dao.ObtenerOrdenPorId(id);
             if (orden == null || orden.CodigoUsuario != idUsuario)
                 return HttpNotFound();
+
+            try
+            {
+                ViewBag.Pagos = _dao.ObtenerPagosPorOrden(id);
+            }
+            catch
+            {
+                ViewBag.Pagos = null;
+            }
 
             return View(orden);
         }
@@ -204,17 +314,22 @@ namespace CapaPresentacion.Controllers
 
             try
             {
-                bool result = _dao.CambiarEstadoOrden(id, "GENERADA");
+                string err;
+                var result = _dao.CambiarEstadoOrden(id, "PENDIENTE", out err);
+                if (!result)
+                {
+                    // Fallback legacy
+                    result = _dao.CambiarEstadoOrden(id, "GENERADA", out err);
+                }
+
                 if (result)
                 {
-                    TempData["OK"] = "Orden generada correctamente";
+                    TempData["OK"] = "Orden generada correctamente (pendiente de pago).";
                     return RedirectToAction("Detalles", new { id = id });
                 }
-                else
-                {
-                    TempData["Error"] = "Error al generar la orden";
-                    return RedirectToAction("Detalles", new { id = id });
-                }
+
+                TempData["Error"] = "No se pudo cambiar el estado de la orden. " + (string.IsNullOrWhiteSpace(err) ? "" : ("Detalle: " + err));
+                return RedirectToAction("Detalles", new { id = id });
             }
             catch (Exception ex)
             {
@@ -275,6 +390,87 @@ namespace CapaPresentacion.Controllers
             return RedirectToAction("Detalles", new { id = id });
         }
 
+        private void CargarConceptosNueva(CapaPresentacion.Models.OrdenRecaudacionNuevaVM model)
+        {
+            if (model == null) return;
+            AsegurarConceptosBasicos();
+
+            var conceptos = _conceptoDao.ObtenerConceptos(true) ?? new List<ConceptoModel>();
+            model.Conceptos = conceptos.Select(c => new CapaPresentacion.Models.ConceptoOptionVM
+            {
+                Id = c.Id,
+                Codigo = c.Codigo,
+                Nombre = c.Nombre,
+                Valor = c.ValorBase,
+                PorcentajeAdmin = c.PorcentajeAdmin,
+                Label = string.Format("{0} - {1} (${2})", c.Codigo, c.Nombre, c.ValorBase.ToString("0.00"))
+            }).ToList();
+
+            try
+            {
+                var userId = GetUserId();
+                var solicitudes = (User != null && User.IsInRole("Administrador"))
+                    ? _solicitudDao.ObtenerTodos()
+                    : _solicitudDao.ObtenerPorUsuario(userId);
+
+                model.Solicitudes = (solicitudes ?? new List<CapaModelo.SolicitudAOCR>())
+                    .Select(s => new CapaPresentacion.Models.OrdenRecaudacionNuevaVM.SolicitudOptionVM
+                    {
+                        Id = s.CodigoSolicitud,
+                        Numero = s.NumeroSolicitud,
+                        Nombre = s.NombreOperador,
+                        Label = string.Format("{0} - {1}", s.NumeroSolicitud, s.NombreOperador),
+                        Ruc = s.Ruc,
+                        Correo = s.Email,
+                        Telefono = s.Telefono,
+                        Compania = string.IsNullOrWhiteSpace(s.RazonSocial) ? s.NombreOperador : s.RazonSocial
+                    }).ToList();
+            }
+            catch
+            {
+                model.Solicitudes = new List<CapaPresentacion.Models.OrdenRecaudacionNuevaVM.SolicitudOptionVM>();
+            }
+        }
+
+        private void AsegurarConceptosBasicos()
+        {
+            var conceptos = new List<ConceptoModel>
+            {
+                new ConceptoModel { Codigo = "EMI_AOCR", Nombre = "Emisión AOCR", TipoCalculo = "FIJO", ValorBase = 3300m, PorcentajeAdmin = 0m, Activo = true, Orden = 1, Descripcion = "Emisión AOCR", PorEstacion = false, PorDia = false, EsViatico = false },
+                new ConceptoModel { Codigo = "REN_AOCR", Nombre = "Renovación AOCR", TipoCalculo = "FIJO", ValorBase = 3300m, PorcentajeAdmin = 0m, Activo = true, Orden = 2, Descripcion = "Renovación AOCR", PorEstacion = false, PorDia = false, EsViatico = false },
+                new ConceptoModel { Codigo = "MOD_AOCR_INC", Nombre = "Modificación AOCR (Inclusión aeronaves distinto modelo y tipo)", TipoCalculo = "FIJO", ValorBase = 1600m, PorcentajeAdmin = 0m, Activo = true, Orden = 3, Descripcion = "Modificación AOCR (Inclusión aeronaves distinto modelo y tipo)", PorEstacion = false, PorDia = false, EsViatico = false },
+                new ConceptoModel { Codigo = "MOD_AOCR_SIN_INC", Nombre = "Modificación AOCR (Que no implique incremento de aeronaves)", TipoCalculo = "FIJO", ValorBase = 80m, PorcentajeAdmin = 0m, Activo = true, Orden = 4, Descripcion = "Modificación AOCR (Que no implique incremento de aeronaves)", PorEstacion = false, PorDia = false, EsViatico = false },
+                new ConceptoModel { Codigo = "INSPECCION_EXT", Nombre = "Inspección requerida por el Operador Aéreo Extranjero", TipoCalculo = "POR_ESTACION", ValorBase = 500m, PorcentajeAdmin = 0m, Activo = true, Orden = 5, Descripcion = "Inspección requerida por el Operador Aéreo Extranjero (por estación)", PorEstacion = true, PorDia = false, EsViatico = false },
+                new ConceptoModel { Codigo = "VIATICOS_INSPECTOR", Nombre = "Viáticos a Sres. Inspectores", TipoCalculo = "POR_DIA", ValorBase = 80m, PorcentajeAdmin = 8m, Activo = true, Orden = 6, Descripcion = "Viáticos por día (más 8% de gastos administrativos)", PorEstacion = false, PorDia = true, EsViatico = true }
+            };
+
+            foreach (var c in conceptos)
+            {
+                _conceptoDao.Upsert(c);
+            }
+        }
+
+        private class DetalleInput
+        {
+            public int ConceptoId { get; set; }
+            public decimal Cantidad { get; set; }
+        }
+
+        private List<DetalleInput> ParseDetalles(string json)
+        {
+            if (string.IsNullOrWhiteSpace(json)) return new List<DetalleInput>();
+
+            try
+            {
+                var serializer = new JavaScriptSerializer();
+                return serializer.Deserialize<List<DetalleInput>>(json) ?? new List<DetalleInput>();
+            }
+            catch
+            {
+                return new List<DetalleInput>();
+            }
+        }
+
         [HttpPost]
         [Authorize(Roles = "Solicitante,Administrador")]
         [ValidateAntiForgeryToken]
@@ -287,9 +483,11 @@ namespace CapaPresentacion.Controllers
             if (orden == null || orden.CodigoUsuario != idUsuario)
                 return HttpNotFound();
 
-            if (!string.Equals((orden.Estado ?? "").Trim(), "ENVIADA", StringComparison.OrdinalIgnoreCase))
+            var estadoOrden = (orden.Estado ?? "").Trim();
+            if (!estadoOrden.Equals("PENDIENTE", StringComparison.OrdinalIgnoreCase) &&
+                !estadoOrden.Equals("GENERADA", StringComparison.OrdinalIgnoreCase))
             {
-                TempData["Error"] = "Solo se pueden registrar pagos en órdenes enviadas";
+                TempData["Error"] = "Solo se puede subir comprobante cuando la orden está en GENERADA o PENDIENTE.";
                 return RedirectToAction("Detalles", new { id = id });
             }
 
@@ -310,8 +508,7 @@ namespace CapaPresentacion.Controllers
 
             if (string.IsNullOrWhiteSpace(NumeroFactura))
             {
-                TempData["Error"] = "Debe proporcionar el número de factura o referencia";
-                return RedirectToAction("Detalles", new { id = id });
+                NumeroFactura = null; // referencia opcional
             }
 
             if (string.IsNullOrWhiteSpace(MetodoPago))
@@ -357,30 +554,77 @@ namespace CapaPresentacion.Controllers
                     Monto = montoValue,
                     Moneda = "USD",
                     MetodoPago = MetodoPago,
+                    // ✅ Debe coincidir con chk_estado_pago (case-sensitive)
                     Estado = "Pendiente",
                     FechaPago = DateTime.Now,
                     Observaciones = Observaciones,
                     ComprobanteRuta = comprobanteRuta
                 };
 
-                int codigoSolicitud;
-                if (!int.TryParse(orden.CodigoSolicitud ?? "", out codigoSolicitud))
-                {
-                    codigoSolicitud = orden.Id;
-                }
+            int codigoSolicitud;
+            if (!int.TryParse(orden.CodigoSolicitud ?? "", out codigoSolicitud))
+            {
+                codigoSolicitud = 0;
+            }
 
-                bool pagoOk = _dao.RegistrarPago(codigoSolicitud, pago);
+            if (codigoSolicitud <= 0 && !string.IsNullOrWhiteSpace(orden.CodigoSolicitud))
+            {
+                codigoSolicitud = _dao.ObtenerCodigoSolicitudPorNumero(orden.CodigoSolicitud);
+            }
+
+            if (codigoSolicitud <= 0 && _dao.ExisteSolicitud(orden.Id))
+            {
+                codigoSolicitud = orden.Id;
+            }
+
+            if (codigoSolicitud <= 0)
+            {
+                codigoSolicitud = _dao.ObtenerCodigoSolicitudPorRuc(orden.RucCedula);
+                if (codigoSolicitud > 0)
+                {
+                    _dao.ActualizarCodigoSolicitudOrden(orden.Id, codigoSolicitud);
+                }
+            }
+
+            if (codigoSolicitud <= 0 || !_dao.ExisteSolicitud(codigoSolicitud))
+            {
+                TempData["Error"] = "La orden no está vinculada a una solicitud válida para registrar el pago.";
+                return RedirectToAction("Detalles", new { id = id });
+            }
+
+                string pagoErr;
+                bool pagoOk = _dao.RegistrarPago(codigoSolicitud, pago, out pagoErr);
                 if (!pagoOk)
                 {
-                    TempData["Error"] = "No se pudo registrar el pago en la base de datos.";
+                    TempData["Error"] = "No se pudo registrar el pago en la base de datos. " + (string.IsNullOrWhiteSpace(pagoErr) ? "" : ("Detalle: " + pagoErr));
                     return RedirectToAction("Detalles", new { id = id });
                 }
 
-                // Cambiar estado de la orden a PAGADA
-                bool result = _dao.CambiarEstadoOrden(id, "PAGADA");
+                // Cambiar estado de la orden a EN_REVISION_FINANCIERA
+                bool result = _dao.CambiarEstadoOrden(id, "PROCESADA");
                 if (result)
                 {
-                    TempData["OK"] = "Pago registrado correctamente";
+                    try
+                    {
+                        var financieroEmail = ConfigurationManager.AppSettings["FinancieroEmail"];
+                        if (!string.IsNullOrWhiteSpace(financieroEmail))
+                        {
+                            var emailSvc = new EmailService();
+                            string comprobanteFisico = null;
+                            if (!string.IsNullOrWhiteSpace(comprobanteRuta))
+                            {
+                                comprobanteFisico = Server.MapPath(comprobanteRuta);
+                            }
+
+                            emailSvc.EnviarNotificacionFinanciero(orden, pago, financieroEmail, comprobanteFisico);
+                        }
+                    }
+                    catch
+                    {
+                        // No bloquear el flujo si el email falla
+                    }
+
+                    TempData["OK"] = "Comprobante enviado. La orden está en revisión financiera.";
                     return RedirectToAction("Detalles", new { id = id });
                 }
                 else
@@ -409,9 +653,11 @@ namespace CapaPresentacion.Controllers
             if (orden == null || orden.CodigoUsuario != idUsuario)
                 return HttpNotFound();
 
-            if (string.Equals((orden.Estado ?? "").Trim(), "PAGADA", StringComparison.OrdinalIgnoreCase))
+            var estadoOrden = (orden.Estado ?? "").Trim();
+            if (estadoOrden.Equals("FACTURADA", StringComparison.OrdinalIgnoreCase) ||
+                estadoOrden.Equals("COMPLETADA", StringComparison.OrdinalIgnoreCase))
             {
-                TempData["Error"] = "No se pueden anular órdenes que ya han sido pagadas";
+                TempData["Error"] = "No se pueden anular órdenes aprobadas o facturadas.";
                 return RedirectToAction("Detalles", new { id = id });
             }
 
@@ -498,9 +744,10 @@ namespace CapaPresentacion.Controllers
             {
                 new SelectListItem { Text = "TODAS", Value = "" },
                 new SelectListItem { Text = "BORRADOR", Value = "BORRADOR" },
-                new SelectListItem { Text = "GENERADA", Value = "GENERADA" },
-                new SelectListItem { Text = "ENVIADA", Value = "ENVIADA" },
-                new SelectListItem { Text = "PAGADA", Value = "PAGADA" },
+                new SelectListItem { Text = "PENDIENTE", Value = "PENDIENTE" },
+                new SelectListItem { Text = "PROCESADA", Value = "PROCESADA" },
+                new SelectListItem { Text = "FACTURADA", Value = "FACTURADA" },
+                new SelectListItem { Text = "COMPLETADA", Value = "COMPLETADA" },
                 new SelectListItem { Text = "ANULADA", Value = "ANULADA" }
             };
 

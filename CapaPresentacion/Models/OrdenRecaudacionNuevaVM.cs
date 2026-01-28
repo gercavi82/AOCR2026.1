@@ -25,6 +25,10 @@ namespace CapaPresentacion.Models
         // Clase anidada para la nueva orden
         public class NuevaOrdenViewModel
         {
+            [Required(ErrorMessage = "La solicitud es requerida")]
+            [Display(Name = "Solicitud")]
+            public int? CodigoSolicitud { get; set; }
+
             [Required(ErrorMessage = "La compañía es requerida")]
             [StringLength(100, ErrorMessage = "Máximo 100 caracteres")]
             [Display(Name = "Compañía/Razón Social")]
@@ -114,5 +118,19 @@ namespace CapaPresentacion.Models
             [Display(Name = "Número Orden/RUC")]
             public string Busqueda { get; set; }
         }
+
+        public class SolicitudOptionVM
+        {
+            public int Id { get; set; }
+            public string Numero { get; set; }
+            public string Nombre { get; set; }
+            public string Label { get; set; }
+            public string Ruc { get; set; }
+            public string Correo { get; set; }
+            public string Telefono { get; set; }
+            public string Compania { get; set; }
+        }
+
+        public List<SolicitudOptionVM> Solicitudes { get; set; } = new List<SolicitudOptionVM>();
     }
 }

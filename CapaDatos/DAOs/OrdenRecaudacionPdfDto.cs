@@ -65,13 +65,95 @@ namespace CapaModelo.DTOs
         // =========================
         public void CalcularTotales()
         {
-            // Siempre calcular desde campos de compatibilidad para que coincida con lo mostrado en PDF
-            Subtotal = Math.Round(ValorBase + ValorInspecciones + ValorViaticos, 2);
-            ValorGastosAdmin = Math.Round(ValorViaticos * 0.08m, 2); // 8% sobre viáticos
-            Total = Math.Round(ValorBase + ValorInspecciones + ValorViaticos + ValorGastosAdmin, 2);
+            if (Detalles != null && Detalles.Count > 0)
+            {
+                decimal sub = 0m;
+                decimal adm = 0m;
+                decimal tot = 0m;
 
-            // Si tienes conversor a letras real, cámbialo aquí.
-            TotalEnLetras = Total.ToString("N2");
+                foreach (var d in Detalles)
+                {
+                    sub += d.SubtotalLinea;
+                    adm += d.AdminLinea;
+                    tot += d.ValorTotal;
+                }
+
+                Subtotal = Math.Round(sub, 2);
+                ValorGastosAdmin = Math.Round(adm, 2);
+                Total = Math.Round(tot, 2);
+            }
+            else
+            {
+                // Compatibilidad con campos antiguos
+                Subtotal = Math.Round(ValorBase + ValorInspecciones + ValorViaticos, 2);
+                ValorGastosAdmin = Math.Round(ValorViaticos * 0.08m, 2);
+                Total = Math.Round(ValorBase + ValorInspecciones + ValorViaticos + ValorGastosAdmin, 2);
+            }
+
+            TotalEnLetras = NumeroEnLetras(Total);
+        }
+
+        private static string NumeroEnLetras(decimal valor)
+        {
+            var entero = (long)Math.Floor(valor);
+            var centavos = (int)Math.Round((valor - entero) * 100m, 0);
+
+            var letras = NumeroATexto(entero).Trim();
+            if (string.IsNullOrWhiteSpace(letras))
+                letras = "CERO";
+
+            return string.Format("{0} DOLARES AMERICANOS CON {1:00}/100 CENTAVOS", letras, centavos);
+        }
+
+        private static string NumeroATexto(long numero)
+        {
+            if (numero == 0) return "CERO";
+            if (numero < 0) return "MENOS " + NumeroATexto(Math.Abs(numero));
+
+            string[] unidades = { "", "UNO", "DOS", "TRES", "CUATRO", "CINCO", "SEIS", "SIETE", "OCHO", "NUEVE", "DIEZ",
+                "ONCE", "DOCE", "TRECE", "CATORCE", "QUINCE", "DIECISEIS", "DIECISIETE", "DIECIOCHO", "DIECINUEVE" };
+            string[] decenas = { "", "", "VEINTE", "TREINTA", "CUARENTA", "CINCUENTA", "SESENTA", "SETENTA", "OCHENTA", "NOVENTA" };
+            string[] centenas = { "", "CIENTO", "DOSCIENTOS", "TRESCIENTOS", "CUATROCIENTOS", "QUINIENTOS", "SEISCIENTOS", "SETECIENTOS", "OCHOCIENTOS", "NOVECIENTOS" };
+
+            if (numero == 100) return "CIEN";
+
+            if (numero < 20) return unidades[(int)numero];
+
+            if (numero < 100)
+            {
+                var d = numero / 10;
+                var r = numero % 10;
+                if (d == 2 && r > 0) return "VEINTI" + unidades[(int)r];
+                return decenas[(int)d] + (r > 0 ? " Y " + unidades[(int)r] : "");
+            }
+
+            if (numero < 1000)
+            {
+                var c = numero / 100;
+                var r = numero % 100;
+                return centenas[(int)c] + (r > 0 ? " " + NumeroATexto(r) : "");
+            }
+
+            if (numero < 1000000)
+            {
+                var m = numero / 1000;
+                var r = numero % 1000;
+                var miles = m == 1 ? "MIL" : NumeroATexto(m) + " MIL";
+                return miles + (r > 0 ? " " + NumeroATexto(r) : "");
+            }
+
+            if (numero < 1000000000)
+            {
+                var m = numero / 1000000;
+                var r = numero % 1000000;
+                var millones = m == 1 ? "UN MILLON" : NumeroATexto(m) + " MILLONES";
+                return millones + (r > 0 ? " " + NumeroATexto(r) : "");
+            }
+
+            var b = numero / 1000000000;
+            var resto = numero % 1000000000;
+            var milesMillones = b == 1 ? "MIL MILLONES" : NumeroATexto(b) + " MIL MILLONES";
+            return milesMillones + (resto > 0 ? " " + NumeroATexto(resto) : "");
         }
     }
 

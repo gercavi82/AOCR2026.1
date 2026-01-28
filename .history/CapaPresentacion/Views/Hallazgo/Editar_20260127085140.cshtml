@@ -1,0 +1,36 @@
+﻿@model CapaModelo.Hallazgo
+
+@{
+    ViewBag.Title = "Editar Hallazgo";
+}
+
+<h2 class="mb-4">Editar Hallazgo</h2>
+
+@using (Html.BeginForm())
+{
+    @Html.AntiForgeryToken()
+    @Html.HiddenFor(m => m.CodigoHallazgo)
+    @Html.HiddenFor(m => m.CodigoInspeccion)
+
+    <div class="mb-3">
+        @Html.LabelFor(m => m.Descripcion, htmlAttributes: new { @class = "form-label" })
+        @Html.TextAreaFor(m => m.Descripcion, new { @class = "form-control", rows = 3 })
+        @Html.ValidationMessageFor(m => m.Descripcion, "", new { @class = "text-danger" })
+    </div>
+
+    <div class="mb-3">
+        @Html.LabelFor(m => m.Criticidad, htmlAttributes: new { @class = "form-label" })
+        @Html.DropDownListFor(m => m.Criticidad,
+            new SelectList(new[]{ "LEVE","MODERADA","CRITICA" }, Model.Criticidad),
+            "Seleccione...",
+            new { @class="form-select" })
+        @Html.ValidationMessageFor(m => m.Criticidad, "", new { @class = "text-danger" })
+    </div>
+
+    <button type="submit" class="btn btn-primary">Actualizar</button>
+    <a href="@Url.Action("Index", "Hallazgo", new { id = Model.CodigoInspeccion })" class="btn btn-secondary ms-2">Cancelar</a>
+}
+
+@section Scripts {
+    @Scripts.Render("~/bundles/jqueryval")
+}

@@ -1,4 +1,7 @@
-﻿@model Parametro
+﻿@inherits System.Web.Mvc.WebViewPage<Parametro>
+@using CapaModelo
+@using System.Web.Mvc
+@using System.Web.Mvc.Html
 @{
     ViewData["Title"] = "Editar Parámetro";
 }
@@ -56,3 +59,4 @@
 @section Scripts {
     <partial name="_ValidationScriptsPartial" />
 }
+

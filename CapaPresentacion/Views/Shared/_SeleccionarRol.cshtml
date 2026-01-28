@@ -1,4 +1,8 @@
-﻿@{
+﻿@inherits System.Web.Mvc.WebViewPage
+@using CapaModelo
+@using System.Web.Mvc
+@using System.Web.Mvc.Html
+@{
     var roles = Session["Roles"] as List<string>;
     // Usamos el operador seguro para evitar nulos
     var rolActual = Session["Rol"] as string;
@@ -28,3 +32,4 @@
         </select>
     </div>
 }
+

@@ -1,4 +1,7 @@
-﻿@model List<CapaDatos.Models.OrdenRecaudacionModel>
+﻿@inherits System.Web.Mvc.WebViewPage<List<CapaDatos.Models.OrdenRecaudacionModel>>
+@using CapaModelo
+@using System.Web.Mvc
+@using System.Web.Mvc.Html
 
 @functions {
     // Helper para formatear moneda (seguro para C# 5)
@@ -32,9 +35,10 @@
         switch (estadoUpper)
         {
             case "BORRADOR": return "estado-borrador";
-            case "GENERADA": return "estado-generada";
-            case "ENVIADA": return "estado-enviada";
-            case "PAGADA": return "estado-pagada";
+            case "PENDIENTE": return "estado-generada";
+            case "PROCESADA": return "estado-enviada";
+            case "FACTURADA": return "estado-pagada";
+            case "COMPLETADA": return "estado-pagada";
             case "ANULADA": return "estado-anulada";
             default: return "bg-secondary";
         }
@@ -48,7 +52,36 @@
             return "DESCONOCIDO";
         }
 
-        return estado.Trim().ToUpperInvariant();
+        var est = estado.Trim().ToUpperInvariant();
+        switch (est)
+        {
+            case "PENDIENTE": return "PENDIENTE";
+            case "PROCESADA": return "PROCESADA";
+            case "FACTURADA": return "FACTURADA";
+            case "COMPLETADA": return "COMPLETADA";
+            default: return est;
+        }
+    }
+
+    // Texto amigable del trámite
+    public static string GetTextoTramite(string estado)
+    {
+        if (string.IsNullOrWhiteSpace(estado))
+        {
+            return "SIN ESTADO";
+        }
+
+        var est = estado.Trim().ToUpperInvariant();
+        switch (est)
+        {
+            case "BORRADOR": return "Borrador";
+            case "PENDIENTE": return "Pendiente de pago";
+            case "PROCESADA": return "En revisión financiera";
+            case "FACTURADA": return "Factura generada";
+            case "COMPLETADA": return "Completada";
+            case "ANULADA": return "Anulada";
+            default: return est;
+        }
     }
 
     // Helper para truncar texto
@@ -196,7 +229,7 @@
             }
 
             .acciones-rapidas {
-                opacity: 0;
+                opacity: 1;
                 transition: opacity var(--transition-speed) ease;
             }
 
@@ -311,8 +344,8 @@
                     <div class="col-md-4">
                         <label for="filtroEstado" class="form-label">Estado</label>
                         @{
-                            var estadosLista = ViewBag.Estados as IEnumerable<SelectListItem>;
-                            var selectEstados = estadosLista != null ? estadosLista : new List<SelectListItem>();
+                            var estadosLista = ViewBag.Estados as IEnumerable<System.Web.Mvc.SelectListItem>;
+                            var selectEstados = estadosLista != null ? estadosLista : new List<System.Web.Mvc.SelectListItem>();
                         }
                         <select class="form-select filtro-estado" id="filtroEstado" name="estado">
                             <option value="">Todos los estados</option>
@@ -484,6 +517,7 @@
                                     <th width="15%">Fecha Creación</th>
                                     <th width="10%">Monto</th>
                                     <th width="15%">Estado</th>
+                                    <th width="15%">Trámite</th>
                                     <th width="10%">Concepto</th>
                                     <th width="10%" class="text-center">Acciones</th>
                                 </tr>
@@ -493,6 +527,7 @@
                                 {
                                     var estadoClase = GetClaseEstado(orden.Estado);
                                     var estadoTexto = GetTextoEstado(orden.Estado);
+                                    var estadoTramite = GetTextoTramite(orden.Estado);
                                     var esBorrador = false;
                                     if (!string.IsNullOrEmpty(orden.Estado))
                                     {
@@ -557,6 +592,9 @@
                                     </td>
                                     <td>
                                         <span class="badge @estadoClase badge-estado">@estadoTexto</span>
+                                    </td>
+                                    <td>
+                                        <span class="text-muted">@estadoTramite</span>
                                     </td>
                                     <td>
                                         @if (!string.IsNullOrEmpty(orden.ConceptoNombre))
@@ -1088,3 +1126,8 @@
         })();
         </script>
     }
+
+
+
+
+

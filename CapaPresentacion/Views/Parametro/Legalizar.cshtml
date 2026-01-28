@@ -1,4 +1,7 @@
-﻿@model CapaModelo.SolicitudAOCR
+﻿@inherits System.Web.Mvc.WebViewPage<CapaModelo.SolicitudAOCR>
+@using CapaModelo
+@using System.Web.Mvc
+@using System.Web.Mvc.Html
 
 @{
     ViewBag.Title = "Legalizar Certificado";
@@ -144,3 +147,4 @@
 @section Scripts {
     @Scripts.Render("~/bundles/jqueryval")
 }
+

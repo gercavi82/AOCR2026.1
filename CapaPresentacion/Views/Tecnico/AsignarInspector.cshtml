@@ -1,4 +1,7 @@
-﻿@model CapaModelo.SolicitudAOCR
+﻿@inherits System.Web.Mvc.WebViewPage<CapaModelo.SolicitudAOCR>
+@using CapaModelo
+@using System.Web.Mvc
+@using System.Web.Mvc.Html
 @{
     ViewBag.Title = "Asignar Inspector";
     Layout = "~/Views/Shared/_LayoutAOCR.cshtml";
@@ -54,3 +57,4 @@
         </div>
     }
 </div>
+

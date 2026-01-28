@@ -467,6 +467,9 @@ VALUES
                             idOrden = Convert.ToInt32(cmd.ExecuteScalar());
                         }
 
+                        // ✅ Vincular solicitud automáticamente por RUC si no vino en el formulario
+                        VincularSolicitudSiFalta(cn, tx, idOrden, orden);
+
                         if (orden.Detalles != null)
                         {
                             foreach (var d in orden.Detalles)
@@ -602,9 +605,83 @@ VALUES
 
         public bool CambiarEstadoOrden(int id, string nuevoEstado)
         {
-            if (id <= 0) return false;
+            string _;
+            return CambiarEstadoOrden(id, nuevoEstado, out _);
+        }
+
+        public int ObtenerCodigoSolicitudPorRuc(string ruc)
+        {
+            if (string.IsNullOrWhiteSpace(ruc)) return 0;
+
+            const string sql = @"
+SELECT codigo_solicitud
+FROM aocr_tbsolicitud
+WHERE deleted_at IS NULL
+  AND TRIM(ruc) = TRIM(@ruc)
+ORDER BY fecha_solicitud DESC NULLS LAST, codigo_solicitud DESC
+LIMIT 1;";
+
+            try
+            {
+                using (var cn = new NpgsqlConnection(_cn))
+                using (var cmd = new NpgsqlCommand(sql, cn))
+                {
+                    cmd.Parameters.AddWithValue("@ruc", ruc.Trim());
+                    cn.Open();
+                    var result = cmd.ExecuteScalar();
+                    return result == null ? 0 : Convert.ToInt32(result);
+                }
+            }
+            catch (Exception ex)
+            {
+                TraceError("ObtenerCodigoSolicitudPorRuc", ex);
+                return 0;
+            }
+        }
+
+        public bool ActualizarCodigoSolicitudOrden(int ordenId, int codigoSolicitud)
+        {
+            if (ordenId <= 0 || codigoSolicitud <= 0) return false;
+
+            const string sql = @"
+UPDATE aocr_or_orden
+SET codigo_solicitud = @codigo::text
+WHERE id = @id
+  AND (codigo_solicitud IS NULL OR TRIM(codigo_solicitud) = '');";
+
+            try
+            {
+                using (var cn = new NpgsqlConnection(_cn))
+                using (var cmd = new NpgsqlCommand(sql, cn))
+                {
+                    cmd.Parameters.AddWithValue("@codigo", codigoSolicitud);
+                    cmd.Parameters.AddWithValue("@id", ordenId);
+                    cn.Open();
+                    return cmd.ExecuteNonQuery() > 0;
+                }
+            }
+            catch (Exception ex)
+            {
+                TraceError("ActualizarCodigoSolicitudOrden", ex);
+                return false;
+            }
+        }
+
+        public bool CambiarEstadoOrden(int id, string nuevoEstado, out string error)
+        {
+            error = null;
+            if (id <= 0)
+            {
+                error = "ID inválido.";
+                return false;
+            }
+
             var estado = NormalizarEstado(nuevoEstado);
-            if (string.IsNullOrWhiteSpace(estado)) return false;
+            if (string.IsNullOrWhiteSpace(estado))
+            {
+                error = "Estado inválido.";
+                return false;
+            }
 
             const string sql = @"
 UPDATE aocr_or_orden
@@ -619,12 +696,19 @@ WHERE id = @id;";
                     cmd.Parameters.AddWithValue("@id", id);
                     cmd.Parameters.AddWithValue("@e", estado);
                     cn.Open();
-                    return cmd.ExecuteNonQuery() > 0;
+                    var rows = cmd.ExecuteNonQuery();
+                    if (rows <= 0)
+                    {
+                        error = "No se encontró la orden o no hubo cambios.";
+                        return false;
+                    }
+                    return true;
                 }
             }
             catch (Exception ex)
             {
                 TraceError("CambiarEstadoOrden", ex);
+                error = ex.Message;
                 return false;
             }
         }
@@ -633,7 +717,18 @@ WHERE id = @id;";
 
         public bool RegistrarPago(int idOrden, PagoModel pago)
         {
-            if (idOrden <= 0 || pago == null) return false;
+            string _;
+            return RegistrarPago(idOrden, pago, out _);
+        }
+
+        public bool RegistrarPago(int idOrden, PagoModel pago, out string error)
+        {
+            error = null;
+            if (idOrden <= 0 || pago == null)
+            {
+                error = "Datos inválidos para registrar pago.";
+                return false;
+            }
 
             // IMPORTANTE: tu controller trata "idOrden" como codigo_solicitud en aocr_tbpago
             const string sql = @"
@@ -693,8 +788,193 @@ VALUES
             catch (Exception ex)
             {
                 TraceError("RegistrarPago", ex);
+                error = ex.Message;
                 return false;
             }
+        }
+
+        public bool ExisteSolicitud(int codigoSolicitud)
+        {
+            if (codigoSolicitud <= 0)
+            {
+                return false;
+            }
+
+            const string sql = @"SELECT 1 FROM aocr_tbsolicitud WHERE codigo_solicitud = @id LIMIT 1;";
+
+            try
+            {
+                using (var cn = new NpgsqlConnection(_cn))
+                using (var cmd = new NpgsqlCommand(sql, cn))
+                {
+                    cmd.Parameters.AddWithValue("@id", codigoSolicitud);
+                    cn.Open();
+                    var obj = cmd.ExecuteScalar();
+                    return obj != null;
+                }
+            }
+            catch (Exception ex)
+            {
+                TraceError("ExisteSolicitud", ex);
+                return false;
+            }
+        }
+
+        public int ObtenerCodigoSolicitudPorNumero(string numeroSolicitud)
+        {
+            if (string.IsNullOrWhiteSpace(numeroSolicitud))
+            {
+                return 0;
+            }
+
+            const string sql = @"SELECT codigo_solicitud FROM aocr_tbsolicitud WHERE numero_solicitud = @num LIMIT 1;";
+
+            try
+            {
+                using (var cn = new NpgsqlConnection(_cn))
+                using (var cmd = new NpgsqlCommand(sql, cn))
+                {
+                    cmd.Parameters.AddWithValue("@num", numeroSolicitud.Trim());
+                    cn.Open();
+                    var obj = cmd.ExecuteScalar();
+                    if (obj == null || obj == DBNull.Value)
+                    {
+                        return 0;
+                    }
+                    return Convert.ToInt32(obj);
+                }
+            }
+            catch (Exception ex)
+            {
+                TraceError("ObtenerCodigoSolicitudPorNumero", ex);
+                return 0;
+            }
+        }
+
+        public PagoModel ObtenerUltimoPagoPorOrden(int idOrden)
+        {
+            if (idOrden <= 0) return null;
+
+            const string sql = @"
+SELECT *
+FROM aocr_tbpago
+WHERE codigo_solicitud = @id
+ORDER BY fecha_pago DESC
+LIMIT 1;";
+
+            try
+            {
+                using (var cn = new NpgsqlConnection(_cn))
+                using (var cmd = new NpgsqlCommand(sql, cn))
+                {
+                    cmd.Parameters.AddWithValue("@id", idOrden);
+                    cn.Open();
+                    using (var r = cmd.ExecuteReader())
+                    {
+                        if (r.Read())
+                            return MapPago(r);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                TraceError("ObtenerUltimoPagoPorOrden", ex);
+            }
+
+            return null;
+        }
+
+        public List<PagoModel> ObtenerPagosPorOrden(int idOrden)
+        {
+            var lista = new List<PagoModel>();
+            if (idOrden <= 0) return lista;
+
+            const string sql = @"
+SELECT *
+FROM aocr_tbpago
+WHERE codigo_solicitud = @id
+ORDER BY fecha_pago DESC;";
+
+            try
+            {
+                using (var cn = new NpgsqlConnection(_cn))
+                using (var cmd = new NpgsqlCommand(sql, cn))
+                {
+                    cmd.Parameters.AddWithValue("@id", idOrden);
+                    cn.Open();
+                    using (var r = cmd.ExecuteReader())
+                    {
+                        while (r.Read())
+                        {
+                            lista.Add(MapPago(r));
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                TraceError("ObtenerPagosPorOrden", ex);
+            }
+
+            return lista;
+        }
+
+        public bool ActualizarUltimoPagoEstado(int idOrden, string nuevoEstado, string validadoPor, string observaciones)
+        {
+            if (idOrden <= 0) return false;
+
+            const string sql = @"
+UPDATE aocr_tbpago
+SET estado = @estado,
+    fecha_validacion = CASE WHEN @estado = 'APROBADO' THEN NOW() ELSE fecha_validacion END,
+    validado_por = @validado_por,
+    observaciones = @observaciones
+WHERE codigo_pago = (
+    SELECT codigo_pago
+    FROM aocr_tbpago
+    WHERE codigo_solicitud = @id
+    ORDER BY fecha_pago DESC
+    LIMIT 1
+);";
+
+            try
+            {
+                using (var cn = new NpgsqlConnection(_cn))
+                using (var cmd = new NpgsqlCommand(sql, cn))
+                {
+                    cmd.Parameters.AddWithValue("@id", idOrden);
+                    cmd.Parameters.AddWithValue("@estado", (object)(nuevoEstado ?? "") ?? DBNull.Value);
+                    cmd.Parameters.AddWithValue("@validado_por", (object)(validadoPor ?? "") ?? DBNull.Value);
+                    cmd.Parameters.AddWithValue("@observaciones", (object)(observaciones ?? "") ?? DBNull.Value);
+                    cn.Open();
+                    return cmd.ExecuteNonQuery() > 0;
+                }
+            }
+            catch (Exception ex)
+            {
+                TraceError("ActualizarUltimoPagoEstado", ex);
+                return false;
+            }
+        }
+
+        private PagoModel MapPago(IDataRecord r)
+        {
+            return new PagoModel
+            {
+                CodigoPago = SafeInt(r, "codigo_pago"),
+                CodigoSolicitud = SafeInt(r, "codigo_solicitud"),
+                NumeroFactura = SafeString(r, "numero_factura"),
+                Monto = SafeDecimal(r, "monto"),
+                Moneda = SafeString(r, "moneda"),
+                Concepto = SafeString(r, "concepto"),
+                MetodoPago = SafeString(r, "metodo_pago"),
+                Estado = SafeString(r, "estado"),
+                FechaPago = SafeDateTime(r, "fecha_pago"),
+                FechaValidacion = SafeDateTime(r, "fecha_validacion"),
+                ValidadoPor = SafeString(r, "validado_por"),
+                Observaciones = SafeString(r, "observaciones"),
+                ComprobanteRuta = SafeString(r, "comprobante_ruta")
+            };
         }
 
         // ===================== Legacy DataTable (si aún lo usas) =====================
@@ -737,7 +1017,8 @@ ORDER BY fecha_creacion DESC;";
             try
             {
                 var orden = ObtenerOrdenPorId(ordenId);
-                if (orden == null || orden.CodigoUsuario != usuarioId) return default(OrdenRecaudacionPdfDto);
+                if (orden == null) return default(OrdenRecaudacionPdfDto);
+                if (usuarioId > 0 && orden.CodigoUsuario != usuarioId) return default(OrdenRecaudacionPdfDto);
 
                 // Obtener información del usuario inspector
                 var usuarioInspector = UsuarioDAO.ObtenerPorId(orden.CodigoUsuario);
@@ -746,27 +1027,27 @@ ORDER BY fecha_creacion DESC;";
                 {
                     OrdenId = orden.Id,
                     NumeroOrden = orden.NumeroOrden,
-                    FechaEmision = orden.FechaCreacion,
-                    LugarEmision = orden.LugarEmision ?? "Quito, Ecuador",
+                    FechaEmision = (orden.FechaCreacion == default(DateTime)) ? DateTime.Now : orden.FechaCreacion,
+                    LugarEmision = string.IsNullOrWhiteSpace(orden.LugarEmision) ? "Quito" : orden.LugarEmision,
 
-                    NombreCompania = orden.Compania ?? "",
+                    NombreCompania = !string.IsNullOrWhiteSpace(orden.NombreContribuyente) ? orden.NombreContribuyente : (orden.Compania ?? ""),
                     Ruc = orden.RucCedula ?? "",
                     Email = orden.Correo ?? "",
                     Telefono = orden.Telefono ?? "",
 
-                    Referencia = $"Orden de Recaudación {orden.NumeroOrden}",
+                    Referencia = "",
                     Observacion = orden.Observacion ?? "",
 
                     NombreInspector = usuarioInspector?.NombreCompleto ?? "Inspector",
-                    CargoInspector = "Inspector de Aviación Civil",
+                    CargoInspector = "Inspector de Aviacion Civil",
 
-                    // Valores de compatibilidad con PdfGeneratorService
-                    ConceptoPrincipal = "Inspección y Certificación AOCR",
-                    Estaciones = 1, // Valor por defecto
-                    Dias = 1, // Valor por defecto
-                    ValorInspecciones = 500.00m, // Inspecciones: precio fijo por estación
-                    ValorViaticos = 0m, // Viáticos: se establece en 0 según el ejemplo
-                    ValorBase = orden.Subtotal - 500.00m
+                    // Compatibilidad (si no hay detalles)
+                    ConceptoPrincipal = orden.ConceptoNombre ?? "",
+                    ValorBase = orden.Subtotal,
+                    Estaciones = 0,
+                    Dias = 0,
+                    ValorInspecciones = 0m,
+                    ValorViaticos = 0m
                 };
 
                 // Mapear detalles de la orden
@@ -813,7 +1094,10 @@ ORDER BY fecha_creacion DESC;";
         {
             // Nota: @id se agrega aparte en update
             cmd.Parameters.AddWithValue("@codigo_usuario", orden.CodigoUsuario);
-            cmd.Parameters.AddWithValue("@codigo_solicitud", (object)(orden.CodigoSolicitud ?? "") ?? DBNull.Value);
+            var codigoSolicitud = string.IsNullOrWhiteSpace(orden.CodigoSolicitud)
+                ? (object)DBNull.Value
+                : orden.CodigoSolicitud;
+            cmd.Parameters.AddWithValue("@codigo_solicitud", codigoSolicitud);
             cmd.Parameters.AddWithValue("@numero_orden", orden.NumeroOrden);
             cmd.Parameters.AddWithValue("@fecha_creacion", (object)orden.FechaCreacion ?? DBNull.Value);
 
@@ -830,6 +1114,51 @@ ORDER BY fecha_creacion DESC;";
             cmd.Parameters.AddWithValue("@correo", (object)(orden.Correo ?? "") ?? DBNull.Value);
             cmd.Parameters.AddWithValue("@telefono", (object)(orden.Telefono ?? "") ?? DBNull.Value);
             cmd.Parameters.AddWithValue("@concepto_id", (object)orden.ConceptoId ?? DBNull.Value);
+        }
+
+        private void VincularSolicitudSiFalta(NpgsqlConnection cn, NpgsqlTransaction tx, int ordenId, OrdenRecaudacionModel orden)
+        {
+            if (orden == null || ordenId <= 0) return;
+            if (!string.IsNullOrWhiteSpace(orden.CodigoSolicitud)) return;
+            if (string.IsNullOrWhiteSpace(orden.RucCedula)) return;
+
+            var codigo = BuscarSolicitudPendientePorRuc(cn, tx, orden.RucCedula);
+            if (codigo <= 0) return;
+
+            const string sql = @"
+UPDATE aocr_or_orden
+SET codigo_solicitud = @codigo::text
+WHERE id = @id
+  AND (codigo_solicitud IS NULL OR TRIM(codigo_solicitud) = '');";
+
+            using (var cmd = new NpgsqlCommand(sql, cn, tx))
+            {
+                cmd.Parameters.AddWithValue("@codigo", codigo);
+                cmd.Parameters.AddWithValue("@id", ordenId);
+                cmd.ExecuteNonQuery();
+            }
+        }
+
+        private int BuscarSolicitudPendientePorRuc(NpgsqlConnection cn, NpgsqlTransaction tx, string ruc)
+        {
+            if (cn == null || cn.State != ConnectionState.Open) return 0;
+            if (string.IsNullOrWhiteSpace(ruc)) return 0;
+
+            const string sql = @"
+SELECT codigo_solicitud
+FROM aocr_tbsolicitud
+WHERE deleted_at IS NULL
+  AND TRIM(ruc) = TRIM(@ruc)
+  AND UPPER(TRIM(estado)) IN ('PENDIENTE', 'BORRADOR', 'ENVIADO_A_INSPECTOR', 'ENVIADO_A_JEFATURA', 'INSPECCION_SOLICITADA')
+ORDER BY fecha_solicitud DESC NULLS LAST, codigo_solicitud DESC
+LIMIT 1;";
+
+            using (var cmd = new NpgsqlCommand(sql, cn, tx))
+            {
+                cmd.Parameters.AddWithValue("@ruc", ruc.Trim());
+                var result = cmd.ExecuteScalar();
+                return result == null ? 0 : Convert.ToInt32(result);
+            }
         }
 
         private static OrdenRecaudacionModel MapOrden(IDataRecord r)
@@ -865,13 +1194,35 @@ ORDER BY fecha_creacion DESC;";
             switch (e)
             {
                 case "BORRADOR":
+                    return "BORRADOR";
+                case "PENDIENTE":
+                case "PENDIENTE_PAGO":
+                case "PENDIENTE DE PAGO":
+                    return "PENDIENTE";
+                case "PROCESADA":
+                case "EN_REVISION_FINANCIERA":
+                case "EN REVISIÓN FINANCIERA":
+                case "EN REVISION FINANCIERA":
+                case "COMPROBANTE_ENVIADO":
+                case "COMPROBANTE ENVIADO":
+                    return "PROCESADA";
+                case "FACTURADA":
+                case "FACTURA_GENERADA":
+                case "FACTURA GENERADA":
+                case "APROBADA":
+                    return "FACTURADA";
+                case "COMPLETADA":
+                case "CERRADA":
+                    return "COMPLETADA";
+                case "ANULADA":
+                    return "ANULADA";
                 case "GENERADA":
+                    return "PENDIENTE";
                 case "ENVIADA":
                 case "PAGADA":
-                case "ANULADA":
-                case "COMPLETADA":
+                    return "PROCESADA";
                 case "ORDEN DE RECAUDACIÓN REQUERIDA":
-                    return estado.Trim(); // Preserve original case for this status
+                    return estado.Trim();
                 default:
                     return null;
             }
@@ -946,7 +1297,7 @@ FROM aocr_or_orden
 
             if (!string.IsNullOrEmpty(estadoFiltro))
             {
-                sql += " WHERE UPPER(TRIM(estado)) = @estado";
+                sql += " WHERE REPLACE(UPPER(TRIM(estado)),' ', '_') = @estado";
             }
 
             sql += " ORDER BY fecha_creacion DESC";

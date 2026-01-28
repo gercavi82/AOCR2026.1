@@ -1,4 +1,7 @@
-﻿@model CapaModelo.Direccion
+﻿@inherits System.Web.Mvc.WebViewPage<CapaModelo.Direccion>
+@using CapaModelo
+@using System.Web.Mvc
+@using System.Web.Mvc.Html
 @{
     ViewBag.Title = "Crear Dirección";
 }
@@ -37,3 +40,5 @@
     <button type="submit" class="btn btn-success mt-3">Guardar</button>
     <a href="@Url.Action("Index")" class="btn btn-secondary mt-3">Cancelar</a>
 }
+
+

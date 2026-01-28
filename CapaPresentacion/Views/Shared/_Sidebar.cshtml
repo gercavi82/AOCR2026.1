@@ -1,4 +1,7 @@
-﻿@using CapaDatos.DAOs
+﻿@inherits System.Web.Mvc.WebViewPage
+@using CapaModelo
+@using System.Web.Mvc.Html
+@using CapaDatos.DAOs
 @* ~/Views/Shared/_Sidebar.cshtml *@
 <div class="sidebar bg-dark text-white p-3" style="min-height:100vh; width:250px;">
     <div class="text-center mb-3 border-bottom pb-3">
@@ -33,6 +36,11 @@
         // Para roles administrativos/financieros, no requieren orden
         bool esRolAdministrativo = rolActual == "Financiero" || rolActual == "JefaturaTecnica" ||
                                   rolActual == "Direccion" || rolActual == "CoordinacionLegal";
+        bool puedeSolicitante = rolActual == "Operador" || rolActual == "Administrador" || rolActual == "Solicitante";
+        bool puedeTecnica = rolActual == "Inspector" || rolActual == "Administrador" || rolActual == "Tecnico";
+        bool puedeFinanciero = rolActual == "Financiero" || rolActual == "Administrador";
+        bool puedeLegal = rolActual == "CoordinacionLegal" || rolActual == "Administrador";
+        bool puedeDireccion = rolActual == "Direccion" || rolActual == "JefaturaTecnica" || rolActual == "Administrador";
     }
 
     <!-- Indicador de estado de orden -->
@@ -115,7 +123,7 @@
         </div>
 
         @* ===================== SOLICITANTE ===================== *@
-        @if (rolActual == "Operador" || rolActual == "Administrador" || rolActual == "Solicitante")
+        @if (puedeSolicitante)
         {
             <div class="nav-group mb-4">
                 <div class="text-warning small font-weight-bold mb-2">
@@ -123,22 +131,16 @@
                 </div>
                 <ul class="list-unstyled ml-2">
                     @* Opciones técnicas bloqueadas hasta que exista una orden válida *@
-                    <li class="mb-2 @(tieneOrdenGenerada ? "" : "opacity-50")">
-                        <i class="fas fa-plus @(tieneOrdenGenerada ? "text-success" : "text-muted") mr-2"></i>
-                        @if (tieneOrdenGenerada)
-                        {
+                    @if (tieneOrdenGenerada)
+                    {
+                        <li class="mb-2">
+                            <i class="fas fa-plus text-success mr-2"></i>
                             <a href="javascript:void(0);" onclick="window.cargarFormulario(0)"
                                class="text-light text-decoration-none hover-link">
                                 Nueva Solicitud AOCR
                             </a>
-                        }
-                        else
-                        {
-                            <span class="text-muted small" title="Requiere Orden de Recaudación generada">
-                                Nueva Solicitud AOCR <i class="fas fa-lock ml-1"></i>
-                            </span>
-                        }
-                    </li>
+                        </li>
+                    }
 
                     <li class="mb-2">
                         <i class="fas fa-folder-open text-white-50 mr-2"></i>
@@ -147,92 +149,72 @@
                         </a>
                     </li>
 
-                    <li class="mb-2 @(tieneOrdenGenerada ? "" : "opacity-50")">
-                        <i class="fas fa-plane @(tieneOrdenGenerada ? "text-info" : "text-muted") mr-2"></i>
-                        @if (tieneOrdenGenerada)
-                        {
+                    @if (tieneOrdenGenerada)
+                    {
+                        <li class="mb-2">
+                            <i class="fas fa-plane text-info mr-2"></i>
                             <a href="@Url.Action("RegistrarAeronave", "Operador")" class="text-light text-decoration-none hover-link">
                                 Registrar Aeronave
                             </a>
-                        }
-                        else
-                        {
-                            <span class="text-muted small">Registrar Aeronave <i class="fas fa-lock ml-1"></i></span>
-                        }
-                    </li>
+                        </li>
+                    }
 
-                    <li class="mb-2 @(tieneOrdenGenerada ? "" : "opacity-50")">
-                        <i class="fas fa-file-upload @(tieneOrdenGenerada ? "text-info" : "text-muted") mr-2"></i>
-                        @if (tieneOrdenGenerada)
-                        {
+                    @if (tieneOrdenGenerada)
+                    {
+                        <li class="mb-2">
+                            <i class="fas fa-file-upload text-info mr-2"></i>
                             <a href="@Url.Action("CargarDocumentos", "SolicitudAOCR")" class="text-light text-decoration-none hover-link">
                                 Cargar Documentos
                             </a>
-                        }
-                        else
-                        {
-                            <span class="text-muted small">Cargar Documentos <i class="fas fa-lock ml-1"></i></span>
-                        }
-                    </li>
+                        </li>
+                    }
                 </ul>
             </div>
         }
 
         @* ===================== INSPECCIÓN / TÉCNICA ===================== *@
-        @if (rolActual == "Inspector" || rolActual == "Administrador" || rolActual == "Tecnico")
+        @if (puedeTecnica)
         {
             <div class="nav-group mb-4">
                 <div class="text-info small font-weight-bold mb-2">
                     <i class="fas fa-search mr-1"></i> GESTIÓN TÉCNICA
                 </div>
                 <ul class="list-unstyled ml-2">
-                    <li class="mb-2 @(tieneOrdenGenerada ? "" : "opacity-50")">
-                        <i class="fas fa-tasks @(tieneOrdenGenerada ? "text-white-50" : "text-muted") mr-2"></i>
-                        @if (tieneOrdenGenerada)
-                        {
+                    @if (tieneOrdenGenerada)
+                    {
+                        <li class="mb-2">
+                            <i class="fas fa-tasks text-white-50 mr-2"></i>
                             <a href="@Url.Action("RevisarSolicitudes", "SolicitudAOCR")" class="text-light text-decoration-none hover-link">
                                 Revisar Solicitudes
                             </a>
-                        }
-                        else
-                        {
-                            <span class="text-muted small">Revisar Solicitudes <i class="fas fa-lock ml-1"></i></span>
-                        }
-                    </li>
+                        </li>
+                    }
 
-                    <li class="mb-2 @(tieneOrdenGenerada ? "" : "opacity-50")">
-                        <i class="fas fa-user-check @(tieneOrdenGenerada ? "text-white-50" : "text-muted") mr-2"></i>
-                        @if (tieneOrdenGenerada)
-                        {
+                    @if (tieneOrdenGenerada)
+                    {
+                        <li class="mb-2">
+                            <i class="fas fa-user-check text-white-50 mr-2"></i>
                             <a href="@Url.Action("AsignarInspector", "Tecnico")" class="text-light text-decoration-none hover-link">
                                 Asignar Inspector
                             </a>
-                        }
-                        else
-                        {
-                            <span class="text-muted small">Asignar Inspector <i class="fas fa-lock ml-1"></i></span>
-                        }
-                    </li>
+                        </li>
+                    }
 
-                    <li class="mb-2 @(tieneOrdenGenerada ? "" : "opacity-50")">
-                        <i class="fas fa-clipboard-check @(tieneOrdenGenerada ? "text-success" : "text-muted") mr-2"></i>
-                        @if (tieneOrdenGenerada)
-                        {
+                    @if (tieneOrdenGenerada)
+                    {
+                        <li class="mb-2">
+                            <i class="fas fa-clipboard-check text-success mr-2"></i>
                             <a href="@Url.Action("RealizarInspeccion", "Inspector")" class="text-light text-decoration-none hover-link">
                                 Realizar Inspección
                             </a>
-                        }
-                        else
-                        {
-                            <span class="text-muted small">Realizar Inspección <i class="fas fa-lock ml-1"></i></span>
-                        }
-                    </li>
+                        </li>
+                    }
                 </ul>
             </div>
         }
 
         @* ===================== FINANCIERO ===================== *@
-        @if (rolActual == "Financiero" || rolActual == "Administrador")
+        @if (puedeFinanciero)
         {
             <div class="nav-group mb-4">
                 <div class="text-success small font-weight-bold mb-2">
@@ -262,7 +244,7 @@
         }
 
         @* ===================== COORDINACIÓN LEGAL ===================== *@
-        @if (rolActual == "CoordinacionLegal" || rolActual == "Administrador")
+        @if (puedeLegal)
         {
             <div class="nav-group mb-4">
                 <div class="text-purple small font-weight-bold mb-2">
@@ -286,7 +268,7 @@
         }
 
         @* ===================== DIRECCIÓN / JEFATURA ===================== *@
-        @if (rolActual == "Direccion" || rolActual == "JefaturaTecnica" || rolActual == "Administrador")
+        @if (puedeDireccion)
         {
             <div class="nav-group mb-4">
                 <div class="text-danger small font-weight-bold mb-2">
@@ -358,6 +340,7 @@
         pointer-events: none;
         cursor: not-allowed;
     }
+
 
     .hover-link {
         transition: all 0.2s;
@@ -431,29 +414,6 @@
 
         var $ = jQuery;
 
-        // Verificar estado de orden periódicamente
-        setInterval(function() {
-            $.ajax({
-                url: '@Url.Action("VerificarEstadoOrden", "Account")',
-                type: 'GET',
-                success: function(response) {
-                    if (response.redireccionar) {
-                        // Si no tiene orden y está en una página que la requiere, redirigir
-                        var currentPath = window.location.pathname.toLowerCase();
-                        var allowedPaths = ['/ordenrecaudacion/', '/account/', '/login', '/obligatoria'];
-
-                        var shouldRedirect = !allowedPaths.some(function(path) {
-                            return currentPath.includes(path);
-                        });
-
-                        if (shouldRedirect) {
-                            window.location.href = '@Url.Action("Obligatoria", "OrdenRecaudacion")';
-                        }
-                    }
-                }
-            });
-        }, 30000); // Cada 30 segundos
-
         // Mostrar tooltip para elementos bloqueados
         $(document).ready(function() {
             $('[title]').tooltip({
@@ -463,3 +423,8 @@
         });
     })();
 </script>
+
+
+
+
+

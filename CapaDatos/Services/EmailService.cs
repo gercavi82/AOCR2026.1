@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Globalization;
+using System.IO;
 using System.Linq;
 using System.Net;
 using System.Net.Mail;
@@ -207,6 +208,142 @@ namespace CapaDatos.Services
             catch
             {
                 TraceSeguro("Error EnviarNotificacionAnulacion.");
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// Notificación de rechazo de comprobante por Finanzas.
+        /// </summary>
+        public bool EnviarNotificacionRechazo(OrdenRecaudacionModel orden, string motivo)
+        {
+            try
+            {
+                if (orden == null || string.IsNullOrWhiteSpace(orden.Correo) || !EsEmailValido(orden.Correo)) return false;
+
+                ServicePointManager.SecurityProtocol |= SecurityProtocolType.Tls12;
+
+                var asunto = $"Orden #{orden.NumeroOrden} rechazada - DGAC Ecuador";
+                var cuerpo = $@"
+<html><body style='font-family: Arial, sans-serif;'>
+<h2 style='color:#dc3545;'>Orden rechazada</h2>
+<p>Estimado/a <strong>{Html(orden.NombreContribuyente ?? "Contribuyente")}</strong>,</p>
+<p>La orden <strong>{Html(orden.NumeroOrden)}</strong> fue rechazada por el área financiera.</p>
+<div style='background:#fff3cd;padding:15px;border-left:4px solid #ffc107;margin:20px 0;'>
+  <p><strong>Motivo:</strong> {Html(motivo ?? "")}</p>
+</div>
+<p>Por favor, suba un nuevo comprobante o corrija los datos solicitados.</p>
+<p style='font-size:12px;color:#666;'>Mensaje automático. No responder.</p>
+</body></html>";
+
+                return EnviarEmail(orden.Correo, orden.NombreContribuyente, asunto, cuerpo);
+            }
+            catch
+            {
+                TraceSeguro("Error EnviarNotificacionRechazo.");
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// Notificación de factura generada al solicitante.
+        /// </summary>
+        public bool EnviarFacturaGenerada(OrdenRecaudacionModel orden, byte[] pdfAdjunto)
+        {
+            try
+            {
+                if (orden == null || string.IsNullOrWhiteSpace(orden.Correo) || !EsEmailValido(orden.Correo)) return false;
+
+                ServicePointManager.SecurityProtocol |= SecurityProtocolType.Tls12;
+
+                var asunto = $"Factura generada - Orden #{orden.NumeroOrden}";
+                var cuerpo = $@"
+<html><body style='font-family: Arial, sans-serif;'>
+<h2 style='color:#1B4F72;'>Factura generada</h2>
+<p>Estimado/a <strong>{Html(orden.NombreContribuyente ?? "Contribuyente")}</strong>,</p>
+<p>Su orden <strong>{Html(orden.NumeroOrden)}</strong> ha sido aprobada y la factura ha sido generada.</p>
+<p>Adjunto encontrará el PDF de la factura.</p>
+<p style='font-size:12px;color:#666;'>Mensaje automático. No responder.</p>
+</body></html>";
+
+                using (var smtp = CrearSmtpClient())
+                using (var msg = new MailMessage())
+                {
+                    msg.From = new MailAddress(_fromEmail, _fromName);
+                    msg.Subject = asunto;
+                    msg.Body = cuerpo;
+                    msg.IsBodyHtml = true;
+                    msg.BodyEncoding = Encoding.UTF8;
+                    msg.SubjectEncoding = Encoding.UTF8;
+
+                    var nombreDest = string.IsNullOrWhiteSpace(orden.NombreContribuyente) ? "Contribuyente" : orden.NombreContribuyente;
+                    msg.To.Add(new MailAddress(orden.Correo, nombreDest));
+
+                    if (pdfAdjunto != null && pdfAdjunto.Length > 0)
+                    {
+                        var ms = new MemoryStream(pdfAdjunto);
+                        var adj = new Attachment(ms, $"Factura_{orden.NumeroOrden}.pdf", "application/pdf");
+                        msg.Attachments.Add(adj);
+                    }
+
+                    smtp.Send(msg);
+                    return true;
+                }
+            }
+            catch
+            {
+                TraceSeguro("Error EnviarFacturaGenerada.");
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// Notificación al área financiera con comprobante adjunto (opcional).
+        /// </summary>
+        public bool EnviarNotificacionFinanciero(OrdenRecaudacionModel orden, PagoModel pago, string financieroEmail, string comprobanteFisicoPath)
+        {
+            try
+            {
+                if (orden == null || string.IsNullOrWhiteSpace(financieroEmail) || !EsEmailValido(financieroEmail)) return false;
+
+                ServicePointManager.SecurityProtocol |= SecurityProtocolType.Tls12;
+
+                var asunto = $"Nueva orden para validación: {orden.NumeroOrden}";
+                var cuerpo = $@"
+<html><body style='font-family: Arial, sans-serif;'>
+<h2 style='color:#1B4F72;'>Orden para validación financiera</h2>
+<p><strong>Orden:</strong> {Html(orden.NumeroOrden)}</p>
+<p><strong>Solicitante:</strong> {Html(orden.NombreContribuyente ?? orden.Compania ?? "")}</p>
+<p><strong>Monto:</strong> {orden.Total.ToString("C", EcCulture)}</p>
+<p><strong>Fecha:</strong> {orden.FechaCreacion:dd/MM/yyyy}</p>
+<p><strong>Concepto:</strong> {Html(orden.ConceptoNombre ?? "")}</p>
+<p>Adjunto se incluye el comprobante (si fue proporcionado).</p>
+</body></html>";
+
+                using (var smtp = CrearSmtpClient())
+                using (var msg = new MailMessage())
+                {
+                    msg.From = new MailAddress(_fromEmail, _fromName);
+                    msg.Subject = asunto;
+                    msg.Body = cuerpo;
+                    msg.IsBodyHtml = true;
+                    msg.BodyEncoding = Encoding.UTF8;
+                    msg.SubjectEncoding = Encoding.UTF8;
+                    msg.To.Add(new MailAddress(financieroEmail));
+
+                    if (!string.IsNullOrWhiteSpace(comprobanteFisicoPath) && File.Exists(comprobanteFisicoPath))
+                    {
+                        var adj = new Attachment(comprobanteFisicoPath);
+                        msg.Attachments.Add(adj);
+                    }
+
+                    smtp.Send(msg);
+                    return true;
+                }
+            }
+            catch
+            {
+                TraceSeguro("Error EnviarNotificacionFinanciero.");
                 return false;
             }
         }

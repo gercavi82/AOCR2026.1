@@ -1,23 +1,32 @@
-﻿@model CapaDatos.Models.OrdenRecaudacionModel
+﻿@inherits System.Web.Mvc.WebViewPage<CapaDatos.Models.OrdenRecaudacionModel>
+@using CapaModelo
+@using System.Web.Mvc
+@using System.Web.Mvc.Html
+@using System.Globalization
 
 @{
     ViewBag.Title = "Detalles de Orden";
 
     // Crear variables para facilitar el acceso
     var orden = Model;
-    var tieneSaldoPendiente = orden.Estado != "PAGADA";
-    var puedeEditar = orden.Estado == "BORRADOR";
-    var puedeGenerar = orden.Estado == "BORRADOR" && orden.Total > 0;
-    var puedeEnviar = orden.Estado == "GENERADA" && !string.IsNullOrEmpty(orden.Correo);
-    var puedeAnular = orden.Estado != "PAGADA" && orden.Estado != "ANULADA";
+    var estado = (orden.Estado ?? "").Trim().ToUpperInvariant();
+    var puedeEditar = estado == "BORRADOR";
+    var puedeGenerar = estado == "BORRADOR" && orden.Total > 0;
+    int solicitudId = 0;
+    int.TryParse(orden.CodigoSolicitud ?? "", out solicitudId);
+    var tieneSolicitudValida = solicitudId > 0;
+    var puedeSubirComprobante = (estado == "PENDIENTE" || estado == "GENERADA") && tieneSolicitudValida;
+    var puedeAnular = estado != "ANULADA" && estado != "FACTURADA" && estado != "COMPLETADA";
 
     // Obtener documentos y pagos desde ViewBag
     var documentos = ViewBag.Documentos as List<CapaDatos.Models.DocumentoModel> ?? new List<CapaDatos.Models.DocumentoModel>();
     var pagos = ViewBag.Pagos as List<CapaDatos.Models.PagoModel> ?? new List<CapaDatos.Models.PagoModel>();
+    var culturaEsEc = new CultureInfo("es-EC");
 
     // Calcular total pagado
-    var totalPagado = pagos.Where(p => p.Estado == "Validado").Sum(p => p.Monto);
+    var totalPagado = pagos.Where(p => (p.Estado ?? "").Equals("APROBADO", System.StringComparison.OrdinalIgnoreCase)).Sum(p => p.Monto);
     var saldoPendiente = orden.Total - totalPagado;
+    var tieneSaldoPendiente = saldoPendiente > 0 && estado != "FACTURADA" && estado != "COMPLETADA";
 }
 
 <div class="row">
@@ -42,21 +51,29 @@
 
             <!-- Estado y acciones -->
             <div class="card-body border-bottom">
+                @if (TempData["OK"] != null)
+                {
+                    <div class="alert alert-success">@TempData["OK"]</div>
+                }
+                @if (TempData["Error"] != null)
+                {
+                    <div class="alert alert-danger">@TempData["Error"]</div>
+                }
                 <div class="row">
                     <div class="col-md-6">
                         <span class="badge bg-@orden.EstadoColor fs-6 p-2">
                             <i class="fas fa-circle me-1"></i> @orden.Estado
                         </span>
-                        @if (tieneSaldoPendiente && orden.Estado != "ANULADA")
+                        @if (tieneSaldoPendiente && estado != "ANULADA")
                         {
                             <span class="badge bg-warning ms-2">
                                 <i class="fas fa-clock me-1"></i> PENDIENTE
                             </span>
                         }
-                        else if (orden.Estado == "PAGADA")
+                        else if (estado == "FACTURADA" || estado == "COMPLETADA")
                         {
                             <span class="badge bg-success ms-2">
-                                <i class="fas fa-check-circle me-1"></i> PAGADA
+                                <i class="fas fa-check-circle me-1"></i> FACTURADA
                             </span>
                         }
                     </div>
@@ -74,24 +91,18 @@
                                 </button>
                             }
                         }
-                        else if (puedeEnviar)
-                        {
-                            using (Html.BeginForm("Enviar", "OrdenRecaudacion", FormMethod.Post))
-                            {
-                                @Html.AntiForgeryToken()
-                                @Html.Hidden("id", orden.Id)
-                                <button type="submit" class="btn btn-warning btn-sm"
-                                        onclick="return confirm('¿Enviar esta orden por email al contribuyente?')">
-                                    <i class="fas fa-paper-plane me-1"></i> Enviar al Contribuyente
-                                </button>
-                            }
-                        }
-
-                        <!-- Botón para registrar pago -->
-                        @if (tieneSaldoPendiente && orden.Estado != "ANULADA")
+                        <!-- Botón para subir comprobante -->
+                        @if (puedeSubirComprobante)
                         {
                             <button type="button" class="btn btn-success btn-sm ms-2" data-bs-toggle="modal" data-bs-target="#modalPago">
-                                <i class="fas fa-dollar-sign me-1"></i> Registrar Pago
+                                <i class="fas fa-upload me-1"></i> Subir Comprobante
+                            </button>
+                        }
+                        else if (estado == "PENDIENTE" || estado == "GENERADA")
+                        {
+                            <button type="button" class="btn btn-success btn-sm ms-2" disabled
+                                    title="Debe vincular una solicitud válida para subir comprobante.">
+                                <i class="fas fa-upload me-1"></i> Subir Comprobante
                             </button>
                         }
 
@@ -264,19 +275,38 @@
                                         <tbody>
                                             @foreach (var pago in pagos)
                                             {
-                                                <tr>
-                                                    <td>@@(pago.FechaPago?.ToString("dd/MM/yyyy HH:mm") ?? "N/A")</td>
-                                                    <td>@@(pago.NumeroFactura ?? "N/A")</td>
-                                                    <td>@@(pago.MetodoPago ?? "N/A")</td>
-                                                    <td class="text-end">$@pago.Monto.ToString("#,##0.00")</td>
-                                                    <td>
-                                                        <span class="badge bg-@(pago.Estado == "Validado" ? "success" : "warning")">
-                                                            @pago.Estado
-                                                        </span>
-                                                    </td>
-                                                    <td>@(pago.ValidadoPor ?? "N/A")</td>
-                                                </tr>
-                                            }
+            var fechaPago = pago.FechaPago.HasValue
+                ? pago.FechaPago.Value.ToString("dd/MM/yyyy HH:mm")
+                : "N/A";
+            var numeroFactura = !string.IsNullOrEmpty(pago.NumeroFactura) ? pago.NumeroFactura : "N/A";
+            var metodoPago = !string.IsNullOrEmpty(pago.MetodoPago) ? pago.MetodoPago : "N/A";
+            var validadoPor = !string.IsNullOrEmpty(pago.ValidadoPor) ? pago.ValidadoPor : "N/A";
+            var estadoPago = (pago.Estado ?? "Pendiente").Trim();
+            var estadoMostrar = estadoPago.Equals("APROBADO", System.StringComparison.OrdinalIgnoreCase) ? "Finalizado" : estadoPago;
+            var badgeClass = estadoPago.Equals("Aprobado", System.StringComparison.OrdinalIgnoreCase) ? "success"
+                : estadoPago.Equals("En Validación", System.StringComparison.OrdinalIgnoreCase) ? "info"
+                : estadoPago.Equals("Rechazado", System.StringComparison.OrdinalIgnoreCase) ? "danger"
+                : "warning";
+
+            // Ajuste defensivo: si el monto parece venir en centavos (mucho mayor que el total), dividir por 100 solo para mostrar
+            var montoMostrar = pago.Monto;
+            if (orden.Total > 0 && montoMostrar > orden.Total * 10)
+            {
+                montoMostrar = montoMostrar / 100m;
+            }
+            <tr>
+                <td>@fechaPago</td>
+                <td>@numeroFactura</td>
+                <td>@metodoPago</td>
+                <td class="text-end">@string.Format(culturaEsEc, "{0:C}", montoMostrar)</td>
+                <td>
+                    <span class="badge bg-@badgeClass">
+                        @estadoMostrar
+                    </span>
+                </td>
+                <td>@validadoPor</td>
+            </tr>
+        }
                                         </tbody>
                                     </table>
                                 </div>
@@ -323,10 +353,21 @@
                         <div class="card mb-4">
                             <div class="card-header bg-secondary text-white d-flex justify-content-between align-items-center">
                                 <h5 class="mb-0"><i class="fas fa-paperclip me-2"></i>Documentos Adjuntos</h5>
-                                <a href="@Url.Action("SubirDocumento", "Documento", new { solicitudId = orden.Id })"
-                                   class="btn btn-light btn-sm">
-                                    <i class="fas fa-plus"></i> Agregar
-                                </a>
+                                @if (puedeSubirComprobante)
+                                {
+                                    <button type="button" class="btn btn-outline-light btn-sm"
+                                            data-bs-toggle="modal" data-bs-target="#modalPago">
+                                        <i class="fas fa-upload"></i> Subir comprobante
+                                    </button>
+                                }
+                                else
+                                {
+                                    <button type="button" class="btn btn-outline-light btn-sm" disabled
+                                            style="opacity:1"
+                                            title="La orden debe estar PENDIENTE y vinculada a una solicitud válida.">
+                                        <i class="fas fa-upload"></i> Subir comprobante
+                                    </button>
+                                }
                             </div>
                             <div class="card-body">
                                 @if (documentos.Any())
@@ -409,7 +450,7 @@
                 @Html.Hidden("id", orden.Id)
 
                 <div class="modal-header bg-success text-white">
-                    <h5 class="modal-title"><i class="fas fa-dollar-sign me-2"></i>Registrar Pago</h5>
+                    <h5 class="modal-title"><i class="fas fa-upload me-2"></i>Subir Comprobante</h5>
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
@@ -428,7 +469,7 @@
                     <div class="mb-3">
                         <label class="form-label">Número de Factura/Referencia:</label>
                         <input type="text" name="NumeroFactura" class="form-control"
-                               placeholder="Ej: FACT-001, Depósito #12345" required />
+                               placeholder="Ej: FACT-001, Depósito #12345" />
                     </div>
                     <div class="mb-3">
                         <label class="form-label">Método de Pago:</label>
@@ -457,7 +498,7 @@
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
                     <button type="submit" class="btn btn-success">
-                        <i class="fas fa-check me-1"></i> Registrar Pago
+                        <i class="fas fa-check me-1"></i> Enviar Comprobante
                     </button>
                 </div>
             }
@@ -539,3 +580,8 @@
         });
     </script>
 }
+
+
+
+
+

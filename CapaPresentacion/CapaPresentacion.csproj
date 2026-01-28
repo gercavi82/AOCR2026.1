@@ -146,8 +146,8 @@
     <Reference Include="Newtonsoft.Json, Version=13.0.0.0, Culture=neutral, PublicKeyToken=30ad4fe6b2a6aeed, processorArchitecture=MSIL">
       <HintPath>..\packages\Newtonsoft.Json.13.0.3\lib\net45\Newtonsoft.Json.dll</HintPath>
     </Reference>
-    <Reference Include="Npgsql, Version=8.0.0.0, Culture=neutral, PublicKeyToken=5d8b90d52f46fda7, processorArchitecture=MSIL">
-      <HintPath>..\packages\Npgsql.8.0.0\lib\netstandard2.0\Npgsql.dll</HintPath>
+    <Reference Include="Npgsql, Version=8.0.3.0, Culture=neutral, PublicKeyToken=5d8b90d52f46fda7, processorArchitecture=MSIL">
+      <HintPath>..\packages\Npgsql.8.0.3\lib\netstandard2.0\Npgsql.dll</HintPath>
     </Reference>
     <Reference Include="Rotativa, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
       <HintPath>..\packages\Rotativa.1.7.3\lib\net461\Rotativa.dll</HintPath>
@@ -180,8 +180,8 @@
     <Reference Include="System.Text.Encodings.Web, Version=8.0.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51, processorArchitecture=MSIL">
       <HintPath>..\packages\System.Text.Encodings.Web.8.0.0\lib\net462\System.Text.Encodings.Web.dll</HintPath>
     </Reference>
-    <Reference Include="System.Text.Json, Version=8.0.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51, processorArchitecture=MSIL">
-      <HintPath>..\packages\System.Text.Json.8.0.0\lib\net462\System.Text.Json.dll</HintPath>
+    <Reference Include="System.Text.Json, Version=8.0.0.1, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51, processorArchitecture=MSIL">
+      <HintPath>..\packages\System.Text.Json.8.0.1\lib\net462\System.Text.Json.dll</HintPath>
     </Reference>
     <Reference Include="System.Threading.Channels, Version=8.0.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51, processorArchitecture=MSIL">
       <HintPath>..\packages\System.Threading.Channels.8.0.0\lib\net462\System.Threading.Channels.dll</HintPath>
@@ -258,10 +258,10 @@
     <Compile Include="Controllers\6_CertificadoController.cs" />
     <Compile Include="Controllers\DocumentoController.cs" />
     <Compile Include="Controllers\PagoController.cs" />
-    <Compile Include="Controllers\9_HallazgoController.cs" />
     <Compile Include="Controllers\ChecklistController.cs" />
     <Compile Include="Controllers\LogController.cs" />
     <Compile Include="Controllers\ParametroController.cs" />
+    <Compile Include="Controllers\CoordinacionLegalController.cs" />
     <Compile Include="Controllers\AdministradorController.cs" />
     <Compile Include="Controllers\InformeController.cs" />
     <Compile Include="Controllers\UsuarioRolController.cs" />
@@ -280,6 +280,7 @@
     <Compile Include="Models\ViewModels\OrdenRecaudacionPDFModel.cs" />
     <Compile Include="Models\OrdenRecaudacionMV.cs" />
     <Compile Include="Models\PagoFinancieroVM.cs" />
+    <Compile Include="Models\OrdenValidacionFinancieraVM.cs" />
     <Compile Include="Models\ResultadoInspeccionVM.cs" />
     <Compile Include="Models\ProgramarInspeccionVM.cs" />
     <Compile Include="Models\DashboardViewModel.cs" />
@@ -2681,11 +2682,13 @@
     <Content Include="Scripts\bootstrap.js" />
     <Content Include="Scripts\bootstrap.min.js" />
     <Content Include="App_Browsers\qt.browser" />
-    <None Include="Scripts\jquery-3.7.1.intellisense.js" />
-    <Content Include="Scripts\jquery-3.7.1.js" />
-    <Content Include="Scripts\jquery-3.7.1.min.js" />
-    <Content Include="Scripts\jquery-3.7.1.slim.js" />
-    <Content Include="Scripts\jquery-3.7.1.slim.min.js" />
+    <None Include="Scripts\jquery-3.6.4.intellisense.js" />
+    <Content Include="Scripts\jquery-3.6.4.js" />
+    <Content Include="Scripts\jquery-3.6.4.min.js" />
+    <Content Include="Scripts\jquery-3.6.4.slim.js" />
+    <Content Include="Scripts\jquery-3.6.4.slim.min.js" />
+    <Content Include="Scripts\jquery-3.6.4.slim.min.map" />
+    <Content Include="Scripts\jquery-3.6.4.min.map" />
     <None Include="Scripts\jquery.validate-vsdoc.js" />
     <Content Include="Scripts\jquery.validate.js" />
     <Content Include="Scripts\jquery.validate.min.js" />
@@ -2787,6 +2790,7 @@
     <Content Include="Views\Financiero\ListaPagos.cshtml" />
     <Content Include="Views\Financiero\ValidarPago.cshtml" />
     <Content Include="Views\Administrador\ConfiguracionSistema.cshtml" />
+    <Content Include="Views\CoordinacionLegal\GenerarCertificados.cshtml" />
     <Content Include="Views\OrdenRecaudacion\Obligatoria.cshtml" />
     <Content Include="Views\Dashboard\Index.cshtml" />
     <Content Include="Views\Parametro\EmitirAOCR.cshtml" />
@@ -2797,6 +2801,28 @@
     <Content Include="Views\OrdenRecaudacion\Editar.cshtml" />
     <Content Include="Views\Orden\Detalle.cshtml" />
     <Content Include="Views\Orden\MisOrdenes.cshtml" />
+    <Content Include="Views\Checklist\EmitirAOCR.cshtml" />
+    <Content Include="Views\Checklist\Legalizar.cshtml" />
+    <Content Include="Views\Checklist\ValidacionFinal.cshtml" />
+    <Content Include="Views\Direccion\AprobarSolicitudes.cshtml" />
+    <Content Include="Views\Direccion\Crear.cshtml" />
+    <Content Include="Views\Direccion\Detalle.cshtml" />
+    <Content Include="Views\Direccion\Editar.cshtml" />
+    <Content Include="Views\Direccion\Eliminar.cshtml" />
+    <Content Include="Views\Direccion\EmitirAOCR.cshtml" />
+    <Content Include="Views\Direccion\Index.cshtml" />
+    <Content Include="Views\Direccion\Legalizar.cshtml" />
+    <Content Include="Views\Direccion\ValidacionFinal.cshtml" />
+    <Content Include="Views\Financiero\TodasOrdenes.cshtml" />
+    <Content Include="Views\Informe\EmitirAOCR.cshtml" />
+    <Content Include="Views\Informe\Legalizar.cshtml" />
+    <Content Include="Views\Informe\ValidacionFinal.cshtml" />
+    <Content Include="Views\SolicitudAOCR\_CreateModal.cshtml" />
+    <Content Include="Views\SolicitudAOCR\_FormularioEmisionAOCR_REVISION.md" />
+    <Content Include="Views\SolicitudAOCR\Modificacion.cshtml" />
+    <Content Include="Views\Usuario\EmitirAOCR.cshtml" />
+    <Content Include="Views\Usuario\Legalizar.cshtml" />
+    <Content Include="Views\Usuario\ValidacionFinal.cshtml" />
   </ItemGroup>
   <ItemGroup>
     <Folder Include="App_Data\" />
@@ -2841,8 +2867,6 @@
     <Content Include="Scripts\bootstrap.esm.js.map" />
     <Content Include="Scripts\bootstrap.bundle.min.js.map" />
     <Content Include="Scripts\bootstrap.bundle.js.map" />
-    <Content Include="Scripts\jquery-3.7.1.slim.min.map" />
-    <Content Include="Scripts\jquery-3.7.1.min.map" />
   </ItemGroup>
   <PropertyGroup>
     <VisualStudioVersion Condition="'$(VisualStudioVersion)' == ''">10.0</VisualStudioVersion>

@@ -1,4 +1,7 @@
-﻿@model Checklist
+﻿@inherits System.Web.Mvc.WebViewPage<Checklist>
+@using CapaModelo
+@using System.Web.Mvc
+@using System.Web.Mvc.Html
 @{
     ViewData["Title"] = "Editar Checklist";
 }
@@ -85,3 +88,4 @@
 @section Scripts {
     <partial name="_ValidationScriptsPartial" />
 }
+

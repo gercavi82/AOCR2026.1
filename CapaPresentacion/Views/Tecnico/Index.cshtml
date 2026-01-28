@@ -1,4 +1,7 @@
-﻿@model IEnumerable<CapaModelo.Tecnico>
+﻿@inherits System.Web.Mvc.WebViewPage<IEnumerable<CapaModelo.Tecnico>>
+@using CapaModelo
+@using System.Web.Mvc
+@using System.Web.Mvc.Html
 
 @{
     ViewBag.Title = "Técnicos";
@@ -43,3 +46,5 @@
         </div>
     </div>
 </div>
+
+

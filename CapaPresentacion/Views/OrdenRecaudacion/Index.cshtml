@@ -1,5 +1,7 @@
-﻿@using System.Web.Mvc.Html
-@model List<CapaDatos.Models.OrdenRecaudacionModel>
+﻿@inherits System.Web.Mvc.WebViewPage<List<CapaDatos.Models.OrdenRecaudacionModel>>
+@using CapaModelo
+@using System.Web.Mvc
+@using System.Web.Mvc.Html
     @{
         ViewBag.Title = "Orden de Recaudación Requerida";
         Layout = "~/Views/Shared/_LayoutAOCR.cshtml";
@@ -163,7 +165,7 @@
 
             /* Acciones rápidas */
             .acciones-rapidas {
-                opacity: 0;
+                opacity: 1;
                 transition: opacity var(--transition-speed) ease;
                 white-space: nowrap;
             }
@@ -428,8 +430,8 @@
                             Estado <span class="text-muted">(opcional)</span>
                         </label>
                         @{
-                            var estadosLista = ViewBag.Estados as IEnumerable<SelectListItem>;
-                            var selectEstados = estadosLista ?? new List<SelectListItem>();
+                            var estadosLista = ViewBag.Estados as IEnumerable<System.Web.Mvc.SelectListItem>;
+                            var selectEstados = estadosLista ?? new List<System.Web.Mvc.SelectListItem>();
                         }
                         <select class="form-select filtro-estado"
                                 id="filtroEstado"
@@ -699,6 +701,7 @@
                                     <th scope="col" width="15%">Fecha Creación</th>
                                     <th scope="col" width="10%" class="text-end pe-3">Monto</th>
                                     <th scope="col" width="15%">Estado</th>
+                                    <th scope="col" width="15%">Trámite</th>
                                     <th scope="col" width="10%">Concepto</th>
                                     <th scope="col" width="10%" class="text-center pe-3">Acciones</th>
                                 </tr>
@@ -709,6 +712,7 @@
                                     // Validaciones seguras para cada orden
                                     string estadoClase = GetClaseEstado(orden.Estado);
                                     string estadoTexto = GetTextoEstado(orden.Estado);
+                                    string estadoTramite = GetTextoTramite(orden.Estado);
 
                                     bool esBorrador = false;
                                     if (!string.IsNullOrWhiteSpace(orden.Estado))
@@ -799,6 +803,9 @@
                                                   aria-label="Estado: @estadoTexto">
                                                 @estadoTexto
                                             </span>
+                                        </td>
+                                        <td>
+                                            <span class="text-muted">@estadoTramite</span>
                                         </td>
                                         <td>
                                             @if (!string.IsNullOrWhiteSpace(orden.ConceptoNombre))
@@ -1662,9 +1669,10 @@
             switch (estadoUpper)
             {
                 case "BORRADOR": return "estado-borrador";
-                case "GENERADA": return "estado-generada";
-                case "ENVIADA": return "estado-enviada";
-                case "PAGADA": return "estado-pagada";
+                case "PENDIENTE": return "estado-generada";
+                case "PROCESADA": return "estado-enviada";
+                case "FACTURADA": return "estado-pagada";
+                case "COMPLETADA": return "estado-pagada";
                 case "ANULADA": return "estado-anulada";
                 default: return "bg-secondary";
             }
@@ -1673,14 +1681,22 @@
         /// <summary>
         /// Obtiene el texto para mostrar del estado
         /// </summary>
-        public static string GetTextoEstado(string estado)
+    public static string GetTextoEstado(string estado)
+    {
+        if (string.IsNullOrWhiteSpace(estado))
         {
-            if (string.IsNullOrWhiteSpace(estado))
-            {
-                return "DESCONOCIDO";
+            return "DESCONOCIDO";
             }
 
-            return estado.Trim().ToUpperInvariant();
+            var est = estado.Trim().ToUpperInvariant();
+            switch (est)
+            {
+                case "PENDIENTE": return "PENDIENTE";
+                case "PROCESADA": return "PROCESADA";
+                case "FACTURADA": return "FACTURADA";
+                case "COMPLETADA": return "COMPLETADA";
+                default: return est;
+            }
         }
 
         /// <summary>
@@ -1726,3 +1742,28 @@
             }
         }
     }
+
+    // Texto amigable del trámite
+    public static string GetTextoTramite(string estado)
+    {
+        if (string.IsNullOrWhiteSpace(estado))
+        {
+            return "SIN ESTADO";
+        }
+
+        var est = estado.Trim().ToUpperInvariant();
+        switch (est)
+        {
+            case "BORRADOR": return "Borrador";
+            case "PENDIENTE": return "Pendiente de pago";
+            case "PROCESADA": return "En revisión financiera";
+            case "FACTURADA": return "Factura generada";
+            case "COMPLETADA": return "Completada";
+            case "ANULADA": return "Anulada";
+            default: return est;
+        }
+    }
+
+
+
+

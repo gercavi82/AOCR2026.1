@@ -1,4 +1,7 @@
-﻿@model CapaModelo.Usuario
+﻿@inherits System.Web.Mvc.WebViewPage<CapaModelo.Usuario>
+@using CapaModelo
+@using System.Web.Mvc
+@using System.Web.Mvc.Html
 
 <div class="modal fade" id="modalVisualizarUsuario" tabindex="-1" role="dialog" aria-labelledby="visualizarUsuarioLabel" aria-hidden="true">
     <div class="modal-dialog modal-lg modal-dialog-scrollable">
@@ -57,3 +60,5 @@
         </div>
     </div>
 </div>
+
+

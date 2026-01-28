@@ -1,4 +1,7 @@
-﻿@model CapaModelo.Direccion
+﻿@inherits System.Web.Mvc.WebViewPage<CapaModelo.Direccion>
+@using CapaModelo
+@using System.Web.Mvc
+@using System.Web.Mvc.Html
 @{
     ViewBag.Title = "Detalle Dirección";
 }
@@ -16,3 +19,5 @@
 <a href="@Url.Action("Index")" class="btn btn-secondary">Volver</a>
 <a href="@Url.Action("Editar", new { id = Model.CodigoDireccion })" class="btn btn-warning">Editar</a>
 <a href="@Url.Action("Eliminar", new { id = Model.CodigoDireccion })" class="btn btn-danger">Eliminar</a>
+
+
