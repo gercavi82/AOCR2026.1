@@ -3,11 +3,14 @@ using System.Collections.Generic;
 using System.IO;
 using System.Web;
 using System.Web.Mvc;
+using System.Configuration;
+using CapaUtilidades;
 using CapaNegocio;
 using CapaModelo;
 
 namespace CapaPresentacion.Controllers
 {
+    [Authorize]
     public class PagoController : Controller
     {
         private readonly PagoBL _bl = new PagoBL();
@@ -29,31 +32,32 @@ namespace CapaPresentacion.Controllers
         // SUBIR COMPROBANTE
         // ============================================================
         [HttpPost]
+        [ValidateAntiForgeryToken]
+        [Authorize(Roles = "Solicitante,Administrador")]
         public ActionResult SubirComprobante(int id, int solicitudId, HttpPostedFileBase archivo)
         {
             try
             {
                 if (archivo != null && archivo.ContentLength > 0)
                 {
-                    string carpetaVirtual = "/PDF/Pagos/";
-                    string nombreArchivo = id + Path.GetExtension(archivo.FileName);
-                    string rutaVirtual = carpetaVirtual + nombreArchivo;
-                    string rutaFisica = Server.MapPath(rutaVirtual);
+                    var maxSize = GetMaxUploadSize();
+                    var allowed = new[] { ".pdf", ".jpg", ".jpeg", ".png" };
+                    var basePath = GetUploadBasePath("Pagos");
 
-                    var carpetaFisica = Path.GetDirectoryName(rutaFisica);
-                    if (!Directory.Exists(carpetaFisica))
-                    {
-                        Directory.CreateDirectory(carpetaFisica);
-                    }
-
-                    archivo.SaveAs(rutaFisica);
+                    var result = FileUploadService.SaveFile(
+                        archivo.InputStream,
+                        archivo.FileName,
+                        archivo.ContentType,
+                        basePath,
+                        maxSize,
+                        allowed);
 
                     var pago = _bl.ObtenerPorId(id);
                     if (pago != null)
                     {
                         string usuario = Session["CodigoUsuario"]?.ToString() ?? "SISTEMA";
 
-                        pago.RutaComprobante = rutaVirtual;
+                        pago.RutaComprobante = result.StoredPath;
                         pago.UsuarioValidacion = usuario;
                         pago.FechaValidacion = DateTime.Now;
 
@@ -72,6 +76,9 @@ namespace CapaPresentacion.Controllers
         // ============================================================
         // VALIDAR (APROBAR) PAGO
         // ============================================================
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        [Authorize(Roles = "Financiero,Administrador")]
         public ActionResult Validar(int id, int solicitudId)
         {
             try
@@ -104,6 +111,9 @@ namespace CapaPresentacion.Controllers
         // ============================================================
         // RECHAZAR PAGO
         // ============================================================
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        [Authorize(Roles = "Financiero,Administrador")]
         public ActionResult Rechazar(int id, int solicitudId, string motivo)
         {
             try
@@ -138,6 +148,20 @@ namespace CapaPresentacion.Controllers
             }
 
             return RedirectToAction("Detalle", new { solicitudId });
+        }
+
+        private long GetMaxUploadSize()
+        {
+            var raw = ConfigurationManager.AppSettings["MaxUploadSize"];
+            long size;
+            return long.TryParse(raw, out size) ? size : (10 * 1024 * 1024);
+        }
+
+        private string GetUploadBasePath(string subfolder)
+        {
+            var baseSetting = ConfigurationManager.AppSettings["UploadStoragePath"] ?? "~/App_Data/Uploads";
+            var basePath = Server.MapPath(baseSetting);
+            return Path.Combine(basePath, subfolder ?? string.Empty);
         }
     }
 }

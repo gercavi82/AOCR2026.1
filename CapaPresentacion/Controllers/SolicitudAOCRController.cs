@@ -2,6 +2,8 @@
 using System.Linq;
 using System.Web;
 using System.Web.Mvc;
+using System.Configuration;
+using CapaUtilidades;
 using System.Collections.Generic;
 using CapaDatos.DAOs;
 using CapaModelo;
@@ -184,18 +186,21 @@ namespace CapaPresentacion.Controllers
         {
             if (archivos == null) return;
 
-            string path = Server.MapPath("~/Uploads/AOCR/" + solicitudId);
-            if (!System.IO.Directory.Exists(path))
-                System.IO.Directory.CreateDirectory(path);
-
             foreach (var file in archivos)
             {
                 if (file != null && file.ContentLength > 0)
                 {
                     string fileName = System.IO.Path.GetFileName(file.FileName);
-                    string rutaRelativa = "/Uploads/AOCR/" + solicitudId + "/" + fileName;
-
-                    file.SaveAs(System.IO.Path.Combine(path, fileName));
+                    var maxSize = GetMaxUploadSize();
+                    var allowed = new[] { ".pdf", ".doc", ".docx", ".jpg", ".jpeg", ".png", ".zip", ".rar" };
+                    var basePath = GetUploadBasePath("AOCR");
+                    var result = FileUploadService.SaveFile(
+                        file.InputStream,
+                        file.FileName,
+                        file.ContentType,
+                        basePath,
+                        maxSize,
+                        allowed);
 
                     var doc = new Documento();
                     doc.CodigoSolicitud = solicitudId;
@@ -205,8 +210,8 @@ namespace CapaPresentacion.Controllers
                     SetIfExists(doc, "Estado", "PENDIENTE");
 
                     // En DB existe ruta_guardada y fecha_carga; tu modelo puede llamarse diferente:
-                    SetIfExists(doc, "RutaGuardada", rutaRelativa);
-                    SetIfExists(doc, "RutaArchivo", rutaRelativa);   // por si tu clase antigua lo tenía así
+                    SetIfExists(doc, "RutaGuardada", result.StoredPath);
+                    SetIfExists(doc, "RutaArchivo", result.StoredPath);   // por si tu clase antigua lo tenía así
                     SetIfExists(doc, "FechaCarga", DateTime.Now);
                     SetIfExists(doc, "FechaSubida", DateTime.Now);   // por si tu clase antigua lo tenía así
 
@@ -415,6 +420,20 @@ namespace CapaPresentacion.Controllers
             var rol = (Session["Rol"] ?? "").ToString();
             return rol.Equals("ADMIN", StringComparison.OrdinalIgnoreCase) ||
                    rol.Equals("Administrador", StringComparison.OrdinalIgnoreCase);
+        }
+
+        private long GetMaxUploadSize()
+        {
+            var raw = ConfigurationManager.AppSettings["MaxUploadSize"];
+            long size;
+            return long.TryParse(raw, out size) ? size : (10 * 1024 * 1024);
+        }
+
+        private string GetUploadBasePath(string subfolder)
+        {
+            var baseSetting = ConfigurationManager.AppSettings["UploadStoragePath"] ?? "~/App_Data/Uploads";
+            var basePath = Server.MapPath(baseSetting);
+            return Path.Combine(basePath, subfolder ?? string.Empty);
         }
     }
 }

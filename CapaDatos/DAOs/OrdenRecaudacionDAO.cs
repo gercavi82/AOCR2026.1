@@ -697,6 +697,92 @@ VALUES
             }
         }
 
+        public bool RegistrarPagoYActualizarEstado(int idOrden, PagoModel pago, string nuevoEstado)
+        {
+            if (idOrden <= 0 || pago == null) return false;
+            var estado = NormalizarEstado(nuevoEstado);
+            if (string.IsNullOrWhiteSpace(estado)) return false;
+
+            const string sqlPago = @"
+INSERT INTO aocr_tbpago
+(
+  codigo_solicitud,
+  numero_factura,
+  monto,
+  moneda,
+  concepto,
+  metodo_pago,
+  estado,
+  fecha_pago,
+  fecha_validacion,
+  validado_por,
+  observaciones,
+  comprobante_ruta
+)
+VALUES
+(
+  @codigo_solicitud,
+  @numero_factura,
+  @monto,
+  @moneda,
+  @concepto,
+  @metodo_pago,
+  @estado,
+  @fecha_pago,
+  @fecha_validacion,
+  @validado_por,
+  @observaciones,
+  @comprobante_ruta
+);";
+
+            const string sqlEstado = @"
+UPDATE aocr_or_orden
+SET estado = @e
+WHERE id = @id;";
+
+            try
+            {
+                using (var cn = new NpgsqlConnection(_cn))
+                {
+                    cn.Open();
+                    using (var tx = cn.BeginTransaction())
+                    {
+                        using (var cmd = new NpgsqlCommand(sqlPago, cn, tx))
+                        {
+                            cmd.Parameters.AddWithValue("@codigo_solicitud", idOrden);
+                            cmd.Parameters.AddWithValue("@numero_factura", (object)(pago.NumeroFactura ?? "") ?? DBNull.Value);
+                            cmd.Parameters.AddWithValue("@monto", pago.Monto);
+                            cmd.Parameters.AddWithValue("@moneda", (object)(pago.Moneda ?? "USD") ?? DBNull.Value);
+                            cmd.Parameters.AddWithValue("@concepto", (object)(pago.Concepto ?? "") ?? DBNull.Value);
+                            cmd.Parameters.AddWithValue("@metodo_pago", (object)(pago.MetodoPago ?? "") ?? DBNull.Value);
+                            cmd.Parameters.AddWithValue("@estado", (object)(pago.Estado ?? "Pendiente") ?? DBNull.Value);
+                            cmd.Parameters.AddWithValue("@fecha_pago", (object)pago.FechaPago ?? DBNull.Value);
+                            cmd.Parameters.AddWithValue("@fecha_validacion", (object)pago.FechaValidacion ?? DBNull.Value);
+                            cmd.Parameters.AddWithValue("@validado_por", (object)(pago.ValidadoPor ?? "") ?? DBNull.Value);
+                            cmd.Parameters.AddWithValue("@observaciones", (object)(pago.Observaciones ?? "") ?? DBNull.Value);
+                            cmd.Parameters.AddWithValue("@comprobante_ruta", (object)(pago.ComprobanteRuta ?? "") ?? DBNull.Value);
+                            cmd.ExecuteNonQuery();
+                        }
+
+                        using (var cmdEstado = new NpgsqlCommand(sqlEstado, cn, tx))
+                        {
+                            cmdEstado.Parameters.AddWithValue("@id", idOrden);
+                            cmdEstado.Parameters.AddWithValue("@e", estado);
+                            cmdEstado.ExecuteNonQuery();
+                        }
+
+                        tx.Commit();
+                        return true;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                TraceError("RegistrarPagoYActualizarEstado", ex);
+                return false;
+            }
+        }
+
         // ===================== Legacy DataTable (si aún lo usas) =====================
 
         public DataTable ObtenerOrdenesPorUsuario(int codigoUsuario)

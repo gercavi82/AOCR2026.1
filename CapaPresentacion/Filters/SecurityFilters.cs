@@ -91,4 +91,20 @@ namespace CapaPresentacion.Filters
         public void OnActionExecuting(ActionExecutingContext filterContext) { }
         public void OnActionExecuted(ActionExecutedContext filterContext) { }
     }
+
+    public class GlobalExceptionFilter : IExceptionFilter
+    {
+        public void OnException(ExceptionContext filterContext)
+        {
+            if (filterContext == null || filterContext.Exception == null) return;
+
+            CapaUtilidades.Logger.Error("Unhandled exception", filterContext.Exception);
+
+            filterContext.ExceptionHandled = true;
+            filterContext.Result = new ViewResult
+            {
+                ViewName = "Error"
+            };
+        }
+    }
 }

@@ -177,6 +177,65 @@ namespace CapaDatos.Services
             }
         }
 
+        public bool EnviarNotificacionFinanciero(OrdenRecaudacionModel orden, PagoModel pago, string[] destinatarios)
+        {
+            try
+            {
+                if (orden == null || pago == null) return false;
+                if (destinatarios == null || destinatarios.Length == 0) return false;
+
+                var asunto = $"Pago registrado - Orden #{orden.NumeroOrden}";
+                var montoTxt = pago.Monto.ToString("C", EcCulture);
+                var refTxt = !string.IsNullOrWhiteSpace(pago.NumeroFactura) ? pago.NumeroFactura : (pago.MetodoPago ?? "N/D");
+
+                var cuerpo = $@"
+<html><body style='font-family: Arial, sans-serif;'>
+<h3>Pago registrado por solicitante</h3>
+<p><strong>Orden:</strong> {Html(orden.NumeroOrden)}</p>
+<p><strong>Contribuyente:</strong> {Html(orden.NombreContribuyente ?? "")}</p>
+<p><strong>Monto:</strong> {montoTxt}</p>
+<p><strong>Referencia:</strong> {Html(refTxt)}</p>
+<p><strong>Estado actual:</strong> {Html(orden.Estado ?? "")}</p>
+</body></html>";
+
+                bool ok = true;
+                foreach (var email in destinatarios)
+                {
+                    if (!EsEmailValido(email)) continue;
+                    ok = EnviarEmail(email, "Financiero", asunto, cuerpo) && ok;
+                }
+                return ok;
+            }
+            catch
+            {
+                TraceSeguro("Error EnviarNotificacionFinanciero.");
+                return false;
+            }
+        }
+
+        public bool EnviarResultadoValidacionPago(string correo, string nombre, string numeroOrden, string estado, string observaciones)
+        {
+            try
+            {
+                if (string.IsNullOrWhiteSpace(correo) || !EsEmailValido(correo)) return false;
+                var asunto = $"Resultado de validación de pago - Orden #{numeroOrden}";
+                var cuerpo = $@"
+<html><body style='font-family: Arial, sans-serif;'>
+<h3>Resultado de validación de pago</h3>
+<p>Estimado/a <strong>{Html(nombre ?? "Contribuyente")}</strong>,</p>
+<p>Su pago para la orden <strong>{Html(numeroOrden)}</strong> fue <strong>{Html(estado ?? "N/D")}</strong>.</p>
+<p><strong>Observaciones:</strong> {Html(observaciones ?? "")}</p>
+<p>Este correo es automático. No responda.</p>
+</body></html>";
+                return EnviarEmail(correo, nombre, asunto, cuerpo);
+            }
+            catch
+            {
+                TraceSeguro("Error EnviarResultadoValidacionPago.");
+                return false;
+            }
+        }
+
         /// <summary>
         /// Notificación de anulación de orden.
         /// </summary>

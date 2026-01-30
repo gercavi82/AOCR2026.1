@@ -3,6 +3,8 @@ using System.IO; // Necesario para Path y manejo de archivos
 using System.Linq;
 using System.Web;
 using System.Web.Mvc;
+using System.Configuration;
+using CapaUtilidades;
 using CapaModelo;
 using CapaDatos.DAOs;
 
@@ -49,26 +51,26 @@ namespace CapaPresentacion.Controllers
 
                 if (archivo != null && archivo.ContentLength > 0)
                 {
-                    // Validación simple de extensión
-                    var ext = Path.GetExtension(archivo.FileName).ToLower();
-                    if (ext != ".pdf")
+                    try
                     {
-                        return Json(new { success = false, message = "Solo se permiten archivos PDF." });
+                        var maxSize = GetMaxUploadSize();
+                        var allowed = new[] { ".pdf" };
+                        var basePath = GetUploadBasePath("DocumentosLegales");
+
+                        var result = FileUploadService.SaveFile(
+                            archivo.InputStream,
+                            archivo.FileName,
+                            archivo.ContentType,
+                            basePath,
+                            maxSize,
+                            allowed);
+
+                        rutaArchivo = result.StoredPath;
                     }
-
-                    // Definir ruta de guardado (Ej: /App_Data/DocumentosLegales/)
-                    // Es más seguro guardar en App_Data para que no sea accesible públicamente por URL directa
-                    string carpetaDestino = Server.MapPath("~/App_Data/DocumentosLegales/");
-
-                    if (!Directory.Exists(carpetaDestino))
-                        Directory.CreateDirectory(carpetaDestino);
-
-                    // Nombre único para evitar reemplazar archivos: CEDULA_NombreOriginal.pdf
-                    string nombreArchivo = $"{cedula}_{Path.GetFileName(archivo.FileName)}";
-                    rutaArchivo = Path.Combine(carpetaDestino, nombreArchivo);
-
-                    // Guardar en disco
-                    archivo.SaveAs(rutaArchivo);
+                    catch (Exception ex)
+                    {
+                        return Json(new { success = false, message = "Error al procesar archivo: " + ex.Message });
+                    }
                 }
 
                 // 4. CREAR OBJETO USUARIO (CORREGIDO)
@@ -102,6 +104,20 @@ namespace CapaPresentacion.Controllers
                 // Loguear el error real en consola o archivo log es recomendable
                 return Json(new { success = false, message = "Error en el servidor: " + ex.Message });
             }
+        }
+
+        private long GetMaxUploadSize()
+        {
+            var raw = ConfigurationManager.AppSettings["MaxUploadSize"];
+            long size;
+            return long.TryParse(raw, out size) ? size : (10 * 1024 * 1024);
+        }
+
+        private string GetUploadBasePath(string subfolder)
+        {
+            var baseSetting = ConfigurationManager.AppSettings["UploadStoragePath"] ?? "~/App_Data/Uploads";
+            var basePath = Server.MapPath(baseSetting);
+            return Path.Combine(basePath, subfolder ?? string.Empty);
         }
     }
 }

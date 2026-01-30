@@ -4,6 +4,9 @@ using System.Linq;
 using System.IO;
 using System.Web;
 using System.Web.Mvc;
+using System.Configuration;
+using CapaUtilidades;
+using CapaDatos.Services;
 using CapaDatos.DAOs;
 using CapaDatos.Models;
 
@@ -326,29 +329,27 @@ namespace CapaPresentacion.Controllers
                 string comprobanteRuta = null;
                 if (ComprobanteArchivo != null && ComprobanteArchivo.ContentLength > 0)
                 {
-                    var ext = Path.GetExtension(ComprobanteArchivo.FileName) ?? "";
-                    ext = ext.ToLowerInvariant();
-                    if (ext != ".pdf" && ext != ".jpg" && ext != ".jpeg" && ext != ".png")
+                    try
                     {
-                        TempData["Error"] = "Formato de comprobante no permitido (PDF, JPG, PNG).";
+                        var maxSize = GetMaxUploadSize();
+                        var allowed = new[] { ".pdf", ".jpg", ".jpeg", ".png" };
+                        var basePath = GetUploadBasePath("Pagos");
+
+                        var result = FileUploadService.SaveFile(
+                            ComprobanteArchivo.InputStream,
+                            ComprobanteArchivo.FileName,
+                            ComprobanteArchivo.ContentType,
+                            basePath,
+                            maxSize,
+                            allowed);
+
+                        comprobanteRuta = result.StoredPath;
+                    }
+                    catch (Exception ex)
+                    {
+                        TempData["Error"] = "No se pudo procesar el comprobante: " + ex.Message;
                         return RedirectToAction("Detalles", new { id = id });
                     }
-
-                    if (ComprobanteArchivo.ContentLength > (10 * 1024 * 1024))
-                    {
-                        TempData["Error"] = "El comprobante supera el tamaño máximo permitido (10MB).";
-                        return RedirectToAction("Detalles", new { id = id });
-                    }
-
-                    var folderVirtual = "~/Content/documents/pagos";
-                    var folderFisico = Server.MapPath(folderVirtual);
-                    if (!Directory.Exists(folderFisico))
-                        Directory.CreateDirectory(folderFisico);
-
-                    var safeFile = $"pago_{id}_{DateTime.Now:yyyyMMddHHmmssfff}{ext}";
-                    var fullPath = Path.Combine(folderFisico, safeFile);
-                    ComprobanteArchivo.SaveAs(fullPath);
-                    comprobanteRuta = VirtualPathUtility.ToAbsolute($"{folderVirtual}/{safeFile}");
                 }
 
                 var pago = new PagoModel
@@ -369,28 +370,25 @@ namespace CapaPresentacion.Controllers
                     codigoSolicitud = orden.Id;
                 }
 
-                bool pagoOk = _dao.RegistrarPago(codigoSolicitud, pago);
-                if (!pagoOk)
-                {
-                    TempData["Error"] = "No se pudo registrar el pago en la base de datos.";
-                    return RedirectToAction("Detalles", new { id = id });
-                }
-
-                // Cambiar estado de la orden a PAGADA
-                bool result = _dao.CambiarEstadoOrden(id, "PAGADA");
+                bool result = _dao.RegistrarPagoYActualizarEstado(codigoSolicitud, pago, "PAGADA");
                 if (result)
                 {
+                    Logger.Info($"Pago registrado. OrdenId={orden.Id} NumeroOrden={orden.NumeroOrden} CodigoSolicitud={codigoSolicitud}");
+
+                    NotificarFinanciero(orden, pago);
                     TempData["OK"] = "Pago registrado correctamente";
                     return RedirectToAction("Detalles", new { id = id });
                 }
                 else
                 {
+                    Logger.Warn($"Pago NO registrado. OrdenId={orden.Id} NumeroOrden={orden.NumeroOrden} CodigoSolicitud={codigoSolicitud}");
                     TempData["Error"] = "Error al registrar el pago";
                     return RedirectToAction("Detalles", new { id = id });
                 }
             }
             catch (Exception ex)
             {
+                Logger.Error($"Error RegistrarPago OrdenId={id}", ex);
                 TempData["Error"] = "Error interno: " + ex.Message;
                 return RedirectToAction("Detalles", new { id = id });
             }
@@ -540,6 +538,43 @@ namespace CapaPresentacion.Controllers
         {
             if (d == null || !d.ContainsKey(key) || d[key] == null) return 0m;
             decimal x; return decimal.TryParse(d[key].ToString(), out x) ? x : 0m;
+        }
+
+        private void NotificarFinanciero(OrdenRecaudacionModel orden, PagoModel pago)
+        {
+            try
+            {
+                var emails = GetAdminEmails();
+                if (emails.Length == 0) return;
+
+                var emailService = new EmailService();
+                emailService.EnviarNotificacionFinanciero(orden, pago, emails);
+            }
+            catch (Exception ex)
+            {
+                Logger.Warn("No se pudo notificar a financiero: " + ex.Message);
+            }
+        }
+
+        private long GetMaxUploadSize()
+        {
+            var raw = ConfigurationManager.AppSettings["MaxUploadSize"];
+            long size;
+            return long.TryParse(raw, out size) ? size : (10 * 1024 * 1024);
+        }
+
+        private string GetUploadBasePath(string subfolder)
+        {
+            var baseSetting = ConfigurationManager.AppSettings["UploadStoragePath"] ?? "~/App_Data/Uploads";
+            var basePath = Server.MapPath(baseSetting);
+            return Path.Combine(basePath, subfolder ?? string.Empty);
+        }
+
+        private string[] GetAdminEmails()
+        {
+            var raw = ConfigurationManager.AppSettings["AdminEmails"] ?? string.Empty;
+            var parts = raw.Split(new[] { ';', ',' }, StringSplitOptions.RemoveEmptyEntries);
+            return parts.Select(p => p.Trim()).Where(p => !string.IsNullOrWhiteSpace(p)).ToArray();
         }
     }
 }

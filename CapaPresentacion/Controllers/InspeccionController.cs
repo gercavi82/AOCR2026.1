@@ -4,6 +4,8 @@ using System.IO;
 using System.Text;
 using System.Web;
 using System.Web.Mvc;
+using System.Configuration;
+using CapaUtilidades;
 using CapaNegocio;
 using CapaModelo;
 using CapaDatos.DAOs;
@@ -295,16 +297,27 @@ namespace CapaPresentacion.Controllers
                 return RedirectToAction("Detalle", new { id });
             }
 
-            string carpetaFisica = Server.MapPath(CARPETA_VIRTUAL_INFORMES);
-            if (!Directory.Exists(carpetaFisica))
-                Directory.CreateDirectory(carpetaFisica);
+            string rutaRelativa;
+            try
+            {
+                var maxSize = GetMaxUploadSize();
+                var allowed = new[] { ".pdf" };
+                var basePath = GetUploadBasePath("Inspecciones");
+                var result = FileUploadService.SaveFile(
+                    archivo.InputStream,
+                    archivo.FileName,
+                    archivo.ContentType,
+                    basePath,
+                    maxSize,
+                    allowed);
 
-            string nombreArchivo = Guid.NewGuid().ToString("N") + ".pdf";
-            string rutaFisica = Path.Combine(carpetaFisica, nombreArchivo);
-
-            archivo.SaveAs(rutaFisica);
-
-            string rutaRelativa = "/Uploads/Inspecciones/" + nombreArchivo;
+                rutaRelativa = result.StoredPath;
+            }
+            catch (Exception ex)
+            {
+                TempData["Error"] = "Error al guardar PDF: " + ex.Message;
+                return RedirectToAction("Detalle", new { id });
+            }
             int codigoUsuario = ObtenerCodigoUsuario();
 
             bool ok = _inspeccionBL.GuardarInforme(id, rutaRelativa, codigoUsuario);
@@ -480,6 +493,20 @@ namespace CapaPresentacion.Controllers
                 try { if (archivo?.InputStream != null) archivo.InputStream.Position = 0; } catch { }
                 return false;
             }
+        }
+
+        private long GetMaxUploadSize()
+        {
+            var raw = ConfigurationManager.AppSettings["MaxUploadSize"];
+            long size;
+            return long.TryParse(raw, out size) ? size : (10 * 1024 * 1024);
+        }
+
+        private string GetUploadBasePath(string subfolder)
+        {
+            var baseSetting = ConfigurationManager.AppSettings["UploadStoragePath"] ?? "~/App_Data/Uploads";
+            var basePath = Server.MapPath(baseSetting);
+            return Path.Combine(basePath, subfolder ?? string.Empty);
         }
 
         private bool EsRutaDentroDeBase(string archivoFullPath, string baseDirFullPath)

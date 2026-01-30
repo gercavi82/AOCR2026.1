@@ -4,6 +4,8 @@ using System.IO;
 using System.Linq;
 using System.Web;
 using System.Web.Mvc;
+using System.Configuration;
+using CapaUtilidades;
 using CapaDatos.DAOs; // Solo para SolicitudDAO (Cabecera)
 using CapaModelo;
 using CapaNegocio;    // <--- IMPORTANTE: Usamos la Capa de Negocio
@@ -122,12 +124,20 @@ namespace CapaPresentacion.Controllers
                     return RedirectToAction("Subir", new { solicitudId });
                 }
 
-                // 1. Guardar físico (El Controller maneja el Stream HTTP)
-                string ext = Path.GetExtension(archivo.FileName);
-                string nombreFisico = $"{solicitudId}_{Guid.NewGuid()}{ext}";
-                rutaCompleta = Path.Combine(_rutaDocumentos, nombreFisico);
+                // 1. Guardar físico (seguro y fuera de webroot)
+                var maxSize = GetMaxUploadSize();
+                var allowed = new[] { ".pdf", ".doc", ".docx", ".jpg", ".jpeg", ".png", ".zip", ".rar" };
+                var basePath = GetUploadBasePath("Documentos");
 
-                archivo.SaveAs(rutaCompleta);
+                var result = FileUploadService.SaveFile(
+                    archivo.InputStream,
+                    archivo.FileName,
+                    archivo.ContentType,
+                    basePath,
+                    maxSize,
+                    allowed);
+
+                rutaCompleta = result.StoredPath;
 
                 // 2. Preparar objeto para la BL
                 var doc = new Documento
@@ -268,6 +278,20 @@ namespace CapaPresentacion.Controllers
                 new { Val="BORRADOR_AOCR", Txt="Borrador AOCR" },
                 new { Val="OTRO", Txt="Otro" }
             }, "Val", "Txt");
+        }
+
+        private long GetMaxUploadSize()
+        {
+            var raw = ConfigurationManager.AppSettings["MaxUploadSize"];
+            long size;
+            return long.TryParse(raw, out size) ? size : (10 * 1024 * 1024);
+        }
+
+        private string GetUploadBasePath(string subfolder)
+        {
+            var baseSetting = ConfigurationManager.AppSettings["UploadStoragePath"] ?? "~/App_Data/Uploads";
+            var basePath = Server.MapPath(baseSetting);
+            return Path.Combine(basePath, subfolder ?? string.Empty);
         }
         #endregion
     }

@@ -2,11 +2,14 @@
 using System.IO;
 using System.Web;
 using System.Web.Mvc;
+using System.Configuration;
+using CapaUtilidades;
 using CapaNegocio;
 using CapaModelo;
 
 namespace CapaPresentacion.Controllers
 {
+    [Authorize]
     public class CertificadoController : Controller
     {
         private readonly CertificadoBL _bl = new CertificadoBL();
@@ -39,6 +42,8 @@ namespace CapaPresentacion.Controllers
         //                   SUBIR PDF DE CERTIFICADO
         // ============================================================
         [HttpPost]
+        [ValidateAntiForgeryToken]
+        [Authorize(Roles = "Administrador,Inspector")]
         public ActionResult SubirPDF(int id, int solicitudId, HttpPostedFileBase archivo)
         {
             try
@@ -57,23 +62,20 @@ namespace CapaPresentacion.Controllers
                     return RedirectToAction("Detalle", new { solicitudId });
                 }
 
-                // Construcción de ruta segura
-                string carpeta = "~/PDF/Certificados/";
-                string nombreArchivo = $"{id}.pdf";
-                string rutaRelativa = carpeta + nombreArchivo;
+                var maxSize = GetMaxUploadSize();
+                var allowed = new[] { ".pdf" };
+                var basePath = GetUploadBasePath("Certificados");
 
-                string rutaFisica = Server.MapPath(rutaRelativa);
-
-                // Crear carpeta si no existe
-                string carpetaFisica = Path.GetDirectoryName(rutaFisica);
-                if (!Directory.Exists(carpetaFisica))
-                    Directory.CreateDirectory(carpetaFisica);
-
-                // Guardar archivo
-                archivo.SaveAs(rutaFisica);
+                var result = FileUploadService.SaveFile(
+                    archivo.InputStream,
+                    archivo.FileName,
+                    archivo.ContentType,
+                    basePath,
+                    maxSize,
+                    allowed);
 
                 // Registrar en BD
-                _bl.SubirPDF(id, rutaRelativa);
+                _bl.SubirPDF(id, result.StoredPath);
 
                 TempData["OK"] = "Archivo PDF subido correctamente.";
             }
@@ -98,12 +100,28 @@ namespace CapaPresentacion.Controllers
             if (string.IsNullOrWhiteSpace(cert.RutaPdf))
                 return Content("El archivo PDF no está registrado.");
 
-            string rutaFisica = Server.MapPath(cert.RutaPdf);
+            string rutaFisica = cert.RutaPdf;
+            if (!Path.IsPathRooted(rutaFisica))
+                rutaFisica = Server.MapPath(cert.RutaPdf);
 
             if (!System.IO.File.Exists(rutaFisica))
                 return Content("El archivo PDF no se encuentra en el servidor.");
 
             return File(rutaFisica, "application/pdf", "certificado.pdf");
+        }
+
+        private long GetMaxUploadSize()
+        {
+            var raw = ConfigurationManager.AppSettings["MaxUploadSize"];
+            long size;
+            return long.TryParse(raw, out size) ? size : (10 * 1024 * 1024);
+        }
+
+        private string GetUploadBasePath(string subfolder)
+        {
+            var baseSetting = ConfigurationManager.AppSettings["UploadStoragePath"] ?? "~/App_Data/Uploads";
+            var basePath = Server.MapPath(baseSetting);
+            return Path.Combine(basePath, subfolder ?? string.Empty);
         }
     }
 }
