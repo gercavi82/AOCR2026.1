@@ -1,0 +1,429 @@
+/* ==========================================
+   ESTILOS PARA FORMULARIO EMISION AOCR
+   ========================================== */
+
+/* Variables CSS */
+:root {
+    --aocr-primary: #007bff;
+    --aocr-secondary: #6c757d;
+    --aocr-success: #28a745;
+    --aocr-danger: #dc3545;
+    --aocr-warning: #ffc107;
+    --aocr-info: #17a2b8;
+    --aocr-light: #f8f9fa;
+    --aocr-dark: #343a40;
+    --aocr-border-color: #ced4da;
+    --aocr-border-radius: 0.5rem;
+    --aocr-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+    --aocr-shadow-hover: 0 4px 15px rgba(0, 0, 0, 0.1);
+}
+
+/* ==========================================
+   CONTENEDOR PRINCIPAL
+   ========================================== */
+.formulario-aocr {
+    background-color: #f4f6f9;
+    min-height: 100vh;
+}
+
+/* ==========================================
+   MENU LATERAL (LIST GROUP)
+   ========================================== */
+.formulario-aocr .list-group-item {
+    border: none;
+    border-radius: var(--aocr-border-radius) !important;
+    margin-bottom: 5px;
+    color: #495057;
+    font-weight: 500;
+    transition: all 0.3s ease;
+    padding: 0.75rem 1rem;
+}
+
+.formulario-aocr .list-group-item:hover {
+    background-color: rgba(0, 123, 255, 0.1);
+    transform: translateX(3px);
+}
+
+.formulario-aocr .list-group-item.active {
+    background-color: var(--aocr-primary);
+    border-color: var(--aocr-primary);
+    color: #fff;
+    box-shadow: 0 4px 6px rgba(0, 123, 255, 0.3);
+}
+
+.formulario-aocr .list-group-item i {
+    margin-right: 10px;
+    width: 20px;
+    text-align: center;
+}
+
+/* ==========================================
+   TARJETAS PERSONALIZADAS
+   ========================================== */
+.card-custom {
+    border: none;
+    box-shadow: var(--aocr-shadow);
+    border-radius: var(--aocr-border-radius);
+    background-color: #fff;
+    margin-bottom: 1.5rem;
+    transition: box-shadow 0.3s ease;
+}
+
+.card-custom:hover {
+    box-shadow: var(--aocr-shadow-hover);
+}
+
+.card-header-custom {
+    background-color: #fff;
+    border-bottom: 2px solid #f1f1f1;
+    padding: 1rem 1.5rem;
+}
+
+.card-body-custom {
+    padding: 1.5rem;
+}
+
+/* ==========================================
+   TITULOS CON BORDE LATERAL
+   ========================================== */
+.formulario-aocr h5.font-weight-bold,
+.titulo-seccion {
+    color: #2c3e50;
+    border-left: 4px solid var(--aocr-primary);
+    padding-left: 10px;
+    margin-bottom: 0;
+}
+
+.titulo-subseccion {
+    color: var(--aocr-primary);
+    font-weight: 600;
+    margin-bottom: 1rem;
+}
+
+/* ==========================================
+   FORMULARIOS E INPUTS
+   ========================================== */
+.formulario-aocr .form-control {
+    border-radius: 0.4rem;
+    border: 1px solid var(--aocr-border-color);
+    padding: 0.5rem 0.75rem;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.formulario-aocr .form-control:focus {
+    box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.15);
+    border-color: #80bdff;
+}
+
+.formulario-aocr .form-control:invalid {
+    border-color: var(--aocr-danger);
+}
+
+.formulario-aocr .form-control[aria-invalid="true"] {
+    border-color: var(--aocr-danger);
+    box-shadow: 0 0 0 3px rgba(220, 53, 69, 0.15);
+}
+
+/* ==========================================
+   SECCION DE ANEXOS
+   ========================================== */
+.anexo-item {
+    background-color: #fff;
+    border: 1px solid #e9ecef;
+    border-radius: 8px;
+    padding: 15px;
+    margin-bottom: 15px;
+    transition: all 0.2s ease;
+}
+
+.anexo-item:hover {
+    border-color: #b8daff;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+.anexo-item:focus-within {
+    border-color: var(--aocr-primary);
+    box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.1);
+}
+
+.anexo-numero {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    background-color: var(--aocr-primary);
+    color: #fff;
+    border-radius: 50%;
+    font-size: 12px;
+    font-weight: bold;
+    margin-right: 8px;
+}
+
+/* ==========================================
+   TABLA DE AERONAVES
+   ========================================== */
+.tabla-aeronaves {
+    font-size: 14px;
+}
+
+.tabla-aeronaves thead {
+    background-color: var(--aocr-dark);
+    color: #fff;
+}
+
+.tabla-aeronaves th,
+.tabla-aeronaves td {
+    vertical-align: middle;
+    text-align: center;
+}
+
+.tabla-aeronaves tbody tr:hover {
+    background-color: rgba(0, 123, 255, 0.05);
+}
+
+/* ==========================================
+   BOTONES
+   ========================================== */
+.btn-accion-principal {
+    padding: 0.75rem 1.5rem;
+    font-weight: 600;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    transition: all 0.2s ease;
+}
+
+.btn-accion-principal:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+}
+
+.btn-eliminar-aeronave {
+    padding: 0.25rem 0.5rem;
+}
+
+/* ==========================================
+   BADGES DE COMPANIA
+   ========================================== */
+.badge-compania {
+    cursor: pointer;
+    transition: all 0.2s ease;
+    padding: 0.5rem 0.75rem;
+    margin: 0.25rem;
+}
+
+.badge-compania:hover {
+    opacity: 0.8;
+    transform: scale(1.05);
+}
+
+.badge-compania:focus {
+    outline: 2px solid var(--aocr-primary);
+    outline-offset: 2px;
+}
+
+/* ==========================================
+   CONTENEDOR DE COMPANIAS
+   ========================================== */
+.companias-container {
+    min-height: 50px;
+    padding: 0.5rem;
+    border: 1px solid var(--aocr-border-color);
+    border-radius: var(--aocr-border-radius);
+    background-color: #fff;
+}
+
+/* ==========================================
+   SECCIONES CON FONDO
+   ========================================== */
+.seccion-destacada {
+    background-color: var(--aocr-light);
+    padding: 1rem;
+    border-radius: var(--aocr-border-radius);
+    border: 1px solid #e9ecef;
+    margin-bottom: 1rem;
+}
+
+/* ==========================================
+   ALERTAS Y MENSAJES
+   ========================================== */
+.alerta-validacion {
+    display: none;
+    color: var(--aocr-danger);
+    font-size: 0.875rem;
+    margin-top: 0.25rem;
+}
+
+.alerta-validacion.visible {
+    display: block;
+}
+
+/* ==========================================
+   VISTA PREVIA DE ARCHIVOS
+   ========================================== */
+.vista-previa-archivo {
+    display: none;
+    margin-top: 0.5rem;
+}
+
+.vista-previa-archivo.visible {
+    display: block;
+}
+
+/* ==========================================
+   AREA DE CARGA DE ARCHIVOS
+   ========================================== */
+.area-carga {
+    border: 2px dashed var(--aocr-border-color);
+    border-radius: var(--aocr-border-radius);
+    padding: 1.5rem;
+    text-align: center;
+    background-color: var(--aocr-light);
+    transition: all 0.2s ease;
+}
+
+.area-carga:hover,
+.area-carga.dragover {
+    border-color: var(--aocr-primary);
+    background-color: rgba(0, 123, 255, 0.05);
+}
+
+/* ==========================================
+   CHECKBOXES PERSONALIZADOS
+   ========================================== */
+.formulario-aocr .custom-control-input:checked ~ .custom-control-label::before {
+    background-color: var(--aocr-primary);
+    border-color: var(--aocr-primary);
+}
+
+.formulario-aocr .custom-control-input:focus ~ .custom-control-label::before {
+    box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.25);
+}
+
+/* ==========================================
+   RESUMEN DE FLOTA
+   ========================================== */
+.resumen-flota {
+    background-color: #e9ecef;
+    border: none;
+    color: #495057;
+    font-family: 'Consolas', 'Monaco', monospace;
+    font-size: 0.9rem;
+}
+
+/* ==========================================
+   MODALES
+   ========================================== */
+.modal-aocr .modal-header {
+    border-bottom: none;
+}
+
+.modal-aocr .modal-footer {
+    border-top: none;
+}
+
+.modal-aocr.modal-success .modal-header {
+    background-color: var(--aocr-success);
+    color: #fff;
+}
+
+.modal-aocr.modal-primary .modal-header {
+    background-color: var(--aocr-primary);
+    color: #fff;
+}
+
+/* ==========================================
+   ACCESIBILIDAD
+   ========================================== */
+.sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+}
+
+/* Focus visible para navegacion por teclado */
+.formulario-aocr *:focus-visible {
+    outline: 2px solid var(--aocr-primary);
+    outline-offset: 2px;
+}
+
+/* Skip link */
+.skip-link {
+    position: absolute;
+    top: -40px;
+    left: 0;
+    background: var(--aocr-primary);
+    color: #fff;
+    padding: 8px;
+    z-index: 100;
+}
+
+.skip-link:focus {
+    top: 0;
+}
+
+/* ==========================================
+   RESPONSIVE
+   ========================================== */
+@media (max-width: 768px) {
+    .formulario-aocr .list-group-item {
+        font-size: 0.9rem;
+        padding: 0.5rem 0.75rem;
+    }
+
+    .card-header-custom,
+    .card-body-custom {
+        padding: 1rem;
+    }
+
+    .anexo-item {
+        padding: 10px;
+    }
+
+    .tabla-aeronaves {
+        font-size: 12px;
+    }
+}
+
+/* ==========================================
+   ANIMACIONES
+   ========================================== */
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(-10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.fade-in {
+    animation: fadeIn 0.3s ease;
+}
+
+/* ==========================================
+   ESTADOS DE CARGA
+   ========================================== */
+.cargando {
+    pointer-events: none;
+    opacity: 0.7;
+}
+
+.cargando::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 20px;
+    height: 20px;
+    margin: -10px 0 0 -10px;
+    border: 2px solid var(--aocr-primary);
+    border-top-color: transparent;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}

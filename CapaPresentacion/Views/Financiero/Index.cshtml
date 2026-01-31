@@ -80,13 +80,14 @@
                 }
             </td>
             <td>
-                @if (orden != null && estadoNorm == "PROCESADA")
+                @if (orden != null && pago != null && (estadoNorm == "PROCESADA" || estadoNorm == "PENDIENTE"))
                 {
-                    using (Html.BeginForm("AprobarOrden", "Financiero", FormMethod.Post))
+                    using (Html.BeginForm("AprobarPago", "Financiero", FormMethod.Post))
                     {
                         @Html.AntiForgeryToken()
-                        @Html.Hidden("id", orden.Id)
-                        <button type="submit" class="btn btn-sm btn-success">Aprobar</button>
+                        @Html.Hidden("id", (object)orden.Id)
+                        @Html.Hidden("pagoId", (object)pago.CodigoPago)
+                        <button type="submit" class="btn btn-sm btn-success">Aprobar pago</button>
                     }
 
                     <button class="btn btn-sm btn-danger" type="button" data-bs-toggle="modal" data-bs-target="#modalRechazo-@orden.Id">Rechazar</button>
@@ -130,6 +131,7 @@
         }
     </tbody>
 </table>
+
 
 
 

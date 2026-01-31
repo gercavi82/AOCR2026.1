@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Linq;
 using System.Web.Mvc;
 using CapaDatos.DAOs;
 using CapaDatos.Models;
@@ -20,12 +21,14 @@ namespace CapaPresentacion.Controllers
 
             // Para "TODAS" no aplicar filtro en SQL
             var estadoConsulta = estadoFiltro == "TODAS" ? null : estadoFiltro;
-            var ordenes = _ordenDAO.ObtenerTodasLasOrdenes(estadoConsulta) ?? new List<OrdenRecaudacionModel>();
+            var ordenesEnt = _ordenDAO.ObtenerTodasLasOrdenes(estadoConsulta) ?? new List<CapaDatos.Entidades.OrdenRecaudacion>();
+            var ordenes = ordenesEnt.Select(MapearOrden).ToList();
 
             // Si no hay resultados y se estaba filtrando, intentar sin filtro para descartar problemas de estado
             if (!string.IsNullOrEmpty(estadoConsulta) && (ordenes == null || ordenes.Count == 0))
             {
-                var todas = _ordenDAO.ObtenerTodasLasOrdenes(null) ?? new List<OrdenRecaudacionModel>();
+                var todasEnt = _ordenDAO.ObtenerTodasLasOrdenes(null) ?? new List<CapaDatos.Entidades.OrdenRecaudacion>();
+                var todas = todasEnt.Select(MapearOrden).ToList();
                 ViewBag.SinResultadosConFiltro = true;
                 ViewBag.TotalSinFiltro = todas.Count;
                 if (todas.Any())
@@ -44,7 +47,8 @@ namespace CapaPresentacion.Controllers
                 {
                     int.TryParse(orden.CodigoSolicitud, out solicitudId);
                 }
-                var pago = _ordenDAO.ObtenerUltimoPagoPorOrden(solicitudId > 0 ? solicitudId : orden.Id);
+                var pagoEnt = _ordenDAO.ObtenerUltimoPagoPorOrden(solicitudId > 0 ? solicitudId : orden.Id);
+                var pago = MapearPago(pagoEnt);
                 vms.Add(new OrdenValidacionFinancieraVM
                 {
                     Orden = orden,
@@ -77,12 +81,9 @@ namespace CapaPresentacion.Controllers
 
             try
             {
-                var dto = _ordenDAO.ObtenerDatosParaPdf(id, 0);
-                if (dto != null)
-                {
-                    var pdf = new CapaPresentacion.Services.PdfGeneratorService().GenerarOrdenRecaudacionPDF(dto);
-                    new EmailService().EnviarFacturaGenerada(orden, pdf);
-                }
+                // Generar PDF directamente desde la orden
+                var pdf = new CapaPresentacion.Services.PdfGeneratorService().GenerarOrdenRecaudacionPDF(orden);
+                new EmailService().EnviarFacturaGenerada(orden, pdf);
             }
             catch
             {
@@ -90,6 +91,23 @@ namespace CapaPresentacion.Controllers
             }
 
             TempData["Success"] = "Orden aprobada y factura generada.";
+            return RedirectToAction("Index");
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public ActionResult AprobarPago(int id, int? pagoId)
+        {
+            var orden = _ordenDAO.ObtenerOrdenPorId(id);
+            if (orden == null) return HttpNotFound();
+
+            var user = User?.Identity?.Name ?? "FINANCIERO";
+
+            // Marcar el último pago (o el indicado) como APROBADO y mover la orden a FACTURADA
+            _ordenDAO.ActualizarUltimoPagoEstado(id, "APROBADO", user, "Aprobado por Finanzas");
+            _ordenDAO.CambiarEstadoOrden(id, "FACTURADA");
+
+            TempData["Success"] = "Pago aprobado y orden facturada.";
             return RedirectToAction("Index");
         }
 
@@ -134,8 +152,54 @@ namespace CapaPresentacion.Controllers
         // GET: /Financiero/TodasOrdenes
         public ActionResult TodasOrdenes(string estado)
         {
-            var ordenes = _ordenDAO.ObtenerTodasLasOrdenes(estado) ?? new List<OrdenRecaudacionModel>();
+            var ordenesEnt = _ordenDAO.ObtenerTodasLasOrdenes(estado) ?? new List<CapaDatos.Entidades.OrdenRecaudacion>();
+            var ordenes = ordenesEnt.Select(MapearOrden).ToList();
             return View(ordenes);
         }
+
+        #region Helpers
+        private OrdenRecaudacionModel MapearOrden(CapaDatos.Entidades.OrdenRecaudacion o)
+        {
+            if (o == null) return null;
+            int usuarioId;
+            int.TryParse(o.CodigoUsuario, out usuarioId);
+            return new OrdenRecaudacionModel
+            {
+                Id = o.Id,
+                NumeroOrden = o.NumeroOrden,
+                Estado = o.Estado,
+                Total = o.Total ?? 0m,
+                Subtotal = o.Subtotal ?? 0m,
+                Iva = o.Iva ?? 0m,
+                FechaCreacion = o.FechaCreacion,
+                NombreContribuyente = o.NombreContribuyente,
+                CodigoUsuario = usuarioId,
+                CodigoSolicitud = o.CodigoSolicitud?.ToString(),
+                LugarEmision = o.LugarEmision,
+                Compania = o.NombreContribuyente,
+                RucCedula = o.RucContribuyente,
+                Correo = o.EmailContribuyente,
+                Telefono = null,
+                Observacion = o.Observaciones ?? o.Observacion
+            };
+        }
+
+        private PagoModel MapearPago(CapaDatos.Entidades.Pago p)
+        {
+            if (p == null) return null;
+            return new PagoModel
+            {
+                CodigoPago = p.Id,
+                CodigoSolicitud = p.CodigoSolicitud,
+                NumeroFactura = p.NumeroComprobante,
+                Monto = p.MontoPagado,
+                MetodoPago = p.MetodoPago,
+                Estado = p.Estado,
+                FechaPago = p.FechaPago,
+                Observaciones = p.Observaciones,
+                ComprobanteRuta = p.RutaComprobante
+            };
+        }
+        #endregion
     }
 }

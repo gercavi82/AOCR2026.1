@@ -7,26 +7,23 @@ namespace CapaDatos.Models
     public class OrdenRecaudacionModel
     {
         public int Id { get; set; }
+        public string NumeroOrden { get; set; }
+        public string Estado { get; set; }
+        public decimal Total { get; set; }
+        public decimal Subtotal { get; set; }
+        public decimal Iva { get; set; }
+        public DateTime FechaCreacion { get; set; }
+        public string NombreContribuyente { get; set; }
         public int CodigoUsuario { get; set; }
         public string CodigoSolicitud { get; set; }
-
-        public string NumeroOrden { get; set; }
-        public DateTime FechaCreacion { get; set; }
-        public string Estado { get; set; }
-
-        public string Observacion { get; set; }
-        public decimal Subtotal { get; set; }
-        public decimal Admin { get; set; }
-        public decimal Total { get; set; }
-
         public string LugarEmision { get; set; }
         public string Compania { get; set; }
         public string RucCedula { get; set; }
         public string Correo { get; set; }
         public string Telefono { get; set; }
-        public int? ConceptoId { get; set; }
-
-        public string NombreContribuyente { get; set; }
+        public string Observacion { get; set; }
+        public string Observaciones { get { return Observacion; } set { Observacion = value; } }
+        public decimal Admin { get; set; }
 
         public List<OrdenDetalleModel> Detalles { get; set; } = new List<OrdenDetalleModel>();
 
@@ -97,4 +94,6 @@ namespace CapaDatos.Models
             }
         }
     }
+
+    // PagoModel ya no se define aquí - usar el de CapaDatos.Models existente o CapaModelo
 }

@@ -118,6 +118,10 @@
     <Compile Include="AuditoriaBL.cs" />
     <Compile Include="AeronaveBL.cs" />
     <Compile Include="AeronaveSolicitudBL.cs" />
+    <Compile Include="DTOs\OrdenRecaudacionDTOs.cs" />
+    <Compile Include="Interfaces\IFileStorageService.cs" />
+    <Compile Include="Interfaces\IOrdenRecaudacionOrchestrator.cs" />
+    <Compile Include="Interfaces\IPdfGeneratorService.cs" />
     <Compile Include="OrdenRecaudacionBL.cs" />
     <Compile Include="Helpers\ValidacionEstadosOR.cs" />
     <Compile Include="Helpers\DateHelper.cs" />
@@ -127,11 +131,15 @@
     <Compile Include="Helpers\ValidationHelper.cs" />
     <Compile Include="Services\EmailService.cs" />
     <Compile Include="Services\InspeccionService.cs" />
+    <Compile Include="Services\LoggingService.cs" />
+    <Compile Include="Services\NotificacionService.cs" />
     <Compile Include="Services\OrdenPdfService.cs" />
     <Compile Include="Services\CertificacionService.cs" />
     <Compile Include="Services\DireccionService.cs" />
     <Compile Include="Services\FinancieroService.cs" />
+    <Compile Include="Services\OrdenRecaudacionOrchestrator.cs" />
     <Compile Include="Services\ResultadoOperacion.cs" />
+    <Compile Include="Services\SecureConfigurationService.cs" />
     <Compile Include="Services\TecnicoService.cs" />
     <Compile Include="Services\TramiteService.cs" />
     <Compile Include="SolicitudAOCRBL.cs" />

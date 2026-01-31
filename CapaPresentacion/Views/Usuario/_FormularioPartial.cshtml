@@ -1,13 +1,11 @@
-﻿@inherits System.Web.Mvc.WebViewPage
-@using CapaModelo
+@inherits System.Web.Mvc.WebViewPage<CapaPresentacion.Models.SolicitudAOCRViewModel>
 @using System.Web.Mvc
 @using System.Web.Mvc.Html
 
 @{
-    ViewBag.Title = "_FormularioPartial";
+    // Puente para renderizar el formulario completo de Solicitud AOCR.
+    // Antes este partial estaba vacío y no cargaba las otras pestañas/formularios.
+    Layout = null;
 }
 
-<h2>_FormularioPartial</h2>
-
-
-
+@Html.Partial("~/Views/SolicitudAOCR/_FormularioEmisionAOCR.cshtml", Model)

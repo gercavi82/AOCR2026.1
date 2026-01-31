@@ -1,4 +1,4 @@
-锘縰sing System;
+using System;
 using System.Linq;
 using System.Web.Mvc;
 using CapaDatos.DAOs;
@@ -11,7 +11,7 @@ namespace CapaPresentacion.Controllers
     [Authorize]
     public class OrdenController : Controller
     {
-        private readonly IOrdenRecaudacionDAO _dao;
+        private readonly OrdenRecaudacionDAO _dao;
 
         public OrdenController()
         {
@@ -26,12 +26,12 @@ namespace CapaPresentacion.Controllers
                 int idUsuario = ObtenerIdUsuario();
                 if (idUsuario <= 0)
                 {
-                    TempData["Error"] = "Debe iniciar sesi贸n.";
+                    TempData["Error"] = "Debe iniciar sesi髇.";
                     return RedirectToAction("Login", "Account");
                 }
 
                 // 1) Traer la orden por ID
-                var orden = _dao.ObtenerPorId(id);
+                var orden = _dao.ObtenerOrdenPorIdModel(id);
 
                 // 2) Validar permisos (que sea del usuario logueado)
                 if (orden == null || orden.CodigoUsuario != idUsuario)
@@ -73,11 +73,11 @@ namespace CapaPresentacion.Controllers
                 int idUsuario = ObtenerIdUsuario();
                 if (idUsuario <= 0)
                 {
-                    TempData["Error"] = "Debe iniciar sesi贸n.";
+                    TempData["Error"] = "Debe iniciar sesi髇.";
                     return RedirectToAction("Login", "Account");
                 }
 
-                // 1) Traer las 贸rdenes del usuario
+                // 1) Traer las 髍denes del usuario
                 var dt = _dao.ObtenerOrdenesPorUsuario(idUsuario);
 
                 // 2) Map a ViewModels
@@ -98,13 +98,13 @@ namespace CapaPresentacion.Controllers
                     ordenes.Add(vm);
                 }
 
-                ViewBag.Mensaje = "Mis 脫rdenes de Recaudaci贸n";
+                ViewBag.Mensaje = "Mis 觬denes de Recaudaci髇";
 
                 return View(ordenes);
             }
             catch (Exception ex)
             {
-                TempData["Error"] = $"Error al cargar las 贸rdenes: {ex.Message}";
+                TempData["Error"] = $"Error al cargar las 髍denes: {ex.Message}";
                 return RedirectToAction("Index", "Dashboard");
             }
         }
@@ -120,3 +120,4 @@ namespace CapaPresentacion.Controllers
         }
     }
 }
+

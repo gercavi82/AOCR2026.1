@@ -216,12 +216,35 @@
     </div>
 </section>
 
-<!-- Modal (el layout ya lo tiene; si lo tienes duplicado, deja SOLO UNO) -->
-<!-- Si tu Layout ya incluye #modalFormulario, NO lo repitas aquí -->
+<!-- Modal para crear/editar solicitud AOCR (solo se declara aquí porque el layout no lo incluye) -->
+<div class="modal fade" id="modalFormulario" tabindex="-1" aria-labelledby="modalFormularioLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title" id="modalFormularioLabel">
+                    <i class="bi bi-clipboard-check me-2"></i> Solicitud AOCR
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-0" id="contenidoModal">
+                <div class="d-flex flex-column align-items-center justify-content-center py-5">
+                    <div class="spinner-border text-primary mb-3" role="status"></div>
+                    <p class="text-muted mb-0">Cargando formulario...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+  </div>
 
 @section scripts {
     <script>
     $(document).ready(function () {
+
+        // Abrir modal de inmediato si llega con ?abrir=nueva
+        const urlParams = new URLSearchParams(window.location.search);
+        if (urlParams.get('abrir') === 'nueva') {
+            setTimeout(function () { cargarFormulario(null); }, 150);
+        }
 
         // Datos simulados (luego lo cambias por AJAX a tu BD)
         var datosGlobales = [

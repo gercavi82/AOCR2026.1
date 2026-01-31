@@ -10,11 +10,11 @@ namespace CapaPresentacion.Controllers
     [Authorize]
     public class DashboardController : Controller
     {
-        private readonly IOrdenRecaudacionDAO _dao;
+        private readonly OrdenRecaudacionDAO _dao;
 
         public DashboardController()
         {
-            _dao = new OrdenRecaudacionDAO(); // Debe implementar IOrdenRecaudacionDAO
+            _dao = new OrdenRecaudacionDAO();
         }
 
         // GET: Dashboard
@@ -51,7 +51,7 @@ namespace CapaPresentacion.Controllers
                     return Json(new { success = false, message = "Sesión expirada" }, JsonRequestBehavior.AllowGet);
 
                 // ✅ USAR LISTA (NO DataTable)
-                var ordenes = _dao.ListarPorUsuario(idUsuario, null) ?? new List<OrdenRecaudacionModel>();
+                var ordenes = _dao.ListarPorUsuario(idUsuario, null) ?? new List<CapaDatos.Entidades.OrdenRecaudacion>();
 
                 int ordenesPendientes = 0;
                 int ordenesCompletadas = 0;
@@ -67,7 +67,7 @@ namespace CapaPresentacion.Controllers
                     else if (estado == "PAGADA" || estado == "COMPLETADA")
                         ordenesCompletadas++;
 
-                    totalRecaudado += o.Total;
+                    totalRecaudado += o.Total ?? 0m;
                 }
 
                 var ultima = ordenes

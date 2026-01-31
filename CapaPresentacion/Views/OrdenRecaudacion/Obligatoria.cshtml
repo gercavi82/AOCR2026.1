@@ -1,5 +1,4 @@
-﻿@inherits System.Web.Mvc.WebViewPage<List<CapaDatos.Models.OrdenRecaudacionModel>>
-@using CapaModelo
+@inherits System.Web.Mvc.WebViewPage<List<CapaDatos.Entidades.OrdenRecaudacion>>
 @using System.Web.Mvc
 @using System.Web.Mvc.Html
 
@@ -63,7 +62,7 @@
         }
     }
 
-    // Texto amigable del trámite
+    // Texto amigable del tr?mite
     public static string GetTextoTramite(string estado)
     {
         if (string.IsNullOrWhiteSpace(estado))
@@ -76,7 +75,7 @@
         {
             case "BORRADOR": return "Borrador";
             case "PENDIENTE": return "Pendiente de pago";
-            case "PROCESADA": return "En revisión financiera";
+            case "PROCESADA": return "En revisi?n financiera";
             case "FACTURADA": return "Factura generada";
             case "COMPLETADA": return "Completada";
             case "ANULADA": return "Anulada";
@@ -118,13 +117,31 @@
             return string.Empty;
         }
     }
+
+    // Helper para obtener nombre del concepto desde el ID
+    public static string GetConceptoNombre(object conceptoId, object conceptoNombre)
+    {
+        // Si ya tenemos el nombre del concepto, usarlo
+        if (conceptoNombre != null && !string.IsNullOrWhiteSpace(conceptoNombre.ToString()))
+        {
+            return conceptoNombre.ToString();
+        }
+        
+        // Si solo tenemos el ID, mostrar referencia
+        if (conceptoId != null)
+        {
+            return "Concepto #" + conceptoId.ToString();
+        }
+        
+        return "N/A";
+    }
 }
 
 @{
-    ViewBag.Title = "Orden de Recaudación Requerida";
+    ViewBag.Title = "Orden de Recaudaci?n Requerida";
     Layout = "~/Views/Shared/_LayoutAOCR.cshtml";
 
-    // Obtener estadísticas desde ViewBag (del controlador)
+    // Obtener estad?sticas desde ViewBag (del controlador)
     var estadisticas = ViewBag.Estadisticas as Dictionary<string, object>;
     var totalOrdenes = 0;
     var pagadas = 0;
@@ -151,7 +168,7 @@
             }
         }
 
-        // Calcular pendientes con validación - CORREGIDO CON LLAVES
+        // Calcular pendientes con validaci?n - CORREGIDO CON LLAVES
         var pendientes = totalOrdenes - pagadas;
         if (pendientes < 0)
         {
@@ -243,7 +260,7 @@
                 padding: 6px 12px !important;
             }
 
-            /* Estados específicos */
+            /* Estados espec?ficos */
             .estado-borrador {
                 background-color: var(--color-secondary) !important;
                 color: white;
@@ -288,7 +305,7 @@
     }
 
     <div class="container-fluid py-4">
-        <!-- Encabezado de página -->
+        <!-- Encabezado de p?gina -->
         <div class="row mb-4">
             <div class="col-md-8">
                 <h1 class="h3 text-dark mb-2">
@@ -296,7 +313,7 @@
                     @ViewBag.Title
                 </h1>
                 <p class="text-muted">
-                    Gestión de órdenes de recaudación requeridas para el proceso AOCR.
+                    Gesti?n de ?rdenes de recaudaci?n requeridas para el proceso AOCR.
                     @if (tieneOrdenBorrador)
                     {
                         <span class="badge bg-warning ms-2">
@@ -333,10 +350,10 @@
             </div>
         </div>
 
-        <!-- Filtros rápidos -->
+        <!-- Filtros r?pidos -->
         <div class="card mb-4 hover-shadow" id="card-filtros">
             <div class="card-header bg-light">
-                <h6 class="mb-0"><i class="fas fa-filter me-2"></i>Filtros de Búsqueda</h6>
+                <h6 class="mb-0"><i class="fas fa-filter me-2"></i>Filtros de B?squeda</h6>
             </div>
             <div class="card-body">
                 @using (Html.BeginForm("Index", "OrdenRecaudacion", FormMethod.Get, new { @class = "row g-3", id = "form-filtros" }))
@@ -381,14 +398,14 @@
             </div>
         </div>
 
-        <!-- Estadísticas -->
+        <!-- Estad?sticas -->
         <div class="row mb-4">
             <div class="col-md-3">
                 <div class="card bg-primary text-white hover-shadow">
                     <div class="card-body">
                         <div class="d-flex justify-content-between">
                             <div>
-                                <h6 class="card-title">Total Órdenes</h6>
+                                <h6 class="card-title">Total ?rdenes</h6>
                                 <h2 class="mb-0" id="total-ordenes">@totalOrdenes</h2>
                             </div>
                             <div class="align-self-center">
@@ -468,12 +485,12 @@
             </div>
         </div>
 
-        <!-- Tabla de órdenes -->
+        <!-- Tabla de ?rdenes -->
         <div class="card hover-shadow">
             <div class="card-header bg-white border-bottom-0 py-3">
                 <div class="d-flex justify-content-between align-items-center">
                     <h5 class="card-title mb-0">
-                        <i class="fas fa-list me-2"></i> Listado de Órdenes de Recaudación
+                        <i class="fas fa-list me-2"></i> Listado de ?rdenes de Recaudaci?n
                     </h5>
                     <div>
                         <span class="badge bg-light text-dark me-2" id="badge-contador">
@@ -483,7 +500,7 @@
                         @if (User != null && User.IsInRole("Administrador"))
                         {
                             <a href="@Url.Action("DbPing", "OrdenRecaudacion")" class="btn btn-sm btn-outline-success"
-                               title="Probar conexión a BD" data-bs-toggle="tooltip" id="btn-db-ping">
+                               title="Probar conexi?n a BD" data-bs-toggle="tooltip" id="btn-db-ping">
                                 <i class="fas fa-plug"></i>
                             </a>
                         }
@@ -495,8 +512,8 @@
                 {
                     <div class="text-center py-5" id="sin-datos">
                         <i class="fas fa-inbox fa-3x text-muted mb-3"></i>
-                        <h4 class="text-muted">No hay órdenes de recaudación</h4>
-                        <p class="text-muted">No se encontraron órdenes con los filtros aplicados.</p>
+                        <h4 class="text-muted">No hay ?rdenes de recaudaci?n</h4>
+                        <p class="text-muted">No se encontraron ?rdenes con los filtros aplicados.</p>
                         @if (User != null && (User.IsInRole("Solicitante") || User.IsInRole("Administrador")))
                         {
                             <a href="@Url.Action("Nueva", "OrdenRecaudacion")" class="btn btn-primary mt-2" id="btn-primera-orden">
@@ -512,12 +529,12 @@
                             <thead class="table-light">
                                 <tr>
                                     <th width="5%">ID</th>
-                                    <th width="15%">Número Orden</th>
+                                    <th width="15%">N?mero Orden</th>
                                     <th width="20%">Contribuyente</th>
-                                    <th width="15%">Fecha Creación</th>
+                                    <th width="15%">Fecha Creaci?n</th>
                                     <th width="10%">Monto</th>
-                                    <th width="15%">Estado</th>
-                                    <th width="15%">Trámite</th>
+                                    <th width="12%">Estado</th>
+                                    <th width="13%">Tr?mite</th>
                                     <th width="10%">Concepto</th>
                                     <th width="10%" class="text-center">Acciones</th>
                                 </tr>
@@ -531,7 +548,7 @@
                                     var esBorrador = false;
                                     if (!string.IsNullOrEmpty(orden.Estado))
                                     {
-                                        esBorrador = orden.Estado.Trim().Equals("BORRADOR", StringComparison.OrdinalIgnoreCase);
+                                        esBorrador = string.Equals((orden.Estado ?? "").Trim(), "BORRADOR", StringComparison.OrdinalIgnoreCase);
                                     }
                                     var puedeEditar = false;
                                     if (User != null)
@@ -540,6 +557,9 @@
                                     }
                                     var totalFormatted = FormatCurrency(orden.Total);
                                     var subtotalFormatted = FormatCurrency(orden.Subtotal);
+                                    
+                                    // Obtener nombre del concepto - soporta tanto ConceptoNombre como ConceptoId
+                                    var conceptoDisplay = GetConceptoNombre(orden.ConceptoId, orden.ConceptoNombre);
 
                                 <tr data-id="@orden.Id" data-estado="@orden.Estado">
                                     <td>@orden.Id</td>
@@ -585,9 +605,13 @@
                                         <span class="fw-bold text-primary total-orden">
                                             @totalFormatted
                                         </span>
-                                        @if (orden.Subtotal != 0)
+                                        @if (orden.Subtotal.HasValue && orden.Subtotal.Value != 0)
                                         {
                                             <div class="text-muted small">Base: @subtotalFormatted</div>
+                                        }
+                                        @if (orden.Admin.HasValue && orden.Admin.Value != 0)
+                                        {
+                                            <div class="text-muted small">Admin: @FormatCurrency(orden.Admin)</div>
                                         }
                                     </td>
                                     <td>
@@ -597,9 +621,15 @@
                                         <span class="text-muted">@estadoTramite</span>
                                     </td>
                                     <td>
-                                        @if (!string.IsNullOrEmpty(orden.ConceptoNombre))
+                                        @if (!string.IsNullOrEmpty(conceptoDisplay) && conceptoDisplay != "N/A")
                                         {
-                                            <span class="badge bg-secondary" title="@orden.ConceptoNombre">@TruncateText(orden.ConceptoNombre, 20)</span>
+                                            <span class="badge bg-secondary" title="@conceptoDisplay" data-bs-toggle="tooltip">
+                                                @TruncateText(conceptoDisplay, 15)
+                                            </span>
+                                            @if (orden.ConceptoId.HasValue)
+                                            {
+                                                <div class="text-muted small">ID: @orden.ConceptoId</div>
+                                            }
                                         }
                                         else
                                         {
@@ -627,7 +657,7 @@
                                                 </a>
                                             }
 
-                                            @if (User != null && User.IsInRole("Administrador") && orden.Estado != null && !orden.Estado.Equals("ANULADA", StringComparison.OrdinalIgnoreCase))
+                                            @if (User != null && User.IsInRole("Administrador") && orden.Estado != null && !string.Equals(orden.Estado, "ANULADA", StringComparison.OrdinalIgnoreCase))
                                             {
                                                 <button class="btn btn-outline-danger btn-sm btn-anular"
                                                         title="Anular"
@@ -672,16 +702,16 @@
         </div>
     </div>
 
-    <!-- Modal de confirmación -->
+    <!-- Modal de confirmaci?n -->
     <div class="modal fade" id="modalConfirmacion" tabindex="-1" aria-labelledby="modalConfirmacionLabel" aria-hidden="true">
         <div class="modal-dialog">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h5 class="modal-title" id="modalConfirmacionLabel">Confirmar acción</h5>
+                    <h5 class="modal-title" id="modalConfirmacionLabel">Confirmar acci?n</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
                 </div>
                 <div class="modal-body">
-                    ¿Está seguro de realizar esta acción?
+                    ?Est? seguro de realizar esta acci?n?
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
@@ -698,10 +728,10 @@
         (function () {
             'use strict';
 
-            // Esperar a que jQuery esté disponible antes de ejecutar cualquier cosa
+            // Esperar a que jQuery est? disponible antes de ejecutar cualquier cosa
             function waitForJQuery() {
                 if (typeof jQuery !== 'undefined') {
-                    // Asegurar que $ esté disponible
+                    // Asegurar que $ est? disponible
                     if (typeof $ === 'undefined') {
                         window.$ = jQuery;
                     }
@@ -712,7 +742,7 @@
             }
 
             function initializeScript() {
-                // Configuración global
+                // Configuraci?n global
                 var CONFIG = {
                     apiUrl: '/OrdenRecaudacion',
                     dataTableLang: {
@@ -730,7 +760,7 @@
                         "zeroRecords": "No se encontraron registros coincidentes",
                         "paginate": {
                             "first": "Primero",
-                            "last": "Último",
+                            "last": "?ltimo",
                             "next": "Siguiente",
                             "previous": "Anterior"
                         },
@@ -752,11 +782,11 @@
                 var tablaOrdenesDT = null;
                 var tooltipInstances = [];
 
-                // Función para inicializar la página
+                // Funci?n para inicializar la p?gina
                 function initializePage() {
                     console.log('Inicializando pagina de ordenes...');
 
-                    // Esperar a que DataTables esté disponible
+                    // Esperar a que DataTables est? disponible
                     function waitForDataTables() {
                         if (typeof jQuery !== 'undefined' && typeof jQuery.fn !== 'undefined' && typeof jQuery.fn.DataTable !== 'undefined') {
                             console.log('DataTables disponible, inicializando componentes...');
@@ -776,7 +806,7 @@
                     waitForDataTables();
                 }
 
-                // Inicializar inmediatamente (DOM ya está listo)
+                // Inicializar inmediatamente (DOM ya est? listo)
                 initializePage();
 
             // Inicializar tooltips
@@ -806,14 +836,14 @@
             // Inicializar DataTables
             function initDataTables() {
                 if (typeof jQuery.fn.DataTable === 'undefined') {
-                    console.log('⏳ DataTables no disponible aún, reintentando...');
+                    console.log('? DataTables no disponible a?n, reintentando...');
                     setTimeout(initDataTables, 100);
                     return;
                 }
 
                 var $table = jQuery('#tablaOrdenes');
                 if ($table.length === 0) {
-                    console.log('ℹ️ No hay tabla para inicializar DataTables');
+                    console.log('?? No hay tabla para inicializar DataTables');
                     return;
                 }
 
@@ -824,7 +854,7 @@
                         $table.find('tbody').empty();
                     }
 
-                    // Configuración robusta
+                    // Configuraci?n robusta
                     var config = {
                         language: CONFIG.dataTableLang,
                         order: [[0, 'desc']],
@@ -833,7 +863,7 @@
                         responsive: true,
                         autoWidth: false,
                         processing: true,
-                        stateSave: false, // Desactivar para producción
+                        stateSave: false, // Desactivar para producci?n
                         serverSide: false,
                         deferRender: true,
                         columnDefs: [
@@ -866,7 +896,7 @@
 
                 } catch (error) {
                     console.error('Error al inicializar DataTables:', error);
-                    showAlert('Error', 'No se pudo cargar la tabla de órdenes', 'error');
+                    showAlert('Error', 'No se pudo cargar la tabla de ?rdenes', 'error');
                 }
             }
 
@@ -874,7 +904,7 @@
             function initEventListeners() {
                 var $document = jQuery(document);
 
-                // Test de conexión a BD
+                // Test de conexi?n a BD
                 $document.on('click', '#btn-db-ping', function(e) {
                     e.preventDefault();
                     var btn = jQuery(this);
@@ -915,7 +945,7 @@
 
                     confirmAction(
                         'Anular Orden',
-                        '¿Está seguro de anular la orden ' + numero + '?<br><small class="text-danger">Esta acción no se puede deshacer.</small>',
+                        '?Est? seguro de anular la orden ' + numero + '?<br><small class="text-danger">Esta acci?n no se puede deshacer.</small>',
                         function() {
                             anularOrden(id, numero);
                         }
@@ -934,7 +964,7 @@
                     }, 1500);
                 });
 
-                // Validación de fechas
+                // Validaci?n de fechas
                 $document.on('change', '.filtro-fecha', function() {
                     validateDateRange();
                 });
@@ -960,7 +990,7 @@
                 }
             }
 
-            // Función para validar rango de fechas
+            // Funci?n para validar rango de fechas
             function validateDateRange() {
                 var $fechaDesde = jQuery('#filtroFechaDesde');
                 var $fechaHasta = jQuery('#filtroFechaHasta');
@@ -971,7 +1001,7 @@
                 }
             }
 
-            // Función para anular orden
+            // Funci?n para anular orden
             function anularOrden(id, numero) {
                 jQuery.ajax({
                     url: CONFIG.apiUrl + '/Anular',
@@ -1029,9 +1059,9 @@
                 });
             }
 
-            // Mostrar notificación
+            // Mostrar notificaci?n
             function showNotification(message, type) {
-                // Usar Toastr si está disponible
+                // Usar Toastr si est? disponible
                 if (typeof toastr !== 'undefined') {
                     toastr.options = {
                         closeButton: true,
@@ -1048,7 +1078,7 @@
                         default: toastr.info(message);
                     }
                 }
-                // Usar Bootstrap alert si está disponible y jQuery está cargado
+                // Usar Bootstrap alert si est? disponible y jQuery est? cargado
                 else if (typeof bootstrap !== 'undefined' && typeof jQuery !== 'undefined') {
                     var alertHtml = '<div class="alert alert-' + type + ' alert-dismissible fade show" role="alert">' +
                                    message +
@@ -1067,16 +1097,16 @@
                 }
             }
 
-            // Confirmar acción
+            // Confirmar acci?n
             function confirmAction(title, message, callback) {
-                // Usar SweetAlert2 si está disponible
+                // Usar SweetAlert2 si est? disponible
                 if (typeof Swal !== 'undefined') {
                     Swal.fire({
                         title: title,
                         html: message,
                         icon: 'warning',
                         showCancelButton: true,
-                        confirmButtonText: 'Sí, proceder',
+                        confirmButtonText: 'S?, proceder',
                         cancelButtonText: 'Cancelar',
                         confirmButtonColor: '#d33',
                         cancelButtonColor: '#3085d6'
@@ -1086,7 +1116,7 @@
                         }
                     });
                 }
-                // Usar Bootstrap modal si está disponible
+                // Usar Bootstrap modal si est? disponible
                 else if (typeof bootstrap !== 'undefined' && jQuery('#modalConfirmacion').length) {
                     jQuery('#modalConfirmacion .modal-title').text(title);
                     jQuery('#modalConfirmacion .modal-body').html(message);
@@ -1120,12 +1150,14 @@
 
             }
 
-            // Inicializar página
+            // Inicializar p?gina
             waitForJQuery();
 
         })();
         </script>
     }
+
+
 
 
 

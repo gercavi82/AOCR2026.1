@@ -3,12 +3,30 @@ using System.Configuration;
 using System.Net;
 using System.Net.Mail;
 using System.Text.RegularExpressions;
+using System.Threading.Tasks;
 
 namespace CapaNegocio.Services
 {
+    public class EmailSendResult
+    {
+        public bool Success { get; set; }
+        public string Error { get; set; }
+
+        public static EmailSendResult Ok()
+        {
+            return new EmailSendResult { Success = true };
+        }
+
+        public static EmailSendResult Fail(string error)
+        {
+            return new EmailSendResult { Success = false, Error = error };
+        }
+    }
+
     public interface IEmailService
     {
         void EnviarConAdjunto(string para, string asunto, string html, byte[] adjuntoBytes, string adjuntoNombre);
+        Task<EmailSendResult> EnviarAsync(string para, string nombrePara, string asunto, string html, byte[] adjuntoBytes, string adjuntoNombre);
     }
 
     public class EmailService : IEmailService
@@ -70,6 +88,65 @@ namespace CapaNegocio.Services
                         smtp.Send(msg);
                     }
                 }
+            }
+        }
+
+        public Task<EmailSendResult> EnviarAsync(string para, string nombrePara, string asunto, string html, byte[] adjuntoBytes, string adjuntoNombre)
+        {
+            try
+            {
+                // Si hay adjunto, reutiliza el flujo existente
+                if (adjuntoBytes != null && adjuntoBytes.Length > 0)
+                {
+                    EnviarConAdjunto(para, asunto, html, adjuntoBytes, adjuntoNombre);
+                    return Task.FromResult(EmailSendResult.Ok());
+                }
+
+                if (string.IsNullOrWhiteSpace(para) || !EmailRegex.IsMatch(para))
+                    return Task.FromResult(EmailSendResult.Fail("Correo destino inválido"));
+
+                if (string.IsNullOrWhiteSpace(asunto))
+                    return Task.FromResult(EmailSendResult.Fail("Asunto requerido"));
+
+                var host = ConfigurationManager.AppSettings["SmtpHost"];
+                var portStr = ConfigurationManager.AppSettings["SmtpPort"];
+                var user = ConfigurationManager.AppSettings["SmtpUser"];
+                var pass = ConfigurationManager.AppSettings["SmtpPass"];
+                var from = ConfigurationManager.AppSettings["MailFrom"];
+                var enableSslStr = ConfigurationManager.AppSettings["SmtpEnableSsl"];
+
+                if (string.IsNullOrWhiteSpace(host) || string.IsNullOrWhiteSpace(from))
+                    return Task.FromResult(EmailSendResult.Fail("SMTP no configurado (SmtpHost/MailFrom)."));
+
+                int port = 587;
+                int.TryParse(portStr, out port);
+
+                bool enableSsl = true;
+                bool.TryParse(enableSslStr, out enableSsl);
+
+                using (var msg = new MailMessage())
+                {
+                    msg.From = new MailAddress(from, "AOCR");
+                    msg.To.Add(para);
+                    msg.Subject = asunto;
+                    msg.IsBodyHtml = true;
+                    msg.Body = html ?? "";
+
+                    using (var smtp = new SmtpClient(host, port))
+                    {
+                        smtp.EnableSsl = enableSsl;
+                        if (!string.IsNullOrWhiteSpace(user))
+                            smtp.Credentials = new NetworkCredential(user, pass);
+
+                        smtp.Send(msg);
+                    }
+                }
+
+                return Task.FromResult(EmailSendResult.Ok());
+            }
+            catch (Exception ex)
+            {
+                return Task.FromResult(EmailSendResult.Fail(ex.Message));
             }
         }
     }

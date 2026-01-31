@@ -1,0 +1,121 @@
+# Pipeline CI/CD para AOCR
+# Ejecuta: restore, build, test y genera artefactos
+
+trigger:
+  branches:
+    include:
+      - main
+      - develop
+      - hotfix/*
+      - release/*
+
+pool:
+  vmImage: 'windows-latest'
+
+variables:
+  solution: '**/*.sln'
+  buildPlatform: 'Any CPU'
+  buildConfiguration: 'Release'
+
+stages:
+  - stage: Build
+    displayName: 'Build & Test'
+    jobs:
+      - job: BuildJob
+        displayName: 'Build Solution'
+        steps:
+          # Restaurar NuGet
+          - task: NuGetToolInstaller@1
+            displayName: 'Install NuGet'
+
+          - task: NuGetCommand@2
+            displayName: 'NuGet Restore'
+            inputs:
+              restoreSolution: '$(solution)'
+
+          # Compilar
+          - task: VSBuild@1
+            displayName: 'Build Solution'
+            inputs:
+              solution: '$(solution)'
+              msbuildArgs: '/p:DeployOnBuild=true /p:WebPublishMethod=Package /p:PackageAsSingleFile=true /p:SkipInvalidConfigurations=true /p:PackageLocation="$(Build.ArtifactStagingDirectory)\\"'
+              platform: '$(buildPlatform)'
+              configuration: '$(buildConfiguration)'
+
+          # Ejecutar Tests
+          - task: VSTest@2
+            displayName: 'Run Unit Tests'
+            inputs:
+              testSelector: 'testAssemblies'
+              testAssemblyVer2: |
+                **\*Tests.dll
+                !**\*TestAdapter.dll
+                !**\obj\**
+              searchFolder: '$(System.DefaultWorkingDirectory)'
+              platform: '$(buildPlatform)'
+              configuration: '$(buildConfiguration)'
+              codeCoverageEnabled: true
+
+          # Publicar resultados de tests
+          - task: PublishTestResults@2
+            displayName: 'Publish Test Results'
+            inputs:
+              testResultsFormat: 'VSTest'
+              testResultsFiles: '**/*.trx'
+              mergeTestResults: true
+
+          # Publicar artefactos
+          - task: PublishBuildArtifacts@1
+            displayName: 'Publish Artifacts'
+            inputs:
+              PathtoPublish: '$(Build.ArtifactStagingDirectory)'
+              ArtifactName: 'drop'
+              publishLocation: 'Container'
+
+  - stage: DeployDev
+    displayName: 'Deploy to DEV'
+    dependsOn: Build
+    condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/develop'))
+    jobs:
+      - deployment: DeployDev
+        displayName: 'Deploy to DEV Environment'
+        environment: 'AOCR-DEV'
+        strategy:
+          runOnce:
+            deploy:
+              steps:
+                - task: DownloadBuildArtifacts@1
+                  inputs:
+                    buildType: 'current'
+                    downloadType: 'single'
+                    artifactName: 'drop'
+                    downloadPath: '$(System.ArtifactsDirectory)'
+
+                - task: IISWebAppDeploymentOnMachineGroup@0
+                  displayName: 'Deploy to IIS'
+                  inputs:
+                    WebSiteName: 'AOCR-DEV'
+                    Package: '$(System.ArtifactsDirectory)/drop/*.zip'
+                    TakeAppOfflineFlag: true
+
+  - stage: DeployQA
+    displayName: 'Deploy to QA'
+    dependsOn: DeployDev
+    condition: succeeded()
+    jobs:
+      - deployment: DeployQA
+        displayName: 'Deploy to QA Environment'
+        environment: 'AOCR-QA'
+        strategy:
+          runOnce:
+            deploy:
+              steps:
+                - task: DownloadBuildArtifacts@1
+                  inputs:
+                    buildType: 'current'
+                    downloadType: 'single'
+                    artifactName: 'drop'
+                    downloadPath: '$(System.ArtifactsDirectory)'
+
+                - script: echo "Deployment to QA requires manual approval"
+                  displayName: 'QA Deployment Placeholder'

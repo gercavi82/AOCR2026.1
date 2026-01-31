@@ -51,6 +51,20 @@ namespace CapaPresentacion.Models.ViewModels
         [Display(Name = "Total")]
         public decimal Total { get; set; }
 
+        // Datos del contribuyente/compañía (usados en vistas PDF/Obligatoria)
+        [Display(Name = "Compañía")]
+        public string Compania { get; set; }
+
+        [Display(Name = "RUC/Cédula")]
+        public string RucCedula { get; set; }
+
+        [Display(Name = "Correo")]
+        public string Correo { get; set; }
+
+        // Nombre descriptivo del concepto
+        [Display(Name = "Concepto")]
+        public string ConceptoNombre { get; set; }
+
         // Propiedades para mostrar en la vista
         [Display(Name = "Valor Base")]
         public decimal ValorBase { get; set; }

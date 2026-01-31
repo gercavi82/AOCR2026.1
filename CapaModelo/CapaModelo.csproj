@@ -31,7 +31,6 @@
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
   <ItemGroup>
-    <Reference Include="Microsoft.AspNet.Scaffolding.EntityFramework.12.0, Version=15.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL" />
     <Reference Include="System" />
     <Reference Include="System.ComponentModel.Composition" />
     <Reference Include="System.ComponentModel.DataAnnotations" />
@@ -54,6 +53,8 @@
     <Compile Include="Common\ResultadoOperacion.cs" />
     <Compile Include="OrdenRecaudacion\HistorialEstadoOrden.cs" />
     <Compile Include="OrdenRecaudacion\ConceptoRecaudacion.cs" />
+    <Compile Include="ConceptoModel.cs" />
+    <Compile Include="PagoModel.cs" />
     <Compile Include="OrdenRecaudacion\OrdenRecaudacion.cs" />
     <Compile Include="OrdenRecaudacion\OrdenRecaudacionDetalle.cs" />
     <Compile Include="OrdenRecaudacion\AocrDocumento.cs" />

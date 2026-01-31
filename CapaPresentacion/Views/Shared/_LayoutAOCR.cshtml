@@ -392,13 +392,21 @@
 
     <!-- ========== SCRIPTS EN ORDEN CORRECTO ========== -->
     <!-- ✅ CORRECCIÓN: jQuery PRIMERO, luego dependencias -->
-    <!-- 1. jQuery con fallback inmediato -->
-    <script src="@Url.Content("~/Scripts/jquery-3.7.1.min.js")"></script>
+    <!-- 1. jQuery local (3.6.4) con fallback seguro sin document.write -->
+    <script src="@Url.Content("~/Scripts/jquery-3.6.4.min.js")"></script>
     <script>
-        if (!window.jQuery) {
-            console.warn('⚠️ jQuery local no cargó, intentando CDN...');
-            document.write('<script src="https://code.jquery.com/jquery-3.7.1.min.js"><\/script>');
-        }
+        (function () {
+            if (window.jQuery) return;
+            console.warn('⚠️ jQuery local no cargó, intentando CDN (async)...');
+            var s = document.createElement('script');
+            s.src = 'https://code.jquery.com/jquery-3.6.4.min.js';
+            s.onload = s.onreadystatechange = function () {
+                if (!this.readyState || this.readyState === 'loaded' || this.readyState === 'complete') {
+                    window.$ = window.jQuery;
+                }
+            };
+            document.head.appendChild(s);
+        })();
     </script>
 
     <!-- 2. Bootstrap 5 JS -->

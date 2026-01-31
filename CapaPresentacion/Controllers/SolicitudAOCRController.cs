@@ -4,6 +4,7 @@ using System.Web;
 using System.Web.Mvc;
 using System.Collections.Generic;
 using CapaDatos.DAOs;
+using CapaDatos.Entidades;
 using CapaModelo;
 using CapaPresentacion.Models;
 using CapaNegocio;
@@ -33,30 +34,37 @@ namespace CapaPresentacion.Controllers
             {
                 var vm = new SolicitudAOCRViewModel();
 
-                if (Session["CodigoUsuario"] == null)
-                    return new HttpStatusCodeResult(401, "Sesión expirada.");
+                // A veces el sistema guarda el id en IdUsuario en vez de CodigoUsuario.
+                int usuarioId = 0;
+                if (Session["CodigoUsuario"] != null)
+                    int.TryParse(Session["CodigoUsuario"].ToString(), out usuarioId);
+                else if (Session["IdUsuario"] != null)
+                    int.TryParse(Session["IdUsuario"].ToString(), out usuarioId);
 
-                int usuarioId = Convert.ToInt32(Session["CodigoUsuario"]);
+                if (usuarioId <= 0)
+                    return Content("<div class='alert alert-danger m-3'><i class='fas fa-exclamation-circle'></i> Error: Sesión expirada. Por favor, inicie sesión nuevamente.</div>");
 
                 // 1) Cargar usuario logueado
                 vm.Usuario = UsuarioDAO.ObtenerPorId(usuarioId);
+                if (vm.Usuario == null)
+                    return Content("<div class='alert alert-warning m-3'><i class='fas fa-user-slash'></i> Advertencia: No se encontró la información del usuario.</div>");
 
                 // 2) Si es edición
                 if (oid.HasValue && oid.Value > 0)
                 {
                     vm.Solicitud = _solicitudBL.ObtenerDetalle(oid.Value);
                     if (vm.Solicitud == null)
-                        return Content("<div class='alert alert-danger'>Error: Solicitud no encontrada.</div>");
+                        return Content("<div class='alert alert-danger m-3'><i class='fas fa-search'></i> Error: Solicitud no encontrada.</div>");
 
                     // Seguridad: si no es admin, solo su solicitud
                     if (!EsAdmin() && vm.Solicitud.CodigoUsuario != usuarioId)
-                        return new HttpStatusCodeResult(403, "No tiene permisos para acceder a esta solicitud.");
+                        return Content("<div class='alert alert-danger m-3'><i class='fas fa-lock'></i> Error: No tiene permisos para acceder a esta solicitud.</div>");
 
                     // Aeronaves (aocr_tbaeronave_solicitud)
-                    vm.Aeronaves = _aeronaveSolDAO.ObtenerPorSolicitud(oid.Value);
+                    vm.Aeronaves = _aeronaveSolDAO.ObtenerPorSolicitud(oid.Value) ?? new List<AeronaveSolicitud>();
 
                     // Documentos
-                    vm.DocumentosExistentes = _documentoDAO.ObtenerPorSolicitud(oid.Value);
+                    vm.DocumentosExistentes = _documentoDAO.ObtenerPorSolicitud(oid.Value) ?? new List<Documento>();
 
                     // Pago/comprobante (aocr_tbpago)
                     var pago = _pagoDAO.ObtenerUltimoPorSolicitud(oid.Value);
@@ -74,12 +82,12 @@ namespace CapaPresentacion.Controllers
                         CodigoUsuario = usuarioId,
                         FechaSolicitud = DateTime.Now,
                         Estado = "BORRADOR",
-                        Email = vm.Usuario?.Email,
-                        RepresentanteLegal = vm.Usuario?.NombreCompleto,
+                        Email = vm.Usuario != null ? vm.Usuario.Email : "",
+                        RepresentanteLegal = vm.Usuario != null ? vm.Usuario.NombreCompleto : "",
 
                         // ✅ tu Usuario NO tiene NumeroRuc, así que usamos CodigoUsuario como fallback
                         // Si el RUC del usuario está en otra tabla/columna, luego lo mapeamos bien.
-                        Ruc = vm.Usuario?.CodigoUsuario
+                        Ruc = vm.Usuario != null ? vm.Usuario.CodigoUsuario.ToString() : ""
                     };
 
                     vm.Aeronaves = new List<AeronaveSolicitud>();
@@ -90,7 +98,8 @@ namespace CapaPresentacion.Controllers
             }
             catch (Exception ex)
             {
-                return new HttpStatusCodeResult(500, "Error interno: " + ex.Message);
+                System.Diagnostics.Debug.WriteLine("Error en FormularioEmisionAOCR: " + ex.Message);
+                return Content("<div class='alert alert-danger m-3'><i class='fas fa-exclamation-triangle'></i> Error interno: " + HttpUtility.HtmlEncode(ex.Message) + "</div>");
             }
         }
 
@@ -104,7 +113,11 @@ namespace CapaPresentacion.Controllers
             try
             {
                 if (Session["CodigoUsuario"] == null)
-                    return Json(new { success = false, mensaje = "Sesión expirada." });
+                {
+                    if (Session["IdUsuario"] == null)
+                        return Json(new { success = false, mensaje = "Sesión expirada." });
+                    Session["CodigoUsuario"] = Session["IdUsuario"];
+                }
 
                 int usuarioId = Convert.ToInt32(Session["CodigoUsuario"]);
                 string usuarioCorreo = Session["Correo"]?.ToString() ?? "sistema";
@@ -160,13 +173,15 @@ namespace CapaPresentacion.Controllers
                 // 4) Pago
                 if (!string.IsNullOrWhiteSpace(vm.Banco) || !string.IsNullOrWhiteSpace(vm.NumeroComprobante))
                 {
-                    _pagoDAO.Insertar(new Pago
+                    var pagoEnt = new CapaDatos.Entidades.Pago
                     {
                         CodigoSolicitud = idFinal,
                         MetodoPago = vm.Banco,
-                        NumeroFactura = vm.NumeroComprobante,
-                        Estado = "REGISTRADO"
-                    }, usuarioCorreo);
+                        NumeroComprobante = vm.NumeroComprobante,
+                        Estado = "REGISTRADO",
+                        FechaPago = DateTime.Now
+                    };
+                    _pagoDAO.Insertar(pagoEnt, usuarioCorreo);
                 }
 
                 return Json(new { success = true, mensaje = "Solicitud AOCR registrada correctamente.", id = idFinal });
@@ -235,7 +250,17 @@ namespace CapaPresentacion.Controllers
 
         public ActionResult RevisarSolicitudes()
         {
+            // Si no hay en ENVIADO_A_INSPECTOR, mostramos otros estados pendientes
             var pendientes = _solicitudDAO.ObtenerPendientesRevision();
+            if (pendientes == null || pendientes.Count == 0)
+            {
+                pendientes = _solicitudDAO.ObtenerPorEstados(
+                    "PENDIENTE",
+                    "EN_REVISION",
+                    "ENVIADO_A_INSPECTOR",
+                    "ENVIADO_A_JEFATURA"
+                );
+            }
             return View("RevisarSolicitudes", pendientes);
         }
 

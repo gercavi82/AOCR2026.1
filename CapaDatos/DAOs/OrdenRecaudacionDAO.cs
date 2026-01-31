@@ -1,821 +1,1055 @@
-ï»¿using System;
+using System;
 using System.Collections.Generic;
 using System.Data;
 using System.Linq;
 using System.Threading.Tasks;
-using System.Configuration;
-using Npgsql;
-using Dapper;
+using CapaDatos.Entidades;
+using CapaDatos.Interfaces;
 using CapaDatos.Models;
 using CapaModelo.DTOs;
+using Npgsql;
+using DetalleOrdenEnt = CapaDatos.Entidades.DetalleOrden;
 
 namespace CapaDatos.DAOs
 {
-    public class OrdenRecaudacionDAO : IOrdenRecaudacionDAO
+    /// <summary>
+    /// Data Access Object para OrdenRecaudacion
+    /// </summary>
+    public class OrdenRecaudacionDAO : IOrdenRecaudacionRepository, IOrdenRecaudacionDAO
     {
-        private readonly string _cn;
+        private readonly string _connectionString;
 
         public OrdenRecaudacionDAO()
         {
-            _cn = ConfigurationManager.ConnectionStrings["AOCRConnection"].ConnectionString;
+            _connectionString = System.Configuration.ConfigurationManager.ConnectionStrings["DefaultConnection"]?.ConnectionString
+                ?? System.Configuration.ConfigurationManager.ConnectionStrings["AOCRConnection"]?.ConnectionString
+                ?? "";
         }
 
-        // ===================== Validaciones de flujo =====================
-
-        public bool ExisteORGeneradaOPagada(int codigoUsuario)
+        public OrdenRecaudacionDAO(string connectionString)
         {
-            if (codigoUsuario <= 0) return false;
+            _connectionString = connectionString;
+        }
 
-            const string sql = @"
-SELECT 1
-FROM aocr_or_orden
-WHERE codigo_usuario = @u
-  AND UPPER(TRIM(estado)) IN ('GENERADA','ENVIADA','PAGADA')
-LIMIT 1;";
+        #region Métodos de Lectura
+
+        /// <summary>
+        /// Obtiene todas las órdenes de recaudación
+        /// </summary>
+        public List<OrdenRecaudacion> ObtenerTodas()
+        {
+            var ordenes = new List<OrdenRecaudacion>();
 
             try
             {
-                using (var cn = new NpgsqlConnection(_cn))
-                using (var cmd = new NpgsqlCommand(sql, cn))
+                using (var conn = new NpgsqlConnection(_connectionString))
                 {
-                    cmd.Parameters.AddWithValue("@u", codigoUsuario);
-                    cn.Open();
-                    return cmd.ExecuteScalar() != null;
-                }
-            }
-            catch (Exception ex)
-            {
-                TraceError("ExisteORGeneradaOPagada", ex);
-                return false;
-            }
-        }
+                    conn.Open();
+                    var sql = @"SELECT o.*, c.nombre as concepto_nombre 
+                                FROM aocr_or_orden o 
+                                LEFT JOIN aocr_or_concepto c ON o.concepto_id = c.id 
+                                ORDER BY o.fecha_creacion DESC";
 
-        public bool ExisteORMinima(int codigoUsuario)
-        {
-            if (codigoUsuario <= 0) return false;
-
-            const string sql = @"
-SELECT 1
-FROM aocr_or_orden
-WHERE codigo_usuario = @u
-LIMIT 1;";
-
-            try
-            {
-                using (var cn = new NpgsqlConnection(_cn))
-                using (var cmd = new NpgsqlCommand(sql, cn))
-                {
-                    cmd.Parameters.AddWithValue("@u", codigoUsuario);
-                    cn.Open();
-                    return cmd.ExecuteScalar() != null;
-                }
-            }
-            catch (Exception ex)
-            {
-                TraceError("ExisteORMinima", ex);
-                return false;
-            }
-        }
-
-        // ===================== Listados =====================
-
-        public List<OrdenRecaudacionModel> ListarPorUsuario(int codigoUsuario, string estado)
-        {
-            return ObtenerOrdenes(codigoUsuario, estado);
-        }
-
-        public List<OrdenRecaudacionModel> ObtenerOrdenes(int? codigoUsuario, string estado)
-        {
-            var lista = new List<OrdenRecaudacionModel>();
-            if (!codigoUsuario.HasValue || codigoUsuario.Value <= 0)
-            {
-                System.Diagnostics.Debug.WriteLine($"ObtenerOrdenes: Usuario invÃ¡lido - {codigoUsuario}");
-                return lista;
-            }
-
-            string estadoFiltro = NormalizarEstado(estado);
-            System.Diagnostics.Debug.WriteLine($"ObtenerOrdenes: Buscando Ã³rdenes para usuario {codigoUsuario.Value}, estado filtro: '{estadoFiltro}'");
-
-            string sql = @"
-SELECT
-  id,
-  codigo_usuario,
-  codigo_solicitud,
-  numero_orden,
-  fecha_creacion,
-  estado,
-  observacion,
-  subtotal,
-  admin,
-  total,
-  lugar_emision,
-  compania,
-  ruc_cedula,
-  correo,
-  telefono,
-  concepto_id
-FROM aocr_or_orden
-WHERE codigo_usuario = @u
-";
-
-            if (!string.IsNullOrEmpty(estadoFiltro))
-                sql += " AND UPPER(TRIM(estado)) = @e ";
-
-            sql += " ORDER BY fecha_creacion DESC;";
-
-            try
-            {
-                using (var cn = new NpgsqlConnection(_cn))
-                using (var cmd = new NpgsqlCommand(sql, cn))
-                {
-                    cmd.Parameters.AddWithValue("@u", codigoUsuario.Value);
-                    if (!string.IsNullOrEmpty(estadoFiltro))
-                        cmd.Parameters.AddWithValue("@e", estadoFiltro);
-
-                    System.Diagnostics.Debug.WriteLine($"ObtenerOrdenes: Ejecutando consulta SQL: {sql}");
-                    cn.Open();
-                    using (var r = cmd.ExecuteReader())
+                    using (var cmd = new NpgsqlCommand(sql, conn))
+                    using (var reader = cmd.ExecuteReader())
                     {
-                        int count = 0;
-                        while (r.Read())
+                        while (reader.Read())
                         {
-                            lista.Add(MapOrden(r));
-                            count++;
-                        }
-                        System.Diagnostics.Debug.WriteLine($"ObtenerOrdenes: Se encontraron {count} registros en la base de datos");
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"ObtenerOrdenes: ERROR - {ex.Message}");
-                TraceError("ObtenerOrdenes", ex);
-            }
-
-            System.Diagnostics.Debug.WriteLine($"ObtenerOrdenes: Retornando {lista.Count} Ã³rdenes");
-            return lista;
-        }
-
-        public List<OrdenRecaudacionModel> BuscarOrdenes(string criterio, int? codigoUsuario)
-        {
-            var lista = new List<OrdenRecaudacionModel>();
-            if (!codigoUsuario.HasValue || codigoUsuario.Value <= 0) return lista;
-
-            var term = (criterio ?? "").Trim();
-            if (term.Length == 0) return lista;
-
-            // BÃºsqueda por: numero_orden, compania, ruc_cedula, correo, codigo_solicitud
-            const string sql = @"
-SELECT
-  id, codigo_usuario, codigo_solicitud, numero_orden, fecha_creacion, estado,
-  observacion, subtotal, admin, total, lugar_emision, compania, ruc_cedula, correo,
-  telefono, concepto_id
-FROM aocr_or_orden
-WHERE codigo_usuario = @u
-  AND (
-        numero_orden ILIKE '%' || @q || '%'
-     OR compania ILIKE '%' || @q || '%'
-     OR ruc_cedula ILIKE '%' || @q || '%'
-     OR correo ILIKE '%' || @q || '%'
-     OR COALESCE(codigo_solicitud,'') ILIKE '%' || @q || '%'
-  )
-ORDER BY fecha_creacion DESC;";
-
-            try
-            {
-                using (var cn = new NpgsqlConnection(_cn))
-                using (var cmd = new NpgsqlCommand(sql, cn))
-                {
-                    cmd.Parameters.AddWithValue("@u", codigoUsuario.Value);
-                    cmd.Parameters.AddWithValue("@q", term);
-
-                    cn.Open();
-                    using (var r = cmd.ExecuteReader())
-                    {
-                        while (r.Read())
-                            lista.Add(MapOrden(r));
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                TraceError("BuscarOrdenes", ex);
-            }
-
-            return lista;
-        }
-
-        public Dictionary<string, object> ObtenerEstadisticas(int codigoUsuario)
-        {
-            // Retorna un diccionario Ãºtil para tu ViewBag.Estadisticas
-            var d = new Dictionary<string, object>
-            {
-                ["total"] = 0,
-                ["borrador"] = 0,
-                ["generada"] = 0,
-                ["enviada"] = 0,
-                ["pagada"] = 0,
-                ["anulada"] = 0,
-                ["monto_total"] = 0m,
-                ["monto_recaudado"] = 0m
-            };
-
-            if (codigoUsuario <= 0) return d;
-
-            const string sql = @"
-SELECT
-  UPPER(TRIM(estado)) AS estado,
-  COUNT(*) AS cnt,
-  COALESCE(SUM(total),0) AS suma
-FROM aocr_or_orden
-WHERE codigo_usuario = @u
-GROUP BY UPPER(TRIM(estado));";
-
-            try
-            {
-                using (var cn = new NpgsqlConnection(_cn))
-                using (var cmd = new NpgsqlCommand(sql, cn))
-                {
-                    cmd.Parameters.AddWithValue("@u", codigoUsuario);
-                    cn.Open();
-
-                    int totalCnt = 0;
-                    decimal montoTotal = 0m;
-                    decimal montoRecaudado = 0m;
-
-                    using (var r = cmd.ExecuteReader())
-                    {
-                        while (r.Read())
-                        {
-                            var estado = SafeString(r, "estado") ?? "";
-                            var cnt = SafeInt(r, "cnt");
-                            var suma = SafeDecimal(r, "suma");
-
-                            totalCnt += cnt;
-                            montoTotal += suma;
-
-                            switch (estado)
-                            {
-                                case "BORRADOR": d["borrador"] = cnt; break;
-                                case "GENERADA": d["generada"] = cnt; break;
-                                case "ENVIADA": d["enviada"] = cnt; break;
-                                case "PAGADA": d["pagada"] = cnt; montoRecaudado += suma; break;
-                                case "ANULADA": d["anulada"] = cnt; break;
-                            }
+                            ordenes.Add(MapearOrden(reader));
                         }
                     }
-
-                    d["total"] = totalCnt;
-                    d["monto_total"] = montoTotal;
-                    d["monto_recaudado"] = montoRecaudado;
                 }
             }
             catch (Exception ex)
             {
-                TraceError("ObtenerEstadisticas", ex);
+                System.Diagnostics.Debug.WriteLine("Error en ObtenerTodas: " + ex.Message);
+                throw;
             }
 
-            return d;
+            return ordenes;
         }
 
-        // ===================== Obtener por Id (con Detalles) =====================
-
-        public OrdenRecaudacionModel ObtenerOrdenPorId(int id)
+        /// <summary>
+        /// Obtiene una orden por su ID
+        /// </summary>
+        public OrdenRecaudacion ObtenerPorId(int id)
         {
-            if (id <= 0) return null;
-
-            const string sql = @"
-SELECT
-  id, codigo_usuario, codigo_solicitud, numero_orden, fecha_creacion, estado,
-  observacion, subtotal, admin, total, lugar_emision, compania, ruc_cedula, correo,
-  telefono, concepto_id
-FROM aocr_or_orden
-WHERE id = @id
-LIMIT 1;";
+            OrdenRecaudacion orden = null;
 
             try
             {
-                using (var cn = new NpgsqlConnection(_cn))
+                using (var conn = new NpgsqlConnection(_connectionString))
                 {
-                    cn.Open();
-                    OrdenRecaudacionModel orden = null;
+                    conn.Open();
+                    var sql = @"SELECT o.*, c.nombre as concepto_nombre 
+                                FROM aocr_or_orden o 
+                                LEFT JOIN aocr_or_concepto c ON o.concepto_id = c.id 
+                                WHERE o.id = @id";
 
-                    using (var cmd = new NpgsqlCommand(sql, cn))
+                    using (var cmd = new NpgsqlCommand(sql, conn))
                     {
                         cmd.Parameters.AddWithValue("@id", id);
-                        using (var r = cmd.ExecuteReader())
+
+                        using (var reader = cmd.ExecuteReader())
                         {
-                            if (r.Read())
-                                orden = MapOrden(r);
+                            if (reader.Read())
+                            {
+                                orden = MapearOrden(reader);
+                            }
                         }
                     }
 
+                    // Cargar detalles si existe la orden
                     if (orden != null)
-                        orden.Detalles = ObtenerDetallesOrden(cn, orden.Id);
-
-                    return orden;
+                    {
+                        orden.Detalles = ObtenerDetallesPorOrdenId(orden.Id);
+                    }
                 }
             }
             catch (Exception ex)
             {
-                TraceError("ObtenerOrdenPorId", ex);
-                return null;
-            }
-        }
-
-        private List<OrdenDetalleModel> ObtenerDetallesOrden(NpgsqlConnection cnAbierta, int ordenId)
-        {
-            var lista = new List<OrdenDetalleModel>();
-            if (cnAbierta == null || cnAbierta.State != ConnectionState.Open) return lista;
-
-            const string sql = @"
-SELECT
-  id,
-  orden_id,
-  concepto_id,
-  concepto_codigo,
-  concepto_nombre,
-  descripcion,
-  cantidad,
-  valor_unitario,
-  porcentaje_admin,
-  subtotal,
-  admin,
-  total_linea
-FROM aocr_or_orden_detalle
-WHERE orden_id = @id
-ORDER BY id;";
-
-            using (var cmd = new NpgsqlCommand(sql, cnAbierta))
-            {
-                cmd.Parameters.AddWithValue("@id", ordenId);
-
-                using (var r = cmd.ExecuteReader())
-                {
-                    while (r.Read())
-                    {
-                        lista.Add(new OrdenDetalleModel
-                        {
-                            Id = SafeInt(r, "id"),
-                            OrdenId = SafeInt(r, "orden_id"),
-                            ConceptoId = SafeInt(r, "concepto_id"),
-                            ConceptoCodigo = SafeString(r, "concepto_codigo"),
-                            ConceptoNombre = SafeString(r, "concepto_nombre"),
-                            Descripcion = SafeString(r, "descripcion"),
-                            Cantidad = SafeDecimal(r, "cantidad"),
-                            ValorUnitario = SafeDecimal(r, "valor_unitario"),
-                            PorcentajeAdmin = SafeDecimal(r, "porcentaje_admin"),
-                            Subtotal = SafeDecimal(r, "subtotal"),
-                            Admin = SafeDecimal(r, "admin"),
-                            TotalLinea = SafeDecimal(r, "total_linea")
-                        });
-                    }
-                }
+                System.Diagnostics.Debug.WriteLine("Error en ObtenerPorId: " + ex.Message);
+                throw;
             }
 
-            return lista;
+            return orden;
         }
 
-        // ===================== Crear / Actualizar / Cambiar Estado =====================
-
-        public int CrearOrden(OrdenRecaudacionModel orden)
+        /// <summary>
+        /// Obtiene órdenes por estado
+        /// </summary>
+        public List<OrdenRecaudacion> ObtenerPorEstado(string estado)
         {
-            if (orden == null) throw new ArgumentNullException(nameof(orden));
-            if (orden.CodigoUsuario <= 0) throw new ArgumentException("CodigoUsuario invÃ¡lido");
-            if (string.IsNullOrWhiteSpace(orden.NumeroOrden)) throw new ArgumentException("NumeroOrden es requerido");
-
-            const string sqlOrden = @"
-INSERT INTO aocr_or_orden
-(
-  codigo_usuario,
-  codigo_solicitud,
-  numero_orden,
-  fecha_creacion,
-  estado,
-  observacion,
-  subtotal,
-  admin,
-  total,
-  lugar_emision,
-  compania,
-  ruc_cedula,
-  correo,
-  telefono,
-  concepto_id
-)
-VALUES
-(
-  @codigo_usuario,
-  @codigo_solicitud,
-  @numero_orden,
-  COALESCE(@fecha_creacion, now()),
-  @estado,
-  @observacion,
-  @subtotal,
-  @admin,
-  @total,
-  @lugar_emision,
-  @compania,
-  @ruc_cedula,
-  @correo,
-  @telefono,
-  @concepto_id
-)
-RETURNING id;";
-
-            const string sqlDetalle = @"
-INSERT INTO aocr_or_orden_detalle
-(
-  orden_id,
-  concepto_id,
-  concepto_codigo,
-  concepto_nombre,
-  descripcion,
-  cantidad,
-  valor_unitario,
-  porcentaje_admin,
-  subtotal,
-  admin,
-  total_linea
-)
-VALUES
-(
-  @orden_id,
-  @concepto_id,
-  @concepto_codigo,
-  @concepto_nombre,
-  @descripcion,
-  @cantidad,
-  @valor_unitario,
-  @porcentaje_admin,
-  @subtotal,
-  @admin,
-  @total_linea
-);";
+            var ordenes = new List<OrdenRecaudacion>();
 
             try
             {
-                using (var cn = new NpgsqlConnection(_cn))
+                using (var conn = new NpgsqlConnection(_connectionString))
                 {
-                    cn.Open();
-                    using (var tx = cn.BeginTransaction())
+                    conn.Open();
+                    var sql = @"SELECT o.*, c.nombre as concepto_nombre 
+                                FROM aocr_or_orden o 
+                                LEFT JOIN aocr_or_concepto c ON o.concepto_id = c.id 
+                                WHERE o.estado = @estado 
+                                ORDER BY o.fecha_creacion DESC";
+
+                    using (var cmd = new NpgsqlCommand(sql, conn))
                     {
-                        int idOrden;
-                        using (var cmd = new NpgsqlCommand(sqlOrden, cn, tx))
-                        {
-                            AddOrdenParams(cmd, orden);
-                            idOrden = Convert.ToInt32(cmd.ExecuteScalar());
-                        }
+                        cmd.Parameters.AddWithValue("@estado", estado ?? "");
 
-                        // âœ… Vincular solicitud automÃ¡ticamente por RUC si no vino en el formulario
-                        VincularSolicitudSiFalta(cn, tx, idOrden, orden);
-
-                        if (orden.Detalles != null)
+                        using (var reader = cmd.ExecuteReader())
                         {
-                            foreach (var d in orden.Detalles)
+                            while (reader.Read())
                             {
-                                using (var cmdD = new NpgsqlCommand(sqlDetalle, cn, tx))
-                                {
-                                    cmdD.Parameters.AddWithValue("@orden_id", idOrden);
-                                    cmdD.Parameters.AddWithValue("@concepto_id", d.ConceptoId);
-                                    cmdD.Parameters.AddWithValue("@concepto_codigo", (object)(d.ConceptoCodigo ?? "") ?? DBNull.Value);
-                                    cmdD.Parameters.AddWithValue("@concepto_nombre", (object)(d.ConceptoNombre ?? "") ?? DBNull.Value);
-                                    cmdD.Parameters.AddWithValue("@descripcion", (object)(d.Descripcion ?? "") ?? DBNull.Value);
-                                    cmdD.Parameters.AddWithValue("@cantidad", d.Cantidad);
-                                    cmdD.Parameters.AddWithValue("@valor_unitario", d.ValorUnitario);
-                                    cmdD.Parameters.AddWithValue("@porcentaje_admin", d.PorcentajeAdmin);
-                                    cmdD.Parameters.AddWithValue("@subtotal", d.Subtotal);
-                                    cmdD.Parameters.AddWithValue("@admin", d.Admin);
-                                    cmdD.Parameters.AddWithValue("@total_linea", d.TotalLinea);
-                                    cmdD.ExecuteNonQuery();
-                                }
+                                ordenes.Add(MapearOrden(reader));
                             }
                         }
-
-                        tx.Commit();
-                        return idOrden;
                     }
                 }
             }
             catch (Exception ex)
             {
-                TraceError("CrearOrden", ex);
-                throw; // mejor re-lanzar para que el Controller muestre error real
+                System.Diagnostics.Debug.WriteLine("Error en ObtenerPorEstado: " + ex.Message);
+                throw;
             }
+
+            return ordenes;
         }
 
-        public bool ActualizarOrden(OrdenRecaudacionModel orden)
+        /// <summary>
+        /// Obtiene órdenes por usuario
+        /// </summary>
+        public List<OrdenRecaudacion> ObtenerPorUsuario(string codigoUsuario)
         {
-            if (orden == null) throw new ArgumentNullException(nameof(orden));
-            if (orden.Id <= 0) throw new ArgumentException("Id invÃ¡lido");
-            if (orden.CodigoUsuario <= 0) throw new ArgumentException("CodigoUsuario invÃ¡lido");
-
-            const string sqlUpdate = @"
-UPDATE aocr_or_orden SET
-  codigo_solicitud = @codigo_solicitud,
-  numero_orden     = @numero_orden,
-  estado           = @estado,
-  observacion      = @observacion,
-  subtotal         = @subtotal,
-  admin            = @admin,
-  total            = @total,
-  lugar_emision    = @lugar_emision,
-  compania         = @compania,
-  ruc_cedula       = @ruc_cedula,
-  correo           = @correo,
-  telefono         = @telefono,
-  concepto_id      = @concepto_id
-WHERE id = @id
-  AND codigo_usuario = @codigo_usuario;";
-
-            const string sqlDelDetalles = @"DELETE FROM aocr_or_orden_detalle WHERE orden_id = @id;";
-
-            const string sqlInsDetalle = @"
-INSERT INTO aocr_or_orden_detalle
-(
-  orden_id, concepto_id, concepto_codigo, concepto_nombre, descripcion,
-  cantidad, valor_unitario, porcentaje_admin, subtotal, admin, total_linea
-)
-VALUES
-(
-  @orden_id, @concepto_id, @concepto_codigo, @concepto_nombre, @descripcion,
-  @cantidad, @valor_unitario, @porcentaje_admin, @subtotal, @admin, @total_linea
-);";
+            var ordenes = new List<OrdenRecaudacion>();
 
             try
             {
-                using (var cn = new NpgsqlConnection(_cn))
+                using (var conn = new NpgsqlConnection(_connectionString))
                 {
-                    cn.Open();
-                    using (var tx = cn.BeginTransaction())
+                    conn.Open();
+                    var sql = @"SELECT o.*, c.nombre as concepto_nombre 
+                                FROM aocr_or_orden o 
+                                LEFT JOIN aocr_or_concepto c ON o.concepto_id = c.id 
+                                WHERE o.codigo_usuario::text = @codigoUsuario 
+                                ORDER BY o.fecha_creacion DESC";
+
+                    using (var cmd = new NpgsqlCommand(sql, conn))
                     {
-                        int rows;
-                        using (var cmd = new NpgsqlCommand(sqlUpdate, cn, tx))
-                        {
-                            cmd.Parameters.AddWithValue("@id", orden.Id);
-                            AddOrdenParams(cmd, orden);
-                            rows = cmd.ExecuteNonQuery();
-                        }
+                        cmd.Parameters.AddWithValue("@codigoUsuario", codigoUsuario ?? "");
 
-                        if (rows <= 0)
+                        using (var reader = cmd.ExecuteReader())
                         {
-                            tx.Rollback();
-                            return false;
-                        }
-
-                        using (var cmdDel = new NpgsqlCommand(sqlDelDetalles, cn, tx))
-                        {
-                            cmdDel.Parameters.AddWithValue("@id", orden.Id);
-                            cmdDel.ExecuteNonQuery();
-                        }
-
-                        if (orden.Detalles != null)
-                        {
-                            foreach (var d in orden.Detalles)
+                            while (reader.Read())
                             {
-                                using (var cmdD = new NpgsqlCommand(sqlInsDetalle, cn, tx))
-                                {
-                                    cmdD.Parameters.AddWithValue("@orden_id", orden.Id);
-                                    cmdD.Parameters.AddWithValue("@concepto_id", d.ConceptoId);
-                                    cmdD.Parameters.AddWithValue("@concepto_codigo", (object)(d.ConceptoCodigo ?? "") ?? DBNull.Value);
-                                    cmdD.Parameters.AddWithValue("@concepto_nombre", (object)(d.ConceptoNombre ?? "") ?? DBNull.Value);
-                                    cmdD.Parameters.AddWithValue("@descripcion", (object)(d.Descripcion ?? "") ?? DBNull.Value);
-                                    cmdD.Parameters.AddWithValue("@cantidad", d.Cantidad);
-                                    cmdD.Parameters.AddWithValue("@valor_unitario", d.ValorUnitario);
-                                    cmdD.Parameters.AddWithValue("@porcentaje_admin", d.PorcentajeAdmin);
-                                    cmdD.Parameters.AddWithValue("@subtotal", d.Subtotal);
-                                    cmdD.Parameters.AddWithValue("@admin", d.Admin);
-                                    cmdD.Parameters.AddWithValue("@total_linea", d.TotalLinea);
-                                    cmdD.ExecuteNonQuery();
-                                }
+                                ordenes.Add(MapearOrden(reader));
                             }
                         }
-
-                        tx.Commit();
-                        return true;
                     }
                 }
             }
             catch (Exception ex)
             {
-                TraceError("ActualizarOrden", ex);
+                System.Diagnostics.Debug.WriteLine("Error en ObtenerPorUsuario: " + ex.Message);
+                throw;
+            }
+
+            return ordenes;
+        }
+
+        /// <summary>
+        /// Obtiene los detalles de una orden
+        /// </summary>
+        public List<DetalleOrdenEnt> ObtenerDetallesPorOrdenId(int ordenId)
+        {
+            var detalles = new List<DetalleOrdenEnt>();
+
+            try
+            {
+                using (var conn = new NpgsqlConnection(_connectionString))
+                {
+                    conn.Open();
+                    var sql = @"SELECT * FROM aocr_or_orden_detalle WHERE orden_id = @ordenId ORDER BY id";
+
+                    using (var cmd = new NpgsqlCommand(sql, conn))
+                    {
+                        cmd.Parameters.AddWithValue("@ordenId", ordenId);
+
+                        using (var reader = cmd.ExecuteReader())
+                        {
+                            while (reader.Read())
+                            {
+                                detalles.Add(MapearDetalle(reader));
+                            }
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine("Error en ObtenerDetallesPorOrdenId: " + ex.Message);
+                throw;
+            }
+
+            return detalles;
+        }
+
+        #endregion
+
+        #region Métodos de Escritura
+
+        /// <summary>
+        /// Inserta una nueva orden de recaudación
+        /// </summary>
+        public int Insertar(OrdenRecaudacion orden)
+        {
+            int nuevoId = 0;
+
+            try
+            {
+                using (var conn = new NpgsqlConnection(_connectionString))
+                {
+                    conn.Open();
+
+                    var sql = @"INSERT INTO aocr_or_orden 
+                                (codigo_usuario, codigo_solicitud, numero_orden, fecha_creacion, estado, 
+                                 observacion, subtotal, admin, total, lugar_emision, compania, 
+                                 ruc_cedula, correo, telefono, concepto_id)
+                                VALUES 
+                                (@codigoUsuario, @codigoSolicitud, @numeroOrden, @fechaCreacion, @estado,
+                                 @observacion, @subtotal, @admin, @total, @lugarEmision, @compania,
+                                 @rucCedula, @correo, @telefono, @conceptoId)
+                                RETURNING id";
+
+                    using (var cmd = new NpgsqlCommand(sql, conn))
+                    {
+                        cmd.Parameters.AddWithValue("@codigoUsuario", (object)orden.CodigoUsuario ?? DBNull.Value);
+                        cmd.Parameters.AddWithValue("@codigoSolicitud", (object)orden.CodigoSolicitud ?? DBNull.Value);
+                        cmd.Parameters.AddWithValue("@numeroOrden", (object)orden.NumeroOrden ?? DBNull.Value);
+                        cmd.Parameters.AddWithValue("@fechaCreacion", orden.FechaCreacion);
+                        cmd.Parameters.AddWithValue("@estado", (object)orden.Estado ?? "BORRADOR");
+                        cmd.Parameters.AddWithValue("@observacion", (object)orden.Observacion ?? DBNull.Value);
+                        cmd.Parameters.AddWithValue("@subtotal", (object)orden.Subtotal ?? DBNull.Value);
+                        cmd.Parameters.AddWithValue("@admin", (object)orden.Admin ?? DBNull.Value);
+                        cmd.Parameters.AddWithValue("@total", (object)orden.Total ?? DBNull.Value);
+                        cmd.Parameters.AddWithValue("@lugarEmision", (object)orden.LugarEmision ?? DBNull.Value);
+                        cmd.Parameters.AddWithValue("@compania", (object)orden.Compania ?? DBNull.Value);
+                        cmd.Parameters.AddWithValue("@rucCedula", (object)orden.RucCedula ?? DBNull.Value);
+                        cmd.Parameters.AddWithValue("@correo", (object)orden.Correo ?? DBNull.Value);
+                        cmd.Parameters.AddWithValue("@telefono", (object)orden.Telefono ?? DBNull.Value);
+                        cmd.Parameters.AddWithValue("@conceptoId", (object)orden.ConceptoId ?? DBNull.Value);
+
+                        var result = cmd.ExecuteScalar();
+                        nuevoId = Convert.ToInt32(result);
+                    }
+
+                    // Insertar detalles si existen
+                    if (orden.Detalles != null && orden.Detalles.Count > 0)
+                    {
+                        foreach (var detalle in orden.Detalles)
+                        {
+                            detalle.OrdenId = nuevoId;
+                            InsertarDetalle(detalle, conn);
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine("Error en Insertar: " + ex.Message);
+                throw;
+            }
+
+            return nuevoId;
+        }
+
+        /// <summary>
+        /// Inserta un detalle de orden
+        /// </summary>
+        private void InsertarDetalle(DetalleOrdenEnt detalle, NpgsqlConnection conn)
+        {
+            var sql = @"INSERT INTO aocr_or_orden_detalle 
+                        (orden_id, concepto_id, concepto_codigo, concepto_nombre, descripcion, 
+                         cantidad, valor_unitario, porcentaje_admin, subtotal, admin, total_linea)
+                        VALUES 
+                        (@ordenId, @conceptoId, @conceptoCodigo, @conceptoNombre, @descripcion,
+                         @cantidad, @valorUnitario, @porcentajeAdmin, @subtotal, @admin, @totalLinea)";
+
+            using (var cmd = new NpgsqlCommand(sql, conn))
+            {
+                cmd.Parameters.AddWithValue("@ordenId", detalle.OrdenId);
+                cmd.Parameters.AddWithValue("@conceptoId", (object)detalle.ConceptoId ?? DBNull.Value);
+                cmd.Parameters.AddWithValue("@conceptoCodigo", (object)detalle.ConceptoCodigo ?? DBNull.Value);
+                cmd.Parameters.AddWithValue("@conceptoNombre", (object)detalle.ConceptoNombre ?? DBNull.Value);
+                cmd.Parameters.AddWithValue("@descripcion", (object)detalle.Descripcion ?? DBNull.Value);
+                cmd.Parameters.AddWithValue("@cantidad", detalle.Cantidad);
+                cmd.Parameters.AddWithValue("@valorUnitario", detalle.ValorUnitario);
+                cmd.Parameters.AddWithValue("@porcentajeAdmin", (object)detalle.PorcentajeAdmin ?? DBNull.Value);
+                cmd.Parameters.AddWithValue("@subtotal", detalle.Subtotal);
+                cmd.Parameters.AddWithValue("@admin", (object)detalle.Admin ?? DBNull.Value);
+                cmd.Parameters.AddWithValue("@totalLinea", detalle.TotalLinea);
+
+                cmd.ExecuteNonQuery();
+            }
+        }
+
+        /// <summary>
+        /// Actualiza una orden de recaudación
+        /// </summary>
+        public bool Actualizar(OrdenRecaudacion orden)
+        {
+            try
+            {
+                using (var conn = new NpgsqlConnection(_connectionString))
+                {
+                    conn.Open();
+
+                    var sql = @"UPDATE aocr_or_orden SET
+                                codigo_usuario = @codigoUsuario,
+                                codigo_solicitud = @codigoSolicitud,
+                                numero_orden = @numeroOrden,
+                                estado = @estado,
+                                observacion = @observacion,
+                                subtotal = @subtotal,
+                                admin = @admin,
+                                total = @total,
+                                lugar_emision = @lugarEmision,
+                                compania = @compania,
+                                ruc_cedula = @rucCedula,
+                                correo = @correo,
+                                telefono = @telefono,
+                                concepto_id = @conceptoId
+                                WHERE id = @id";
+
+                    using (var cmd = new NpgsqlCommand(sql, conn))
+                    {
+                        cmd.Parameters.AddWithValue("@id", orden.Id);
+                        cmd.Parameters.AddWithValue("@codigoUsuario", (object)orden.CodigoUsuario ?? DBNull.Value);
+                        cmd.Parameters.AddWithValue("@codigoSolicitud", (object)orden.CodigoSolicitud ?? DBNull.Value);
+                        cmd.Parameters.AddWithValue("@numeroOrden", (object)orden.NumeroOrden ?? DBNull.Value);
+                        cmd.Parameters.AddWithValue("@estado", (object)orden.Estado ?? DBNull.Value);
+                        cmd.Parameters.AddWithValue("@observacion", (object)orden.Observacion ?? DBNull.Value);
+                        cmd.Parameters.AddWithValue("@subtotal", (object)orden.Subtotal ?? DBNull.Value);
+                        cmd.Parameters.AddWithValue("@admin", (object)orden.Admin ?? DBNull.Value);
+                        cmd.Parameters.AddWithValue("@total", (object)orden.Total ?? DBNull.Value);
+                        cmd.Parameters.AddWithValue("@lugarEmision", (object)orden.LugarEmision ?? DBNull.Value);
+                        cmd.Parameters.AddWithValue("@compania", (object)orden.Compania ?? DBNull.Value);
+                        cmd.Parameters.AddWithValue("@rucCedula", (object)orden.RucCedula ?? DBNull.Value);
+                        cmd.Parameters.AddWithValue("@correo", (object)orden.Correo ?? DBNull.Value);
+                        cmd.Parameters.AddWithValue("@telefono", (object)orden.Telefono ?? DBNull.Value);
+                        cmd.Parameters.AddWithValue("@conceptoId", (object)orden.ConceptoId ?? DBNull.Value);
+
+                        return cmd.ExecuteNonQuery() > 0;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine("Error en Actualizar: " + ex.Message);
+                throw;
+            }
+        }
+
+        /// <summary>
+        /// Cambia el estado de una orden
+        /// </summary>
+        public bool CambiarEstado(int id, string nuevoEstado, string observacion = null)
+        {
+            try
+            {
+                using (var conn = new NpgsqlConnection(_connectionString))
+                {
+                    conn.Open();
+
+                    var sql = "UPDATE aocr_or_orden SET estado = @estado";
+                    if (!string.IsNullOrEmpty(observacion))
+                    {
+                        sql += ", observacion = @observacion";
+                    }
+                    sql += " WHERE id = @id";
+
+                    using (var cmd = new NpgsqlCommand(sql, conn))
+                    {
+                        cmd.Parameters.AddWithValue("@id", id);
+                        cmd.Parameters.AddWithValue("@estado", nuevoEstado);
+                        if (!string.IsNullOrEmpty(observacion))
+                        {
+                            cmd.Parameters.AddWithValue("@observacion", observacion);
+                        }
+
+                        return cmd.ExecuteNonQuery() > 0;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine("Error en CambiarEstado: " + ex.Message);
+                throw;
+            }
+        }
+
+        /// <summary>
+        /// Anula una orden
+        /// </summary>
+        public bool Anular(int id, string motivo = null)
+        {
+            return CambiarEstado(id, "ANULADA", motivo);
+        }
+
+        #endregion
+
+        #region Estadísticas
+
+        /// <summary>
+        /// Obtiene estadísticas de las órdenes
+        /// </summary>
+        public Dictionary<string, object> ObtenerEstadisticas()
+        {
+            var estadisticas = new Dictionary<string, object>();
+
+            try
+            {
+                using (var conn = new NpgsqlConnection(_connectionString))
+                {
+                    conn.Open();
+
+                    // Total de órdenes
+                    var sqlTotal = "SELECT COUNT(*) FROM aocr_or_orden";
+                    using (var cmd = new NpgsqlCommand(sqlTotal, conn))
+                    {
+                        estadisticas["Total"] = Convert.ToInt32(cmd.ExecuteScalar());
+                    }
+
+                    // Pagadas (COMPLETADA o FACTURADA)
+                    var sqlPagadas = "SELECT COUNT(*) FROM aocr_or_orden WHERE estado IN ('COMPLETADA', 'FACTURADA')";
+                    using (var cmd = new NpgsqlCommand(sqlPagadas, conn))
+                    {
+                        estadisticas["Pagadas"] = Convert.ToInt32(cmd.ExecuteScalar());
+                    }
+
+                    // Saldo pendiente
+                    var sqlSaldoPendiente = "SELECT COALESCE(SUM(total), 0) FROM aocr_or_orden WHERE estado NOT IN ('COMPLETADA', 'FACTURADA', 'ANULADA')";
+                    using (var cmd = new NpgsqlCommand(sqlSaldoPendiente, conn))
+                    {
+                        estadisticas["SaldoPendiente"] = Convert.ToDecimal(cmd.ExecuteScalar());
+                    }
+
+                    // Monto pagado
+                    var sqlMontoPagado = "SELECT COALESCE(SUM(total), 0) FROM aocr_or_orden WHERE estado IN ('COMPLETADA', 'FACTURADA')";
+                    using (var cmd = new NpgsqlCommand(sqlMontoPagado, conn))
+                    {
+                        estadisticas["MontoPagado"] = Convert.ToDecimal(cmd.ExecuteScalar());
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine("Error en ObtenerEstadisticas: " + ex.Message);
+                estadisticas["Total"] = 0;
+                estadisticas["Pagadas"] = 0;
+                estadisticas["SaldoPendiente"] = 0m;
+                estadisticas["MontoPagado"] = 0m;
+            }
+
+            return estadisticas;
+        }
+
+        /// <summary>
+        /// Verifica si existe una orden en borrador para un usuario
+        /// </summary>
+        public bool TieneOrdenBorrador(string codigoUsuario)
+        {
+            try
+            {
+                using (var conn = new NpgsqlConnection(_connectionString))
+                {
+                    conn.Open();
+                    var sql = "SELECT COUNT(*) FROM aocr_or_orden WHERE codigo_usuario::text = @codigoUsuario AND estado = 'BORRADOR'";
+
+                    using (var cmd = new NpgsqlCommand(sql, conn))
+                    {
+                        cmd.Parameters.AddWithValue("@codigoUsuario", codigoUsuario ?? "");
+                        return Convert.ToInt32(cmd.ExecuteScalar()) > 0;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine("Error en TieneOrdenBorrador: " + ex.Message);
                 return false;
             }
         }
 
-        public bool CambiarEstadoOrden(int id, string nuevoEstado)
+        /// <summary>
+        /// Prueba la conexión a la base de datos
+        /// </summary>
+        public bool ProbarConexion()
         {
-            string _;
-            return CambiarEstadoOrden(id, nuevoEstado, out _);
+            try
+            {
+                using (var conn = new NpgsqlConnection(_connectionString))
+                {
+                    conn.Open();
+                    return true;
+                }
+            }
+            catch
+            {
+                return false;
+            }
         }
 
-        public int ObtenerCodigoSolicitudPorRuc(string ruc)
-        {
-            if (string.IsNullOrWhiteSpace(ruc)) return 0;
+        #endregion
 
-            const string sql = @"
-SELECT codigo_solicitud
-FROM aocr_tbsolicitud
-WHERE deleted_at IS NULL
-  AND TRIM(ruc) = TRIM(@ruc)
-ORDER BY fecha_solicitud DESC NULLS LAST, codigo_solicitud DESC
-LIMIT 1;";
+        #region Métodos Privados de Mapeo
+
+        /// <summary>
+        /// Mapea un IDataReader a una entidad OrdenRecaudacion
+        /// </summary>
+        private OrdenRecaudacion MapearOrden(IDataReader reader)
+        {
+            var orden = new OrdenRecaudacion
+            {
+                Id = reader.GetInt32(reader.GetOrdinal("id")),
+                CodigoUsuario = reader.IsDBNull(reader.GetOrdinal("codigo_usuario")) ? null : reader.GetString(reader.GetOrdinal("codigo_usuario")),
+                CodigoSolicitud = reader.IsDBNull(reader.GetOrdinal("codigo_solicitud")) ? null : reader.GetString(reader.GetOrdinal("codigo_solicitud")),
+                NumeroOrden = reader.IsDBNull(reader.GetOrdinal("numero_orden")) ? null : reader.GetString(reader.GetOrdinal("numero_orden")),
+                FechaCreacion = reader.IsDBNull(reader.GetOrdinal("fecha_creacion")) ? DateTime.Now : reader.GetDateTime(reader.GetOrdinal("fecha_creacion")),
+                Estado = reader.IsDBNull(reader.GetOrdinal("estado")) ? "BORRADOR" : reader.GetString(reader.GetOrdinal("estado")),
+                Observacion = reader.IsDBNull(reader.GetOrdinal("observacion")) ? null : reader.GetString(reader.GetOrdinal("observacion")),
+                Subtotal = reader.IsDBNull(reader.GetOrdinal("subtotal")) ? (decimal?)null : reader.GetDecimal(reader.GetOrdinal("subtotal")),
+                Admin = reader.IsDBNull(reader.GetOrdinal("admin")) ? (decimal?)null : reader.GetDecimal(reader.GetOrdinal("admin")),
+                Total = reader.IsDBNull(reader.GetOrdinal("total")) ? (decimal?)null : reader.GetDecimal(reader.GetOrdinal("total")),
+                LugarEmision = reader.IsDBNull(reader.GetOrdinal("lugar_emision")) ? null : reader.GetString(reader.GetOrdinal("lugar_emision")),
+                Compania = reader.IsDBNull(reader.GetOrdinal("compania")) ? null : reader.GetString(reader.GetOrdinal("compania")),
+                RucCedula = reader.IsDBNull(reader.GetOrdinal("ruc_cedula")) ? null : reader.GetString(reader.GetOrdinal("ruc_cedula")),
+                Correo = reader.IsDBNull(reader.GetOrdinal("correo")) ? null : reader.GetString(reader.GetOrdinal("correo")),
+                Telefono = reader.IsDBNull(reader.GetOrdinal("telefono")) ? null : reader.GetString(reader.GetOrdinal("telefono")),
+                ConceptoId = reader.IsDBNull(reader.GetOrdinal("concepto_id")) ? (int?)null : reader.GetInt32(reader.GetOrdinal("concepto_id"))
+            };
+
+            // Intentar obtener el nombre del concepto si está en el resultado
+            try
+            {
+                var conceptoNombreOrdinal = reader.GetOrdinal("concepto_nombre");
+                if (!reader.IsDBNull(conceptoNombreOrdinal))
+                {
+                    orden.ConceptoNombre = reader.GetString(conceptoNombreOrdinal);
+                }
+            }
+            catch
+            {
+                // La columna concepto_nombre no está en el resultado, ignorar
+            }
+
+            return orden;
+        }
+
+        /// <summary>
+        /// Mapea un IDataReader a una entidad DetalleOrdenEnt
+        /// </summary>
+        private DetalleOrdenEnt MapearDetalle(IDataReader reader)
+        {
+            return new DetalleOrdenEnt
+            {
+                Id = reader.GetInt32(reader.GetOrdinal("id")),
+                OrdenId = reader.GetInt32(reader.GetOrdinal("orden_id")),
+                ConceptoId = reader.IsDBNull(reader.GetOrdinal("concepto_id")) ? (int?)null : reader.GetInt32(reader.GetOrdinal("concepto_id")),
+                ConceptoCodigo = reader.IsDBNull(reader.GetOrdinal("concepto_codigo")) ? null : reader.GetString(reader.GetOrdinal("concepto_codigo")),
+                ConceptoNombre = reader.IsDBNull(reader.GetOrdinal("concepto_nombre")) ? null : reader.GetString(reader.GetOrdinal("concepto_nombre")),
+                Descripcion = reader.IsDBNull(reader.GetOrdinal("descripcion")) ? null : reader.GetString(reader.GetOrdinal("descripcion")),
+                Cantidad = reader.GetInt32(reader.GetOrdinal("cantidad")),
+                ValorUnitario = reader.GetDecimal(reader.GetOrdinal("valor_unitario")),
+                PorcentajeAdmin = reader.IsDBNull(reader.GetOrdinal("porcentaje_admin")) ? (decimal?)null : reader.GetDecimal(reader.GetOrdinal("porcentaje_admin")),
+                Subtotal = reader.GetDecimal(reader.GetOrdinal("subtotal")),
+                Admin = reader.IsDBNull(reader.GetOrdinal("admin")) ? (decimal?)null : reader.GetDecimal(reader.GetOrdinal("admin")),
+                TotalLinea = reader.GetDecimal(reader.GetOrdinal("total_linea"))
+            };
+        }
+
+        #endregion
+
+        #region Compatibilidad / Repositorio / Helpers
+
+        // =============================
+        // Helpers internos
+        // =============================
+
+        private List<OrdenRecaudacion> ObtenerOrdenesInterno(string codigoUsuario, string estado)
+        {
+            var ordenes = new List<OrdenRecaudacion>();
 
             try
             {
-                using (var cn = new NpgsqlConnection(_cn))
-                using (var cmd = new NpgsqlCommand(sql, cn))
+                using (var conn = new NpgsqlConnection(_connectionString))
                 {
-                    cmd.Parameters.AddWithValue("@ruc", ruc.Trim());
-                    cn.Open();
-                    var result = cmd.ExecuteScalar();
-                    return result == null ? 0 : Convert.ToInt32(result);
+                    conn.Open();
+
+                    var sql = @"SELECT o.*, c.nombre as concepto_nombre
+                                FROM aocr_or_orden o
+                                LEFT JOIN aocr_or_concepto c ON o.concepto_id = c.id";
+
+                    var filtros = new List<string>();
+                    if (!string.IsNullOrWhiteSpace(codigoUsuario))
+                    {
+                        filtros.Add("o.codigo_usuario::text = @codigoUsuario");
+                    }
+                    if (!string.IsNullOrWhiteSpace(estado))
+                    {
+                        filtros.Add("o.estado = @estado");
+                    }
+
+                    if (filtros.Count > 0)
+                    {
+                        sql += " WHERE " + string.Join(" AND ", filtros);
+                    }
+
+                    sql += " ORDER BY o.fecha_creacion DESC";
+
+                    using (var cmd = new NpgsqlCommand(sql, conn))
+                    {
+                        if (!string.IsNullOrWhiteSpace(codigoUsuario))
+                        {
+                            cmd.Parameters.AddWithValue("@codigoUsuario", codigoUsuario);
+                        }
+                        if (!string.IsNullOrWhiteSpace(estado))
+                        {
+                            cmd.Parameters.AddWithValue("@estado", estado);
+                        }
+
+                        using (var reader = cmd.ExecuteReader())
+                        {
+                            while (reader.Read())
+                            {
+                                ordenes.Add(MapearOrden(reader));
+                            }
+                        }
+                    }
                 }
             }
             catch (Exception ex)
             {
-                TraceError("ObtenerCodigoSolicitudPorRuc", ex);
+                System.Diagnostics.Debug.WriteLine("Error en ObtenerOrdenesInterno: " + ex.Message);
+                throw;
+            }
+
+            return ordenes;
+        }
+
+        private int ParseIntOrDefault(string value)
+        {
+            if (string.IsNullOrWhiteSpace(value))
+            {
+                return 0;
+            }
+
+            int result;
+            return int.TryParse(value, out result) ? result : 0;
+        }
+
+        private OrdenRecaudacionModel MapearOrdenModel(OrdenRecaudacion orden)
+        {
+            if (orden == null)
+            {
+                return null;
+            }
+
+            var model = new OrdenRecaudacionModel
+            {
+                Id = orden.Id,
+                NumeroOrden = orden.NumeroOrden,
+                Estado = orden.Estado,
+                Total = orden.Total ?? 0m,
+                Subtotal = orden.Subtotal ?? 0m,
+                Iva = orden.Iva ?? 0m,
+                FechaCreacion = orden.FechaCreacion,
+                NombreContribuyente = orden.NombreContribuyente,
+                CodigoUsuario = ParseIntOrDefault(orden.CodigoUsuario),
+                CodigoSolicitud = orden.CodigoSolicitud,
+                LugarEmision = orden.LugarEmision,
+                Compania = orden.Compania,
+                RucCedula = orden.RucCedula,
+                Correo = orden.Correo,
+                Telefono = orden.Telefono,
+                Observacion = orden.Observacion,
+                Admin = orden.Admin ?? 0m
+            };
+
+            if (orden.Detalles != null && orden.Detalles.Count > 0)
+            {
+                foreach (var d in orden.Detalles)
+                {
+                    model.Detalles.Add(MapearDetalleModel(d));
+                }
+            }
+
+            return model;
+        }
+
+        private OrdenDetalleModel MapearDetalleModel(DetalleOrdenEnt detalle)
+        {
+            if (detalle == null)
+            {
+                return null;
+            }
+
+            return new OrdenDetalleModel
+            {
+                Id = detalle.Id,
+                OrdenId = detalle.OrdenId,
+                ConceptoId = detalle.ConceptoId ?? 0,
+                ConceptoCodigo = detalle.ConceptoCodigo,
+                ConceptoNombre = detalle.ConceptoNombre,
+                Descripcion = detalle.Descripcion,
+                Cantidad = detalle.Cantidad,
+                ValorUnitario = detalle.ValorUnitario,
+                PorcentajeAdmin = detalle.PorcentajeAdmin ?? 0m,
+                Subtotal = detalle.Subtotal,
+                Admin = detalle.Admin ?? 0m,
+                TotalLinea = detalle.TotalLinea
+            };
+        }
+
+        private OrdenRecaudacion MapearOrdenEntidad(OrdenRecaudacionModel orden)
+        {
+            if (orden == null)
+            {
+                return null;
+            }
+
+            var entidad = new OrdenRecaudacion
+            {
+                Id = orden.Id,
+                NumeroOrden = orden.NumeroOrden,
+                Estado = orden.Estado,
+                Total = orden.Total,
+                Subtotal = orden.Subtotal,
+                Admin = orden.Admin,
+                FechaCreacion = orden.FechaCreacion == default(DateTime) ? DateTime.Now : orden.FechaCreacion,
+                CodigoUsuario = orden.CodigoUsuario.ToString(),
+                CodigoSolicitud = orden.CodigoSolicitud,
+                LugarEmision = orden.LugarEmision,
+                Compania = orden.Compania,
+                RucCedula = orden.RucCedula,
+                Correo = orden.Correo,
+                Telefono = orden.Telefono,
+                Observacion = orden.Observacion
+            };
+
+            if (orden.Detalles != null && orden.Detalles.Count > 0)
+            {
+                entidad.Detalles = new List<DetalleOrdenEnt>();
+                foreach (var d in orden.Detalles)
+                {
+                    entidad.Detalles.Add(new DetalleOrdenEnt
+                    {
+                        Id = d.Id,
+                        OrdenId = d.OrdenId,
+                        ConceptoId = d.ConceptoId,
+                        ConceptoCodigo = d.ConceptoCodigo,
+                        ConceptoNombre = d.ConceptoNombre,
+                        Descripcion = d.Descripcion,
+                        Cantidad = (int)d.Cantidad,
+                        ValorUnitario = d.ValorUnitario,
+                        PorcentajeAdmin = d.PorcentajeAdmin,
+                        Subtotal = d.Subtotal,
+                        Admin = d.Admin,
+                        TotalLinea = d.TotalLinea
+                    });
+                }
+            }
+
+            return entidad;
+        }
+
+        private int ObtenerCodigoSolicitudDesdeOrden(int ordenId)
+        {
+            try
+            {
+                using (var conn = new NpgsqlConnection(_connectionString))
+                {
+                    conn.Open();
+                    var sql = "SELECT codigo_solicitud FROM aocr_or_orden WHERE id = @id";
+
+                    using (var cmd = new NpgsqlCommand(sql, conn))
+                    {
+                        cmd.Parameters.AddWithValue("@id", ordenId);
+                        var result = cmd.ExecuteScalar();
+                        if (result == null || result == DBNull.Value)
+                        {
+                            return 0;
+                        }
+                        return ParseIntOrDefault(result.ToString());
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine("Error en ObtenerCodigoSolicitudDesdeOrden: " + ex.Message);
                 return 0;
             }
         }
 
-        public bool ActualizarCodigoSolicitudOrden(int ordenId, int codigoSolicitud)
+        private PagoModel MapearPagoModel(IDataReader reader)
         {
-            if (ordenId <= 0 || codigoSolicitud <= 0) return false;
+            return new PagoModel
+            {
+                CodigoPago = reader["codigo_pago"] != DBNull.Value ? Convert.ToInt32(reader["codigo_pago"]) : 0,
+                CodigoSolicitud = reader["codigo_solicitud"] != DBNull.Value ? Convert.ToInt32(reader["codigo_solicitud"]) : 0,
+                NumeroFactura = reader["numero_factura"] != DBNull.Value ? reader["numero_factura"].ToString() : null,
+                Monto = reader["monto"] != DBNull.Value ? Convert.ToDecimal(reader["monto"]) : 0m,
+                Moneda = reader["moneda"] != DBNull.Value ? reader["moneda"].ToString() : null,
+                Concepto = reader["concepto"] != DBNull.Value ? reader["concepto"].ToString() : null,
+                MetodoPago = reader["metodo_pago"] != DBNull.Value ? reader["metodo_pago"].ToString() : null,
+                Estado = reader["estado"] != DBNull.Value ? reader["estado"].ToString() : null,
+                FechaPago = reader["fecha_pago"] != DBNull.Value ? (DateTime?)Convert.ToDateTime(reader["fecha_pago"]) : null,
+                FechaValidacion = reader["fecha_validacion"] != DBNull.Value ? (DateTime?)Convert.ToDateTime(reader["fecha_validacion"]) : null,
+                ValidadoPor = reader["validado_por"] != DBNull.Value ? reader["validado_por"].ToString() : null,
+                Observaciones = reader["observaciones"] != DBNull.Value ? reader["observaciones"].ToString() : null,
+                ComprobanteRuta = reader["comprobante_ruta"] != DBNull.Value ? reader["comprobante_ruta"].ToString() : null
+            };
+        }
 
-            const string sql = @"
-UPDATE aocr_or_orden
-SET codigo_solicitud = @codigo::text
-WHERE id = @id
-  AND (codigo_solicitud IS NULL OR TRIM(codigo_solicitud) = '');";
+        private Pago MapearPagoEntidad(IDataReader reader)
+        {
+            return new Pago
+            {
+                Id = reader["codigo_pago"] != DBNull.Value ? Convert.ToInt32(reader["codigo_pago"]) : 0,
+                CodigoSolicitud = reader["codigo_solicitud"] != DBNull.Value ? Convert.ToInt32(reader["codigo_solicitud"]) : 0,
+                NumeroComprobante = reader["numero_factura"] != DBNull.Value ? reader["numero_factura"].ToString() : null,
+                MontoPagado = reader["monto"] != DBNull.Value ? Convert.ToDecimal(reader["monto"]) : 0m,
+                MetodoPago = reader["metodo_pago"] != DBNull.Value ? reader["metodo_pago"].ToString() : null,
+                Estado = reader["estado"] != DBNull.Value ? reader["estado"].ToString() : null,
+                FechaPago = reader["fecha_pago"] != DBNull.Value ? Convert.ToDateTime(reader["fecha_pago"]) : DateTime.MinValue,
+                Observaciones = reader["observaciones"] != DBNull.Value ? reader["observaciones"].ToString() : null,
+                RutaComprobante = reader["comprobante_ruta"] != DBNull.Value ? reader["comprobante_ruta"].ToString() : null,
+                FechaValidacion = reader["fecha_validacion"] != DBNull.Value ? (DateTime?)Convert.ToDateTime(reader["fecha_validacion"]) : null,
+                UsuarioValidacion = reader["validado_por"] != DBNull.Value ? reader["validado_por"].ToString() : null
+            };
+        }
 
+        // =============================
+        // Metodos publicos adicionales (compatibilidad)
+        // =============================
+
+        public bool Ping() => ProbarConexion();
+
+        public List<OrdenRecaudacion> ListarPorUsuario(int codigoUsuario, string estado)
+        {
+            var estadoFiltro = string.IsNullOrWhiteSpace(estado) ? null : estado.Trim();
+            return ObtenerOrdenesInterno(codigoUsuario.ToString(), estadoFiltro);
+        }
+
+        public List<OrdenRecaudacion> ObtenerTodasLasOrdenes(string estado)
+        {
+            var estadoFiltro = string.IsNullOrWhiteSpace(estado) ? null : estado.Trim();
+            return ObtenerOrdenesInterno(null, estadoFiltro);
+        }
+
+        public OrdenRecaudacion ObtenerOrdenPorId(int id) => ObtenerPorId(id);
+
+        public OrdenRecaudacionModel ObtenerOrdenPorIdModel(int id)
+        {
+            var orden = ObtenerPorId(id);
+            return MapearOrdenModel(orden);
+        }
+
+        public List<OrdenRecaudacionModel> ListarPorUsuarioModel(int codigoUsuario, string estado)
+        {
+            var ordenes = ListarPorUsuario(codigoUsuario, estado);
+            return ordenes.Select(MapearOrdenModel).ToList();
+        }
+
+
+        public DataTable ObtenerOrdenesPorUsuario(int codigoUsuario)
+        {
+            return ((IOrdenRecaudacionDAO)this).ObtenerOrdenesPorUsuario(codigoUsuario);
+        }
+
+        public bool ActualizarOrden(OrdenRecaudacion orden) => Actualizar(orden);
+
+        public bool ActualizarOrden(OrdenRecaudacionModel orden)
+        {
+            var entidad = MapearOrdenEntidad(orden);
+            return Actualizar(entidad);
+        }
+
+        public bool CambiarEstadoOrden(int id, string nuevoEstado) => CambiarEstado(id, nuevoEstado);
+
+        public bool CambiarEstadoOrden(int id, string nuevoEstado, out string err)
+        {
             try
             {
-                using (var cn = new NpgsqlConnection(_cn))
-                using (var cmd = new NpgsqlCommand(sql, cn))
-                {
-                    cmd.Parameters.AddWithValue("@codigo", codigoSolicitud);
-                    cmd.Parameters.AddWithValue("@id", ordenId);
-                    cn.Open();
-                    return cmd.ExecuteNonQuery() > 0;
-                }
+                err = null;
+                return CambiarEstado(id, nuevoEstado);
             }
             catch (Exception ex)
             {
-                TraceError("ActualizarCodigoSolicitudOrden", ex);
+                err = ex.Message;
                 return false;
             }
         }
 
-        public bool CambiarEstadoOrden(int id, string nuevoEstado, out string error)
+        public List<PagoModel> ObtenerPagosPorOrden(int ordenId)
         {
-            error = null;
-            if (id <= 0)
-            {
-                error = "ID invÃ¡lido.";
-                return false;
-            }
-
-            var estado = NormalizarEstado(nuevoEstado);
-            if (string.IsNullOrWhiteSpace(estado))
-            {
-                error = "Estado invÃ¡lido.";
-                return false;
-            }
-
-            const string sql = @"
-UPDATE aocr_or_orden
-SET estado = @e
-WHERE id = @id;";
-
-            try
-            {
-                using (var cn = new NpgsqlConnection(_cn))
-                using (var cmd = new NpgsqlCommand(sql, cn))
-                {
-                    cmd.Parameters.AddWithValue("@id", id);
-                    cmd.Parameters.AddWithValue("@e", estado);
-                    cn.Open();
-                    var rows = cmd.ExecuteNonQuery();
-                    if (rows <= 0)
-                    {
-                        error = "No se encontrÃ³ la orden o no hubo cambios.";
-                        return false;
-                    }
-                    return true;
-                }
-            }
-            catch (Exception ex)
-            {
-                TraceError("CambiarEstadoOrden", ex);
-                error = ex.Message;
-                return false;
-            }
-        }
-
-        // ===================== Pagos =====================
-
-        public bool RegistrarPago(int idOrden, PagoModel pago)
-        {
-            string _;
-            return RegistrarPago(idOrden, pago, out _);
-        }
-
-        public bool RegistrarPago(int idOrden, PagoModel pago, out string error)
-        {
-            error = null;
-            if (idOrden <= 0 || pago == null)
-            {
-                error = "Datos invÃ¡lidos para registrar pago.";
-                return false;
-            }
-
-            // IMPORTANTE: tu controller trata "idOrden" como codigo_solicitud en aocr_tbpago
-            const string sql = @"
-INSERT INTO aocr_tbpago
-(
-  codigo_solicitud,
-  numero_factura,
-  monto,
-  moneda,
-  concepto,
-  metodo_pago,
-  estado,
-  fecha_pago,
-  fecha_validacion,
-  validado_por,
-  observaciones,
-  comprobante_ruta
-)
-VALUES
-(
-  @codigo_solicitud,
-  @numero_factura,
-  @monto,
-  @moneda,
-  @concepto,
-  @metodo_pago,
-  @estado,
-  @fecha_pago,
-  @fecha_validacion,
-  @validado_por,
-  @observaciones,
-  @comprobante_ruta
-);";
-
-            try
-            {
-                using (var cn = new NpgsqlConnection(_cn))
-                using (var cmd = new NpgsqlCommand(sql, cn))
-                {
-                    cmd.Parameters.AddWithValue("@codigo_solicitud", idOrden);
-                    cmd.Parameters.AddWithValue("@numero_factura", (object)(pago.NumeroFactura ?? "") ?? DBNull.Value);
-                    cmd.Parameters.AddWithValue("@monto", pago.Monto);
-                    cmd.Parameters.AddWithValue("@moneda", (object)(pago.Moneda ?? "USD") ?? DBNull.Value);
-                    cmd.Parameters.AddWithValue("@concepto", (object)(pago.Concepto ?? "") ?? DBNull.Value);
-                    cmd.Parameters.AddWithValue("@metodo_pago", (object)(pago.MetodoPago ?? "") ?? DBNull.Value);
-                    cmd.Parameters.AddWithValue("@estado", (object)(pago.Estado ?? "Pendiente") ?? DBNull.Value);
-                    cmd.Parameters.AddWithValue("@fecha_pago", (object)pago.FechaPago ?? DBNull.Value);
-                    cmd.Parameters.AddWithValue("@fecha_validacion", (object)pago.FechaValidacion ?? DBNull.Value);
-                    cmd.Parameters.AddWithValue("@validado_por", (object)(pago.ValidadoPor ?? "") ?? DBNull.Value);
-                    cmd.Parameters.AddWithValue("@observaciones", (object)(pago.Observaciones ?? "") ?? DBNull.Value);
-                    cmd.Parameters.AddWithValue("@comprobante_ruta", (object)(pago.ComprobanteRuta ?? "") ?? DBNull.Value);
-
-                    cn.Open();
-                    return cmd.ExecuteNonQuery() > 0;
-                }
-            }
-            catch (Exception ex)
-            {
-                TraceError("RegistrarPago", ex);
-                error = ex.Message;
-                return false;
-            }
-        }
-
-        public bool ExisteSolicitud(int codigoSolicitud)
-        {
+            var pagos = new List<PagoModel>();
+            var codigoSolicitud = ObtenerCodigoSolicitudDesdeOrden(ordenId);
             if (codigoSolicitud <= 0)
             {
-                return false;
+                codigoSolicitud = ordenId;
             }
-
-            const string sql = @"SELECT 1 FROM aocr_tbsolicitud WHERE codigo_solicitud = @id LIMIT 1;";
 
             try
             {
-                using (var cn = new NpgsqlConnection(_cn))
-                using (var cmd = new NpgsqlCommand(sql, cn))
+                using (var conn = new NpgsqlConnection(_connectionString))
                 {
-                    cmd.Parameters.AddWithValue("@id", codigoSolicitud);
-                    cn.Open();
-                    var obj = cmd.ExecuteScalar();
-                    return obj != null;
+                    conn.Open();
+                    var sql = @"SELECT * FROM aocr_tbpago
+                                WHERE codigo_solicitud = @codigoSolicitud
+                                ORDER BY fecha_pago DESC, codigo_pago DESC";
+
+                    using (var cmd = new NpgsqlCommand(sql, conn))
+                    {
+                        cmd.Parameters.AddWithValue("@codigoSolicitud", codigoSolicitud);
+                        using (var reader = cmd.ExecuteReader())
+                        {
+                            while (reader.Read())
+                            {
+                                pagos.Add(MapearPagoModel(reader));
+                            }
+                        }
+                    }
                 }
             }
             catch (Exception ex)
             {
-                TraceError("ExisteSolicitud", ex);
+                System.Diagnostics.Debug.WriteLine("Error en ObtenerPagosPorOrden: " + ex.Message);
+            }
+
+            return pagos;
+        }
+
+        public Pago ObtenerUltimoPagoPorOrden(int ordenId)
+        {
+            var codigoSolicitud = ObtenerCodigoSolicitudDesdeOrden(ordenId);
+            if (codigoSolicitud <= 0)
+            {
+                codigoSolicitud = ordenId;
+            }
+
+            try
+            {
+                using (var conn = new NpgsqlConnection(_connectionString))
+                {
+                    conn.Open();
+                    var sql = @"SELECT * FROM aocr_tbpago
+                                WHERE codigo_solicitud = @codigoSolicitud
+                                ORDER BY fecha_pago DESC, codigo_pago DESC
+                                LIMIT 1";
+
+                    using (var cmd = new NpgsqlCommand(sql, conn))
+                    {
+                        cmd.Parameters.AddWithValue("@codigoSolicitud", codigoSolicitud);
+                        using (var reader = cmd.ExecuteReader())
+                        {
+                            if (reader.Read())
+                            {
+                                return MapearPagoEntidad(reader);
+                            }
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine("Error en ObtenerUltimoPagoPorOrden: " + ex.Message);
+            }
+
+            return null;
+        }
+
+        public bool ActualizarUltimoPagoEstado(int ordenId, string nuevoEstado, string usuario, string observacion = null)
+        {
+            var codigoSolicitud = ObtenerCodigoSolicitudDesdeOrden(ordenId);
+            if (codigoSolicitud <= 0)
+            {
+                codigoSolicitud = ordenId;
+            }
+
+            try
+            {
+                using (var conn = new NpgsqlConnection(_connectionString))
+                {
+                    conn.Open();
+
+                    var sql = @"
+                        UPDATE aocr_tbpago
+                        SET estado = @estado,
+                            fecha_validacion = @fecha_validacion,
+                            validado_por = @validado_por,
+                            observaciones = COALESCE(@observaciones, observaciones)
+                        WHERE codigo_pago = (
+                            SELECT codigo_pago FROM aocr_tbpago
+                            WHERE codigo_solicitud = @codigoSolicitud
+                            ORDER BY fecha_pago DESC, codigo_pago DESC
+                            LIMIT 1
+                        )";
+
+                    using (var cmd = new NpgsqlCommand(sql, conn))
+                    {
+                        cmd.Parameters.AddWithValue("@estado", nuevoEstado ?? (object)DBNull.Value);
+                        cmd.Parameters.AddWithValue("@fecha_validacion", DateTime.Now);
+                        cmd.Parameters.AddWithValue("@validado_por", (object)usuario ?? DBNull.Value);
+                        cmd.Parameters.AddWithValue("@observaciones", (object)observacion ?? DBNull.Value);
+                        cmd.Parameters.AddWithValue("@codigoSolicitud", codigoSolicitud);
+
+                        return cmd.ExecuteNonQuery() > 0;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine("Error en ActualizarUltimoPagoEstado: " + ex.Message);
                 return false;
             }
         }
@@ -827,507 +1061,610 @@ VALUES
                 return 0;
             }
 
-            const string sql = @"SELECT codigo_solicitud FROM aocr_tbsolicitud WHERE numero_solicitud = @num LIMIT 1;";
-
             try
             {
-                using (var cn = new NpgsqlConnection(_cn))
-                using (var cmd = new NpgsqlCommand(sql, cn))
+                using (var conn = new NpgsqlConnection(_connectionString))
                 {
-                    cmd.Parameters.AddWithValue("@num", numeroSolicitud.Trim());
-                    cn.Open();
-                    var obj = cmd.ExecuteScalar();
-                    if (obj == null || obj == DBNull.Value)
+                    conn.Open();
+                    var sql = "SELECT codigo_solicitud FROM aocr_tbsolicitud WHERE numero_solicitud = @numero";
+
+                    using (var cmd = new NpgsqlCommand(sql, conn))
                     {
-                        return 0;
+                        cmd.Parameters.AddWithValue("@numero", numeroSolicitud.Trim());
+                        var result = cmd.ExecuteScalar();
+                        return result == null || result == DBNull.Value ? 0 : Convert.ToInt32(result);
                     }
-                    return Convert.ToInt32(obj);
                 }
             }
             catch (Exception ex)
             {
-                TraceError("ObtenerCodigoSolicitudPorNumero", ex);
+                System.Diagnostics.Debug.WriteLine("Error en ObtenerCodigoSolicitudPorNumero: " + ex.Message);
                 return 0;
             }
         }
 
-        public PagoModel ObtenerUltimoPagoPorOrden(int idOrden)
+        public int ObtenerCodigoSolicitudPorRuc(string ruc)
         {
-            if (idOrden <= 0) return null;
-
-            const string sql = @"
-SELECT *
-FROM aocr_tbpago
-WHERE codigo_solicitud = @id
-ORDER BY fecha_pago DESC
-LIMIT 1;";
+            if (string.IsNullOrWhiteSpace(ruc))
+            {
+                return 0;
+            }
 
             try
             {
-                using (var cn = new NpgsqlConnection(_cn))
-                using (var cmd = new NpgsqlCommand(sql, cn))
+                using (var conn = new NpgsqlConnection(_connectionString))
                 {
-                    cmd.Parameters.AddWithValue("@id", idOrden);
-                    cn.Open();
-                    using (var r = cmd.ExecuteReader())
+                    conn.Open();
+                    var sql = "SELECT codigo_solicitud FROM aocr_tbsolicitud WHERE ruc = @ruc";
+
+                    using (var cmd = new NpgsqlCommand(sql, conn))
                     {
-                        if (r.Read())
-                            return MapPago(r);
+                        cmd.Parameters.AddWithValue("@ruc", ruc.Trim());
+                        var result = cmd.ExecuteScalar();
+                        return result == null || result == DBNull.Value ? 0 : Convert.ToInt32(result);
                     }
                 }
             }
             catch (Exception ex)
             {
-                TraceError("ObtenerUltimoPagoPorOrden", ex);
+                System.Diagnostics.Debug.WriteLine("Error en ObtenerCodigoSolicitudPorRuc: " + ex.Message);
+                return 0;
             }
-
-            return null;
         }
 
-        public List<PagoModel> ObtenerPagosPorOrden(int idOrden)
+        public bool ExisteSolicitud(int codigoSolicitud)
         {
-            var lista = new List<PagoModel>();
-            if (idOrden <= 0) return lista;
-
-            const string sql = @"
-SELECT *
-FROM aocr_tbpago
-WHERE codigo_solicitud = @id
-ORDER BY fecha_pago DESC;";
+            if (codigoSolicitud <= 0)
+            {
+                return false;
+            }
 
             try
             {
-                using (var cn = new NpgsqlConnection(_cn))
-                using (var cmd = new NpgsqlCommand(sql, cn))
+                using (var conn = new NpgsqlConnection(_connectionString))
                 {
-                    cmd.Parameters.AddWithValue("@id", idOrden);
-                    cn.Open();
-                    using (var r = cmd.ExecuteReader())
+                    conn.Open();
+                    var sql = "SELECT COUNT(*) FROM aocr_tbsolicitud WHERE codigo_solicitud = @codigo";
+
+                    using (var cmd = new NpgsqlCommand(sql, conn))
                     {
-                        while (r.Read())
+                        cmd.Parameters.AddWithValue("@codigo", codigoSolicitud);
+                        return Convert.ToInt32(cmd.ExecuteScalar()) > 0;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine("Error en ExisteSolicitud: " + ex.Message);
+                return false;
+            }
+        }
+
+        public bool ActualizarCodigoSolicitudOrden(int ordenId, int codigoSolicitud)
+        {
+            if (ordenId <= 0 || codigoSolicitud <= 0)
+            {
+                return false;
+            }
+
+            try
+            {
+                using (var conn = new NpgsqlConnection(_connectionString))
+                {
+                    conn.Open();
+                    var sql = "UPDATE aocr_or_orden SET codigo_solicitud = @codigoSolicitud WHERE id = @id";
+
+                    using (var cmd = new NpgsqlCommand(sql, conn))
+                    {
+                        cmd.Parameters.AddWithValue("@codigoSolicitud", codigoSolicitud.ToString());
+                        cmd.Parameters.AddWithValue("@id", ordenId);
+                        return cmd.ExecuteNonQuery() > 0;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine("Error en ActualizarCodigoSolicitudOrden: " + ex.Message);
+                return false;
+            }
+        }
+
+        public bool RegistrarPago(int codigoSolicitud, PagoModel pago, out string err)
+        {
+            err = null;
+            if (codigoSolicitud <= 0 || pago == null)
+            {
+                err = "Solicitud/pago invalido.";
+                return false;
+            }
+
+            try
+            {
+                using (var conn = new NpgsqlConnection(_connectionString))
+                {
+                    conn.Open();
+                    var sql = @"
+                        INSERT INTO aocr_tbpago
+                        (codigo_solicitud, numero_factura, monto, moneda, concepto, metodo_pago, estado, fecha_pago, observaciones, comprobante_ruta)
+                        VALUES
+                        (@codigoSolicitud, @numeroFactura, @monto, @moneda, @concepto, @metodoPago, @estado, @fechaPago, @observaciones, @comprobanteRuta)";
+
+                    using (var cmd = new NpgsqlCommand(sql, conn))
+                    {
+                        cmd.Parameters.AddWithValue("@codigoSolicitud", codigoSolicitud);
+                        cmd.Parameters.AddWithValue("@numeroFactura", (object)pago.NumeroFactura ?? DBNull.Value);
+                        cmd.Parameters.AddWithValue("@monto", pago.Monto);
+                        cmd.Parameters.AddWithValue("@moneda", (object)pago.Moneda ?? "USD");
+                        cmd.Parameters.AddWithValue("@concepto", (object)pago.Concepto ?? DBNull.Value);
+                        cmd.Parameters.AddWithValue("@metodoPago", (object)pago.MetodoPago ?? DBNull.Value);
+                        cmd.Parameters.AddWithValue("@estado", (object)pago.Estado ?? "PENDIENTE");
+                        cmd.Parameters.AddWithValue("@fechaPago", (object)pago.FechaPago ?? DateTime.Now);
+                        cmd.Parameters.AddWithValue("@observaciones", (object)pago.Observaciones ?? DBNull.Value);
+                        cmd.Parameters.AddWithValue("@comprobanteRuta", (object)pago.ComprobanteRuta ?? DBNull.Value);
+
+                        return cmd.ExecuteNonQuery() > 0;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                err = ex.Message;
+                System.Diagnostics.Debug.WriteLine("Error en RegistrarPago: " + ex.Message);
+                return false;
+            }
+        }
+
+        public bool RegistrarPago(int codigoSolicitud, CapaModelo.PagoModel pago, out string err)
+        {
+            if (pago == null)
+            {
+                err = "Solicitud/pago invalido.";
+                return false;
+            }
+
+            var pagoModel = new PagoModel
+            {
+                CodigoPago = pago.CodigoPago,
+                CodigoSolicitud = pago.CodigoSolicitud,
+                NumeroFactura = pago.NumeroFactura,
+                Monto = pago.Monto,
+                Moneda = pago.Moneda,
+                Concepto = pago.Concepto,
+                MetodoPago = pago.MetodoPago,
+                Estado = pago.Estado,
+                FechaPago = pago.FechaPago,
+                FechaValidacion = pago.FechaValidacion,
+                ValidadoPor = pago.ValidadoPor,
+                Observaciones = pago.Observaciones,
+                ComprobanteRuta = pago.ComprobanteRuta
+            };
+
+            return RegistrarPago(codigoSolicitud, pagoModel, out err);
+        }
+
+        // =============================
+        // Estadisticas por usuario
+        // =============================
+
+        public Dictionary<string, object> ObtenerEstadisticas(int codigoUsuario)
+        {
+            var estadisticas = new Dictionary<string, object>();
+            var codigoUsuarioStr = codigoUsuario > 0 ? codigoUsuario.ToString() : null;
+
+            try
+            {
+                using (var conn = new NpgsqlConnection(_connectionString))
+                {
+                    conn.Open();
+
+                    var filtroUsuario = !string.IsNullOrWhiteSpace(codigoUsuarioStr);
+                    var whereUsuario = filtroUsuario ? " AND codigo_usuario::text = @codigoUsuario" : "";
+
+                    var sqlTotal = "SELECT COUNT(*) FROM aocr_or_orden WHERE 1=1" + whereUsuario;
+                    using (var cmd = new NpgsqlCommand(sqlTotal, conn))
+                    {
+                        if (filtroUsuario) cmd.Parameters.AddWithValue("@codigoUsuario", codigoUsuarioStr);
+                        estadisticas["total"] = Convert.ToInt32(cmd.ExecuteScalar());
+                    }
+
+                    var sqlPagadas = "SELECT COUNT(*) FROM aocr_or_orden WHERE estado IN ('COMPLETADA', 'FACTURADA')"
+                                     + whereUsuario;
+                    using (var cmd = new NpgsqlCommand(sqlPagadas, conn))
+                    {
+                        if (filtroUsuario) cmd.Parameters.AddWithValue("@codigoUsuario", codigoUsuarioStr);
+                        estadisticas["pagada"] = Convert.ToInt32(cmd.ExecuteScalar());
+                    }
+
+                    var sqlMontoTotal = "SELECT COALESCE(SUM(total), 0) FROM aocr_or_orden WHERE 1=1" + whereUsuario;
+                    using (var cmd = new NpgsqlCommand(sqlMontoTotal, conn))
+                    {
+                        if (filtroUsuario) cmd.Parameters.AddWithValue("@codigoUsuario", codigoUsuarioStr);
+                        estadisticas["monto_total"] = Convert.ToDecimal(cmd.ExecuteScalar());
+                    }
+
+                    var sqlMontoRecaudado = "SELECT COALESCE(SUM(total), 0) FROM aocr_or_orden WHERE estado IN ('COMPLETADA', 'FACTURADA')"
+                                            + whereUsuario;
+                    using (var cmd = new NpgsqlCommand(sqlMontoRecaudado, conn))
+                    {
+                        if (filtroUsuario) cmd.Parameters.AddWithValue("@codigoUsuario", codigoUsuarioStr);
+                        estadisticas["monto_recaudado"] = Convert.ToDecimal(cmd.ExecuteScalar());
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine("Error en ObtenerEstadisticas(codigoUsuario): " + ex.Message);
+                estadisticas["total"] = 0;
+                estadisticas["pagada"] = 0;
+                estadisticas["monto_total"] = 0m;
+                estadisticas["monto_recaudado"] = 0m;
+            }
+
+            return estadisticas;
+        }
+
+        // =============================
+        // Validaciones flujo
+        // =============================
+
+        public bool ExisteORGeneradaOPagada(int codigoUsuario)
+        {
+            if (codigoUsuario <= 0)
+            {
+                return false;
+            }
+
+            try
+            {
+                using (var conn = new NpgsqlConnection(_connectionString))
+                {
+                    conn.Open();
+                    var sql = @"SELECT COUNT(*) FROM aocr_or_orden
+                                WHERE codigo_usuario::text = @codigoUsuario
+                                AND estado NOT IN ('BORRADOR', 'ANULADA')";
+
+                    using (var cmd = new NpgsqlCommand(sql, conn))
+                    {
+                        cmd.Parameters.AddWithValue("@codigoUsuario", codigoUsuario.ToString());
+                        return Convert.ToInt32(cmd.ExecuteScalar()) > 0;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine("Error en ExisteORGeneradaOPagada: " + ex.Message);
+                return false;
+            }
+        }
+
+        public bool ExisteORMinima(int codigoUsuario)
+        {
+            if (codigoUsuario <= 0)
+            {
+                return false;
+            }
+
+            try
+            {
+                using (var conn = new NpgsqlConnection(_connectionString))
+                {
+                    conn.Open();
+                    var sql = @"SELECT COUNT(*) FROM aocr_or_orden
+                                WHERE codigo_usuario::text = @codigoUsuario
+                                AND estado = 'BORRADOR'";
+
+                    using (var cmd = new NpgsqlCommand(sql, conn))
+                    {
+                        cmd.Parameters.AddWithValue("@codigoUsuario", codigoUsuario.ToString());
+                        return Convert.ToInt32(cmd.ExecuteScalar()) > 0;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine("Error en ExisteORMinima: " + ex.Message);
+                return false;
+            }
+        }
+
+        // =============================
+        // IOrdenRecaudacionRepository (async)
+        // =============================
+
+        public Task<OrdenRecaudacion> ObtenerPorIdAsync(int id)
+        {
+            return Task.FromResult(ObtenerPorId(id));
+        }
+
+        public Task<IEnumerable<OrdenRecaudacion>> ObtenerTodosAsync()
+        {
+            return Task.FromResult<IEnumerable<OrdenRecaudacion>>(ObtenerTodas());
+        }
+
+        public Task<IEnumerable<OrdenRecaudacion>> ObtenerPorEstadoAsync(string estado)
+        {
+            return Task.FromResult<IEnumerable<OrdenRecaudacion>>(ObtenerPorEstado(estado));
+        }
+
+        public Task<int> ObtenerConsecutivoDiarioAsync(DateTime fecha)
+        {
+            var count = 0;
+
+            try
+            {
+                using (var conn = new NpgsqlConnection(_connectionString))
+                {
+                    conn.Open();
+                    var sql = "SELECT COUNT(*) FROM aocr_or_orden WHERE fecha_creacion::date = @fecha";
+
+                    using (var cmd = new NpgsqlCommand(sql, conn))
+                    {
+                        cmd.Parameters.AddWithValue("@fecha", fecha.Date);
+                        count = Convert.ToInt32(cmd.ExecuteScalar());
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine("Error en ObtenerConsecutivoDiarioAsync: " + ex.Message);
+            }
+
+            return Task.FromResult(count);
+        }
+
+        public Task<int> CrearAsync(OrdenRecaudacion orden)
+        {
+            return Task.FromResult(Insertar(orden));
+        }
+
+        public Task CrearDetalleAsync(DetalleOrdenEnt detalle)
+        {
+            if (detalle == null)
+            {
+                return Task.FromResult(0);
+            }
+
+            try
+            {
+                using (var conn = new NpgsqlConnection(_connectionString))
+                {
+                    conn.Open();
+                    InsertarDetalle(detalle, conn);
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine("Error en CrearDetalleAsync: " + ex.Message);
+                throw;
+            }
+
+            return Task.FromResult(0);
+        }
+
+        public Task<bool> ActualizarAsync(OrdenRecaudacion orden)
+        {
+            return Task.FromResult(Actualizar(orden));
+        }
+
+        public Task<bool> ActualizarEstadoAsync(int id, string nuevoEstado, string usuario)
+        {
+            return Task.FromResult(CambiarEstado(id, nuevoEstado));
+        }
+
+        public Task<bool> EliminarAsync(int id, string usuario)
+        {
+            return Task.FromResult(CambiarEstado(id, "ANULADA"));
+        }
+
+        // =============================
+        // IOrdenRecaudacionDAO (explicita)
+        // =============================
+
+        List<OrdenRecaudacionModel> IOrdenRecaudacionDAO.ListarPorUsuario(int codigoUsuario, string estado)
+        {
+            return ListarPorUsuarioModel(codigoUsuario, estado);
+        }
+
+        List<OrdenRecaudacionModel> IOrdenRecaudacionDAO.ObtenerOrdenes(int? codigoUsuario, string estado)
+        {
+            var estadoFiltro = string.IsNullOrWhiteSpace(estado) ? null : estado.Trim();
+            var codigo = codigoUsuario.HasValue ? codigoUsuario.Value.ToString() : null;
+            var ordenes = ObtenerOrdenesInterno(codigo, estadoFiltro);
+            return ordenes.Select(MapearOrdenModel).ToList();
+        }
+
+        OrdenRecaudacionModel IOrdenRecaudacionDAO.ObtenerOrdenPorId(int id)
+        {
+            return ObtenerOrdenPorIdModel(id);
+        }
+
+        int IOrdenRecaudacionDAO.CrearOrden(OrdenRecaudacionModel orden)
+        {
+            var entidad = MapearOrdenEntidad(orden);
+            return Insertar(entidad);
+        }
+
+        bool IOrdenRecaudacionDAO.ActualizarOrden(OrdenRecaudacionModel orden)
+        {
+            var entidad = MapearOrdenEntidad(orden);
+            return Actualizar(entidad);
+        }
+
+        bool IOrdenRecaudacionDAO.CambiarEstadoOrden(int id, string nuevoEstado)
+        {
+            return CambiarEstadoOrden(id, nuevoEstado);
+        }
+
+        List<OrdenRecaudacionModel> IOrdenRecaudacionDAO.BuscarOrdenes(string criterio, int? codigoUsuario)
+        {
+            var ordenes = new List<OrdenRecaudacion>();
+            var codigo = codigoUsuario.HasValue ? codigoUsuario.Value.ToString() : null;
+
+            try
+            {
+                using (var conn = new NpgsqlConnection(_connectionString))
+                {
+                    conn.Open();
+                    var sql = @"SELECT o.*, c.nombre as concepto_nombre
+                                FROM aocr_or_orden o
+                                LEFT JOIN aocr_or_concepto c ON o.concepto_id = c.id
+                                WHERE (o.numero_orden ILIKE @criterio OR o.ruc_cedula ILIKE @criterio)";
+
+                    if (!string.IsNullOrWhiteSpace(codigo))
+                    {
+                        sql += " AND o.codigo_usuario::text = @codigoUsuario";
+                    }
+
+                    sql += " ORDER BY o.fecha_creacion DESC";
+
+                    using (var cmd = new NpgsqlCommand(sql, conn))
+                    {
+                        cmd.Parameters.AddWithValue("@criterio", "%" + (criterio ?? "").Trim() + "%");
+                        if (!string.IsNullOrWhiteSpace(codigo))
                         {
-                            lista.Add(MapPago(r));
+                            cmd.Parameters.AddWithValue("@codigoUsuario", codigo);
+                        }
+
+                        using (var reader = cmd.ExecuteReader())
+                        {
+                            while (reader.Read())
+                            {
+                                ordenes.Add(MapearOrden(reader));
+                            }
                         }
                     }
                 }
             }
             catch (Exception ex)
             {
-                TraceError("ObtenerPagosPorOrden", ex);
+                System.Diagnostics.Debug.WriteLine("Error en BuscarOrdenes: " + ex.Message);
             }
 
-            return lista;
+            return ordenes.Select(MapearOrdenModel).ToList();
         }
 
-        public bool ActualizarUltimoPagoEstado(int idOrden, string nuevoEstado, string validadoPor, string observaciones)
+        Dictionary<string, object> IOrdenRecaudacionDAO.ObtenerEstadisticas(int codigoUsuario)
         {
-            if (idOrden <= 0) return false;
-
-            const string sql = @"
-UPDATE aocr_tbpago
-SET estado = @estado,
-    fecha_validacion = CASE WHEN @estado = 'APROBADO' THEN NOW() ELSE fecha_validacion END,
-    validado_por = @validado_por,
-    observaciones = @observaciones
-WHERE codigo_pago = (
-    SELECT codigo_pago
-    FROM aocr_tbpago
-    WHERE codigo_solicitud = @id
-    ORDER BY fecha_pago DESC
-    LIMIT 1
-);";
-
-            try
-            {
-                using (var cn = new NpgsqlConnection(_cn))
-                using (var cmd = new NpgsqlCommand(sql, cn))
-                {
-                    cmd.Parameters.AddWithValue("@id", idOrden);
-                    cmd.Parameters.AddWithValue("@estado", (object)(nuevoEstado ?? "") ?? DBNull.Value);
-                    cmd.Parameters.AddWithValue("@validado_por", (object)(validadoPor ?? "") ?? DBNull.Value);
-                    cmd.Parameters.AddWithValue("@observaciones", (object)(observaciones ?? "") ?? DBNull.Value);
-                    cn.Open();
-                    return cmd.ExecuteNonQuery() > 0;
-                }
-            }
-            catch (Exception ex)
-            {
-                TraceError("ActualizarUltimoPagoEstado", ex);
-                return false;
-            }
+            return ObtenerEstadisticas(codigoUsuario);
         }
 
-        private PagoModel MapPago(IDataRecord r)
+        bool IOrdenRecaudacionDAO.RegistrarPago(int idOrden, PagoModel pago)
         {
-            return new PagoModel
-            {
-                CodigoPago = SafeInt(r, "codigo_pago"),
-                CodigoSolicitud = SafeInt(r, "codigo_solicitud"),
-                NumeroFactura = SafeString(r, "numero_factura"),
-                Monto = SafeDecimal(r, "monto"),
-                Moneda = SafeString(r, "moneda"),
-                Concepto = SafeString(r, "concepto"),
-                MetodoPago = SafeString(r, "metodo_pago"),
-                Estado = SafeString(r, "estado"),
-                FechaPago = SafeDateTime(r, "fecha_pago"),
-                FechaValidacion = SafeDateTime(r, "fecha_validacion"),
-                ValidadoPor = SafeString(r, "validado_por"),
-                Observaciones = SafeString(r, "observaciones"),
-                ComprobanteRuta = SafeString(r, "comprobante_ruta")
-            };
+            string err;
+            return RegistrarPago(idOrden, pago, out err);
         }
 
-        // ===================== Legacy DataTable (si aÃºn lo usas) =====================
-
-        public DataTable ObtenerOrdenesPorUsuario(int codigoUsuario)
+        DataTable IOrdenRecaudacionDAO.ObtenerOrdenesPorUsuario(int codigoUsuario)
         {
             var dt = new DataTable();
-            if (codigoUsuario <= 0) return dt;
-
-            const string sql = @"
-SELECT *
-FROM aocr_or_orden
-WHERE codigo_usuario = @u
-ORDER BY fecha_creacion DESC;";
 
             try
             {
-                using (var cn = new NpgsqlConnection(_cn))
-                using (var cmd = new NpgsqlCommand(sql, cn))
+                using (var conn = new NpgsqlConnection(_connectionString))
                 {
-                    cmd.Parameters.AddWithValue("@u", codigoUsuario);
-                    using (var da = new NpgsqlDataAdapter(cmd))
+                    conn.Open();
+                    var sql = "SELECT * FROM aocr_or_orden WHERE codigo_usuario::text = @codigoUsuario ORDER BY fecha_creacion DESC";
+
+                    using (var cmd = new NpgsqlCommand(sql, conn))
                     {
-                        da.Fill(dt);
+                        cmd.Parameters.AddWithValue("@codigoUsuario", codigoUsuario.ToString());
+                        using (var adapter = new NpgsqlDataAdapter(cmd))
+                        {
+                            adapter.Fill(dt);
+                        }
                     }
                 }
             }
             catch (Exception ex)
             {
-                TraceError("ObtenerOrdenesPorUsuario", ex);
+                System.Diagnostics.Debug.WriteLine("Error en ObtenerOrdenesPorUsuario: " + ex.Message);
             }
 
             return dt;
         }
 
-        // ===================== PDF =====================
-
-        public OrdenRecaudacionPdfDto ObtenerDatosParaPdf(int ordenId, int usuarioId)
+        OrdenRecaudacionPdfDto IOrdenRecaudacionDAO.ObtenerDatosParaPdf(int ordenId, int usuarioId)
         {
+            var dto = new OrdenRecaudacionPdfDto();
+
             try
             {
-                var orden = ObtenerOrdenPorId(ordenId);
-                if (orden == null) return default(OrdenRecaudacionPdfDto);
-                if (usuarioId > 0 && orden.CodigoUsuario != usuarioId) return default(OrdenRecaudacionPdfDto);
-
-                // Obtener informaciÃ³n del usuario inspector
-                var usuarioInspector = UsuarioDAO.ObtenerPorId(orden.CodigoUsuario);
-
-                var dto = new OrdenRecaudacionPdfDto
+                var orden = ObtenerPorId(ordenId);
+                if (orden == null)
                 {
-                    OrdenId = orden.Id,
-                    NumeroOrden = orden.NumeroOrden,
-                    FechaEmision = (orden.FechaCreacion == default(DateTime)) ? DateTime.Now : orden.FechaCreacion,
-                    LugarEmision = string.IsNullOrWhiteSpace(orden.LugarEmision) ? "Quito" : orden.LugarEmision,
+                    return null;
+                }
 
-                    NombreCompania = !string.IsNullOrWhiteSpace(orden.NombreContribuyente) ? orden.NombreContribuyente : (orden.Compania ?? ""),
-                    Ruc = orden.RucCedula ?? "",
-                    Email = orden.Correo ?? "",
-                    Telefono = orden.Telefono ?? "",
+                // Validar usuario si aplica
+                if (usuarioId > 0)
+                {
+                    var codigoUsuario = ParseIntOrDefault(orden.CodigoUsuario);
+                    if (codigoUsuario > 0 && codigoUsuario != usuarioId)
+                    {
+                        return null;
+                    }
+                }
 
-                    Referencia = "",
-                    Observacion = orden.Observacion ?? "",
+                dto.OrdenId = orden.Id;
+                dto.NumeroOrden = orden.NumeroOrden;
+                dto.FechaEmision = orden.FechaCreacion;
+                dto.LugarEmision = orden.LugarEmision;
+                dto.NombreCompania = orden.Compania;
+                dto.Ruc = orden.RucCedula;
+                dto.Email = orden.Correo;
+                dto.Telefono = orden.Telefono;
+                dto.Referencia = orden.NumeroOrden;
+                dto.Observacion = orden.Observacion;
 
-                    NombreInspector = usuarioInspector?.NombreCompleto ?? "Inspector",
-                    CargoInspector = "Inspector de Aviacion Civil",
-
-                    // Compatibilidad (si no hay detalles)
-                    ConceptoPrincipal = orden.ConceptoNombre ?? "",
-                    ValorBase = orden.Subtotal,
-                    Estaciones = 0,
-                    Dias = 0,
-                    ValorInspecciones = 0m,
-                    ValorViaticos = 0m
-                };
-
-                // Mapear detalles de la orden
                 if (orden.Detalles != null && orden.Detalles.Count > 0)
                 {
-                    foreach (var detalle in orden.Detalles)
+                    foreach (var d in orden.Detalles)
                     {
                         dto.Detalles.Add(new OrdenRecaudacionPdfDetalleDto
                         {
-                            CodigoConcepto = detalle.ConceptoCodigo ?? "",
-                            NombreConcepto = detalle.ConceptoNombre ?? detalle.Descripcion ?? "",
-                            Cantidad = (int)detalle.Cantidad,
-                            ValorUnitario = detalle.ValorUnitario,
-                            PorcentajeAdmin = detalle.PorcentajeAdmin,
-                            SubtotalLinea = detalle.Subtotal,
-                            AdminLinea = detalle.Admin,
-                            ValorTotal = detalle.TotalLinea
+                            CodigoConcepto = d.ConceptoCodigo,
+                            NombreConcepto = d.ConceptoNombre,
+                            Cantidad = d.Cantidad,
+                            ValorUnitario = d.ValorUnitario,
+                            PorcentajeAdmin = d.PorcentajeAdmin ?? 0m,
+                            SubtotalLinea = d.Subtotal,
+                            AdminLinea = d.Admin ?? 0m,
+                            ValorTotal = d.TotalLinea
                         });
                     }
                 }
-
-                // Calcular totales
-                dto.CalcularTotales();
-
-                return dto;
             }
             catch (Exception ex)
             {
-                TraceError("ObtenerDatosParaPdf", ex);
-                return default(OrdenRecaudacionPdfDto);
+                System.Diagnostics.Debug.WriteLine("Error en ObtenerDatosParaPdf: " + ex.Message);
+                return null;
             }
+
+            return dto;
         }
 
-        // ===================== Wrappers compatibilidad =====================
-
-        public OrdenRecaudacionModel ObtenerPorId(int id) => ObtenerOrdenPorId(id);
-        public int Insertar(OrdenRecaudacionModel orden) => CrearOrden(orden);
-        public bool Actualizar(OrdenRecaudacionModel orden) => ActualizarOrden(orden);
-        public bool CambiarEstado(int id, string estado) => CambiarEstadoOrden(id, estado);
-
-        // ===================== Helpers =====================
-
-        private static void AddOrdenParams(NpgsqlCommand cmd, OrdenRecaudacionModel orden)
+        OrdenRecaudacionModel IOrdenRecaudacionDAO.ObtenerPorId(int id)
         {
-            // Nota: @id se agrega aparte en update
-            cmd.Parameters.AddWithValue("@codigo_usuario", orden.CodigoUsuario);
-            var codigoSolicitud = string.IsNullOrWhiteSpace(orden.CodigoSolicitud)
-                ? (object)DBNull.Value
-                : orden.CodigoSolicitud;
-            cmd.Parameters.AddWithValue("@codigo_solicitud", codigoSolicitud);
-            cmd.Parameters.AddWithValue("@numero_orden", orden.NumeroOrden);
-            cmd.Parameters.AddWithValue("@fecha_creacion", (object)orden.FechaCreacion ?? DBNull.Value);
-
-            var estado = NormalizarEstado(orden.Estado) ?? "BORRADOR";
-            cmd.Parameters.AddWithValue("@estado", estado);
-
-            cmd.Parameters.AddWithValue("@observacion", (object)(orden.Observacion ?? "") ?? DBNull.Value);
-            cmd.Parameters.AddWithValue("@subtotal", orden.Subtotal);
-            cmd.Parameters.AddWithValue("@admin", orden.Admin);
-            cmd.Parameters.AddWithValue("@total", orden.Total);
-            cmd.Parameters.AddWithValue("@lugar_emision", (object)(orden.LugarEmision ?? "") ?? DBNull.Value);
-            cmd.Parameters.AddWithValue("@compania", (object)(orden.Compania ?? "") ?? DBNull.Value);
-            cmd.Parameters.AddWithValue("@ruc_cedula", (object)(orden.RucCedula ?? "") ?? DBNull.Value);
-            cmd.Parameters.AddWithValue("@correo", (object)(orden.Correo ?? "") ?? DBNull.Value);
-            cmd.Parameters.AddWithValue("@telefono", (object)(orden.Telefono ?? "") ?? DBNull.Value);
-            cmd.Parameters.AddWithValue("@concepto_id", (object)orden.ConceptoId ?? DBNull.Value);
+            return ObtenerOrdenPorIdModel(id);
         }
 
-        private void VincularSolicitudSiFalta(NpgsqlConnection cn, NpgsqlTransaction tx, int ordenId, OrdenRecaudacionModel orden)
+        int IOrdenRecaudacionDAO.Insertar(OrdenRecaudacionModel orden)
         {
-            if (orden == null || ordenId <= 0) return;
-            if (!string.IsNullOrWhiteSpace(orden.CodigoSolicitud)) return;
-            if (string.IsNullOrWhiteSpace(orden.RucCedula)) return;
-
-            var codigo = BuscarSolicitudPendientePorRuc(cn, tx, orden.RucCedula);
-            if (codigo <= 0) return;
-
-            const string sql = @"
-UPDATE aocr_or_orden
-SET codigo_solicitud = @codigo::text
-WHERE id = @id
-  AND (codigo_solicitud IS NULL OR TRIM(codigo_solicitud) = '');";
-
-            using (var cmd = new NpgsqlCommand(sql, cn, tx))
-            {
-                cmd.Parameters.AddWithValue("@codigo", codigo);
-                cmd.Parameters.AddWithValue("@id", ordenId);
-                cmd.ExecuteNonQuery();
-            }
+            var entidad = MapearOrdenEntidad(orden);
+            return Insertar(entidad);
         }
 
-        private int BuscarSolicitudPendientePorRuc(NpgsqlConnection cn, NpgsqlTransaction tx, string ruc)
+        bool IOrdenRecaudacionDAO.Actualizar(OrdenRecaudacionModel orden)
         {
-            if (cn == null || cn.State != ConnectionState.Open) return 0;
-            if (string.IsNullOrWhiteSpace(ruc)) return 0;
-
-            const string sql = @"
-SELECT codigo_solicitud
-FROM aocr_tbsolicitud
-WHERE deleted_at IS NULL
-  AND TRIM(ruc) = TRIM(@ruc)
-  AND UPPER(TRIM(estado)) IN ('PENDIENTE', 'BORRADOR', 'ENVIADO_A_INSPECTOR', 'ENVIADO_A_JEFATURA', 'INSPECCION_SOLICITADA')
-ORDER BY fecha_solicitud DESC NULLS LAST, codigo_solicitud DESC
-LIMIT 1;";
-
-            using (var cmd = new NpgsqlCommand(sql, cn, tx))
-            {
-                cmd.Parameters.AddWithValue("@ruc", ruc.Trim());
-                var result = cmd.ExecuteScalar();
-                return result == null ? 0 : Convert.ToInt32(result);
-            }
+            var entidad = MapearOrdenEntidad(orden);
+            return Actualizar(entidad);
         }
 
-        private static OrdenRecaudacionModel MapOrden(IDataRecord r)
+        bool IOrdenRecaudacionDAO.CambiarEstado(int id, string estado)
         {
-            // OJO: ajusta nombres si tu Model usa otros
-            return new OrdenRecaudacionModel
-            {
-                Id = SafeInt(r, "id"),
-                CodigoUsuario = SafeInt(r, "codigo_usuario"),
-                CodigoSolicitud = SafeString(r, "codigo_solicitud"),
-                NumeroOrden = SafeString(r, "numero_orden"),
-                FechaCreacion = SafeDateTime(r, "fecha_creacion") ?? DateTime.MinValue,
-                Estado = SafeString(r, "estado"),
-                Observacion = SafeString(r, "observacion"),
-                Subtotal = SafeDecimal(r, "subtotal"),
-                Admin = SafeDecimal(r, "admin"),
-                Total = SafeDecimal(r, "total"),
-                LugarEmision = SafeString(r, "lugar_emision"),
-                Compania = SafeString(r, "compania"),
-                RucCedula = SafeString(r, "ruc_cedula"),
-                Correo = SafeString(r, "correo"),
-                Telefono = SafeString(r, "telefono"),
-                ConceptoId = SafeNullableInt(r, "concepto_id"),
-                Detalles = new List<OrdenDetalleModel>()
-            };
+            return CambiarEstado(id, estado);
         }
 
-        private static string NormalizarEstado(string estado)
-        {
-            if (string.IsNullOrWhiteSpace(estado)) return null;
-            var e = estado.Trim().ToUpperInvariant();
-
-            switch (e)
-            {
-                case "BORRADOR":
-                    return "BORRADOR";
-                case "PENDIENTE":
-                case "PENDIENTE_PAGO":
-                case "PENDIENTE DE PAGO":
-                    return "PENDIENTE";
-                case "PROCESADA":
-                case "EN_REVISION_FINANCIERA":
-                case "EN REVISIÃ“N FINANCIERA":
-                case "EN REVISION FINANCIERA":
-                case "COMPROBANTE_ENVIADO":
-                case "COMPROBANTE ENVIADO":
-                    return "PROCESADA";
-                case "FACTURADA":
-                case "FACTURA_GENERADA":
-                case "FACTURA GENERADA":
-                case "APROBADA":
-                    return "FACTURADA";
-                case "COMPLETADA":
-                case "CERRADA":
-                    return "COMPLETADA";
-                case "ANULADA":
-                    return "ANULADA";
-                case "GENERADA":
-                    return "PENDIENTE";
-                case "ENVIADA":
-                case "PAGADA":
-                    return "PROCESADA";
-                case "ORDEN DE RECAUDACIÃ“N REQUERIDA":
-                    return estado.Trim();
-                default:
-                    return null;
-            }
-        }
-
-        private static string SafeString(IDataRecord r, string col)
-            => r[col] == DBNull.Value ? null : r[col].ToString();
-
-        private static int SafeInt(IDataRecord r, string col)
-            => r[col] == DBNull.Value ? 0 : Convert.ToInt32(r[col]);
-
-        private static int? SafeNullableInt(IDataRecord r, string col)
-            => r[col] == DBNull.Value ? (int?)null : Convert.ToInt32(r[col]);
-
-        private static decimal SafeDecimal(IDataRecord r, string col)
-            => r[col] == DBNull.Value ? 0m : Convert.ToDecimal(r[col]);
-
-        private static DateTime? SafeDateTime(IDataRecord r, string col)
-            => r[col] == DBNull.Value ? (DateTime?)null : Convert.ToDateTime(r[col]);
-
-        private static void TraceError(string metodo, Exception ex)
-        {
-            // En producciÃ³n: ideal enviar a tabla aocr_tblog o un logger (Serilog/NLog)
-            System.Diagnostics.Trace.TraceError($"[OrdenRecaudacionDAO.{metodo}] {ex}");
-        }
-        public bool Ping()
-        {
-            try
-            {
-                using (var cn = new NpgsqlConnection(_cn))
-                using (var cmd = new NpgsqlCommand("SELECT 1;", cn))
-                {
-                    cn.Open();
-                    var r = cmd.ExecuteScalar();
-                    return r != null;
-                }
-            }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Trace.TraceError("[OrdenRecaudacionDAO.Ping] " + ex);
-                return false;
-            }
-        }
-
-        // MÃ©todo para obtener todas las Ã³rdenes (para roles administrativos)
-        public List<OrdenRecaudacionModel> ObtenerTodasLasOrdenes(string estado = null)
-        {
-            var lista = new List<OrdenRecaudacionModel>();
-            string estadoFiltro = NormalizarEstado(estado);
-            System.Diagnostics.Debug.WriteLine($"ObtenerTodasLasOrdenes: Buscando todas las Ã³rdenes, estado filtro: '{estadoFiltro}'");
-
-            string sql = @"
-SELECT
-  id,
-  codigo_usuario,
-  codigo_solicitud,
-  numero_orden,
-  fecha_creacion,
-  estado,
-  observacion,
-  subtotal,
-  admin,
-  total,
-  lugar_emision,
-  compania,
-  ruc_cedula,
-  correo,
-  telefono,
-  concepto_id
-FROM aocr_or_orden
-";
-
-            if (!string.IsNullOrEmpty(estadoFiltro))
-            {
-                sql += " WHERE REPLACE(UPPER(TRIM(estado)),' ', '_') = @estado";
-            }
-
-            sql += " ORDER BY fecha_creacion DESC";
-
-            try
-            {
-                using (var cn = new NpgsqlConnection(_cn))
-                using (var cmd = new NpgsqlCommand(sql, cn))
-                {
-                    if (!string.IsNullOrEmpty(estadoFiltro))
-                    {
-                        cmd.Parameters.AddWithValue("@estado", estadoFiltro);
-                    }
-                    cn.Open();
-                    using (var reader = cmd.ExecuteReader())
-                    {
-                        while (reader.Read())
-                        {
-                            lista.Add(MapOrden(reader));
-                        }
-                    }
-                }
-                System.Diagnostics.Debug.WriteLine($"ObtenerTodasLasOrdenes: Encontradas {lista.Count} Ã³rdenes");
-            }
-            catch (Exception ex)
-            {
-                TraceError("ObtenerTodasLasOrdenes", ex);
-            }
-
-            return lista;
-        }
+        #endregion
     }
 }

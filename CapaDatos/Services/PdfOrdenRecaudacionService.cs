@@ -85,11 +85,11 @@ namespace CapaDatos.Services
                     var concepto = (d.ConceptoNombre ?? "") + (string.IsNullOrWhiteSpace(d.Descripcion) ? "" : "\n" + d.Descripcion);
 
                     dt.AddCell(Cell(concepto, font));
-                    dt.AddCell(CellR(d.Cantidad.ToString("0.##"), font));
-                    dt.AddCell(CellR(d.ValorUnitario.ToString("$ #,##0.00"), font));
-                    dt.AddCell(CellR(d.Subtotal.ToString("$ #,##0.00"), font));
-                    dt.AddCell(CellR(d.Admin.ToString("$ #,##0.00"), font));
-                    dt.AddCell(CellR(d.TotalLinea.ToString("$ #,##0.00"), fontBold));
+                    dt.AddCell(CellR(string.Format(System.Globalization.CultureInfo.InvariantCulture, "{0:0.##}", d.Cantidad), font));
+                    dt.AddCell(CellR(string.Format(System.Globalization.CultureInfo.InvariantCulture, "$ {0:#,##0.00}", d.ValorUnitario), font));
+                    dt.AddCell(CellR(string.Format(System.Globalization.CultureInfo.InvariantCulture, "$ {0:#,##0.00}", d.Subtotal), font));
+                    dt.AddCell(CellR(string.Format(System.Globalization.CultureInfo.InvariantCulture, "$ {0:#,##0.00}", d.Admin), font));
+                    dt.AddCell(CellR(string.Format(System.Globalization.CultureInfo.InvariantCulture, "$ {0:#,##0.00}", d.TotalLinea), fontBold));
                 }
 
                 doc.Add(dt);
@@ -103,13 +103,13 @@ namespace CapaDatos.Services
                 };
 
                 tot.AddCell(CellR("SUBTOTAL:", fontBold));
-                tot.AddCell(CellR(orden.Subtotal.ToString("$ #,##0.00"), font));
+                tot.AddCell(CellR(string.Format(System.Globalization.CultureInfo.InvariantCulture, "$ {0:#,##0.00}", orden.Subtotal), font));
 
                 tot.AddCell(CellR("ADMIN:", fontBold));
-                tot.AddCell(CellR(orden.Admin.ToString("$ #,##0.00"), font));
+                tot.AddCell(CellR(string.Format(System.Globalization.CultureInfo.InvariantCulture, "$ {0:#,##0.00}", orden.Admin), font));
 
                 tot.AddCell(CellR("TOTAL:", fontBold));
-                tot.AddCell(CellR(orden.Total.ToString("$ #,##0.00"), fontBold));
+                tot.AddCell(CellR(string.Format(System.Globalization.CultureInfo.InvariantCulture, "$ {0:#,##0.00}", orden.Total), fontBold));
 
                 doc.Add(tot);
 

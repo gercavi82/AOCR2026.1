@@ -1,0 +1,9 @@
+@model CapaPresentacion.Models.SolicitudAOCRViewModel
+
+@{
+    // Puente para renderizar el formulario completo de Solicitud AOCR.
+    // Antes este partial estaba vacío y no cargaba las otras pestañas/formularios.
+    Layout = null;
+}
+
+@Html.Partial("~/Views/SolicitudAOCR/_FormularioEmisionAOCR.cshtml", Model)

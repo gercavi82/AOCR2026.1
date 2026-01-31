@@ -34,6 +34,25 @@ namespace CapaDatos.DAOs
             );
         }
 
+        // Múltiples estados a la vez
+        public List<SolicitudAOCR> ObtenerPorEstados(params string[] estados)
+        {
+            if (estados == null || estados.Length == 0)
+                return ObtenerTodos();
+
+            var placeholders = new List<string>();
+            for (int i = 0; i < estados.Length; i++)
+                placeholders.Add($"@e{i}");
+
+            string where = $"estado = ANY (ARRAY[{string.Join(",", placeholders)}]) AND deleted_at IS NULL";
+
+            return ObtenerPorFiltro(where, cmd =>
+            {
+                for (int i = 0; i < estados.Length; i++)
+                    cmd.Parameters.AddWithValue($"@e{i}", estados[i] ?? string.Empty);
+            });
+        }
+
         public List<SolicitudAOCR> ObtenerPendientesRevision() => ObtenerPorEstado("ENVIADO_A_INSPECTOR");
 
         public List<SolicitudAOCR> ObtenerParaValidacionJefatura()

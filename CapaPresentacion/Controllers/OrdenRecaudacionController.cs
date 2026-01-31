@@ -1,4 +1,4 @@
-ï»¿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.IO;
@@ -7,9 +7,19 @@ using System.Web;
 using System.Web.Mvc;
 using System.Web.Script.Serialization;
 using CapaDatos.DAOs;
-using CapaDatos.Services;
+using CapaDatos.Entidades;
 using CapaDatos.Models;
 using CapaNegocio;
+using CapaNegocio.DTOs;
+using CapaNegocio.Interfaces;
+using System.Threading.Tasks;
+using CapaPresentacion.Models;
+using CapaModelo;
+using CapaNegocio.Services;
+// Alias para evitar ambigüedad
+using EmailSvc = CapaDatos.Services.EmailService;
+using SecureConfig = CapaDatos.Services.SecureConfigurationService;
+using DetalleOrden = CapaDatos.Entidades.DetalleOrden;
 
 namespace CapaPresentacion.Controllers
 {
@@ -20,8 +30,28 @@ namespace CapaPresentacion.Controllers
         private readonly OrdenRecaudacionBL _bl = new OrdenRecaudacionBL();
         private readonly ConceptoDAO _conceptoDao = new ConceptoDAO();
         private readonly SolicitudAOCRDAO _solicitudDao = new SolicitudAOCRDAO();
+        private readonly IOrdenRecaudacionOrchestrator _orchestrator;
 
-        // âœ… Para confirmar conexiÃ³n real a DB (Ãºtil en producciÃ³n)
+        public OrdenRecaudacionController(IOrdenRecaudacionOrchestrator orchestrator)
+        {
+            _orchestrator = orchestrator;
+        }
+
+        // Constructor sin parámetros para compatibilidad
+        public OrdenRecaudacionController()
+        {
+            // Inicializar orquestador con dependencias mínimas para evitar NRE en Nueva()
+            _orchestrator = new OrdenRecaudacionOrchestrator(
+                new OrdenRecaudacionDAO(),
+                new PagoDAO(),
+                null,
+                null,
+                new CapaNegocio.Services.EmailService(),
+                null
+            );
+        }
+
+        // ? Para confirmar conexión real a DB (útil en producción)
         [Authorize(Roles = "Administrador,Financiero")]
         public JsonResult DbPing()
         {
@@ -36,9 +66,9 @@ namespace CapaPresentacion.Controllers
 
             CargarEstadosCombo(estado);
 
-            var ordenes = _dao.ListarPorUsuario(idUsuario, estado) ?? new List<OrdenRecaudacionModel>();
+            var ordenes = _dao.ListarPorUsuarioModel(idUsuario, estado) ?? new List<OrdenRecaudacionModel>();
 
-            // EstadÃ­sticas: tu view espera claves con mayÃºscula
+            // Estadísticas: tu view espera claves con mayúscula
             var est = _dao.ObtenerEstadisticas(idUsuario);
             ViewBag.Estadisticas = MapearEstadisticasParaVista(est);
 
@@ -59,10 +89,10 @@ namespace CapaPresentacion.Controllers
 
             CargarEstadosCombo(null);
 
-            var ordenes = _dao.ListarPorUsuario(idUsuario, null) ?? new List<OrdenRecaudacionModel>();
-            System.Diagnostics.Debug.WriteLine($"Obligatoria: Se encontraron {ordenes.Count} Ã³rdenes para el usuario {idUsuario}");
+            var ordenes = _dao.ListarPorUsuario(idUsuario, null) ?? new List<OrdenRecaudacion>();
+            System.Diagnostics.Debug.WriteLine(string.Format("Obligatoria: Se encontraron {0} órdenes", ordenes.Count));
 
-            // EstadÃ­sticas
+            // Estadísticas
             var est = _dao.ObtenerEstadisticas(idUsuario);
             ViewBag.Estadisticas = MapearEstadisticasParaVista(est);
             ViewBag.TieneOrdenBorrador = ordenes.Any(o => string.Equals((o.Estado ?? "").Trim(), "BORRADOR", StringComparison.OrdinalIgnoreCase));
@@ -79,98 +109,131 @@ namespace CapaPresentacion.Controllers
             return View(model);
         }
 
-        // POST: /OrdenRecaudacion/Nueva
+        /// <summary>
+        /// Crear nueva orden - acepta OrdenRecaudacionNuevaVM desde la vista
+        /// </summary>
         [HttpPost]
-        [Authorize(Roles = "Solicitante,Administrador")]
         [ValidateAntiForgeryToken]
-        public ActionResult Nueva(CapaPresentacion.Models.OrdenRecaudacionNuevaVM model)
+        [Authorize(Roles = "Solicitante,Administrador")]
+        public ActionResult Nueva(OrdenRecaudacionNuevaVM model)
         {
-            int idUsuario = GetUserId();
-            if (idUsuario <= 0) return RedirectToAction("Login", "Account");
-
-            if (model == null)
+            try
             {
-                model = new CapaPresentacion.Models.OrdenRecaudacionNuevaVM();
-                CargarConceptosNueva(model);
-                TempData["Error"] = "Datos invÃ¡lidos.";
-                return View(model);
-            }
-
-            if (!ModelState.IsValid)
-            {
-                CargarConceptosNueva(model);
-                return View(model);
-            }
-
-            var detallesInput = ParseDetalles(model.DetallesJson);
-            if (detallesInput == null || detallesInput.Count == 0)
-            {
-                ModelState.AddModelError("", "Debe agregar al menos un concepto a la orden.");
-                CargarConceptosNueva(model);
-                return View(model);
-            }
-
-            var detalles = new List<OrdenDetalleModel>();
-            foreach (var d in detallesInput)
-            {
-                if (d.ConceptoId <= 0 || d.Cantidad <= 0) continue;
-
-                var concepto = _conceptoDao.ObtenerPorId(d.ConceptoId);
-                if (concepto == null) continue;
-
-                detalles.Add(new OrdenDetalleModel
+                // Parsear detalles del JSON
+                var detalles = new List<DetalleOrdenRequest>();
+                if (!string.IsNullOrWhiteSpace(model.DetallesJson))
                 {
-                    ConceptoId = concepto.Id,
-                    ConceptoCodigo = concepto.Codigo,
-                    ConceptoNombre = concepto.Nombre,
-                    Cantidad = d.Cantidad,
-                    ValorUnitario = concepto.ValorBase,
-                    PorcentajeAdmin = concepto.PorcentajeAdmin,
-                    Descripcion = concepto.Descripcion
-                });
-            }
+                    var serializer = new JavaScriptSerializer();
+                    var detallesRaw = serializer.Deserialize<List<Dictionary<string, object>>>(model.DetallesJson);
+                    if (detallesRaw != null)
+                    {
+                        foreach (var d in detallesRaw)
+                        {
+                            var conceptoId = d.ContainsKey("ConceptoId") ? Convert.ToInt32(d["ConceptoId"]) : 0;
+                            var cantidad = d.ContainsKey("Cantidad") ? Convert.ToInt32(d["Cantidad"]) : 1;
+                            
+                            // Obtener precio del concepto
+                            var concepto = _conceptoDao.ObtenerPorId(conceptoId);
+                            var precioUnitario = concepto?.ValorBase ?? 0m;
+                            
+                            detalles.Add(new DetalleOrdenRequest
+                            {
+                                ConceptoId = conceptoId,
+                                Cantidad = cantidad,
+                                PrecioUnitario = precioUnitario,
+                                Subtotal = cantidad * precioUnitario
+                            });
+                        }
+                    }
+                }
 
-            if (detalles.Count == 0)
-            {
-                ModelState.AddModelError("", "Conceptos invÃ¡lidos.");
+                if (detalles.Count == 0)
+                {
+                    ModelState.AddModelError("", "Debe agregar al menos un concepto a la orden.");
+                    CargarConceptosNueva(model);
+                    return View(model);
+                }
+
+                // Calcular totales
+                decimal subtotal = 0m, admin = 0m;
+                foreach (var det in detalles)
+                {
+                    var concepto = _conceptoDao.ObtenerPorId(det.ConceptoId);
+                    var porcentajeAdmin = concepto?.PorcentajeAdmin ?? 0m;
+                    subtotal += det.Subtotal;
+                    admin += det.Subtotal * (porcentajeAdmin / 100m);
+                }
+                var total = subtotal + admin;
+
+                // Crear la entidad OrdenRecaudacion
+                var idUsuario = GetUserId();
+                var numeroOrden = GenerarNumeroOrden();
+                
+                var orden = new OrdenRecaudacion
+                {
+                    NumeroOrden = numeroOrden,
+                    CodigoUsuario = idUsuario.ToString(),
+                    CodigoSolicitud = model.Orden?.CodigoSolicitud?.ToString(),
+                    LugarEmision = model.Orden?.LugarEmision ?? "Quito",
+                    Compania = model.Orden?.Compania,
+                    NombreContribuyente = model.Orden?.Compania,
+                    RucCedula = model.Orden?.RucCedula,
+                    RucContribuyente = model.Orden?.RucCedula,
+                    Correo = model.Orden?.Correo,
+                    EmailContribuyente = model.Orden?.Correo,
+                    Telefono = model.Orden?.Telefono,
+                    Observacion = model.Orden?.Observacion,
+                    Observaciones = model.Orden?.Observacion,
+                    Subtotal = subtotal,
+                    Admin = admin,
+                    Total = total,
+                    Estado = "BORRADOR",
+                    FechaCreacion = DateTime.Now,
+                    UsuarioCreacion = User.Identity.Name,
+                    Activo = true
+                };
+
+                // Insertar orden
+                var ordenId = _dao.Insertar(orden);
+                
+                if (ordenId > 0)
+                {
+                    // Insertar detalles
+                    foreach (var det in detalles)
+                    {
+                        var detalle = new DetalleOrden
+                        {
+                            OrdenId = ordenId,
+                            ConceptoId = det.ConceptoId,
+                            Cantidad = det.Cantidad,
+                            PrecioUnitario = det.PrecioUnitario,
+                            Subtotal = det.Subtotal
+                        };
+                        _dao.CrearDetalleAsync(detalle).Wait();
+                    }
+
+                    TempData["OK"] = "Orden " + numeroOrden + " creada exitosamente.";
+                    return RedirectToAction("Detalles", new { id = ordenId });
+                }
+
+                ModelState.AddModelError("", "Error al guardar la orden en la base de datos.");
                 CargarConceptosNueva(model);
                 return View(model);
             }
-
-            if (model.Orden == null || !model.Orden.CodigoSolicitud.HasValue || model.Orden.CodigoSolicitud.Value <= 0)
+            catch (Exception ex)
             {
-                ModelState.AddModelError("Orden.CodigoSolicitud", "Debe seleccionar una solicitud vÃ¡lida.");
+                System.Diagnostics.Debug.WriteLine("Error al crear orden: " + ex.ToString());
+                ModelState.AddModelError("", "Error interno al crear la orden: " + ex.Message);
                 CargarConceptosNueva(model);
                 return View(model);
             }
+        }
 
-            var orden = new OrdenRecaudacionModel
-            {
-                CodigoUsuario = idUsuario,
-                CodigoSolicitud = model.Orden.CodigoSolicitud.Value.ToString(),
-                LugarEmision = model.Orden != null ? model.Orden.LugarEmision : null,
-                Compania = model.Orden != null ? model.Orden.Compania : null,
-                RucCedula = model.Orden != null ? model.Orden.RucCedula : (model.RucCedula ?? null),
-                NombreContribuyente = model.Orden != null && !string.IsNullOrWhiteSpace(model.Orden.NombreContribuyente)
-                    ? model.Orden.NombreContribuyente
-                    : (model.Orden != null ? model.Orden.Compania : null),
-                Correo = model.Orden != null ? model.Orden.Correo : null,
-                Telefono = model.Orden != null ? model.Orden.Telefono : null,
-                Observacion = model.Orden != null ? model.Orden.Observacion : null,
-                ConceptoId = detalles.First().ConceptoId,
-                Detalles = detalles
-            };
-
-            var resultado = _bl.CrearBorrador(orden);
-            if (resultado.Ok)
-            {
-                TempData["OK"] = "Orden creada correctamente.";
-                return RedirectToAction("Index");
-            }
-
-            ModelState.AddModelError("", resultado.Mensaje ?? "No se pudo crear la orden.");
-            CargarConceptosNueva(model);
-            return View(model);
+        private string GenerarNumeroOrden()
+        {
+            var fecha = DateTime.Now;
+            var consecutivo = _dao.ObtenerConsecutivoDiarioAsync(fecha).Result + 1;
+            return string.Format("OR-{0:yyyyMMdd}-{1:D4}", fecha, consecutivo);
         }
 
         // GET: /OrdenRecaudacion/Detalles/5
@@ -179,7 +242,7 @@ namespace CapaPresentacion.Controllers
             int idUsuario = GetUserId();
             if (idUsuario <= 0) return RedirectToAction("Login", "Account");
 
-            var orden = _dao.ObtenerOrdenPorId(id);
+            var orden = _dao.ObtenerOrdenPorIdModel(id);
             if (orden == null || orden.CodigoUsuario != idUsuario)
                 return HttpNotFound();
 
@@ -202,7 +265,7 @@ namespace CapaPresentacion.Controllers
             int idUsuario = GetUserId();
             if (idUsuario <= 0) return RedirectToAction("Login", "Account");
 
-            var orden = _dao.ObtenerOrdenPorId(id);
+            var orden = _dao.ObtenerOrdenPorIdModel(id);
             if (orden == null || orden.CodigoUsuario != idUsuario)
                 return HttpNotFound();
 
@@ -224,7 +287,7 @@ namespace CapaPresentacion.Controllers
             if (!ModelState.IsValid)
                 return View(model);
 
-            var ordenExistente = _dao.ObtenerOrdenPorId(model.Id);
+            var ordenExistente = _dao.ObtenerOrdenPorIdModel(model.Id);
             if (ordenExistente == null || ordenExistente.CodigoUsuario != idUsuario)
                 return HttpNotFound();
 
@@ -269,12 +332,12 @@ namespace CapaPresentacion.Controllers
             int idUsuario = GetUserId();
             if (idUsuario <= 0) return Json(new { success = false, message = "Usuario no autenticado" });
 
-            var orden = _dao.ObtenerOrdenPorId(id);
+            var orden = _dao.ObtenerOrdenPorIdModel(id);
             if (orden == null || orden.CodigoUsuario != idUsuario)
                 return Json(new { success = false, message = "Orden no encontrada" });
 
             if (string.Equals((orden.Estado ?? "").Trim(), "ANULADA", StringComparison.OrdinalIgnoreCase))
-                return Json(new { success = false, message = "La orden ya estÃ¡ anulada" });
+                return Json(new { success = false, message = "La orden ya está anulada" });
 
             try
             {
@@ -296,13 +359,13 @@ namespace CapaPresentacion.Controllers
             int idUsuario = GetUserId();
             if (idUsuario <= 0) return RedirectToAction("Login", "Account");
 
-            var orden = _dao.ObtenerOrdenPorId(id);
+            var orden = _dao.ObtenerOrdenPorIdModel(id);
             if (orden == null || orden.CodigoUsuario != idUsuario)
                 return HttpNotFound();
 
             if (!string.Equals((orden.Estado ?? "").Trim(), "BORRADOR", StringComparison.OrdinalIgnoreCase))
             {
-                TempData["Error"] = "Solo se pueden generar Ã³rdenes en estado BORRADOR";
+                TempData["Error"] = "Solo se pueden generar órdenes en estado BORRADOR";
                 return RedirectToAction("Detalles", new { id = id });
             }
 
@@ -347,13 +410,13 @@ namespace CapaPresentacion.Controllers
             int idUsuario = GetUserId();
             if (idUsuario <= 0) return RedirectToAction("Login", "Account");
 
-            var orden = _dao.ObtenerOrdenPorId(id);
+            var orden = _dao.ObtenerOrdenPorIdModel(id);
             if (orden == null || orden.CodigoUsuario != idUsuario)
                 return HttpNotFound();
 
             if (!string.Equals((orden.Estado ?? "").Trim(), "GENERADA", StringComparison.OrdinalIgnoreCase))
             {
-                TempData["Error"] = "Solo se pueden enviar Ã³rdenes en estado GENERADA";
+                TempData["Error"] = "Solo se pueden enviar órdenes en estado GENERADA";
                 return RedirectToAction("Detalles", new { id = id });
             }
 
@@ -395,7 +458,7 @@ namespace CapaPresentacion.Controllers
             if (model == null) return;
             AsegurarConceptosBasicos();
 
-            var conceptos = _conceptoDao.ObtenerConceptos(true) ?? new List<ConceptoModel>();
+            var conceptos = _conceptoDao.ObtenerConceptos(true);
             model.Conceptos = conceptos.Select(c => new CapaPresentacion.Models.ConceptoOptionVM
             {
                 Id = c.Id,
@@ -434,14 +497,14 @@ namespace CapaPresentacion.Controllers
 
         private void AsegurarConceptosBasicos()
         {
-            var conceptos = new List<ConceptoModel>
+            var conceptos = new List<CapaDatos.Models.ConceptoModel>
             {
-                new ConceptoModel { Codigo = "EMI_AOCR", Nombre = "EmisiÃ³n AOCR", TipoCalculo = "FIJO", ValorBase = 3300m, PorcentajeAdmin = 0m, Activo = true, Orden = 1, Descripcion = "EmisiÃ³n AOCR", PorEstacion = false, PorDia = false, EsViatico = false },
-                new ConceptoModel { Codigo = "REN_AOCR", Nombre = "RenovaciÃ³n AOCR", TipoCalculo = "FIJO", ValorBase = 3300m, PorcentajeAdmin = 0m, Activo = true, Orden = 2, Descripcion = "RenovaciÃ³n AOCR", PorEstacion = false, PorDia = false, EsViatico = false },
-                new ConceptoModel { Codigo = "MOD_AOCR_INC", Nombre = "ModificaciÃ³n AOCR (InclusiÃ³n aeronaves distinto modelo y tipo)", TipoCalculo = "FIJO", ValorBase = 1600m, PorcentajeAdmin = 0m, Activo = true, Orden = 3, Descripcion = "ModificaciÃ³n AOCR (InclusiÃ³n aeronaves distinto modelo y tipo)", PorEstacion = false, PorDia = false, EsViatico = false },
-                new ConceptoModel { Codigo = "MOD_AOCR_SIN_INC", Nombre = "ModificaciÃ³n AOCR (Que no implique incremento de aeronaves)", TipoCalculo = "FIJO", ValorBase = 80m, PorcentajeAdmin = 0m, Activo = true, Orden = 4, Descripcion = "ModificaciÃ³n AOCR (Que no implique incremento de aeronaves)", PorEstacion = false, PorDia = false, EsViatico = false },
-                new ConceptoModel { Codigo = "INSPECCION_EXT", Nombre = "InspecciÃ³n requerida por el Operador AÃ©reo Extranjero", TipoCalculo = "POR_ESTACION", ValorBase = 500m, PorcentajeAdmin = 0m, Activo = true, Orden = 5, Descripcion = "InspecciÃ³n requerida por el Operador AÃ©reo Extranjero (por estaciÃ³n)", PorEstacion = true, PorDia = false, EsViatico = false },
-                new ConceptoModel { Codigo = "VIATICOS_INSPECTOR", Nombre = "ViÃ¡ticos a Sres. Inspectores", TipoCalculo = "POR_DIA", ValorBase = 80m, PorcentajeAdmin = 8m, Activo = true, Orden = 6, Descripcion = "ViÃ¡ticos por dÃ­a (mÃ¡s 8% de gastos administrativos)", PorEstacion = false, PorDia = true, EsViatico = true }
+                new CapaDatos.Models.ConceptoModel { Codigo = "EMI_AOCR", Nombre = "Emisión AOCR", TipoCalculo = "FIJO", ValorBase = 3300m, PorcentajeAdmin = 0m, Activo = true, Orden = 1, Descripcion = "Emisión AOCR", PorEstacion = false, PorDia = false, EsViatico = false },
+                new CapaDatos.Models.ConceptoModel { Codigo = "REN_AOCR", Nombre = "Renovación AOCR", TipoCalculo = "FIJO", ValorBase = 3300m, PorcentajeAdmin = 0m, Activo = true, Orden = 2, Descripcion = "Renovación AOCR", PorEstacion = false, PorDia = false, EsViatico = false },
+                new CapaDatos.Models.ConceptoModel { Codigo = "MOD_AOCR_INC", Nombre = "Modificación AOCR (Inclusión aeronaves distinto modelo y tipo)", TipoCalculo = "FIJO", ValorBase = 1600m, PorcentajeAdmin = 0m, Activo = true, Orden = 3, Descripcion = "Modificación AOCR (Inclusión aeronaves distinto modelo y tipo)", PorEstacion = false, PorDia = false, EsViatico = false },
+                new CapaDatos.Models.ConceptoModel { Codigo = "MOD_AOCR_SIN_INC", Nombre = "Modificación AOCR (Que no implique incremento de aeronaves)", TipoCalculo = "FIJO", ValorBase = 80m, PorcentajeAdmin = 0m, Activo = true, Orden = 4, Descripcion = "Modificación AOCR (Que no implique incremento de aeronaves)", PorEstacion = false, PorDia = false, EsViatico = false },
+                new CapaDatos.Models.ConceptoModel { Codigo = "INSPECCION_EXT", Nombre = "Inspección requerida por el Operador Aéreo Extranjero", TipoCalculo = "POR_ESTACION", ValorBase = 500m, PorcentajeAdmin = 0m, Activo = true, Orden = 5, Descripcion = "Inspección requerida por el Operador Aéreo Extranjero (por estación)", PorEstacion = true, PorDia = false, EsViatico = false },
+                new CapaDatos.Models.ConceptoModel { Codigo = "VIATICOS_INSPECTOR", Nombre = "Viáticos a Sres. Inspectores", TipoCalculo = "POR_DIA", ValorBase = 80m, PorcentajeAdmin = 8m, Activo = true, Orden = 6, Descripcion = "Viáticos por día (más 8% de gastos administrativos)", PorEstacion = false, PorDia = true, EsViatico = true }
             };
 
             foreach (var c in conceptos)
@@ -479,7 +542,7 @@ namespace CapaPresentacion.Controllers
             int idUsuario = GetUserId();
             if (idUsuario <= 0) return RedirectToAction("Login", "Account");
 
-            var orden = _dao.ObtenerOrdenPorId(id);
+            var orden = _dao.ObtenerOrdenPorIdModel(id);
             if (orden == null || orden.CodigoUsuario != idUsuario)
                 return HttpNotFound();
 
@@ -487,7 +550,7 @@ namespace CapaPresentacion.Controllers
             if (!estadoOrden.Equals("PENDIENTE", StringComparison.OrdinalIgnoreCase) &&
                 !estadoOrden.Equals("GENERADA", StringComparison.OrdinalIgnoreCase))
             {
-                TempData["Error"] = "Solo se puede subir comprobante cuando la orden estÃ¡ en GENERADA o PENDIENTE.";
+                TempData["Error"] = "Solo se puede subir comprobante cuando la orden está en GENERADA o PENDIENTE.";
                 return RedirectToAction("Detalles", new { id = id });
             }
 
@@ -496,7 +559,7 @@ namespace CapaPresentacion.Controllers
             if (!decimal.TryParse(montoRaw, System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.CurrentCulture, out montoValue) &&
                 !decimal.TryParse(montoRaw, System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out montoValue))
             {
-                TempData["Error"] = "Monto invÃ¡lido";
+                TempData["Error"] = "Monto inválido";
                 return RedirectToAction("Detalles", new { id = id });
             }
 
@@ -513,7 +576,7 @@ namespace CapaPresentacion.Controllers
 
             if (string.IsNullOrWhiteSpace(MetodoPago))
             {
-                TempData["Error"] = "Debe seleccionar un mÃ©todo de pago";
+                TempData["Error"] = "Debe seleccionar un método de pago";
                 return RedirectToAction("Detalles", new { id = id });
             }
 
@@ -533,7 +596,7 @@ namespace CapaPresentacion.Controllers
 
                     if (ComprobanteArchivo.ContentLength > (10 * 1024 * 1024))
                     {
-                        TempData["Error"] = "El comprobante supera el tamaÃ±o mÃ¡ximo permitido (10MB).";
+                        TempData["Error"] = "El comprobante supera el tamaño máximo permitido (10MB).";
                         return RedirectToAction("Detalles", new { id = id });
                     }
 
@@ -548,13 +611,13 @@ namespace CapaPresentacion.Controllers
                     comprobanteRuta = VirtualPathUtility.ToAbsolute($"{folderVirtual}/{safeFile}");
                 }
 
-                var pago = new PagoModel
+                var pago = new CapaModelo.PagoModel
                 {
                     NumeroFactura = NumeroFactura,
                     Monto = montoValue,
                     Moneda = "USD",
                     MetodoPago = MetodoPago,
-                    // âœ… Debe coincidir con chk_estado_pago (case-sensitive)
+                    // ? Debe coincidir con chk_estado_pago (case-sensitive)
                     Estado = "Pendiente",
                     FechaPago = DateTime.Now,
                     Observaciones = Observaciones,
@@ -588,7 +651,7 @@ namespace CapaPresentacion.Controllers
 
             if (codigoSolicitud <= 0 || !_dao.ExisteSolicitud(codigoSolicitud))
             {
-                TempData["Error"] = "La orden no estÃ¡ vinculada a una solicitud vÃ¡lida para registrar el pago.";
+                TempData["Error"] = "La orden no está vinculada a una solicitud válida para registrar el pago.";
                 return RedirectToAction("Detalles", new { id = id });
             }
 
@@ -609,14 +672,7 @@ namespace CapaPresentacion.Controllers
                         var financieroEmail = ConfigurationManager.AppSettings["FinancieroEmail"];
                         if (!string.IsNullOrWhiteSpace(financieroEmail))
                         {
-                            var emailSvc = new EmailService();
-                            string comprobanteFisico = null;
-                            if (!string.IsNullOrWhiteSpace(comprobanteRuta))
-                            {
-                                comprobanteFisico = Server.MapPath(comprobanteRuta);
-                            }
-
-                            emailSvc.EnviarNotificacionFinanciero(orden, pago, financieroEmail, comprobanteFisico);
+                            EnviarNotificacionAFinanciero(orden, pago, financieroEmail, comprobanteRuta);
                         }
                     }
                     catch
@@ -624,7 +680,7 @@ namespace CapaPresentacion.Controllers
                         // No bloquear el flujo si el email falla
                     }
 
-                    TempData["OK"] = "Comprobante enviado. La orden estÃ¡ en revisiÃ³n financiera.";
+                    TempData["OK"] = "Comprobante enviado. La orden está en revisión financiera.";
                     return RedirectToAction("Detalles", new { id = id });
                 }
                 else
@@ -649,7 +705,7 @@ namespace CapaPresentacion.Controllers
             int idUsuario = GetUserId();
             if (idUsuario <= 0) return RedirectToAction("Login", "Account");
 
-            var orden = _dao.ObtenerOrdenPorId(id);
+            var orden = _dao.ObtenerOrdenPorIdModel(id);
             if (orden == null || orden.CodigoUsuario != idUsuario)
                 return HttpNotFound();
 
@@ -657,25 +713,25 @@ namespace CapaPresentacion.Controllers
             if (estadoOrden.Equals("FACTURADA", StringComparison.OrdinalIgnoreCase) ||
                 estadoOrden.Equals("COMPLETADA", StringComparison.OrdinalIgnoreCase))
             {
-                TempData["Error"] = "No se pueden anular Ã³rdenes aprobadas o facturadas.";
+                TempData["Error"] = "No se pueden anular órdenes aprobadas o facturadas.";
                 return RedirectToAction("Detalles", new { id = id });
             }
 
             if (string.Equals((orden.Estado ?? "").Trim(), "ANULADA", StringComparison.OrdinalIgnoreCase))
             {
-                TempData["Error"] = "La orden ya estÃ¡ anulada";
+                TempData["Error"] = "La orden ya está anulada";
                 return RedirectToAction("Detalles", new { id = id });
             }
 
             if (string.IsNullOrWhiteSpace(motivo))
             {
-                TempData["Error"] = "Debe proporcionar un motivo para la anulaciÃ³n";
+                TempData["Error"] = "Debe proporcionar un motivo para la anulación";
                 return RedirectToAction("Detalles", new { id = id });
             }
 
             try
             {
-                // TODO: AquÃ­ se deberÃ­a guardar el motivo de la anulaciÃ³n en la base de datos
+                // TODO: Aquí se debería guardar el motivo de la anulación en la base de datos
                 bool result = _dao.CambiarEstadoOrden(id, "ANULADA");
                 if (result)
                 {
@@ -695,28 +751,36 @@ namespace CapaPresentacion.Controllers
             }
         }
 
-        // GET: /OrdenRecaudacion/DescargarPDF/5
-        public ActionResult DescargarPDF(int id)
+        /// <summary>
+        /// Descargar PDF de orden - refactorizado
+        /// </summary>
+        [HttpGet]
+        public async Task<ActionResult> DescargarPdf(int id)
         {
-            int idUsuario = GetUserId();
-            if (idUsuario <= 0) return RedirectToAction("Login", "Account");
-
             try
             {
-                var pdfData = _dao.ObtenerDatosParaPdf(id, idUsuario);
-                if (pdfData == null)
-                    return HttpNotFound();
+                var request = new GenerarPdfRequest
+                {
+                    OrdenId = id,
+                    TipoDocumento = "ORDEN",
+                    IncluirDetalles = true
+                };
 
-                var pdfService = new CapaPresentacion.Services.PdfGeneratorService();
-                var pdfBytes = pdfService.GenerarOrdenRecaudacionPDF(pdfData);
+                var resultado = await _orchestrator.GenerarPdfAsync(request);
 
-                string fileName = $"Orden_Recaudacion_{pdfData.NumeroOrden}.pdf";
-                return File(pdfBytes, "application/pdf", fileName);
+                if (resultado.Success)
+                {
+                    return File(resultado.Data.ContenidoPdf, resultado.Data.ContentType, resultado.Data.NombreArchivo);
+                }
+
+                TempData["ErrorMessage"] = resultado.Message;
+                return RedirectToAction("Detalles", new { id });
             }
             catch (Exception ex)
             {
-                TempData["Error"] = "Error al generar el PDF: " + ex.Message;
-                return RedirectToAction("Detalles", new { id = id });
+                System.Diagnostics.Debug.WriteLine("Error al generar PDF: " + ex.Message);
+                TempData["ErrorMessage"] = "Error al generar el PDF.";
+                return RedirectToAction("Detalles", new { id });
             }
         }
 
@@ -731,7 +795,7 @@ namespace CapaPresentacion.Controllers
             }
             else
             {
-                System.Diagnostics.Debug.WriteLine("GetUserId: No se encontrÃ³ ID de usuario en la sesiÃ³n");
+                System.Diagnostics.Debug.WriteLine("GetUserId: No se encontró ID de usuario en la sesión");
             }
             return id;
         }
@@ -755,7 +819,7 @@ namespace CapaPresentacion.Controllers
                 it.Selected = (!string.IsNullOrEmpty(selected) && it.Value == selected) ||
                               (string.IsNullOrEmpty(selected) && it.Value == "");
 
-            ViewBag.Estados = items; // âœ… IEnumerable<SelectListItem> real
+            ViewBag.Estados = items; // ? IEnumerable<SelectListItem> real
         }
 
         private Dictionary<string, object> MapearEstadisticasParaVista(Dictionary<string, object> d)
@@ -788,5 +852,64 @@ namespace CapaPresentacion.Controllers
             if (d == null || !d.ContainsKey(key) || d[key] == null) return 0m;
             decimal x; return decimal.TryParse(d[key].ToString(), out x) ? x : 0m;
         }
+
+        private async Task CargarViewBagsParaNueva()
+        {
+            try
+            {
+            ViewBag.Conceptos = _conceptoDao.ObtenerConceptos(true);
+            }
+            catch
+            {
+                ViewBag.Conceptos = new List<CapaModelo.ConceptoModel>();
+            }
+            
+            ViewBag.Contribuyentes = new List<object>();
+        }
+
+        // Método helper con tipo correcto:
+        private void EnviarNotificacionAFinanciero(OrdenRecaudacionModel orden, CapaModelo.PagoModel pago, string emailFinanciero, string comprobanteRuta)
+        {
+            try
+            {
+                if (string.IsNullOrWhiteSpace(emailFinanciero)) return;
+
+                var config = new SecureConfig();
+                var emailSvc = new EmailSvc(config);
+
+                var asunto = string.Format("Nueva Orden de Pago - {0}", orden.NumeroOrden);
+                var cuerpo = string.Format(@"
+                    <h2>Nueva Orden Pendiente de Revisión</h2>
+                    <p><strong>Número de Orden:</strong> {0}</p>
+                    <p><strong>Contribuyente:</strong> {1}</p>
+                    <p><strong>Monto:</strong> ${2:N2}</p>
+                    <p><strong>Método de Pago:</strong> {3}</p>",
+                    orden.NumeroOrden,
+                    orden.NombreContribuyente,
+                    pago.Monto,
+                    pago.MetodoPago);
+
+                byte[] adjunto = null;
+                string nombreAdjunto = null;
+                if (!string.IsNullOrWhiteSpace(comprobanteRuta))
+                {
+                    var rutaFisica = Server.MapPath(comprobanteRuta);
+                    if (System.IO.File.Exists(rutaFisica))
+                    {
+                        adjunto = System.IO.File.ReadAllBytes(rutaFisica);
+                        nombreAdjunto = Path.GetFileName(rutaFisica);
+                    }
+                }
+
+                emailSvc.EnviarAsync(emailFinanciero, "Financiero", asunto, cuerpo, adjunto, nombreAdjunto).Wait();
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine("Error enviando email: " + ex.Message);
+            }
+        }
     }
 }
+
+
+

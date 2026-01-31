@@ -15,5 +15,12 @@ namespace CapaPresentacion.Controllers
         {
             return View();
         }
+
+        // Ruta solicitada por el sidebar anterior; redirige a solicitudes para evitar 404
+        public ActionResult RegistrarAeronave()
+        {
+            // Redirige a creación de solicitud AOCR, ajusta si existe otra pantalla específica
+            return RedirectToAction("Index", "SolicitudAOCR");
+        }
     }
 }

@@ -27,6 +27,15 @@
     var totalPagado = pagos.Where(p => (p.Estado ?? "").Equals("APROBADO", System.StringComparison.OrdinalIgnoreCase)).Sum(p => p.Monto);
     var saldoPendiente = orden.Total - totalPagado;
     var tieneSaldoPendiente = saldoPendiente > 0 && estado != "FACTURADA" && estado != "COMPLETADA";
+    var tienePagoAprobado = pagos.Any(p => (p.Estado ?? "").Equals("APROBADO", System.StringComparison.OrdinalIgnoreCase) || (p.Estado ?? "").Equals("FINALIZADO", System.StringComparison.OrdinalIgnoreCase));
+    var tieneFactura = pagos.Any(p => !string.IsNullOrWhiteSpace(p.NumeroFactura));
+    var ordenCompleta = tieneSolicitudValida && tienePagoAprobado && !tieneSaldoPendiente && (estado == "FACTURADA" || estado == "COMPLETADA") && tieneFactura;
+    var faltantes = new List<string>();
+    if (!tieneSolicitudValida) { faltantes.Add("Vincular la orden a una solicitud válida"); }
+    if (!tienePagoAprobado) { faltantes.Add("Aprobar un pago"); }
+    if (tieneSaldoPendiente) { faltantes.Add("Cubrir el saldo pendiente"); }
+    if (!tieneFactura) { faltantes.Add("Registrar/generar número de factura"); }
+    if (estado != "FACTURADA" && estado != "COMPLETADA") { faltantes.Add("Cambiar estado a FACTURADA/COMPLETADA"); }
 }
 
 <div class="row">
@@ -58,6 +67,24 @@
                 @if (TempData["Error"] != null)
                 {
                     <div class="alert alert-danger">@TempData["Error"]</div>
+                }
+                @if (ordenCompleta)
+                {
+                    <div class="alert alert-success mb-3">
+                        <i class="fas fa-check-circle me-2"></i> Orden completada: solicitud vinculada, pago aprobado, factura generada y sin saldo pendiente.
+                    </div>
+                }
+                else
+                {
+                    <div class="alert alert-warning mb-3">
+                        <div class="fw-bold mb-1"><i class="fas fa-info-circle me-2"></i> Faltan pasos para completar la orden:</div>
+                        <ul class="mb-0 ps-3">
+                            @foreach (var f in faltantes.Distinct())
+                            {
+                                <li>@f</li>
+                            }
+                        </ul>
+                    </div>
                 }
                 <div class="row">
                     <div class="col-md-6">
