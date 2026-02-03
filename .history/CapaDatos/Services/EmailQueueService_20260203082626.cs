@@ -91,13 +91,23 @@ namespace CapaDatos.Services
             {
                 return ExecuteScalar<int>(conn, sql, cmd =>
                 {
-                    AddParameter(cmd, "@to_address", item.Para, NpgsqlDbType.Varchar);
-                    AddParameter(cmd, "@subject", item.Asunto, NpgsqlDbType.Varchar);
-                    AddParameter(cmd, "@body", item.Cuerpo, NpgsqlDbType.Text);
-                    AddParameter(cmd, "@status", "PENDIENTE", NpgsqlDbType.Varchar);
-                    AddParameter(cmd, "@solicitud_id", item.OrdenId ?? (object)DBNull.Value, NpgsqlDbType.Integer);
-                    AddParameter(cmd, "@created_at", DateTime.Now, NpgsqlDbType.Timestamp);
+                    AddParameter(cmd, "@para", item.Para, NpgsqlDbType.Varchar);
+                    AddParameter(cmd, "@para_nombre", item.ParaNombre ?? (object)DBNull.Value, NpgsqlDbType.Varchar);
+                    AddParameter(cmd, "@asunto", item.Asunto, NpgsqlDbType.Varchar);
+                    AddParameter(cmd, "@cuerpo", item.Cuerpo, NpgsqlDbType.Text);
+                    AddParameter(cmd, "@es_html", item.EsHtml, NpgsqlDbType.Boolean);
+                    AddParameter(cmd, "@adjunto_nombre", item.AdjuntoNombre ?? (object)DBNull.Value, NpgsqlDbType.Varchar);
+                    AddParameter(cmd, "@adjunto_contenido", item.AdjuntoContenido ?? (object)DBNull.Value, NpgsqlDbType.Bytea);
+                    AddParameter(cmd, "@adjunto_mime_type", item.AdjuntoMimeType ?? (object)DBNull.Value, NpgsqlDbType.Varchar);
+                    AddParameter(cmd, "@estado", "PENDIENTE", NpgsqlDbType.Varchar);
+                    AddParameter(cmd, "@intentos", 0, NpgsqlDbType.Integer);
+                    AddParameter(cmd, "@max_intentos", item.MaxIntentos > 0 ? item.MaxIntentos : DefaultMaxIntentos, NpgsqlDbType.Integer);
+                    AddParameter(cmd, "@fecha_creacion", DateTime.Now, NpgsqlDbType.Timestamp);
                     AddParameter(cmd, "@proximo_intento", DateTime.Now, NpgsqlDbType.Timestamp);
+                    AddParameter(cmd, "@correlation_id", item.CorrelationId ?? (object)DBNull.Value, NpgsqlDbType.Varchar);
+                    AddParameter(cmd, "@numero_orden", item.NumeroOrden ?? (object)DBNull.Value, NpgsqlDbType.Varchar);
+                    AddParameter(cmd, "@orden_id", item.OrdenId ?? (object)DBNull.Value, NpgsqlDbType.Integer);
+                    AddParameter(cmd, "@tipo_notificacion", item.TipoNotificacion ?? (object)DBNull.Value, NpgsqlDbType.Varchar);
                 });
             });
         }
@@ -171,7 +181,8 @@ namespace CapaDatos.Services
                 ExecuteNonQuery(conn, sql, cmd =>
                 {
                     AddParameter(cmd, "@id", id, NpgsqlDbType.Integer);
-                    AddParameter(cmd, "@status", estado, NpgsqlDbType.Varchar);
+                    AddParameter(cmd, "@estado", estado, NpgsqlDbType.Varchar);
+                    AddParameter(cmd, "@error", error ?? (object)DBNull.Value, NpgsqlDbType.Text);
                 });
             });
         }
@@ -180,7 +191,9 @@ namespace CapaDatos.Services
         {
             const string sql = @"
                 UPDATE email_queue SET
-                    status = 'ENVIADO'
+                    estado = 'ENVIADO',
+                    fecha_envio = NOW(),
+                    ultimo_error = NULL
                 WHERE id = @id";
 
             ExecuteWithConnection(conn =>
@@ -198,9 +211,9 @@ namespace CapaDatos.Services
         {
             const string sql = @"
                 UPDATE email_queue SET
-                    status = 'PENDIENTE',
+                    estado = 'PENDIENTE',
                     proximo_intento = @proximo
-                WHERE id = @id";
+                WHERE id = @id AND intentos < max_intentos";
 
             var proximoIntento = DateTime.Now.Add(delay);
 
@@ -221,13 +234,23 @@ namespace CapaDatos.Services
             return new EmailQueueItem
             {
                 Id = GetInt(reader, "id"),
-                Para = GetString(reader, "to_address"),
-                Asunto = GetString(reader, "subject"),
-                Cuerpo = GetString(reader, "body"),
-                Estado = GetString(reader, "status"),
-                FechaCreacion = GetDateTime(reader, "created_at"),
+                Para = GetString(reader, "para"),
+                ParaNombre = GetString(reader, "para_nombre"),
+                Asunto = GetString(reader, "asunto"),
+                Cuerpo = GetString(reader, "cuerpo"),
+                EsHtml = GetBool(reader, "es_html"),
+                AdjuntoNombre = GetString(reader, "adjunto_nombre"),
+                Estado = GetString(reader, "estado"),
+                Intentos = GetInt(reader, "intentos"),
+                MaxIntentos = GetInt(reader, "max_intentos"),
+                UltimoError = GetString(reader, "ultimo_error"),
+                FechaCreacion = GetDateTime(reader, "fecha_creacion"),
+                FechaEnvio = GetNullableDateTime(reader, "fecha_envio"),
                 ProximoIntento = GetNullableDateTime(reader, "proximo_intento"),
-                OrdenId = GetValue<int?>(reader, "solicitud_id")
+                CorrelationId = GetString(reader, "correlation_id"),
+                NumeroOrden = GetString(reader, "numero_orden"),
+                OrdenId = GetInt(reader, "orden_id"),
+                TipoNotificacion = GetString(reader, "tipo_notificacion")
             };
         }
     }

@@ -227,7 +227,7 @@ namespace CapaDatos.Services
                 Estado = GetString(reader, "status"),
                 FechaCreacion = GetDateTime(reader, "created_at"),
                 ProximoIntento = GetNullableDateTime(reader, "proximo_intento"),
-                OrdenId = GetValue<int?>(reader, "solicitud_id")
+                OrdenId = GetNullableInt(reader, "solicitud_id")
             };
         }
     }

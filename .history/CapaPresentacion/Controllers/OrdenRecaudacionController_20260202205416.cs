@@ -616,8 +616,7 @@ namespace CapaPresentacion.Controllers
 
             if (string.IsNullOrWhiteSpace(NumeroFactura))
             {
-                // Generar número de factura único automáticamente
-                NumeroFactura = $"PAG-{id}-{DateTime.Now:yyyyMMddHHmmss}";
+                NumeroFactura = null; // referencia opcional
             }
 
             if (string.IsNullOrWhiteSpace(MetodoPago))

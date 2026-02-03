@@ -337,24 +337,6 @@ namespace CapaDatos.DAOs
         /// </summary>
         private void InsertarDetalle(DetalleOrdenEnt detalle, NpgsqlConnection conn)
         {
-            // Si falta ConceptoCodigo o ConceptoNombre, obtenerlos desde la BD
-            if (detalle.ConceptoId.HasValue && (string.IsNullOrEmpty(detalle.ConceptoCodigo) || string.IsNullOrEmpty(detalle.ConceptoNombre)))
-            {
-                var sqlConcepto = "SELECT codigo, nombre FROM aocr_or_concepto WHERE id = @conceptoId";
-                using (var cmdConcepto = new NpgsqlCommand(sqlConcepto, conn))
-                {
-                    cmdConcepto.Parameters.AddWithValue("@conceptoId", detalle.ConceptoId.Value);
-                    using (var reader = cmdConcepto.ExecuteReader())
-                    {
-                        if (reader.Read())
-                        {
-                            detalle.ConceptoCodigo = reader["codigo"]?.ToString();
-                            detalle.ConceptoNombre = reader["nombre"]?.ToString();
-                        }
-                    }
-                }
-            }
-
             var sql = @"INSERT INTO aocr_or_orden_detalle 
                         (orden_id, concepto_id, concepto_codigo, concepto_nombre, descripcion, 
                          cantidad, valor_unitario, porcentaje_admin, subtotal, admin, total_linea)
@@ -371,9 +353,9 @@ namespace CapaDatos.DAOs
                 cmd.Parameters.AddWithValue("@descripcion", (object)detalle.Descripcion ?? DBNull.Value);
                 cmd.Parameters.AddWithValue("@cantidad", detalle.Cantidad);
                 cmd.Parameters.AddWithValue("@valorUnitario", detalle.ValorUnitario);
-                cmd.Parameters.AddWithValue("@porcentajeAdmin", detalle.PorcentajeAdmin); // NOT NULL en DB
+                cmd.Parameters.AddWithValue("@porcentajeAdmin", (object)detalle.PorcentajeAdmin ?? DBNull.Value);
                 cmd.Parameters.AddWithValue("@subtotal", detalle.Subtotal);
-                cmd.Parameters.AddWithValue("@admin", detalle.Admin);
+                cmd.Parameters.AddWithValue("@admin", (object)detalle.Admin ?? DBNull.Value);
                 cmd.Parameters.AddWithValue("@totalLinea", detalle.TotalLinea);
 
                 cmd.ExecuteNonQuery();
@@ -647,9 +629,9 @@ namespace CapaDatos.DAOs
                 Descripcion = reader.IsDBNull(reader.GetOrdinal("descripcion")) ? null : reader.GetString(reader.GetOrdinal("descripcion")),
                 Cantidad = reader.GetInt32(reader.GetOrdinal("cantidad")),
                 ValorUnitario = reader.GetDecimal(reader.GetOrdinal("valor_unitario")),
-                PorcentajeAdmin = reader.IsDBNull(reader.GetOrdinal("porcentaje_admin")) ? 0m : reader.GetDecimal(reader.GetOrdinal("porcentaje_admin")),
+                PorcentajeAdmin = reader.IsDBNull(reader.GetOrdinal("porcentaje_admin")) ? (decimal?)null : reader.GetDecimal(reader.GetOrdinal("porcentaje_admin")),
                 Subtotal = reader.GetDecimal(reader.GetOrdinal("subtotal")),
-                Admin = reader.IsDBNull(reader.GetOrdinal("admin")) ? 0m : reader.GetDecimal(reader.GetOrdinal("admin")),
+                Admin = reader.IsDBNull(reader.GetOrdinal("admin")) ? (decimal?)null : reader.GetDecimal(reader.GetOrdinal("admin")),
                 TotalLinea = reader.GetDecimal(reader.GetOrdinal("total_linea"))
             };
         }
@@ -790,9 +772,9 @@ namespace CapaDatos.DAOs
                 Descripcion = detalle.Descripcion,
                 Cantidad = detalle.Cantidad,
                 ValorUnitario = detalle.ValorUnitario,
-                PorcentajeAdmin = detalle.PorcentajeAdmin,
+                PorcentajeAdmin = detalle.PorcentajeAdmin ?? 0m,
                 Subtotal = detalle.Subtotal,
-                Admin = detalle.Admin,
+                Admin = detalle.Admin ?? 0m,
                 TotalLinea = detalle.TotalLinea
             };
         }
@@ -1673,9 +1655,9 @@ namespace CapaDatos.DAOs
                             NombreConcepto = d.ConceptoNombre,
                             Cantidad = d.Cantidad,
                             ValorUnitario = d.ValorUnitario,
-                            PorcentajeAdmin = d.PorcentajeAdmin,
+                            PorcentajeAdmin = d.PorcentajeAdmin ?? 0m,
                             SubtotalLinea = d.Subtotal,
-                            AdminLinea = d.Admin,
+                            AdminLinea = d.Admin ?? 0m,
                             ValorTotal = d.TotalLinea
                         });
                     }

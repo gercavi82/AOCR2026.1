@@ -26,7 +26,6 @@ namespace CapaPresentacion.Controllers
     [Authorize]
     public class OrdenRecaudacionController : Controller
     {
-        private OrdenRecaudacionDAO _ordenDAO;
         private readonly OrdenRecaudacionDAO _dao = new OrdenRecaudacionDAO();
         private readonly OrdenRecaudacionBL _bl = new OrdenRecaudacionBL();
         private readonly ConceptoDAO _conceptoDao = new ConceptoDAO();
@@ -38,19 +37,9 @@ namespace CapaPresentacion.Controllers
             _orchestrator = orchestrator;
         }
 
+        // Constructor sin par�metros para compatibilidad
         public OrdenRecaudacionController()
         {
-            try
-            {
-                _ordenDAO = new OrdenRecaudacionDAO();
-                System.Diagnostics.Debug.WriteLine("OrdenRecaudacionController inicializado correctamente");
-            }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine("ERROR en constructor OrdenRecaudacionController: " + ex.Message);
-                _ordenDAO = null;
-            }
-
             // Inicializar orquestador con dependencias m�nimas para evitar NRE en Nueva()
             _orchestrator = new OrdenRecaudacionOrchestrator(
                 new OrdenRecaudacionDAO(),
@@ -126,140 +115,89 @@ namespace CapaPresentacion.Controllers
         [HttpPost]
         [ValidateAntiForgeryToken]
         [Authorize(Roles = "Solicitante,Administrador")]
-        public ActionResult Nueva(OrdenRecaudacionNuevaVM model)
+        public ActionResult Nueva(OrdenRecaudacion orden)
         {
+            System.Diagnostics.Debug.WriteLine("=== POST Nueva Orden ===");
+            System.Diagnostics.Debug.WriteLine("Tipo recibido: " + (orden != null ? orden.GetType().FullName : "NULL"));
+            System.Diagnostics.Debug.WriteLine("Compania: " + (orden != null ? orden.Compania : "NULL"));
+            System.Diagnostics.Debug.WriteLine("RucCedula: " + (orden != null ? orden.RucCedula : "NULL"));
+
             try
             {
-                // Parsear detalles del JSON
-                var detalles = new List<DetalleOrdenRequest>();
-                if (!string.IsNullOrWhiteSpace(model.DetallesJson))
+                // Validaciones
+                if (orden == null)
                 {
-                    var serializer = new JavaScriptSerializer();
-                    var detallesRaw = serializer.Deserialize<List<Dictionary<string, object>>>(model.DetallesJson);
-                    if (detallesRaw != null)
-                    {
-                        foreach (var d in detallesRaw)
-                        {
-                            var conceptoId = d.ContainsKey("ConceptoId") ? Convert.ToInt32(d["ConceptoId"]) : 0;
-                            var cantidad = d.ContainsKey("Cantidad") ? Convert.ToInt32(d["Cantidad"]) : 1;
-
-                            // Obtener precio del concepto
-                            var concepto = _conceptoDao.ObtenerPorId(conceptoId);
-                            var precioUnitario = concepto?.ValorBase ?? 0m;
-
-                            detalles.Add(new DetalleOrdenRequest
-                            {
-                                ConceptoId = conceptoId,
-                                Cantidad = cantidad,
-                                PrecioUnitario = precioUnitario,
-                                Subtotal = cantidad * precioUnitario
-                            });
-                        }
-                    }
+                    System.Diagnostics.Debug.WriteLine("ERROR: Orden es NULL");
+                    ModelState.AddModelError("", "Datos inválidos");
+                    return View(new OrdenRecaudacion());
                 }
 
-                if (detalles.Count == 0)
+                if (string.IsNullOrWhiteSpace(orden.Compania))
                 {
-                    ModelState.AddModelError("", "Debe agregar al menos un concepto a la orden.");
-                    CargarConceptosNueva(model);
-                    return View(model);
+                    ModelState.AddModelError("Compania", "El nombre es requerido");
                 }
+                if (string.IsNullOrWhiteSpace(orden.RucCedula))
+                {
+                    ModelState.AddModelError("RucCedula", "El RUC/Cédula es requerido");
+                }
+
+                if (!ModelState.IsValid)
+                {
+                    System.Diagnostics.Debug.WriteLine("ModelState inválido");
+                    return View(orden);
+                }
+
+                // Asignar valores
+                orden.CodigoUsuario = User.Identity.Name ?? "SISTEMA";
+                orden.FechaCreacion = DateTime.Now;
+                orden.Estado = string.IsNullOrEmpty(orden.Estado) ? "BORRADOR" : orden.Estado;
+                orden.NumeroOrden = "OR-" + DateTime.Now.ToString("yyyyMMddHHmmss");
 
                 // Calcular totales
-                decimal subtotal = 0m, admin = 0m;
-                foreach (var det in detalles)
+                decimal subtotal = orden.Subtotal ?? 0;
+                decimal admin = subtotal * 0.10m;
+                orden.Subtotal = subtotal;
+                orden.Admin = admin;
+                orden.Total = subtotal + admin;
+
+                System.Diagnostics.Debug.WriteLine("NumeroOrden: " + orden.NumeroOrden);
+                System.Diagnostics.Debug.WriteLine("Total calculado: " + orden.Total);
+                System.Diagnostics.Debug.WriteLine("Usuario: " + orden.CodigoUsuario);
+
+                // Verificar DAO
+                if (_ordenDAO == null)
                 {
-                    var concepto = _conceptoDao.ObtenerPorId(det.ConceptoId);
-                    var porcentajeAdmin = concepto?.PorcentajeAdmin ?? 0m;
-                    subtotal += det.Subtotal;
-                    admin += det.Subtotal * (porcentajeAdmin / 100m);
-                }
-                var total = subtotal + admin;
-
-                // Crear la entidad OrdenRecaudacion
-                var idUsuario = GetUserId();
-                if (idUsuario <= 0)
-                {
-                    ModelState.AddModelError("", "Usuario no autenticado.");
-                    CargarConceptosNueva(model);
-                    return View(model);
-                }
-
-                System.Diagnostics.Debug.WriteLine($"Controller Nueva: idUsuario = {idUsuario}");
-
-                var numeroOrden = GenerarNumeroOrden();
-
-                var orden = new OrdenRecaudacion
-                {
-                    NumeroOrden = numeroOrden,
-                    CodigoUsuario = idUsuario.ToString(),
-                    CodigoSolicitud = model.Orden?.CodigoSolicitud?.ToString(),
-                    LugarEmision = model.Orden?.LugarEmision ?? "Quito",
-                    Compania = model.Orden?.Compania,
-                    NombreContribuyente = model.Orden?.Compania,
-                    RucCedula = model.Orden?.RucCedula,
-                    RucContribuyente = model.Orden?.RucCedula,
-                    Correo = model.Orden?.Correo,
-                    EmailContribuyente = model.Orden?.Correo,
-                    Telefono = model.Orden?.Telefono,
-                    Observacion = model.Orden?.Observacion,
-                    Observaciones = model.Orden?.Observacion,
-                    Subtotal = subtotal,
-                    Admin = admin,
-                    Total = total,
-                    Estado = "BORRADOR",
-                    FechaCreacion = DateTime.Now,
-                    // NO asignar UsuarioCreacion porque sobrescribe CodigoUsuario
-                    // UsuarioCreacion = User.Identity.Name,
-                    Activo = true
-                };
-
-                System.Diagnostics.Debug.WriteLine($"Controller Nueva: Orden creada con CodigoUsuario = '{orden.CodigoUsuario}'");
-
-                // Insertar orden
-                var ordenId = _dao.Insertar(orden);
-
-                if (ordenId > 0)
-                {
-                    // Insertar detalles
-                    foreach (var det in detalles)
-                    {
-                        // Obtener el concepto para tener el porcentaje de administración
-                        var concepto = _conceptoDao.ObtenerPorId(det.ConceptoId);
-                        var porcentajeAdmin = concepto?.PorcentajeAdmin ?? 0m;
-                        var adminLinea = det.Subtotal * (porcentajeAdmin / 100m);
-                        var totalLinea = det.Subtotal + adminLinea;
-
-                        var detalle = new DetalleOrden
-                        {
-                            OrdenId = ordenId,
-                            ConceptoId = det.ConceptoId,
-                            ConceptoCodigo = concepto?.Codigo,
-                            ConceptoNombre = concepto?.Nombre,
-                            Cantidad = det.Cantidad,
-                            ValorUnitario = det.PrecioUnitario,
-                            PorcentajeAdmin = porcentajeAdmin,
-                            Subtotal = det.Subtotal,
-                            Admin = adminLinea,
-                            TotalLinea = totalLinea
-                        };
-                        _dao.CrearDetalleAsync(detalle).Wait();
-                    }
-
-                    TempData["OK"] = "Orden " + numeroOrden + " creada exitosamente.";
-                    return RedirectToAction("Detalles", new { id = ordenId });
+                    System.Diagnostics.Debug.WriteLine("ERROR: DAO es null");
+                    ModelState.AddModelError("", "Error de conexión a la base de datos");
+                    return View(orden);
                 }
 
-                ModelState.AddModelError("", "Error al guardar la orden en la base de datos.");
-                CargarConceptosNueva(model);
-                return View(model);
+                // Guardar
+                int nuevoId = _ordenDAO.Insertar(orden);
+                System.Diagnostics.Debug.WriteLine("ID retornado: " + nuevoId);
+
+                if (nuevoId > 0)
+                {
+                    TempData["Success"] = "Orden " + orden.NumeroOrden + " creada exitosamente (ID: " + nuevoId + ")";
+                    return RedirectToAction("Detalles", new { id = nuevoId });
+                }
+                else
+                {
+                    System.Diagnostics.Debug.WriteLine("ERROR: Insertar retornó 0 o negativo");
+                    ModelState.AddModelError("", "No se pudo guardar la orden en la base de datos");
+                    return View(orden);
+                }
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine("Error al crear orden: " + ex.ToString());
-                ModelState.AddModelError("", "Error interno al crear la orden: " + ex.Message);
-                CargarConceptosNueva(model);
-                return View(model);
+                System.Diagnostics.Debug.WriteLine("EXCEPCION en Nueva POST: " + ex.Message);
+                System.Diagnostics.Debug.WriteLine("StackTrace: " + ex.StackTrace);
+                if (ex.InnerException != null)
+                {
+                    System.Diagnostics.Debug.WriteLine("InnerException: " + ex.InnerException.Message);
+                }
+                ModelState.AddModelError("", "Error al guardar: " + ex.Message);
+                return View(orden);
             }
         }
 
@@ -490,28 +428,18 @@ namespace CapaPresentacion.Controllers
         private void CargarConceptosNueva(CapaPresentacion.Models.OrdenRecaudacionNuevaVM model)
         {
             if (model == null) return;
+            AsegurarConceptosBasicos();
 
-            try
+            var conceptos = _conceptoDao.ObtenerConceptos(true);
+            model.Conceptos = conceptos.Select(c => new CapaPresentacion.Models.ConceptoOptionVM
             {
-                AsegurarConceptosBasicos();
-
-                var conceptos = _conceptoDao.ObtenerConceptos(true);
-                model.Conceptos = conceptos.Select(c => new CapaPresentacion.Models.ConceptoOptionVM
-                {
-                    Id = c.Id,
-                    Codigo = c.Codigo,
-                    Nombre = c.Nombre,
-                    Valor = c.ValorBase,
-                    PorcentajeAdmin = c.PorcentajeAdmin,
-                    Label = string.Format("{0} - {1} (${2})", c.Codigo, c.Nombre, c.ValorBase.ToString("0.00"))
-                }).ToList();
-            }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine("CargarConceptosNueva: Error cargando conceptos - " + ex.Message);
-                model.Conceptos = new List<CapaPresentacion.Models.ConceptoOptionVM>();
-                ModelState.AddModelError("", "No se pudieron cargar los conceptos. Verifique la conexi�n a la base de datos.");
-            }
+                Id = c.Id,
+                Codigo = c.Codigo,
+                Nombre = c.Nombre,
+                Valor = c.ValorBase,
+                PorcentajeAdmin = c.PorcentajeAdmin,
+                Label = string.Format("{0} - {1} (${2})", c.Codigo, c.Nombre, c.ValorBase.ToString("0.00"))
+            }).ToList();
 
             try
             {
@@ -533,9 +461,8 @@ namespace CapaPresentacion.Controllers
                         Compania = string.IsNullOrWhiteSpace(s.RazonSocial) ? s.NombreOperador : s.RazonSocial
                     }).ToList();
             }
-            catch (Exception ex)
+            catch
             {
-                System.Diagnostics.Debug.WriteLine("CargarConceptosNueva: Error cargando solicitudes - " + ex.Message);
                 model.Solicitudes = new List<CapaPresentacion.Models.OrdenRecaudacionNuevaVM.SolicitudOptionVM>();
             }
         }
@@ -616,8 +543,7 @@ namespace CapaPresentacion.Controllers
 
             if (string.IsNullOrWhiteSpace(NumeroFactura))
             {
-                // Generar número de factura único automáticamente
-                NumeroFactura = $"PAG-{id}-{DateTime.Now:yyyyMMddHHmmss}";
+                NumeroFactura = null; // referencia opcional
             }
 
             if (string.IsNullOrWhiteSpace(MetodoPago))
@@ -956,8 +882,6 @@ namespace CapaPresentacion.Controllers
         }
     }
 }
-
-
 
 
 

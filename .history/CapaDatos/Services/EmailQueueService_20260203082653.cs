@@ -180,7 +180,9 @@ namespace CapaDatos.Services
         {
             const string sql = @"
                 UPDATE email_queue SET
-                    status = 'ENVIADO'
+                    estado = 'ENVIADO',
+                    fecha_envio = NOW(),
+                    ultimo_error = NULL
                 WHERE id = @id";
 
             ExecuteWithConnection(conn =>
@@ -198,9 +200,9 @@ namespace CapaDatos.Services
         {
             const string sql = @"
                 UPDATE email_queue SET
-                    status = 'PENDIENTE',
+                    estado = 'PENDIENTE',
                     proximo_intento = @proximo
-                WHERE id = @id";
+                WHERE id = @id AND intentos < max_intentos";
 
             var proximoIntento = DateTime.Now.Add(delay);
 
@@ -221,13 +223,23 @@ namespace CapaDatos.Services
             return new EmailQueueItem
             {
                 Id = GetInt(reader, "id"),
-                Para = GetString(reader, "to_address"),
-                Asunto = GetString(reader, "subject"),
-                Cuerpo = GetString(reader, "body"),
-                Estado = GetString(reader, "status"),
-                FechaCreacion = GetDateTime(reader, "created_at"),
+                Para = GetString(reader, "para"),
+                ParaNombre = GetString(reader, "para_nombre"),
+                Asunto = GetString(reader, "asunto"),
+                Cuerpo = GetString(reader, "cuerpo"),
+                EsHtml = GetBool(reader, "es_html"),
+                AdjuntoNombre = GetString(reader, "adjunto_nombre"),
+                Estado = GetString(reader, "estado"),
+                Intentos = GetInt(reader, "intentos"),
+                MaxIntentos = GetInt(reader, "max_intentos"),
+                UltimoError = GetString(reader, "ultimo_error"),
+                FechaCreacion = GetDateTime(reader, "fecha_creacion"),
+                FechaEnvio = GetNullableDateTime(reader, "fecha_envio"),
                 ProximoIntento = GetNullableDateTime(reader, "proximo_intento"),
-                OrdenId = GetValue<int?>(reader, "solicitud_id")
+                CorrelationId = GetString(reader, "correlation_id"),
+                NumeroOrden = GetString(reader, "numero_orden"),
+                OrdenId = GetInt(reader, "orden_id"),
+                TipoNotificacion = GetString(reader, "tipo_notificacion")
             };
         }
     }

@@ -209,12 +209,9 @@ namespace CapaPresentacion.Controllers
                     Total = total,
                     Estado = "BORRADOR",
                     FechaCreacion = DateTime.Now,
-                    // NO asignar UsuarioCreacion porque sobrescribe CodigoUsuario
-                    // UsuarioCreacion = User.Identity.Name,
+                    UsuarioCreacion = User.Identity.Name,
                     Activo = true
                 };
-
-                System.Diagnostics.Debug.WriteLine($"Controller Nueva: Orden creada con CodigoUsuario = '{orden.CodigoUsuario}'");
 
                 // Insertar orden
                 var ordenId = _dao.Insertar(orden);
@@ -224,24 +221,13 @@ namespace CapaPresentacion.Controllers
                     // Insertar detalles
                     foreach (var det in detalles)
                     {
-                        // Obtener el concepto para tener el porcentaje de administración
-                        var concepto = _conceptoDao.ObtenerPorId(det.ConceptoId);
-                        var porcentajeAdmin = concepto?.PorcentajeAdmin ?? 0m;
-                        var adminLinea = det.Subtotal * (porcentajeAdmin / 100m);
-                        var totalLinea = det.Subtotal + adminLinea;
-
                         var detalle = new DetalleOrden
                         {
                             OrdenId = ordenId,
                             ConceptoId = det.ConceptoId,
-                            ConceptoCodigo = concepto?.Codigo,
-                            ConceptoNombre = concepto?.Nombre,
                             Cantidad = det.Cantidad,
-                            ValorUnitario = det.PrecioUnitario,
-                            PorcentajeAdmin = porcentajeAdmin,
-                            Subtotal = det.Subtotal,
-                            Admin = adminLinea,
-                            TotalLinea = totalLinea
+                            PrecioUnitario = det.PrecioUnitario,
+                            Subtotal = det.Subtotal
                         };
                         _dao.CrearDetalleAsync(detalle).Wait();
                     }
@@ -616,8 +602,7 @@ namespace CapaPresentacion.Controllers
 
             if (string.IsNullOrWhiteSpace(NumeroFactura))
             {
-                // Generar número de factura único automáticamente
-                NumeroFactura = $"PAG-{id}-{DateTime.Now:yyyyMMddHHmmss}";
+                NumeroFactura = null; // referencia opcional
             }
 
             if (string.IsNullOrWhiteSpace(MetodoPago))

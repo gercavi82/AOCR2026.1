@@ -1618,128 +1618,127 @@
         SECCIÓN: FUNCIONES HELPER EN C# (SERVER-SIDE)
         ============================================ *@
     @functions {
-        /// <summary>
-        /// Formatea un valor decimal como moneda
-        /// </summary>
-        public static string FormatCurrency(decimal amount)
+    /// <summary>
+    /// Formatea un valor decimal como moneda
+    /// </summary>
+    public static string FormatCurrency(decimal amount)
+    {
+        try
         {
-            try
-            {
-                return amount.ToString("C", System.Globalization.CultureInfo.CurrentCulture);
-            }
-            catch
-            {
-                // Fallback seguro
-                return amount.ToString("N2") + " USD";
-            }
+            return amount.ToString("C", System.Globalization.CultureInfo.CurrentCulture);
+        }
+        catch
+        {
+            // Fallback seguro
+            return amount.ToString("N2") + " USD";
+        }
+    }
+
+    /// <summary>
+    /// Formatea un valor decimal nullable como moneda
+    /// </summary>
+    public static string FormatCurrency(decimal? amount)
+    {
+        if (!amount.HasValue || amount.Value == 0)
+        {
+            return "$0.00";
         }
 
-        /// <summary>
-        /// Formatea un valor decimal nullable como moneda
-        /// </summary>
-        public static string FormatCurrency(decimal? amount)
+        try
         {
-            if (!amount.HasValue || amount.Value == 0)
-            {
-                return "$0.00";
-            }
+            return amount.Value.ToString("C", System.Globalization.CultureInfo.CurrentCulture);
+        }
+        catch
+        {
+            return amount.Value.ToString("N2") + " USD";
+        }
+    }
 
-            try
-            {
-                return amount.Value.ToString("C", System.Globalization.CultureInfo.CurrentCulture);
-            }
-            catch
-            {
-                return amount.Value.ToString("N2") + " USD";
-            }
+    /// <summary>
+    /// Obtiene la clase CSS para el estado de la orden
+    /// </summary>
+    public static string GetClaseEstado(string estado)
+    {
+        if (string.IsNullOrWhiteSpace(estado))
+        {
+            return "bg-secondary";
         }
 
-        /// <summary>
-        /// Obtiene la clase CSS para el estado de la orden
-        /// </summary>
-        public static string GetClaseEstado(string estado)
+        var estadoUpper = estado.Trim().ToUpperInvariant();
+
+        switch (estadoUpper)
         {
-            if (string.IsNullOrWhiteSpace(estado))
-            {
-                return "bg-secondary";
-            }
-
-            var estadoUpper = estado.Trim().ToUpperInvariant();
-
-            switch (estadoUpper)
-            {
-                case "BORRADOR": return "estado-borrador";
-                case "PENDIENTE": return "estado-generada";
-                case "PROCESADA": return "estado-enviada";
-                case "FACTURADA": return "estado-pagada";
-                case "COMPLETADA": return "estado-pagada";
-                case "ANULADA": return "estado-anulada";
-                default: return "bg-secondary";
-            }
+            case "BORRADOR": return "estado-borrador";
+            case "PENDIENTE": return "estado-generada";
+            case "PROCESADA": return "estado-enviada";
+            case "FACTURADA": return "estado-pagada";
+            case "COMPLETADA": return "estado-pagada";
+            case "ANULADA": return "estado-anulada";
+            default: return "bg-secondary";
         }
+    }
 
-        /// <summary>
-        /// Obtiene el texto para mostrar del estado
-        /// </summary>
+    /// <summary>
+    /// Obtiene el texto para mostrar del estado
+    /// </summary>
     public static string GetTextoEstado(string estado)
     {
         if (string.IsNullOrWhiteSpace(estado))
         {
             return "DESCONOCIDO";
-            }
-
-            var est = estado.Trim().ToUpperInvariant();
-            switch (est)
-            {
-                case "PENDIENTE": return "PENDIENTE";
-                case "PROCESADA": return "PROCESADA";
-                case "FACTURADA": return "FACTURADA";
-                case "COMPLETADA": return "COMPLETADA";
-                default: return est;
-            }
         }
 
-        /// <summary>
-        /// Trunca texto a una longitud máxima
-        /// </summary>
-        public static string TruncateText(string texto, int maxLength)
+        var est = estado.Trim().ToUpperInvariant();
+        switch (est)
         {
-            if (string.IsNullOrWhiteSpace(texto))
-            {
-                return string.Empty;
-            }
+            case "PENDIENTE": return "PENDIENTE";
+            case "PROCESADA": return "PROCESADA";
+            case "FACTURADA": return "FACTURADA";
+            case "COMPLETADA": return "COMPLETADA";
+            default: return est;
+        }
+    }
 
-            if (texto.Length <= maxLength)
-            {
-                return texto;
-            }
-
-            return texto.Substring(0, maxLength) + "...";
+    /// <summary>
+    /// Trunca texto a una longitud máxima
+    /// </summary>
+    public static string TruncateText(string texto, int maxLength)
+    {
+        if (string.IsNullOrWhiteSpace(texto))
+        {
+            return string.Empty;
         }
 
-        /// <summary>
-        /// Valida si una fecha es válida (no nula y no mínima)
-        /// </summary>
-        public static bool EsFechaValida(DateTime? fecha)
+        if (texto.Length <= maxLength)
         {
-            return fecha.HasValue && fecha.Value != DateTime.MinValue;
+            return texto;
         }
 
-        /// <summary>
-        /// Obtiene el token AntiForgery para formularios manuales
-        /// </summary>
-        public static string GetAntiForgeryToken()
+        return texto.Substring(0, maxLength) + "...";
+    }
+
+    /// <summary>
+    /// Valida si una fecha es válida (no nula y no mínima)
+    /// </summary>
+    public static bool EsFechaValida(DateTime? fecha)
+    {
+        return fecha.HasValue && fecha.Value != DateTime.MinValue;
+    }
+
+    /// <summary>
+    /// Obtiene el token AntiForgery para formularios manuales
+    /// </summary>
+    public static string GetAntiForgeryToken()
+    {
+        try
         {
-            try
-            {
-                // Esta es una implementación básica. En producción, necesitarías
-                // usar el método real de AntiForgeryToken de MVC
-                return Guid.NewGuid().ToString();
-            }
-            catch
-            {
-                return string.Empty;
-            }
+            // Esta es una implementación básica. En producción, necesitarías
+            // usar el método real de AntiForgeryToken de MVC
+            return Guid.NewGuid().ToString();
+        }
+        catch
+        {
+            return string.Empty;
         }
     }
 
@@ -1763,8 +1762,6 @@
             default: return est;
         }
     }
-
-
-
+}
 
 

@@ -180,7 +180,9 @@ namespace CapaDatos.Services
         {
             const string sql = @"
                 UPDATE email_queue SET
-                    status = 'ENVIADO'
+                    estado = 'ENVIADO',
+                    fecha_envio = NOW(),
+                    ultimo_error = NULL
                 WHERE id = @id";
 
             ExecuteWithConnection(conn =>
@@ -198,9 +200,9 @@ namespace CapaDatos.Services
         {
             const string sql = @"
                 UPDATE email_queue SET
-                    status = 'PENDIENTE',
+                    estado = 'PENDIENTE',
                     proximo_intento = @proximo
-                WHERE id = @id";
+                WHERE id = @id AND intentos < max_intentos";
 
             var proximoIntento = DateTime.Now.Add(delay);
 
@@ -227,7 +229,7 @@ namespace CapaDatos.Services
                 Estado = GetString(reader, "status"),
                 FechaCreacion = GetDateTime(reader, "created_at"),
                 ProximoIntento = GetNullableDateTime(reader, "proximo_intento"),
-                OrdenId = GetValue<int?>(reader, "solicitud_id")
+                OrdenId = GetNullableInt(reader, "solicitud_id")
             };
         }
     }

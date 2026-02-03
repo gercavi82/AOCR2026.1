@@ -20,12 +20,29 @@
 
     @{
         var rolActual = Session["Rol"] != null ? Session["Rol"].ToString() : "";
-        int idUsuario = Session["IdUsuario"] != null ? Convert.ToInt32(Session["IdUsuario"]) : 0;
+        int idUsuario = 0;
+        var sessionUserId = Session["IdUsuario"] ?? Session["UserId"];
+        if (sessionUserId != null)
+        {
+            int.TryParse(sessionUserId.ToString(), out idUsuario);
+        }
 
-        // Instancia del DAO para validar estados financieros
-        var daoOR = new OrdenRecaudacionDAO();
-        bool tieneOrdenGenerada = daoOR.ExisteORGeneradaOPagada(idUsuario);
-        bool tieneOrdenBorrador = daoOR.ExisteORMinima(idUsuario);
+        bool tieneOrdenGenerada = false;
+        bool tieneOrdenBorrador = false;
+        try
+        {
+            if (idUsuario > 0)
+            {
+                // Instancia del DAO para validar estados financieros
+                var daoOR = new OrdenRecaudacionDAO();
+                tieneOrdenGenerada = daoOR.ExisteORGeneradaOPagada(idUsuario);
+                tieneOrdenBorrador = daoOR.ExisteORMinima(idUsuario);
+            }
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine("_Sidebar: Error consultando estado de orden: " + ex.Message);
+        }
 
         // Determinar si el usuario requiere orden para su rol
         bool requiereOrden = rolActual == "Operador" || rolActual == "Solicitante" ||
@@ -348,6 +365,7 @@
         });
     })();
 </script>
+
 
 
 

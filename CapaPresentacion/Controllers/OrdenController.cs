@@ -88,11 +88,11 @@ namespace CapaPresentacion.Controllers
                     {
                         Id = Convert.ToInt32(row["id"]),
                         NumeroOrden = row["numero_orden"]?.ToString() ?? "",
-                        FechaCreacion = Convert.ToDateTime(row["fecha_creacion"]),
+                        FechaCreacion = row["fecha_creacion"] == DBNull.Value ? DateTime.MinValue : Convert.ToDateTime(row["fecha_creacion"]),
                         Estado = row["estado"]?.ToString() ?? "",
-                        Subtotal = Convert.ToDecimal(row["subtotal"]),
-                        Admin = Convert.ToDecimal(row["admin"]),
-                        Total = Convert.ToDecimal(row["total"]),
+                        Subtotal = row["subtotal"] == DBNull.Value ? 0m : Convert.ToDecimal(row["subtotal"]),
+                        Admin = row["admin"] == DBNull.Value ? 0m : Convert.ToDecimal(row["admin"]),
+                        Total = row["total"] == DBNull.Value ? 0m : Convert.ToDecimal(row["total"]),
                         Observacion = row["observacion"]?.ToString() ?? ""
                     };
                     ordenes.Add(vm);
@@ -111,8 +111,9 @@ namespace CapaPresentacion.Controllers
 
         private int ObtenerIdUsuario()
         {
-            if (Session["IdUsuario"] != null &&
-                int.TryParse(Session["IdUsuario"].ToString(), out int idUsuario))
+            var sessionValue = Session["IdUsuario"] ?? Session["UserId"];
+            if (sessionValue != null &&
+                int.TryParse(sessionValue.ToString(), out int idUsuario))
             {
                 return idUsuario;
             }
@@ -120,4 +121,5 @@ namespace CapaPresentacion.Controllers
         }
     }
 }
+
 

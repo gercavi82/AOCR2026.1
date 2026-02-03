@@ -299,6 +299,7 @@
     <Compile Include="Infrastructure\UnitOfWork.cs" />
     <Compile Include="Infra\PgSql.cs" />
     <Compile Include="Infra\DbFactory.cs" />
+    <Compile Include="Interfaces\IContribuyenteRepository.cs" />
     <Compile Include="Interfaces\IOrdenRecaudacionRepository.cs" />
     <Compile Include="Interfaces\IPagoRepository.cs" />
     <Compile Include="Models\PagoModel.cs" />
