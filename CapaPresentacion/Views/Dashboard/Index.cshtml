@@ -145,6 +145,18 @@
 
     var dt = null;
 
+    function onDataTablesReady(callback) {
+        if (window.jQuery && window.jQuery.fn && window.jQuery.fn.DataTable) {
+            callback();
+            return;
+        }
+        var handler = function () {
+            document.removeEventListener('AOCR.DataTablesReady', handler);
+            callback();
+        };
+        document.addEventListener('AOCR.DataTablesReady', handler);
+    }
+
     function showLoading(show) {
         var el = document.getElementById('loadingOrdenes');
         if (!el) return;
@@ -268,9 +280,11 @@
     }
 
     $(function () {
-        if (initTable()) {
-            cargarDatosDashboard();
-        }
+        onDataTablesReady(function () {
+            if (initTable()) {
+                cargarDatosDashboard();
+            }
+        });
     });
 
     // opcional: refrescar cada X segundos

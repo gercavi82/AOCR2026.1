@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Web.Mvc;
+using CapaDatos.Constants;
 using CapaNegocio;
 using CapaModelo;
 using CapaPresentacion.Models;
@@ -186,7 +187,7 @@ namespace CapaPresentacion.Controllers
                 var entidad = new SolicitudAOCR
                 {
                     CodigoUsuario = codigoUsuario,
-                    Estado = "BORRADOR",
+                    Estado = EstadoSolicitud.Pendiente,
                     FechaSolicitud = DateTime.Now,
                     CreatedAt = DateTime.Now,
                     CreatedBy = codigoUsuario.ToString(),

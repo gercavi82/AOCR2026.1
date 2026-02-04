@@ -3,9 +3,11 @@ using System.Linq;
 using System.Web;
 using System.Web.Mvc;
 using System.Collections.Generic;
+using CapaDatos;
 using CapaDatos.DAOs;
 using CapaDatos.Entidades;
 using CapaModelo;
+using CapaDatos.Constants;
 using CapaPresentacion.Models;
 using CapaNegocio;
 using CapaNegocio.Helpers;
@@ -24,6 +26,133 @@ namespace CapaPresentacion.Controllers
 
         public ActionResult Index() => View();
 
+        // Obtener solicitudes del usuario actual en formato JSON
+        [HttpGet]
+        public JsonResult ObtenerMisSolicitudes()
+        {
+            try
+            {
+                if (Session["CodigoUsuario"] == null && Session["IdUsuario"] != null)
+                    Session["CodigoUsuario"] = Session["IdUsuario"];
+
+                if (Session["CodigoUsuario"] == null)
+                    return Json(new { success = true, data = new List<object>(), message = "Sesion expirada" }, JsonRequestBehavior.AllowGet);
+
+                int codigoUsuario = Convert.ToInt32(Session["CodigoUsuario"]);
+                var solicitudes = _solicitudDAO.ObtenerPorUsuario(codigoUsuario);
+
+                var resultado = solicitudes.Select(s => new
+                {
+                    id = s.CodigoSolicitud,
+                    fecha = (s.FechaSolicitud ?? s.CreatedAt ?? DateTime.Now).ToString("dd/MM/yyyy"),
+                    tipo = ObtenerTipoSolicitud(s.TipoSolicitud),
+                    comp = s.NombreOperador ?? s.RazonSocial ?? "Sin Compañía",
+                    insp = ObtenerNombreInspector(s.CodigoTecnico),
+                    st = ObtenerEstadoLegible(s.Estado),
+                    cat = ObtenerCategoria(s.Estado),
+                    viat = CalcularViaticos(s.CodigoSolicitud)
+                }).ToList();
+
+                return Json(new { success = true, data = resultado }, JsonRequestBehavior.AllowGet);
+            }
+            catch (Exception ex)
+            {
+                return Json(new { success = false, message = ex.Message }, JsonRequestBehavior.AllowGet);
+            }
+        }
+
+        private string ObtenerTipoSolicitud(int? tipoSolicitud)
+        {
+            if (!tipoSolicitud.HasValue) return "EMISIÓN";
+            
+            switch (tipoSolicitud.Value)
+            {
+                case 1: return "EMISIÓN";
+                case 2: return "RENOVACIÓN";
+                case 3: return "MODIFICACIÓN";
+                default: return "EMISIÓN";
+            }
+        }
+
+        private string ObtenerNombreInspector(int? codigoTecnico)
+        {
+            if (!codigoTecnico.HasValue || codigoTecnico.Value == 0)
+                return "Sin Asignar";
+
+            try
+            {
+                var tecnico = UsuarioDAO.ObtenerPorId(codigoTecnico.Value);
+                if (tecnico != null && !string.IsNullOrEmpty(tecnico.NombreCompleto))
+                    return tecnico.NombreCompleto + " " + (tecnico.ApellidoUsuario ?? "");
+                return "Sin Asignar";
+            }
+            catch
+            {
+                return "Sin Asignar";
+            }
+        }
+
+        private decimal CalcularViaticos(int codigoSolicitud)
+        {
+            try
+            {
+                // Obtener inspecciones asociadas a la solicitud
+                var inspeccionDAO = new InspeccionDAO();
+                var inspecciones = inspeccionDAO.ListarPorSolicitud(codigoSolicitud);
+                if (inspecciones == null || inspecciones.Count == 0)
+                    return 0m;
+
+                decimal total = 0m;
+                foreach (var inspeccion in inspecciones)
+                {
+                    if (inspeccion.CodigoInspeccion > 0)
+                    {
+                        var viaticos = ViaticoDAO.ObtenerPorInspeccion(inspeccion.CodigoInspeccion);
+                        total += viaticos?.Sum(v => v.Monto ?? 0) ?? 0m;
+                    }
+                }
+                return total;
+            }
+            catch
+            {
+                return 0m;
+            }
+        }
+
+        private string ObtenerEstadoLegible(string estado)
+        {
+            if (string.IsNullOrEmpty(estado)) return "Pendiente";
+            
+            switch (estado.ToUpper())
+            {
+                case "PENDIENTE": return "Pendiente";
+                case "EN_REVISION": return "En Proceso";
+                case "APROBADO": return "Aprobado";
+                case "RECHAZADO": return "Observado";
+                case "FINALIZADO": return "Finalizado";
+                case "ENVIADO_A_INSPECTOR": return "En Trámite";
+                case "ENVIADO_A_JEFATURA": return "En Jefatura";
+                default: return estado;
+            }
+        }
+
+        private string ObtenerCategoria(string estado)
+        {
+            if (string.IsNullOrEmpty(estado)) return "tramite";
+            
+            switch (estado.ToUpper())
+            {
+                case "APROBADO":
+                case "FINALIZADO":
+                    return "aprobado";
+                case "RECHAZADO":
+                case "OBSERVADO":
+                    return "observado";
+                default:
+                    return "tramite";
+            }
+        }
+
         // =========================================================
         // GET: Carga el formulario parcial con datos de BD
         // =========================================================
@@ -32,22 +161,60 @@ namespace CapaPresentacion.Controllers
         {
             try
             {
+                System.Diagnostics.Debug.WriteLine($"[FormularioEmisionAOCR] Iniciando con oid: {oid}");
+                
                 var vm = new SolicitudAOCRViewModel();
 
                 // A veces el sistema guarda el id en IdUsuario en vez de CodigoUsuario.
                 int usuarioId = 0;
                 if (Session["CodigoUsuario"] != null)
+                {
                     int.TryParse(Session["CodigoUsuario"].ToString(), out usuarioId);
+                    System.Diagnostics.Debug.WriteLine($"[FormularioEmisionAOCR] Usuario desde CodigoUsuario: {usuarioId}");
+                }
                 else if (Session["IdUsuario"] != null)
+                {
                     int.TryParse(Session["IdUsuario"].ToString(), out usuarioId);
+                    System.Diagnostics.Debug.WriteLine($"[FormularioEmisionAOCR] Usuario desde IdUsuario: {usuarioId}");
+                }
 
                 if (usuarioId <= 0)
+                {
+                    System.Diagnostics.Debug.WriteLine("[FormularioEmisionAOCR] Usuario ID es 0 o inválido");
                     return Content("<div class='alert alert-danger m-3'><i class='fas fa-exclamation-circle'></i> Error: Sesión expirada. Por favor, inicie sesión nuevamente.</div>");
+                }
 
                 // 1) Cargar usuario logueado
-                vm.Usuario = UsuarioDAO.ObtenerPorId(usuarioId);
+                System.Diagnostics.Debug.WriteLine($"[FormularioEmisionAOCR] Intentando obtener usuario: {usuarioId}");
+                
+                try
+                {
+                    vm.Usuario = UsuarioDAO.ObtenerPorId(usuarioId);
+                    System.Diagnostics.Debug.WriteLine($"[FormularioEmisionAOCR] Usuario obtenido: {(vm.Usuario != null ? vm.Usuario.NombreCompleto : "NULL")}");
+                }
+                catch (Exception userEx)
+                {
+                    System.Diagnostics.Debug.WriteLine($"[FormularioEmisionAOCR] Error obteniendo usuario: {userEx.Message}");
+                    vm.Usuario = null;
+                }
+                
                 if (vm.Usuario == null)
-                    return Content("<div class='alert alert-warning m-3'><i class='fas fa-user-slash'></i> Advertencia: No se encontró la información del usuario.</div>");
+                {
+                    System.Diagnostics.Debug.WriteLine($"[FormularioEmisionAOCR] Usuario no encontrado para ID: {usuarioId}");
+                    
+                    // Crear un usuario temporal para no bloquear el formulario
+                    vm.Usuario = new Usuario
+                    {
+                        CodigoUsuario = usuarioId.ToString(),
+                        NombreCompleto = "Usuario Temporal",
+                        Email = Session["Correo"]?.ToString() ?? "temp@ejemplo.com",
+                        NombreUsuario = "temp_user"
+                    };
+                    
+                    System.Diagnostics.Debug.WriteLine($"[FormularioEmisionAOCR] Usando usuario temporal");
+                }
+
+                System.Diagnostics.Debug.WriteLine($"[FormularioEmisionAOCR] Usuario final: {vm.Usuario.NombreCompleto}");
 
                 // 2) Si es edición
                 if (oid.HasValue && oid.Value > 0)
@@ -81,7 +248,7 @@ namespace CapaPresentacion.Controllers
                     {
                         CodigoUsuario = usuarioId,
                         FechaSolicitud = DateTime.Now,
-                        Estado = "BORRADOR",
+                        Estado = EstadoSolicitud.Pendiente,
                         Email = vm.Usuario != null ? vm.Usuario.Email : "",
                         RepresentanteLegal = vm.Usuario != null ? vm.Usuario.NombreCompleto : "",
 
@@ -98,8 +265,21 @@ namespace CapaPresentacion.Controllers
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine("Error en FormularioEmisionAOCR: " + ex.Message);
-                return Content("<div class='alert alert-danger m-3'><i class='fas fa-exclamation-triangle'></i> Error interno: " + HttpUtility.HtmlEncode(ex.Message) + "</div>");
+                System.Diagnostics.Debug.WriteLine($"[FormularioEmisionAOCR] Excepción: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"[FormularioEmisionAOCR] StackTrace: {ex.StackTrace}");
+                
+                // En lugar de devolver Content HTML que causa errores de parsing,
+                // devolver un contenido HTML válido que no rompa el JavaScript
+                return Content($@"
+                    <div class='alert alert-danger m-3'>
+                        <i class='fas fa-exclamation-triangle'></i> 
+                        <strong>Error al cargar formulario:</strong><br/>
+                        {HttpUtility.HtmlEncode(ex.Message)}
+                        <br/><small class='text-muted'>Revisar logs del servidor para más detalles.</small>
+                    </div>
+                    <script>
+                        console.error('Error en FormularioEmisionAOCR:', {HttpUtility.JavaScriptStringEncode(ex.Message)});
+                    </script>");
             }
         }
 
@@ -107,26 +287,123 @@ namespace CapaPresentacion.Controllers
         // POST: Guarda todo el formulario (Solicitud + Aeronaves + Docs + Pago)
         // =========================================================
         [HttpPost]
-        [ValidateAntiForgeryToken]
+        public ActionResult TestJson()
+        {
+            try
+            {
+                return Json(new { success = true, mensaje = "Endpoint JSON funcionando correctamente", timestamp = DateTime.Now });
+            }
+            catch (Exception ex)
+            {
+                return Json(new { success = false, mensaje = "Error en test: " + ex.Message });
+            }
+        }
+
+        [HttpPost]
+        public ActionResult TestSession()
+        {
+            try
+            {
+                var sessionInfo = new {
+                    codigoUsuario = Session["CodigoUsuario"],
+                    idUsuario = Session["IdUsuario"], 
+                    correo = Session["Correo"],
+                    sessionId = Session.SessionID,
+                    sessionTimeout = Session.Timeout
+                };
+                
+                return Json(new { 
+                    success = true, 
+                    mensaje = "Sesión verificada", 
+                    data = sessionInfo 
+                }, JsonRequestBehavior.AllowGet);
+            }
+            catch (Exception ex)
+            {
+                return Json(new { success = false, mensaje = "Error verificando sesión: " + ex.Message }, JsonRequestBehavior.AllowGet);
+            }
+        }
+
+        [HttpPost]
+        public ActionResult TestFormularioCompleto(SolicitudAOCRViewModel vm)
+        {
+            try
+            {
+                System.Diagnostics.Debug.WriteLine($"[TestFormularioCompleto] Recibido ViewModel");
+                
+                if (vm == null)
+                {
+                    return Json(new { success = false, mensaje = "ViewModel es null" }, JsonRequestBehavior.AllowGet);
+                }
+                
+                if (vm.Solicitud == null)
+                {
+                    return Json(new { success = false, mensaje = "vm.Solicitud es null" }, JsonRequestBehavior.AllowGet);
+                }
+                
+                var info = new {
+                    solicitudOk = vm.Solicitud != null,
+                    nombreOperador = vm.Solicitud?.NombreOperador ?? "NULL",
+                    aeronaves = vm.Aeronaves?.Count ?? 0,
+                    banco = vm.Banco ?? "NULL",
+                    numeroComprobante = vm.NumeroComprobante ?? "NULL"
+                };
+                
+                return Json(new { 
+                    success = true, 
+                    mensaje = "Test ViewModel exitoso", 
+                    data = info 
+                }, JsonRequestBehavior.AllowGet);
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[TestFormularioCompleto] Excepción: {ex.Message}");
+                return Json(new { success = false, mensaje = "Error en test: " + ex.Message }, JsonRequestBehavior.AllowGet);
+            }
+        }
+
+        [HttpPost]
+        // ValidateAntiForgeryToken no funciona con JSON, usar ValidateJsonAntiForgeryToken si está disponible
+        // o implementar validación manual del token en el header
         public ActionResult FormularioCompleto(SolicitudAOCRViewModel vm)
         {
             try
             {
+                // Log de entrada para debugging
+                System.Diagnostics.Debug.WriteLine($"[FormularioCompleto] Iniciando con vm: {vm}");
+
                 if (Session["CodigoUsuario"] == null)
                 {
                     if (Session["IdUsuario"] == null)
-                        return Json(new { success = false, mensaje = "Sesión expirada." });
+                    {
+                        System.Diagnostics.Debug.WriteLine("[FormularioCompleto] Sesión expirada");
+                        return Json(new { success = false, mensaje = "Sesión expirada." }, JsonRequestBehavior.AllowGet);
+                    }
                     Session["CodigoUsuario"] = Session["IdUsuario"];
                 }
 
                 int usuarioId = Convert.ToInt32(Session["CodigoUsuario"]);
                 string usuarioCorreo = Session["Correo"]?.ToString() ?? "sistema";
 
-                if (vm?.Solicitud == null)
-                    return Json(new { success = false, mensaje = "Datos de solicitud incompletos." });
+                System.Diagnostics.Debug.WriteLine($"[FormularioCompleto] Usuario: {usuarioId}");
+
+                if (vm == null)
+                {
+                    System.Diagnostics.Debug.WriteLine("[FormularioCompleto] ViewModel es null");
+                    return Json(new { success = false, mensaje = "ViewModel es null." }, JsonRequestBehavior.AllowGet);
+                }
+
+                if (vm.Solicitud == null)
+                {
+                    System.Diagnostics.Debug.WriteLine("[FormularioCompleto] vm.Solicitud es null");
+                    return Json(new { success = false, mensaje = "Datos de solicitud incompletos." }, JsonRequestBehavior.AllowGet);
+                }
 
                 if (string.IsNullOrWhiteSpace(vm.Solicitud.NombreOperador))
-                    return Json(new { success = false, mensaje = "Nombre del operador es obligatorio." });
+                {
+                    System.Diagnostics.Debug.WriteLine($"[FormularioCompleto] NombreOperador vacío: '{vm.Solicitud.NombreOperador}'");
+                    return Json(new { success = false, mensaje = "Nombre del operador es obligatorio." }, JsonRequestBehavior.AllowGet);
+                }
 
                 // Dueño si es nuevo / seguridad si edita
                 if (vm.Solicitud.CodigoSolicitud <= 0)
@@ -138,10 +415,10 @@ namespace CapaPresentacion.Controllers
                 {
                     var actual = _solicitudDAO.ObtenerPorId(vm.Solicitud.CodigoSolicitud);
                     if (actual == null)
-                        return Json(new { success = false, mensaje = "Solicitud no encontrada." });
+                        return Json(new { success = false, mensaje = "Solicitud no encontrada." }, JsonRequestBehavior.AllowGet);
 
                     if (!EsAdmin() && actual.CodigoUsuario != usuarioId)
-                        return Json(new { success = false, mensaje = "No tiene permisos para modificar esta solicitud." });
+                        return Json(new { success = false, mensaje = "No tiene permisos para modificar esta solicitud." }, JsonRequestBehavior.AllowGet);
 
                     vm.Solicitud.CodigoUsuario = actual.CodigoUsuario;
                 }
@@ -156,19 +433,28 @@ namespace CapaPresentacion.Controllers
                     exito = _solicitudBL.Crear(vm.Solicitud, usuarioId, out mensajeOut);
 
                 if (!exito)
-                    return Json(new { success = false, mensaje = mensajeOut });
+                {
+                    System.Diagnostics.Debug.WriteLine($"[FormularioCompleto] Error al guardar solicitud: {mensajeOut}");
+                    return Json(new { success = false, mensaje = mensajeOut }, JsonRequestBehavior.AllowGet);
+                }
 
                 int idFinal = vm.Solicitud.CodigoSolicitud;
+                System.Diagnostics.Debug.WriteLine($"[FormularioCompleto] Solicitud guardada con ID: {idFinal}");
 
                 // 2) Aeronaves (reemplazar)
                 var aeronaves = (vm.Aeronaves ?? new List<AeronaveSolicitud>())
                     .Where(a => a != null && !string.IsNullOrWhiteSpace(a.Matricula))
                     .ToList();
 
+                System.Diagnostics.Debug.WriteLine($"[FormularioCompleto] Guardando {aeronaves.Count} aeronaves");
                 _aeronaveSolDAO.ReemplazarPorSolicitud(idFinal, aeronaves, usuarioCorreo);
 
-                // 3) Documentos
-                ProcesarArchivos(vm.ArchivosSubidos, idFinal);
+                // 3) Documentos (solo si ArchivosSubidos no es null)
+                if (vm.ArchivosSubidos != null && vm.ArchivosSubidos.Count() > 0)
+                {
+                    System.Diagnostics.Debug.WriteLine($"[FormularioCompleto] Procesando {vm.ArchivosSubidos.Count()} documentos");
+                    ProcesarArchivos(vm.ArchivosSubidos, idFinal);
+                }
 
                 // 4) Pago
                 if (!string.IsNullOrWhiteSpace(vm.Banco) || !string.IsNullOrWhiteSpace(vm.NumeroComprobante))
@@ -181,14 +467,18 @@ namespace CapaPresentacion.Controllers
                         Estado = "REGISTRADO",
                         FechaPago = DateTime.Now
                     };
+                    System.Diagnostics.Debug.WriteLine($"[FormularioCompleto] Guardando pago");
                     _pagoDAO.Insertar(pagoEnt, usuarioCorreo);
                 }
 
-                return Json(new { success = true, mensaje = "Solicitud AOCR registrada correctamente.", id = idFinal });
+                System.Diagnostics.Debug.WriteLine($"[FormularioCompleto] Exito total. Retornando JSON con ID: {idFinal}");
+                return Json(new { success = true, mensaje = "Solicitud AOCR registrada correctamente.", id = idFinal }, JsonRequestBehavior.AllowGet);
             }
             catch (Exception ex)
             {
-                return Json(new { success = false, mensaje = "Error crítico: " + ex.Message });
+                System.Diagnostics.Debug.WriteLine($"[FormularioCompleto] Excepcion: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"[FormularioCompleto] StackTrace: {ex.StackTrace}");
+                return Json(new { success = false, mensaje = "Error crítico: " + ex.Message }, JsonRequestBehavior.AllowGet);
             }
         }
 

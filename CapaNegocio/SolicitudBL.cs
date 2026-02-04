@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using CapaDatos.Constants;
 using CapaDatos.DAOs;
 using CapaModelo;
 
@@ -53,7 +54,7 @@ namespace CapaNegocio
                 if (modelo == null) { mensaje = "Datos de solicitud inválidos."; return false; }
 
                 modelo.CodigoUsuario = codigoUsuario;
-                modelo.Estado = "BORRADOR";
+                modelo.Estado = EstadoSolicitud.Pendiente;
                 modelo.FechaSolicitud = DateTime.Now;
                 modelo.CreatedAt = DateTime.Now;
                 modelo.CreatedBy = codigoUsuario.ToString();
@@ -65,7 +66,8 @@ namespace CapaNegocio
 
                 if (id > 0)
                 {
-                    _historialDAO.RegistrarCambio(id, null, "BORRADOR", codigoUsuario, "Creación inicial del trámite.");
+                    modelo.CodigoSolicitud = id;
+                    _historialDAO.RegistrarCambio(id, null, EstadoSolicitud.Pendiente, codigoUsuario, "Creación inicial del trámite.");
                     mensaje = "Solicitud creada correctamente.";
                     return true;
                 }
@@ -113,9 +115,13 @@ namespace CapaNegocio
             if (solicitud == null) { mensaje = "Trámite no encontrado."; return false; }
             if (!esAdmin && solicitud.CodigoUsuario != codigoUsuario) { mensaje = "No tiene permisos sobre esta solicitud."; return false; }
 
-            if (solicitud.Estado != "BORRADOR") { mensaje = "Solo puede enviar solicitudes en estado BORRADOR."; return false; }
+            if (!EstadoSolicitud.PermiteEdicion(solicitud.Estado)) 
+            { 
+                mensaje = $"Solo puede enviar solicitudes en estado {EstadoSolicitud.Pendiente}."; 
+                return false;
+            }
 
-            bool ok = _solicitudDAO.CambiarEstado(codigoSolicitud, "ENVIADO", codigoUsuario, "El usuario ha enviado la solicitud a revisión.");
+            bool ok = _solicitudDAO.CambiarEstado(codigoSolicitud, EstadoSolicitud.EnRevision, codigoUsuario, "El usuario ha enviado la solicitud a revisión.");
             mensaje = ok ? "Solicitud enviada a la DGAC." : "Error al procesar el envío.";
             return ok;
         }
@@ -170,7 +176,7 @@ namespace CapaNegocio
                 }
 
                 // Regla de negocio: Solo editar si está en BORRADOR (opcional, según tu flujo)
-                if (!esAdmin && actual.Estado != "BORRADOR")
+                if (!esAdmin && !EstadoSolicitud.PermiteEdicion(actual.Estado))
                 {
                     mensaje = "La solicitud ya no se puede editar porque está en estado: " + actual.Estado;
                     return false;

@@ -71,6 +71,18 @@ namespace CapaDatos.Entidades
             set { TotalLinea = value; }
         }
 
+        /// <summary>
+        /// Valida la integridad básica del detalle
+        /// </summary>
+        public bool EsValido()
+        {
+            return ConceptoId.HasValue
+                   && Cantidad > 0
+                   && ValorUnitario >= 0
+                   && Subtotal >= 0
+                   && TotalLinea >= 0;
+        }
+
         // Navegación
         [ForeignKey("OrdenId")]
         public virtual OrdenRecaudacion Orden { get; set; }

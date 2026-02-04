@@ -1,14 +1,14 @@
-锘緻inherits System.Web.Mvc.WebViewPage<List<CapaModelo.SolicitudAOCR>>
+@inherits System.Web.Mvc.WebViewPage<List<CapaModelo.SolicitudAOCR>>
 @using CapaModelo
 @using System.Web.Mvc
 @using System.Web.Mvc.Html
 
 @{
-    ViewBag.Title = "Solicitudes para Legalizaci贸n";
+    ViewBag.Title = "Solicitudes para Legalizaci髇";
     Layout = "~/Views/Shared/_LayoutAOCR.cshtml";
 }
 
-<h2 class="mb-4">Solicitudes pendientes de Legalizaci贸n AOCR</h2>
+<h2 class="mb-4">Solicitudes pendientes de Legalizaci髇 AOCR</h2>
 
 @if (TempData["Error"] != null)
 {
@@ -35,7 +35,7 @@
             <tr>
                 <td>@sol.CodigoSolicitud</td>
                 <td>@sol.NombreOperador</td>
-                <td>@sol.FechaSolicitud?.ToString("yyyy-MM-dd HH:mm")</td>
+                <td>@(sol.FechaSolicitud.HasValue ? sol.FechaSolicitud.Value.ToString("yyyy-MM-dd HH:mm") : "")</td>
                 <td>@sol.Estado</td>
                 <td>
                     <a href="@Url.Action("Detalle", "SolicitudAOCR", new { id = sol.CodigoSolicitud })" class="btn btn-sm btn-info">
@@ -54,14 +54,14 @@
     </tbody>
 </table>
 
-<!-- Modal para confirmar legalizaci贸n -->
+<!-- Modal para confirmar legalizaci髇 -->
 <div class="modal fade" id="modalLegalizar" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog">
         <div class="modal-content">
             <form method="post" action="@Url.Action("Legalizar", "SolicitudAOCR")">
                 @Html.AntiForgeryToken()
                 <div class="modal-header">
-                    <h5 class="modal-title">Confirmar Legalizaci贸n</h5>
+                    <h5 class="modal-title">Confirmar Legalizaci髇</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
@@ -91,5 +91,6 @@
         });
     </script>
 }
+
 
 

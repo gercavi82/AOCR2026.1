@@ -1,14 +1,14 @@
-ï»¿@inherits System.Web.Mvc.WebViewPage<List<CapaModelo.SolicitudAOCR>>
+@inherits System.Web.Mvc.WebViewPage<List<CapaModelo.SolicitudAOCR>>
 @using CapaModelo
 @using System.Web.Mvc
 @using System.Web.Mvc.Html
 
 @{
-    ViewBag.Title = "Solicitudes para ValidaciÃ³n TÃ©cnica";
+    ViewBag.Title = "Solicitudes para Validación Técnica";
     Layout = "~/Views/Shared/_LayoutAOCR.cshtml";
 }
 
-<h2 class="mb-4">Solicitudes pendientes de ValidaciÃ³n TÃ©cnica</h2>
+<h2 class="mb-4">Solicitudes pendientes de Validación Técnica</h2>
 
 @if (TempData["Error"] != null)
 {
@@ -35,7 +35,7 @@
                     <td>@s.CodigoSolicitud</td>
                     <td>@s.NombreOperador</td>
                     <td>@s.TipoSolicitud</td>
-                    <td>@s.FechaSolicitud?.ToString("yyyy-MM-dd")</td>
+                    <td>@(s.FechaSolicitud.HasValue ? s.FechaSolicitud.Value.ToString("yyyy-MM-dd") : "")</td>
                     <td>@s.Estado</td>
                     <td>
                         <a href="@Url.Action("Detalle", "SolicitudAOCR", new { id = s.CodigoSolicitud })" class="btn btn-sm btn-info">
@@ -49,7 +49,8 @@
 }
 else
 {
-    <div class="alert alert-info">No hay solicitudes pendientes para revisiÃ³n tÃ©cnica.</div>
+    <div class="alert alert-info">No hay solicitudes pendientes para revisión técnica.</div>
 }
+
 
 

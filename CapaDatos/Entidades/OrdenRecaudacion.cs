@@ -2,6 +2,8 @@ using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+using System.Linq;
+using CapaDatos.Constants;
 
 namespace CapaDatos.Entidades
 {
@@ -15,7 +17,7 @@ namespace CapaDatos.Entidades
         {
             Detalles = new List<DetalleOrden>();
             FechaCreacion = DateTime.Now;
-            Estado = "BORRADOR";
+            Estado = EstadoOrden.Borrador;
             Activo = true;
         }
 
@@ -23,13 +25,17 @@ namespace CapaDatos.Entidades
         [Column("id")]
         public int Id { get; set; }
 
+        /// <summary>
+        /// Código del usuario que creó la orden
+        /// </summary>
         [Column("codigo_usuario")]
-        [StringLength(50)]
-        public string CodigoUsuario { get; set; }
+        public int? CodigoUsuario { get; set; }
 
+        /// <summary>
+        /// Código de la solicitud asociada
+        /// </summary>
         [Column("codigo_solicitud")]
-        [StringLength(50)]
-        public string CodigoSolicitud { get; set; }
+        public int? CodigoSolicitud { get; set; }
 
         [Column("numero_orden")]
         [StringLength(50)]
@@ -89,16 +95,8 @@ namespace CapaDatos.Entidades
         [NotMapped]
         public int? SolicitudId
         {
-            get
-            {
-                if (int.TryParse(CodigoSolicitud, out int id))
-                    return id;
-                return null;
-            }
-            set
-            {
-                CodigoSolicitud = value?.ToString();
-            }
+            get => CodigoSolicitud;
+            set => CodigoSolicitud = value;
         }
 
         /// <summary>
@@ -159,8 +157,8 @@ namespace CapaDatos.Entidades
         [NotMapped]
         public string UsuarioCreacion
         {
-            get { return CodigoUsuario; }
-            set { CodigoUsuario = value; }
+            get => CodigoUsuario?.ToString();
+            set => CodigoUsuario = int.TryParse(value, out var id) ? (int?)id : null;
         }
 
         /// <summary>
@@ -192,5 +190,53 @@ namespace CapaDatos.Entidades
         /// </summary>
         [NotMapped]
         public virtual List<DetalleOrden> Detalles { get; set; }
+
+        /// <summary>
+        /// Calcula los totales de la orden basándose en los detalles
+        /// </summary>
+        public void CalcularTotales()
+        {
+            if (Detalles == null || Detalles.Count == 0)
+            {
+                Subtotal = 0;
+                Admin = 0;
+                Total = 0;
+                return;
+            }
+
+            // Calcular subtotal y admin desde detalles
+            Subtotal = Detalles.Sum(d => d.Subtotal);
+            Admin = Detalles.Sum(d => d.Admin);
+            Total = Subtotal + Admin;
+        }
+
+        /// <summary>
+        /// Valida que la orden tenga los datos mínimos requeridos
+        /// </summary>
+        public bool EsValida()
+        {
+            // Validar datos básicos
+            if (CodigoUsuario == null || CodigoUsuario <= 0)
+                return false;
+
+            if (CodigoSolicitud == null || CodigoSolicitud <= 0)
+                return false;
+
+            if (string.IsNullOrWhiteSpace(NumeroOrden))
+                return false;
+
+            if (string.IsNullOrWhiteSpace(Compania))
+                return false;
+
+            if (string.IsNullOrWhiteSpace(RucCedula))
+                return false;
+
+            // Validar que tenga al menos un detalle
+            if (Detalles == null || Detalles.Count == 0)
+                return false;
+
+            // Validar que todos los detalles sean válidos
+            return Detalles.All(d => d.EsValido());
+        }
     }
 }

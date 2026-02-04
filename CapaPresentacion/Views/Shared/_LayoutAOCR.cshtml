@@ -472,6 +472,10 @@
                 if (index >= dtScripts.length) {
                     loadedScripts.datatables = true;
                     console.log('✅ DataTables cargado');
+                    document.dispatchEvent(new Event('AOCR.DataTablesReady'));
+                    if (window.AOCR) {
+                        window.AOCR.dataTablesLoaded = true;
+                    }
                     loadSweetAlert();
                     return;
                 }

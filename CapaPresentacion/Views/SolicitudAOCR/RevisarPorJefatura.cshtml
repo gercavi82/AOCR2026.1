@@ -1,19 +1,19 @@
-ï»¿@inherits System.Web.Mvc.WebViewPage<List<CapaModelo.SolicitudAOCR>>
+@inherits System.Web.Mvc.WebViewPage<List<CapaModelo.SolicitudAOCR>>
 @using CapaModelo
 @using System.Web.Mvc
 @using System.Web.Mvc.Html
 
 @{
-    ViewBag.Title = "ValidaciÃ³n por Jefatura TÃ©cnica";
+    ViewBag.Title = "Validación por Jefatura Técnica";
     Layout = "~/Views/Shared/_LayoutAOCR.cshtml";
 }
 
-<h3>Solicitudes pendientes de ValidaciÃ³n TÃ©cnica</h3>
+<h3>Solicitudes pendientes de Validación Técnica</h3>
 
 <table class="table table-striped">
     <thead>
         <tr>
-            <th>CÃ³digo</th>
+            <th>Código</th>
             <th>Operador</th>
             <th>Fecha</th>
             <th>Estado</th>
@@ -26,7 +26,7 @@
             <tr>
                 <td>@sol.CodigoSolicitud</td>
                 <td>@sol.NombreOperador</td>
-                <td>@sol.FechaSolicitud?.ToString("yyyy-MM-dd")</td>
+                <td>@(sol.FechaSolicitud.HasValue ? sol.FechaSolicitud.Value.ToString("yyyy-MM-dd") : "")</td>
                 <td>@sol.Estado</td>
                 <td>
                     @Html.ActionLink("Ver Detalle", "Detalle", "SolicitudAOCR", new { id = sol.CodigoSolicitud }, new { @class = "btn btn-info btn-sm" })
@@ -35,5 +35,6 @@
         }
     </tbody>
 </table>
+
 
 
