@@ -1682,6 +1682,12 @@ namespace CapaDatos.DAOs
                 return false;
             }
         }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error verificando columna banco: {ex.Message}");
+                return false;
+            }
+        }
 
         /// <summary>
         /// Verifica si ya existe un número de orden en la base de datos

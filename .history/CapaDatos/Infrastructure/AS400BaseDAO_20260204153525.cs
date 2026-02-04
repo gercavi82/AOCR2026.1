@@ -86,43 +86,7 @@ namespace CapaDatos.Infrastructure
 
         protected OdbcConnection CreateConnection()
         {
-            var connection = new OdbcConnection(_connectionString);
-            
-            // Si falla con el driver principal, intentar con driver alternativo
-            try
-            {
-                connection.Open();
-                connection.Close(); // Solo probar la conexión
-                return connection;
-            }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"Error con driver principal: {ex.Message}");
-                
-                try
-                {
-                    // Intentar con driver alternativo
-                    var creds = new SecureConfigurationService().GetAS400Credentials();
-                    var altConnectionString = BuildAlternativeConnectionString(creds);
-                    
-                    System.Diagnostics.Debug.WriteLine("Intentando con driver alternativo: Client Access ODBC Driver (32-bit)");
-                    
-                    var altConnection = new OdbcConnection(altConnectionString);
-                    altConnection.Open();
-                    altConnection.Close();
-                    
-                    // Si funciona, actualizar la cadena de conexión para uso futuro
-                    System.Diagnostics.Debug.WriteLine("✅ Driver alternativo funciona, actualizando conexión");
-                    connection.Dispose();
-                    return new OdbcConnection(altConnectionString);
-                }
-                catch (Exception ex2)
-                {
-                    System.Diagnostics.Debug.WriteLine($"Error con driver alternativo: {ex2.Message}");
-                    // Devolver la conexión original para que el error se propague normalmente
-                    return connection;
-                }
-            }
+            return new OdbcConnection(_connectionString);
         }
 
         protected T ExecuteWithConnection<T>(Func<OdbcConnection, T> action)

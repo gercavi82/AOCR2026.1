@@ -285,6 +285,7 @@
     <Compile Include="Global.asax.cs">
       <DependentUpon>Global.asax</DependentUpon>
     </Compile>
+    <Compile Include="Helpers\NotificacionCorreoHelper.cs" />
     <Compile Include="Models\OrdenRecaudacionNuevaVM.cs" />
     <Compile Include="Models\ConceptoOptionVM.cs" />
     <Compile Include="Models\Validation\RucCedulaValidationAttribute.cs" />

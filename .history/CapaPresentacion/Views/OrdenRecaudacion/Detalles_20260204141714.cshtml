@@ -312,8 +312,7 @@
                 : "N/A";
             var numeroFactura = !string.IsNullOrEmpty(pago.NumeroFactura) ? pago.NumeroFactura : "N/A";
             var metodoPago = !string.IsNullOrEmpty(pago.MetodoPago) ? pago.MetodoPago : "N/A";
-            var banco = !string.IsNullOrEmpty(pago.Banco) ? pago.Banco : 
-                (!string.IsNullOrEmpty(pago.MetodoPago) ? "Método: " + pago.MetodoPago : "No especificado");
+            var banco = !string.IsNullOrEmpty(pago.Banco) ? pago.Banco : "N/A";
             var validadoPor = !string.IsNullOrEmpty(pago.ValidadoPor) ? pago.ValidadoPor : "N/A";
             var estadoPago = (pago.Estado ?? "Pendiente").Trim();
             var estadoMostrar = estadoPago.Equals("APROBADO", System.StringComparison.OrdinalIgnoreCase) ? "Validado" : estadoPago;
@@ -522,9 +521,25 @@
                         <small class="text-muted">Saldo pendiente: $@saldoPendiente.ToString("#,##0.00")</small>
                     </div>
                     <div class="mb-3">
-                        <label class="form-label">Número de Orden de Recaudación/Referencia:</label>
+                        <label class="form-label">Número de Factura/Referencia:</label>
                         <input type="text" name="NumeroFactura" class="form-control"
                                placeholder="Ej: FACT-001, Depósito #12345" />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Método de Pago:</label>
+                        @if (ViewBag.ListaMetodoPago != null)
+                        {
+                            @Html.DropDownList("MetodoPago", ViewBag.ListaMetodoPago as SelectList, new { @class = "form-control", @required = "required" })
+                        }
+                        else
+                        {
+                            <select name="MetodoPago" class="form-control" required>
+                                <option value="">Seleccione método...</option>
+                                <option value="DEPOSITO">Depósito Bancario</option>
+                                <option value="TRANSFERENCIA">Transferencia Bancaria</option>
+                                <option value="CHEQUE">Cheque</option>
+                            </select>
+                        }
                     </div>
                     <div class="mb-3">
                         <label class="form-label">Método de Pago:</label>

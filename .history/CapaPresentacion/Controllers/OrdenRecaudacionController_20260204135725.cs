@@ -270,30 +270,14 @@ namespace CapaPresentacion.Controllers
         private string GenerarNumeroOrden()
         {
             var fecha = DateTime.Now;
-            // Generar número único con timestamp de microsegundos para evitar duplicados
-            var timestamp = fecha.ToString("yyyyMMddHHmmssfff"); // Agregamos milisegundos (fff)
+            // Generar número único con timestamp para evitar duplicados
+            var timestamp = fecha.ToString("yyyyMMddHHmmss");
             var consecutivo = _dao.ObtenerConsecutivoDiarioAsync(fecha).Result + 1;
             var numeroOrden = string.Format("OR-{0}-{1}", timestamp, consecutivo);
             
             System.Diagnostics.Debug.WriteLine($"GenerarNumeroOrden: timestamp={timestamp}, consecutivo={consecutivo}, resultado={numeroOrden}");
             
-            // Verificar que no exista ya este número (medida de seguridad adicional)
-            int intentos = 0;
-            var numeroFinal = numeroOrden;
-            while (intentos < 10) // máximo 10 intentos
-            {
-                if (!_dao.ExisteNumeroOrden(numeroFinal))
-                {
-                    break;
-                }
-                
-                // Si existe, agregar un sufijo adicional
-                intentos++;
-                numeroFinal = string.Format("OR-{0}-{1}-{2}", timestamp, consecutivo, intentos);
-                System.Diagnostics.Debug.WriteLine($"GenerarNumeroOrden: Número duplicado, intentando={numeroFinal}");
-            }
-            
-            return numeroFinal;
+            return numeroOrden;
         }
 
         // GET: /OrdenRecaudacion/Detalles/5
@@ -317,11 +301,15 @@ namespace CapaPresentacion.Controllers
                 ViewBag.Pagos = null;
             }
 
-            // Cargar lista de bancos desde P9
-            ViewBag.ListaBancoPago = ToSelectList("OPCBAN");
-            
-            // Cargar métodos de pago desde P9
-            ViewBag.ListaMetodoPago = ToSelectList("SOLFOR");
+            // Cargar lista de bancos para el dropdown
+            try
+            {
+                ViewBag.Bancos = _bancoDao.ObtenerBancos();
+            }
+            catch
+            {
+                ViewBag.Bancos = new List<BancoP9>();
+            }
 
             return View(orden);
         }
@@ -578,12 +566,12 @@ namespace CapaPresentacion.Controllers
         {
             var conceptos = new List<CapaDatos.Models.ConceptoModel>
             {
-                new CapaDatos.Models.ConceptoModel { Codigo = "EMI_AOCR", Nombre = "Emisión AOCR", TipoCalculo = "FIJO", ValorBase = 3300m, PorcentajeAdmin = 0m, Activo = true, Orden = 1, Descripcion = "Emisi�n AOCR", PorEstacion = false, PorDia = false, EsViatico = false },
-                new CapaDatos.Models.ConceptoModel { Codigo = "REN_AOCR", Nombre = "Renovación AOCR", TipoCalculo = "FIJO", ValorBase = 3300m, PorcentajeAdmin = 0m, Activo = true, Orden = 2, Descripcion = "Renovaci�n AOCR", PorEstacion = false, PorDia = false, EsViatico = false },
-                new CapaDatos.Models.ConceptoModel { Codigo = "MOD_AOCR_INC", Nombre = "Modificación AOCR (Inclusi�n aeronaves distinto modelo y tipo)", TipoCalculo = "FIJO", ValorBase = 1600m, PorcentajeAdmin = 0m, Activo = true, Orden = 3, Descripcion = "Modificaci�n AOCR (Inclusi�n aeronaves distinto modelo y tipo)", PorEstacion = false, PorDia = false, EsViatico = false },
-                new CapaDatos.Models.ConceptoModel { Codigo = "MOD_AOCR_SIN_INC", Nombre = "Modificación AOCR (Que no implique incremento de aeronaves)", TipoCalculo = "FIJO", ValorBase = 80m, PorcentajeAdmin = 0m, Activo = true, Orden = 4, Descripcion = "Modificaci�n AOCR (Que no implique incremento de aeronaves)", PorEstacion = false, PorDia = false, EsViatico = false },
-                new CapaDatos.Models.ConceptoModel { Codigo = "INSPECCION_EXT", Nombre = "Inspección requerida por el Operador Aereo Extranjero", TipoCalculo = "POR_ESTACION", ValorBase = 500m, PorcentajeAdmin = 0m, Activo = true, Orden = 5, Descripcion = "Inspecci�n requerida por el Operador A�reo Extranjero (por estaci�n)", PorEstacion = true, PorDia = false, EsViatico = false },
-                new CapaDatos.Models.ConceptoModel { Codigo = "VIATICOS_INSPECTOR", Nombre = "Viáticos a Sres. Inspectores", TipoCalculo = "POR_DIA", ValorBase = 80m, PorcentajeAdmin = 8m, Activo = true, Orden = 6, Descripcion = "Vi�ticos por d�a (m�s 8% de gastos administrativos)", PorEstacion = false, PorDia = true, EsViatico = true }
+                new CapaDatos.Models.ConceptoModel { Codigo = "EMI_AOCR", Nombre = "Emisi�n AOCR", TipoCalculo = "FIJO", ValorBase = 3300m, PorcentajeAdmin = 0m, Activo = true, Orden = 1, Descripcion = "Emisi�n AOCR", PorEstacion = false, PorDia = false, EsViatico = false },
+                new CapaDatos.Models.ConceptoModel { Codigo = "REN_AOCR", Nombre = "Renovaci�n AOCR", TipoCalculo = "FIJO", ValorBase = 3300m, PorcentajeAdmin = 0m, Activo = true, Orden = 2, Descripcion = "Renovaci�n AOCR", PorEstacion = false, PorDia = false, EsViatico = false },
+                new CapaDatos.Models.ConceptoModel { Codigo = "MOD_AOCR_INC", Nombre = "Modificaci�n AOCR (Inclusi�n aeronaves distinto modelo y tipo)", TipoCalculo = "FIJO", ValorBase = 1600m, PorcentajeAdmin = 0m, Activo = true, Orden = 3, Descripcion = "Modificaci�n AOCR (Inclusi�n aeronaves distinto modelo y tipo)", PorEstacion = false, PorDia = false, EsViatico = false },
+                new CapaDatos.Models.ConceptoModel { Codigo = "MOD_AOCR_SIN_INC", Nombre = "Modificaci�n AOCR (Que no implique incremento de aeronaves)", TipoCalculo = "FIJO", ValorBase = 80m, PorcentajeAdmin = 0m, Activo = true, Orden = 4, Descripcion = "Modificaci�n AOCR (Que no implique incremento de aeronaves)", PorEstacion = false, PorDia = false, EsViatico = false },
+                new CapaDatos.Models.ConceptoModel { Codigo = "INSPECCION_EXT", Nombre = "Inspecci�n requerida por el Operador A�reo Extranjero", TipoCalculo = "POR_ESTACION", ValorBase = 500m, PorcentajeAdmin = 0m, Activo = true, Orden = 5, Descripcion = "Inspecci�n requerida por el Operador A�reo Extranjero (por estaci�n)", PorEstacion = true, PorDia = false, EsViatico = false },
+                new CapaDatos.Models.ConceptoModel { Codigo = "VIATICOS_INSPECTOR", Nombre = "Vi�ticos a Sres. Inspectores", TipoCalculo = "POR_DIA", ValorBase = 80m, PorcentajeAdmin = 8m, Activo = true, Orden = 6, Descripcion = "Vi�ticos por d�a (m�s 8% de gastos administrativos)", PorEstacion = false, PorDia = true, EsViatico = true }
             };
 
             foreach (var c in conceptos)
@@ -920,43 +908,6 @@ namespace CapaPresentacion.Controllers
             return Content(result.ToString(), "text/plain");
         }
 
-        /// <summary>
-        /// Convierte lista de valores P9 a SelectList
-        /// </summary>
-        private SelectList ToSelectList(string valueCampo)
-        {
-            var list = new List<SelectListItem>();
-            
-            try
-            {
-                var listValores = CapaDatos.DAOs.CD_ListaValor.Instancia.ListaValores(valueCampo);
-                
-                foreach (var item in listValores)
-                {
-                    list.Add(new SelectListItem
-                    {
-                        Text = item.Descripcion.Trim(),
-                        Value = item.Codigo.Trim()
-                    });
-                }
-            }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"Error en ToSelectList: {ex.Message}");
-            }
-            
-            // Agregar opción por defecto
-            var seleccion = new SelectListItem
-            {
-                Value = "0",
-                Text = "---SELECCIONAR...",
-                Selected = true
-            };
-            list.Insert(0, seleccion);
-
-            return new SelectList(list, "Value", "Text");
-        }
-
         private int GetUserId()
         {
             int id = 0;
@@ -1144,98 +1095,6 @@ namespace CapaPresentacion.Controllers
             }
 
             return RedirectToAction("Detalles", new { id = ordenId });
-        }
-
-        // GET: /OrdenRecaudacion/AgregarColumnaBanco
-        [Authorize(Roles = "Administrador")]
-        public ActionResult AgregarColumnaBanco()
-        {
-            try
-            {
-                var resultado = _dao.AgregarColumnaBancoTemporal();
-                if (resultado)
-                {
-                    TempData["OK"] = "Columna banco agregada exitosamente a la tabla de pagos.";
-                }
-                else
-                {
-                    TempData["Error"] = "No se pudo agregar la columna banco. Verifique los logs.";
-                }
-            }
-            catch (Exception ex)
-            {
-                TempData["Error"] = $"Error ejecutando comando: {ex.Message}";
-            }
-            
-            return RedirectToAction("Index");
-        }
-
-        // GET: /OrdenRecaudacion/ProbarAS400
-        [Authorize(Roles = "Administrador")]
-        public ActionResult ProbarAS400()
-        {
-            try
-            {
-                var bancoPDao = new CapaDatos.DAOs.BancoP9DAO();
-                var resultado = bancoPDao.ProbarConexionAS400();
-                
-                if (resultado.StartsWith("OK"))
-                {
-                    TempData["OK"] = $"Conexión AS400 exitosa: {resultado}";
-                }
-                else
-                {
-                    TempData["Error"] = $"Error en conexión AS400: {resultado}";
-                }
-            }
-            catch (Exception ex)
-            {
-                TempData["Error"] = $"Error probando AS400: {ex.Message}";
-            }
-            
-            return RedirectToAction("Index");
-        }
-
-        // GET: /OrdenRecaudacion/VerificarDriversODBC
-        [Authorize(Roles = "Administrador")]
-        public ActionResult VerificarDriversODBC()
-        {
-            try
-            {
-                var bancoPDao = new CapaDatos.DAOs.BancoP9DAO();
-                var resultado = bancoPDao.VerificarDriverODBC();
-                
-                if (resultado.StartsWith("✅"))
-                {
-                    TempData["OK"] = resultado;
-                }
-                else
-                {
-                    TempData["Error"] = resultado;
-                }
-            }
-            catch (Exception ex)
-            {
-                TempData["Error"] = $"Error verificando drivers: {ex.Message}";
-            }
-            
-            return RedirectToAction("Index");
-        }
-
-        // GET: /OrdenRecaudacion/ListarDriversODBC
-        [Authorize(Roles = "Administrador")]
-        public ActionResult ListarDriversODBC()
-        {
-            try
-            {
-                var bancoPDao = new CapaDatos.DAOs.BancoP9DAO();
-                var resultado = bancoPDao.ListarDriversODBC();
-                return Content(resultado, "text/plain");
-            }
-            catch (Exception ex)
-            {
-                return Content($"Error listando drivers: {ex.Message}", "text/plain");
-            }
         }
     }
 }

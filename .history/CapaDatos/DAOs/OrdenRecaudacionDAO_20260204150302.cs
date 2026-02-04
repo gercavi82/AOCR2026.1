@@ -1638,52 +1638,6 @@ namespace CapaDatos.DAOs
         }
 
         /// <summary>
-        /// Método temporal para agregar la columna banco a la tabla aocr_tbpago
-        /// Este método debe ser ejecutado una sola vez por un administrador
-        /// </summary>
-        public bool AgregarColumnaBancoTemporal()
-        {
-            try
-            {
-                using (var conn = new NpgsqlConnection(_connectionString))
-                {
-                    conn.Open();
-                    
-                    // Verificar si la columna ya existe
-                    if (VerificarColumnaBanco(conn))
-                    {
-                        System.Diagnostics.Debug.WriteLine("La columna banco ya existe");
-                        return true;
-                    }
-                    
-                    // Agregar la columna
-                    var sqlAgregar = "ALTER TABLE aocr_tbpago ADD COLUMN banco VARCHAR(255);";
-                    using (var cmd = new NpgsqlCommand(sqlAgregar, conn))
-                    {
-                        cmd.ExecuteNonQuery();
-                        System.Diagnostics.Debug.WriteLine("Columna banco agregada exitosamente");
-                    }
-                    
-                    // Actualizar registros existentes
-                    var sqlActualizar = "UPDATE aocr_tbpago SET banco = 'NO_ESPECIFICADO' WHERE banco IS NULL;";
-                    using (var cmd = new NpgsqlCommand(sqlActualizar, conn))
-                    {
-                        var filasActualizadas = cmd.ExecuteNonQuery();
-                        System.Diagnostics.Debug.WriteLine($"Actualizadas {filasActualizadas} filas con valor por defecto");
-                    }
-                    
-                    return true;
-                }
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error agregando columna banco");
-                System.Diagnostics.Debug.WriteLine($"Error agregando columna banco: {ex.Message}");
-                return false;
-            }
-        }
-
-        /// <summary>
         /// Verifica si ya existe un número de orden en la base de datos
         /// </summary>
         public bool ExisteNumeroOrden(string numeroOrden)

@@ -1565,52 +1565,10 @@ namespace CapaDatos.DAOs
             }
             catch (IndexOutOfRangeException)
             {
-                // La columna banco no existe en la tabla, intentar inferir desde método de pago
-                System.Diagnostics.Debug.WriteLine("MapearPagoModel: Columna 'banco' no existe, intentando inferir desde método de pago");
-                
-                try
-                {
-                    var metodoPago = reader["metodo_pago"] != DBNull.Value ? reader["metodo_pago"].ToString() : null;
-                    return InferirBancoDesdeMetodoPago(metodoPago);
-                }
-                catch
-                {
-                    return "NO_ESPECIFICADO";
-                }
+                // La columna banco no existe en la tabla, devolver null
+                System.Diagnostics.Debug.WriteLine("MapearPagoModel: Columna 'banco' no existe en la tabla, devolviendo null");
+                return null;
             }
-        }
-        
-        /// <summary>
-        /// Intenta inferir el banco basándose en el método de pago
-        /// </summary>
-        private string InferirBancoDesdeMetodoPago(string metodoPago)
-        {
-            if (string.IsNullOrWhiteSpace(metodoPago))
-                return "NO_ESPECIFICADO";
-                
-            var metodo = metodoPago.ToUpperInvariant();
-            
-            // Mapeo común de métodos de pago a bancos
-            if (metodo.Contains("PICHINCHA"))
-                return "BANCO PICHINCHA";
-            else if (metodo.Contains("GUAYAQUIL"))
-                return "BANCO GUAYAQUIL";
-            else if (metodo.Contains("PACIFICO"))
-                return "BANCO DEL PACIFICO";
-            else if (metodo.Contains("PRODUBANCO"))
-                return "BANCO PRODUBANCO";
-            else if (metodo.Contains("BOLIVARIANO"))
-                return "BANCO BOLIVARIANO";
-            else if (metodo.Contains("INTERNACIONAL"))
-                return "BANCO INTERNACIONAL";
-            else if (metodo.Contains("TRANSFERENCIA") || metodo.Contains("DEPOSITO"))
-                return "TRANSFERENCIA_BANCARIA";
-            else if (metodo.Contains("EFECTIVO"))
-                return "PAGO_EFECTIVO";
-            else if (metodo.Contains("CHEQUE"))
-                return "PAGO_CHEQUE";
-            else
-                return "METODO: " + metodoPago;
         }
 
         /// <summary>
@@ -1633,52 +1591,6 @@ namespace CapaDatos.DAOs
             catch (Exception ex)
             {
                 System.Diagnostics.Debug.WriteLine($"Error verificando columna banco: {ex.Message}");
-                return false;
-            }
-        }
-
-        /// <summary>
-        /// Método temporal para agregar la columna banco a la tabla aocr_tbpago
-        /// Este método debe ser ejecutado una sola vez por un administrador
-        /// </summary>
-        public bool AgregarColumnaBancoTemporal()
-        {
-            try
-            {
-                using (var conn = new NpgsqlConnection(_connectionString))
-                {
-                    conn.Open();
-                    
-                    // Verificar si la columna ya existe
-                    if (VerificarColumnaBanco(conn))
-                    {
-                        System.Diagnostics.Debug.WriteLine("La columna banco ya existe");
-                        return true;
-                    }
-                    
-                    // Agregar la columna
-                    var sqlAgregar = "ALTER TABLE aocr_tbpago ADD COLUMN banco VARCHAR(255);";
-                    using (var cmd = new NpgsqlCommand(sqlAgregar, conn))
-                    {
-                        cmd.ExecuteNonQuery();
-                        System.Diagnostics.Debug.WriteLine("Columna banco agregada exitosamente");
-                    }
-                    
-                    // Actualizar registros existentes
-                    var sqlActualizar = "UPDATE aocr_tbpago SET banco = 'NO_ESPECIFICADO' WHERE banco IS NULL;";
-                    using (var cmd = new NpgsqlCommand(sqlActualizar, conn))
-                    {
-                        var filasActualizadas = cmd.ExecuteNonQuery();
-                        System.Diagnostics.Debug.WriteLine($"Actualizadas {filasActualizadas} filas con valor por defecto");
-                    }
-                    
-                    return true;
-                }
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error agregando columna banco");
-                System.Diagnostics.Debug.WriteLine($"Error agregando columna banco: {ex.Message}");
                 return false;
             }
         }

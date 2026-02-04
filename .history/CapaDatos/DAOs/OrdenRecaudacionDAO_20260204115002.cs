@@ -80,8 +80,6 @@ namespace CapaDatos.DAOs
         /// </summary>
         public OrdenRecaudacion ObtenerPorId(int id)
         {
-            System.Diagnostics.Debug.WriteLine($"OrdenRecaudacionDAO.ObtenerPorId: Obteniendo orden con id = {id}");
-            
             OrdenRecaudacion orden = null;
 
             try
@@ -103,11 +101,6 @@ namespace CapaDatos.DAOs
                             if (reader.Read())
                             {
                                 orden = MapearOrden(reader);
-                                System.Diagnostics.Debug.WriteLine($"OrdenRecaudacionDAO.ObtenerPorId: Orden encontrada, numero_orden = {orden.NumeroOrden}");
-                            }
-                            else
-                            {
-                                System.Diagnostics.Debug.WriteLine($"OrdenRecaudacionDAO.ObtenerPorId: No se encontró orden con id = {id}");
                             }
                         }
                     }
@@ -256,8 +249,6 @@ namespace CapaDatos.DAOs
         /// </summary>
         public int Insertar(OrdenRecaudacion orden)
         {
-            System.Diagnostics.Debug.WriteLine($"OrdenRecaudacionDAO.Insertar: Insertando orden con numero = {orden.NumeroOrden}");
-            
             string sql = @"
                 INSERT INTO aocr_or_orden (
                     codigo_usuario,
@@ -299,9 +290,7 @@ namespace CapaDatos.DAOs
                             orden.Total
                         };
                         
-                        System.Diagnostics.Debug.WriteLine($"OrdenRecaudacionDAO.Insertar: Ejecutando INSERT con NumeroOrden = {parametros.NumeroOrden}");
                         int ordenId = conn.ExecuteScalar<int>(sql, parametros, trans);
-                        System.Diagnostics.Debug.WriteLine($"OrdenRecaudacionDAO.Insertar: INSERT exitoso, ordenId = {ordenId}");
                         
                         // Insertar detalles
                         if (orden.Detalles != null && orden.Detalles.Any())
@@ -648,15 +637,12 @@ namespace CapaDatos.DAOs
         /// </summary>
         private OrdenRecaudacion MapearOrden(IDataReader reader)
         {
-            var numeroOrden = reader.IsDBNull(reader.GetOrdinal("numero_orden")) ? null : reader.GetString(reader.GetOrdinal("numero_orden"));
-            System.Diagnostics.Debug.WriteLine($"OrdenRecaudacionDAO.MapearOrden: Mapeando orden con numero_orden = {numeroOrden}");
-            
             var orden = new OrdenRecaudacion
             {
                 Id = GetSafeInt32(reader, "id"),
                 CodigoUsuario = GetSafeNullableInt(reader, "codigo_usuario"),
                 CodigoSolicitud = GetSafeNullableInt(reader, "codigo_solicitud"),
-                NumeroOrden = numeroOrden,
+                NumeroOrden = reader.IsDBNull(reader.GetOrdinal("numero_orden")) ? null : reader.GetString(reader.GetOrdinal("numero_orden")),
                 FechaCreacion = reader.IsDBNull(reader.GetOrdinal("fecha_creacion")) ? DateTime.Now : reader.GetDateTime(reader.GetOrdinal("fecha_creacion")),
                 Estado = reader.IsDBNull(reader.GetOrdinal("estado")) ? EstadoOrden.Borrador : reader.GetString(reader.GetOrdinal("estado")),
                 Observacion = reader.IsDBNull(reader.GetOrdinal("observacion")) ? null : reader.GetString(reader.GetOrdinal("observacion")),
@@ -794,11 +780,8 @@ namespace CapaDatos.DAOs
         {
             if (orden == null)
             {
-                System.Diagnostics.Debug.WriteLine("OrdenRecaudacionDAO.MapearOrdenModel: orden es null");
                 return null;
             }
-
-            System.Diagnostics.Debug.WriteLine($"OrdenRecaudacionDAO.MapearOrdenModel: Mapeando orden id={orden.Id}, numero_orden={orden.NumeroOrden}");
 
             var model = new OrdenRecaudacionModel
             {
@@ -947,7 +930,7 @@ namespace CapaDatos.DAOs
                 Moneda = reader["moneda"] != DBNull.Value ? reader["moneda"].ToString() : null,
                 Concepto = reader["concepto"] != DBNull.Value ? reader["concepto"].ToString() : null,
                 MetodoPago = reader["metodo_pago"] != DBNull.Value ? reader["metodo_pago"].ToString() : null,
-                Banco = GetSafeBanco(reader),  // Método seguro para obtener banco
+                Banco = reader["banco"] != DBNull.Value ? reader["banco"].ToString() : null,
                 Estado = reader["estado"] != DBNull.Value ? reader["estado"].ToString() : null,
                 FechaPago = reader["fecha_pago"] != DBNull.Value ? (DateTime?)Convert.ToDateTime(reader["fecha_pago"]) : null,
                 FechaValidacion = reader["fecha_validacion"] != DBNull.Value ? (DateTime?)Convert.ToDateTime(reader["fecha_validacion"]) : null,
@@ -1290,15 +1273,7 @@ namespace CapaDatos.DAOs
                 using (var conn = new NpgsqlConnection(_connectionString))
                 {
                     conn.Open();
-                    
-                    // Verificar si la columna banco existe
-                    var tieneBanco = VerificarColumnaBanco(conn);
-                    
-                    var sql = tieneBanco ? @"
-                        INSERT INTO aocr_tbpago
-                        (codigo_solicitud, numero_factura, monto, moneda, concepto, metodo_pago, banco, estado, fecha_pago, observaciones, comprobante_ruta)
-                        VALUES
-                        (@codigoSolicitud, @numeroFactura, @monto, @moneda, @concepto, @metodoPago, @banco, @estado, @fechaPago, @observaciones, @comprobanteRuta)" : @"
+                    var sql = @"
                         INSERT INTO aocr_tbpago
                         (codigo_solicitud, numero_factura, monto, moneda, concepto, metodo_pago, estado, fecha_pago, observaciones, comprobante_ruta)
                         VALUES
@@ -1312,14 +1287,7 @@ namespace CapaDatos.DAOs
                         cmd.Parameters.AddWithValue("@moneda", (object)pago.Moneda ?? "USD");
                         cmd.Parameters.AddWithValue("@concepto", (object)pago.Concepto ?? DBNull.Value);
                         cmd.Parameters.AddWithValue("@metodoPago", (object)pago.MetodoPago ?? DBNull.Value);
-                        
-                        // Solo agregar parámetro banco si la columna existe
-                        if (tieneBanco)
-                        {
-                            cmd.Parameters.AddWithValue("@banco", (object)pago.Banco ?? DBNull.Value);
-                        }
-                        
-                        cmd.Parameters.AddWithValue("@estado", (object)pago.Estado ?? CapaDatos.Constants.EstadoPago.Pendiente);
+                        cmd.Parameters.AddWithValue("@estado", (object)pago.Estado ?? EstadoPago.Pendiente);
                         cmd.Parameters.AddWithValue("@fechaPago", (object)pago.FechaPago ?? DateTime.Now);
                         cmd.Parameters.AddWithValue("@observaciones", (object)pago.Observaciones ?? DBNull.Value);
                         cmd.Parameters.AddWithValue("@comprobanteRuta", (object)pago.ComprobanteRuta ?? DBNull.Value);
@@ -1526,191 +1494,21 @@ namespace CapaDatos.DAOs
                 using (var conn = new NpgsqlConnection(_connectionString))
                 {
                     conn.Open();
-                    // Contar órdenes del día actual que tienen número de orden generado
-                    var sql = @"SELECT COUNT(*) FROM aocr_or_orden 
-                               WHERE fecha_creacion::date = @fecha 
-                               AND numero_orden IS NOT NULL 
-                               AND numero_orden != ''";
+                    var sql = "SELECT COUNT(*) FROM aocr_or_orden WHERE fecha_creacion::date = @fecha";
 
                     using (var cmd = new NpgsqlCommand(sql, conn))
                     {
                         cmd.Parameters.AddWithValue("@fecha", fecha.Date);
                         count = Convert.ToInt32(cmd.ExecuteScalar());
                     }
-                    
-                    // Debug log
-                    System.Diagnostics.Debug.WriteLine($"ObtenerConsecutivoDiarioAsync: Fecha={fecha:yyyy-MM-dd}, Count={count}");
                 }
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error en ObtenerConsecutivoDiarioAsync");
-                System.Diagnostics.Debug.WriteLine($"Error en ObtenerConsecutivoDiarioAsync: {ex.Message}");
-                // En caso de error, usar un número basado en timestamp
-                count = (int)((DateTime.Now.Ticks / TimeSpan.TicksPerSecond) % 1000);
             }
 
             return Task.FromResult(count);
-        }
-
-        /// <summary>
-        /// Obtiene el valor de la columna banco de forma segura, manejando si no existe
-        /// </summary>
-        private string GetSafeBanco(IDataReader reader)
-        {
-            try
-            {
-                var bancoOrdinal = reader.GetOrdinal("banco");
-                return reader.IsDBNull(bancoOrdinal) ? null : reader.GetString(bancoOrdinal);
-            }
-            catch (IndexOutOfRangeException)
-            {
-                // La columna banco no existe en la tabla, intentar inferir desde método de pago
-                System.Diagnostics.Debug.WriteLine("MapearPagoModel: Columna 'banco' no existe, intentando inferir desde método de pago");
-                
-                try
-                {
-                    var metodoPago = reader["metodo_pago"] != DBNull.Value ? reader["metodo_pago"].ToString() : null;
-                    return InferirBancoDesdeMetodoPago(metodoPago);
-                }
-                catch
-                {
-                    return "NO_ESPECIFICADO";
-                }
-            }
-        }
-        
-        /// <summary>
-        /// Intenta inferir el banco basándose en el método de pago
-        /// </summary>
-        private string InferirBancoDesdeMetodoPago(string metodoPago)
-        {
-            if (string.IsNullOrWhiteSpace(metodoPago))
-                return "NO_ESPECIFICADO";
-                
-            var metodo = metodoPago.ToUpperInvariant();
-            
-            // Mapeo común de métodos de pago a bancos
-            if (metodo.Contains("PICHINCHA"))
-                return "BANCO PICHINCHA";
-            else if (metodo.Contains("GUAYAQUIL"))
-                return "BANCO GUAYAQUIL";
-            else if (metodo.Contains("PACIFICO"))
-                return "BANCO DEL PACIFICO";
-            else if (metodo.Contains("PRODUBANCO"))
-                return "BANCO PRODUBANCO";
-            else if (metodo.Contains("BOLIVARIANO"))
-                return "BANCO BOLIVARIANO";
-            else if (metodo.Contains("INTERNACIONAL"))
-                return "BANCO INTERNACIONAL";
-            else if (metodo.Contains("TRANSFERENCIA") || metodo.Contains("DEPOSITO"))
-                return "TRANSFERENCIA_BANCARIA";
-            else if (metodo.Contains("EFECTIVO"))
-                return "PAGO_EFECTIVO";
-            else if (metodo.Contains("CHEQUE"))
-                return "PAGO_CHEQUE";
-            else
-                return "METODO: " + metodoPago;
-        }
-
-        /// <summary>
-        /// Verifica si la columna banco existe en la tabla aocr_tbpago
-        /// </summary>
-        private bool VerificarColumnaBanco(NpgsqlConnection conn)
-        {
-            try
-            {
-                var sql = @"SELECT COUNT(*) FROM information_schema.columns 
-                            WHERE table_name = 'aocr_tbpago' AND column_name = 'banco'";
-                using (var cmd = new NpgsqlCommand(sql, conn))
-                {
-                    var count = Convert.ToInt32(cmd.ExecuteScalar());
-                    var existe = count > 0;
-                    System.Diagnostics.Debug.WriteLine($"VerificarColumnaBanco: La columna 'banco' existe = {existe}");
-                    return existe;
-                }
-            }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"Error verificando columna banco: {ex.Message}");
-                return false;
-            }
-        }
-
-        /// <summary>
-        /// Método temporal para agregar la columna banco a la tabla aocr_tbpago
-        /// Este método debe ser ejecutado una sola vez por un administrador
-        /// </summary>
-        public bool AgregarColumnaBancoTemporal()
-        {
-            try
-            {
-                using (var conn = new NpgsqlConnection(_connectionString))
-                {
-                    conn.Open();
-                    
-                    // Verificar si la columna ya existe
-                    if (VerificarColumnaBanco(conn))
-                    {
-                        System.Diagnostics.Debug.WriteLine("La columna banco ya existe");
-                        return true;
-                    }
-                    
-                    // Agregar la columna
-                    var sqlAgregar = "ALTER TABLE aocr_tbpago ADD COLUMN banco VARCHAR(255);";
-                    using (var cmd = new NpgsqlCommand(sqlAgregar, conn))
-                    {
-                        cmd.ExecuteNonQuery();
-                        System.Diagnostics.Debug.WriteLine("Columna banco agregada exitosamente");
-                    }
-                    
-                    // Actualizar registros existentes
-                    var sqlActualizar = "UPDATE aocr_tbpago SET banco = 'NO_ESPECIFICADO' WHERE banco IS NULL;";
-                    using (var cmd = new NpgsqlCommand(sqlActualizar, conn))
-                    {
-                        var filasActualizadas = cmd.ExecuteNonQuery();
-                        System.Diagnostics.Debug.WriteLine($"Actualizadas {filasActualizadas} filas con valor por defecto");
-                    }
-                    
-                    return true;
-                }
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error agregando columna banco");
-                System.Diagnostics.Debug.WriteLine($"Error agregando columna banco: {ex.Message}");
-                return false;
-            }
-        }
-
-        /// <summary>
-        /// Verifica si ya existe un número de orden en la base de datos
-        /// </summary>
-        public bool ExisteNumeroOrden(string numeroOrden)
-        {
-            try
-            {
-                using (var conn = new NpgsqlConnection(_connectionString))
-                {
-                    conn.Open();
-                    var sql = "SELECT COUNT(*) FROM aocr_or_orden WHERE numero_orden = @numeroOrden";
-
-                    using (var cmd = new NpgsqlCommand(sql, conn))
-                    {
-                        cmd.Parameters.AddWithValue("@numeroOrden", numeroOrden ?? "");
-                        var count = Convert.ToInt32(cmd.ExecuteScalar());
-                        
-                        System.Diagnostics.Debug.WriteLine($"ExisteNumeroOrden: numero={numeroOrden}, existe={count > 0}");
-                        return count > 0;
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error en ExisteNumeroOrden");
-                System.Diagnostics.Debug.WriteLine($"Error en ExisteNumeroOrden: {ex.Message}");
-                return false; // En caso de error, asumir que no existe
-            }
         }
 
         public Task<int> CrearAsync(OrdenRecaudacion orden)

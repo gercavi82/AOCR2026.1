@@ -1,7 +1,10 @@
-﻿using System;
+using System;
 
-namespace CapaDatos.Models
+namespace CapaModelo
 {
+    /// <summary>
+    /// Modelo de pago para compatibilidad con controladores que referencian CapaModelo.
+    /// </summary>
     public class PagoModel
     {
         public int CodigoPago { get; set; }

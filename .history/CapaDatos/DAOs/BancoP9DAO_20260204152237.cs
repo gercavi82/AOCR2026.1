@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using System.Data;
 using System.Data.Odbc;
-using System.Linq;
 using CapaModelo;
 using CapaDatos.Infrastructure;
 using CapaDatos.Services;
@@ -120,13 +119,6 @@ namespace CapaDatos.DAOs
             {
                 System.Diagnostics.Debug.WriteLine("=== PROBANDO CONEXIÓN AS400 ===");
                 
-                // Verificar driver ODBC primero
-                var driverCheck = VerificarDriverODBC();
-                if (!driverCheck.StartsWith("✅"))
-                {
-                    return driverCheck;
-                }
-                
                 // Mostrar string de conexión (sin password)
                 var connStringSafe = _connectionString.Replace("Pwd=" + new SecureConfigurationService().GetAS400Credentials().Password, "Pwd=****");
                 System.Diagnostics.Debug.WriteLine($"Connection String: {connStringSafe}");
@@ -175,125 +167,6 @@ namespace CapaDatos.DAOs
                 var error = $"❌ Error General: {ex.Message}";
                 System.Diagnostics.Debug.WriteLine(error);
                 return error;
-            }
-        }
-
-        /// <summary>
-        /// Verifica si los drivers ODBC necesarios están instalados
-        /// </summary>
-        /// <returns>Estado de los drivers</returns>
-        public string VerificarDriverODBC()
-        {
-            try
-            {
-                System.Diagnostics.Debug.WriteLine("=== VERIFICANDO DRIVERS ODBC ===");
-                
-                using (var key = Microsoft.Win32.Registry.LocalMachine.OpenSubKey(@"SOFTWARE\ODBC\ODBCINST.INI\ODBC Drivers"))
-                {
-                    if (key == null)
-                    {
-                        return "❌ No se puede acceder al registro de drivers ODBC";
-                    }
-                    
-                    var driverNames = key.GetValueNames();
-                    var driversEncontrados = new System.Collections.Generic.List<string>();
-                    
-                    foreach (var driverName in driverNames)
-                    {
-                        var driverValue = key.GetValue(driverName)?.ToString();
-                        if (driverValue == "Installed")
-                        {
-                            driversEncontrados.Add(driverName);
-                            System.Diagnostics.Debug.WriteLine($"Driver encontrado: {driverName}");
-                        }
-                    }
-                    
-                    // Buscar drivers IBM específicos
-                    var ibmDrivers = driversEncontrados.FindAll(d => 
-                        d.Contains("IBM") && 
-                        (d.Contains("Access") || d.Contains("i Access") || d.Contains("AS/400") || d.Contains("DB2")));
-                    
-                    if (ibmDrivers.Count > 0)
-                    {
-                        var resultado = $"✅ Drivers IBM encontrados: {string.Join(", ", ibmDrivers)}";
-                        System.Diagnostics.Debug.WriteLine(resultado);
-                        return resultado;
-                    }
-                    else
-                    {
-                        var mensaje = "❌ No se encontró 'IBM i Access ODBC Driver'. ";
-                        mensaje += $"Drivers disponibles: {string.Join(", ", driversEncontrados.Take(10))}";
-                        
-                        if (driversEncontrados.Count > 10)
-                        {
-                            mensaje += $" (y {driversEncontrados.Count - 10} más)";
-                        }
-                        
-                        System.Diagnostics.Debug.WriteLine(mensaje);
-                        return mensaje;
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                var error = $"❌ Error verificando drivers: {ex.Message}";
-                System.Diagnostics.Debug.WriteLine(error);
-                return error;
-            }
-        }
-
-        /// <summary>
-        /// Lista todos los drivers ODBC instalados (para diagnóstico)
-        /// </summary>
-        /// <returns>Lista de drivers</returns>
-        public string ListarDriversODBC()
-        {
-            try
-            {
-                var resultado = new System.Text.StringBuilder();
-                resultado.AppendLine("=== DRIVERS ODBC INSTALADOS ===");
-                
-                using (var key = Microsoft.Win32.Registry.LocalMachine.OpenSubKey(@"SOFTWARE\ODBC\ODBCINST.INI\ODBC Drivers"))
-                {
-                    if (key == null)
-                    {
-                        return "❌ No se puede acceder al registro de drivers ODBC";
-                    }
-                    
-                    var driverNames = key.GetValueNames();
-                    var count = 0;
-                    
-                    foreach (var driverName in driverNames.OrderBy(x => x))
-                    {
-                        var driverValue = key.GetValue(driverName)?.ToString();
-                        if (driverValue == "Installed")
-                        {
-                            count++;
-                            resultado.AppendLine($"{count}. {driverName}");
-                            
-                            // Marcar drivers IBM
-                            if (driverName.Contains("IBM"))
-                            {
-                                resultado.AppendLine($"   ⭐ DRIVER IBM DETECTADO");
-                            }
-                        }
-                    }
-                    
-                    if (count == 0)
-                    {
-                        resultado.AppendLine("❌ No se encontraron drivers ODBC instalados");
-                    }
-                    else
-                    {
-                        resultado.AppendLine($"\nTotal: {count} drivers encontrados");
-                    }
-                }
-                
-                return resultado.ToString();
-            }
-            catch (Exception ex)
-            {
-                return $"❌ Error listando drivers: {ex.Message}";
             }
         }
     }
