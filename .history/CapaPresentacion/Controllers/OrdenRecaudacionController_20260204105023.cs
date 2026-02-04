@@ -674,7 +674,6 @@ namespace CapaPresentacion.Controllers
                     Monto = montoValue,
                     Moneda = "USD",
                     MetodoPago = MetodoPago,
-                    Banco = Banco,
                     // ? Debe coincidir con chk_estado_pago (case-sensitive)
                     Estado = "Pendiente",
                     FechaPago = DateTime.Now,

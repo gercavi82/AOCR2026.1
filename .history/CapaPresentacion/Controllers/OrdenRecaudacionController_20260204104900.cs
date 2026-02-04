@@ -593,7 +593,7 @@ namespace CapaPresentacion.Controllers
         [HttpPost]
         [Authorize(Roles = "Solicitante,Administrador")]
         [ValidateAntiForgeryToken]
-        public ActionResult RegistrarPago(int id, string Monto, string NumeroFactura, string MetodoPago, string Banco, HttpPostedFileBase ComprobanteArchivo, string Observaciones)
+        public ActionResult RegistrarPago(int id, string Monto, string NumeroFactura, string MetodoPago, HttpPostedFileBase ComprobanteArchivo, string Observaciones)
         {
             int idUsuario = GetUserId();
             if (idUsuario <= 0) return RedirectToAction("Login", "Account");
@@ -674,7 +674,6 @@ namespace CapaPresentacion.Controllers
                     Monto = montoValue,
                     Moneda = "USD",
                     MetodoPago = MetodoPago,
-                    Banco = Banco,
                     // ? Debe coincidir con chk_estado_pago (case-sensitive)
                     Estado = "Pendiente",
                     FechaPago = DateTime.Now,

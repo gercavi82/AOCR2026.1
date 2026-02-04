@@ -255,6 +255,7 @@
     <Compile Include="DAOs\ArchivoDAO.cs" />
     <Compile Include="DAOs\AuditoriaDAO.cs" />
     <Compile Include="DAOs\AeronaveDAO.cs" />
+    <Compile Include="DAOs\BancoP9DAO.cs" />
     <Compile Include="DAOs\ChecklistDAO.cs" />
     <Compile Include="DAOs\AeronaveSolicitudDAO.cs" />
     <Compile Include="DAOs\ChecklistItemDAO.cs" />
