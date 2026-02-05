@@ -70,13 +70,13 @@
             <td>@(orden != null ? orden.Total.ToString("N2") : "0.00")</td>
             <td>@(orden != null ? orden.Estado : "")</td>
             <td>
-                @if (!string.IsNullOrWhiteSpace(comp))
+                @if (orden != null)
                 {
-                    <a href="@Url.Content(comp)" target="_blank">Ver</a>
+                    <a href="@Url.Action("DescargarPdf", "OrdenRecaudacion", new { id = orden.Id })" target="_blank">Ver PDF</a>
                 }
                 else
                 {
-                    <span class="text-muted">Sin archivo</span>
+                    <span class="text-muted">Sin orden</span>
                 }
             </td>
             <td>

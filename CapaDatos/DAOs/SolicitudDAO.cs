@@ -27,8 +27,7 @@ SELECT codigo_solicitud, numero_solicitud, fecha_solicitud, tipo_solicitud, esta
        tipo_operacion, descripcion_operacion, observaciones,
        codigo_usuario, codigo_tecnico,
        created_at, updated_at, created_by, updated_by,
-       deleted_at, deleted_by, fecha_inicio_operacion, fecha_fin_operacion,
-       observaciones_generales
+       deleted_at, deleted_by
 FROM aocr_tbsolicitud";
 
             if (!string.IsNullOrWhiteSpace(estado))
@@ -76,9 +75,9 @@ FROM aocr_tbsolicitud";
                             UpdatedBy = dr.IsDBNull(24) ? null : dr.GetString(24),
                             DeletedAt = dr.IsDBNull(25) ? (DateTime?)null : dr.GetDateTime(25),
                             DeletedBy = dr.IsDBNull(26) ? null : dr.GetString(26),
-                            FechaInicioOperacion = dr.IsDBNull(27) ? (DateTime?)null : dr.GetDateTime(27),
-                            FechaFinOperacion = dr.IsDBNull(28) ? (DateTime?)null : dr.GetDateTime(28),
-                            ObservacionesGenerales = dr.IsDBNull(29) ? null : dr.GetString(29)
+                            FechaInicioOperacion = null,
+                            FechaFinOperacion = null,
+                            ObservacionesGenerales = null
                         });
                     }
                 }
@@ -97,8 +96,7 @@ SELECT codigo_solicitud, numero_solicitud, fecha_solicitud, tipo_solicitud, esta
        tipo_operacion, descripcion_operacion, observaciones,
        codigo_usuario, codigo_tecnico,
        created_at, updated_at, created_by, updated_by,
-       deleted_at, deleted_by, fecha_inicio_operacion, fecha_fin_operacion,
-       observaciones_generales
+       deleted_at, deleted_by
 FROM aocr_tbsolicitud
 WHERE codigo_solicitud = @id";
 
@@ -140,9 +138,9 @@ WHERE codigo_solicitud = @id";
                         UpdatedBy = dr.IsDBNull(24) ? null : dr.GetString(24),
                         DeletedAt = dr.IsDBNull(25) ? (DateTime?)null : dr.GetDateTime(25),
                         DeletedBy = dr.IsDBNull(26) ? null : dr.GetString(26),
-                        FechaInicioOperacion = dr.IsDBNull(27) ? (DateTime?)null : dr.GetDateTime(27),
-                        FechaFinOperacion = dr.IsDBNull(28) ? (DateTime?)null : dr.GetDateTime(28),
-                        ObservacionesGenerales = dr.IsDBNull(29) ? null : dr.GetString(29)
+                        FechaInicioOperacion = null,
+                        FechaFinOperacion = null,
+                        ObservacionesGenerales = null
                     };
                 }
             }

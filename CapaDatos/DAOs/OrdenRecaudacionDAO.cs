@@ -966,6 +966,7 @@ namespace CapaDatos.DAOs
                 NumeroComprobante = reader["numero_factura"] != DBNull.Value ? reader["numero_factura"].ToString() : null,
                 MontoPagado = reader["monto"] != DBNull.Value ? Convert.ToDecimal(reader["monto"]) : 0m,
                 MetodoPago = reader["metodo_pago"] != DBNull.Value ? reader["metodo_pago"].ToString() : null,
+                BancoOrigen = GetSafeBanco(reader),
                 Estado = reader["estado"] != DBNull.Value ? reader["estado"].ToString() : null,
                 FechaPago = reader["fecha_pago"] != DBNull.Value ? Convert.ToDateTime(reader["fecha_pago"]) : DateTime.MinValue,
                 Observaciones = reader["observaciones"] != DBNull.Value ? reader["observaciones"].ToString() : null,

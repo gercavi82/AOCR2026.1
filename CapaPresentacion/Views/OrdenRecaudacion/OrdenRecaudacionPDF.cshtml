@@ -1,0 +1,241 @@
+@inherits System.Web.Mvc.WebViewPage<CapaPresentacion.Models.ViewModels.OrdenRecaudacionPDFModel>
+@{
+    Layout = null;
+}
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8" />
+    <title>Orden de Recaudación @Model.NumeroOrden</title>
+    <style>
+        :root {
+            --ink: #1f242b;
+            --muted: #5f6b7a;
+            --line: #d8dee6;
+            --accent: #1b2a41;
+            --soft: #f6f8fb;
+        }
+        body {
+            font-family: "Georgia", "Times New Roman", serif;
+            font-size: 11px;
+            margin: 0;
+            padding: 26px 30px;
+            color: var(--ink);
+            background: #fff;
+        }
+        .header {
+            display: flex;
+            align-items: flex-end;
+            justify-content: space-between;
+            padding-bottom: 10px;
+            margin-bottom: 18px;
+            border-bottom: 1px solid var(--line);
+        }
+        .header-left {
+            max-width: 72%;
+        }
+        .title {
+            font-size: 15px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+            color: var(--accent);
+            margin-bottom: 2px;
+        }
+        .subtitle {
+            font-size: 12px;
+            font-weight: 700;
+            color: var(--muted);
+            letter-spacing: 0.6px;
+            text-transform: uppercase;
+        }
+        .orden-number {
+            text-align: right;
+            font-size: 10px;
+            color: var(--muted);
+        }
+        .orden-number strong {
+            display: block;
+            color: var(--ink);
+            font-size: 12px;
+            margin-top: 2px;
+        }
+        .info-section {
+            margin-bottom: 16px;
+            border: 1px solid var(--line);
+            border-radius: 6px;
+            padding: 10px 12px;
+            background: #fff;
+        }
+        .info-row {
+            margin: 4px 0;
+            display: flex;
+        }
+        .info-label {
+            font-weight: 700;
+            width: 165px;
+            color: var(--muted);
+        }
+        .info-value {
+            flex: 1;
+        }
+        .detalle-section {
+            margin-top: 16px;
+            margin-bottom: 20px;
+            border: 1px solid var(--line);
+            border-radius: 6px;
+            overflow: hidden;
+            background: #fff;
+        }
+        .detalle-title {
+            background: var(--accent);
+            color: #fff;
+            font-weight: 700;
+            padding: 8px 10px;
+            text-align: left;
+            font-size: 11px;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+        }
+        .detalle-header {
+            background: var(--soft);
+            color: var(--muted);
+            display: flex;
+            font-weight: 700;
+            font-size: 10.5px;
+            border-top: 1px solid var(--line);
+            border-bottom: 1px solid var(--line);
+        }
+        .detalle-header .concepto {
+            flex: 2;
+            padding: 7px 10px;
+            text-align: left;
+        }
+        .detalle-header .valor {
+            flex: 1;
+            padding: 7px 10px;
+            text-align: right;
+        }
+        .detalle-row {
+            display: flex;
+            border-bottom: 1px solid var(--line);
+        }
+        .detalle-row .concepto {
+            flex: 2;
+            padding: 7px 10px;
+            border-right: 1px solid var(--line);
+        }
+        .detalle-row .valor {
+            flex: 1;
+            padding: 7px 10px;
+            text-align: right;
+            font-weight: 700;
+        }
+        .total-row {
+            background: #eef1f5;
+            font-weight: 700;
+            font-size: 11.5px;
+        }
+        .footer-note {
+            margin-top: 14px;
+            font-size: 10px;
+            color: var(--muted);
+            border-top: 1px solid var(--line);
+            padding-top: 8px;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="header-left">
+            <div class="title">DIRECCIÓN GENERAL DE AVIACIÓN CIVIL</div>
+            <div class="subtitle">ORDEN DE RECAUDACIÓN</div>
+        </div>
+        <div class="orden-number">
+            Número de Orden
+            <strong>@Model.NumeroOrden</strong>
+        </div>
+    </div>
+
+    <div class="info-section">
+        <div class="info-row">
+            <span class="info-label">Lugar y Fecha de Emisión:</span>
+            <span class="info-value">@Model.LugarEmision, @Model.FechaEmision.ToString("dd/MM/yyyy")</span>
+        </div>
+        <div class="info-row">
+            <span class="info-label">Compañía:</span>
+            <span class="info-value">@Model.NombreCompania</span>
+        </div>
+        <div class="info-row">
+            <span class="info-label">RUC/Cédula:</span>
+            <span class="info-value">@Model.Ruc</span>
+        </div>
+        <div class="info-row">
+            <span class="info-label">Email:</span>
+            <span class="info-value">@Model.Email</span>
+        </div>
+        <div class="info-row">
+            <span class="info-label">Teléfono:</span>
+            <span class="info-value">@Model.Telefono</span>
+        </div>
+        <div class="info-row">
+            <span class="info-label">Banco:</span>
+            <span class="info-value">@Model.Banco</span>
+        </div>
+        <div class="info-row">
+            <span class="info-label">Comprobante:</span>
+            <span class="info-value">@Model.NumeroComprobante</span>
+        </div>
+        <div class="info-row">
+            <span class="info-label">Referencia:</span>
+            <span class="info-value">@Model.Referencia</span>
+        </div>
+    </div>
+
+    <div class="detalle-section">
+        <div class="detalle-title">DETALLE DEL SERVICIO OTORGADO</div>
+        <div class="detalle-header">
+            <div class="concepto">CONCEPTO</div>
+            <div class="valor">VALOR</div>
+        </div>
+
+        <div class="detalle-row">
+            <div class="concepto">@Model.ConceptoPrincipal</div>
+            <div class="valor">USD$ @Model.ValorBase.ToString("N2")</div>
+        </div>
+
+        @if (Model.Estaciones > 0)
+        {
+            <div class="detalle-row">
+                <div class="concepto">Inspecciones (@Model.Estaciones x $@((Model.ValorInspecciones / Math.Max(Model.Estaciones, 1)).ToString("N2")))</div>
+                <div class="valor">USD$ @Model.ValorInspecciones.ToString("N2")</div>
+            </div>
+        }
+
+        @if (Model.Dias > 0)
+        {
+            <div class="detalle-row">
+                <div class="concepto">Viáticos (@Model.Dias x $@((Model.ValorViaticos / Math.Max(Model.Dias, 1)).ToString("N2")))</div>
+                <div class="valor">USD$ @Model.ValorViaticos.ToString("N2")</div>
+            </div>
+        }
+
+        @if (Model.ValorGastosAdmin > 0)
+        {
+            <div class="detalle-row">
+                <div class="concepto">Gastos Administrativos (@(Math.Round((Model.ValorGastosAdmin / Math.Max(Model.ValorViaticos, 1)) * 100, 1))% sobre viáticos)</div>
+                <div class="valor">USD$ @Model.ValorGastosAdmin.ToString("N2")</div>
+            </div>
+        }
+
+        <div class="detalle-row total-row">
+            <div class="concepto">TOTAL: @Model.TotalEnLetras</div>
+            <div class="valor">USD$ @Model.Total.ToString("N2")</div>
+        </div>
+    </div>
+
+    <div class="footer-note">
+        Los valores recaudados tienen el carácter de No Reembolsables.
+    </div>
+</body>
+</html>

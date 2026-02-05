@@ -16,6 +16,7 @@ using System.Threading.Tasks;
 using CapaPresentacion.Models;
 using CapaModelo;
 using CapaNegocio.Services;
+using Rotativa;
 // Alias para evitar ambig�edad
 using EmailSvc = CapaDatos.Services.EmailService;
 using SecureConfig = CapaDatos.Services.SecureConfigurationService;
@@ -833,29 +834,35 @@ namespace CapaPresentacion.Controllers
         }
 
         /// <summary>
-        /// Descargar PDF de orden - refactorizado
+        /// Descargar PDF de orden
         /// </summary>
         [HttpGet]
-        public async Task<ActionResult> DescargarPdf(int id)
+        public ActionResult DescargarPdf(int id)
         {
+            int idUsuario = GetUserId();
+            if (idUsuario <= 0) return RedirectToAction("Login", "Account");
+
+            var ordenModel = _dao.ObtenerOrdenPorIdModel(id);
+            if (ordenModel == null)
+                return HttpNotFound();
+
+            var esFinanciero = User != null && (User.IsInRole("Financiero") || User.IsInRole("Administrador"));
+            if (!esFinanciero && ordenModel.CodigoUsuario != idUsuario)
+                return HttpNotFound();
+
             try
             {
-                var request = new GenerarPdfRequest
+                var pdfModel = BuildOrdenRecaudacionPdfModel(ordenModel);
+                var nombreArchivo = "Orden_" + (ordenModel.NumeroOrden ?? id.ToString()) + ".pdf";
+
+                return new PartialViewAsPdf("OrdenRecaudacionPDF", pdfModel)
                 {
-                    OrdenId = id,
-                    TipoDocumento = "ORDEN",
-                    IncluirDetalles = true
+                    FileName = nombreArchivo,
+                    PageSize = Rotativa.Options.Size.A4,
+                    PageOrientation = Rotativa.Options.Orientation.Portrait,
+                    PageMargins = new Rotativa.Options.Margins(20, 15, 20, 15),
+                    CustomSwitches = "--disable-smart-shrinking --print-media-type"
                 };
-
-                var resultado = await _orchestrator.GenerarPdfAsync(request);
-
-                if (resultado.Success)
-                {
-                    return File(resultado.Data.ContenidoPdf, resultado.Data.ContentType, resultado.Data.NombreArchivo);
-                }
-
-                TempData["ErrorMessage"] = resultado.Message;
-                return RedirectToAction("Detalles", new { id });
             }
             catch (Exception ex)
             {
@@ -863,6 +870,94 @@ namespace CapaPresentacion.Controllers
                 TempData["ErrorMessage"] = "Error al generar el PDF.";
                 return RedirectToAction("Detalles", new { id });
             }
+        }
+
+        private CapaPresentacion.Models.ViewModels.OrdenRecaudacionPDFModel BuildOrdenRecaudacionPdfModel(OrdenRecaudacionModel ordenModel)
+        {
+            var detalles = ordenModel.Detalles ?? new List<CapaDatos.Models.OrdenDetalleModel>();
+            if (detalles.Count == 0)
+            {
+                var detallesEnt = _dao.ObtenerDetallesPorOrdenId(ordenModel.Id);
+                foreach (var d in detallesEnt)
+                {
+                    detalles.Add(new CapaDatos.Models.OrdenDetalleModel
+                    {
+                        Id = d.Id,
+                        OrdenId = d.OrdenId,
+                        ConceptoId = d.ConceptoId ?? 0,
+                        ConceptoCodigo = d.ConceptoCodigo,
+                        ConceptoNombre = d.ConceptoNombre,
+                        Descripcion = d.Descripcion,
+                        Cantidad = d.Cantidad,
+                        ValorUnitario = d.ValorUnitario,
+                        PorcentajeAdmin = d.PorcentajeAdmin,
+                        Subtotal = d.Subtotal,
+                        Admin = d.Admin,
+                        TotalLinea = d.TotalLinea
+                    });
+                }
+            }
+
+            var estaciones = 0m;
+            var dias = 0m;
+            foreach (var d in detalles)
+            {
+                var codigo = (d.ConceptoCodigo ?? "").ToUpperInvariant();
+                var nombre = (d.ConceptoNombre ?? "").ToUpperInvariant();
+                if (codigo.Contains("INSP") || nombre.Contains("INSPECC"))
+                {
+                    estaciones += d.Cantidad;
+                }
+                if (codigo.Contains("VIAT") || nombre.Contains("VIATIC") || nombre.Contains("VIÁTIC"))
+                {
+                    dias += d.Cantidad;
+                }
+            }
+
+            var conceptoPrincipal = detalles.Count > 0 ? detalles[0].ConceptoNombre : null;
+            var valorBase = ordenModel.Subtotal != 0 ? ordenModel.Subtotal : (ordenModel.Total != 0 ? ordenModel.Total : detalles.Sum(d => d.Subtotal));
+
+            CapaModelo.SolicitudAOCR solicitud = null;
+            int codigoSolicitudInt = 0;
+            if (!string.IsNullOrEmpty(ordenModel.CodigoSolicitud) && int.TryParse(ordenModel.CodigoSolicitud, out codigoSolicitudInt) && codigoSolicitudInt > 0)
+            {
+                var solicitudDAO = new CapaDatos.DAOs.SolicitudDAO();
+                solicitud = solicitudDAO.ObtenerPorId(codigoSolicitudInt);
+            }
+            else if (!string.IsNullOrWhiteSpace(ordenModel.RucCedula))
+            {
+                codigoSolicitudInt = _dao.ObtenerCodigoSolicitudPorRuc(ordenModel.RucCedula);
+                if (codigoSolicitudInt > 0)
+                {
+                    var solicitudDAO = new CapaDatos.DAOs.SolicitudDAO();
+                    solicitud = solicitudDAO.ObtenerPorId(codigoSolicitudInt);
+                }
+            }
+
+            var ultimoPago = _dao.ObtenerUltimoPagoPorOrden(ordenModel.Id);
+            var bancoPago = ultimoPago?.BancoOrigen ?? ultimoPago?.MetodoPago;
+            var numeroComp = ultimoPago?.NumeroComprobante ?? ultimoPago?.NumeroFactura;
+
+            var pdfModel = new CapaPresentacion.Models.ViewModels.OrdenRecaudacionPDFModel
+            {
+                NumeroOrden = ordenModel.NumeroOrden,
+                FechaEmision = ordenModel.FechaCreacion != default(DateTime) ? ordenModel.FechaCreacion : DateTime.Now,
+                LugarEmision = solicitud?.Ciudad ?? ordenModel.LugarEmision ?? "Quito",
+                NombreCompania = solicitud?.RazonSocial ?? ordenModel.NombreContribuyente ?? ordenModel.Compania ?? "Empresa no especificada",
+                Ruc = solicitud?.Ruc ?? ordenModel.RucCedula ?? "RUC no especificado",
+                Email = solicitud?.Email ?? ordenModel.Correo ?? "correo@empresa.com",
+                Telefono = solicitud?.Telefono ?? ordenModel.Telefono ?? "Teléfono no especificado",
+                Banco = string.IsNullOrWhiteSpace(bancoPago) ? "No especificado" : bancoPago,
+                NumeroComprobante = string.IsNullOrWhiteSpace(numeroComp) ? "No registrado" : numeroComp,
+                ConceptoPrincipal = conceptoPrincipal ?? solicitud?.DescripcionOperacion ?? "Inspección y Certificación AOCR",
+                ValorBase = valorBase,
+                Estaciones = (int)Math.Round(estaciones),
+                Dias = (int)Math.Round(dias),
+                Referencia = $"Orden de Recaudación {ordenModel.NumeroOrden} - Solicitud {solicitud?.NumeroSolicitud ?? "N/A"}"
+            };
+
+            pdfModel.CalcularTotales();
+            return pdfModel;
         }
 
         /// <summary>

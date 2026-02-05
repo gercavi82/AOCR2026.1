@@ -13,6 +13,8 @@ namespace CapaPresentacion.Models.ViewModels
         public string Ruc { get; set; }
         public string Email { get; set; }
         public string Telefono { get; set; }
+        public string Banco { get; set; }
+        public string NumeroComprobante { get; set; }
 
         public string ConceptoPrincipal { get; set; }
         public decimal ValorBase { get; set; }

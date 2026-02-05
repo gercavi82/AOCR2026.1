@@ -1,0 +1,190 @@
+/* ==================================================
+   ESTILOS EJECUTIVOS PARA PAGOS REGISTRADOS
+   ================================================== */
+
+.pagos-card {
+    border-radius: 18px;
+    border: 1px solid #e5e7eb;
+    background: #ffffff;
+    box-shadow: 0 18px 30px rgba(15, 23, 42, 0.08);
+}
+
+.pagos-card .card-header {
+    padding: 1.25rem 1.5rem 0.85rem;
+    border-bottom: none;
+    background: transparent;
+}
+
+.pagos-card .card-body {
+    padding: 0 1.5rem 1.25rem;
+}
+
+.pagos-summary {
+    display: flex;
+    gap: 0.85rem;
+    flex-wrap: wrap;
+    margin-top: 0.25rem;
+}
+
+.summary-metric {
+    min-width: 150px;
+    background: #f8fafc;
+    border: 1px solid #e5e7eb;
+    border-radius: 14px;
+    padding: 0.65rem 0.95rem;
+}
+
+.summary-metric small {
+    display: block;
+    font-size: 0.7rem;
+    letter-spacing: 0.3px;
+}
+
+.table-pagos {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+}
+
+.table-pagos thead th {
+    background: #f3f6fb;
+    border-bottom: 1px solid #d1d5db;
+    padding: 0.85rem 0.75rem;
+    text-transform: uppercase;
+    font-size: 0.7rem;
+    letter-spacing: 0.3px;
+    color: #6b7280;
+}
+
+.table-pagos tbody tr {
+    border-bottom: 1px solid #eef2f6;
+    transition: background 0.3s ease;
+}
+
+.table-pagos tbody tr:hover {
+    background: #f9fafb;
+}
+
+.table-pagos tbody td {
+    padding: 0.85rem 0.75rem;
+    vertical-align: middle;
+}
+
+.metodo-pago-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.2rem 0.9rem;
+    border-radius: 999px;
+    background: #eef2ff;
+    color: #3730a3;
+    font-size: 0.75rem;
+    font-weight: 600;
+    letter-spacing: 0.3px;
+    border: 1px solid #dbeafe;
+}
+
+.banco-chip {
+    font-weight: 600;
+    font-size: 0.9rem;
+    line-height: 1.2;
+}
+
+.banco-deposito {
+    color: #1d4ed8;
+}
+
+.banco-efectivo {
+    color: #15803d;
+}
+
+.banco-cheque {
+    color: #b45309;
+}
+
+.banco-indefinido {
+    color: #475569;
+    font-style: italic;
+}
+
+.estado-chip {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.25rem 0.95rem;
+    border-radius: 999px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.2px;
+    text-transform: uppercase;
+}
+
+.estado-validado {
+    background: linear-gradient(135deg, #22c55e, #0f766e);
+    color: #ffffff;
+}
+
+.estado-pendiente {
+    background: linear-gradient(135deg, #f97316, #ea580c);
+    color: #ffffff;
+}
+
+.estado-rechazado {
+    background: linear-gradient(135deg, #ef4444, #b91c1c);
+    color: #ffffff;
+}
+
+.monto-pago {
+    font-weight: 700;
+    font-size: 1.05rem;
+    color: #0f766e;
+}
+
+.acciones-pago .btn {
+    border-radius: 0.75rem;
+    min-width: 38px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.35rem 0.55rem;
+}
+
+.acciones-pago .btn + .btn {
+    margin-left: 0.35rem;
+}
+
+@media (max-width: 992px) {
+    .pagos-card .card-body {
+        padding: 0 1rem 1rem;
+    }
+
+    .pagos-summary {
+        gap: 0.6rem;
+    }
+
+    .summary-metric {
+        min-width: 140px;
+        padding: 0.55rem 0.8rem;
+    }
+}
+
+@media (max-width: 768px) {
+    .table-pagos thead th {
+        font-size: 0.65rem;
+    }
+
+    .table-pagos tbody td {
+        padding: 0.6rem 0.5rem;
+    }
+
+    .metodo-pago-badge,
+    .estado-chip {
+        font-size: 0.65rem;
+        padding: 0.2rem 0.75rem;
+    }
+
+    .acciones-pago .btn {
+        min-width: 34px;
+        padding: 0.3rem 0.45rem;
+    }
+}
