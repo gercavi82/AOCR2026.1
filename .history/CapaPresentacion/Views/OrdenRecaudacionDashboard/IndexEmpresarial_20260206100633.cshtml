@@ -1,0 +1,777 @@
+@{
+    ViewBag.Title = "Dashboard Órdenes de Recaudación";
+    Layout = "~/Views/Shared/_LayoutAOCR.cshtml";
+}
+
+<!-- Estilos específicos del Dashboard -->
+<link href="~/Content/plugins/datatables/DataTables.bootstrap4.min.css" rel="stylesheet" />
+<link href="~/Content/plugins/chart.js/Chart.min.css" rel="stylesheet" />
+<style>
+.kpi-card {
+    transition: transform 0.2s, box-shadow 0.2s;
+    cursor: pointer;
+}
+.kpi-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
+.estado-badge {
+    font-size: 0.875rem;
+    font-weight: 500;
+}
+.chart-container {
+    position: relative;
+    height: 300px;
+    margin-bottom: 20px;
+}
+.loading-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(255,255,255,0.8);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+}
+.action-button {
+    border: none;
+    background: none;
+    padding: 4px 8px;
+    border-radius: 4px;
+    transition: background-color 0.2s;
+    margin: 0 2px;
+}
+.action-button:hover {
+    background-color: rgba(0,0,0,0.1);
+}
+.filter-section {
+    background: #f8f9fa;
+    border-radius: 8px;
+    padding: 20px;
+    margin-bottom: 20px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+</style>
+
+<div class="container-fluid">
+    <!-- Header del Dashboard -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h1 class="h3 mb-0 text-primary">
+                        <i class="fas fa-chart-line me-2"></i>
+                        Dashboard Órdenes de Recaudación
+                    </h1>
+                    <p class="text-muted mb-0">Gestión empresarial de órdenes - Tiempo real</p>
+                </div>
+                <div>
+                    @if (ViewBag.EsAdmin == true)
+                    {
+                        <button type="button" class="btn btn-outline-secondary me-2" id="btnLimpiarCache">
+                            <i class="fas fa-sync-alt"></i> Limpiar Cache
+                        </button>
+                    }
+                    <button type="button" class="btn btn-primary" id="btnRefresh">
+                        <i class="fas fa-refresh"></i> Actualizar
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filtros Avanzados -->
+    <div class="filter-section">
+        <div class="row">
+            <div class="col-md-3">
+                <label class="form-label fw-bold">Estado:</label>
+                <select class="form-select" id="filtroEstado">
+                    <option value="">Todos los Estados</option>
+                    @foreach (var estado in ViewBag.Estados as List<string>)
+                    {
+                        <option value="@estado">@estado</option>
+                    }
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label class="form-label fw-bold">Desde:</label>
+                <input type="date" class="form-control" id="filtroFechaDesde" />
+            </div>
+            <div class="col-md-3">
+                <label class="form-label fw-bold">Hasta:</label>
+                <input type="date" class="form-control" id="filtroFechaHasta" />
+            </div>
+            <div class="col-md-3">
+                <label class="form-label fw-bold">Número Orden:</label>
+                <input type="text" class="form-control" id="filtroNumeroOrden" placeholder="Buscar por número..." />
+            </div>
+        </div>
+        <div class="row mt-3">
+            <div class="col-12">
+                <button type="button" class="btn btn-primary me-2" id="btnFiltrar">
+                    <i class="fas fa-filter"></i> Filtrar
+                </button>
+                <button type="button" class="btn btn-outline-secondary" id="btnLimpiarFiltros">
+                    <i class="fas fa-eraser"></i> Limpiar Filtros
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- KPIs Empresariales -->
+    <div class="row mb-4" id="kpiContainer">
+        <div class="col-xl-2 col-md-4 mb-3">
+            <div class="card kpi-card border-primary h-100">
+                <div class="card-body text-center">
+                    <i class="fas fa-clipboard-list fa-2x text-primary mb-2"></i>
+                    <h5 class="card-title text-primary">Total Órdenes</h5>
+                    <h2 class="mb-0" id="kpiTotalOrdenes">-</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-xl-2 col-md-4 mb-3">
+            <div class="card kpi-card border-warning h-100">
+                <div class="card-body text-center">
+                    <i class="fas fa-clock fa-2x text-warning mb-2"></i>
+                    <h5 class="card-title text-warning">Pendientes</h5>
+                    <h2 class="mb-0" id="kpiPendientes">-</h2>
+                    <small class="text-muted" id="kpiMontoPendiente">-</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-xl-2 col-md-4 mb-3">
+            <div class="card kpi-card border-success h-100">
+                <div class="card-body text-center">
+                    <i class="fas fa-check-circle fa-2x text-success mb-2"></i>
+                    <h5 class="card-title text-success">Completadas</h5>
+                    <h2 class="mb-0" id="kpiCompletadas">-</h2>
+                    <small class="text-muted" id="kpiMontoCompletado">-</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-xl-2 col-md-4 mb-3">
+            <div class="card kpi-card border-info h-100">
+                <div class="card-body text-center">
+                    <i class="fas fa-dollar-sign fa-2x text-info mb-2"></i>
+                    <h5 class="card-title text-info">Monto Total</h5>
+                    <h2 class="mb-0" id="kpiMontoTotal">-</h2>
+                    <small class="text-muted" id="kpiPromedioMonto">-</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-xl-2 col-md-4 mb-3">
+            <div class="card kpi-card border-danger h-100">
+                <div class="card-body text-center">
+                    <i class="fas fa-times-circle fa-2x text-danger mb-2"></i>
+                    <h5 class="card-title text-danger">Anuladas</h5>
+                    <h2 class="mb-0" id="kpiAnuladas">-</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-xl-2 col-md-4 mb-3">
+            <div class="card kpi-card border-secondary h-100">
+                <div class="card-body text-center">
+                    <i class="fas fa-percentage fa-2x text-secondary mb-2"></i>
+                    <h5 class="card-title text-secondary">Tasa Éxito</h5>
+                    <h2 class="mb-0" id="kpiTasaExito">-</h2>
+                    <small class="text-muted">Del mes: <span id="kpiDelMes">-</span></small>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Gráfico y Tabla -->
+    <div class="row">
+        <!-- Gráfico de Métricas -->
+        <div class="col-lg-4 mb-4">
+            <div class="card h-100">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0"><i class="fas fa-chart-bar me-2"></i>Tendencia Mensual</h5>
+                </div>
+                <div class="card-body">
+                    <div class="chart-container">
+                        <canvas id="chartMetricas"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tabla de Órdenes -->
+        <div class="col-lg-8 mb-4">
+            <div class="card h-100">
+                <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0"><i class="fas fa-table me-2"></i>Órdenes Recientes</h5>
+                    <div id="loadingTable" class="text-light" style="display: none;">
+                        <i class="fas fa-spinner fa-spin me-1"></i> Cargando...
+                    </div>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0" id="tablaOrdenes">
+                            <thead class="bg-light">
+                                <tr>
+                                    <th>Número</th>
+                                    <th>Fecha</th>
+                                    <th>Estado</th>
+                                    <th>Contribuyente</th>
+                                    <th>Total</th>
+                                    <th>Usuario</th>
+                                    <th style="width: 120px;">Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td colspan="7" class="text-center text-muted p-4">
+                                        <i class="fas fa-search fa-2x mb-2"></i><br>
+                                        Use los filtros para cargar órdenes
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Acciones Rápidas -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header bg-secondary text-white">
+                    <h5 class="mb-0"><i class="fas fa-bolt me-2"></i>Acciones Rápidas</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-3 mb-2">
+                            <button type="button" class="btn btn-success w-100" onclick="navegarA('Nueva')">
+                                <i class="fas fa-plus"></i> Nueva Orden
+                            </button>
+                        </div>
+                        <div class="col-md-3 mb-2">
+                            <button type="button" class="btn btn-info w-100" onclick="navegarA('Obligatoria')">
+                                <i class="fas fa-list"></i> Mis Órdenes
+                            </button>
+                        </div>
+                        <div class="col-md-3 mb-2">
+                            <button type="button" class="btn btn-warning w-100" onclick="filtrarPorEstado('BORRADOR')">
+                                <i class="fas fa-edit"></i> Borradores
+                            </button>
+                        </div>
+                        <div class="col-md-3 mb-2">
+                            <button type="button" class="btn btn-primary w-100" onclick="filtrarPorEstado('PENDIENTE')">
+                                <i class="fas fa-clock"></i> Pendientes
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal para cambio de estado -->
+<div class="modal fade" id="modalCambiarEstado" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Cambiar Estado de Orden</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="formCambiarEstado">
+                    <input type="hidden" id="modalOrdenId" />
+                    <div class="mb-3">
+                        <label class="form-label">Estado Actual:</label>
+                        <span class="badge" id="modalEstadoActual">-</span>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Nuevo Estado:</label>
+                        <select class="form-select" id="modalNuevoEstado" required>
+                            <option value="">Seleccione...</option>
+                        </select>
+                    </div>
+                    <div class="mb-3" id="divObservacion" style="display:none;">
+                        <label class="form-label">Observación:</label>
+                        <textarea class="form-control" id="modalObservacion" rows="3" 
+                                  placeholder="Ingrese observación (requerida para rechazos)"></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary" id="btnConfirmarCambio">Confirmar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <!-- Scripts de terceros -->
+    <script src="~/Scripts/plugins/datatables/DataTables.min.js"></script>
+    <script src="~/Scripts/plugins/chart.js/Chart.bundle.min.js"></script>
+    
+    <script>
+        // Variables globales
+        var dashboardApp = {
+            initialized: false,
+            chart: null,
+            filtros: {},
+            data: {},
+            
+            // Configuración
+            config: {
+                baseUrl: '@Url.Action("", "OrdenRecaudacionDashboardEmpresarial")',
+                updateInterval: 60000, // 1 minuto
+                maxRetries: 3
+            },
+
+            // Inicialización
+            init: function() {
+                console.log('Inicializando Dashboard Empresarial...');
+                this.bindEvents();
+                this.cargarKPIs();
+                this.configurarGrafico();
+                this.configurarRefrescoAutomatico();
+                this.initialized = true;
+            },
+
+            // Event Bindings
+            bindEvents: function() {
+                $('#btnFiltrar').on('click', () => this.aplicarFiltros());
+                $('#btnLimpiarFiltros').on('click', () => this.limpiarFiltros());
+                $('#btnRefresh').on('click', () => this.refrescarTodo());
+                $('#btnLimpiarCache').on('click', () => this.limpiarCache());
+                $('#btnConfirmarCambio').on('click', () => this.confirmarCambioEstado());
+                
+                // Cambio automático en filtros
+                $('#filtroEstado, #filtroFechaDesde, #filtroFechaHasta').on('change', () => {
+                    setTimeout(() => this.aplicarFiltros(), 500);
+                });
+                
+                // Busqueda en tiempo real
+                let searchTimeout;
+                $('#filtroNumeroOrden').on('input', function() {
+                    clearTimeout(searchTimeout);
+                    searchTimeout = setTimeout(() => dashboardApp.aplicarFiltros(), 800);
+                });
+
+                // Modal de cambio de estado
+                $('#modalNuevoEstado').on('change', function() {
+                    const nuevoEstado = $(this).val();
+                    if (nuevoEstado === 'RECHAZADA') {
+                        $('#divObservacion').show();
+                        $('#modalObservacion').attr('required', true);
+                    } else {
+                        $('#divObservacion').hide();
+                        $('#modalObservacion').attr('required', false);
+                    }
+                });
+            },
+
+            // Cargar KPIs
+            cargarKPIs: function() {
+                const params = this.construirParametrosFiltro();
+                
+                $.ajax({
+                    url: this.config.baseUrl + '/ObtenerKPIs',
+                    type: 'GET',
+                    data: params,
+                    cache: false,
+                    success: (response) => {
+                        if (response.success) {
+                            this.actualizarKPIs(response.data);
+                        } else {
+                            this.mostrarError('Error al cargar KPIs: ' + response.message);
+                        }
+                    },
+                    error: (xhr) => {
+                        this.mostrarError('Error de conexión al cargar KPIs');
+                        console.error('Error KPIs:', xhr);
+                    }
+                });
+            },
+
+            // Actualizar KPIs en UI
+            actualizarKPIs: function(kpis) {
+                $('#kpiTotalOrdenes').text(kpis.totalOrdenes || 0);
+                $('#kpiPendientes').text(kpis.ordenesPendientes || 0);
+                $('#kpiCompletadas').text(kpis.ordenesCompletadas || 0);
+                $('#kpiAnuladas').text(kpis.ordenesAnuladas || 0);
+                $('#kpiMontoTotal').text(kpis.montoTotal || '$0.00');
+                $('#kpiMontoPendiente').text(kpis.montoPendiente || '$0.00');
+                $('#kpiMontoCompletado').text(kpis.montoCompletado || '$0.00');
+                $('#kpiPromedioMonto').text('Promedio: ' + (kpis.promedioMonto || '$0.00'));
+                $('#kpiTasaExito').text(kpis.tasaCompletamiento || '0%');
+                $('#kpiDelMes').text(kpis.ordenesDelMes + ' órdenes');
+
+                // Animate counters
+                this.animateCounters();
+            },
+
+            // Cargar órdenes
+            cargarOrdenes: function() {
+                $('#loadingTable').show();
+                const params = this.construirParametrosFiltro();
+                
+                $.ajax({
+                    url: this.config.baseUrl + '/ObtenerOrdenes',
+                    type: 'GET',
+                    data: params,
+                    cache: false,
+                    success: (response) => {
+                        if (response.success) {
+                            this.actualizarTablaOrdenes(response.data);
+                        } else {
+                            this.mostrarError('Error al cargar órdenes: ' + response.message);
+                        }
+                    },
+                    error: (xhr) => {
+                        this.mostrarError('Error de conexión al cargar órdenes');
+                    },
+                    complete: () => {
+                        $('#loadingTable').hide();
+                    }
+                });
+            },
+
+            // Actualizar tabla
+            actualizarTablaOrdenes: function(ordenes) {
+                const tbody = $('#tablaOrdenes tbody');
+                tbody.empty();
+
+                if (!ordenes || ordenes.length === 0) {
+                    tbody.append(`
+                        <tr>
+                            <td colspan="7" class="text-center text-muted p-4">
+                                <i class="fas fa-inbox fa-2x mb-2"></i><br>
+                                No se encontraron órdenes con los filtros aplicados
+                            </td>
+                        </tr>
+                    `);
+                    return;
+                }
+
+                ordenes.forEach(orden => {
+                    const acciones = this.construirAcciones(orden);
+                    
+                    tbody.append(`
+                        <tr data-orden-id="${orden.id}">
+                            <td><strong>${orden.numeroOrden}</strong></td>
+                            <td><small>${orden.fechaCreacion}</small></td>
+                            <td><span class="badge bg-${orden.estadoColor} estado-badge">${orden.estado}</span></td>
+                            <td title="${orden.nombreContribuyente}">
+                                ${this.truncateText(orden.nombreContribuyente, 30)}
+                            </td>
+                            <td><strong>${orden.total}</strong></td>
+                            <td><small>${orden.usuario}</small></td>
+                            <td>${acciones}</td>
+                        </tr>
+                    `);
+                });
+            },
+
+            // Construir acciones de cada fila
+            construirAcciones: function(orden) {
+                let acciones = `
+                    <button class="action-button text-info" title="Ver Detalle" 
+                            onclick="navegarA('Detalle', ${orden.id})">
+                        <i class="fas fa-eye"></i>
+                    </button>
+                    <button class="action-button text-primary" title="Descargar PDF" 
+                            onclick="descargarPDF(${orden.id})">
+                        <i class="fas fa-download"></i>
+                    </button>
+                `;
+
+                if (orden.puedeCambiarEstado && orden.accionesPermitidas.length > 0) {
+                    acciones += `
+                        <button class="action-button text-warning" title="Cambiar Estado" 
+                                onclick="dashboardApp.mostrarCambioEstado(${orden.id}, '${orden.estado}', ${JSON.stringify(orden.accionesPermitidas).replace(/"/g, '&quot;')})">
+                            <i class="fas fa-edit"></i>
+                        </button>
+                    `;
+                }
+
+                return `<div class="btn-group-sm">${acciones}</div>`;
+            },
+
+            // Mostrar modal de cambio de estado
+            mostrarCambioEstado: function(ordenId, estadoActual, accionesPermitidas) {
+                $('#modalOrdenId').val(ordenId);
+                $('#modalEstadoActual').text(estadoActual)
+                    .removeClass().addClass('badge bg-' + this.getColorEstado(estadoActual));
+
+                const selectEstado = $('#modalNuevoEstado');
+                selectEstado.empty().append('<option value="">Seleccione...</option>');
+                
+                accionesPermitidas.forEach(estado => {
+                    selectEstado.append(`<option value="${estado}">${estado}</option>`);
+                });
+
+                $('#modalCambiarEstado').modal('show');
+            },
+
+            // Confirmar cambio de estado
+            confirmarCambioEstado: function() {
+                const ordenId = $('#modalOrdenId').val();
+                const nuevoEstado = $('#modalNuevoEstado').val();
+                const observacion = $('#modalObservacion').val();
+
+                if (!nuevoEstado) {
+                    this.mostrarError('Debe seleccionar un estado');
+                    return;
+                }
+
+                if (nuevoEstado === 'RECHAZADA' && !observacion.trim()) {
+                    this.mostrarError('Debe proporcionar una observación para rechazar');
+                    return;
+                }
+
+                $.ajax({
+                    url: this.config.baseUrl + '/CambiarEstado',
+                    type: 'POST',
+                    data: {
+                        id: ordenId,
+                        nuevoEstado: nuevoEstado,
+                        observacion: observacion,
+                        __RequestVerificationToken: $('input[name="__RequestVerificationToken"]').val()
+                    },
+                    success: (response) => {
+                        if (response.success) {
+                            this.mostrarExito(response.message);
+                            $('#modalCambiarEstado').modal('hide');
+                            this.refrescarTodo();
+                        } else {
+                            this.mostrarError(response.message);
+                        }
+                    },
+                    error: () => {
+                        this.mostrarError('Error de conexión al cambiar estado');
+                    }
+                });
+            },
+
+            // Configurar gráfico
+            configurarGrafico: function() {
+                const ctx = document.getElementById('chartMetricas').getContext('2d');
+                
+                this.chart = new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: [],
+                        datasets: [{
+                            label: 'Órdenes Creadas',
+                            data: [],
+                            borderColor: '#007bff',
+                            backgroundColor: 'rgba(0,123,255,0.1)',
+                            tension: 0.4
+                        }, {
+                            label: 'Órdenes Completadas',
+                            data: [],
+                            borderColor: '#28a745',
+                            backgroundColor: 'rgba(40,167,69,0.1)',
+                            tension: 0.4
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                ticks: {
+                                    precision: 0
+                                }
+                            }
+                        },
+                        plugins: {
+                            legend: {
+                                display: true,
+                                position: 'bottom'
+                            }
+                        }
+                    }
+                });
+
+                this.cargarMetricasGrafico();
+            },
+
+            // Cargar datos del gráfico
+            cargarMetricasGrafico: function() {
+                $.ajax({
+                    url: this.config.baseUrl + '/ObtenerMetricasMensuales',
+                    type: 'GET',
+                    cache: true,
+                    success: (response) => {
+                        if (response.success && this.chart) {
+                            const metricas = response.data.reverse(); // Mostrar del más antiguo al más reciente
+                            
+                            this.chart.data.labels = metricas.map(m => m.mes);
+                            this.chart.data.datasets[0].data = metricas.map(m => m.ordenes);
+                            this.chart.data.datasets[1].data = metricas.map(m => m.completadas);
+                            
+                            this.chart.update();
+                        }
+                    },
+                    error: (xhr) => {
+                        console.error('Error al cargar métricas del gráfico:', xhr);
+                    }
+                });
+            },
+
+            // Utilidades
+            construirParametrosFiltro: function() {
+                return {
+                    estado: $('#filtroEstado').val(),
+                    fechaDesde: $('#filtroFechaDesde').val(),
+                    fechaHasta: $('#filtroFechaHasta').val(),
+                    numeroOrden: $('#filtroNumeroOrden').val()
+                };
+            },
+
+            aplicarFiltros: function() {
+                this.cargarKPIs();
+                this.cargarOrdenes();
+            },
+
+            limpiarFiltros: function() {
+                $('#filtroEstado, #filtroFechaDesde, #filtroFechaHasta, #filtroNumeroOrden').val('');
+                this.aplicarFiltros();
+            },
+
+            refrescarTodo: function() {
+                this.cargarKPIs();
+                this.cargarOrdenes();
+                this.cargarMetricasGrafico();
+                this.mostrarInfo('Dashboard actualizado');
+            },
+
+            limpiarCache: function() {
+                $.ajax({
+                    url: this.config.baseUrl + '/LimpiarCache',
+                    type: 'POST',
+                    data: {
+                        __RequestVerificationToken: $('input[name="__RequestVerificationToken"]').val()
+                    },
+                    success: (response) => {
+                        if (response.success) {
+                            this.mostrarExito('Cache limpiado exitosamente');
+                            this.refrescarTodo();
+                        } else {
+                            this.mostrarError(response.message);
+                        }
+                    }
+                });
+            },
+
+            configurarRefrescoAutomatico: function() {
+                setInterval(() => {
+                    if (this.initialized) {
+                        this.cargarKPIs();
+                    }
+                }, this.config.updateInterval);
+            },
+
+            animateCounters: function() {
+                $('.kpi-card h2').each(function() {
+                    $(this).addClass('animate__animated animate__pulse');
+                    setTimeout(() => {
+                        $(this).removeClass('animate__animated animate__pulse');
+                    }, 1000);
+                });
+            },
+
+            truncateText: function(text, length) {
+                if (!text) return '';
+                return text.length > length ? text.substring(0, length) + '...' : text;
+            },
+
+            getColorEstado: function(estado) {
+                const colores = {
+                    'BORRADOR': 'secondary',
+                    'GENERADA': 'info', 
+                    'ENVIADA': 'warning',
+                    'APROBADA': 'success',
+                    'PAGADA': 'primary',
+                    'FACTURADA': 'success',
+                    'ANULADA': 'danger',
+                    'RECHAZADA': 'danger'
+                };
+                return colores[estado] || 'light';
+            },
+
+            // Mensajes
+            mostrarExito: function(mensaje) {
+                this.mostrarToast(mensaje, 'success');
+            },
+
+            mostrarError: function(mensaje) {
+                this.mostrarToast(mensaje, 'danger');
+            },
+
+            mostrarInfo: function(mensaje) {
+                this.mostrarToast(mensaje, 'info');
+            },
+
+            mostrarToast: function(mensaje, tipo) {
+                // Implementar toast notifications
+                console.log(`[${tipo.toUpperCase()}] ${mensaje}`);
+                
+                // Por ahora, usar alert simple
+                if (tipo === 'danger') {
+                    alert('Error: ' + mensaje);
+                } else if (tipo === 'success') {
+                    // Mostrar mensaje de éxito discreto
+                    const toast = $(`
+                        <div class="alert alert-${tipo} alert-dismissible fade show position-fixed" 
+                             style="top: 20px; right: 20px; z-index: 9999; width: 300px;">
+                            ${mensaje}
+                            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                        </div>
+                    `);
+                    
+                    $('body').append(toast);
+                    setTimeout(() => toast.alert('close'), 3000);
+                }
+            }
+        };
+
+        // Funciones globales de apoyo
+        function navegarA(accion, id = null) {
+            const baseUrl = '@Url.Action("", "OrdenRecaudacion")';
+            window.location.href = baseUrl + '/' + accion + (id ? '/' + id : '');
+        }
+
+        function descargarPDF(id) {
+            const url = '@Url.Action("DescargarPdf", "OrdenRecaudacion")' + '/' + id;
+            window.open(url, '_blank');
+        }
+
+        function filtrarPorEstado(estado) {
+            $('#filtroEstado').val(estado);
+            dashboardApp.aplicarFiltros();
+        }
+
+        // Inicializar cuando la página esté lista
+        $(document).ready(function() {
+            dashboardApp.init();
+        });
+
+        // Limpiar recursos al salir
+        $(window).on('beforeunload', function() {
+            if (dashboardApp.chart) {
+                dashboardApp.chart.destroy();
+            }
+        });
+    </script>
+}
+
+<!-- Token CSRF para AJAX -->
+@using (Html.BeginForm())
+{
+    @Html.AntiForgeryToken()
+}

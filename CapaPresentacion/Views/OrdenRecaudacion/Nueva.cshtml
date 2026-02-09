@@ -177,7 +177,7 @@
                     <div class="row mb-4">
                         <div class="col-md-12">
                             <h5><i class="fas fa-sticky-note me-2 text-primary"></i>Observaciones</h5>
-                            @Html.TextAreaFor(m => m.Orden.Observacion, 3, 0, new { @class = "form-control", placeholder = "Observaciones adicionales..." })
+                            @Html.TextAreaFor(m => m.Orden.Observacion, 3, 60, new { @class = "form-control", placeholder = "Observaciones adicionales..." })
                         </div>
                     </div>
 
@@ -351,11 +351,3 @@
                         });
     </script>
 }
-
-
-
-
-
-
-
-

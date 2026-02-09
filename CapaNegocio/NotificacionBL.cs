@@ -187,6 +187,34 @@ namespace CapaNegocio
             }
         }
 
+        public static bool EliminarTodasLeidas(int codigoUsuario, out string mensaje)
+        {
+            mensaje = string.Empty;
+
+            try
+            {
+                bool resultado = NotificacionDAOType.EliminarTodasLeidas(codigoUsuario);
+
+                if (resultado)
+                {
+                    mensaje = "Notificaciones leídas eliminadas.";
+                    LogBL.RegistrarInfo($"Notificaciones leídas eliminadas para usuario {codigoUsuario}", "Notificacion");
+                }
+                else
+                {
+                    mensaje = "No hay notificaciones leídas para eliminar.";
+                }
+
+                return resultado;
+            }
+            catch (Exception ex)
+            {
+                mensaje = "Error: " + ex.Message;
+                LogBL.RegistrarError("Error al eliminar notificaciones leídas", ex.ToString(), "Notificacion");
+                return false;
+            }
+        }
+
         #endregion
 
         #region Consultas

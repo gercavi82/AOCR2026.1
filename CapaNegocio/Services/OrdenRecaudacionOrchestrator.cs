@@ -7,6 +7,7 @@ using CapaDatos.Interfaces;
 using CapaNegocio.DTOs;
 using CapaNegocio.Interfaces;
 using CapaDatos.Services;
+using DataEmailService = CapaDatos.Services.IEmailService;
 
 namespace CapaNegocio.Services
 {
@@ -23,7 +24,7 @@ namespace CapaNegocio.Services
         // Cambiar a object o remover si no se usa
         private readonly object _contribuyenteRepository;
         private readonly IPdfGeneratorService _pdfService;
-        private readonly IEmailService _emailService;
+        private readonly DataEmailService _emailService;
         private readonly IFileStorageService _fileService;
 
         #endregion
@@ -43,7 +44,7 @@ namespace CapaNegocio.Services
             IPagoRepository pagoRepository,
             object contribuyenteRepository,  // Cambiar tipo
             IPdfGeneratorService pdfService,
-            IEmailService emailService,
+            DataEmailService emailService,
             IFileStorageService fileService)
         {
             _ordenRepository = ordenRepository ?? throw new ArgumentNullException("ordenRepository");

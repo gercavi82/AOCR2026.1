@@ -154,6 +154,23 @@ namespace CapaDatos.DAOs
             }
         }
 
+        public static bool EliminarTodasLeidas(int codigoUsuario)
+        {
+            const string sql = @"
+                DELETE FROM aocr_tbnotificacion
+                WHERE codigousuario = @user
+                  AND leida = TRUE;";
+
+            using (var cn = CrearConexion())
+            using (var cmd = new NpgsqlCommand(sql, cn))
+            {
+                cmd.Parameters.AddWithValue("@user", codigoUsuario);
+
+                cn.Open();
+                return cmd.ExecuteNonQuery() > 0;
+            }
+        }
+
         // ==============================
         // Consultas
         // ==============================

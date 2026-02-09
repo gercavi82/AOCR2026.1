@@ -236,5 +236,86 @@ namespace CapaDatos.DAOs
                 return cmd.ExecuteNonQuery() > 0;
             }
         }
+
+        // ==============================
+        // Configuraciones especiales (API Config)
+        // ==============================
+        public Dictionary<string, string> ObtenerValoresTest()
+        {
+            return ObtenerValoresPorPrefijos(new[] { "TEST_" });
+        }
+
+        public Dictionary<string, string> ObtenerConfiguracionPDF()
+        {
+            return ObtenerValoresPorPrefijos(new[] { "PDF_", "CFG_PDF_", "CONFIG_PDF_" });
+        }
+
+        public Dictionary<string, string> ObtenerMontosDemo()
+        {
+            return ObtenerValoresPorPrefijos(new[] { "DEMO_", "MONTO_DEMO_" });
+        }
+
+        private Dictionary<string, string> ObtenerValoresPorPrefijos(IEnumerable<string> prefijos)
+        {
+            var result = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+            if (prefijos == null)
+            {
+                return result;
+            }
+
+            var filtros = new List<string>();
+            var parametros = new List<NpgsqlParameter>();
+            int idx = 0;
+
+            foreach (var p in prefijos)
+            {
+                if (string.IsNullOrWhiteSpace(p))
+                {
+                    continue;
+                }
+                var paramName = "@p" + idx;
+                filtros.Add("clave LIKE " + paramName);
+                parametros.Add(new NpgsqlParameter(paramName, p.Trim() + "%"));
+                idx++;
+            }
+
+            if (filtros.Count == 0)
+            {
+                return result;
+            }
+
+            var sql = @"
+                SELECT clave, valor
+                FROM aocr_tbparametro
+                WHERE activo = TRUE
+                  AND deletedat IS NULL
+                  AND (" + string.Join(" OR ", filtros) + @")
+                ORDER BY clave;";
+
+            using (var cn = CrearConexion())
+            using (var cmd = new NpgsqlCommand(sql, cn))
+            {
+                foreach (var p in parametros)
+                {
+                    cmd.Parameters.Add(p);
+                }
+
+                cn.Open();
+                using (var rd = cmd.ExecuteReader())
+                {
+                    while (rd.Read())
+                    {
+                        var clave = rd["clave"]?.ToString();
+                        var valor = rd["valor"]?.ToString();
+                        if (!string.IsNullOrWhiteSpace(clave))
+                        {
+                            result[clave] = valor ?? string.Empty;
+                        }
+                    }
+                }
+            }
+
+            return result;
+        }
     }
 }

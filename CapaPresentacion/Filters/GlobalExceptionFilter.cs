@@ -31,6 +31,18 @@ namespace CapaPresentacion.Filters
             var controllerName = filterContext.RouteData.Values["controller"] as string ?? "Unknown";
             var actionName = filterContext.RouteData.Values["action"] as string ?? "Unknown";
 
+            // Fallback log directo a archivo para depuración local
+            try
+            {
+                var logPath = System.IO.Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "App_Data", "Logs", "UnhandledExceptions.log");
+                var entry = $"{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff} | {controllerName}/{actionName}\n{exception}\n\n";
+                System.IO.File.AppendAllText(logPath, entry);
+            }
+            catch
+            {
+                // No bloquear el flujo si el log falla
+            }
+
             // Obtener contexto de correlación si existe
             var correlationId = HttpContext.Current?.Items["CorrelationId"] as string ?? Guid.NewGuid().ToString("N");
             var numeroOrden = HttpContext.Current?.Items["NumeroOrden"] as string;

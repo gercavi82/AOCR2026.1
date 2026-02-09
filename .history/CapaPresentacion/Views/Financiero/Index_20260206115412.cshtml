@@ -1,0 +1,606 @@
+﻿@inherits System.Web.Mvc.WebViewPage<List<CapaPresentacion.Models.OrdenValidacionFinancieraVM>>
+@using CapaModelo
+@using System.Web.Mvc
+@using System.Web.Mvc.Html
+
+@{
+    ViewBag.Title = "Dashboard Financiero";
+}
+
+<style>
+:root {
+    --primary-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    --success-gradient: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+    --warning-gradient: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
+    --danger-gradient: linear-gradient(135deg, #ff6b6b 0%, #ffa500 100%);
+    --info-gradient: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+    --financial-gradient: linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%);
+    --card-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+    --hover-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
+}
+
+.financial-header {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 2.5rem 0;
+    margin-bottom: 2rem;
+    border-radius: 20px;
+    box-shadow: var(--card-shadow);
+    position: relative;
+    overflow: hidden;
+}
+
+.financial-header::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(45deg, transparent 30%, rgba(255,255,255,0.1) 50%, transparent 70%);
+    transform: translateX(-100%);
+    animation: shimmer 4s infinite;
+}
+
+@@keyframes shimmer {
+    0% { transform: translateX(-100%); }
+    100% { transform: translateX(100%); }
+}
+
+.financial-kpi {
+    background: white;
+    border-radius: 15px;
+    box-shadow: var(--card-shadow);
+    padding: 1.5rem;
+    text-align: center;
+    transition: all 0.3s ease;
+    border: none;
+    position: relative;
+    overflow: hidden;
+}
+
+.financial-kpi:hover {
+    transform: translateY(-5px);
+    box-shadow: var(--hover-shadow);
+}
+
+.kpi-icon {
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 1rem;
+    font-size: 1.5rem;
+    color: white;
+}
+
+.kpi-value {
+    font-size: 2rem;
+    font-weight: 700;
+    margin-bottom: 0.5rem;
+    color: #2c3e50;
+}
+
+.kpi-label {
+    color: #7f8c8d;
+    font-weight: 500;
+    font-size: 0.9rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.modern-filter-card {
+    background: white;
+    border-radius: 15px;
+    box-shadow: var(--card-shadow);
+    padding: 1.5rem;
+    margin-bottom: 2rem;
+    border: none;
+}
+
+.filter-header {
+    background: var(--info-gradient);
+    color: white;
+    padding: 1rem 1.5rem;
+    margin: -1.5rem -1.5rem 1.5rem -1.5rem;
+    border-radius: 15px 15px 0 0;
+}
+
+.modern-select {
+    border: 2px solid #e9ecef;
+    border-radius: 10px;
+    padding: 0.75rem 1rem;
+    font-weight: 500;
+    transition: all 0.3s ease;
+    background: white;
+}
+
+.modern-select:focus {
+    border-color: #667eea;
+    box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
+    outline: none;
+}
+
+.financial-table-card {
+    background: white;
+    border-radius: 15px;
+    box-shadow: var(--card-shadow);
+    overflow: hidden;
+    border: none;
+}
+
+.table-header {
+    background: var(--primary-gradient);
+    color: white;
+    padding: 1.5rem;
+}
+
+.modern-table {
+    margin-bottom: 0;
+}
+
+.modern-table thead th {
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+    border: none;
+    padding: 1.2rem 1rem;
+    font-weight: 600;
+    color: #495057;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    font-size: 0.875rem;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+}
+
+.modern-table tbody tr {
+    transition: all 0.3s ease;
+    border: none;
+}
+
+.modern-table tbody tr:hover {
+    background: linear-gradient(90deg, rgba(102, 126, 234, 0.05) 0%, rgba(255, 255, 255, 0) 100%);
+    transform: scale(1.01);
+}
+
+.modern-table tbody td {
+    padding: 1rem;
+    vertical-align: middle;
+    border: none;
+    border-bottom: 1px solid #f8f9fa;
+}
+
+.status-badge {
+    padding: 0.5rem 1rem;
+    border-radius: 20px;
+    font-weight: 600;
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    border: none;
+    color: white;
+    display: inline-block;
+}
+
+.status-procesada { background: var(--warning-gradient); }
+.status-pendiente { background: var(--danger-gradient); }
+.status-facturada { background: var(--info-gradient); }
+.status-completada { background: var(--success-gradient); }
+.status-anulada { background: linear-gradient(135deg, #95a5a6 0%, #7f8c8d 100%); }
+
+.btn-financial {
+    border-radius: 8px;
+    padding: 0.5rem 1rem;
+    font-weight: 600;
+    font-size: 0.875rem;
+    transition: all 0.3s ease;
+    border: none;
+    margin: 0 0.25rem;
+    text-decoration: none;
+    display: inline-block;
+}
+
+.btn-financial:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+}
+
+.btn-financial.btn-success {
+    background: var(--success-gradient);
+    color: white;
+}
+
+.btn-financial.btn-danger {
+    background: var(--danger-gradient);
+    color: white;
+}
+
+.btn-financial.btn-info {
+    background: var(--info-gradient);
+    color: white;
+}
+
+.modern-alert {
+    border-radius: 12px;
+    border: none;
+    padding: 1rem 1.5rem;
+    margin-bottom: 1.5rem;
+    font-weight: 500;
+    box-shadow: var(--card-shadow);
+}
+
+.modern-alert.alert-success {
+    background: var(--success-gradient);
+    color: white;
+}
+
+.modern-alert.alert-danger {
+    background: var(--danger-gradient);
+    color: white;
+}
+
+.modern-alert.alert-warning {
+    background: var(--warning-gradient);
+    color: white;
+}
+
+.modern-modal .modal-content {
+    border-radius: 15px;
+    border: none;
+    overflow: hidden;
+    box-shadow: var(--hover-shadow);
+}
+
+.modern-modal .modal-header {
+    background: var(--danger-gradient);
+    color: white;
+    border: none;
+    padding: 1.5rem;
+}
+
+.modern-modal .modal-body {
+    padding: 2rem;
+}
+
+.modern-modal .modal-footer {
+    border: none;
+    padding: 1.5rem 2rem;
+    background: #f8f9fa;
+}
+
+@@media (max-width: 768px) {
+    .financial-header {
+        padding: 2rem 0;
+    }
+    
+    .financial-kpi {
+        margin-bottom: 1rem;
+    }
+    
+    .btn-financial {
+        padding: 0.4rem 0.6rem;
+        font-size: 0.8rem;
+        margin: 0.1rem;
+    }
+    
+    .modern-table thead th,
+    .modern-table tbody td {
+        padding: 0.5rem;
+        font-size: 0.8rem;
+    }
+}
+</style>
+
+<div class="container-fluid">
+    <!-- Header Financiero Moderno -->
+    <div class="financial-header text-center animate__animated animate__fadeInDown">
+        <div class="container">
+            <h1 class="mb-2">
+                <i class="fas fa-chart-line me-3"></i>
+                Dashboard Financiero
+            </h1>
+            <p class="mb-0 opacity-90">
+                Validación y Control de Órdenes de Recaudación
+            </p>
+        </div>
+    </div>
+
+    <!-- KPIs Financieros -->
+    <div class="row mb-4">
+        <div class="col-xl-3 col-md-6 mb-3">
+            <div class="financial-kpi animate__animated animate__zoomIn" style="animation-delay: 0.1s">
+                <div class="kpi-icon" style="background: var(--warning-gradient);">
+                    <i class="fas fa-clock"></i>
+                </div>
+                <div class="kpi-value" id="ordenesPendientes">@(Model?.Count(x => x.Orden?.Estado?.ToUpper() == "PENDIENTE" || x.Orden?.Estado?.ToUpper() == "PROCESADA") ?? 0)</div>
+                <div class="kpi-label">En Revisión</div>
+            </div>
+        </div>
+        <div class="col-xl-3 col-md-6 mb-3">
+            <div class="financial-kpi animate__animated animate__zoomIn" style="animation-delay: 0.2s">
+                <div class="kpi-icon" style="background: var(--success-gradient);">
+                    <i class="fas fa-check-circle"></i>
+                </div>
+                <div class="kpi-value" id="ordenesAprobadas">@(Model?.Count(x => x.Orden?.Estado?.ToUpper() == "COMPLETADA" || x.Orden?.Estado?.ToUpper() == "FACTURADA") ?? 0)</div>
+                <div class="kpi-label">Aprobadas</div>
+            </div>
+        </div>
+        <div class="col-xl-3 col-md-6 mb-3">
+            <div class="financial-kpi animate__animated animate__zoomIn" style="animation-delay: 0.3s">
+                <div class="kpi-icon" style="background: var(--info-gradient);">
+                    <i class="fas fa-dollar-sign"></i>
+                </div>
+                <div class="kpi-value" id="montoTotal">$@(Model?.Sum(x => x.Orden?.Total ?? 0).ToString("N2") ?? "0.00")</div>
+                <div class="kpi-label">Monto Total</div>
+            </div>
+        </div>
+        <div class="col-xl-3 col-md-6 mb-3">
+            <div class="financial-kpi animate__animated animate__zoomIn" style="animation-delay: 0.4s">
+                <div class="kpi-icon" style="background: var(--danger-gradient);">
+                    <i class="fas fa-times-circle"></i>
+                </div>
+                <div class="kpi-value" id="ordenesAnuladas">@(Model?.Count(x => x.Orden?.Estado?.ToUpper() == "ANULADA") ?? 0)</div>
+                <div class="kpi-label">Anuladas</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Alertas Modernas -->
+    @if (TempData["Success"] != null)
+    {
+        <div class="modern-alert alert-success animate__animated animate__fadeInDown">
+            <i class="fas fa-check-circle me-2"></i>
+            @TempData["Success"]
+        </div>
+    }
+    @if (TempData["Error"] != null)
+    {
+        <div class="modern-alert alert-danger animate__animated animate__fadeInDown">
+            <i class="fas fa-exclamation-triangle me-2"></i>
+            @TempData["Error"]
+        </div>
+    }
+    @if (ViewBag.SinResultadosConFiltro == true)
+    {
+        <div class="modern-alert alert-warning animate__animated animate__fadeInDown">
+            <i class="fas fa-info-circle me-2"></i>
+            No se encontraron órdenes con el estado seleccionado. Se muestran todas las órdenes disponibles (Total: @ViewBag.TotalSinFiltro).
+        </div>
+    }
+
+    <!-- Filtro Moderno -->
+    <div class="modern-filter-card animate__animated animate__fadeInRight">
+        <div class="filter-header">
+            <h6 class="mb-0">
+                <i class="fas fa-filter me-2"></i>
+                Filtros de Búsqueda
+            </h6>
+        </div>
+        <form method="get" class="d-flex align-items-center gap-3">
+            <div class="flex-grow-1">
+                <label class="form-label fw-bold mb-1">Estado de la Orden:</label>
+                <select name="estado" class="form-select modern-select" onchange="this.form.submit()">
+                    <option value="PROCESADA" @(ViewBag.EstadoFiltro == "PROCESADA" ? "selected" : "")>
+                        <i class="fas fa-clock"></i> En revisión
+                    </option>
+                    <option value="PENDIENTE" @(ViewBag.EstadoFiltro == "PENDIENTE" ? "selected" : "")>
+                        <i class="fas fa-hourglass-half"></i> Pendiente
+                    </option>
+                    <option value="FACTURADA" @(ViewBag.EstadoFiltro == "FACTURADA" ? "selected" : "")>
+                        <i class="fas fa-file-invoice"></i> Facturada
+                    </option>
+                    <option value="COMPLETADA" @(ViewBag.EstadoFiltro == "COMPLETADA" ? "selected" : "")>
+                        <i class="fas fa-check-circle"></i> Completada
+                    </option>
+                    <option value="ANULADA" @(ViewBag.EstadoFiltro == "ANULADA" ? "selected" : "")>
+                        <i class="fas fa-times-circle"></i> Anulada
+                    </option>
+                    <option value="TODAS" @(ViewBag.EstadoFiltro == "TODAS" ? "selected" : "")>
+                        <i class="fas fa-list"></i> Todas
+                    </option>
+                </select>
+            </div>
+            <div class="d-flex gap-2 mt-4">
+                <button type="button" class="btn btn-financial btn-info" onclick="location.reload()">
+                    <i class="fas fa-sync-alt me-1"></i>
+                    Actualizar
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <!-- Tabla Principal Moderna -->
+    <div class="financial-table-card animate__animated animate__fadeInUp">
+        <div class="table-header">
+            <h5 class="mb-0">
+                <i class="fas fa-table me-2"></i>
+                Órdenes de Validación Financiera
+                <span class="badge bg-light text-dark ms-2">@(Model?.Count ?? 0) registros</span>
+            </h5>
+        </div>
+        
+        @if (Model != null && Model.Any())
+        {
+            <div class="table-responsive">
+                <table class="modern-table table table-hover">
+                    <thead>
+                        <tr>
+                            <th><i class="fas fa-hashtag me-1"></i>#</th>
+                            <th><i class="fas fa-file-alt me-1"></i>Orden</th>
+                            <th><i class="fas fa-building me-1"></i>Compañía</th>
+                            <th><i class="fas fa-calendar me-1"></i>Fecha</th>
+                            <th><i class="fas fa-dollar-sign me-1"></i>Monto</th>
+                            <th><i class="fas fa-traffic-light me-1"></i>Estado</th>
+                            <th><i class="fas fa-file-pdf me-1"></i>Comprobante</th>
+                            <th><i class="fas fa-cogs me-1"></i>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @{
+                            int i = 1;
+                            foreach (var item in Model)
+                            {
+                                var orden = item.Orden;
+                                var pago = item.Pago;
+                                var comp = pago != null ? pago.ComprobanteRuta : null;
+                                var estadoNorm = orden != null ? ((orden.Estado ?? "").Trim().ToUpperInvariant().Replace(" ", "_")) : "";
+                                var estadoClass = "";
+                                var estadoText = orden?.Estado ?? "";
+                                
+                                switch (estadoNorm)
+                                {
+                                    case "PROCESADA":
+                                        estadoClass = "status-procesada";
+                                        estadoText = "En Revisión";
+                                        break;
+                                    case "PENDIENTE":
+                                        estadoClass = "status-pendiente";
+                                        estadoText = "Pendiente";
+                                        break;
+                                    case "FACTURADA":
+                                        estadoClass = "status-facturada";
+                                        estadoText = "Facturada";
+                                        break;
+                                    case "COMPLETADA":
+                                        estadoClass = "status-completada";
+                                        estadoText = "Completada";
+                                        break;
+                                    case "ANULADA":
+                                        estadoClass = "status-anulada";
+                                        estadoText = "Anulada";
+                                        break;
+                                    default:
+                                        estadoClass = "status-pendiente";
+                                        break;
+                                }
+                        <tr>
+                            <td class="fw-bold text-primary">#@i</td>
+                            <td class="fw-medium">@(orden?.NumeroOrden ?? "-")</td>
+                            <td>@(orden != null ? (orden.NombreContribuyente ?? orden.Compania) : "-")</td>
+                            <td>@(orden?.FechaCreacion.ToString("dd/MM/yyyy") ?? "")</td>
+                            <td class="fw-bold text-success">$@(orden?.Total.ToString("N2") ?? "0.00")</td>
+                            <td>
+                                <span class="status-badge @estadoClass">@estadoText</span>
+                            </td>
+                            <td>
+                                @if (orden != null)
+                                {
+                                    <a href="@Url.Action("DescargarPdf", "OrdenRecaudacion", new { id = orden.Id })" 
+                                       target="_blank" 
+                                       class="btn-financial btn-info btn-sm"
+                                       title="Ver PDF">
+                                        <i class="fas fa-file-pdf me-1"></i>
+                                        PDF
+                                    </a>
+                                }
+                                else
+                                {
+                                    <span class="text-muted">Sin orden</span>
+                                }
+                            </td>
+                            <td>
+                                @if (orden != null && pago != null && (estadoNorm == "PROCESADA" || estadoNorm == "PENDIENTE"))
+                                {
+                                    <div class="btn-group" role="group">
+                                        @using (Html.BeginForm("AprobarPago", "Financiero", FormMethod.Post, new { @class = "d-inline" }))
+                                        {
+                                            @Html.AntiForgeryToken()
+                                            @Html.Hidden("id", (object)orden.Id)
+                                            @Html.Hidden("pagoId", (object)pago.CodigoPago)
+                                            <button type="submit" class="btn-financial btn-success btn-sm" title="Aprobar pago">
+                                                <i class="fas fa-check me-1"></i>
+                                                Aprobar
+                                            </button>
+                                        }
+
+                                        <button class="btn-financial btn-danger btn-sm" 
+                                                type="button" 
+                                                data-bs-toggle="modal" 
+                                                data-bs-target="#modalRechazo-@orden.Id"
+                                                title="Rechazar orden">
+                                            <i class="fas fa-times me-1"></i>
+                                            Rechazar
+                                        </button>
+                                    </div>
+
+                                    <!-- Modal de Rechazo Modernizado -->
+                                    <div class="modal fade modern-modal" id="modalRechazo-@orden.Id" tabindex="-1" aria-hidden="true">
+                                        <div class="modal-dialog modal-dialog-centered">
+                                            <div class="modal-content">
+                                                <div class="modal-header">
+                                                    <h5 class="modal-title">
+                                                        <i class="fas fa-exclamation-triangle me-2"></i>
+                                                        Rechazar Orden
+                                                    </h5>
+                                                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                                                </div>
+                                                @using (Html.BeginForm("RechazarOrden", "Financiero", FormMethod.Post))
+                                                {
+                                                    @Html.AntiForgeryToken()
+                                                    @Html.Hidden("id", orden.Id)
+                                                    <div class="modal-body">
+                                                        <div class="alert alert-warning">
+                                                            <i class="fas fa-info-circle me-2"></i>
+                                                            <strong>Orden:</strong> @orden.NumeroOrden<br>
+                                                            <strong>Monto:</strong> $@orden.Total.ToString("N2")
+                                                        </div>
+                                                        <div class="mb-3">
+                                                            <label class="form-label fw-bold">
+                                                                <i class="fas fa-comment me-1"></i>
+                                                                Motivo del Rechazo *
+                                                            </label>
+                                                            <textarea name="motivo" class="form-control" rows="4" required 
+                                                                     placeholder="Describa detalladamente el motivo del rechazo..."></textarea>
+                                                        </div>
+                                                    </div>
+                                                    <div class="modal-footer">
+                                                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                                                            <i class="fas fa-times me-1"></i>
+                                                            Cancelar
+                                                        </button>
+                                                        <button type="submit" class="btn-financial btn-danger">
+                                                            <i class="fas fa-ban me-1"></i>
+                                                            Rechazar Orden
+                                                        </button>
+                                                    </div>
+                                                }
+                                            </div>
+                                        </div>
+                                    </div>
+                                }
+                                else
+                                {
+                                    <span class="text-muted">Sin acciones disponibles</span>
+                                }
+                            </td>
+                        </tr>
+                                i++;
+                            }
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+        else
+        {
+            <div class="text-center py-5">
+                <i class="fas fa-chart-line fa-4x text-muted mb-3"></i>
+                <h4 class="text-muted">No hay órdenes para validar</h4>
+                <p class="text-muted mb-4">No se encontraron órdenes con el estado seleccionado.</p>
+                <button class="btn-financial btn-info" onclick="location.reload()">
+                    <i class="fas fa-sync-alt me-2"></i>
+                    Actualizar Lista
+                </button>
+            </div>
+        }
+    </div>
+</div>
+
+
+
+
+
+
+

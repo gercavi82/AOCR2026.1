@@ -251,6 +251,10 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Constants\EstadosInspeccion.cs" />
+    <Compile Include="Constants\EstadosSolicitudAOCR.cs" />
+    <Compile Include="Constants\RolesAOCR.cs" />
+    <Compile Include="Constants\TiposNotificacion.cs" />
     <Compile Include="Contexto\AocrDbContext.cs" />
     <Compile Include="DAOs\ArchivoDAO.cs" />
     <Compile Include="DAOs\AuditoriaDAO.cs" />
@@ -269,6 +273,7 @@
     <Compile Include="DAOs\OrdenRecaudacionDAO.cs" />
     <Compile Include="DAOs\SolicitudAOCRDAO.cs" />
     <Compile Include="DAOs\SolicitudDAO.cs" />
+    <Compile Include="DAOs\SubsanacionDAO.cs" />
     <Compile Include="DAOs\ViaticoDAO.cs" />
     <Compile Include="DAOs\UsuarioRolDAO.cs" />
     <Compile Include="DAOs\SubmenuDAO.cs" />

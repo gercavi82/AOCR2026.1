@@ -84,6 +84,7 @@
     <Compile Include="Inspeccion.cs" />
     <Compile Include="Pago.cs" />
     <Compile Include="SolicitudAOCR.cs" />
+    <Compile Include="Subsanacion.cs" />
     <Compile Include="Usuario.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>

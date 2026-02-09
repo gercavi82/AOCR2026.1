@@ -1008,6 +1008,70 @@ namespace CapaDatos.DAOs
             return ordenes.Select(MapearOrdenModel).ToList();
         }
 
+        public List<OrdenRecaudacion> ListarFiltrado(int? codigoUsuario, string estado, DateTime? fechaDesde, DateTime? fechaHasta, string numeroOrden)
+        {
+            var ordenes = new List<OrdenRecaudacion>();
+
+            try
+            {
+                using (var conn = new NpgsqlConnection(_connectionString))
+                {
+                    conn.Open();
+
+                    var sql = @"SELECT o.*, c.nombre as concepto_nombre
+                                FROM aocr_or_orden o
+                                LEFT JOIN aocr_or_concepto c ON o.concepto_id = c.id
+                                WHERE 1=1";
+
+                    var filtros = new List<string>();
+                    if (codigoUsuario.HasValue)
+                        filtros.Add("o.codigo_usuario = @codigoUsuario");
+                    if (!string.IsNullOrWhiteSpace(estado))
+                        filtros.Add("UPPER(o.estado) = UPPER(@estado)");
+                    if (fechaDesde.HasValue)
+                        filtros.Add("o.fecha_creacion >= @fechaDesde");
+                    if (fechaHasta.HasValue)
+                        filtros.Add("o.fecha_creacion <= @fechaHasta");
+                    if (!string.IsNullOrWhiteSpace(numeroOrden))
+                        filtros.Add("o.numero_orden ILIKE @numeroOrden");
+
+                    if (filtros.Count > 0)
+                        sql += " AND " + string.Join(" AND ", filtros);
+
+                    sql += " ORDER BY o.fecha_creacion DESC";
+
+                    using (var cmd = new NpgsqlCommand(sql, conn))
+                    {
+                        if (codigoUsuario.HasValue)
+                            cmd.Parameters.AddWithValue("@codigoUsuario", codigoUsuario.Value);
+                        if (!string.IsNullOrWhiteSpace(estado))
+                            cmd.Parameters.AddWithValue("@estado", estado.Trim());
+                        if (fechaDesde.HasValue)
+                            cmd.Parameters.AddWithValue("@fechaDesde", fechaDesde.Value);
+                        if (fechaHasta.HasValue)
+                            cmd.Parameters.AddWithValue("@fechaHasta", fechaHasta.Value);
+                        if (!string.IsNullOrWhiteSpace(numeroOrden))
+                            cmd.Parameters.AddWithValue("@numeroOrden", "%" + numeroOrden.Trim() + "%");
+
+                        using (var reader = cmd.ExecuteReader())
+                        {
+                            while (reader.Read())
+                            {
+                                ordenes.Add(MapearOrden(reader));
+                            }
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error en ListarFiltrado");
+                throw;
+            }
+
+            return ordenes;
+        }
+
 
         public DataTable ObtenerOrdenesPorUsuario(int codigoUsuario)
         {
@@ -1965,6 +2029,58 @@ namespace CapaDatos.DAOs
         bool IOrdenRecaudacionDAO.CambiarEstado(int id, string estado)
         {
             return CambiarEstado(id, estado);
+        }
+
+        #endregion
+
+        #region Métodos Async Adicionales para Controller
+
+        /// <summary>
+        /// Versión async de ListarPorUsuarioModel
+        /// </summary>
+        public Task<List<OrdenRecaudacionModel>> ListarPorUsuarioModelAsync(int codigoUsuario, string estado)
+        {
+            return Task.Run(() => ListarPorUsuarioModel(codigoUsuario, estado));
+        }
+
+        /// <summary>
+        /// Versión async de ObtenerOrdenPorIdModel
+        /// </summary>
+        public Task<OrdenRecaudacionModel> ObtenerOrdenPorIdModelAsync(int id)
+        {
+            return Task.Run(() => ObtenerOrdenPorIdModel(id));
+        }
+
+        /// <summary>
+        /// Versión async de ObtenerPagosPorOrden
+        /// </summary>
+        public Task<List<PagoModel>> ObtenerPagosPorOrdenAsync(int ordenId)
+        {
+            return Task.Run(() => ObtenerPagosPorOrden(ordenId));
+        }
+
+        /// <summary>
+        /// Versión async de CambiarEstadoOrden
+        /// </summary>
+        public Task<bool> CambiarEstadoOrdenAsync(int id, string nuevoEstado)
+        {
+            return Task.Run(() => CambiarEstadoOrden(id, nuevoEstado));
+        }
+
+        /// <summary>
+        /// Versión async de ActualizarOrden con OrdenRecaudacionModel
+        /// </summary>
+        public Task<bool> ActualizarOrdenModelAsync(OrdenRecaudacionModel orden)
+        {
+            return Task.Run(() => ActualizarOrden(orden));
+        }
+
+        /// <summary>
+        /// Versión async de Insertar
+        /// </summary>
+        public Task<int> InsertarAsync(OrdenRecaudacion orden)
+        {
+            return Task.Run(() => Insertar(orden));
         }
 
         #endregion

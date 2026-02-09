@@ -130,6 +130,8 @@
     <Compile Include="Helpers\PasswordHelper.cs" />
     <Compile Include="Helpers\ValidationHelper.cs" />
     <Compile Include="Services\EmailService.cs" />
+    <Compile Include="Services\DashboardOrdenesService.cs" />
+    <Compile Include="Services\EstadoOrdenService.cs" />
     <Compile Include="Services\InspeccionService.cs" />
     <Compile Include="Services\LoggingService.cs" />
     <Compile Include="Services\NotificacionService.cs" />

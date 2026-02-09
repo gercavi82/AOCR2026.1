@@ -243,20 +243,37 @@
     <Reference Include="WebGrease, Version=1.5.2.14234, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
       <HintPath>..\packages\WebGrease.1.5.2\lib\WebGrease.dll</HintPath>
     </Reference>
+    <Reference Include="Unity, Version=5.11.10.0, Culture=neutral, PublicKeyToken=489b6accfaf20ef0, processorArchitecture=MSIL">
+      <HintPath>..\packages\Unity.5.11.10\lib\net47\Unity.dll</HintPath>
+    </Reference>
+    <Reference Include="Unity.Abstractions, Version=5.11.7.0, Culture=neutral, PublicKeyToken=489b6accfaf20ef0, processorArchitecture=MSIL">
+      <HintPath>..\packages\Unity.Abstractions.5.11.7\lib\net47\Unity.Abstractions.dll</HintPath>
+    </Reference>
+    <Reference Include="Unity.Container, Version=5.11.11.0, Culture=neutral, PublicKeyToken=489b6accfaf20ef0, processorArchitecture=MSIL">
+      <HintPath>..\packages\Unity.Container.5.11.11\lib\net47\Unity.Container.dll</HintPath>
+    </Reference>
+    <Reference Include="Unity.Mvc, Version=5.11.1.0, Culture=neutral, PublicKeyToken=489b6accfaf20ef0, processorArchitecture=MSIL">
+      <HintPath>..\packages\Unity.Mvc.5.11.1\lib\net47\Unity.Mvc.dll</HintPath>
+    </Reference>
   </ItemGroup>
   <ItemGroup>
     <Compile Include="App_Start\BundleConfig.cs" />
     <Compile Include="App_Start\FilterConfig.cs" />
     <Compile Include="App_Start\RouteConfig.cs" />
+    <Compile Include="App_Start\UnityConfig.cs" />
+    <Compile Include="Controllers\ConfigApiController.cs" />
     <Compile Include="Controllers\DashboardController.cs" />
     <Compile Include="Controllers\EmpresaController.cs" />
     <Compile Include="Controllers\ErrorController.cs" />
     <Compile Include="Controllers\AccountController.cs" />
     <Compile Include="Controllers\HealthController.cs" />
     <Compile Include="Controllers\HistorialController.cs" />
+    <Compile Include="Controllers\NotificacionController.cs" />
     <Compile Include="Controllers\OrdenController.cs" />
     <Compile Include="Controllers\OperadorController.cs" />
     <Compile Include="Controllers\OrdenRecaudacionController.cs" />
+    <Compile Include="Controllers\OrdenRecaudacionDashboardController.cs" />
+    <Compile Include="Controllers\OrdenRecaudacionDashboardEmpresarialController.cs" />
     <Compile Include="Controllers\SolicitudAOCRController.cs" />
     <Compile Include="Controllers\SolicitudController.cs" />
     <Compile Include="Controllers\HistorialEstadoController.cs" />
@@ -286,6 +303,8 @@
       <DependentUpon>Global.asax</DependentUpon>
     </Compile>
     <Compile Include="Helpers\NotificacionCorreoHelper.cs" />
+    <Compile Include="Infrastructure\OrdenRecaudacionFilters.cs" />
+    <Compile Include="Infrastructure\OrdenRecaudacionRoutes.cs" />
     <Compile Include="Models\OrdenRecaudacionNuevaVM.cs" />
     <Compile Include="Models\ConceptoOptionVM.cs" />
     <Compile Include="Models\Validation\RucCedulaValidationAttribute.cs" />
@@ -2863,6 +2882,11 @@
     <Content Include="Views\Usuario\Legalizar.cshtml" />
     <Content Include="Views\Usuario\ValidacionFinal.cshtml" />
     <Content Include="Views\OrdenRecaudacion\OrdenRecaudacionPDF.cshtml" />
+    <Content Include="Views\Shared\_SidebarEstadoOrdenes.cshtml" />
+    <Content Include="Views\Shared\_NotificacionesBadge.cshtml" />
+    <Content Include="Views\SolicitudAOCR\CertificadoAOCR.cshtml" />
+    <Content Include="Views\Notificacion\Index.cshtml" />
+    <Content Include="Views\OrdenRecaudacion\ExportPdf.cshtml" />
   </ItemGroup>
   <ItemGroup>
     <Folder Include="App_Data\" />

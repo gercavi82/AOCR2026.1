@@ -1,0 +1,334 @@
+﻿@inherits System.Web.Mvc.WebViewPage<IEnumerable<CapaModelo.Direccion>>
+@using CapaModelo
+@using System.Web.Mvc
+@using System.Web.Mvc.Html
+@{
+    ViewBag.Title = "Listado de Direcciones";
+}
+
+<style>
+:root {
+    --primary-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    --success-gradient: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+    --warning-gradient: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
+    --danger-gradient: linear-gradient(135deg, #ff6b6b 0%, #ffa500 100%);
+    --info-gradient: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+    --card-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+    --hover-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
+}
+
+.modern-header {
+    background: var(--primary-gradient);
+    color: white;
+    padding: 2rem 0;
+    margin-bottom: 2rem;
+    border-radius: 15px;
+    box-shadow: var(--card-shadow);
+    position: relative;
+    overflow: hidden;
+}
+
+.modern-header::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(45deg, transparent 30%, rgba(255,255,255,0.1) 50%, transparent 70%);
+    transform: translateX(-100%);
+    animation: shimmer 3s infinite;
+}
+
+@@keyframes shimmer {
+    0% { transform: translateX(-100%); }
+    100% { transform: translateX(100%); }
+}
+
+.modern-card {
+    background: white;
+    border-radius: 15px;
+    box-shadow: var(--card-shadow);
+    transition: all 0.3s ease;
+    border: none;
+    overflow: hidden;
+}
+
+.modern-card:hover {
+    transform: translateY(-5px);
+    box-shadow: var(--hover-shadow);
+}
+
+.gradient-header {
+    background: var(--primary-gradient);
+    color: white;
+    padding: 1.5rem;
+    margin: 0;
+    border: none;
+}
+
+.modern-table {
+    border-radius: 15px;
+    overflow: hidden;
+    box-shadow: var(--card-shadow);
+}
+
+.modern-table .table {
+    margin-bottom: 0;
+    border-radius: 15px;
+}
+
+.modern-table thead th {
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+    border: none;
+    padding: 1.2rem 1rem;
+    font-weight: 600;
+    color: #495057;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    font-size: 0.875rem;
+}
+
+.modern-table tbody tr {
+    transition: all 0.3s ease;
+    border: none;
+}
+
+.modern-table tbody tr:hover {
+    background: linear-gradient(90deg, rgba(102, 126, 234, 0.05) 0%, rgba(255, 255, 255, 0) 100%);
+    transform: scale(1.01);
+}
+
+.modern-table tbody td {
+    padding: 1rem;
+    vertical-align: middle;
+    border: none;
+    border-bottom: 1px solid #f8f9fa;
+}
+
+.btn-action {
+    border-radius: 8px;
+    padding: 0.5rem 0.75rem;
+    font-weight: 600;
+    font-size: 0.875rem;
+    transition: all 0.3s ease;
+    border: none;
+    margin: 0 0.25rem;
+    text-decoration: none;
+    display: inline-block;
+}
+
+.btn-action:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+}
+
+.btn-action.btn-info {
+    background: var(--info-gradient);
+    color: white;
+}
+
+.btn-action.btn-warning {
+    background: var(--warning-gradient);
+    color: white;
+}
+
+.btn-action.btn-danger {
+    background: var(--danger-gradient);
+    color: white;
+}
+
+.btn-primary-modern {
+    background: var(--primary-gradient);
+    border: none;
+    border-radius: 12px;
+    padding: 0.75rem 1.5rem;
+    font-weight: 600;
+    color: white;
+    transition: all 0.3s ease;
+    text-decoration: none;
+    display: inline-block;
+}
+
+.btn-primary-modern:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 10px 25px rgba(102, 126, 234, 0.4);
+    color: white;
+}
+
+.modern-alert {
+    border-radius: 12px;
+    border: none;
+    padding: 1rem 1.5rem;
+    margin-bottom: 1.5rem;
+    font-weight: 500;
+    box-shadow: var(--card-shadow);
+}
+
+.modern-alert.alert-success {
+    background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+    color: white;
+}
+
+.modern-alert.alert-danger {
+    background: var(--danger-gradient);
+    color: white;
+}
+
+@@media (max-width: 768px) {
+    .modern-header {
+        padding: 1.5rem 0;
+        margin-bottom: 1.5rem;
+    }
+    
+    .btn-action {
+        padding: 0.4rem 0.6rem;
+        font-size: 0.8rem;
+        margin: 0.1rem;
+    }
+    
+    .modern-table thead th {
+        padding: 0.8rem 0.5rem;
+        font-size: 0.8rem;
+    }
+    
+    .modern-table tbody td {
+        padding: 0.8rem 0.5rem;
+    }
+}
+</style>
+
+<div class="container-fluid">
+    <!-- Header Moderno -->
+    <div class="modern-header text-center animate__animated animate__fadeInDown">
+        <div class="container">
+            <h1 class="mb-2">
+                <i class="fas fa-map-marker-alt me-3"></i>
+                Gestión de Direcciones
+            </h1>
+            <p class="mb-0 opacity-90">
+                Sistema de administración de direcciones AOCR
+            </p>
+        </div>
+    </div>
+
+    <!-- Alertas Modernas -->
+    @if (TempData["msg"] != null)
+    {
+        <div class="modern-alert alert-success animate__animated animate__fadeInDown">
+            <i class="fas fa-check-circle me-2"></i>
+            @TempData["msg"]
+        </div>
+    }
+
+    @if (TempData["error"] != null)
+    {
+        <div class="modern-alert alert-danger animate__animated animate__fadeInDown">
+            <i class="fas fa-exclamation-triangle me-2"></i>
+            @TempData["error"]
+        </div>
+    }
+
+    <!-- Botón de Acción Principal -->
+    <div class="mb-4 animate__animated animate__fadeInLeft">
+        <a href="@Url.Action("Crear")" class="btn-primary-modern">
+            <i class="fas fa-plus me-2"></i>
+            Nueva Dirección
+        </a>
+    </div>
+
+    <!-- Tabla Moderna -->
+    <div class="modern-card animate__animated animate__fadeInUp">
+        <div class="gradient-header">
+            <h5 class="mb-0">
+                <i class="fas fa-list me-2"></i>
+                Direcciones Registradas
+                <span class="badge bg-light text-dark ms-2">@Model.Count() registros</span>
+            </h5>
+        </div>
+        
+        <div class="p-0">
+            @if (Model != null && Model.Any())
+            {
+                <div class="modern-table">
+                    <table class="table table-hover mb-0">
+                        <thead>
+                            <tr>
+                                <th class="border-0">
+                                    <i class="fas fa-hashtag me-1"></i>
+                                    ID
+                                </th>
+                                <th class="border-0">
+                                    <i class="fas fa-road me-1"></i>
+                                    Calle
+                                </th>
+                                <th class="border-0">
+                                    <i class="fas fa-city me-1"></i>
+                                    Ciudad
+                                </th>
+                                <th class="border-0">
+                                    <i class="fas fa-map me-1"></i>
+                                    Provincia
+                                </th>
+                                <th class="border-0">
+                                    <i class="fas fa-globe me-1"></i>
+                                    País
+                                </th>
+                                <th class="border-0 text-center" style="width: 200px;">
+                                    <i class="fas fa-cogs me-1"></i>
+                                    Acciones
+                                </th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var d in Model)
+                            {
+                                <tr>
+                                    <td class="fw-bold text-primary">#@d.CodigoDireccion</td>
+                                    <td>@d.Calle</td>
+                                    <td>@d.Ciudad</td>
+                                    <td>@d.Provincia</td>
+                                    <td>@d.Pais</td>
+                                    <td class="text-center">
+                                        <div class="btn-group" role="group">
+                                            <a class="btn-action btn-info" 
+                                               href="@Url.Action("Detalle", new { id = d.CodigoDireccion })" 
+                                               title="Ver detalles">
+                                                <i class="fas fa-eye"></i>
+                                            </a>
+                                            <a class="btn-action btn-warning" 
+                                               href="@Url.Action("Editar", new { id = d.CodigoDireccion })" 
+                                               title="Editar dirección">
+                                                <i class="fas fa-edit"></i>
+                                            </a>
+                                            <a class="btn-action btn-danger" 
+                                               href="@Url.Action("Eliminar", new { id = d.CodigoDireccion })" 
+                                               title="Eliminar dirección"
+                                               onclick="return confirm('¿Está seguro de eliminar esta dirección?')">
+                                                <i class="fas fa-trash"></i>
+                                            </a>
+                                        </div>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+            else
+            {
+                <div class="text-center py-5">
+                    <i class="fas fa-map-marker-alt fa-3x text-muted mb-3"></i>
+                    <h5 class="text-muted">No hay direcciones registradas</h5>
+                    <p class="text-muted mb-4">Comience agregando su primera dirección</p>
+                    <a href="@Url.Action("Crear")" class="btn-primary-modern">
+                        <i class="fas fa-plus me-2"></i>
+                        Agregar Primera Dirección
+                    </a>
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+
