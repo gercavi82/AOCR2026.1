@@ -1,0 +1,265 @@
+@* Partial View para Badge de Notificaciones en Navbar *@
+@* Se debe incluir en _Layout.cshtml dentro del navbar *@
+
+<style>
+    .notificaciones-dropdown {
+        position: relative;
+        display: inline-block;
+    }
+
+    .notificaciones-bell {
+        font-size: 20px;
+        color: #fff;
+        cursor: pointer;
+        position: relative;
+        padding: 10px 15px;
+    }
+
+    .notificaciones-bell:hover {
+        background-color: rgba(255, 255, 255, 0.1);
+    }
+
+    .badge-notificaciones {
+        position: absolute;
+        top: 5px;
+        right: 8px;
+        background-color: #f56954;
+        color: white;
+        border-radius: 10px;
+        padding: 2px 6px;
+        font-size: 11px;
+        font-weight: bold;
+        min-width: 18px;
+        text-align: center;
+    }
+
+    .notificaciones-menu {
+        display: none;
+        position: absolute;
+        right: 0;
+        top: 100%;
+        background-color: white;
+        min-width: 350px;
+        max-width: 400px;
+        box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+        border-radius: 4px;
+        z-index: 9999;
+        margin-top: 5px;
+    }
+
+    .notificaciones-menu.show {
+        display: block;
+    }
+
+    .notificaciones-header {
+        background-color: #3c8dbc;
+        color: white;
+        padding: 10px 15px;
+        border-radius: 4px 4px 0 0;
+        font-weight: bold;
+    }
+
+    .notificaciones-lista {
+        max-height: 400px;
+        overflow-y: auto;
+    }
+
+    .notificacion-mini {
+        padding: 12px 15px;
+        border-bottom: 1px solid #f0f0f0;
+        cursor: pointer;
+        transition: background-color 0.2s;
+    }
+
+    .notificacion-mini:hover {
+        background-color: #f9f9f9;
+    }
+
+    .notificacion-mini.no-leida {
+        background-color: #e8f4fd;
+    }
+
+    .notificacion-mini-titulo {
+        font-weight: bold;
+        font-size: 13px;
+        margin-bottom: 3px;
+        color: #333;
+    }
+
+    .notificacion-mini-mensaje {
+        font-size: 12px;
+        color: #666;
+        margin-bottom: 3px;
+    }
+
+    .notificacion-mini-fecha {
+        font-size: 11px;
+        color: #999;
+    }
+
+    .notificaciones-footer {
+        padding: 10px 15px;
+        text-align: center;
+        border-top: 1px solid #f0f0f0;
+        background-color: #f9f9f9;
+    }
+
+    .notificaciones-footer a {
+        color: #3c8dbc;
+        font-size: 13px;
+        font-weight: bold;
+        text-decoration: none;
+    }
+
+    .notificaciones-footer a:hover {
+        text-decoration: underline;
+    }
+
+    .notificaciones-vacia {
+        padding: 30px 15px;
+        text-align: center;
+        color: #999;
+    }
+</style>
+
+<li class="notificaciones-dropdown">
+    <a href="#" class="notificaciones-bell" id="notificacionesBell">
+        <i class="fa fa-bell"></i>
+        <span class="badge-notificaciones" id="badgeNotificaciones" style="display:none;">0</span>
+    </a>
+
+    <div class="notificaciones-menu" id="notificacionesMenu">
+        <div class="notificaciones-header">
+            <i class="fa fa-bell"></i> Notificaciones
+            <span class="pull-right" id="contadorNotificaciones">0</span>
+        </div>
+        <div class="notificaciones-lista" id="listaNotificaciones">
+            <div class="notificaciones-vacia">
+                <i class="fa fa-inbox fa-2x"></i>
+                <p>No tienes notificaciones nuevas</p>
+            </div>
+        </div>
+        <div class="notificaciones-footer">
+            <a href="@Url.Action("Index", "Notificacion")">
+                <i class="fa fa-list"></i> Ver todas las notificaciones
+            </a>
+        </div>
+    </div>
+</li>
+
+<script>
+    $(document).ready(function () {
+        // Variables
+        var $bell = $('#notificacionesBell');
+        var $menu = $('#notificacionesMenu');
+        var $badge = $('#badgeNotificaciones');
+        var $contador = $('#contadorNotificaciones');
+        var $lista = $('#listaNotificaciones');
+
+        // Toggle menú al hacer click en campana
+        $bell.on('click', function (e) {
+            e.preventDefault();
+            e.stopPropagation();
+            $menu.toggleClass('show');
+
+            if ($menu.hasClass('show')) {
+                cargarNotificaciones();
+            }
+        });
+
+        // Cerrar menú al hacer click fuera
+        $(document).on('click', function (e) {
+            if (!$(e.target).closest('.notificaciones-dropdown').length) {
+                $menu.removeClass('show');
+            }
+        });
+
+        // Cargar contador inicial
+        cargarContador();
+
+        // Auto-refresh cada 30 segundos
+        setInterval(cargarContador, 30000);
+
+        // Función para cargar contador
+        function cargarContador() {
+            $.ajax({
+                url: '@Url.Action("ContarNoLeidas", "Notificacion")',
+                type: 'GET',
+                success: function (result) {
+                    if (result.success && result.cantidad > 0) {
+                        $badge.text(result.cantidad).show();
+                        $contador.text(result.cantidad);
+                    } else {
+                        $badge.hide();
+                        $contador.text('0');
+                    }
+                }
+            });
+        }
+
+        // Función para cargar notificaciones
+        function cargarNotificaciones() {
+            $.ajax({
+                url: '@Url.Action("ObtenerRecientes", "Notificacion")',
+                type: 'GET',
+                data: { cantidad: 10 },
+                success: function (result) {
+                    if (result.success && result.notificaciones && result.notificaciones.length > 0) {
+                        renderizarNotificaciones(result.notificaciones);
+                    } else {
+                        $lista.html(`
+                            <div class="notificaciones-vacia">
+                                <i class="fa fa-inbox fa-2x"></i>
+                                <p>No tienes notificaciones nuevas</p>
+                            </div>
+                        `);
+                    }
+                }
+            });
+        }
+
+        // Función para renderizar notificaciones
+        function renderizarNotificaciones(notificaciones) {
+            var html = '';
+            $.each(notificaciones, function (i, n) {
+                var cssClass = n.leida ? 'notificacion-mini' : 'notificacion-mini no-leida';
+                html += `
+                    <div class="${cssClass}" data-id="${n.id}" data-url="${n.url || ''}">
+                        <div class="notificacion-mini-titulo">
+                            <i class="${n.icono}"></i> ${n.titulo}
+                        </div>
+                        <div class="notificacion-mini-mensaje">${n.mensaje}</div>
+                        <div class="notificacion-mini-fecha">
+                            <i class="fa fa-clock-o"></i> ${n.fecha}
+                        </div>
+                    </div>
+                `;
+            });
+            $lista.html(html);
+        }
+
+        // Click en notificación individual
+        $(document).on('click', '.notificacion-mini', function () {
+            var id = $(this).data('id');
+            var url = $(this).data('url');
+
+            // Marcar como leída
+            $.ajax({
+                url: '@Url.Action("MarcarComoLeida", "Notificacion")',
+                type: 'POST',
+                data: { id: id },
+                success: function () {
+                    cargarContador();
+                }
+            });
+
+            // Redirigir si tiene URL
+            if (url && url !== '') {
+                window.location.href = url;
+            } else {
+                // Si no tiene URL, ir al panel de notificaciones
+                window.location.href = '@Url.Action("Index", "Notificacion")';
+            }
+        });
+    });
+</script>
