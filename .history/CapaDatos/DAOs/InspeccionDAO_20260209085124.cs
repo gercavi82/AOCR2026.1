@@ -215,6 +215,7 @@ namespace CapaDatos.DAOs
 
                 cmd.Parameters.AddWithValue("@estado", (object)i.Estado ?? DBNull.Value);
                 cmd.Parameters.AddWithValue("@res", (object)i.Resultado ?? DBNull.Value);
+                cmd.Parameters.AddWithValue("@ruta", (object)i.RutaInforme ?? DBNull.Value);
 
                 cmd.Parameters.AddWithValue("@uby", (object)i.UpdatedBy ?? DBNull.Value);
 
