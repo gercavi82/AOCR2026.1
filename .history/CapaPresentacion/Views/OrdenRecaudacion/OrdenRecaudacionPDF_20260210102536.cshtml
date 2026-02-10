@@ -1,0 +1,231 @@
+@inherits System.Web.Mvc.WebViewPage<CapaPresentacion.Models.ViewModels.OrdenRecaudacionPDFModel>
+@{
+    Layout = null;
+}
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8" />
+    <title>Orden de Recaudación @Model.NumeroOrden</title>
+    <style>
+        :root {
+            --ink: #1f242b;
+            --muted: #5f6b7a;
+            --line: #d8dee6;
+            --accent: #1b2a41;
+            --soft: #f6f8fb;
+        }
+        body {
+            font-family: "Georgia", "Times New Roman", serif;
+            font-size: 11px;
+            margin: 0;
+            padding: 26px 30px;
+            color: var(--ink);
+            background: #fff;
+        }
+        .header {
+            display: flex;
+            align-items: flex-end;
+            justify-content: space-between;
+            padding-bottom: 10px;
+            margin-bottom: 18px;
+            border-bottom: 1px solid var(--line);
+        }
+        .header-left {
+            max-width: 72%;
+        }
+        .title {
+            font-size: 15px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+            color: var(--accent);
+            margin-bottom: 2px;
+        }
+        .subtitle {
+            font-size: 12px;
+            font-weight: 700;
+            color: var(--muted);
+            letter-spacing: 0.6px;
+            text-transform: uppercase;
+        }
+        .orden-number {
+            text-align: right;
+            font-size: 10px;
+            color: var(--muted);
+        }
+        .orden-number strong {
+            display: block;
+            color: var(--ink);
+            font-size: 12px;
+            margin-top: 2px;
+        }
+        .info-section {
+            margin-bottom: 16px;
+            border: 1px solid var(--line);
+            border-radius: 6px;
+            padding: 10px 12px;
+            background: #fff;
+        }
+        .info-row {
+            margin: 4px 0;
+            display: flex;
+        }
+        .info-label {
+            font-weight: 700;
+            width: 165px;
+            color: var(--muted);
+        }
+        .info-value {
+            flex: 1;
+        }
+        .detalle-section {
+            margin-top: 16px;
+            margin-bottom: 20px;
+            border: 1px solid var(--line);
+            border-radius: 6px;
+            overflow: hidden;
+            background: #fff;
+        }
+        .detalle-title {
+            background: var(--accent);
+            color: #fff;
+            font-weight: 700;
+            padding: 8px 10px;
+            text-align: left;
+            font-size: 11px;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+        }
+        .detalle-header {
+            background: var(--soft);
+            color: var(--muted);
+            display: flex;
+            font-weight: 700;
+            font-size: 10.5px;
+            border-top: 1px solid var(--line);
+            border-bottom: 1px solid var(--line);
+        }
+        .detalle-header .concepto {
+            flex: 2;
+            padding: 7px 10px;
+            text-align: left;
+        }
+        .detalle-header .valor {
+            flex: 1;
+            padding: 7px 10px;
+            text-align: right;
+        }
+        .detalle-row {
+            display: flex;
+            border-bottom: 1px solid var(--line);
+        }
+        .detalle-row .concepto {
+            flex: 2;
+            padding: 7px 10px;
+            border-right: 1px solid var(--line);
+        }
+        .detalle-row .valor {
+            flex: 1;
+            padding: 7px 10px;
+            text-align: right;
+            font-weight: 700;
+        }
+        .total-row {
+            background: #eef1f5;
+            font-weight: 700;
+            font-size: 11.5px;
+        }
+        .footer-note {
+            margin-top: 14px;
+            font-size: 10px;
+            color: var(--muted);
+            border-top: 1px solid var(--line);
+            padding-top: 8px;
+        }
+    </style>
+</head>
+
+<body>
+    <div style="display: flex; align-items: flex-start; justify-content: space-between;">
+        <img src="/Content/assets/imganes/escudo-ecuador.jpg" style="height: 60px; margin-right: 10px;" />
+        <div style="flex: 1; text-align: right; font-size: 13px; font-weight: 600; color: #1b2a41;">
+            Dirección General de Aviación Civil
+        </div>
+    </div>
+    <div style="margin-top: 10px; border: 2px solid #222; padding: 0;">
+        <div style="text-align: center; font-size: 15px; font-weight: bold; padding: 8px 0 2px 0;">
+            DIRECCIÓN DE CERTIFICACIÓN AERONÁUTICA<br />Y VIGILANCIA CONTINUA<br />ORDEN DE RECAUDACIÓN
+        </div>
+        <div style="text-align: right; font-size: 13px; font-weight: bold; padding: 0 10px 4px 0;">
+            No. @Model.NumeroOrden
+        </div>
+    </div>
+    <table style="width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 12px;">
+        <tr>
+            <td style="border: 1px solid #222; padding: 4px 8px; width: 30%; font-weight: bold;">Lugar y Fecha de Emisión:</td>
+            <td style="border: 1px solid #222; padding: 4px 8px;">@Model.LugarEmision, @Model.FechaEmision.ToString("dd/MM/yyyy")</td>
+        </tr>
+        <tr>
+            <td style="border: 1px solid #222; padding: 4px 8px; font-weight: bold;">Nombres Completos o Nombre de Cía.:</td>
+            <td style="border: 1px solid #222; padding: 4px 8px;">@Model.NombreCompania</td>
+        </tr>
+        <tr>
+            <td style="border: 1px solid #222; padding: 4px 8px; font-weight: bold;">Número de cédula o RUC:</td>
+            <td style="border: 1px solid #222; padding: 4px 8px;">@Model.Ruc</td>
+        </tr>
+        <tr>
+            <td style="border: 1px solid #222; padding: 4px 8px; font-weight: bold;">Dirección de correo electrónico:</td>
+            <td style="border: 1px solid #222; padding: 4px 8px;">@Model.Email</td>
+        </tr>
+        <tr>
+            <td style="border: 1px solid #222; padding: 4px 8px; font-weight: bold;">Número telefónico de contacto:</td>
+            <td style="border: 1px solid #222; padding: 4px 8px;">@Model.Telefono</td>
+        </tr>
+    </table>
+
+    <table style="width: 100%; border-collapse: collapse; margin-top: 16px; font-size: 12px;">
+        <tr>
+            <td colspan="2" style="border: 1px solid #222; font-weight: bold; background: #f3f3f3; padding: 6px 8px; text-align: left;">DETALLE DEL SERVICIO OTORGADO (<span style="font-style:italic;">DERECHOS POR:</span>)</td>
+        </tr>
+        <tr>
+            <td style="border: 1px solid #222; padding: 8px; width: 70%; vertical-align: top;">
+                @Model.ConceptoPrincipal
+                <div style="font-size:11px; color:#444; margin-top:4px;">@Model.Referencia</div>
+            </td>
+            <td style="border: 1px solid #222; padding: 8px; width: 30%; text-align: right; vertical-align: top; font-weight: bold;">
+                USD$ @Model.ValorBase.ToString("N2")
+            </td>
+        </tr>
+        <tr>
+            <td style="border: 1px solid #222; font-weight: bold; background: #f3f3f3; padding: 6px 8px; text-align: left;">TOTAL: <span style="font-style:italic;">@Model.TotalEnLetras</span></td>
+            <td style="border: 1px solid #222; font-weight: bold; background: #f3f3f3; padding: 6px 8px; text-align: right;">USD$ @Model.Total.ToString("N2")</td>
+        </tr>
+    </table>
+
+    <div style="margin-top: 18px; font-size: 11px;">
+        <div style="border: 1px solid #222; padding: 12px 8px; text-align: center; font-weight: bold;">
+            DRA. CARMEN AMELIA TORRES<br />REPRESENTANTE CIA. @Model.NombreCompania
+        </div>
+    </div>
+
+    <div style="margin-top: 10px; font-size: 10px;">
+        <ol style="margin-bottom: 0; padding-left: 18px;">
+            <li>Resolución 066/2010 de 21 julio de 2010 - "Registro Oficial Edición Especial No.61"</li>
+            <li>Los valores recaudados tienen el carácter de <b>No Reembolsables</b>.</li>
+            <li>El pago de este rubro no garantiza que el Proceso de Certificación sea Satisfactorio, si la compañía no cumple con lo requerido por la RDAC correspondiente.</li>
+        </ol>
+    </div>
+
+    <div style="margin-top: 18px; font-size: 11px;">
+        <div style="display: flex; align-items: flex-end;">
+            <div style="flex: 1;">
+                <img src="/Content/assets/imganes/visto-cuadrado.jpg" style="height: 38px; margin-bottom: 2px;" />
+            </div>
+            <div style="flex: 3; text-align: left;">
+                <b>Mgs. Luis Catota Torres</b><br />Inspector Especialista de Certificación DGAC<br />Gestión de Operaciones
+            </div>
+        </div>
+    </div>
+</body>
+</html>
