@@ -305,6 +305,7 @@
     <Compile Include="Helpers\NotificacionCorreoHelper.cs" />
     <Compile Include="Infrastructure\OrdenRecaudacionFilters.cs" />
     <Compile Include="Infrastructure\OrdenRecaudacionRoutes.cs" />
+    <Compile Include="Models\CambiarContrasenaViewModel.cs" />
     <Compile Include="Models\OrdenRecaudacionNuevaVM.cs" />
     <Compile Include="Models\ConceptoOptionVM.cs" />
     <Compile Include="Models\Validation\RucCedulaValidationAttribute.cs" />
@@ -2829,7 +2830,6 @@
     <Content Include="Views\Shared\_ModalCrearUsuario.cshtml" />
     <Content Include="Views\SolicitudAOCR\_FormularioEmisionAOCR.cshtml" />
     <Content Include="Views\Account\_CuentasBancosPartial.cshtml" />
-    <Content Include="Views\Shared\_ModalRegistroUsuario.cshtml" />
     <Content Include="Views\Shared\_CreateModalUsuario.cshtml" />
     <Content Include="Views\Historial\_HistorialEstados.cshtml" />
     <Content Include="Views\SolicitudAOCR\_ErrorSolicitud.cshtml" />

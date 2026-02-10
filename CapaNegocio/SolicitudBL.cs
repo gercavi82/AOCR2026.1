@@ -206,7 +206,7 @@ namespace CapaNegocio
      .ListarActivas()
      .Count(s => s.FechaSolicitud.HasValue && s.FechaSolicitud.Value.Year == year);
 
-            return $"AOCR-{year}-{(total + 1):D5}";
+            return $"DGAC-GOP-{year}-{(total + 1):D3}";
 
         }
         public List<SolicitudAOCR> ObtenerTodos()

@@ -1,0 +1,804 @@
+﻿@inherits System.Web.Mvc.WebViewPage
+@using CapaModelo
+@using System.Web.Mvc
+@using System.Web.Mvc.Html
+@{
+    ViewBag.Title = "_ModalCrearUsuario";
+}
+
+<style>
+    #modalRegistroUsuario .modal-content {
+        border-radius: 0.5rem;
+        box-shadow: 0 0.5rem 1.5rem rgba(0, 0, 0, 0.2);
+    }
+    #modalRegistroUsuario .modal-header {
+        background: linear-gradient(135deg, #0d6efd 0%, #084298 100%);
+        border-bottom: 3px solid #ffc107;
+        padding: 1.5rem 1rem;
+    }
+    #modalRegistroUsuario .modal-footer {
+        background-color: #f8f9fa;
+        border-top: 2px solid #dee2e6;
+        padding: 1rem 1.5rem;
+    }
+    #modalRegistroUsuario .form-label {
+        font-weight: 600;
+        color: #495057;
+        font-size: 14px;
+        margin-bottom: 0.5rem;
+    }
+    #modalRegistroUsuario .col-form-label {
+        padding-top: calc(0.375rem + 1px);
+        padding-bottom: calc(0.375rem + 1px);
+    }
+    #modalRegistroUsuario .form-control-sm,
+    #modalRegistroUsuario .form-select-sm {
+        border-radius: 0.25rem;
+        border: 1px solid #ced4da;
+        transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+        font-size: 14px;
+    }
+    #modalRegistroUsuario .form-control-sm:focus,
+    #modalRegistroUsuario .form-select-sm:focus {
+        border-color: #0d6efd;
+        box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.15);
+    }
+    #modalRegistroUsuario .text-danger {
+        font-weight: bold;
+        color: #dc3545 !important;
+    }
+    #modalRegistroUsuario .invalid-feedback {
+        font-size: 12px;
+        display: none;
+    }
+    #modalRegistroUsuario .is-invalid ~ .invalid-feedback {
+        display: block;
+    }
+    #modalRegistroUsuario small.text-muted {
+        font-size: 11px;
+        color: #6c757d;
+        line-height: 1.4;
+    }
+    #modalRegistroUsuario .badge {
+        font-size: 10px;
+        padding: 0.25rem 0.5rem;
+        font-weight: 600;
+    }
+    #modalRegistroUsuario .btn-primary {
+        background: linear-gradient(135deg, #0d6efd 0%, #0b5ed7 100%);
+        border: none;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        transition: transform 0.2s, box-shadow 0.2s;
+        font-weight: 600;
+    }
+    #modalRegistroUsuario .btn-primary:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+    }
+    #modalRegistroUsuario .btn-outline-secondary {
+        transition: all 0.2s;
+    }
+    #modalRegistroUsuario .btn-outline-secondary:hover {
+        transform: translateY(-1px);
+    }
+    #modalRegistroUsuario .alert {
+        border-radius: 0.375rem;
+        border-left: 4px solid;
+    }
+    #modalRegistroUsuario .alert-danger {
+        border-left-color: #dc3545;
+        background-color: #f8d7da;
+    <!-- CSS externo para el modal de registro de usuario -->
+    <link rel="stylesheet" href="/Content/modalRegistroUsuario.css?v=20260209" />
+                        </div>
+                    </div>
+
+                    <!-- Cédula/Pasaporte -->
+                    <div class="mb-3 row">
+                        <label for="CedulaIdentificacion" class="col-sm-4 col-form-label">
+                            Cédula/Pasaporte:<span class="text-danger">*</span>
+                        </label>
+                        <div class="col-sm-8">
+                            <input class="form-control form-control-sm text-uppercase"
+                                   type="text"
+                                   id="CedulaIdentificacion"
+                                   name="CedulaIdentificacion"
+                                   maxlength="15"
+                                   autocomplete="off"
+                                   required
+                                   placeholder="Ej: 1723456789 o AB123456"
+                                   data-url-validacion="@Url.Action("ValidarIdentificacion", "Usuario")" />
+                            <div class="invalid-feedback" id="identificacionError"></div>
+                        </div>
+                    </div>
+
+                    <!-- RUC -->
+                    <div class="mb-3 row">
+                        <label for="RUC" class="col-sm-4 col-form-label">
+                            RUC:<span class="text-danger">*</span>
+                        </label>
+                        <div class="col-sm-8">
+                            <input class="form-control form-control-sm text-uppercase"
+                                   type="text"
+                                   id="RUC"
+                                   name="RUC"
+                                   maxlength="13"
+                                   autocomplete="off"
+                                   required
+                                   placeholder="Ej: 1798765434001"
+                                   data-url-validacion="@Url.Action("ValidarRUC", "Usuario")" />
+                            <div class="invalid-feedback" id="rucError"></div>
+                        </div>
+                    </div>
+
+                    <!-- Nombres -->
+                    <div class="mb-3 row">
+                        <label for="NombreUsuario" class="col-sm-4 col-form-label">
+                            Nombres:<span class="text-danger">*</span>
+                        </label>
+                        <div class="col-sm-8">
+                            <input class="form-control form-control-sm"
+                                   type="text"
+                                   id="NombreUsuario"
+                                   name="NombreUsuario"
+                                   maxlength="40"
+                                   autocomplete="off"
+                                   required
+                                   placeholder="Ej: JUAN CARLOS" />
+                            <div class="invalid-feedback">
+                                Ingrese sus nombres.
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Apellidos -->
+                    <div class="mb-3 row">
+                        <label for="ApellidoUsuario" class="col-sm-4 col-form-label">
+                            Apellidos:<span class="text-danger">*</span>
+                        </label>
+                        <div class="col-sm-8">
+                            <input class="form-control form-control-sm"
+                                   type="text"
+                                   id="ApellidoUsuario"
+                                   name="ApellidoUsuario"
+                                   maxlength="40"
+                                   autocomplete="off"
+                                   required
+                                   placeholder="Ej: PÉREZ GARCÍA" />
+                            <div class="invalid-feedback">
+                                Ingrese sus apellidos.
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Empresa Operadora -->
+                    <div class="mb-3 row">
+                        <label for="EmpresaCodigo" class="col-sm-4 col-form-label">
+                            <i class="fas fa-building text-primary me-1"></i>
+                            Empresa Operadora:<span class="text-danger">*</span>
+                        </label>
+                        <div class="col-sm-8">
+                            <select class="form-select form-select-sm"
+                                    id="EmpresaCodigo"
+                                    name="EmpresaCodigo"
+                                    required>
+                                <option value="">-- Seleccione una empresa --</option>
+                            </select>
+                            <div class="invalid-feedback">
+                                Seleccione una empresa operadora.
+                            </div>
+                            <small class="text-muted d-block mt-1">
+                                <i class="fas fa-info-circle me-1"></i>
+                                Si no ve su empresa en el listado, contáctese con la DGAC
+                            </small>
+                        </div>
+                    </div>
+
+                    <!-- Documento de Representante Legal -->
+                    <div class="mb-3 row">
+                        <label for="DocumentoRepresentante" class="col-sm-4 col-form-label">
+                            <i class="fas fa-file-pdf text-danger me-1"></i>
+                            Documento Legal:<span class="text-danger">*</span>
+                        </label>
+                        <div class="col-sm-8">
+                            <input class="form-control form-control-sm"
+                                   type="file"
+                                   id="DocumentoRepresentante"
+                                   name="DocumentoRepresentante"
+                                   accept=".pdf"
+                                   required />
+                            <div class="invalid-feedback">
+                                Debe adjuntar un documento PDF.
+                            </div>
+                            <small class="text-muted d-block mt-1">
+                                <i class="fas fa-file-upload me-1"></i>
+                                Adjunte carta de delegación o poder que lo acredite como representante legal
+                                <span class="badge bg-warning text-dark ms-1">PDF, máx. 2MB</span>
+                            </small>
+                        </div>
+                    </div>
+
+                    <!-- Representante Legal -->
+                    <div class="mb-3 row">
+                        <div class="col-sm-8 offset-sm-4">
+                            <div class="form-check">
+                                <input class="form-check-input"
+                                       type="checkbox"
+                                       id="esRepresentanteLegal"
+                                       name="esRepresentanteLegal">
+                                <label class="form-check-label" for="esRepresentanteLegal">
+                                    ¿Es representante legal de una compañía operadora?
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Panel Representante (Dinámico) -->
+                    <div id="panelRepresentante" class="border rounded p-3 mb-3" style="display:none">
+                        <h6 class="text-primary mb-3">
+                            <i class="fas fa-file-contract me-2"></i>Documentación de Representante Legal
+                        </h6>
+
+                        <div class="alert alert-info mb-3">
+                            <i class="fas fa-info-circle me-2"></i>
+                            <strong>Requisito:</strong> Adjunte carta de delegación o poder.
+                            <br><small class="text-muted"><strong>Tamaño máximo: 2MB (PDF)</strong></small>
+                        </div>
+
+                        <div class="mb-3">
+                            <div class="table-responsive">
+                                <table class="table table-striped table-bordered table-sm">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th class="text-center col-5">Compañía Operadora</th>
+                                            <th class="text-center col-6">Archivo representante legal</th>
+                                            <th class="col-1 text-center">Acción</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="representantesBody">
+                                        <tr id="filaTemplate" data-index="0">
+                                            <td>
+                                                <div class="input-group input-group-sm">
+                                                    <input type="hidden" name="Companias[0].IdCompania" class="idCompania" />
+                                                    <input type="text"
+                                                           name="Companias[0].NombreCompania"
+                                                           class="form-control text-uppercase nombreCompania"
+                                                           autocomplete="off"
+                                                           placeholder="Buscar compañía..."
+                                                           readonly />
+                                                    <button type="button"
+                                                            class="btn btn-outline-primary btn-buscar-compania">
+                                                        <i class="fas fa-search"></i>
+                                                    </button>
+                                                </div>
+                                            </td>
+                                            <td>
+                                                <input type="file"
+                                                       name="Companias[0].ArchivoRepresentante"
+                                                       class="form-control form-control-sm archivo-representante"
+                                                       accept=".pdf" />
+                                                <small class="text-muted d-block mt-1">PDF (máx. 2MB)</small>
+                                            </td>
+                                            <td class="text-center">
+                                                <button type="button" class="btn btn-danger btn-sm btn-eliminar-fila" disabled>
+                                                    <i class="fas fa-trash"></i>
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+
+                            <div class="text-end mt-2">
+                                <button type="button" id="agregarFila" class="btn btn-outline-primary btn-sm">
+                                    <i class="fas fa-plus me-1"></i> Agregar compañía
+                                </button>
+                            </div>
+                        </div>
+
+                        <p class="mb-0">
+                            <a href="#" style="font-size:11px" data-bs-toggle="modal" data-bs-target="#modal-informacionOperador">
+                                <i class="text-black-50">
+                                    <b>Si no existe el operador en la base de datos, click para más información</b>
+                                </i>
+                                <span class="text-primary"> / Click for more information</span>
+                            </a>
+                        </p>
+                    </div>
+
+                    <!-- Campos obligatorios -->
+                    <div class="mb-3 row">
+                        <div class="col-sm-12">
+                            <div class="alert alert-warning p-2">
+                                <small class="d-flex align-items-center">
+                                    <i class="fas fa-exclamation-triangle me-2"></i>
+                                    Campos con <span class="text-danger">*</span> son obligatorios
+                                </small>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+
+                <div class="modal-footer bg-light border-top">
+                    <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">
+                        <i class="fas fa-times me-1"></i> Cancelar
+                    </button>
+                    <button type="submit" class="btn btn-primary btn-sm px-4" id="btnRegistrar">
+                        <span class="spinner-border spinner-border-sm d-none me-1" id="spinnerRegistro"></span>
+                        <i class="fas fa-save me-1"></i> Registrar Usuario
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+    console.log('🟢 Script del modal de usuario cargado');
+
+    // Variables globales específicas del modal
+    var filaActivaModal = null;
+    var contadorFilasModal = 1;
+
+    (function initModalUsuarioWhenReady() {
+        if (window.__modalCrearUsuarioInit) {
+            return;
+        }
+        window.__modalCrearUsuarioInit = true;
+
+        function onReady() {
+            inicializarModalUsuario();
+        }
+
+        function waitForJQuery() {
+            if (window.jQuery) {
+                window.jQuery(function () { onReady(); });
+                return;
+            }
+            setTimeout(waitForJQuery, 50);
+        }
+
+        waitForJQuery();
+    })();
+
+    function inicializarModalUsuario() {
+        logEmpresa('Modal listo: inicializando...');
+        // Cargar empresas operadoras
+        cargarEmpresasOperadoras();
+
+        // Validar archivo PDF
+        $('#DocumentoRepresentante').on('change', function() {
+            validarArchivoPDF(this);
+        });
+
+        // Mostrar/ocultar panel representante
+        $('#esRepresentanteLegal').change(function() {
+            if ($(this).is(':checked')) {
+                $('#panelRepresentante').slideDown();
+            } else {
+                $('#panelRepresentante').slideUp();
+                limpiarPanelRepresentante();
+            }
+        });
+
+        // Clonar fila para representante
+        $('#agregarFila').click(clonarFilaRepresentante);
+
+        // Delegación de eventos (mejor performance)
+        $(document).on('click', '.btn-buscar-compania', function() {
+            buscarCompaniaModal($(this));
+        });
+
+        $(document).on('click', '.btn-eliminar-fila', function() {
+            eliminarFilaRepresentante($(this));
+        });
+
+        // Validación en tiempo real
+        $('#Correo').on('blur', validarCorreoUnico);
+        $('#CedulaIdentificacion').on('blur', validarIdentificacionUnica);
+        $('#RUC').on('blur', validarRUCUnico);
+
+        // Submit del formulario
+        $('#crearForm').submit(registrarUsuario);
+    }
+
+    function cargarEmpresasOperadoras() {
+        var urlEmpresas = '@Url.Action("ObtenerEmpresas", "Empresa")';
+        logEmpresa('Iniciando carga de empresas...');
+        logEmpresa('URL: ' + urlEmpresas);
+        // Mostrar indicador de carga
+        var $select = $('#EmpresaCodigo');
+        $select.empty().append('<option value="">Cargando empresas...</option>').prop('disabled', true);
+
+        $.ajax({
+            url: urlEmpresas,
+            type: 'GET',
+            dataType: 'json',
+            cache: false,
+            headers: { 'X-Requested-With': 'XMLHttpRequest' },
+            timeout: 10000, // 10 segundos de timeout
+            beforeSend: function() {
+                logEmpresa('AJAX: enviando solicitud...');
+            },
+            success: function(data) {
+                $select.empty().prop('disabled', false);
+                $select.append('<option value="">-- Seleccione una empresa --</option>');
+
+                if (Array.isArray(data) && data.length > 0) {
+                    $.each(data, function(i, empresa) {
+                        // Usar CodigoOaci como valor
+                        var codigo = empresa.CodigoOaci || empresa.Codigo;
+                        var nombre = empresa.Nombre || 'Sin nombre';
+                        
+                        // Formato: [OACI] Nombre Empresa
+                        var textoOpcion = '[' + codigo + '] ' + nombre;
+                        if (empresa.CodigoIata) {
+                            textoOpcion = '[' + codigo + '/' + empresa.CodigoIata + '] ' + nombre;
+                        }
+                        
+                        $select.append($('<option>', {
+                            value: codigo,
+                            text: textoOpcion,
+                            'data-iata': empresa.CodigoIata || '',
+                            'data-numero': empresa.CodigoNumeroCia || ''
+                        }));
+                    });
+                    
+                    console.log('✅ ' + data.length + ' empresas cargadas desde AS/400 (CIAARC)');
+                    logEmpresa('OK: ' + data.length + ' empresas cargadas.');
+                } else {
+                    $select.append('<option value="">No hay empresas disponibles</option>');
+                    console.warn('⚠ No se encontraron empresas en CIAARC');
+                    if (data && data.error) {
+                        logEmpresa('WARN: ' + data.error);
+                    } else {
+                        logEmpresa('WARN: respuesta vacía o formato no esperado.');
+                    }
+                }
+            },
+            error: function(xhr, status, error) {
+                $select.empty().prop('disabled', false);
+                $select.append('<option value="">Error al cargar empresas</option>');
+                console.error('❌ Error cargando empresas de AS/400:', error);
+
+                var detalle = error || status;
+                if (xhr) {
+                    detalle += ' | HTTP ' + xhr.status;
+                    if (xhr.responseText) {
+                        var resp = xhr.responseText;
+                        if (resp.indexOf('<!DOCTYPE html') >= 0 || resp.indexOf('<html') >= 0) {
+                            detalle += ' | resp: HTML (posible redirección a Login)';
+                        } else {
+                            detalle += ' | resp: ' + resp.substring(0, 200);
+                        }
+                    }
+                }
+                logEmpresa('ERROR: ' + detalle);
+                mostrarErrorModal('No se pudieron cargar las empresas desde el AS/400. Por favor, recargue la página o contacte al administrador.');
+            },
+            complete: function(xhr, status) {
+                var codigo = xhr ? xhr.status : 'N/A';
+                logEmpresa('AJAX: terminado (' + status + ') HTTP ' + codigo);
+            }
+        });
+    }
+
+    function validarArchivoPDF(input) {
+        const archivo = input.files[0];
+        
+        if (!archivo) {
+            removerErrorCampo('#DocumentoRepresentante');
+            return;
+        }
+        
+        // Validar extensión
+        const extension = archivo.name.split('.').pop().toLowerCase();
+        if (extension !== 'pdf') {
+            mostrarErrorCampo('#DocumentoRepresentante', 'Solo se permiten archivos PDF');
+            input.value = '';
+            return;
+        }
+        
+        // Validar tamaño (2MB = 2097152 bytes)
+        const maxSize = 2097152;
+        if (archivo.size > maxSize) {
+            mostrarErrorCampo('#DocumentoRepresentante', 'El archivo no debe superar los 2MB');
+            input.value = '';
+            return;
+        }
+        
+        removerErrorCampo('#DocumentoRepresentante');
+    }
+
+    function actualizarValidacionIdentificacion() {
+        const tipo = $('input[name="TipoIdentificacion"]:checked').val();
+        const input = $('#CedulaIdentificacion');
+
+        if (tipo === 'CI') {
+            input.attr('maxlength', '10')
+                 .attr('placeholder', 'Ej: 1723456789')
+                 .removeClass('text-uppercase');
+        } else {
+            input.attr('maxlength', '15')
+                 .attr('placeholder', 'Ej: AB123456')
+                 .addClass('text-uppercase');
+        }
+        input.val('');
+    }
+
+    function validarCorreoUnico() {
+        const correo = $(this).val().trim();
+        const url = $(this).data('url-validacion');
+
+        if (!correo || !url) return;
+
+        $.post(url, { correo: correo })
+            .done(function(response) {
+                if (!response.valido) {
+                    mostrarErrorCampo('#Correo', response.mensaje || 'Correo ya registrado');
+                } else {
+                    removerErrorCampo('#Correo');
+                }
+            });
+    }
+
+    function validarIdentificacionUnica() {
+        const identificacion = $(this).val().trim();
+        const tipo = $('input[name="TipoIdentificacion"]:checked').val();
+        const url = $(this).data('url-validacion');
+
+        if (!identificacion || !url) return;
+
+        $.post(url, {
+            identificacion: identificacion,
+            tipo: tipo
+        })
+        .done(function(response) {
+            if (!response.valido) {
+                mostrarErrorCampo('#CedulaIdentificacion', response.mensaje || 'Identificación ya registrada');
+            } else {
+                removerErrorCampo('#CedulaIdentificacion');
+            }
+        });
+    }
+
+    function validarRUCUnico() {
+        const ruc = $(this).val().trim();
+        const url = $(this).data('url-validacion');
+
+        if (!ruc || !url) return;
+
+        $.post(url, { ruc: ruc })
+            .done(function(response) {
+                if (!response.valido) {
+                    mostrarErrorCampo('#RUC', response.mensaje || 'RUC ya registrado');
+                } else {
+                    removerErrorCampo('#RUC');
+                }
+            });
+    }
+
+    function clonarFilaRepresentante() {
+        const nuevaFila = $('#filaTemplate').clone(true);
+        nuevaFila.attr('id', '').attr('data-index', contadorFilasModal);
+
+        // Actualizar names
+        nuevaFila.find('[name]').each(function() {
+            const name = $(this).attr('name');
+            if (name) {
+                $(this).attr('name', name.replace('[0]', '[' + contadorFilasModal + ']'));
+            }
+        });
+
+        // Habilitar eliminar
+        nuevaFila.find('.btn-eliminar-fila').prop('disabled', false);
+
+        // Limpiar valores
+        nuevaFila.find('.nombreCompania, .idCompania, .archivo-representante').val('');
+
+        $('#representantesBody').append(nuevaFila);
+        contadorFilasModal++;
+    }
+
+    function buscarCompaniaModal(boton) {
+        filaActivaModal = boton.closest('tr');
+
+        // Usar la función global del layout si existe
+        if (typeof window.cargarModalBusquedaCompania === 'function') {
+            window.cargarModalBusquedaCompania();
+        } else {
+            // Fallback: abrir modal simple
+            $('#modalBuscarCompania').modal('show');
+        }
+    }
+
+    function eliminarFilaRepresentante(boton) {
+        const fila = boton.closest('tr');
+        if (fila.attr('data-index') !== '0') {
+            fila.remove();
+            reindexarFilasModal();
+        }
+    }
+
+    function reindexarFilasModal() {
+        contadorFilasModal = 1;
+        $('#representantesBody tr[data-index]').each(function(index) {
+            $(this).attr('data-index', index);
+            $(this).find('[name]').each(function() {
+                const name = $(this).attr('name');
+                if (name) {
+                    const newName = name.replace(/\[\d+\]/, '[' + index + ']');
+                    $(this).attr('name', newName);
+                }
+            });
+            contadorFilasModal++;
+        });
+    }
+
+    function limpiarPanelRepresentante() {
+        $('.nombreCompania').val('');
+        $('.idCompania').val('');
+        $('.archivo-representante').val('');
+
+        // Eliminar filas adicionales, mantener solo la primera
+        $('[data-index]').not('[data-index="0"]').remove();
+        contadorFilasModal = 1;
+
+        // Deshabilitar botón eliminar en primera fila
+        $('#filaTemplate .btn-eliminar-fila').prop('disabled', true);
+    }
+
+    function registrarUsuario(e) {
+        e.preventDefault();
+
+        if (!validarFormularioUsuario()) {
+            return false;
+        }
+
+        // Mostrar loading
+        $('#spinnerRegistro').removeClass('d-none');
+        $('#btnRegistrar').prop('disabled', true);
+
+        const formData = new FormData(this);
+
+        $.ajax({
+            url: '@Url.Action("Crear", "Usuario")',
+            type: 'POST',
+            data: formData,
+            processData: false,
+            contentType: false,
+            success: function(response) {
+                if (response.success) {
+                    // Usar función global del layout
+                    if (typeof mostrarToast === 'function') {
+                        mostrarToast('Éxito', response.message || 'Usuario registrado', 'success');
+                    }
+
+                    $('#modalRegistroUsuario').modal('hide');
+                    limpiarFormularioUsuario();
+
+                    // Callback para recargar datos
+                    if (typeof onUsuarioRegistrado === 'function') {
+                        onUsuarioRegistrado(response.usuarioId);
+                    }
+                } else {
+                    mostrarErrorModal(response.message || 'Error al registrar');
+                }
+            },
+            error: function(xhr) {
+                mostrarErrorModal(xhr.responseJSON?.message || 'Error en el servidor');
+            },
+            complete: function() {
+                $('#spinnerRegistro').addClass('d-none');
+                $('#btnRegistrar').prop('disabled', false);
+            }
+        });
+    }
+
+    function validarFormularioUsuario() {
+        let valido = true;
+
+        // Validar campos requeridos
+        $('input[required]').each(function() {
+            if (!$(this).val().trim()) {
+                mostrarErrorCampo(this, 'Campo requerido');
+                valido = false;
+            }
+        });
+
+        // Validar correo formato
+        const correo = $('#Correo').val().trim();
+        const emailRegex = /^[^\s@@]+@@[^\s@@]+\.[^\s@@]+$/;
+        if (!emailRegex.test(correo)) {
+            mostrarErrorCampo('#Correo', 'Correo inválido');
+            valido = false;
+        }
+
+        // Validar empresa seleccionada
+        const empresaCodigo = $('#EmpresaCodigo').val();
+        if (!empresaCodigo) {
+            mostrarErrorCampo('#EmpresaCodigo', 'Debe seleccionar una empresa');
+            valido = false;
+        }
+
+        // Validar documento legal
+        const documentoInput = $('#DocumentoRepresentante')[0];
+        if (!documentoInput.files || !documentoInput.files.length) {
+            mostrarErrorCampo('#DocumentoRepresentante', 'Debe adjuntar el documento legal');
+            valido = false;
+        } else {
+            const archivo = documentoInput.files[0];
+            const extension = archivo.name.split('.').pop().toLowerCase();
+            if (extension !== 'pdf') {
+                mostrarErrorCampo('#DocumentoRepresentante', 'Solo se permiten archivos PDF');
+                valido = false;
+            }
+            const maxSize = 2097152; // 2MB
+            if (archivo.size > maxSize) {
+                mostrarErrorCampo('#DocumentoRepresentante', 'El archivo no debe superar los 2MB');
+                valido = false;
+            }
+        }
+
+        // Validar representante legal
+        if ($('#esRepresentanteLegal').is(':checked')) {
+            let tieneCompania = false;
+            $('.idCompania').each(function() {
+                if ($(this).val()) tieneCompania = true;
+            });
+
+            if (!tieneCompania) {
+                mostrarErrorModal('Debe seleccionar al menos una compañía');
+                valido = false;
+            }
+        }
+
+        return valido;
+    }
+
+    function mostrarErrorCampo(selector, mensaje) {
+        $(selector).addClass('is-invalid');
+        const errorDiv = $(selector).next('.invalid-feedback');
+        if (errorDiv.length) {
+            errorDiv.text(mensaje).show();
+        }
+    }
+
+    function removerErrorCampo(selector) {
+        $(selector).removeClass('is-invalid');
+        $(selector).next('.invalid-feedback').hide();
+    }
+
+    function mostrarErrorModal(mensaje) {
+        $('#modalAlertMessage').text(mensaje);
+        $('#modalAlertContainer').removeClass('d-none');
+        $('#modalRegistroUsuario').animate({ scrollTop: 0 }, 500);
+    }
+
+    function logEmpresa(mensaje) {
+        var $container = $('#empresaLogContainer');
+        var $log = $('#empresaLog');
+        var ts = new Date().toLocaleTimeString();
+        $container.removeClass('d-none');
+        $log.prepend('<div>[' + ts + '] ' + mensaje + '</div>');
+    }
+
+    function limpiarFormularioUsuario() {
+        $('#crearForm')[0].reset();
+        $('#panelRepresentante').hide();
+        limpiarPanelRepresentante();
+        $('.invalid-feedback').hide();
+        $('.is-invalid').removeClass('is-invalid');
+        $('#modalAlertContainer').addClass('d-none');
+    }
+
+    // Función para seleccionar compañía (llamada desde modal externo)
+    window.seleccionarCompaniaParaUsuario = function(id, nombre) {
+        if (filaActivaModal) {
+            filaActivaModal.find('.idCompania').val(id);
+            filaActivaModal.find('.nombreCompania').val(nombre);
+        }
+    };
+</script>
+

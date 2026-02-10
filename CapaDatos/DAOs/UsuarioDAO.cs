@@ -35,7 +35,11 @@ namespace CapaDatos.DAOs
                         clave         AS Contrasena,
                         nombreusuario AS NombreCompleto,
                         rol           AS Rol,
-                        (estadoactividad = '1') AS Activo
+                        (estadoactividad = '1') AS Activo,
+                        fechacreado::timestamp AS FechaCreacion,
+                        fechaultimaconexion AS FechaUltimaConexion,
+                        empresa_codigo AS EmpresaCodigo,
+                        ruta_documento_legal AS RutaDocumentoLegal
                     FROM usuario
                     WHERE (codigousuario = @p1 OR correo = @p1)
                     LIMIT 1;";
@@ -67,7 +71,9 @@ namespace CapaDatos.DAOs
                         rol           AS Rol,
                         (estadoactividad = '1') AS Activo,
                         fechacreado::timestamp AS FechaCreacion,
-                        fechaultimaconexion AS FechaUltimaConexion
+                        fechaultimaconexion AS FechaUltimaConexion,
+                        empresa_codigo AS EmpresaCodigo,
+                        ruta_documento_legal AS RutaDocumentoLegal
                     FROM usuario
                     WHERE idusuario = @id
                     LIMIT 1;";
@@ -152,9 +158,11 @@ namespace CapaDatos.DAOs
 
                 string sql = @"
             INSERT INTO usuario
-                (codigousuario, clave, correo, estadoactividad, nombreusuario, rol, fechacreado)
+                (codigousuario, clave, correo, estadoactividad, nombreusuario, rol, 
+                 empresa_codigo, ruta_documento_legal, fechacreado)
             VALUES
-                (@CodigoUsuario, @Contrasena, @Email, '1', @NombreCompleto, @Rol, NOW())
+                (@CodigoUsuario, @Contrasena, @Email, '1', @NombreCompleto, @Rol,
+                 @EmpresaCodigo, @RutaDocumentoLegal, NOW())
             RETURNING idusuario;";
 
                 // Si no te mandan CodigoUsuario pero sí NombreUsuario, lo usamos como fallback
@@ -198,6 +206,43 @@ namespace CapaDatos.DAOs
         }
 
         // ==========================================
+        // ✅ ACTUALIZAR CONTRASEÑA POR ID
+        // ==========================================
+        public static bool ActualizarContrasena(int idUsuario, string nuevaClaveHash, out string mensaje)
+        {
+            if (idUsuario <= 0)
+            {
+                mensaje = "Usuario inválido.";
+                return false;
+            }
+            if (string.IsNullOrWhiteSpace(nuevaClaveHash))
+            {
+                mensaje = "La contraseña no puede estar vacía.";
+                return false;
+            }
+
+            using (var conn = new NpgsqlConnection(GetConnectionString()))
+            {
+                conn.Open();
+
+                string sql = @"UPDATE usuario
+                       SET clave = @clave
+                       WHERE idusuario = @id;";
+
+                int rows = conn.Execute(sql, new { clave = nuevaClaveHash, id = idUsuario });
+
+                if (rows > 0)
+                {
+                    mensaje = "Contraseña actualizada con éxito.";
+                    return true;
+                }
+
+                mensaje = "No se pudo actualizar la contraseña.";
+                return false;
+            }
+        }
+
+        // ==========================================
         // ✅ ACTUALIZAR ÚLTIMA CONEXIÓN (lo necesitaba SesionBL y UsuarioBL)
         // ==========================================
         public static void ActualizarUltimaConexion(int idUsuario)
@@ -214,6 +259,57 @@ namespace CapaDatos.DAOs
                        WHERE idusuario = @id;";
 
                 conn.Execute(sql, new { id = idUsuario });
+            }
+        }
+
+        // ==========================================
+        // ✅ VALIDACIONES PARA MODAL DE REGISTRO
+        // ==========================================
+        
+        public static bool ExisteCorreo(string correo)
+        {
+            if (string.IsNullOrWhiteSpace(correo)) return false;
+
+            using (var conn = new NpgsqlConnection(GetConnectionString()))
+            {
+                string sql = "SELECT COUNT(*) FROM usuario WHERE LOWER(correo) = LOWER(@correo)";
+                int count = conn.ExecuteScalar<int>(sql, new { correo = correo.Trim() });
+                return count > 0;
+            }
+        }
+
+        public static bool ExisteIdentificacion(string identificacion)
+        {
+            if (string.IsNullOrWhiteSpace(identificacion)) return false;
+
+            using (var conn = new NpgsqlConnection(GetConnectionString()))
+            {
+                string sql = "SELECT COUNT(*) FROM usuario WHERE codigousuario = @identificacion";
+                int count = conn.ExecuteScalar<int>(sql, new { identificacion = identificacion.Trim() });
+                return count > 0;
+            }
+        }
+
+        public static bool ExisteRUC(string ruc)
+        {
+            if (string.IsNullOrWhiteSpace(ruc)) return false;
+
+            using (var conn = new NpgsqlConnection(GetConnectionString()))
+            {
+                // Asumiendo que existe una columna 'ruc' en la tabla usuario
+                // Si no existe, ajusta la consulta según tu esquema de BD
+                string sql = "SELECT COUNT(*) FROM usuario WHERE ruc = @ruc";
+                
+                try
+                {
+                    int count = conn.ExecuteScalar<int>(sql, new { ruc = ruc.Trim() });
+                    return count > 0;
+                }
+                catch
+                {
+                    // Si la columna no existe, retornar false por ahora
+                    return false;
+                }
             }
         }
 

@@ -4,6 +4,8 @@ using System.Security.Cryptography;
 using System.Text;
 using CapaModelo;
 using CapaDatos.DAOs;
+using CapaDatos.Services;
+using CapaNegocio.Helpers;
 
 namespace CapaNegocio
 {
@@ -33,15 +35,48 @@ namespace CapaNegocio
         // ================================
         public static bool RestablecerContrasenaPorEmail(string email, out string mensaje)
         {
-            // ERROR CS7036: El DAO ahora pide la nueva contraseña, no solo el email.
-            // Aquí definimos una contraseña temporal por defecto (ej: "123456")
-            // Lo ideal sería generar una aleatoria y enviarla por correo.
+            // Generar contraseña temporal y guardarla (hash)
+            string passwordTemporal = PasswordHelper.GenerarPasswordAleatoria(10);
+            string passwordHash = PasswordHelper.HashPassword(passwordTemporal);
 
-            string passwordTemporal = "123456";
-            string passwordHash = CalcularSHA256(passwordTemporal);
+            bool ok = UsuarioDAO.RestablecerContrasena(email, passwordHash, out mensaje);
+            if (!ok)
+            {
+                return false;
+            }
 
-            // ✅ CORRECCIÓN: Pasamos el hash como segundo parámetro
-            return UsuarioDAO.RestablecerContrasena(email, passwordHash, out mensaje);
+            // Enviar correo con la contraseña temporal
+            var asunto = "Recuperación de contraseña - Sistema AOCR";
+            var cuerpo = $@"
+                <div style='font-family:Arial,sans-serif; font-size:14px; color:#222;'>
+                    <p>Se ha generado una contraseña temporal para su cuenta.</p>
+                    <p><strong>Contraseña temporal:</strong> {passwordTemporal}</p>
+                    <p>Por seguridad, el sistema le pedirá cambiar la contraseña en su próximo ingreso.</p>
+                    <hr />
+                    <small>Este es un correo automático, por favor no responder.</small>
+                </div>";
+
+            bool correoEnviado = false;
+            try
+            {
+                var servicioCorreo = new EnviarCorreo();
+                correoEnviado = servicioCorreo.enviaMensajeCorreo(email, asunto, cuerpo);
+            }
+            catch
+            {
+                correoEnviado = false;
+            }
+
+            if (!correoEnviado)
+            {
+                mensaje = "Contraseña actualizada, pero no se pudo enviar el correo. Verifique configuración SMTP.";
+            }
+            else
+            {
+                mensaje = "Se envió una contraseña temporal a su correo.";
+            }
+
+            return true;
         }
 
         // ================================
@@ -52,7 +87,8 @@ namespace CapaNegocio
             string contrasena,
             out Usuario usuario,
             out List<string> roles,
-            out string mensaje)
+            out string mensaje,
+            bool actualizarUltimaConexion = true)
         {
             usuario = UsuarioDAO.ObtenerPorNombreUsuario(nombreUsuario);
             roles = new List<string>();
@@ -92,8 +128,11 @@ namespace CapaNegocio
                 // return false; // Descomentar si es obligatorio tener rol
             }
 
-            // Actualizar última conexión
-            UsuarioDAO.ActualizarUltimaConexion(usuario.Id);
+            // Actualizar última conexión (opcional)
+            if (actualizarUltimaConexion)
+            {
+                UsuarioDAO.ActualizarUltimaConexion(usuario.Id);
+            }
 
             mensaje = "Inicio de sesión exitoso.";
             return true;

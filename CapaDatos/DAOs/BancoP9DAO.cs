@@ -36,14 +36,12 @@ namespace CapaDatos.DAOs
             {
                 // TODO: ODBC driver not available - temporary fallback with common banks
                 // Remove this section and uncomment P9 code once ODBC is properly configured
-                bancos.Add(new BancoP9 { Codigo = "001", Descripcion = "BANCO CENTRAL DEL ECUADOR" });
-                bancos.Add(new BancoP9 { Codigo = "002", Descripcion = "BANCO PICHINCHA" });
-                bancos.Add(new BancoP9 { Codigo = "003", Descripcion = "BANCO DEL PACIFICO" });
-                bancos.Add(new BancoP9 { Codigo = "004", Descripcion = "BANCO GUAYAQUIL" });
-                bancos.Add(new BancoP9 { Codigo = "005", Descripcion = "BANCO INTERNACIONAL" });
-                bancos.Add(new BancoP9 { Codigo = "006", Descripcion = "BANCO BOLIVARIANO" });
-                bancos.Add(new BancoP9 { Codigo = "007", Descripcion = "BANCO MACHALA" });
-                bancos.Add(new BancoP9 { Codigo = "008", Descripcion = "BANCO PRODUBANCO" });
+                
+                bancos.Add(new BancoP9 { Codigo = "001", Descripcion = "BANCO PICHINCHA" });                           
+                bancos.Add(new BancoP9 { Codigo = "002", Descripcion = "BANCO INTERNACIONAL" });
+                bancos.Add(new BancoP9 { Codigo = "003si" +
+                    "", Descripcion = "BANCO RUMIÑAHUI" });
+                
                 
                 return bancos;
 

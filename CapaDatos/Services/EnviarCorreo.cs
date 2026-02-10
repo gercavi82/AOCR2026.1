@@ -120,6 +120,84 @@ namespace CapaDatos.Services
             }
         }
 
+        /// <summary>
+        /// Envía correo con adjunto (método legacy para adjuntos)
+        /// </summary>
+        public bool enviaMensajeCorreoConAdjunto(string coreoPara, string asunto, string mensajeDetalle, byte[] adjuntoBytes, string adjuntoNombre, string mimeType = "application/pdf")
+        {
+            return enviaMensajeCorreoConAdjuntoDesde(GetDefaultFromAddress(), coreoPara, asunto, mensajeDetalle, adjuntoBytes, adjuntoNombre, mimeType);
+        }
+
+        /// <summary>
+        /// Envía correo con adjunto y remitente personalizado
+        /// </summary>
+        public bool enviaMensajeCorreoConAdjuntoDesde(string coreoDesde, string coreoPara, string asunto, string mensajeDetalle, byte[] adjuntoBytes, string adjuntoNombre, string mimeType = "application/pdf")
+        {
+            var correlationId = Guid.NewGuid().ToString("N").Substring(0, 12);
+
+            try
+            {
+                if (string.IsNullOrWhiteSpace(coreoPara))
+                {
+                    _logger.LogWarning("Intento de envío con adjunto sin destinatario",
+                        new LogContext { CorrelationId = correlationId });
+                    return false;
+                }
+
+                if (string.IsNullOrWhiteSpace(asunto))
+                    asunto = "Notificación - Sistema AOCR";
+
+                using (var correo = new MailMessage())
+                {
+                    correo.From = new MailAddress(coreoDesde ?? GetDefaultFromAddress());
+                    correo.To.Add(coreoPara);
+                    correo.Subject = asunto;
+                    correo.Body = mensajeDetalle;
+                    correo.IsBodyHtml = true;
+                    correo.Priority = MailPriority.Normal;
+
+                    if (adjuntoBytes != null && adjuntoBytes.Length > 0)
+                    {
+                        var nombre = string.IsNullOrWhiteSpace(adjuntoNombre) ? "documento.pdf" : adjuntoNombre;
+                        var stream = new System.IO.MemoryStream(adjuntoBytes);
+                        var attachment = new Attachment(stream, nombre, mimeType ?? "application/octet-stream");
+                        correo.Attachments.Add(attachment);
+                    }
+
+                    using (var smtp = CreateSmtpClient())
+                    {
+                        smtp.Send(correo);
+                    }
+                }
+
+                _logger.LogInfo(
+                    string.Format("Correo con adjunto enviado exitosamente a {0}", coreoPara),
+                    new LogContext { CorrelationId = correlationId });
+
+                return true;
+            }
+            catch (SmtpException ex)
+            {
+                _logger.LogError(ex, new LogContext
+                {
+                    CorrelationId = correlationId,
+                    ErrorCode = "SMTP_ERROR_ADJUNTO",
+                    AdditionalData = { { "Destinatario", coreoPara }, { "StatusCode", ex.StatusCode.ToString() } }
+                });
+                return false;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, new LogContext
+                {
+                    CorrelationId = correlationId,
+                    ErrorCode = "EMAIL_ADJUNTO_ERROR",
+                    AdditionalData = { { "Destinatario", coreoPara } }
+                });
+                return false;
+            }
+        }
+
         #endregion
 
         #region Métodos Públicos - Envío Encolado (Recomendado)

@@ -64,6 +64,31 @@ namespace CapaDatos.DAOs
             );
         }
 
+        public List<SolicitudAOCR> ObtenerPendientesAsignacion()
+        {
+            // Obtener solicitudes aprobadas o en estado de inspección que aún no tienen inspector asignado
+            string sql = @"
+                SELECT s.* 
+                FROM aocr_tbsolicitud s
+                LEFT JOIN aocr_tbinspeccion i ON s.codigo_solicitud = i.codigo_solicitud
+                WHERE s.estado IN ('APROBADA', 'INSPECCION_SOLICITADA') 
+                  AND s.deleted_at IS NULL
+                  AND i.codigo_inspeccion IS NULL
+                ORDER BY s.fecha_solicitud DESC";
+
+            using (var cn = new NpgsqlConnection(ConnectionString))
+            {
+                cn.Open();
+                using (var cmd = new NpgsqlCommand(sql, cn))
+                using (var rd = cmd.ExecuteReader())
+                {
+                    var lista = new List<SolicitudAOCR>();
+                    while (rd.Read()) lista.Add(Mapear(rd));
+                    return lista;
+                }
+            }
+        }
+
         // ============================
         // OBTENER INDIVIDUAL
         // ============================
@@ -134,6 +159,7 @@ namespace CapaDatos.DAOs
         INSERT INTO aocr_tbsolicitud (
             numero_solicitud,
             fecha_solicitud,
+            tipo_solicitud,
             nombre_operador,
             ruc,
             razon_social,
@@ -150,6 +176,7 @@ namespace CapaDatos.DAOs
         ) VALUES (
             @NumeroSolicitud,
             @FechaSolicitud,
+            @TipoSolicitud,
             @NombreOperador,
             @Ruc,
             @RazonSocial,
@@ -172,6 +199,7 @@ namespace CapaDatos.DAOs
                 {
                     cmd.Parameters.AddWithValue("@NumeroSolicitud", (object)(solicitud.NumeroSolicitud ?? ""));
                     cmd.Parameters.AddWithValue("@FechaSolicitud", (object)solicitud.FechaSolicitud ?? DBNull.Value);
+                    cmd.Parameters.AddWithValue("@TipoSolicitud", (object)(solicitud.TipoSolicitud ?? 1));
                     cmd.Parameters.AddWithValue("@NombreOperador", (object)(solicitud.NombreOperador ?? ""));
                     cmd.Parameters.AddWithValue("@Ruc", (object)(solicitud.Ruc ?? ""));
                     cmd.Parameters.AddWithValue("@RazonSocial", (object)(solicitud.RazonSocial ?? ""));

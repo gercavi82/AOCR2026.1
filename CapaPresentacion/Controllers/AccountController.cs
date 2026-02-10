@@ -6,6 +6,7 @@ using System.Web.Mvc;
 using System.Web.Security;
 using CapaModelo;
 using CapaNegocio;
+using CapaNegocio.Helpers;
 using CapaPresentacion.Models;
 using CapaDatos.DAOs;
 
@@ -37,7 +38,8 @@ namespace CapaPresentacion.Controllers
                 model.Contrasena,
                 out usuario,
                 out roles,
-                out mensaje
+                out mensaje,
+                actualizarUltimaConexion: false
             );
 
             if (!ok || usuario == null)
@@ -103,6 +105,15 @@ namespace CapaPresentacion.Controllers
             Session["Rol"] = roles.Count > 0 ? roles[0] : null;
             Session["LastActivity"] = DateTime.Now;
 
+            // Forzar cambio de contraseña en primer ingreso
+            if (!usuario.FechaUltimaConexion.HasValue)
+            {
+                return RedirectToAction("CambiarContrasena", "Account");
+            }
+
+            // Actualizar última conexión (solo si no es primer ingreso)
+            UsuarioDAO.ActualizarUltimaConexion(usuario.Id);
+
             // ============================
             // VERIFICACIÓN DE ORDEN
             // ============================
@@ -164,6 +175,68 @@ namespace CapaPresentacion.Controllers
             }
 
             return RedirectToAction("Login", "Account");
+        }
+
+        [Authorize]
+        public ActionResult CambiarContrasena()
+        {
+            return View(new CambiarContrasenaViewModel());
+        }
+
+        [HttpPost]
+        [Authorize]
+        [ValidateAntiForgeryToken]
+        public ActionResult CambiarContrasena(CambiarContrasenaViewModel model)
+        {
+            if (!ModelState.IsValid)
+                return View(model);
+
+            int idUsuario = 0;
+            var v = Session["UserId"] ?? Session["IdUsuario"];
+            if (v != null) int.TryParse(v.ToString(), out idUsuario);
+
+            if (idUsuario <= 0)
+            {
+                ModelState.AddModelError("", "Sesión expirada. Inicie sesión nuevamente.");
+                return View(model);
+            }
+
+            var usuario = UsuarioDAO.ObtenerPorId(idUsuario);
+            if (usuario == null)
+            {
+                ModelState.AddModelError("", "Usuario no encontrado.");
+                return View(model);
+            }
+
+            if (!PasswordHelper.VerifyPassword(model.ContrasenaActual, usuario.Contrasena))
+            {
+                ModelState.AddModelError("", "La contraseña actual es incorrecta.");
+                return View(model);
+            }
+
+            if (model.NuevaContrasena != model.ConfirmarContrasena)
+            {
+                ModelState.AddModelError("", "La nueva contraseña y la confirmación no coinciden.");
+                return View(model);
+            }
+
+            var (esValida, mensaje) = PasswordHelper.ValidarFortaleza(model.NuevaContrasena);
+            if (!esValida)
+            {
+                ModelState.AddModelError("", mensaje);
+                return View(model);
+            }
+
+            string hash = PasswordHelper.HashPassword(model.NuevaContrasena);
+            string msg;
+            if (!UsuarioDAO.ActualizarContrasena(idUsuario, hash, out msg))
+            {
+                ModelState.AddModelError("", msg);
+                return View(model);
+            }
+
+            UsuarioDAO.ActualizarUltimaConexion(idUsuario);
+            return RedirectToAction("Index", "Dashboard");
         }
 
         [HttpPost]

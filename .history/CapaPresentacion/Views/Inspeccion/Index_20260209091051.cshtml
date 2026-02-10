@@ -1,0 +1,107 @@
+﻿@model List<CapaModelo.Inspeccion>
+@using CapaModelo
+@using System.Web.Mvc.Html
+@using System.Web.Mvc
+@using System
+@using System.Linq
+@using System.Collections.Generic
+
+@{
+    ViewBag.Title = "Gestionar Inspecciones";
+    Layout = "~/Views/Shared/_LayoutAOCR.cshtml";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h2>Gestionar Inspecciones</h2>
+    @if (User.IsInRole("Administrador") || User.IsInRole("Coordinador") || User.IsInRole("JefaturaTecnica"))
+    {
+        <a href="@Url.Action("Crear", "Inspeccion")" class="btn btn-primary">
+            <i class="fa fa-plus"></i> Nueva Inspección
+        </a>
+    }
+</div>
+
+<div class="card">
+    <div class="card-body">
+        @if (Model != null && Model.Any())
+        {
+            <table class="table table-striped table-hover">
+                <thead>
+                    <tr>
+                        <th>Código</th>
+                        <th>Solicitud</th>
+                        <th>Inspector</th>
+                        <th>Fecha Programada</th>
+                        <th>Estado</th>
+                        <th>Resultado</th>
+                        <th>Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var inspeccion in Model)
+                    {
+                        <tr>
+                            <td>@inspeccion.CodigoInspeccion</td>
+                            <td>@inspeccion.CodigoSolicitud</td>
+                            <td>@(inspeccion.CodigoInspector.HasValue ? inspeccion.CodigoInspector.Value.ToString() : "No asignado")</td>
+                            <td>@(inspeccion.FechaProgramada.HasValue ? inspeccion.FechaProgramada.Value.ToString("dd/MM/yyyy") : "-")</td>
+                            <td>
+                                @if (!string.IsNullOrWhiteSpace(inspeccion.Estado))
+                                {
+                                    <span class="badge 
+                                        @(inspeccion.Estado == "COMPLETADA" ? "bg-success" : 
+                                          inspeccion.Estado == "PROGRAMADA" ? "bg-info" : 
+                                          inspeccion.Estado == "EN_PROGRESO" ? "bg-warning" : 
+                                          inspeccion.Estado == "CANCELADA" ? "bg-secondary" : "bg-light text-dark")">
+                                        @inspeccion.Estado
+                                    </span>
+                                }
+                                else
+                                {
+                                    <span class="text-muted">-</span>
+                                }
+                            </td>
+                            <td>
+                                @if (!string.IsNullOrWhiteSpace(inspeccion.Resultado))
+                                {
+                                    <span class="badge 
+                                        @(inspeccion.Resultado == "APROBADO" ? "bg-success" : 
+                                          inspeccion.Resultado == "RECHAZADO" ? "bg-danger" : "bg-warning")">
+                                        @inspeccion.Resultado
+                                    </span>
+                                }
+                                else
+                                {
+                                    <span class="text-muted">Pendiente</span>
+                                }
+                            </td>
+                            <td>
+                                <div class="btn-group btn-group-sm" role="group">
+                                    <a href="@Url.Action("Detalle", "Inspeccion", new { id = inspeccion.CodigoInspeccion })" 
+                                       class="btn btn-outline-primary" title="Ver detalle">
+                                        <i class="fa fa-eye"></i>
+                                    </a>
+                                    @if (User.IsInRole("Inspector") || User.IsInRole("Administrador"))
+                                    {
+                                        <a href="@Url.Action("Editar", "Inspeccion", new { id = inspeccion.CodigoInspeccion })" 
+                                           class="btn btn-outline-warning" title="Editar">
+                                            <i class="fa fa-edit"></i>
+                                        </a>
+                                    }
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+        else
+        {
+            <div class="alert alert-info mb-0">
+                <i class="fa fa-info-circle"></i> No hay inspecciones registradas.
+            </div>
+        }
+    </div>
+</div>
+
+
