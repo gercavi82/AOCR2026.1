@@ -267,7 +267,7 @@
                             <tr>
                                 <td colspan="8" class="text-center text-danger py-4">
                                     <i class="bi bi-exclamation-triangle h3"></i>
-                                    <p>${response.message || 'Error al cargar solicitudes'}</p>
+                                    <p>${AOCR.escapeHtml(response.message || 'Error al cargar solicitudes')}</p>
                                 </td>
                             </tr>
                         `);
@@ -323,16 +323,16 @@
                 if(item.cat === 'observado') badgeClass = 'bg-observado';
 
                 html += `<tr>
-                    <td class="text-center fw-bold text-primary">${item.id}</td>
-                    <td class="text-center">${item.fecha}</td>
-                    <td class="text-center"><span class="badge text-bg-light border">${item.tipo}</span></td>
-                    <td class="text-start ps-4 fw-bold text-dark">${item.comp}</td>
-                    <td class="text-start ps-4 text-muted small">${item.insp}</td>
-                    <td class="text-center"><span class="badge-pill-custom ${badgeClass}">${item.st}</span></td>
-                    <td class="text-end pe-4 fw-bold" style="font-family:monospace;">$ ${Number(item.viat).toFixed(2)}</td>
+                    <td class="text-center fw-bold text-primary">${AOCR.escapeHtml(String(item.id))}</td>
+                    <td class="text-center">${AOCR.escapeHtml(String(item.fecha))}</td>
+                    <td class="text-center"><span class="badge text-bg-light border">${AOCR.escapeHtml(String(item.tipo))}</span></td>
+                    <td class="text-start ps-4 fw-bold text-dark">${AOCR.escapeHtml(String(item.comp))}</td>
+                    <td class="text-start ps-4 text-muted small">${AOCR.escapeHtml(String(item.insp))}</td>
+                    <td class="text-center"><span class="badge-pill-custom ${AOCR.escapeHtml(badgeClass)}">${AOCR.escapeHtml(String(item.st))}</span></td>
+                    <td class="text-end pe-4 fw-bold" style="font-family:monospace;">$ ${AOCR.escapeHtml(Number(item.viat).toFixed(2))}</td>
                     <td class="text-center">
                         <button class="btn btn-sm btn-outline-secondary rounded-circle"
-                                onclick="consultarSolicitud(${item.id})"
+                                onclick="consultarSolicitud(${AOCR.escapeHtml(String(item.id))})"
                                 title="Ver Detalle"
                                 style="width:32px; height:32px; display:inline-flex; align-items:center; justify-content:center;">
                             <i class="bi bi-eye"></i>

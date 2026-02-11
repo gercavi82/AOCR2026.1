@@ -1054,35 +1054,34 @@ body {
                 };
             },
 
-            // Construir acciones mejoradas de cada fila
+            // Construir acciones mejoradas de cada fila (seguro: crear elementos con jQuery en lugar de concatenar HTML)
             construirAcciones: function(orden) {
-                let acciones = `
-                    <button class="action-button action-view me-1" 
-                            title="👁️ Ver Detalle Completo" 
-                            onclick="navegarA('Detalle', ${orden.id})"
-                            data-bs-toggle="tooltip">
-                        <i class="fas fa-eye"></i>
-                    </button>
-                    <button class="action-button action-edit me-1" 
-                            title="📄 Descargar PDF" 
-                            onclick="descargarPDF(${orden.id})"
-                            data-bs-toggle="tooltip">
-                        <i class="fas fa-file-pdf"></i>
-                    </button>
-                `;
+                var $grp = $('<div>').addClass('btn-group-sm');
+
+                var $view = $('<button>').addClass('action-button action-view me-1')
+                    .attr('title', '👁️ Ver Detalle Completo')
+                    .attr('data-bs-toggle', 'tooltip')
+                    .append($('<i>').addClass('fas fa-eye'))
+                    .on('click', function (e) { e.preventDefault(); navegarA('Detalle', orden.id); });
+
+                var $pdf = $('<button>').addClass('action-button action-edit me-1')
+                    .attr('title', '📄 Descargar PDF')
+                    .attr('data-bs-toggle', 'tooltip')
+                    .append($('<i>').addClass('fas fa-file-pdf'))
+                    .on('click', function (e) { e.preventDefault(); descargarPDF(orden.id); });
+
+                $grp.append($view).append($pdf);
 
                 if (orden.puedeCambiarEstado && orden.accionesPermitidas && orden.accionesPermitidas.length > 0) {
-                    acciones += `
-                        <button class="action-button action-delete" 
-                                title="⚙️ Gestionar Estado" 
-                                onclick="dashboardApp.mostrarCambioEstado(${AOCR.escapeHtml(orden.id)}, ${JSON.stringify(orden.estado)}, ${JSON.stringify(orden.accionesPermitidas)})"
-                                data-bs-toggle="tooltip">
-                            <i class="fas fa-cog"></i>
-                        </button>
-                    `;
+                    var $manage = $('<button>').addClass('action-button action-delete')
+                        .attr('title', '⚙️ Gestionar Estado')
+                        .attr('data-bs-toggle', 'tooltip')
+                        .append($('<i>').addClass('fas fa-cog'))
+                        .on('click', function (e) { e.preventDefault(); dashboardApp.mostrarCambioEstado(orden.id, orden.estado, orden.accionesPermitidas); });
+                    $grp.append($manage);
                 }
 
-                return `<div class="btn-group-sm">${acciones}</div>`;
+                return $grp.prop('outerHTML');
             },
 
             // Mostrar modal de cambio de estado
@@ -1092,7 +1091,7 @@ body {
                     .removeClass().addClass('badge bg-' + this.getColorEstado(estadoActual));
 
                 const selectEstado = $('#modalNuevoEstado');
-                selectEstado.empty().append('<option value="">Seleccione...</option>');
+                selectEstado.empty().append(AOCR.createOption('', 'Seleccione...')); 
                 
                 accionesPermitidas.forEach(estado => {
                     selectEstado.append(AOCR.createOption(estado, estado));

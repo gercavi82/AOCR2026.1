@@ -70,6 +70,20 @@ stages:
               testResultsFiles: '**/*.trx'
               mergeTestResults: true
 
+          # Escaneo estático: detectar plantillas HTML peligrosas en JS/Razor (falla si encuentra coincidencias)
+          - task: PowerShell@2
+            displayName: 'Run HTML injection scan (scripts/scan-html-injection.js)'
+            inputs:
+              targetType: 'inline'
+              script: |
+                Write-Host "Running HTML injection static scan..."
+                if (Get-Command node -ErrorAction SilentlyContinue) {
+                  node scripts/scan-html-injection.js
+                  if ($LASTEXITCODE -ne 0) { Write-Error "scan-html-injection found issues; failing build"; exit $LASTEXITCODE }
+                } else {
+                  Write-Host "Node not found; skipping scan (install Node on build agent to enable this check)."
+                }
+
           # Publicar artefactos
           - task: PublishBuildArtifacts@1
             displayName: 'Publish Artifacts'
