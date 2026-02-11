@@ -258,7 +258,7 @@
         }
 
         function renderizarNotificaciones(notificaciones) {
-            var html = '';
+            $lista.empty();
             $.each(notificaciones, function (i, n) {
                 var cssClass = n.leida ? 'notificacion-mini' : 'notificacion-mini no-leida';
                 var titulo = escapeHtml(n.titulo);
@@ -267,13 +267,14 @@
                 var url = escapeHtml(n.url || '');
                 var icono = escapeHtml(n.icono || 'fa fa-envelope');
 
-                html += '<div class="' + cssClass + '" data-id="' + n.id + '" data-url="' + url + '">'
-                    + '<div class="notificacion-mini-titulo"><i class="' + icono + '"></i> ' + titulo + '</div>'
-                    + '<div class="notificacion-mini-mensaje">' + mensaje + '</div>'
-                    + '<div class="notificacion-mini-fecha"><i class="fa fa-clock-o"></i> ' + fecha + '</div>'
-                    + '</div>';
+                var $item = $('<div>').addClass(cssClass).attr('data-id', n.id).attr('data-url', url);
+                var $titulo = $('<div>').addClass('notificacion-mini-titulo').append($('<i>').addClass(icono)).append(' ').append(document.createTextNode(titulo));
+                var $mensaje = $('<div>').addClass('notificacion-mini-mensaje').text(mensaje);
+                var $fecha = $('<div>').addClass('notificacion-mini-fecha').append($('<i>').addClass('fa fa-clock-o')).append(' ').append(document.createTextNode(fecha));
+
+                $item.append($titulo).append($mensaje).append($fecha);
+                $lista.append($item);
             });
-            $lista.html(html);
         }
 
         // Click en notificación individual (delegado)
