@@ -126,6 +126,9 @@ namespace CapaPresentacion.Controllers
                 var esRepresentanteValue = (Request.Form["esRepresentanteLegal"] ?? "").Trim();
                 var esRepresentante = esRepresentanteValue.Equals("true", StringComparison.OrdinalIgnoreCase) ||
                                       esRepresentanteValue.Equals("on", StringComparison.OrdinalIgnoreCase);
+                var aceptaDeclaracionValue = (Request.Form["aceptaDeclaracion"] ?? "").Trim();
+                var aceptaDeclaracion = aceptaDeclaracionValue.Equals("true", StringComparison.OrdinalIgnoreCase) ||
+                                        aceptaDeclaracionValue.Equals("on", StringComparison.OrdinalIgnoreCase);
 
                 // Identificación según tipo (CI o RUC)
                 var identificacionFinal = (tipoIdentificacion == "RUC") ? ruc : identificacion;
@@ -136,6 +139,11 @@ namespace CapaPresentacion.Controllers
                     string.IsNullOrWhiteSpace(empresaCodigo))
                 {
                     return Json(new { success = false, message = "Todos los campos obligatorios deben completarse" });
+                }
+
+                if (!aceptaDeclaracion)
+                {
+                    return Json(new { success = false, message = "Debe aceptar la declaración de responsabilidad." });
                 }
 
                 // Validar unicidad antes de insertar
@@ -151,8 +159,18 @@ namespace CapaPresentacion.Controllers
                     return Json(new { success = false, message = "No se pudo generar un código de usuario único. Intente nuevamente." });
                 }
 
-                // 3. DOCUMENTO LEGAL GENERAL (REMOVIDO DEL FORMULARIO)
+                // 3. DOCUMENTO DE DESIGNACIÓN RT (REQUERIDO)
                 string rutaDocumento = null;
+                var archivoDesignacion = Request.Files["ArchivoDesignacionRT"];
+                if (archivoDesignacion == null || archivoDesignacion.ContentLength <= 0)
+                {
+                    return Json(new { success = false, message = "Debe adjuntar el formulario de designación como RT en PDF." });
+                }
+                rutaDocumento = GuardarArchivoDesignacionRT(archivoDesignacion, identificacionFinal);
+                if (string.IsNullOrEmpty(rutaDocumento))
+                {
+                    return Json(new { success = false, message = "El formulario de designación debe ser PDF y no superar 2MB." });
+                }
 
                 // 4. CREAR USUARIO (con contraseña temporal)
                 string passwordTemporal = PasswordHelper.GenerarPasswordAleatoria(10);
@@ -178,6 +196,9 @@ namespace CapaPresentacion.Controllers
                 {
                     return Json(new { success = false, message = "No se pudo crear el usuario" });
                 }
+
+                // Marcar designación RT como pendiente y registrar ruta del documento
+                UsuarioDAO.ActualizarDesignacionRT(usuarioId, rutaDocumento);
 
                 // 5. SI ES REPRESENTANTE LEGAL, PROCESAR COMPAÑÍAS Y ARCHIVOS
                 if (esRepresentante)
@@ -308,6 +329,59 @@ namespace CapaPresentacion.Controllers
             }
         }
 
+        private string GuardarArchivoDesignacionRT(HttpPostedFileBase archivo, string identificacion)
+        {
+            try
+            {
+                var ext = Path.GetExtension(archivo.FileName).ToLower();
+                if (ext != ".pdf")
+                {
+                    return null;
+                }
+
+                if (archivo.ContentLength > 2 * 1024 * 1024)
+                {
+                    return null;
+                }
+
+                string carpetaDestino = Server.MapPath("~/App_Data/DesignacionesRT/");
+                if (!Directory.Exists(carpetaDestino))
+                {
+                    Directory.CreateDirectory(carpetaDestino);
+                }
+
+                string timestamp = DateTime.Now.ToString("yyyyMMddHHmmss");
+                string nombreArchivo = $"DesignacionRT_{identificacion}_{timestamp}.pdf";
+                string rutaCompleta = Path.Combine(carpetaDestino, nombreArchivo);
+
+                archivo.SaveAs(rutaCompleta);
+
+                return $"~/App_Data/DesignacionesRT/{nombreArchivo}";
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
+        [HttpGet]
+        [AllowAnonymous]
+        public ActionResult DescargarFormularioDesignacionRT()
+        {
+            var contenido = @"FORMULARIO DE DESIGNACIÓN COMO RT
+
+Yo, ______________________________, Director de Operaciones de la compañía ______________________________,
+designo al Sr./Sra. ______________________________ como Responsable Técnico (RT) para las estaciones regulares
+de Ecuador, comprometiéndome a mantener la coordinación necesaria con la DGAC.
+
+Firma Director de Operaciones: ______________________________
+Fecha: ____/____/________
+";
+
+            var bytes = System.Text.Encoding.UTF8.GetBytes(contenido);
+            return File(bytes, "text/plain", "Formulario_Designacion_RT.txt");
+        }
+
         // =====================================================
         // CÓDIGO ÚNICO DE USUARIO
         // =====================================================
@@ -427,6 +501,105 @@ namespace CapaPresentacion.Controllers
                 // Loguear el error real en consola o archivo log es recomendable
                 return Json(new { success = false, message = "Error en el servidor: " + ex.Message });
             }
+        }
+
+        // =====================================================
+        // REVISIÓN DE DESIGNACIONES RT POR COORDINADOR
+        // =====================================================
+        [HttpGet]
+        [Authorize(Roles = "Coordinador")] // Ajusta el rol según tu sistema
+        public ActionResult RevisarDesignaciones()
+        {
+            // Filtrar usuarios con documento de designación pendiente de revisión
+            var usuarios = UsuarioDAO.ObtenerUsuariosPendientesDesignacion(); // Debes implementar este método en tu DAO
+            return View("RevisarDesignaciones", usuarios);
+        }
+
+        [HttpGet]
+        [Authorize(Roles = "Coordinador")]
+        public ActionResult DescargarDesignacionRT(int id)
+        {
+            var usuario = UsuarioDAO.ObtenerPorId(id);
+            if (usuario == null || string.IsNullOrWhiteSpace(usuario.RutaDocumentoLegal))
+            {
+                return HttpNotFound();
+            }
+
+            var rutaFisica = Server.MapPath(usuario.RutaDocumentoLegal);
+            if (!System.IO.File.Exists(rutaFisica))
+            {
+                return HttpNotFound();
+            }
+
+            return File(rutaFisica, "application/pdf", $"DesignacionRT_{usuario.CodigoUsuario}.pdf");
+        }
+
+        [HttpGet]
+        [Authorize(Roles = "Coordinador")]
+        public ActionResult DescargarConstanciaRT(int id)
+        {
+            var usuario = UsuarioDAO.ObtenerPorId(id);
+            if (usuario == null || string.IsNullOrWhiteSpace(usuario.RutaConstanciaRT))
+            {
+                return HttpNotFound();
+            }
+
+            var rutaFisica = Server.MapPath(usuario.RutaConstanciaRT);
+            if (!System.IO.File.Exists(rutaFisica))
+            {
+                return HttpNotFound();
+            }
+
+            return File(rutaFisica, "text/plain", $"ConstanciaRT_{usuario.CodigoUsuario}.txt");
+        }
+
+        [HttpPost]
+        [Authorize(Roles = "Coordinador")]
+        [ValidateAntiForgeryToken]
+        public ActionResult AceptarDesignacion(int id)
+        {
+            // Lógica para marcar como aceptado y generar constancia
+            var usuario = UsuarioDAO.ObtenerPorId(id);
+            if (usuario == null)
+            {
+                TempData["error"] = "Usuario no encontrado.";
+                return RedirectToAction("RevisarDesignaciones");
+            }
+            // Generar constancia y obtener la ruta
+            string rutaConstancia = GenerarConstanciaRT(usuario);
+            // Marcar como aceptado y guardar la ruta de la constancia
+            UsuarioDAO.AceptarDesignacionRT(id, rutaConstancia);
+            TempData["msg"] = "Designación aceptada y constancia generada.";
+            return RedirectToAction("RevisarDesignaciones");
+        }
+
+        [HttpPost]
+        [Authorize(Roles = "Coordinador")]
+        [ValidateAntiForgeryToken]
+        public ActionResult RechazarDesignacion(int id)
+        {
+            // Lógica para marcar como rechazada
+            var usuario = UsuarioDAO.ObtenerPorId(id);
+            if (usuario == null)
+            {
+                TempData["error"] = "Usuario no encontrado.";
+                return RedirectToAction("RevisarDesignaciones");
+            }
+            UsuarioDAO.RechazarDesignacionRT(id);
+            TempData["msg"] = "Designación rechazada.";
+            return RedirectToAction("RevisarDesignaciones");
+        }
+
+        // Simulación de generación de constancia (puedes reemplazar por PDF real)
+        private string GenerarConstanciaRT(Usuario usuario)
+        {
+            string carpeta = Server.MapPath("~/App_Data/ConstanciasRT/");
+            if (!Directory.Exists(carpeta)) Directory.CreateDirectory(carpeta);
+            string nombreArchivo = $"Constancia_{usuario.CodigoUsuario}_{DateTime.Now:yyyyMMddHHmmss}.txt";
+            string archivo = Path.Combine(carpeta, nombreArchivo);
+            System.IO.File.WriteAllText(archivo, $"Constancia de aceptación de designación RT para {usuario.NombreCompleto} ({usuario.CodigoUsuario}) - Fecha: {DateTime.Now}");
+            // Retornar la ruta relativa para guardar en la BD
+            return $"~/App_Data/ConstanciasRT/{nombreArchivo}";
         }
     }
 }

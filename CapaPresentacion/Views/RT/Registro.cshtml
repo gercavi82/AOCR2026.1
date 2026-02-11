@@ -1,0 +1,77 @@
+﻿@model CapaModelo.RT.ViewModels.RegistroRTVM
+@{
+    Layout = "~/Views/Shared/_LayoutAOCR.cshtml";
+    ViewBag.Title = "Registro RT";
+    var estado = ViewBag.Estado as string ?? "BORRADOR";
+    bool bloqueado = string.Equals(estado, "ENVIADA", System.StringComparison.OrdinalIgnoreCase);
+}
+
+<div class="container mt-4">
+    <div class="card shadow-sm">
+        <div class="card-header bg-primary text-white">
+            <h4 class="mb-0">Registro de Representante Técnico</h4>
+        </div>
+        <div class="card-body">
+            @if (TempData["Ok"] != null)
+            {
+                <div class="alert alert-success">@TempData["Ok"]</div>
+            }
+            @if (TempData["Error"] != null)
+            {
+                <div class="alert alert-danger">@TempData["Error"]</div>
+            }
+
+            @if (bloqueado)
+            {
+                <div class="alert alert-info">
+                    La solicitud ya fue enviada y está en revisión por Coordinador.
+                </div>
+            }
+
+            @using (Html.BeginForm("GuardarRegistro", "RT", FormMethod.Post))
+            {
+                @Html.AntiForgeryToken()
+                @Html.ValidationSummary(true, "", new { @class = "text-danger" })
+
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        @Html.LabelFor(m => m.RazonSocial, new { @class = "form-label" })
+                        @Html.TextBoxFor(m => m.RazonSocial, new { @class = "form-control", @readonly = bloqueado ? "readonly" : null })
+                        @Html.ValidationMessageFor(m => m.RazonSocial, "", new { @class = "text-danger" })
+                    </div>
+                    <div class="col-md-6">
+                        @Html.LabelFor(m => m.Ruc, new { @class = "form-label" })
+                        @Html.TextBoxFor(m => m.Ruc, new { @class = "form-control", maxlength = 13, @readonly = bloqueado ? "readonly" : null })
+                        @Html.ValidationMessageFor(m => m.Ruc, "", new { @class = "text-danger" })
+                    </div>
+                </div>
+
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        @Html.LabelFor(m => m.Telefono, new { @class = "form-label" })
+                        @Html.TextBoxFor(m => m.Telefono, new { @class = "form-control", @readonly = bloqueado ? "readonly" : null })
+                        @Html.ValidationMessageFor(m => m.Telefono, "", new { @class = "text-danger" })
+                    </div>
+                    <div class="col-md-6">
+                        @Html.LabelFor(m => m.Email, new { @class = "form-label" })
+                        @Html.TextBoxFor(m => m.Email, new { @class = "form-control", type = "email", @readonly = bloqueado ? "readonly" : null })
+                        @Html.ValidationMessageFor(m => m.Email, "", new { @class = "text-danger" })
+                    </div>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">Área contable (JSON)</label>
+                    @Html.TextAreaFor(m => m.AreaContableJson, 4, 40, new { @class = "form-control", @readonly = bloqueado ? "readonly" : null })
+                    <small class="text-muted">Pendiente de confirmación de estructura.</small>
+                </div>
+
+                <div class="d-flex justify-content-between">
+                    <span class="badge bg-secondary">Estado: @estado</span>
+                    <button type="submit" class="btn btn-primary" @(bloqueado ? "disabled" : "")>
+                        Guardar y continuar
+                    </button>
+                </div>
+            }
+        </div>
+    </div>
+</div>

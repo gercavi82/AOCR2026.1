@@ -39,7 +39,10 @@ namespace CapaDatos.DAOs
                         fechacreado::timestamp AS FechaCreacion,
                         fechaultimaconexion AS FechaUltimaConexion,
                         empresa_codigo AS EmpresaCodigo,
-                        ruta_documento_legal AS RutaDocumentoLegal
+                        ruta_documento_legal AS RutaDocumentoLegal,
+                        estado_designacion_rt AS EstadoDesignacionRT,
+                        ruta_constancia_rt AS RutaConstanciaRT,
+                        fecha_revision_designacion AS FechaRevisionDesignacion
                     FROM usuario
                     WHERE (codigousuario = @p1 OR correo = @p1)
                     LIMIT 1;";
@@ -73,7 +76,10 @@ namespace CapaDatos.DAOs
                         fechacreado::timestamp AS FechaCreacion,
                         fechaultimaconexion AS FechaUltimaConexion,
                         empresa_codigo AS EmpresaCodigo,
-                        ruta_documento_legal AS RutaDocumentoLegal
+                        ruta_documento_legal AS RutaDocumentoLegal,
+                        estado_designacion_rt AS EstadoDesignacionRT,
+                        ruta_constancia_rt AS RutaConstanciaRT,
+                        fecha_revision_designacion AS FechaRevisionDesignacion
                     FROM usuario
                     WHERE idusuario = @id
                     LIMIT 1;";
@@ -313,5 +319,48 @@ namespace CapaDatos.DAOs
             }
         }
 
+        // ==========================================
+        // DESIGNACIÓN RT: REVISIÓN POR COORDINADOR
+        // ==========================================
+        public static List<Usuario> ObtenerUsuariosPendientesDesignacion()
+        {
+            using (var conn = new NpgsqlConnection(GetConnectionString()))
+            {
+                string sql = @"SELECT * FROM usuario WHERE estado_designacion_rt = 'pendiente' AND ruta_documento_legal IS NOT NULL";
+                return conn.Query<Usuario>(sql).ToList();
+            }
+        }
+
+        public static void AceptarDesignacionRT(int idUsuario, string rutaConstancia)
+        {
+            using (var conn = new NpgsqlConnection(GetConnectionString()))
+            {
+                string sql = @"UPDATE usuario SET estado_designacion_rt = 'aceptado', fecha_revision_designacion = NOW(), ruta_constancia_rt = @ruta WHERE idusuario = @id";
+                conn.Execute(sql, new { id = idUsuario, ruta = rutaConstancia });
+            }
+        }
+
+        public static void RechazarDesignacionRT(int idUsuario)
+        {
+            using (var conn = new NpgsqlConnection(GetConnectionString()))
+            {
+                string sql = @"UPDATE usuario SET estado_designacion_rt = 'rechazado', fecha_revision_designacion = NOW() WHERE idusuario = @id";
+                conn.Execute(sql, new { id = idUsuario });
+            }
+        }
+
+        public static void ActualizarDesignacionRT(int idUsuario, string rutaDocumento)
+        {
+            using (var conn = new NpgsqlConnection(GetConnectionString()))
+            {
+                string sql = @"UPDATE usuario
+                               SET ruta_documento_legal = @ruta,
+                                   estado_designacion_rt = 'pendiente',
+                                   fecha_revision_designacion = NULL,
+                                   ruta_constancia_rt = NULL
+                               WHERE idusuario = @id";
+                conn.Execute(sql, new { id = idUsuario, ruta = rutaDocumento });
+            }
+        }
     }
 }

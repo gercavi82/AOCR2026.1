@@ -515,6 +515,69 @@
                         </p>
                     </div>
 
+                    <div id="seccionRT">
+                        <!-- Formulario de designación como RT -->
+                        <div class="mb-3 row">
+                            <div class="col-sm-12">
+                                <div class="alert alert-secondary p-3">
+                                    <div class="d-flex flex-wrap align-items-center justify-content-between gap-2">
+                                        <strong>Designación como RT</strong>
+                                        <a href="@Url.Action("DescargarFormularioDesignacionRT", "Usuario")"
+                                           class="btn btn-outline-primary btn-sm">
+                                            <i class="fas fa-file-download me-1"></i> Descargar formulario
+                                        </a>
+                                    </div>
+                                    <p class="mb-2 mt-2" style="font-size: 13px;">
+                                        Descargue el formulario de designación, complételo, haga que lo firme el Director de Operaciones, escanéelo y súbalo nuevamente.
+                                    </p>
+                                    <div class="mb-2">
+                                        <label for="ArchivoDesignacionRT" class="form-label">Subir formulario firmado (PDF, máx. 2MB):</label>
+                                        <input type="file"
+                                               class="form-control form-control-sm"
+                                               id="ArchivoDesignacionRT"
+                                               name="ArchivoDesignacionRT"
+                                               accept=".pdf"
+                                               required />
+                                        <small class="text-muted d-block mt-1">Solo PDF (máx. 2MB)</small>
+                                        <div class="invalid-feedback">Debe subir el formulario firmado en PDF.</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <!-- Declaración de responsabilidad -->
+                        <div class="mb-3 row">
+                            <div class="col-sm-12">
+                                <div class="alert alert-info p-3">
+                                    <strong>Declaración de responsabilidad</strong>
+                                    <p class="mb-2 mt-2" style="font-size: 13px; white-space: pre-line;">
+                                        Yo, <span id="nombreDeclaracion">__________________________</span> declaro conocer las políticas y procedimientos técnicos 
+                                        y operativos de la compañía <span id="empresaDeclaracion">---</span> aplicables en las estaciones 
+                                        regulares de Ecuador.
+                                        Asumo la responsabilidad como RT de mantener comunicación directa 
+                                        con la DGAC del Ecuador, a fin de gestionar los trámites de emisión, 
+                                        renovación o modificación del AOCR; así como también, de mantener 
+                                        la supervisión de las empresas contratadas para la asistencia técnica 
+                                        en tierra a sus aeronaves en los aeropuertos de Ecuador.
+                                    </p>
+                                    <div class="mb-2">
+                                        <button type="button" class="btn btn-outline-primary btn-sm" id="btnDescargarDeclaracion">
+                                            <i class="fas fa-file-download me-1"></i> Descargar declaración (PDF)
+                                        </button>
+                                    </div>
+                                    <div class="form-check form-check-strong">
+                                        <input class="form-check-input" type="checkbox" id="aceptaDeclaracion" name="aceptaDeclaracion" required />
+                                        <label class="form-check-label" for="aceptaDeclaracion">
+                                            Declaro haber leído y acepto la declaración de responsabilidad
+                                        </label>
+                                    </div>
+                                    <div class="invalid-feedback" id="declaracionError">
+                                        Debe aceptar la declaración de responsabilidad para continuar.
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <!-- Fin declaración de responsabilidad -->
+                    </div>
                     <!-- Campos obligatorios -->
                     <div class="mb-3 row">
                         <div class="col-sm-12">
@@ -627,6 +690,21 @@
 
         // Submit del formulario
         $('#crearForm').submit(registrarUsuario);
+
+        // Link de registro RT desde Login
+        $(document).on('click', '#linkRegistroRT', function () {
+            window.__abrirRTSeccion = true;
+        });
+
+        $('#modalRegistroUsuario').on('shown.bs.modal', function () {
+            if (!window.__abrirRTSeccion) return;
+            window.__abrirRTSeccion = false;
+            var $seccion = $('#seccionRT');
+            if ($seccion.length === 0) return;
+            var $modalBody = $('#modalRegistroUsuario .modal-body');
+            var offsetTop = $seccion.position().top + $modalBody.scrollTop() - 12;
+            $modalBody.animate({ scrollTop: offsetTop }, 220);
+        });
     }
 
     function toggleSeccionRepresentante(esRepresentante, animar) {
@@ -739,6 +817,75 @@
         });
     }
 
+    function actualizarDeclaracionResponsabilidad() {
+        var nombres = ($('#NombreUsuario').val() || '').trim();
+        var apellidos = ($('#ApellidoUsuario').val() || '').trim();
+        var nombreCompleto = (nombres + ' ' + apellidos).trim();
+        var empresaTexto = '';
+        var $empresa = $('#EmpresaCodigo');
+        if ($empresa.length) {
+            empresaTexto = ($empresa.find('option:selected').data('nombre') || $empresa.find('option:selected').text() || '').toString().trim();
+        }
+        if (!nombreCompleto) {
+            nombreCompleto = '__________________________';
+        }
+        if (!empresaTexto) {
+            empresaTexto = '---';
+        }
+        $('#nombreDeclaracion').text(nombreCompleto);
+        $('#empresaDeclaracion').text(empresaTexto);
+    }
+
+    function obtenerTextoDeclaracionResponsabilidad() {
+        var nombres = ($('#NombreUsuario').val() || '').trim();
+        var apellidos = ($('#ApellidoUsuario').val() || '').trim();
+        var nombreCompleto = (nombres + ' ' + apellidos).trim();
+        var empresaTexto = '';
+        var $empresa = $('#EmpresaCodigo');
+        if ($empresa.length) {
+            empresaTexto = ($empresa.find('option:selected').data('nombre') || $empresa.find('option:selected').text() || '').toString().trim();
+        }
+        return 'Yo, ' + (nombreCompleto || '__________________________') + ' declaro conocer las políticas y procedimientos técnicos y operativos de la compañía ' + (empresaTexto || '---') + ' aplicables en las estaciones regulares de Ecuador.\n\n' +
+               'Asumo la responsabilidad como RT de mantener comunicación directa con la DGAC del Ecuador, a fin de gestionar los trámites de emisión, renovación o modificación del AOCR; así como también, de mantener la supervisión de las empresas contratadas para la asistencia técnica en tierra a sus aeronaves en los aeropuertos de Ecuador.';
+    }
+
+    function asegurarJsPdf(callback) {
+        if (window.jspdf && window.jspdf.jsPDF) {
+            callback();
+            return;
+        }
+        var existing = document.getElementById('jspdf-cdn');
+        if (existing) {
+            existing.addEventListener('load', callback);
+            return;
+        }
+        var script = document.createElement('script');
+        script.id = 'jspdf-cdn';
+        script.src = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';
+        script.onload = callback;
+        document.head.appendChild(script);
+    }
+
+    function descargarDeclaracionResponsabilidad() {
+        var texto = obtenerTextoDeclaracionResponsabilidad();
+        asegurarJsPdf(function () {
+            if (!(window.jspdf && window.jspdf.jsPDF)) {
+                alert('No se pudo cargar el generador de PDF. Intente nuevamente.');
+                return;
+            }
+            var doc = new window.jspdf.jsPDF('p', 'mm', 'a4');
+            var margenX = 20;
+            var margenY = 25;
+            var ancho = 170;
+            doc.setFont('helvetica', 'normal');
+            doc.setFontSize(12);
+            doc.text('Declaración de responsabilidad', margenX, margenY);
+            doc.setFontSize(11);
+            var lineas = doc.splitTextToSize(texto, ancho);
+            doc.text(lineas, margenX, margenY + 10);
+            doc.save('Declaracion_Responsabilidad_RT.pdf');
+        });
+    }
     function actualizarValidacionIdentificacion() {
         const tipo = $('input[name="TipoIdentificacion"]:checked').val();
         const $cedula = $('#CedulaIdentificacion');
@@ -974,6 +1121,12 @@
             valido = false;
         }
 
+        if (!$('#aceptaDeclaracion').is(':checked')) {
+            mostrarErrorCampo('#aceptaDeclaracion', 'Debe aceptar la declaración de responsabilidad');
+            valido = false;
+        } else {
+            removerErrorCampo('#aceptaDeclaracion');
+        }
         // Validar empresa seleccionada
         const empresaCodigo = $('#EmpresaCodigo').val();
         if (!empresaCodigo) {
@@ -1076,3 +1229,11 @@
         }
     };
 </script>
+
+
+
+
+
+
+
+

@@ -292,6 +292,7 @@
     <Compile Include="Controllers\InformeController.cs" />
     <Compile Include="Controllers\UsuarioRolController.cs" />
     <Compile Include="Controllers\UsuarioController.cs" />
+    <Compile Include="Controllers\RTController.cs" />
     <Compile Include="Controllers\RolController.cs" />
     <Compile Include="Controllers\HomeController.cs" />
     <Compile Include="Filters\AuditActionFilter.cs" />
@@ -2881,6 +2882,9 @@
     <Content Include="Views\Usuario\EmitirAOCR.cshtml" />
     <Content Include="Views\Usuario\Legalizar.cshtml" />
     <Content Include="Views\Usuario\ValidacionFinal.cshtml" />
+    <Content Include="Views\RT\Registro.cshtml" />
+    <Content Include="Views\RT\Declaracion.cshtml" />
+    <Content Include="Views\RT\Designacion.cshtml" />
     <Content Include="Views\OrdenRecaudacion\OrdenRecaudacionPDF.cshtml" />
     <Content Include="Views\Shared\_SidebarEstadoOrdenes.cshtml" />
     <Content Include="Views\Shared\_NotificacionesBadge.cshtml" />

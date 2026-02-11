@@ -84,6 +84,7 @@
       <HintPath>..\packages\System.Memory.4.5.5\lib\net461\System.Memory.dll</HintPath>
     </Reference>
     <Reference Include="System.Numerics" />
+    <Reference Include="System.Web" />
     <Reference Include="System.Numerics.Vectors, Version=4.1.4.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL">
       <HintPath>..\packages\System.Numerics.Vectors.4.5.0\lib\net46\System.Numerics.Vectors.dll</HintPath>
     </Reference>
@@ -127,6 +128,7 @@
     <Compile Include="Helpers\DateHelper.cs" />
     <Compile Include="Helpers\EmailHelper.cs" />
     <Compile Include="Helpers\FileHelper.cs" />
+    <Compile Include="Helpers\FileStorageHelper.cs" />
     <Compile Include="Helpers\PasswordHelper.cs" />
     <Compile Include="Helpers\ValidationHelper.cs" />
     <Compile Include="Services\EmailService.cs" />
@@ -139,6 +141,7 @@
     <Compile Include="Services\CertificacionService.cs" />
     <Compile Include="Services\DireccionService.cs" />
     <Compile Include="Services\FinancieroService.cs" />
+    <Compile Include="Services\RTService.cs" />
     <Compile Include="Services\OrdenRecaudacionOrchestrator.cs" />
     <Compile Include="Services\ResultadoOperacion.cs" />
     <Compile Include="Services\SecureConfigurationService.cs" />

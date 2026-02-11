@@ -20,5 +20,8 @@ namespace CapaModelo
         // Campos adicionales para registro
         public string EmpresaCodigo { get; set; }
         public string RutaDocumentoLegal { get; set; }
+        public string EstadoDesignacionRT { get; set; }
+        public string RutaConstanciaRT { get; set; }
+        public DateTime? FechaRevisionDesignacion { get; set; }
     }
 }

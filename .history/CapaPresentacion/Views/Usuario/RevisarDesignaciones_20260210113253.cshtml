@@ -1,0 +1,58 @@
+@model IEnumerable<CapaModelo.Usuario>
+@{
+    ViewBag.Title = "Revisión de Designaciones RT";
+}
+<h2 class="mt-3">Revisión de Designaciones RT</h2>
+
+@if (TempData["msg"] != null)
+{
+    <div class="alert alert-success">@TempData["msg"]</div>
+}
+@if (TempData["error"] != null)
+{
+    <div class="alert alert-danger">@TempData["error"]</div>
+}
+
+<table class="table table-bordered table-striped">
+    <thead class="table-dark">
+        <tr>
+            <th>Usuario</th>
+            <th>Nombre</th>
+            <th>Email</th>
+            <th>Empresa</th>
+            <th>Documento Designación</th>
+            <th>Acción</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var u in Model)
+        {
+            <tr>
+                <td>@u.CodigoUsuario</td>
+                <td>@u.NombreCompleto</td>
+                <td>@u.Email</td>
+                <td>@u.EmpresaCodigo</td>
+                <td>
+                    @if (!string.IsNullOrEmpty(u.RutaDocumentoLegal))
+                    {
+                        <a href="@Url.Content(u.RutaDocumentoLegal.Replace("~", ""))" target="_blank" class="btn btn-outline-primary btn-sm">Ver PDF</a>
+                    }
+                    else
+                    {
+                        <span class="text-danger">No subido</span>
+                    }
+                </td>
+                <td>
+                    <form method="post" action="@Url.Action("AceptarDesignacion", "Usuario", new { id = u.IdUsuario })" style="display:inline">
+                        @Html.AntiForgeryToken()
+                        <button type="submit" class="btn btn-success btn-sm">Aceptar</button>
+                    </form>
+                    <form method="post" action="@Url.Action("RechazarDesignacion", "Usuario", new { id = u.IdUsuario })" style="display:inline; margin-left:5px;">
+                        @Html.AntiForgeryToken()
+                        <button type="submit" class="btn btn-danger btn-sm">Rechazar</button>
+                    </form>
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>

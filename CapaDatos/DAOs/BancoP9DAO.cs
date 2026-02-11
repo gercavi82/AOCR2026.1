@@ -39,8 +39,7 @@ namespace CapaDatos.DAOs
                 
                 bancos.Add(new BancoP9 { Codigo = "001", Descripcion = "BANCO PICHINCHA" });                           
                 bancos.Add(new BancoP9 { Codigo = "002", Descripcion = "BANCO INTERNACIONAL" });
-                bancos.Add(new BancoP9 { Codigo = "003si" +
-                    "", Descripcion = "BANCO RUMIÑAHUI" });
+                bancos.Add(new BancoP9 { Codigo = "003", Descripcion = "BANCO RUMIÑAHUI" });
                 
                 
                 return bancos;

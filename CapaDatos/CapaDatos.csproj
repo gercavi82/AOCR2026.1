@@ -289,12 +289,14 @@
     <Compile Include="DAOs\DireccionDAO.cs" />
     <Compile Include="DAOs\TecnicoDAO.cs" />
     <Compile Include="DAOs\UsuarioDAO.cs" />
+    <Compile Include="DAOs\RTDao.cs" />
     <Compile Include="DAOs\RolDAO.cs" />
     <Compile Include="ConexionDAO.cs" />
     <Compile Include="DAOs\CertificadoDAO.cs" />
     <Compile Include="DAOs\HallazgoDAO.cs" />
     <Compile Include="DAOs\PagoDAO.cs" />
     <Compile Include="DAOs\DocumentoDAO.cs" />
+    <Compile Include="DAOs\DocumentoRTDao.cs" />
     <Compile Include="DAOs\FinancieroDAO.cs" />
     <Compile Include="DAOs\InspeccionDAO.cs" />
     <Compile Include="Entidades\ArchivoSubido.cs" />

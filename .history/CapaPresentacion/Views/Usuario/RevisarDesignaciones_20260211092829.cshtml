@@ -1,0 +1,69 @@
+@model List<CapaModelo.Usuario>
+@{
+    ViewBag.Title = "Revisi�n de Designaciones RT";
+}
+
+<h3>Revisi�n de Designaciones RT</h3>
+
+@if (TempData["msg"] != null)
+{
+    <div class="alert alert-success">@TempData["msg"]</div>
+}
+@if (TempData["error"] != null)
+{
+    <div class="alert alert-danger">@TempData["error"]</div>
+}
+
+@if (Model == null || !Model.Any())
+{
+    <div class="alert alert-info">No hay designaciones pendientes.</div>
+}
+else
+{
+    <div class="table-responsive">
+        <table class="table table-sm table-bordered">
+            <thead class="table-light">
+                <tr>
+                    <th>Usuario</th>
+                    <th>Correo</th>
+                    <th>Empresa</th>
+                    <th>Documento</th>
+                    <th class="text-center">Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var u in Model)
+                {
+                    <tr>
+                        <td>@Html.Encode(u.NombreCompleto) (@Html.Encode(u.CodigoUsuario))</td>
+                        <td>@Html.Encode(u.Email)</td>
+                        <td>@Html.Encode(u.EmpresaCodigo)</td>
+                        <td>
+                            <a class="btn btn-outline-primary btn-sm" href="@Url.Action("DescargarDesignacionRT", "Usuario", new { id = u.Id })">
+                                <i class="fas fa-file-download me-1"></i> Descargar
+                            </a>
+                        </td>
+                        <td class="text-center">
+                            @using (Html.BeginForm("AceptarDesignacion", "Usuario", FormMethod.Post, new { @class = "d-inline" }))
+                            {
+                                @Html.AntiForgeryToken()
+                                @Html.Hidden("id", u.Id)
+                                <button type="submit" class="btn btn-success btn-sm" onclick="return confirm('�Aceptar designaci�n?');">
+                                    <i class="fas fa-check me-1"></i> Aceptar
+                                </button>
+                            }
+                            @using (Html.BeginForm("RechazarDesignacion", "Usuario", FormMethod.Post, new { @class = "d-inline" }))
+                            {
+                                @Html.AntiForgeryToken()
+                                @Html.Hidden("id", u.Id)
+                                <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('�Rechazar designaci�n?');">
+                                    <i class="fas fa-times me-1"></i> Rechazar
+                                </button>
+                            }
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}
