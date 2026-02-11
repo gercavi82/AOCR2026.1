@@ -76,21 +76,33 @@ namespace CapaPresentacion.Controllers
 
             var user = User?.Identity?.Name ?? "FINANCIERO";
 
-            _ordenDAO.ActualizarUltimoPagoEstado(id, "VALIDADO", user, "Aprobado por Finanzas");
-            _ordenDAO.CambiarEstadoOrden(id, "FACTURADA");
-
             try
             {
-                // Generar PDF directamente desde la orden
-                var pdf = new CapaPresentacion.Services.PdfGeneratorService().GenerarOrdenRecaudacionPDF(orden);
-                new EmailService().EnviarFacturaGenerada(orden, pdf);
-            }
-            catch
-            {
-                // No bloquear el flujo si el PDF/correo falla
-            }
+                if (!_ordenDAO.ActualizarPagoYEstadoTransaccional(id, null, "VALIDADO", user, "Aprobado por Finanzas", "FACTURADA", out var err))
+                {
+                    CapaNegocio.LogBL.RegistrarError($"Error aprobando orden Id={id} NumOrden={orden.NumeroOrden}", err ?? "n/a", "FinancieroController");
+                    TempData["Error"] = "Error al aprobar la orden. " + (string.IsNullOrWhiteSpace(err) ? "" : ("Detalle: " + err));
+                    return RedirectToAction("Index");
+                }
 
-            TempData["Success"] = "Orden aprobada y factura generada.";
+                try
+                {
+                    // Generar PDF directamente desde la orden
+                    var pdf = new CapaPresentacion.Services.PdfGeneratorService().GenerarOrdenRecaudacionPDF(orden);
+                    new EmailService().EnviarFacturaGenerada(orden, pdf);
+                }
+                catch (System.Exception exPdf)
+                {
+                    CapaNegocio.LogBL.RegistrarError($"Error generando/mandando factura Orden={orden.NumeroOrden}", exPdf.ToString(), "FinancieroController");
+                }
+
+                TempData["Success"] = "Orden aprobada y factura generada.";
+            }
+            catch (System.Exception ex)
+            {
+                CapaNegocio.LogBL.RegistrarError($"Error aprobando orden Id={id} NumOrden={orden.NumeroOrden}", ex.ToString(), "FinancieroController");
+                TempData["Error"] = "Error interno al aprobar la orden.";
+            }
             return RedirectToAction("Index");
         }
 
@@ -103,11 +115,22 @@ namespace CapaPresentacion.Controllers
 
             var user = User?.Identity?.Name ?? "FINANCIERO";
 
-            // Marcar el último pago (o el indicado) como VALIDADO y mover la orden a FACTURADA
-            _ordenDAO.ActualizarUltimoPagoEstado(id, "VALIDADO", user, "Aprobado por Finanzas");
-            _ordenDAO.CambiarEstadoOrden(id, "FACTURADA");
-
-            TempData["Success"] = "Pago aprobado y orden facturada.";
+            try
+            {
+                // Actualizar pago y estado en transacción
+                if (!_ordenDAO.ActualizarPagoYEstadoTransaccional(id, pagoId, "VALIDADO", user, "Aprobado por Finanzas", "FACTURADA", out var err))
+                {
+                    CapaNegocio.LogBL.RegistrarError($"Error aprobando pago OrdenId={id}", err ?? "n/a", "FinancieroController");
+                    TempData["Error"] = "Error al aprobar el pago. " + (string.IsNullOrWhiteSpace(err) ? "" : ("Detalle: " + err));
+                    return RedirectToAction("Index");
+                }
+                TempData["Success"] = "Pago aprobado y orden facturada.";
+            }
+            catch (System.Exception ex)
+            {
+                CapaNegocio.LogBL.RegistrarError($"Error aprobando pago OrdenId={id}", ex.ToString(), "FinancieroController");
+                TempData["Error"] = "Error interno al aprobar el pago.";
+            }
             return RedirectToAction("Index");
         }
 
@@ -133,19 +156,31 @@ namespace CapaPresentacion.Controllers
 
             var user = User?.Identity?.Name ?? "FINANCIERO";
 
-            _ordenDAO.ActualizarUltimoPagoEstado(id, "ANULADO", user, motivo);
-            _ordenDAO.CambiarEstadoOrden(id, "PENDIENTE");
-
             try
             {
-                new EmailService().EnviarNotificacionRechazo(orden, motivo);
-            }
-            catch
-            {
-                // No bloquear el flujo si el email falla
-            }
+                if (!_ordenDAO.ActualizarPagoYEstadoTransaccional(id, null, "ANULADO", user, motivo, "PENDIENTE", out var err))
+                {
+                    CapaNegocio.LogBL.RegistrarError($"Error rechazando orden Id={id} NumOrden={orden.NumeroOrden}", err ?? "n/a", "FinancieroController");
+                    TempData["Error"] = "Error al rechazar la orden. " + (string.IsNullOrWhiteSpace(err) ? "" : ("Detalle: " + err));
+                    return RedirectToAction("Index");
+                }
 
-            TempData["Success"] = "Orden rechazada correctamente.";
+                try
+                {
+                    new EmailService().EnviarNotificacionRechazo(orden, motivo);
+                }
+                catch (System.Exception exMail)
+                {
+                    CapaNegocio.LogBL.RegistrarError($"Error notificando rechazo Orden={orden.NumeroOrden}", exMail.ToString(), "FinancieroController");
+                }
+
+                TempData["Success"] = "Orden rechazada correctamente.";
+            }
+            catch (System.Exception ex)
+            {
+                CapaNegocio.LogBL.RegistrarError($"Error rechazando orden Id={id} NumOrden={orden.NumeroOrden}", ex.ToString(), "FinancieroController");
+                TempData["Error"] = "Error interno al rechazar la orden.";
+            }
             return RedirectToAction("Index");
         }
 

@@ -1174,33 +1174,31 @@ En transferencias NO colocar sublínea<br>";
 
             try
             {
-                // Guardar comprobante si existe
+                // Guardar comprobante si existe via helper central (FileStorageHelper)
                 string comprobanteRuta = null;
+                string savedVirtualPath = null;
                 if (ComprobanteArchivo != null && ComprobanteArchivo.ContentLength > 0)
                 {
-                    var ext = Path.GetExtension(ComprobanteArchivo.FileName) ?? "";
-                    ext = ext.ToLowerInvariant();
-                    if (ext != ".pdf" && ext != ".jpg" && ext != ".jpeg" && ext != ".png")
+                    // Validación centralizada
+                    if (!CapaNegocio.Helpers.FileStorageHelper.ValidateFile(ComprobanteArchivo, out var fileError))
                     {
-                        TempData["Error"] = "Formato de comprobante no permitido (PDF, JPG, PNG).";
+                        TempData["Error"] = fileError;
                         return RedirectToAction("Detalles", new { id = id });
                     }
 
-                    if (ComprobanteArchivo.ContentLength > (10 * 1024 * 1024))
+                    try
                     {
-                        TempData["Error"] = "El comprobante supera el tama�o m�ximo permitido (10MB).";
+                        // Guardar en carpeta controlada bajo App_Data
+                        savedVirtualPath = CapaNegocio.Helpers.FileStorageHelper.SaveFile(ComprobanteArchivo, "Comprobantes");
+                        comprobanteRuta = savedVirtualPath;
+                        CapaNegocio.LogBL.RegistrarInfo($"Comprobante guardado: Orden={orden.NumeroOrden} Ruta={savedVirtualPath}", "OrdenRecaudacionController");
+                    }
+                    catch (Exception exSave)
+                    {
+                        CapaNegocio.LogBL.RegistrarError($"Error guardando archivo comprobante Orden={orden.NumeroOrden}", exSave.ToString(), "OrdenRecaudacionController");
+                        TempData["Error"] = "Error guardando el comprobante. Intente nuevamente.";
                         return RedirectToAction("Detalles", new { id = id });
                     }
-
-                    var folderVirtual = "~/Content/documents/pagos";
-                    var folderFisico = Server.MapPath(folderVirtual);
-                    if (!Directory.Exists(folderFisico))
-                        Directory.CreateDirectory(folderFisico);
-
-                    var safeFile = $"pago_{id}_{DateTime.Now:yyyyMMddHHmmssfff}{ext}";
-                    var fullPath = Path.Combine(folderFisico, safeFile);
-                    ComprobanteArchivo.SaveAs(fullPath);
-                    comprobanteRuta = VirtualPathUtility.ToAbsolute($"{folderVirtual}/{safeFile}");
                 }
 
                 var pago = new CapaModelo.PagoModel
@@ -1248,26 +1246,31 @@ En transferencias NO colocar sublínea<br>";
                 return RedirectToAction("Detalles", new { id = id });
             }
 
+                // Registrar pago + actualizar estado en una transacción atómica en BD
                 string pagoErr;
-                bool pagoOk = _dao.RegistrarPago(codigoSolicitud, pago, out pagoErr);
-                if (!pagoOk)
+                bool transOk = _dao.RegistrarPagoYActualizarEstadoTransaccional(orden.Id, codigoSolicitud, pago, "PROCESADA", out pagoErr);
+                if (!transOk)
                 {
+                    // Si guardamos archivo y la BD falló, borrarlo para no dejar archivos huérfanos
+                    if (!string.IsNullOrWhiteSpace(savedVirtualPath))
+                    {
+                        CapaNegocio.Helpers.FileStorageHelper.DeleteFile(savedVirtualPath);
+                        CapaNegocio.LogBL.RegistrarInfo($"Archivo eliminado por fallo transacción: Orden={orden.NumeroOrden} Ruta={savedVirtualPath}", "OrdenRecaudacionController");
+                    }
+
+                    CapaNegocio.LogBL.RegistrarError($"Error registrando pago/transacción Orden={orden.NumeroOrden} CodigoSolicitud={codigoSolicitud}", pagoErr ?? "n/a", "OrdenRecaudacionController");
                     TempData["Error"] = "No se pudo registrar el pago en la base de datos. " + (string.IsNullOrWhiteSpace(pagoErr) ? "" : ("Detalle: " + pagoErr));
                     return RedirectToAction("Detalles", new { id = id });
                 }
 
-                // Cambiar estado de la orden a EN_REVISION_FINANCIERA
-                bool result = _dao.CambiarEstadoOrden(id, "PROCESADA");
-                if (result)
+                try
                 {
-                    try
+                    var financieroEmail = ConfigurationManager.AppSettings["FinancieroEmail"];
+                    if (!string.IsNullOrWhiteSpace(financieroEmail))
                     {
-                        var financieroEmail = ConfigurationManager.AppSettings["FinancieroEmail"];
-                        if (!string.IsNullOrWhiteSpace(financieroEmail))
-                        {
-                            EnviarNotificacionAFinanciero(orden, pago, financieroEmail, comprobanteRuta);
-                        }
+                        EnviarNotificacionAFinanciero(orden, pago, financieroEmail, comprobanteRuta);
                     }
+                }
                     catch
                     {
                         // No bloquear el flujo si el email falla
@@ -1284,7 +1287,8 @@ En transferencias NO colocar sublínea<br>";
             }
             catch (Exception ex)
             {
-                TempData["Error"] = "Error interno: " + ex.Message;
+                CapaNegocio.LogBL.RegistrarError($"Error registrando comprobante Orden={orden?.NumeroOrden} CodigoSolicitud={orden?.CodigoSolicitud}", ex.ToString(), "OrdenRecaudacionController");
+                TempData["Error"] = "Error interno al procesar el pago. Por favor contacte al administrador.";
                 return RedirectToAction("Detalles", new { id = id });
             }
         }
@@ -1728,6 +1732,8 @@ En transferencias NO colocar sublínea<br>";
             {
                 if (string.IsNullOrWhiteSpace(emailFinanciero)) return;
 
+                CapaNegocio.LogBL.RegistrarInfo($"Notificando financiero: Orden={orden.NumeroOrden} CodigoSolicitud={orden.CodigoSolicitud}", "OrdenRecaudacionController");
+
                 var config = new SecureConfig();
                 var emailSvc = new EmailSvc(config);
 
@@ -1759,7 +1765,7 @@ En transferencias NO colocar sublínea<br>";
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine("Error enviando email: " + ex.Message);
+                CapaNegocio.LogBL.RegistrarError($"Error enviando notificación a financiero Orden={orden?.NumeroOrden} CodigoSolicitud={orden?.CodigoSolicitud}", ex.ToString(), "OrdenRecaudacionController");
             }
         }
 

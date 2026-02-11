@@ -1429,9 +1429,176 @@ namespace CapaDatos.DAOs
             return RegistrarPago(codigoSolicitud, pagoModel, out err);
         }
 
+        /// <summary>
+        /// Inserta el pago y actualiza el estado de la orden en una transacción para mantener consistencia.
+        /// </summary>
+        public bool RegistrarPagoYActualizarEstadoTransaccional(int ordenId, int codigoSolicitud, PagoModel pago, string nuevoEstadoOrden, out string err)
+        {
+            err = null;
+            if (ordenId <= 0 || codigoSolicitud <= 0 || pago == null)
+            {
+                err = "Parametros inválidos.";
+                return false;
+            }
+
+            try
+            {
+                using (var conn = new NpgsqlConnection(_connectionString))
+                {
+                    conn.Open();
+                    using (var tx = conn.BeginTransaction())
+                    {
+                        // Insert pago (usar la misma lógica que RegistrarPago)
+                        var tieneBanco = VerificarColumnaBanco(conn);
+
+                        var sqlInsert = tieneBanco ? @"
+                            INSERT INTO aocr_tbpago
+                            (codigo_solicitud, numero_factura, monto, moneda, concepto, metodo_pago, banco, estado, fecha_pago, observaciones, comprobante_ruta)
+                            VALUES
+                            (@codigoSolicitud, @numeroFactura, @monto, @moneda, @concepto, @metodoPago, @banco, @estado, @fechaPago, @observaciones, @comprobanteRuta)" : @"
+                            INSERT INTO aocr_tbpago
+                            (codigo_solicitud, numero_factura, monto, moneda, concepto, metodo_pago, estado, fecha_pago, observaciones, comprobante_ruta)
+                            VALUES
+                            (@codigoSolicitud, @numeroFactura, @monto, @moneda, @concepto, @metodoPago, @estado, @fechaPago, @observaciones, @comprobanteRuta)";
+
+                        using (var cmd = new NpgsqlCommand(sqlInsert, conn, tx))
+                        {
+                            cmd.Parameters.AddWithValue("@codigoSolicitud", codigoSolicitud);
+                            cmd.Parameters.AddWithValue("@numeroFactura", (object)pago.NumeroFactura ?? DBNull.Value);
+                            cmd.Parameters.AddWithValue("@monto", pago.Monto);
+                            cmd.Parameters.AddWithValue("@moneda", (object)pago.Moneda ?? "USD");
+                            cmd.Parameters.AddWithValue("@concepto", (object)pago.Concepto ?? DBNull.Value);
+                            cmd.Parameters.AddWithValue("@metodoPago", (object)pago.MetodoPago ?? DBNull.Value);
+                            if (tieneBanco) cmd.Parameters.AddWithValue("@banco", (object)pago.Banco ?? DBNull.Value);
+                            cmd.Parameters.AddWithValue("@estado", (object)pago.Estado ?? CapaDatos.Constants.EstadoPago.Pendiente);
+                            cmd.Parameters.AddWithValue("@fechaPago", (object)pago.FechaPago ?? DateTime.Now);
+                            cmd.Parameters.AddWithValue("@observaciones", (object)pago.Observaciones ?? DBNull.Value);
+                            cmd.Parameters.AddWithValue("@comprobanteRuta", (object)pago.ComprobanteRuta ?? DBNull.Value);
+
+                            var inserted = cmd.ExecuteNonQuery();
+                            if (inserted <= 0)
+                            {
+                                tx.Rollback();
+                                err = "Fallo al insertar registro de pago.";
+                                return false;
+                            }
+                        }
+
+                        // Actualizar estado de la orden
+                        var sqlUpdate = "UPDATE aocr_or_orden SET estado = @estado WHERE id = @id";
+                        using (var upd = new NpgsqlCommand(sqlUpdate, conn, tx))
+                        {
+                            upd.Parameters.AddWithValue("@estado", (object)nuevoEstadoOrden ?? DBNull.Value);
+                            upd.Parameters.AddWithValue("@id", ordenId);
+                            var updated = upd.ExecuteNonQuery();
+                            if (updated <= 0)
+                            {
+                                tx.Rollback();
+                                err = "Fallo al actualizar el estado de la orden.";
+                                return false;
+                            }
+                        }
+
+                        tx.Commit();
+                        return true;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                err = ex.Message;
+                _logger.LogError(ex, "Error en RegistrarPagoYActualizarEstadoTransaccional");
+                return false;
+            }
+        }
+
         // =============================
         // Estadisticas por usuario
         // =============================
+
+        /// <summary>
+        /// Actualiza el estado del ultimo pago (o pago especificado) y el estado de la orden en una transacción.
+        /// </summary>
+        public bool ActualizarPagoYEstadoTransaccional(int ordenId, int? pagoId, string estadoPago, string usuario, string observaciones, string nuevoEstadoOrden, out string err)
+        {
+            err = null;
+            if (ordenId <= 0 || string.IsNullOrWhiteSpace(estadoPago) || string.IsNullOrWhiteSpace(nuevoEstadoOrden))
+            {
+                err = "Parametros invalidos.";
+                return false;
+            }
+
+            try
+            {
+                using (var conn = new NpgsqlConnection(_connectionString))
+                {
+                    conn.Open();
+                    using (var tx = conn.BeginTransaction())
+                    {
+                        // Determinar id de pago si no fue proporcionado: obtener ultimo pago por orden
+                        
+                        int targetPagoId = pagoId ?? 0;
+                        if (targetPagoId == 0)
+                        {
+                            var sqlGet = @"SELECT id FROM aocr_tbpago WHERE codigo_solicitud = (SELECT COALESCE(NULLIF(codigo_solicitud, ''), id::text)::int FROM aocr_or_orden WHERE id = @ordenId) ORDER BY fecha_pago DESC LIMIT 1";
+                            using (var cmdGet = new NpgsqlCommand(sqlGet, conn, tx))
+                            {
+                                cmdGet.Parameters.AddWithValue("@ordenId", ordenId);
+                                var obj = cmdGet.ExecuteScalar();
+                                if (obj != null && obj != DBNull.Value) targetPagoId = Convert.ToInt32(obj);
+                            }
+                        }
+
+                        if (targetPagoId == 0)
+                        {
+                            tx.Rollback();
+                            err = "No se encontró pago para validar.";
+                            return false;
+                        }
+
+                        var sqlUpdatePago = "UPDATE aocr_tbpago SET estado = @estado, fecha_validacion = @fecha, validado_por = @usuario, observaciones = @obs WHERE id = @pagoId";
+                        using (var cmdUpd = new NpgsqlCommand(sqlUpdatePago, conn, tx))
+                        {
+                            cmdUpd.Parameters.AddWithValue("@estado", estadoPago);
+                            cmdUpd.Parameters.AddWithValue("@fecha", DateTime.Now);
+                            cmdUpd.Parameters.AddWithValue("@usuario", usuario ?? (object)DBNull.Value);
+                            cmdUpd.Parameters.AddWithValue("@obs", (object)observaciones ?? DBNull.Value);
+                            cmdUpd.Parameters.AddWithValue("@pagoId", targetPagoId);
+                            var rows = cmdUpd.ExecuteNonQuery();
+                            if (rows <= 0)
+                            {
+                                tx.Rollback();
+                                err = "Fallo al actualizar pago";
+                                return false;
+                            }
+                        }
+
+                        var sqlUpdateOrden = "UPDATE aocr_or_orden SET estado = @estado WHERE id = @id";
+                        using (var cmdOrd = new NpgsqlCommand(sqlUpdateOrden, conn, tx))
+                        {
+                            cmdOrd.Parameters.AddWithValue("@estado", nuevoEstadoOrden);
+                            cmdOrd.Parameters.AddWithValue("@id", ordenId);
+                            var rowsOrd = cmdOrd.ExecuteNonQuery();
+                            if (rowsOrd <= 0)
+                            {
+                                tx.Rollback();
+                                err = "Fallo al actualizar orden";
+                                return false;
+                            }
+                        }
+
+                        tx.Commit();
+                        return true;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                err = ex.Message;
+                _logger.LogError(ex, "Error en ActualizarPagoYEstadoTransaccional");
+                return false;
+            }
+        }
 
         public Dictionary<string, object> ObtenerEstadisticas(int codigoUsuario)
         {
