@@ -948,8 +948,8 @@ body {
                                                 <i class="fas fa-file-invoice text-primary"></i>
                                             </div>
                                             <div>
-                                                <strong class="text-primary">${orden.numeroOrden}</strong>
-                                                <br><small class="text-muted">ID: ${orden.id}</small>
+                                                <strong class="text-primary">${AOCR.escapeHtml(orden.numeroOrden)}</strong>
+                                                <br><small class="text-muted">ID: ${AOCR.escapeHtml(orden.id)}</small>
                                             </div>
                                         </div>
                                     </td>
@@ -970,8 +970,8 @@ body {
                                                 <i class="fas fa-building text-info"></i>
                                             </div>
                                             <div>
-                                                <div class="fw-bold" title="${orden.nombreContribuyente}">
-                                                    ${this.truncateText(orden.nombreContribuyente, 25)}
+                                                <div class="fw-bold" title="${AOCR.escapeAttr(orden.nombreContribuyente)}">
+                                                    ${AOCR.escapeHtml(this.truncateText(orden.nombreContribuyente, 25))}
                                                 </div>
                                                 <small class="text-muted">
                                                     <i class="fas fa-user me-1"></i>Contribuyente
@@ -991,7 +991,7 @@ body {
                                                 <i class="fas fa-user-tie text-secondary"></i>
                                             </div>
                                             <div>
-                                                <div class="fw-bold">${this.truncateText(orden.usuario, 15)}</div>
+                                                <div class="fw-bold">${AOCR.escapeHtml(this.truncateText(orden.usuario, 15))}</div>
                                                 <small class="text-muted">Responsable</small>
                                             </div>
                                         </div>
@@ -1028,7 +1028,7 @@ body {
                 return `
                     <span class="badge bg-${config.color} estado-badge d-flex align-items-center justify-content-center p-2">
                         <i class="${config.icon} me-2"></i>
-                        ${config.text}
+                        ${AOCR.escapeHtml(config.text)}
                     </span>
                 `;
             },
@@ -1075,7 +1075,7 @@ body {
                     acciones += `
                         <button class="action-button action-delete" 
                                 title="⚙️ Gestionar Estado" 
-                                onclick="dashboardApp.mostrarCambioEstado(${orden.id}, '${orden.estado}', ${JSON.stringify(orden.accionesPermitidas).replace(/"/g, '&quot;')})"
+                                onclick="dashboardApp.mostrarCambioEstado(${AOCR.escapeHtml(orden.id)}, ${JSON.stringify(orden.estado)}, ${JSON.stringify(orden.accionesPermitidas)})"
                                 data-bs-toggle="tooltip">
                             <i class="fas fa-cog"></i>
                         </button>
@@ -1095,7 +1095,7 @@ body {
                 selectEstado.empty().append('<option value="">Seleccione...</option>');
                 
                 accionesPermitidas.forEach(estado => {
-                    selectEstado.append(`<option value="${estado}">${estado}</option>`);
+                    selectEstado.append(AOCR.createOption(estado, estado));
                 });
 
                 $('#modalCambiarEstado').modal('show');

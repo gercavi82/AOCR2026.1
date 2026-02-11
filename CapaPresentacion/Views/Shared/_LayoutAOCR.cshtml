@@ -458,6 +458,14 @@
         // Iniciar chequeo
         checkJQuery();
 
+        // Utilidades AOCR (escape helpers) - cargadas localmente para evitar depender de CDN en páginas que usan Layout=null
+        (function(){
+            var s = document.createElement('script');
+            s.src = '@Url.Content("~/Scripts/aocr-utils.js")';
+            s.async = false;
+            document.head.appendChild(s);
+        })();
+
         function loadDataTables() {
             console.log('📊 Cargando DataTables...');
 

@@ -163,10 +163,10 @@ async function testFormularioCompletoConfigurable() {
                 Swal.fire({
                     title: 'Test Formulario Exitoso',
                     html: `<div class="text-left">
-                        <p><strong>Operador:</strong> ${valores.operadorDefecto}</p>
-                        <p><strong>Representante:</strong> ${valores.representanteDefecto}</p>
-                        <p><strong>Email:</strong> ${valores.emailDefecto}</p>
-                        <p><strong>Estado:</strong> ${response.success ? 'Exitoso' : 'Fallido'}</p>
+                        <p><strong>Operador:</strong> ${AOCR.escapeHtml(valores.operadorDefecto)}</p>
+                        <p><strong>Representante:</strong> ${AOCR.escapeHtml(valores.representanteDefecto)}</p>
+                        <p><strong>Email:</strong> ${AOCR.escapeHtml(valores.emailDefecto)}</p>
+                        <p><strong>Estado:</strong> ${AOCR.escapeHtml(response.success ? 'Exitoso' : 'Fallido')}</p>
                     </div>`,
                     icon: 'success',
                     confirmButtonText: 'OK'
@@ -183,8 +183,8 @@ async function testFormularioCompletoConfigurable() {
                 Swal.fire({
                     title: 'Test Formulario Fallido',
                     html: `<div class="text-left">
-                        <p><strong>Status:</strong> ${xhr.status}</p>
-                        <p><strong>Error:</strong> ${error}</p>
+                        <p><strong>Status:</strong> ${AOCR.escapeHtml(String(xhr.status))}</p>
+                        <p><strong>Error:</strong> ${AOCR.escapeHtml(String(error))}</p>
                         <p><strong>Usando valores configurables:</strong> Sí</p>
                         <p><small>Los datos de test ahora son configurables</small></p>
                     </div>`,

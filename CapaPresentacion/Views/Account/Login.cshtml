@@ -482,10 +482,16 @@
 
             var html = '';
             $.each(empresasFiltradas.slice(0, 20), function(i, empresa) {
-                html += '<a href="#" class="list-group-item list-group-item-action seleccionar-compania" ';
-                html += 'data-id="' + empresa.Codigo + '" data-nombre="' + empresa.Nombre + '">';
-                html += '<div class="d-flex w-100 justify-content-between">';
-                html += '<h6 class="mb-1">' + empresa.Nombre + '</h6>';
+                var $a = $('<a>').attr('href','#').addClass('list-group-item list-group-item-action seleccionar-compania')
+                    .attr('data-id', empresa.Codigo)
+                    .attr('data-nombre', empresa.Nombre)
+                    .append($('<div>').addClass('d-flex w-100 justify-content-between')
+                        .append($('<h6>').addClass('mb-1').text(empresa.Nombre))
+                        .append($('<small>').addClass('text-muted').text(empresa.Codigo))
+                    );
+                resultados.append($a);
+            });
+            // Note: we append elements directly instead of building raw HTML string
                 html += '<small class="text-muted">' + empresa.Codigo + '</small>';
                 html += '</div></a>';
             });

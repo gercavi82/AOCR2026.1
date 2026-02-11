@@ -292,7 +292,7 @@ function mostrarErrorInicializacion(mensaje) {
     if ($('#errorContainer').length) {
         $('#errorContainer').html(
             '<div class="alert alert-danger alert-dismissible fade show" role="alert">' +
-            '<strong>Error:</strong> ' + mensaje +
+            '<strong>Error:</strong> ' + AOCR.escapeHtml(String(mensaje)) +
             '<button type="button" class="btn-close" data-bs-dismiss="alert"></button>' +
             '</div>'
         );
