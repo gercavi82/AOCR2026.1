@@ -28,6 +28,9 @@ namespace CapaModelo.RT
         [StringLength(64)]
         public string HashSha256 { get; set; }
 
+        [StringLength(120)]
+        public string CreatedBy { get; set; }
+
         public DateTime? CreatedAt { get; set; }
     }
 }

@@ -121,6 +121,7 @@ namespace CapaNegocio.Services
                 RutaStorage = ruta,
                 TamanoBytes = pdf.ContentLength,
                 HashSha256 = hash,
+                CreatedBy = usuarioId.ToString(),
                 CreatedAt = DateTime.Now
             };
 

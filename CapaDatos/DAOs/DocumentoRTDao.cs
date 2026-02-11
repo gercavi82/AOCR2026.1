@@ -41,15 +41,16 @@ namespace CapaDatos.DAOs
                     ruta_storage = @RutaStorage,
                     tamano_bytes = @TamanoBytes,
                     hash_sha256 = @HashSha256,
+                    created_by = COALESCE(@CreatedBy, created_by),
                     created_at = NOW()
                 WHERE solicitud_rt_id = @SolicitudRtId
                   AND tipo = 'DESIGNACION_RT';";
 
             const string sqlInsert = @"
                 INSERT INTO aocr_documento
-                    (solicitud_rt_id, tipo, nombre_archivo, ruta_storage, tamano_bytes, hash_sha256, created_at)
+                    (solicitud_rt_id, tipo, nombre_archivo, ruta_storage, tamano_bytes, hash_sha256, created_by, created_at)
                 VALUES
-                    (@SolicitudRtId, 'DESIGNACION_RT', @NombreArchivo, @RutaStorage, @TamanoBytes, @HashSha256, NOW());";
+                    (@SolicitudRtId, 'DESIGNACION_RT', @NombreArchivo, @RutaStorage, @TamanoBytes, @HashSha256, COALESCE(@CreatedBy, 'sistema'), NOW());";
 
             using (var cn = CrearConexion())
             {

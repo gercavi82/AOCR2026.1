@@ -76,6 +76,27 @@ END$$;
 
 CREATE INDEX IF NOT EXISTS idx_doc_solicitud_tipo ON aocr_documento(solicitud_rt_id, tipo);
 
+-- Add created_by for document metadata tracking
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_name = 'aocr_documento' AND column_name = 'created_by'
+    ) THEN
+        ALTER TABLE aocr_documento ADD COLUMN created_by VARCHAR(120);
+    END IF;
+END$$;
+
+-- Ensure email uniqueness (case-insensitive) at DB level to help enforce server-side validation
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_indexes WHERE indexname = 'idx_compania_email_lower'
+    ) THEN
+        CREATE UNIQUE INDEX idx_compania_email_lower ON aocr_compania(LOWER(email_contacto));
+    END IF;
+END$$;
+
 -- 4) Historial de estados (trazabilidad)
 CREATE TABLE IF NOT EXISTS aocr_solicitud_rt_historial (
     id SERIAL PRIMARY KEY,
