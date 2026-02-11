@@ -26,6 +26,17 @@ namespace CapaNegocio.Services
                    "las empresas contratadas para la asistencia técnica en tierra a sus aeronaves en los aeropuertos de Ecuador.";
         }
 
+        public string ObtenerTextoDeclaracionPersonalizado(string nombreCompleto, string compania)
+        {
+            var nombre = string.IsNullOrWhiteSpace(nombreCompleto) ? "______________________" : nombreCompleto.Trim();
+            var empresa = string.IsNullOrWhiteSpace(compania) ? "__________" : compania.Trim();
+            return "Yo, " + nombre + " declaro conocer las políticas y procedimientos técnicos y operativos " +
+                   "de la compañía " + empresa + " aplicables en las estaciones regulares de Ecuador.\n\n" +
+                   "Asumo la responsabilidad como RT de mantener comunicación directa con la DGAC del Ecuador, a fin de gestionar " +
+                   "los trámites de emisión, renovación o modificación del AOCR; así como también, de mantener la supervisión de " +
+                   "las empresas contratadas para la asistencia técnica en tierra a sus aeronaves en los aeropuertos de Ecuador.";
+        }
+
         public SolicitudRTModel GetSolicitudByUsuario(int usuarioId)
         {
             return _rtDao.GetSolicitudByUsuario(usuarioId);
@@ -126,6 +137,7 @@ namespace CapaNegocio.Services
             };
 
             _docDao.UpsertDocumentoDesignacion(solicitudId, doc);
+            UsuarioDAO.ActualizarDesignacionRT(usuarioId, ruta);
             return doc;
         }
 

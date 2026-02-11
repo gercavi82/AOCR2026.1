@@ -6,6 +6,7 @@
 <h2>Registrar Hallazgo</h2>
 
 @using (Html.BeginForm())
+    @Html.AntiForgeryToken()
 {
     @Html.HiddenFor(m => m.CodigoInspeccion)
 

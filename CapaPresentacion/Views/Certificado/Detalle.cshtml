@@ -46,6 +46,7 @@ else
 
     <h4>Subir PDF</h4>
     using (Html.BeginForm("SubirPDF", "Certificado", FormMethod.Post, new { enctype = "multipart/form-data" }))
+        @Html.AntiForgeryToken()
     {
         @Html.Hidden("id", Model.CodigoCertificado)
         @Html.Hidden("solicitudId", Model.CodigoSolicitud)

@@ -5,6 +5,7 @@
 <h2>Programar Inspección</h2>
 
 @using (Html.BeginForm())
+    @Html.AntiForgeryToken()
 {
     @Html.HiddenFor(m => m.CodigoSolicitud)
 

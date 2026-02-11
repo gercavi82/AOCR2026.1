@@ -48,6 +48,27 @@ namespace CapaPresentacion.Controllers
                 return View(model);
             }
 
+            // 🔐 BLOQUEO DE ACCESO PARA RT PENDIENTE / RECHAZADO
+            if (!string.IsNullOrWhiteSpace(usuario.EstadoDesignacionRT) &&
+                !usuario.EstadoDesignacionRT.Equals("aceptado", StringComparison.OrdinalIgnoreCase))
+            {
+                var esAdmin = false;
+                if (roles != null)
+                {
+                    esAdmin = roles.Any(r => r.Equals("Administrador", StringComparison.OrdinalIgnoreCase));
+                }
+
+                if (!esAdmin)
+                {
+                    var estado = usuario.EstadoDesignacionRT.Trim().ToLowerInvariant();
+                    var msg = estado == "rechazado"
+                        ? "Su designación RT fue rechazada. Corrija y vuelva a subir el documento."
+                        : "Su designación RT está en proceso de validación y aprobación por el Coordinador.";
+                    ModelState.AddModelError("", msg);
+                    return View(model);
+                }
+            }
+
             // 🔐 ADMIN SUPREMO
             if (!string.IsNullOrWhiteSpace(usuario.NombreUsuario) &&
                 usuario.NombreUsuario.Equals("USU_ADMIN", StringComparison.InvariantCultureIgnoreCase))

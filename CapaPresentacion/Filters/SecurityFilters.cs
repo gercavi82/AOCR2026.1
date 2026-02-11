@@ -4,6 +4,7 @@ using System.Linq;
 using System.Security.Cryptography;
 using System.Web;
 using System.Web.Mvc;
+using CapaUtilidades;
 using System.Web.Routing;
 
 namespace CapaPresentacion.Filters
@@ -321,30 +322,27 @@ namespace CapaPresentacion.Filters
                 throw new InvalidOperationException("No se puede guardar un archivo inválido.");
             }
 
-            // Asegurar que el directorio existe
             var fullDirectory = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, baseDirectory);
-            if (!Directory.Exists(fullDirectory))
+            var ext = Path.GetExtension(validation.SafeFileName);
+
+            var options = new FileUploadOptions
             {
-                Directory.CreateDirectory(fullDirectory);
+                BasePath = fullDirectory,
+                Subfolder = string.Empty,
+                AllowedExtensions = string.IsNullOrWhiteSpace(ext) ? null : new[] { ext.ToLowerInvariant() },
+                AllowedContentTypes = null,
+                MaxSizeMb = 0,
+                ValidateMagicBytes = false
+            };
+
+            string error;
+            FileUploadResult result;
+            if (!FileUploadService.TrySave(file, options, out result, out error))
+            {
+                throw new InvalidOperationException(error ?? "No se pudo guardar el archivo.");
             }
 
-            // Construir ruta completa (evitar path traversal)
-            var safeFileName = Path.GetFileName(validation.SafeFileName);
-            var fullPath = Path.Combine(fullDirectory, safeFileName);
-
-            // Verificar que la ruta resultante está dentro del directorio esperado
-            var normalizedBase = Path.GetFullPath(fullDirectory);
-            var normalizedPath = Path.GetFullPath(fullPath);
-
-            if (!normalizedPath.StartsWith(normalizedBase))
-            {
-                throw new SecurityException("Intento de path traversal detectado.");
-            }
-
-            // Guardar archivo
-            file.SaveAs(fullPath);
-
-            return Path.Combine(baseDirectory, safeFileName);
+            return Path.Combine(baseDirectory, result.StoredName);
         }
     }
 

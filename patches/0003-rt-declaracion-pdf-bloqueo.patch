@@ -1,0 +1,280 @@
+﻿diff --git a/CapaModelo/CapaModelo.csproj b/CapaModelo/CapaModelo.csproj
+index 554cd50..12f1e56 100644
+--- a/CapaModelo/CapaModelo.csproj
++++ b/CapaModelo/CapaModelo.csproj
+@@ -92,6 +92,7 @@
+     <Compile Include="RT\DocumentoModel.cs" />
+     <Compile Include="RT\ViewModels\RegistroRTVM.cs" />
+     <Compile Include="RT\ViewModels\DeclaracionRTVM.cs" />
++    <Compile Include="RT\ViewModels\DeclaracionPdfVM.cs" />
+     <Compile Include="RT\ViewModels\DesignacionUploadVM.cs" />
+     <Compile Include="Properties\AssemblyInfo.cs" />
+   </ItemGroup>
+diff --git a/CapaModelo/RT/ViewModels/DesignacionUploadVM.cs b/CapaModelo/RT/ViewModels/DesignacionUploadVM.cs
+index 3488752..5ea74c2 100644
+--- a/CapaModelo/RT/ViewModels/DesignacionUploadVM.cs
++++ b/CapaModelo/RT/ViewModels/DesignacionUploadVM.cs
+@@ -12,7 +12,7 @@ namespace CapaModelo.RT.ViewModels
+ 
+         public string Estado { get; set; }
+ 
+-        [Required(ErrorMessage = "Debe adjuntar el PDF de Designación RT legalizada")]
++        [Required(ErrorMessage = "Debe adjuntar el PDF de la declaración RT firmada")]
+         public HttpPostedFileBase ArchivoPdf { get; set; }
+     }
+ }
+diff --git a/CapaNegocio/Services/RTService.cs b/CapaNegocio/Services/RTService.cs
+index 68eee8f..8f6935d 100644
+--- a/CapaNegocio/Services/RTService.cs
++++ b/CapaNegocio/Services/RTService.cs
+@@ -26,6 +26,17 @@ namespace CapaNegocio.Services
+                    "las empresas contratadas para la asistencia técnica en tierra a sus aeronaves en los aeropuertos de Ecuador.";
+         }
+ 
++        public string ObtenerTextoDeclaracionPersonalizado(string nombreCompleto, string compania)
++        {
++            var nombre = string.IsNullOrWhiteSpace(nombreCompleto) ? "______________________" : nombreCompleto.Trim();
++            var empresa = string.IsNullOrWhiteSpace(compania) ? "__________" : compania.Trim();
++            return "Yo, " + nombre + " declaro conocer las políticas y procedimientos técnicos y operativos " +
++                   "de la compañía " + empresa + " aplicables en las estaciones regulares de Ecuador.\n\n" +
++                   "Asumo la responsabilidad como RT de mantener comunicación directa con la DGAC del Ecuador, a fin de gestionar " +
++                   "los trámites de emisión, renovación o modificación del AOCR; así como también, de mantener la supervisión de " +
++                   "las empresas contratadas para la asistencia técnica en tierra a sus aeronaves en los aeropuertos de Ecuador.";
++        }
++
+         public SolicitudRTModel GetSolicitudByUsuario(int usuarioId)
+         {
+             return _rtDao.GetSolicitudByUsuario(usuarioId);
+@@ -126,6 +137,7 @@ namespace CapaNegocio.Services
+             };
+ 
+             _docDao.UpsertDocumentoDesignacion(solicitudId, doc);
++            UsuarioDAO.ActualizarDesignacionRT(usuarioId, ruta);
+             return doc;
+         }
+ 
+diff --git a/CapaPresentacion/CapaPresentacion.csproj b/CapaPresentacion/CapaPresentacion.csproj
+index 058ddfd..1952a49 100644
+--- a/CapaPresentacion/CapaPresentacion.csproj
++++ b/CapaPresentacion/CapaPresentacion.csproj
+@@ -2885,6 +2885,7 @@
+     <Content Include="Views\RT\Registro.cshtml" />
+     <Content Include="Views\RT\Declaracion.cshtml" />
+     <Content Include="Views\RT\Designacion.cshtml" />
++    <Content Include="Views\RT\DeclaracionPdf.cshtml" />
+     <Content Include="Views\OrdenRecaudacion\OrdenRecaudacionPDF.cshtml" />
+     <Content Include="Views\Shared\_SidebarEstadoOrdenes.cshtml" />
+     <Content Include="Views\Shared\_NotificacionesBadge.cshtml" />
+@@ -2910,6 +2911,10 @@
+       <Project>{f1e9b7d3-36e1-4660-a971-7c588b08fd82}</Project>
+       <Name>CapaNegocio</Name>
+     </ProjectReference>
++    <ProjectReference Include="..\ClassLibrary1\CapaUtilidades.csproj">
++      <Project>{E524B0E7-E9A8-453B-88A7-BC7D06F67B8B}</Project>
++      <Name>CapaUtilidades</Name>
++    </ProjectReference>
+   </ItemGroup>
+   <ItemGroup>
+     <Content Include="Content\bootstrap.rtl.min.css.map" />
+diff --git a/CapaPresentacion/Controllers/AccountController.cs b/CapaPresentacion/Controllers/AccountController.cs
+index 2e9c043..5454a56 100644
+--- a/CapaPresentacion/Controllers/AccountController.cs
++++ b/CapaPresentacion/Controllers/AccountController.cs
+@@ -48,6 +48,27 @@ namespace CapaPresentacion.Controllers
+                 return View(model);
+             }
+ 
++            // 🔐 BLOQUEO DE ACCESO PARA RT PENDIENTE / RECHAZADO
++            if (!string.IsNullOrWhiteSpace(usuario.EstadoDesignacionRT) &&
++                !usuario.EstadoDesignacionRT.Equals("aceptado", StringComparison.OrdinalIgnoreCase))
++            {
++                var esAdmin = false;
++                if (roles != null)
++                {
++                    esAdmin = roles.Any(r => r.Equals("Administrador", StringComparison.OrdinalIgnoreCase));
++                }
++
++                if (!esAdmin)
++                {
++                    var estado = usuario.EstadoDesignacionRT.Trim().ToLowerInvariant();
++                    var msg = estado == "rechazado"
++                        ? "Su designación RT fue rechazada. Corrija y vuelva a subir el documento."
++                        : "Su designación RT está en proceso de validación y aprobación por el Coordinador.";
++                    ModelState.AddModelError("", msg);
++                    return View(model);
++                }
++            }
++
+             // 🔐 ADMIN SUPREMO
+             if (!string.IsNullOrWhiteSpace(usuario.NombreUsuario) &&
+                 usuario.NombreUsuario.Equals("USU_ADMIN", StringComparison.InvariantCultureIgnoreCase))
+diff --git a/CapaPresentacion/Controllers/RTController.cs b/CapaPresentacion/Controllers/RTController.cs
+index 3e8c108..0043106 100644
+--- a/CapaPresentacion/Controllers/RTController.cs
++++ b/CapaPresentacion/Controllers/RTController.cs
+@@ -2,6 +2,8 @@
+ using System.Web.Mvc;
+ using CapaModelo.RT.ViewModels;
+ using CapaNegocio.Services;
++using CapaDatos.DAOs;
++using Rotativa;
+ 
+ namespace CapaPresentacion.Controllers
+ {
+@@ -89,6 +91,41 @@ namespace CapaPresentacion.Controllers
+             return View(vm);
+         }
+ 
++        [HttpGet]
++        public ActionResult DescargarDeclaracionPdf(int solicitudId)
++        {
++            var usuarioId = ObtenerUsuarioId();
++            var solicitud = _service.GetSolicitudByUsuario(usuarioId);
++            if (solicitud == null || solicitud.Id != solicitudId)
++            {
++                TempData["Error"] = "Solicitud no encontrada.";
++                return RedirectToAction("Registro");
++            }
++
++            var compania = _service.GetCompaniaById(solicitud.CompaniaId);
++            var usuario = UsuarioDAO.ObtenerPorId(usuarioId);
++            var nombre = (usuario != null && !string.IsNullOrWhiteSpace(usuario.NombreCompleto))
++                ? usuario.NombreCompleto
++                : (usuario != null ? usuario.NombreUsuario : "");
++
++            var razonSocial = compania != null ? compania.RazonSocial : "";
++            var vm = new DeclaracionPdfVM
++            {
++                NombreCompleto = nombre,
++                Compania = razonSocial,
++                TextoDeclaracion = _service.ObtenerTextoDeclaracionPersonalizado(nombre, razonSocial),
++                FechaEmision = DateTime.Now
++            };
++
++            return new ViewAsPdf("DeclaracionPdf", vm)
++            {
++                FileName = "Declaracion_RT_" + solicitudId + ".pdf",
++                PageSize = Rotativa.Options.Size.A4,
++                PageOrientation = Rotativa.Options.Orientation.Portrait,
++                PageMargins = new Rotativa.Options.Margins(20, 15, 20, 15)
++            };
++        }
++
+         [HttpPost]
+         [ValidateAntiForgeryToken]
+         public ActionResult AceptarDeclaracion(DeclaracionRTVM vm)
+@@ -165,7 +202,7 @@ namespace CapaPresentacion.Controllers
+             try
+             {
+                 _service.EnviarSolicitud(solicitudId, usuarioId);
+-                TempData["Ok"] = "Solicitud enviada. En revisión por Coordinador.";
++                TempData["Ok"] = "Solicitud enviada. En proceso de validación y aprobación por Coordinador.";
+             }
+             catch (Exception ex)
+             {
+diff --git a/CapaPresentacion/Views/RT/Declaracion.cshtml b/CapaPresentacion/Views/RT/Declaracion.cshtml
+index 0bc6642..1d00bc9 100644
+--- a/CapaPresentacion/Views/RT/Declaracion.cshtml
++++ b/CapaPresentacion/Views/RT/Declaracion.cshtml
+@@ -34,6 +34,17 @@
+                 @Html.HiddenFor(m => m.TextoDeclaracion)
+                 @Html.HiddenFor(m => m.Estado)
+ 
++                <div class="mb-3">
++                    <a class="btn btn-outline-primary"
++                       href="@Url.Action("DescargarDeclaracionPdf", "RT", new { solicitudId = Model.SolicitudId })"
++                       target="_blank">
++                        Descargar declaración (PDF)
++                    </a>
++                    <small class="text-muted d-block mt-2">
++                        Descargue, firme y luego suba el PDF en el paso de Designación.
++                    </small>
++                </div>
++
+                 <div class="mb-3">
+                     <label class="form-label">Texto de la declaración</label>
+                     <textarea class="form-control" rows="8" readonly>@Model.TextoDeclaracion</textarea>
+diff --git a/CapaPresentacion/Views/RT/Designacion.cshtml b/CapaPresentacion/Views/RT/Designacion.cshtml
+index 0ff92d3..882084e 100644
+--- a/CapaPresentacion/Views/RT/Designacion.cshtml
++++ b/CapaPresentacion/Views/RT/Designacion.cshtml
+@@ -8,7 +8,7 @@
+ <div class="container mt-4">
+     <div class="card shadow-sm">
+         <div class="card-header bg-primary text-white">
+-            <h4 class="mb-0">Designación RT Legalizada</h4>
++            <h4 class="mb-0">Declaración RT Firmada</h4>
+         </div>
+         <div class="card-body">
+             @if (TempData["Ok"] != null)
+@@ -34,10 +34,10 @@
+                 @Html.HiddenFor(m => m.Estado)
+ 
+                 <div class="mb-3">
+-                    <label class="form-label">PDF de Designación RT legalizada</label>
++                    <label class="form-label">PDF de declaración firmada</label>
+                     @Html.TextBoxFor(m => m.ArchivoPdf, new { type = "file", @class = "form-control", accept = ".pdf", disabled = bloqueado ? "disabled" : null })
+                     @Html.ValidationMessageFor(m => m.ArchivoPdf, "", new { @class = "text-danger" })
+-                    <small class="text-muted">Solo PDF. Tamaño máximo configurable.</small>
++                    <small class="text-muted">Suba el PDF descargado y firmado. Solo PDF. Tamaño máximo configurable.</small>
+                 </div>
+ 
+                 @if (!string.IsNullOrWhiteSpace(Model.NombreArchivoActual))
+diff --git a/CapaModelo/RT/ViewModels/DeclaracionPdfVM.cs b/CapaModelo/RT/ViewModels/DeclaracionPdfVM.cs
+new file mode 100644
+index 0000000..a280978
+--- /dev/null
++++ b/CapaModelo/RT/ViewModels/DeclaracionPdfVM.cs
+@@ -0,0 +1,12 @@
++﻿using System;
++
++namespace CapaModelo.RT.ViewModels
++{
++    public class DeclaracionPdfVM
++    {
++        public string NombreCompleto { get; set; }
++        public string Compania { get; set; }
++        public string TextoDeclaracion { get; set; }
++        public DateTime FechaEmision { get; set; }
++    }
++}
+diff --git a/CapaPresentacion/Views/RT/DeclaracionPdf.cshtml b/CapaPresentacion/Views/RT/DeclaracionPdf.cshtml
+new file mode 100644
+index 0000000..67b8fcc
+--- /dev/null
++++ b/CapaPresentacion/Views/RT/DeclaracionPdf.cshtml
+@@ -0,0 +1,34 @@
++﻿@model CapaModelo.RT.ViewModels.DeclaracionPdfVM
++@{
++    Layout = null;
++}
++<!DOCTYPE html>
++<html>
++<head>
++    <meta charset="utf-8" />
++    <title>Declaración de Responsabilidad RT</title>
++    <style>
++        body { font-family: Arial, sans-serif; font-size: 12pt; color: #111; }
++        .titulo { font-size: 16pt; font-weight: bold; margin-bottom: 10px; }
++        .subtitulo { font-size: 11pt; color: #444; margin-bottom: 20px; }
++        .texto { white-space: pre-wrap; line-height: 1.5; }
++        .firma { margin-top: 40px; }
++        .linea { border-top: 1px solid #000; width: 240px; margin-top: 40px; }
++        .meta { margin-top: 6px; font-size: 10pt; color: #555; }
++    </style>
++</head>
++<body>
++    <div class="titulo">Declaración de Responsabilidad</div>
++    <div class="subtitulo">Responsable Técnico (RT)</div>
++
++    <div class="texto">@Model.TextoDeclaracion</div>
++
++    <div class="firma">
++        <div>Nombre: <strong>@Model.NombreCompleto</strong></div>
++        <div>Compañía: <strong>@Model.Compania</strong></div>
++        <div class="linea"></div>
++        <div class="meta">Firma del Responsable Técnico</div>
++        <div class="meta">Fecha emisión: @Model.FechaEmision.ToString("dd/MM/yyyy")</div>
++    </div>
++</body>
++</html>

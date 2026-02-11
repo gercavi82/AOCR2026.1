@@ -7,6 +7,8 @@ using System.Web.Mvc;
 using CapaNegocio;
 using CapaModelo;
 using CapaDatos.DAOs;
+using CapaNegocio.Helpers;
+using CapaUtilidades;
 
 namespace CapaPresentacion.Controllers
 {
@@ -28,7 +30,7 @@ namespace CapaPresentacion.Controllers
         private const int MAX_PDF_BYTES = 10 * 1024 * 1024;
 
         // Carpeta de informes
-        private const string CARPETA_VIRTUAL_INFORMES = "~/Uploads/Inspecciones";
+        private const string CARPETA_VIRTUAL_INFORMES = "~/App_Data/Uploads/Inspecciones";
 
         public InspeccionController()
         {
@@ -295,16 +297,25 @@ namespace CapaPresentacion.Controllers
                 return RedirectToAction("Detalle", new { id });
             }
 
-            string carpetaFisica = Server.MapPath(CARPETA_VIRTUAL_INFORMES);
-            if (!Directory.Exists(carpetaFisica))
-                Directory.CreateDirectory(carpetaFisica);
+            var options = new FileUploadOptions
+            {
+                BasePath = FileStorageHelper.GetPhysicalBasePath(CARPETA_VIRTUAL_INFORMES),
+                Subfolder = string.Empty,
+                AllowedExtensions = new[] { ".pdf" },
+                AllowedContentTypes = new[] { "application/pdf" },
+                MaxSizeMb = 10,
+                ValidateMagicBytes = true
+            };
 
-            string nombreArchivo = Guid.NewGuid().ToString("N") + ".pdf";
-            string rutaFisica = Path.Combine(carpetaFisica, nombreArchivo);
+            string error;
+            FileUploadResult result;
+            if (!FileUploadService.TrySave(archivo, options, out result, out error))
+            {
+                TempData["Error"] = error ?? "No se pudo guardar el archivo.";
+                return RedirectToAction("Detalle", new { id });
+            }
 
-            archivo.SaveAs(rutaFisica);
-
-            string rutaRelativa = "/Uploads/Inspecciones/" + nombreArchivo;
+            string rutaRelativa = CARPETA_VIRTUAL_INFORMES + "/" + result.StoredName;
             int codigoUsuario = ObtenerCodigoUsuario();
 
             bool ok = _inspeccionBL.GuardarInforme(id, rutaRelativa, codigoUsuario);

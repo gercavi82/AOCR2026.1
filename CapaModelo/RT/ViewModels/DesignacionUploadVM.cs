@@ -12,7 +12,7 @@ namespace CapaModelo.RT.ViewModels
 
         public string Estado { get; set; }
 
-        [Required(ErrorMessage = "Debe adjuntar el PDF de Designación RT legalizada")]
+        [Required(ErrorMessage = "Debe adjuntar el PDF de la declaración RT firmada")]
         public HttpPostedFileBase ArchivoPdf { get; set; }
     }
 }

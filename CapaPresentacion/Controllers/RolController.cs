@@ -36,6 +36,7 @@ namespace CapaPresentacion.Controllers
         // CREAR (POST)
         // ============================================================
         [HttpPost]
+        [ValidateAntiForgeryToken]
         public ActionResult Crear(Rol modelo)
         {
             try
@@ -95,6 +96,7 @@ namespace CapaPresentacion.Controllers
         // EDITAR (POST)
         // ============================================================
         [HttpPost]
+        [ValidateAntiForgeryToken]
         public ActionResult Editar(Rol modelo)
         {
             try

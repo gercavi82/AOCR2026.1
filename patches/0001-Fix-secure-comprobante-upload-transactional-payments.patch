@@ -1,0 +1,519 @@
+From 67ddf6bfcb095afda190f311b232ee46912c0de3 Mon Sep 17 00:00:00 2001
+From: gercavi82 <147272385+gercavi82@users.noreply.github.com>
+Date: Wed, 11 Feb 2026 15:08:38 -0500
+Subject: [PATCH] Fix: secure comprobante upload + transactional payments +
+ logging (Orden/Financiero)
+
+---
+ CapaDatos/DAOs/OrdenRecaudacionDAO.cs         | 167 ++++++++++++++++++
+ CapaNegocio/Helpers/FileStorageHelper.cs      |  70 ++++++++
+ .../Controllers/FinancieroController.cs       |  81 ++++++---
+ .../Controllers/OrdenRecaudacionController.cs |  66 +++----
+ 4 files changed, 331 insertions(+), 53 deletions(-)
+
+diff --git a/CapaDatos/DAOs/OrdenRecaudacionDAO.cs b/CapaDatos/DAOs/OrdenRecaudacionDAO.cs
+index 1542289..53e1815 100644
+--- a/CapaDatos/DAOs/OrdenRecaudacionDAO.cs
++++ b/CapaDatos/DAOs/OrdenRecaudacionDAO.cs
+@@ -1429,10 +1429,177 @@ namespace CapaDatos.DAOs
+             return RegistrarPago(codigoSolicitud, pagoModel, out err);
+         }
+ 
++        /// <summary>
++        /// Inserta el pago y actualiza el estado de la orden en una transacción para mantener consistencia.
++        /// </summary>
++        public bool RegistrarPagoYActualizarEstadoTransaccional(int ordenId, int codigoSolicitud, PagoModel pago, string nuevoEstadoOrden, out string err)
++        {
++            err = null;
++            if (ordenId <= 0 || codigoSolicitud <= 0 || pago == null)
++            {
++                err = "Parametros inválidos.";
++                return false;
++            }
++
++            try
++            {
++                using (var conn = new NpgsqlConnection(_connectionString))
++                {
++                    conn.Open();
++                    using (var tx = conn.BeginTransaction())
++                    {
++                        // Insert pago (usar la misma lógica que RegistrarPago)
++                        var tieneBanco = VerificarColumnaBanco(conn);
++
++                        var sqlInsert = tieneBanco ? @"
++                            INSERT INTO aocr_tbpago
++                            (codigo_solicitud, numero_factura, monto, moneda, concepto, metodo_pago, banco, estado, fecha_pago, observaciones, comprobante_ruta)
++                            VALUES
++                            (@codigoSolicitud, @numeroFactura, @monto, @moneda, @concepto, @metodoPago, @banco, @estado, @fechaPago, @observaciones, @comprobanteRuta)" : @"
++                            INSERT INTO aocr_tbpago
++                            (codigo_solicitud, numero_factura, monto, moneda, concepto, metodo_pago, estado, fecha_pago, observaciones, comprobante_ruta)
++                            VALUES
++                            (@codigoSolicitud, @numeroFactura, @monto, @moneda, @concepto, @metodoPago, @estado, @fechaPago, @observaciones, @comprobanteRuta)";
++
++                        using (var cmd = new NpgsqlCommand(sqlInsert, conn, tx))
++                        {
++                            cmd.Parameters.AddWithValue("@codigoSolicitud", codigoSolicitud);
++                            cmd.Parameters.AddWithValue("@numeroFactura", (object)pago.NumeroFactura ?? DBNull.Value);
++                            cmd.Parameters.AddWithValue("@monto", pago.Monto);
++                            cmd.Parameters.AddWithValue("@moneda", (object)pago.Moneda ?? "USD");
++                            cmd.Parameters.AddWithValue("@concepto", (object)pago.Concepto ?? DBNull.Value);
++                            cmd.Parameters.AddWithValue("@metodoPago", (object)pago.MetodoPago ?? DBNull.Value);
++                            if (tieneBanco) cmd.Parameters.AddWithValue("@banco", (object)pago.Banco ?? DBNull.Value);
++                            cmd.Parameters.AddWithValue("@estado", (object)pago.Estado ?? CapaDatos.Constants.EstadoPago.Pendiente);
++                            cmd.Parameters.AddWithValue("@fechaPago", (object)pago.FechaPago ?? DateTime.Now);
++                            cmd.Parameters.AddWithValue("@observaciones", (object)pago.Observaciones ?? DBNull.Value);
++                            cmd.Parameters.AddWithValue("@comprobanteRuta", (object)pago.ComprobanteRuta ?? DBNull.Value);
++
++                            var inserted = cmd.ExecuteNonQuery();
++                            if (inserted <= 0)
++                            {
++                                tx.Rollback();
++                                err = "Fallo al insertar registro de pago.";
++                                return false;
++                            }
++                        }
++
++                        // Actualizar estado de la orden
++                        var sqlUpdate = "UPDATE aocr_or_orden SET estado = @estado WHERE id = @id";
++                        using (var upd = new NpgsqlCommand(sqlUpdate, conn, tx))
++                        {
++                            upd.Parameters.AddWithValue("@estado", (object)nuevoEstadoOrden ?? DBNull.Value);
++                            upd.Parameters.AddWithValue("@id", ordenId);
++                            var updated = upd.ExecuteNonQuery();
++                            if (updated <= 0)
++                            {
++                                tx.Rollback();
++                                err = "Fallo al actualizar el estado de la orden.";
++                                return false;
++                            }
++                        }
++
++                        tx.Commit();
++                        return true;
++                    }
++                }
++            }
++            catch (Exception ex)
++            {
++                err = ex.Message;
++                _logger.LogError(ex, "Error en RegistrarPagoYActualizarEstadoTransaccional");
++                return false;
++            }
++        }
++
+         // =============================
+         // Estadisticas por usuario
+         // =============================
+ 
++        /// <summary>
++        /// Actualiza el estado del ultimo pago (o pago especificado) y el estado de la orden en una transacción.
++        /// </summary>
++        public bool ActualizarPagoYEstadoTransaccional(int ordenId, int? pagoId, string estadoPago, string usuario, string observaciones, string nuevoEstadoOrden, out string err)
++        {
++            err = null;
++            if (ordenId <= 0 || string.IsNullOrWhiteSpace(estadoPago) || string.IsNullOrWhiteSpace(nuevoEstadoOrden))
++            {
++                err = "Parametros invalidos.";
++                return false;
++            }
++
++            try
++            {
++                using (var conn = new NpgsqlConnection(_connectionString))
++                {
++                    conn.Open();
++                    using (var tx = conn.BeginTransaction())
++                    {
++                        // Determinar id de pago si no fue proporcionado: obtener ultimo pago por orden
++                        
++                        int targetPagoId = pagoId ?? 0;
++                        if (targetPagoId == 0)
++                        {
++                            var sqlGet = @"SELECT id FROM aocr_tbpago WHERE codigo_solicitud = (SELECT COALESCE(NULLIF(codigo_solicitud, ''), id::text)::int FROM aocr_or_orden WHERE id = @ordenId) ORDER BY fecha_pago DESC LIMIT 1";
++                            using (var cmdGet = new NpgsqlCommand(sqlGet, conn, tx))
++                            {
++                                cmdGet.Parameters.AddWithValue("@ordenId", ordenId);
++                                var obj = cmdGet.ExecuteScalar();
++                                if (obj != null && obj != DBNull.Value) targetPagoId = Convert.ToInt32(obj);
++                            }
++                        }
++
++                        if (targetPagoId == 0)
++                        {
++                            tx.Rollback();
++                            err = "No se encontró pago para validar.";
++                            return false;
++                        }
++
++                        var sqlUpdatePago = "UPDATE aocr_tbpago SET estado = @estado, fecha_validacion = @fecha, validado_por = @usuario, observaciones = @obs WHERE id = @pagoId";
++                        using (var cmdUpd = new NpgsqlCommand(sqlUpdatePago, conn, tx))
++                        {
++                            cmdUpd.Parameters.AddWithValue("@estado", estadoPago);
++                            cmdUpd.Parameters.AddWithValue("@fecha", DateTime.Now);
++                            cmdUpd.Parameters.AddWithValue("@usuario", usuario ?? (object)DBNull.Value);
++                            cmdUpd.Parameters.AddWithValue("@obs", (object)observaciones ?? DBNull.Value);
++                            cmdUpd.Parameters.AddWithValue("@pagoId", targetPagoId);
++                            var rows = cmdUpd.ExecuteNonQuery();
++                            if (rows <= 0)
++                            {
++                                tx.Rollback();
++                                err = "Fallo al actualizar pago";
++                                return false;
++                            }
++                        }
++
++                        var sqlUpdateOrden = "UPDATE aocr_or_orden SET estado = @estado WHERE id = @id";
++                        using (var cmdOrd = new NpgsqlCommand(sqlUpdateOrden, conn, tx))
++                        {
++                            cmdOrd.Parameters.AddWithValue("@estado", nuevoEstadoOrden);
++                            cmdOrd.Parameters.AddWithValue("@id", ordenId);
++                            var rowsOrd = cmdOrd.ExecuteNonQuery();
++                            if (rowsOrd <= 0)
++                            {
++                                tx.Rollback();
++                                err = "Fallo al actualizar orden";
++                                return false;
++                            }
++                        }
++
++                        tx.Commit();
++                        return true;
++                    }
++                }
++            }
++            catch (Exception ex)
++            {
++                err = ex.Message;
++                _logger.LogError(ex, "Error en ActualizarPagoYEstadoTransaccional");
++                return false;
++            }
++        }
++
+         public Dictionary<string, object> ObtenerEstadisticas(int codigoUsuario)
+         {
+             var estadisticas = new Dictionary<string, object>();
+diff --git a/CapaNegocio/Helpers/FileStorageHelper.cs b/CapaNegocio/Helpers/FileStorageHelper.cs
+index 5459a18..a64e390 100644
+--- a/CapaNegocio/Helpers/FileStorageHelper.cs
++++ b/CapaNegocio/Helpers/FileStorageHelper.cs
+@@ -84,6 +84,76 @@ namespace CapaNegocio.Helpers
+             return relative.StartsWith("/") ? "~" + relative : "~" + "/" + relative;
+         }
+ 
++        // Generic file validation for comprobantes (pdf/jpg/png). Reusable across controllers.
++        public static bool ValidateFile(HttpPostedFileBase file, out string error, string[] allowedExts = null, int? maxSizeMb = null)
++        {
++            error = null;
++            if (file == null || file.ContentLength <= 0)
++            {
++                error = "Debe adjuntar un archivo.";
++                return false;
++            }
++
++            var ext = Path.GetExtension(file.FileName)?.ToLowerInvariant() ?? string.Empty;
++            var allowed = allowedExts ?? new[] { ".pdf", ".jpg", ".jpeg", ".png" };
++            if (!Array.Exists(allowed, e => e == ext))
++            {
++                error = "Formato no permitido. Solo PDF/JPG/PNG.";
++                return false;
++            }
++
++            var mb = maxSizeMb ?? MaxFileSizeMb;
++            var maxBytes = mb * 1024 * 1024;
++            if (file.ContentLength > maxBytes)
++            {
++                error = $"El archivo supera el tamaño máximo permitido ({mb}MB).";
++                return false;
++            }
++
++            return true;
++        }
++
++        // Saves file under base path and returns virtual path (e.g. "~/App_Data/AOCR/..")
++        public static string SaveFile(HttpPostedFileBase file, string folderRelative)
++        {
++            if (file == null) throw new ArgumentNullException(nameof(file));
++            var baseDir = HttpContext.Current.Server.MapPath(BasePathStorage);
++            var folder = Path.Combine(baseDir, folderRelative.TrimStart('~', '/', '\'));
++
++            if (!Directory.Exists(folder))
++            {
++                Directory.CreateDirectory(folder);
++            }
++
++            var safeName = Path.GetFileName(file.FileName);
++            var name = Path.GetFileNameWithoutExtension(safeName);
++            var ext = Path.GetExtension(safeName);
++            var unique = $"{name}_{DateTime.Now:yyyyMMddHHmmssfff}{ext}";
++
++            var fullPath = Path.Combine(folder, unique);
++            file.SaveAs(fullPath);
++
++            var relative = Path.Combine(BasePathStorage.TrimEnd('~', '/'), folderRelative.TrimStart('~', '/'), unique)
++                .Replace("\\", "/");
++
++            return relative.StartsWith("/") ? "~" + relative : "~" + "/" + relative;
++        }
++
++        public static bool DeleteFile(string virtualPath)
++        {
++            try
++            {
++                if (string.IsNullOrWhiteSpace(virtualPath)) return false;
++                var path = HttpContext.Current.Server.MapPath(virtualPath);
++                if (File.Exists(path)) File.Delete(path);
++                return true;
++            }
++            catch
++            {
++                return false;
++            }
++        }
++
+         public static string ComputeSha256(string fullPath)
+         {
+             using (var sha = SHA256.Create())
+diff --git a/CapaPresentacion/Controllers/FinancieroController.cs b/CapaPresentacion/Controllers/FinancieroController.cs
+index 8285b2d..2cc5f5e 100644
+--- a/CapaPresentacion/Controllers/FinancieroController.cs
++++ b/CapaPresentacion/Controllers/FinancieroController.cs
+@@ -76,21 +76,33 @@ namespace CapaPresentacion.Controllers
+ 
+             var user = User?.Identity?.Name ?? "FINANCIERO";
+ 
+-            _ordenDAO.ActualizarUltimoPagoEstado(id, "VALIDADO", user, "Aprobado por Finanzas");
+-            _ordenDAO.CambiarEstadoOrden(id, "FACTURADA");
+-
+             try
+             {
+-                // Generar PDF directamente desde la orden
+-                var pdf = new CapaPresentacion.Services.PdfGeneratorService().GenerarOrdenRecaudacionPDF(orden);
+-                new EmailService().EnviarFacturaGenerada(orden, pdf);
++                if (!_ordenDAO.ActualizarPagoYEstadoTransaccional(id, null, "VALIDADO", user, "Aprobado por Finanzas", "FACTURADA", out var err))
++                {
++                    CapaNegocio.LogBL.RegistrarError($"Error aprobando orden Id={id} NumOrden={orden.NumeroOrden}", err ?? "n/a", "FinancieroController");
++                    TempData["Error"] = "Error al aprobar la orden. " + (string.IsNullOrWhiteSpace(err) ? "" : ("Detalle: " + err));
++                    return RedirectToAction("Index");
++                }
++
++                try
++                {
++                    // Generar PDF directamente desde la orden
++                    var pdf = new CapaPresentacion.Services.PdfGeneratorService().GenerarOrdenRecaudacionPDF(orden);
++                    new EmailService().EnviarFacturaGenerada(orden, pdf);
++                }
++                catch (System.Exception exPdf)
++                {
++                    CapaNegocio.LogBL.RegistrarError($"Error generando/mandando factura Orden={orden.NumeroOrden}", exPdf.ToString(), "FinancieroController");
++                }
++
++                TempData["Success"] = "Orden aprobada y factura generada.";
+             }
+-            catch
++            catch (System.Exception ex)
+             {
+-                // No bloquear el flujo si el PDF/correo falla
++                CapaNegocio.LogBL.RegistrarError($"Error aprobando orden Id={id} NumOrden={orden.NumeroOrden}", ex.ToString(), "FinancieroController");
++                TempData["Error"] = "Error interno al aprobar la orden.";
+             }
+-
+-            TempData["Success"] = "Orden aprobada y factura generada.";
+             return RedirectToAction("Index");
+         }
+ 
+@@ -103,11 +115,22 @@ namespace CapaPresentacion.Controllers
+ 
+             var user = User?.Identity?.Name ?? "FINANCIERO";
+ 
+-            // Marcar el último pago (o el indicado) como VALIDADO y mover la orden a FACTURADA
+-            _ordenDAO.ActualizarUltimoPagoEstado(id, "VALIDADO", user, "Aprobado por Finanzas");
+-            _ordenDAO.CambiarEstadoOrden(id, "FACTURADA");
+-
+-            TempData["Success"] = "Pago aprobado y orden facturada.";
++            try
++            {
++                // Actualizar pago y estado en transacción
++                if (!_ordenDAO.ActualizarPagoYEstadoTransaccional(id, pagoId, "VALIDADO", user, "Aprobado por Finanzas", "FACTURADA", out var err))
++                {
++                    CapaNegocio.LogBL.RegistrarError($"Error aprobando pago OrdenId={id}", err ?? "n/a", "FinancieroController");
++                    TempData["Error"] = "Error al aprobar el pago. " + (string.IsNullOrWhiteSpace(err) ? "" : ("Detalle: " + err));
++                    return RedirectToAction("Index");
++                }
++                TempData["Success"] = "Pago aprobado y orden facturada.";
++            }
++            catch (System.Exception ex)
++            {
++                CapaNegocio.LogBL.RegistrarError($"Error aprobando pago OrdenId={id}", ex.ToString(), "FinancieroController");
++                TempData["Error"] = "Error interno al aprobar el pago.";
++            }
+             return RedirectToAction("Index");
+         }
+ 
+@@ -133,19 +156,31 @@ namespace CapaPresentacion.Controllers
+ 
+             var user = User?.Identity?.Name ?? "FINANCIERO";
+ 
+-            _ordenDAO.ActualizarUltimoPagoEstado(id, "ANULADO", user, motivo);
+-            _ordenDAO.CambiarEstadoOrden(id, "PENDIENTE");
+-
+             try
+             {
+-                new EmailService().EnviarNotificacionRechazo(orden, motivo);
++                if (!_ordenDAO.ActualizarPagoYEstadoTransaccional(id, null, "ANULADO", user, motivo, "PENDIENTE", out var err))
++                {
++                    CapaNegocio.LogBL.RegistrarError($"Error rechazando orden Id={id} NumOrden={orden.NumeroOrden}", err ?? "n/a", "FinancieroController");
++                    TempData["Error"] = "Error al rechazar la orden. " + (string.IsNullOrWhiteSpace(err) ? "" : ("Detalle: " + err));
++                    return RedirectToAction("Index");
++                }
++
++                try
++                {
++                    new EmailService().EnviarNotificacionRechazo(orden, motivo);
++                }
++                catch (System.Exception exMail)
++                {
++                    CapaNegocio.LogBL.RegistrarError($"Error notificando rechazo Orden={orden.NumeroOrden}", exMail.ToString(), "FinancieroController");
++                }
++
++                TempData["Success"] = "Orden rechazada correctamente.";
+             }
+-            catch
++            catch (System.Exception ex)
+             {
+-                // No bloquear el flujo si el email falla
++                CapaNegocio.LogBL.RegistrarError($"Error rechazando orden Id={id} NumOrden={orden.NumeroOrden}", ex.ToString(), "FinancieroController");
++                TempData["Error"] = "Error interno al rechazar la orden.";
+             }
+-
+-            TempData["Success"] = "Orden rechazada correctamente.";
+             return RedirectToAction("Index");
+         }
+ 
+diff --git a/CapaPresentacion/Controllers/OrdenRecaudacionController.cs b/CapaPresentacion/Controllers/OrdenRecaudacionController.cs
+index 8629a4a..b02f605 100644
+--- a/CapaPresentacion/Controllers/OrdenRecaudacionController.cs
++++ b/CapaPresentacion/Controllers/OrdenRecaudacionController.cs
+@@ -1174,33 +1174,31 @@ En transferencias NO colocar sublínea<br>";
+ 
+             try
+             {
+-                // Guardar comprobante si existe
++                // Guardar comprobante si existe via helper central (FileStorageHelper)
+                 string comprobanteRuta = null;
++                string savedVirtualPath = null;
+                 if (ComprobanteArchivo != null && ComprobanteArchivo.ContentLength > 0)
+                 {
+-                    var ext = Path.GetExtension(ComprobanteArchivo.FileName) ?? "";
+-                    ext = ext.ToLowerInvariant();
+-                    if (ext != ".pdf" && ext != ".jpg" && ext != ".jpeg" && ext != ".png")
++                    // Validación centralizada
++                    if (!CapaNegocio.Helpers.FileStorageHelper.ValidateFile(ComprobanteArchivo, out var fileError))
+                     {
+-                        TempData["Error"] = "Formato de comprobante no permitido (PDF, JPG, PNG).";
++                        TempData["Error"] = fileError;
+                         return RedirectToAction("Detalles", new { id = id });
+                     }
+ 
+-                    if (ComprobanteArchivo.ContentLength > (10 * 1024 * 1024))
++                    try
++                    {
++                        // Guardar en carpeta controlada bajo App_Data
++                        savedVirtualPath = CapaNegocio.Helpers.FileStorageHelper.SaveFile(ComprobanteArchivo, "Comprobantes");
++                        comprobanteRuta = savedVirtualPath;
++                        CapaNegocio.LogBL.RegistrarInfo($"Comprobante guardado: Orden={orden.NumeroOrden} Ruta={savedVirtualPath}", "OrdenRecaudacionController");
++                    }
++                    catch (Exception exSave)
+                     {
+-                        TempData["Error"] = "El comprobante supera el tama�o m�ximo permitido (10MB).";
++                        CapaNegocio.LogBL.RegistrarError($"Error guardando archivo comprobante Orden={orden.NumeroOrden}", exSave.ToString(), "OrdenRecaudacionController");
++                        TempData["Error"] = "Error guardando el comprobante. Intente nuevamente.";
+                         return RedirectToAction("Detalles", new { id = id });
+                     }
+-
+-                    var folderVirtual = "~/Content/documents/pagos";
+-                    var folderFisico = Server.MapPath(folderVirtual);
+-                    if (!Directory.Exists(folderFisico))
+-                        Directory.CreateDirectory(folderFisico);
+-
+-                    var safeFile = $"pago_{id}_{DateTime.Now:yyyyMMddHHmmssfff}{ext}";
+-                    var fullPath = Path.Combine(folderFisico, safeFile);
+-                    ComprobanteArchivo.SaveAs(fullPath);
+-                    comprobanteRuta = VirtualPathUtility.ToAbsolute($"{folderVirtual}/{safeFile}");
+                 }
+ 
+                 var pago = new CapaModelo.PagoModel
+@@ -1248,26 +1246,31 @@ En transferencias NO colocar sublínea<br>";
+                 return RedirectToAction("Detalles", new { id = id });
+             }
+ 
++                // Registrar pago + actualizar estado en una transacción atómica en BD
+                 string pagoErr;
+-                bool pagoOk = _dao.RegistrarPago(codigoSolicitud, pago, out pagoErr);
+-                if (!pagoOk)
++                bool transOk = _dao.RegistrarPagoYActualizarEstadoTransaccional(orden.Id, codigoSolicitud, pago, "PROCESADA", out pagoErr);
++                if (!transOk)
+                 {
++                    // Si guardamos archivo y la BD falló, borrarlo para no dejar archivos huérfanos
++                    if (!string.IsNullOrWhiteSpace(savedVirtualPath))
++                    {
++                        CapaNegocio.Helpers.FileStorageHelper.DeleteFile(savedVirtualPath);
++                        CapaNegocio.LogBL.RegistrarInfo($"Archivo eliminado por fallo transacción: Orden={orden.NumeroOrden} Ruta={savedVirtualPath}", "OrdenRecaudacionController");
++                    }
++
++                    CapaNegocio.LogBL.RegistrarError($"Error registrando pago/transacción Orden={orden.NumeroOrden} CodigoSolicitud={codigoSolicitud}", pagoErr ?? "n/a", "OrdenRecaudacionController");
+                     TempData["Error"] = "No se pudo registrar el pago en la base de datos. " + (string.IsNullOrWhiteSpace(pagoErr) ? "" : ("Detalle: " + pagoErr));
+                     return RedirectToAction("Detalles", new { id = id });
+                 }
+ 
+-                // Cambiar estado de la orden a EN_REVISION_FINANCIERA
+-                bool result = _dao.CambiarEstadoOrden(id, "PROCESADA");
+-                if (result)
++                try
+                 {
+-                    try
++                    var financieroEmail = ConfigurationManager.AppSettings["FinancieroEmail"];
++                    if (!string.IsNullOrWhiteSpace(financieroEmail))
+                     {
+-                        var financieroEmail = ConfigurationManager.AppSettings["FinancieroEmail"];
+-                        if (!string.IsNullOrWhiteSpace(financieroEmail))
+-                        {
+-                            EnviarNotificacionAFinanciero(orden, pago, financieroEmail, comprobanteRuta);
+-                        }
++                        EnviarNotificacionAFinanciero(orden, pago, financieroEmail, comprobanteRuta);
+                     }
++                }
+                     catch
+                     {
+                         // No bloquear el flujo si el email falla
+@@ -1284,7 +1287,8 @@ En transferencias NO colocar sublínea<br>";
+             }
+             catch (Exception ex)
+             {
+-                TempData["Error"] = "Error interno: " + ex.Message;
++                CapaNegocio.LogBL.RegistrarError($"Error registrando comprobante Orden={orden?.NumeroOrden} CodigoSolicitud={orden?.CodigoSolicitud}", ex.ToString(), "OrdenRecaudacionController");
++                TempData["Error"] = "Error interno al procesar el pago. Por favor contacte al administrador.";
+                 return RedirectToAction("Detalles", new { id = id });
+             }
+         }
+@@ -1728,6 +1732,8 @@ En transferencias NO colocar sublínea<br>";
+             {
+                 if (string.IsNullOrWhiteSpace(emailFinanciero)) return;
+ 
++                CapaNegocio.LogBL.RegistrarInfo($"Notificando financiero: Orden={orden.NumeroOrden} CodigoSolicitud={orden.CodigoSolicitud}", "OrdenRecaudacionController");
++
+                 var config = new SecureConfig();
+                 var emailSvc = new EmailSvc(config);
+ 
+@@ -1759,7 +1765,7 @@ En transferencias NO colocar sublínea<br>";
+             }
+             catch (Exception ex)
+             {
+-                System.Diagnostics.Debug.WriteLine("Error enviando email: " + ex.Message);
++                CapaNegocio.LogBL.RegistrarError($"Error enviando notificación a financiero Orden={orden?.NumeroOrden} CodigoSolicitud={orden?.CodigoSolicitud}", ex.ToString(), "OrdenRecaudacionController");
+             }
+         }
+ 
+-- 
+2.35.1.windows.2
+

@@ -78,6 +78,7 @@
 </div>
 
 <form id="formAccion" method="post" style="display:none;">
+    @Html.AntiForgeryToken()
     <input type="hidden" name="idPago" id="input_idPago" />
     <input type="hidden" name="id" id="input_id" />
     <input type="hidden" name="observaciones" id="input_observaciones" />

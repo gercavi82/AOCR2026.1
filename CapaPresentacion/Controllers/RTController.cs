@@ -1,7 +1,13 @@
 ﻿using System;
+using System;
+using System.IO;
 using System.Web.Mvc;
 using CapaModelo.RT.ViewModels;
 using CapaNegocio.Services;
+using CapaDatos.DAOs;
+using CapaNegocio;
+using iTextSharp.text;
+using iTextSharp.text.pdf;
 
 namespace CapaPresentacion.Controllers
 {
@@ -86,7 +92,63 @@ namespace CapaPresentacion.Controllers
                 Estado = solicitud.Estado
             };
 
+            var compania = _service.GetCompaniaById(solicitud.CompaniaId);
+            var usuario = UsuarioDAO.ObtenerPorId(usuarioId);
+            var nombre = (usuario != null && !string.IsNullOrWhiteSpace(usuario.NombreCompleto))
+                ? usuario.NombreCompleto
+                : (usuario != null ? usuario.NombreUsuario : "");
+
+            var razonSocial = compania != null ? compania.RazonSocial : "";
+            var textoPersonalizado = _service.ObtenerTextoDeclaracionPersonalizado(nombre, razonSocial);
+            if (!string.IsNullOrWhiteSpace(textoPersonalizado))
+            {
+                vm.TextoDeclaracion = textoPersonalizado;
+            }
+
             return View(vm);
+        }
+
+        [HttpGet]
+        public ActionResult DescargarDeclaracionPdf(int solicitudId)
+        {
+            var usuarioId = ObtenerUsuarioId();
+            var solicitud = _service.GetSolicitudByUsuario(usuarioId);
+            if (solicitudId <= 0 && solicitud != null)
+            {
+                solicitudId = solicitud.Id;
+            }
+            if (solicitud == null || solicitud.Id != solicitudId)
+            {
+                LogBL.RegistrarError("Solicitud RT no encontrada para generar PDF. usuarioId=" + usuarioId + " solicitudId=" + solicitudId, "n/a", "RTController");
+                return Content("Solicitud no encontrada para generar la declaración.");
+            }
+
+            var compania = _service.GetCompaniaById(solicitud.CompaniaId);
+            var usuario = UsuarioDAO.ObtenerPorId(usuarioId);
+            var nombre = (usuario != null && !string.IsNullOrWhiteSpace(usuario.NombreCompleto))
+                ? usuario.NombreCompleto
+                : (usuario != null ? usuario.NombreUsuario : "");
+
+            var razonSocial = compania != null ? compania.RazonSocial : "";
+            var vm = new DeclaracionPdfVM
+            {
+                NombreCompleto = nombre,
+                Compania = razonSocial,
+                TextoDeclaracion = _service.ObtenerTextoDeclaracionPersonalizado(nombre, razonSocial),
+                FechaEmision = DateTime.Now
+            };
+
+            var fileName = "Declaracion_RT_" + solicitudId + ".pdf";
+            try
+            {
+                var pdfBytes = GenerarDeclaracionPdf(vm);
+                return File(pdfBytes, "application/pdf", fileName);
+            }
+            catch (Exception ex)
+            {
+                LogBL.RegistrarError("Error generando PDF de declaración RT (iText).", ex.ToString(), "RTController");
+                return Content("Error generando PDF. Revise logs.");
+            }
         }
 
         [HttpPost]
@@ -165,7 +227,7 @@ namespace CapaPresentacion.Controllers
             try
             {
                 _service.EnviarSolicitud(solicitudId, usuarioId);
-                TempData["Ok"] = "Solicitud enviada. En revisión por Coordinador.";
+                TempData["Ok"] = "Solicitud enviada. En proceso de validación y aprobación por Coordinador.";
             }
             catch (Exception ex)
             {
@@ -173,6 +235,35 @@ namespace CapaPresentacion.Controllers
             }
 
             return RedirectToAction("Designacion", new { solicitudId });
+        }
+
+        private static byte[] GenerarDeclaracionPdf(DeclaracionPdfVM vm)
+        {
+            using (var ms = new MemoryStream())
+            {
+                var doc = new Document(PageSize.A4, 40f, 40f, 40f, 40f);
+                PdfWriter.GetInstance(doc, ms);
+                doc.Open();
+
+                var titleFont = FontFactory.GetFont(FontFactory.HELVETICA_BOLD, 14);
+                var normalFont = FontFactory.GetFont(FontFactory.HELVETICA, 11);
+                var smallFont = FontFactory.GetFont(FontFactory.HELVETICA, 9);
+
+                doc.Add(new Paragraph("Declaración de Responsabilidad", titleFont));
+                doc.Add(new Paragraph("Responsable Técnico (RT)", normalFont));
+                doc.Add(new Paragraph(" "));
+                doc.Add(new Paragraph(vm.TextoDeclaracion ?? "", normalFont));
+                doc.Add(new Paragraph(" "));
+                doc.Add(new Paragraph("Nombre: " + (vm.NombreCompleto ?? ""), normalFont));
+                doc.Add(new Paragraph("Compañía: " + (vm.Compania ?? ""), normalFont));
+                doc.Add(new Paragraph(" "));
+                doc.Add(new Paragraph("_______________________________", normalFont));
+                doc.Add(new Paragraph("Firma del Responsable Técnico", smallFont));
+                doc.Add(new Paragraph("Fecha emisión: " + vm.FechaEmision.ToString("dd/MM/yyyy"), smallFont));
+
+                doc.Close();
+                return ms.ToArray();
+            }
         }
     }
 }

@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Web.Mvc;
@@ -9,14 +9,14 @@ using CapaDatos.Constants;
 namespace CapaPresentacion.Controllers
 {
     /// <summary>
-    /// API Controller para gestión de notificaciones en tiempo real
-    /// Endpoints RESTful para consultar, marcar como leídas y eliminar notificaciones
+    /// API Controller para gestiÃ³n de notificaciones en tiempo real
+    /// Endpoints RESTful para consultar, marcar como leÃ­das y eliminar notificaciones
     /// </summary>
     [Authorize]
     public class NotificacionController : Controller
     {
         // ============================================
-        // OBTENER CODIGOUSUARIO DE SESIÓN
+        // OBTENER CODIGOUSUARIO DE SESIÃ“N
         // ============================================
         private int ObtenerCodigoUsuario()
         {
@@ -45,7 +45,7 @@ namespace CapaPresentacion.Controllers
 
         // ============================================
         // GET: /Notificacion/ObtenerNoLeidas
-        // API JSON para obtener notificaciones no leídas
+        // API JSON para obtener notificaciones no leÃ­das
         // ============================================
         [HttpGet]
         public JsonResult ObtenerNoLeidas()
@@ -95,7 +95,7 @@ namespace CapaPresentacion.Controllers
 
         // ============================================
         // GET: /Notificacion/ObtenerRecientes
-        // API JSON para obtener últimas N notificaciones
+        // API JSON para obtener Ãºltimas N notificaciones
         // ============================================
         [HttpGet]
         public JsonResult ObtenerRecientes(int cantidad = 10)
@@ -144,9 +144,10 @@ namespace CapaPresentacion.Controllers
 
         // ============================================
         // POST: /Notificacion/MarcarComoLeida
-        // Marca una notificación específica como leída
+        // Marca una notificaciÃ³n especÃ­fica como leÃ­da
         // ============================================
         [HttpPost]
+        [ValidateAntiForgeryToken]
         public JsonResult MarcarComoLeida(int id)
         {
             try
@@ -175,7 +176,7 @@ namespace CapaPresentacion.Controllers
                 return Json(new
                 {
                     success = false,
-                    message = "Error al marcar notificación: " + ex.Message
+                    message = "Error al marcar notificaciÃ³n: " + ex.Message
                 });
             }
         }
@@ -183,9 +184,10 @@ namespace CapaPresentacion.Controllers
 
         // ============================================
         // POST: /Notificacion/MarcarTodasComoLeidas
-        // Marca todas las notificaciones del usuario como leídas
+        // Marca todas las notificaciones del usuario como leÃ­das
         // ============================================
         [HttpPost]
+        [ValidateAntiForgeryToken]
         public JsonResult MarcarTodasComoLeidas()
         {
             try
@@ -214,7 +216,7 @@ namespace CapaPresentacion.Controllers
                 return Json(new
                 {
                     success = false,
-                    message = "Error al marcar todas como leídas: " + ex.Message
+                    message = "Error al marcar todas como leÃ­das: " + ex.Message
                 });
             }
         }
@@ -222,9 +224,10 @@ namespace CapaPresentacion.Controllers
 
         // ============================================
         // POST: /Notificacion/Eliminar
-        // Elimina una notificación específica
+        // Elimina una notificaciÃ³n especÃ­fica
         // ============================================
         [HttpPost]
+        [ValidateAntiForgeryToken]
         public JsonResult Eliminar(int id)
         {
             try
@@ -253,7 +256,7 @@ namespace CapaPresentacion.Controllers
                 return Json(new
                 {
                     success = false,
-                    message = "Error al eliminar notificación: " + ex.Message
+                    message = "Error al eliminar notificaciÃ³n: " + ex.Message
                 });
             }
         }
@@ -261,9 +264,10 @@ namespace CapaPresentacion.Controllers
 
         // ============================================
         // POST: /Notificacion/EliminarTodas
-        // Elimina todas las notificaciones leídas del usuario
+        // Elimina todas las notificaciones leÃ­das del usuario
         // ============================================
         [HttpPost]
+        [ValidateAntiForgeryToken]
         [Authorize(Roles = "Administrador,Operador")]
         public JsonResult EliminarTodas()
         {
@@ -301,7 +305,7 @@ namespace CapaPresentacion.Controllers
 
         // ============================================
         // GET: /Notificacion/ContarNoLeidas
-        // Obtiene solo el conteo de notificaciones no leídas
+        // Obtiene solo el conteo de notificaciones no leÃ­das
         // ============================================
         [HttpGet]
         public JsonResult ContarNoLeidas()
@@ -340,9 +344,10 @@ namespace CapaPresentacion.Controllers
 
         // ============================================
         // POST: /Notificacion/Enviar (Admin/Testing)
-        // Envía una notificación manual (solo para testing)
+        // EnvÃ­a una notificaciÃ³n manual (solo para testing)
         // ============================================
         [HttpPost]
+        [ValidateAntiForgeryToken]
         [Authorize(Roles = "Administrador")]
         public JsonResult Enviar(int codigoUsuarioDestino, string titulo, string mensaje, string tipo = "INFO", string url = null)
         {
@@ -353,7 +358,7 @@ namespace CapaPresentacion.Controllers
                 return Json(new
                 {
                     success = resultado,
-                    message = resultado ? "Notificación enviada correctamente" : "Error al enviar notificación"
+                    message = resultado ? "NotificaciÃ³n enviada correctamente" : "Error al enviar notificaciÃ³n"
                 });
             }
             catch (Exception ex)

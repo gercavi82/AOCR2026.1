@@ -3,6 +3,8 @@ using System.IO;
 using System.Web;
 using System.Web.Mvc;
 using CapaNegocio;
+using CapaNegocio.Helpers;
+using CapaUtilidades;
 using CapaModelo;
 
 namespace CapaPresentacion.Controllers
@@ -39,6 +41,7 @@ namespace CapaPresentacion.Controllers
         //                   SUBIR PDF DE CERTIFICADO
         // ============================================================
         [HttpPost]
+        [ValidateAntiForgeryToken]
         public ActionResult SubirPDF(int id, int solicitudId, HttpPostedFileBase archivo)
         {
             try
@@ -58,19 +61,27 @@ namespace CapaPresentacion.Controllers
                 }
 
                 // Construcción de ruta segura
-                string carpeta = "~/PDF/Certificados/";
-                string nombreArchivo = $"{id}.pdf";
-                string rutaRelativa = carpeta + nombreArchivo;
+                string carpeta = "~/App_Data/Certificados/";
 
-                string rutaFisica = Server.MapPath(rutaRelativa);
+                var options = new FileUploadOptions
+                {
+                    BasePath = FileStorageHelper.GetPhysicalBasePath(carpeta),
+                    Subfolder = string.Empty,
+                    AllowedExtensions = new[] { ".pdf" },
+                    AllowedContentTypes = new[] { "application/pdf" },
+                    MaxSizeMb = 10,
+                    ValidateMagicBytes = true
+                };
 
-                // Crear carpeta si no existe
-                string carpetaFisica = Path.GetDirectoryName(rutaFisica);
-                if (!Directory.Exists(carpetaFisica))
-                    Directory.CreateDirectory(carpetaFisica);
+                string error;
+                FileUploadResult result;
+                if (!FileUploadService.TrySave(archivo, options, out result, out error))
+                {
+                    TempData["Error"] = error ?? "No se pudo guardar el PDF.";
+                    return RedirectToAction("Detalle", new { solicitudId });
+                }
 
-                // Guardar archivo
-                archivo.SaveAs(rutaFisica);
+                string rutaRelativa = carpeta + result.StoredName;
 
                 // Registrar en BD
                 _bl.SubirPDF(id, rutaRelativa);

@@ -607,6 +607,14 @@
 </div>
 <script>
     console.log('Script del modal de usuario cargado');
+    // Fallback minimo si aocr-utils.js no está cargado (evita errores en páginas con Layout=null)
+    if (typeof window.AOCR === 'undefined') {
+        window.AOCR = window.AOCR || {};
+        window.AOCR.createOption = function(value, text){ return $('<option>').val(value).text(text); };
+        window.AOCR.escapeHtml = function(text){ if (text === null || text === undefined) return ''; return String(text).replace(/[&<>"']/g, function (m) { return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]; }); };
+        window.AOCR.escapeAttr = function(text){ return window.AOCR.escapeHtml(text).replace(/"/g, '&quot;'); };
+        console.warn('AOCR fallback installed: aocr-utils.js not loaded');
+    }
     function showModalById(id) {
         var el = document.getElementById(id);
         if (!el) return;
@@ -674,6 +682,7 @@
         // Mantener compañía sincronizada con "Empresa Operadora"
         $('#EmpresaCodigo').on('change', function() {
             sincronizarCompaniaTodasFilas();
+            actualizarDeclaracionResponsabilidad();
         });
 
         $(document).on('click', '.btn-eliminar-fila', function() {
@@ -685,8 +694,18 @@
         $('#CedulaIdentificacion').on('blur', validarIdentificacionUnica);
         $('#RUC').on('blur', validarRUCUnico);
 
+        // Actualizar declaración al escribir nombres/apellidos
+        $('#NombreUsuario, #ApellidoUsuario').on('keyup blur change', actualizarDeclaracionResponsabilidad);
+        $('#btnDescargarDeclaracion').on('click', function () {
+            if ($(this).prop('disabled')) return;
+            descargarDeclaracionResponsabilidad();
+        });
+
         $('input[name="TipoIdentificacion"]').change(actualizarValidacionIdentificacion);
         actualizarValidacionIdentificacion();
+
+        // Inicializar texto declaración
+        actualizarDeclaracionResponsabilidad();
 
         // Submit del formulario
         $('#crearForm').submit(registrarUsuario);
@@ -737,7 +756,7 @@
         logEmpresa('URL: ' + urlEmpresas);
         // Mostrar indicador de carga
         var $select = $('#EmpresaCodigo');
-        $select.empty().append('<option value="">Cargando empresas...</option>').prop('disabled', true);
+        $select.empty().append(AOCR.createOption('', 'Cargando empresas...')).prop('disabled', true);
 
         $.ajax({
             url: urlEmpresas,
@@ -751,7 +770,7 @@
             },
             success: function(data) {
                 $select.empty().prop('disabled', false);
-                $select.append('<option value="">-- Seleccione una empresa --</option>');
+                $select.append(AOCR.createOption('', 'No hay empresas disponibles')); 
 
                 if (Array.isArray(data) && data.length > 0) {
                     $.each(data, function(i, empresa) {
@@ -787,10 +806,11 @@
                     }
                     ocultarLogEmpresa(0);
                 }
+                actualizarDeclaracionResponsabilidad();
             },
             error: function(xhr, status, error) {
                 $select.empty().prop('disabled', false);
-                $select.append('<option value="">Error al cargar empresas</option>');
+                $select.append(AOCR.createOption('', 'Error al cargar empresas')); 
                 console.error('? Error cargando empresas de AS/400:', error);
 
                 var detalle = error || status;
@@ -808,6 +828,7 @@
                 logEmpresa('ERROR: ' + detalle);
                 mostrarErrorModal('No se pudieron cargar las empresas desde el AS/400. Por favor, recargue la página o contacte al administrador.');
                 ocultarLogEmpresa(0);
+                actualizarDeclaracionResponsabilidad();
             },
             complete: function(xhr, status) {
                 var codigo = xhr ? xhr.status : 'N/A';
@@ -821,6 +842,9 @@
         var nombres = ($('#NombreUsuario').val() || '').trim();
         var apellidos = ($('#ApellidoUsuario').val() || '').trim();
         var nombreCompleto = (nombres + ' ' + apellidos).trim();
+        if (nombreCompleto) {
+            nombreCompleto = nombreCompleto.toUpperCase();
+        }
         var empresaTexto = '';
         var $empresa = $('#EmpresaCodigo');
         if ($empresa.length) {
@@ -834,6 +858,8 @@
         }
         $('#nombreDeclaracion').text(nombreCompleto);
         $('#empresaDeclaracion').text(empresaTexto);
+        var habilitarDescarga = nombres.length > 0 && apellidos.length > 0;
+        $('#btnDescargarDeclaracion').prop('disabled', !habilitarDescarga);
     }
 
     function obtenerTextoDeclaracionResponsabilidad() {
@@ -867,6 +893,7 @@
     }
 
     function descargarDeclaracionResponsabilidad() {
+        actualizarDeclaracionResponsabilidad();
         var texto = obtenerTextoDeclaracionResponsabilidad();
         asegurarJsPdf(function () {
             if (!(window.jspdf && window.jspdf.jsPDF)) {
@@ -920,10 +947,11 @@
     function validarCorreoUnico() {
         const correo = $(this).val().trim();
         const url = $(this).data('url-validacion');
+        const token = $('input[name="__RequestVerificationToken"]').first().val();
 
         if (!correo || !url) return;
 
-        $.post(url, { correo: correo })
+        $.post(url, { correo: correo, __RequestVerificationToken: token })
             .done(function(response) {
                 if (!response.valido) {
                     mostrarErrorCampo('#Correo', response.mensaje || 'Correo ya registrado');
@@ -938,12 +966,14 @@
         const identificacion = $(this).val().trim();
         const tipo = $('input[name="TipoIdentificacion"]:checked').val();
         const url = $(this).data('url-validacion');
+        const token = $('input[name="__RequestVerificationToken"]').first().val();
 
         if (!identificacion || !url) return;
 
         $.post(url, {
             identificacion: identificacion,
-            tipo: tipo
+            tipo: tipo,
+            __RequestVerificationToken: token
         })
         .done(function(response) {
             if (!response.valido) {
@@ -958,10 +988,11 @@
         if ($('#RUC').is(':disabled')) return;
         const ruc = $(this).val().trim();
         const url = $(this).data('url-validacion');
+        const token = $('input[name="__RequestVerificationToken"]').first().val();
 
         if (!ruc || !url) return;
 
-        $.post(url, { ruc: ruc })
+        $.post(url, { ruc: ruc, __RequestVerificationToken: token })
             .done(function(response) {
                 if (!response.valido) {
                     mostrarErrorCampo('#RUC', response.mensaje || 'RUC ya registrado');
@@ -1201,7 +1232,8 @@
         var $log = $('#empresaLog');
         var ts = new Date().toLocaleTimeString();
         $container.removeClass('d-none');
-        $log.prepend('<div>[' + ts + '] ' + mensaje + '</div>');
+        // Prepend a log entry safely using text() to avoid HTML injection
+        $log.prepend( $('<div>').text('[' + ts + '] ' + mensaje) );
     }
 
     function ocultarLogEmpresa(delayMs) {

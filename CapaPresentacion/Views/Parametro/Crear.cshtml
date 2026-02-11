@@ -15,6 +15,7 @@
                 </div>
                 <div class="card-body">
                     <form asp-action="Crear" method="post">
+                        @Html.AntiForgeryToken()
                         <div class="mb-3">
                             <label asp-for="Clave" class="form-label">Clave del Parámetro *</label>
                             <input asp-for="Clave" class="form-control" required

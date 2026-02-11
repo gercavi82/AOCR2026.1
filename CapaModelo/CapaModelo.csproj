@@ -92,6 +92,7 @@
     <Compile Include="RT\DocumentoModel.cs" />
     <Compile Include="RT\ViewModels\RegistroRTVM.cs" />
     <Compile Include="RT\ViewModels\DeclaracionRTVM.cs" />
+    <Compile Include="RT\ViewModels\DeclaracionPdfVM.cs" />
     <Compile Include="RT\ViewModels\DesignacionUploadVM.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>

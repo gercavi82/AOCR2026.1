@@ -309,6 +309,9 @@
     <Compile Include="Models\CambiarContrasenaViewModel.cs" />
     <Compile Include="Models\OrdenRecaudacionNuevaVM.cs" />
     <Compile Include="Models\ConceptoOptionVM.cs" />
+    <Compile Include="Models\RT\DeclaracionRTVM.cs" />
+    <Compile Include="Models\RT\DesignacionUploadVM.cs" />
+    <Compile Include="Models\RT\RegistroRTVM.cs" />
     <Compile Include="Models\Validation\RucCedulaValidationAttribute.cs" />
     <Compile Include="Models\ViewModels\OrdenRecaudacionPDFModel.cs" />
     <Compile Include="Models\OrdenRecaudacionMV.cs" />
@@ -450,6 +453,7 @@
     <Content Include="Content\css\dgac-theme.css" />
     <Content Include="Content\css\formulario-aocr.css" />
     <Content Include="Content\css\formulario-emision-aocr.css" />
+    <Content Include="Content\css\pagos-mejorados.css" />
     <Content Include="Content\dist\css\adminlte.css" />
     <Content Include="Content\dist\css\adminlte.min.css" />
     <Content Include="Content\dist\css\alt\adminlte.components.css" />
@@ -505,6 +509,8 @@
     <Content Include="Rotativa\help-wkhtmltopdf.txt" />
     <Content Include="Rotativa\wkhtmltoimage.exe" />
     <Content Include="Rotativa\wkhtmltopdf.exe" />
+    <Content Include="Scripts\aocr-config.js" />
+    <Content Include="Scripts\aocr-utils.js" />
     <Content Include="Scripts\app\global.js" />
     <Content Include="Content\dist\js\dgac.js" />
     <Content Include="Content\dist\js\pages\dashboard.js" />
@@ -2885,6 +2891,7 @@
     <Content Include="Views\RT\Registro.cshtml" />
     <Content Include="Views\RT\Declaracion.cshtml" />
     <Content Include="Views\RT\Designacion.cshtml" />
+    <Content Include="Views\RT\DeclaracionPdf.cshtml" />
     <Content Include="Views\OrdenRecaudacion\OrdenRecaudacionPDF.cshtml" />
     <Content Include="Views\Shared\_SidebarEstadoOrdenes.cshtml" />
     <Content Include="Views\Shared\_NotificacionesBadge.cshtml" />
@@ -2909,6 +2916,10 @@
     <ProjectReference Include="..\CapaNegocio\CapaNegocio.csproj">
       <Project>{f1e9b7d3-36e1-4660-a971-7c588b08fd82}</Project>
       <Name>CapaNegocio</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\ClassLibrary1\CapaUtilidades.csproj">
+      <Project>{E524B0E7-E9A8-453B-88A7-BC7D06F67B8B}</Project>
+      <Name>CapaUtilidades</Name>
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>

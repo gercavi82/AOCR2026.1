@@ -1,0 +1,34 @@
+﻿@model CapaModelo.RT.ViewModels.DeclaracionPdfVM
+@{
+    Layout = null;
+}
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8" />
+    <title>Declaración de Responsabilidad RT</title>
+    <style>
+        body { font-family: Arial, sans-serif; font-size: 12pt; color: #111; }
+        .titulo { font-size: 16pt; font-weight: bold; margin-bottom: 10px; }
+        .subtitulo { font-size: 11pt; color: #444; margin-bottom: 20px; }
+        .texto { white-space: pre-wrap; line-height: 1.5; }
+        .firma { margin-top: 40px; }
+        .linea { border-top: 1px solid #000; width: 240px; margin-top: 40px; }
+        .meta { margin-top: 6px; font-size: 10pt; color: #555; }
+    </style>
+</head>
+<body>
+    <div class="titulo">Declaración de Responsabilidad</div>
+    <div class="subtitulo">Responsable Técnico (RT)</div>
+
+    <div class="texto">@Model.TextoDeclaracion</div>
+
+    <div class="firma">
+        <div>Nombre: <strong>@Model.NombreCompleto</strong></div>
+        <div>Compañía: <strong>@Model.Compania</strong></div>
+        <div class="linea"></div>
+        <div class="meta">Firma del Responsable Técnico</div>
+        <div class="meta">Fecha emisión: @Model.FechaEmision.ToString("dd/MM/yyyy")</div>
+    </div>
+</body>
+</html>

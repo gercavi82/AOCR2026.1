@@ -372,6 +372,7 @@
         </div>
         <div class="card-body">
             @using (Html.BeginForm("Index", "OrdenRecaudacion", FormMethod.Get, new { @class = "row g-3", id = "form-filtros" }))
+                @Html.AntiForgeryToken()
             {
                 <div class="col-md-4">
                     <label for="filtroEstado" class="form-label">Estado</label>
@@ -647,7 +648,10 @@
                                         <span class="badge bg-secondary" title="@conceptoDisplay" data-bs-toggle="tooltip">
                                             @TruncateText(conceptoDisplay, 15)
                                         </span>
-                                        @Html.Raw(orden.ConceptoId.HasValue ? ("<div class=\"text-muted small\">ID: " + orden.ConceptoId + "</div>") : "")
+                                        @if (orden.ConceptoId.HasValue)
+                                        {
+                                            <div class="text-muted small">ID: @orden.ConceptoId</div>
+                                        }
                                     }
                                     else
                                     {
@@ -867,13 +871,18 @@
                         default: toastr.info(message);
                     }
                 } else if (typeof bootstrap !== 'undefined' && typeof jQuery !== 'undefined') {
-                    var alertHtml = '<div class="alert alert-' + type + ' alert-dismissible fade show" role="alert">' +
-                                   message +
-                                   '<button type="button" class="btn-close" data-bs-dismiss="alert"></button>' +
-                                   '</div>';
-                    jQuery('.container-fluid').first().prepend(alertHtml);
+                    // Build alert safely using jQuery, using .text() for the message
+                    var $alert = jQuery('<div>')
+                        .addClass('alert alert-' + type + ' alert-dismissible fade show')
+                        .attr('role', 'alert')
+                        .text(message);
+                    var $btnClose = jQuery('<button>')
+                        .addClass('btn-close')
+                        .attr('data-bs-dismiss', 'alert');
+                    $alert.append($btnClose);
+                    jQuery('.container-fluid').first().prepend($alert);
                     setTimeout(function() {
-                        jQuery('.alert').alert('close');
+                        $alert.alert('close');
                     }, 4000);
                 } else {
                     alert(message);
@@ -884,7 +893,7 @@
                 if (typeof Swal !== 'undefined') {
                     Swal.fire({
                         title: title,
-                        html: message,
+                        text: message,
                         icon: 'warning',
                         showCancelButton: true,
                         confirmButtonText: 'Sí, proceder',
@@ -898,7 +907,7 @@
                     });
                 } else if (typeof bootstrap !== 'undefined' && jQuery('#modalConfirmacion').length) {
                     jQuery('#modalConfirmacion .modal-title').text(title);
-                    jQuery('#modalConfirmacion .modal-body').html(message);
+                    jQuery('#modalConfirmacion .modal-body').text(message);
                     var modal = new bootstrap.Modal(document.getElementById('modalConfirmacion'));
                     jQuery('#btnConfirmarAccion').off('click').on('click', function() {
                         modal.hide();

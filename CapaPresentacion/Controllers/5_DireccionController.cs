@@ -48,6 +48,7 @@ namespace CapaPresentacion.Controllers
         }
 
         [HttpPost]
+        [ValidateAntiForgeryToken]
         public ActionResult Crear(Direccion d)
         {
             try
@@ -80,6 +81,7 @@ namespace CapaPresentacion.Controllers
         }
 
         [HttpPost]
+        [ValidateAntiForgeryToken]
         public ActionResult Editar(Direccion d)
         {
             try
@@ -112,6 +114,7 @@ namespace CapaPresentacion.Controllers
         }
 
         [HttpPost]
+        [ValidateAntiForgeryToken]
         public ActionResult ConfirmarEliminar(int id)
         {
             try

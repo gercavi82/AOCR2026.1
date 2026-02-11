@@ -7,6 +7,8 @@ using System.Web.Mvc;
 using CapaDatos.DAOs; // Solo para SolicitudDAO (Cabecera)
 using CapaModelo;
 using CapaNegocio;    // <--- IMPORTANTE: Usamos la Capa de Negocio
+using CapaNegocio.Helpers;
+using CapaUtilidades;
 
 namespace CapaPresentacion.Controllers
 {
@@ -25,7 +27,7 @@ namespace CapaPresentacion.Controllers
 
             if (System.Web.HttpContext.Current != null)
             {
-                _rutaDocumentos = System.Web.HttpContext.Current.Server.MapPath("~/Documentos/");
+                _rutaDocumentos = FileStorageHelper.GetPhysicalBasePath("~/App_Data/Documentos");
                 if (!Directory.Exists(_rutaDocumentos))
                 {
                     Directory.CreateDirectory(_rutaDocumentos);
@@ -147,12 +149,25 @@ namespace CapaPresentacion.Controllers
                     return RedirectToAction("Subir", new { solicitudId = solicitudId.Value });
                 }
 
-                // 1. Guardar físico (El Controller maneja el Stream HTTP)
-                string ext = Path.GetExtension(archivo.FileName);
-                string nombreFisico = $"{solicitudId.Value}_{Guid.NewGuid()}{ext}";
-                rutaCompleta = Path.Combine(_rutaDocumentos, nombreFisico);
+                var options = new FileUploadOptions
+                {
+                    BasePath = _rutaDocumentos,
+                    Subfolder = string.Empty,
+                    AllowedExtensions = new[] { ".pdf", ".jpg", ".jpeg", ".png" },
+                    AllowedContentTypes = new[] { "application/pdf", "image/jpeg", "image/png" },
+                    MaxSizeMb = 10,
+                    ValidateMagicBytes = true
+                };
 
-                archivo.SaveAs(rutaCompleta);
+                string error;
+                FileUploadResult result;
+                if (!FileUploadService.TrySave(archivo, options, out result, out error))
+                {
+                    TempData["Error"] = error ?? "No se pudo guardar el archivo.";
+                    return RedirectToAction("Subir", new { solicitudId = solicitudId.Value });
+                }
+
+                rutaCompleta = Path.Combine(_rutaDocumentos, result.StoredName);
 
                 // 2. Preparar objeto para la BL
                 var doc = new Documento
@@ -242,6 +257,7 @@ namespace CapaPresentacion.Controllers
         }
 
         [HttpPost]
+        [ValidateAntiForgeryToken]
         public JsonResult CambiarEstado(int id, string estado, string observaciones)
         {
             try

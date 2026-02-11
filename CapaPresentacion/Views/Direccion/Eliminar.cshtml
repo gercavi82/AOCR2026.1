@@ -18,6 +18,7 @@
 </table>
 
 @using (Html.BeginForm("ConfirmarEliminar", "Direccion", FormMethod.Post))
+    @Html.AntiForgeryToken()
 {
     @Html.HiddenFor(m => m.CodigoDireccion)
 

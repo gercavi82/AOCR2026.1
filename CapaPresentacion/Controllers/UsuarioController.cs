@@ -9,6 +9,7 @@ using CapaDatos.DAOs;
 using CapaDatos.Services;
 using CapaNegocio;
 using CapaNegocio.Helpers;
+using CapaUtilidades;
 
 namespace CapaPresentacion.Controllers
 {
@@ -20,6 +21,7 @@ namespace CapaPresentacion.Controllers
         // =====================================================
         
         [HttpPost]
+        [ValidateAntiForgeryToken]
         public JsonResult ValidarCorreo(string correo)
         {
             try
@@ -45,6 +47,7 @@ namespace CapaPresentacion.Controllers
         }
 
         [HttpPost]
+        [ValidateAntiForgeryToken]
         public JsonResult ValidarIdentificacion(string identificacion, string tipo)
         {
             try
@@ -76,6 +79,7 @@ namespace CapaPresentacion.Controllers
         }
 
         [HttpPost]
+        [ValidateAntiForgeryToken]
         public JsonResult ValidarRUC(string ruc)
         {
             try
@@ -299,29 +303,24 @@ namespace CapaPresentacion.Controllers
                     return null;
                 }
 
-                // Validar tamaño (2MB máximo)
-                if (archivo.ContentLength > 2 * 1024 * 1024)
+                var options = new FileUploadOptions
+                {
+                    BasePath = FileStorageHelper.GetPhysicalBasePath("~/App_Data/DocumentosLegales"),
+                    Subfolder = string.Empty,
+                    AllowedExtensions = new[] { ".pdf" },
+                    AllowedContentTypes = new[] { "application/pdf" },
+                    MaxSizeMb = 2,
+                    ValidateMagicBytes = true
+                };
+
+                string error;
+                FileUploadResult result;
+                if (!FileUploadService.TrySave(archivo, options, out result, out error))
                 {
                     return null;
                 }
 
-                // Crear carpeta si no existe
-                string carpetaDestino = Server.MapPath("~/App_Data/DocumentosLegales/");
-                if (!Directory.Exists(carpetaDestino))
-                {
-                    Directory.CreateDirectory(carpetaDestino);
-                }
-
-                // Nombre único: IDENTIFICACION_INDEX_TIMESTAMP.pdf
-                string timestamp = DateTime.Now.ToString("yyyyMMddHHmmss");
-                string nombreArchivo = $"{identificacion}_{index}_{timestamp}.pdf";
-                string rutaCompleta = Path.Combine(carpetaDestino, nombreArchivo);
-
-                // Guardar archivo
-                archivo.SaveAs(rutaCompleta);
-
-                // Retornar ruta relativa para guardar en BD
-                return $"~/App_Data/DocumentosLegales/{nombreArchivo}";
+                return "~/App_Data/DocumentosLegales/" + result.StoredName;
             }
             catch
             {
@@ -339,24 +338,24 @@ namespace CapaPresentacion.Controllers
                     return null;
                 }
 
-                if (archivo.ContentLength > 2 * 1024 * 1024)
+                var options = new FileUploadOptions
+                {
+                    BasePath = FileStorageHelper.GetPhysicalBasePath("~/App_Data/DesignacionesRT"),
+                    Subfolder = string.Empty,
+                    AllowedExtensions = new[] { ".pdf" },
+                    AllowedContentTypes = new[] { "application/pdf" },
+                    MaxSizeMb = 2,
+                    ValidateMagicBytes = true
+                };
+
+                string error;
+                FileUploadResult result;
+                if (!FileUploadService.TrySave(archivo, options, out result, out error))
                 {
                     return null;
                 }
 
-                string carpetaDestino = Server.MapPath("~/App_Data/DesignacionesRT/");
-                if (!Directory.Exists(carpetaDestino))
-                {
-                    Directory.CreateDirectory(carpetaDestino);
-                }
-
-                string timestamp = DateTime.Now.ToString("yyyyMMddHHmmss");
-                string nombreArchivo = $"DesignacionRT_{identificacion}_{timestamp}.pdf";
-                string rutaCompleta = Path.Combine(carpetaDestino, nombreArchivo);
-
-                archivo.SaveAs(rutaCompleta);
-
-                return $"~/App_Data/DesignacionesRT/{nombreArchivo}";
+                return "~/App_Data/DesignacionesRT/" + result.StoredName;
             }
             catch
             {
@@ -455,19 +454,24 @@ Fecha: ____/____/________
                         return Json(new { success = false, message = "Solo se permiten archivos PDF." });
                     }
 
-                    // Definir ruta de guardado (Ej: /App_Data/DocumentosLegales/)
-                    // Es más seguro guardar en App_Data para que no sea accesible públicamente por URL directa
-                    string carpetaDestino = Server.MapPath("~/App_Data/DocumentosLegales/");
+                    var options = new FileUploadOptions
+                    {
+                        BasePath = FileStorageHelper.GetPhysicalBasePath("~/App_Data/DocumentosLegales"),
+                        Subfolder = string.Empty,
+                        AllowedExtensions = new[] { ".pdf" },
+                        AllowedContentTypes = new[] { "application/pdf" },
+                        MaxSizeMb = 2,
+                        ValidateMagicBytes = true
+                    };
 
-                    if (!Directory.Exists(carpetaDestino))
-                        Directory.CreateDirectory(carpetaDestino);
+                    string error;
+                    FileUploadResult result;
+                    if (!FileUploadService.TrySave(archivo, options, out result, out error))
+                    {
+                        return Json(new { success = false, message = error ?? "No se pudo guardar el archivo." });
+                    }
 
-                    // Nombre único para evitar reemplazar archivos: CEDULA_NombreOriginal.pdf
-                    string nombreArchivo = $"{cedula}_{Path.GetFileName(archivo.FileName)}";
-                    rutaArchivo = Path.Combine(carpetaDestino, nombreArchivo);
-
-                    // Guardar en disco
-                    archivo.SaveAs(rutaArchivo);
+                    rutaArchivo = Path.Combine("~/App_Data/DocumentosLegales/", result.StoredName);
                 }
 
                 // 4. CREAR OBJETO USUARIO (CORREGIDO)

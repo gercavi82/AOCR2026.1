@@ -17,6 +17,7 @@
                 </div>
                 <div class="card-body">
                     <form method="post">
+                        @Html.AntiForgeryToken()
                         <input type="hidden" name="rolId" value="@ViewBag.RolId" />
 
                         <div class="alert alert-info">

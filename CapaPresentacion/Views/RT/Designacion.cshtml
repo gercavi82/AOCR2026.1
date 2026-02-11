@@ -8,7 +8,7 @@
 <div class="container mt-4">
     <div class="card shadow-sm">
         <div class="card-header bg-primary text-white">
-            <h4 class="mb-0">Designación RT Legalizada</h4>
+            <h4 class="mb-0">Declaración RT Firmada</h4>
         </div>
         <div class="card-body">
             @if (TempData["Ok"] != null)
@@ -34,10 +34,10 @@
                 @Html.HiddenFor(m => m.Estado)
 
                 <div class="mb-3">
-                    <label class="form-label">PDF de Designación RT legalizada</label>
+                    <label class="form-label">PDF de declaración firmada</label>
                     @Html.TextBoxFor(m => m.ArchivoPdf, new { type = "file", @class = "form-control", accept = ".pdf", disabled = bloqueado ? "disabled" : null })
                     @Html.ValidationMessageFor(m => m.ArchivoPdf, "", new { @class = "text-danger" })
-                    <small class="text-muted">Solo PDF. Tamaño máximo configurable.</small>
+                    <small class="text-muted">Suba el PDF descargado y firmado. Solo PDF. Tamaño máximo configurable.</small>
                 </div>
 
                 @if (!string.IsNullOrWhiteSpace(Model.NombreArchivoActual))

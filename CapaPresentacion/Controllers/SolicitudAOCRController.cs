@@ -11,6 +11,7 @@ using CapaDatos.Constants;
 using CapaPresentacion.Models;
 using CapaNegocio;
 using CapaNegocio.Helpers;
+using CapaUtilidades;
 
 namespace CapaPresentacion.Controllers
 {
@@ -287,6 +288,7 @@ namespace CapaPresentacion.Controllers
         // POST: Guarda todo el formulario (Solicitud + Aeronaves + Docs + Pago)
         // =========================================================
         [HttpPost]
+        [ValidateAntiForgeryToken]
         public ActionResult TestJson()
         {
             try
@@ -300,6 +302,7 @@ namespace CapaPresentacion.Controllers
         }
 
         [HttpPost]
+        [ValidateAntiForgeryToken]
         public ActionResult TestSession()
         {
             try
@@ -325,6 +328,7 @@ namespace CapaPresentacion.Controllers
         }
 
         [HttpPost]
+        [ValidateAntiForgeryToken]
         public ActionResult TestFormularioCompleto(SolicitudAOCRViewModel vm)
         {
             try
@@ -363,6 +367,7 @@ namespace CapaPresentacion.Controllers
         }
 
         [HttpPost]
+        [ValidateAntiForgeryToken]
         // ValidateAntiForgeryToken no funciona con JSON, usar ValidateJsonAntiForgeryToken si está disponible
         // o implementar validación manual del token en el header
         public ActionResult FormularioCompleto(SolicitudAOCRViewModel vm)
@@ -503,18 +508,29 @@ namespace CapaPresentacion.Controllers
         {
             if (archivos == null) return;
 
-            string path = Server.MapPath("~/Uploads/AOCR/" + solicitudId);
-            if (!System.IO.Directory.Exists(path))
-                System.IO.Directory.CreateDirectory(path);
-
             foreach (var file in archivos)
             {
                 if (file != null && file.ContentLength > 0)
                 {
-                    string fileName = System.IO.Path.GetFileName(file.FileName);
-                    string rutaRelativa = "/Uploads/AOCR/" + solicitudId + "/" + fileName;
+                    var options = new FileUploadOptions
+                    {
+                        BasePath = FileStorageHelper.GetPhysicalBasePath("~/App_Data/Uploads/AOCR"),
+                        Subfolder = solicitudId.ToString(),
+                        AllowedExtensions = new[] { ".pdf", ".jpg", ".jpeg", ".png" },
+                        AllowedContentTypes = new[] { "application/pdf", "image/jpeg", "image/png" },
+                        MaxSizeMb = 10,
+                        ValidateMagicBytes = true
+                    };
 
-                    file.SaveAs(System.IO.Path.Combine(path, fileName));
+                    string error;
+                    FileUploadResult result;
+                    if (!FileUploadService.TrySave(file, options, out result, out error))
+                    {
+                        continue;
+                    }
+
+                    string fileName = result.StoredName;
+                    string rutaRelativa = "~/App_Data/Uploads/AOCR/" + solicitudId + "/" + fileName;
 
                     var doc = new Documento();
                     doc.CodigoSolicitud = solicitudId;

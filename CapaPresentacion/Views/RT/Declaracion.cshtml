@@ -35,6 +35,17 @@
                 @Html.HiddenFor(m => m.Estado)
 
                 <div class="mb-3">
+                    <a class="btn btn-outline-primary"
+                       href="@Url.Action("DescargarDeclaracionPdf", "RT", new { solicitudId = Model.SolicitudId })"
+                       target="_blank">
+                        Descargar declaración (PDF)
+                    </a>
+                    <small class="text-muted d-block mt-2">
+                        Descargue, firme y luego suba el PDF en el paso de Designación.
+                    </small>
+                </div>
+
+                <div class="mb-3">
                     <label class="form-label">Texto de la declaración</label>
                     <textarea class="form-control" rows="8" readonly>@Model.TextoDeclaracion</textarea>
                 </div>

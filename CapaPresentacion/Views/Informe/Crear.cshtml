@@ -15,6 +15,7 @@
                 </div>
                 <div class="card-body">
                     <form asp-action="Crear" method="post">
+                        @Html.AntiForgeryToken()
                         <div class="row">
                             <div class="col-md-8 mb-3">
                                 <label asp-for="Titulo" class="form-label">Título del Informe *</label>

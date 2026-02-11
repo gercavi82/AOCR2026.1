@@ -1,16 +1,16 @@
-using System;
+﻿using System;
 using System.Web.Mvc;
 using CapaDatos.Services;
 
 namespace CapaPresentacion.Controllers
 {
     /// <summary>
-    /// Controlador de prueba para envío de correos
+    /// Controlador de prueba para envÃ­o de correos
     /// </summary>
     public class TestEmailController : Controller
     {
         /// <summary>
-        /// Formulario de prueba de envío de correo
+        /// Formulario de prueba de envÃ­o de correo
         /// GET: /TestEmail
         /// </summary>
         public ActionResult Index()
@@ -19,15 +19,16 @@ namespace CapaPresentacion.Controllers
         }
 
         /// <summary>
-        /// Método para probar el envío de correo
+        /// MÃ©todo para probar el envÃ­o de correo
         /// POST: /TestEmail/EnviarPrueba
         /// </summary>
         [HttpPost]
+        [ValidateAntiForgeryToken]
         public JsonResult EnviarPrueba(string destinatario, string asunto, string mensaje)
         {
             try
             {
-                // Validar parámetros
+                // Validar parÃ¡metros
                 if (string.IsNullOrEmpty(destinatario))
                 {
                     return Json(new { 
@@ -57,7 +58,7 @@ namespace CapaPresentacion.Controllers
                 {
                     return Json(new { 
                         success = false, 
-                        message = "Error al enviar el correo. Verifique la configuración SMTP." 
+                        message = "Error al enviar el correo. Verifique la configuraciÃ³n SMTP." 
                     });
                 }
             }
@@ -71,10 +72,11 @@ namespace CapaPresentacion.Controllers
         }
 
         /// <summary>
-        /// Método para probar envío con remitente personalizado
+        /// MÃ©todo para probar envÃ­o con remitente personalizado
         /// POST: /TestEmail/EnviarConRemitente
         /// </summary>
         [HttpPost]
+        [ValidateAntiForgeryToken]
         public JsonResult EnviarConRemitente(string remitente, string destinatario, string asunto, string mensaje)
         {
             try
@@ -121,17 +123,18 @@ namespace CapaPresentacion.Controllers
         }
 
         /// <summary>
-        /// Método para enviar correo de notificación de orden de recaudación
+        /// MÃ©todo para enviar correo de notificaciÃ³n de orden de recaudaciÃ³n
         /// POST: /TestEmail/NotificarOrden
         /// </summary>
         [HttpPost]
+        [ValidateAntiForgeryToken]
         public JsonResult NotificarOrden(int ordenId, string destinatario)
         {
             try
             {
                 var emailService = new EnviarCorreo();
 
-                string asunto = $"Notificación de Orden de Recaudación #{ordenId}";
+                string asunto = $"NotificaciÃ³n de Orden de RecaudaciÃ³n #{ordenId}";
                 string mensaje = GenerarMensajeOrden(ordenId);
 
                 bool resultado = emailService.enviaMensajeCorreo(
@@ -144,14 +147,14 @@ namespace CapaPresentacion.Controllers
                 {
                     return Json(new { 
                         success = true, 
-                        message = "Notificación enviada correctamente" 
+                        message = "NotificaciÃ³n enviada correctamente" 
                     });
                 }
                 else
                 {
                     return Json(new { 
                         success = false, 
-                        message = "Error al enviar la notificación" 
+                        message = "Error al enviar la notificaciÃ³n" 
                     });
                 }
             }
@@ -165,7 +168,7 @@ namespace CapaPresentacion.Controllers
         }
 
         /// <summary>
-        /// Genera el HTML del mensaje para notificación de orden
+        /// Genera el HTML del mensaje para notificaciÃ³n de orden
         /// </summary>
         private string GenerarMensajeOrden(int ordenId)
         {
@@ -182,14 +185,14 @@ namespace CapaPresentacion.Controllers
             </head>
             <body>
                 <div class='header'>
-                    <h2>Sistema AOCR - Dirección General de Aviación Civil</h2>
+                    <h2>Sistema AOCR - DirecciÃ³n General de AviaciÃ³n Civil</h2>
                 </div>
                 <div class='content'>
-                    <h3>Notificación de Orden de Recaudación</h3>
+                    <h3>NotificaciÃ³n de Orden de RecaudaciÃ³n</h3>
                     <p>Estimado/a usuario/a,</p>
-                    <p>Se ha generado una nueva orden de recaudación con los siguientes datos:</p>
+                    <p>Se ha generado una nueva orden de recaudaciÃ³n con los siguientes datos:</p>
                     <ul>
-                        <li><strong>Número de Orden:</strong> #{ordenId}</li>
+                        <li><strong>NÃºmero de Orden:</strong> #{ordenId}</li>
                         <li><strong>Fecha:</strong> {DateTime.Now:dd/MM/yyyy}</li>
                         <li><strong>Estado:</strong> Pendiente</li>
                     </ul>
@@ -197,8 +200,8 @@ namespace CapaPresentacion.Controllers
                     <a href='#' class='button'>Acceder al Sistema</a>
                 </div>
                 <div class='footer'>
-                    <p>Este es un correo automático. Por favor no responder.</p>
-                    <p>&copy; {DateTime.Now.Year} Dirección General de Aviación Civil - Ecuador</p>
+                    <p>Este es un correo automÃ¡tico. Por favor no responder.</p>
+                    <p>&copy; {DateTime.Now.Year} DirecciÃ³n General de AviaciÃ³n Civil - Ecuador</p>
                 </div>
             </body>
             </html>";
