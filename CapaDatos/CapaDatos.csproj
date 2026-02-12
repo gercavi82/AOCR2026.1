@@ -297,6 +297,7 @@
     <Compile Include="DAOs\PagoDAO.cs" />
     <Compile Include="DAOs\DocumentoDAO.cs" />
     <Compile Include="DAOs\DocumentoRTDao.cs" />
+    <Compile Include="DAOs\DeclaracionTemporalDAO.cs" />
     <Compile Include="DAOs\FinancieroDAO.cs" />
     <Compile Include="DAOs\InspeccionDAO.cs" />
     <Compile Include="Entidades\ArchivoSubido.cs" />

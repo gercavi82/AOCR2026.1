@@ -37,10 +37,10 @@ namespace CapaDatos.DAOs
             _logger = new NLogLoggerService("OrdenRecaudacionDAO");
         }
 
-        #region M�todos de Lectura
+        #region Metodos de Lectura
 
         /// <summary>
-        /// Obtiene todas las �rdenes de recaudaci�n
+        /// Obtiene todas las Ordenes de recaudación
         /// </summary>
         public List<OrdenRecaudacion> ObtenerTodas()
         {
@@ -129,7 +129,7 @@ namespace CapaDatos.DAOs
         }
 
         /// <summary>
-        /// Obtiene �rdenes por estado
+        /// Obtiene Ordenes por estado
         /// </summary>
         public List<OrdenRecaudacion> ObtenerPorEstado(string estado)
         {
@@ -170,7 +170,7 @@ namespace CapaDatos.DAOs
         }
 
         /// <summary>
-        /// Obtiene �rdenes por usuario
+        /// Obtiene Ordenes por usuario
         /// </summary>
         public List<OrdenRecaudacion> ObtenerPorUsuario(string codigoUsuario)
         {
@@ -249,10 +249,10 @@ namespace CapaDatos.DAOs
 
         #endregion
 
-        #region M�todos de Escritura
+        #region Metodos de Escritura
 
         /// <summary>
-        /// Inserta una nueva orden de recaudaci�n
+        /// Inserta una nueva orden de recaudación
         /// </summary>
         public int Insertar(OrdenRecaudacion orden)
         {
@@ -398,7 +398,7 @@ namespace CapaDatos.DAOs
         }
 
         /// <summary>
-        /// Actualiza una orden de recaudaci�n
+        /// Actualiza una orden de recaudación
         /// </summary>
         public bool Actualizar(OrdenRecaudacion orden)
         {
@@ -502,10 +502,10 @@ namespace CapaDatos.DAOs
 
         #endregion
 
-        #region Estad�sticas
+        #region Estadísticas
 
         /// <summary>
-        /// Obtiene estad�sticas de las �rdenes
+        /// Obtiene estadísticas de las Ordenes
         /// </summary>
         public Dictionary<string, object> ObtenerEstadisticas()
         {
@@ -517,7 +517,7 @@ namespace CapaDatos.DAOs
                 {
                     conn.Open();
 
-                    // Total de �rdenes
+                    // Total de Ordenes
                     var sqlTotal = "SELECT COUNT(*) FROM aocr_or_orden";
                     using (var cmd = new NpgsqlCommand(sqlTotal, conn))
                     {
@@ -585,7 +585,7 @@ namespace CapaDatos.DAOs
         }
 
         /// <summary>
-        /// Prueba la conexi�n a la base de datos
+        /// Prueba la conexión a la base de datos
         /// </summary>
         public bool ProbarConexion()
         {
@@ -605,7 +605,7 @@ namespace CapaDatos.DAOs
 
         #endregion
 
-        #region M�todos Privados de Mapeo
+        #region Métodos Privados de Mapeo
 
         /// <summary>
         /// Helper method to safely get int32 value from reader, handling both integer and string types
@@ -671,7 +671,7 @@ namespace CapaDatos.DAOs
                 ConceptoId = GetSafeNullableInt(reader, "concepto_id")
             };
 
-            // Intentar obtener el nombre del concepto si est� en el resultado
+            // Intentar obtener el nombre del concepto si está en el resultado
             try
             {
                 var conceptoNombreOrdinal = reader.GetOrdinal("concepto_nombre");
@@ -682,7 +682,7 @@ namespace CapaDatos.DAOs
             }
             catch
             {
-                // La columna concepto_nombre no est� en el resultado, ignorar
+                // La columna concepto_nombre no está en el resultado, ignorar
             }
 
             return orden;

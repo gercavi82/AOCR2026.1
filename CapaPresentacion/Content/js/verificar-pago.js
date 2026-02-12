@@ -2,7 +2,7 @@ $(function () {
     $('#frmVerificarPago').on('submit', function (e) {
         e.preventDefault();
         const numero = $('#txtNumeroSolicitud').val().trim();
-        if (!numero) return alert('Debe ingresar un n�mero de solicitud');
+        if (!numero) return alert('Debe ingresar un número de solicitud');
 
         $.get('/VerificarPago/Buscar', { id: numero })
             .done(function (resp) {

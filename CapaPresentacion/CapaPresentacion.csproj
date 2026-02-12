@@ -2898,6 +2898,7 @@
     <Content Include="Views\SolicitudAOCR\CertificadoAOCR.cshtml" />
     <Content Include="Views\Notificacion\Index.cshtml" />
     <Content Include="Views\OrdenRecaudacion\ExportPdf.cshtml" />
+    <Content Include="Views\Usuario\RevisarDesignaciones.cshtml" />
   </ItemGroup>
   <ItemGroup>
     <Folder Include="App_Data\" />

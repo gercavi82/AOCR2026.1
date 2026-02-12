@@ -2,7 +2,6 @@
 using System.Collections.Generic;
 using System.Security.Cryptography;
 using System.Text;
-using System.Web;
 using CapaModelo;
 using CapaDatos.DAOs;
 using CapaDatos.Services;
@@ -77,59 +76,6 @@ namespace CapaNegocio
                 mensaje = "Se envió una contraseña temporal a su correo.";
             }
 
-            return true;
-        }
-
-        // ================================
-        // 2. Aceptación de usuario con clave temporal
-        // ================================
-        public static bool NotificarAceptacionConClaveTemporal(string email, string nombreCompleto, out string mensaje)
-        {
-            if (string.IsNullOrWhiteSpace(email))
-            {
-                mensaje = "Correo del usuario vacío.";
-                return false;
-            }
-
-            string passwordTemporal = PasswordHelper.GenerarPasswordAleatoria(10);
-            string passwordHash = PasswordHelper.HashPassword(passwordTemporal);
-
-            bool ok = UsuarioDAO.RestablecerContrasena(email, passwordHash, out mensaje);
-            if (!ok)
-            {
-                return false;
-            }
-
-            var asunto = "Su designación RT fue aprobada - Sistema AOCR";
-            var cuerpo = $@"
-                <div style='font-family:Arial,sans-serif; font-size:14px; color:#222;'>
-                    <p>Estimado(a) {HttpUtility.HtmlEncode(nombreCompleto ?? "")},</p>
-                    <p>Su designación como Responsable Técnico (RT) ha sido <strong>aprobada</strong>.</p>
-                    <p>Se ha generado una contraseña temporal para su primer ingreso:</p>
-                    <p><strong>Contraseña temporal:</strong> {passwordTemporal}</p>
-                    <p>Por seguridad, el sistema le pedirá cambiar la contraseña en su primer ingreso.</p>
-                    <hr />
-                    <small>Este es un correo automático, por favor no responder.</small>
-                </div>";
-
-            bool correoEnviado;
-            try
-            {
-                var servicioCorreo = new EnviarCorreo();
-                correoEnviado = servicioCorreo.enviaMensajeCorreo(email, asunto, cuerpo);
-            }
-            catch
-            {
-                correoEnviado = false;
-            }
-
-            if (!correoEnviado)
-            {
-                mensaje = "Usuario aceptado y clave generada, pero no se pudo enviar el correo.";
-                return false;
-            }
-
-            mensaje = "Usuario aceptado y correo enviado con clave temporal.";
             return true;
         }
 

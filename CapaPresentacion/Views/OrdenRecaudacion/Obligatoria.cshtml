@@ -75,7 +75,7 @@
         {
             case "BORRADOR": return "Borrador";
             case "PENDIENTE": return "Pendiente de pago";
-            case "PROCESADA": return "En revisi�n financiera";
+            case "PROCESADA": return "En revisión financiera";
             case "FACTURADA": return "Factura generada";
             case "COMPLETADA": return "Completada";
             case "ANULADA": return "Anulada";
@@ -137,7 +137,7 @@
     }
 }
 @{
-    ViewBag.Title = "Orden de Recaudaci�n Requerida";
+    ViewBag.Title = "Orden de Recaudación Requerida";
     Layout = "~/Views/Shared/_LayoutAOCR.cshtml";
 
     // Obtener estad�sticas desde ViewBag (del controlador)
@@ -372,8 +372,8 @@
         </div>
         <div class="card-body">
             @using (Html.BeginForm("Index", "OrdenRecaudacion", FormMethod.Get, new { @class = "row g-3", id = "form-filtros" }))
-                @Html.AntiForgeryToken()
             {
+                @Html.AntiForgeryToken()
                 <div class="col-md-4">
                     <label for="filtroEstado" class="form-label">Estado</label>
                     @{
@@ -648,7 +648,7 @@
                                         <span class="badge bg-secondary" title="@conceptoDisplay" data-bs-toggle="tooltip">
                                             @TruncateText(conceptoDisplay, 15)
                                         </span>
-                                        @if (orden.ConceptoId.HasValue)
+                                        if (orden.ConceptoId.HasValue)
                                         {
                                             <div class="text-muted small">ID: @orden.ConceptoId</div>
                                         }

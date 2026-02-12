@@ -17,32 +17,6 @@ namespace CapaPresentacion.Controllers
         [AllowAnonymous]
         public ActionResult Login(string returnUrl)
         {
-            if (User != null && User.Identity != null && User.Identity.IsAuthenticated)
-            {
-                FormsAuthentication.SignOut();
-                Session.Clear();
-                Session.Abandon();
-
-                var authCookie = Request.Cookies[FormsAuthentication.FormsCookieName];
-                if (authCookie != null)
-                {
-                    var c = new HttpCookie(FormsAuthentication.FormsCookieName)
-                    {
-                        Value = string.Empty,
-                        Expires = DateTime.Now.AddDays(-1),
-                        HttpOnly = true,
-                        Secure = Request.IsSecureConnection,
-                        SameSite = SameSiteMode.Lax,
-                        Path = FormsAuthentication.FormsCookiePath
-                    };
-                    Response.Cookies.Add(c);
-                }
-            }
-
-            Response.Cache.SetCacheability(HttpCacheability.NoCache);
-            Response.Cache.SetNoStore();
-            Response.Cache.SetExpires(DateTime.UtcNow.AddMinutes(-5));
-
             ViewBag.ReturnUrl = returnUrl;
             return View(new LoginViewModel());
         }

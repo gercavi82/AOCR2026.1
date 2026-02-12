@@ -194,10 +194,9 @@ namespace CapaDatos.DAOs
             {
                 conn.Open();
 
-                  string sql = @"UPDATE usuario
-                         SET clave = @clave,
-                             fechaultimaconexion = NULL
-                         WHERE LOWER(correo) = LOWER(@correo);";
+                string sql = @"UPDATE usuario
+                       SET clave = @clave
+                       WHERE LOWER(correo) = LOWER(@correo);";
 
                 int rows = conn.Execute(sql, new { clave = nuevaClave, correo = email.Trim() });
 
@@ -340,23 +339,7 @@ namespace CapaDatos.DAOs
         {
             using (var conn = new NpgsqlConnection(GetConnectionString()))
             {
-                string sql = @"SELECT 
-                                    idusuario AS ""Id"",
-                                    idusuario AS ""IdUsuario"",
-                                    codigousuario AS ""CodigoUsuario"",
-                                    codigousuario AS ""NombreUsuario"",
-                                    correo AS ""Email"",
-                                    clave AS ""Contrasena"",
-                                    nombreusuario AS ""NombreCompleto"",
-                                    apellidousuario AS ""ApellidoUsuario"",
-                                    rol AS ""Rol"",
-                                    empresa_codigo AS ""EmpresaCodigo"",
-                                    ruta_documento_legal AS ""RutaDocumentoLegal"",
-                                    estado_designacion_rt AS ""EstadoDesignacionRT"",
-                                    ruta_constancia_rt AS ""RutaConstanciaRT""
-                               FROM usuario 
-                               WHERE estado_designacion_rt = 'pendiente' 
-                                 AND ruta_documento_legal IS NOT NULL";
+                string sql = @"SELECT * FROM usuario WHERE estado_designacion_rt = 'pendiente' AND ruta_documento_legal IS NOT NULL";
                 return conn.Query<Usuario>(sql).ToList();
             }
         }

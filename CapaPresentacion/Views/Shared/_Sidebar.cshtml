@@ -57,6 +57,7 @@
         bool puedeFinanciero = rolActual == "Financiero" || rolActual == "Administrador";
         bool puedeLegal = rolActual == "CoordinacionLegal" || rolActual == "Administrador";
         bool puedeDireccion = rolActual == "Direccion" || rolActual == "JefaturaTecnica" || rolActual == "Administrador";
+        bool puedeAprobarUsuarios = rolActual == "CoordinacionLegal" || rolActual == "Administrador" || rolActual == "JefaturaTecnica";
     }
 
     <!-- Indicador de estado de orden -->
@@ -211,6 +212,23 @@
                 <ul class="aocr-nav">
                     <li><a class="aocr-link" href="@Url.Action("RevisarLegal", "CoordinacionLegal")"><i class="fas fa-gavel text-white-50 mr-2"></i> Revisión Legal</a></li>
                     <li><a class="aocr-link" href="@Url.Action("GenerarCertificados", "CoordinacionLegal")"><i class="fas fa-file-contract text-white-50 mr-2"></i> Generar Certificados</a></li>
+                </ul>
+            </div>
+        }
+
+        @* ===================== APROBACIÓN DE USUARIOS RT ===================== *@
+        @if (puedeAprobarUsuarios)
+        {
+            <div class="nav-group mb-4">
+                <div class="group-title text-info">
+                    <i class="fas fa-user-check mr-1"></i> USUARIOS / RT
+                </div>
+                <ul class="aocr-nav">
+                    <li>
+                        <a class="aocr-link" href="@Url.Action("RevisarDesignaciones", "Usuario")">
+                            <i class="fas fa-clipboard-check text-white-50 mr-2"></i> Aprobar Usuarios RT
+                        </a>
+                    </li>
                 </ul>
             </div>
         }

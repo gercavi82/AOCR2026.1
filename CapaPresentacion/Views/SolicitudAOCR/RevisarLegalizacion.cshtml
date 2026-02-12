@@ -4,11 +4,11 @@
 @using System.Web.Mvc.Html
 
 @{
-    ViewBag.Title = "Solicitudes para Legalizaci�n";
+    ViewBag.Title = "Solicitudes para Legalización";
     Layout = "~/Views/Shared/_LayoutAOCR.cshtml";
 }
 
-<h2 class="mb-4">Solicitudes pendientes de Legalizaci�n AOCR</h2>
+<h2 class="mb-4">Solicitudes pendientes de Legalización AOCR</h2>
 
 @if (TempData["Error"] != null)
 {
@@ -61,7 +61,7 @@
             <form method="post" action="@Url.Action("Legalizar", "SolicitudAOCR")">
                 @Html.AntiForgeryToken()
                 <div class="modal-header">
-                    <h5 class="modal-title">Confirmar Legalizaci�n</h5>
+                    <h5 class="modal-title">Confirmar Legalización</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">

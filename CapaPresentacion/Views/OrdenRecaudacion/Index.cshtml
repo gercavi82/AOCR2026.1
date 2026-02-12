@@ -7,7 +7,7 @@
         Layout = "~/Views/Shared/_LayoutAOCR.cshtml";
 
         // ============================================
-        // SECCI�N: VALIDACI�N SEGURA DE DATOS
+        // SECCIÓN: VALIDACIÓN SEGURA DE DATOS
         // ============================================
 
         // Inicializar variables con valores por defecto
@@ -16,7 +16,7 @@
         decimal saldoPendiente = 0;
         decimal montoPagado = 0;
 
-        // Validar y obtener estad�sticas desde ViewBag
+        // Validar y obtener estadísticas desde ViewBag
         try
         {
             var estadisticas = ViewBag.Estadisticas as System.Collections.Generic.Dictionary<string, object>;
@@ -46,14 +46,14 @@
         }
         catch (Exception)
         {
-            // En producci�n, registrar en log pero no mostrar al usuario
+            // En producción, registrar en log pero no mostrar al usuario
             totalOrdenes = 0;
             pagadas = 0;
             saldoPendiente = 0;
             montoPagado = 0;
         }
 
-        // Calcular pendientes con validaci�n
+        // Calcular pendientes con validación
         int pendientes = totalOrdenes - pagadas;
         if (pendientes < 0)
         {
@@ -82,7 +82,7 @@
     }
 
     @* ============================================
-        SECCI�N: ESTILOS CSS OPTIMIZADOS
+        SECCIÓN: ESTILOS CSS OPTIMIZADOS
         ============================================ *@
     @section Styles{
         <!-- DataTables CSS -->
@@ -163,7 +163,7 @@
                 letter-spacing: 0.5px;
             }
 
-            /* Acciones r�pidas */
+            /* Acciones rápidas */
             .acciones-rapidas {
                 opacity: 1;
                 transition: opacity var(--transition-speed) ease;
@@ -174,7 +174,7 @@
                 opacity: 1;
             }
 
-            /* Estados espec�ficos con contraste WCAG */
+            /* Estados específicos con contraste WCAG */
             .estado-borrador {
                 background-color: var(--color-secondary) !important;
                 color: white !important;
@@ -289,7 +289,7 @@
                 animation: spin 1s linear infinite;
             }
 
-            /* Im�genes fallback */
+            /* Imágenes fallback */
             .img-fallback {
                 background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
                 color: white;
@@ -314,17 +314,17 @@
     }
 
     @* ============================================
-        SECCI�N: CONTENIDO PRINCIPAL
+        SECCIÓN: CONTENIDO PRINCIPAL
         ============================================ *@
     <div class="container-fluid py-4">
-        <!-- Encabezado de p�gina con breadcrumb -->
+        <!-- Encabezado de página con breadcrumb -->
         <div class="row mb-4">
             <div class="col-md-8">
                 <nav aria-label="breadcrumb" class="d-none d-md-block mb-3">
                     <ol class="breadcrumb bg-transparent p-0">
                         <li class="breadcrumb-item"><a href="@Url.Action("Index", "Home")" class="text-decoration-none">Inicio</a></li>
                         <li class="breadcrumb-item"><a href="@Url.Action("Index", "Dashboard")" class="text-decoration-none">Dashboard</a></li>
-                        <li class="breadcrumb-item active" aria-current="page">�rdenes de Recaudaci�n</li>
+                        <li class="breadcrumb-item active" aria-current="page">Ordenes de Recaudación</li>
                     </ol>
                 </nav>
 
@@ -333,7 +333,7 @@
                     @ViewBag.Title
                 </h1>
                 <p class="text-muted mb-0">
-                    Gesti�n de �rdenes de recaudaci�n requeridas para el proceso AOCR.
+                    Gestión de órdenes de recaudación requeridas para el proceso AOCR.
                     @if (tieneOrdenBorrador)
                     {
                         <span class="badge bg-warning ms-2 align-middle">
@@ -348,7 +348,7 @@
                     <a href="@Url.Action("Nueva", "OrdenRecaudacion")"
                        class="btn btn-primary btn-lg hover-shadow d-inline-flex align-items-center"
                        id="btn-nueva-orden"
-                       aria-label="Crear nueva orden de recaudaci�n">
+                       aria-label="Crear nueva orden de recaudación">
                         <i class="fas fa-plus-circle me-2"></i> Nueva Orden
                     </a>
                 }
@@ -360,7 +360,7 @@
                                 class="btn btn-outline-secondary dropdown-toggle d-inline-flex align-items-center"
                                 data-bs-toggle="dropdown"
                                 aria-expanded="false"
-                                aria-label="Opciones de exportaci�n">
+                                aria-label="Opciones de exportación">
                             <i class="fas fa-download me-2"></i> Exportar
                         </button>
                         <ul class="dropdown-menu dropdown-menu-end shadow">
@@ -406,12 +406,12 @@
             </div>
         </div>
 
-        <!-- Tarjeta de filtros con validaci�n -->
+        <!-- Tarjeta de filtros con validación -->
         <div class="card mb-4 hover-shadow border" id="card-filtros">
             <div class="card-header bg-light border-bottom-0">
                 <h6 class="mb-0">
-                    <i class="fas fa-filter me-2 text-primary"></i>Filtros de B�squeda
-                    <small class="text-muted ms-2">(@totalOrdenes �rdenes encontradas)</small>
+                    <i class="fas fa-filter me-2 text-primary"></i>Filtros de Búsqueda
+                    <small class="text-muted ms-2">(@totalOrdenes órdenes encontradas)</small>
                 </h6>
             </div>
             <div class="card-body">
@@ -459,7 +459,7 @@
                                name="fechaDesde"
                                max="@DateTime.Now.ToString("yyyy-MM-dd")"
                                aria-describedby="fechaDesdeHelp">
-                        <small id="fechaDesdeHelp" class="form-text text-muted">Fecha m�nima de creaci�n</small>
+                        <small id="fechaDesdeHelp" class="form-text text-muted">Fecha mínima de creación</small>
                     </div>
 
                     <div class="col-md-3">
@@ -472,14 +472,14 @@
                                name="fechaHasta"
                                max="@DateTime.Now.ToString("yyyy-MM-dd")"
                                aria-describedby="fechaHastaHelp">
-                        <small id="fechaHastaHelp" class="form-text text-muted">Fecha m�xima de creaci�n</small>
+                        <small id="fechaHastaHelp" class="form-text text-muted">Fecha máxima de creación</small>
                     </div>
 
                     <div class="col-md-2 d-flex align-items-end">
                         <button type="submit"
                                 class="btn btn-primary w-100 d-inline-flex align-items-center justify-content-center"
                                 id="btn-aplicar-filtros"
-                                aria-label="Aplicar filtros de b�squeda">
+                                aria-label="Aplicar filtros de búsqueda">
                             <i class="fas fa-filter me-2"></i> Filtrar
                         </button>
                     </div>
@@ -508,14 +508,14 @@
             </div>
         </div>
 
-        <!-- Tarjetas de estad�sticas con seguridad -->
+        <!-- Tarjetas de estadísticas con seguridad -->
         <div class="row mb-4 g-3">
             <div class="col-xl-3 col-md-6">
                 <div class="card bg-primary text-white hover-shadow h-100">
                     <div class="card-body">
                         <div class="d-flex justify-content-between align-items-start">
                             <div>
-                                <h6 class="card-title text-white-50 mb-1">Total �rdenes</h6>
+                                <h6 class="card-title text-white-50 mb-1">Total Órdenes</h6>
                                 <h2 class="mb-0" id="total-ordenes">@totalOrdenes</h2>
                                 <small class="opacity-75 d-block mt-1">Registros en el sistema</small>
                             </div>
@@ -544,7 +544,7 @@
                             <div>
                                 <h6 class="card-title text-dark-50 mb-1">Pendientes</h6>
                                 <h2 class="mb-0" id="pendientes">@pendientes</h2>
-                                <small class="opacity-75 d-block mt-1">Requieren atenci�n</small>
+                                <small class="opacity-75 d-block mt-1">Requieren atención</small>
                             </div>
                             <div class="bg-dark bg-opacity-10 rounded-circle p-3">
                                 <i class="fas fa-clock fa-2x"></i>
@@ -628,16 +628,16 @@
             </div>
         </div>
 
-        <!-- Tabla principal de �rdenes -->
+        <!-- Tabla principal de órdenes -->
         <div class="card hover-shadow border-0 overflow-hidden">
             <div class="card-header bg-white border-bottom-0 py-3">
                 <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center">
                     <div class="mb-2 mb-md-0">
                         <h5 class="card-title mb-0 d-flex align-items-center">
-                            <i class="fas fa-list me-2 text-primary"></i> Listado de �rdenes de Recaudaci�n
+                            <i class="fas fa-list me-2 text-primary"></i> Listado de Órdenes de Recaudación
                         </h5>
                         <small class="text-muted d-block mt-1">
-                            Gesti�n completa de todas las �rdenes del sistema
+                            Gestión completa de todas las Órdenes del sistema
                         </small>
                     </div>
                     <div class="d-flex align-items-center">
@@ -651,9 +651,9 @@
                             <button type="button"
                                     class="btn btn-sm btn-outline-success d-flex align-items-center"
                                     id="btn-db-ping"
-                                    title="Probar conexi�n a base de datos"
+                                    title="Probar conexión a base de datos"
                                     data-bs-toggle="tooltip"
-                                    aria-label="Probar conexi�n a la base de datos">
+                                    aria-label="Probar conexión a la base de datos">
                                 <i class="fas fa-plug me-1"></i>
                                 <span class="d-none d-md-inline">Test BD</span>
                             </button>
@@ -665,14 +665,14 @@
             <div class="card-body p-0">
                 @if (Model == null || !Model.Any())
                 {
-                    <!-- Estado vac�o -->
+                    <!-- Estado vacío -->
                     <div class="text-center py-5" id="sin-datos">
                         <div class="py-5">
                             <i class="fas fa-inbox fa-4x text-muted mb-4 opacity-50"></i>
-                            <h4 class="text-muted mb-3">No hay �rdenes de recaudaci�n</h4>
+                            <h4 class="text-muted mb-3">No hay órdenes de recaudación</h4>
                             <p class="text-muted mb-4 col-md-6 mx-auto">
-                                No se encontraron �rdenes con los filtros aplicados.
-                                Puede intentar con diferentes criterios de b�squeda o crear una nueva orden.
+                                No se encontraron órdenes con los filtros aplicados.
+                                Puede intentar con diferentes criterios de búsqueda o crear una nueva orden.
                             </p>
                             @if (esSolicitante)
                             {
@@ -692,16 +692,16 @@
                         <table id="tablaOrdenes"
                                class="table table-hover table-striped align-middle mb-0"
                                style="width:100%"
-                               aria-label="Tabla de �rdenes de recaudaci�n">
+                               aria-label="Tabla de órdenes de recaudación">
                             <thead class="table-light">
                                 <tr>
                                     <th scope="col" width="5%" class="ps-3">ID</th>
-                                    <th scope="col" width="15%">N�mero Orden</th>
+                                    <th scope="col" width="15%">Número Orden</th>
                                     <th scope="col" width="20%">Contribuyente</th>
-                                    <th scope="col" width="15%">Fecha Creaci�n</th>
+                                    <th scope="col" width="15%">Fecha Creación</th>
                                     <th scope="col" width="10%" class="text-end pe-3">Monto</th>
                                     <th scope="col" width="15%">Estado</th>
-                                    <th scope="col" width="15%">Tr�mite</th>
+                                    <th scope="col" width="15%">Trámite</th>
                                     <th scope="col" width="10%">Concepto</th>
                                     <th scope="col" width="10%" class="text-center pe-3">Acciones</th>
                                 </tr>
@@ -885,7 +885,7 @@
                                 <a href="@Url.Action("Index", "OrdenRecaudacion")"
                                    class="btn btn-outline-secondary btn-sm d-inline-flex align-items-center order-md-2"
                                    id="btn-recargar"
-                                   aria-label="Recargar p�gina">
+                                   aria-label="Recargar página">
                                     <i class="fas fa-redo me-2"></i> Recargar
                                 </a>
 
@@ -907,22 +907,22 @@
     </div>
 
     @* ============================================
-        SECCI�N: SCRIPTS PROFESIONALES PARA PRODUCCI�N
+        SECCI�N: SCRIPTS PROFESIONALES PARA PRODUCCIÓN
         ============================================ *@
     @section Scripts {
         <!-- Script principal -->
         <script>
     // =====================================================================
-    // ? M�DULO PRINCIPAL - PRODUCCI�N C# 5 COMPATIBLE
+    // ? MODULO PRINCIPAL - PRODUCCIÓN C# 5 COMPATIBLE
     // =====================================================================
     (function () {
         'use strict';
 
         // ====================================================
-        // CONFIGURACI�N GLOBAL
+        // CONFIGURACIÓN GLOBAL
         // ====================================================
         var CONFIG = {
-            // URLs - Correcci�n: Usar Url.Action correctamente
+            // URLs - Corrección: Usar Url.Action correctamente
             apiUrl: '@Url.Action("", "OrdenRecaudacion")',
             baseUrl: '@Url.Content("~/")',
 
@@ -942,7 +942,7 @@
                 "zeroRecords": "No se encontraron registros coincidentes",
                 "paginate": {
                     "first": "Primero",
-                    "last": "�ltimo",
+                    "last": "Último",
                     "next": "Siguiente",
                     "previous": "Anterior"
                 },
@@ -971,12 +971,12 @@
 
             // Mensajes
             messages: {
-                confirmarAnular: '�Est� seguro de anular la orden {0}? Esta acci�n no se puede deshacer.',
+                confirmarAnular: 'Está seguro de anular la orden {0}? Esta acción no se puede deshacer.',
                 anulando: 'Anulando orden...',
                 anuladoExito: 'Orden {0} anulada correctamente.',
                 anuladoError: 'Error al anular la orden: {0}',
-                conexionExito: '? Conexi�n a BD exitosa',
-                conexionError: '? Error en conexi�n a BD',
+                conexionExito: '? Conexión a BD exitosa',
+                conexionError: '? Error en conexión a BD',
                 exportando: '?? Generando archivo {0}...',
                 exportadoExito: '? Archivo {0} listo para descargar',
                 validacionFechas: 'La fecha "desde" no puede ser mayor a la fecha "hasta".'
@@ -991,19 +991,19 @@
         var isLoading = false;
 
         // ====================================================
-        // INICIALIZACI�N PRINCIPAL
+        // INICIALIZACIóN PRINCIPAL
         // ====================================================
         function init() {
             try {
                 // Esperar a que jQuery est� disponible
                 if (typeof jQuery === 'undefined') {
-                    console.error('? jQuery no est� disponible');
+                    console.error('? jQuery no está disponible');
                     setTimeout(init, 100);
                     return;
                 }
 
                 $(document).ready(function () {
-                    log('?? Inicializando m�dulo de �rdenes...');
+                    log('?? Inicializando módulo de órdenes...');
 
                     // Inicializar componentes en orden de dependencia
                     initDateValidation();
@@ -1012,11 +1012,11 @@
                     initEventListeners();
                     setupAccessibility();
 
-                    log('? M�dulo completamente inicializado');
+                    log('? Módulo completamente inicializado');
                 });
             } catch (error) {
                 logError('Error en inicializaci�n:', error);
-                showErrorToUser('No se pudo inicializar la p�gina. Por favor, recargue.');
+                showErrorToUser('No se pudo inicializar la página. Por favor, recargue.');
             }
         }
 
@@ -1052,7 +1052,7 @@
         // INICIALIZACI�N DE COMPONENTES
         // ====================================================
 
-        // Validaci�n de fechas
+        // Validación de fechas
         function initDateValidation() {
             var $fechaDesde = $(CONFIG.selectors.filtroFechaDesde);
             var $fechaHasta = $(CONFIG.selectors.filtroFechaHasta);
@@ -1142,7 +1142,7 @@
             }
 
             try {
-                // Verificar si DataTables est� disponible
+                // Verificar si DataTables esta disponible
                 if (typeof $.fn.DataTable === 'undefined') {
                     log('? Esperando DataTables...');
                     setTimeout(initDataTables, 100);
@@ -1157,7 +1157,7 @@
                     }
                 }
 
-                // Configuraci�n profesional
+                // Configuración profesional
                 var config = {
                     language: CONFIG.dataTableLang,
                     order: [[0, 'desc']],
@@ -1214,10 +1214,10 @@
         function initEventListeners() {
             var $document = $(document);
 
-            // Test de conexi�n a BD - SOLUCI�N: Deshabilitar temporalmente
+            // Test de conexi�n a BD - SOLUCIÓN: Deshabilitar temporalmente
             $document.on('click', CONFIG.selectors.btnDbPing, function(e) {
                 e.preventDefault();
-                showNotification('Funci�n temporalmente deshabilitada', 'info');
+                showNotification('Función temporalmente deshabilitada', 'info');
                 /*
                 if (isLoading) return;
 
@@ -1399,7 +1399,7 @@
             })
             .fail(function(xhr, status, error) {
                 logError('Error AJAX al anular:', error);
-                showNotification(CONFIG.messages.anuladoError.replace('{0}', 'Error de conexi�n'), 'danger');
+                showNotification(CONFIG.messages.anuladoError.replace('{0}', 'Error de conexión'), 'danger');
             })
             .always(function() {
                 setTimeout(function() {
@@ -1498,7 +1498,7 @@
                     text: message,
                     icon: 'warning',
                     showCancelButton: true,
-                    confirmButtonText: 'S�, proceder',
+                    confirmButtonText: 'Si, proceder',
                     cancelButtonText: 'Cancelar',
                     confirmButtonColor: '#d33',
                     cancelButtonColor: '#6c757d',
@@ -1755,7 +1755,7 @@
         {
             case "BORRADOR": return "Borrador";
             case "PENDIENTE": return "Pendiente de pago";
-            case "PROCESADA": return "En revisi�n financiera";
+            case "PROCESADA": return "En revisión financiera";
             case "FACTURADA": return "Factura generada";
             case "COMPLETADA": return "Completada";
             case "ANULADA": return "Anulada";

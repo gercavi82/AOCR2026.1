@@ -1,9 +1,7 @@
 @model List<CapaModelo.Usuario>
 @{
-    ViewBag.Title = "Revisi�n de Designaciones RT";
+    ViewBag.Title = "Revisión de Designaciones RT";
 }
-
-<h3>Revisi�n de Designaciones RT</h3>
 
 @if (TempData["msg"] != null)
 {
@@ -48,7 +46,7 @@ else
                             {
                                 @Html.AntiForgeryToken()
                                 @Html.Hidden("id", u.Id)
-                                <button type="submit" class="btn btn-success btn-sm" onclick="return confirm('�Aceptar designaci�n?');">
+                                <button type="submit" class="btn btn-success btn-sm" onclick="return confirm('Aceptar designación?');">
                                     <i class="fas fa-check me-1"></i> Aceptar
                                 </button>
                             }
@@ -56,7 +54,7 @@ else
                             {
                                 @Html.AntiForgeryToken()
                                 @Html.Hidden("id", u.Id)
-                                <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('�Rechazar designaci�n?');">
+                                <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('Rechazar designación?');">
                                     <i class="fas fa-times me-1"></i> Rechazar
                                 </button>
                             }

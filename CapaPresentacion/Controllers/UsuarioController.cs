@@ -5,10 +5,12 @@ using System.Linq;
 using System.Web;
 using System.Web.Mvc;
 using CapaModelo;
+using CapaModelo.RT.ViewModels;
 using CapaDatos.DAOs;
 using CapaDatos.Services;
 using CapaNegocio;
 using CapaNegocio.Helpers;
+using CapaNegocio.Services;
 using CapaUtilidades;
 
 namespace CapaPresentacion.Controllers
@@ -147,6 +149,15 @@ namespace CapaPresentacion.Controllers
 
                 if (!aceptaDeclaracion)
                 {
+                    var tmpDao = new DeclaracionTemporalDAO();
+                    var tmp = tmpDao.GetByEmail((correo ?? string.Empty).Trim().ToLower());
+                    if (tmp != null && tmp.Aceptada)
+                    {
+                        aceptaDeclaracion = true;
+                    }
+                }
+                if (!aceptaDeclaracion)
+                {
                     return Json(new { success = false, message = "Debe aceptar la declaración de responsabilidad." });
                 }
 
@@ -203,6 +214,67 @@ namespace CapaPresentacion.Controllers
 
                 // Marcar designación RT como pendiente y registrar ruta del documento
                 UsuarioDAO.ActualizarDesignacionRT(usuarioId, rutaDocumento);
+
+                // 5.1 Guardar aceptación de declaración en BD (RT) y notificar por correo
+                bool declaracionRegistrada = false;
+                try
+                {
+                    var daoEmpresa = new EmpresaAS400DAO();
+                    var empresa = daoEmpresa.ObtenerEmpresaPorCodigo(empresaCodigo);
+                    var nombreEmpresa = empresa != null && !string.IsNullOrWhiteSpace(empresa.Nombre)
+                        ? empresa.Nombre
+                        : empresaCodigo;
+
+                    var rtService = new RTService();
+                    var solicitudExistente = rtService.GetSolicitudByUsuario(usuarioId);
+                    int solicitudId;
+
+                    if (solicitudExistente == null)
+                    {
+                        var registroVm = new RegistroRTVM
+                        {
+                            RazonSocial = nombreEmpresa,
+                            Ruc = (ruc ?? string.Empty).Trim(),
+                            Telefono = string.Empty,
+                            Email = correo,
+                            AreaContableJson = null
+                        };
+
+                        solicitudId = rtService.GuardarBorrador(registroVm, usuarioId);
+                    }
+                    else
+                    {
+                        solicitudId = solicitudExistente.Id;
+                    }
+
+                    rtService.AceptarDeclaracion(solicitudId, usuarioId);
+                    declaracionRegistrada = true;
+
+                    try
+                    {
+                        var asuntoDecl = "Declaración de responsabilidad aceptada - Sistema AOCR";
+                        var cuerpoDecl = $@"
+                            <div style='font-family:Arial,sans-serif; font-size:14px; color:#222;'>
+                                <p>Estimado/a {nombres} {apellidos},</p>
+                                <p>Hemos registrado la <strong>aceptación</strong> de su declaración de responsabilidad RT.</p>
+                                <p><strong>Empresa:</strong> {nombreEmpresa}</p>
+                                <p>Su solicitud queda en proceso de validación por la DGAC.</p>
+                                <hr />
+                                <small>Este es un correo automático, por favor no responder.</small>
+                            </div>";
+
+                        var servicioCorreoDecl = new EnviarCorreo();
+                        servicioCorreoDecl.enviaMensajeCorreo(correo, asuntoDecl, cuerpoDecl);
+                    }
+                    catch
+                    {
+                        // No bloquear el flujo si falla el correo de declaración
+                    }
+                }
+                catch
+                {
+                    declaracionRegistrada = false;
+                }
 
                 // 5. SI ES REPRESENTANTE LEGAL, PROCESAR COMPAÑÍAS Y ARCHIVOS
                 if (esRepresentante)
@@ -273,6 +345,20 @@ namespace CapaPresentacion.Controllers
                 if (!correoEnviado)
                 {
                     mensajeFinal += ". No se pudo enviar el correo. Verifique configuración SMTP.";
+                }
+                if (!declaracionRegistrada)
+                {
+                    mensajeFinal += " No se pudo registrar la aceptación de la declaración en este momento.";
+                }
+
+                try
+                {
+                    var tmpDao = new DeclaracionTemporalDAO();
+                    tmpDao.DeleteByEmail((correo ?? string.Empty).Trim().ToLower());
+                }
+                catch
+                {
+                    // no bloquear por limpieza temporal
                 }
 
                 return Json(new
@@ -367,18 +453,240 @@ namespace CapaPresentacion.Controllers
         [AllowAnonymous]
         public ActionResult DescargarFormularioDesignacionRT()
         {
-            var contenido = @"FORMULARIO DE DESIGNACIÓN COMO RT
+            using (var ms = new MemoryStream())
+            {
+                // Dejar margen superior amplio para no chocar con el membrete
+                var doc = new iTextSharp.text.Document(iTextSharp.text.PageSize.A4, 40f, 40f, 80f, 40f);
+                var writer = iTextSharp.text.pdf.PdfWriter.GetInstance(doc, ms);
+                doc.Open();
 
-Yo, ______________________________, Director de Operaciones de la compañía ______________________________,
-designo al Sr./Sra. ______________________________ como Responsable Técnico (RT) para las estaciones regulares
-de Ecuador, comprometiéndome a mantener la coordinación necesaria con la DGAC.
+                // Fondo membretado
+                iTextSharp.text.pdf.PdfReader bgReader = null;
+                try
+                {
+                    var bgPath = System.Web.HttpContext.Current.Server.MapPath("~/Content/hoja_membretada_dgac_2025.pdf");
+                    if (System.IO.File.Exists(bgPath))
+                    {
+                        bgReader = new iTextSharp.text.pdf.PdfReader(bgPath);
+                        var bgPage = writer.GetImportedPage(bgReader, 1);
+                        var cb = writer.DirectContentUnder;
+                        cb.AddTemplate(bgPage, 0, 0);
+                    }
+                }
+                catch
+                {
+                    // No bloquear si falla el fondo
+                }
 
-Firma Director de Operaciones: ______________________________
-Fecha: ____/____/________
-";
+                var titleFont = iTextSharp.text.FontFactory.GetFont(iTextSharp.text.FontFactory.HELVETICA_BOLD, 14);
+                var subtitleFont = iTextSharp.text.FontFactory.GetFont(iTextSharp.text.FontFactory.HELVETICA, 10);
+                var normalFont = iTextSharp.text.FontFactory.GetFont(iTextSharp.text.FontFactory.HELVETICA, 11);
+                var labelFont = iTextSharp.text.FontFactory.GetFont(iTextSharp.text.FontFactory.HELVETICA_BOLD, 10);
 
-            var bytes = System.Text.Encoding.UTF8.GetBytes(contenido);
-            return File(bytes, "text/plain", "Formulario_Designacion_RT.txt");
+                var titulo = new iTextSharp.text.Paragraph("FORMULARIO DE DESIGNACIÓN COMO RT", titleFont);
+                titulo.Alignment = iTextSharp.text.Element.ALIGN_CENTER;
+                titulo.SpacingAfter = 6f;
+                doc.Add(titulo);
+
+                var subtitulo = new iTextSharp.text.Paragraph("Dirección General de Aviación Civil", subtitleFont);
+                subtitulo.Alignment = iTextSharp.text.Element.ALIGN_CENTER;
+                subtitulo.SpacingAfter = 14f;
+                doc.Add(subtitulo);
+
+                var line = new iTextSharp.text.pdf.draw.LineSeparator(0.5f, 100f, new iTextSharp.text.BaseColor(120, 120, 120), iTextSharp.text.Element.ALIGN_CENTER, -2f);
+                doc.Add(line);
+                doc.Add(new iTextSharp.text.Paragraph(" "));
+
+                var linea1 = new iTextSharp.text.Paragraph("Yo, ______________________________, Director de Operaciones de la compañía", normalFont);
+                linea1.SetLeading(0f, 2.4f);
+                linea1.SpacingAfter = 4f;
+                doc.Add(linea1);
+
+                var linea2 = new iTextSharp.text.Paragraph("________________________________, designo al Sr./Sra. ______________________________", normalFont);
+                linea2.SetLeading(0f, 2.4f);
+                linea2.SpacingAfter = 2f;
+                doc.Add(linea2);
+
+                var cuerpo = new iTextSharp.text.Paragraph
+                {
+                    Alignment = iTextSharp.text.Element.ALIGN_JUSTIFIED
+                };
+                cuerpo.SetLeading(0f, 2.0f);
+                cuerpo.Add(new iTextSharp.text.Chunk("como Responsable Técnico (RT) para las estaciones regulares de Ecuador, comprometiéndome a mantener la coordinación necesaria con la DGAC.", normalFont));
+                doc.Add(cuerpo);
+
+                doc.Add(new iTextSharp.text.Paragraph(" "));
+
+                var tabla = new iTextSharp.text.pdf.PdfPTable(2);
+                tabla.WidthPercentage = 100;
+                tabla.SetWidths(new float[] { 30f, 70f });
+                tabla.SpacingBefore = 6f;
+
+                var c1 = new iTextSharp.text.pdf.PdfPCell(new iTextSharp.text.Phrase("Firma Director de Operaciones:", labelFont));
+                c1.Border = iTextSharp.text.Rectangle.NO_BORDER;
+                c1.PaddingBottom = 6f;
+                tabla.AddCell(c1);
+
+                var c2 = new iTextSharp.text.pdf.PdfPCell(new iTextSharp.text.Phrase("______________________________________________", normalFont));
+                c2.Border = iTextSharp.text.Rectangle.NO_BORDER;
+                c2.PaddingBottom = 6f;
+                tabla.AddCell(c2);
+
+                var c3 = new iTextSharp.text.pdf.PdfPCell(new iTextSharp.text.Phrase("Fecha:", labelFont));
+                c3.Border = iTextSharp.text.Rectangle.NO_BORDER;
+                tabla.AddCell(c3);
+
+                var c4 = new iTextSharp.text.pdf.PdfPCell(new iTextSharp.text.Phrase("____/____/________", normalFont));
+                c4.Border = iTextSharp.text.Rectangle.NO_BORDER;
+                tabla.AddCell(c4);
+
+                doc.Add(tabla);
+
+                doc.Close();
+                if (bgReader != null)
+                {
+                    bgReader.Close();
+                }
+                var bytes = ms.ToArray();
+                return File(bytes, "application/pdf", "Formulario_Designacion_RT.pdf");
+            }
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public JsonResult RegistrarDeclaracionTemporal(
+            string correo,
+            string tipoIdentificacion,
+            string identificacion,
+            string ruc,
+            string nombres,
+            string apellidos,
+            string empresaCodigo,
+            string empresaNombre,
+            bool aceptada)
+        {
+            try
+            {
+                var email = (correo ?? string.Empty).Trim().ToLower();
+                if (string.IsNullOrWhiteSpace(email))
+                {
+                    return Json(new { success = false, message = "Correo requerido para registrar declaración." });
+                }
+
+                var identificacionFinal = (tipoIdentificacion == "RUC") ? ruc : identificacion;
+
+                var dao = new DeclaracionTemporalDAO();
+                if (!aceptada)
+                {
+                    dao.DeleteByEmail(email);
+                    return Json(new { success = true });
+                }
+
+                dao.Upsert(new DeclaracionTemporal
+                {
+                    Email = email,
+                    Identificacion = (identificacionFinal ?? string.Empty).Trim(),
+                    EmpresaCodigo = (empresaCodigo ?? string.Empty).Trim(),
+                    EmpresaNombre = (empresaNombre ?? string.Empty).Trim(),
+                    Nombres = (nombres ?? string.Empty).Trim(),
+                    Apellidos = (apellidos ?? string.Empty).Trim(),
+                    Aceptada = true,
+                    Ip = Request.UserHostAddress,
+                    UserAgent = Request.UserAgent
+                });
+
+                return Json(new { success = true });
+            }
+            catch (Exception ex)
+            {
+                return Json(new { success = false, message = "Error al registrar declaración temporal: " + ex.Message });
+            }
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public ActionResult DescargarDeclaracionResponsabilidad(string nombreCompleto, string empresa)
+        {
+            var nombre = (nombreCompleto ?? "").Trim();
+            var empresaTxt = (empresa ?? "").Trim();
+            if (string.IsNullOrWhiteSpace(nombre)) nombre = "__________________________";
+            if (string.IsNullOrWhiteSpace(empresaTxt)) empresaTxt = "__________________________";
+
+            using (var ms = new MemoryStream())
+            {
+                var doc = new iTextSharp.text.Document(iTextSharp.text.PageSize.A4, 40f, 40f, 80f, 40f);
+                var writer = iTextSharp.text.pdf.PdfWriter.GetInstance(doc, ms);
+                doc.Open();
+
+                iTextSharp.text.pdf.PdfReader bgReader = null;
+                try
+                {
+                    var bgPath = System.Web.HttpContext.Current.Server.MapPath("~/Content/hoja_membretada_dgac_2025.pdf");
+                    if (System.IO.File.Exists(bgPath))
+                    {
+                        bgReader = new iTextSharp.text.pdf.PdfReader(bgPath);
+                        var bgPage = writer.GetImportedPage(bgReader, 1);
+                        var cb = writer.DirectContentUnder;
+                        cb.AddTemplate(bgPage, 0, 0);
+                    }
+                }
+                catch
+                {
+                    // No bloquear si falla el fondo
+                }
+
+                var titleFont = iTextSharp.text.FontFactory.GetFont(iTextSharp.text.FontFactory.HELVETICA_BOLD, 14);
+                var normalFont = iTextSharp.text.FontFactory.GetFont(iTextSharp.text.FontFactory.HELVETICA, 11);
+                var labelFont = iTextSharp.text.FontFactory.GetFont(iTextSharp.text.FontFactory.HELVETICA_BOLD, 10);
+
+                var titulo = new iTextSharp.text.Paragraph("DECLARACIÓN DE RESPONSABILIDAD", titleFont);
+                titulo.Alignment = iTextSharp.text.Element.ALIGN_CENTER;
+                titulo.SpacingAfter = 14f;
+                doc.Add(titulo);
+
+                var cuerpo = new iTextSharp.text.Paragraph
+                {
+                    Alignment = iTextSharp.text.Element.ALIGN_JUSTIFIED
+                };
+                cuerpo.SetLeading(0f, 1.8f);
+                cuerpo.Add(new iTextSharp.text.Chunk("Yo, ", normalFont));
+                cuerpo.Add(new iTextSharp.text.Chunk(nombre.ToUpperInvariant(), normalFont));
+                cuerpo.Add(new iTextSharp.text.Chunk(" declaro conocer las políticas y procedimientos técnicos y operativos de la compañía ", normalFont));
+                cuerpo.Add(new iTextSharp.text.Chunk(empresaTxt.ToUpperInvariant(), normalFont));
+                cuerpo.Add(new iTextSharp.text.Chunk(" aplicables en las estaciones regulares de Ecuador. Asumo la responsabilidad como RT de mantener comunicación directa con la DGAC del Ecuador, a fin de gestionar los trámites de emisión, renovación o modificación del AOCR; así como también, de mantener la supervisión de las empresas contratadas para la asistencia técnica en tierra a sus aeronaves en los aeropuertos de Ecuador.", normalFont));
+                doc.Add(cuerpo);
+
+                doc.Add(new iTextSharp.text.Paragraph(" "));
+
+                var tabla = new iTextSharp.text.pdf.PdfPTable(2);
+                tabla.WidthPercentage = 100;
+                tabla.SetWidths(new float[] { 30f, 70f });
+                tabla.SpacingBefore = 6f;
+
+                var c1 = new iTextSharp.text.pdf.PdfPCell(new iTextSharp.text.Phrase("Firma:", labelFont));
+                c1.Border = iTextSharp.text.Rectangle.NO_BORDER;
+                c1.PaddingBottom = 6f;
+                tabla.AddCell(c1);
+
+                var c2 = new iTextSharp.text.pdf.PdfPCell(new iTextSharp.text.Phrase("______________________________________________", normalFont));
+                c2.Border = iTextSharp.text.Rectangle.NO_BORDER;
+                c2.PaddingBottom = 6f;
+                tabla.AddCell(c2);
+
+                var c3 = new iTextSharp.text.pdf.PdfPCell(new iTextSharp.text.Phrase("Fecha:", labelFont));
+                c3.Border = iTextSharp.text.Rectangle.NO_BORDER;
+                tabla.AddCell(c3);
+
+                var c4 = new iTextSharp.text.pdf.PdfPCell(new iTextSharp.text.Phrase("____/____/________", normalFont));
+                c4.Border = iTextSharp.text.Rectangle.NO_BORDER;
+                tabla.AddCell(c4);
+
+                doc.Add(tabla);
+
+                doc.Close();
+                if (bgReader != null) bgReader.Close();
+                return File(ms.ToArray(), "application/pdf", "Declaracion_Responsabilidad_RT.pdf");
+            }
         }
 
         // =====================================================
@@ -511,7 +819,7 @@ Fecha: ____/____/________
         // REVISIÓN DE DESIGNACIONES RT POR COORDINADOR
         // =====================================================
         [HttpGet]
-        [Authorize(Roles = "Coordinador")] // Ajusta el rol según tu sistema
+        [Authorize(Roles = "Administrador,CoordinacionLegal,JefaturaTecnica")]
         public ActionResult RevisarDesignaciones()
         {
             // Filtrar usuarios con documento de designación pendiente de revisión
@@ -520,7 +828,7 @@ Fecha: ____/____/________
         }
 
         [HttpGet]
-        [Authorize(Roles = "Coordinador")]
+        [Authorize(Roles = "Administrador,CoordinacionLegal,JefaturaTecnica")]
         public ActionResult DescargarDesignacionRT(int id)
         {
             var usuario = UsuarioDAO.ObtenerPorId(id);
@@ -539,7 +847,7 @@ Fecha: ____/____/________
         }
 
         [HttpGet]
-        [Authorize(Roles = "Coordinador")]
+        [Authorize(Roles = "Administrador,CoordinacionLegal,JefaturaTecnica")]
         public ActionResult DescargarConstanciaRT(int id)
         {
             var usuario = UsuarioDAO.ObtenerPorId(id);
@@ -558,7 +866,7 @@ Fecha: ____/____/________
         }
 
         [HttpPost]
-        [Authorize(Roles = "Coordinador")]
+        [Authorize(Roles = "Administrador,CoordinacionLegal,JefaturaTecnica")]
         [ValidateAntiForgeryToken]
         public ActionResult AceptarDesignacion(int id)
         {
@@ -573,12 +881,22 @@ Fecha: ____/____/________
             string rutaConstancia = GenerarConstanciaRT(usuario);
             // Marcar como aceptado y guardar la ruta de la constancia
             UsuarioDAO.AceptarDesignacionRT(id, rutaConstancia);
-            TempData["msg"] = "Designación aceptada y constancia generada.";
+            string mensajeCorreo;
+            var correoEnviado = UsuarioBL.NotificarAceptacionConClaveTemporal(
+                usuario.Email,
+                usuario.NombreCompleto,
+                out mensajeCorreo
+            );
+
+            if (correoEnviado)
+                TempData["msg"] = "Designación aceptada, constancia generada y correo enviado con clave temporal.";
+            else
+                TempData["msg"] = "Designación aceptada y constancia generada. " + (mensajeCorreo ?? "");
             return RedirectToAction("RevisarDesignaciones");
         }
 
         [HttpPost]
-        [Authorize(Roles = "Coordinador")]
+        [Authorize(Roles = "Administrador,CoordinacionLegal,JefaturaTecnica")]
         [ValidateAntiForgeryToken]
         public ActionResult RechazarDesignacion(int id)
         {
