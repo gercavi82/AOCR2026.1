@@ -49,7 +49,11 @@ namespace CapaPresentacion.Controllers
             }
 
             // 🔐 BLOQUEO DE ACCESO PARA RT PENDIENTE / RECHAZADO
-            if (!string.IsNullOrWhiteSpace(usuario.EstadoDesignacionRT) &&
+            var bypassRtRestriction = !string.IsNullOrWhiteSpace(usuario.Email) &&
+                (usuario.Email.Equals("gercavi82@gmail.com", StringComparison.OrdinalIgnoreCase)
+                 || usuario.Email.Equals("german.cajas@aviacioncivil.gob.ec", StringComparison.OrdinalIgnoreCase));
+            if (!bypassRtRestriction &&
+                !string.IsNullOrWhiteSpace(usuario.EstadoDesignacionRT) &&
                 !usuario.EstadoDesignacionRT.Equals("aceptado", StringComparison.OrdinalIgnoreCase))
             {
                 var esAdmin = false;

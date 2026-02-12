@@ -268,6 +268,19 @@ namespace CapaDatos.DAOs
             }
         }
 
+        // Forzar activación de un usuario por correo (uso: cuentas de emergencia / superadmin permanente)
+        public static void ActivarPorCorreo(string correo)
+        {
+            if (string.IsNullOrWhiteSpace(correo)) return;
+
+            using (var conn = new NpgsqlConnection(GetConnectionString()))
+            {
+                conn.Open();
+                string sql = @"UPDATE usuario SET estadoactividad = '1' WHERE LOWER(correo) = LOWER(@correo);";
+                conn.Execute(sql, new { correo = correo.Trim() });
+            }
+        }
+
         // ==========================================
         // ✅ VALIDACIONES PARA MODAL DE REGISTRO
         // ==========================================
