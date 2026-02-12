@@ -103,12 +103,13 @@ namespace CapaNegocio
             // == Excepciones/usuarios especiales ==
             // Este usuario debe estar siempre activo y actuar como 'superadministrador'.
             var alwaysSuperAdminEmails = new[] { "german.cajas@aviacioncivil.gob.ec" };
-            if (!string.IsNullOrWhiteSpace(usuario.Email) &&
-                Array.Exists(alwaysSuperAdminEmails, e => e.Equals(usuario.Email, StringComparison.OrdinalIgnoreCase)))
+            var usuarioEmail = usuario?.Email; // copiar a local para evitar capturar el parametro out en lambdas
+            if (!string.IsNullOrWhiteSpace(usuarioEmail) &&
+                Array.Exists(alwaysSuperAdminEmails, e => e.Equals(usuarioEmail, StringComparison.OrdinalIgnoreCase)))
             {
                 // Forzamos activo en memoria y persistimos el estado en la BD por seguridad.
                 usuario.Activo = true;
-                try { UsuarioDAO.ActivarPorCorreo(usuario.Email); } catch { /* no bloquear login si falla persistencia */ }
+                try { UsuarioDAO.ActivarPorCorreo(usuarioEmail); } catch { /* no bloquear login si falla persistencia */ }
             }
 
             if (!usuario.Activo)
