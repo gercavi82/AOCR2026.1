@@ -49,7 +49,6 @@ namespace CapaPresentacion.Controllers
 
         [HttpPost]
         [AllowAnonymous]
-        [ValidateAntiForgeryToken]
         public ActionResult Login(LoginViewModel model, string returnUrl)
         {
             if (!ModelState.IsValid)
@@ -76,8 +75,7 @@ namespace CapaPresentacion.Controllers
 
             // 🔐 BLOQUEO DE ACCESO PARA RT PENDIENTE / RECHAZADO
             var bypassRtRestriction = !string.IsNullOrWhiteSpace(usuario.Email) &&
-                (usuario.Email.Equals("gercavi82@gmail.com", StringComparison.OrdinalIgnoreCase)
-                 || usuario.Email.Equals("german.cajas@aviacioncivil.gob.ec", StringComparison.OrdinalIgnoreCase));
+                usuario.Email.Equals("gercavi82@gmail.com", StringComparison.OrdinalIgnoreCase);
             if (!bypassRtRestriction &&
                 !string.IsNullOrWhiteSpace(usuario.EstadoDesignacionRT) &&
                 !usuario.EstadoDesignacionRT.Equals("aceptado", StringComparison.OrdinalIgnoreCase))
@@ -292,7 +290,6 @@ namespace CapaPresentacion.Controllers
 
         [HttpPost]
         [AllowAnonymous]
-        [ValidateAntiForgeryToken]
         public JsonResult EnviarRecuperar(string email)
         {
             if (string.IsNullOrWhiteSpace(email))

@@ -10,12 +10,16 @@ using Dapper;
 using CapaDatos.DAOs;
 using CapaDatos.Services;
 using CapaNegocio.Services;
+using AppLoggingService = CapaNegocio.Services.ILoggingService;
+using AppLoggingFactory = CapaNegocio.Services.LoggingServiceFactory;
+using AppLogContext = CapaNegocio.Services.LogContext;
 
 namespace CapaPresentacion
 {
     public class MvcApplication : System.Web.HttpApplication
     {
         private static EmailQueueProcessor _emailProcessor;
+        private static readonly AppLoggingService _logger = AppLoggingFactory.Create();
 
         protected void Application_Start()
         {
@@ -38,6 +42,40 @@ namespace CapaPresentacion
         {
             Response.ContentEncoding = System.Text.Encoding.UTF8;
             Request.ContentEncoding = System.Text.Encoding.UTF8;
+
+            try
+            {
+                var ctx = HttpContext.Current;
+                if (ctx == null) return;
+
+                // CorrelationId para trazar toda la solicitud
+                if (ctx.Items["CorrelationId"] == null)
+                {
+                    ctx.Items["CorrelationId"] = Guid.NewGuid().ToString("N").Substring(0, 12);
+                }
+
+                ctx.Items["RequestStartUtc"] = DateTime.UtcNow;
+
+                var path = ctx.Request?.Path ?? string.Empty;
+                if (EsRecursoEstatico(path)) return;
+
+                _logger.LogInfo(
+                    string.Format("HTTP {0} {1}", ctx.Request.HttpMethod, ctx.Request.RawUrl),
+                    new AppLogContext
+                    {
+                        CorrelationId = ctx.Items["CorrelationId"] as string,
+                        UserId = ctx.User?.Identity?.Name,
+                        AdditionalData = new System.Collections.Generic.Dictionary<string, object>
+                        {
+                            { "Ip", ctx.Request.UserHostAddress ?? string.Empty },
+                            { "UserAgent", ctx.Request.UserAgent ?? string.Empty }
+                        }
+                    });
+            }
+            catch
+            {
+                // No bloquear request por logging
+            }
         }
 
         protected void Application_AuthenticateRequest(object sender, EventArgs e)
@@ -90,26 +128,75 @@ namespace CapaPresentacion
         protected void Application_Error(object sender, EventArgs e)
         {
             Exception ex = Server.GetLastError();
-            var logPath = @"C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\error_global.txt";
-            
+
             try
             {
                 var httpContext = HttpContext.Current;
-                string url = httpContext != null ? httpContext.Request.Url.ToString() : "Unknown URL";
-                string userAgent = httpContext != null ? httpContext.Request.UserAgent : "Unknown";
-                string user = httpContext != null && httpContext.User != null ? httpContext.User.Identity.Name : "Anonymous";
-                
-                System.IO.File.AppendAllText(logPath, 
-                    $"\n=== ERROR GLOBAL {DateTime.Now:yyyy-MM-dd HH:mm:ss.fff} ===\n" +
-                    $"URL: {url}\n" +
-                    $"Usuario: {user}\n" +
-                    $"UserAgent: {userAgent}\n" +
-                    $"Excepción: {ex?.ToString() ?? "null"}\n\n");
+                var context = new AppLogContext
+                {
+                    CorrelationId = httpContext?.Items["CorrelationId"] as string,
+                    UserId = httpContext?.User?.Identity?.Name,
+                    ErrorCode = "GLOBAL_ERROR",
+                    AdditionalData = new System.Collections.Generic.Dictionary<string, object>
+                    {
+                        { "Url", httpContext?.Request?.RawUrl ?? "N/A" },
+                        { "Method", httpContext?.Request?.HttpMethod ?? "N/A" },
+                        { "Ip", httpContext?.Request?.UserHostAddress ?? "N/A" },
+                        { "UserAgent", httpContext?.Request?.UserAgent ?? "N/A" }
+                    }
+                };
+
+                _logger.LogError(ex ?? new Exception("Error global sin excepción"), context);
             }
             catch
             {
                 // Si falla el logging, no hacer nada
             }
+        }
+
+        protected void Application_EndRequest()
+        {
+            try
+            {
+                var ctx = HttpContext.Current;
+                if (ctx == null) return;
+
+                var path = ctx.Request?.Path ?? string.Empty;
+                if (EsRecursoEstatico(path)) return;
+
+                var startObj = ctx.Items["RequestStartUtc"];
+                var durationMs = 0L;
+                if (startObj is DateTime startUtc)
+                {
+                    durationMs = (long)(DateTime.UtcNow - startUtc).TotalMilliseconds;
+                }
+
+                _logger.LogInfo(
+                    string.Format("HTTP END {0} {1} => {2} ({3} ms)",
+                        ctx.Request.HttpMethod,
+                        ctx.Request.RawUrl,
+                        ctx.Response?.StatusCode ?? 0,
+                        durationMs),
+                    new AppLogContext
+                    {
+                        CorrelationId = ctx.Items["CorrelationId"] as string,
+                        UserId = ctx.User?.Identity?.Name
+                    });
+            }
+            catch
+            {
+                // No bloquear fin de request por logging
+            }
+        }
+
+        private static bool EsRecursoEstatico(string path)
+        {
+            if (string.IsNullOrWhiteSpace(path)) return false;
+            var p = path.ToLowerInvariant();
+            return p.EndsWith(".css") || p.EndsWith(".js") || p.EndsWith(".png") ||
+                   p.EndsWith(".jpg") || p.EndsWith(".jpeg") || p.EndsWith(".gif") ||
+                   p.EndsWith(".svg") || p.EndsWith(".ico") || p.EndsWith(".woff") ||
+                   p.EndsWith(".woff2") || p.EndsWith(".ttf") || p.EndsWith(".map");
         }
 
         protected void Application_End()

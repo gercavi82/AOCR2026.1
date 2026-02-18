@@ -229,6 +229,14 @@
                             <i class="fas fa-clipboard-check text-white-50 mr-2"></i> Aprobar Usuarios RT
                         </a>
                     </li>
+                    @if (rolActual == "Administrador")
+                    {
+                        <li>
+                            <a class="aocr-link" href="@Url.Action("ListaUsuarios", "Usuario")">
+                                <i class="fas fa-users text-white-50 mr-2"></i> Usuarios del Sistema
+                            </a>
+                        </li>
+                    }
                 </ul>
             </div>
         }

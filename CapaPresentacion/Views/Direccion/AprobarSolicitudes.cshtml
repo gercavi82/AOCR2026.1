@@ -5,11 +5,11 @@
 @using System.Linq
 
 @{
-    ViewBag.Title = "Aprobar Solicitudes - DirecciÃ³n";
+    ViewBag.Title = "Aprobar Solicitudes - Dirección";
     Layout = "~/Views/Shared/_LayoutAOCR.cshtml";
 }
 
-<h3><i class="glyphicon glyphicon-check"></i> Solicitudes Pendientes de AprobaciÃ³n por DirecciÃ³n</h3>
+<h3><i class="glyphicon glyphicon-check"></i> Solicitudes Pendientes de Aprobación por Dirección</h3>
 <hr />
 
 @if (TempData["success"] != null)
@@ -32,7 +32,7 @@
         <table class="table table-striped table-hover">
             <thead>
                 <tr>
-                    <th>CÃ³digo</th>
+                    <th>Código</th>
                     <th>Operador</th>
                     <th>RUC</th>
                     <th>Fecha Solicitud</th>
@@ -64,7 +64,7 @@
 else
 {
     <div class="alert alert-info">
-        <i class="glyphicon glyphicon-info-sign"></i> No hay solicitudes pendientes de aprobaciÃ³n por direcciÃ³n.
+        <i class="glyphicon glyphicon-info-sign"></i> No hay solicitudes pendientes de aprobación por dirección.
     </div>
 }
 

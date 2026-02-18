@@ -37,7 +37,7 @@
                                             <td>@orden.NumeroOrden</td>
                                             <td>@orden.FechaCreacion.ToString("dd/MM/yyyy")</td>
                                             <td>
-                                                @if (WebUtility.HtmlDecode(orden.Estado) == "Orden de RecaudaciÃ³n Requerida")
+                                                @if (WebUtility.HtmlDecode(orden.Estado) == "Orden de Recaudación Requerida")
                                                 {
                                                     <span class="badge badge-warning">Requerida</span>
                                                 }
@@ -61,7 +61,7 @@
                     else
                     {
                         <div class="alert alert-info">
-                            No tiene Ã³rdenes de recaudaciÃ³n registradas.
+                            No tiene órdenes de recaudación registradas.
                         </div>
                     }
                 </div>

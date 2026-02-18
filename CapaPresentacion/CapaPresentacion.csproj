@@ -316,6 +316,11 @@
     <Compile Include="Models\ViewModels\OrdenRecaudacionPDFModel.cs" />
     <Compile Include="Models\OrdenRecaudacionMV.cs" />
     <Compile Include="Models\PagoFinancieroVM.cs" />
+    <Compile Include="Models\FinancieroOrdenBandejaVM.cs" />
+    <Compile Include="Models\FinancieroOrdenDetalleVM.cs" />
+    <Compile Include="Models\EmailTemplates\OrdenAprobadaEmailVM.cs" />
+    <Compile Include="Models\EmailTemplates\OrdenRechazadaEmailVM.cs" />
+    <Compile Include="Models\EmailTemplates\PagoRecibidoFinancieroEmailVM.cs" />
     <Compile Include="Models\OrdenValidacionFinancieraVM.cs" />
     <Compile Include="Models\ResultadoInspeccionVM.cs" />
     <Compile Include="Models\ProgramarInspeccionVM.cs" />
@@ -328,6 +333,7 @@
     <Compile Include="Models\SolicitudAOCRViewModel.cs" />
     <Compile Include="Models\Placeholders.cs" />
     <Compile Include="Services\SelectPdfStub.cs" />
+    <Compile Include="Services\RazorViewRenderer.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Services\PdfGeneratorService.cs" />
     <Compile Include="Services\PdfOrdenService.cs" />
@@ -2638,6 +2644,7 @@
     <Content Include="Content\plugins\uplot\uPlot.iife.min.js" />
     <Content Include="Content\plugins\uplot\uPlot.min.css" />
     <Content Include="favicon.ico" />
+    <Content Include="Content\imagenes\favicon.ico" />
     <Content Include="Global.asax" />
     <Content Include="Content\Site.css" />
     <Content Include="Content\dist\css\adminlte.css.map" />
@@ -2851,9 +2858,13 @@
     <Content Include="Views\Documento\RevisarDocumentos.cshtml" />
     <Content Include="Views\Direccion\DashboardGerencial.cshtml" />
     <Content Include="Views\Financiero\Index.cshtml" />
+    <Content Include="Views\Financiero\DetalleOrden.cshtml" />
     <Content Include="Views\Financiero\RevisarSolicitud.cshtml" />
     <Content Include="Views\Financiero\ListaPagos.cshtml" />
     <Content Include="Views\Financiero\ValidarPago.cshtml" />
+    <Content Include="Views\EmailTemplates\OrdenAprobada.cshtml" />
+    <Content Include="Views\EmailTemplates\OrdenRechazada.cshtml" />
+    <Content Include="Views\EmailTemplates\PagoRecibidoFinanciero.cshtml" />
     <Content Include="Views\Administrador\ConfiguracionSistema.cshtml" />
     <Content Include="Views\CoordinacionLegal\GenerarCertificados.cshtml" />
     <Content Include="Views\OrdenRecaudacion\Obligatoria.cshtml" />

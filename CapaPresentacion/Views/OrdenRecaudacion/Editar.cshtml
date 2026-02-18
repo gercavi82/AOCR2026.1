@@ -4,7 +4,7 @@
 @using System.Web.Mvc.Html
 @{
     Layout = "~/Views/Shared/_LayoutAOCR.cshtml";
-    ViewBag.Title = "Editar Orden de RecaudaciÃ³n";
+    ViewBag.Title = "Editar Orden de Recaudación";
 }
 
 <div class="row">
@@ -25,13 +25,13 @@
                 <div class="card-body">
                     @Html.ValidationSummary(false, "", new { @class = "alert alert-danger" })
 
-                    <!-- InformaciÃ³n bÃ¡sica -->
+                    <!-- Información bÃ¡sica -->
                     <div class="row mb-4">
                         <div class="col-md-6">
-                            <h5><i class="fas fa-info-circle me-2 text-primary"></i>InformaciÃ³n General</h5>
+                            <h5><i class="fas fa-info-circle me-2 text-primary"></i>Información General</h5>
 
                             <div class="mb-3">
-                                <label class="form-label">Lugar de EmisiÃ³n</label>
+                                <label class="form-label">Lugar de Emisión</label>
                                 @Html.TextBoxFor(m => m.LugarEmision, new { @class = "form-control", placeholder = "Ej: Quito" })
                                 @Html.ValidationMessageFor(m => m.LugarEmision, "", new { @class = "text-danger" })
                             </div>
@@ -43,14 +43,14 @@
                             </div>
 
                             <div class="mb-3">
-                                <label class="form-label">RUC/CÃ©dula</label>
-                                @Html.TextBoxFor(m => m.RucCedula, new { @class = "form-control", placeholder = "RUC o CÃ©dula" })
+                                <label class="form-label">RUC/Cédula</label>
+                                @Html.TextBoxFor(m => m.RucCedula, new { @class = "form-control", placeholder = "RUC o Cédula" })
                                 @Html.ValidationMessageFor(m => m.RucCedula, "", new { @class = "text-danger" })
                             </div>
                         </div>
 
                         <div class="col-md-6">
-                            <h5><i class="fas fa-user me-2 text-primary"></i>InformaciÃ³n del Contribuyente</h5>
+                            <h5><i class="fas fa-user me-2 text-primary"></i>Información del Contribuyente</h5>
 
                             <div class="mb-3">
                                 <label class="form-label">Nombre del Contribuyente</label>
@@ -59,14 +59,14 @@
                             </div>
 
                             <div class="mb-3">
-                                <label class="form-label">Correo ElectrÃ³nico</label>
+                                <label class="form-label">Correo Electrónico</label>
                                 @Html.TextBoxFor(m => m.Correo, new { @class = "form-control", type = "email", placeholder = "correo@ejemplo.com" })
                                 @Html.ValidationMessageFor(m => m.Correo, "", new { @class = "text-danger" })
                             </div>
 
                             <div class="mb-3">
-                                <label class="form-label">TelÃ©fono</label>
-                                @Html.TextBoxFor(m => m.Telefono, new { @class = "form-control", placeholder = "NÃºmero de telÃ©fono" })
+                                <label class="form-label">Teléfono</label>
+                                @Html.TextBoxFor(m => m.Telefono, new { @class = "form-control", placeholder = "NÃºmero de teléfono" })
                                 @Html.ValidationMessageFor(m => m.Telefono, "", new { @class = "text-danger" })
                             </div>
                         </div>
@@ -127,7 +127,7 @@
                                             <h4 class="text-primary">@string.Format("{0:C}", Model.Subtotal)</h4>
                                         </div>
                                         <div class="col-md-4">
-                                            <h6>AdministraciÃ³n</h6>
+                                            <h6>Administración</h6>
                                             <h4 class="text-info">@string.Format("{0:C}", Model.Admin)</h4>
                                         </div>
                                         <div class="col-md-4">
@@ -163,7 +163,7 @@
 @section Scripts {
     <script>
         $(document).ready(function () {
-            // ValidaciÃ³n del formulario
+            // Validación del formulario
             $('#formOrden').validate({
                 rules: {
                     LugarEmision: { required: true, maxlength: 100 },
@@ -176,7 +176,7 @@
                 },
                 messages: {
                     LugarEmision: {
-                        required: "El lugar de emisiÃ³n es obligatorio",
+                        required: "El lugar de emisión es obligatorio",
                         maxlength: "MÃ¡ximo 100 caracteres"
                     },
                     Compania: {
@@ -184,7 +184,7 @@
                         maxlength: "MÃ¡ximo 100 caracteres"
                     },
                     RucCedula: {
-                        required: "RUC/CÃ©dula es obligatorio",
+                        required: "RUC/Cédula es obligatorio",
                         minlength: "MÃ­nimo 10 caracteres",
                         maxlength: "MÃ¡ximo 13 caracteres"
                     },

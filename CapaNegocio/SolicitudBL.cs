@@ -202,11 +202,21 @@ namespace CapaNegocio
 
         public string GenerarNumeroSolicitud(int year)
         {
-            var total = _solicitudDAO
-     .ListarActivas()
-     .Count(s => s.FechaSolicitud.HasValue && s.FechaSolicitud.Value.Year == year);
+            var prefijo = $"DGAC-GOP-{year}-AOCR";
 
-            return $"DGAC-GOP-{year}-{(total + 1):D3}";
+            var siguienteSecuencia = (_solicitudDAO.ListarActivas() ?? new List<SolicitudAOCR>())
+                .Where(s => !string.IsNullOrWhiteSpace(s.NumeroSolicitud))
+                .Select(s => s.NumeroSolicitud.Trim())
+                .Where(n => n.StartsWith(prefijo, StringComparison.OrdinalIgnoreCase))
+                .Select(n =>
+                {
+                    var parteNumerica = n.Substring(prefijo.Length);
+                    return int.TryParse(parteNumerica, out var sec) ? sec : 0;
+                })
+                .DefaultIfEmpty(0)
+                .Max() + 1;
+
+            return $"{prefijo}{siguienteSecuencia:D3}";
 
         }
         public List<SolicitudAOCR> ObtenerTodos()

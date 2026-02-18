@@ -236,7 +236,7 @@ namespace CapaDatos.Services
                     EsHtml = true,
                     MaxIntentos = 3,
                     CorrelationId = correlationId,
-                    OrdenId = ordenId,
+                    SolicitudId = ordenId,
                     TipoNotificacion = tipoNotificacion
                 };
 

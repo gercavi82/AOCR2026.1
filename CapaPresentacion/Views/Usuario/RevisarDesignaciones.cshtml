@@ -1,4 +1,4 @@
-@model List<CapaModelo.Usuario>
+﻿@model List<CapaModelo.Usuario>
 @{
     ViewBag.Title = "Revisión de Designaciones RT";
 }
@@ -25,6 +25,7 @@ else
                     <th>Usuario</th>
                     <th>Correo</th>
                     <th>Empresa</th>
+                    <th>Estado</th>
                     <th>Documento</th>
                     <th class="text-center">Acciones</th>
                 </tr>
@@ -36,27 +37,60 @@ else
                         <td>@Html.Encode(u.NombreCompleto) (@Html.Encode(u.CodigoUsuario))</td>
                         <td>@Html.Encode(u.Email)</td>
                         <td>@Html.Encode(u.EmpresaCodigo)</td>
+                        <td>@Html.Encode(u.EstadoDesignacionRT)</td>
                         <td>
                             <a class="btn btn-outline-primary btn-sm" href="@Url.Action("DescargarDesignacionRT", "Usuario", new { id = u.Id })">
                                 <i class="fas fa-file-download me-1"></i> Descargar
                             </a>
                         </td>
                         <td class="text-center">
-                            @using (Html.BeginForm("AceptarDesignacion", "Usuario", FormMethod.Post, new { @class = "d-inline" }))
+                            @if (User != null && User.IsInRole("JefaturaTecnica") &&
+                                 string.Equals(u.EstadoDesignacionRT, "pendiente", StringComparison.OrdinalIgnoreCase))
                             {
-                                @Html.AntiForgeryToken()
-                                @Html.Hidden("id", u.Id)
-                                <button type="submit" class="btn btn-success btn-sm" onclick="return confirm('Aceptar designación?');">
-                                    <i class="fas fa-check me-1"></i> Aceptar
-                                </button>
+                                @using (Html.BeginForm("AprobarDesignacionJefatura", "Usuario", FormMethod.Post, new { @class = "d-inline" }))
+                                {
+                                    @Html.AntiForgeryToken()
+                                    @Html.Hidden("id", u.Id)
+                                    <button type="submit" class="btn btn-warning btn-sm" onclick="return confirm('Aprobar como Jefatura Técnica?');">
+                                        <i class="fas fa-check me-1"></i> Aprobar Jefatura
+                                    </button>
+                                }
                             }
-                            @using (Html.BeginForm("RechazarDesignacion", "Usuario", FormMethod.Post, new { @class = "d-inline" }))
+
+                            @if (User != null && (User.IsInRole("Administrador") || User.IsInRole("CoordinacionLegal")) &&
+                                 string.Equals(u.EstadoDesignacionRT, "en_validacion", StringComparison.OrdinalIgnoreCase))
                             {
-                                @Html.AntiForgeryToken()
-                                @Html.Hidden("id", u.Id)
-                                <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('Rechazar designación?');">
-                                    <i class="fas fa-times me-1"></i> Rechazar
-                                </button>
+                                @using (Html.BeginForm("AceptarDesignacion", "Usuario", FormMethod.Post, new { @class = "d-inline" }))
+                                {
+                                    @Html.AntiForgeryToken()
+                                    @Html.Hidden("id", u.Id)
+                                    <button type="submit" class="btn btn-success btn-sm" onclick="return confirm('Aprobar designación final?');">
+                                        <i class="fas fa-check me-1"></i> Aprobar Final
+                                    </button>
+                                }
+                            }
+
+                            @if (User != null && (User.IsInRole("Administrador") || User.IsInRole("CoordinacionLegal") || User.IsInRole("JefaturaTecnica")))
+                            {
+                                @using (Html.BeginForm("RechazarDesignacion", "Usuario", FormMethod.Post, new { @class = "d-inline" }))
+                                {
+                                    @Html.AntiForgeryToken()
+                                    @Html.Hidden("id", u.Id)
+                                    <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('Rechazar designación?');">
+                                        <i class="fas fa-times me-1"></i> Rechazar
+                                    </button>
+                                }
+                            }
+                            @if (User != null && User.IsInRole("Administrador"))
+                            {
+                                @using (Html.BeginForm("Eliminar", "Usuario", FormMethod.Post, new { @class = "d-inline" }))
+                                {
+                                    @Html.AntiForgeryToken()
+                                    @Html.Hidden("id", u.Id)
+                                    <button type="submit" class="btn btn-outline-danger btn-sm" onclick="return confirm('Eliminar usuario definitivamente?');">
+                                        <i class="fas fa-trash me-1"></i> Eliminar
+                                    </button>
+                                }
                             }
                         </td>
                     </tr>
@@ -65,3 +99,4 @@ else
         </table>
     </div>
 }
+

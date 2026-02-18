@@ -98,7 +98,9 @@ namespace CapaNegocio.Services
                 // Si hay adjunto, reutiliza el flujo existente
                 if (adjuntoBytes != null && adjuntoBytes.Length > 0)
                 {
+                    CapaNegocio.LogBL.RegistrarInfo($"EMAIL_ENVIAR | para={para} | adjunto={adjuntoNombre} | bytes={adjuntoBytes.Length}", "EmailService");
                     EnviarConAdjunto(para, asunto, html, adjuntoBytes, adjuntoNombre);
+                    CapaNegocio.LogBL.RegistrarInfo($"EMAIL_OK | para={para} | adjunto={adjuntoNombre}", "EmailService");
                     return Task.FromResult(EmailSendResult.Ok());
                 }
 
@@ -138,7 +140,9 @@ namespace CapaNegocio.Services
                         if (!string.IsNullOrWhiteSpace(user))
                             smtp.Credentials = new NetworkCredential(user, pass);
 
+                        CapaNegocio.LogBL.RegistrarInfo($"EMAIL_ENVIAR | para={para} | adjunto=none", "EmailService");
                         smtp.Send(msg);
+                        CapaNegocio.LogBL.RegistrarInfo($"EMAIL_OK | para={para} | adjunto=none", "EmailService");
                     }
                 }
 
@@ -146,6 +150,7 @@ namespace CapaNegocio.Services
             }
             catch (Exception ex)
             {
+                CapaNegocio.LogBL.RegistrarError($"EMAIL_ERROR | para={para}", ex.Message, "EmailService");
                 return Task.FromResult(EmailSendResult.Fail(ex.Message));
             }
         }

@@ -40,12 +40,27 @@ namespace CapaDatos.DAOs
                 Activo = r["activo"] != DBNull.Value && Convert.ToBoolean(r["activo"]),
 
                 CreatedAt = r["createdat"] != DBNull.Value ? (DateTime?)Convert.ToDateTime(r["createdat"]) : null,
-                CreatedBy = r["createdby"] != DBNull.Value ? (int?)Convert.ToInt32(r["createdby"]) : null,
+                CreatedBy = ToNullableInt(r["createdby"]),
                 UpdatedAt = r["updatedat"] != DBNull.Value ? (DateTime?)Convert.ToDateTime(r["updatedat"]) : null,
-                UpdatedBy = r["updatedby"] != DBNull.Value ? (int?)Convert.ToInt32(r["updatedby"]) : null,
+                UpdatedBy = ToNullableInt(r["updatedby"]),
                 DeletedAt = r["deletedat"] != DBNull.Value ? (DateTime?)Convert.ToDateTime(r["deletedat"]) : null,
-                DeletedBy = r["deletedby"] != DBNull.Value ? (int?)Convert.ToInt32(r["deletedby"]) : null
+                DeletedBy = ToNullableInt(r["deletedby"])
             };
+        }
+
+        private int? ToNullableInt(object value)
+        {
+            if (value == null || value == DBNull.Value) return null;
+            if (value is int i) return i;
+            if (value is long l)
+            {
+                if (l > int.MaxValue || l < int.MinValue) return null;
+                return (int)l;
+            }
+
+            var s = value.ToString();
+            if (string.IsNullOrWhiteSpace(s)) return null;
+            return int.TryParse(s.Trim(), out var parsed) ? (int?)parsed : null;
         }
 
         // ==============================

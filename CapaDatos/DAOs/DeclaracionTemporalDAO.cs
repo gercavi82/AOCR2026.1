@@ -87,6 +87,40 @@ namespace CapaDatos.DAOs
                 cn.Execute(sql, new { email });
             }
         }
+
+        public void MoveToHistorialByEmail(string email)
+        {
+            if (string.IsNullOrWhiteSpace(email)) return;
+
+            const string sqlInsert = @"
+                WITH src AS (
+                    SELECT *
+                    FROM aocr_declaracion_tmp
+                    WHERE LOWER(email) = LOWER(@email)
+                    ORDER BY updated_at DESC
+                    LIMIT 1
+                )
+                INSERT INTO aocr_declaracion_historial
+                    (email, identificacion, empresa_codigo, empresa_nombre, nombres, apellidos,
+                     aceptada, ip, user_agent, created_at, updated_at, finalized_at)
+                SELECT
+                    email, identificacion, empresa_codigo, empresa_nombre, nombres, apellidos,
+                    aceptada, ip, user_agent, created_at, updated_at, NOW()
+                FROM src;";
+
+            const string sqlDelete = @"DELETE FROM aocr_declaracion_tmp WHERE LOWER(email) = LOWER(@email);";
+
+            using (var cn = CrearConexion())
+            {
+                cn.Open();
+                using (var tx = cn.BeginTransaction())
+                {
+                    cn.Execute(sqlInsert, new { email }, tx);
+                    cn.Execute(sqlDelete, new { email }, tx);
+                    tx.Commit();
+                }
+            }
+        }
     }
 
     public class DeclaracionTemporal

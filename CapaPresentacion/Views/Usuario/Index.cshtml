@@ -1,55 +1,80 @@
-﻿@inherits System.Web.Mvc.WebViewPage<IEnumerable<CapaModelo.Direccion>>
-@using CapaModelo
-@using System.Web.Mvc
-@using System.Web.Mvc.Html
+@model List<CapaModelo.Usuario>
 @{
-    ViewBag.Title = "Listado de Direcciones";
+    ViewBag.Title = "Usuarios del Sistema";
 }
 
-<h2 class="mt-3">📍 Listado de Direcciones</h2>
+<div class="container-fluid">
+    <div class="row mb-3">
+        <div class="col-12">
+            <h2><i class="fas fa-users"></i> Usuarios del Sistema</h2>
+            <p class="text-muted">Listado completo de usuarios (eliminación permanente).</p>
+        </div>
+    </div>
 
-@if (TempData["msg"] != null)
-{
-    <div class="alert alert-success">@TempData["msg"]</div>
+    @if (TempData["msg"] != null)
+    {
+        <div class="alert alert-success">@TempData["msg"]</div>
+    }
+    @if (TempData["error"] != null)
+    {
+        <div class="alert alert-danger">@TempData["error"]</div>
+    }
+
+    <div class="card shadow">
+        <div class="card-body">
+            <div class="table-responsive">
+                <table id="tablaUsuariosAll" class="table table-striped table-hover">
+                    <thead class="table-dark">
+                        <tr>
+                            <th>ID</th>
+                            <th>Usuario</th>
+                            <th>Nombre Completo</th>
+                            <th>Email</th>
+                            <th>Rol</th>
+                            <th>Activo</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var u in Model)
+                        {
+                            <tr>
+                                <td>@Html.Encode(u.Id)</td>
+                                <td>@Html.Encode(u.CodigoUsuario)</td>
+                                <td>@Html.Encode((u.NombreCompleto ?? "") + " " + (u.ApellidoUsuario ?? ""))</td>
+                                <td>@Html.Encode(u.Email)</td>
+                                <td>@Html.Encode(u.Rol)</td>
+                                <td>@(u.Activo ? "Sí" : "No")</td>
+                                <td>
+                                    @using (Html.BeginForm("Eliminar", "Usuario", FormMethod.Post, new { @class = "d-inline" }))
+                                    {
+                                        @Html.AntiForgeryToken()
+                                        @Html.Hidden("id", u.Id)
+                                        <button type="submit" class="btn btn-outline-danger btn-sm"
+                                                onclick="return confirm('Eliminar usuario definitivamente?');">
+                                            <i class="fas fa-trash me-1"></i> Eliminar
+                                        </button>
+                                    }
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        $(document).ready(function () {
+            if ($.fn.DataTable) {
+                $('#tablaUsuariosAll').DataTable({
+                    language: {
+                        url: '@Url.Content("~/Content/plugins/datatables/i18n/Spanish.json")'
+                    }
+                });
+            }
+        });
+    </script>
 }
-
-@if (TempData["error"] != null)
-{
-    <div class="alert alert-danger">@TempData["error"]</div>
-}
-
-<p>
-    <a href="@Url.Action("Crear")" class="btn btn-primary">➕ Nueva Dirección</a>
-</p>
-
-<table class="table table-bordered table-striped">
-    <thead class="table-dark">
-        <tr>
-            <th>ID</th>
-            <th>Calle</th>
-            <th>Ciudad</th>
-            <th>Provincia</th>
-            <th>País</th>
-            <th></th>
-        </tr>
-    </thead>
-    <tbody>
-        @foreach (var d in Model)
-        {
-            <tr>
-                <td>@Html.Encode(d.CodigoDireccion)</td>
-                <td>@Html.Encode(d.Calle)</td>
-                <td>@Html.Encode(d.Ciudad)</td>
-                <td>@Html.Encode(d.Provincia)</td>
-                <td>@Html.Encode(d.Pais)</td>
-                <td>
-                    <a class="btn btn-info btn-sm" href="@Url.Action("Detalle", new { id = d.CodigoDireccion })">Ver</a>
-                    <a class="btn btn-warning btn-sm" href="@Url.Action("Editar", new { id = d.CodigoDireccion })">Editar</a>
-                    <a class="btn btn-danger btn-sm" href="@Url.Action("Eliminar", new { id = d.CodigoDireccion })">Eliminar</a>
-                </td>
-            </tr>
-        }
-    </tbody>
-</table>
-
-

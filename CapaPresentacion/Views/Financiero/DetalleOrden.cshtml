@@ -1,0 +1,230 @@
+@model CapaPresentacion.Models.FinancieroOrdenDetalleVM
+@using CapaModelo
+@using System.Web.Mvc
+@using System.Web.Mvc.Html
+
+@{
+    ViewBag.Title = "Detalle Orden - Financiero";
+    var orden = Model != null ? Model.Orden : null;
+    var pago = Model != null ? Model.Pago : null;
+    var estadoNorm = orden != null ? ((orden.Estado ?? "").Trim().ToUpperInvariant().Replace(" ", "_")) : "";
+}
+
+<h2>Detalle de Orden - Financiero</h2>
+<hr />
+
+@if (TempData["Success"] != null)
+{
+    <div class="alert alert-success">@TempData["Success"]</div>
+}
+@if (TempData["Error"] != null)
+{
+    <div class="alert alert-danger">@TempData["Error"]</div>
+}
+
+@if (orden == null)
+{
+    <div class="alert alert-warning">No se encontró la orden.</div>
+}
+else
+{
+    <div class="row">
+        <div class="col-md-6">
+            <div class="card mb-3">
+                <div class="card-header">Orden</div>
+                <div class="card-body">
+                    <dl class="row mb-0">
+                        <dt class="col-sm-5">Número</dt>
+                        <dd class="col-sm-7">@orden.NumeroOrden</dd>
+                        <dt class="col-sm-5">Estado</dt>
+                        <dd class="col-sm-7">@orden.Estado</dd>
+                        <dt class="col-sm-5">Fecha</dt>
+                        <dd class="col-sm-7">@orden.FechaCreacion.ToString("dd/MM/yyyy")</dd>
+                        <dt class="col-sm-5">Contribuyente</dt>
+                        <dd class="col-sm-7">@orden.NombreContribuyente</dd>
+                        <dt class="col-sm-5">RUC/Cédula</dt>
+                        <dd class="col-sm-7">@orden.RucCedula</dd>
+                        <dt class="col-sm-5">Correo</dt>
+                        <dd class="col-sm-7">@orden.Correo</dd>
+                        <dt class="col-sm-5">Total</dt>
+                        <dd class="col-sm-7">@orden.Total.ToString("N2")</dd>
+                    </dl>
+                    <div class="mt-2">
+                        <a class="btn btn-sm btn-outline-secondary" target="_blank" href="@Url.Action("DescargarPdf", "OrdenRecaudacion", new { id = orden.Id })">Ver PDF</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="card mb-3">
+                <div class="card-header">Pago</div>
+                <div class="card-body">
+                    @if (pago == null)
+                    {
+                        <div class="text-muted">No hay información de pago registrada.</div>
+                    }
+                    else
+                    {
+                        <dl class="row mb-0">
+                            <dt class="col-sm-5">Método</dt>
+                            <dd class="col-sm-7">@pago.MetodoPago</dd>
+                            <dt class="col-sm-5">Monto</dt>
+                            <dd class="col-sm-7">@pago.Monto.ToString("N2")</dd>
+                            <dt class="col-sm-5">Fecha pago</dt>
+                            <dd class="col-sm-7">@(pago.FechaPago.HasValue ? pago.FechaPago.Value.ToString("dd/MM/yyyy") : "-")</dd>
+                            <dt class="col-sm-5">Estado</dt>
+                            <dd class="col-sm-7">@pago.Estado</dd>
+                            <dt class="col-sm-5">Comprobante</dt>
+                            <dd class="col-sm-7">
+                                @if (!string.IsNullOrWhiteSpace(pago.ComprobanteRuta))
+                                {
+                                    <a href="@Url.Action("DescargarComprobante", "Financiero", new { ordenId = orden.Id, pagoId = pago.CodigoPago })">Descargar</a>
+                                }
+                                else
+                                {
+                                    <span class="text-muted">No adjunto</span>
+                                }
+                            </dd>
+                        </dl>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card mb-3">
+        <div class="card-header">Acciones</div>
+        <div class="card-body">
+            @if (estadoNorm == "PROCESADA" || estadoNorm == "PENDIENTE")
+            {
+                if (pago != null)
+                {
+                    using (Html.BeginForm("AprobarPago", "Financiero", FormMethod.Post, new { enctype = "multipart/form-data" }))
+                    {
+                        @Html.AntiForgeryToken()
+                        @Html.Hidden("id", orden.Id)
+                        @Html.Hidden("pagoId", pago.CodigoPago)
+                        <div class="row g-2">
+                            <div class="col-md-4">
+                                <label class="form-label">Factura (PDF)</label>
+                                <input type="file" name="facturaArchivo" accept=".pdf,application/pdf" class="form-control form-control-sm" />
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Correo destino</label>
+                                <input type="email" name="correoDestino" class="form-control form-control-sm" placeholder="Opcional" />
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Observaciones</label>
+                                <input type="text" name="observacionesCorreo" class="form-control form-control-sm" placeholder="Observaciones" />
+                            </div>
+                            <div class="col-12">
+                                <button type="submit" class="btn btn-success btn-sm">Aprobar pago</button>
+                            </div>
+                        </div>
+                    }
+                }
+                else
+                {
+                    using (Html.BeginForm("AprobarOrden", "Financiero", FormMethod.Post, new { enctype = "multipart/form-data" }))
+                    {
+                        @Html.AntiForgeryToken()
+                        @Html.Hidden("id", orden.Id)
+                        <div class="row g-2">
+                            <div class="col-md-4">
+                                <label class="form-label">Factura (PDF)</label>
+                                <input type="file" name="facturaArchivo" accept=".pdf,application/pdf" class="form-control form-control-sm" />
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Correo destino</label>
+                                <input type="email" name="correoDestino" class="form-control form-control-sm" placeholder="Opcional" />
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Observaciones</label>
+                                <input type="text" name="observacionesCorreo" class="form-control form-control-sm" placeholder="Observaciones" />
+                            </div>
+                            <div class="col-12">
+                                <button type="submit" class="btn btn-success btn-sm">Aprobar orden</button>
+                            </div>
+                        </div>
+                    }
+                }
+
+                <hr />
+
+                using (Html.BeginForm("RechazarOrden", "Financiero", FormMethod.Post))
+                {
+                    @Html.AntiForgeryToken()
+                    @Html.Hidden("id", orden.Id)
+                    <div class="row g-2">
+                        <div class="col-md-8">
+                            <label class="form-label">Motivo de rechazo</label>
+                            <input type="text" name="motivo" class="form-control form-control-sm" required />
+                        </div>
+                        <div class="col-md-4 d-flex align-items-end">
+                            <button type="submit" class="btn btn-danger btn-sm">Rechazar</button>
+                        </div>
+                    </div>
+                }
+            }
+            else if (estadoNorm == "FACTURADA" || estadoNorm == "COMPLETADA")
+            {
+                using (Html.BeginForm("ReenviarFactura", "Financiero", FormMethod.Post))
+                {
+                    @Html.AntiForgeryToken()
+                    @Html.Hidden("id", orden.Id)
+                    <div class="row g-2">
+                        <div class="col-md-4">
+                            <label class="form-label">Correo destino</label>
+                            <input type="email" name="correoDestino" class="form-control form-control-sm" placeholder="Opcional" />
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Observaciones</label>
+                            <input type="text" name="observacionesCorreo" class="form-control form-control-sm" placeholder="Observaciones" />
+                        </div>
+                        <div class="col-md-2 d-flex align-items-end">
+                            <button type="submit" class="btn btn-warning btn-sm">Reenviar factura</button>
+                        </div>
+                    </div>
+                }
+            }
+            else
+            {
+                <div class="text-muted">No hay acciones disponibles para el estado actual.</div>
+            }
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-header">Historial</div>
+        <div class="card-body">
+            @if (Model.Historial != null && Model.Historial.Any())
+            {
+                <table class="table table-sm">
+                    <thead>
+                        <tr>
+                            <th>Fecha</th>
+                            <th>Estado anterior</th>
+                            <th>Estado nuevo</th>
+                            <th>Observaciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var h in Model.Historial)
+                        {
+                            <tr>
+                                <td>@(h.FechaCambio.HasValue ? h.FechaCambio.Value.ToString("dd/MM/yyyy HH:mm") : "-")</td>
+                                <td>@h.EstadoAnterior</td>
+                                <td>@h.EstadoNuevo</td>
+                                <td>@h.Observaciones</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            }
+            else
+            {
+                <div class="text-muted">Sin historial registrado.</div>
+            }
+        </div>
+    </div>
+}

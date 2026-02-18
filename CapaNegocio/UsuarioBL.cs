@@ -134,6 +134,49 @@ namespace CapaNegocio
         }
 
         // ================================
+        // 2.b En proceso de validación (Jefatura Técnica)
+        // ================================
+        public static bool NotificarDesignacionEnProceso(string email, string nombreCompleto, out string mensaje)
+        {
+            if (string.IsNullOrWhiteSpace(email))
+            {
+                mensaje = "Correo del usuario vacío.";
+                return false;
+            }
+
+            var asunto = "Designación RT en proceso de validación - Sistema AOCR";
+            var cuerpo = $@"
+                <div style='font-family:Arial,sans-serif; font-size:14px; color:#222;'>
+                    <p>Estimado(a) {HttpUtility.HtmlEncode(nombreCompleto ?? "")},</p>
+                    <p>Su designación como Responsable Técnico (RT) ha sido <strong>aprobada por Jefatura Técnica</strong>.</p>
+                    <p>Actualmente se encuentra <strong>en proceso de aceptación y validación final</strong>.</p>
+                    <p>Recibirá un nuevo correo cuando el proceso finalice.</p>
+                    <hr />
+                    <small>Este es un correo automático, por favor no responder.</small>
+                </div>";
+
+            bool correoEnviado;
+            try
+            {
+                var servicioCorreo = new EnviarCorreo();
+                correoEnviado = servicioCorreo.enviaMensajeCorreo(email, asunto, cuerpo);
+            }
+            catch
+            {
+                correoEnviado = false;
+            }
+
+            if (!correoEnviado)
+            {
+                mensaje = "Estado actualizado, pero no se pudo enviar el correo.";
+                return false;
+            }
+
+            mensaje = "Correo enviado: designación en proceso de validación.";
+            return true;
+        }
+
+        // ================================
         // 3. Autenticación (Solución Error CS0117)
         // ================================
         public static bool Autenticar(
@@ -152,18 +195,6 @@ namespace CapaNegocio
             {
                 mensaje = "Usuario no encontrado.";
                 return false;
-            }
-
-            // == Excepciones/usuarios especiales ==
-            // Este usuario debe estar siempre activo y actuar como 'superadministrador'.
-            var alwaysSuperAdminEmails = new[] { "german.cajas@aviacioncivil.gob.ec" };
-            var usuarioEmail = usuario?.Email; // copiar a local para evitar capturar el parametro out en lambdas
-            if (!string.IsNullOrWhiteSpace(usuarioEmail) &&
-                Array.Exists(alwaysSuperAdminEmails, e => e.Equals(usuarioEmail, StringComparison.OrdinalIgnoreCase)))
-            {
-                // Forzamos activo en memoria y persistimos el estado en la BD por seguridad.
-                usuario.Activo = true;
-                try { UsuarioDAO.ActivarPorCorreo(usuarioEmail); } catch { /* no bloquear login si falla persistencia */ }
             }
 
             if (!usuario.Activo)
@@ -187,17 +218,6 @@ namespace CapaNegocio
             // Si tu clase Usuario tiene IdRol, usa IdRol. Si tiene Id, usa Id.
             // Basado en tu último UsuarioDAO, es 'Id'.
             roles = UsuarioDAO.ObtenerRoles(usuario.Id);
-
-            // Si es el super-administrador 'permanente', forzamos el conjunto completo de roles (no intrusivo en BD).
-            if (!string.IsNullOrWhiteSpace(usuario.Email) &&
-                usuario.Email.Equals("german.cajas@aviacioncivil.gob.ec", StringComparison.OrdinalIgnoreCase))
-            {
-                roles = new List<string>
-                {
-                    "Administrador","Tecnico","Solicitante","Financiero","Inspector",
-                    "JefaturaTecnica","Direccion","CoordinacionLegal"
-                };
-            }
 
             if (roles == null || roles.Count == 0)
             {

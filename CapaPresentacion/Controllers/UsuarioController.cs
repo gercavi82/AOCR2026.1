@@ -316,36 +316,9 @@ namespace CapaPresentacion.Controllers
                     }
                 }
 
-                // 6. Enviar correo con credenciales temporales
-                var asunto = "Registro de usuario - Sistema AOCR";
-                var cuerpo = $@"
-                    <div style='font-family:Arial,sans-serif; font-size:14px; color:#222;'>
-                        <p>Estimado/a {nombres} {apellidos},</p>
-                        <p>Su cuenta ha sido creada exitosamente.</p>
-                        <p><strong>Usuario:</strong> {codigoUsuarioFinal}</p>
-                        <p><strong>Contraseña temporal:</strong> {passwordTemporal}</p>
-                        <p>Por seguridad, el sistema le pedirá cambiar la contraseña en su primer ingreso.</p>
-                        <p>Si usted no solicitó este registro, por favor comuníquese con la DGAC.</p>
-                        <hr />
-                        <small>Este es un correo automático, por favor no responder.</small>
-                    </div>";
-
-                bool correoEnviado = false;
-                try
-                {
-                    var servicioCorreo = new EnviarCorreo();
-                    correoEnviado = servicioCorreo.enviaMensajeCorreo(correo, asunto, cuerpo);
-                }
-                catch
-                {
-                    correoEnviado = false;
-                }
-
-                var mensajeFinal = "Usuario registrado exitosamente. Su nombre de usuario es: " + codigoUsuarioFinal;
-                if (!correoEnviado)
-                {
-                    mensajeFinal += ". No se pudo enviar el correo. Verifique configuración SMTP.";
-                }
+                // 6. No enviar correo aquí: se notificará en las etapas de aprobación
+                var mensajeFinal = "Usuario registrado exitosamente. Su nombre de usuario es: " + codigoUsuarioFinal +
+                                   ". Se enviará un correo cuando su designación entre en proceso de validación.";
                 if (!declaracionRegistrada)
                 {
                     mensajeFinal += " No se pudo registrar la aceptación de la declaración en este momento.";
@@ -354,7 +327,7 @@ namespace CapaPresentacion.Controllers
                 try
                 {
                     var tmpDao = new DeclaracionTemporalDAO();
-                    tmpDao.DeleteByEmail((correo ?? string.Empty).Trim().ToLower());
+                    tmpDao.MoveToHistorialByEmail((correo ?? string.Empty).Trim().ToLower());
                 }
                 catch
                 {
@@ -823,8 +796,27 @@ namespace CapaPresentacion.Controllers
         public ActionResult RevisarDesignaciones()
         {
             // Filtrar usuarios con documento de designación pendiente de revisión
-            var usuarios = UsuarioDAO.ObtenerUsuariosPendientesDesignacion(); // Debes implementar este método en tu DAO
+            var usuarios = UsuarioDAO.ObtenerUsuariosPendientesDesignacion();
+            if (User != null && User.IsInRole("JefaturaTecnica") &&
+                !User.IsInRole("Administrador") && !User.IsInRole("CoordinacionLegal"))
+            {
+                usuarios = usuarios
+                    .Where(u => string.Equals(u.EstadoDesignacionRT, "pendiente", StringComparison.OrdinalIgnoreCase))
+                    .ToList();
+            }
             return View("RevisarDesignaciones", usuarios);
+        }
+
+        [HttpGet]
+        public ActionResult ListaUsuarios()
+        {
+            if (User == null || !User.IsInRole("Administrador"))
+            {
+                return new HttpStatusCodeResult(403);
+            }
+
+            var usuarios = UsuarioDAO.ListarTodos();
+            return View("Index", usuarios);
         }
 
         [HttpGet]
@@ -866,7 +858,42 @@ namespace CapaPresentacion.Controllers
         }
 
         [HttpPost]
-        [Authorize(Roles = "Administrador,CoordinacionLegal,JefaturaTecnica")]
+        [Authorize(Roles = "JefaturaTecnica")]
+        [ValidateAntiForgeryToken]
+        public ActionResult AprobarDesignacionJefatura(int id)
+        {
+            var usuario = UsuarioDAO.ObtenerPorId(id);
+            if (usuario == null)
+            {
+                TempData["error"] = "Usuario no encontrado.";
+                return RedirectToAction("RevisarDesignaciones");
+            }
+
+            if (!string.Equals(usuario.EstadoDesignacionRT, "pendiente", StringComparison.OrdinalIgnoreCase))
+            {
+                TempData["error"] = "La designación no está en estado pendiente.";
+                return RedirectToAction("RevisarDesignaciones");
+            }
+
+            UsuarioDAO.MarcarDesignacionEnValidacion(id);
+
+            string mensajeCorreo;
+            var correoEnviado = UsuarioBL.NotificarDesignacionEnProceso(
+                usuario.Email,
+                usuario.NombreCompleto,
+                out mensajeCorreo
+            );
+
+            if (correoEnviado)
+                TempData["msg"] = "Aprobación de Jefatura registrada. Correo enviado al usuario.";
+            else
+                TempData["msg"] = "Aprobación de Jefatura registrada. " + (mensajeCorreo ?? "");
+
+            return RedirectToAction("RevisarDesignaciones");
+        }
+
+        [HttpPost]
+        [Authorize(Roles = "Administrador,CoordinacionLegal")]
         [ValidateAntiForgeryToken]
         public ActionResult AceptarDesignacion(int id)
         {
@@ -875,6 +902,12 @@ namespace CapaPresentacion.Controllers
             if (usuario == null)
             {
                 TempData["error"] = "Usuario no encontrado.";
+                return RedirectToAction("RevisarDesignaciones");
+            }
+
+            if (!string.Equals(usuario.EstadoDesignacionRT, "en_validacion", StringComparison.OrdinalIgnoreCase))
+            {
+                TempData["error"] = "La designación no está en proceso de validación.";
                 return RedirectToAction("RevisarDesignaciones");
             }
             // Generar constancia y obtener la ruta
@@ -909,6 +942,36 @@ namespace CapaPresentacion.Controllers
             }
             UsuarioDAO.RechazarDesignacionRT(id);
             TempData["msg"] = "Designación rechazada.";
+            return RedirectToAction("RevisarDesignaciones");
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public ActionResult Eliminar(int id)
+        {
+            if (User == null || !User.IsInRole("Administrador"))
+            {
+                return new HttpStatusCodeResult(403);
+            }
+
+            try
+            {
+                string mensaje;
+                var ok = UsuarioDAO.EliminarUsuario(id, out mensaje);
+                if (ok)
+                {
+                    TempData["msg"] = mensaje;
+                }
+                else
+                {
+                    TempData["error"] = mensaje;
+                }
+            }
+            catch (Exception ex)
+            {
+                TempData["error"] = "Error eliminando usuario: " + ex.Message;
+            }
+
             return RedirectToAction("RevisarDesignaciones");
         }
 

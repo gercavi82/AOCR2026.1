@@ -1,0 +1,43 @@
+@model CapaPresentacion.Models.EmailTemplates.OrdenAprobadaEmailVM
+<div style="font-family: Arial, sans-serif; color: #1f2a44;">
+    <h2 style="color: #145a32;">Orden de Recaudacion Aprobada</h2>
+    <p>Estimado/a @Html.Encode(Model.NombreContribuyente),</p>
+    <p>La revision financiera de su orden ha sido aprobada.</p>
+    <table style="border-collapse: collapse; width: 100%; margin-top: 12px;">
+        <tr>
+            <td style="padding: 6px 0;"><strong>Orden:</strong></td>
+            <td style="padding: 6px 0;">@Html.Encode(Model.NumeroOrden)</td>
+        </tr>
+        <tr>
+            <td style="padding: 6px 0;"><strong>Solicitud:</strong></td>
+            <td style="padding: 6px 0;">@Html.Encode(Model.NumeroSolicitud)</td>
+        </tr>
+        <tr>
+            <td style="padding: 6px 0;"><strong>RUC/Cedula:</strong></td>
+            <td style="padding: 6px 0;">@Html.Encode(Model.RucCedula)</td>
+        </tr>
+        <tr>
+            <td style="padding: 6px 0;"><strong>Total:</strong></td>
+            <td style="padding: 6px 0;">$@Model.Total.ToString("N2")</td>
+        </tr>
+        <tr>
+            <td style="padding: 6px 0;"><strong>Metodo de pago:</strong></td>
+            <td style="padding: 6px 0;">@Html.Encode(Model.MetodoPago)</td>
+        </tr>
+        <tr>
+            <td style="padding: 6px 0;"><strong>Comprobante:</strong></td>
+            <td style="padding: 6px 0;">@Html.Encode(Model.NumeroComprobante)</td>
+        </tr>
+        <tr>
+            <td style="padding: 6px 0;"><strong>Fecha aprobacion:</strong></td>
+            <td style="padding: 6px 0;">@Model.FechaAprobacion.ToString("dd/MM/yyyy HH:mm")</td>
+        </tr>
+    </table>
+
+    <p style="margin-top: 12px;">
+        <strong>Observaciones:</strong>
+        @Html.Encode(string.IsNullOrWhiteSpace(Model.Observaciones) ? "Sin observaciones." : Model.Observaciones)
+    </p>
+    <p>Adjuntamos la factura correspondiente a su orden.</p>
+    <p>Saludos,<br />Sistema AOCR</p>
+</div>

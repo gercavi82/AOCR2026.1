@@ -373,24 +373,17 @@ namespace CapaDatos.DAOs
             }
 
             var sql = @"INSERT INTO aocr_or_orden_detalle 
-                        (orden_id, concepto_id, concepto_codigo, concepto_nombre, descripcion, 
-                         cantidad, valor_unitario, porcentaje_admin, subtotal, admin, total_linea)
+                        (orden_id, concepto_id, concepto_nombre, cantidad, valor_unitario, total_linea)
                         VALUES 
-                        (@ordenId, @conceptoId, @conceptoCodigo, @conceptoNombre, @descripcion,
-                         @cantidad, @valorUnitario, @porcentajeAdmin, @subtotal, @admin, @totalLinea)";
+                        (@ordenId, @conceptoId, @conceptoNombre, @cantidad, @valorUnitario, @totalLinea)";
 
             using (var cmd = new NpgsqlCommand(sql, conn))
             {
                 cmd.Parameters.AddWithValue("@ordenId", detalle.OrdenId);
                 cmd.Parameters.AddWithValue("@conceptoId", (object)detalle.ConceptoId ?? DBNull.Value);
-                cmd.Parameters.AddWithValue("@conceptoCodigo", (object)detalle.ConceptoCodigo ?? DBNull.Value);
                 cmd.Parameters.AddWithValue("@conceptoNombre", (object)detalle.ConceptoNombre ?? DBNull.Value);
-                cmd.Parameters.AddWithValue("@descripcion", (object)detalle.Descripcion ?? DBNull.Value);
                 cmd.Parameters.AddWithValue("@cantidad", detalle.Cantidad);
                 cmd.Parameters.AddWithValue("@valorUnitario", detalle.ValorUnitario);
-                cmd.Parameters.AddWithValue("@porcentajeAdmin", detalle.PorcentajeAdmin); // NOT NULL en DB
-                cmd.Parameters.AddWithValue("@subtotal", detalle.Subtotal);
-                cmd.Parameters.AddWithValue("@admin", detalle.Admin);
                 cmd.Parameters.AddWithValue("@totalLinea", detalle.TotalLinea);
 
                 cmd.ExecuteNonQuery();
@@ -608,10 +601,48 @@ namespace CapaDatos.DAOs
         #region Métodos Privados de Mapeo
 
         /// <summary>
+        /// Helper method to get all column names from reader (case-insensitive)
+        /// </summary>
+        private static HashSet<string> GetColumnSet(IDataReader reader)
+        {
+            var cols = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            try
+            {
+                var schema = reader.GetSchemaTable();
+                if (schema == null)
+                {
+                    return cols;
+                }
+
+                foreach (DataRow row in schema.Rows)
+                {
+                    var name = row["ColumnName"]?.ToString();
+                    if (!string.IsNullOrWhiteSpace(name))
+                    {
+                        cols.Add(name);
+                    }
+                }
+            }
+            catch
+            {
+                // Si falla, devolvemos set vacío y los getters usarán valores por defecto
+            }
+            return cols;
+        }
+
+        private static bool HasColumn(HashSet<string> cols, string columnName)
+        {
+            return cols != null && cols.Contains(columnName);
+        }
+
+        /// <summary>
         /// Helper method to safely get int32 value from reader, handling both integer and string types
         /// </summary>
-        private int GetSafeInt32(IDataReader reader, string columnName)
+        private int GetSafeInt32(IDataReader reader, HashSet<string> cols, string columnName)
         {
+            if (!HasColumn(cols, columnName))
+                return 0;
+
             var ordinal = reader.GetOrdinal(columnName);
             if (reader.IsDBNull(ordinal))
                 return 0;
@@ -628,8 +659,11 @@ namespace CapaDatos.DAOs
         /// <summary>
         /// Helper method to safely get nullable int value from reader, handling both integer and string types
         /// </summary>
-        private int? GetSafeNullableInt(IDataReader reader, string columnName)
+        private int? GetSafeNullableInt(IDataReader reader, HashSet<string> cols, string columnName)
         {
+            if (!HasColumn(cols, columnName))
+                return null;
+
             var ordinal = reader.GetOrdinal(columnName);
             if (reader.IsDBNull(ordinal))
                 return null;
@@ -643,46 +677,70 @@ namespace CapaDatos.DAOs
                 return Convert.ToInt32(reader.GetValue(ordinal));
         }
 
+        private static string GetSafeString(IDataReader reader, HashSet<string> cols, string columnName)
+        {
+            if (!HasColumn(cols, columnName))
+                return null;
+
+            var ordinal = reader.GetOrdinal(columnName);
+            return reader.IsDBNull(ordinal) ? null : reader.GetString(ordinal);
+        }
+
+        private static decimal GetSafeDecimal(IDataReader reader, HashSet<string> cols, string columnName, decimal defaultValue = 0m)
+        {
+            if (!HasColumn(cols, columnName))
+                return defaultValue;
+
+            var ordinal = reader.GetOrdinal(columnName);
+            return reader.IsDBNull(ordinal) ? defaultValue : Convert.ToDecimal(reader.GetValue(ordinal));
+        }
+
         /// <summary>
         /// Mapea un IDataReader a una entidad OrdenRecaudacion
         /// </summary>
         private OrdenRecaudacion MapearOrden(IDataReader reader)
         {
-            var numeroOrden = reader.IsDBNull(reader.GetOrdinal("numero_orden")) ? null : reader.GetString(reader.GetOrdinal("numero_orden"));
+            var cols = GetColumnSet(reader);
+            var numeroOrden = GetSafeString(reader, cols, "numero_orden");
             System.Diagnostics.Debug.WriteLine($"OrdenRecaudacionDAO.MapearOrden: Mapeando orden con numero_orden = {numeroOrden}");
             
             var orden = new OrdenRecaudacion
             {
-                Id = GetSafeInt32(reader, "id"),
-                CodigoUsuario = GetSafeNullableInt(reader, "codigo_usuario"),
-                CodigoSolicitud = GetSafeNullableInt(reader, "codigo_solicitud"),
+                Id = GetSafeInt32(reader, cols, "id"),
+                CodigoUsuario = GetSafeNullableInt(reader, cols, "codigo_usuario"),
+                CodigoSolicitud = GetSafeNullableInt(reader, cols, "codigo_solicitud"),
                 NumeroOrden = numeroOrden,
-                FechaCreacion = reader.IsDBNull(reader.GetOrdinal("fecha_creacion")) ? DateTime.Now : reader.GetDateTime(reader.GetOrdinal("fecha_creacion")),
-                Estado = reader.IsDBNull(reader.GetOrdinal("estado")) ? EstadoOrden.Borrador : reader.GetString(reader.GetOrdinal("estado")),
-                Observacion = reader.IsDBNull(reader.GetOrdinal("observacion")) ? null : reader.GetString(reader.GetOrdinal("observacion")),
-                Subtotal = reader.IsDBNull(reader.GetOrdinal("subtotal")) ? 0m : reader.GetDecimal(reader.GetOrdinal("subtotal")),
-                Admin = reader.IsDBNull(reader.GetOrdinal("admin")) ? 0m : reader.GetDecimal(reader.GetOrdinal("admin")),
-                Total = reader.IsDBNull(reader.GetOrdinal("total")) ? 0m : reader.GetDecimal(reader.GetOrdinal("total")),
-                LugarEmision = reader.IsDBNull(reader.GetOrdinal("lugar_emision")) ? null : reader.GetString(reader.GetOrdinal("lugar_emision")),
-                Compania = reader.IsDBNull(reader.GetOrdinal("compania")) ? null : reader.GetString(reader.GetOrdinal("compania")),
-                RucCedula = reader.IsDBNull(reader.GetOrdinal("ruc_cedula")) ? null : reader.GetString(reader.GetOrdinal("ruc_cedula")),
-                Correo = reader.IsDBNull(reader.GetOrdinal("correo")) ? null : reader.GetString(reader.GetOrdinal("correo")),
-                Telefono = reader.IsDBNull(reader.GetOrdinal("telefono")) ? null : reader.GetString(reader.GetOrdinal("telefono")),
-                ConceptoId = GetSafeNullableInt(reader, "concepto_id")
+                FechaCreacion = HasColumn(cols, "fecha_creacion") && !reader.IsDBNull(reader.GetOrdinal("fecha_creacion"))
+                    ? reader.GetDateTime(reader.GetOrdinal("fecha_creacion"))
+                    : DateTime.Now,
+                Estado = GetSafeString(reader, cols, "estado") ?? EstadoOrden.Borrador,
+                Observacion = GetSafeString(reader, cols, "observacion"),
+                Subtotal = GetSafeDecimal(reader, cols, "subtotal", 0m),
+                Admin = GetSafeDecimal(reader, cols, "admin", 0m),
+                Total = GetSafeDecimal(reader, cols, "total", 0m),
+                LugarEmision = GetSafeString(reader, cols, "lugar_emision"),
+                Compania = GetSafeString(reader, cols, "compania"),
+                RucCedula = GetSafeString(reader, cols, "ruc_cedula"),
+                Correo = GetSafeString(reader, cols, "correo"),
+                Telefono = GetSafeString(reader, cols, "telefono"),
+                ConceptoId = GetSafeNullableInt(reader, cols, "concepto_id")
             };
 
-            // Intentar obtener el nombre del concepto si está en el resultado
+            // Intentar obtener el nombre del concepto si est� en el resultado
             try
             {
-                var conceptoNombreOrdinal = reader.GetOrdinal("concepto_nombre");
-                if (!reader.IsDBNull(conceptoNombreOrdinal))
+                if (HasColumn(cols, "concepto_nombre"))
                 {
-                    orden.ConceptoNombre = reader.GetString(conceptoNombreOrdinal);
+                    var conceptoNombreOrdinal = reader.GetOrdinal("concepto_nombre");
+                    if (!reader.IsDBNull(conceptoNombreOrdinal))
+                    {
+                        orden.ConceptoNombre = reader.GetString(conceptoNombreOrdinal);
+                    }
                 }
             }
             catch
             {
-                // La columna concepto_nombre no está en el resultado, ignorar
+                // La columna concepto_nombre no est� en el resultado, ignorar
             }
 
             return orden;
@@ -693,20 +751,21 @@ namespace CapaDatos.DAOs
         /// </summary>
         private DetalleOrdenEnt MapearDetalle(IDataReader reader)
         {
+            var cols = GetColumnSet(reader);
             return new DetalleOrdenEnt
             {
-                Id = reader.GetInt32(reader.GetOrdinal("id")),
-                OrdenId = reader.GetInt32(reader.GetOrdinal("orden_id")),
-                ConceptoId = reader.IsDBNull(reader.GetOrdinal("concepto_id")) ? (int?)null : reader.GetInt32(reader.GetOrdinal("concepto_id")),
-                ConceptoCodigo = reader.IsDBNull(reader.GetOrdinal("concepto_codigo")) ? null : reader.GetString(reader.GetOrdinal("concepto_codigo")),
-                ConceptoNombre = reader.IsDBNull(reader.GetOrdinal("concepto_nombre")) ? null : reader.GetString(reader.GetOrdinal("concepto_nombre")),
-                Descripcion = reader.IsDBNull(reader.GetOrdinal("descripcion")) ? null : reader.GetString(reader.GetOrdinal("descripcion")),
-                Cantidad = reader.GetInt32(reader.GetOrdinal("cantidad")),
-                ValorUnitario = reader.GetDecimal(reader.GetOrdinal("valor_unitario")),
-                PorcentajeAdmin = reader.IsDBNull(reader.GetOrdinal("porcentaje_admin")) ? 0m : reader.GetDecimal(reader.GetOrdinal("porcentaje_admin")),
-                Subtotal = reader.GetDecimal(reader.GetOrdinal("subtotal")),
-                Admin = reader.IsDBNull(reader.GetOrdinal("admin")) ? 0m : reader.GetDecimal(reader.GetOrdinal("admin")),
-                TotalLinea = reader.GetDecimal(reader.GetOrdinal("total_linea"))
+                Id = GetSafeInt32(reader, cols, "id"),
+                OrdenId = GetSafeInt32(reader, cols, "orden_id"),
+                ConceptoId = GetSafeNullableInt(reader, cols, "concepto_id"),
+                ConceptoCodigo = GetSafeString(reader, cols, "concepto_codigo"),
+                ConceptoNombre = GetSafeString(reader, cols, "concepto_nombre"),
+                Descripcion = GetSafeString(reader, cols, "descripcion"),
+                Cantidad = GetSafeInt32(reader, cols, "cantidad"),
+                ValorUnitario = GetSafeDecimal(reader, cols, "valor_unitario", 0m),
+                PorcentajeAdmin = GetSafeDecimal(reader, cols, "porcentaje_admin", 0m),
+                Subtotal = GetSafeDecimal(reader, cols, "subtotal", 0m),
+                Admin = GetSafeDecimal(reader, cols, "admin", 0m),
+                TotalLinea = GetSafeDecimal(reader, cols, "total_linea", 0m)
             };
         }
 
@@ -1008,7 +1067,7 @@ namespace CapaDatos.DAOs
             return ordenes.Select(MapearOrdenModel).ToList();
         }
 
-        public List<OrdenRecaudacion> ListarFiltrado(int? codigoUsuario, string estado, DateTime? fechaDesde, DateTime? fechaHasta, string numeroOrden)
+        public List<OrdenRecaudacion> ListarFiltrado(int? codigoUsuario, string estado, DateTime? fechaDesde, DateTime? fechaHasta, string numeroOrden, string solicitante)
         {
             var ordenes = new List<OrdenRecaudacion>();
 
@@ -1034,6 +1093,8 @@ namespace CapaDatos.DAOs
                         filtros.Add("o.fecha_creacion <= @fechaHasta");
                     if (!string.IsNullOrWhiteSpace(numeroOrden))
                         filtros.Add("o.numero_orden ILIKE @numeroOrden");
+                    if (!string.IsNullOrWhiteSpace(solicitante))
+                        filtros.Add("(o.compania ILIKE @solicitante OR o.ruc_cedula ILIKE @solicitante OR o.codigo_usuario::text ILIKE @solicitante)");
 
                     if (filtros.Count > 0)
                         sql += " AND " + string.Join(" AND ", filtros);
@@ -1052,6 +1113,8 @@ namespace CapaDatos.DAOs
                             cmd.Parameters.AddWithValue("@fechaHasta", fechaHasta.Value);
                         if (!string.IsNullOrWhiteSpace(numeroOrden))
                             cmd.Parameters.AddWithValue("@numeroOrden", "%" + numeroOrden.Trim() + "%");
+                        if (!string.IsNullOrWhiteSpace(solicitante))
+                            cmd.Parameters.AddWithValue("@solicitante", "%" + solicitante.Trim() + "%");
 
                         using (var reader = cmd.ExecuteReader())
                         {
@@ -1070,6 +1133,11 @@ namespace CapaDatos.DAOs
             }
 
             return ordenes;
+        }
+
+        public List<OrdenRecaudacion> ListarFiltrado(int? codigoUsuario, string estado, DateTime? fechaDesde, DateTime? fechaHasta, string numeroOrden)
+        {
+            return ListarFiltrado(codigoUsuario, estado, fechaDesde, fechaHasta, numeroOrden, null);
         }
 
 
@@ -1328,7 +1396,7 @@ namespace CapaDatos.DAOs
 
                     using (var cmd = new NpgsqlCommand(sql, conn))
                     {
-                        cmd.Parameters.AddWithValue("@codigoSolicitud", codigoSolicitud.ToString());
+                        cmd.Parameters.AddWithValue("@codigoSolicitud", codigoSolicitud);
                         cmd.Parameters.AddWithValue("@id", ordenId);
                         return cmd.ExecuteNonQuery() > 0;
                     }
@@ -1535,12 +1603,20 @@ namespace CapaDatos.DAOs
                     conn.Open();
                     using (var tx = conn.BeginTransaction())
                     {
-                        // Determinar id de pago si no fue proporcionado: obtener ultimo pago por orden
-                        
+                        // Determinar codigo de pago si no fue proporcionado: obtener ultimo pago por orden
                         int targetPagoId = pagoId ?? 0;
                         if (targetPagoId == 0)
                         {
-                            var sqlGet = @"SELECT id FROM aocr_tbpago WHERE codigo_solicitud = (SELECT COALESCE(NULLIF(codigo_solicitud, ''), id::text)::int FROM aocr_or_orden WHERE id = @ordenId) ORDER BY fecha_pago DESC LIMIT 1";
+                            var sqlGet = @"
+                                SELECT codigo_pago
+                                FROM aocr_tbpago
+                                WHERE codigo_solicitud = (
+                                    SELECT COALESCE(NULLIF(codigo_solicitud, ''), id::text)::int
+                                    FROM aocr_or_orden
+                                    WHERE id = @ordenId
+                                )
+                                ORDER BY fecha_pago DESC, codigo_pago DESC
+                                LIMIT 1";
                             using (var cmdGet = new NpgsqlCommand(sqlGet, conn, tx))
                             {
                                 cmdGet.Parameters.AddWithValue("@ordenId", ordenId);
@@ -1556,7 +1632,13 @@ namespace CapaDatos.DAOs
                             return false;
                         }
 
-                        var sqlUpdatePago = "UPDATE aocr_tbpago SET estado = @estado, fecha_validacion = @fecha, validado_por = @usuario, observaciones = @obs WHERE id = @pagoId";
+                        var sqlUpdatePago = @"
+                            UPDATE aocr_tbpago
+                            SET estado = @estado,
+                                fecha_validacion = @fecha,
+                                validado_por = @usuario,
+                                observaciones = @obs
+                            WHERE codigo_pago = @pagoId";
                         using (var cmdUpd = new NpgsqlCommand(sqlUpdatePago, conn, tx))
                         {
                             cmdUpd.Parameters.AddWithValue("@estado", estadoPago);
@@ -2253,6 +2335,11 @@ namespace CapaDatos.DAOs
         #endregion
     }
 }
+
+
+
+
+
 
 
 

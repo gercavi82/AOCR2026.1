@@ -109,6 +109,10 @@ namespace CapaNegocio.Helpers
             {
                 return HttpContext.Current.Server.MapPath(storedPath);
             }
+            if (Path.IsPathRooted(storedPath))
+            {
+                return storedPath;
+            }
 
             var baseDir = GetPhysicalBasePath();
             return Path.Combine(baseDir, storedPath.TrimStart('/', '\\'));
@@ -158,6 +162,11 @@ namespace CapaNegocio.Helpers
         private static string BuildReturnPath(string folderRelative, string storedName)
         {
             var normalizedFolder = NormalizeFolder(folderRelative);
+            if (HasExternalStorageRoot())
+            {
+                return Path.Combine(normalizedFolder, storedName).Replace("\\", "/");
+            }
+
             if (!string.IsNullOrWhiteSpace(BasePathStorage) && BasePathStorage.StartsWith("~"))
             {
                 var relative = Path.Combine(BasePathStorage.TrimEnd('~', '/'), normalizedFolder, storedName).Replace("\\", "/");
@@ -165,6 +174,12 @@ namespace CapaNegocio.Helpers
             }
 
             return Path.Combine(normalizedFolder, storedName).Replace("\\", "/");
+        }
+
+        private static bool HasExternalStorageRoot()
+        {
+            var raw = ConfigurationManager.AppSettings["RT_FileStorageRoot"];
+            return !string.IsNullOrWhiteSpace(raw) && Path.IsPathRooted(raw.Trim());
         }
     }
 }

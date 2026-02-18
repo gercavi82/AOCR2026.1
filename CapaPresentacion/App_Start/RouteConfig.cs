@@ -8,6 +8,7 @@ namespace CapaPresentacion
         public static void RegisterRoutes(RouteCollection routes)
         {
             routes.IgnoreRoute("{resource}.axd/{*pathInfo}");
+            routes.IgnoreRoute(".well-known/{*pathInfo}");
 
             // RUTA ESPECÍFICA para el Dashboard - debe ir ANTES de la ruta por defecto
             routes.MapRoute(

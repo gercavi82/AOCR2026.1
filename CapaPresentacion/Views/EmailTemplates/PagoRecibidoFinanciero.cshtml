@@ -1,0 +1,37 @@
+@model CapaPresentacion.Models.EmailTemplates.PagoRecibidoFinancieroEmailVM
+<div style="font-family: Arial, sans-serif; color: #1f2a44;">
+    <h2 style="color: #154360;">Pago recibido - Revision financiera</h2>
+    <p>Se ha recibido un pago que requiere revision financiera.</p>
+    <table style="border-collapse: collapse; width: 100%; margin-top: 12px;">
+        <tr>
+            <td style="padding: 6px 0;"><strong>Orden:</strong></td>
+            <td style="padding: 6px 0;">@Html.Encode(Model.NumeroOrden)</td>
+        </tr>
+        <tr>
+            <td style="padding: 6px 0;"><strong>Solicitud:</strong></td>
+            <td style="padding: 6px 0;">@Html.Encode(Model.NumeroSolicitud)</td>
+        </tr>
+        <tr>
+            <td style="padding: 6px 0;"><strong>Contribuyente:</strong></td>
+            <td style="padding: 6px 0;">@Html.Encode(Model.NombreContribuyente)</td>
+        </tr>
+        <tr>
+            <td style="padding: 6px 0;"><strong>Monto:</strong></td>
+            <td style="padding: 6px 0;">$@Model.Monto.ToString("N2")</td>
+        </tr>
+        <tr>
+            <td style="padding: 6px 0;"><strong>Metodo de pago:</strong></td>
+            <td style="padding: 6px 0;">@Html.Encode(Model.MetodoPago)</td>
+        </tr>
+        <tr>
+            <td style="padding: 6px 0;"><strong>Comprobante:</strong></td>
+            <td style="padding: 6px 0;">@Html.Encode(Model.NumeroComprobante)</td>
+        </tr>
+        <tr>
+            <td style="padding: 6px 0;"><strong>Fecha pago:</strong></td>
+            <td style="padding: 6px 0;">@Model.FechaPago.ToString("dd/MM/yyyy HH:mm")</td>
+        </tr>
+    </table>
+    <p style="margin-top: 12px;">El comprobante se adjunta a este correo cuando esta disponible.</p>
+    <p>Saludos,<br />Sistema AOCR</p>
+</div>
