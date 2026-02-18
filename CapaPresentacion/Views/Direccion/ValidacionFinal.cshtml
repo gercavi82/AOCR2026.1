@@ -118,7 +118,8 @@
             <div class="form-group">
                 <label class="col-md-3 control-label">Observaciones del Director</label>
                 <div class="col-md-9">
-                    <textarea name="observaciones" class="form-control" rows="5" placeholder="Ingrese observaciones o consideraciones adicionales..."></textarea>
+                    <textarea id="observaciones" name="observaciones" class="form-control" rows="5" placeholder="Ingrese observaciones o consideraciones adicionales..."></textarea>
+                    <small class="text-muted">Si rechaza, debe ingresar al menos 10 caracteres.</small>
                 </div>
             </div>
 
@@ -159,4 +160,22 @@
         </div>
     </div>
 }
+
+<script>
+    (function () {
+        var form = document.querySelector('form');
+        if (!form) return;
+        form.addEventListener('submit', function (e) {
+            var reject = document.querySelector('input[name="aprobada"][value="false"]');
+            var obs = document.getElementById('observaciones');
+            if (reject && reject.checked) {
+                var txt = (obs && obs.value ? obs.value.trim() : '');
+                if (txt.length < 10) {
+                    e.preventDefault();
+                    alert('Para rechazar debe ingresar observaciones de al menos 10 caracteres.');
+                }
+            }
+        });
+    })();
+</script>
 

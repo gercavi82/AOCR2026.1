@@ -65,7 +65,7 @@ namespace CapaDatos.Infrastructure
                 }
                 catch (NpgsqlException ex)
                 {
-                    throw WrapDatabaseException(ex);
+                    throw EnrichDatabaseException(WrapDatabaseException(ex), ex);
                 }
             }
         }
@@ -84,7 +84,7 @@ namespace CapaDatos.Infrastructure
                 }
                 catch (NpgsqlException ex)
                 {
-                    throw WrapDatabaseException(ex);
+                    throw EnrichDatabaseException(WrapDatabaseException(ex), ex);
                 }
             }
         }
@@ -119,7 +119,8 @@ namespace CapaDatos.Infrastructure
 
                         if (ex is NpgsqlException)
                         {
-                            throw WrapDatabaseException((NpgsqlException)ex);
+                            var pg = (NpgsqlException)ex;
+                            throw EnrichDatabaseException(WrapDatabaseException(pg), pg);
                         }
                         throw;
                     }
@@ -335,7 +336,44 @@ namespace CapaDatos.Infrastructure
                 }
             }
 
-            return new DataAccessException(userMessage, errorCode, ex);
+            var diagnosticMessage = string.Format("{0} | DB: {1}", userMessage, ex.Message);
+            return new DataAccessException(diagnosticMessage, errorCode, ex);
+        }
+
+        private DataAccessException EnrichDatabaseException(DataAccessException wrapped, NpgsqlException ex)
+        {
+            var sqlState = TryGetSqlState(ex);
+            var root = ex.GetBaseException() != null ? ex.GetBaseException().Message : ex.Message;
+
+            wrapped.Data["SqlState"] = string.IsNullOrWhiteSpace(sqlState) ? "N/A" : sqlState;
+            wrapped.Data["DbMessage"] = ex.Message;
+            wrapped.Data["RootCause"] = root;
+
+            System.Diagnostics.Trace.TraceError(
+                "DB_ERROR code={0} sqlState={1} msg={2} root={3}",
+                wrapped.ErrorCode,
+                wrapped.Data["SqlState"],
+                ex.Message,
+                root);
+
+            return wrapped;
+        }
+
+        private string TryGetSqlState(NpgsqlException ex)
+        {
+            try
+            {
+                if (ex.Data != null && ex.Data.Contains("SqlState"))
+                {
+                    return ex.Data["SqlState"] as string;
+                }
+            }
+            catch
+            {
+                // Ignorar: usar N/A si no se puede leer SqlState.
+            }
+
+            return null;
         }
 
         #endregion

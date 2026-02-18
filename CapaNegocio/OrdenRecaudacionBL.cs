@@ -5,6 +5,7 @@ using System.Linq;
 using CapaDatos.DAOs;
 using CapaDatos.Entidades;
 using CapaDatos.Services;
+using CapaNegocio.Helpers;
 
 namespace CapaNegocio
 {
@@ -15,6 +16,13 @@ namespace CapaNegocio
     public class OrdenRecaudacionBL
     {
         private readonly OrdenRecaudacionDAO _dao;
+
+        public class GenerarOrdenResult
+        {
+            public bool Success { get; set; }
+            public int OrdenId { get; set; }
+            public string Error { get; set; }
+        }
 
         // Constructor por defecto - usa configuración segura
         public OrdenRecaudacionBL()
@@ -74,6 +82,47 @@ namespace CapaNegocio
         public async Task<bool> CambiarEstadoAsync(int id, string nuevoEstado, string observacion = null)
         {
             return await _dao.ActualizarEstadoAsync(id, nuevoEstado, "SYSTEM");
+        }
+
+        public async Task<GenerarOrdenResult> GenerarOrdenEnUnPasoAsync(OrdenRecaudacion orden, string rolOrigen = "Solicitante")
+        {
+            if (orden == null)
+            {
+                return new GenerarOrdenResult { Success = false, Error = "La orden es nula." };
+            }
+
+            var emailDestino = string.IsNullOrWhiteSpace(orden.Correo) ? orden.EmailContribuyente : orden.Correo;
+            var asunto = string.Format("Orden de Recaudación generada - {0}", orden.NumeroOrden ?? "N/A");
+            var cuerpo = EmailTemplateBuilder.OrdenGenerada(
+                orden.NombreContribuyente ?? orden.Compania,
+                orden.NumeroOrden,
+                orden.CodigoSolicitud.HasValue ? orden.CodigoSolicitud.Value.ToString() : "N/A",
+                DateTime.Now,
+                rolOrigen,
+                orden.Total ?? 0m,
+                null);
+            var correlationId = Guid.NewGuid().ToString("N").Substring(0, 12);
+
+            return await Task.Run(() =>
+            {
+                int ordenId;
+                string err;
+                var ok = _dao.CrearOrdenGeneradaConCorreoTransaccional(
+                    orden,
+                    emailDestino,
+                    asunto,
+                    cuerpo,
+                    correlationId,
+                    out ordenId,
+                    out err);
+
+                return new GenerarOrdenResult
+                {
+                    Success = ok,
+                    OrdenId = ordenId,
+                    Error = err
+                };
+            });
         }
 
         // ============================================================

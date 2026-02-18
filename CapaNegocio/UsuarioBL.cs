@@ -148,8 +148,8 @@ namespace CapaNegocio
             var cuerpo = $@"
                 <div style='font-family:Arial,sans-serif; font-size:14px; color:#222;'>
                     <p>Estimado(a) {HttpUtility.HtmlEncode(nombreCompleto ?? "")},</p>
-                    <p>Su designación como Responsable Técnico (RT) ha sido <strong>aprobada por Jefatura Técnica</strong>.</p>
-                    <p>Actualmente se encuentra <strong>en proceso de aceptación y validación final</strong>.</p>
+                    <p>Su designación como Responsable Técnico (RT) ha sido <strong>enviada por Jefatura Técnica</strong>.</p>
+                    <p>Actualmente se encuentra en proceso de validación y aceptación final.</p>
                     <p>Recibirá un nuevo correo cuando el proceso finalice.</p>
                     <hr />
                     <small>Este es un correo automático, por favor no responder.</small>

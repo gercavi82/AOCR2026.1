@@ -1,6 +1,7 @@
 using System;
 using System.Net;
 using System.Web;
+using System.Web.Compilation;
 using System.Web.Mvc;
 using CapaNegocio.Services;
 using CapaDatos.Infrastructure;
@@ -50,6 +51,7 @@ namespace CapaPresentacion.Filters
 
             // Determinar código de error y mensaje para usuario
             var errorInfo = ClassifyException(exception);
+            var additionalData = BuildAdditionalErrorData(filterContext, exception);
 
             // Log estructurado del error
             _logger.LogError(exception, new LogContext
@@ -60,7 +62,8 @@ namespace CapaPresentacion.Filters
                 NumeroOrden = numeroOrden,
                 CodigoSolicitud = codigoSolicitud,
                 ErrorCode = errorInfo.ErrorCode,
-                UserId = filterContext.HttpContext?.User?.Identity?.Name
+                UserId = filterContext.HttpContext?.User?.Identity?.Name,
+                AdditionalData = additionalData
             });
 
             // Preparar respuesta según tipo de request
@@ -116,6 +119,17 @@ namespace CapaPresentacion.Filters
                 }
             }
 
+            if (ex is HttpParseException)
+            {
+                return new ErrorInfo
+                {
+                    StatusCode = HttpStatusCode.InternalServerError,
+                    ErrorCode = "RAZOR_PARSE_ERROR",
+                    UserMessage = "Error de compilación de vista. Revise el log con correlationId para archivo y línea.",
+                    ViewName = "Error"
+                };
+            }
+
             if (ex is ArgumentException || ex is InvalidOperationException)
             {
                 return new ErrorInfo
@@ -157,10 +171,14 @@ namespace CapaPresentacion.Filters
             {
                 Data = new
                 {
-                    success = false,
-                    error = errorInfo.UserMessage,
-                    errorCode = errorInfo.ErrorCode,
-                    correlationId = correlationId
+                    ok = false,
+                    message = errorInfo.UserMessage,
+                    data = new
+                    {
+                        errorCode = errorInfo.ErrorCode,
+                        status = (int)errorInfo.StatusCode
+                    },
+                    traceId = correlationId
                 },
                 JsonRequestBehavior = JsonRequestBehavior.AllowGet
             };
@@ -207,6 +225,47 @@ namespace CapaPresentacion.Filters
             }
 
             return false;
+        }
+
+        private System.Collections.Generic.Dictionary<string, object> BuildAdditionalErrorData(ExceptionContext filterContext, Exception exception)
+        {
+            var data = new System.Collections.Generic.Dictionary<string, object>
+            {
+                { "ExceptionType", exception?.GetType().FullName ?? "N/A" },
+                { "ExceptionMessage", exception?.Message ?? "N/A" },
+                { "Url", filterContext?.HttpContext?.Request?.RawUrl ?? "N/A" },
+                { "Method", filterContext?.HttpContext?.Request?.HttpMethod ?? "N/A" }
+            };
+
+            if (exception is HttpParseException parseEx)
+            {
+                data["Parse.FileName"] = parseEx.FileName ?? "N/A";
+                data["Parse.VirtualPath"] = parseEx.VirtualPath ?? "N/A";
+                data["Parse.Line"] = parseEx.Line;
+
+                try
+                {
+                    if (parseEx.ParserErrors != null && parseEx.ParserErrors.Count > 0)
+                    {
+                        var max = Math.Min(5, parseEx.ParserErrors.Count);
+                        for (var i = 0; i < max; i++)
+                        {
+                            var pe = parseEx.ParserErrors[i];
+                            data["ParseError." + i] = string.Format(
+                                "Line={0}; VirtualPath={1}; Message={2}",
+                                pe.Line,
+                                pe.VirtualPath ?? "N/A",
+                                pe.ErrorText ?? "N/A");
+                        }
+                    }
+                }
+                catch
+                {
+                    // No bloquear logging por error de parser errors.
+                }
+            }
+
+            return data;
         }
 
         private class ErrorInfo

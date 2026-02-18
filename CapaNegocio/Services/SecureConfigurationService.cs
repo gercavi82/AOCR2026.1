@@ -61,7 +61,23 @@ namespace CapaNegocio.Services
 
             // 2. Fallback a Web.config
             var configValue = ConfigurationManager.ConnectionStrings[name];
-            return configValue != null ? configValue.ConnectionString : null;
+            if (configValue != null && !string.IsNullOrWhiteSpace(configValue.ConnectionString))
+            {
+                return configValue.ConnectionString;
+            }
+
+            // 3. Fallback entre nombres usados en AOCR
+            if (string.Equals(name, "PostgreSQL", StringComparison.OrdinalIgnoreCase))
+            {
+                return ConfigurationManager.ConnectionStrings["AOCRConnection"]?.ConnectionString;
+            }
+
+            if (string.Equals(name, "AOCRConnection", StringComparison.OrdinalIgnoreCase))
+            {
+                return ConfigurationManager.ConnectionStrings["PostgreSQL"]?.ConnectionString;
+            }
+
+            return null;
         }
 
         public string GetAppSetting(string key)

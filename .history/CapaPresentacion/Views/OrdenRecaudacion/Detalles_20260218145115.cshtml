@@ -1,0 +1,739 @@
+﻿@inherits System.Web.Mvc.WebViewPage<CapaDatos.Models.OrdenRecaudacionModel>
+@using CapaModelo
+@using System.Web.Mvc
+@using System.Web.Mvc.Html
+@using System.Globalization
+
+@{
+    ViewBag.Title = "Detalles de Orden";
+
+    // Crear variables para facilitar el acceso
+    var orden = Model;
+    var estado = (orden.Estado ?? "").Trim().ToUpperInvariant();
+    var puedeEditar = estado == "BORRADOR";
+    var puedeGenerar = estado == "BORRADOR" && orden.Total > 0;
+    int solicitudId = 0;
+    int.TryParse(orden.CodigoSolicitud ?? "", out solicitudId);
+    var tieneSolicitudValida = solicitudId > 0;
+    var puedeSubirComprobante = (estado == "PENDIENTE" || estado == "GENERADA") && tieneSolicitudValida;
+    var puedeAnular = estado != "ANULADA" && estado != "FACTURADA" && estado != "COMPLETADA";
+
+    // Obtener documentos y pagos desde ViewBag
+    var documentos = ViewBag.Documentos as List<CapaDatos.Models.DocumentoModel> ?? new List<CapaDatos.Models.DocumentoModel>();
+    var pagos = ViewBag.Pagos as List<CapaDatos.Models.PagoModel> ?? new List<CapaDatos.Models.PagoModel>();
+    var culturaEsEc = new CultureInfo("es-EC");
+
+    // Calcular total pagado
+    var totalPagado = pagos.Where(p => (p.Estado ?? "").Equals("APROBADO", System.StringComparison.OrdinalIgnoreCase)).Sum(p => p.Monto);
+    var saldoPendiente = orden.Total - totalPagado;
+    var tieneSaldoPendiente = saldoPendiente > 0 && estado != "FACTURADA" && estado != "COMPLETADA";
+    var tienePagoAprobado = orden.Total > 0 && totalPagado >= orden.Total;
+    var facturaGenerada = estado == "FACTURADA" || estado == "COMPLETADA";
+    var ordenCompleta = tieneSolicitudValida && tienePagoAprobado && facturaGenerada && !tieneSaldoPendiente;
+// ...existing code...
+
+}
+
+<div class="row">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header bg-dark text-white">
+                <div class="d-flex justify-content-between align-items-center">
+                    <h3 class="card-title mb-0">
+                        <i class="fas fa-file-invoice-dollar me-2"></i>Orden: @orden.NumeroOrden
+                    </h3>
+                    <div class="btn-group">
+                        <a href="@Url.Action("Index")" class="btn btn-light btn-sm">
+                            <i class="fas fa-arrow-left me-1"></i> Volver
+                        </a>
+                        <a href="@Url.Action("DescargarPdf", new { id = orden.Id })"
+                           class="btn btn-success btn-sm" target="_blank">
+                            <i class="fas fa-file-pdf me-1"></i> Descargar PDF
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Estado y acciones -->
+            <div class="card-body border-bottom">
+                @if (TempData["OK"] != null)
+                {
+                    <div class="alert alert-success">@TempData["OK"]</div>
+                }
+                @if (TempData["Error"] != null)
+                {
+                    <div class="alert alert-danger">@TempData["Error"]</div>
+                }
+                @if (ordenCompleta)
+                {
+                    <div class="alert alert-success mb-3">
+                        <i class="fas fa-check-circle me-2"></i> Orden completada: solicitud vinculada, pago aprobado, factura generada y sin saldo pendiente.
+                    </div>
+                }
+                // ...existing code...
+                <div class="row">
+                    <div class="col-md-6">
+                        <span class="badge bg-@orden.EstadoColor fs-6 p-2">
+                            <i class="fas fa-circle me-1"></i> @orden.Estado
+                        </span>
+                        @if (tieneSaldoPendiente && estado != "ANULADA")
+                        {
+                            <span class="badge bg-warning ms-2">
+                                <i class="fas fa-clock me-1"></i> PENDIENTE
+                            </span>
+                        }
+                        else if (estado == "FACTURADA" || estado == "COMPLETADA")
+                        {
+                            <span class="badge bg-success ms-2">
+                                <i class="fas fa-check-circle me-1"></i> FACTURADA
+                            </span>
+                        }
+                    </div>
+                    <div class="col-md-6 text-end">
+                        <div class="botones-orden d-inline-flex align-items-center" style="gap: 10px;">
+                            @if (puedeGenerar)
+                            {
+                                using (Html.BeginForm("Generar", "OrdenRecaudacion", FormMethod.Post))
+                                {
+                                    @Html.AntiForgeryToken()
+                                    @Html.Hidden("id", orden.Id)
+                                    <button type="submit" class="btn btn-primary btn-sm"
+                                            onclick="return confirm('¿Confirma que desea generar la orden? Esta acción es irreversible y no podrá editarla posteriormente.')">
+                                        <i class="fas fa-check me-1"></i> Generar Orden
+                                    </button>
+                                }
+                            }
+                            @if (puedeSubirComprobante)
+                            {
+                                <button type="button" class="btn btn-success btn-sm" data-bs-toggle="modal" data-bs-target="#modalPago">
+                                    <i class="fas fa-upload me-1"></i> Subir Comprobante
+                                </button>
+                            }
+                            else if (estado == "PENDIENTE" || estado == "GENERADA")
+                            {
+                                <button type="button" class="btn btn-success btn-sm" disabled
+                                        title="Debe vincular una solicitud válida para subir comprobante.">
+                                    <i class="fas fa-upload me-1"></i> Subir Comprobante
+                                </button>
+                            }
+                            @* Reenviar factura (solo si la factura fue generada y usuario es Financiero/Administrador) *@
+                            @if (facturaGenerada && (User.IsInRole("Administrador") || User.IsInRole("Financiero")))
+                            {
+                                <button type="button" class="btn btn-outline-primary btn-sm" data-bs-toggle="modal" data-bs-target="#modalReenviarFactura">
+                                    <i class="fas fa-paper-plane me-1"></i> Reenviar Factura
+                                </button>
+                            }
+                            @if (puedeAnular)
+                            {
+                                <button type="button" class="btn btn-danger btn-sm" data-bs-toggle="modal" data-bs-target="#modalAnular">
+                                    <i class="fas fa-times me-1"></i> Anular Orden
+                                </button>
+                            }
+                            @if (puedeEditar)
+                            {
+                                <a href="@Url.Action("Editar", new { id = orden.Id })" class="btn btn-info btn-sm">
+                                    <i class="fas fa-edit me-1"></i> Editar
+                                </a>
+                            }
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Información principal -->
+            <div class="card-body">
+                <div class="row">
+                    <!-- Columna izquierda: Información general -->
+                    <div class="col-md-8">
+                        <div class="row mb-4">
+                            <div class="col-md-6">
+                                <h5><i class="fas fa-info-circle me-2 text-primary"></i>Información General</h5>
+                                <table class="table table-sm table-borderless">
+                                    <tr>
+                                        <td class="fw-bold" style="width: 150px;">Número:</td>
+                                        <td>@orden.NumeroOrden</td>
+                                    </tr>
+                                    <tr>
+                                        <td class="fw-bold">Fecha Creación:</td>
+                                        <td>@orden.FechaCreacion.ToString("dd/MM/yyyy HH:mm")</td>
+                                    </tr>
+                                    <tr>
+                                        <td class="fw-bold">Lugar Emisión:</td>
+                                        <td>@orden.LugarEmision</td>
+                                    </tr>
+                                    <tr>
+                                        <td class="fw-bold">Estado:</td>
+                                        <td>
+                                            <span class="badge bg-@orden.EstadoColor">@orden.Estado</span>
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td class="fw-bold">Usuario:</td>
+                                        <td>@orden.NombreUsuario</td>
+                                    </tr>
+                                </table>
+                            </div>
+
+                            <div class="col-md-6">
+                                <h5><i class="fas fa-user me-2 text-primary"></i>Información del Contribuyente</h5>
+                                <table class="table table-sm table-borderless">
+                                    <tr>
+                                        <td class="fw-bold" style="width: 150px;">Compañía:</td>
+                                        <td>@orden.Compania</td>
+                                    </tr>
+                                    <tr>
+                                        <td class="fw-bold">RUC/Cédula:</td>
+                                        <td>@orden.RucCedula</td>
+                                    </tr>
+                                    <tr>
+                                        <td class="fw-bold">Email:</td>
+                                        <td>
+                                            @if (!string.IsNullOrEmpty(orden.Correo))
+                                            {
+                                                <a href="mailto:@orden.Correo">@orden.Correo</a>
+                                            }
+                                            else
+                                            {
+                                                <span class="text-muted">No especificado</span>
+                                            }
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td class="fw-bold">Teléfono:</td>
+                                        <td>@(orden.Telefono ?? "No especificado")</td>
+                                    </tr>
+                                </table>
+                            </div>
+                        </div>
+
+                        <!-- Observaciones -->
+                        @if (!string.IsNullOrEmpty(orden.Observacion))
+                        {
+                            <div class="mb-4">
+                                <h5><i class="fas fa-align-left me-2 text-primary"></i>Observaciones</h5>
+                                <div class="card">
+                                    <div class="card-body bg-light">
+                                        @Html.Raw(System.Web.HttpUtility.HtmlEncode(orden.Observacion).Replace("\n", "<br />"))
+                                    </div>
+                                </div>
+                            </div>
+                        }
+
+                        <!-- Detalles -->
+                        <div class="mb-4">
+                            <h5><i class="fas fa-list me-2 text-primary"></i>Detalles de la Orden</h5>
+                            @if (orden.Detalles != null && orden.Detalles.Any())
+                            {
+                                <div class="table-responsive">
+                                    <table class="table table-sm table-bordered">
+                                        <thead class="table-light">
+                                            <tr>
+                                                <th>Código</th>
+                                                <th>Concepto</th>
+                                                <th class="text-end">Cantidad</th>
+                                                <th class="text-end">Valor Unit.</th>
+                                                <th class="text-end">% Admin</th>
+                                                <th class="text-end">Administración</th>
+                                                <th class="text-end">Total Línea</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            @foreach (var detalle in orden.Detalles)
+                                            {
+                                                <tr>
+                                                    <td>@detalle.ConceptoCodigo</td>
+                                                    <td>@detalle.ConceptoNombre</td>
+                                                    <td class="text-end">@String.Format("{0:#,##0.00}", detalle.Cantidad)</td>
+                                                    <td class="text-end">$@String.Format("{0:#,##0.00}", detalle.ValorUnitario)</td>
+                                                    <td class="text-end">@String.Format("{0:#,##0.00}", detalle.PorcentajeAdmin)%</td>
+                                                    <td class="text-end">$@String.Format("{0:#,##0.00}", detalle.Admin)</td>
+                                                    <td class="text-end fw-bold">$@String.Format("{0:#,##0.00}", detalle.TotalLinea)</td>
+                                                </tr>
+                                            }
+                                        </tbody>
+                                        <tfoot class="table-light">
+                                            <tr>
+                                                <td colspan="5" class="text-end fw-bold">TOTALES:</td>
+                                                <td class="text-end fw-bold">$@String.Format("{0:#,##0.00}", orden.Admin)</td>
+                                                <td class="text-end fw-bold fs-5">$@String.Format("{0:#,##0.00}", orden.Total)</td>
+                                            </tr>
+                                        </tfoot>
+                                    </table>
+                                </div>
+                            }
+                            else
+                            {
+                                <div class="alert alert-info">
+                                    <i class="fas fa-info-circle me-2"></i>
+                                    No hay detalles registrados para esta orden.
+                                </div>
+                            }
+                        </div>
+
+                        <!-- Pagos registrados -->
+                        @if (pagos.Any())
+                        {
+                            <div class="mb-4">
+                                <h5><i class="fas fa-money-bill-wave me-2 text-primary"></i>Pagos Registrados</h5>
+                                <div class="table-responsive">
+                                    <table class="table table-sm table-bordered">
+                                        <thead class="table-light">
+                                            <tr>
+                                                <th>Fecha</th>
+                                                <th>N° Factura</th>
+                                                <th>Método</th>
+                                                <th>Banco</th>
+                                                <th class="text-end">Monto</th>
+                                                <th>Estado</th>
+                                                <th>Validado por</th>
+                                                @if (User.IsInRole("Administrador") || User.IsInRole("Financiero"))
+                                                {
+                                                    <th>Acciones</th>
+                                                }
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            @foreach (var pago in pagos)
+                                            {
+            var fechaPago = pago.FechaPago.HasValue
+                ? pago.FechaPago.Value.ToString("dd/MM/yyyy HH:mm")
+                : "N/A";
+            var numeroFactura = !string.IsNullOrEmpty(pago.NumeroFactura) ? pago.NumeroFactura : "N/A";
+            var metodoPago = !string.IsNullOrEmpty(pago.MetodoPago) ? pago.MetodoPago : "N/A";
+            var banco = !string.IsNullOrEmpty(pago.Banco) ? pago.Banco : 
+                (!string.IsNullOrEmpty(pago.MetodoPago) ? "Método: " + pago.MetodoPago : "No especificado");
+            var validadoPor = !string.IsNullOrEmpty(pago.ValidadoPor) ? pago.ValidadoPor : "N/A";
+            var estadoPago = (pago.Estado ?? "Pendiente").Trim();
+            var estadoMostrar = estadoPago.Equals("APROBADO", System.StringComparison.OrdinalIgnoreCase) ? "Validado" : estadoPago;
+            var badgeClass = estadoPago.Equals("APROBADO", System.StringComparison.OrdinalIgnoreCase) ? "success"
+                : estadoPago.Equals("RECHAZADO", System.StringComparison.OrdinalIgnoreCase) ? "danger"
+                : estadoPago.Equals("En Validación", System.StringComparison.OrdinalIgnoreCase) ? "info"
+                : "warning";
+
+            // Ajuste defensivo: si el monto parece venir en centavos (mucho mayor que el total), dividir por 100 solo para mostrar
+            var montoMostrar = pago.Monto;
+            if (orden.Total > 0 && montoMostrar > orden.Total * 10)
+            {
+                montoMostrar = montoMostrar / 100m;
+            }
+            <tr>
+                <td>@fechaPago</td>
+                <td>@numeroFactura</td>
+                <td>@metodoPago</td>
+                <td>@banco</td>
+                <td class="text-end">@string.Format(culturaEsEc, "{0:C}", montoMostrar)</td>
+                <td>
+                    <span class="badge bg-@badgeClass">
+                        @estadoMostrar
+                    </span>
+                </td>
+                <td>@validadoPor</td>
+                @if (User.IsInRole("Administrador") || User.IsInRole("Financiero"))
+                {
+                    <td>
+                        @if (estadoPago.Equals("Pendiente", System.StringComparison.OrdinalIgnoreCase))
+                        {
+                            <div class="btn-group btn-group-sm" role="group">
+                                <button type="button" class="btn btn-success btn-sm" onclick="validarPago(@pago.CodigoPago, '@pago.NumeroFactura')" title="Validar pago">
+                                    <i class="fas fa-check"></i>
+                                </button>
+                                <button type="button" class="btn btn-danger btn-sm" onclick="rechazarPago(@pago.CodigoPago, '@pago.NumeroFactura')" title="Rechazar pago">
+                                    <i class="fas fa-times"></i>
+                                </button>
+                            </div>
+                        }
+                        else
+                        {
+                            <span class="text-muted">-</span>
+                        }
+                    </td>
+                }
+            </tr>
+        }
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        }
+                    </div>
+
+                    <!-- Columna derecha: Resumen y documentos -->
+                    <div class="col-md-4">
+                        <!-- Resumen financiero -->
+                        <div class="card mb-4">
+                            <div class="card-header bg-secondary text-white">
+                                <h5 class="mb-0"><i class="fas fa-calculator me-2"></i>Resumen Financiero</h5>
+                            </div>
+                            <div class="card-body">
+                                <table class="table table-sm table-borderless">
+                                    <tr>
+                                        <td class="fw-bold">Subtotal:</td>
+                                        <td class="text-end">$@orden.Subtotal.ToString("#,##0.00")</td>
+                                    </tr>
+                                    <tr>
+                                        <td class="fw-bold">Administración:</td>
+                                        <td class="text-end">$@orden.Admin.ToString("#,##0.00")</td>
+                                    </tr>
+                                    <tr class="border-top">
+                                        <td class="fw-bold">Total Orden:</td>
+                                        <td class="text-end fw-bold fs-5">$@orden.Total.ToString("#,##0.00")</td>
+                                    </tr>
+                                    <tr>
+                                        <td class="fw-bold">Total Pagado:</td>
+                                        <td class="text-end text-success fw-bold">$@totalPagado.ToString("#,##0.00")</td>
+                                    </tr>
+                                    <tr class="border-top">
+                                        <td class="fw-bold">Saldo Pendiente:</td>
+                                        <td class="text-end @(saldoPendiente > 0 ? "text-danger fw-bold fs-5" : "text-success fw-bold fs-5")">
+                                            $@saldoPendiente.ToString("#,##0.00")
+                                        </td>
+                                    </tr>
+                                </table>
+                            </div>
+                        </div>
+
+                        <!-- Documentos adjuntos -->
+                        <div class="card mb-4">
+                            <div class="card-header bg-secondary text-white d-flex justify-content-between align-items-center">
+                                <h5 class="mb-0"><i class="fas fa-paperclip me-2"></i>Documentos Adjuntos</h5>
+                                @if (puedeSubirComprobante)
+                                {
+                                    <button type="button" class="btn btn-outline-light btn-sm"
+                                            data-bs-toggle="modal" data-bs-target="#modalPago">
+                                        <i class="fas fa-upload"></i> Subir comprobante
+                                    </button>
+                                }
+                                else
+                                {
+                                    <button type="button" class="btn btn-outline-light btn-sm" disabled
+                                            style="opacity:1"
+                                            title="La orden debe estar PENDIENTE y vinculada a una solicitud válida.">
+                                        <i class="fas fa-upload"></i> Subir comprobante
+                                    </button>
+                                }
+                            </div>
+                            <div class="card-body">
+                                @if (documentos.Any())
+                                {
+                                    <div class="list-group">
+                                        @foreach (var doc in documentos)
+                                        {
+                                            <div class="list-group-item list-group-item-action">
+                                                <div class="d-flex w-100 justify-content-between">
+                                                    <h6 class="mb-1">
+                                                        <i class="fas fa-file @(doc.Extension == ".pdf" ? "text-danger" : "text-primary") me-2"></i>
+                                                        @doc.NombreArchivo
+                                                    </h6>
+                                                    <small>@doc.TamanoFormateado</small>
+                                                </div>
+                                                <p class="mb-1">@doc.Descripcion</p>
+                                                <small class="text-muted">
+                                                    Subido: @doc.FechaCarga?.ToString("dd/MM/yyyy HH:mm")<br />
+                                                    Estado: @doc.Estado
+                                                </small>
+                                                <div class="mt-2">
+                                                    <a href="@Url.Content(doc.RutaGuardada)"
+                                                       class="btn btn-sm btn-outline-primary"
+                                                       target="_blank" download>
+                                                        <i class="fas fa-download"></i> Descargar
+                                                    </a>
+                                                </div>
+                                            </div>
+                                        }
+                                    </div>
+                                }
+                                else
+                                {
+                                    <p class="text-muted text-center mb-0">
+                                        <i class="fas fa-inbox fa-2x mb-2"></i><br />
+                                        No hay documentos adjuntos
+                                    </p>
+                                }
+                            </div>
+                        </div>
+
+                        <!-- Historial de estados -->
+                        @if (ViewBag.HistorialEstados != null)
+                        {
+                            <div class="card">
+                                <div class="card-header bg-light">
+                                    <h5 class="mb-0"><i class="fas fa-history me-2"></i>Historial de Estados</h5>
+                                </div>
+                                <div class="card-body">
+                                    <ul class="list-unstyled">
+                                        <li class="mb-2">
+                                            <i class="fas fa-plus-circle text-success me-2"></i>
+                                            <strong>Creada:</strong> @orden.FechaCreacion.ToString("dd/MM/yyyy HH:mm")
+                                        </li>
+                                        @foreach (var hist in ViewBag.HistorialEstados)
+                                        {
+                                            <li class="mb-2">
+                                                <i class="fas fa-exchange-alt text-info me-2"></i>
+                                                <strong>@hist.EstadoNuevo:</strong> @String.Format("{0:dd/MM/yyyy HH:mm}", hist.FechaCambio)
+                                            </li>
+                                        }
+                                    </ul>
+                                </div>
+                            </div>
+                        }
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal para registrar pago -->
+<div class="modal fade" id="modalPago" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            @using (Html.BeginForm("RegistrarPago", "OrdenRecaudacion", FormMethod.Post, new { enctype = "multipart/form-data" }))
+            {
+                @Html.AntiForgeryToken()
+                @Html.Hidden("id", orden.Id)
+
+                <div class="modal-header bg-success text-white">
+                    <h5 class="modal-title"><i class="fas fa-upload me-2"></i>Subir Comprobante</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">Monto a Pagar:</label>
+                        <div class="input-group">
+                            <span class="input-group-text">$</span>
+                            <input type="number" name="Monto" class="form-control"
+                                   step="0.01" min="0.01"
+                                   max="@(saldoPendiente.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture))"
+                                   value="@(saldoPendiente.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture))"
+                                   required />
+                        </div>
+                        <small class="text-muted">Saldo pendiente: $@saldoPendiente.ToString("#,##0.00")</small>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Número de Orden de Recaudación/Referencia:</label>
+                        <input type="text" name="NumeroFactura" class="form-control"
+                               placeholder="Ej: FACT-001, Depósito #12345" />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Método de Pago:</label>
+                        @if (ViewBag.ListaMetodoPago != null)
+                        {
+                            @Html.DropDownList("MetodoPago", ViewBag.ListaMetodoPago as SelectList, new { @class = "form-control", @required = "required" })
+                        }
+                        else
+                        {
+                            <select name="MetodoPago" class="form-control" required>
+                                <option value="">Seleccione método...</option>
+                                <option value="DEPOSITO">Depósito Bancario</option>
+                                <option value="TRANSFERENCIA">Transferencia Bancaria</option>
+                                <option value="CHEQUE">Cheque</option>
+                            </select>
+                        }
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Banco donde se realiza el depósito:</label>
+                        @if (ViewBag.ListaBancoPago != null)
+                        {
+                            @Html.DropDownList("Banco", ViewBag.ListaBancoPago as SelectList, new { @class = "form-control", @required = "required" })
+                        }
+                        else
+                        {
+                            <select name="Banco" class="form-control" required>
+                                <option value="">Seleccione banco...</option>
+                                <option value="001">BANCO PICHINCHA</option>
+                                <option value="002">BANCO GUAYAQUIL</option>
+                                <option value="003">BANCO PACIFICO</option>
+                            </select>
+                        }
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Comprobante de Pago:</label>
+                        <input type="file" name="ComprobanteArchivo" class="form-control"
+                               accept=".pdf,.jpg,.jpeg,.png" />
+                        <small class="text-muted">Formatos permitidos: PDF, JPG, PNG (Máx. 10MB)</small>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Observaciones:</label>
+                        <textarea name="Observaciones" class="form-control" rows="2"
+                                  placeholder="Observaciones adicionales..."></textarea>
+                    </div>
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle me-2"></i>
+                        Al registrar el pago, se actualizará el estado de la orden automáticamente.
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-success">
+                        <i class="fas fa-check me-1"></i> Enviar Comprobante
+                    </button>
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+<!-- Modal para anular orden -->
+<div class="modal fade" id="modalAnular" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            @using (Html.BeginForm("Anular", "OrdenRecaudacion", FormMethod.Post))
+            {
+                @Html.AntiForgeryToken()
+                @Html.Hidden("id", orden.Id)
+
+                <div class="modal-header bg-danger text-white">
+                    <h5 class="modal-title"><i class="fas fa-exclamation-triangle me-2"></i>Anular Orden</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="alert alert-warning">
+                        <h5><i class="fas fa-exclamation-circle me-2"></i>¡Advertencia!</h5>
+                        <p class="mb-0">Está a punto de anular la orden <strong>@orden.NumeroOrden</strong>.</p>
+                        <p class="mb-0">Esta acción no se puede deshacer.</p>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Motivo de la anulación:</label>
+                        <textarea name="motivo" class="form-control" rows="3"
+                                  placeholder="Ingrese el motivo de la anulación..." required></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-danger">
+                        <i class="fas fa-times me-1"></i> Confirmar Anulación
+                    </button>
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+<!-- Modal para reenviar factura -->
+<div class="modal fade" id="modalReenviarFactura" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            @using (Html.BeginForm("ReenviarFactura", "Financiero", FormMethod.Post))
+            {
+                @Html.AntiForgeryToken()
+                @Html.Hidden("id", orden.Id)
+
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title"><i class="fas fa-paper-plane me-2"></i>Reenviar Factura</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">Correo destino (opcional):</label>
+                        <input type="email" name="correoDestino" class="form-control" value="@orden.Correo" placeholder="Dejar en blanco para usar correos de la orden" />
+                        <small class="text-muted">Se enviará también a los correos del contribuyente y a cualquier correo adicional configurado.</small>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Mensaje / Observaciones (opcional):</label>
+                        <textarea name="observacionesCorreo" class="form-control" rows="2" placeholder="Observaciones que se incluirán en el correo..."></textarea>
+                    </div>
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle me-2"></i> Se generará el PDF de la factura y se reenviará a los destinatarios detectados.
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-paper-plane me-1"></i> Reenviar Factura
+                    </button>
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        $(document).ready(function() {
+            // Validar monto máximo en modal de pago
+            $('input[name="Monto"]').on('change', function() {
+                var max = parseFloat('@saldoPendiente');
+                var value = parseFloat($(this).val());
+
+                if (value > max) {
+                    $(this).val(max);
+                    alert('El monto no puede exceder el saldo pendiente: $' + max.toFixed(2));
+                }
+            });
+
+            // Validar archivo de comprobante
+            $('input[name="ComprobanteArchivo"]').on('change', function() {
+                var file = this.files[0];
+                if (file) {
+                    var fileSize = file.size / 1024 / 1024; // en MB
+                    var allowedExtensions = /(\.pdf|\.jpg|\.jpeg|\.png)$/i;
+
+                    if (fileSize > 10) {
+                        alert('El archivo no puede exceder 10MB');
+                        $(this).val('');
+                        return false;
+                    }
+
+                    if (!allowedExtensions.exec(file.name)) {
+                        alert('Solo se permiten archivos PDF, JPG y PNG');
+                        $(this).val('');
+                        return false;
+                    }
+                }
+                return true;
+            });
+        });
+
+        // Función para validar pago
+        function validarPago(pagoId, numeroFactura) {
+            if (confirm('¿Está seguro de que desea validar el pago ' + numeroFactura + '?')) {
+                var form = $('<form>', {
+                    'method': 'POST',
+                    'action': '@Url.Action("ValidarPago", "OrdenRecaudacion")'
+                }).append($('<input>', {
+                    'type': 'hidden',
+                    'name': 'ordenId',
+                    'value': '@Model.Id'
+                })).append($('<input>', {
+                    'type': 'hidden',
+                    'name': 'pagoId',
+                    'value': pagoId
+                })).append($('@Html.AntiForgeryToken()'));
+
+                $('body').append(form);
+                form.submit();
+            }
+        }
+
+        // Función para rechazar pago
+        function rechazarPago(pagoId, numeroFactura) {
+            var motivo = prompt('Ingrese el motivo del rechazo para el pago ' + numeroFactura + ':');
+            if (motivo && motivo.trim() !== '') {
+                var form = $('<form>', {
+                    'method': 'POST',
+                    'action': '@Url.Action("RechazarPago", "OrdenRecaudacion")'
+                }).append($('<input>', {
+                    'type': 'hidden',
+                    'name': 'ordenId',
+                    'value': '@Model.Id'
+                })).append($('<input>', {
+                    'type': 'hidden',
+                    'name': 'pagoId',
+                    'value': pagoId
+                })).append($('<input>', {
+                    'type': 'hidden',
+                    'name': 'motivo',
+                    'value': motivo
+                })).append($('@Html.AntiForgeryToken()'));
+
+                $('body').append(form);
+                form.submit();
+            }
+        }
+    </script>
+}
+
+
+
+
+

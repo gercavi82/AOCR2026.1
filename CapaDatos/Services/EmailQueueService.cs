@@ -54,6 +54,9 @@ namespace CapaDatos.Services
         public string CorrelationId { get; set; }
         public string NumeroOrden { get; set; }
         public string TipoNotificacion { get; set; }
+        public string EventKey { get; set; }
+        public string RolOrigen { get; set; }
+        public string EstadoFinal { get; set; }
     }
 
     #endregion
@@ -66,6 +69,9 @@ namespace CapaDatos.Services
     public interface IEmailQueueService
     {
         Task<int> EncolarAsync(EmailQueueItem item);
+        Task<int> EncolarIdempotenteAsync(EmailQueueItem item);
+        Task<int> RegistrarErrorEventoAsync(string eventKey, string asunto, string detalleError, int? solicitudId = null, int? ordenId = null, string tipoNotificacion = null);
+        Task ProbarConexionAsync();
         Task<EmailQueueItem> ObtenerSiguienteAsync();
         Task ActualizarEstadoAsync(int id, string estado, string error = null);
         Task MarcarEnviadoAsync(int id, string messageId);
@@ -84,9 +90,16 @@ namespace CapaDatos.Services
     {
         private readonly ILoggingService _logger;
         private bool? _hasExtendedColumns;
+        private bool? _hasEventColumns;
+        private string _statusColumn;
+        private bool? _hasProximoIntentoColumn;
+        private bool? _hasCreatedAtColumn;
         private const int DefaultMaxIntentos = 3;
 
-        public EmailQueueService() : this(new SecureConfigurationService().GetConnectionString("PostgreSQL") ?? "")
+        public EmailQueueService() : this(
+            new SecureConfigurationService().GetConnectionString("PostgreSQL")
+            ?? new SecureConfigurationService().GetConnectionString("AOCRConnection")
+            ?? "")
         {
         }
 
@@ -95,15 +108,44 @@ namespace CapaDatos.Services
             _logger = LoggingServiceFactory.Create();
         }
 
+        public Task ProbarConexionAsync()
+        {
+            ExecuteWithConnection(conn =>
+            {
+                ExecuteScalar<int>(conn, "SELECT 1");
+                return 1;
+            });
+            return Task.CompletedTask;
+        }
+
         public async Task<int> EncolarAsync(EmailQueueItem item)
         {
             return ExecuteWithConnection(conn =>
             {
                 var hasExtended = HasExtendedColumns(conn);
+                var hasEvent = HasEventColumns(conn);
+                var statusColumn = GetStatusColumn(conn);
                 var sql = hasExtended
-                    ? @"
+                    ? (hasEvent
+                        ? string.Format(@"
                         INSERT INTO email_queue (
-                            to_address, subject, body, status,
+                            to_address, subject, body, {0},
+                            solicitud_id, orden_id, tipo_notificacion, correlation_id, event_key,
+                            rol_origen, estado_final,
+                            intentos, max_intentos, ultimo_error,
+                            adjunto_ruta, adjunto_nombre, adjunto_mime,
+                            created_at, proximo_intento
+                        ) VALUES (
+                            @to_address, @subject, @body, @status,
+                            @solicitud_id, @orden_id, @tipo_notificacion, @correlation_id, @event_key,
+                            @rol_origen, @estado_final,
+                            @intentos, @max_intentos, @ultimo_error,
+                            @adjunto_ruta, @adjunto_nombre, @adjunto_mime,
+                            @created_at, @proximo_intento
+                        ) RETURNING id", statusColumn)
+                        : string.Format(@"
+                        INSERT INTO email_queue (
+                            to_address, subject, body, {0},
                             solicitud_id, orden_id, tipo_notificacion, correlation_id,
                             intentos, max_intentos, ultimo_error,
                             adjunto_ruta, adjunto_nombre, adjunto_mime,
@@ -114,15 +156,15 @@ namespace CapaDatos.Services
                             @intentos, @max_intentos, @ultimo_error,
                             @adjunto_ruta, @adjunto_nombre, @adjunto_mime,
                             @created_at, @proximo_intento
-                        ) RETURNING id"
-                    : @"
+                        ) RETURNING id", statusColumn))
+                    : string.Format(@"
                         INSERT INTO email_queue (
-                            to_address, subject, body, status,
+                            to_address, subject, body, {0},
                             solicitud_id, created_at, proximo_intento
                         ) VALUES (
                             @to_address, @subject, @body, @status,
                             @solicitud_id, @created_at, @proximo_intento
-                        ) RETURNING id";
+                        ) RETURNING id", statusColumn);
 
                 return ExecuteScalar<int>(conn, sql, cmd =>
                 {
@@ -139,6 +181,12 @@ namespace CapaDatos.Services
                         AddParameter(cmd, "@orden_id", item.OrdenId ?? (object)DBNull.Value, NpgsqlDbType.Integer);
                         AddParameter(cmd, "@tipo_notificacion", item.TipoNotificacion ?? (object)DBNull.Value, NpgsqlDbType.Varchar);
                         AddParameter(cmd, "@correlation_id", item.CorrelationId ?? (object)DBNull.Value, NpgsqlDbType.Varchar);
+                        if (hasEvent)
+                        {
+                            AddParameter(cmd, "@event_key", item.EventKey ?? (object)DBNull.Value, NpgsqlDbType.Varchar);
+                            AddParameter(cmd, "@rol_origen", item.RolOrigen ?? (object)DBNull.Value, NpgsqlDbType.Varchar);
+                            AddParameter(cmd, "@estado_final", item.EstadoFinal ?? (object)DBNull.Value, NpgsqlDbType.Varchar);
+                        }
                         AddParameter(cmd, "@intentos", item.Intentos, NpgsqlDbType.Integer);
                         AddParameter(cmd, "@max_intentos", item.MaxIntentos > 0 ? item.MaxIntentos : DefaultMaxIntentos, NpgsqlDbType.Integer);
                         AddParameter(cmd, "@ultimo_error", item.UltimoError ?? (object)DBNull.Value, NpgsqlDbType.Text);
@@ -150,39 +198,138 @@ namespace CapaDatos.Services
             });
         }
 
+        public async Task<int> EncolarIdempotenteAsync(EmailQueueItem item)
+        {
+            if (item == null) throw new ArgumentNullException(nameof(item));
+            if (string.IsNullOrWhiteSpace(item.EventKey))
+            {
+                return await EncolarAsync(item);
+            }
+
+            var existente = ObtenerIdPorEventKey(item.EventKey);
+            if (existente > 0) return existente;
+
+            try
+            {
+                return await EncolarAsync(item);
+            }
+            catch (DataAccessException ex) when (string.Equals(ex.ErrorCode, "DUPLICATE_KEY", StringComparison.OrdinalIgnoreCase))
+            {
+                return ObtenerIdPorEventKey(item.EventKey);
+            }
+        }
+
+        public async Task<int> RegistrarErrorEventoAsync(string eventKey, string asunto, string detalleError, int? solicitudId = null, int? ordenId = null, string tipoNotificacion = null)
+        {
+            var item = new EmailQueueItem
+            {
+                Para = "sin-correo@invalid.local",
+                Asunto = asunto ?? "Evento de correo sin destinatario",
+                Cuerpo = detalleError ?? "No se pudo resolver destinatario.",
+                SolicitudId = solicitudId,
+                OrdenId = ordenId,
+                TipoNotificacion = tipoNotificacion,
+                CorrelationId = eventKey,
+                EventKey = eventKey,
+                UltimoError = detalleError,
+                Estado = "ERROR"
+            };
+
+            return ExecuteWithConnection(conn =>
+            {
+                var hasExtended = HasExtendedColumns(conn);
+                var hasEvent = HasEventColumns(conn);
+                var statusColumn = GetStatusColumn(conn);
+                var sql = hasExtended
+                    ? (hasEvent
+                        ? string.Format(@"
+                            INSERT INTO email_queue (
+                                to_address, subject, body, {0}, solicitud_id, orden_id, tipo_notificacion, correlation_id, event_key,
+                                rol_origen, estado_final, intentos, max_intentos, ultimo_error, created_at, proximo_intento
+                            ) VALUES (
+                                @to_address, @subject, @body, 'ERROR', @solicitud_id, @orden_id, @tipo_notificacion, @correlation_id, @event_key,
+                                @rol_origen, @estado_final, 0, @max_intentos, @ultimo_error, @created_at, @proximo_intento
+                            ) RETURNING id", statusColumn)
+                        : string.Format(@"
+                            INSERT INTO email_queue (
+                                to_address, subject, body, {0}, solicitud_id, orden_id, tipo_notificacion, correlation_id,
+                                intentos, max_intentos, ultimo_error, created_at, proximo_intento
+                            ) VALUES (
+                                @to_address, @subject, @body, 'ERROR', @solicitud_id, @orden_id, @tipo_notificacion, @correlation_id,
+                                0, @max_intentos, @ultimo_error, @created_at, @proximo_intento
+                            ) RETURNING id", statusColumn))
+                    : string.Format(@"
+                            INSERT INTO email_queue (
+                                to_address, subject, body, {0}, solicitud_id, created_at, proximo_intento
+                            ) VALUES (
+                                @to_address, @subject, @body, 'ERROR', @solicitud_id, @created_at, @proximo_intento
+                            ) RETURNING id", statusColumn);
+
+                return ExecuteScalar<int>(conn, sql, cmd =>
+                {
+                    AddParameter(cmd, "@to_address", item.Para, NpgsqlDbType.Varchar);
+                    AddParameter(cmd, "@subject", item.Asunto, NpgsqlDbType.Varchar);
+                    AddParameter(cmd, "@body", item.Cuerpo, NpgsqlDbType.Text);
+                    AddParameter(cmd, "@solicitud_id", item.SolicitudId ?? (object)DBNull.Value, NpgsqlDbType.Integer);
+                    AddParameter(cmd, "@created_at", DateTime.Now, NpgsqlDbType.Timestamp);
+                    AddParameter(cmd, "@proximo_intento", DateTime.Now, NpgsqlDbType.Timestamp);
+
+                    if (hasExtended)
+                    {
+                        AddParameter(cmd, "@orden_id", item.OrdenId ?? (object)DBNull.Value, NpgsqlDbType.Integer);
+                        AddParameter(cmd, "@tipo_notificacion", item.TipoNotificacion ?? (object)DBNull.Value, NpgsqlDbType.Varchar);
+                        AddParameter(cmd, "@correlation_id", item.CorrelationId ?? (object)DBNull.Value, NpgsqlDbType.Varchar);
+                        AddParameter(cmd, "@max_intentos", DefaultMaxIntentos, NpgsqlDbType.Integer);
+                        AddParameter(cmd, "@ultimo_error", item.UltimoError ?? (object)DBNull.Value, NpgsqlDbType.Text);
+                        if (hasEvent)
+                        {
+                            AddParameter(cmd, "@event_key", item.EventKey ?? (object)DBNull.Value, NpgsqlDbType.Varchar);
+                            AddParameter(cmd, "@rol_origen", item.RolOrigen ?? (object)DBNull.Value, NpgsqlDbType.Varchar);
+                            AddParameter(cmd, "@estado_final", item.EstadoFinal ?? (object)DBNull.Value, NpgsqlDbType.Varchar);
+                        }
+                    }
+                });
+            });
+        }
+
         public async Task<EmailQueueItem> ObtenerSiguienteAsync()
         {
             // Usar FOR UPDATE SKIP LOCKED para evitar conflictos en procesamiento concurrente
             return ExecuteWithConnection(conn =>
             {
                 var hasExtended = HasExtendedColumns(conn);
+                var statusColumn = GetStatusColumn(conn);
+                var hasProximoIntento = HasProximoIntentoColumn(conn);
+                var hasCreatedAt = HasCreatedAtColumn(conn);
+                var filtroProximo = hasProximoIntento ? "AND proximo_intento <= NOW()" : string.Empty;
+                var orderClause = hasCreatedAt ? "ORDER BY created_at ASC" : "ORDER BY id ASC";
                 var sql = hasExtended
-                    ? @"
+                    ? string.Format(@"
                         UPDATE email_queue 
-                        SET status = 'ENVIANDO',
+                        SET {0} = 'ENVIANDO',
                             intentos = COALESCE(intentos, 0) + 1,
                             ultimo_error = NULL
                         WHERE id = (
                             SELECT id FROM email_queue
-                            WHERE status = 'PENDIENTE' 
-                              AND proximo_intento <= NOW()
-                            ORDER BY created_at ASC
+                            WHERE {0} = 'PENDIENTE' 
+                              {1}
+                            {2}
                             LIMIT 1
                             FOR UPDATE SKIP LOCKED
                         )
-                        RETURNING *"
-                    : @"
+                        RETURNING *", statusColumn, filtroProximo, orderClause)
+                    : string.Format(@"
                         UPDATE email_queue 
-                        SET status = 'ENVIANDO'
+                        SET {0} = 'ENVIANDO'
                         WHERE id = (
                             SELECT id FROM email_queue
-                            WHERE status = 'PENDIENTE' 
-                              AND proximo_intento <= NOW()
-                            ORDER BY created_at ASC
+                            WHERE {0} = 'PENDIENTE' 
+                              {1}
+                            {2}
                             LIMIT 1
                             FOR UPDATE SKIP LOCKED
                         )
-                        RETURNING *";
+                        RETURNING *", statusColumn, filtroProximo, orderClause);
 
                 using (var cmd = CreateCommand(conn, sql))
                 using (var reader = cmd.ExecuteReader())
@@ -198,15 +345,19 @@ namespace CapaDatos.Services
 
         public async Task<IEnumerable<EmailQueueItem>> ObtenerPendientesAsync(int limite = 10)
         {
-            const string sql = @"
-                SELECT * FROM email_queue
-                WHERE status = 'PENDIENTE' 
-                  AND proximo_intento <= NOW()
-                ORDER BY created_at ASC
-                LIMIT @limite";
-
             return ExecuteWithConnection(conn =>
             {
+                var statusColumn = GetStatusColumn(conn);
+                var hasProximoIntento = HasProximoIntentoColumn(conn);
+                var hasCreatedAt = HasCreatedAtColumn(conn);
+                var filtroProximo = hasProximoIntento ? "AND proximo_intento <= NOW()" : string.Empty;
+                var orderClause = hasCreatedAt ? "ORDER BY created_at ASC" : "ORDER BY id ASC";
+                var sql = string.Format(@"
+                    SELECT * FROM email_queue
+                    WHERE {0} = 'PENDIENTE' 
+                      {1}
+                    {2}
+                    LIMIT @limite", statusColumn, filtroProximo, orderClause);
                 var lista = new List<EmailQueueItem>();
                 using (var cmd = CreateCommand(conn, sql))
                 {
@@ -228,16 +379,17 @@ namespace CapaDatos.Services
             ExecuteWithConnection(conn =>
             {
                 var hasExtended = HasExtendedColumns(conn);
+                var statusColumn = GetStatusColumn(conn);
                 var sql = hasExtended
-                    ? @"
+                    ? string.Format(@"
                         UPDATE email_queue SET
-                            status = @status,
+                            {0} = @status,
                             ultimo_error = @error
-                        WHERE id = @id"
-                    : @"
+                        WHERE id = @id", statusColumn)
+                    : string.Format(@"
                         UPDATE email_queue SET
-                            status = @status
-                        WHERE id = @id";
+                            {0} = @status
+                        WHERE id = @id", statusColumn);
 
                 ExecuteNonQuery(conn, sql, cmd =>
                 {
@@ -256,17 +408,18 @@ namespace CapaDatos.Services
             ExecuteWithConnection(conn =>
             {
                 var hasExtended = HasExtendedColumns(conn);
+                var statusColumn = GetStatusColumn(conn);
                 var sql = hasExtended
-                    ? @"
+                    ? string.Format(@"
                         UPDATE email_queue SET
-                            status = 'ENVIADO',
+                            {0} = 'ENVIADO',
                             fecha_envio = NOW(),
                             ultimo_error = NULL
-                        WHERE id = @id"
-                    : @"
+                        WHERE id = @id", statusColumn)
+                    : string.Format(@"
                         UPDATE email_queue SET
-                            status = 'ENVIADO'
-                        WHERE id = @id";
+                            {0} = 'ENVIADO'
+                        WHERE id = @id", statusColumn);
 
                 ExecuteNonQuery(conn, sql, cmd =>
                 {
@@ -279,16 +432,16 @@ namespace CapaDatos.Services
 
         public async Task ReprogramarReintentoAsync(int id, TimeSpan delay)
         {
-            const string sql = @"
-                UPDATE email_queue SET
-                    status = 'PENDIENTE',
-                    proximo_intento = @proximo
-                WHERE id = @id";
-
             var proximoIntento = DateTime.Now.Add(delay);
 
             ExecuteWithConnection(conn =>
             {
+                var statusColumn = GetStatusColumn(conn);
+                var sql = string.Format(@"
+                    UPDATE email_queue SET
+                        {0} = 'PENDIENTE',
+                        proximo_intento = @proximo
+                    WHERE id = @id", statusColumn);
                 ExecuteNonQuery(conn, sql, cmd =>
                 {
                     AddParameter(cmd, "@id", id, NpgsqlDbType.Integer);
@@ -307,7 +460,7 @@ namespace CapaDatos.Services
                 Para = GetString(reader, "to_address"),
                 Asunto = GetString(reader, "subject"),
                 Cuerpo = GetString(reader, "body"),
-                Estado = GetString(reader, "status"),
+                Estado = GetString(reader, "status") ?? GetString(reader, "estado"),
                 FechaCreacion = GetDateTime(reader, "created_at"),
                 ProximoIntento = GetNullableDateTime(reader, "proximo_intento")
             };
@@ -320,6 +473,12 @@ namespace CapaDatos.Services
                 item.TipoNotificacion = GetString(reader, "tipo_notificacion");
             if (HasColumn(reader, "correlation_id"))
                 item.CorrelationId = GetString(reader, "correlation_id");
+            if (HasColumn(reader, "event_key"))
+                item.EventKey = GetString(reader, "event_key");
+            if (HasColumn(reader, "rol_origen"))
+                item.RolOrigen = GetString(reader, "rol_origen");
+            if (HasColumn(reader, "estado_final"))
+                item.EstadoFinal = GetString(reader, "estado_final");
             if (HasColumn(reader, "intentos"))
                 item.Intentos = GetInt(reader, "intentos");
             if (HasColumn(reader, "max_intentos"))
@@ -378,6 +537,139 @@ namespace CapaDatos.Services
 
             return _hasExtendedColumns.Value;
         }
+
+        private bool HasEventColumns(NpgsqlConnection conn)
+        {
+            if (_hasEventColumns.HasValue)
+            {
+                return _hasEventColumns.Value;
+            }
+
+            try
+            {
+                const string sql = @"
+                    SELECT 1
+                    FROM information_schema.columns
+                    WHERE table_name = 'email_queue'
+                      AND column_name = 'event_key'
+                    LIMIT 1";
+                using (var cmd = new NpgsqlCommand(sql, conn))
+                {
+                    var result = cmd.ExecuteScalar();
+                    _hasEventColumns = result != null;
+                }
+            }
+            catch
+            {
+                _hasEventColumns = false;
+            }
+
+            return _hasEventColumns.Value;
+        }
+
+        private bool HasProximoIntentoColumn(NpgsqlConnection conn)
+        {
+            if (_hasProximoIntentoColumn.HasValue)
+            {
+                return _hasProximoIntentoColumn.Value;
+            }
+
+            _hasProximoIntentoColumn = HasQueueColumn(conn, "proximo_intento");
+            return _hasProximoIntentoColumn.Value;
+        }
+
+        private bool HasCreatedAtColumn(NpgsqlConnection conn)
+        {
+            if (_hasCreatedAtColumn.HasValue)
+            {
+                return _hasCreatedAtColumn.Value;
+            }
+
+            _hasCreatedAtColumn = HasQueueColumn(conn, "created_at");
+            return _hasCreatedAtColumn.Value;
+        }
+
+        private static bool HasQueueColumn(NpgsqlConnection conn, string columnName)
+        {
+            try
+            {
+                const string sql = @"
+                    SELECT 1
+                    FROM information_schema.columns
+                    WHERE table_name = 'email_queue'
+                      AND column_name = @column
+                    LIMIT 1";
+                using (var cmd = new NpgsqlCommand(sql, conn))
+                {
+                    cmd.Parameters.AddWithValue("@column", columnName);
+                    var result = cmd.ExecuteScalar();
+                    return result != null;
+                }
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        private int ObtenerIdPorEventKey(string eventKey)
+        {
+            if (string.IsNullOrWhiteSpace(eventKey))
+            {
+                return 0;
+            }
+
+            return ExecuteWithConnection(conn =>
+            {
+                if (!HasEventColumns(conn))
+                {
+                    return 0;
+                }
+
+                const string sql = "SELECT id FROM email_queue WHERE event_key = @event_key LIMIT 1";
+                return ExecuteScalar<int>(conn, sql, cmd =>
+                {
+                    AddParameter(cmd, "@event_key", eventKey, NpgsqlDbType.Varchar);
+                });
+            });
+        }
+
+        private string GetStatusColumn(NpgsqlConnection conn)
+        {
+            if (!string.IsNullOrWhiteSpace(_statusColumn))
+            {
+                return _statusColumn;
+            }
+
+            try
+            {
+                const string sql = @"
+                    SELECT column_name
+                    FROM information_schema.columns
+                    WHERE table_name = 'email_queue'
+                      AND column_name IN ('status', 'estado')";
+                using (var cmd = new NpgsqlCommand(sql, conn))
+                using (var reader = cmd.ExecuteReader())
+                {
+                    var hasStatus = false;
+                    var hasEstado = false;
+                    while (reader.Read())
+                    {
+                        var column = reader.GetString(0);
+                        if (column == "status") hasStatus = true;
+                        if (column == "estado") hasEstado = true;
+                    }
+
+                    _statusColumn = hasStatus ? "status" : (hasEstado ? "estado" : "status");
+                }
+            }
+            catch
+            {
+                _statusColumn = "status";
+            }
+
+            return _statusColumn;
+        }
     }
 
     #endregion
@@ -418,6 +710,25 @@ namespace CapaDatos.Services
         public void Start()
         {
             _logger.LogInfo("Iniciando procesador de cola de correos");
+            try
+            {
+                _queueService.ProbarConexionAsync().GetAwaiter().GetResult();
+                // Health check de esquema mínimo antes de iniciar el loop.
+                _queueService.ObtenerPendientesAsync(1).GetAwaiter().GetResult();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, new LogContext
+                {
+                    ErrorCode = "EMAIL_QUEUE_HEALTHCHECK_ERROR",
+                    AdditionalData =
+                    {
+                        { "Message", ex.Message },
+                        { "InnerMessage", ex.InnerException != null ? ex.InnerException.Message : string.Empty }
+                    }
+                });
+                return;
+            }
             _processingTask = Task.Run(() => ProcessQueueAsync(_cancellationTokenSource.Token));
         }
 
@@ -466,6 +777,16 @@ namespace CapaDatos.Services
                 }
                 catch (Exception ex)
                 {
+                    if (ex is CapaDatos.Infrastructure.DataAccessException dex)
+                    {
+                        var sqlState = dex.Data.Contains("SqlState") ? (dex.Data["SqlState"] ?? "N/A").ToString() : "N/A";
+                        var dbMessage = dex.Data.Contains("DbMessage") ? (dex.Data["DbMessage"] ?? string.Empty).ToString() : string.Empty;
+                        var root = dex.Data.Contains("RootCause") ? (dex.Data["RootCause"] ?? string.Empty).ToString() : (dex.InnerException != null ? dex.InnerException.Message : string.Empty);
+                        _logger.LogError(
+                            string.Format("EMAIL_QUEUE_ERROR | Code={0} | SqlState={1} | DbMessage={2} | RootCause={3}",
+                                dex.ErrorCode, sqlState, dbMessage, root),
+                            new LogContext { ErrorCode = "EMAIL_QUEUE_ERROR_DETAIL" });
+                    }
                     _logger.LogError(ex, new LogContext { ErrorCode = "EMAIL_QUEUE_ERROR" });
                     await Task.Delay(TimeSpan.FromSeconds(30), cancellationToken);
                 }

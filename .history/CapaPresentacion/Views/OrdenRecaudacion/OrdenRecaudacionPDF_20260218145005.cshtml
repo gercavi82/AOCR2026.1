@@ -1,0 +1,94 @@
+@inherits System.Web.Mvc.WebViewPage<CapaPresentacion.Models.ViewModels.OrdenRecaudacionPDFModel>
+@{
+    Layout = null;
+}
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8" />
+    <title>Orden de Recaudacion @Model.NumeroOrden</title>
+    <style>
+        body {
+            font-family: "Georgia", "Times New Roman", serif;
+            font-size: 11px;
+            margin: 0;
+            /* Dejar libre el encabezado y pie de la hoja membretada */
+            padding: 145px 30px 80px 30px;
+            color: #1f242b;
+            background: #ffffff;
+        }
+    </style>
+</head>
+<body>
+    <div style="margin-top: 6px; border: 2px solid #222; padding: 0;">
+        <div style="text-align: center; font-size: 15px; font-weight: bold; padding: 8px 0 2px 0;">
+            DIRECCION DE CERTIFICACION AERONAUTICA<br />Y VIGILANCIA CONTINUA<br />ORDEN DE RECAUDACION
+        </div>
+        <div style="text-align: right; font-size: 13px; font-weight: bold; padding: 0 10px 4px 0;">
+            No. @Model.NumeroOrden
+        </div>
+    </div>
+
+    <table style="width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 12px;">
+        <tr>
+            <td style="border: 1px solid #222; padding: 4px 8px; width: 30%; font-weight: bold;">Lugar y Fecha de Emision:</td>
+            <td style="border: 1px solid #222; padding: 4px 8px;">@Model.LugarEmision, @String.Format("{0:dd/MM/yyyy}", Model.FechaEmision)</td>
+        </tr>
+        <tr>
+            <td style="border: 1px solid #222; padding: 4px 8px; font-weight: bold;">Nombres Completos o Nombre de Cia.:</td>
+            <td style="border: 1px solid #222; padding: 4px 8px;">@Model.NombreCompania</td>
+        </tr>
+        <tr>
+            <td style="border: 1px solid #222; padding: 4px 8px; font-weight: bold;">Numero de cedula o RUC:</td>
+            <td style="border: 1px solid #222; padding: 4px 8px;">@Model.Ruc</td>
+        </tr>
+        <tr>
+            <td style="border: 1px solid #222; padding: 4px 8px; font-weight: bold;">Direccion de correo electronico:</td>
+            <td style="border: 1px solid #222; padding: 4px 8px;">@Model.Email</td>
+        </tr>
+        <tr>
+            <td style="border: 1px solid #222; padding: 4px 8px; font-weight: bold;">Numero telefonico de contacto:</td>
+            <td style="border: 1px solid #222; padding: 4px 8px;">@Model.Telefono</td>
+        </tr>
+    </table>
+
+    <table style="width: 100%; border-collapse: collapse; margin-top: 16px; font-size: 12px;">
+        <tr>
+            <td colspan="2" style="border: 1px solid #222; font-weight: bold; background: #f3f3f3; padding: 6px 8px; text-align: left;">DETALLE DEL SERVICIO OTORGADO (<span style="font-style:italic;">DERECHOS POR:</span>)</td>
+        </tr>
+        <tr>
+            <td style="border: 1px solid #222; padding: 8px; width: 70%; vertical-align: top;">
+                @Model.ConceptoPrincipal
+                <div style="font-size:11px; color:#444; margin-top:4px;">@Model.Referencia</div>
+            </td>
+            <td style="border: 1px solid #222; padding: 8px; width: 30%; text-align: right; vertical-align: top; font-weight: bold;">
+                USD$ @Model.ValorBase.ToString("N2")
+            </td>
+        </tr>
+        <tr>
+            <td style="border: 1px solid #222; font-weight: bold; background: #f3f3f3; padding: 6px 8px; text-align: left;">TOTAL: <span style="font-style:italic;">@Model.TotalEnLetras</span></td>
+            <td style="border: 1px solid #222; font-weight: bold; background: #f3f3f3; padding: 6px 8px; text-align: right;">USD$ @Model.Total.ToString("N2")</td>
+        </tr>
+    </table>
+
+    <div style="margin-top: 18px; font-size: 11px;">
+        <div style="border: 1px solid #222; padding: 12px 8px; text-align: center; font-weight: bold;">
+            DRA. CARMEN AMELIA TORRES<br />REPRESENTANTE CIA. @Model.NombreCompania
+        </div>
+    </div>
+
+    <div style="margin-top: 10px; font-size: 10px;">
+        <ol style="margin-bottom: 0; padding-left: 18px;">
+            <li>Resolucion 066/2010 de 21 julio de 2010 - "Registro Oficial Edicion Especial No.61"</li>
+            <li>Los valores recaudados tienen el caracter de <b>No Reembolsables</b>.</li>
+            <li>El pago de este rubro no garantiza que el Proceso de Certificacion sea Satisfactorio, si la compania no cumple con lo requerido por la RDAC correspondiente.</li>
+        </ol>
+    </div>
+
+    <div style="margin-top: 18px; font-size: 11px;">
+        <div style="text-align: left;">
+            <b>Mgs. Luis Catota Torres</b><br />Inspector Especialista de Certificacion DGAC<br />Gestion de Operaciones
+        </div>
+    </div>
+</body>
+</html>

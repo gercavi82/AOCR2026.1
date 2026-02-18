@@ -352,6 +352,210 @@ namespace CapaDatos.DAOs
         /// <summary>
         /// Inserta un detalle de orden
         /// </summary>
+
+        /// <summary>
+        /// Crea la orden en estado GENERADA, inserta detalles y encola correo de confirmación
+        /// en una sola transacción de base de datos.
+        /// </summary>
+        public bool CrearOrdenGeneradaConCorreoTransaccional(
+            OrdenRecaudacion orden,
+            string emailDestino,
+            string asuntoCorreo,
+            string cuerpoCorreo,
+            string correlationId,
+            out int ordenId,
+            out string err)
+        {
+            ordenId = 0;
+            err = null;
+
+            if (orden == null)
+            {
+                err = "La orden es nula.";
+                return false;
+            }
+
+            if (orden.Total <= 0)
+            {
+                err = "El total de la orden debe ser mayor a cero.";
+                return false;
+            }
+
+            if (orden.Detalles == null || !orden.Detalles.Any())
+            {
+                err = "La orden debe contener al menos un detalle.";
+                return false;
+            }
+
+            if (string.IsNullOrWhiteSpace(emailDestino))
+            {
+                err = "No existe correo destino para la notificación.";
+                return false;
+            }
+
+            try
+            {
+                using (var conn = new NpgsqlConnection(_connectionString))
+                {
+                    conn.Open();
+                    using (var tx = conn.BeginTransaction())
+                    {
+                        const string sqlOrden = @"
+                            INSERT INTO aocr_or_orden (
+                                codigo_usuario,
+                                codigo_solicitud,
+                                numero_orden,
+                                fecha_creacion,
+                                estado,
+                                compania,
+                                ruc_cedula,
+                                correo,
+                                telefono,
+                                observacion,
+                                subtotal,
+                                admin,
+                                total,
+                                lugar_emision
+                            ) VALUES (
+                                @CodigoUsuario,
+                                @CodigoSolicitud,
+                                @NumeroOrden,
+                                @FechaCreacion,
+                                @Estado,
+                                @Compania,
+                                @RucCedula,
+                                @Correo,
+                                @Telefono,
+                                @Observacion,
+                                @Subtotal,
+                                @Admin,
+                                @Total,
+                                @LugarEmision
+                            ) RETURNING id;";
+
+                        orden.Estado = "GENERADA";
+                        ordenId = conn.ExecuteScalar<int>(sqlOrden, new
+                        {
+                            CodigoUsuario = orden.CodigoUsuario,
+                            CodigoSolicitud = orden.CodigoSolicitud,
+                            NumeroOrden = orden.NumeroOrden,
+                            FechaCreacion = orden.FechaCreacion == default(DateTime) ? DateTime.Now : orden.FechaCreacion,
+                            Estado = orden.Estado,
+                            Compania = orden.Compania,
+                            RucCedula = orden.RucCedula,
+                            Correo = orden.Correo,
+                            Telefono = orden.Telefono,
+                            Observacion = string.IsNullOrWhiteSpace(orden.Observaciones) ? orden.Observacion : orden.Observaciones,
+                            Subtotal = orden.Subtotal ?? 0m,
+                            Admin = orden.Admin ?? 0m,
+                            Total = orden.Total ?? 0m,
+                            LugarEmision = orden.LugarEmision
+                        }, tx);
+
+                        if (ordenId <= 0)
+                        {
+                            tx.Rollback();
+                            err = "No se pudo crear la orden.";
+                            return false;
+                        }
+
+                        const string sqlDetalle = @"
+                            INSERT INTO aocr_or_orden_detalle (
+                                orden_id,
+                                concepto_id,
+                                concepto_nombre,
+                                cantidad,
+                                valor_unitario,
+                                total_linea
+                            ) VALUES (
+                                @OrdenId,
+                                @ConceptoId,
+                                @ConceptoNombre,
+                                @Cantidad,
+                                @ValorUnitario,
+                                @TotalLinea
+                            );";
+
+                        foreach (var detalle in orden.Detalles)
+                        {
+                            conn.Execute(sqlDetalle, new
+                            {
+                                OrdenId = ordenId,
+                                ConceptoId = detalle.ConceptoId,
+                                ConceptoNombre = detalle.ConceptoNombre,
+                                Cantidad = detalle.Cantidad,
+                                ValorUnitario = detalle.ValorUnitario,
+                                TotalLinea = detalle.TotalLinea
+                            }, tx);
+                        }
+
+                        var eventKey = string.Format("ORDEN_{0}_GENERADA", ordenId);
+                        var statusColumn = "status";
+                        const string sqlStatusColumn = @"
+                            SELECT column_name
+                            FROM information_schema.columns
+                            WHERE table_name = 'email_queue'
+                              AND column_name IN ('status','estado')
+                            ORDER BY CASE WHEN column_name='status' THEN 0 ELSE 1 END
+                            LIMIT 1;";
+                        var statusObj = conn.ExecuteScalar<string>(sqlStatusColumn, transaction: tx);
+                        if (!string.IsNullOrWhiteSpace(statusObj))
+                        {
+                            statusColumn = statusObj;
+                        }
+
+                        var sqlQueue = string.Format(@"
+                            INSERT INTO email_queue (
+                                to_address,
+                                subject,
+                                body,
+                                {0},
+                                solicitud_id,
+                                orden_id,
+                                tipo_notificacion,
+                                correlation_id,
+                                event_key,
+                                created_at,
+                                proximo_intento
+                            ) VALUES (
+                                @to_address,
+                                @subject,
+                                @body,
+                                'PENDIENTE',
+                                @solicitud_id,
+                                @orden_id,
+                                @tipo_notificacion,
+                                @correlation_id,
+                                @event_key,
+                                NOW(),
+                                NOW()
+                            )
+                            ON CONFLICT DO NOTHING;", statusColumn);
+
+                        conn.Execute(sqlQueue, new
+                        {
+                            to_address = emailDestino.Trim(),
+                            subject = asuntoCorreo,
+                            body = cuerpoCorreo,
+                            solicitud_id = orden.CodigoSolicitud,
+                            orden_id = ordenId,
+                            tipo_notificacion = "ORDEN_GENERADA",
+                            correlation_id = string.IsNullOrWhiteSpace(correlationId) ? eventKey : correlationId,
+                            event_key = eventKey
+                        }, tx);
+
+                        tx.Commit();
+                        return true;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                err = ex.Message;
+                _logger.LogError(ex, "Error en CrearOrdenGeneradaConCorreoTransaccional");
+                return false;
+            }
+        }
         private void InsertarDetalle(DetalleOrdenEnt detalle, NpgsqlConnection conn)
         {
             // Si falta ConceptoCodigo o ConceptoNombre, obtenerlos desde la BD
@@ -1409,6 +1613,37 @@ namespace CapaDatos.DAOs
             }
         }
 
+        public bool ActualizarCorreoOrdenSiVacio(int ordenId, string correo)
+        {
+            if (ordenId <= 0 || string.IsNullOrWhiteSpace(correo))
+            {
+                return false;
+            }
+
+            try
+            {
+                using (var conn = new NpgsqlConnection(_connectionString))
+                {
+                    conn.Open();
+                    const string sql = @"UPDATE aocr_or_orden
+                                         SET correo = @correo
+                                         WHERE id = @id
+                                           AND (correo IS NULL OR BTRIM(correo) = '')";
+
+                    using (var cmd = new NpgsqlCommand(sql, conn))
+                    {
+                        cmd.Parameters.AddWithValue("@correo", correo.Trim());
+                        cmd.Parameters.AddWithValue("@id", ordenId);
+                        return cmd.ExecuteNonQuery() > 0;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error en ActualizarCorreoOrdenSiVacio");
+                return false;
+            }
+        }
         public bool RegistrarPago(int codigoSolicitud, PagoModel pago, out string err)
         {
             err = null;
@@ -1571,6 +1806,13 @@ namespace CapaDatos.DAOs
                         return true;
                     }
                 }
+            }            catch (PostgresException pgEx) when (
+                pgEx.SqlState == "23505" &&
+                string.Equals(pgEx.ConstraintName, "aocr_tbpago_numero_factura_key", StringComparison.OrdinalIgnoreCase))
+            {
+                err = "El numero de comprobante/factura ya existe. Ingrese un numero diferente.";
+                _logger.LogWarning("Comprobante duplicado en RegistrarPagoYActualizarEstadoTransaccional. SqlState={0}, Constraint={1}, Message={2}", pgEx.SqlState, pgEx.ConstraintName, pgEx.Message);
+                return false;
             }
             catch (Exception ex)
             {
@@ -2335,6 +2577,9 @@ namespace CapaDatos.DAOs
         #endregion
     }
 }
+
+
+
 
 
 

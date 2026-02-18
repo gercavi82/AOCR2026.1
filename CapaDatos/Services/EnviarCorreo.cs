@@ -1,5 +1,6 @@
 using System;
 using System.Net.Mail;
+using System.IO;
 
 namespace CapaDatos.Services
 {
@@ -28,6 +29,22 @@ namespace CapaDatos.Services
             _config = config;
             _queueService = queueService;
             _logger = LoggingServiceFactory.Create();
+            if (_queueService == null)
+            {
+                try
+                {
+                    var conn = _config.GetConnectionString("PostgreSQL")
+                        ?? _config.GetConnectionString("AOCRConnection");
+                    if (!string.IsNullOrWhiteSpace(conn))
+                    {
+                        _queueService = new EmailQueueService(conn);
+                    }
+                }
+                catch
+                {
+                    // El envío directo sigue siendo posible.
+                }
+            }
         }
 
         /// <summary>
@@ -37,6 +54,19 @@ namespace CapaDatos.Services
         {
             _config = new SecureConfigurationService();
             _logger = LoggingServiceFactory.Create();
+            try
+            {
+                var conn = _config.GetConnectionString("PostgreSQL")
+                    ?? _config.GetConnectionString("AOCRConnection");
+                if (!string.IsNullOrWhiteSpace(conn))
+                {
+                    _queueService = new EmailQueueService(conn);
+                }
+            }
+            catch
+            {
+                // Si falla la inicialización de cola, el envío directo sigue disponible.
+            }
         }
 
         #endregion
@@ -104,9 +134,9 @@ namespace CapaDatos.Services
                 {
                     CorrelationId = correlationId,
                     ErrorCode = "SMTP_ERROR",
-                    AdditionalData = { { "Destinatario", coreoPara }, { "StatusCode", ex.StatusCode.ToString() } }
+                    AdditionalData = { { "Destinatario", coreoPara }, { "StatusCode", ex.StatusCode.ToString() }, { "Error", ex.Message } }
                 });
-                return false;
+                return TryEnqueueFallback(coreoPara, asunto, mensajeDetalle, null, null, null, correlationId);
             }
             catch (Exception ex)
             {
@@ -114,9 +144,9 @@ namespace CapaDatos.Services
                 {
                     CorrelationId = correlationId,
                     ErrorCode = "EMAIL_ERROR",
-                    AdditionalData = { { "Destinatario", coreoPara } }
+                    AdditionalData = { { "Destinatario", coreoPara }, { "Error", ex.Message } }
                 });
-                return false;
+                return TryEnqueueFallback(coreoPara, asunto, mensajeDetalle, null, null, null, correlationId);
             }
         }
 
@@ -182,9 +212,9 @@ namespace CapaDatos.Services
                 {
                     CorrelationId = correlationId,
                     ErrorCode = "SMTP_ERROR_ADJUNTO",
-                    AdditionalData = { { "Destinatario", coreoPara }, { "StatusCode", ex.StatusCode.ToString() } }
+                    AdditionalData = { { "Destinatario", coreoPara }, { "StatusCode", ex.StatusCode.ToString() }, { "Error", ex.Message } }
                 });
-                return false;
+                return TryEnqueueFallback(coreoPara, asunto, mensajeDetalle, adjuntoBytes, adjuntoNombre, mimeType, correlationId);
             }
             catch (Exception ex)
             {
@@ -192,9 +222,9 @@ namespace CapaDatos.Services
                 {
                     CorrelationId = correlationId,
                     ErrorCode = "EMAIL_ADJUNTO_ERROR",
-                    AdditionalData = { { "Destinatario", coreoPara } }
+                    AdditionalData = { { "Destinatario", coreoPara }, { "Error", ex.Message } }
                 });
-                return false;
+                return TryEnqueueFallback(coreoPara, asunto, mensajeDetalle, adjuntoBytes, adjuntoNombre, mimeType, correlationId);
             }
         }
 
@@ -334,6 +364,64 @@ namespace CapaDatos.Services
                 return text;
             }
             return text.Substring(0, maxLength) + "...";
+        }
+
+        private bool TryEnqueueFallback(
+            string para,
+            string asunto,
+            string cuerpo,
+            byte[] adjuntoBytes,
+            string adjuntoNombre,
+            string mimeType,
+            string correlationId)
+        {
+            if (_queueService == null || string.IsNullOrWhiteSpace(para))
+            {
+                return false;
+            }
+
+            try
+            {
+                string adjuntoRuta = null;
+                if (adjuntoBytes != null && adjuntoBytes.Length > 0)
+                {
+                    adjuntoRuta = PersistAttachment(adjuntoBytes, adjuntoNombre);
+                }
+
+                var item = new EmailQueueItem
+                {
+                    Para = para,
+                    Asunto = string.IsNullOrWhiteSpace(asunto) ? "Notificación - Sistema AOCR" : asunto,
+                    Cuerpo = cuerpo ?? string.Empty,
+                    CorrelationId = correlationId,
+                    TipoNotificacion = "SMTP_FALLBACK",
+                    MaxIntentos = 3,
+                    AdjuntoRuta = adjuntoRuta,
+                    AdjuntoNombre = string.IsNullOrWhiteSpace(adjuntoNombre) ? null : adjuntoNombre,
+                    AdjuntoMimeType = string.IsNullOrWhiteSpace(mimeType) ? null : mimeType
+                };
+
+                var queueId = _queueService.EncolarAsync(item).GetAwaiter().GetResult();
+                _logger.LogWarning(
+                    string.Format("SMTP falló. Correo encolado para reintento. QueueId={0}", queueId),
+                    new LogContext { CorrelationId = correlationId, ErrorCode = "SMTP_FALLBACK_QUEUED" });
+                return true;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, new LogContext { CorrelationId = correlationId, ErrorCode = "SMTP_FALLBACK_ERROR" });
+                return false;
+            }
+        }
+
+        private string PersistAttachment(byte[] content, string fileName)
+        {
+            var safeName = string.IsNullOrWhiteSpace(fileName) ? "adjunto.bin" : Path.GetFileName(fileName);
+            var root = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "App_Data", "AOCR", "EmailQueueAttachments");
+            Directory.CreateDirectory(root);
+            var finalPath = Path.Combine(root, string.Format("{0}_{1}", Guid.NewGuid().ToString("N"), safeName));
+            File.WriteAllBytes(finalPath, content);
+            return finalPath;
         }
 
         #endregion

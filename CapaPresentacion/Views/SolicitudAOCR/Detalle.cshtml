@@ -1,4 +1,4 @@
-@inherits System.Web.Mvc.WebViewPage<CapaModelo.SolicitudAOCR>
+﻿@inherits System.Web.Mvc.WebViewPage<CapaModelo.SolicitudAOCR>
 @using CapaModelo
 @using System.Web.Mvc
 @using System.Web.Mvc.Html
@@ -31,26 +31,26 @@
             <dt class="col-sm-4">Email</dt>
             <dd class="col-sm-8">@Model.Email</dd>
 
-            <dt class="col-sm-4">Teléfono</dt>
+            <dt class="col-sm-4">TelÃ©fono</dt>
             <dd class="col-sm-8">@Model.Telefono</dd>
 
-            <dt class="col-sm-4">Dirección</dt>
+            <dt class="col-sm-4">DirecciÃ³n</dt>
             <dd class="col-sm-8">@Model.Direccion, @Model.Ciudad  @Model.Provincia, @Model.Pais</dd>
 
             <dt class="col-sm-4">Representante Legal</dt>
             <dd class="col-sm-8">@Model.RepresentanteLegal (@Model.CedulaRepresentante)</dd>
 
-            <dt class="col-sm-4">Tipo de Operación</dt>
+            <dt class="col-sm-4">Tipo de OperaciÃ³n</dt>
             <dd class="col-sm-8">@Model.TipoOperacion</dd>
 
-            <dt class="col-sm-4">Descripción de Operación</dt>
+            <dt class="col-sm-4">DescripciÃ³n de OperaciÃ³n</dt>
             <dd class="col-sm-8">@Model.DescripcionOperacion</dd>
         </dl>
 
         @if (User.IsInRole("Inspector"))
         {
             <hr class="my-4" />
-            <h5 class="mb-3">Gestión del Borrador AOCR</h5>
+            <h5 class="mb-3">GestiÃ³n del Borrador AOCR</h5>
             <div class="d-flex flex-column gap-2 mb-3">
                 <a href="@Url.Action("Subir", "Documento", new { solicitudId = Model.CodigoSolicitud })" class="btn btn-outline-primary">
                     <i class="fas fa-upload"></i> Subir Borrador AOCR
@@ -83,7 +83,7 @@
 @if (User.IsInRole("Inspector") && Model.Estado == "ENVIADO_A_INSPECTOR")
 {
     <hr class="my-4" />
-    <h5 class="mb-3">Revisión del Inspector</h5>
+    <h5 class="mb-3">RevisiÃ³n del Inspector</h5>
     <div class="card border-info">
         <div class="card-body bg-light">
             <form method="post">
@@ -109,7 +109,7 @@
 @if (User.IsInRole("JefaturaTecnica") && Model.Estado == "ENVIADO_A_JEFATURA")
 {
     <hr class="my-4" />
-    <h5 class="mb-3">Validación Técnica (Jefatura)</h5>
+    <h5 class="mb-3">ValidaciÃ³n TÃ©cnica (Jefatura)</h5>
     <div class="card border-warning">
         <div class="card-body bg-light">
             <form method="post">
@@ -117,13 +117,13 @@
                 <input type="hidden" name="id" value="@Model.CodigoSolicitud" />
                 <div class="mb-3">
                     <label for="observacion" class="form-label">Observaciones (si aplica)</label>
-                    <textarea class="form-control" id="observacion" name="observacion" rows="3" placeholder="Observaciones técnicas si se rechaza..."></textarea>
+                    <textarea class="form-control" id="observacion" name="observaciones" rows="3" minlength="10" required placeholder="Observaciones tÃ©cnicas (mÃ­nimo 10 caracteres)..."></textarea>
                 </div>
                 <div class="d-flex gap-2">
-                    <button formaction="@Url.Action("ValidarTecnicamente", "SolicitudAOCR")" class="btn btn-success">
+                    <button formaction="@Url.Action("AprobarPorJefatura", "SolicitudAOCR")" class="btn btn-success">
                         <i class="fas fa-check"></i> Validar Certificado AOCR
                     </button>
-                    <button type="submit" formaction="@Url.Action("RechazarTecnicamente", "SolicitudAOCR")" class="btn btn-danger">
+                    <button type="submit" formaction="@Url.Action("ObservarPorJefatura", "SolicitudAOCR")" class="btn btn-danger">
                         <i class="fas fa-times-circle"></i> Rechazar Solicitud
                     </button>
                 </div>
@@ -135,19 +135,24 @@
 @if (User.IsInRole("CoordinacionLegal") && Model.Estado == "ENVIADO_A_LEGALIZACION")
 {
     <hr class="my-4" />
-    <h5 class="mb-3">Legalización (Coordinación Legal)</h5>
+    <h5 class="mb-3">LegalizaciÃ³n (CoordinaciÃ³n Legal)</h5>
     <div class="card border-primary mb-4">
         <div class="card-body bg-light">
             <form method="post" action="@Url.Action("Legalizar", "SolicitudAOCR")">
                 @Html.AntiForgeryToken()
                 @Html.Hidden("id", Model.CodigoSolicitud)
                 <div class="mb-3">
-                    <label for="observacionLegal" class="form-label">Observaciones de Legalización (opcional)</label>
-                    <textarea class="form-control" id="observacionLegal" name="observacionLegal" rows="3" placeholder="Ingrese observaciones si aplica..."></textarea>
+                    <label for="observacionLegal" class="form-label">Observaciones de LegalizaciÃ³n / Rechazo</label>
+                    <textarea class="form-control" id="observacionLegal" name="observacionLegal" rows="3" minlength="10" placeholder="Ingrese observaciones (mÃ­nimo 10 caracteres para rechazar)..."></textarea>
                 </div>
-                <button type="submit" class="btn btn-success">
-                    <i class="fas fa-check-circle"></i> Legalizar AOCR
-                </button>
+                <div class="d-flex gap-2">
+                    <button type="submit" class="btn btn-success">
+                        <i class="fas fa-check-circle"></i> Legalizar AOCR
+                    </button>
+                    <button type="submit" formaction="@Url.Action("RechazarLegalizacion", "SolicitudAOCR")" class="btn btn-danger">
+                        <i class="fas fa-times-circle"></i> Rechazar en Legal
+                    </button>
+                </div>
             </form>
         </div>
     </div>
@@ -201,6 +206,7 @@ else
 <div class="mt-4">
     @Html.ActionLink("Volver", "Index", null, new { @class = "btn btn-secondary" })
 </div>
+
 
 
 

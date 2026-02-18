@@ -1,0 +1,126 @@
+@model CapaPresentacion.Models.FinancieroOrdenBandejaVM
+@using CapaPresentacion.Models
+@using CapaModelo
+@using System.Web.Mvc
+@using System.Web.Mvc.Html
+
+@{
+    ViewBag.Title = "Bandeja Financiera - �rdenes";
+    var filtro = Model != null && Model.Filtro != null ? Model.Filtro : new FinancieroOrdenFiltroVM();
+}
+
+<h2>Bandeja Financiera - Órdenes de Recaudación</h2>
+<hr />
+
+@if (TempData["Success"] != null)
+{
+    <div class="alert alert-success">@TempData["Success"]</div>
+}
+@if (TempData["Error"] != null)
+{
+    <div class="alert alert-danger">@TempData["Error"]</div>
+}
+@if (Model != null && Model.SinResultadosConFiltro)
+{
+    <div class="alert alert-warning">
+        No se encontraron órdenes con el filtro seleccionado. Se muestran todas las órdenes disponibles (Total: @Model.TotalSinFiltro).
+    </div>
+}
+
+<div class="card mb-3">
+    <div class="card-body">
+        @using (Html.BeginForm("Index", "Financiero", FormMethod.Get, new { @class = "row g-2" }))
+        {
+            <div class="col-md-2">
+                <label class="form-label">Estado</label>
+                <select name="Estado" class="form-select form-select-sm">
+                    <option value="PROCESADA" @(filtro.Estado == "PROCESADA" ? "selected" : "")>En revisión</option>
+                    <option value="PENDIENTE" @(filtro.Estado == "PENDIENTE" ? "selected" : "")>Pendiente</option>
+                    <option value="FACTURADA" @(filtro.Estado == "FACTURADA" ? "selected" : "")>Facturada</option>
+                    <option value="COMPLETADA" @(filtro.Estado == "COMPLETADA" ? "selected" : "")>Completada</option>
+                    <option value="ANULADA" @(filtro.Estado == "ANULADA" ? "selected" : "")>Anulada</option>
+                    <option value="TODAS" @(filtro.Estado == "TODAS" ? "selected" : "")>Todas</option>
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">Fecha desde</label>
+                <input type="date" name="FechaDesde" value="@(filtro.FechaDesde.HasValue ? filtro.FechaDesde.Value.ToString("yyyy-MM-dd") : "")" class="form-control form-control-sm" />
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">Fecha hasta</label>
+                <input type="date" name="FechaHasta" value="@(filtro.FechaHasta.HasValue ? filtro.FechaHasta.Value.ToString("yyyy-MM-dd") : "")" class="form-control form-control-sm" />
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">Solicitante</label>
+                <input type="text" name="Solicitante" value="@filtro.Solicitante" class="form-control form-control-sm" placeholder="Nombre / RUC / Usuario" />
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">Número de orden</label>
+                <input type="text" name="NumeroOrden" value="@filtro.NumeroOrden" class="form-control form-control-sm" placeholder="Ej: OR-000123" />
+            </div>
+            <div class="col-12 text-end">
+                <button type="submit" class="btn btn-primary btn-sm mt-2">Aplicar filtros</button>
+            </div>
+        }
+    </div>
+</div>
+
+<table class="table table-striped table-hover">
+    <thead>
+        <tr>
+            <th>#</th>
+            <th>Orden</th>
+            <th>Solicitante</th>
+            <th>Fecha</th>
+            <th>Monto</th>
+            <th>Estado</th>
+            <th>Comprobante</th>
+            <th>Acciones</th>
+        </tr>
+    </thead>
+    <tbody>
+        @if (Model != null && Model.Ordenes != null && Model.Ordenes.Any())
+        {
+            int i = 1;
+            foreach (var item in Model.Ordenes)
+            {
+                var orden = item.Orden;
+                var pago = item.Pago;
+                var estadoNorm = orden != null ? ((orden.Estado ?? "").Trim().ToUpperInvariant().Replace(" ", "_")) : "";
+                <tr>
+                    <td>@Html.Encode(i)</td>
+                    <td>@Html.Encode(orden != null ? orden.NumeroOrden : "-")</td>
+                    <td>@Html.Encode(orden != null ? (orden.NombreContribuyente ?? orden.Compania) : "-")</td>
+                    <td>@Html.Encode(orden != null ? String.Format("{0:dd/MM/yyyy}", orden.FechaCreacion) : "")</td>
+                    <td>@Html.Encode(orden != null ? String.Format("{0:N2}", orden.Total) : "0.00")</td>
+                    <td>@Html.Encode(orden != null ? orden.Estado : "")</td>
+                    <td>
+                        @if (orden != null)
+                        {
+                            <a href="@Url.Action("DescargarPdf", "OrdenRecaudacion", new { id = orden.Id })" target="_blank" rel="noopener">Ver PDF</a>
+                        }
+                        else
+                        {
+                            <span class="text-muted">Sin orden</span>
+                        }
+                    </td>
+                    <td>
+                        @if (orden != null)
+                        {
+                            <a class="btn btn-sm btn-outline-primary" href="@Url.Action("DetalleOrden", "Financiero", new { id = orden.Id })" aria-label="Ver detalle de la orden @(orden != null ? orden.NumeroOrden : "")">Detalle</a>
+                        }
+                    </td>
+                </tr>
+                i++;
+            }
+        }
+        else
+        {
+            <tr>
+                <td colspan="8" class="text-center">
+                    No hay registros para el filtro seleccionado.
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>

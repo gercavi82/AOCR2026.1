@@ -26,6 +26,7 @@ namespace CapaPresentacion.Controllers
     public class FinancieroController : Controller
     {
         private readonly OrdenRecaudacionDAO _ordenDAO = new OrdenRecaudacionDAO();
+        private readonly OrdenEstadoHistorialDAO _ordenEstadoHistorialDAO = new OrdenEstadoHistorialDAO();
 
         public ActionResult Index(FinancieroOrdenFiltroVM filtro)
         {
@@ -106,6 +107,7 @@ namespace CapaPresentacion.Controllers
             var solicitudId = ordenEnt.CodigoSolicitud ?? 0;
             var pagoEnt = _ordenDAO.ObtenerUltimoPagoPorOrden(solicitudId > 0 ? solicitudId : ordenEnt.Id);
             var pago = MapearPago(pagoEnt);
+            var pagos = _ordenDAO.ObtenerPagosPorOrden(ordenEnt.Id) ?? new List<PagoModelDatos>();
 
             var historial = new List<HistorialEstado>();
             if (ordenEnt.CodigoSolicitud.HasValue && ordenEnt.CodigoSolicitud.Value > 0)
@@ -117,6 +119,7 @@ namespace CapaPresentacion.Controllers
             {
                 Orden = orden,
                 Pago = pago,
+                Pagos = pagos,
                 Historial = historial
             };
 
@@ -292,9 +295,9 @@ namespace CapaPresentacion.Controllers
         [ValidateAntiForgeryToken]
         public ActionResult RechazarOrden(int id, string motivo)
         {
-            if (string.IsNullOrWhiteSpace(motivo))
+            if (string.IsNullOrWhiteSpace(motivo) || (motivo ?? string.Empty).Trim().Length < 10)
             {
-                TempData["Error"] = "Debe ingresar un motivo de rechazo.";
+                TempData["Error"] = "Debe ingresar un motivo de rechazo de al menos 10 caracteres.";
                 return RedirectToAction("DetalleOrden", new { id });
             }
 
@@ -322,17 +325,20 @@ namespace CapaPresentacion.Controllers
                 }
 
                 RegistrarHistorialEstado(orden, estadoAnterior, "PENDIENTE", motivo, user);
+                _ordenEstadoHistorialDAO.RegistrarCambio(orden.Id, estadoAnterior, "PENDIENTE", motivo, user, "Financiero");
                 RegistrarAuditoriaCambioEstado(orden, pagoPrevio, estadoAnterior, "PENDIENTE", EstadoPago.Rechazado, motivo, user, correlationId);
 
-                var comprobanteRuta = pagoPrevio?.RutaComprobante;
-                var comprobanteFisico = string.IsNullOrWhiteSpace(comprobanteRuta) ? null : ResolveStoredFilePath(comprobanteRuta);
-                var comprobanteNombre = string.IsNullOrWhiteSpace(comprobanteFisico) ? null : Path.GetFileName(comprobanteFisico);
-
-                if (!EncolarCorreoRechazo(orden, pagoPrevio, comprobanteFisico, comprobanteNombre, motivo, correlationId, out var errorCorreo))
-                {
-                    TempData["Error"] = "Orden rechazada, pero no se pudo encolar el correo: " + errorCorreo;
-                    return RedirectToAction("DetalleOrden", new { id });
-                }
+                var notify = new CapaNegocio.Services.RechazoAnulacionNotificacionService();
+                notify.NotificarOrdenAsync(
+                    orden.Id,
+                    orden.CodigoSolicitud,
+                    orden.NumeroOrden,
+                    orden.EmailContribuyente,
+                    orden.NombreContribuyente,
+                    motivo,
+                    "Financiero",
+                    "RECHAZADA",
+                    DateTime.Now);
 
                 TempData["Success"] = "Orden rechazada correctamente. Correo encolado para env�o.";
             }
@@ -903,9 +909,6 @@ namespace CapaPresentacion.Controllers
         #endregion
     }
 }
-
-
-
 
 
 

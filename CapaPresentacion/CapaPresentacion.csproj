@@ -321,6 +321,7 @@
     <Compile Include="Models\EmailTemplates\OrdenAprobadaEmailVM.cs" />
     <Compile Include="Models\EmailTemplates\OrdenRechazadaEmailVM.cs" />
     <Compile Include="Models\EmailTemplates\PagoRecibidoFinancieroEmailVM.cs" />
+    <Compile Include="Models\EmailTemplates\PagoRecibidoSolicitanteEmailVM.cs" />
     <Compile Include="Models\OrdenValidacionFinancieraVM.cs" />
     <Compile Include="Models\ResultadoInspeccionVM.cs" />
     <Compile Include="Models\ProgramarInspeccionVM.cs" />
@@ -2865,6 +2866,7 @@
     <Content Include="Views\EmailTemplates\OrdenAprobada.cshtml" />
     <Content Include="Views\EmailTemplates\OrdenRechazada.cshtml" />
     <Content Include="Views\EmailTemplates\PagoRecibidoFinanciero.cshtml" />
+    <Content Include="Views\EmailTemplates\PagoRecibidoSolicitante.cshtml" />
     <Content Include="Views\Administrador\ConfiguracionSistema.cshtml" />
     <Content Include="Views\CoordinacionLegal\GenerarCertificados.cshtml" />
     <Content Include="Views\OrdenRecaudacion\Obligatoria.cshtml" />
@@ -2910,6 +2912,7 @@
     <Content Include="Views\Notificacion\Index.cshtml" />
     <Content Include="Views\OrdenRecaudacion\ExportPdf.cshtml" />
     <Content Include="Views\Usuario\RevisarDesignaciones.cshtml" />
+    <Content Include="Views\TestEmail\Index.cshtml" />
   </ItemGroup>
   <ItemGroup>
     <Folder Include="App_Data\" />

@@ -57,7 +57,23 @@ namespace CapaDatos.Services
             }
 
             var config = ConfigurationManager.ConnectionStrings[name];
-            return config != null ? config.ConnectionString : null;
+            if (config != null && !string.IsNullOrWhiteSpace(config.ConnectionString))
+            {
+                return config.ConnectionString;
+            }
+
+            // Fallback defensivo: varios módulos usan AOCRConnection y otros PostgreSQL.
+            if (string.Equals(name, "PostgreSQL", StringComparison.OrdinalIgnoreCase))
+            {
+                return ConfigurationManager.ConnectionStrings["AOCRConnection"]?.ConnectionString;
+            }
+
+            if (string.Equals(name, "AOCRConnection", StringComparison.OrdinalIgnoreCase))
+            {
+                return ConfigurationManager.ConnectionStrings["PostgreSQL"]?.ConnectionString;
+            }
+
+            return null;
         }
 
         public string GetAppSetting(string key)

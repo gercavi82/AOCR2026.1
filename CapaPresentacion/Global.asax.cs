@@ -146,6 +146,35 @@ namespace CapaPresentacion
                     }
                 };
 
+                if (ex is HttpParseException parseEx)
+                {
+                    context.ErrorCode = "RAZOR_PARSE_ERROR";
+                    context.AdditionalData["Parse.FileName"] = parseEx.FileName ?? "N/A";
+                    context.AdditionalData["Parse.VirtualPath"] = parseEx.VirtualPath ?? "N/A";
+                    context.AdditionalData["Parse.Line"] = parseEx.Line;
+
+                    try
+                    {
+                        if (parseEx.ParserErrors != null && parseEx.ParserErrors.Count > 0)
+                        {
+                            var max = Math.Min(5, parseEx.ParserErrors.Count);
+                            for (var i = 0; i < max; i++)
+                            {
+                                var pe = parseEx.ParserErrors[i];
+                                context.AdditionalData["ParseError." + i] = string.Format(
+                                    "Line={0}; VirtualPath={1}; Message={2}",
+                                    pe.Line,
+                                    pe.VirtualPath ?? "N/A",
+                                    pe.ErrorText ?? "N/A");
+                            }
+                        }
+                    }
+                    catch
+                    {
+                        // Evitar fallar el manejo global de errores por logging extra.
+                    }
+                }
+
                 _logger.LogError(ex ?? new Exception("Error global sin excepción"), context);
             }
             catch
@@ -215,18 +244,34 @@ namespace CapaPresentacion
             {
                 var configService = new CapaDatos.Services.SecureConfigurationService();
                 var connectionString = configService.GetConnectionString("PostgreSQL");
+                var configSource = "PostgreSQL";
+                if (string.IsNullOrWhiteSpace(connectionString))
+                {
+                    connectionString = configService.GetConnectionString("AOCRConnection");
+                    configSource = "AOCRConnection";
+                }
 
-                var queueService = new CapaDatos.Services.EmailQueueService();
+                if (string.IsNullOrWhiteSpace(connectionString))
+                {
+                    _logger.LogError(
+                        new InvalidOperationException("No se encontró connection string para EmailQueue (PostgreSQL/AOCRConnection)."),
+                        new AppLogContext { ErrorCode = "EMAIL_QUEUE_CONFIG_MISSING" });
+                    return;
+                }
+
+                var queueService = new CapaDatos.Services.EmailQueueService(connectionString);
                 var emailService = new CapaDatos.Services.EmailService(configService);
 
                 _emailProcessor = new EmailQueueProcessor(queueService, emailService);
                 _emailProcessor.Start();
+                _logger.LogInfo("EmailQueueProcessor iniciado con connection string desde: " + configSource);
 
                 System.Diagnostics.Debug.WriteLine("Procesador de cola de correos iniciado");
             }
             catch (Exception ex)
             {
                 System.Diagnostics.Debug.WriteLine("Error al iniciar procesador de correos: " + ex.Message);
+                _logger.LogError(ex, new AppLogContext { ErrorCode = "EMAIL_QUEUE_START_ERROR" });
             }
         }
     }

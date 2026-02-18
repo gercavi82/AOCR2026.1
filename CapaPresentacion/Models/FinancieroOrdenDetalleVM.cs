@@ -9,6 +9,7 @@ namespace CapaPresentacion.Models
     {
         public OrdenRecaudacionModelDatos Orden { get; set; }
         public PagoModelDatos Pago { get; set; }
+        public List<PagoModelDatos> Pagos { get; set; } = new List<PagoModelDatos>();
         public List<HistorialEstado> Historial { get; set; } = new List<HistorialEstado>();
     }
 }

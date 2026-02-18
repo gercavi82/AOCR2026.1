@@ -183,27 +183,27 @@ namespace CapaDatos.Constants
         /// <summary>
         /// Email pendiente de envío
         /// </summary>
-        public const string Pendiente = "Pendiente";
+        public const string Pendiente = "PENDIENTE";
 
         /// <summary>
         /// Email enviado exitosamente
         /// </summary>
-        public const string Enviado = "Enviado";
+        public const string Enviado = "ENVIADO";
 
         /// <summary>
         /// Email falló después de reintentos
         /// </summary>
-        public const string Fallido = "Fallido";
+        public const string Fallido = "ERROR";
 
         /// <summary>
         /// Email en proceso de envío
         /// </summary>
-        public const string Procesando = "Procesando";
+        public const string Procesando = "ENVIANDO";
 
         /// <summary>
         /// Email cancelado/descartado
         /// </summary>
-        public const string Cancelado = "Cancelado";
+        public const string Cancelado = "CANCELADO";
     }
 
     /// <summary>

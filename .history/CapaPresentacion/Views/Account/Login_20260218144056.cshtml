@@ -1,0 +1,522 @@
+﻿@inherits System.Web.Mvc.WebViewPage<CapaPresentacion.Models.LoginViewModel>
+    
+@using CapaModelo
+@using System.Web.Mvc
+@using System.Web.Mvc.Html
+@{
+    Layout = null;
+    ViewBag.Title = "Ingreso AOCR – DGAC";
+}
+
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="utf-8" />
+    <title>@ViewBag.Title</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="icon" type="image/png" sizes="16x16" href="@Url.Content("~/Content/imganes/logo2.jpg")" />
+
+    <!-- ✅ Bootstrap 5 -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+
+    <!-- FontAwesome (igual) -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+
+    <!-- SweetAlert2 (local fallback for pages without Layout) -->
+    <link rel="stylesheet" href="@Url.Content("~/Content/plugins/sweetalert2/sweetalert2.min.css")">
+
+    <style>
+        :root {
+            --dgac-teal: #0c7c86;
+            --dgac-blue: #1b4f72;
+            --dgac-light: #f8f9fa;
+            --shadow-lg: 0 12px 28px rgba(0, 0, 0, 0.25);
+        }
+
+        body {
+            background: linear-gradient(135deg, var(--dgac-teal), var(--dgac-blue));
+            min-height: 100vh;
+            margin: 0;
+            padding: 0;
+            color: #111;
+            font-family: 'Source Sans Pro', sans-serif;
+        }
+
+        .login-container {
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .login-card {
+            width: 100%;
+            max-width: 450px;
+            border-radius: 12px;
+            box-shadow: var(--shadow-lg);
+            background-color: #fff;
+            border: none;
+            overflow: hidden;
+        }
+
+        .login-hero {
+            background: linear-gradient(135deg, var(--dgac-teal) 0%, var(--dgac-blue) 100%);
+            color: var(--dgac-light);
+            padding: 2rem 1.5rem;
+            margin-bottom: 0;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .login-hero::before {
+            content: "";
+            position: absolute;
+            top: -50%;
+            right: -10%;
+            width: 280px;
+            height: 280px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 50%;
+            z-index: 0;
+        }
+
+        .login-hero-content {
+            position: relative;
+            z-index: 1;
+            text-align: center;
+        }
+
+        .login-hero-logo {
+            height: 70px;
+            border-radius: 8px;
+        }
+
+        .login-title {
+            font-weight: 700;
+            font-size: 1.4rem;
+            color: var(--dgac-light);
+            margin-top: 0.75rem;
+            margin-bottom: 0;
+        }
+
+        .btn-primary-grad {
+            background: linear-gradient(135deg, #0C7C86 0%, #1B4F72 100%);
+            border: none;
+            color: #fff;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+
+            .btn-primary-grad:hover {
+                transform: translateY(-2px);
+                box-shadow: 0 8px 20px rgba(12,124,134,.4);
+                color: #fff;
+            }
+
+            .btn-primary-grad:disabled {
+                background: #ccc;
+                transform: none;
+                box-shadow: none;
+            }
+
+        .link-inline {
+            cursor: pointer;
+            text-decoration: none;
+            color: #1B4F72;
+            font-weight: 500;
+        }
+
+            .link-inline:hover {
+                text-decoration: underline;
+            }
+
+        .login-foot {
+            text-align: center;
+            color: rgba(255,255,255,0.8);
+            font-size: 0.9rem;
+        }
+
+        .is-invalid {
+            border-color: #dc3545;
+        }
+    </style>
+</head>
+<body>
+    <div class="login-container">
+        <div class="card login-card">
+            <div class="login-hero">
+                <div class="login-hero-content">
+                    <img src="@Url.Content("~/Content/imganes/logodgac.jpg")" alt="Logo DGAC" class="login-hero-logo">
+                    <h5 class="login-title">Acceso Sistema AOCR</h5>
+                </div>
+            </div>
+            <div class="card-body p-4">
+
+                @if (!ViewData.ModelState.IsValid)
+                {
+                    <div class="alert alert-danger text-center py-2">
+                        @Html.ValidationSummary(false, "", new { @class = "small m-0" })
+                    </div>
+                }
+
+                @using (Html.BeginForm("Login", "Account", FormMethod.Post, new { id = "loginForm" }))
+                {
+                    @Html.AntiForgeryToken()
+
+                    <div class="mb-3">
+                        <label class="small fw-bold">Usuario o Correo</label>
+                        @Html.TextBoxFor(m => m.Usuario, new {
+                            @class = "form-control" + ((ViewData.ModelState["Usuario"] != null && ViewData.ModelState["Usuario"].Errors.Count > 0) ? " is-invalid" : ""),
+                            placeholder = "Ej: juan.perez",
+                            autocomplete = "username"
+                        })
+                        @Html.ValidationMessageFor(m => m.Usuario, "", new { @class = "text-danger small" })
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="small fw-bold">Contraseña</label>
+                        <div class="input-group">
+                            @Html.PasswordFor(m => m.Contrasena, new {
+                                @class = "form-control" + ((ViewData.ModelState["Contrasena"] != null && ViewData.ModelState["Contrasena"].Errors.Count > 0) ? " is-invalid" : ""),
+                                id = "clave",
+                                placeholder = "••••••••",
+                                autocomplete = "current-password"
+                            })
+                            <button class="btn btn-outline-secondary" type="button" id="btnTogglePassword" aria-pressed="false" aria-label="Mostrar contraseña" onclick="togglePassword()">
+                                <i class="fa fa-eye" id="toggleIcon"></i>
+                            </button>
+                        </div>
+                        @Html.ValidationMessageFor(m => m.Contrasena, "", new { @class = "text-danger small" })
+                    </div>
+
+                    <div class="form-check mb-4">
+                        <input class="form-check-input" type="checkbox" id="termsCheck"
+                               onchange="document.getElementById('loginBtn').disabled = !this.checked;" />
+                        <label class="form-check-label small" for="termsCheck">
+                            He leído y acepto los
+                            <a class="link-inline" data-bs-toggle="modal" data-bs-target="#termsModal">Términos y Condiciones</a>
+                        </label>
+                    </div>
+
+                    <button class="btn btn-primary-grad w-100 py-2" type="submit" id="loginBtn" disabled>
+                        <i class="fa fa-sign-in-alt me-1"></i> Ingresar al Sistema
+                    </button>
+                }
+
+                <hr>
+
+                <div class="text-center small">
+                    <a id="linkRegistroRT" class="link-inline" data-bs-toggle="modal" data-bs-target="#modalRegistroUsuario">
+                        ¿No tienes cuenta? Regístrate
+                    </a>
+                </div>
+
+                <div class="text-center mt-2 small">
+                    <a class="link-inline text-muted" data-bs-toggle="modal" data-bs-target="#forgotPasswordModal">Olvidé mi contraseña</a>
+                </div>
+
+                <div class="text-center mt-2 small">
+                    <a class="link-inline text-muted" data-bs-toggle="modal" data-bs-target="#modalCuentasBancos">
+                        <i class="fa fa-university me-1"></i> Cuentas Bancarias DGAC
+                    </a>
+                </div>
+
+            </div>
+        </div>
+
+        <p class="login-foot mt-4">
+            &copy; @DateTime.Now.Year Dirección General de Aviación Civil — Ecuador
+        </p>
+    </div>
+
+    @Html.Partial("_ModalCrearUsuario")
+
+    <!-- Modal Olvidé mi contraseña -->
+    <div class="modal fade" id="forgotPasswordModal" tabindex="-1" aria-labelledby="forgotPasswordModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header bg-light">
+                    <h5 class="modal-title" id="forgotPasswordModalLabel">
+                        <i class="fa fa-key me-2"></i> Recuperar contraseña
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+                </div>
+                <div class="modal-body">
+                    @Html.AntiForgeryToken()
+                    <div id="forgotAlert" class="alert d-none" role="alert"></div>
+                    <label for="forgotEmail" class="form-label">Correo electrónico registrado</label>
+                    <input type="email" class="form-control" id="forgotEmail" placeholder="usuario@dominio.com" autocomplete="email">
+                    <small class="text-muted d-block mt-2">
+                        Se enviará una contraseña temporal a su correo.
+                    </small>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-primary" id="btnForgotSend">
+                        <i class="fa fa-paper-plane me-1"></i> Enviar
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Búsqueda de Compañías -->
+    <div class="modal fade" id="modalBuscarCompania" tabindex="-1" aria-labelledby="modalBuscarCompaniaLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title" id="modalBuscarCompaniaLabel">
+                        <i class="fas fa-search me-2"></i> Buscar Compañía Operadora
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+                </div>
+
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="buscarCompaniaInput" class="form-label">Nombre de la compañía:</label>
+                        <input type="text" 
+                               class="form-control" 
+                               id="buscarCompaniaInput" 
+                               placeholder="Escriba para buscar..." 
+                               autocomplete="off">
+                    </div>
+
+                    <div id="resultadosCompanias" class="list-group" style="max-height: 400px; overflow-y: auto;">
+                        <div class="text-center text-muted py-4">
+                            <i class="fas fa-info-circle fa-2x mb-2"></i>
+                            <p>Escriba el nombre de la compañía para buscar</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancelar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Cuentas Bancarias -->
+    <div class="modal fade" id="modalCuentasBancos" tabindex="-1" aria-labelledby="modalCuentasBancosLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+            <div class="modal-content">
+
+                <div class="modal-header bg-light">
+                    <h5 class="modal-title" id="modalCuentasBancosLabel">
+                        <i class="fa fa-university me-2"></i> Cuentas Bancarias DGAC
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+                </div>
+
+                <div class="modal-body">
+                    @Html.Partial("_CuentasBancosPartial")
+                </div>
+
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cerrar</button>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+    <!-- jQuery (solo por tus AJAX; BS5 no lo necesita) -->
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+
+    <!-- ✅ Bootstrap 5 Bundle -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+
+    <!-- SweetAlert2 (local fallback for pages without Layout) -->
+    <script src="@Url.Content("~/Content/plugins/sweetalert2/sweetalert2.min.js")"></script>
+
+    <!-- AOCR utils (escape helpers) - required by modal scripts -->
+    <script src="@Url.Content("~/Scripts/aocr-utils.js")"></script>
+
+    <script>
+        // Helpers BS5 Modals
+        function showBsModal(id) {
+            var el = document.getElementById(id);
+            if (!el) return;
+            var modal = bootstrap.Modal.getOrCreateInstance(el);
+            modal.show();
+        }
+
+        function hideBsModal(id) {
+            var el = document.getElementById(id);
+            if (!el) return;
+            var modal = bootstrap.Modal.getInstance(el);
+            if (modal) modal.hide();
+        }
+
+        $(document).ready(function () {
+            // Mostrar modal de cuentas bancarias al iniciar (BS5)
+            showBsModal('modalCuentasBancos');
+
+            // Control del botón de ingreso (términos y condiciones)
+            $('#termsCheck').on('change', function() {
+                $('#loginBtn').prop('disabled', !this.checked);
+            });
+            // Sincronizar estado inicial por si el navegador restaura el checkbox
+            $('#termsCheck').trigger('change');
+
+            // Lógica para mostrar "Otro Rol"
+            $(document).on('change', '#Rol', function () {
+                var texto = $("#Rol option:selected").text().toUpperCase();
+                if (texto.indexOf("OTRO") >= 0) {
+                    $('#otroRolContainer').slideDown();
+                    $('#OtroRol').prop('required', true);
+                } else {
+                    $('#otroRolContainer').slideUp();
+                    $('#OtroRol').val('');
+                    $('#OtroRol').prop('required', false);
+                }
+            });
+
+            // Recuperar contraseña
+            $('#btnForgotSend').on('click', function () {
+                var email = ($('#forgotEmail').val() || '').trim();
+                var $alert = $('#forgotAlert');
+                var token = $('#forgotPasswordModal input[name="__RequestVerificationToken"]').val() || $('input[name="__RequestVerificationToken"]').first().val();
+                $alert.addClass('d-none').removeClass('alert-success alert-danger').text('');
+
+                if (!email) {
+                    $alert.removeClass('d-none').addClass('alert-danger').text('Ingrese un correo válido.');
+                    return;
+                }
+
+                $.ajax({
+                    url: '@Url.Action("EnviarRecuperar", "Account")',
+                    type: 'POST',
+                    dataType: 'json',
+                    data: { email: email, __RequestVerificationToken: token },
+                    beforeSend: function(xhr) {
+                        // Add antiforgery token also in header for compatibility
+                        if (token) xhr.setRequestHeader('RequestVerificationToken', token);
+                    },
+                    success: function (resp) {
+                        if (resp && resp.ok) {
+                            $alert.removeClass('d-none').addClass('alert-success')
+                                .text(resp.mensaje || 'Se envió la contraseña temporal a su correo.');
+                        } else {
+                            $alert.removeClass('d-none').addClass('alert-danger')
+                                .text(resp?.mensaje || 'No se pudo enviar el correo.');
+                        }
+                    },
+                    error: function () {
+                        $alert.removeClass('d-none').addClass('alert-danger')
+                            .text('Error en el servidor. Intente nuevamente.');
+                    }
+                });
+            });
+        });
+
+        // Fallback sin jQuery: asegura que el botón se habilite si falla JS previo
+        document.addEventListener('DOMContentLoaded', function () {
+            var cb = document.getElementById('termsCheck');
+            var btn = document.getElementById('loginBtn');
+            if (!cb || !btn) return;
+            var sync = function () { btn.disabled = !cb.checked; };
+            cb.addEventListener('change', sync);
+            sync();
+        });
+
+        function togglePassword() {
+            var input = document.getElementById('clave');
+            var icon = document.getElementById('toggleIcon');
+            var btn = document.getElementById('btnTogglePassword') || null;
+            if (input.type === 'password') {
+                input.type = 'text';
+                icon.classList.replace('fa-eye', 'fa-eye-slash');
+                if (btn) { btn.setAttribute('aria-pressed', 'true'); btn.setAttribute('aria-label', 'Ocultar contraseña'); }
+            } else {
+                input.type = 'password';
+                icon.classList.replace('fa-eye-slash', 'fa-eye');
+                if (btn) { btn.setAttribute('aria-pressed', 'false'); btn.setAttribute('aria-label', 'Mostrar contraseña'); }
+            }
+        }
+
+        // ==================================================================
+        // BÚSQUEDA DE COMPAÑÍAS PARA MODAL DE REGISTRO
+        // ==================================================================
+        
+        // Variable global para almacenar empresas
+        var empresasCache = [];
+
+        // Función global que el modal _ModalCrearUsuario espera
+        window.cargarModalBusquedaCompania = function() {
+            // Cargar empresas si no están en caché
+            if (empresasCache.length === 0) {
+                $.ajax({
+                    url: '@Url.Action("ObtenerEmpresas", "Empresa")',
+                    type: 'GET',
+                    dataType: 'json',
+                    success: function (data) {
+                        empresasCache = data || [];
+                        $('#modalBuscarCompania').modal('show');
+                    },
+                    error: function() {
+                        Swal.fire({ title: 'Error', text: 'Error al cargar las compañías', icon: 'error' });
+                    }
+                });
+            } else {
+                $('#modalBuscarCompania').modal('show');
+            }
+        };
+
+        // Búsqueda en tiempo real
+        $(document).on('input', '#buscarCompaniaInput', function() {
+            var termino = $(this).val().toLowerCase().trim();
+            var resultados = $('#resultadosCompanias');
+
+            if (termino.length < 2) {
+                resultados.html('<div class="text-center text-muted py-4"><i class="fas fa-info-circle fa-2x mb-2"></i><p>Escriba al menos 2 caracteres</p></div>');
+                return;
+            }
+
+            var empresasFiltradas = empresasCache.filter(function(empresa) {
+                return empresa.Nombre.toLowerCase().includes(termino) || 
+                       empresa.Codigo.toLowerCase().includes(termino);
+            });
+
+            if (empresasFiltradas.length === 0) {
+                resultados.html('<div class="text-center text-muted py-4"><i class="fas fa-exclamation-circle fa-2x mb-2"></i><p>No se encontraron compañías</p></div>');
+                return;
+            }
+
+            $.each(empresasFiltradas.slice(0, 20), function(i, empresa) {
+                var $a = $('<a>').attr('href','#').addClass('list-group-item list-group-item-action seleccionar-compania')
+                    .attr('data-id', empresa.Codigo)
+                    .attr('data-nombre', empresa.Nombre)
+                    .append($('<div>').addClass('d-flex w-100 justify-content-between')
+                        .append($('<h6>').addClass('mb-1').text(empresa.Nombre))
+                        .append($('<small>').addClass('text-muted').text(empresa.Codigo))
+                    );
+                resultados.append($a);
+            });
+        });
+
+        // Seleccionar compañía
+        $(document).on('click', '.seleccionar-compania', function(e) {
+            e.preventDefault();
+            var id = $(this).data('id');
+            var nombre = $(this).data('nombre');
+
+            // Llamar función global del modal de usuario
+            if (typeof window.seleccionarCompaniaParaUsuario === 'function') {
+                window.seleccionarCompaniaParaUsuario(id, nombre);
+            }
+
+            // Cerrar modal
+            $('#modalBuscarCompania').modal('hide');
+            $('#buscarCompaniaInput').val('');
+            $('#resultadosCompanias').html('<div class="text-center text-muted py-4"><i class="fas fa-info-circle fa-2x mb-2"></i><p>Escriba el nombre de la compañía para buscar</p></div>');
+        });
+    </script>
+
+
+</body>
+</html>
+
+

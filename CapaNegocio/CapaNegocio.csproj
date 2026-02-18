@@ -126,12 +126,14 @@
     <Compile Include="OrdenRecaudacionBL.cs" />
     <Compile Include="Helpers\ValidacionEstadosOR.cs" />
     <Compile Include="Helpers\DateHelper.cs" />
+    <Compile Include="Helpers\EmailTemplateBuilder.cs" />
     <Compile Include="Helpers\EmailHelper.cs" />
     <Compile Include="Helpers\FileHelper.cs" />
     <Compile Include="Helpers\FileStorageHelper.cs" />
     <Compile Include="Helpers\PasswordHelper.cs" />
     <Compile Include="Helpers\ValidationHelper.cs" />
     <Compile Include="Services\EmailService.cs" />
+    <Compile Include="Services\RechazoAnulacionNotificacionService.cs" />
     <Compile Include="Services\DashboardOrdenesService.cs" />
     <Compile Include="Services\EstadoOrdenService.cs" />
     <Compile Include="Services\InspeccionService.cs" />

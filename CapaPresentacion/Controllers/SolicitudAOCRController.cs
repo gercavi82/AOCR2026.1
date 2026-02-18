@@ -668,10 +668,35 @@ namespace CapaPresentacion.Controllers
         [ValidateAntiForgeryToken]
         public ActionResult ObservarPorJefatura(int id, string observaciones)
         {
+            if (string.IsNullOrWhiteSpace(observaciones) || observaciones.Trim().Length < 10)
+            {
+                TempData["Error"] = "Debe ingresar observaciones de al menos 10 caracteres.";
+                return RedirectToAction("Detalle", new { id });
+            }
+
             int userId = ObtenerUsuarioActualId();
-            _solicitudDAO.CambiarEstado(id, "OBSERVADO_JEFATURA", userId, observaciones ?? "");
+            var observacionRol = string.Format("[Rol: Jefatura Técnica] {0}", observaciones ?? string.Empty);
+            _solicitudDAO.CambiarEstado(id, "OBSERVADO_JEFATURA", userId, observacionRol);
+            new HistorialEstadoDAO().RegistrarCambio(id, "ENVIADO_A_JEFATURA", "OBSERVADO_JEFATURA", userId, observacionRol);
+            try
+            {
+                var solicitud = _solicitudDAO.ObtenerPorId(id);
+                if (solicitud != null)
+                {
+                    new CapaNegocio.Services.RechazoAnulacionNotificacionService().NotificarSolicitudAsync(
+                        solicitud.CodigoSolicitud,
+                        solicitud.NumeroSolicitud,
+                        solicitud.Email,
+                        solicitud.NombreOperador,
+                        observacionRol,
+                        "Jefatura Técnica",
+                        "RECHAZADA",
+                        DateTime.Now);
+                }
+            }
+            catch { }
             TempData["Exito"] = "Se ha enviado una observación a la solicitud.";
-            return RedirectToAction("RevisarPorJefatura");
+            return RedirectToAction("Detalle", new { id });
         }
 
         public ActionResult Detalle(int id)
@@ -730,6 +755,54 @@ namespace CapaPresentacion.Controllers
             catch (Exception ex)
             {
                 TempData["Error"] = "Error al legalizar: " + ex.Message;
+            }
+
+            return RedirectToAction("RevisarLegalizacion");
+        }
+
+        [HttpPost]
+        [Authorize(Roles = "CoordinacionLegal")]
+        [ValidateAntiForgeryToken]
+        public ActionResult RechazarLegalizacion(int id, string observacionLegal)
+        {
+            try
+            {
+                if (string.IsNullOrWhiteSpace(observacionLegal) || observacionLegal.Trim().Length < 10)
+                {
+                    TempData["Error"] = "Debe ingresar observaciones de al menos 10 caracteres para rechazar.";
+                    return RedirectToAction("Detalle", new { id });
+                }
+
+                int userId = ObtenerUsuarioActualId();
+                var solicitud = _solicitudDAO.ObtenerPorId(id);
+                if (solicitud == null) return HttpNotFound();
+
+                string estadoAnterior = solicitud.Estado;
+                var observacionRol = string.Format("[Rol: Coordinación Legal] {0}", observacionLegal);
+                _solicitudDAO.CambiarEstado(id, "RECHAZADO", userId, observacionRol);
+
+                new HistorialEstadoDAO().RegistrarCambio(
+                    id,
+                    estadoAnterior,
+                    "RECHAZADO",
+                    userId,
+                    observacionRol);
+
+                new CapaNegocio.Services.RechazoAnulacionNotificacionService().NotificarSolicitudAsync(
+                    solicitud.CodigoSolicitud,
+                    solicitud.NumeroSolicitud,
+                    solicitud.Email,
+                    solicitud.NombreOperador,
+                    observacionRol,
+                    "Coordinación Legal",
+                    "RECHAZADA",
+                    DateTime.Now);
+
+                TempData["Exito"] = "Solicitud rechazada por Coordinación Legal.";
+            }
+            catch (Exception ex)
+            {
+                TempData["Error"] = "Error al rechazar legalización: " + ex.Message;
             }
 
             return RedirectToAction("RevisarLegalizacion");

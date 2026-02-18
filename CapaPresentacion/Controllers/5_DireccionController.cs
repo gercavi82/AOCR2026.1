@@ -178,9 +178,38 @@ namespace CapaPresentacion.Controllers
                 }
                 else
                 {
+                    if (string.IsNullOrWhiteSpace(observaciones) || observaciones.Trim().Length < 10)
+                    {
+                        TempData["error"] = "Para rechazar debe ingresar observaciones de al menos 10 caracteres.";
+                        return RedirectToAction("ValidacionFinal", new { id });
+                    }
+
                     // Rechazar solicitud
                     string mensaje;
-                    SolicitudAOCRBL.CambiarEstado(id, "RECHAZADO_POR_DIRECCION", userId, observaciones ?? "Rechazado por Dirección", out mensaje);
+                    var observacionRol = string.Format("[Rol: Dirección/Jefatura] {0}", observaciones ?? "Rechazado por Dirección");
+                    SolicitudAOCRBL.CambiarEstado(id, "RECHAZADO_POR_DIRECCION", userId, observacionRol, out mensaje);
+                    new HistorialEstadoBL().RegistrarCambioEstado(new HistorialEstado
+                    {
+                        CodigoSolicitud = id,
+                        EstadoAnterior = solicitud.Estado,
+                        EstadoNuevo = "RECHAZADO_POR_DIRECCION",
+                        Observaciones = observacionRol,
+                        CodigoUsuario = userId,
+                        FechaCambio = DateTime.Now
+                    }, out _);
+                    try
+                    {
+                        new CapaNegocio.Services.RechazoAnulacionNotificacionService().NotificarSolicitudAsync(
+                            solicitud.CodigoSolicitud,
+                            solicitud.NumeroSolicitud,
+                            solicitud.Email,
+                            solicitud.NombreOperador,
+                            observacionRol,
+                            "Dirección / Jefatura",
+                            "RECHAZADA",
+                            DateTime.Now);
+                    }
+                    catch { }
 
                     TempData["error"] = "Solicitud rechazada.";
                     return RedirectToAction("AprobarSolicitudes");
