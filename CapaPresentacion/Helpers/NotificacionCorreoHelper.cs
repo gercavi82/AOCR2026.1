@@ -17,7 +17,7 @@ namespace CapaPresentacion.Helpers
             {
                 var emailService = new EnviarCorreo();
                 
-                string asunto = $"Nueva Orden de Recaudación #{ordenId}";
+                string asunto = $"Nueva Orden de recaudación #{ordenId}";
                 string mensaje = GenerarHtmlNuevaOrden(ordenId, monto, concepto);
                 
                 return emailService.enviaMensajeCorreo(destinatario, asunto, mensaje);
@@ -118,7 +118,7 @@ namespace CapaPresentacion.Helpers
                     <h2>Sistema AOCR - Dirección General de Aviación Civil</h2>
                 </div>
                 <div class='content'>
-                    <h3 style='color: #003366;'>Nueva Orden de Recaudación</h3>
+                    <h3 style='color: #003366;'>Nueva Orden de recaudación</h3>
                     <p>Estimado/a usuario/a,</p>
                     <p>Se ha generado una nueva orden de recaudación con los siguientes detalles:</p>
                     

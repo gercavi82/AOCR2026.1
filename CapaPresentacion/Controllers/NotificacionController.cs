@@ -9,7 +9,7 @@ using CapaDatos.Constants;
 namespace CapaPresentacion.Controllers
 {
     /// <summary>
-    /// API Controller para gestiÃ³n de notificaciones en tiempo real
+    /// API Controller para gestió de notificaciones en tiempo real
     /// Endpoints RESTful para consultar, marcar como leÃ­das y eliminar notificaciones
     /// </summary>
     [Authorize]
@@ -95,7 +95,7 @@ namespace CapaPresentacion.Controllers
 
         // ============================================
         // GET: /Notificacion/ObtenerRecientes
-        // API JSON para obtener Ãºltimas N notificaciones
+        // API JSON para obtener últimas N notificaciones
         // ============================================
         [HttpGet]
         public JsonResult ObtenerRecientes(int cantidad = 10)
@@ -144,7 +144,7 @@ namespace CapaPresentacion.Controllers
 
         // ============================================
         // POST: /Notificacion/MarcarComoLeida
-        // Marca una notificaciÃ³n especÃ­fica como leÃ­da
+        // Marca una notificació especÃ­fica como leÃ­da
         // ============================================
         [HttpPost]
         [ValidateAntiForgeryToken]
@@ -176,7 +176,7 @@ namespace CapaPresentacion.Controllers
                 return Json(new
                 {
                     success = false,
-                    message = "Error al marcar notificaciÃ³n: " + ex.Message
+                    message = "Error al marcar notificació: " + ex.Message
                 });
             }
         }
@@ -224,7 +224,7 @@ namespace CapaPresentacion.Controllers
 
         // ============================================
         // POST: /Notificacion/Eliminar
-        // Elimina una notificaciÃ³n especÃ­fica
+        // Elimina una notificació especÃ­fica
         // ============================================
         [HttpPost]
         [ValidateAntiForgeryToken]
@@ -256,7 +256,7 @@ namespace CapaPresentacion.Controllers
                 return Json(new
                 {
                     success = false,
-                    message = "Error al eliminar notificaciÃ³n: " + ex.Message
+                    message = "Error al eliminar notificació: " + ex.Message
                 });
             }
         }
@@ -344,7 +344,7 @@ namespace CapaPresentacion.Controllers
 
         // ============================================
         // POST: /Notificacion/Enviar (Admin/Testing)
-        // EnvÃ­a una notificaciÃ³n manual (solo para testing)
+        // EnvÃ­a una notificació manual (solo para testing)
         // ============================================
         [HttpPost]
         [ValidateAntiForgeryToken]
@@ -358,7 +358,7 @@ namespace CapaPresentacion.Controllers
                 return Json(new
                 {
                     success = resultado,
-                    message = resultado ? "NotificaciÃ³n enviada correctamente" : "Error al enviar notificaciÃ³n"
+                    message = resultado ? "Notificació enviada correctamente" : "Error al enviar notificació"
                 });
             }
             catch (Exception ex)

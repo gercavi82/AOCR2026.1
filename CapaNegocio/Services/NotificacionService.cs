@@ -71,7 +71,7 @@ namespace CapaNegocio.Services
             switch (request.TipoNotificacion?.ToUpperInvariant())
             {
                 case "ORDEN_CREADA":
-                    return "Nueva Orden de Recaudación - AOCR";
+                    return "Nueva Orden de recaudación - AOCR";
                 case "PAGO_REGISTRADO":
                     return "Pago Registrado - Pendiente de Validación";
                 case "PAGO_VALIDADO":

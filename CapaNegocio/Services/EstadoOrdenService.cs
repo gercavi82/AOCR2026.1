@@ -5,7 +5,7 @@ using System.Linq;
 namespace CapaNegocio.Services
 {
     /// <summary>
-    /// Servicio empresarial para gestión robusta de estados de Órdenes de Recaudación
+    /// Servicio empresarial para gestión robusta de estados de Órdenes de recaudación
     /// Implementa State Machine Pattern + Business Rules
     /// </summary>
     public class EstadoOrdenService

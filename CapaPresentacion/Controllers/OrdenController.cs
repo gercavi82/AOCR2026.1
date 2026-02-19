@@ -98,7 +98,7 @@ namespace CapaPresentacion.Controllers
                     ordenes.Add(vm);
                 }
 
-                ViewBag.Mensaje = "Mis Órdenes de Recaudación";
+                ViewBag.Mensaje = "Mis Órdenes de recaudación";
 
                 return View(ordenes);
             }

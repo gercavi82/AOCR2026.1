@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Web.Mvc;
@@ -42,12 +43,8 @@ namespace CapaPresentacion.Controllers
             var vms = new List<OrdenValidacionFinancieraVM>();
             foreach (var orden in ordenes)
             {
-                var solicitudId = 0;
-                if (orden != null && !string.IsNullOrWhiteSpace(orden.CodigoSolicitud))
-                {
-                    int.TryParse(orden.CodigoSolicitud, out solicitudId);
-                }
-                var pagoEnt = _ordenDAO.ObtenerUltimoPagoPorOrden(solicitudId > 0 ? solicitudId : orden.Id);
+                // El DAO espera id de orden para resolver internamente el codigo_solicitud correcto.
+                var pagoEnt = _ordenDAO.ObtenerUltimoPagoPorOrden(orden?.Id ?? 0);
                 var pago = MapearPago(pagoEnt);
                 vms.Add(new OrdenValidacionFinancieraVM
                 {
@@ -70,7 +67,7 @@ namespace CapaPresentacion.Controllers
             var estado = ((orden.Estado ?? "").Trim()).ToUpperInvariant().Replace(" ", "_");
             if (estado != "PROCESADA")
             {
-                TempData["Error"] = "Solo se pueden aprobar órdenes en estado PROCESADA.";
+                TempData["Error"] = "Solo se pueden aprobar Ã³rdenes en estado PROCESADA.";
                 return RedirectToAction("Index");
             }
 
@@ -117,13 +114,25 @@ namespace CapaPresentacion.Controllers
 
             try
             {
-                // Actualizar pago y estado en transacción
+                // Actualizar pago y estado en transacciÃ³n
                 if (!_ordenDAO.ActualizarPagoYEstadoTransaccional(id, pagoId, "VALIDADO", user, "Aprobado por Finanzas", "FACTURADA", out var err))
                 {
                     CapaNegocio.LogBL.RegistrarError($"Error aprobando pago OrdenId={id}", err ?? "n/a", "FinancieroController");
                     TempData["Error"] = "Error al aprobar el pago. " + (string.IsNullOrWhiteSpace(err) ? "" : ("Detalle: " + err));
                     return RedirectToAction("Index");
                 }
+
+                try
+                {
+                    var ordenActualizada = _ordenDAO.ObtenerOrdenPorId(id) ?? orden;
+                    var pdf = new CapaPresentacion.Services.PdfGeneratorService().GenerarOrdenRecaudacionPDF(ordenActualizada);
+                    new EmailService().EnviarFacturaGenerada(ordenActualizada, pdf);
+                }
+                catch (System.Exception exPdf)
+                {
+                    CapaNegocio.LogBL.RegistrarError($"Error generando/mandando factura al aprobar pago OrdenId={id}", exPdf.ToString(), "FinancieroController");
+                }
+
                 TempData["Success"] = "Pago aprobado y orden facturada.";
             }
             catch (System.Exception ex)
@@ -148,9 +157,9 @@ namespace CapaPresentacion.Controllers
             if (orden == null) return HttpNotFound();
 
             var estado = ((orden.Estado ?? "").Trim()).ToUpperInvariant().Replace(" ", "_");
-            if (estado != "PROCESADA")
+            if (estado != "PROCESADA" && estado != "PENDIENTE")
             {
-                TempData["Error"] = "Solo se pueden rechazar órdenes en estado PROCESADA.";
+                TempData["Error"] = "Solo se pueden rechazar Ã³rdenes en estado PROCESADA o PENDIENTE.";
                 return RedirectToAction("Index");
             }
 
@@ -158,7 +167,26 @@ namespace CapaPresentacion.Controllers
 
             try
             {
-                if (!_ordenDAO.ActualizarPagoYEstadoTransaccional(id, null, "ANULADO", user, motivo, "PENDIENTE", out var err))
+                var rechazoAplicado = _ordenDAO.ActualizarPagoYEstadoTransaccional(id, null, "ANULADO", user, motivo, "ANULADA", out var err);
+                if (!rechazoAplicado)
+                {
+                    var detalleError = (err ?? string.Empty).Trim();
+                    var noTienePago =
+                        detalleError.IndexOf("No se encontr", StringComparison.OrdinalIgnoreCase) >= 0 &&
+                        detalleError.IndexOf("pago", StringComparison.OrdinalIgnoreCase) >= 0;
+
+                    // Rechazo sin pago asociado: anula la orden igualmente para retirarla del flujo financiero.
+                    if (noTienePago)
+                    {
+                        rechazoAplicado = _ordenDAO.CambiarEstado(id, "ANULADA", motivo);
+                        if (!rechazoAplicado)
+                        {
+                            err = "No se pudo actualizar el estado de la orden a ANULADA.";
+                        }
+                    }
+                }
+
+                if (!rechazoAplicado)
                 {
                     CapaNegocio.LogBL.RegistrarError($"Error rechazando orden Id={id} NumOrden={orden.NumeroOrden}", err ?? "n/a", "FinancieroController");
                     TempData["Error"] = "Error al rechazar la orden. " + (string.IsNullOrWhiteSpace(err) ? "" : ("Detalle: " + err));
@@ -167,7 +195,8 @@ namespace CapaPresentacion.Controllers
 
                 try
                 {
-                    new EmailService().EnviarNotificacionRechazo(orden, motivo);
+                    var ordenActualizada = _ordenDAO.ObtenerOrdenPorId(id) ?? orden;
+                    new EmailService().EnviarNotificacionRechazo(ordenActualizada, motivo);
                 }
                 catch (System.Exception exMail)
                 {
@@ -182,6 +211,13 @@ namespace CapaPresentacion.Controllers
                 TempData["Error"] = "Error interno al rechazar la orden.";
             }
             return RedirectToAction("Index");
+        }
+
+        // Compat: redirige la ruta /Financiero/DetalleOrden/{id} a la vista oficial de detalles
+        [HttpGet]
+        public ActionResult DetalleOrden(int id)
+        {
+            return RedirectToAction("Detalles", "OrdenRecaudacion", new { id });
         }
 
         // GET: /Financiero/TodasOrdenes

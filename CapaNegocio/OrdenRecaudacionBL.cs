@@ -9,7 +9,7 @@ using CapaDatos.Services;
 namespace CapaNegocio
 {
     /// <summary>
-    /// Capa de negocio para Órdenes de Recaudación
+    /// Capa de negocio para Órdenes de recaudación
     /// VERSIÓN CORREGIDA: Implementa patrón async/await correctamente
     /// </summary>
     public class OrdenRecaudacionBL

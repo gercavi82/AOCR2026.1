@@ -82,14 +82,14 @@ namespace CapaPresentacion.Controllers
             }
         }
 
-        // ? Para confirmar conexiÃ³n real a DB (Ãºtil en producciÃ³n)
+        // ? Para confirmar conexió real a DB (útil en producció)
         [Authorize(Roles = "Administrador,Financiero")]
         public JsonResult DbPing()
         {
             return Json(new { ok = _dao.Ping() }, JsonRequestBehavior.AllowGet);
         }
 
-        // DiagnÃ³stico de sesiÃ³n (SIN autorizaciÃ³n para debug)
+        // DiagnÓstico de sesió (SIN autorizació para debug)
         [AllowAnonymous]
         public ActionResult DiagnosticoSesion()
         {
@@ -132,7 +132,7 @@ namespace CapaPresentacion.Controllers
             }
             diagnostico.AppendLine($"\nTodos los roles: {string.Join(", ", allRoles)}");
             
-            // SesiÃ³n
+            // Sesió
             diagnostico.AppendLine($"\nSession['IdUsuario']: {Session["IdUsuario"]?.ToString() ?? "null"}");
             diagnostico.AppendLine($"Session['UserId']: {Session["UserId"]?.ToString() ?? "null"}");
             diagnostico.AppendLine($"Session['Correo']: {Session["Correo"]?.ToString() ?? "null"}");
@@ -310,7 +310,7 @@ namespace CapaPresentacion.Controllers
             CargarEstadosCombo(null);
 
             var ordenes = _dao.ListarPorUsuario(idUsuario, null) ?? new List<OrdenRecaudacion>();
-            System.Diagnostics.Debug.WriteLine(string.Format("Obligatoria: Se encontraron {0} Ã³rdenes", ordenes.Count));
+            System.Diagnostics.Debug.WriteLine(string.Format("Obligatoria: Se encontraron {0} Órdenes", ordenes.Count));
 
             // Estadisticas
             var est = _dao.ObtenerEstadisticas(idUsuario);
@@ -327,6 +327,7 @@ namespace CapaPresentacion.Controllers
             var model = new CapaPresentacion.Models.OrdenRecaudacionNuevaVM();
             CargarConceptosNueva(model);
             var userId = GetUserId();
+            model.Orden.LugarEmision = "Quito";
             // Prefill bÃ¡sico desde usuario/empresa (editables)
             try
             {
@@ -368,7 +369,7 @@ namespace CapaPresentacion.Controllers
                             Id = solicitudAuto.CodigoSolicitud,
                             Numero = solicitudAuto.NumeroSolicitud,
                             Nombre = solicitudAuto.NombreOperador,
-                            Label = string.Format("{0} - {1}", solicitudAuto.NumeroSolicitud, solicitudAuto.NombreOperador),
+                            Label = solicitudAuto.NumeroSolicitud,
                             Ruc = solicitudAuto.Ruc,
                             Correo = solicitudAuto.Email,
                             Telefono = solicitudAuto.Telefono,
@@ -388,8 +389,11 @@ namespace CapaPresentacion.Controllers
             }
             catch
             {
-                // Si falla la autogeneraciÃ³n, dejar el flujo normal con selecciÃ³n
+                // Si falla la autogeneració, dejar el flujo normal con selecció
             }
+
+            // Completar campos faltantes con la última orden registrada del usuario.
+            PrefillDesdeUltimaOrden(userId, model);
             return View(model);
         }
 
@@ -500,7 +504,7 @@ namespace CapaPresentacion.Controllers
                     // Insertar detalles
                     foreach (var det in detalles)
                     {
-                        // Obtener el concepto para tener el porcentaje de administraciÃ³n
+                        // Obtener el concepto para tener el porcentaje de administració
                         var concepto = _conceptoDao.ObtenerPorId(det.ConceptoId);
                         var porcentajeAdmin = concepto?.PorcentajeAdmin ?? 0m;
                         var adminLinea = det.Subtotal * (porcentajeAdmin / 100m);
@@ -542,14 +546,14 @@ namespace CapaPresentacion.Controllers
         private async Task<string> GenerarNumeroOrdenAsync()
         {
             var fecha = DateTime.Now;
-            // Generar nÃºmero Ãºnico con timestamp de microsegundos para evitar duplicados
+            // Generar número único con timestamp de microsegundos para evitar duplicados
             var timestamp = fecha.ToString("yyyyMMddHHmmssfff"); // Agregamos milisegundos (fff)
             var consecutivo = await _dao.ObtenerConsecutivoDiarioAsync(fecha) + 1;
             var numeroOrden = string.Format("OR-{0}-{1}", timestamp, consecutivo);
             
             System.Diagnostics.Debug.WriteLine($"GenerarNumeroOrdenAsync: timestamp={timestamp}, consecutivo={consecutivo}, resultado={numeroOrden}");
             
-            // Verificar que no exista ya este nÃºmero (medida de seguridad adicional)
+            // Verificar que no exista ya este número (medida de seguridad adicional)
             int intentos = 0;
             var numeroFinal = numeroOrden;
             while (intentos < 10) // mÃ¡ximo 10 intentos
@@ -562,7 +566,7 @@ namespace CapaPresentacion.Controllers
                 // Si existe, agregar un sufijo adicional
                 intentos++;
                 numeroFinal = string.Format("OR-{0}-{1}-{2}", timestamp, consecutivo, intentos);
-                System.Diagnostics.Debug.WriteLine($"GenerarNumeroOrdenAsync: NÃºmero duplicado, intentando={numeroFinal}");
+                System.Diagnostics.Debug.WriteLine($"GenerarNumeroOrdenAsync: Número duplicado, intentando={numeroFinal}");
             }
             
             return numeroFinal;
@@ -577,6 +581,8 @@ namespace CapaPresentacion.Controllers
             var orden = await _dao.ObtenerOrdenPorIdModelAsync(id);
             if (orden == null || orden.CodigoUsuario != idUsuario)
                 return HttpNotFound();
+
+            CompletarDatosOrdenParaVista(orden);
 
             System.Diagnostics.Debug.WriteLine($"Controller Detalles: ordenId = {id}, numeroOrden = {orden.NumeroOrden}");
 
@@ -596,6 +602,82 @@ namespace CapaPresentacion.Controllers
             ViewBag.ListaMetodoPago = ToSelectList("SOLFOR");
 
             return View(orden);
+        }
+
+        private void CompletarDatosOrdenParaVista(OrdenRecaudacionModel orden)
+        {
+            if (orden == null) return;
+
+            SolicitudAOCR solicitud = null;
+            Usuario usuario = null;
+
+            try
+            {
+                if (!string.IsNullOrWhiteSpace(orden.CodigoSolicitud) &&
+                    int.TryParse(orden.CodigoSolicitud, out int codigoSolicitud) &&
+                    codigoSolicitud > 0)
+                {
+                    solicitud = _solicitudDao.ObtenerPorId(codigoSolicitud);
+                }
+            }
+            catch
+            {
+                // no bloquear render por fallo de solicitud
+            }
+
+            try
+            {
+                if (orden.CodigoUsuario > 0)
+                {
+                    usuario = UsuarioDAO.ObtenerPorId(orden.CodigoUsuario);
+                }
+            }
+            catch
+            {
+                // no bloquear render por fallo de usuario
+            }
+
+            if (string.IsNullOrWhiteSpace(orden.Compania))
+            {
+                orden.Compania = !string.IsNullOrWhiteSpace(solicitud?.RazonSocial)
+                    ? solicitud.RazonSocial
+                    : (!string.IsNullOrWhiteSpace(solicitud?.NombreOperador)
+                        ? solicitud.NombreOperador
+                        : usuario?.NombreCompleto);
+            }
+
+            if (string.IsNullOrWhiteSpace(orden.RucCedula))
+            {
+                orden.RucCedula = !string.IsNullOrWhiteSpace(solicitud?.Ruc)
+                    ? solicitud.Ruc
+                    : ExtraerRucCedula(usuario?.CodigoUsuario ?? usuario?.NombreUsuario);
+            }
+
+            if (string.IsNullOrWhiteSpace(orden.Correo))
+            {
+                orden.Correo = !string.IsNullOrWhiteSpace(solicitud?.Email)
+                    ? solicitud.Email
+                    : usuario?.Email;
+            }
+
+            if (string.IsNullOrWhiteSpace(orden.Telefono))
+            {
+                orden.Telefono = solicitud?.Telefono;
+            }
+
+            if (string.IsNullOrWhiteSpace(orden.LugarEmision))
+            {
+                orden.LugarEmision = !string.IsNullOrWhiteSpace(solicitud?.Ciudad)
+                    ? solicitud.Ciudad
+                    : "Quito";
+            }
+
+            if (string.IsNullOrWhiteSpace(orden.NombreUsuario))
+            {
+                orden.NombreUsuario = !string.IsNullOrWhiteSpace(usuario?.NombreCompleto)
+                    ? usuario.NombreCompleto
+                    : usuario?.NombreUsuario;
+            }
         }
 
         // GET: /OrdenRecaudacion/Editar/5
@@ -781,23 +863,23 @@ namespace CapaPresentacion.Controllers
                 string leyendaBancos = $"<p><strong>Puede realizar el pago de la orden en los siguientes bancos autorizados:</strong></p>{bancosHtml}";
 
                 var pdfModel = BuildOrdenRecaudacionPdfModel(orden);
-                pdfModel.LeyendaBancos = @"Para los servicios AEROPORTUARIOS y/o AERONÃUTICOS, use las siguientes cuentas. Realice el pago con 72 horas de anticipaciÃ³n.<br><br>
+                pdfModel.LeyendaBancos = @"Para los servicios AEROPORTUARIOS y/o AERONÃUTICOS, use las siguientes cuentas. Realice el pago con 72 horas de anticipació.<br><br>
 <b>Banco Pichincha</b><br>
 Cuenta Corriente: 2100310688<br>
-SublÃ­nea: 30200 (en depÃ³sitos)<br>
-Titular: DirecciÃ³n General de AviaciÃ³n Civil<br>
+SublÃ­nea: 30200 (en depÓsitos)<br>
+Titular: Direcció General de Aviació Civil<br>
 RUC: 1768014410001<br>
 En transferencias NO colocar sublÃ­nea<br><br>
 <b>Banco Internacional</b><br>
 Cuenta Corriente: 520608140<br>
-SublÃ­nea: 30200 (en depÃ³sitos)<br>
-Titular: DirecciÃ³n General de AviaciÃ³n Civil<br>
+SublÃ­nea: 30200 (en depÓsitos)<br>
+Titular: Direcció General de Aviació Civil<br>
 RUC: 1768014410001<br>
 En transferencias NO colocar sublÃ­nea<br><br>
 <b>Banco RumiÃ±ahui</b><br>
 Cuenta Corriente: 8002531204<br>
-SublÃ­nea: 30200 (en depÃ³sitos)<br>
-Titular: DirecciÃ³n General de AviaciÃ³n Civil<br>
+SublÃ­nea: 30200 (en depÓsitos)<br>
+Titular: Direcció General de Aviació Civil<br>
 RUC: 1768014410001<br>
 En transferencias NO colocar sublÃ­nea<br>";
                 var nombreArchivo = "Comprobante_Orden_" + (orden.NumeroOrden ?? orden.Id.ToString()) + ".pdf";
@@ -810,23 +892,23 @@ En transferencias NO colocar sublÃ­nea<br>";
                         PageSize = Rotativa.Options.Size.A4,
                         PageOrientation = Rotativa.Options.Orientation.Portrait,
                         PageMargins = new Rotativa.Options.Margins(20, 15, 20, 15),
-                        CustomSwitches = "--disable-smart-shrinking --print-media-type"
+                        CustomSwitches = "--print-media-type --background --enable-local-file-access --zoom 0.95"
                     };
                     pdfBytes = pdf.BuildFile(ControllerContext);
-                    System.Diagnostics.Debug.WriteLine($"PDF generado para notificaciÃ³n, tamaÃ±o: {(pdfBytes != null ? pdfBytes.Length : 0)} bytes");
+                    System.Diagnostics.Debug.WriteLine($"PDF generado para notificació, tamaÃ±o: {(pdfBytes != null ? pdfBytes.Length : 0)} bytes");
                 }
                 catch (Exception ex)
                 {
-                    System.Diagnostics.Debug.WriteLine("Error al generar PDF para notificaciÃ³n: " + ex.Message);
+                    System.Diagnostics.Debug.WriteLine("Error al generar PDF para notificació: " + ex.Message);
                 }
 
-                var asunto = $"Orden de RecaudaciÃ³n generada - {orden.NumeroOrden}";
+                var asunto = $"Orden de recaudación generada - {orden.NumeroOrden}";
                 var contribuyente = orden.NombreContribuyente ?? orden.Compania ?? "Contribuyente";
                 var cuerpo = $@"
-                    <h2>Orden de RecaudaciÃ³n generada</h2>
+                    <h2>Orden de recaudación generada</h2>
                     <p>Estimado/a <strong>{contribuyente}</strong>,</p>
-                    <p>Su orden de recaudaciÃ³n ha sido generada correctamente.</p>
-                    <p><strong>NÃºmero de Orden:</strong> {orden.NumeroOrden}</p>
+                    <p>Su orden de recaudación ha sido generada correctamente.</p>
+                    <p><strong>Número de Orden:</strong> {orden.NumeroOrden}</p>
                     <p><strong>Monto Total:</strong> ${orden.Total:N2}</p>
                     <p>Se adjunta el comprobante en PDF.</p>
                     {leyendaBancos}
@@ -834,7 +916,7 @@ En transferencias NO colocar sublÃ­nea<br>";
 
                 if (pdfBytes == null || pdfBytes.Length == 0)
                 {
-                    System.Diagnostics.Debug.WriteLine($"ADVERTENCIA: El PDF de la orden no se generÃ³ correctamente, no se adjuntarÃ¡ al correo. Orden: {orden.NumeroOrden}");
+                    System.Diagnostics.Debug.WriteLine($"ADVERTENCIA: El PDF de la orden no se generÓ correctamente, no se adjuntarÃ¡ al correo. Orden: {orden.NumeroOrden}");
                 }
                 else
                 {
@@ -845,7 +927,7 @@ En transferencias NO colocar sublÃ­nea<br>";
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine("Error enviando notificaciÃ³n de orden generada: " + ex.Message);
+                System.Diagnostics.Debug.WriteLine("Error enviando notificació de orden generada: " + ex.Message);
             }
         }
 
@@ -909,7 +991,7 @@ En transferencias NO colocar sublÃ­nea<br>";
             {
                 AsegurarConceptosBasicos();
                 var conceptos = _conceptoDao.ObtenerConceptos(true);
-                // Filtrar conceptos Ãºnicos por CÃ³digo
+                // Filtrar conceptos únicos por CÓdigo
                 var conceptosUnicos = conceptos
                     .GroupBy(c => c.Codigo)
                     .Select(g => g.First())
@@ -927,7 +1009,7 @@ En transferencias NO colocar sublÃ­nea<br>";
             catch (Exception ex)
             {
                 model.Conceptos = new List<CapaPresentacion.Models.ConceptoOptionVM>();
-                ModelState.AddModelError("", "No se pudieron cargar los conceptos. Verifique la conexiÃ³n a la base de datos.");
+                ModelState.AddModelError("", "No se pudieron cargar los conceptos. Verifique la conexió a la base de datos.");
             }
 
             try
@@ -943,7 +1025,7 @@ En transferencias NO colocar sublÃ­nea<br>";
                         Id = s.CodigoSolicitud,
                         Numero = s.NumeroSolicitud,
                         Nombre = s.NombreOperador,
-                        Label = string.Format("{0} - {1}", s.NumeroSolicitud, s.NombreOperador),
+                        Label = s.NumeroSolicitud,
                         Ruc = s.Ruc,
                         Correo = s.Email,
                         Telefono = s.Telefono,
@@ -964,39 +1046,14 @@ En transferencias NO colocar sublÃ­nea<br>";
             try
             {
                 var parametro = _parametroDao.ObtenerPorClave(clave);
-                if (parametro != null && parametro.Activo && !string.IsNullOrEmpty(parametro.Valor))
+                if (parametro != null && parametro.Activo && !string.IsNullOrWhiteSpace(parametro.Valor))
                 {
-                    // Limpiar el valor: remover espacios, sÃ­mbolos de moneda, etc.
-                    var valorLimpio = parametro.Valor.Trim()
-                        .Replace("$", "")
-                        .Replace("USD", "")
-                        .Replace(" ", "")
-                        .Replace("_", "");
-                    
-                    // Intentar con InvariantCulture (1234.56)
-                    if (decimal.TryParse(valorLimpio, System.Globalization.NumberStyles.Any,
-                        System.Globalization.CultureInfo.InvariantCulture, out decimal valor))
+                    if (TryParseDecimalConfig(parametro.Valor, out decimal valor))
                     {
                         return valor;
                     }
-                    
-                    // Intentar con cultura espaÃ±ola (1234,56 o 1.234,56)
-                    var culturaEspanol = new System.Globalization.CultureInfo("es-ES");
-                    if (decimal.TryParse(valorLimpio, System.Globalization.NumberStyles.Any,
-                        culturaEspanol, out valor))
-                    {
-                        return valor;
-                    }
-                    
-                    // Ãšltimo intento: reemplazar coma por punto y parsear
-                    valorLimpio = valorLimpio.Replace(",", ".");
-                    if (decimal.TryParse(valorLimpio, System.Globalization.NumberStyles.Any,
-                        System.Globalization.CultureInfo.InvariantCulture, out valor))
-                    {
-                        return valor;
-                    }
-                    
-                    System.Diagnostics.Debug.WriteLine($"âš  No se pudo parsear '{clave}': valor='{parametro.Valor}' (limpio: '{valorLimpio}'). Usando valor por defecto: {valorPorDefecto}");
+
+                    System.Diagnostics.Debug.WriteLine($"No se pudo parsear '{clave}': valor='{parametro.Valor}'. Usando valor por defecto: {valorPorDefecto}");
                 }
             }
             catch (Exception ex)
@@ -1015,84 +1072,160 @@ En transferencias NO colocar sublÃ­nea<br>";
             return ObtenerTarifaConfigurable(clave, valorPorDefecto);
         }
 
+        private bool TryParseDecimalConfig(string valorTexto, out decimal valor)
+        {
+            valor = 0m;
+            if (string.IsNullOrWhiteSpace(valorTexto)) return false;
+
+            var limpio = valorTexto.Trim()
+                .Replace("$", "")
+                .Replace("USD", "")
+                .Replace(" ", "")
+                .Replace("_", "");
+
+            var ultimoPunto = limpio.LastIndexOf('.');
+            var ultimaComa = limpio.LastIndexOf(',');
+
+            if (ultimoPunto >= 0 && ultimaComa >= 0)
+            {
+                // Si ambos existen, el separador decimal es el último.
+                if (ultimaComa > ultimoPunto)
+                {
+                    limpio = limpio.Replace(".", "");
+                    limpio = limpio.Replace(",", ".");
+                }
+                else
+                {
+                    limpio = limpio.Replace(",", "");
+                }
+
+                return decimal.TryParse(
+                    limpio,
+                    System.Globalization.NumberStyles.Any,
+                    System.Globalization.CultureInfo.InvariantCulture,
+                    out valor);
+            }
+
+            if (ultimaComa >= 0)
+            {
+                var decimales = limpio.Length - ultimaComa - 1;
+                if (decimales <= 2)
+                {
+                    limpio = limpio.Replace(".", "");
+                    limpio = limpio.Replace(",", ".");
+                }
+                else
+                {
+                    limpio = limpio.Replace(",", "");
+                }
+
+                return decimal.TryParse(
+                    limpio,
+                    System.Globalization.NumberStyles.Any,
+                    System.Globalization.CultureInfo.InvariantCulture,
+                    out valor);
+            }
+
+            if (ultimoPunto >= 0)
+            {
+                var decimales = limpio.Length - ultimoPunto - 1;
+                if (decimales > 2)
+                {
+                    limpio = limpio.Replace(".", "");
+                }
+
+                return decimal.TryParse(
+                    limpio,
+                    System.Globalization.NumberStyles.Any,
+                    System.Globalization.CultureInfo.InvariantCulture,
+                    out valor);
+            }
+
+            return decimal.TryParse(
+                limpio,
+                System.Globalization.NumberStyles.Any,
+                System.Globalization.CultureInfo.InvariantCulture,
+                out valor);
+        }
+
         private void AsegurarConceptosBasicos()
         {
             var conceptos = new List<CapaDatos.Models.ConceptoModel>
             {
                 new CapaDatos.Models.ConceptoModel { 
                     Codigo = "EMI_AOCR", 
-                    Nombre = "EmisiÃ³n AOCR", 
+                    Nombre = "Emisión AOCR", 
                     TipoCalculo = "FIJO", 
                     ValorBase = ObtenerTarifaConfigurable("TARIFA_EMI_AOCR", 3300m), 
                     PorcentajeAdmin = ObtenerPorcentajeConfigurable("PORCENTAJE_ADMIN_EMI_AOCR", 0m), 
                     Activo = true, 
                     Orden = 1, 
-                    Descripcion = "Emisiï¿½n AOCR", 
+                    Descripcion = "Emisión AOCR", 
                     PorEstacion = false, 
                     PorDia = false, 
                     EsViatico = false 
                 },
                 new CapaDatos.Models.ConceptoModel { 
                     Codigo = "REN_AOCR", 
-                    Nombre = "RenovaciÃ³n AOCR", 
+                    Nombre = "Renovación AOCR", 
                     TipoCalculo = "FIJO", 
                     ValorBase = ObtenerTarifaConfigurable("TARIFA_REN_AOCR", 3300m), 
                     PorcentajeAdmin = ObtenerPorcentajeConfigurable("PORCENTAJE_ADMIN_REN_AOCR", 0m), 
                     Activo = true, 
                     Orden = 2, 
-                    Descripcion = "Renovaciï¿½n AOCR", 
+                    Descripcion = "Renovación AOCR", 
                     PorEstacion = false, 
                     PorDia = false, 
                     EsViatico = false 
                 },
                 new CapaDatos.Models.ConceptoModel { 
                     Codigo = "MOD_AOCR_INC", 
-                    Nombre = "ModificaciÃ³n AOCR (Inclusiï¿½n aeronaves distinto modelo y tipo)", 
+                    Nombre = "Modificación AOCR (Inclusión aeronaves distinto modelo y tipo)", 
                     TipoCalculo = "FIJO", 
                     ValorBase = ObtenerTarifaConfigurable("TARIFA_MOD_AOCR_INC", 1600m), 
                     PorcentajeAdmin = ObtenerPorcentajeConfigurable("PORCENTAJE_ADMIN_MOD", 0m), 
                     Activo = true, 
                     Orden = 3, 
-                    Descripcion = "Modificaciï¿½n AOCR (Inclusiï¿½n aeronaves distinto modelo y tipo)", 
+                    Descripcion = "Modificación AOCR (Inclusión aeronaves distinto modelo y tipo)", 
                     PorEstacion = false, 
                     PorDia = false, 
                     EsViatico = false 
                 },
                 new CapaDatos.Models.ConceptoModel { 
                     Codigo = "MOD_AOCR_SIN_INC", 
-                    Nombre = "ModificaciÃ³n AOCR (Que no implique incremento de aeronaves)", 
+                    Nombre = "Modificación AOCR (Que no implique incremento de aeronaves)", 
                     TipoCalculo = "FIJO", 
                     ValorBase = ObtenerTarifaConfigurable("TARIFA_MOD_AOCR_SIN_INC", 80m), 
                     PorcentajeAdmin = ObtenerPorcentajeConfigurable("PORCENTAJE_ADMIN_MOD", 0m), 
                     Activo = true, 
                     Orden = 4, 
-                    Descripcion = "Modificaciï¿½n AOCR (Que no implique incremento de aeronaves)", 
+                    Descripcion = "Modificación AOCR (Que no implique incremento de aeronaves)", 
                     PorEstacion = false, 
                     PorDia = false, 
                     EsViatico = false 
                 },
                 new CapaDatos.Models.ConceptoModel { 
                     Codigo = "INSPECCION_EXT", 
-                    Nombre = "InspecciÃ³n requerida por el Operador Aereo Extranjero", 
+                    Nombre = "Inspección requerida por el Operador Aereo Extranjero", 
                     TipoCalculo = "POR_ESTACION", 
                     ValorBase = ObtenerTarifaConfigurable("TARIFA_INSPECCION_EXT", 500m), 
                     PorcentajeAdmin = ObtenerPorcentajeConfigurable("PORCENTAJE_ADMIN_INSPECCION", 0m), 
                     Activo = true, 
                     Orden = 5, 
-                    Descripcion = "Inspecciï¿½n requerida por el Operador Aï¿½reo Extranjero (por estaciï¿½n)", 
+                    Descripcion = "Inspección requerida por el Operador Aéreo Extranjero (por estación)", 
                     PorEstacion = true, 
                     PorDia = false, 
                     EsViatico = false 
                 },
                 new CapaDatos.Models.ConceptoModel { 
                     Codigo = "VIATICOS_INSPECTOR", 
-                    Nombre = "ViÃ¡ticos a Sres. Inspectores", 
+                    Nombre = "Viáticos a Sres. Inspectores", 
                     TipoCalculo = "POR_DIA", 
                     ValorBase = ObtenerTarifaConfigurable("TARIFA_VIATICOS_INSPECTOR", 80m), 
                     PorcentajeAdmin = ObtenerPorcentajeConfigurable("PORCENTAJE_ADMIN_VIATICOS", 8m), 
                     Activo = true, 
                     Orden = 6, 
-                    Descripcion = "Viï¿½ticos por dï¿½a (mï¿½s 8% de gastos administrativos)", 
+                    Descripcion = "Viáticos por día (más 8% de gastos administrativos)", 
                     PorEstacion = false, 
                     PorDia = true, 
                     EsViatico = true 
@@ -1142,7 +1275,7 @@ En transferencias NO colocar sublÃ­nea<br>";
             if (!estadoOrden.Equals("PENDIENTE", StringComparison.OrdinalIgnoreCase) &&
                 !estadoOrden.Equals("GENERADA", StringComparison.OrdinalIgnoreCase))
             {
-                TempData["Error"] = "Solo se puede subir comprobante cuando la orden estï¿½ en GENERADA o PENDIENTE.";
+                TempData["Error"] = "Solo se puede subir comprobante cuando la orden esté en GENERADA o PENDIENTE.";
                 return RedirectToAction("Detalles", new { id = id });
             }
 
@@ -1151,7 +1284,7 @@ En transferencias NO colocar sublÃ­nea<br>";
             if (!decimal.TryParse(montoRaw, System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.CurrentCulture, out montoValue) &&
                 !decimal.TryParse(montoRaw, System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out montoValue))
             {
-                TempData["Error"] = "Monto invï¿½lido";
+                TempData["Error"] = "Monto inválido";
                 return RedirectToAction("Detalles", new { id = id });
             }
 
@@ -1163,13 +1296,13 @@ En transferencias NO colocar sublÃ­nea<br>";
 
             if (string.IsNullOrWhiteSpace(NumeroFactura))
             {
-                // Generar nÃºmero de factura Ãºnico automÃ¡ticamente
+                // Generar número de factura único automáticamente
                 NumeroFactura = $"PAG-{id}-{DateTime.Now:yyyyMMddHHmmss}";
             }
 
             if (string.IsNullOrWhiteSpace(MetodoPago))
             {
-                TempData["Error"] = "Debe seleccionar un mï¿½todo de pago";
+                TempData["Error"] = "Debe seleccionar un método de pago";
                 return RedirectToAction("Detalles", new { id = id });
             }
 
@@ -1180,7 +1313,7 @@ En transferencias NO colocar sublÃ­nea<br>";
                 string savedVirtualPath = null;
                 if (ComprobanteArchivo != null && ComprobanteArchivo.ContentLength > 0)
                 {
-                    // ValidaciÃ³n centralizada
+                    // Validación centralizada
                     if (!CapaNegocio.Helpers.FileStorageHelper.ValidateFile(ComprobanteArchivo, out var fileError))
                     {
                         TempData["Error"] = fileError;
@@ -1243,23 +1376,23 @@ En transferencias NO colocar sublÃ­nea<br>";
 
             if (codigoSolicitud <= 0 || !_dao.ExisteSolicitud(codigoSolicitud))
             {
-                TempData["Error"] = "La orden no estï¿½ vinculada a una solicitud vï¿½lida para registrar el pago.";
+                TempData["Error"] = "La orden no está vinculada a una solicitud válida para registrar el pago.";
                 return RedirectToAction("Detalles", new { id = id });
             }
 
-                // Registrar pago + actualizar estado en una transacciÃ³n atÃ³mica en BD
+                // Registrar pago + actualizar estado en una transacció atÓmica en BD
                 string pagoErr;
                 bool transOk = _dao.RegistrarPagoYActualizarEstadoTransaccional(orden.Id, codigoSolicitud, pago, "PROCESADA", out pagoErr);
                 if (!transOk)
                 {
-                    // Si guardamos archivo y la BD fallÃ³, borrarlo para no dejar archivos huÃ©rfanos
+                    // Si guardamos archivo y la BD fallÓ, borrarlo para no dejar archivos huÃ©rfanos
                     if (!string.IsNullOrWhiteSpace(savedVirtualPath))
                     {
                         CapaNegocio.Helpers.FileStorageHelper.DeleteFile(savedVirtualPath);
-                        CapaNegocio.LogBL.RegistrarInfo($"Archivo eliminado por fallo transacciÃ³n: Orden={orden.NumeroOrden} Ruta={savedVirtualPath}", "OrdenRecaudacionController");
+                        CapaNegocio.LogBL.RegistrarInfo($"Archivo eliminado por fallo transacció: Orden={orden.NumeroOrden} Ruta={savedVirtualPath}", "OrdenRecaudacionController");
                     }
 
-                    CapaNegocio.LogBL.RegistrarError($"Error registrando pago/transacciÃ³n Orden={orden.NumeroOrden} CodigoSolicitud={codigoSolicitud}", pagoErr ?? "n/a", "OrdenRecaudacionController");
+                    CapaNegocio.LogBL.RegistrarError($"Error registrando pago/transacció Orden={orden.NumeroOrden} CodigoSolicitud={codigoSolicitud}", pagoErr ?? "n/a", "OrdenRecaudacionController");
                     TempData["Error"] = "No se pudo registrar el pago en la base de datos. " + (string.IsNullOrWhiteSpace(pagoErr) ? "" : ("Detalle: " + pagoErr));
                     return RedirectToAction("Detalles", new { id = id });
                 }
@@ -1277,7 +1410,7 @@ En transferencias NO colocar sublÃ­nea<br>";
                         // No bloquear el flujo si el email falla
                     }
 
-                    TempData["OK"] = "Comprobante enviado. La orden estï¿½ en revisiï¿½n financiera.";
+                    TempData["OK"] = "Comprobante enviado. La orden está en revisión financiera.";
                     return RedirectToAction("Detalles", new { id = id });
                 }
             catch (Exception ex)
@@ -1307,19 +1440,19 @@ En transferencias NO colocar sublÃ­nea<br>";
             if (estadoOrden.Equals("FACTURADA", StringComparison.OrdinalIgnoreCase) ||
                 estadoOrden.Equals("COMPLETADA", StringComparison.OrdinalIgnoreCase))
             {
-                TempData["Error"] = "No se pueden anular ï¿½rdenes aprobadas o facturadas.";
+                TempData["Error"] = "No se pueden anular órdenes aprobadas o facturadas.";
                 return RedirectToAction("Detalles", new { id = id });
             }
 
             if (string.Equals((orden.Estado ?? "").Trim(), "ANULADA", StringComparison.OrdinalIgnoreCase))
             {
-                TempData["Error"] = "La orden ya estï¿½ anulada";
+                TempData["Error"] = "La orden ya está anulada";
                 return RedirectToAction("Detalles", new { id = id });
             }
 
             if (string.IsNullOrWhiteSpace(motivo))
             {
-                TempData["Error"] = "Debe proporcionar un motivo para la anulaciï¿½n";
+                TempData["Error"] = "Debe proporcionar un motivo para la anulación";
                 return RedirectToAction("Detalles", new { id = id });
             }
 
@@ -1373,7 +1506,7 @@ En transferencias NO colocar sublÃ­nea<br>";
                     PageSize = Rotativa.Options.Size.A4,
                     PageOrientation = Rotativa.Options.Orientation.Portrait,
                     PageMargins = new Rotativa.Options.Margins(20, 15, 20, 15),
-                    CustomSwitches = "--disable-smart-shrinking --print-media-type"
+                    CustomSwitches = "--print-media-type --background --enable-local-file-access --zoom 0.95"
                 };
             }
             catch (Exception ex)
@@ -1387,6 +1520,14 @@ En transferencias NO colocar sublÃ­nea<br>";
 
         private CapaPresentacion.Models.ViewModels.OrdenRecaudacionPDFModel BuildOrdenRecaudacionPdfModel(OrdenRecaudacionModel ordenModel)
         {
+            if (ordenModel == null)
+            {
+                return new CapaPresentacion.Models.ViewModels.OrdenRecaudacionPDFModel();
+            }
+
+            // Reutiliza los mismos fallbacks de la vista de Detalles para evitar campos vacios en el PDF.
+            CompletarDatosOrdenParaVista(ordenModel);
+
             var detalles = ordenModel.Detalles ?? new List<CapaDatos.Models.OrdenDetalleModel>();
             if (detalles.Count == 0)
             {
@@ -1411,79 +1552,146 @@ En transferencias NO colocar sublÃ­nea<br>";
                 }
             }
 
-            var estaciones = 0m;
-            var dias = 0m;
-            bool conceptoPrincipalEsInspeccion = false;
-            if (detalles.Count > 0)
-            {
-                var codigo = (detalles[0].ConceptoCodigo ?? "").ToUpperInvariant();
-                var nombre = (detalles[0].ConceptoNombre ?? "").ToUpperInvariant();
-                conceptoPrincipalEsInspeccion = codigo.Contains("INSP") || nombre.Contains("INSPECC");
-            }
+            var detallesPdf = new List<CapaPresentacion.Models.ViewModels.OrdenRecaudacionPDFDetalleModel>();
             foreach (var d in detalles)
             {
-                var codigo = (d.ConceptoCodigo ?? "").ToUpperInvariant();
-                var nombre = (d.ConceptoNombre ?? "").ToUpperInvariant();
-                if (codigo.Contains("INSP") || nombre.Contains("INSPECC"))
+                var subtotal = d.Subtotal > 0m
+                    ? d.Subtotal
+                    : Math.Round(d.Cantidad * d.ValorUnitario, 2, MidpointRounding.AwayFromZero);
+
+                var porcentajeAdmin = NormalizarPorcentajeAdminPdf(d.PorcentajeAdmin);
+                var adminCalculado = Math.Round(subtotal * (porcentajeAdmin / 100m), 2, MidpointRounding.AwayFromZero);
+                var admin = adminCalculado;
+
+                if (d.Admin > 0m)
                 {
-                    estaciones += d.Cantidad;
+                    // Si no existe porcentaje confiable, conservar el valor guardado.
+                    if (adminCalculado <= 0m)
+                    {
+                        admin = d.Admin;
+                    }
+                    else
+                    {
+                        // Si el valor guardado no cuadra (ej: 640 vs 6.40), prevalece el calculado.
+                        admin = Math.Abs(d.Admin - adminCalculado) > 0.01m ? adminCalculado : d.Admin;
+                    }
                 }
-                if (codigo.Contains("VIAT") || nombre.Contains("VIATIC") || nombre.Contains("VIÃTIC"))
+
+                var totalLinea = d.TotalLinea;
+                var totalEsperado = Math.Round(subtotal + admin, 2, MidpointRounding.AwayFromZero);
+                if (totalLinea <= 0m || Math.Abs(totalLinea - totalEsperado) > 0.01m)
                 {
-                    dias += d.Cantidad;
+                    totalLinea = totalEsperado;
                 }
-            }
 
-            var conceptoPrincipal = detalles.Count > 0 ? detalles[0].ConceptoNombre : null;
-            var valorBase = ordenModel.Subtotal != 0 ? ordenModel.Subtotal : (ordenModel.Total != 0 ? ordenModel.Total : detalles.Sum(d => d.Subtotal));
-
-            // Si el concepto principal es inspecciÃ³n, no mostrar la lÃ­nea adicional de inspecciones
-            if (conceptoPrincipalEsInspeccion)
-            {
-                estaciones = 0;
-            }
-
-            CapaModelo.SolicitudAOCR solicitud = null;
-            int codigoSolicitudInt = 0;
-            if (!string.IsNullOrEmpty(ordenModel.CodigoSolicitud) && int.TryParse(ordenModel.CodigoSolicitud, out codigoSolicitudInt) && codigoSolicitudInt > 0)
-            {
-                var solicitudDAO = new CapaDatos.DAOs.SolicitudDAO();
-                solicitud = solicitudDAO.ObtenerPorId(codigoSolicitudInt);
-            }
-            else if (!string.IsNullOrWhiteSpace(ordenModel.RucCedula))
-            {
-                codigoSolicitudInt = _dao.ObtenerCodigoSolicitudPorRuc(ordenModel.RucCedula);
-                if (codigoSolicitudInt > 0)
+                detallesPdf.Add(new CapaPresentacion.Models.ViewModels.OrdenRecaudacionPDFDetalleModel
                 {
-                    var solicitudDAO = new CapaDatos.DAOs.SolicitudDAO();
-                    solicitud = solicitudDAO.ObtenerPorId(codigoSolicitudInt);
-                }
+                    Concepto = FirstNonEmpty(d.Descripcion, d.ConceptoNombre, d.ConceptoCodigo, "Concepto no especificado"),
+                    Subtotal = subtotal,
+                    Admin = admin,
+                    TotalLinea = totalLinea
+                });
             }
 
+            var solicitud = ObtenerSolicitudParaPdf(ordenModel);
             var ultimoPago = _dao.ObtenerUltimoPagoPorOrden(ordenModel.Id);
             var bancoPago = ultimoPago?.BancoOrigen ?? ultimoPago?.MetodoPago;
             var numeroComp = ultimoPago?.NumeroComprobante ?? ultimoPago?.NumeroFactura;
 
+            var referenciaSolicitud = FirstNonEmpty(solicitud?.NumeroSolicitud, ordenModel.CodigoSolicitud, "N/A");
             var pdfModel = new CapaPresentacion.Models.ViewModels.OrdenRecaudacionPDFModel
             {
                 NumeroOrden = ordenModel.NumeroOrden,
                 FechaEmision = ordenModel.FechaCreacion != default(DateTime) ? ordenModel.FechaCreacion : DateTime.Now,
-                LugarEmision = solicitud?.Ciudad ?? ordenModel.LugarEmision ?? "Quito",
-                NombreCompania = solicitud?.RazonSocial ?? ordenModel.NombreContribuyente ?? ordenModel.Compania ?? "Empresa no especificada",
-                Ruc = solicitud?.Ruc ?? ordenModel.RucCedula ?? "RUC no especificado",
-                Email = solicitud?.Email ?? ordenModel.Correo ?? "correo@empresa.com",
-                Telefono = solicitud?.Telefono ?? ordenModel.Telefono ?? "TelÃ©fono no especificado",
+                LugarEmision = FirstNonEmpty(solicitud?.Ciudad, ordenModel.LugarEmision, "Quito"),
+                NombreCompania = FirstNonEmpty(solicitud?.RazonSocial, solicitud?.NombreOperador, ordenModel.Compania, ordenModel.NombreContribuyente, "No especificado"),
+                Ruc = FirstNonEmpty(solicitud?.Ruc, ordenModel.RucCedula, "No especificado"),
+                Email = FirstNonEmpty(solicitud?.Email, ordenModel.Correo, "No especificado"),
+                Telefono = FirstNonEmpty(solicitud?.Telefono, ordenModel.Telefono, "No especificado"),
                 Banco = string.IsNullOrWhiteSpace(bancoPago) ? "No especificado" : bancoPago,
                 NumeroComprobante = string.IsNullOrWhiteSpace(numeroComp) ? "No registrado" : numeroComp,
-                ConceptoPrincipal = conceptoPrincipal ?? solicitud?.DescripcionOperacion ?? "InspecciÃ³n y CertificaciÃ³n AOCR",
-                ValorBase = valorBase,
-                Estaciones = (int)Math.Round(estaciones),
-                Dias = (int)Math.Round(dias),
-                Referencia = $"Orden de RecaudaciÃ³n {ordenModel.NumeroOrden} - Solicitud {solicitud?.NumeroSolicitud ?? "N/A"}"
+                ConceptoPrincipal = FirstNonEmpty(detallesPdf.FirstOrDefault()?.Concepto, solicitud?.DescripcionOperacion, "Inspeccion y Certificacion AOCR"),
+                Referencia = $"Orden de recaudacion {ordenModel.NumeroOrden} - Solicitud {referenciaSolicitud}",
+                Detalles = detallesPdf
             };
+
+            if (pdfModel.Detalles.Count == 0)
+            {
+                pdfModel.ValorBase = ordenModel.Subtotal != 0m
+                    ? ordenModel.Subtotal
+                    : (ordenModel.Total != 0m ? ordenModel.Total : 0m);
+            }
 
             pdfModel.CalcularTotales();
             return pdfModel;
+        }
+
+        private CapaModelo.SolicitudAOCR ObtenerSolicitudParaPdf(OrdenRecaudacionModel ordenModel)
+        {
+            if (ordenModel == null)
+            {
+                return null;
+            }
+
+            var solicitudDAO = new CapaDatos.DAOs.SolicitudDAO();
+            int codigoSolicitudInt;
+
+            if (!string.IsNullOrWhiteSpace(ordenModel.CodigoSolicitud) &&
+                int.TryParse(ordenModel.CodigoSolicitud, out codigoSolicitudInt) &&
+                codigoSolicitudInt > 0)
+            {
+                return solicitudDAO.ObtenerPorId(codigoSolicitudInt);
+            }
+
+            if (!string.IsNullOrWhiteSpace(ordenModel.CodigoSolicitud))
+            {
+                codigoSolicitudInt = _dao.ObtenerCodigoSolicitudPorNumero(ordenModel.CodigoSolicitud);
+                if (codigoSolicitudInt > 0)
+                {
+                    return solicitudDAO.ObtenerPorId(codigoSolicitudInt);
+                }
+            }
+
+            if (!string.IsNullOrWhiteSpace(ordenModel.RucCedula))
+            {
+                codigoSolicitudInt = _dao.ObtenerCodigoSolicitudPorRuc(ordenModel.RucCedula);
+                if (codigoSolicitudInt > 0)
+                {
+                    return solicitudDAO.ObtenerPorId(codigoSolicitudInt);
+                }
+            }
+
+            return null;
+        }
+
+        private decimal NormalizarPorcentajeAdminPdf(decimal porcentaje)
+        {
+            if (porcentaje > 100m && porcentaje <= 10000m)
+            {
+                return porcentaje / 100m;
+            }
+
+            if (porcentaje > 0m && porcentaje <= 1m)
+            {
+                return porcentaje * 100m;
+            }
+
+            return porcentaje;
+        }
+
+        private string FirstNonEmpty(params string[] values)
+        {
+            if (values == null) return string.Empty;
+
+            foreach (var value in values)
+            {
+                if (!string.IsNullOrWhiteSpace(value))
+                {
+                    return value.Trim();
+                }
+            }
+
+            return string.Empty;
         }
 
         /// <summary>
@@ -1566,7 +1774,7 @@ En transferencias NO colocar sublÃ­nea<br>";
                 System.Diagnostics.Debug.WriteLine($"Error en ToSelectList: {ex.Message}");
             }
             
-            // Agregar opciÃ³n por defecto
+            // Agregar opció por defecto
             var seleccion = new SelectListItem
             {
                 Value = "0",
@@ -1589,9 +1797,39 @@ En transferencias NO colocar sublÃ­nea<br>";
             }
             else
             {
-                System.Diagnostics.Debug.WriteLine("GetUserId: No se encontrï¿½ ID de usuario en la sesiï¿½n");
+                System.Diagnostics.Debug.WriteLine("GetUserId: No se encontró ID de usuario en la sesión");
             }
             return id;
+        }
+
+        private void PrefillDesdeUltimaOrden(int userId, CapaPresentacion.Models.OrdenRecaudacionNuevaVM model)
+        {
+            if (userId <= 0 || model?.Orden == null) return;
+
+            try
+            {
+                var ultimaOrden = _dao.ListarPorUsuario(userId, null).FirstOrDefault();
+                if (ultimaOrden == null) return;
+
+                if (string.IsNullOrWhiteSpace(model.Orden.LugarEmision) && !string.IsNullOrWhiteSpace(ultimaOrden.LugarEmision))
+                    model.Orden.LugarEmision = ultimaOrden.LugarEmision;
+
+                if (string.IsNullOrWhiteSpace(model.Orden.Compania) && !string.IsNullOrWhiteSpace(ultimaOrden.Compania))
+                    model.Orden.Compania = ultimaOrden.Compania;
+
+                if (string.IsNullOrWhiteSpace(model.Orden.RucCedula) && !string.IsNullOrWhiteSpace(ultimaOrden.RucCedula))
+                    model.Orden.RucCedula = ultimaOrden.RucCedula;
+
+                if (string.IsNullOrWhiteSpace(model.Orden.Correo) && !string.IsNullOrWhiteSpace(ultimaOrden.Correo))
+                    model.Orden.Correo = ultimaOrden.Correo;
+
+                if (string.IsNullOrWhiteSpace(model.Orden.Telefono) && !string.IsNullOrWhiteSpace(ultimaOrden.Telefono))
+                    model.Orden.Telefono = ultimaOrden.Telefono;
+            }
+            catch
+            {
+                // Ignorar errores de prefill por historial para no bloquear el formulario.
+            }
         }
 
         private SolicitudAOCR CrearSolicitudAuto(int userId)
@@ -1734,13 +1972,13 @@ En transferencias NO colocar sublÃ­nea<br>";
                 var config = new SecureConfig();
                 var emailSvc = new EmailSvc(config);
 
-                var asunto = string.Format("Nueva Orden Pendiente de Revisin - {0}", orden.NumeroOrden);
+                var asunto = string.Format("Nueva Orden Pendiente de Revisión - {0}", orden.NumeroOrden);
                 var cuerpo = string.Format(@"
-                    <h2>Nueva Orden Pendiente de Revisiï¿½n</h2>
-                    <p><strong>Nï¿½mero de Orden:</strong> {0}</p>
+                    <h2>Nueva Orden Pendiente de Revisión</h2>
+                    <p><strong>Número de Orden:</strong> {0}</p>
                     <p><strong>Contribuyente:</strong> {1}</p>
                     <p><strong>Monto:</strong> ${2:N2}</p>
-                    <p><strong>Mï¿½todo de Pago:</strong> {3}</p>",
+                    <p><strong>Método de Pago:</strong> {3}</p>",
                     orden.NumeroOrden,
                     orden.NombreContribuyente,
                     pago.Monto,
@@ -1762,12 +2000,12 @@ En transferencias NO colocar sublÃ­nea<br>";
             }
             catch (Exception ex)
             {
-                CapaNegocio.LogBL.RegistrarError($"Error enviando notificaciÃ³n a financiero Orden={orden?.NumeroOrden} CodigoSolicitud={orden?.CodigoSolicitud}", ex.ToString(), "OrdenRecaudacionController");
+                CapaNegocio.LogBL.RegistrarError($"Error enviando notificació a financiero Orden={orden?.NumeroOrden} CodigoSolicitud={orden?.CodigoSolicitud}", ex.ToString(), "OrdenRecaudacionController");
             }
         }
 
         /// <summary>
-        /// Validar un pago especÃ­fico
+        /// Validar un pago específico
         /// </summary>
         [HttpPost]
         [ValidateAntiForgeryToken]
@@ -1797,7 +2035,7 @@ En transferencias NO colocar sublÃ­nea<br>";
         }
 
         /// <summary>
-        /// Rechazar un pago especÃ­fico
+        /// Rechazar un pago específico
         /// </summary>
         [HttpPost]
         [ValidateAntiForgeryToken]
@@ -1867,11 +2105,11 @@ En transferencias NO colocar sublÃ­nea<br>";
                 
                 if (resultado.StartsWith("OK"))
                 {
-                    TempData["OK"] = $"ConexiÃ³n AS400 exitosa: {resultado}";
+                    TempData["OK"] = $"Conexió AS400 exitosa: {resultado}";
                 }
                 else
                 {
-                    TempData["Error"] = $"Error en conexiÃ³n AS400: {resultado}";
+                    TempData["Error"] = $"Error en conexió AS400: {resultado}";
                 }
             }
             catch (Exception ex)
@@ -1925,10 +2163,3 @@ En transferencias NO colocar sublÃ­nea<br>";
         }
     }
 }
-
-
-
-
-
-
-

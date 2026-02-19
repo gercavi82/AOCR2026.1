@@ -5,7 +5,7 @@ using System.Web.Routing;
 namespace CapaPresentacion.Infrastructure
 {
     /// <summary>
-    /// Configuración de routing empresarial para el módulo de Órdenes de Recaudación
+    /// Configuración de routing empresarial para el módulo de Órdenes de recaudación
     /// Implementa redirecciones automáticas y URLs amigables
     /// </summary>
     public static class OrdenRecaudacionRoutes

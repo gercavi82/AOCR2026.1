@@ -10,7 +10,7 @@ using CapaNegocio.Services;
 namespace CapaPresentacion.Controllers
 {
     /// <summary>
-    /// Controller empresarial para Dashboard de Órdenes de Recaudación
+    /// Controller empresarial para Dashboard de Órdenes de recaudación
     /// Implementa Clean Architecture + State Management + Security
     /// </summary>
     [Authorize]
@@ -30,7 +30,7 @@ namespace CapaPresentacion.Controllers
         #region Vista Principal
 
         /// <summary>
-        /// GET: Dashboard principal de Órdenes de Recaudación
+        /// GET: Dashboard principal de Órdenes de recaudación
         /// </summary>
         [HttpGet]
         // Temporalmente eliminamos roles específicos para debug

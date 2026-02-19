@@ -30,7 +30,6 @@
     var tienePagoAprobado = orden.Total > 0 && totalPagado >= orden.Total;
     var facturaGenerada = estado == "FACTURADA" || estado == "COMPLETADA";
     var ordenCompleta = tieneSolicitudValida && tienePagoAprobado && facturaGenerada && !tieneSaldoPendiente;
-// ...existing code...
 
 }
 
@@ -70,7 +69,6 @@
                         <i class="fas fa-check-circle me-2"></i> Orden completada: solicitud vinculada, pago aprobado, factura generada y sin saldo pendiente.
                     </div>
                 }
-                // ...existing code...
                 <div class="row">
                     <div class="col-md-6">
                         <span class="badge bg-@orden.EstadoColor fs-6 p-2">
@@ -152,7 +150,7 @@
                                     </tr>
                                     <tr>
                                         <td class="fw-bold">Lugar Emisión:</td>
-                                        <td>@orden.LugarEmision</td>
+                                        <td>@(string.IsNullOrWhiteSpace(orden.LugarEmision) ? "No especificado" : orden.LugarEmision)</td>
                                     </tr>
                                     <tr>
                                         <td class="fw-bold">Estado:</td>
@@ -162,7 +160,7 @@
                                     </tr>
                                     <tr>
                                         <td class="fw-bold">Usuario:</td>
-                                        <td>@orden.NombreUsuario</td>
+                                        <td>@(string.IsNullOrWhiteSpace(orden.NombreUsuario) ? "No especificado" : orden.NombreUsuario)</td>
                                     </tr>
                                 </table>
                             </div>
@@ -193,7 +191,7 @@
                                     </tr>
                                     <tr>
                                         <td class="fw-bold">Teléfono:</td>
-                                        <td>@(orden.Telefono ?? "No especificado")</td>
+                                        <td>@(string.IsNullOrWhiteSpace(orden.Telefono) ? "No especificado" : orden.Telefono)</td>
                                     </tr>
                                 </table>
                             </div>
@@ -503,7 +501,7 @@
                         <small class="text-muted">Saldo pendiente: $@saldoPendiente.ToString("#,##0.00")</small>
                     </div>
                     <div class="mb-3">
-                        <label class="form-label">Número de Orden de Recaudación/Referencia:</label>
+                        <label class="form-label">Número de Orden de recaudación/Referencia:</label>
                         <input type="text" name="NumeroFactura" class="form-control"
                                placeholder="Ej: FACT-001, Depósito #12345" />
                     </div>

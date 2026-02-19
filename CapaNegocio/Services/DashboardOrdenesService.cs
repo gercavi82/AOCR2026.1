@@ -10,7 +10,7 @@ using CapaNegocio.Services;
 namespace CapaNegocio.Services
 {
     /// <summary>
-    /// Servicio empresarial optimizado para Dashboard de Órdenes de Recaudación
+    /// Servicio empresarial optimizado para Dashboard de Órdenes de recaudación
     /// Implementa queries eficientes y cálculos empresariales
     /// </summary>
     public class DashboardOrdenesService

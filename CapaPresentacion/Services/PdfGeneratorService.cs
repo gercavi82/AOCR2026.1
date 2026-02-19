@@ -33,6 +33,7 @@ namespace CapaPresentacion.Services
             {
                 ValidarOrden(orden);
                 var html = GenerarHtmlOrden(orden);
+                html = AplicarMembrete(html);
                 return GenerarPdfDesdeHtml(html);
             }
             catch (Exception ex)
@@ -84,6 +85,30 @@ namespace CapaPresentacion.Services
                 return System.Text.Encoding.UTF8.GetBytes(html);
             }
         }
+
+        private string AplicarMembrete(string html)
+        {
+            try
+            {
+                var ctx = HttpContext.Current;
+                if (ctx == null) return html;
+
+                var pathPng = ctx.Server.MapPath("~/Content/assets/imganes/hoja_membretada_dgac_2026.png");
+                var pathJpg = ctx.Server.MapPath("~/Content/assets/imganes/hoja_membretada_dgac_2026.jpg");
+                var path = File.Exists(pathPng) ? pathPng : (File.Exists(pathJpg) ? pathJpg : null);
+                if (string.IsNullOrWhiteSpace(path)) return html;
+
+                var mimeType = path.EndsWith(".png", StringComparison.OrdinalIgnoreCase) ? "image/png" : "image/jpeg";
+                var base64 = Convert.ToBase64String(File.ReadAllBytes(path));
+                var style = $"<style>body{{background-image:url('data:{mimeType};base64,{base64}');background-repeat:no-repeat;background-position:center top;background-size:100% auto;}}</style>";
+                return html.Replace("</head>", style + "</head>");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, new LogContext { NumeroOrden = null });
+                return html;
+            }
+        }
 private string GenerarHtmlOrden(OrdenRecaudacion orden)
         {
             var nombreContribuyente = SanitizeHtml(orden.NombreContribuyente ?? "N/A");
@@ -97,7 +122,7 @@ private string GenerarHtmlOrden(OrdenRecaudacion orden)
 <html>
 <head>
     <meta charset='utf-8'>
-    <title>Orden de Recaudación - {0}</title>
+    <title>Orden de recaudación - {0}</title>
     <style>
         body {{ font-family: Arial, sans-serif; font-size: 12px; padding: 20px; }}
         .header {{ text-align: center; margin-bottom: 30px; }}

@@ -4,7 +4,7 @@ using CapaNegocio.DTOs;
 namespace CapaNegocio.Interfaces
 {
     /// <summary>
-    /// Orquestador del flujo principal de Orden de Recaudación.
+    /// Orquestador del flujo principal de Orden de recaudación.
     /// Coordina: Crear Orden → Registrar Pago → Validar Pago → Generar PDF → Notificar
     /// </summary>
     public interface IOrdenRecaudacionOrchestrator

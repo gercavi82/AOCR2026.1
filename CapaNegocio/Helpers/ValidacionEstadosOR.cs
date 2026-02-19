@@ -14,7 +14,7 @@ namespace CapaNegocio.Helpers
         public const string GENERADA = "GENERADA";
         public const string ENVIADA = "ENVIADA";
         public const string PAGADA = "PAGADA";
-        public const string ORDEN_REQUERIDA = "Orden de Recaudación Requerida";
+        public const string ORDEN_REQUERIDA = "Orden de recaudación Requerida";
 
         public static void ValidarTransicion(string estadoActual, string estadoNuevo)
         {
@@ -28,7 +28,7 @@ namespace CapaNegocio.Helpers
             if (a == ANULADA) throw new Exception("Una orden ANULADA no puede cambiar de estado.");
             if (a == PAGADA && n != ANULADA) throw new Exception("Una orden PAGADA solo puede anularse si tu negocio lo permite (ajusta regla).");
 
-            // "Orden de Recaudación Requerida" puede ser un estado especial que se asigna externamente
+            // "Orden de recaudación Requerida" puede ser un estado especial que se asigna externamente
             // Permitir transiciones desde cualquier estado hacia este estado
             if (n == ORDEN_REQUERIDA.ToUpperInvariant()) return;
 

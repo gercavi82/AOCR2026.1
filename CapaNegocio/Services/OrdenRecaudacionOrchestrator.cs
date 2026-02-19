@@ -12,7 +12,7 @@ using DataEmailService = CapaDatos.Services.IEmailService;
 namespace CapaNegocio.Services
 {
     /// <summary>
-    /// Orquestador del flujo principal de Orden de Recaudación.
+    /// Orquestador del flujo principal de Orden de recaudación.
     /// Implementa el patrón Orchestrator para coordinar múltiples servicios.
     /// </summary>
     public class OrdenRecaudacionOrchestrator : IOrdenRecaudacionOrchestrator
@@ -398,7 +398,7 @@ namespace CapaNegocio.Services
                 switch (request.TipoNotificacion.ToUpperInvariant())
                 {
                     case "ORDEN_CREADA":
-                        asunto = "Nueva Orden de Recaudación - " + orden.NumeroOrden;
+                        asunto = "Nueva Orden de recaudación - " + orden.NumeroOrden;
                         cuerpo = ConstruirCuerpoOrdenCreada(orden);
                         break;
 
@@ -761,7 +761,7 @@ namespace CapaNegocio.Services
             return string.Format(@"
 <html>
 <body style='font-family: Arial, sans-serif;'>
-<h2>Nueva Orden de Recaudación</h2>
+<h2>Nueva Orden de recaudación</h2>
 <p>Se ha generado una nueva orden de recaudación con los siguientes datos:</p>
 <table style='border-collapse: collapse;'>
 <tr><td style='padding: 5px; font-weight: bold;'>Número de Orden:</td><td style='padding: 5px;'>{0}</td></tr>

@@ -3,7 +3,7 @@ using System;
 namespace CapaDatos.Constants
 {
     /// <summary>
-    /// Constantes para estados de Órdenes de Recaudación
+    /// Constantes para estados de Órdenes de recaudación
     /// Elimina magic strings y centraliza valores
     /// </summary>
     public static class EstadoOrden

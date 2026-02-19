@@ -6,7 +6,7 @@ using CapaDatos.Entidades;
 namespace CapaDatos.Interfaces
 {
     /// <summary>
-    /// Interface para repositorio de Órdenes de Recaudación
+    /// Interface para repositorio de Órdenes de recaudación
     /// </summary>
     public interface IOrdenRecaudacionRepository
     {

@@ -7,6 +7,44 @@
     ViewBag.Title = "Dashboard Financiero";
 }
 
+<style>
+    .acciones-cell {
+        min-width: 150px;
+    }
+
+    .acciones-orden {
+        display: flex;
+        align-items: center;
+        gap: .35rem;
+        flex-wrap: wrap;
+    }
+
+    .acciones-orden form {
+        margin: 0;
+    }
+
+    .btn-accion {
+        width: 32px;
+        height: 32px;
+        padding: 0;
+        border-radius: 8px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        line-height: 1;
+    }
+
+    .btn-pdf {
+        width: 30px;
+        height: 30px;
+        padding: 0;
+        border-radius: 8px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+    }
+</style>
+
 <h2>Financiero – Validación de Órdenes</h2>
 <hr />
 
@@ -60,8 +98,9 @@
             {
                 var orden = item.Orden;
                 var pago = item.Pago;
-                var comp = pago != null ? pago.ComprobanteRuta : null;
                 var estadoNorm = orden != null ? ((orden.Estado ?? "").Trim().ToUpperInvariant().Replace(" ", "_")) : "";
+                var esPendiente = !string.IsNullOrWhiteSpace(estadoNorm) && estadoNorm.StartsWith("PENDIENTE");
+                var puedeGestionarPorEstado = (estadoNorm == "PROCESADA" || esPendiente);
         <tr>
             <td>@Html.Encode(i)</td>
             <td>@Html.Encode(orden != null ? orden.NumeroOrden : "-")</td>
@@ -72,48 +111,72 @@
             <td>
                 @if (orden != null)
                 {
-                    <a href="@Url.Action("DescargarPdf", "OrdenRecaudacion", new { id = orden.Id })" target="_blank">Ver PDF</a>
+                    <a href="@Url.Action("DescargarPdf", "OrdenRecaudacion", new { id = orden.Id })"
+                       target="_blank"
+                       class="btn btn-outline-secondary btn-sm btn-pdf"
+                       title="Ver PDF de la orden">
+                        <i class="fas fa-file-pdf"></i>
+                    </a>
                 }
                 else
                 {
                     <span class="text-muted">Sin orden</span>
                 }
             </td>
-            <td>
-                @if (orden != null && pago != null && (estadoNorm == "PROCESADA" || estadoNorm == "PENDIENTE"))
+            <td class="acciones-cell">
+                @if (orden != null)
                 {
-                    using (Html.BeginForm("AprobarPago", "Financiero", FormMethod.Post))
-                    {
-                        @Html.AntiForgeryToken()
-                        @Html.Hidden("id", (object)orden.Id)
-                        @Html.Hidden("pagoId", (object)pago.CodigoPago)
-                        <button type="submit" class="btn btn-sm btn-success">Aprobar pago</button>
-                    }
+                    <div class="acciones-orden">
+                        <a href="@Url.Action("Detalles", "OrdenRecaudacion", new { id = orden.Id })"
+                           class="btn btn-outline-primary btn-sm btn-accion"
+                           title="Ver detalles">
+                            <i class="fas fa-eye"></i>
+                        </a>
 
-                    <button class="btn btn-sm btn-danger" type="button" data-bs-toggle="modal" data-bs-target="#modalRechazo-@orden.Id">Rechazar</button>
-
-                    <div class="modal fade" id="modalRechazo-@orden.Id" tabindex="-1" aria-hidden="true">
-                        <div class="modal-dialog">
-                            <div class="modal-content">
-                                <div class="modal-header">
-                                    <h5 class="modal-title">Rechazar Orden</h5>
-                                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                                </div>
-                                @using (Html.BeginForm("RechazarOrden", "Financiero", FormMethod.Post))
+                        @if (puedeGestionarPorEstado)
+                        {
+                            <form method="post"
+                                  action="@Url.Action("AprobarPago", "Financiero")"
+                                  class="d-inline m-0">
+                                @Html.AntiForgeryToken()
+                                <input type="hidden" name="id" value="@orden.Id" />
+                                @if (pago != null)
                                 {
-                                    @Html.AntiForgeryToken()
-                                    @Html.Hidden("id", orden.Id)
-                                    <div class="modal-body">
-                                        <label class="form-label">Motivo</label>
-                                        <textarea name="motivo" class="form-control" rows="3" required></textarea>
-                                    </div>
-                                    <div class="modal-footer">
-                                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                                        <button type="submit" class="btn btn-danger">Rechazar</button>
-                                    </div>
+                                    <input type="hidden" name="pagoId" value="@pago.CodigoPago" />
                                 }
+                                <button type="submit" class="btn btn-success btn-sm btn-accion" title="Aprobar pago">
+                                    <i class="fas fa-check"></i>
+                                </button>
+                            </form>
+
+                            <button class="btn btn-danger btn-sm btn-accion" type="button"
+                                    title="Rechazar"
+                                    data-bs-toggle="modal" data-bs-target="#modalRechazo-@orden.Id">
+                                <i class="fas fa-times"></i>
+                            </button>
+                            <div class="modal fade" id="modalRechazo-@orden.Id" tabindex="-1" aria-hidden="true">
+                                <div class="modal-dialog">
+                                    <div class="modal-content">
+                                        <div class="modal-header">
+                                            <h5 class="modal-title">Rechazar Orden</h5>
+                                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                        </div>
+                                        <form method="post" action="@Url.Action("RechazarOrden", "Financiero")">
+                                            @Html.AntiForgeryToken()
+                                            <input type="hidden" name="id" value="@orden.Id" />
+                                            <div class="modal-body">
+                                                <label class="form-label">Motivo</label>
+                                                <textarea name="motivo" class="form-control" rows="3" required></textarea>
+                                            </div>
+                                            <div class="modal-footer">
+                                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                                                <button type="submit" class="btn btn-danger">Rechazar</button>
+                                            </div>
+                                        </form>
+                                    </div>
+                                </div>
                             </div>
-                        </div>
+                        }
                     </div>
                 }
             </td>

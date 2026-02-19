@@ -1,8 +1,17 @@
-﻿using System;
-
+using System;
+using System.Collections.Generic;
+using System.Linq;
 
 namespace CapaPresentacion.Models.ViewModels
 {
+    public class OrdenRecaudacionPDFDetalleModel
+    {
+        public string Concepto { get; set; }
+        public decimal Subtotal { get; set; }
+        public decimal Admin { get; set; }
+        public decimal TotalLinea { get; set; }
+    }
+
     public class OrdenRecaudacionPDFModel
     {
         // Leyenda de bancos autorizados para mostrar en el PDF
@@ -31,6 +40,11 @@ namespace CapaPresentacion.Models.ViewModels
         public decimal Total { get; set; }
         public string TotalEnLetras { get; set; }
 
+        public decimal TotalSubtotal { get; set; }
+        public decimal TotalAdmin { get; set; }
+        public decimal TotalGeneral { get; set; }
+        public List<OrdenRecaudacionPDFDetalleModel> Detalles { get; set; } = new List<OrdenRecaudacionPDFDetalleModel>();
+
         public string Referencia { get; set; }
 
         public string NombreRepresentante { get; set; }
@@ -38,13 +52,28 @@ namespace CapaPresentacion.Models.ViewModels
         public string CargoInspector { get; set; }
 
         public void CalcularTotales()
-
-        
         {
+            if (Detalles != null && Detalles.Count > 0)
+            {
+                TotalSubtotal = Math.Round(Detalles.Sum(d => d.Subtotal), 2, MidpointRounding.AwayFromZero);
+                TotalAdmin = Math.Round(Detalles.Sum(d => d.Admin), 2, MidpointRounding.AwayFromZero);
+                TotalGeneral = Math.Round(Detalles.Sum(d => d.TotalLinea), 2, MidpointRounding.AwayFromZero);
+
+                ValorBase = TotalSubtotal;
+                ValorGastosAdmin = TotalAdmin;
+                Total = TotalGeneral;
+                TotalEnLetras = TotalGeneral.ToString("N2");
+                return;
+            }
+
+            // Fallback legacy si no hay detalle cargado.
             ValorInspecciones = Estaciones * 500m;
             ValorViaticos = Dias * 80m;
             ValorGastosAdmin = ValorViaticos * 0.08m;
             Total = ValorBase + ValorInspecciones + ValorViaticos + ValorGastosAdmin;
+            TotalSubtotal = ValorBase + ValorInspecciones + ValorViaticos;
+            TotalAdmin = ValorGastosAdmin;
+            TotalGeneral = Total;
             TotalEnLetras = Total.ToString("N2");
         }
     }

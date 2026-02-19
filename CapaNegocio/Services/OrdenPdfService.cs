@@ -38,8 +38,8 @@ namespace CapaNegocio.Services
                 writer.CloseStream = false;
 
                 doc.AddAuthor("AOCR");
-                doc.AddCreator("AOCR - Sistema de Recaudación");
-                doc.AddTitle("Orden de Recaudación");
+                doc.AddCreator("AOCR - Sistema de recaudación");
+                doc.AddTitle("Orden de recaudación");
                 doc.Open();
 
                 var title = FontFactory.GetFont(FontFactory.HELVETICA_BOLD, 14);

@@ -40,7 +40,7 @@ namespace CapaDatos.DAOs
         #region Metodos de Lectura
 
         /// <summary>
-        /// Obtiene todas las Ordenes de recaudación
+        /// Obtiene todas las Ordenes de recaudaciÃ³n
         /// </summary>
         public List<OrdenRecaudacion> ObtenerTodas()
         {
@@ -64,6 +64,8 @@ namespace CapaDatos.DAOs
                             ordenes.Add(MapearOrden(reader));
                         }
                     }
+
+                    AplicarTotalesNormalizadosPorDetalle(conn, ordenes);
                 }
             }
             catch (Exception ex)
@@ -107,7 +109,7 @@ namespace CapaDatos.DAOs
                             }
                             else
                             {
-                                System.Diagnostics.Debug.WriteLine($"OrdenRecaudacionDAO.ObtenerPorId: No se encontró orden con id = {id}");
+                                System.Diagnostics.Debug.WriteLine($"OrdenRecaudacionDAO.ObtenerPorId: No se encontrÃ³ orden con id = {id}");
                             }
                         }
                     }
@@ -158,6 +160,8 @@ namespace CapaDatos.DAOs
                             }
                         }
                     }
+
+                    AplicarTotalesNormalizadosPorDetalle(conn, ordenes);
                 }
             }
             catch (Exception ex)
@@ -199,6 +203,8 @@ namespace CapaDatos.DAOs
                             }
                         }
                     }
+
+                    AplicarTotalesNormalizadosPorDetalle(conn, ordenes);
                 }
             }
             catch (Exception ex)
@@ -252,7 +258,7 @@ namespace CapaDatos.DAOs
         #region Metodos de Escritura
 
         /// <summary>
-        /// Inserta una nueva orden de recaudación
+        /// Inserta una nueva orden de recaudaciÃ³n
         /// </summary>
         public int Insertar(OrdenRecaudacion orden)
         {
@@ -265,8 +271,14 @@ namespace CapaDatos.DAOs
                     numero_orden,
                     fecha_creacion,
                     estado,
+                    observacion,
+                    subtotal,
+                    admin,
                     compania,
                     ruc_cedula,
+                    lugar_emision,
+                    correo,
+                    telefono,
                     total
                 ) VALUES (
                     @CodigoUsuario,
@@ -274,8 +286,14 @@ namespace CapaDatos.DAOs
                     @NumeroOrden,
                     @FechaCreacion,
                     @Estado,
+                    @Observacion,
+                    @Subtotal,
+                    @Admin,
                     @Compania,
                     @RucCedula,
+                    @LugarEmision,
+                    @Correo,
+                    @Telefono,
                     @Total
                 ) RETURNING id";
             
@@ -294,8 +312,14 @@ namespace CapaDatos.DAOs
                             orden.NumeroOrden,
                             orden.FechaCreacion,
                             orden.Estado,
+                            orden.Observacion,
+                            orden.Subtotal,
+                            orden.Admin,
                             orden.Compania,
                             orden.RucCedula,
+                            orden.LugarEmision,
+                            orden.Correo,
+                            orden.Telefono,
                             orden.Total
                         };
                         
@@ -398,7 +422,7 @@ namespace CapaDatos.DAOs
         }
 
         /// <summary>
-        /// Actualiza una orden de recaudación
+        /// Actualiza una orden de recaudaciÃ³n
         /// </summary>
         public bool Actualizar(OrdenRecaudacion orden)
         {
@@ -502,10 +526,10 @@ namespace CapaDatos.DAOs
 
         #endregion
 
-        #region Estadísticas
+        #region EstadÃ­sticas
 
         /// <summary>
-        /// Obtiene estadísticas de las Ordenes
+        /// Obtiene estadÃ­sticas de las Ordenes
         /// </summary>
         public Dictionary<string, object> ObtenerEstadisticas()
         {
@@ -585,7 +609,7 @@ namespace CapaDatos.DAOs
         }
 
         /// <summary>
-        /// Prueba la conexión a la base de datos
+        /// Prueba la conexiÃ³n a la base de datos
         /// </summary>
         public bool ProbarConexion()
         {
@@ -605,7 +629,7 @@ namespace CapaDatos.DAOs
 
         #endregion
 
-        #region Métodos Privados de Mapeo
+        #region MÃ©todos Privados de Mapeo
 
         /// <summary>
         /// Helper method to safely get int32 value from reader, handling both integer and string types
@@ -671,7 +695,7 @@ namespace CapaDatos.DAOs
                 ConceptoId = GetSafeNullableInt(reader, "concepto_id")
             };
 
-            // Intentar obtener el nombre del concepto si está en el resultado
+            // Intentar obtener el nombre del concepto si estÃ¡ en el resultado
             try
             {
                 var conceptoNombreOrdinal = reader.GetOrdinal("concepto_nombre");
@@ -682,7 +706,7 @@ namespace CapaDatos.DAOs
             }
             catch
             {
-                // La columna concepto_nombre no está en el resultado, ignorar
+                // La columna concepto_nombre no estÃ¡ en el resultado, ignorar
             }
 
             return orden;
@@ -693,7 +717,7 @@ namespace CapaDatos.DAOs
         /// </summary>
         private DetalleOrdenEnt MapearDetalle(IDataReader reader)
         {
-            return new DetalleOrdenEnt
+            var detalle = new DetalleOrdenEnt
             {
                 Id = reader.GetInt32(reader.GetOrdinal("id")),
                 OrdenId = reader.GetInt32(reader.GetOrdinal("orden_id")),
@@ -708,6 +732,8 @@ namespace CapaDatos.DAOs
                 Admin = reader.IsDBNull(reader.GetOrdinal("admin")) ? 0m : reader.GetDecimal(reader.GetOrdinal("admin")),
                 TotalLinea = reader.GetDecimal(reader.GetOrdinal("total_linea"))
             };
+
+            return NormalizarMontosDetalle(detalle);
         }
 
         #endregion
@@ -768,6 +794,8 @@ namespace CapaDatos.DAOs
                             }
                         }
                     }
+
+                    AplicarTotalesNormalizadosPorDetalle(conn, ordenes);
                 }
             }
             catch (Exception ex)
@@ -788,6 +816,167 @@ namespace CapaDatos.DAOs
 
             int result;
             return int.TryParse(value, out result) ? result : 0;
+        }
+
+        private sealed class TotalesOrdenNormalizados
+        {
+            public decimal Subtotal { get; set; }
+            public decimal Admin { get; set; }
+            public decimal Total { get; set; }
+        }
+
+        private void AplicarTotalesNormalizadosPorDetalle(NpgsqlConnection conn, IList<OrdenRecaudacion> ordenes)
+        {
+            if (conn == null || ordenes == null || ordenes.Count == 0)
+            {
+                return;
+            }
+
+            var ordenIds = ordenes
+                .Where(o => o != null && o.Id > 0)
+                .Select(o => o.Id)
+                .Distinct()
+                .ToArray();
+
+            if (ordenIds.Length == 0)
+            {
+                return;
+            }
+
+            const string sql = @"
+                WITH detalle_base AS (
+                    SELECT
+                        d.orden_id,
+                        COALESCE(d.subtotal, 0) AS subtotal,
+                        COALESCE(d.admin, 0) AS admin_actual,
+                        COALESCE(d.total_linea, 0) AS total_actual,
+                        CASE
+                            WHEN COALESCE(d.porcentaje_admin, 0) > 100
+                                 AND COALESCE(d.porcentaje_admin, 0) <= 10000
+                                THEN COALESCE(d.porcentaje_admin, 0) / 100.0
+                            ELSE COALESCE(d.porcentaje_admin, 0)
+                        END AS porcentaje_admin_norm
+                    FROM aocr_or_orden_detalle d
+                    WHERE d.orden_id = ANY(@ordenIds)
+                ),
+                detalle_resuelto AS (
+                    SELECT
+                        orden_id,
+                        subtotal,
+                        CASE
+                            WHEN ABS(admin_actual - ROUND(subtotal * (porcentaje_admin_norm / 100.0), 2)) > 0.01
+                                THEN ROUND(subtotal * (porcentaje_admin_norm / 100.0), 2)
+                            ELSE admin_actual
+                        END AS admin_resuelto,
+                        total_actual
+                    FROM detalle_base
+                )
+                SELECT
+                    orden_id,
+                    ROUND(SUM(subtotal), 2) AS subtotal,
+                    ROUND(SUM(admin_resuelto), 2) AS admin,
+                    ROUND(SUM(
+                        CASE
+                            WHEN ABS(total_actual - ROUND(subtotal + admin_resuelto, 2)) > 0.01
+                                THEN ROUND(subtotal + admin_resuelto, 2)
+                            ELSE total_actual
+                        END
+                    ), 2) AS total
+                FROM detalle_resuelto
+                GROUP BY orden_id";
+
+            var totalesPorOrden = new Dictionary<int, TotalesOrdenNormalizados>();
+            using (var cmd = new NpgsqlCommand(sql, conn))
+            {
+                cmd.Parameters.AddWithValue("@ordenIds", ordenIds);
+
+                using (var reader = cmd.ExecuteReader())
+                {
+                    while (reader.Read())
+                    {
+                        var ordenId = reader.GetInt32(reader.GetOrdinal("orden_id"));
+                        var subtotal = reader.IsDBNull(reader.GetOrdinal("subtotal")) ? 0m : reader.GetDecimal(reader.GetOrdinal("subtotal"));
+                        var admin = reader.IsDBNull(reader.GetOrdinal("admin")) ? 0m : reader.GetDecimal(reader.GetOrdinal("admin"));
+                        var total = reader.IsDBNull(reader.GetOrdinal("total")) ? 0m : reader.GetDecimal(reader.GetOrdinal("total"));
+
+                        totalesPorOrden[ordenId] = new TotalesOrdenNormalizados
+                        {
+                            Subtotal = subtotal,
+                            Admin = admin,
+                            Total = total
+                        };
+                    }
+                }
+            }
+
+            if (totalesPorOrden.Count == 0)
+            {
+                return;
+            }
+
+            foreach (var orden in ordenes)
+            {
+                if (orden == null)
+                {
+                    continue;
+                }
+
+                TotalesOrdenNormalizados totalNormalizado;
+                if (!totalesPorOrden.TryGetValue(orden.Id, out totalNormalizado))
+                {
+                    continue;
+                }
+
+                orden.Subtotal = totalNormalizado.Subtotal;
+                orden.Admin = totalNormalizado.Admin;
+                orden.Total = totalNormalizado.Total;
+            }
+        }
+
+        private decimal NormalizarPorcentajeAdmin(decimal porcentaje)
+        {
+            // Algunos datos quedaron persistidos como 800 en lugar de 8.
+            if (porcentaje > 100m && porcentaje <= 10000m)
+            {
+                return porcentaje / 100m;
+            }
+
+            return porcentaje;
+        }
+
+        private DetalleOrdenEnt NormalizarMontosDetalle(DetalleOrdenEnt detalle)
+        {
+            if (detalle == null) return null;
+
+            detalle.PorcentajeAdmin = NormalizarPorcentajeAdmin(detalle.PorcentajeAdmin);
+
+            if (detalle.Subtotal < 0m || detalle.PorcentajeAdmin < 0m)
+            {
+                return detalle;
+            }
+
+            var adminCalculado = Math.Round(
+                detalle.Subtotal * (detalle.PorcentajeAdmin / 100m),
+                2,
+                MidpointRounding.AwayFromZero);
+
+            // Si el admin guardado no cuadra con el porcentaje (caso 640 vs 6.40), corregir para visualizaciÃ³n.
+            if (Math.Abs(detalle.Admin - adminCalculado) > 0.01m)
+            {
+                detalle.Admin = adminCalculado;
+            }
+
+            var totalCalculado = Math.Round(
+                detalle.Subtotal + detalle.Admin,
+                2,
+                MidpointRounding.AwayFromZero);
+
+            if (Math.Abs(detalle.TotalLinea - totalCalculado) > 0.01m)
+            {
+                detalle.TotalLinea = totalCalculado;
+            }
+
+            return detalle;
         }
 
         private OrdenRecaudacionModel MapearOrdenModel(OrdenRecaudacion orden)
@@ -827,6 +1016,11 @@ namespace CapaDatos.DAOs
                 {
                     model.Detalles.Add(MapearDetalleModel(d));
                 }
+
+                // Mostrar totales consistentes con el detalle (corrige histÃ³ricos con porcentaje mal guardado).
+                model.Subtotal = model.Detalles.Sum(d => d.Subtotal);
+                model.Admin = model.Detalles.Sum(d => d.Admin);
+                model.Total = model.Subtotal + model.Admin;
             }
 
             return model;
@@ -936,6 +1130,17 @@ namespace CapaDatos.DAOs
             }
         }
 
+        private int ObtenerCodigoSolicitudPagoDesdeOrden(int ordenId)
+        {
+            if (ordenId <= 0)
+            {
+                return 0;
+            }
+
+            var codigoSolicitud = ObtenerCodigoSolicitudDesdeOrden(ordenId);
+            return codigoSolicitud > 0 ? codigoSolicitud : ordenId;
+        }
+
         private PagoModel MapearPagoModel(IDataReader reader)
         {
             return new PagoModel
@@ -947,7 +1152,7 @@ namespace CapaDatos.DAOs
                 Moneda = reader["moneda"] != DBNull.Value ? reader["moneda"].ToString() : null,
                 Concepto = reader["concepto"] != DBNull.Value ? reader["concepto"].ToString() : null,
                 MetodoPago = reader["metodo_pago"] != DBNull.Value ? reader["metodo_pago"].ToString() : null,
-                Banco = GetSafeBanco(reader),  // Método seguro para obtener banco
+                Banco = GetSafeBanco(reader),  // MÃ©todo seguro para obtener banco
                 Estado = reader["estado"] != DBNull.Value ? reader["estado"].ToString() : null,
                 FechaPago = reader["fecha_pago"] != DBNull.Value ? (DateTime?)Convert.ToDateTime(reader["fecha_pago"]) : null,
                 FechaValidacion = reader["fecha_validacion"] != DBNull.Value ? (DateTime?)Convert.ToDateTime(reader["fecha_validacion"]) : null,
@@ -1061,6 +1266,8 @@ namespace CapaDatos.DAOs
                             }
                         }
                     }
+
+                    AplicarTotalesNormalizadosPorDetalle(conn, ordenes);
                 }
             }
             catch (Exception ex)
@@ -1105,11 +1312,12 @@ namespace CapaDatos.DAOs
         public List<PagoModel> ObtenerPagosPorOrden(int ordenId)
         {
             var pagos = new List<PagoModel>();
-            var codigoSolicitud = ObtenerCodigoSolicitudDesdeOrden(ordenId);
-            if (codigoSolicitud <= 0)
+            if (ordenId <= 0)
             {
-                codigoSolicitud = ordenId;
+                return pagos;
             }
+
+            var codigoSolicitud = ObtenerCodigoSolicitudPagoDesdeOrden(ordenId);
 
             try
             {
@@ -1117,11 +1325,13 @@ namespace CapaDatos.DAOs
                 {
                     conn.Open();
                     var sql = @"SELECT * FROM aocr_tbpago
-                                WHERE codigo_solicitud = @codigoSolicitud
+                                WHERE codigo_solicitud = @ordenId
+                                   OR codigo_solicitud = @codigoSolicitud
                                 ORDER BY fecha_pago DESC, codigo_pago DESC";
 
                     using (var cmd = new NpgsqlCommand(sql, conn))
                     {
+                        cmd.Parameters.AddWithValue("@ordenId", ordenId);
                         cmd.Parameters.AddWithValue("@codigoSolicitud", codigoSolicitud);
                         using (var reader = cmd.ExecuteReader())
                         {
@@ -1143,11 +1353,12 @@ namespace CapaDatos.DAOs
 
         public Pago ObtenerUltimoPagoPorOrden(int ordenId)
         {
-            var codigoSolicitud = ObtenerCodigoSolicitudDesdeOrden(ordenId);
-            if (codigoSolicitud <= 0)
+            if (ordenId <= 0)
             {
-                codigoSolicitud = ordenId;
+                return null;
             }
+
+            var codigoSolicitud = ObtenerCodigoSolicitudPagoDesdeOrden(ordenId);
 
             try
             {
@@ -1155,12 +1366,14 @@ namespace CapaDatos.DAOs
                 {
                     conn.Open();
                     var sql = @"SELECT * FROM aocr_tbpago
-                                WHERE codigo_solicitud = @codigoSolicitud
+                                WHERE codigo_solicitud = @ordenId
+                                   OR codigo_solicitud = @codigoSolicitud
                                 ORDER BY fecha_pago DESC, codigo_pago DESC
                                 LIMIT 1";
 
                     using (var cmd = new NpgsqlCommand(sql, conn))
                     {
+                        cmd.Parameters.AddWithValue("@ordenId", ordenId);
                         cmd.Parameters.AddWithValue("@codigoSolicitud", codigoSolicitud);
                         using (var reader = cmd.ExecuteReader())
                         {
@@ -1182,11 +1395,12 @@ namespace CapaDatos.DAOs
 
         public bool ActualizarUltimoPagoEstado(int ordenId, string nuevoEstado, string usuario, string observacion = null)
         {
-            var codigoSolicitud = ObtenerCodigoSolicitudDesdeOrden(ordenId);
-            if (codigoSolicitud <= 0)
+            if (ordenId <= 0)
             {
-                codigoSolicitud = ordenId;
+                return false;
             }
+
+            var codigoSolicitud = ObtenerCodigoSolicitudPagoDesdeOrden(ordenId);
 
             try
             {
@@ -1202,7 +1416,8 @@ namespace CapaDatos.DAOs
                             observaciones = COALESCE(@observaciones, observaciones)
                         WHERE codigo_pago = (
                             SELECT codigo_pago FROM aocr_tbpago
-                            WHERE codigo_solicitud = @codigoSolicitud
+                            WHERE codigo_solicitud = @ordenId
+                               OR codigo_solicitud = @codigoSolicitud
                             ORDER BY fecha_pago DESC, codigo_pago DESC
                             LIMIT 1
                         )";
@@ -1213,6 +1428,7 @@ namespace CapaDatos.DAOs
                         cmd.Parameters.AddWithValue("@fecha_validacion", DateTime.Now);
                         cmd.Parameters.AddWithValue("@validado_por", (object)usuario ?? DBNull.Value);
                         cmd.Parameters.AddWithValue("@observaciones", (object)observacion ?? DBNull.Value);
+                        cmd.Parameters.AddWithValue("@ordenId", ordenId);
                         cmd.Parameters.AddWithValue("@codigoSolicitud", codigoSolicitud);
 
                         return cmd.ExecuteNonQuery() > 0;
@@ -1378,7 +1594,7 @@ namespace CapaDatos.DAOs
                         cmd.Parameters.AddWithValue("@concepto", (object)pago.Concepto ?? DBNull.Value);
                         cmd.Parameters.AddWithValue("@metodoPago", (object)pago.MetodoPago ?? DBNull.Value);
                         
-                        // Solo agregar parámetro banco si la columna existe
+                        // Solo agregar parÃ¡metro banco si la columna existe
                         if (tieneBanco)
                         {
                             cmd.Parameters.AddWithValue("@banco", (object)pago.Banco ?? DBNull.Value);
@@ -1395,6 +1611,16 @@ namespace CapaDatos.DAOs
             }
             catch (Exception ex)
             {
+                var pgEx = ex as PostgresException;
+                if (pgEx != null &&
+                    pgEx.SqlState == "23505" &&
+                    string.Equals(pgEx.ConstraintName, "aocr_tbpago_numero_factura_key", StringComparison.OrdinalIgnoreCase))
+                {
+                    err = "El numero de comprobante ya existe. Verifique el numero de factura/comprobante e intente nuevamente.";
+                    _logger.LogWarning("RegistrarPago duplicado: codigoSolicitud={0}, numeroFactura={1}", codigoSolicitud, pago?.NumeroFactura);
+                    return false;
+                }
+
                 err = ex.Message;
                 _logger.LogError(ex, "Error en RegistrarPago");
                 return false;
@@ -1430,14 +1656,14 @@ namespace CapaDatos.DAOs
         }
 
         /// <summary>
-        /// Inserta el pago y actualiza el estado de la orden en una transacción para mantener consistencia.
+        /// Inserta el pago y actualiza el estado de la orden en una transacciÃ³n para mantener consistencia.
         /// </summary>
         public bool RegistrarPagoYActualizarEstadoTransaccional(int ordenId, int codigoSolicitud, PagoModel pago, string nuevoEstadoOrden, out string err)
         {
             err = null;
             if (ordenId <= 0 || codigoSolicitud <= 0 || pago == null)
             {
-                err = "Parametros inválidos.";
+                err = "Parametros invÃ¡lidos.";
                 return false;
             }
 
@@ -1448,7 +1674,7 @@ namespace CapaDatos.DAOs
                     conn.Open();
                     using (var tx = conn.BeginTransaction())
                     {
-                        // Insert pago (usar la misma lógica que RegistrarPago)
+                        // Insert pago (usar la misma lÃ³gica que RegistrarPago)
                         var tieneBanco = VerificarColumnaBanco(conn);
 
                         var sqlInsert = tieneBanco ? @"
@@ -1506,6 +1732,16 @@ namespace CapaDatos.DAOs
             }
             catch (Exception ex)
             {
+                var pgEx = ex as PostgresException;
+                if (pgEx != null &&
+                    pgEx.SqlState == "23505" &&
+                    string.Equals(pgEx.ConstraintName, "aocr_tbpago_numero_factura_key", StringComparison.OrdinalIgnoreCase))
+                {
+                    err = "El numero de comprobante ya existe. Verifique el numero de factura/comprobante e intente nuevamente.";
+                    _logger.LogWarning("RegistrarPagoYActualizarEstadoTransaccional duplicado: ordenId={0}, codigoSolicitud={1}, numeroFactura={2}", ordenId, codigoSolicitud, pago?.NumeroFactura);
+                    return false;
+                }
+
                 err = ex.Message;
                 _logger.LogError(ex, "Error en RegistrarPagoYActualizarEstadoTransaccional");
                 return false;
@@ -1517,7 +1753,7 @@ namespace CapaDatos.DAOs
         // =============================
 
         /// <summary>
-        /// Actualiza el estado del ultimo pago (o pago especificado) y el estado de la orden en una transacción.
+        /// Actualiza el estado del ultimo pago (o pago especificado) y el estado de la orden en una transacciÃ³n.
         /// </summary>
         public bool ActualizarPagoYEstadoTransaccional(int ordenId, int? pagoId, string estadoPago, string usuario, string observaciones, string nuevoEstadoOrden, out string err)
         {
@@ -1540,36 +1776,63 @@ namespace CapaDatos.DAOs
                         int targetPagoId = pagoId ?? 0;
                         if (targetPagoId == 0)
                         {
-                            var sqlGet = @"SELECT id FROM aocr_tbpago WHERE codigo_solicitud = (SELECT COALESCE(NULLIF(codigo_solicitud, ''), id::text)::int FROM aocr_or_orden WHERE id = @ordenId) ORDER BY fecha_pago DESC LIMIT 1";
+                            int codigoSolicitud = ordenId;
+                            var sqlCodigoSolicitud = "SELECT codigo_solicitud FROM aocr_or_orden WHERE id = @ordenId";
+                            using (var cmdCodigo = new NpgsqlCommand(sqlCodigoSolicitud, conn, tx))
+                            {
+                                cmdCodigo.Parameters.AddWithValue("@ordenId", ordenId);
+                                var rawCodigo = cmdCodigo.ExecuteScalar();
+                                if (rawCodigo != null && rawCodigo != DBNull.Value)
+                                {
+                                    var parsedCodigo = ParseIntOrDefault(rawCodigo.ToString());
+                                    if (parsedCodigo > 0)
+                                    {
+                                        codigoSolicitud = parsedCodigo;
+                                    }
+                                }
+                            }
+
+                            var sqlGet = @"SELECT codigo_pago
+                                           FROM aocr_tbpago
+                                           WHERE codigo_solicitud = @ordenId
+                                              OR codigo_solicitud = @codigoSolicitud
+                                           ORDER BY fecha_pago DESC, codigo_pago DESC
+                                           LIMIT 1";
                             using (var cmdGet = new NpgsqlCommand(sqlGet, conn, tx))
                             {
                                 cmdGet.Parameters.AddWithValue("@ordenId", ordenId);
+                                cmdGet.Parameters.AddWithValue("@codigoSolicitud", codigoSolicitud);
                                 var obj = cmdGet.ExecuteScalar();
                                 if (obj != null && obj != DBNull.Value) targetPagoId = Convert.ToInt32(obj);
                             }
                         }
 
-                        if (targetPagoId == 0)
+                        var estadoPagoNormalizado = (estadoPago ?? string.Empty).Trim().ToUpperInvariant();
+                        var requierePago = estadoPagoNormalizado != "ANULADO" && estadoPagoNormalizado != "RECHAZADO";
+                        if (targetPagoId == 0 && requierePago)
                         {
                             tx.Rollback();
                             err = "No se encontró pago para validar.";
                             return false;
                         }
 
-                        var sqlUpdatePago = "UPDATE aocr_tbpago SET estado = @estado, fecha_validacion = @fecha, validado_por = @usuario, observaciones = @obs WHERE id = @pagoId";
-                        using (var cmdUpd = new NpgsqlCommand(sqlUpdatePago, conn, tx))
+                        if (targetPagoId > 0)
                         {
-                            cmdUpd.Parameters.AddWithValue("@estado", estadoPago);
-                            cmdUpd.Parameters.AddWithValue("@fecha", DateTime.Now);
-                            cmdUpd.Parameters.AddWithValue("@usuario", usuario ?? (object)DBNull.Value);
-                            cmdUpd.Parameters.AddWithValue("@obs", (object)observaciones ?? DBNull.Value);
-                            cmdUpd.Parameters.AddWithValue("@pagoId", targetPagoId);
-                            var rows = cmdUpd.ExecuteNonQuery();
-                            if (rows <= 0)
+                            var sqlUpdatePago = "UPDATE aocr_tbpago SET estado = @estado, fecha_validacion = @fecha, validado_por = @usuario, observaciones = @obs WHERE codigo_pago = @pagoId";
+                            using (var cmdUpd = new NpgsqlCommand(sqlUpdatePago, conn, tx))
                             {
-                                tx.Rollback();
-                                err = "Fallo al actualizar pago";
-                                return false;
+                                cmdUpd.Parameters.AddWithValue("@estado", estadoPago);
+                                cmdUpd.Parameters.AddWithValue("@fecha", DateTime.Now);
+                                cmdUpd.Parameters.AddWithValue("@usuario", usuario ?? (object)DBNull.Value);
+                                cmdUpd.Parameters.AddWithValue("@obs", (object)observaciones ?? DBNull.Value);
+                                cmdUpd.Parameters.AddWithValue("@pagoId", targetPagoId);
+                                var rows = cmdUpd.ExecuteNonQuery();
+                                if (rows <= 0)
+                                {
+                                    tx.Rollback();
+                                    err = "Fallo al actualizar pago";
+                                    return false;
+                                }
                             }
                         }
 
@@ -1613,7 +1876,7 @@ namespace CapaDatos.DAOs
 
                     var filtroUsuario = !string.IsNullOrWhiteSpace(codigoUsuarioStr);
 
-                    // Total de órdenes
+                    // Total de Ã³rdenes
                     var sqlTotal = filtroUsuario 
                         ? "SELECT COUNT(*) FROM aocr_or_orden WHERE codigo_usuario::text = @codigoUsuario"
                         : "SELECT COUNT(*) FROM aocr_or_orden";
@@ -1623,7 +1886,7 @@ namespace CapaDatos.DAOs
                         estadisticas["total"] = Convert.ToInt32(cmd.ExecuteScalar());
                     }
 
-                    // Órdenes pagadas
+                    // Ã“rdenes pagadas
                     var sqlPagadas = filtroUsuario
                         ? "SELECT COUNT(*) FROM aocr_or_orden WHERE estado IN ('COMPLETADA', 'FACTURADA') AND codigo_usuario::text = @codigoUsuario"
                         : "SELECT COUNT(*) FROM aocr_or_orden WHERE estado IN ('COMPLETADA', 'FACTURADA')";
@@ -1758,7 +2021,7 @@ namespace CapaDatos.DAOs
                 using (var conn = new NpgsqlConnection(_connectionString))
                 {
                     conn.Open();
-                    // Contar órdenes del día actual que tienen número de orden generado
+                    // Contar Ã³rdenes del dÃ­a actual que tienen nÃºmero de orden generado
                     var sql = @"SELECT COUNT(*) FROM aocr_or_orden 
                                WHERE fecha_creacion::date = @fecha 
                                AND numero_orden IS NOT NULL 
@@ -1778,7 +2041,7 @@ namespace CapaDatos.DAOs
             {
                 _logger.LogError(ex, "Error en ObtenerConsecutivoDiarioAsync");
                 System.Diagnostics.Debug.WriteLine($"Error en ObtenerConsecutivoDiarioAsync: {ex.Message}");
-                // En caso de error, usar un número basado en timestamp
+                // En caso de error, usar un nÃºmero basado en timestamp
                 count = (int)((DateTime.Now.Ticks / TimeSpan.TicksPerSecond) % 1000);
             }
 
@@ -1797,8 +2060,8 @@ namespace CapaDatos.DAOs
             }
             catch (IndexOutOfRangeException)
             {
-                // La columna banco no existe en la tabla, intentar inferir desde método de pago
-                System.Diagnostics.Debug.WriteLine("MapearPagoModel: Columna 'banco' no existe, intentando inferir desde método de pago");
+                // La columna banco no existe en la tabla, intentar inferir desde mÃ©todo de pago
+                System.Diagnostics.Debug.WriteLine("MapearPagoModel: Columna 'banco' no existe, intentando inferir desde mÃ©todo de pago");
                 
                 try
                 {
@@ -1813,7 +2076,7 @@ namespace CapaDatos.DAOs
         }
         
         /// <summary>
-        /// Intenta inferir el banco basándose en el método de pago
+        /// Intenta inferir el banco basÃ¡ndose en el mÃ©todo de pago
         /// </summary>
         private string InferirBancoDesdeMetodoPago(string metodoPago)
         {
@@ -1822,7 +2085,7 @@ namespace CapaDatos.DAOs
                 
             var metodo = metodoPago.ToUpperInvariant();
             
-            // Mapeo común de métodos de pago a bancos
+            // Mapeo comÃºn de mÃ©todos de pago a bancos
             if (metodo.Contains("PICHINCHA"))
                 return "BANCO PICHINCHA";
             else if (metodo.Contains("GUAYAQUIL"))
@@ -1870,8 +2133,8 @@ namespace CapaDatos.DAOs
         }
 
         /// <summary>
-        /// Método temporal para agregar la columna banco a la tabla aocr_tbpago
-        /// Este método debe ser ejecutado una sola vez por un administrador
+        /// MÃ©todo temporal para agregar la columna banco a la tabla aocr_tbpago
+        /// Este mÃ©todo debe ser ejecutado una sola vez por un administrador
         /// </summary>
         public bool AgregarColumnaBancoTemporal()
         {
@@ -1916,7 +2179,7 @@ namespace CapaDatos.DAOs
         }
 
         /// <summary>
-        /// Verifica si ya existe un número de orden en la base de datos
+        /// Verifica si ya existe un nÃºmero de orden en la base de datos
         /// </summary>
         public bool ExisteNumeroOrden(string numeroOrden)
         {
@@ -2066,6 +2329,8 @@ namespace CapaDatos.DAOs
                             }
                         }
                     }
+
+                    AplicarTotalesNormalizadosPorDetalle(conn, ordenes);
                 }
             }
             catch (Exception ex)
@@ -2200,10 +2465,10 @@ namespace CapaDatos.DAOs
 
         #endregion
 
-        #region Métodos Async Adicionales para Controller
+        #region MÃ©todos Async Adicionales para Controller
 
         /// <summary>
-        /// Versión async de ListarPorUsuarioModel
+        /// VersiÃ³n async de ListarPorUsuarioModel
         /// </summary>
         public Task<List<OrdenRecaudacionModel>> ListarPorUsuarioModelAsync(int codigoUsuario, string estado)
         {
@@ -2211,7 +2476,7 @@ namespace CapaDatos.DAOs
         }
 
         /// <summary>
-        /// Versión async de ObtenerOrdenPorIdModel
+        /// VersiÃ³n async de ObtenerOrdenPorIdModel
         /// </summary>
         public Task<OrdenRecaudacionModel> ObtenerOrdenPorIdModelAsync(int id)
         {
@@ -2219,7 +2484,7 @@ namespace CapaDatos.DAOs
         }
 
         /// <summary>
-        /// Versión async de ObtenerPagosPorOrden
+        /// VersiÃ³n async de ObtenerPagosPorOrden
         /// </summary>
         public Task<List<PagoModel>> ObtenerPagosPorOrdenAsync(int ordenId)
         {
@@ -2227,7 +2492,7 @@ namespace CapaDatos.DAOs
         }
 
         /// <summary>
-        /// Versión async de CambiarEstadoOrden
+        /// VersiÃ³n async de CambiarEstadoOrden
         /// </summary>
         public Task<bool> CambiarEstadoOrdenAsync(int id, string nuevoEstado)
         {
@@ -2235,7 +2500,7 @@ namespace CapaDatos.DAOs
         }
 
         /// <summary>
-        /// Versión async de ActualizarOrden con OrdenRecaudacionModel
+        /// VersiÃ³n async de ActualizarOrden con OrdenRecaudacionModel
         /// </summary>
         public Task<bool> ActualizarOrdenModelAsync(OrdenRecaudacionModel orden)
         {
@@ -2243,7 +2508,7 @@ namespace CapaDatos.DAOs
         }
 
         /// <summary>
-        /// Versión async de Insertar
+        /// VersiÃ³n async de Insertar
         /// </summary>
         public Task<int> InsertarAsync(OrdenRecaudacion orden)
         {
@@ -2253,6 +2518,7 @@ namespace CapaDatos.DAOs
         #endregion
     }
 }
+
 
 
 

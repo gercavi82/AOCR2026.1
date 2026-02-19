@@ -103,9 +103,10 @@ namespace CapaNegocio
             var asunto = "Su designación RT fue aprobada - Sistema AOCR";
             var cuerpo = $@"
                 <div style='font-family:Arial,sans-serif; font-size:14px; color:#222;'>
-                    <p>Estimado(a) {HttpUtility.HtmlEncode(nombreCompleto ?? "")},</p>
-                    <p>Su designación como Responsable Técnico (RT) ha sido <strong>aprobada</strong>.</p>
-                    <p>Se ha generado una contraseña temporal para su primer ingreso:</p>
+                    <p>Estimado(a),</p>
+                    <p>Su designación como Responsable Técnico (RT) ha sido enviada por Jefatura Técnica.</p>
+                    <p>Actualmente se encuentra en proceso de validación y aceptación final.</p>
+                    <p>Recibirá un nuevo correo cuando el proceso finalice.</p>
                     <p><strong>Contraseña temporal:</strong> {passwordTemporal}</p>
                     <p>Por seguridad, el sistema le pedirá cambiar la contraseña en su primer ingreso.</p>
                     <hr />
