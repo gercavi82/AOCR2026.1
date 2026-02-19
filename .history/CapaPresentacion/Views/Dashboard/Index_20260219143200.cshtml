@@ -1,0 +1,323 @@
+﻿@inherits System.Web.Mvc.WebViewPage
+@using CapaModelo
+@using System.Web.Mvc
+@using System.Web.Mvc.Html
+@{
+    ViewBag.Title = "Dashboard";
+    Layout = "~/Views/Shared/_LayoutAOCR.cshtml";
+}
+
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <h1 class="mt-4">Dashboard AOCR</h1>
+            <p class="lead">Bienvenido al Sistema de Órdenes de Recaudación</p>
+            <hr />
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-start border-primary shadow h-100 py-2">
+                <div class="card-body d-flex justify-content-between align-items-center">
+                    <div>
+                        <div class="text-uppercase small fw-bold text-primary mb-1">Órdenes Pendientes</div>
+                        <div class="h5 mb-0 fw-bold text-dark" id="ordenesPendientes">0</div>
+                    </div>
+                    <i class="fas fa-clipboard-list fa-2x text-secondary opacity-50"></i>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-start border-success shadow h-100 py-2">
+                <div class="card-body d-flex justify-content-between align-items-center">
+                    <div>
+                        <div class="text-uppercase small fw-bold text-success mb-1">Órdenes Completadas</div>
+                        <div class="h5 mb-0 fw-bold text-dark" id="ordenesCompletadas">0</div>
+                    </div>
+                    <i class="fas fa-check-circle fa-2x text-secondary opacity-50"></i>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-start border-info shadow h-100 py-2">
+                <div class="card-body d-flex justify-content-between align-items-center">
+                    <div>
+                        <div class="text-uppercase small fw-bold text-info mb-1">Total Recaudado</div>
+                        <div class="h5 mb-0 fw-bold text-dark" id="totalRecaudado">$0.00</div>
+                    </div>
+                    <i class="fas fa-dollar-sign fa-2x text-secondary opacity-50"></i>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-start border-warning shadow h-100 py-2">
+                <div class="card-body d-flex justify-content-between align-items-center">
+                    <div>
+                        <div class="text-uppercase small fw-bold text-warning mb-1">Última Orden</div>
+                        <div class="h5 mb-0 fw-bold text-dark" id="ultimaOrden">N/A</div>
+                    </div>
+                    <i class="fas fa-calendar-alt fa-2x text-secondary opacity-50"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Órdenes Recientes -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3 d-flex justify-content-between align-items-center">
+                    <h6 class="m-0 fw-bold text-primary">Órdenes Recientes</h6>
+                    <div id="loadingOrdenes" class="text-muted d-none">
+                        <i class="fas fa-spinner fa-spin me-1"></i> Cargando...
+                    </div>
+                </div>
+
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-bordered table-striped align-middle" id="tablaOrdenes" width="100%">
+                            <thead>
+                                <tr>
+                                    <th>Número</th>
+                                    <th>Fecha</th>
+                                    <th>Estado</th>
+                                    <th>Total</th>
+                                    <th style="width:140px;">Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <!-- DataTables manejará el contenido -->
+                            </tbody>
+                        </table>
+                    </div>
+                    <small class="text-muted">
+                        Nota: Si no carga la tabla, revisa que jQuery y DataTables estén en bundles antes de este script.
+                    </small>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Acciones Rápidas -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card shadow">
+                <div class="card-header py-3">
+                    <h6 class="m-0 fw-bold text-primary">Acciones Rápidas</h6>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-3 mb-3">
+                            <a href="@Url.Action("Nueva", "OrdenRecaudacion")" class="btn btn-primary w-100">
+                                <i class="fas fa-plus"></i> Nueva Orden
+                            </a>
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <a href="@Url.Action("Obligatoria", "OrdenRecaudacion")" class="btn btn-success w-100">
+                                <i class="fas fa-list"></i> Ver Mis Órdenes
+                            </a>
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <a href="@Url.Action("Index", "Reportes")" class="btn btn-info w-100 text-white">
+                                <i class="fas fa-chart-bar"></i> Reportes
+                            </a>
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <a href="@Url.Action("Logout", "Account")" class="btn btn-warning w-100">
+                                <i class="fas fa-sign-out-alt"></i> Cerrar Sesión
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+(function () {
+    'use strict';
+
+    var dt = null;
+
+    function escapeHtml(text) {
+        if (text === null || text === undefined) return '';
+        return String(text).replace(/[&<>\"']/g, function (m) { return {'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;',"'":'&#039;'}[m]; });
+    }
+
+    function onDataTablesReady(callback) {
+        if (window.jQuery && window.jQuery.fn && window.jQuery.fn.DataTable) {
+            callback();
+            return;
+        }
+        var handler = function () {
+            document.removeEventListener('AOCR.DataTablesReady', handler);
+            callback();
+        };
+        document.addEventListener('AOCR.DataTablesReady', handler);
+    }
+
+    function showLoading(show) {
+        var el = document.getElementById('loadingOrdenes');
+        if (!el) return;
+        el.classList.toggle('d-none', !show);
+    }
+
+    function badgeEstado(estado) {
+        var e = String(estado || '').toUpperCase();
+        var safe = escapeHtml(e || 'N/D');
+
+        if (e === 'BORRADOR')   { var _s = document.createElement('span'); _s.className = 'badge text-bg-warning'; _s.textContent = 'BORRADOR'; return _s.outerHTML; }
+        if (e === 'COMPLETADA') { var _s = document.createElement('span'); _s.className = 'badge text-bg-success'; _s.textContent = 'COMPLETADA'; return _s.outerHTML; }
+        if (e === 'PAGADA')     { var _s = document.createElement('span'); _s.className = 'badge text-bg-primary'; _s.textContent = 'PAGADA'; return _s.outerHTML; }
+        var _s = document.createElement('span'); _s.className = 'badge text-bg-secondary'; _s.textContent = safe; return _s.outerHTML;
+    }
+
+    function formatFecha(data) {
+        if (!data) return 'N/D';
+        var d = new Date(data);
+        if (isNaN(d.getTime())) return 'N/D';
+        return d.toLocaleDateString('es-EC');
+    }
+
+    function formatMoney(v) {
+        var n = Number(v || 0);
+        return new Intl.NumberFormat('es-EC', { style: 'currency', currency: 'USD' }).format(n);
+    }
+
+    // Rutas base desde servidor (evitan hardcoded / path issues)
+    var detalleBase = '@Url.Action("Detalle", "Orden")';
+    var descargarBase = '@Url.Action("DescargarPdf", "OrdenRecaudacion")';
+
+    function initTable() {
+        // Validación fuerte: si jQuery o DataTables no cargaron, no rompas la página
+        if (!window.jQuery) {
+            console.error("jQuery NO está cargado -> '$ is not defined'. Revisa Layout/Bundles/CSP.");
+            return false;
+        }
+        if (!$.fn || !$.fn.DataTable) {
+            console.error("DataTables NO está cargado -> 'DataTable is not a function'. Revisa bundles/datatables.");
+            return false;
+        }
+
+        // Evitar doble inicialización si el partial se renderiza 2 veces
+        if ($.fn.DataTable.isDataTable('#tablaOrdenes')) {
+            dt = $('#tablaOrdenes').DataTable();
+            return true;
+        }
+
+        dt = $('#tablaOrdenes').DataTable({
+            // ✅ Idioma LOCAL (evita CSP/CDN)
+            language: { url: '@Url.Content("~/Content/plugins/datatables/i18n/Spanish.json")' },
+
+            order: [[1, 'desc']],
+            autoWidth: false,
+            responsive: true,
+            processing: true,
+
+            columns: [
+                { data: 'numeroOrden', defaultContent: '', render: function(data) { return escapeHtml(data || ''); } },
+                {
+                    data: 'fechaCreacion',
+                    defaultContent: '',
+                    render: function (data) { return formatFecha(data); }
+                },
+                {
+                    data: 'estado',
+                    defaultContent: 'N/D',
+                    render: function (estado) { return badgeEstado(estado); }
+                },
+                {
+                    data: 'total',
+                    defaultContent: 0,
+                    render: function (t) { return formatMoney(t); }
+                },
+                {
+                    data: null,
+                    orderable: false,
+                    searchable: false,
+                    render: function (row) {
+                        var id = row && row.id ? Number(row.id) : 0;
+                        var detalleUrl = detalleBase + '/' + encodeURIComponent(id);
+                        var pdfUrl = descargarBase + '/' + encodeURIComponent(id);
+
+                        // Build DOM elements safely instead of string concatenation
+                        var container = document.createElement('div');
+
+                        var linkDetalle = document.createElement('a');
+                        linkDetalle.setAttribute('href', detalleUrl);
+                        linkDetalle.setAttribute('class', 'btn btn-sm btn-info text-white me-1');
+                        linkDetalle.setAttribute('title', 'Ver Detalle');
+                        var iDet = document.createElement('i'); iDet.className = 'fas fa-eye';
+                        linkDetalle.appendChild(iDet);
+
+                        var linkPdf = document.createElement('a');
+                        linkPdf.setAttribute('href', pdfUrl);
+                        linkPdf.setAttribute('class', 'btn btn-sm btn-primary');
+                        linkPdf.setAttribute('title', 'Descargar PDF');
+                        var iPdf = document.createElement('i'); iPdf.className = 'fas fa-download';
+                        linkPdf.appendChild(iPdf);
+
+                        container.appendChild(linkDetalle);
+                        container.appendChild(linkPdf);
+
+                        return container.innerHTML;
+                    }
+                }
+            ]
+        });
+
+        return true;
+    }
+
+    function cargarDatosDashboard() {
+        if (!dt) return;
+
+        showLoading(true);
+
+        $.ajax({
+            url: '@Url.Action("ObtenerDatosDashboard", "Dashboard")',
+            type: 'GET',
+            dataType: 'json',
+            cache: false,
+            success: function (data) {
+                if (!data || !data.success) return;
+
+                $('#ordenesPendientes').text(data.ordenesPendientes || 0);
+                $('#ordenesCompletadas').text(data.ordenesCompletadas || 0);
+                $('#totalRecaudado').text(formatMoney(data.totalRecaudado || 0));
+                $('#ultimaOrden').text(data.ultimaOrden || 'N/A');
+
+                var ordenes = data.ordenesRecientes || [];
+                dt.clear().rows.add(ordenes).draw();
+            },
+            error: function (xhr) {
+                console.log('Error al cargar datos del dashboard', xhr && xhr.status);
+            },
+            complete: function () {
+                showLoading(false);
+            }
+        });
+    }
+
+    $(function () {
+        onDataTablesReady(function () {
+            if (initTable()) {
+                cargarDatosDashboard();
+            }
+        });
+    });
+
+    // opcional: refrescar cada X segundos
+    // setInterval(cargarDatosDashboard, 60000);
+
+})();
+    </script>
+}
+
+

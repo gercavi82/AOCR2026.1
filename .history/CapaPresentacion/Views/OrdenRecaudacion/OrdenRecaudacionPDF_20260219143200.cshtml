@@ -1,0 +1,188 @@
+@model CapaPresentacion.Models.ViewModels.OrdenRecaudacionPDFModel
+@{
+    Layout = null;
+
+    var bgPng = Server.MapPath("~/Content/assets/imganes/hoja_membretada_dgac_2026.png");
+    var bgJpg = Server.MapPath("~/Content/assets/imganes/hoja_membretada_dgac_2026.jpg");
+    var bgPath = System.IO.File.Exists(bgPng) ? bgPng : (System.IO.File.Exists(bgJpg) ? bgJpg : null);
+    var bgDataUri = string.Empty;
+    if (!string.IsNullOrWhiteSpace(bgPath))
+    {
+        var mimeType = bgPath.EndsWith(".png", System.StringComparison.OrdinalIgnoreCase) ? "image/png" : "image/jpeg";
+        var base64 = System.Convert.ToBase64String(System.IO.File.ReadAllBytes(bgPath));
+        bgDataUri = "data:" + mimeType + ";base64," + base64;
+    }
+    var pageStyle = !string.IsNullOrWhiteSpace(bgDataUri) ? "background-image:url('" + bgDataUri + "');" : string.Empty;
+}
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8" />
+    <title>Orden de Recaudacion @Model.NumeroOrden</title>
+    <style>
+        body {
+            margin: 0;
+            font-family: "Times New Roman", serif;
+            font-size: 13px;
+            color: #111;
+            background: #fff;
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+        }
+
+        .page {
+            padding: 118px 40px 18px 40px;
+            background-repeat: no-repeat;
+            background-position: center top;
+            background-size: 100% auto;
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+        }
+
+        .doc-shell {
+            width: 94%;
+            margin: 0 auto;
+        }
+
+        .box-title {
+            border: 2px solid #222;
+            text-align: center;
+            font-weight: 700;
+            font-size: 18px;
+            line-height: 1.15;
+            padding: 10px 10px 4px 10px;
+            margin-bottom: 10px;
+        }
+
+        .box-title .order {
+            display: block;
+            text-align: right;
+            font-size: 14px;
+            margin-top: 6px;
+            padding-right: 3px;
+        }
+
+        table {
+            border-collapse: collapse;
+            width: 100%;
+        }
+
+        .info td {
+            border: 1px solid #222;
+            padding: 7px 8px;
+            vertical-align: top;
+        }
+
+        .label {
+            width: 33%;
+            font-weight: 700;
+        }
+
+        .detalle {
+            margin-top: 8px;
+        }
+
+        .detalle th,
+        .detalle td {
+            border: 1px solid #222;
+            padding: 7px 8px;
+            vertical-align: top;
+        }
+
+        .detalle th {
+            background: #f2f2f2;
+            font-weight: 700;
+            text-align: left;
+        }
+
+        .money {
+            text-align: right;
+            white-space: nowrap;
+            width: 16%;
+        }
+
+        .total-row td {
+            background: #f2f2f2;
+            font-weight: 700;
+        }
+
+        .ref {
+            margin-top: 6px;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <div class="page" style="@pageStyle">
+        <div class="doc-shell">
+            <div class="box-title">
+                DIRECCION DE CERTIFICACION AERONAUTICA<br />
+                Y VIGILANCIA CONTINUA<br />
+                ORDEN DE RECAUDACION
+                <span class="order">No. @Model.NumeroOrden</span>
+            </div>
+
+            <table class="info">
+                <tr>
+                    <td class="label">Lugar y Fecha de Emision:</td>
+                    <td>@Model.LugarEmision, @Model.FechaEmision.ToString("dd/MM/yyyy")</td>
+                </tr>
+                <tr>
+                    <td class="label">Nombres Completos o Nombre de Cia.:</td>
+                    <td>@Model.NombreCompania</td>
+                </tr>
+                <tr>
+                    <td class="label">Numero de cedula o RUC:</td>
+                    <td>@Model.Ruc</td>
+                </tr>
+                <tr>
+                    <td class="label">Direccion de correo electronico:</td>
+                    <td>@Model.Email</td>
+                </tr>
+                <tr>
+                    <td class="label">Numero telefonico de contacto:</td>
+                    <td>@Model.Telefono</td>
+                </tr>
+            </table>
+
+            <table class="detalle">
+                <tr>
+                    <th>DETALLE DEL SERVICIO OTORGADO (DERECHOS POR:)</th>
+                    <th class="money">Subtotal</th>
+                    <th class="money">Admin</th>
+                    <th class="money">Total</th>
+                </tr>
+                @if (Model.Detalles != null && Model.Detalles.Count > 0)
+                {
+                    foreach (var item in Model.Detalles)
+                    {
+                        <tr>
+                            <td>@item.Concepto</td>
+                            <td class="money">USD$ @item.Subtotal.ToString("N2")</td>
+                            <td class="money">USD$ @item.Admin.ToString("N2")</td>
+                            <td class="money">USD$ @item.TotalLinea.ToString("N2")</td>
+                        </tr>
+                    }
+                }
+                else
+                {
+                    <tr>
+                        <td>@Model.ConceptoPrincipal</td>
+                        <td class="money">USD$ @Model.ValorBase.ToString("N2")</td>
+                        <td class="money">USD$ @Model.TotalAdmin.ToString("N2")</td>
+                        <td class="money">USD$ @Model.Total.ToString("N2")</td>
+                    </tr>
+                }
+                <tr class="total-row">
+                    <td style="text-align:right;">TOTALES:</td>
+                    <td class="money">USD$ @Model.TotalSubtotal.ToString("N2")</td>
+                    <td class="money">USD$ @Model.TotalAdmin.ToString("N2")</td>
+                    <td class="money">USD$ @Model.TotalGeneral.ToString("N2")</td>
+                </tr>
+            </table>
+
+            <div class="ref">@Model.Referencia</div>
+        </div>
+    </div>
+</body>
+</html>

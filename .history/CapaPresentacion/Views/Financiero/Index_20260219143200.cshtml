@@ -1,0 +1,203 @@
+﻿@inherits System.Web.Mvc.WebViewPage<List<CapaPresentacion.Models.OrdenValidacionFinancieraVM>>
+@using CapaModelo
+@using System.Web.Mvc
+@using System.Web.Mvc.Html
+
+@{
+    ViewBag.Title = "Dashboard Financiero";
+}
+
+<style>
+    .acciones-cell {
+        min-width: 150px;
+    }
+
+    .acciones-orden {
+        display: flex;
+        align-items: center;
+        gap: .35rem;
+        flex-wrap: wrap;
+    }
+
+    .acciones-orden form {
+        margin: 0;
+    }
+
+    .btn-accion {
+        width: 32px;
+        height: 32px;
+        padding: 0;
+        border-radius: 8px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        line-height: 1;
+    }
+
+    .btn-pdf {
+        width: 30px;
+        height: 30px;
+        padding: 0;
+        border-radius: 8px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+    }
+</style>
+
+<h2>Financiero – Validación de Órdenes</h2>
+<hr />
+
+@if (TempData["Success"] != null)
+{
+    <div class="alert alert-success">@TempData["Success"]</div>
+}
+@if (TempData["Error"] != null)
+{
+    <div class="alert alert-danger">@TempData["Error"]</div>
+}
+@if (ViewBag.SinResultadosConFiltro == true)
+{
+    <div class="alert alert-warning">
+        No se encontraron órdenes con el estado seleccionado. Se muestran todas las órdenes disponibles (Total: @ViewBag.TotalSinFiltro).
+    </div>
+}
+
+<div class="d-flex justify-content-end mb-3">
+    <form method="get" class="d-flex align-items-center gap-2">
+        <label class="mb-0 text-muted">Estado:</label>
+        <select name="estado" class="form-select form-select-sm" onchange="this.form.submit()">
+<option value="PROCESADA" @(ViewBag.EstadoFiltro == "PROCESADA" ? "selected" : "")>En revisión</option>
+<option value="PENDIENTE" @(ViewBag.EstadoFiltro == "PENDIENTE" ? "selected" : "")>Pendiente</option>
+<option value="FACTURADA" @(ViewBag.EstadoFiltro == "FACTURADA" ? "selected" : "")>Facturada</option>
+<option value="COMPLETADA" @(ViewBag.EstadoFiltro == "COMPLETADA" ? "selected" : "")>Completada</option>
+<option value="ANULADA" @(ViewBag.EstadoFiltro == "ANULADA" ? "selected" : "")>Anulada</option>
+<option value="TODAS" @(ViewBag.EstadoFiltro == "TODAS" ? "selected" : "")>Todas</option>
+        </select>
+    </form>
+</div>
+
+<table class="table table-striped">
+    <thead>
+        <tr>
+            <th>#</th>
+            <th>Orden</th>
+            <th>Compañía</th>
+            <th>Fecha</th>
+            <th>Monto</th>
+            <th>Estado</th>
+            <th>Comprobante</th>
+            <th>Acciones</th>
+        </tr>
+    </thead>
+    <tbody>
+        @if (Model != null && Model.Any())
+        {
+            int i = 1;
+            foreach (var item in Model)
+            {
+                var orden = item.Orden;
+                var pago = item.Pago;
+                var estadoNorm = orden != null ? ((orden.Estado ?? "").Trim().ToUpperInvariant().Replace(" ", "_")) : "";
+                var esPendiente = !string.IsNullOrWhiteSpace(estadoNorm) && estadoNorm.StartsWith("PENDIENTE");
+                var puedeGestionarPorEstado = (estadoNorm == "PROCESADA" || esPendiente);
+        <tr>
+            <td>@Html.Encode(i)</td>
+            <td>@Html.Encode(orden != null ? orden.NumeroOrden : "-")</td>
+            <td>@Html.Encode(orden != null ? (orden.NombreContribuyente ?? orden.Compania) : "-")</td>
+            <td>@Html.Encode(orden != null ? orden.FechaCreacion.ToString("dd/MM/yyyy") : "")</td>
+            <td>@Html.Encode(orden != null ? orden.Total.ToString("N2") : "0.00")</td>
+            <td>@Html.Encode(orden != null ? orden.Estado : "")</td>
+            <td>
+                @if (orden != null)
+                {
+                    <a href="@Url.Action("DescargarPdf", "OrdenRecaudacion", new { id = orden.Id })"
+                       target="_blank"
+                       class="btn btn-outline-secondary btn-sm btn-pdf"
+                       title="Ver PDF de la orden">
+                        <i class="fas fa-file-pdf"></i>
+                    </a>
+                }
+                else
+                {
+                    <span class="text-muted">Sin orden</span>
+                }
+            </td>
+            <td class="acciones-cell">
+                @if (orden != null)
+                {
+                    <div class="acciones-orden">
+                        <a href="@Url.Action("Detalles", "OrdenRecaudacion", new { id = orden.Id })"
+                           class="btn btn-outline-primary btn-sm btn-accion"
+                           title="Ver detalles">
+                            <i class="fas fa-eye"></i>
+                        </a>
+
+                        @if (puedeGestionarPorEstado)
+                        {
+                            <form method="post"
+                                  action="@Url.Action("AprobarPago", "Financiero")"
+                                  class="d-inline m-0">
+                                @Html.AntiForgeryToken()
+                                <input type="hidden" name="id" value="@orden.Id" />
+                                @if (pago != null)
+                                {
+                                    <input type="hidden" name="pagoId" value="@pago.CodigoPago" />
+                                }
+                                <button type="submit" class="btn btn-success btn-sm btn-accion" title="Aprobar pago">
+                                    <i class="fas fa-check"></i>
+                                </button>
+                            </form>
+
+                            <button class="btn btn-danger btn-sm btn-accion" type="button"
+                                    title="Rechazar"
+                                    data-bs-toggle="modal" data-bs-target="#modalRechazo-@orden.Id">
+                                <i class="fas fa-times"></i>
+                            </button>
+                            <div class="modal fade" id="modalRechazo-@orden.Id" tabindex="-1" aria-hidden="true">
+                                <div class="modal-dialog">
+                                    <div class="modal-content">
+                                        <div class="modal-header">
+                                            <h5 class="modal-title">Rechazar Orden</h5>
+                                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                        </div>
+                                        <form method="post" action="@Url.Action("RechazarOrden", "Financiero")">
+                                            @Html.AntiForgeryToken()
+                                            <input type="hidden" name="id" value="@orden.Id" />
+                                            <div class="modal-body">
+                                                <label class="form-label">Motivo</label>
+                                                <textarea name="motivo" class="form-control" rows="3" required></textarea>
+                                            </div>
+                                            <div class="modal-footer">
+                                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                                                <button type="submit" class="btn btn-danger">Rechazar</button>
+                                            </div>
+                                        </form>
+                                    </div>
+                                </div>
+                            </div>
+                        }
+                    </div>
+                }
+            </td>
+        </tr>
+                i++;
+            }
+        }
+        else
+        {
+            <tr>
+                <td colspan="8" class="text-center">
+                    No hay registros para el estado seleccionado.
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>
+
+
+
+
+
+
+
