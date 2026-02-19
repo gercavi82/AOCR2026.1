@@ -822,8 +822,7 @@ namespace CapaPresentacion.Controllers
         [Authorize(Roles = "Administrador,CoordinacionLegal,JefaturaTecnica")]
         public ActionResult RevisarDesignaciones()
         {
-            // Filtrar usuarios con documento de designación pendiente de revisión
-            var usuarios = UsuarioDAO.ObtenerUsuariosPendientesDesignacion(); // Debes implementar este método en tu DAO
+            var usuarios = UsuarioDAO.ObtenerUsuariosRTParaRevision();
             return View("RevisarDesignaciones", usuarios);
         }
 
@@ -909,6 +908,50 @@ namespace CapaPresentacion.Controllers
             }
             UsuarioDAO.RechazarDesignacionRT(id);
             TempData["msg"] = "Designación rechazada.";
+            return RedirectToAction("RevisarDesignaciones");
+        }
+
+        [HttpPost]
+        [Authorize(Roles = "Administrador,CoordinacionLegal,JefaturaTecnica")]
+        [ValidateAntiForgeryToken]
+        public ActionResult InactivarUsuarioRT(int id)
+        {
+            bool actualizado = UsuarioDAO.ActualizarEstadoActividad(id, false);
+            if (actualizado)
+                TempData["msg"] = "Usuario inactivado correctamente.";
+            else
+                TempData["error"] = "No se pudo inactivar el usuario.";
+
+            return RedirectToAction("RevisarDesignaciones");
+        }
+
+        [HttpPost]
+        [Authorize(Roles = "Administrador,CoordinacionLegal,JefaturaTecnica")]
+        [ValidateAntiForgeryToken]
+        public ActionResult ActivarUsuarioRT(int id)
+        {
+            bool actualizado = UsuarioDAO.ActualizarEstadoActividad(id, true);
+            if (actualizado)
+                TempData["msg"] = "Usuario activado correctamente.";
+            else
+                TempData["error"] = "No se pudo activar el usuario.";
+
+            return RedirectToAction("RevisarDesignaciones");
+        }
+
+        [HttpPost]
+        [Authorize(Roles = "Administrador,CoordinacionLegal,JefaturaTecnica")]
+        [ValidateAntiForgeryToken]
+        public ActionResult EliminarUsuarioRT(int id)
+        {
+            string mensaje;
+            bool eliminado = UsuarioDAO.EliminarUsuarioRT(id, out mensaje);
+
+            if (eliminado)
+                TempData["msg"] = string.IsNullOrWhiteSpace(mensaje) ? "Usuario eliminado correctamente." : mensaje;
+            else
+                TempData["error"] = string.IsNullOrWhiteSpace(mensaje) ? "No se pudo eliminar el usuario." : mensaje;
+
             return RedirectToAction("RevisarDesignaciones");
         }
 

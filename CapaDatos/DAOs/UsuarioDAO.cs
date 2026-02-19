@@ -336,11 +336,15 @@ namespace CapaDatos.DAOs
         // ==========================================
         // DESIGNACIÓN RT: REVISIÓN POR COORDINADOR
         // ==========================================
-        public static List<Usuario> ObtenerUsuariosPendientesDesignacion()
+        public static List<Usuario> ObtenerUsuariosRTParaRevision(bool soloPendientes = false)
         {
             using (var conn = new NpgsqlConnection(GetConnectionString()))
             {
-                string sql = @"SELECT 
+                string filtroPendientes = soloPendientes
+                    ? "AND COALESCE(NULLIF(TRIM(estado_designacion_rt), ''), 'pendiente') = 'pendiente'"
+                    : string.Empty;
+
+                string sql = $@"SELECT 
                                     idusuario AS ""Id"",
                                     idusuario AS ""IdUsuario"",
                                     codigousuario AS ""CodigoUsuario"",
@@ -350,15 +354,28 @@ namespace CapaDatos.DAOs
                                     nombreusuario AS ""NombreCompleto"",
                                     apellidousuario AS ""ApellidoUsuario"",
                                     rol AS ""Rol"",
+                                    (estadoactividad = '1') AS ""Activo"",
                                     empresa_codigo AS ""EmpresaCodigo"",
                                     ruta_documento_legal AS ""RutaDocumentoLegal"",
-                                    estado_designacion_rt AS ""EstadoDesignacionRT"",
-                                    ruta_constancia_rt AS ""RutaConstanciaRT""
+                                    COALESCE(NULLIF(TRIM(estado_designacion_rt), ''), 'pendiente') AS ""EstadoDesignacionRT"",
+                                    ruta_constancia_rt AS ""RutaConstanciaRT"",
+                                    fechacreado::timestamp AS ""FechaCreacion""
                                FROM usuario 
-                               WHERE estado_designacion_rt = 'pendiente' 
-                                 AND ruta_documento_legal IS NOT NULL";
+                               WHERE (
+                                    ruta_documento_legal IS NOT NULL
+                                    OR estado_designacion_rt IS NOT NULL
+                                    OR LOWER(COALESCE(rol, '')) IN ('solicitante', 'operador', 'rt')
+                               )
+                               {filtroPendientes}
+                               ORDER BY fechacreado DESC NULLS LAST, idusuario DESC;";
+
                 return conn.Query<Usuario>(sql).ToList();
             }
+        }
+
+        public static List<Usuario> ObtenerUsuariosPendientesDesignacion()
+        {
+            return ObtenerUsuariosRTParaRevision(true);
         }
 
         public static void AceptarDesignacionRT(int idUsuario, string rutaConstancia)
@@ -390,6 +407,94 @@ namespace CapaDatos.DAOs
                                    ruta_constancia_rt = NULL
                                WHERE idusuario = @id";
                 conn.Execute(sql, new { id = idUsuario, ruta = rutaDocumento });
+            }
+        }
+
+        public static bool ActualizarEstadoActividad(int idUsuario, bool activo)
+        {
+            using (var conn = new NpgsqlConnection(GetConnectionString()))
+            {
+                string sql = @"UPDATE usuario
+                               SET estadoactividad = @estado
+                               WHERE idusuario = @id";
+                string estado = activo ? "1" : "0";
+                int rows = conn.Execute(sql, new { id = idUsuario, estado });
+                return rows > 0;
+            }
+        }
+
+        public static bool EliminarUsuarioRT(int idUsuario, out string mensaje)
+        {
+            mensaje = string.Empty;
+
+            using (var conn = new NpgsqlConnection(GetConnectionString()))
+            {
+                conn.Open();
+                using (var tx = conn.BeginTransaction())
+                {
+                    try
+                    {
+                        var codigoUsuario = conn.ExecuteScalar<string>(
+                            "SELECT codigousuario FROM usuario WHERE idusuario = @id;",
+                            new { id = idUsuario }, tx);
+
+                        if (string.IsNullOrWhiteSpace(codigoUsuario))
+                        {
+                            tx.Rollback();
+                            mensaje = "Usuario no encontrado.";
+                            return false;
+                        }
+
+                        try
+                        {
+                            conn.Execute(
+                                "DELETE FROM usuariorol WHERE codigousuario::text = @codigo;",
+                                new { codigo = codigoUsuario }, tx);
+                        }
+                        catch (PostgresException ex) when (ex.SqlState == "42P01")
+                        {
+                            // Tabla no existe en este ambiente.
+                        }
+
+                        try
+                        {
+                            conn.Execute(
+                                "DELETE FROM usuario_rol WHERE codigousuario::text = @codigo;",
+                                new { codigo = codigoUsuario }, tx);
+                        }
+                        catch (PostgresException ex) when (ex.SqlState == "42P01")
+                        {
+                            // Tabla no existe en este ambiente.
+                        }
+
+                        int rows = conn.Execute(
+                            "DELETE FROM usuario WHERE idusuario = @id;",
+                            new { id = idUsuario }, tx);
+
+                        if (rows <= 0)
+                        {
+                            tx.Rollback();
+                            mensaje = "No se pudo eliminar el usuario.";
+                            return false;
+                        }
+
+                        tx.Commit();
+                        mensaje = "Usuario eliminado correctamente.";
+                        return true;
+                    }
+                    catch (PostgresException ex) when (ex.SqlState == "23503")
+                    {
+                        tx.Rollback();
+                        mensaje = "No se puede eliminar porque el usuario tiene informacion relacionada. Inactive la cuenta en su lugar.";
+                        return false;
+                    }
+                    catch (Exception ex)
+                    {
+                        tx.Rollback();
+                        mensaje = "Error al eliminar usuario: " + ex.Message;
+                        return false;
+                    }
+                }
             }
         }
     }
