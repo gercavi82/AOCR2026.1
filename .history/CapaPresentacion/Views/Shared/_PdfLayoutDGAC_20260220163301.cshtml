@@ -1,0 +1,267 @@
+@using CapaNegocio.Helpers
+@using System
+@using System.IO
+
+@{
+    Layout = null;
+
+    var assets = PdfBrandingHelper.ResolveAssets("Views/Shared/_PdfLayoutDGAC.cshtml");
+
+    // Absolute baseUrl for wkhtmltopdf (IIS + localhost)
+    var baseUrl = (Request != null && Request.Url != null)
+            ? Request.Url.Scheme + "://" + Request.Url.Authority
+        : null;
+
+        var appPath = (Request != null && Request.ApplicationPath != null && Request.ApplicationPath != "/") ? Request.ApplicationPath.TrimEnd('/') : string.Empty;
+        var headerUrl = baseUrl != null ? baseUrl + appPath + "/Content/assets/imganes/pdf/header.png" : null;
+        var footerUrl = baseUrl != null ? baseUrl + appPath + "/Content/assets/imganes/pdf/footer.png" : null;
+
+    // Base64 fallbacks (DataURI or null)
+    var headerB64 = assets.HeaderDataUri;
+    var footerB64 = assets.FooterDataUri;
+}
+
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8" />
+
+    <style>
+        /* ==========================
+           A4 + Márgenes imprimibles
+           ========================== */
+        @@page {
+            size: A4;
+            /* Mantengo tus márgenes (si el motor los respeta, perfecto) */
+            margin-top: 40mm; /* >= header height + aire */
+            margin-bottom: 35mm; /* >= footer height + aire */
+            margin-left: 15mm;
+            margin-right: 15mm;
+        }
+
+        html, body {
+            margin: 0;
+            padding: 0;
+            font-family: "Times New Roman", serif;
+            font-size: 12px;
+            color: #111;
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+            background: #fff;
+            box-sizing: border-box;
+        }
+
+        /*
+          ✅ Plan B (NO rompe nada):
+          wkhtmltopdf a veces ignora @@page margins.
+          Con padding en body garantizamos que el contenido NO se meta bajo header/footer.
+        */
+        body {
+            padding-top: 40mm;
+            padding-bottom: 35mm;
+            padding-left: 15mm;
+            padding-right: 15mm;
+        }
+
+        /* ==========================
+           Header / Footer fijos
+           ========================== */
+        #pdf-header, #pdf-footer {
+            position: fixed !important;
+            left: 0 !important;
+            right: 0 !important;
+            width: 210mm; /* Ancho A4 */
+            margin: 0 auto;
+            box-sizing: border-box;
+            overflow: hidden;
+            z-index: 0; /* ✅ detrás (para que nunca tape) */
+            pointer-events: none;
+        }
+
+        #pdf-header {
+            top: 0 !important;
+            height: 28mm;
+        }
+
+        #pdf-footer {
+            bottom: 0 !important;
+            height: 30mm;
+        }
+
+            #pdf-header img, #pdf-footer img {
+                display: block;
+                width: 210mm;
+                max-width: 100%;
+                height: auto;
+                object-fit: contain;
+            }
+
+        /* ==========================
+           Contenido (SIEMPRE encima)
+           ========================== */
+        #pdf-content {
+            position: relative;
+            z-index: 10; /* ✅ encima */
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        /*
+          ✅ IMPORTANTE:
+          Como ahora el body ya tiene padding (15mm a los lados),
+          aquí usamos 100% para no duplicar márgenes.
+        */
+        .pdf-inner {
+            width: 100%;
+            max-width: 100%;
+            margin: 0 auto;
+            box-sizing: border-box;
+        }
+
+            /* Evita que el primer título se “suba” y choque */
+            .pdf-inner > :first-child {
+                margin-top: 0 !important;
+            }
+
+        /* ==========================
+           Estilos de documento
+           ========================== */
+        .pdf-title {
+            font-size: 18px;
+            font-weight: 700;
+            text-align: center;
+            margin: 6px 0 2px;
+        }
+
+        .pdf-subtitle {
+            font-size: 14px;
+            font-weight: 700;
+            text-align: center;
+            margin: 0 0 6px;
+        }
+
+        .pdf-section-title {
+            font-size: 13px;
+            font-weight: 700;
+            margin: 10px 0 4px;
+        }
+
+        /* ==========================
+           Tablas que NO se salen
+           ========================== */
+        .pdf-table {
+            width: 100%;
+            border-collapse: collapse;
+            table-layout: fixed;
+            word-break: break-word;
+        }
+
+            .pdf-table th, .pdf-table td {
+                border: 1px solid #222;
+                padding: 5px 4px;
+                font-size: 11px;
+                vertical-align: top;
+                overflow-wrap: anywhere;
+                word-wrap: break-word;
+                hyphens: auto;
+            }
+
+            .pdf-table th {
+                background: #f2f2f2;
+                font-weight: 700;
+                text-align: center;
+            }
+
+            .pdf-table td {
+                text-align: left;
+            }
+
+            .pdf-table .totales {
+                font-weight: 700;
+                background: #e6e6e6;
+            }
+
+        /* ==========================
+           Utilidades
+           ========================== */
+        .text-center {
+            text-align: center;
+        }
+
+        .text-right {
+            text-align: right;
+        }
+
+        .small {
+            font-size: 10px;
+        }
+
+        .wrap {
+            white-space: normal;
+        }
+
+        .nowrap {
+            white-space: nowrap;
+        }
+        /* solo valores cortos */
+        .no-break {
+            page-break-inside: avoid;
+            break-inside: avoid;
+        }
+
+        .page-break {
+            page-break-before: always;
+            break-before: page;
+        }
+    </style>
+
+    @RenderSection("PdfHead", required: false)
+</head>
+
+<body>
+    <!-- HEADER -->
+    <div id="pdf-header">
+        @{
+            var headerSrc = !string.IsNullOrWhiteSpace(headerUrl) ? headerUrl : headerB64;
+
+            if (string.IsNullOrWhiteSpace(headerSrc) && assets.HeaderExists)
+            {
+                headerSrc = "file:///" + (assets.HeaderPhysicalPath ?? string.Empty).Replace('\\', '/');
+            }
+        }
+
+        @if (!string.IsNullOrWhiteSpace(headerSrc))
+        {
+        <img src="@headerSrc"
+             onerror="this.onerror=null;this.src='@(headerB64 ?? string.Empty)';"
+             alt="Header institucional DGAC" />
+        }
+    </div>
+
+    <!-- FOOTER -->
+    <div id="pdf-footer">
+        @{
+            var footerSrc = !string.IsNullOrWhiteSpace(footerUrl) ? footerUrl : footerB64;
+
+            if (string.IsNullOrWhiteSpace(footerSrc) && assets.FooterExists)
+            {
+                footerSrc = "file:///" + (assets.FooterPhysicalPath ?? string.Empty).Replace('\\', '/');
+            }
+        }
+
+        @if (!string.IsNullOrWhiteSpace(footerSrc))
+        {
+        <img src="@footerSrc"
+             onerror="this.onerror=null;this.src='@(footerB64 ?? string.Empty)';"
+             alt="Footer institucional DGAC" />
+        }
+    </div>
+
+    <!-- CONTENT -->
+    <div id="pdf-content">
+        <div class="pdf-inner">
+            @RenderBody()
+        </div>
+    </div>
+</body>
+</html>
