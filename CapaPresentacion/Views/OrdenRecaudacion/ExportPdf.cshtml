@@ -1,57 +1,73 @@
 @inherits System.Web.Mvc.WebViewPage<List<CapaDatos.Models.OrdenRecaudacionModel>>
 @{
-    Layout = null;
+    Layout = "~/Views/Shared/_PdfLayoutDGAC.cshtml";
 }
 
-<!DOCTYPE html>
-<html>
-<head>
-    <meta charset="utf-8" />
-    <title>Ordenes de recaudación</title>
+@section PdfHead {
     <style>
-        body { font-family: Arial, sans-serif; font-size: 11px; }
-        h2 { margin: 0 0 10px 0; }
-        table { width: 100%; border-collapse: collapse; }
-        th, td { border: 1px solid #ccc; padding: 6px; }
-        th { background: #f0f0f0; text-align: left; }
-        .num { text-align: right; }
+        body {
+            font-family: Arial, sans-serif;
+            font-size: 11px;
+        }
+
+        h2 {
+            margin: 0 0 10px 0;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th,
+        td {
+            border: 1px solid #ccc;
+            padding: 6px;
+        }
+
+        th {
+            background: #f0f0f0;
+            text-align: left;
+        }
+
+        .num {
+            text-align: right;
+        }
     </style>
-</head>
-<body>
-    <h2>Órdenes de recaudación</h2>
-    <table>
-        <thead>
-            <tr>
-                <th>ID</th>
-                <th>Número</th>
-                <th>Estado</th>
-                <th>Fecha</th>
-                <th>Compañía</th>
-                <th>RUC/Cédula</th>
-                <th class="num">Subtotal</th>
-                <th class="num">Admin</th>
-                <th class="num">Total</th>
-            </tr>
-        </thead>
-        <tbody>
-            @if (Model != null)
+}
+
+<h2>Ordenes de recaudacion</h2>
+<table>
+    <thead>
+        <tr>
+            <th>ID</th>
+            <th>Numero</th>
+            <th>Estado</th>
+            <th>Fecha</th>
+            <th>Compania</th>
+            <th>RUC/Cedula</th>
+            <th class="num">Subtotal</th>
+            <th class="num">Admin</th>
+            <th class="num">Total</th>
+        </tr>
+    </thead>
+    <tbody>
+        @if (Model != null)
+        {
+            foreach (var o in Model)
             {
-                foreach (var o in Model)
-                {
-                    <tr>
-                        <td>@o.Id</td>
-                        <td>@o.NumeroOrden</td>
-                        <td>@o.Estado</td>
-                        <td>@o.FechaCreacion.ToString("yyyy-MM-dd")</td>
-                        <td>@o.Compania</td>
-                        <td>@o.RucCedula</td>
-                        <td class="num">@o.Subtotal.ToString("0.00")</td>
-                        <td class="num">@o.Admin.ToString("0.00")</td>
-                        <td class="num">@o.Total.ToString("0.00")</td>
-                    </tr>
-                }
+                <tr>
+                    <td>@o.Id</td>
+                    <td>@o.NumeroOrden</td>
+                    <td>@o.Estado</td>
+                    <td>@o.FechaCreacion.ToString("yyyy-MM-dd")</td>
+                    <td>@o.Compania</td>
+                    <td>@o.RucCedula</td>
+                    <td class="num">@o.Subtotal.ToString("0.00")</td>
+                    <td class="num">@o.Admin.ToString("0.00")</td>
+                    <td class="num">@o.Total.ToString("0.00")</td>
+                </tr>
             }
-        </tbody>
-    </table>
-</body>
-</html>
+        }
+    </tbody>
+</table>

@@ -1,9 +1,11 @@
 ﻿using System;
 using System.IO;
+using System.Web;
 using iTextSharp.text;
 using iTextSharp.text.pdf;
 using CapaDatos.DAOs;
 using CapaModelo.DTOs;
+using CapaNegocio.Helpers;
 
 namespace CapaNegocio.Services
 {
@@ -33,9 +35,11 @@ namespace CapaNegocio.Services
 
             using (var ms = new MemoryStream())
             {
-                var doc = new Document(PageSize.A4, 36, 36, 36, 36);
+                var doc = new Document(PageSize.A4, 25f, 25f, 120f, 80f);
                 var writer = PdfWriter.GetInstance(doc, ms);
                 writer.CloseStream = false;
+                var server = HttpContext.Current != null ? HttpContext.Current.Server : null;
+                writer.PageEvent = PdfBrandingHelper.CreateITextPageEvent(server, "OrdenPdfService.GenerarPdfOrden");
 
                 doc.AddAuthor("AOCR");
                 doc.AddCreator("AOCR - Sistema de recaudación");

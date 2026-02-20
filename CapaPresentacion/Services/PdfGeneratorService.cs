@@ -4,6 +4,7 @@ using System.Threading.Tasks;
 using System.Web;
 using CapaDatos.Entidades;
 using CapaDatos.Services;
+using CapaNegocio.Helpers;
 
 namespace CapaPresentacion.Services
 {
@@ -33,7 +34,7 @@ namespace CapaPresentacion.Services
             {
                 ValidarOrden(orden);
                 var html = GenerarHtmlOrden(orden);
-                html = AplicarMembrete(html);
+                html = AplicarHeaderFooterInstitucional(html, orden?.NumeroOrden);
                 return GenerarPdfDesdeHtml(html);
             }
             catch (Exception ex)
@@ -52,7 +53,7 @@ namespace CapaPresentacion.Services
                 throw new ArgumentException("El número de orden es requerido");
         }
 
-                private byte[] GenerarPdfDesdeHtml(string html)
+        private byte[] GenerarPdfDesdeHtml(string html)
         {
             // Usar la librería disponible o generar un HTML simple como fallback
             try
@@ -86,30 +87,108 @@ namespace CapaPresentacion.Services
             }
         }
 
-        private string AplicarMembrete(string html)
+        private string AplicarHeaderFooterInstitucional(string html, string numeroOrden)
         {
             try
             {
                 var ctx = HttpContext.Current;
-                if (ctx == null) return html;
+                if (ctx == null || string.IsNullOrWhiteSpace(html))
+                {
+                    return html;
+                }
 
-                var pathPng = ctx.Server.MapPath("~/Content/assets/imganes/hoja_membretada_dgac_2026.png");
-                var pathJpg = ctx.Server.MapPath("~/Content/assets/imganes/hoja_membretada_dgac_2026.jpg");
-                var path = File.Exists(pathPng) ? pathPng : (File.Exists(pathJpg) ? pathJpg : null);
-                if (string.IsNullOrWhiteSpace(path)) return html;
+                var assets = PdfBrandingHelper.ResolveAssets(
+                    ctx.Server,
+                    "PdfGeneratorService.AplicarHeaderFooterInstitucional");
 
-                var mimeType = path.EndsWith(".png", StringComparison.OrdinalIgnoreCase) ? "image/png" : "image/jpeg";
-                var base64 = Convert.ToBase64String(File.ReadAllBytes(path));
-                var style = $"<style>body{{background-image:url('data:{mimeType};base64,{base64}');background-repeat:no-repeat;background-position:center top;background-size:100% auto;}}</style>";
-                return html.Replace("</head>", style + "</head>");
+                if (!assets.HeaderExists || !assets.FooterExists)
+                {
+                    _logger.LogError(
+                        "No se encontraron header/footer institucionales para la generacion PDF.",
+                        new LogContext { NumeroOrden = numeroOrden });
+                }
+
+                var style = @"
+<style>
+    @page {
+        size: A4;
+        margin-top: 120px;
+        margin-bottom: 80px;
+        margin-left: 25px;
+        margin-right: 25px;
+    }
+
+    #pdf-header {
+        position: fixed;
+        top: -100px;
+        left: 0;
+        right: 0;
+        height: 100px;
+    }
+
+    #pdf-footer {
+        position: fixed;
+        bottom: -60px;
+        left: 0;
+        right: 0;
+        height: 60px;
+    }
+
+    #pdf-header img,
+    #pdf-footer img {
+        width: 100%;
+        height: auto;
+        max-height: 100%;
+        object-fit: contain;
+    }
+</style>";
+
+                var headerHtml = !string.IsNullOrWhiteSpace(assets.HeaderDataUri)
+                    ? "<div id='pdf-header'><img src='" + assets.HeaderDataUri + "' alt='Header DGAC' /></div>"
+                    : string.Empty;
+                var footerHtml = !string.IsNullOrWhiteSpace(assets.FooterDataUri)
+                    ? "<div id='pdf-footer'><img src='" + assets.FooterDataUri + "' alt='Footer DGAC' /></div>"
+                    : string.Empty;
+
+                var wrappedBodyOpen = "<body>" + headerHtml + footerHtml + "<div id='pdf-content'>";
+                var wrappedBodyClose = "</div></body>";
+
+                if (html.Contains("</head>"))
+                {
+                    html = html.Replace("</head>", style + "</head>");
+                }
+                else
+                {
+                    html = style + html;
+                }
+
+                if (html.Contains("<body>"))
+                {
+                    html = html.Replace("<body>", wrappedBodyOpen);
+                }
+                else
+                {
+                    html = wrappedBodyOpen + html;
+                }
+
+                if (html.Contains("</body>"))
+                {
+                    html = html.Replace("</body>", wrappedBodyClose);
+                }
+                else
+                {
+                    html += wrappedBodyClose;
+                }
+
+                return html;
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, new LogContext { NumeroOrden = null });
+                _logger.LogError(ex, new LogContext { NumeroOrden = numeroOrden });
                 return html;
             }
         }
-private string GenerarHtmlOrden(OrdenRecaudacion orden)
+        private string GenerarHtmlOrden(OrdenRecaudacion orden)
         {
             var nombreContribuyente = SanitizeHtml(orden.NombreContribuyente ?? "N/A");
             var rucContribuyente = SanitizeHtml(orden.RucContribuyente ?? "N/A");

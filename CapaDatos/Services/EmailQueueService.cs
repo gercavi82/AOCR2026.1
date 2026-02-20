@@ -1,10 +1,12 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Npgsql;
 using NpgsqlTypes;
+using System.Web.Hosting;
 using CapaDatos.Infrastructure;
 using CapaDatos.Constants;
 
@@ -37,6 +39,8 @@ namespace CapaDatos.Services
         public DateTime FechaCreacion { get; set; }
         public DateTime? ProximoIntento { get; set; }
         public int? OrdenId { get; set; } // Columna: solicitud_id (FK a aocr_tbsolicitud)
+        public string EventKey { get; set; } // Idempotencia (si existe en BD)
+        public string ErrorDetalle { get; set; }
         
         // Propiedades solo en memoria (no persistidas en BD)
         public string ParaNombre { get; set; }
@@ -48,6 +52,18 @@ namespace CapaDatos.Services
         public string NumeroOrden { get; set; }
         public string TipoNotificacion { get; set; }
         public int MaxIntentos { get; set; }
+        public List<EmailAttachmentItem> Adjuntos { get; set; }
+    }
+
+    public class EmailAttachmentItem
+    {
+        public int Id { get; set; }
+        public int EmailQueueId { get; set; }
+        public string FileName { get; set; }
+        public string ContentType { get; set; }
+        public string FilePath { get; set; }
+        public long? FileSize { get; set; }
+        public DateTime? CreatedAt { get; set; }
     }
 
     #endregion
@@ -60,6 +76,7 @@ namespace CapaDatos.Services
     public interface IEmailQueueService
     {
         Task<int> EncolarAsync(EmailQueueItem item);
+        Task<int> EncolarConAdjuntosAsync(EmailQueueItem item, IEnumerable<EmailAttachmentItem> attachments);
         Task<EmailQueueItem> ObtenerSiguienteAsync();
         Task ActualizarEstadoAsync(int id, string estado, string error = null);
         Task MarcarEnviadoAsync(int id, string messageId);
@@ -90,7 +107,77 @@ namespace CapaDatos.Services
 
         public async Task<int> EncolarAsync(EmailQueueItem item)
         {
-            const string sql = @"
+            return await EncolarConAdjuntosAsync(item, item != null ? item.Adjuntos : null);
+        }
+
+        public async Task<int> EncolarConAdjuntosAsync(EmailQueueItem item, IEnumerable<EmailAttachmentItem> attachments)
+        {
+            return ExecuteInTransaction((conn, tx) =>
+            {
+                bool duplicateEvent;
+                return EncolarConAdjuntosEnTransaccion(conn, tx, item, attachments, out duplicateEvent);
+            });
+        }
+
+        public int EncolarConAdjuntosEnTransaccion(
+            NpgsqlConnection conn,
+            NpgsqlTransaction tx,
+            EmailQueueItem item,
+            IEnumerable<EmailAttachmentItem> attachments,
+            out bool duplicateEvent)
+        {
+            duplicateEvent = false;
+
+            if (item == null)
+            {
+                throw new ArgumentNullException("item");
+            }
+
+            var now = DateTime.Now;
+            var estadoInicial = string.IsNullOrWhiteSpace(item.Estado)
+                ? "PENDIENTE"
+                : item.Estado.Trim().ToUpperInvariant();
+
+            if (string.IsNullOrWhiteSpace(item.Para))
+            {
+                item.Para = "no-reply@invalid.local";
+            }
+
+            bool eventKeyColumnDisponible = true;
+            var eventKeyNormalizado = string.IsNullOrWhiteSpace(item.EventKey) ? null : item.EventKey.Trim();
+
+            if (!string.IsNullOrWhiteSpace(eventKeyNormalizado))
+            {
+                try
+                {
+                    const string sqlExisting = @"SELECT id FROM email_queue WHERE event_key = @event_key LIMIT 1";
+                    var existingId = ExecuteScalar<int>(conn, sqlExisting, cmd =>
+                    {
+                        AddParameter(cmd, "@event_key", eventKeyNormalizado, NpgsqlDbType.Varchar);
+                    }, tx);
+
+                    if (existingId > 0)
+                    {
+                        duplicateEvent = true;
+                        return existingId;
+                    }
+                }
+                catch (PostgresException pgEx) when (pgEx.SqlState == "42703")
+                {
+                    eventKeyColumnDisponible = false;
+                }
+            }
+
+            var sqlInsertConEventKey = @"
+                INSERT INTO email_queue (
+                    to_address, subject, body, status,
+                    solicitud_id, created_at, proximo_intento, event_key
+                ) VALUES (
+                    @to_address, @subject, @body, @status,
+                    @solicitud_id, @created_at, @proximo_intento, @event_key
+                ) RETURNING id";
+
+            var sqlInsertSimple = @"
                 INSERT INTO email_queue (
                     to_address, subject, body, status,
                     solicitud_id, created_at, proximo_intento
@@ -99,19 +186,107 @@ namespace CapaDatos.Services
                     @solicitud_id, @created_at, @proximo_intento
                 ) RETURNING id";
 
-            return ExecuteWithConnection(conn =>
+            int emailQueueId;
+            try
             {
-                return ExecuteScalar<int>(conn, sql, cmd =>
+                if (eventKeyColumnDisponible && !string.IsNullOrWhiteSpace(eventKeyNormalizado))
                 {
-                    AddParameter(cmd, "@to_address", item.Para, NpgsqlDbType.Varchar);
-                    AddParameter(cmd, "@subject", item.Asunto, NpgsqlDbType.Varchar);
-                    AddParameter(cmd, "@body", item.Cuerpo, NpgsqlDbType.Text);
-                    AddParameter(cmd, "@status", EstadoEmail.Pendiente, NpgsqlDbType.Varchar);
-                    AddParameter(cmd, "@solicitud_id", item.OrdenId ?? (object)DBNull.Value, NpgsqlDbType.Integer);
-                    AddParameter(cmd, "@created_at", DateTime.Now, NpgsqlDbType.Timestamp);
-                    AddParameter(cmd, "@proximo_intento", DateTime.Now, NpgsqlDbType.Timestamp);
-                });
-            });
+                    emailQueueId = ExecuteScalar<int>(conn, sqlInsertConEventKey, cmd =>
+                    {
+                        AddParameter(cmd, "@to_address", item.Para, NpgsqlDbType.Varchar);
+                        AddParameter(cmd, "@subject", item.Asunto ?? string.Empty, NpgsqlDbType.Varchar);
+                        AddParameter(cmd, "@body", item.Cuerpo ?? string.Empty, NpgsqlDbType.Text);
+                        AddParameter(cmd, "@status", estadoInicial, NpgsqlDbType.Varchar);
+                        AddParameter(cmd, "@solicitud_id", item.OrdenId ?? (object)DBNull.Value, NpgsqlDbType.Integer);
+                        AddParameter(cmd, "@created_at", now, NpgsqlDbType.Timestamp);
+                        AddParameter(cmd, "@proximo_intento", now, NpgsqlDbType.Timestamp);
+                        AddParameter(cmd, "@event_key", eventKeyNormalizado, NpgsqlDbType.Varchar);
+                    }, tx);
+                }
+                else
+                {
+                    emailQueueId = ExecuteScalar<int>(conn, sqlInsertSimple, cmd =>
+                    {
+                        AddParameter(cmd, "@to_address", item.Para, NpgsqlDbType.Varchar);
+                        AddParameter(cmd, "@subject", item.Asunto ?? string.Empty, NpgsqlDbType.Varchar);
+                        AddParameter(cmd, "@body", item.Cuerpo ?? string.Empty, NpgsqlDbType.Text);
+                        AddParameter(cmd, "@status", estadoInicial, NpgsqlDbType.Varchar);
+                        AddParameter(cmd, "@solicitud_id", item.OrdenId ?? (object)DBNull.Value, NpgsqlDbType.Integer);
+                        AddParameter(cmd, "@created_at", now, NpgsqlDbType.Timestamp);
+                        AddParameter(cmd, "@proximo_intento", now, NpgsqlDbType.Timestamp);
+                    }, tx);
+                }
+            }
+            catch (PostgresException pgEx)
+                when (pgEx.SqlState == "23505"
+                      && !string.IsNullOrWhiteSpace(eventKeyNormalizado)
+                      && ((pgEx.ConstraintName ?? string.Empty).IndexOf("event_key", StringComparison.OrdinalIgnoreCase) >= 0
+                          || (pgEx.MessageText ?? string.Empty).IndexOf("event_key", StringComparison.OrdinalIgnoreCase) >= 0))
+            {
+                const string sqlExisting = @"SELECT id FROM email_queue WHERE event_key = @event_key LIMIT 1";
+                emailQueueId = ExecuteScalar<int>(conn, sqlExisting, cmd =>
+                {
+                    AddParameter(cmd, "@event_key", eventKeyNormalizado, NpgsqlDbType.Varchar);
+                }, tx);
+
+                if (emailQueueId > 0)
+                {
+                    duplicateEvent = true;
+                    return emailQueueId;
+                }
+
+                throw;
+            }
+
+            var adjuntos = (attachments ?? item.Adjuntos ?? Enumerable.Empty<EmailAttachmentItem>()).ToList();
+            if (adjuntos.Count > 0)
+            {
+                EnsureEmailAttachmentTable(conn, tx);
+
+                const string sqlInsertAttachment = @"
+                    INSERT INTO email_attachment
+                        (email_queue_id, file_name, content_type, file_path, file_size, created_at)
+                    VALUES
+                        (@email_queue_id, @file_name, @content_type, @file_path, @file_size, @created_at)";
+
+                foreach (var attachment in adjuntos)
+                {
+                    if (attachment == null) continue;
+
+                    ExecuteNonQuery(conn, sqlInsertAttachment, cmd =>
+                    {
+                        AddParameter(cmd, "@email_queue_id", emailQueueId, NpgsqlDbType.Integer);
+                        AddParameter(cmd, "@file_name", attachment.FileName ?? string.Empty, NpgsqlDbType.Varchar);
+                        AddParameter(cmd, "@content_type", attachment.ContentType ?? "application/octet-stream", NpgsqlDbType.Varchar);
+                        AddParameter(cmd, "@file_path", attachment.FilePath ?? string.Empty, NpgsqlDbType.Text);
+                        AddParameter(cmd, "@file_size", attachment.FileSize ?? 0L, NpgsqlDbType.Bigint);
+                        AddParameter(cmd, "@created_at", now, NpgsqlDbType.Timestamp);
+                    }, tx);
+                }
+            }
+
+            return emailQueueId;
+        }
+
+        private void EnsureEmailAttachmentTable(NpgsqlConnection conn, NpgsqlTransaction tx)
+        {
+            const string sql = @"
+                CREATE TABLE IF NOT EXISTS public.email_attachment (
+                    id SERIAL PRIMARY KEY,
+                    email_queue_id INTEGER NOT NULL,
+                    file_name VARCHAR(255) NOT NULL,
+                    content_type VARCHAR(120) NOT NULL,
+                    file_path TEXT NOT NULL,
+                    file_size BIGINT,
+                    created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+                    CONSTRAINT fk_email_attachment_queue
+                        FOREIGN KEY (email_queue_id) REFERENCES public.email_queue(id) ON DELETE CASCADE
+                );
+
+                CREATE INDEX IF NOT EXISTS idx_email_attachment_queue_id
+                    ON public.email_attachment(email_queue_id);";
+
+            ExecuteNonQuery(conn, sql, null, tx);
         }
 
         public async Task<EmailQueueItem> ObtenerSiguienteAsync()
@@ -132,15 +307,23 @@ namespace CapaDatos.Services
 
             return ExecuteWithConnection(conn =>
             {
+                EmailQueueItem item = null;
                 using (var cmd = CreateCommand(conn, sql))
                 using (var reader = cmd.ExecuteReader())
                 {
                     if (reader.Read())
                     {
-                        return MapearItem(reader);
+                        item = MapearItem(reader);
                     }
-                    return null;
                 }
+
+                // Npgsql no permite ejecutar otro comando con el reader abierto en la misma conexión.
+                if (item != null)
+                {
+                    item.Adjuntos = ObtenerAdjuntos(conn, item.Id);
+                }
+
+                return item;
             });
         }
 
@@ -167,40 +350,82 @@ namespace CapaDatos.Services
                         }
                     }
                 }
+
+                foreach (var item in lista)
+                {
+                    item.Adjuntos = ObtenerAdjuntos(conn, item.Id);
+                }
+
                 return lista;
             });
         }
 
         public async Task ActualizarEstadoAsync(int id, string estado, string error = null)
         {
-            const string sql = @"
+            const string sqlConError = @"
+                UPDATE email_queue SET
+                    status = @status,
+                    error_message = @error_message,
+                    updated_at = NOW()
+                WHERE id = @id";
+
+            const string sqlSimple = @"
                 UPDATE email_queue SET
                     status = @status
                 WHERE id = @id";
 
             ExecuteWithConnection(conn =>
             {
-                ExecuteNonQuery(conn, sql, cmd =>
+                try
                 {
-                    AddParameter(cmd, "@id", id, NpgsqlDbType.Integer);
-                    AddParameter(cmd, "@status", estado, NpgsqlDbType.Varchar);
-                });
+                    ExecuteNonQuery(conn, sqlConError, cmd =>
+                    {
+                        AddParameter(cmd, "@id", id, NpgsqlDbType.Integer);
+                        AddParameter(cmd, "@status", estado, NpgsqlDbType.Varchar);
+                        AddParameter(cmd, "@error_message", error, NpgsqlDbType.Text);
+                    });
+                }
+                catch (PostgresException pgEx) when (pgEx.SqlState == "42703")
+                {
+                    ExecuteNonQuery(conn, sqlSimple, cmd =>
+                    {
+                        AddParameter(cmd, "@id", id, NpgsqlDbType.Integer);
+                        AddParameter(cmd, "@status", estado, NpgsqlDbType.Varchar);
+                    });
+                }
             });
         }
 
         public async Task MarcarEnviadoAsync(int id, string messageId)
         {
-            const string sql = @"
+            const string sqlConCampos = @"
+                UPDATE email_queue SET
+                    status = 'ENVIADO',
+                    error_message = NULL,
+                    updated_at = NOW()
+                WHERE id = @id";
+
+            const string sqlSimple = @"
                 UPDATE email_queue SET
                     status = 'ENVIADO'
                 WHERE id = @id";
 
             ExecuteWithConnection(conn =>
             {
-                ExecuteNonQuery(conn, sql, cmd =>
+                try
                 {
-                    AddParameter(cmd, "@id", id, NpgsqlDbType.Integer);
-                });
+                    ExecuteNonQuery(conn, sqlConCampos, cmd =>
+                    {
+                        AddParameter(cmd, "@id", id, NpgsqlDbType.Integer);
+                    });
+                }
+                catch (PostgresException pgEx) when (pgEx.SqlState == "42703")
+                {
+                    ExecuteNonQuery(conn, sqlSimple, cmd =>
+                    {
+                        AddParameter(cmd, "@id", id, NpgsqlDbType.Integer);
+                    });
+                }
             });
 
             _logger.LogInfo(string.Format("Email {0} enviado exitosamente", id));
@@ -208,7 +433,15 @@ namespace CapaDatos.Services
 
         public async Task ReprogramarReintentoAsync(int id, TimeSpan delay)
         {
-            const string sql = @"
+            const string sqlConIntentos = @"
+                UPDATE email_queue SET
+                    status = 'PENDIENTE',
+                    proximo_intento = @proximo,
+                    intentos = COALESCE(intentos, 0) + 1,
+                    updated_at = NOW()
+                WHERE id = @id";
+
+            const string sqlSimple = @"
                 UPDATE email_queue SET
                     status = 'PENDIENTE',
                     proximo_intento = @proximo
@@ -218,11 +451,22 @@ namespace CapaDatos.Services
 
             ExecuteWithConnection(conn =>
             {
-                ExecuteNonQuery(conn, sql, cmd =>
+                try
                 {
-                    AddParameter(cmd, "@id", id, NpgsqlDbType.Integer);
-                    AddParameter(cmd, "@proximo", proximoIntento, NpgsqlDbType.Timestamp);
-                });
+                    ExecuteNonQuery(conn, sqlConIntentos, cmd =>
+                    {
+                        AddParameter(cmd, "@id", id, NpgsqlDbType.Integer);
+                        AddParameter(cmd, "@proximo", proximoIntento, NpgsqlDbType.Timestamp);
+                    });
+                }
+                catch (PostgresException pgEx) when (pgEx.SqlState == "42703")
+                {
+                    ExecuteNonQuery(conn, sqlSimple, cmd =>
+                    {
+                        AddParameter(cmd, "@id", id, NpgsqlDbType.Integer);
+                        AddParameter(cmd, "@proximo", proximoIntento, NpgsqlDbType.Timestamp);
+                    });
+                }
             });
 
             _logger.LogInfo(string.Format("Email {0} reprogramado para {1:HH:mm:ss}", id, proximoIntento));
@@ -239,8 +483,52 @@ namespace CapaDatos.Services
                 Estado = GetString(reader, "status"),
                 FechaCreacion = GetDateTime(reader, "created_at"),
                 ProximoIntento = GetNullableDateTime(reader, "proximo_intento"),
-                OrdenId = GetValue<int?>(reader, "solicitud_id")
+                OrdenId = GetValue<int?>(reader, "solicitud_id"),
+                EventKey = GetString(reader, "event_key"),
+                ErrorDetalle = GetString(reader, "error_message"),
+                Adjuntos = new List<EmailAttachmentItem>()
             };
+        }
+
+        private List<EmailAttachmentItem> ObtenerAdjuntos(NpgsqlConnection conn, int emailQueueId)
+        {
+            const string sql = @"
+                SELECT id, email_queue_id, file_name, content_type, file_path, file_size, created_at
+                FROM email_attachment
+                WHERE email_queue_id = @email_queue_id
+                ORDER BY id";
+
+            try
+            {
+                using (var cmd = CreateCommand(conn, sql))
+                {
+                    AddParameter(cmd, "@email_queue_id", emailQueueId, NpgsqlDbType.Integer);
+                    using (var reader = cmd.ExecuteReader())
+                    {
+                        var result = new List<EmailAttachmentItem>();
+                        while (reader.Read())
+                        {
+                            result.Add(new EmailAttachmentItem
+                            {
+                                Id = GetInt(reader, "id"),
+                                EmailQueueId = GetInt(reader, "email_queue_id"),
+                                FileName = GetString(reader, "file_name"),
+                                ContentType = GetString(reader, "content_type"),
+                                FilePath = GetString(reader, "file_path"),
+                                FileSize = GetValue<long?>(reader, "file_size"),
+                                CreatedAt = GetNullableDateTime(reader, "created_at")
+                            });
+                        }
+
+                        return result;
+                    }
+                }
+            }
+            catch (PostgresException pgEx) when (pgEx.SqlState == "42P01")
+            {
+                // Tabla de adjuntos no existe (compatibilidad con instalaciones antiguas).
+                return new List<EmailAttachmentItem>();
+            }
         }
     }
 
@@ -348,13 +636,30 @@ namespace CapaDatos.Services
             {
                 _logger.LogInfo(string.Format("Procesando email {0} para {1}", item.Id, item.Para), context);
 
+                byte[] adjuntoContenido = item.AdjuntoContenido;
+                string adjuntoNombre = item.AdjuntoNombre;
+
+                if ((adjuntoContenido == null || adjuntoContenido.Length == 0) &&
+                    item.Adjuntos != null && item.Adjuntos.Count > 0)
+                {
+                    string attachmentError;
+                    if (!TryLoadAttachment(item.Adjuntos[0], out adjuntoContenido, out adjuntoNombre, out attachmentError))
+                    {
+                        await _queueService.ActualizarEstadoAsync(item.Id, "ERROR", attachmentError);
+                        _logger.LogError(
+                            string.Format("Email {0} marcado en ERROR por adjunto inválido: {1}", item.Id, attachmentError),
+                            context);
+                        return;
+                    }
+                }
+
                 var result = await _emailService.EnviarAsync(
                     item.Para,
                     item.ParaNombre,
                     item.Asunto,
                     item.Cuerpo,
-                    item.AdjuntoContenido,
-                    item.AdjuntoNombre);
+                    adjuntoContenido,
+                    adjuntoNombre);
 
                 if (result.Success)
                 {
@@ -412,6 +717,89 @@ namespace CapaDatos.Services
                 return 2;
             else
                 return 3;
+        }
+
+        private bool TryLoadAttachment(
+            EmailAttachmentItem attachment,
+            out byte[] content,
+            out string fileName,
+            out string error)
+        {
+            content = null;
+            fileName = null;
+            error = null;
+
+            if (attachment == null)
+            {
+                error = "Adjunto no especificado.";
+                return false;
+            }
+
+            var resolvedPath = ResolveAttachmentPath(attachment.FilePath);
+            if (string.IsNullOrWhiteSpace(resolvedPath))
+            {
+                error = "Adjunto sin ruta configurada.";
+                return false;
+            }
+
+            if (!File.Exists(resolvedPath))
+            {
+                error = string.Format("No se encontró el archivo adjunto: {0}", resolvedPath);
+                return false;
+            }
+
+            try
+            {
+                content = File.ReadAllBytes(resolvedPath);
+                if (content == null || content.Length == 0)
+                {
+                    error = string.Format("El archivo adjunto está vacío: {0}", resolvedPath);
+                    return false;
+                }
+
+                fileName = !string.IsNullOrWhiteSpace(attachment.FileName)
+                    ? attachment.FileName
+                    : Path.GetFileName(resolvedPath);
+
+                return true;
+            }
+            catch (Exception ex)
+            {
+                error = "Error leyendo adjunto: " + ex.Message;
+                return false;
+            }
+        }
+
+        private string ResolveAttachmentPath(string filePath)
+        {
+            if (string.IsNullOrWhiteSpace(filePath))
+            {
+                return null;
+            }
+
+            try
+            {
+                if (Path.IsPathRooted(filePath))
+                {
+                    return Path.GetFullPath(filePath);
+                }
+
+                if (filePath.StartsWith("~"))
+                {
+                    var mapped = HostingEnvironment.MapPath(filePath);
+                    if (!string.IsNullOrWhiteSpace(mapped))
+                    {
+                        return Path.GetFullPath(mapped);
+                    }
+                }
+
+                var cleaned = filePath.TrimStart('~', '/', '\\').Replace('/', Path.DirectorySeparatorChar);
+                return Path.GetFullPath(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, cleaned));
+            }
+            catch
+            {
+                return null;
+            }
         }
 
         public void Dispose()

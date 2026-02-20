@@ -422,8 +422,8 @@
                       id="form-filtros"
                       novalidate="novalidate">
 
-                    <!-- CSRF Token manual para formularios GET (opcional) -->
-                    <input type="hidden" name="__RequestVerificationToken" value="@GetAntiForgeryToken()" />
+                    <!-- Token antiforgery reutilizado por llamadas AJAX (anulación) -->
+                    @Html.AntiForgeryToken()
 
                     <div class="col-md-4">
                         <label for="filtroEstado" class="form-label fw-semibold">
@@ -1370,7 +1370,7 @@
 
             // Nota: Esta URL debe existir en tu controlador
             $.ajax({
-                url: CONFIG.apiUrl + '/Anular/' + id,
+                url: '@Url.Action("AnularAjax", "OrdenRecaudacion")/' + id,
                 type: 'POST',
                 data: {
                     __RequestVerificationToken: $('input[name="__RequestVerificationToken"]').val()

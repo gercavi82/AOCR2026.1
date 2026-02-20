@@ -26,6 +26,12 @@ namespace CapaDatos.DAOs
         {
             using (var conn = new NpgsqlConnection(GetConnectionString()))
             {
+                conn.Open();
+                var hasMustChangePassword = ExisteColumna(conn, "usuario", "must_change_password");
+                var selectMustChangePassword = hasMustChangePassword
+                    ? "COALESCE(must_change_password, FALSE) AS MustChangePassword,"
+                    : "FALSE AS MustChangePassword,";
+
                 string sql = @"
                     SELECT 
                         idusuario     AS Id,
@@ -38,6 +44,7 @@ namespace CapaDatos.DAOs
                         (estadoactividad = '1') AS Activo,
                         fechacreado::timestamp AS FechaCreacion,
                         fechaultimaconexion AS FechaUltimaConexion,
+                        " + selectMustChangePassword + @"
                         empresa_codigo AS EmpresaCodigo,
                         ruta_documento_legal AS RutaDocumentoLegal,
                         estado_designacion_rt AS EstadoDesignacionRT,
@@ -62,6 +69,12 @@ namespace CapaDatos.DAOs
         {
             using (var conn = new NpgsqlConnection(GetConnectionString()))
             {
+                conn.Open();
+                var hasMustChangePassword = ExisteColumna(conn, "usuario", "must_change_password");
+                var selectMustChangePassword = hasMustChangePassword
+                    ? "COALESCE(must_change_password, FALSE) AS MustChangePassword,"
+                    : "FALSE AS MustChangePassword,";
+
                 string sql = @"
                     SELECT 
                         idusuario     AS Id,
@@ -75,6 +88,7 @@ namespace CapaDatos.DAOs
                         (estadoactividad = '1') AS Activo,
                         fechacreado::timestamp AS FechaCreacion,
                         fechaultimaconexion AS FechaUltimaConexion,
+                        " + selectMustChangePassword + @"
                         empresa_codigo AS EmpresaCodigo,
                         ruta_documento_legal AS RutaDocumentoLegal,
                         estado_designacion_rt AS EstadoDesignacionRT,
@@ -194,10 +208,23 @@ namespace CapaDatos.DAOs
             {
                 conn.Open();
 
-                  string sql = @"UPDATE usuario
-                         SET clave = @clave,
-                             fechaultimaconexion = NULL
-                         WHERE LOWER(correo) = LOWER(@correo);";
+                var setList = new List<string>
+                {
+                    "clave = @clave",
+                    "fechaultimaconexion = NULL"
+                };
+
+                if (ExisteColumna(conn, "usuario", "must_change_password"))
+                {
+                    setList.Add("must_change_password = TRUE");
+                }
+
+                if (ExisteColumna(conn, "usuario", "password_changed_at"))
+                {
+                    setList.Add("password_changed_at = NOW()");
+                }
+
+                string sql = "UPDATE usuario SET " + string.Join(", ", setList) + " WHERE LOWER(correo) = LOWER(@correo);";
 
                 int rows = conn.Execute(sql, new { clave = nuevaClave, correo = email.Trim() });
 
@@ -232,9 +259,22 @@ namespace CapaDatos.DAOs
             {
                 conn.Open();
 
-                string sql = @"UPDATE usuario
-                       SET clave = @clave
-                       WHERE idusuario = @id;";
+                var setList = new List<string>
+                {
+                    "clave = @clave"
+                };
+
+                if (ExisteColumna(conn, "usuario", "must_change_password"))
+                {
+                    setList.Add("must_change_password = FALSE");
+                }
+
+                if (ExisteColumna(conn, "usuario", "password_changed_at"))
+                {
+                    setList.Add("password_changed_at = NOW()");
+                }
+
+                string sql = "UPDATE usuario SET " + string.Join(", ", setList) + " WHERE idusuario = @id;";
 
                 int rows = conn.Execute(sql, new { clave = nuevaClaveHash, id = idUsuario });
 
@@ -570,6 +610,22 @@ namespace CapaDatos.DAOs
                     new { id = idUsuario },
                     tx);
             }
+        }
+
+        private static bool ExisteColumna(IDbConnection conn, string tableName, string columnName)
+        {
+            const string sql = @"
+SELECT COUNT(1)
+FROM information_schema.columns
+WHERE table_schema = 'public'
+  AND table_name = @tableName
+  AND column_name = @columnName;";
+
+            return conn.ExecuteScalar<int>(sql, new
+            {
+                tableName = tableName,
+                columnName = columnName
+            }) > 0;
         }
     }
 }

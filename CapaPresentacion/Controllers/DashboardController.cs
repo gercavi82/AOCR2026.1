@@ -77,13 +77,27 @@ namespace CapaPresentacion.Controllers
                 if (ultima != null && !string.IsNullOrWhiteSpace(ultima.NumeroOrden))
                     ultimaOrden = ultima.NumeroOrden;
 
+                var ordenesRecientes = ordenes
+                    .OrderByDescending(x => x.FechaCreacion)
+                    .Take(10)
+                    .Select(x => new
+                    {
+                        id = x.Id,
+                        numeroOrden = x.NumeroOrden,
+                        fechaCreacion = x.FechaCreacion,
+                        estado = x.Estado,
+                        total = x.Total ?? 0m
+                    })
+                    .ToList();
+
                 return Json(new
                 {
                     success = true,
                     ordenesPendientes,
                     ordenesCompletadas,
                     totalRecaudado,
-                    ultimaOrden
+                    ultimaOrden,
+                    ordenesRecientes
                 }, JsonRequestBehavior.AllowGet);
             }
             catch (Exception ex)

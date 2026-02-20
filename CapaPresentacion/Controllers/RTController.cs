@@ -1,9 +1,9 @@
 ﻿using System;
-using System;
 using System.IO;
 using System.Web.Mvc;
 using CapaModelo.RT.ViewModels;
 using CapaNegocio.Services;
+using CapaNegocio.Helpers;
 using CapaDatos.DAOs;
 using CapaNegocio;
 using iTextSharp.text;
@@ -241,27 +241,11 @@ namespace CapaPresentacion.Controllers
         {
             using (var ms = new MemoryStream())
             {
-                var doc = new Document(PageSize.A4, 40f, 40f, 40f, 40f);
+                var doc = new Document(PageSize.A4, 25f, 25f, 120f, 80f);
                 var writer = PdfWriter.GetInstance(doc, ms);
+                var server = System.Web.HttpContext.Current != null ? System.Web.HttpContext.Current.Server : null;
+                writer.PageEvent = PdfBrandingHelper.CreateITextPageEvent(server, "RTController.GenerarDeclaracionPdf");
                 doc.Open();
-
-                // Fondo membretado
-                PdfReader bgReader = null;
-                try
-                {
-                    var bgPath = System.Web.HttpContext.Current.Server.MapPath("~/Content/hoja_membretada_dgac_2025.pdf");
-                    if (System.IO.File.Exists(bgPath))
-                    {
-                        bgReader = new PdfReader(bgPath);
-                        var bgPage = writer.GetImportedPage(bgReader, 1);
-                        var cb = writer.DirectContentUnder;
-                        cb.AddTemplate(bgPage, 0, 0);
-                    }
-                }
-                catch
-                {
-                    // No bloquear la generación si falla el fondo
-                }
 
                 var titleFont = FontFactory.GetFont(FontFactory.HELVETICA_BOLD, 14);
                 var normalFont = FontFactory.GetFont(FontFactory.HELVETICA, 11);
@@ -279,12 +263,8 @@ namespace CapaPresentacion.Controllers
                 doc.Add(new Paragraph("Firma del Responsable Técnico", smallFont));
                 doc.Add(new Paragraph("Fecha emisión: " + vm.FechaEmision.ToString("dd/MM/yyyy"), smallFont));
 
-                  doc.Close();
-                  if (bgReader != null)
-                  {
-                      bgReader.Close();
-                  }
-                  return ms.ToArray();
+                doc.Close();
+                return ms.ToArray();
             }
         }
     }

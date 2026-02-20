@@ -59,6 +59,10 @@
     <Compile Include="OrdenRecaudacion\OrdenRecaudacion.cs" />
     <Compile Include="OrdenRecaudacion\OrdenRecaudacionDetalle.cs" />
     <Compile Include="OrdenRecaudacion\AocrDocumento.cs" />
+    <Compile Include="Seguridad\SeguridadAuditoriaDTO.cs" />
+    <Compile Include="Seguridad\SeguridadPermisoDTO.cs" />
+    <Compile Include="Seguridad\SeguridadRolDTO.cs" />
+    <Compile Include="Seguridad\SeguridadUsuarioDTO.cs" />
     <Compile Include="ReportesFinancieros\FiltroReporteDTO.cs" />
     <Compile Include="ReportesFinancieros\ReporteOrdenDTO.cs" />
     <Compile Include="ReportesFinancieros\ReporteResumenDTO.cs" />

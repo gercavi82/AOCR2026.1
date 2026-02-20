@@ -1,17 +1,12 @@
 @model CapaNegocio.Services.CertificadoAOCRViewModel
-<!DOCTYPE html>
-<html>
-<head>
-    <meta charset="utf-8" />
-    <title>Certificado AOCR @(!string.IsNullOrWhiteSpace(Model?.NumeroAOCR) ? System.Web.HttpUtility.HtmlEncode(Model.NumeroAOCR) : "")</title>
-    <style>
-        @@page {
-            size: A4;
-            margin: 2cm;
-        }
+@{
+    Layout = "~/Views/Shared/_PdfLayoutDGAC.cshtml";
+}
 
+@section PdfHead {
+    <style>
         body {
-            font-family: 'Arial', 'Helvetica', sans-serif;
+            font-family: Arial, Helvetica, sans-serif;
             font-size: 11pt;
             line-height: 1.5;
             color: #000;
@@ -19,28 +14,23 @@
 
         .header {
             text-align: center;
-            margin-bottom: 30px;
-            border-bottom: 3px solid #003366;
-            padding-bottom: 15px;
-        }
-
-        .header img {
-            max-width: 150px;
-            margin-bottom: 10px;
+            margin-bottom: 24px;
+            border-bottom: 2px solid #003366;
+            padding-bottom: 10px;
         }
 
         .header h1 {
             font-size: 18pt;
             font-weight: bold;
             color: #003366;
-            margin: 10px 0;
+            margin: 4px 0;
             text-transform: uppercase;
         }
 
         .header h2 {
-            font-size: 14pt;
+            font-size: 13pt;
             color: #666;
-            margin: 5px 0;
+            margin: 2px 0;
         }
 
         .certificado-numero {
@@ -48,28 +38,28 @@
             font-size: 16pt;
             font-weight: bold;
             color: #003366;
-            margin: 20px 0;
-            padding: 10px;
+            margin: 18px 0;
+            padding: 8px;
             border: 2px solid #003366;
             background-color: #f0f0f0;
         }
 
         .seccion {
-            margin: 20px 0;
+            margin: 18px 0;
         }
 
         .seccion-titulo {
-            font-size: 13pt;
+            font-size: 12pt;
             font-weight: bold;
             color: #003366;
-            border-bottom: 2px solid #ccc;
+            border-bottom: 1px solid #ccc;
             padding-bottom: 5px;
             margin-bottom: 10px;
             text-transform: uppercase;
         }
 
         .campo {
-            margin: 8px 0;
+            margin: 6px 0;
         }
 
         .campo-label {
@@ -84,40 +74,32 @@
             color: #000;
         }
 
-        .tabla-aeronaves {
-            width: 100%;
-            border-collapse: collapse;
-            margin: 10px 0;
+        .vigencia-box {
+            background-color: #ffffcc;
+            border: 2px solid #ffcc00;
+            padding: 14px;
+            margin: 20px 0;
+            text-align: center;
+            font-weight: bold;
         }
 
-        .tabla-aeronaves th {
-            background-color: #003366;
-            color: white;
-            padding: 8px;
-            font-size: 10pt;
-            text-align: left;
-            border: 1px solid #003366;
-        }
-
-        .tabla-aeronaves td {
-            padding: 6px;
+        .observaciones-box {
             border: 1px solid #ccc;
-            font-size: 10pt;
-        }
-
-        .tabla-aeronaves tr:nth-child(even) {
+            padding: 10px;
             background-color: #f9f9f9;
+            margin-top: 10px;
+            min-height: 60px;
         }
 
         .firma-seccion {
-            margin-top: 50px;
+            margin-top: 40px;
             page-break-inside: avoid;
         }
 
         .firma-contenedor {
             display: table;
             width: 100%;
-            margin-top: 30px;
+            margin-top: 22px;
         }
 
         .firma-columna {
@@ -129,7 +111,7 @@
 
         .firma-linea {
             border-top: 2px solid #000;
-            margin: 50px auto 5px;
+            margin: 40px auto 5px;
             width: 70%;
         }
 
@@ -143,190 +125,140 @@
             color: #666;
         }
 
-        .sello {
-            position: absolute;
-            right: 50px;
-            bottom: 100px;
-            opacity: 0.6;
-        }
-
         .pie-pagina {
-            position: fixed;
-            bottom: 0;
-            left: 0;
-            right: 0;
+            margin-top: 24px;
             text-align: center;
             font-size: 9pt;
-            color: #999;
+            color: #666;
             border-top: 1px solid #ccc;
             padding-top: 10px;
         }
-
-        .observaciones-box {
-            border: 1px solid #ccc;
-            padding: 10px;
-            background-color: #f9f9f9;
-            margin-top: 10px;
-            min-height: 60px;
-        }
-
-        .vigencia-box {
-            background-color: #ffffcc;
-            border: 2px solid #ffcc00;
-            padding: 15px;
-            margin: 20px 0;
-            text-align: center;
-            font-weight: bold;
-        }
     </style>
-</head>
-<body>
-    <!-- ENCABEZADO -->
-    <div class="header">
-        @{
-            var logoRelative = Url.Content("~/Content/img/dgac-logo.png");
-            var logoUrl = Request?.Url != null ? string.Format("{0}://{1}{2}", Request.Url.Scheme, Request.Url.Authority, logoRelative) : logoRelative;
-        }
-        <img src="@logoUrl" alt="DGAC Ecuador" />
-        <h1>Dirección General de Aviación Civil</h1>
-        <h2>República del Ecuador</h2>
-        <p style="margin: 5px 0; font-size: 10pt;">
-            <strong>CERTIFICADO DE OPERADOR AÉREO COMERCIAL</strong><br />
-            (AIR OPERATOR CERTIFICATE - AOC)
-        </p>
-    </div>
+}
 
-    <!-- NÚMERO DE CERTIFICADO -->
-    <div class="certificado-numero">
-        CERTIFICADO N° @(!string.IsNullOrWhiteSpace(Model?.NumeroAOCR) ? System.Web.HttpUtility.HtmlEncode(Model.NumeroAOCR) : "-")
-    </div>
+<div class="header">
+    <h1>Direccion General de Aviacion Civil</h1>
+    <h2>Republica del Ecuador</h2>
+    <p style="margin: 5px 0; font-size: 10pt;">
+        <strong>CERTIFICADO DE OPERADOR AEREO COMERCIAL</strong><br />
+        (AIR OPERATOR CERTIFICATE - AOC)
+    </p>
+</div>
 
-    <!-- FECHA DE EMISIÓN -->
-    <div class="campo" style="text-align: center; margin: 10px 0;">
-        <strong>Fecha de Emisión:</strong> @(Model.FechaEmision.ToString("dd 'de' MMMM 'de' yyyy", new System.Globalization.CultureInfo("es-EC")))
-    </div>
+<div class="certificado-numero">
+    CERTIFICADO N&deg; @(!string.IsNullOrWhiteSpace(Model?.NumeroAOCR) ? System.Web.HttpUtility.HtmlEncode(Model.NumeroAOCR) : "-")
+</div>
 
-    <!-- DATOS DEL OPERADOR -->
-    <div class="seccion">
-        <div class="seccion-titulo">I. DATOS DEL OPERADOR AÉREO</div>
-        <div class="campo">
-            <span class="campo-label">Razón Social:</span>
-            <span class="campo-valor">@Model.NombreOperador</span>
-        </div>
-        <div class="campo">
-            <span class="campo-label">RUC:</span>
-            <span class="campo-valor">@Model.RUC</span>
-        </div>
-        <div class="campo">
-            <span class="campo-label">Dirección:</span>
-            <span class="campo-valor">@(Model.Direccion ?? "N/A")</span>
-        </div>
-        <div class="campo">
-            <span class="campo-label">Representante Legal:</span>
-            <span class="campo-valor">@Model.RepresentanteLegal</span>
-        </div>
-    </div>
+<div class="campo" style="text-align: center; margin: 10px 0;">
+    <strong>Fecha de Emision:</strong> @(Model.FechaEmision.ToString("dd 'de' MMMM 'de' yyyy", new System.Globalization.CultureInfo("es-EC")))
+</div>
 
-    <!-- TIPO DE OPERACIÓN -->
-    <div class="seccion">
-        <div class="seccion-titulo">II. AUTORIZACIÓN DE OPERACIÓN</div>
-        <div class="campo">
-            <span class="campo-label">Tipo de Operación:</span>
-            <span class="campo-valor">@Model.TipoOperacion</span>
-        </div>
-        <div class="campo">
-            <span class="campo-label">Alcance:</span>
-            <span class="campo-valor">@(Model.AlcanceOperacion ?? "Operaciones comerciales según especificaciones operacionales")</span>
-        </div>
+<div class="seccion">
+    <div class="seccion-titulo">I. Datos del Operador Aereo</div>
+    <div class="campo">
+        <span class="campo-label">Razon Social:</span>
+        <span class="campo-valor">@Model.NombreOperador</span>
     </div>
-
-    <!-- AERONAVES AUTORIZADAS -->
-    <div class="seccion">
-        <div class="seccion-titulo">III. AERONAVES AUTORIZADAS</div>
-        @if (!string.IsNullOrEmpty(Model.AeronavesDetalle))
-        {
-            @* Security: escape any HTML coming from AeronavesDetalle to avoid XSS, preserve line breaks *@
-            <div>@Html.Raw(System.Web.HttpUtility.HtmlEncode(Model.AeronavesDetalle).Replace("\n", "<br/>"))</div>
-        }
-        else
-        {
-            <p>Según lista de aeronaves aprobadas en especificaciones operacionales adjuntas.</p>
-        }
+    <div class="campo">
+        <span class="campo-label">RUC:</span>
+        <span class="campo-valor">@Model.RUC</span>
     </div>
+    <div class="campo">
+        <span class="campo-label">Direccion:</span>
+        <span class="campo-valor">@(Model.Direccion ?? "N/A")</span>
+    </div>
+    <div class="campo">
+        <span class="campo-label">Representante Legal:</span>
+        <span class="campo-valor">@Model.RepresentanteLegal</span>
+    </div>
+</div>
 
-    <!-- VIGENCIA -->
-    @if (Model.FechaVencimiento.HasValue)
+<div class="seccion">
+    <div class="seccion-titulo">II. Autorizacion de Operacion</div>
+    <div class="campo">
+        <span class="campo-label">Tipo de Operacion:</span>
+        <span class="campo-valor">@Model.TipoOperacion</span>
+    </div>
+    <div class="campo">
+        <span class="campo-label">Alcance:</span>
+        <span class="campo-valor">@(Model.AlcanceOperacion ?? "Operaciones comerciales segun especificaciones operacionales")</span>
+    </div>
+</div>
+
+<div class="seccion">
+    <div class="seccion-titulo">III. Aeronaves Autorizadas</div>
+    @if (!string.IsNullOrEmpty(Model.AeronavesDetalle))
     {
-        <div class="vigencia-box">
-            ⚠️ VIGENCIA: Del @(Model.FechaEmision.ToString("dd/MM/yyyy", new System.Globalization.CultureInfo("es-EC"))) al @(Model.FechaVencimiento.Value.ToString("dd/MM/yyyy", new System.Globalization.CultureInfo("es-EC")))
-        </div>
+        <div>@Html.Raw(System.Web.HttpUtility.HtmlEncode(Model.AeronavesDetalle).Replace("\n", "<br/>"))</div>
     }
     else
     {
-        <div class="vigencia-box">
-            ✓ CERTIFICADO VIGENTE - Sujeto a renovación anual
-        </div>
+        <p>Segun lista de aeronaves aprobadas en especificaciones operacionales adjuntas.</p>
     }
+</div>
 
-    <!-- OBSERVACIONES -->
-    @if (!string.IsNullOrEmpty(Model.Observaciones))
-    {
-        <div class="seccion">
-            <div class="seccion-titulo">IV. OBSERVACIONES</div>
-            <div class="observaciones-box">
-                @Html.Raw(System.Web.HttpUtility.HtmlEncode(Model.Observaciones).Replace("\n", "<br/>"))
-            </div>
-        </div>
-    }
-
-    <!-- DECLARACIÓN LEGAL -->
-    <div class="seccion" style="font-size: 10pt; text-align: justify;">
-        <p>
-            <strong>La Dirección General de Aviación Civil (DGAC)</strong> certifica que el operador aéreo mencionado ha cumplido con los requisitos establecidos en la normativa aeronáutica nacional e internacional aplicable, y está autorizado para realizar las operaciones especificadas en este certificado, de conformidad con las Especificaciones Operacionales (OpSpecs) aprobadas.
-        </p>
-        <p>
-            Este certificado es válido siempre y cuando el operador mantenga el cumplimiento continuo de los requisitos operacionales, técnicos y administrativos establecidos por la DGAC.
-        </p>
+@if (Model.FechaVencimiento.HasValue)
+{
+    <div class="vigencia-box">
+        VIGENCIA: Del @(Model.FechaEmision.ToString("dd/MM/yyyy", new System.Globalization.CultureInfo("es-EC"))) al @(Model.FechaVencimiento.Value.ToString("dd/MM/yyyy", new System.Globalization.CultureInfo("es-EC")))
     </div>
+}
+else
+{
+    <div class="vigencia-box">
+        CERTIFICADO VIGENTE - Sujeto a renovacion anual
+    </div>
+}
 
-    <!-- FIRMAS -->
-    <div class="firma-seccion">
-        <div class="firma-contenedor">
-            <div class="firma-columna">
-                <div class="firma-linea"></div>
-                <div class="firma-nombre">@(Model.AprobadoPor ?? "Director Financiero")</div>
-                <div class="firma-cargo">@(Model.CargoAprobador ?? "Director Financiero - DGAC")</div>
-            </div>
-            <div class="firma-columna">
-                @if (!string.IsNullOrEmpty(Model.RutaSelloOficial))
-                {
-                    @{
-                        var selloRelative = Url.Content(Model.RutaSelloOficial);
-                        var selloUrl = Request?.Url != null ? string.Format("{0}://{1}{2}", Request.Url.Scheme, Request.Url.Authority, selloRelative) : selloRelative;
-                    }
-                    <img src="@selloUrl" alt="Sello DGAC" style="max-width: 120px;" />
-                }
-                else
-                {
-                    <div style="margin-top: 20px;">
-                        <strong>SELLO OFICIAL</strong><br />
-                        <span style="font-size: 9pt;">Dirección General de Aviación Civil</span>
-                    </div>
-                }
-            </div>
+@if (!string.IsNullOrEmpty(Model.Observaciones))
+{
+    <div class="seccion">
+        <div class="seccion-titulo">IV. Observaciones</div>
+        <div class="observaciones-box">
+            @Html.Raw(System.Web.HttpUtility.HtmlEncode(Model.Observaciones).Replace("\n", "<br/>"))
         </div>
     </div>
+}
 
-    <!-- PIE DE PÁGINA -->
-    <div class="pie-pagina">
-        <p>
-            Dirección General de Aviación Civil - Ecuador<br />
-            Av. Amazonas N° 1429 y Colón - Quito, Ecuador<br />
-            Tel: (593) 2-2947400 | www.aviacioncivil.gob.ec
-        </p>
-        <p style="font-size: 8pt; margin-top: 5px;">
-            Documento generado electrónicamente el @DateTime.Now.ToString("dd/MM/yyyy HH:mm")
-        </p>
+<div class="seccion" style="font-size: 10pt; text-align: justify;">
+    <p>
+        <strong>La Direccion General de Aviacion Civil (DGAC)</strong> certifica que el operador aereo mencionado ha cumplido con los requisitos establecidos en la normativa aeronautica nacional e internacional aplicable, y esta autorizado para realizar las operaciones especificadas en este certificado.
+    </p>
+    <p>
+        Este certificado es valido siempre y cuando el operador mantenga el cumplimiento continuo de los requisitos operacionales, tecnicos y administrativos establecidos por la DGAC.
+    </p>
+</div>
+
+<div class="firma-seccion">
+    <div class="firma-contenedor">
+        <div class="firma-columna">
+            <div class="firma-linea"></div>
+            <div class="firma-nombre">@(Model.AprobadoPor ?? "Director Financiero")</div>
+            <div class="firma-cargo">@(Model.CargoAprobador ?? "Director Financiero - DGAC")</div>
+        </div>
+        <div class="firma-columna">
+            @if (!string.IsNullOrEmpty(Model.RutaSelloOficial))
+            {
+                <div><strong>Sello oficial registrado</strong></div>
+            }
+            else
+            {
+                <div style="margin-top: 20px;">
+                    <strong>SELLO OFICIAL</strong><br />
+                    <span style="font-size: 9pt;">Direccion General de Aviacion Civil</span>
+                </div>
+            }
+        </div>
     </div>
-</body>
-</html>
+</div>
+
+<div class="pie-pagina">
+    <p>
+        Direccion General de Aviacion Civil - Ecuador<br />
+        Av. Amazonas N&deg; 1429 y Colon - Quito, Ecuador<br />
+        Tel: (593) 2-2947400 | www.aviacioncivil.gob.ec
+    </p>
+    <p style="font-size: 8pt; margin-top: 5px;">
+        Documento generado electronicamente el @DateTime.Now.ToString("dd/MM/yyyy HH:mm")
+    </p>
+</div>

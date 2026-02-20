@@ -455,28 +455,11 @@ namespace CapaPresentacion.Controllers
         {
             using (var ms = new MemoryStream())
             {
-                // Dejar margen superior amplio para no chocar con el membrete
-                var doc = new iTextSharp.text.Document(iTextSharp.text.PageSize.A4, 40f, 40f, 80f, 40f);
+                var doc = new iTextSharp.text.Document(iTextSharp.text.PageSize.A4, 25f, 25f, 120f, 80f);
                 var writer = iTextSharp.text.pdf.PdfWriter.GetInstance(doc, ms);
+                var server = System.Web.HttpContext.Current != null ? System.Web.HttpContext.Current.Server : null;
+                writer.PageEvent = PdfBrandingHelper.CreateITextPageEvent(server, "UsuarioController.DescargarFormularioDesignacionRT");
                 doc.Open();
-
-                // Fondo membretado
-                iTextSharp.text.pdf.PdfReader bgReader = null;
-                try
-                {
-                    var bgPath = System.Web.HttpContext.Current.Server.MapPath("~/Content/hoja_membretada_dgac_2025.pdf");
-                    if (System.IO.File.Exists(bgPath))
-                    {
-                        bgReader = new iTextSharp.text.pdf.PdfReader(bgPath);
-                        var bgPage = writer.GetImportedPage(bgReader, 1);
-                        var cb = writer.DirectContentUnder;
-                        cb.AddTemplate(bgPage, 0, 0);
-                    }
-                }
-                catch
-                {
-                    // No bloquear si falla el fondo
-                }
 
                 var titleFont = iTextSharp.text.FontFactory.GetFont(iTextSharp.text.FontFactory.HELVETICA_BOLD, 14);
                 var subtitleFont = iTextSharp.text.FontFactory.GetFont(iTextSharp.text.FontFactory.HELVETICA, 10);
@@ -543,10 +526,6 @@ namespace CapaPresentacion.Controllers
                 doc.Add(tabla);
 
                 doc.Close();
-                if (bgReader != null)
-                {
-                    bgReader.Close();
-                }
                 var bytes = ms.ToArray();
                 return File(bytes, "application/pdf", "Formulario_Designacion_RT.pdf");
             }
@@ -614,26 +593,11 @@ namespace CapaPresentacion.Controllers
 
             using (var ms = new MemoryStream())
             {
-                var doc = new iTextSharp.text.Document(iTextSharp.text.PageSize.A4, 40f, 40f, 80f, 40f);
+                var doc = new iTextSharp.text.Document(iTextSharp.text.PageSize.A4, 25f, 25f, 120f, 80f);
                 var writer = iTextSharp.text.pdf.PdfWriter.GetInstance(doc, ms);
+                var server = System.Web.HttpContext.Current != null ? System.Web.HttpContext.Current.Server : null;
+                writer.PageEvent = PdfBrandingHelper.CreateITextPageEvent(server, "UsuarioController.DescargarDeclaracionResponsabilidad");
                 doc.Open();
-
-                iTextSharp.text.pdf.PdfReader bgReader = null;
-                try
-                {
-                    var bgPath = System.Web.HttpContext.Current.Server.MapPath("~/Content/hoja_membretada_dgac_2025.pdf");
-                    if (System.IO.File.Exists(bgPath))
-                    {
-                        bgReader = new iTextSharp.text.pdf.PdfReader(bgPath);
-                        var bgPage = writer.GetImportedPage(bgReader, 1);
-                        var cb = writer.DirectContentUnder;
-                        cb.AddTemplate(bgPage, 0, 0);
-                    }
-                }
-                catch
-                {
-                    // No bloquear si falla el fondo
-                }
 
                 var titleFont = iTextSharp.text.FontFactory.GetFont(iTextSharp.text.FontFactory.HELVETICA_BOLD, 14);
                 var normalFont = iTextSharp.text.FontFactory.GetFont(iTextSharp.text.FontFactory.HELVETICA, 11);
@@ -684,7 +648,6 @@ namespace CapaPresentacion.Controllers
                 doc.Add(tabla);
 
                 doc.Close();
-                if (bgReader != null) bgReader.Close();
                 return File(ms.ToArray(), "application/pdf", "Declaracion_Responsabilidad_RT.pdf");
             }
         }

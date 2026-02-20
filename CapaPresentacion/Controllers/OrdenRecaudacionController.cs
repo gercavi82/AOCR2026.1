@@ -16,13 +16,13 @@ using System.Threading.Tasks;
 using CapaPresentacion.Models;
 using CapaModelo;
 using CapaNegocio.Services;
+using CapaNegocio.Helpers;
 using Rotativa;
 // Alias para evitar ambigï¿½edad
 using EmailSvc = CapaDatos.Services.EmailService;
 using SecureConfig = CapaDatos.Services.SecureConfigurationService;
 using DetalleOrden = CapaDatos.Entidades.DetalleOrden;
 using CapaDatos.Constants;
-using CapaNegocio;
 
 namespace CapaPresentacion.Controllers
 {
@@ -746,18 +746,22 @@ namespace CapaPresentacion.Controllers
             }
         }
 
-        // POST: /OrdenRecaudacion/Anular/5
+        // POST: /OrdenRecaudacion/AnularAjax/5
         [HttpPost]
         [ValidateAntiForgeryToken]
         [Authorize(Roles = "Administrador")]
-        public JsonResult Anular(int id)
+        public JsonResult AnularAjax(int id)
         {
             int idUsuario = GetUserId();
             if (idUsuario <= 0) return Json(new { success = false, message = "Usuario no autenticado" });
 
             var orden = _dao.ObtenerOrdenPorIdModel(id);
-            if (orden == null || orden.CodigoUsuario != idUsuario)
+            if (orden == null)
                 return Json(new { success = false, message = "Orden no encontrada" });
+
+            var esAdmin = User != null && User.IsInRole("Administrador");
+            if (!esAdmin && orden.CodigoUsuario != idUsuario)
+                return Json(new { success = false, message = "No tiene permisos para anular esta orden" });
 
             if (string.Equals((orden.Estado ?? "").Trim(), "ANULADA", StringComparison.OrdinalIgnoreCase))
                 return Json(new { success = false, message = "La orden ya estï¿½ anulada" });
@@ -891,8 +895,8 @@ En transferencias NO colocar sublÃ­nea<br>";
                     {
                         PageSize = Rotativa.Options.Size.A4,
                         PageOrientation = Rotativa.Options.Orientation.Portrait,
-                        PageMargins = new Rotativa.Options.Margins(20, 15, 20, 15),
-                        CustomSwitches = "--print-media-type --background --enable-local-file-access --zoom 0.95"
+                        PageMargins = new Rotativa.Options.Margins(0, 0, 0, 0),
+                        CustomSwitches = PdfBrandingHelper.StandardRotativaSwitches
                     };
                     pdfBytes = pdf.BuildFile(ControllerContext);
                     System.Diagnostics.Debug.WriteLine($"PDF generado para notificació, tamaÃ±o: {(pdfBytes != null ? pdfBytes.Length : 0)} bytes");
@@ -1505,8 +1509,8 @@ En transferencias NO colocar sublÃ­nea<br>";
                     FileName = nombreArchivo,
                     PageSize = Rotativa.Options.Size.A4,
                     PageOrientation = Rotativa.Options.Orientation.Portrait,
-                    PageMargins = new Rotativa.Options.Margins(20, 15, 20, 15),
-                    CustomSwitches = "--print-media-type --background --enable-local-file-access --zoom 0.95"
+                    PageMargins = new Rotativa.Options.Margins(0, 0, 0, 0),
+                    CustomSwitches = PdfBrandingHelper.StandardRotativaSwitches
                 };
             }
             catch (Exception ex)

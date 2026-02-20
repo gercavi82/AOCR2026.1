@@ -311,6 +311,7 @@
     <Compile Include="Controllers\ParametroController.cs" />
     <Compile Include="Controllers\CoordinacionLegalController.cs" />
     <Compile Include="Controllers\AdministradorController.cs" />
+    <Compile Include="Controllers\AdminUsuariosController.cs" />
     <Compile Include="Controllers\InformeController.cs" />
     <Compile Include="Controllers\UsuarioRolController.cs" />
     <Compile Include="Controllers\UsuarioController.cs" />
@@ -321,6 +322,7 @@
     <Compile Include="Filters\GlobalExceptionFilter.cs" />
     <Compile Include="Filters\SessionExpireAttribute.cs" />
     <Compile Include="Filters\SecurityFilters.cs" />
+    <Compile Include="Filters\RequirePermissionAttribute.cs" />
     <Compile Include="Filters\RequireOrdenRecaudacionAttribute.cs" />
     <Compile Include="Global.asax.cs">
       <DependentUpon>Global.asax</DependentUpon>
@@ -329,6 +331,10 @@
     <Compile Include="Infrastructure\OrdenRecaudacionFilters.cs" />
     <Compile Include="Infrastructure\OrdenRecaudacionRoutes.cs" />
     <Compile Include="Models\CambiarContrasenaViewModel.cs" />
+    <Compile Include="Models\AdminUsuarios\AdminRolPermisosViewModel.cs" />
+    <Compile Include="Models\AdminUsuarios\AdminUsuarioFormViewModel.cs" />
+    <Compile Include="Models\AdminUsuarios\AdminUsuarioRolesViewModel.cs" />
+    <Compile Include="Models\AdminUsuarios\AdminUsuariosIndexViewModel.cs" />
     <Compile Include="Models\OrdenRecaudacionNuevaVM.cs" />
     <Compile Include="Models\ConceptoOptionVM.cs" />
     <Compile Include="Models\RT\DeclaracionRTVM.cs" />
@@ -430,6 +436,10 @@
     <Content Include="Content\assets\imganes\logodgac.png" />
     <Content Include="Content\assets\imganes\logo_gobierno.png" />
     <Content Include="Content\assets\imganes\logo_header.png" />
+    <Content Include="Content\assets\imganes\pdf\footer.png" />
+    <Content Include="Content\assets\imganes\pdf\header.png" />
+    <Content Include="Content\pdf\header.png" />
+    <Content Include="Content\pdf\footer.png" />
     <Content Include="Content\assets\imganes\logo_republicaEcuador.png" />
     <Content Include="Content\assets\imganes\menos.png" />
     <Content Include="Content\assets\imganes\new.png" />
@@ -2807,6 +2817,7 @@
     <Content Include="Views\Shared\Error.cshtml" />
     <Content Include="Views\Error\Error.cshtml" />
     <Content Include="Views\Shared\_LayoutAOCR.cshtml" />
+    <Content Include="Views\Shared\_PdfLayoutDGAC.cshtml" />
     <Content Include="Views\Home\About.cshtml" />
     <Content Include="Views\Home\Contact.cshtml" />
     <Content Include="Views\Home\Index.cshtml" />
@@ -2927,6 +2938,13 @@
     <Content Include="Views\SolicitudAOCR\CertificadoAOCR.cshtml" />
     <Content Include="Views\Notificacion\Index.cshtml" />
     <Content Include="Views\OrdenRecaudacion\ExportPdf.cshtml" />
+    <Content Include="Views\AdminUsuarios\Create.cshtml" />
+    <Content Include="Views\AdminUsuarios\Edit.cshtml" />
+    <Content Include="Views\AdminUsuarios\Index.cshtml" />
+    <Content Include="Views\AdminUsuarios\PermisosRol.cshtml" />
+    <Content Include="Views\AdminUsuarios\Roles.cshtml" />
+    <Content Include="Views\AdminUsuarios\_RolesModal.cshtml" />
+    <Content Include="Views\AdminUsuarios\_UserForm.cshtml" />
     <Content Include="Views\Usuario\RevisarDesignaciones.cshtml" />
   </ItemGroup>
   <ItemGroup>
@@ -2976,6 +2994,7 @@
     <Content Include="Scripts\bootstrap.esm.js.map" />
     <Content Include="Scripts\bootstrap.bundle.min.js.map" />
     <Content Include="Scripts\bootstrap.bundle.js.map" />
+    <Content Include="Scripts\admin-usuarios.js" />
   </ItemGroup>
   <PropertyGroup>
     <VisualStudioVersion Condition="'$(VisualStudioVersion)' == ''">10.0</VisualStudioVersion>

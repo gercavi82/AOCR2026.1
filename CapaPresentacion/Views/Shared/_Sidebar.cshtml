@@ -44,21 +44,31 @@
             System.Diagnostics.Debug.WriteLine("_Sidebar: Error consultando estado de orden: " + ex.Message);
         }
 
-        // Determinar si el usuario requiere orden para su rol
-        bool requiereOrden = rolActual == "Operador" || rolActual == "Solicitante" ||
-                            rolActual == "Inspector" || rolActual == "Tecnico" ||
-                            rolActual == "Administrador";
+        // Visibilidad estricta por rol seleccionado en sesion (con aliases de roles)
+        var rolNormalizado = (rolActual ?? string.Empty).Trim();
+        Func<string, bool> esRol = rol => rolNormalizado.Equals(rol, StringComparison.OrdinalIgnoreCase);
 
-        // Para roles administrativos/financieros, no requieren orden
-        bool esRolAdministrativo = rolActual == "Financiero" || rolActual == "JefaturaTecnica" ||
-                                  rolActual == "Direccion" || rolActual == "CoordinacionLegal" || rolActual == "Administrador";
-        bool puedeSolicitante = rolActual == "Operador" || rolActual == "Administrador" || rolActual == "Solicitante";
-        bool puedeTecnica = rolActual == "Inspector" || rolActual == "Administrador" || rolActual == "Tecnico";
-        bool puedeFinanciero = rolActual == "Financiero" || rolActual == "Direccion" ||
-                               rolActual == "JefaturaTecnica" || rolActual == "Administrador";
-        bool puedeLegal = rolActual == "CoordinacionLegal" || rolActual == "Administrador";
-        bool puedeDireccion = rolActual == "Direccion" || rolActual == "JefaturaTecnica" || rolActual == "Administrador";
-        bool puedeAprobarUsuarios = rolActual == "CoordinacionLegal" || rolActual == "Administrador" || rolActual == "JefaturaTecnica";
+        bool esAdministrador = esRol("Administrador");
+        bool esSolicitanteRol = esRol("Operador") || esRol("Solicitante");
+        bool esTecnicaRol = esRol("Inspector") || esRol("Tecnico") || esRol("EvaluadorTecnico") || esRol("CoordinadorInspecciones");
+        bool esFinancieroRol = esRol("Financiero") || esRol("CoordinadorFinanciero");
+        bool esLegalRol = esRol("CoordinacionLegal") || esRol("CoordinadorLegal");
+        bool esDireccionRol = esRol("Direccion") || esRol("JefaturaTecnica") || esRol("DirectorFinanciero");
+        bool esAprobadorUsuariosRol = esLegalRol || esRol("JefaturaTecnica");
+
+        // Solo Solicitante/Operador requieren crear su propia orden
+        bool requiereOrden = esSolicitanteRol;
+
+        bool puedeSolicitante = esAdministrador || esSolicitanteRol;
+        bool puedeTecnica = esAdministrador || esTecnicaRol;
+        bool puedeFinanciero = esAdministrador || esFinancieroRol;
+        bool puedeLegal = esAdministrador || esLegalRol;
+        bool puedeDireccion = esAdministrador || esDireccionRol;
+        bool puedeAprobarUsuarios = esAdministrador || esAprobadorUsuariosRol;
+        bool puedeAdministracion = esAdministrador || esRol("Direccion") || esRol("JefaturaTecnica");
+
+        // Módulo de órdenes visibles solo para rol solicitante u administrador
+        bool mostrarModuloOrdenes = esAdministrador || esSolicitanteRol;
     }
 
     <!-- Indicador de estado de orden -->
@@ -98,32 +108,35 @@
         <div class="section-title">Menú de Gestión</div>
 
         @* ===================== ORDENES DE RECAUDACIÓN ===================== *@
-        <div class="nav-group mb-4">
-            <div class="group-title text-primary">
-                <i class="fas fa-file-invoice-dollar mr-1"></i> ÓRDENES DE RECAUDACIÓN
-            </div>
-            <ul class="aocr-nav">
-                <li>
-                    <a class="aocr-link @(tieneOrdenBorrador ? "text-warning fw-bold" : "")" href="@(tieneOrdenBorrador ? Url.Action("Obligatoria","OrdenRecaudacion") : Url.Action("Nueva","OrdenRecaudacion"))">
-                        <i class="fas fa-plus-circle @(tieneOrdenBorrador ? "text-warning" : "text-success") mr-2"></i>
-                        @(tieneOrdenBorrador ? "Completar Orden Pendiente" : "Nueva Orden")
-                    </a>
-                </li>
-                <li>
-                    <a class="aocr-link" href="@Url.Action("MisOrdenes", "Orden")">
-                        <i class="fas fa-history text-white-50 mr-2"></i> Mis Órdenes
-                    </a>
-                </li>
-                @if (esRolAdministrativo)
-                {
+        @if (mostrarModuloOrdenes)
+        {
+            <div class="nav-group mb-4">
+                <div class="group-title text-primary">
+                    <i class="fas fa-file-invoice-dollar mr-1"></i> ÓRDENES DE RECAUDACIÓN
+                </div>
+                <ul class="aocr-nav">
                     <li>
-                        <a class="aocr-link" href="@Url.Action("TodasOrdenes", "Financiero")">
-                            <i class="fas fa-list-alt text-white-50 mr-2"></i> Todas las Órdenes
+                        <a class="aocr-link @(tieneOrdenBorrador ? "text-warning fw-bold" : "")" href="@(tieneOrdenBorrador ? Url.Action("Obligatoria","OrdenRecaudacion") : Url.Action("Nueva","OrdenRecaudacion"))">
+                            <i class="fas fa-plus-circle @(tieneOrdenBorrador ? "text-warning" : "text-success") mr-2"></i>
+                            @(tieneOrdenBorrador ? "Completar Orden Pendiente" : "Nueva Orden")
                         </a>
                     </li>
-                }
-            </ul>
-        </div>
+                    <li>
+                        <a class="aocr-link" href="@Url.Action("MisOrdenes", "Orden")">
+                            <i class="fas fa-history text-white-50 mr-2"></i> Mis Órdenes
+                        </a>
+                    </li>
+                    @if (esAdministrador)
+                    {
+                        <li>
+                            <a class="aocr-link" href="@Url.Action("TodasOrdenes", "Financiero")">
+                                <i class="fas fa-list-alt text-white-50 mr-2"></i> Todas las Órdenes
+                            </a>
+                        </li>
+                    }
+                </ul>
+            </div>
+        }
 
         @* ===================== SOLICITANTE ===================== *@
         @if (puedeSolicitante)
@@ -162,7 +175,7 @@
         }
 
         @* ===================== INSPECCIÓN / TÉCNICA (solo si la orden ya está generada) ===================== *@
-        @if ((esRolAdministrativo || tieneOrdenGenerada) && puedeTecnica)
+        @if (puedeTecnica)
         {
             <div class="nav-group mb-4">
                 <div class="group-title text-info">
@@ -189,7 +202,7 @@
         }
 
         @* ===================== FINANCIERO (solo si la orden ya está generada) ===================== *@
-        @if ((esRolAdministrativo || tieneOrdenGenerada) && puedeFinanciero)
+        @if (puedeFinanciero)
         {
             <div class="nav-group mb-4">
                 <div class="group-title text-success">
@@ -204,7 +217,7 @@
         }
 
         @* ===================== COORDINACIÓN LEGAL (solo si la orden ya está generada) ===================== *@
-        @if ((esRolAdministrativo || tieneOrdenGenerada) && puedeLegal)
+        @if (puedeLegal)
         {
             <div class="nav-group mb-4">
                 <div class="group-title text-purple">
@@ -235,7 +248,7 @@
         }
 
         @* ===================== DIRECCIÓN / JEFATURA (solo si la orden ya está generada) ===================== *@
-        @if ((esRolAdministrativo || tieneOrdenGenerada) && puedeDireccion)
+        @if (puedeDireccion)
         {
             <div class="nav-group mb-4">
                 <div class="group-title text-danger">
@@ -245,6 +258,28 @@
                     <li><a class="aocr-link" href="@Url.Action("DashboardGerencial", "Direccion")"><i class="fas fa-chart-line text-white-50 mr-2"></i> Dashboard Gerencial</a></li>
                     <li><a class="aocr-link" href="@Url.Action("AprobarSolicitudes", "Direccion")"><i class="fas fa-check-double text-white-50 mr-2"></i> Aprobar Solicitudes</a></li>
                     <li><a class="aocr-link" href="@Url.Action("ConfiguracionSistema", "Administrador")"><i class="fas fa-cogs text-white-50 mr-2"></i> Configuración Sistema</a></li>
+                </ul>
+            </div>
+        }
+
+        @* ===================== ADMINISTRACIÓN ===================== *@
+        @if (puedeAdministracion)
+        {
+            <div class="nav-group mb-4">
+                <div class="group-title text-warning">
+                    <i class="fas fa-user-cog mr-1"></i> ADMINISTRACIÓN
+                </div>
+                <ul class="aocr-nav">
+                    <li>
+                        <a class="aocr-link" href="@Url.Action("Index", "AdminUsuarios")">
+                            <i class="fas fa-users-cog text-white-50 mr-2"></i> Gestionar Usuarios
+                        </a>
+                    </li>
+                    <li>
+                        <a class="aocr-link" href="@Url.Action("PermisosRol", "AdminUsuarios")">
+                            <i class="fas fa-shield-alt text-white-50 mr-2"></i> Roles y Permisos
+                        </a>
+                    </li>
                 </ul>
             </div>
         }

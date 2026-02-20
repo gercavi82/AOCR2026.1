@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Linq;
 using System.Security.Cryptography;
 using System.Text;
@@ -6,165 +6,306 @@ using System.Text;
 namespace CapaNegocio.Helpers
 {
     /// <summary>
-    /// Helper para gestión segura de contraseñas
+    /// Helper de contrasenas con PBKDF2 (compatibilidad legacy SHA256).
+    /// Formato persistido: PBKDF2$sha256$iteraciones$saltBase64$hashBase64
     /// </summary>
     public static class PasswordHelper
     {
-        /// <summary>
-        /// Genera un hash de la contraseña usando SHA256
-        /// </summary>
-        /// <param name="password">Contraseña en texto plano</param>
-        /// <returns>Hash de la contraseña</returns>
+        private const int SaltSize = 16;
+        private const int KeySize = 32;
+        private const int Iterations = 100000;
+        private const string Prefix = "PBKDF2$sha256$";
+
         public static string HashPassword(string password)
         {
             if (string.IsNullOrWhiteSpace(password))
-                throw new ArgumentException("La contraseña no puede estar vacía");
-
-            using (SHA256 sha256 = SHA256.Create())
             {
-                byte[] bytes = sha256.ComputeHash(Encoding.UTF8.GetBytes(password));
-
-                StringBuilder builder = new StringBuilder();
-                foreach (byte b in bytes)
-                {
-                    builder.Append(b.ToString("x2"));
-                }
-
-                return builder.ToString();
+                throw new ArgumentException("La contrasena no puede estar vacia");
             }
+
+            var salt = new byte[SaltSize];
+            using (var rng = RandomNumberGenerator.Create())
+            {
+                rng.GetBytes(salt);
+            }
+
+            byte[] key;
+            using (var pbkdf2 = new Rfc2898DeriveBytes(password, salt, Iterations, HashAlgorithmName.SHA256))
+            {
+                key = pbkdf2.GetBytes(KeySize);
+            }
+
+            return string.Format(
+                "{0}{1}${2}${3}",
+                Prefix,
+                Iterations,
+                Convert.ToBase64String(salt),
+                Convert.ToBase64String(key));
         }
 
-        /// <summary>
-        /// Verifica si una contraseña coincide con su hash
-        /// </summary>
-        /// <param name="password">Contraseña en texto plano</param>
-        /// <param name="hash">Hash almacenado</param>
-        /// <returns>True si coinciden</returns>
         public static bool VerifyPassword(string password, string hash)
         {
             if (string.IsNullOrWhiteSpace(password) || string.IsNullOrWhiteSpace(hash))
+            {
                 return false;
+            }
 
-            string hashOfInput = HashPassword(password);
+            if (EsHashPbkdf2(hash))
+            {
+                return VerifyPbkdf2(password, hash);
+            }
 
-            return StringComparer.OrdinalIgnoreCase.Compare(hashOfInput, hash) == 0;
+            // Compatibilidad con hashes legacy SHA256.
+            return VerifyLegacySha256(password, hash);
         }
 
-        /// <summary>
-        /// Genera una contraseña aleatoria segura
-        /// </summary>
-        /// <param name="longitud">Longitud de la contraseña (mínimo 8)</param>
-        /// <returns>Contraseña generada</returns>
+        public static bool NeedsRehash(string hash)
+        {
+            if (!EsHashPbkdf2(hash))
+            {
+                return true;
+            }
+
+            int iterations = ParseIterations(hash);
+            return iterations > 0 && iterations < Iterations;
+        }
+
         public static string GenerarPasswordAleatoria(int longitud = 12)
         {
             if (longitud < 8)
+            {
                 longitud = 8;
+            }
 
             const string mayusculas = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
             const string minusculas = "abcdefghijklmnopqrstuvwxyz";
             const string numeros = "0123456789";
             const string especiales = "!@#$%^&*";
-            const string todos = mayusculas + minusculas + numeros + especiales;
+            var todos = mayusculas + minusculas + numeros + especiales;
 
-            StringBuilder password = new StringBuilder();
-            Random random = new Random();
+            var password = new char[longitud];
+            password[0] = RandomChar(mayusculas);
+            password[1] = RandomChar(minusculas);
+            password[2] = RandomChar(numeros);
+            password[3] = RandomChar(especiales);
 
-            // Asegurar al menos un carácter de cada tipo
-            password.Append(mayusculas[random.Next(mayusculas.Length)]);
-            password.Append(minusculas[random.Next(minusculas.Length)]);
-            password.Append(numeros[random.Next(numeros.Length)]);
-            password.Append(especiales[random.Next(especiales.Length)]);
-
-            // Completar con caracteres aleatorios
-            for (int i = 4; i < longitud; i++)
+            for (var i = 4; i < longitud; i++)
             {
-                password.Append(todos[random.Next(todos.Length)]);
+                password[i] = RandomChar(todos);
             }
 
-            // Mezclar los caracteres
-            return new string(password.ToString().OrderBy(x => random.Next()).ToArray());
+            Shuffle(password);
+            return new string(password);
         }
 
-        /// <summary>
-        /// Valida la fortaleza de una contraseña
-        /// </summary>
-        /// <param name="password">Contraseña a validar</param>
-        /// <returns>Tupla con resultado y mensaje</returns>
         public static (bool esValida, string mensaje) ValidarFortaleza(string password)
         {
             if (string.IsNullOrWhiteSpace(password))
-                return (false, "La contraseña no puede estar vacía");
-
-            if (password.Length < 6)
-                return (false, "La contraseña debe tener al menos 6 caracteres");
-
-            if (password.Length > 50)
-                return (false, "La contraseña no puede exceder 50 caracteres");
-
-            if (!password.Any(char.IsUpper))
-                return (false, "La contraseña debe contener al menos una letra mayúscula");
-
-            if (!password.Any(char.IsLower))
-                return (false, "La contraseña debe contener al menos una letra minúscula");
-
-            if (!password.Any(char.IsDigit))
-                return (false, "La contraseña debe contener al menos un número");
-
-            // Validaciones adicionales opcionales
-            if (password.Length >= 8)
             {
-                if (!password.Any(c => "!@#$%^&*()_+-=[]{}|;:,.<>?".Contains(c)))
-                    return (true, "Contraseña fuerte (recomendado agregar caracteres especiales)");
+                return (false, "La contrasena no puede estar vacia.");
             }
 
-            return (true, "Contraseña válida");
+            if (password.Length < 8)
+            {
+                return (false, "La contrasena debe tener al menos 8 caracteres.");
+            }
+
+            if (password.Length > 128)
+            {
+                return (false, "La contrasena no puede exceder 128 caracteres.");
+            }
+
+            if (!password.Any(char.IsUpper))
+            {
+                return (false, "La contrasena debe contener al menos una letra mayuscula.");
+            }
+
+            if (!password.Any(char.IsLower))
+            {
+                return (false, "La contrasena debe contener al menos una letra minuscula.");
+            }
+
+            if (!password.Any(char.IsDigit))
+            {
+                return (false, "La contrasena debe contener al menos un numero.");
+            }
+
+            if (!password.Any(c => "!@#$%^&*()_+-=[]{}|;:,.<>?".Contains(c)))
+            {
+                return (false, "La contrasena debe contener al menos un caracter especial.");
+            }
+
+            return (true, "Contrasena valida.");
         }
 
-        /// <summary>
-        /// Calcula el nivel de fortaleza de una contraseña (0-100)
-        /// </summary>
-        /// <param name="password">Contraseña a evaluar</param>
-        /// <returns>Puntuación de 0 a 100</returns>
         public static int CalcularNivelFortaleza(string password)
         {
             if (string.IsNullOrWhiteSpace(password))
+            {
                 return 0;
+            }
 
-            int puntuacion = 0;
+            var puntuacion = 0;
 
-            // Longitud
             if (password.Length >= 8) puntuacion += 20;
-            else if (password.Length >= 6) puntuacion += 10;
-
-            if (password.Length >= 12) puntuacion += 10;
+            if (password.Length >= 12) puntuacion += 20;
             if (password.Length >= 16) puntuacion += 10;
 
-            // Complejidad
             if (password.Any(char.IsUpper)) puntuacion += 15;
             if (password.Any(char.IsLower)) puntuacion += 15;
-            if (password.Any(char.IsDigit)) puntuacion += 15;
-            if (password.Any(c => "!@#$%^&*()_+-=[]{}|;:,.<>?".Contains(c))) puntuacion += 15;
+            if (password.Any(char.IsDigit)) puntuacion += 10;
+            if (password.Any(c => "!@#$%^&*()_+-=[]{}|;:,.<>?".Contains(c))) puntuacion += 10;
 
             return Math.Min(puntuacion, 100);
         }
 
-        /// <summary>
-        /// Genera un token aleatorio para recuperación de contraseña
-        /// </summary>
-        /// <param name="longitud">Longitud del token</param>
-        /// <returns>Token generado</returns>
         public static string GenerarTokenRecuperacion(int longitud = 32)
         {
-            const string caracteres = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
-            StringBuilder token = new StringBuilder();
-            Random random = new Random();
-
-            for (int i = 0; i < longitud; i++)
+            if (longitud < 16)
             {
-                token.Append(caracteres[random.Next(caracteres.Length)]);
+                longitud = 16;
             }
 
-            return token.ToString();
+            const string caracteres = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+            var token = new char[longitud];
+            for (var i = 0; i < longitud; i++)
+            {
+                token[i] = RandomChar(caracteres);
+            }
+
+            return new string(token);
+        }
+
+        private static bool EsHashPbkdf2(string hash)
+        {
+            return !string.IsNullOrWhiteSpace(hash) &&
+                   hash.StartsWith(Prefix, StringComparison.OrdinalIgnoreCase);
+        }
+
+        private static bool VerifyPbkdf2(string password, string hash)
+        {
+            try
+            {
+                var parts = hash.Split('$');
+                if (parts.Length != 5)
+                {
+                    return false;
+                }
+
+                var iterations = int.Parse(parts[2]);
+                var salt = Convert.FromBase64String(parts[3]);
+                var expected = Convert.FromBase64String(parts[4]);
+
+                byte[] actual;
+                using (var pbkdf2 = new Rfc2898DeriveBytes(password, salt, iterations, HashAlgorithmName.SHA256))
+                {
+                    actual = pbkdf2.GetBytes(expected.Length);
+                }
+
+                return SlowEquals(expected, actual);
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        private static bool VerifyLegacySha256(string password, string hash)
+        {
+            string calculated;
+            using (var sha = SHA256.Create())
+            {
+                var bytes = sha.ComputeHash(Encoding.UTF8.GetBytes(password));
+                var sb = new StringBuilder(bytes.Length * 2);
+                foreach (var b in bytes)
+                {
+                    sb.Append(b.ToString("x2"));
+                }
+
+                calculated = sb.ToString();
+            }
+
+            return string.Equals(calculated, hash, StringComparison.OrdinalIgnoreCase);
+        }
+
+        private static int ParseIterations(string hash)
+        {
+            try
+            {
+                var parts = hash.Split('$');
+                if (parts.Length < 3)
+                {
+                    return 0;
+                }
+
+                int it;
+                return int.TryParse(parts[2], out it) ? it : 0;
+            }
+            catch
+            {
+                return 0;
+            }
+        }
+
+        private static bool SlowEquals(byte[] a, byte[] b)
+        {
+            if (a == null || b == null || a.Length != b.Length)
+            {
+                return false;
+            }
+
+            var diff = 0;
+            for (var i = 0; i < a.Length; i++)
+            {
+                diff |= a[i] ^ b[i];
+            }
+
+            return diff == 0;
+        }
+
+        private static char RandomChar(string alphabet)
+        {
+            if (string.IsNullOrEmpty(alphabet))
+            {
+                return 'A';
+            }
+
+            var index = NextSecureInt(alphabet.Length);
+            return alphabet[index];
+        }
+
+        private static void Shuffle(char[] chars)
+        {
+            for (var i = chars.Length - 1; i > 0; i--)
+            {
+                var j = NextSecureInt(i + 1);
+                var tmp = chars[i];
+                chars[i] = chars[j];
+                chars[j] = tmp;
+            }
+        }
+
+        private static int NextSecureInt(int maxExclusive)
+        {
+            if (maxExclusive <= 1)
+            {
+                return 0;
+            }
+
+            var bytes = new byte[4];
+            using (var rng = RandomNumberGenerator.Create())
+            {
+                var limite = uint.MaxValue - (uint.MaxValue % (uint)maxExclusive);
+                uint valor;
+
+                do
+                {
+                    rng.GetBytes(bytes);
+                    valor = BitConverter.ToUInt32(bytes, 0);
+                } while (valor >= limite);
+
+                return (int)(valor % (uint)maxExclusive);
+            }
         }
     }
 }

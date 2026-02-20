@@ -145,6 +145,9 @@ namespace CapaPresentacion.Controllers
             // ============================
             Session["UserId"] = usuario.Id;
             Session["IdUsuario"] = usuario.Id;
+            Session["CodigoUsuario"] = !string.IsNullOrWhiteSpace(usuario.CodigoUsuario)
+                ? usuario.CodigoUsuario
+                : usuario.NombreUsuario;
 
             Session["NombreUsuario"] = !string.IsNullOrWhiteSpace(usuario.NombreCompleto)
                 ? usuario.NombreCompleto
@@ -156,13 +159,13 @@ namespace CapaPresentacion.Controllers
             Session["Rol"] = roles.Count > 0 ? roles[0] : null;
             Session["LastActivity"] = DateTime.Now;
 
-            // Forzar cambio de contraseña en primer ingreso
-            if (!usuario.FechaUltimaConexion.HasValue)
+            // Forzar cambio cuando hay marca explicita o cuando la ultima conexion fue limpiada (reset clave).
+            if (usuario.MustChangePassword || !usuario.FechaUltimaConexion.HasValue)
             {
                 return RedirectToAction("CambiarContrasena", "Account");
             }
 
-            // Actualizar última conexión (solo si no es primer ingreso)
+            // Actualizar última conexión después de autenticación normal.
             UsuarioDAO.ActualizarUltimaConexion(usuario.Id);
 
             // ============================

@@ -19,7 +19,7 @@ namespace CapaNegocio
         {
             try
             {
-                usuario.Contrasena = CalcularSHA256(usuario.Contrasena);
+                usuario.Contrasena = PasswordHelper.HashPassword(usuario.Contrasena);
                 int id = UsuarioDAO.Crear(usuario);
                 mensaje = "Usuario registrado exitosamente.";
                 return id;
@@ -173,12 +173,25 @@ namespace CapaNegocio
                 return false;
             }
 
-            // Validar contraseña
-            string contrasenaHash = CalcularSHA256(contrasena);
-            if (!string.Equals(usuario.Contrasena, contrasenaHash, StringComparison.OrdinalIgnoreCase))
+            // Validar contraseña (soporta hash PBKDF2 y legacy SHA256).
+            if (!PasswordHelper.VerifyPassword(contrasena, usuario.Contrasena))
             {
                 mensaje = "Contraseña incorrecta.";
                 return false;
+            }
+
+            // Migracion transparente: si el hash legacy aun existe, se actualiza al formato nuevo.
+            if (PasswordHelper.NeedsRehash(usuario.Contrasena))
+            {
+                try
+                {
+                    string msgInterno;
+                    UsuarioDAO.ActualizarContrasena(usuario.Id, PasswordHelper.HashPassword(contrasena), out msgInterno);
+                }
+                catch
+                {
+                    // No bloquear login si falla la migracion de hash.
+                }
             }
 
             // ERROR CS0117: 'ObtenerRolesPorUsuario' ya no existe.
@@ -189,16 +202,7 @@ namespace CapaNegocio
             // Basado en tu último UsuarioDAO, es 'Id'.
             roles = UsuarioDAO.ObtenerRoles(usuario.Id);
 
-            // Si es el super-administrador 'permanente', forzamos el conjunto completo de roles (no intrusivo en BD).
-            if (!string.IsNullOrWhiteSpace(usuario.Email) &&
-                usuario.Email.Equals("german.cajas@aviacioncivil.gob.ec", StringComparison.OrdinalIgnoreCase))
-            {
-                roles = new List<string>
-                {
-                    "Administrador","Tecnico","Solicitante","Financiero","Inspector",
-                    "JefaturaTecnica","Direccion","CoordinacionLegal"
-                };
-            }
+            // Importante: no forzar roles en memoria. El menú y la autorización deben reflejar solo roles en BD.
 
             if (roles == null || roles.Count == 0)
             {

@@ -834,9 +834,12 @@
 
             function anularOrden(id, numero) {
                 jQuery.ajax({
-                    url: CONFIG.apiUrl + '/Anular',
+                    url: '@Url.Action("AnularAjax", "OrdenRecaudacion")',
                     type: 'POST',
-                    data: { id: id },
+                    data: {
+                        id: id,
+                        __RequestVerificationToken: jQuery('input[name="__RequestVerificationToken"]').first().val()
+                    },
                     dataType: 'json'
                 })
                 .done(function(response) {

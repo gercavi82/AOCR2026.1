@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Data;
 using System.Linq;
+using System.Net;
 using System.Threading.Tasks;
 using Npgsql;
 using Dapper;
@@ -10,6 +11,7 @@ using CapaDatos.Constants;
 using CapaDatos.Interfaces;
 using CapaDatos.Infrastructure;
 using CapaDatos.Models;
+using CapaDatos.Services;
 using CapaModelo.DTOs;
 using DetalleOrdenEnt = CapaDatos.Entidades.DetalleOrden;
 
@@ -1863,6 +1865,592 @@ namespace CapaDatos.DAOs
             }
         }
 
+        public bool AprobarPagoConFacturaTransaccional(
+            int ordenId,
+            int? pagoId,
+            string usuarioAprobador,
+            string numeroFactura,
+            string autorizacionFactura,
+            DateTime fechaEmision,
+            decimal subtotal,
+            decimal iva,
+            decimal total,
+            string observaciones,
+            string fileName,
+            string contentType,
+            long fileSize,
+            string filePath,
+            out string err,
+            out bool idempotente,
+            out string advertencia)
+        {
+            err = null;
+            advertencia = null;
+            idempotente = false;
+
+            if (ordenId <= 0)
+            {
+                err = "Orden inválida.";
+                return false;
+            }
+
+            if (string.IsNullOrWhiteSpace(numeroFactura))
+            {
+                err = "El número de factura es obligatorio.";
+                return false;
+            }
+
+            if (string.IsNullOrWhiteSpace(filePath) || string.IsNullOrWhiteSpace(fileName))
+            {
+                err = "Debe adjuntar una factura válida.";
+                return false;
+            }
+
+            if (total <= 0m)
+            {
+                err = "El total de la factura debe ser mayor a cero.";
+                return false;
+            }
+
+            try
+            {
+                using (var conn = new NpgsqlConnection(_connectionString))
+                {
+                    conn.Open();
+                    using (var tx = conn.BeginTransaction())
+                    {
+                        EnsureFacturacionSchema(conn, tx);
+
+                        string numeroOrden = null;
+                        string estadoOrden = null;
+                        string correoDestino = null;
+                        string nombreDestino = null;
+                        string observacionActual = null;
+                        int codigoSolicitud = 0;
+                        decimal totalOrden = total;
+
+                        const string sqlOrden = @"
+                            SELECT id, numero_orden, estado, codigo_solicitud, correo, compania, observacion, total
+                            FROM aocr_or_orden
+                            WHERE id = @orden_id
+                            FOR UPDATE";
+
+                        using (var cmdOrden = new NpgsqlCommand(sqlOrden, conn, tx))
+                        {
+                            cmdOrden.Parameters.AddWithValue("@orden_id", ordenId);
+                            using (var reader = cmdOrden.ExecuteReader())
+                            {
+                                if (!reader.Read())
+                                {
+                                    tx.Rollback();
+                                    err = "No se encontró la orden especificada.";
+                                    return false;
+                                }
+
+                                numeroOrden = reader["numero_orden"] != DBNull.Value ? reader["numero_orden"].ToString() : null;
+                                estadoOrden = reader["estado"] != DBNull.Value ? reader["estado"].ToString() : null;
+                                correoDestino = reader["correo"] != DBNull.Value ? reader["correo"].ToString() : null;
+                                nombreDestino = reader["compania"] != DBNull.Value ? reader["compania"].ToString() : null;
+                                observacionActual = reader["observacion"] != DBNull.Value ? reader["observacion"].ToString() : null;
+                                if (reader["codigo_solicitud"] != DBNull.Value)
+                                {
+                                    codigoSolicitud = ParseIntOrDefault(reader["codigo_solicitud"].ToString());
+                                }
+                                if (reader["total"] != DBNull.Value)
+                                {
+                                    totalOrden = Convert.ToDecimal(reader["total"]);
+                                }
+                            }
+                        }
+
+                        if (codigoSolicitud <= 0)
+                        {
+                            codigoSolicitud = ordenId;
+                        }
+
+                        var estadoNormalizado = (estadoOrden ?? string.Empty).Trim().ToUpperInvariant().Replace(" ", "_");
+                        if (EstadoOrden.EsPagado(estadoNormalizado))
+                        {
+                            idempotente = true;
+                            tx.Commit();
+                            return true;
+                        }
+
+                        var esPendiente = !string.IsNullOrWhiteSpace(estadoNormalizado) && estadoNormalizado.StartsWith("PENDIENTE");
+                        if (estadoNormalizado != "PROCESADA" && !esPendiente)
+                        {
+                            tx.Rollback();
+                            err = "La orden no está en un estado válido para aprobar el pago.";
+                            return false;
+                        }
+
+                        int pagoObjetivoId = pagoId.HasValue ? pagoId.Value : 0;
+                        if (pagoObjetivoId > 0)
+                        {
+                            const string sqlPagoById = @"SELECT codigo_pago FROM aocr_tbpago WHERE codigo_pago = @pago_id FOR UPDATE";
+                            using (var cmdPago = new NpgsqlCommand(sqlPagoById, conn, tx))
+                            {
+                                cmdPago.Parameters.AddWithValue("@pago_id", pagoObjetivoId);
+                                var existePago = cmdPago.ExecuteScalar();
+                                if (existePago == null || existePago == DBNull.Value)
+                                {
+                                    tx.Rollback();
+                                    err = "No se encontró el pago especificado.";
+                                    return false;
+                                }
+                            }
+                        }
+                        else
+                        {
+                            const string sqlPago = @"
+                                SELECT codigo_pago
+                                FROM aocr_tbpago
+                                WHERE codigo_solicitud = @orden_id
+                                   OR codigo_solicitud = @codigo_solicitud
+                                ORDER BY fecha_pago DESC, codigo_pago DESC
+                                LIMIT 1
+                                FOR UPDATE";
+                            using (var cmdPago = new NpgsqlCommand(sqlPago, conn, tx))
+                            {
+                                cmdPago.Parameters.AddWithValue("@orden_id", ordenId);
+                                cmdPago.Parameters.AddWithValue("@codigo_solicitud", codigoSolicitud);
+                                var valorPago = cmdPago.ExecuteScalar();
+                                if (valorPago == null || valorPago == DBNull.Value)
+                                {
+                                    pagoObjetivoId = CrearPagoValidadoDesdeOrden(
+                                        conn,
+                                        tx,
+                                        codigoSolicitud,
+                                        numeroFactura,
+                                        totalOrden > 0m ? totalOrden : total,
+                                        usuarioAprobador,
+                                        observaciones,
+                                        filePath);
+                                }
+                                else
+                                {
+                                    pagoObjetivoId = Convert.ToInt32(valorPago);
+                                }
+                            }
+                        }
+
+                        const string sqlFacturaExistente = @"
+                            SELECT id
+                            FROM aocr_tb_factura_pago
+                            WHERE orden_id = @orden_id OR pago_id = @pago_id
+                            LIMIT 1
+                            FOR UPDATE";
+                        using (var cmdFacturaExistente = new NpgsqlCommand(sqlFacturaExistente, conn, tx))
+                        {
+                            cmdFacturaExistente.Parameters.AddWithValue("@orden_id", ordenId);
+                            cmdFacturaExistente.Parameters.AddWithValue("@pago_id", pagoObjetivoId);
+                            var facturaExistente = cmdFacturaExistente.ExecuteScalar();
+                            if (facturaExistente != null && facturaExistente != DBNull.Value)
+                            {
+                                idempotente = true;
+                                tx.Commit();
+                                return true;
+                            }
+                        }
+
+                        const string sqlInsertFactura = @"
+                            INSERT INTO aocr_tb_factura_pago
+                            (
+                                orden_id,
+                                pago_id,
+                                numero_factura,
+                                autorizacion_factura,
+                                fecha_emision,
+                                subtotal,
+                                iva,
+                                total,
+                                observaciones,
+                                file_name,
+                                content_type,
+                                file_size,
+                                file_path,
+                                creado_por,
+                                creado_en
+                            )
+                            VALUES
+                            (
+                                @orden_id,
+                                @pago_id,
+                                @numero_factura,
+                                @autorizacion_factura,
+                                @fecha_emision,
+                                @subtotal,
+                                @iva,
+                                @total,
+                                @observaciones,
+                                @file_name,
+                                @content_type,
+                                @file_size,
+                                @file_path,
+                                @creado_por,
+                                NOW()
+                            )";
+
+                        using (var cmdInsertFactura = new NpgsqlCommand(sqlInsertFactura, conn, tx))
+                        {
+                            cmdInsertFactura.Parameters.AddWithValue("@orden_id", ordenId);
+                            cmdInsertFactura.Parameters.AddWithValue("@pago_id", pagoObjetivoId);
+                            cmdInsertFactura.Parameters.AddWithValue("@numero_factura", numeroFactura.Trim());
+                            cmdInsertFactura.Parameters.AddWithValue("@autorizacion_factura", (object)(autorizacionFactura ?? string.Empty));
+                            cmdInsertFactura.Parameters.AddWithValue("@fecha_emision", fechaEmision);
+                            cmdInsertFactura.Parameters.AddWithValue("@subtotal", subtotal);
+                            cmdInsertFactura.Parameters.AddWithValue("@iva", iva);
+                            cmdInsertFactura.Parameters.AddWithValue("@total", total);
+                            cmdInsertFactura.Parameters.AddWithValue("@observaciones", (object)(observaciones ?? string.Empty));
+                            cmdInsertFactura.Parameters.AddWithValue("@file_name", fileName);
+                            cmdInsertFactura.Parameters.AddWithValue("@content_type", contentType ?? "application/octet-stream");
+                            cmdInsertFactura.Parameters.AddWithValue("@file_size", fileSize);
+                            cmdInsertFactura.Parameters.AddWithValue("@file_path", filePath);
+                            cmdInsertFactura.Parameters.AddWithValue("@creado_por", (object)(usuarioAprobador ?? "FINANCIERO"));
+
+                            var rowsFactura = cmdInsertFactura.ExecuteNonQuery();
+                            if (rowsFactura <= 0)
+                            {
+                                tx.Rollback();
+                                err = "No se pudo registrar la factura.";
+                                return false;
+                            }
+                        }
+
+                        const string sqlUpdatePago = @"
+                            UPDATE aocr_tbpago
+                            SET
+                                estado = @estado,
+                                fecha_validacion = @fecha_validacion,
+                                validado_por = @validado_por,
+                                observaciones = CASE
+                                    WHEN @observaciones IS NULL OR TRIM(@observaciones) = '' THEN observaciones
+                                    ELSE @observaciones
+                                END
+                            WHERE codigo_pago = @pago_id";
+                        using (var cmdUpdatePago = new NpgsqlCommand(sqlUpdatePago, conn, tx))
+                        {
+                            cmdUpdatePago.Parameters.AddWithValue("@estado", EstadoPago.Validado);
+                            cmdUpdatePago.Parameters.AddWithValue("@fecha_validacion", DateTime.Now);
+                            cmdUpdatePago.Parameters.AddWithValue("@validado_por", (object)(usuarioAprobador ?? "FINANCIERO"));
+                            cmdUpdatePago.Parameters.AddWithValue("@observaciones", (object)(observaciones ?? string.Empty));
+                            cmdUpdatePago.Parameters.AddWithValue("@pago_id", pagoObjetivoId);
+
+                            var rowsPago = cmdUpdatePago.ExecuteNonQuery();
+                            if (rowsPago <= 0)
+                            {
+                                tx.Rollback();
+                                err = "No se pudo actualizar el estado del pago.";
+                                return false;
+                            }
+                        }
+
+                        var notaAprobacion = string.Format(
+                            "Pago aprobado con factura {0} ({1:dd/MM/yyyy}).",
+                            numeroFactura.Trim(),
+                            fechaEmision);
+                        var observacionFinal = string.IsNullOrWhiteSpace(observacionActual)
+                            ? notaAprobacion
+                            : observacionActual + " | " + notaAprobacion;
+
+                        const string sqlUpdateOrden = @"
+                            UPDATE aocr_or_orden
+                            SET
+                                estado = @estado,
+                                observacion = @observacion
+                            WHERE id = @orden_id";
+                        using (var cmdUpdateOrden = new NpgsqlCommand(sqlUpdateOrden, conn, tx))
+                        {
+                            cmdUpdateOrden.Parameters.AddWithValue("@estado", EstadoOrden.Facturada);
+                            cmdUpdateOrden.Parameters.AddWithValue("@observacion", observacionFinal);
+                            cmdUpdateOrden.Parameters.AddWithValue("@orden_id", ordenId);
+
+                            var rowsOrden = cmdUpdateOrden.ExecuteNonQuery();
+                            if (rowsOrden <= 0)
+                            {
+                                tx.Rollback();
+                                err = "No se pudo actualizar el estado de la orden.";
+                                return false;
+                            }
+                        }
+
+                        var eventKey = string.Format("ORDEN_{0}_FACTURA_REGISTRADA", ordenId);
+                        var asuntoCorreo = string.Format("Factura registrada - Orden {0}", numeroOrden ?? ordenId.ToString());
+                        var cuerpoCorreo = ConstruirCorreoFacturaRegistrada(
+                            nombreDestino,
+                            numeroOrden,
+                            numeroFactura,
+                            fechaEmision,
+                            total,
+                            observaciones);
+
+                        var queueService = new EmailQueueService(_connectionString);
+                        bool duplicateEvent;
+
+                        if (string.IsNullOrWhiteSpace(correoDestino))
+                        {
+                            advertencia = "La orden no tiene correo del solicitante. Se registró el pago, pero el correo quedó en ERROR.";
+                            var queueItemError = new EmailQueueItem
+                            {
+                                Para = "no-email@invalid.local",
+                                Asunto = asuntoCorreo,
+                                Cuerpo = cuerpoCorreo,
+                                Estado = "ERROR",
+                                OrdenId = codigoSolicitud,
+                                EventKey = eventKey
+                            };
+
+                            queueService.EncolarConAdjuntosEnTransaccion(
+                                conn,
+                                tx,
+                                queueItemError,
+                                null,
+                                out duplicateEvent);
+                        }
+                        else
+                        {
+                            var queueItem = new EmailQueueItem
+                            {
+                                Para = correoDestino.Trim(),
+                                ParaNombre = string.IsNullOrWhiteSpace(nombreDestino) ? "Solicitante" : nombreDestino.Trim(),
+                                Asunto = asuntoCorreo,
+                                Cuerpo = cuerpoCorreo,
+                                Estado = "PENDIENTE",
+                                OrdenId = codigoSolicitud,
+                                EventKey = eventKey
+                            };
+
+                            var adjunto = new EmailAttachmentItem
+                            {
+                                FileName = fileName,
+                                ContentType = string.IsNullOrWhiteSpace(contentType) ? "application/octet-stream" : contentType,
+                                FilePath = filePath,
+                                FileSize = fileSize
+                            };
+
+                            queueService.EncolarConAdjuntosEnTransaccion(
+                                conn,
+                                tx,
+                                queueItem,
+                                new[] { adjunto },
+                                out duplicateEvent);
+                        }
+
+                        tx.Commit();
+                        return true;
+                    }
+                }
+            }
+            catch (PostgresException pgEx)
+            {
+                if (pgEx.SqlState == "23505" &&
+                    (string.Equals(pgEx.ConstraintName, "uq_aocr_tb_factura_pago_orden", StringComparison.OrdinalIgnoreCase) ||
+                     string.Equals(pgEx.ConstraintName, "uq_aocr_tb_factura_pago_pago", StringComparison.OrdinalIgnoreCase)))
+                {
+                    idempotente = true;
+                    return true;
+                }
+
+                err = pgEx.MessageText ?? pgEx.Message;
+                _logger.LogError(pgEx, "Error en AprobarPagoConFacturaTransaccional");
+                return false;
+            }
+            catch (Exception ex)
+            {
+                err = ex.Message;
+                _logger.LogError(ex, "Error en AprobarPagoConFacturaTransaccional");
+                return false;
+            }
+        }
+
+        private static void EnsureFacturacionSchema(NpgsqlConnection conn, NpgsqlTransaction tx)
+        {
+            const string sql = @"
+                CREATE TABLE IF NOT EXISTS public.aocr_tb_factura_pago (
+                    id SERIAL PRIMARY KEY,
+                    orden_id INTEGER NOT NULL,
+                    pago_id INTEGER,
+                    numero_factura VARCHAR(80) NOT NULL,
+                    autorizacion_factura VARCHAR(80),
+                    fecha_emision DATE NOT NULL,
+                    subtotal NUMERIC(18,2) NOT NULL,
+                    iva NUMERIC(18,2) NOT NULL,
+                    total NUMERIC(18,2) NOT NULL,
+                    observaciones TEXT,
+                    file_name VARCHAR(255) NOT NULL,
+                    content_type VARCHAR(120) NOT NULL,
+                    file_size BIGINT NOT NULL,
+                    file_path TEXT NOT NULL,
+                    creado_por VARCHAR(120),
+                    creado_en TIMESTAMP NOT NULL DEFAULT NOW()
+                );
+
+                DO $$
+                BEGIN
+                    IF NOT EXISTS (
+                        SELECT 1 FROM pg_constraint WHERE conname = 'uq_aocr_tb_factura_pago_orden'
+                    ) THEN
+                        ALTER TABLE public.aocr_tb_factura_pago
+                        ADD CONSTRAINT uq_aocr_tb_factura_pago_orden UNIQUE (orden_id);
+                    END IF;
+
+                    IF NOT EXISTS (
+                        SELECT 1 FROM pg_constraint WHERE conname = 'uq_aocr_tb_factura_pago_pago'
+                    ) THEN
+                        ALTER TABLE public.aocr_tb_factura_pago
+                        ADD CONSTRAINT uq_aocr_tb_factura_pago_pago UNIQUE (pago_id);
+                    END IF;
+                END
+                $$;
+
+                CREATE INDEX IF NOT EXISTS idx_aocr_tb_factura_pago_orden_id
+                    ON public.aocr_tb_factura_pago(orden_id);
+
+                CREATE INDEX IF NOT EXISTS idx_aocr_tb_factura_pago_fecha_emision
+                    ON public.aocr_tb_factura_pago(fecha_emision);
+
+                ALTER TABLE public.email_queue ADD COLUMN IF NOT EXISTS event_key VARCHAR(200);
+                ALTER TABLE public.email_queue ADD COLUMN IF NOT EXISTS error_message TEXT;
+                ALTER TABLE public.email_queue ADD COLUMN IF NOT EXISTS intentos INTEGER NOT NULL DEFAULT 0;
+                ALTER TABLE public.email_queue ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP;
+
+                CREATE UNIQUE INDEX IF NOT EXISTS uq_email_queue_event_key
+                    ON public.email_queue(event_key)
+                    WHERE event_key IS NOT NULL;
+
+                CREATE TABLE IF NOT EXISTS public.email_attachment (
+                    id SERIAL PRIMARY KEY,
+                    email_queue_id INTEGER NOT NULL,
+                    file_name VARCHAR(255) NOT NULL,
+                    content_type VARCHAR(120) NOT NULL,
+                    file_path TEXT NOT NULL,
+                    file_size BIGINT,
+                    created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+                    CONSTRAINT fk_email_attachment_queue
+                        FOREIGN KEY (email_queue_id) REFERENCES public.email_queue(id) ON DELETE CASCADE
+                );
+
+                CREATE INDEX IF NOT EXISTS idx_email_attachment_queue_id
+                    ON public.email_attachment(email_queue_id);";
+
+            using (var cmd = new NpgsqlCommand(sql, conn, tx))
+            {
+                cmd.ExecuteNonQuery();
+            }
+        }
+
+        private static int CrearPagoValidadoDesdeOrden(
+            NpgsqlConnection conn,
+            NpgsqlTransaction tx,
+            int codigoSolicitud,
+            string numeroFactura,
+            decimal monto,
+            string usuarioAprobador,
+            string observaciones,
+            string comprobanteRuta)
+        {
+            const string sqlInsertPago = @"
+                INSERT INTO aocr_tbpago
+                (
+                    codigo_solicitud,
+                    numero_factura,
+                    monto,
+                    moneda,
+                    concepto,
+                    metodo_pago,
+                    estado,
+                    fecha_pago,
+                    fecha_validacion,
+                    validado_por,
+                    observaciones,
+                    comprobante_ruta
+                )
+                VALUES
+                (
+                    @codigo_solicitud,
+                    @numero_factura,
+                    @monto,
+                    'USD',
+                    'Aprobacion financiera con registro de factura',
+                    'NO_ESPECIFICADO',
+                    @estado,
+                    NOW(),
+                    NOW(),
+                    @validado_por,
+                    @observaciones,
+                    @comprobante_ruta
+                )
+                RETURNING codigo_pago";
+
+            var montoPago = monto > 0m ? monto : 0.01m;
+            var observacionPago = string.IsNullOrWhiteSpace(observaciones)
+                ? "Pago registrado automaticamente al aprobar factura."
+                : observaciones;
+
+            using (var cmd = new NpgsqlCommand(sqlInsertPago, conn, tx))
+            {
+                cmd.Parameters.AddWithValue("@codigo_solicitud", codigoSolicitud);
+                cmd.Parameters.AddWithValue("@numero_factura", (object)(numeroFactura ?? string.Empty));
+                cmd.Parameters.AddWithValue("@monto", montoPago);
+                cmd.Parameters.AddWithValue("@estado", EstadoPago.Validado);
+                cmd.Parameters.AddWithValue("@validado_por", (object)(usuarioAprobador ?? "FINANCIERO"));
+                cmd.Parameters.AddWithValue("@observaciones", (object)observacionPago);
+                cmd.Parameters.AddWithValue("@comprobante_ruta", (object)(comprobanteRuta ?? string.Empty));
+
+                var valor = cmd.ExecuteScalar();
+                if (valor == null || valor == DBNull.Value)
+                {
+                    throw new InvalidOperationException("No se pudo crear un registro de pago para la orden.");
+                }
+
+                return Convert.ToInt32(valor);
+            }
+        }
+
+        private string ConstruirCorreoFacturaRegistrada(
+            string nombreDestino,
+            string numeroOrden,
+            string numeroFactura,
+            DateTime fechaEmision,
+            decimal total,
+            string observaciones)
+        {
+            var nombre = WebUtility.HtmlEncode(string.IsNullOrWhiteSpace(nombreDestino) ? "Solicitante" : nombreDestino.Trim());
+            var orden = WebUtility.HtmlEncode(string.IsNullOrWhiteSpace(numeroOrden) ? "N/A" : numeroOrden.Trim());
+            var factura = WebUtility.HtmlEncode(string.IsNullOrWhiteSpace(numeroFactura) ? "N/A" : numeroFactura.Trim());
+            var fecha = WebUtility.HtmlEncode(fechaEmision.ToString("dd/MM/yyyy"));
+            var totalFmt = WebUtility.HtmlEncode(total.ToString("N2"));
+            var obs = WebUtility.HtmlEncode(string.IsNullOrWhiteSpace(observaciones) ? "Sin observaciones." : observaciones.Trim());
+
+            return string.Format(@"
+<!DOCTYPE html>
+<html>
+<head><meta charset='utf-8'></head>
+<body style='font-family: Arial, sans-serif; margin:0; padding:20px; background:#f5f7fa;'>
+  <div style='max-width:680px; margin:0 auto; background:#fff; border:1px solid #d7dde6; border-radius:8px; padding:24px;'>
+    <h2 style='margin-top:0; color:#1f3a5f;'>Confirmación de factura registrada</h2>
+    <p>Estimado/a <strong>{0}</strong>,</p>
+    <p>Se confirma el registro de su factura para la orden <strong>{1}</strong>.</p>
+    <table style='width:100%; border-collapse:collapse; margin:16px 0;'>
+      <tr><td style='padding:6px 0;'><strong>Número de factura:</strong></td><td style='padding:6px 0;'>{2}</td></tr>
+      <tr><td style='padding:6px 0;'><strong>Fecha de emisión:</strong></td><td style='padding:6px 0;'>{3}</td></tr>
+      <tr><td style='padding:6px 0;'><strong>Total:</strong></td><td style='padding:6px 0;'>${4}</td></tr>
+      <tr><td style='padding:6px 0; vertical-align:top;'><strong>Observaciones:</strong></td><td style='padding:6px 0;'>{5}</td></tr>
+    </table>
+    <p>Factura adjunta a este correo.</p>
+    <hr style='margin:18px 0; border:none; border-top:1px solid #e6eaf0;' />
+    <p style='font-size:12px; color:#6b7280; margin:0;'>Mensaje automático del sistema AOCR.</p>
+  </div>
+</body>
+</html>",
+                nombre,
+                orden,
+                factura,
+                fecha,
+                totalFmt,
+                obs);
+        }
+
         public Dictionary<string, object> ObtenerEstadisticas(int codigoUsuario)
         {
             var estadisticas = new Dictionary<string, object>();
@@ -2518,6 +3106,7 @@ namespace CapaDatos.DAOs
         #endregion
     }
 }
+
 
 
 

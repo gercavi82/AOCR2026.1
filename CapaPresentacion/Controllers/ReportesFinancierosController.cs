@@ -5,6 +5,7 @@ using System.Linq;
 using System.Web.Mvc;
 using CapaModelo.ReportesFinancieros;
 using CapaNegocio;
+using CapaNegocio.Helpers;
 using CapaPresentacion.Models.ViewModels;
 using ClosedXML.Excel;
 using Rotativa;
@@ -113,7 +114,8 @@ namespace CapaPresentacion.Controllers
                 FileName = "ReporteFinanciero_" + DateTime.Now.ToString("yyyyMMdd_HHmmss") + ".pdf",
                 PageSize = Size.A4,
                 PageOrientation = Orientation.Landscape,
-                PageMargins = new Margins(8, 8, 8, 8)
+                PageMargins = new Margins(0, 0, 0, 0),
+                CustomSwitches = PdfBrandingHelper.StandardRotativaSwitches
             };
         }
 

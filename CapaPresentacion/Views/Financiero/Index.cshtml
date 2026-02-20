@@ -135,19 +135,15 @@
 
                         @if (puedeGestionarPorEstado)
                         {
-                            <form method="post"
-                                  action="@Url.Action("AprobarPago", "Financiero")"
-                                  class="d-inline m-0">
-                                @Html.AntiForgeryToken()
-                                <input type="hidden" name="id" value="@orden.Id" />
-                                @if (pago != null)
-                                {
-                                    <input type="hidden" name="pagoId" value="@pago.CodigoPago" />
-                                }
-                                <button type="submit" class="btn btn-success btn-sm btn-accion" title="Aprobar pago">
-                                    <i class="fas fa-check"></i>
-                                </button>
-                            </form>
+                            <button type="button"
+                                    class="btn btn-success btn-sm btn-accion js-abrir-modal-factura"
+                                    title="Aprobar pago"
+                                    data-orden-id="@orden.Id"
+                                    data-pago-id="@(pago != null ? pago.CodigoPago.ToString() : string.Empty)"
+                                    data-numero-orden="@Html.Encode(orden.NumeroOrden)"
+                                    data-monto="@((orden.Total).ToString("0.00", System.Globalization.CultureInfo.InvariantCulture))">
+                                <i class="fas fa-check"></i>
+                            </button>
 
                             <button class="btn btn-danger btn-sm btn-accion" type="button"
                                     title="Rechazar"
@@ -195,9 +191,275 @@
     </tbody>
 </table>
 
+<div class="modal fade" id="modalAprobarPagoFactura" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Aprobar pago y registrar factura</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+            </div>
+            <form id="formAprobarPagoFactura" method="post" enctype="multipart/form-data">
+                @Html.AntiForgeryToken()
+                <input type="hidden" id="factura_orden_id" name="OrdenId" />
+                <input type="hidden" id="factura_pago_id" name="PagoId" />
+                <div class="modal-body">
+                    <div class="mb-2">
+                        <small class="text-muted">Orden:</small>
+                        <div><strong id="factura_numero_orden">-</strong></div>
+                    </div>
 
+                    <div id="facturaModalAlert" class="alert d-none" role="alert"></div>
 
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label">Número de factura *</label>
+                            <input type="text" class="form-control" name="NumeroFactura" id="factura_numero" maxlength="80" required />
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Autorización</label>
+                            <input type="text" class="form-control" name="AutorizacionFactura" id="factura_autorizacion" maxlength="80" />
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Fecha emisión *</label>
+                            <input type="date" class="form-control" name="FechaEmision" id="factura_fecha" required />
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Subtotal *</label>
+                            <input type="number" class="form-control" step="0.01" min="0" name="Subtotal" id="factura_subtotal" required />
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">IVA *</label>
+                            <input type="number" class="form-control" step="0.01" min="0" name="Iva" id="factura_iva" required />
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Total *</label>
+                            <input type="number" class="form-control" step="0.01" min="0.01" name="Total" id="factura_total" required />
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Archivo factura *</label>
+                            <input type="file" class="form-control" name="facturaFile" id="factura_archivo" accept=".pdf,.jpg,.jpeg,.png" required />
+                            <small class="text-muted">Formatos permitidos: PDF, JPG, PNG (máx. 10MB)</small>
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label">Observaciones</label>
+                            <textarea class="form-control" name="Observaciones" id="factura_observaciones" rows="2"></textarea>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" id="btnAprobarConFactura" class="btn btn-success">Aprobar y Registrar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
 
+@section Scripts {
+<script>
+(function () {
+    var modalElement = document.getElementById('modalAprobarPagoFactura');
+    if (!modalElement || !window.bootstrap) {
+        return;
+    }
 
+    var modal = new bootstrap.Modal(modalElement);
+    var form = document.getElementById('formAprobarPagoFactura');
+    var alertBox = document.getElementById('facturaModalAlert');
+    var submitButton = document.getElementById('btnAprobarConFactura');
+    var numeroOrdenLabel = document.getElementById('factura_numero_orden');
+    var inputOrdenId = document.getElementById('factura_orden_id');
+    var inputPagoId = document.getElementById('factura_pago_id');
+    var inputFecha = document.getElementById('factura_fecha');
+    var inputSubtotal = document.getElementById('factura_subtotal');
+    var inputIva = document.getElementById('factura_iva');
+    var inputTotal = document.getElementById('factura_total');
+    var inputArchivo = document.getElementById('factura_archivo');
+    var tokenInput = form ? form.querySelector('input[name="__RequestVerificationToken"]') : null;
+    var isSubmitting = false;
 
+    if (!form || !alertBox || !submitButton) {
+        return;
+    }
+
+    if (form.dataset.facturaSubmitBound === '1') {
+        return;
+    }
+    form.dataset.facturaSubmitBound = '1';
+
+    function showAlert(type, message) {
+        alertBox.className = 'alert alert-' + type;
+        alertBox.textContent = message;
+        alertBox.classList.remove('d-none');
+    }
+
+    function clearAlert() {
+        alertBox.className = 'alert d-none';
+        alertBox.textContent = '';
+    }
+
+    function setSubmitting(isSubmitting) {
+        submitButton.disabled = isSubmitting;
+        submitButton.textContent = isSubmitting ? 'Procesando...' : 'Aprobar y Registrar';
+    }
+
+    function setInFlight(value) {
+        isSubmitting = value === true;
+        setSubmitting(isSubmitting);
+    }
+
+    function openModalFromButton(button) {
+        var ordenId = button.getAttribute('data-orden-id') || '';
+        var pagoId = button.getAttribute('data-pago-id') || '';
+        var numeroOrden = button.getAttribute('data-numero-orden') || '-';
+        var monto = button.getAttribute('data-monto') || '';
+
+        inputOrdenId.value = ordenId;
+        inputPagoId.value = pagoId;
+        numeroOrdenLabel.textContent = numeroOrden;
+
+        form.reset();
+        inputOrdenId.value = ordenId;
+        inputPagoId.value = pagoId;
+        numeroOrdenLabel.textContent = numeroOrden;
+
+        if (inputFecha) {
+            inputFecha.value = new Date().toISOString().slice(0, 10);
+        }
+        if (inputSubtotal && !inputSubtotal.value && monto) {
+            inputSubtotal.value = monto;
+        }
+        if (inputTotal && !inputTotal.value && monto) {
+            inputTotal.value = monto;
+        }
+        if (inputIva && !inputIva.value) {
+            inputIva.value = '0.00';
+        }
+
+        clearAlert();
+        setInFlight(false);
+        modal.show();
+    }
+
+    if (!document.body.dataset.facturaModalClickBound) {
+        document.body.dataset.facturaModalClickBound = '1';
+        document.addEventListener('click', function (event) {
+            var button = event.target.closest('.js-abrir-modal-factura');
+            if (!button) {
+                return;
+            }
+
+            if (isSubmitting) {
+                return;
+            }
+
+            event.preventDefault();
+            openModalFromButton(button);
+        });
+    }
+
+    form.addEventListener('submit', function (event) {
+        event.preventDefault();
+
+        if (isSubmitting) {
+            return;
+        }
+
+        clearAlert();
+
+        if (!inputArchivo || !inputArchivo.files || inputArchivo.files.length === 0) {
+            showAlert('danger', 'Debe adjuntar la factura.');
+            return;
+        }
+
+        var file = inputArchivo.files[0];
+        var ext = (file.name.split('.').pop() || '').toLowerCase();
+        var allowed = { pdf: true, jpg: true, jpeg: true, png: true };
+        if (!allowed[ext]) {
+            showAlert('danger', 'Formato no permitido. Solo PDF/JPG/PNG.');
+            return;
+        }
+        if (file.size > (10 * 1024 * 1024)) {
+            showAlert('danger', 'El archivo supera el tamaño máximo (10MB).');
+            return;
+        }
+
+        var subtotal = parseFloat((inputSubtotal.value || '0').replace(',', '.'));
+        var iva = parseFloat((inputIva.value || '0').replace(',', '.'));
+        var total = parseFloat((inputTotal.value || '0').replace(',', '.'));
+        if (isNaN(subtotal) || isNaN(iva) || isNaN(total) || total <= 0) {
+            showAlert('danger', 'Valores de subtotal/IVA/total inválidos.');
+            return;
+        }
+        if (Math.abs((subtotal + iva) - total) > 0.05) {
+            showAlert('danger', 'El total debe coincidir con subtotal + IVA.');
+            return;
+        }
+
+        setInFlight(true);
+
+        var actionUrl = '@Url.Action("AprobarPagoConFactura", "Financiero")';
+        var formData = new FormData(form);
+        formData.set('Subtotal', subtotal.toFixed(2));
+        formData.set('Iva', iva.toFixed(2));
+        formData.set('Total', total.toFixed(2));
+        if (inputFecha && inputFecha.value) {
+            formData.set('FechaEmision', inputFecha.value);
+        }
+        if (tokenInput && tokenInput.value) {
+            formData.set('__RequestVerificationToken', tokenInput.value);
+        }
+
+        fetch(actionUrl, {
+            method: 'POST',
+            body: formData,
+            credentials: 'same-origin',
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        })
+        .then(function (response) {
+            return response.text().then(function (text) {
+                var payload = null;
+                try {
+                    payload = text ? JSON.parse(text) : null;
+                } catch (e) {
+                    payload = null;
+                }
+                return { response: response, payload: payload, rawText: text };
+            });
+        })
+        .then(function (result) {
+            var payload = result.payload || {};
+            if (!result.response.ok || payload.ok !== true) {
+                var errorMessage = payload.message || '';
+                if (!errorMessage && result.rawText) {
+                    errorMessage = result.rawText.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+                }
+                if (!errorMessage) {
+                    errorMessage = 'Error al aprobar pago (HTTP ' + result.response.status + ').';
+                }
+                throw new Error(errorMessage);
+            }
+
+            var finalMessage = payload.warning
+                ? (payload.message + ' ' + payload.warning)
+                : payload.message;
+            showAlert('success', finalMessage || 'Pago aprobado correctamente.');
+
+            setTimeout(function () {
+                modal.hide();
+                window.location.reload();
+            }, 700);
+        })
+        .catch(function (error) {
+            showAlert('danger', error && error.message ? error.message : 'No se pudo completar la operación.');
+        })
+        .finally(function () {
+            setInFlight(false);
+        });
+    });
+})();
+</script>
+}
 
