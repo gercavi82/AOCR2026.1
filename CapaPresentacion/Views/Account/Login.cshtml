@@ -376,6 +376,7 @@
             // Recuperar contraseña
             $('#btnForgotSend').on('click', function () {
                 var email = ($('#forgotEmail').val() || '').trim();
+                var token = $('input[name="__RequestVerificationToken"]').val();
                 var $alert = $('#forgotAlert');
                 $alert.addClass('d-none').removeClass('alert-success alert-danger').text('');
 
@@ -383,14 +384,20 @@
                     $alert.removeClass('d-none').addClass('alert-danger').text('Ingrese un correo válido.');
                     return;
                 }
+                if (!token) {
+                    $alert.removeClass('d-none').addClass('alert-danger').text('No se pudo validar la solicitud. Recargue la página e intente nuevamente.');
+                    return;
+                }
 
                 $.ajax({
                     url: '@Url.Action("EnviarRecuperar", "Account")',
                     type: 'POST',
-                    data: { email: email },
+                    data: {
+                        email: email,
+                        __RequestVerificationToken: token
+                    },
                     beforeSend: function(xhr) {
-                        // Add antiforgery header from hidden input if present
-                        var token = $('input[name="__RequestVerificationToken"]').val();
+                        // Header adicional por compatibilidad; MVC5 valida el campo del formulario.
                         if (token) xhr.setRequestHeader('RequestVerificationToken', token);
                     },
                     success: function (resp) {

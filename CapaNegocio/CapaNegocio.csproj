@@ -159,6 +159,7 @@
     <Compile Include="NotificacionBL.cs" />
     <Compile Include="ObservacionBL.cs" />
     <Compile Include="FinancieroBL.cs" />
+    <Compile Include="ReportesFinancierosBL.cs" />
     <Compile Include="HistorialEstadoBL.cs" />
     <Compile Include="InformeBL.cs" />
     <Compile Include="DireccionBL.cs" />

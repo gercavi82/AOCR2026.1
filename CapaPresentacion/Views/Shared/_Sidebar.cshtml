@@ -54,7 +54,8 @@
                                   rolActual == "Direccion" || rolActual == "CoordinacionLegal" || rolActual == "Administrador";
         bool puedeSolicitante = rolActual == "Operador" || rolActual == "Administrador" || rolActual == "Solicitante";
         bool puedeTecnica = rolActual == "Inspector" || rolActual == "Administrador" || rolActual == "Tecnico";
-        bool puedeFinanciero = rolActual == "Financiero" || rolActual == "Administrador";
+        bool puedeFinanciero = rolActual == "Financiero" || rolActual == "Direccion" ||
+                               rolActual == "JefaturaTecnica" || rolActual == "Administrador";
         bool puedeLegal = rolActual == "CoordinacionLegal" || rolActual == "Administrador";
         bool puedeDireccion = rolActual == "Direccion" || rolActual == "JefaturaTecnica" || rolActual == "Administrador";
         bool puedeAprobarUsuarios = rolActual == "CoordinacionLegal" || rolActual == "Administrador" || rolActual == "JefaturaTecnica";
@@ -197,7 +198,7 @@
                 <ul class="aocr-nav">
                     <li><a class="aocr-link" href="@Url.Action("TodasOrdenes", "Financiero")"><i class="fas fa-receipt text-white-50 mr-2"></i> Gestionar Órdenes</a></li>
                     <li><a class="aocr-link" href="@Url.Action("Index", "Financiero")"><i class="fas fa-check-circle text-white-50 mr-2"></i> Verificar Pagos</a></li>
-                    <li><a class="aocr-link" href="@Url.Action("Index", "Financiero")"><i class="fas fa-file-invoice text-white-50 mr-2"></i> Reportes Financieros</a></li>
+                    <li><a class="aocr-link" href="@Url.Action("Index", "ReportesFinancieros")"><i class="fas fa-file-invoice text-white-50 mr-2"></i> Reportes Financieros</a></li>
                 </ul>
             </div>
         }

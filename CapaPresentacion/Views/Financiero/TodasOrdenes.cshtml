@@ -70,9 +70,13 @@
                                     <td>@orden.Estado</td>
                                     <td>@GetTextoTramite(orden.Estado)</td>
                                     <td>@orden.Total.ToString("C")</td>
-                                    <td>
+                                    <td class="text-center">
                                         <a href="@Url.Action("Detalles", "OrdenRecaudacion", new { id = orden.Id })"
-                                           class="btn btn-sm btn-info">Ver Detalles</a>
+                                           class="btn btn-sm btn-outline-primary"
+                                           title="Ver detalles">
+                                            <i class="fas fa-eye"></i>
+                                            <span class="visually-hidden">Ver Detalles</span>
+                                        </a>
 
                                         @{
                                             var estadoNorm = (orden.Estado ?? "").Trim().ToUpperInvariant().Replace(" ", "_");

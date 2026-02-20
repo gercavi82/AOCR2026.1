@@ -59,6 +59,9 @@
     <Compile Include="OrdenRecaudacion\OrdenRecaudacion.cs" />
     <Compile Include="OrdenRecaudacion\OrdenRecaudacionDetalle.cs" />
     <Compile Include="OrdenRecaudacion\AocrDocumento.cs" />
+    <Compile Include="ReportesFinancieros\FiltroReporteDTO.cs" />
+    <Compile Include="ReportesFinancieros\ReporteOrdenDTO.cs" />
+    <Compile Include="ReportesFinancieros\ReporteResumenDTO.cs" />
     <Compile Include="Solicitud.cs" />
     <Compile Include="RepresentanteLegal.cs" />
     <Compile Include="Viatico.cs" />

@@ -944,8 +944,25 @@ namespace CapaPresentacion.Controllers
         [ValidateAntiForgeryToken]
         public ActionResult EliminarUsuarioRT(int id)
         {
+            var usuarioAntes = UsuarioDAO.ObtenerPorId(id);
             string mensaje;
             bool eliminado = UsuarioDAO.EliminarUsuarioRT(id, out mensaje);
+            var usuarioDespues = UsuarioDAO.ObtenerPorId(id);
+
+            if (usuarioDespues != null)
+            {
+                // El botón "Eliminar" no debe terminar cambiando el estado del usuario.
+                if (usuarioAntes != null && usuarioAntes.Activo != usuarioDespues.Activo)
+                {
+                    UsuarioDAO.ActualizarEstadoActividad(id, usuarioAntes.Activo);
+                }
+
+                eliminado = false;
+                if (string.IsNullOrWhiteSpace(mensaje))
+                {
+                    mensaje = "No se pudo eliminar el usuario porque tiene informacion relacionada.";
+                }
+            }
 
             if (eliminado)
                 TempData["msg"] = string.IsNullOrWhiteSpace(mensaje) ? "Usuario eliminado correctamente." : mensaje;

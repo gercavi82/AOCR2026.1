@@ -432,60 +432,82 @@ namespace CapaDatos.DAOs
                 conn.Open();
                 using (var tx = conn.BeginTransaction())
                 {
+                    string codigoUsuario = string.Empty;
+                    int idEncontrado = idUsuario;
+
                     try
                     {
-                        var codigoUsuario = conn.ExecuteScalar<string>(
-                            "SELECT codigousuario FROM usuario WHERE idusuario = @id;",
-                            new { id = idUsuario }, tx);
+                        var usuario = conn.QueryFirstOrDefault(
+                            @"SELECT idusuario AS id, codigousuario AS codigo
+                              FROM usuario
+                              WHERE idusuario = @id;",
+                            new { id = idUsuario },
+                            tx);
 
-                        if (string.IsNullOrWhiteSpace(codigoUsuario))
+                        if (usuario == null)
                         {
                             tx.Rollback();
                             mensaje = "Usuario no encontrado.";
                             return false;
                         }
 
-                        try
-                        {
-                            conn.Execute(
-                                "DELETE FROM usuariorol WHERE codigousuario::text = @codigo;",
-                                new { codigo = codigoUsuario }, tx);
-                        }
-                        catch (PostgresException ex) when (ex.SqlState == "42P01")
-                        {
-                            // Tabla no existe en este ambiente.
-                        }
+                        codigoUsuario = Convert.ToString(usuario.codigo ?? string.Empty);
+                        idEncontrado = Convert.ToInt32(usuario.id);
 
-                        try
-                        {
-                            conn.Execute(
-                                "DELETE FROM usuario_rol WHERE codigousuario::text = @codigo;",
-                                new { codigo = codigoUsuario }, tx);
-                        }
-                        catch (PostgresException ex) when (ex.SqlState == "42P01")
-                        {
-                            // Tabla no existe en este ambiente.
-                        }
+                        EliminarRelacionesUsuario(conn, tx, "usuariorol", idEncontrado, codigoUsuario);
+                        EliminarRelacionesUsuario(conn, tx, "usuario_rol", idEncontrado, codigoUsuario);
 
                         int rows = conn.Execute(
                             "DELETE FROM usuario WHERE idusuario = @id;",
-                            new { id = idUsuario }, tx);
+                            new { id = idEncontrado },
+                            tx);
 
-                        if (rows <= 0)
+                        if (rows > 0)
                         {
-                            tx.Rollback();
-                            mensaje = "No se pudo eliminar el usuario.";
-                            return false;
+                            tx.Commit();
+                            mensaje = "Usuario eliminado correctamente.";
+                            return true;
                         }
 
-                        tx.Commit();
-                        mensaje = "Usuario eliminado correctamente.";
-                        return true;
+                        tx.Rollback();
+                        mensaje = "No se pudo eliminar el usuario.";
+                        return false;
                     }
                     catch (PostgresException ex) when (ex.SqlState == "23503")
                     {
                         tx.Rollback();
-                        mensaje = "No se puede eliminar porque el usuario tiene informacion relacionada. Inactive la cuenta en su lugar.";
+
+                        if (string.Equals(ex.ConstraintName, "fk_orden_usuario", StringComparison.OrdinalIgnoreCase))
+                        {
+                            int totalOrdenes = 0;
+                            try
+                            {
+                                totalOrdenes = conn.ExecuteScalar<int>(
+                                    @"SELECT COUNT(*)
+                                      FROM aocr_or_orden
+                                      WHERE codigo_usuario = @codigo;",
+                                    new { codigo = codigoUsuario });
+                            }
+                            catch
+                            {
+                                // Si falla el conteo no bloqueamos el mensaje principal.
+                            }
+
+                            mensaje = totalOrdenes > 0
+                                ? $"No se puede eliminar porque el usuario tiene {totalOrdenes} orden(es) de recaudacion asociadas."
+                                : "No se puede eliminar porque el usuario tiene ordenes de recaudacion asociadas.";
+                        }
+                        else
+                        {
+                            mensaje = "No se puede eliminar porque el usuario tiene informacion relacionada. Use Inactivar si desea bloquear el acceso.";
+                        }
+
+                        return false;
+                    }
+                    catch (PostgresException ex)
+                    {
+                        tx.Rollback();
+                        mensaje = $"Error BD al eliminar usuario ({ex.SqlState}): {ex.MessageText}";
                         return false;
                     }
                     catch (Exception ex)
@@ -495,6 +517,58 @@ namespace CapaDatos.DAOs
                         return false;
                     }
                 }
+            }
+        }
+
+        private static void EliminarRelacionesUsuario(NpgsqlConnection conn, NpgsqlTransaction tx, string tabla, int idUsuario, string codigoUsuario)
+        {
+            var columnas = conn.Query<string>(
+                @"SELECT column_name
+                  FROM information_schema.columns
+                  WHERE table_schema = 'public' AND table_name = @tabla;",
+                new { tabla },
+                tx)
+                .Select(c => c.Trim().ToLowerInvariant())
+                .ToHashSet();
+
+            if (columnas.Count == 0)
+            {
+                return;
+            }
+
+            if (columnas.Contains("codigousuario"))
+            {
+                conn.Execute(
+                    $"DELETE FROM {tabla} WHERE codigousuario::text = @codigo;",
+                    new { codigo = codigoUsuario },
+                    tx);
+                return;
+            }
+
+            if (columnas.Contains("idusuario"))
+            {
+                conn.Execute(
+                    $"DELETE FROM {tabla} WHERE idusuario = @id;",
+                    new { id = idUsuario },
+                    tx);
+                return;
+            }
+
+            if (columnas.Contains("usuario_id"))
+            {
+                conn.Execute(
+                    $"DELETE FROM {tabla} WHERE usuario_id = @id;",
+                    new { id = idUsuario },
+                    tx);
+                return;
+            }
+
+            if (columnas.Contains("id_usuario"))
+            {
+                conn.Execute(
+                    $"DELETE FROM {tabla} WHERE id_usuario = @id;",
+                    new { id = idUsuario },
+                    tx);
             }
         }
     }

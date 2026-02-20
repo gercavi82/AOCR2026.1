@@ -280,6 +280,7 @@
     <Compile Include="DAOs\SesionDAO.cs" />
     <Compile Include="DAOs\PermisoDAO.cs" />
     <Compile Include="DAOs\ParametroDAO.cs" />
+    <Compile Include="DAOs\ReportesFinancierosDAO.cs" />
     <Compile Include="DAOs\ObservacionDAO.cs" />
     <Compile Include="DAOs\NotificacionDAO.cs" />
     <Compile Include="DAOs\MenuDAO.cs" />
