@@ -253,6 +253,18 @@
                             var avatarUrl = Url.Content("~/Content/imganes/user.png");
                             var avatarAlt = Session["NombreUsuario"] as string ?? "Usuario";
                             var defaultAvatar = Url.Content("~/Content/imganes/user.png");
+                            var rolSidebar = (Session["Rol"] as string ?? string.Empty).Trim();
+                            var empresaNombreSidebar = (Session["EmpresaNombre"] as string ?? string.Empty).Trim();
+                            var empresaCodigoSidebar = (Session["EmpresaCodigo"] as string ?? string.Empty).Trim();
+                            var mostrarEmpresaEnSidebar = rolSidebar.Equals("Solicitante", StringComparison.OrdinalIgnoreCase)
+                                                       || rolSidebar.Equals("Operador", StringComparison.OrdinalIgnoreCase);
+                            var subtituloSidebar = rolSidebar;
+                            if (mostrarEmpresaEnSidebar)
+                            {
+                                subtituloSidebar = !string.IsNullOrWhiteSpace(empresaNombreSidebar)
+                                    ? empresaNombreSidebar
+                                    : (!string.IsNullOrWhiteSpace(empresaCodigoSidebar) ? empresaCodigoSidebar : rolSidebar);
+                            }
                         }
                         <img src="@avatarUrl"
                              class="user-image img-circle elevation-1"
@@ -315,7 +327,7 @@
                     </div>
                     <div class="info">
                         <a href="@Url.Action("MiPerfil", "Usuario")" class="d-block">@avatarAlt</a>
-                        <small class="text-muted">@Session["Rol"]</small>
+                        <small class="text-muted" title="@subtituloSidebar">@subtituloSidebar</small>
                     </div>
                 </div>
 
@@ -653,7 +665,7 @@
 
         function initSessionManagement() {
             // Tu código existente de gestión de sesión
-            var sessionTimer, warningTimer;
+            var sessionTimer, warningTimer, countdownTimer;
             var WARNING_TIME = 5 * 60 * 1000;
             var TOTAL_TIMEOUT = 25 * 60 * 1000;
 
@@ -690,7 +702,7 @@
                         timeLeft--;
 
                         if (timeLeft >= 0) {
-                            setTimeout(updateCountdown, 1000);
+                            countdownTimer = setTimeout(updateCountdown, 1000);
                         } else {
                             modal.hide();
                             window.location.href = '@Url.Action("Logout", "Account")?timeout=true';
@@ -701,7 +713,14 @@
                     updateCountdown();
 
                     $('#btn-extend-session').off('click').on('click', function () {
-                        $.post('@Url.Action("ExtenderSesion", "Account")')
+                        if (countdownTimer) {
+                            clearTimeout(countdownTimer);
+                            countdownTimer = null;
+                        }
+                        var token = $('#__AjaxAntiForgeryForm input[name="__RequestVerificationToken"]').val();
+                        $.post('@Url.Action("ExtenderSesion", "Account")', {
+                                __RequestVerificationToken: token
+                            })
                             .done(function () {
                                 modal.hide();
                                 resetSessionTimers();
@@ -718,6 +737,10 @@
                     });
 
                     $('#btn-logout-now').off('click').on('click', function () {
+                        if (countdownTimer) {
+                            clearTimeout(countdownTimer);
+                            countdownTimer = null;
+                        }
                         window.location.href = '@Url.Action("Logout", "Account")';
                     });
 

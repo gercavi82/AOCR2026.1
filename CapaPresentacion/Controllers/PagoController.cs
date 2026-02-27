@@ -128,6 +128,13 @@ namespace CapaPresentacion.Controllers
                         return RedirectToAction("Pendientes");
                     }
 
+                    var comprobanteService = new ComprobanteService();
+                    if (!comprobanteService.ExisteComprobanteValido(pagoActual.OrdenId, out var mensajeComprobante))
+                    {
+                        TempData["ErrorMessage"] = mensajeComprobante;
+                        return RedirectToAction("Pendientes");
+                    }
+
                     // Establecer contexto de orden
                     var orden = await _orchestrator.ObtenerEstadoFlujoAsync(pagoActual.OrdenId);
                     if (orden.Success && orden.Data?.Orden != null)

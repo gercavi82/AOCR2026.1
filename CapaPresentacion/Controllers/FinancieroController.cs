@@ -7,6 +7,8 @@ using System.Web.Mvc;
 using CapaDatos.DAOs;
 using CapaDatos.Models;
 using CapaDatos.Services;
+using EmailServiceData = CapaDatos.Services.EmailService;
+using CapaNegocio.Services;
 using CapaPresentacion.Models;
 using CapaPresentacion.Filters;
 using CapaUtilidades;
@@ -70,6 +72,13 @@ namespace CapaPresentacion.Controllers
             var orden = _ordenDAO.ObtenerOrdenPorId(id);
             if (orden == null) return HttpNotFound();
 
+            var comprobanteService = new ComprobanteService();
+            if (!comprobanteService.ExisteComprobanteValido(id, out var mensajeComprobante))
+            {
+                TempData["Error"] = mensajeComprobante;
+                return RedirectToAction("Index");
+            }
+
             var estado = ((orden.Estado ?? "").Trim()).ToUpperInvariant().Replace(" ", "_");
             if (estado != "PROCESADA")
             {
@@ -92,7 +101,7 @@ namespace CapaPresentacion.Controllers
                 {
                     // Generar PDF directamente desde la orden
                     var pdf = new CapaPresentacion.Services.PdfGeneratorService().GenerarOrdenRecaudacionPDF(orden);
-                    new EmailService().EnviarFacturaGenerada(orden, pdf);
+                    new EmailServiceData().EnviarFacturaGenerada(orden, pdf);
                 }
                 catch (System.Exception exPdf)
                 {
@@ -117,6 +126,13 @@ namespace CapaPresentacion.Controllers
             var orden = _ordenDAO.ObtenerOrdenPorId(id);
             if (orden == null) return HttpNotFound();
 
+            var comprobanteService = new ComprobanteService();
+            if (!comprobanteService.ExisteComprobanteValido(id, out var mensajeComprobante))
+            {
+                TempData["Error"] = mensajeComprobante;
+                return RedirectToAction("Index");
+            }
+
             var user = User?.Identity?.Name ?? "FINANCIERO";
 
             try
@@ -133,7 +149,7 @@ namespace CapaPresentacion.Controllers
                 {
                     var ordenActualizada = _ordenDAO.ObtenerOrdenPorId(id) ?? orden;
                     var pdf = new CapaPresentacion.Services.PdfGeneratorService().GenerarOrdenRecaudacionPDF(ordenActualizada);
-                    new EmailService().EnviarFacturaGenerada(ordenActualizada, pdf);
+                    new EmailServiceData().EnviarFacturaGenerada(ordenActualizada, pdf);
                 }
                 catch (System.Exception exPdf)
                 {
@@ -281,6 +297,30 @@ namespace CapaPresentacion.Controllers
                     ? "La orden ya estaba aprobada con factura. No se duplicaron registros."
                     : "Pago aprobado y factura registrada correctamente.";
 
+                string advertenciaAs400 = null;
+                if (!idempotente && FacturacionAS400Service.IsEnabled())
+                {
+                    var as400Service = new FacturacionAS400Service();
+                    if (!as400Service.TryRegistrarFactura(
+                        model.OrdenId,
+                        model.PagoId,
+                        model.NumeroFactura,
+                        model.AutorizacionFactura,
+                        fechaEmision,
+                        subtotal,
+                        iva,
+                        total,
+                        model.Observaciones,
+                        usuario,
+                        out advertenciaAs400))
+                    {
+                        CapaNegocio.LogBL.RegistrarError(
+                            string.Format("Error registrando factura en AS400. OrdenId={0}", model.OrdenId),
+                            advertenciaAs400 ?? "n/a",
+                            "FinancieroController");
+                    }
+                }
+
                 CapaNegocio.LogBL.RegistrarInfo(
                     string.Format("AprobarPagoConFactura OK. OrdenId={0}, PagoId={1}, Idempotente={2}, Advertencia={3}",
                         model.OrdenId,
@@ -294,7 +334,9 @@ namespace CapaPresentacion.Controllers
                     ok = true,
                     message = mensaje,
                     idempotent = idempotente,
-                    warning = advertencia
+                    warning = string.IsNullOrWhiteSpace(advertenciaAs400)
+                        ? advertencia
+                        : (string.IsNullOrWhiteSpace(advertencia) ? advertenciaAs400 : (advertencia + " | " + advertenciaAs400))
                 });
             }
             catch (Exception ex)
@@ -361,7 +403,7 @@ namespace CapaPresentacion.Controllers
                 try
                 {
                     var ordenActualizada = _ordenDAO.ObtenerOrdenPorId(id) ?? orden;
-                    new EmailService().EnviarNotificacionRechazo(ordenActualizada, motivo);
+                    new EmailServiceData().EnviarNotificacionRechazo(ordenActualizada, motivo);
                 }
                 catch (System.Exception exMail)
                 {

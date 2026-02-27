@@ -1,0 +1,135 @@
+@model CapaPresentacion.Controllers.SyncFr3VM
+@{
+    ViewBag.Title = "FR3 Mirror — Consulta";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<div class="container-fluid">
+    <h2><span class="glyphicon glyphicon-list-alt"></span> FR3 Cabecera — Espejo AS400</h2>
+    <p class="text-muted small">
+        Datos leídos de <code>mirror_raw.opcar5</code> (vista <code>mirror_clean.v_fr3_cabecera</code>).
+        Solo lectura. Sincronización incremental por fecha de creación (OPCDA4).
+    </p>
+    <hr />
+
+    @if (TempData["SyncError"] != null)
+    {
+        <div class="alert alert-warning">@TempData["SyncError"]</div>
+    }
+
+    <!-- Filtros -->
+    @using (Html.BeginForm("Fr3", "SyncAdmin", FormMethod.Get, new { @class = "form-inline" }))
+    {
+        <div class="form-group">
+            <label>Aeropuerto:</label>
+            <input type="text" name="aeropuerto" value="@Model.Aeropuerto"
+                   class="form-control input-sm" placeholder="SEQU, ULUL..." maxlength="4" />
+        </div>
+        &nbsp;
+        <div class="form-group">
+            <label>Año:</label>
+            <input type="text" name="anio" value="@Model.Anio"
+                   class="form-control input-sm" placeholder="2026" maxlength="4" />
+        </div>
+        &nbsp;
+        <div class="form-group">
+            <label>Máx. filas:</label>
+            <select name="take" class="form-control input-sm">
+                @foreach (var n in new[] { 25, 50, 100, 200 })
+                {
+                    <option value="@n" @(Request.QueryString["take"] == n.ToString() ? "selected" : "")>@n</option>
+                }
+            </select>
+        </div>
+        &nbsp;
+        <button type="submit" class="btn btn-sm btn-primary">
+            <span class="glyphicon glyphicon-search"></span> Filtrar
+        </button>
+        &nbsp;
+        @Html.ActionLink("← Volver al sync", "Index", "SyncAdmin", null, new { @class = "btn btn-sm btn-default" })
+    }
+
+    <br />
+
+    @if (Model.Registros == null || !Model.Registros.Any())
+    {
+        <div class="alert alert-info">
+            Sin registros en el espejo. Asegúrese de que <code>Sync:Enabled=true</code> y ejecute el sync de OPCAR5.
+        </div>
+    }
+    else
+    {
+        <p><small>Mostrando <strong>@Model.Registros.Count</strong> registros.</small></p>
+        <div class="table-responsive">
+            <table class="table table-bordered table-hover table-condensed small">
+                <thead class="thead-light">
+                    <tr>
+                        <th>Sec</th>
+                        <th>Aer</th>
+                        <th>Año</th>
+                        <th>Fecha CR</th>
+                        <th>Tipo</th>
+                        <th>Ruta</th>
+                        <th>NAC/INT</th>
+                        <th>Matrícula</th>
+                        <th>Compañía</th>
+                        <th>Cliente (RUC)</th>
+                        <th>Gran Total</th>
+                        <th>Forma Pago</th>
+                        <th>N° Factura</th>
+                        <th>Estado</th>
+                        <th>Proc.</th>
+                        <th>Mirror At</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var r in Model.Registros)
+                    {
+                        <tr>
+                            <td><strong>@r.Secuencial</strong></td>
+                            <td>@r.Aeropuerto</td>
+                            <td>@r.Anio</td>
+                            <td>@r.FechaCreacion</td>
+                            <td><small>@r.TipoOperacion</small></td>
+                            <td><small>@r.RutaPlanVuelo</small></td>
+                            <td>
+                                @if (r.NacInter == "N")
+                                { <span class="label label-info">NAC</span> }
+                                else
+                                { <span class="label label-warning">INT</span> }
+                            </td>
+                            <td>@r.Matricula</td>
+                            <td><small>@r.NombreCia</small></td>
+                            <td>
+                                <small>@r.NombreCliente</small><br />
+                                <span class="text-muted">@r.Ruc</span>
+                            </td>
+                            <td class="text-right"><strong>$@r.GranTotal.ToString("N2")</strong></td>
+                            <td>
+                                @switch (r.FormaPago)
+                                {
+                                    case "01": @:Efectivo break;
+                                    case "02": @:Trans/Dep break;
+                                    case "03": @:Abono break;
+                                    case "04": @:Pago Post. break;
+                                    default: @r.FormaPago break;
+                                }
+                            </td>
+                            <td><small>@r.NumeroFactura</small></td>
+                            <td><small>@r.Estado</small></td>
+                            <td>
+                                @if (r.Procesado == "P")
+                                { <span class="label label-success">P</span> }
+                                else if (r.Procesado == "E")
+                                { <span class="label label-warning">E</span> }
+                                else
+                                { <span class="text-muted">@r.Procesado</span> }
+                            </td>
+                            <td><small>@r.MirrorSyncedAt.ToString("dd/MM HH:mm")</small></td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+</div>

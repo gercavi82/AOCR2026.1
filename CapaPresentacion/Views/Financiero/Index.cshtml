@@ -1,10 +1,12 @@
 ﻿@inherits System.Web.Mvc.WebViewPage<List<CapaPresentacion.Models.OrdenValidacionFinancieraVM>>
 @using CapaModelo
+@using CapaNegocio.Services
 @using System.Web.Mvc
 @using System.Web.Mvc.Html
 
 @{
     ViewBag.Title = "Dashboard Financiero";
+    var as400FacturacionHabilitada = FacturacionAS400Service.IsEnabled();
 }
 
 <style>
@@ -198,7 +200,7 @@
                 <h5 class="modal-title">Aprobar pago y registrar factura</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
             </div>
-            <form id="formAprobarPagoFactura" method="post" enctype="multipart/form-data">
+            <form id="formAprobarPagoFactura" method="post" enctype="multipart/form-data" data-as400-fr3-enabled="@(as400FacturacionHabilitada ? "1" : "0")">
                 @Html.AntiForgeryToken()
                 <input type="hidden" id="factura_orden_id" name="OrdenId" />
                 <input type="hidden" id="factura_pago_id" name="PagoId" />
@@ -209,6 +211,12 @@
                     </div>
 
                     <div id="facturaModalAlert" class="alert d-none" role="alert"></div>
+                    @if (as400FacturacionHabilitada)
+                    {
+                        <div class="alert alert-info py-2" role="alert">
+                            Al aprobar se registrará la factura en AOCR y se intentará sincronizar FR3 en AS400.
+                        </div>
+                    }
 
                     <div class="row g-3">
                         <div class="col-md-6">
@@ -276,6 +284,8 @@
     var inputTotal = document.getElementById('factura_total');
     var inputArchivo = document.getElementById('factura_archivo');
     var tokenInput = form ? form.querySelector('input[name="__RequestVerificationToken"]') : null;
+    var as400Fr3Enabled = form && form.getAttribute('data-as400-fr3-enabled') === '1';
+    var submitLabelIdle = as400Fr3Enabled ? 'Aprobar, Registrar y Enviar AS400' : 'Aprobar y Registrar';
     var isSubmitting = false;
 
     if (!form || !alertBox || !submitButton) {
@@ -300,7 +310,7 @@
 
     function setSubmitting(isSubmitting) {
         submitButton.disabled = isSubmitting;
-        submitButton.textContent = isSubmitting ? 'Procesando...' : 'Aprobar y Registrar';
+        submitButton.textContent = isSubmitting ? 'Procesando...' : submitLabelIdle;
     }
 
     function setInFlight(value) {
@@ -462,4 +472,3 @@
 })();
 </script>
 }
-

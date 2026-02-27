@@ -24,5 +24,12 @@ namespace CapaModelo
         public string EstadoDesignacionRT { get; set; }
         public string RutaConstanciaRT { get; set; }
         public DateTime? FechaRevisionDesignacion { get; set; }
+
+        // Métricas para gestión RT (evita intentar eliminar usuarios con datos operativos asociados)
+        public int OrdenesRecaudacionCount { get; set; }
+        public int DocumentosSubsanacionCount { get; set; }
+        public int SubsanacionesCount { get; set; }
+        public int TotalRelacionesBloqueantes { get; set; }
+        public bool PuedeEliminarRT => TotalRelacionesBloqueantes <= 0;
     }
 }

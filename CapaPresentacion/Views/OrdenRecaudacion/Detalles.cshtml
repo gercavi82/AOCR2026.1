@@ -22,6 +22,8 @@
     var documentos = ViewBag.Documentos as List<CapaDatos.Models.DocumentoModel> ?? new List<CapaDatos.Models.DocumentoModel>();
     var pagos = ViewBag.Pagos as List<CapaDatos.Models.PagoModel> ?? new List<CapaDatos.Models.PagoModel>();
     var culturaEsEc = new CultureInfo("es-EC");
+    var tieneComprobanteValido = ViewBag.TieneComprobanteValido != null && (bool)ViewBag.TieneComprobanteValido;
+    var mensajeComprobante = ViewBag.MensajeComprobante as string ?? "Debe registrar el comprobante antes de continuar.";
 
     // Calcular total pagado
     var totalPagado = pagos.Where(p => (p.Estado ?? "").Equals("APROBADO", System.StringComparison.OrdinalIgnoreCase)).Sum(p => p.Monto);
@@ -67,6 +69,12 @@
                 {
                     <div class="alert alert-success mb-3">
                         <i class="fas fa-check-circle me-2"></i> Orden completada: solicitud vinculada, pago aprobado, factura generada y sin saldo pendiente.
+                    </div>
+                }
+                @if (!tieneComprobanteValido)
+                {
+                    <div class="alert alert-warning mb-3">
+                        <i class="fas fa-exclamation-triangle me-2"></i> @mensajeComprobante
                     </div>
                 }
                 <div class="row">
@@ -325,10 +333,17 @@
                         @if (estadoPago.Equals("Pendiente", System.StringComparison.OrdinalIgnoreCase))
                         {
                             <div class="btn-group btn-group-sm" role="group">
-                                <button type="button" class="btn btn-success btn-sm" onclick="validarPago(@pago.CodigoPago, '@pago.NumeroFactura')" title="Validar pago">
+                                <button type="button"
+                                        class="btn btn-success btn-sm"
+                                        onclick="validarPago(@pago.CodigoPago, '@pago.NumeroFactura')"
+                                        title="Validar pago"
+                                        @(tieneComprobanteValido ? "" : "disabled")>
                                     <i class="fas fa-check"></i>
                                 </button>
-                                <button type="button" class="btn btn-danger btn-sm" onclick="rechazarPago(@pago.CodigoPago, '@pago.NumeroFactura')" title="Rechazar pago">
+                                <button type="button"
+                                        class="btn btn-danger btn-sm"
+                                        onclick="rechazarPago(@pago.CodigoPago, '@pago.NumeroFactura')"
+                                        title="Rechazar pago">
                                     <i class="fas fa-times"></i>
                                 </button>
                             </div>

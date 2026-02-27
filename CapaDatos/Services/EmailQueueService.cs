@@ -95,6 +95,8 @@ namespace CapaDatos.Services
     {
         private readonly ILoggingService _logger;
         private const int DefaultMaxIntentos = 3;
+        private readonly object _schemaLock = new object();
+        private bool _schemaVerified;
 
         public EmailQueueService() : this(new SecureConfigurationService().GetConnectionString("PostgreSQL") ?? "")
         {
@@ -289,6 +291,51 @@ namespace CapaDatos.Services
             ExecuteNonQuery(conn, sql, null, tx);
         }
 
+        private void EnsureEmailQueueSchema(NpgsqlConnection conn)
+        {
+            if (_schemaVerified)
+            {
+                return;
+            }
+
+            lock (_schemaLock)
+            {
+                if (_schemaVerified)
+                {
+                    return;
+                }
+
+                const string sql = @"
+                    CREATE TABLE IF NOT EXISTS public.email_queue (
+                        id SERIAL PRIMARY KEY,
+                        to_address VARCHAR(255) NOT NULL,
+                        subject VARCHAR(255) NOT NULL,
+                        body TEXT NOT NULL,
+                        status VARCHAR(20) NOT NULL,
+                        solicitud_id INTEGER NULL,
+                        created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+                        proximo_intento TIMESTAMP NOT NULL DEFAULT NOW()
+                    );
+
+                    ALTER TABLE public.email_queue ADD COLUMN IF NOT EXISTS event_key VARCHAR(200);
+                    ALTER TABLE public.email_queue ADD COLUMN IF NOT EXISTS error_message TEXT;
+                    ALTER TABLE public.email_queue ADD COLUMN IF NOT EXISTS intentos INTEGER NOT NULL DEFAULT 0;
+                    ALTER TABLE public.email_queue ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP;
+
+                    CREATE INDEX IF NOT EXISTS idx_email_queue_status_next
+                        ON public.email_queue(status, proximo_intento);
+
+                    CREATE UNIQUE INDEX IF NOT EXISTS uq_email_queue_event_key
+                        ON public.email_queue(event_key)
+                        WHERE event_key IS NOT NULL;";
+
+                ExecuteNonQuery(conn, sql);
+                EnsureEmailAttachmentTable(conn, null);
+
+                _schemaVerified = true;
+            }
+        }
+
         public async Task<EmailQueueItem> ObtenerSiguienteAsync()
         {
             // Usar FOR UPDATE SKIP LOCKED para evitar conflictos en procesamiento concurrente
@@ -307,6 +354,7 @@ namespace CapaDatos.Services
 
             return ExecuteWithConnection(conn =>
             {
+                EnsureEmailQueueSchema(conn);
                 EmailQueueItem item = null;
                 using (var cmd = CreateCommand(conn, sql))
                 using (var reader = cmd.ExecuteReader())
@@ -338,6 +386,7 @@ namespace CapaDatos.Services
 
             return ExecuteWithConnection(conn =>
             {
+                EnsureEmailQueueSchema(conn);
                 var lista = new List<EmailQueueItem>();
                 using (var cmd = CreateCommand(conn, sql))
                 {

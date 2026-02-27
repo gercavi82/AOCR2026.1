@@ -1,12 +1,16 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Configuration;
 using System.Linq;
+using System.Security.Principal;
+using System.Threading;
 using System.Web;
 using System.Web.Mvc;
 using System.Web.Security;
 using CapaModelo;
 using CapaNegocio;
 using CapaNegocio.Helpers;
+using CapaNegocio.Integraciones.As400Sync;
 using CapaPresentacion.Models;
 using CapaDatos.DAOs;
 
@@ -15,7 +19,7 @@ namespace CapaPresentacion.Controllers
     public class AccountController : Controller
     {
         [AllowAnonymous]
-        public ActionResult Login(string returnUrl)
+        public ActionResult Login(string returnUrl, string af = null)
         {
             if (User != null && User.Identity != null && User.Identity.IsAuthenticated)
             {
@@ -37,11 +41,27 @@ namespace CapaPresentacion.Controllers
                     };
                     Response.Cookies.Add(c);
                 }
+
+                // Importante: el request actual sigue teniendo el principal autenticado.
+                // Si renderizamos el Login así, @Html.AntiForgeryToken() se genera atado al usuario anterior
+                // y el siguiente POST falla con HttpAntiForgeryException.
+                var anonymous = new GenericPrincipal(new GenericIdentity(string.Empty), null);
+                HttpContext.User = anonymous;
+                if (System.Web.HttpContext.Current != null)
+                {
+                    System.Web.HttpContext.Current.User = anonymous;
+                }
+                Thread.CurrentPrincipal = anonymous;
             }
 
             Response.Cache.SetCacheability(HttpCacheability.NoCache);
             Response.Cache.SetNoStore();
             Response.Cache.SetExpires(DateTime.UtcNow.AddMinutes(-5));
+
+            if (string.Equals(af, "1", StringComparison.OrdinalIgnoreCase))
+            {
+                ModelState.AddModelError("", "La sesión expiró o el formulario perdió validez. Recargue la página e intente nuevamente.");
+            }
 
             ViewBag.ReturnUrl = returnUrl;
             return View(new LoginViewModel());
@@ -154,10 +174,54 @@ namespace CapaPresentacion.Controllers
                 : (usuario.NombreUsuario ?? "Usuario");
 
             Session["Correo"] = usuario.Email;
+            Session["EmpresaCodigo"] = usuario.EmpresaCodigo;
+            Session["EmpresaNombre"] = null;
 
             Session["Roles"] = roles;
             Session["Rol"] = roles.Count > 0 ? roles[0] : null;
             Session["LastActivity"] = DateTime.Now;
+
+            // Datos de empresa para mostrar en sidebar (sin bloquear login si AS400 falla)
+            if (!string.IsNullOrWhiteSpace(usuario.EmpresaCodigo))
+            {
+                try
+                {
+                    string nombreEmpresa = null;
+                    bool preferirMirror;
+                    if (bool.TryParse(ConfigurationManager.AppSettings["Sync:Mirror:PreferReadForEmpresas"], out preferirMirror) &&
+                        preferirMirror)
+                    {
+                        var mirror = new MirrorReadService();
+                        var empresaMirror = mirror.ListarCompaniasActivas(5000)
+                            .FirstOrDefault(x => x != null &&
+                                string.Equals((x.CodigoOaci ?? string.Empty).Trim(), (usuario.EmpresaCodigo ?? string.Empty).Trim(), StringComparison.OrdinalIgnoreCase));
+
+                        if (empresaMirror != null && !string.IsNullOrWhiteSpace(empresaMirror.NombreCompania))
+                        {
+                            nombreEmpresa = empresaMirror.NombreCompania.Trim();
+                        }
+                    }
+
+                    if (string.IsNullOrWhiteSpace(nombreEmpresa))
+                    {
+                        var empresaDao = new EmpresaAS400DAO();
+                        var empresa = empresaDao.ObtenerEmpresaPorCodigo(usuario.EmpresaCodigo);
+                        if (empresa != null && !string.IsNullOrWhiteSpace(empresa.Nombre))
+                        {
+                            nombreEmpresa = empresa.Nombre.Trim();
+                        }
+                    }
+
+                    if (!string.IsNullOrWhiteSpace(nombreEmpresa))
+                    {
+                        Session["EmpresaNombre"] = nombreEmpresa;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine("Account/Login: no se pudo resolver nombre de empresa para sidebar: " + ex.Message);
+                }
+            }
 
             // Forzar cambio cuando hay marca explicita o cuando la ultima conexion fue limpiada (reset clave).
             if (usuario.MustChangePassword || !usuario.FechaUltimaConexion.HasValue)
@@ -183,6 +247,34 @@ namespace CapaPresentacion.Controllers
                 return RedirectToAction("Obligatoria", "OrdenRecaudacion");
 
             return RedirectToLocal(returnUrl);
+        }
+
+        private void ExpirarCookieAntiForgery()
+        {
+            try
+            {
+                var cookieName = System.Web.Helpers.AntiForgeryConfig.CookieName;
+                var existente = Request.Cookies[cookieName];
+                if (existente == null)
+                {
+                    return;
+                }
+
+                var expired = new HttpCookie(cookieName)
+                {
+                    Value = string.Empty,
+                    Expires = DateTime.UtcNow.AddDays(-1),
+                    HttpOnly = true,
+                    Secure = Request.IsSecureConnection,
+                    SameSite = SameSiteMode.Lax,
+                    Path = "/"
+                };
+                Response.Cookies.Add(expired);
+            }
+            catch
+            {
+                // best-effort
+            }
         }
 
         private ActionResult RedirectToLocal(string returnUrl)

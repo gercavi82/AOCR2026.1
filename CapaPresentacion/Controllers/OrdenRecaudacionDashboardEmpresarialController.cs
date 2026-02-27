@@ -260,6 +260,19 @@ namespace CapaPresentacion.Controllers
                 if (nuevoEstado == EstadoOrdenService.Estados.RECHAZADA && string.IsNullOrWhiteSpace(observacion))
                     return Json(new { success = false, message = "Debe proporcionar una observación para rechazar" });
 
+                var estadoObjetivo = (nuevoEstado ?? string.Empty).Trim().ToUpperInvariant();
+                if (estadoObjetivo == "PROCESADA" ||
+                    estadoObjetivo == "FACTURADA" ||
+                    estadoObjetivo == "COMPLETADA" ||
+                    estadoObjetivo == "PAGADA")
+                {
+                    var comprobanteService = new ComprobanteService();
+                    if (!comprobanteService.ExisteComprobanteValido(id, out var mensajeComprobante))
+                    {
+                        return Json(new { success = false, message = mensajeComprobante });
+                    }
+                }
+
                 // Ejecutar cambio de estado
                 var resultado = _dao.CambiarEstado(id, nuevoEstado, observacion);
 

@@ -292,6 +292,8 @@
     <Compile Include="DAOs\DireccionDAO.cs" />
     <Compile Include="DAOs\TecnicoDAO.cs" />
     <Compile Include="DAOs\UsuarioDAO.cs" />
+    <Compile Include="DAOs\UsuarioAS400DAO.cs" />
+    <Compile Include="DAOs\FacturacionAS400DAO.cs" />
     <Compile Include="DAOs\RTDao.cs" />
     <Compile Include="DAOs\RolDAO.cs" />
     <Compile Include="ConexionDAO.cs" />
@@ -326,6 +328,8 @@
     <Compile Include="Models\OrdenDetalleModel.cs" />
     <Compile Include="Models\ContribuyenteModel.cs" />
     <Compile Include="Models\OrdenRecaudacionModel.cs" />
+    <Compile Include="Models\UsuarioAs400Record.cs" />
+    <Compile Include="Models\FacturaAs400Record.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Repositories\DocumentoRepository.cs" />
     <Compile Include="Repositories\IDocumentoRepository.cs" />

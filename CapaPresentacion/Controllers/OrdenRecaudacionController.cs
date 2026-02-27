@@ -556,7 +556,7 @@ namespace CapaPresentacion.Controllers
             // Verificar que no exista ya este número (medida de seguridad adicional)
             int intentos = 0;
             var numeroFinal = numeroOrden;
-            while (intentos < 10) // mÃ¡ximo 10 intentos
+            while (intentos < 10) // máximo 10 intentos
             {
                 if (!_dao.ExisteNumeroOrden(numeroFinal))
                 {
@@ -593,6 +593,18 @@ namespace CapaPresentacion.Controllers
             catch
             {
                 ViewBag.Pagos = null;
+            }
+
+            try
+            {
+                var comprobanteService = new ComprobanteService();
+                ViewBag.TieneComprobanteValido = comprobanteService.ExisteComprobanteValido(id, out var msgComprobante);
+                ViewBag.MensajeComprobante = msgComprobante;
+            }
+            catch
+            {
+                ViewBag.TieneComprobanteValido = false;
+                ViewBag.MensajeComprobante = "Debe registrar el comprobante antes de continuar.";
             }
 
             // Cargar lista de bancos desde P9
@@ -861,31 +873,34 @@ namespace CapaPresentacion.Controllers
 
                 if (string.IsNullOrWhiteSpace(emailDestino)) return;
 
-                // Obtener lista de bancos
+                // Obtener lista de bancos (se mantiene para otros usos, pero la leyenda con cuentas
+                // se toma del modelo PDF para asegurar consistencia entre correo y comprobante)
                 var bancos = _bancoDao.ObtenerBancos();
-                string bancosHtml = "<ul style='margin:0;padding-left:18px;'>" + string.Join("", bancos.Select(b => $"<li>{b.Descripcion}</li>")) + "</ul>";
-                string leyendaBancos = $"<p><strong>Puede realizar el pago de la orden en los siguientes bancos autorizados:</strong></p>{bancosHtml}";
 
                 var pdfModel = BuildOrdenRecaudacionPdfModel(orden);
-                pdfModel.LeyendaBancos = @"Para los servicios AEROPORTUARIOS y/o AERONÃUTICOS, use las siguientes cuentas. Realice el pago con 72 horas de anticipació.<br><br>
+                pdfModel.LeyendaBancos = @"Para los servicios AEROPORTUARIOS y/o AERONAUTICOS, use las siguientes cuentas. Realice el pago con 72 horas de anticipación.<br><br>
 <b>Banco Pichincha</b><br>
 Cuenta Corriente: 2100310688<br>
-SublÃ­nea: 30200 (en depÓsitos)<br>
-Titular: Direcció General de Aviació Civil<br>
+Sublínea: 30200 (en depósitos)<br>
+Titular: Dirección General de Aviación Civil<br>
 RUC: 1768014410001<br>
-En transferencias NO colocar sublÃ­nea<br><br>
+En transferencias NO colocar sublínea<br><br>
 <b>Banco Internacional</b><br>
 Cuenta Corriente: 520608140<br>
-SublÃ­nea: 30200 (en depÓsitos)<br>
-Titular: Direcció General de Aviació Civil<br>
+Sublínea: 30200 (en depósitos)<br>
+Titular: Dirección General de Aviación Civil<br>
 RUC: 1768014410001<br>
-En transferencias NO colocar sublÃ­nea<br><br>
-<b>Banco RumiÃ±ahui</b><br>
+En transferencias NO colocar sublínea<br><br>
+<b>Banco Rumiñahui</b><br>
 Cuenta Corriente: 8002531204<br>
-SublÃ­nea: 30200 (en depÓsitos)<br>
-Titular: Direcció General de Aviació Civil<br>
+Sublínea: 30200 (en depósitos)<br>
+Titular: Dirección General de Aviación Civil<br>
 RUC: 1768014410001<br>
-En transferencias NO colocar sublÃ­nea<br>";
+En transferencias NO colocar sublínea<br>";
+
+                // Usar la leyenda detallada (con números de cuenta) también en el cuerpo del correo
+                string bancosHtml = "<ul style='margin:0;padding-left:18px;'>" + string.Join("", bancos.Select(b => $"<li>{b.Descripcion}</li>")) + "</ul>";
+                string leyendaBancos = $"<p><strong>Puede realizar el pago de la orden en los siguientes bancos autorizados:</strong></p>{pdfModel.LeyendaBancos}";
                 var nombreArchivo = "Comprobante_Orden_" + (orden.NumeroOrden ?? orden.Id.ToString()) + ".pdf";
                 byte[] pdfBytes = null;
 
@@ -899,11 +914,11 @@ En transferencias NO colocar sublÃ­nea<br>";
                         CustomSwitches = PdfBrandingHelper.StandardRotativaSwitches
                     };
                     pdfBytes = pdf.BuildFile(ControllerContext);
-                    System.Diagnostics.Debug.WriteLine($"PDF generado para notificació, tamaÃ±o: {(pdfBytes != null ? pdfBytes.Length : 0)} bytes");
+                    System.Diagnostics.Debug.WriteLine($"PDF generado para notificación, tamaño: {(pdfBytes != null ? pdfBytes.Length : 0)} bytes");
                 }
                 catch (Exception ex)
                 {
-                    System.Diagnostics.Debug.WriteLine("Error al generar PDF para notificació: " + ex.Message);
+                    System.Diagnostics.Debug.WriteLine("Error al generar PDF para notificación: " + ex.Message);
                 }
 
                 var asunto = $"Orden de recaudación generada - {orden.NumeroOrden}";
@@ -920,7 +935,7 @@ En transferencias NO colocar sublÃ­nea<br>";
 
                 if (pdfBytes == null || pdfBytes.Length == 0)
                 {
-                    System.Diagnostics.Debug.WriteLine($"ADVERTENCIA: El PDF de la orden no se generÓ correctamente, no se adjuntarÃ¡ al correo. Orden: {orden.NumeroOrden}");
+                    System.Diagnostics.Debug.WriteLine($"ADVERTENCIA: El PDF de la orden no se generó correctamente, no se adjuntará al correo. Orden: {orden.NumeroOrden}");
                 }
                 else
                 {
@@ -931,7 +946,7 @@ En transferencias NO colocar sublÃ­nea<br>";
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine("Error enviando notificació de orden generada: " + ex.Message);
+                System.Diagnostics.Debug.WriteLine("Error enviando notificación de orden generada: " + ex.Message);
             }
         }
 
@@ -950,7 +965,7 @@ En transferencias NO colocar sublÃ­nea<br>";
 
             if (!string.Equals((orden.Estado ?? "").Trim(), "GENERADA", StringComparison.OrdinalIgnoreCase))
             {
-                TempData["Error"] = "Solo se pueden enviar ï¿½rdenes en estado GENERADA";
+                TempData["Error"] = "Solo se pueden enviar órdenes en estado GENERADA";
                 return RedirectToAction("Detalles", new { id = id });
             }
 
@@ -1013,7 +1028,7 @@ En transferencias NO colocar sublÃ­nea<br>";
             catch (Exception ex)
             {
                 model.Conceptos = new List<CapaPresentacion.Models.ConceptoOptionVM>();
-                ModelState.AddModelError("", "No se pudieron cargar los conceptos. Verifique la conexió a la base de datos.");
+                ModelState.AddModelError("", "No se pudieron cargar los conceptos. Verifique la conexión a la base de datos.");
             }
 
             try
@@ -1396,7 +1411,7 @@ En transferencias NO colocar sublÃ­nea<br>";
                         CapaNegocio.LogBL.RegistrarInfo($"Archivo eliminado por fallo transacció: Orden={orden.NumeroOrden} Ruta={savedVirtualPath}", "OrdenRecaudacionController");
                     }
 
-                    CapaNegocio.LogBL.RegistrarError($"Error registrando pago/transacció Orden={orden.NumeroOrden} CodigoSolicitud={codigoSolicitud}", pagoErr ?? "n/a", "OrdenRecaudacionController");
+                    CapaNegocio.LogBL.RegistrarError($"Error registrando pago/transacción Orden={orden.NumeroOrden} CodigoSolicitud={codigoSolicitud}", pagoErr ?? "n/a", "OrdenRecaudacionController");
                     TempData["Error"] = "No se pudo registrar el pago en la base de datos. " + (string.IsNullOrWhiteSpace(pagoErr) ? "" : ("Detalle: " + pagoErr));
                     return RedirectToAction("Detalles", new { id = id });
                 }
@@ -2018,6 +2033,13 @@ En transferencias NO colocar sublÃ­nea<br>";
         {
             try
             {
+                var comprobanteService = new ComprobanteService();
+                if (!comprobanteService.ExisteComprobanteValido(ordenId, out var mensajeComprobante))
+                {
+                    TempData["Error"] = mensajeComprobante;
+                    return RedirectToAction("Detalles", new { id = ordenId });
+                }
+
                 string usuario = User.Identity.Name ?? "SISTEMA";
                 bool resultado = _dao.ActualizarUltimoPagoEstado(ordenId, CapaDatos.Constants.EstadoPago.Validado, usuario, "Pago validado");
                 

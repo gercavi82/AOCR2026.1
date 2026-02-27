@@ -1395,6 +1395,44 @@ namespace CapaDatos.DAOs
             return null;
         }
 
+        public string ObtenerRutaFacturaPago(int ordenId)
+        {
+            if (ordenId <= 0)
+            {
+                return null;
+            }
+
+            try
+            {
+                using (var conn = new NpgsqlConnection(_connectionString))
+                {
+                    conn.Open();
+                    const string sql = @"SELECT file_path
+                                         FROM aocr_tb_factura_pago
+                                         WHERE orden_id = @ordenId
+                                         ORDER BY creado_en DESC
+                                         LIMIT 1";
+
+                    using (var cmd = new NpgsqlCommand(sql, conn))
+                    {
+                        cmd.Parameters.AddWithValue("@ordenId", ordenId);
+                        var result = cmd.ExecuteScalar();
+                        return result == null || result == DBNull.Value ? null : result.ToString();
+                    }
+                }
+            }
+            catch (PostgresException ex) when (string.Equals(ex.SqlState, "42P01", StringComparison.OrdinalIgnoreCase))
+            {
+                _logger.LogWarning("Tabla aocr_tb_factura_pago no existe al validar comprobante. Detalle={0}", ex.Message);
+                return null;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error en ObtenerRutaFacturaPago");
+                return null;
+            }
+        }
+
         public bool ActualizarUltimoPagoEstado(int ordenId, string nuevoEstado, string usuario, string observacion = null)
         {
             if (ordenId <= 0)

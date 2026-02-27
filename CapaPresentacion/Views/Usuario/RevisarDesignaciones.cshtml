@@ -38,6 +38,7 @@ else
                 @foreach (var u in Model)
                 {
                     var estadoRt = (u.EstadoDesignacionRT ?? "pendiente").Trim().ToLowerInvariant();
+                    var puedeEliminar = u.PuedeEliminarRT;
                     if (string.IsNullOrWhiteSpace(estadoRt))
                     {
                         estadoRt = "pendiente";
@@ -61,6 +62,12 @@ else
                         <td>
                             @Html.Encode(u.NombreCompleto)
                             <div class="text-muted small">@Html.Encode(u.CodigoUsuario)</div>
+                            @if (!puedeEliminar)
+                            {
+                                <div class="text-danger small mt-1">
+                                    No eliminable (tiene @u.TotalRelacionesBloqueantes registro(s) relacionados)
+                                </div>
+                            }
                         </td>
                         <td>@Html.Encode(u.Email)</td>
                         <td>@Html.Encode(u.EmpresaCodigo)</td>
@@ -131,7 +138,11 @@ else
                             <form method="post" action="@Url.Action("EliminarUsuarioRT", "Usuario")" class="d-inline">
                                 @Html.AntiForgeryToken()
                                 <input type="hidden" name="id" value="@u.Id" />
-                                <button type="submit" class="btn btn-danger btn-sm mb-1" title="Eliminar usuario" onclick="return confirm('Desea eliminar este usuario de forma permanente?');">
+                                <button type="submit"
+                                        class="btn btn-danger btn-sm mb-1"
+                                        title="@(puedeEliminar ? "Eliminar usuario" : "No se puede eliminar porque tiene información relacionada")"
+                                        @(puedeEliminar ? "" : "disabled=\"disabled\"")
+                                        onclick="return confirm('Desea eliminar este usuario de forma permanente?');">
                                     <i class="fas fa-trash-alt"></i>
                                 </button>
                             </form>
