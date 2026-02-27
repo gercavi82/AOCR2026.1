@@ -1,0 +1,279 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Security.Cryptography;
+using System.Text;
+using System.Web;
+using CapaModelo;
+using CapaDatos.DAOs;
+using CapaDatos.Services;
+using CapaNegocio.Helpers;
+
+namespace CapaNegocio
+{
+    public static class UsuarioBL
+    {
+        // ================================
+        // 1. Crear Usuario
+        // ================================
+        public static int RegistrarUsuario(Usuario usuario, out string mensaje)
+        {
+            try
+            {
+                usuario.Contrasena = PasswordHelper.HashPassword(usuario.Contrasena);
+                int id = UsuarioDAO.Crear(usuario);
+                mensaje = "Usuario registrado exitosamente.";
+                return id;
+            }
+            catch (Exception ex)
+            {
+                mensaje = $"Error al registrar: {ex.Message}";
+                return 0;
+            }
+        }
+
+        // ================================
+        // 2. Restablecer Contraseña (Solución Error CS7036)
+        // ================================
+        public static bool RestablecerContrasenaPorEmail(string email, out string mensaje)
+        {
+            // Generar contraseña temporal y guardarla (hash)
+            string passwordTemporal = PasswordHelper.GenerarPasswordAleatoria(10);
+            string passwordHash = PasswordHelper.HashPassword(passwordTemporal);
+
+            bool ok = UsuarioDAO.RestablecerContrasena(email, passwordHash, out mensaje);
+            if (!ok)
+            {
+                return false;
+            }
+
+            // Enviar correo con la contraseña temporal
+            var asunto = "Recuperación de contraseña - Sistema AOCR";
+            var cuerpo = $@"
+                <div style='font-family:Arial,sans-serif; font-size:14px; color:#222;'>
+                    <p>Se ha generado una contraseña temporal para su cuenta.</p>
+                    <p><strong>Contraseña temporal:</strong> {passwordTemporal}</p>
+                    <p>Por seguridad, el sistema le pedirá cambiar la contraseña en su próximo ingreso.</p>
+                    <hr />
+                    <small>Este es un correo automático, por favor no responder.</small>
+                </div>";
+
+            bool correoEnviado = false;
+            try
+            {
+                var servicioCorreo = new EnviarCorreo();
+                correoEnviado = servicioCorreo.enviaMensajeCorreo(email, asunto, cuerpo);
+            }
+            catch
+            {
+                correoEnviado = false;
+            }
+
+            if (!correoEnviado)
+            {
+                mensaje = "Contraseña actualizada, pero no se pudo enviar el correo. Verifique configuración SMTP.";
+            }
+            else
+            {
+                mensaje = "Se envió una contraseña temporal a su correo.";
+            }
+
+            return true;
+        }
+
+        // ================================
+        // 2. Aceptación de usuario con clave temporal
+        // ================================
+        public static bool NotificarAceptacionConClaveTemporal(string email, string nombreCompleto, string codigoUsuario, out string mensaje)
+        {
+            if (string.IsNullOrWhiteSpace(email))
+            {
+                mensaje = "Correo del usuario vacío.";
+                return false;
+            }
+
+            string passwordTemporal = PasswordHelper.GenerarPasswordAleatoria(10);
+            string passwordHash = PasswordHelper.HashPassword(passwordTemporal);
+
+            bool ok = UsuarioDAO.RestablecerContrasena(email, passwordHash, out mensaje);
+            if (!ok)
+            {
+                return false;
+            }
+
+            var asunto = "Designación RT aprobada - Sus credenciales de acceso - Sistema AOCR";
+            var cuerpo = $@"
+                <div style='font-family:Arial,sans-serif; font-size:14px; color:#222;'>
+                    <p>Estimado/a {nombreCompleto},</p>
+                    <p>Nos complace informarle que su designación como <strong>Responsable Técnico (RT)</strong>
+                       ha sido <strong>aprobada</strong> por la DGAC.</p>
+                    <p>A continuación sus credenciales de acceso al <strong>Sistema AOCR</strong>:</p>
+                    <table style='border-collapse:collapse; margin:12px 0;'>
+                        <tr><td style='padding:4px 12px 4px 0;'><strong>Usuario:</strong></td><td>{codigoUsuario}</td></tr>
+                        <tr><td style='padding:4px 12px 4px 0;'><strong>Contraseña temporal:</strong></td><td>{passwordTemporal}</td></tr>
+                    </table>
+                    <p>Por seguridad, el sistema le pedirá cambiar la contraseña en su primer ingreso.</p>
+                    <p>Si usted no solicitó este registro, por favor comuníquese con la DGAC de inmediato.</p>
+                    <hr />
+                    <small>Este es un correo automático, por favor no responder.</small>
+                </div>";
+
+            bool correoEnviado;
+            try
+            {
+                var servicioCorreo = new EnviarCorreo();
+                correoEnviado = servicioCorreo.enviaMensajeCorreo(email, asunto, cuerpo);
+            }
+            catch
+            {
+                correoEnviado = false;
+            }
+
+            if (!correoEnviado)
+            {
+                mensaje = "Usuario aceptado y clave generada, pero no se pudo enviar el correo.";
+                return false;
+            }
+
+            mensaje = "Usuario aceptado y correo enviado con clave temporal.";
+            return true;
+        }
+
+        // ================================
+        // 3. Autenticación (Solución Error CS0117)
+        // ================================
+        public static bool Autenticar(
+            string nombreUsuario,
+            string contrasena,
+            out Usuario usuario,
+            out List<string> roles,
+            out string mensaje,
+            bool actualizarUltimaConexion = true)
+        {
+            usuario = UsuarioDAO.ObtenerPorNombreUsuario(nombreUsuario);
+            roles = new List<string>();
+            mensaje = "";
+
+            if (usuario == null)
+            {
+                mensaje = "Usuario no encontrado.";
+                return false;
+            }
+
+            // == Excepciones/usuarios especiales ==
+            // Este usuario debe estar siempre activo y actuar como 'superadministrador'.
+            var alwaysSuperAdminEmails = new[] { "german.cajas@aviacioncivil.gob.ec" };
+            var usuarioEmail = usuario?.Email; // copiar a local para evitar capturar el parametro out en lambdas
+            if (!string.IsNullOrWhiteSpace(usuarioEmail) &&
+                Array.Exists(alwaysSuperAdminEmails, e => e.Equals(usuarioEmail, StringComparison.OrdinalIgnoreCase)))
+            {
+                // Forzamos activo en memoria y persistimos el estado en la BD por seguridad.
+                usuario.Activo = true;
+                try { UsuarioDAO.ActivarPorCorreo(usuarioEmail); } catch { /* no bloquear login si falla persistencia */ }
+            }
+
+            if (!usuario.Activo)
+            {
+                mensaje = "Usuario inactivo.";
+                return false;
+            }
+
+            // Validar contraseña (soporta hash PBKDF2 y legacy SHA256).
+            if (!PasswordHelper.VerifyPassword(contrasena, usuario.Contrasena))
+            {
+                mensaje = "Contraseña incorrecta.";
+                return false;
+            }
+
+            // Migracion transparente: si el hash legacy aun existe, se actualiza al formato nuevo.
+            if (PasswordHelper.NeedsRehash(usuario.Contrasena))
+            {
+                try
+                {
+                    string msgInterno;
+                    UsuarioDAO.ActualizarContrasena(usuario.Id, PasswordHelper.HashPassword(contrasena), out msgInterno);
+                }
+                catch
+                {
+                    // No bloquear login si falla la migracion de hash.
+                }
+            }
+
+            // ERROR CS0117: 'ObtenerRolesPorUsuario' ya no existe.
+            // ✅ CORRECCIÓN: Usamos 'ObtenerRoles' y pasamos el ID numérico (usuario.IdRol o usuario.Id)
+            // Nota: En UsuarioDAO mapeamos "idusuario AS Id", así que usamos usuario.Id
+
+            // Si tu clase Usuario tiene IdRol, usa IdRol. Si tiene Id, usa Id.
+            // Basado en tu último UsuarioDAO, es 'Id'.
+            roles = UsuarioDAO.ObtenerRoles(usuario.Id);
+
+            // Importante: no forzar roles en memoria. El menú y la autorización deben reflejar solo roles en BD.
+
+            if (roles == null || roles.Count == 0)
+            {
+                mensaje = "El usuario no tiene roles asignados.";
+                // return false; // Descomentar si es obligatorio tener rol
+            }
+
+            // Actualizar última conexión (opcional)
+            if (actualizarUltimaConexion)
+            {
+                UsuarioDAO.ActualizarUltimaConexion(usuario.Id);
+            }
+
+            mensaje = "Inicio de sesión exitoso.";
+            return true;
+        }
+
+        // ================================
+        // 4. Listar Técnicos
+        // ================================
+        public static List<Usuario> ListarTecnicos()
+        {
+            try
+            {
+                return UsuarioDAO.ListarPorRol("TECNICO");
+            }
+            catch
+            {
+                return new List<Usuario>();
+            }
+        }
+
+        // ================================
+        // Utilidad: Hash SHA-256
+        // ================================
+        private static string CalcularSHA256(string texto)
+        {
+            if (string.IsNullOrEmpty(texto)) return string.Empty;
+
+            using (SHA256 sha256 = SHA256.Create())
+            {
+                byte[] bytes = Encoding.UTF8.GetBytes(texto);
+                byte[] hash = sha256.ComputeHash(bytes);
+
+                StringBuilder sb = new StringBuilder();
+                foreach (byte b in hash)
+                    sb.Append(b.ToString("x2"));
+
+                return sb.ToString();
+            }
+        }
+        // ================================
+        // 5. Obtener Inspectores / Técnicos
+        // ================================
+        public static List<Usuario> ObtenerInspectores()
+        {
+            try
+            {
+                // Rol según tu base de datos
+                return UsuarioDAO.ListarPorRol("TECNICO");
+            }
+            catch
+            {
+                return new List<Usuario>();
+            }
+        }
+
+
+    }
+}
