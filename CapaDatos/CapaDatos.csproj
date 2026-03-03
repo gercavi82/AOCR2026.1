@@ -262,6 +262,7 @@
     <Compile Include="DAOs\AeronaveDAO.cs" />
     <Compile Include="DAOs\BancoP9DAO.cs" />
     <Compile Include="DAOs\CD_ListaValor.cs" />
+    <Compile Include="DAOs\CD_UbicacionUsuario.cs" />
     <Compile Include="DAOs\ChecklistDAO.cs" />
     <Compile Include="DAOs\AeronaveSolicitudDAO.cs" />
     <Compile Include="DAOs\ChecklistItemDAO.cs" />
@@ -272,6 +273,7 @@
     <Compile Include="DAOs\ChecklistSolicitudDAO.cs" />
     <Compile Include="DAOs\EmpresaAS400DAO.cs" />
     <Compile Include="DAOs\OrdenRecaudacionDAO.cs" />
+    <Compile Include="DAOs\ControlFR3DAO.cs" />
     <Compile Include="DAOs\SolicitudAOCRDAO.cs" />
     <Compile Include="DAOs\SolicitudDAO.cs" />
     <Compile Include="DAOs\SubsanacionDAO.cs" />
@@ -310,6 +312,8 @@
     <Compile Include="Entidades\OrdenRecaudacionConcepto.cs" />
     <Compile Include="Entidades\Pago.cs" />
     <Compile Include="Entidades\OrdenRecaudacion.cs" />
+    <Compile Include="Entidades\ControlFR3.cs" />
+    <Compile Include="Entidades\ControlFR3Detalle.cs" />
     <Compile Include="Constants\EstadoConstants.cs" />
     <Compile Include="Infrastructure\ILoggerService.cs" />
     <Compile Include="Infrastructure\NLogLoggerService.cs" />
@@ -330,6 +334,8 @@
     <Compile Include="Models\OrdenRecaudacionModel.cs" />
     <Compile Include="Models\UsuarioAs400Record.cs" />
     <Compile Include="Models\FacturaAs400Record.cs" />
+    <Compile Include="Models\FacturaPagoRegistroModel.cs" />
+    <Compile Include="Models\UbicacionUsuarioRecord.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Repositories\DocumentoRepository.cs" />
     <Compile Include="Repositories\IDocumentoRepository.cs" />
@@ -341,6 +347,11 @@
     <Compile Include="Services\SecureConfigurationService.cs" />
     <Compile Include="Services\LoggingService.cs" />
     <Compile Include="Services\EmailQueueService.cs" />
+    <Compile Include="Infrastructure\CircuitBreaker.cs" />
+    <Compile Include="Infrastructure\AS400HealthCheck.cs" />
+    <Compile Include="Services\SyncLogService.cs" />
+    <Compile Include="Services\IdempotencyService.cs" />
+    <Compile Include="Services\AuditTrailService.cs" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\CapaModelo\CapaModelo.csproj">

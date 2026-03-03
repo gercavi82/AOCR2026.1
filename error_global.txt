@@ -2513,3 +2513,563 @@ Excepción: System.Web.HttpException (0x80004005): No se encuentra el controlado
    en System.Web.HttpApplication.ExecuteStepImpl(IExecutionStep step)
    en System.Web.HttpApplication.ExecuteStep(IExecutionStep step, Boolean& completedSynchronously)
 
+
+=== ERROR GLOBAL 2026-03-02 10:22:54.162 ===
+URL: https://localhost:44333/Content/imagenes/favicon.ico
+Usuario: USU_ADMIN
+UserAgent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36 Edg/145.0.0.0
+Excepción: System.Web.HttpException (0x80004005): No se encuentra el controlador de la ruta de acceso '/Content/imagenes/favicon.ico' o no implementa IController.
+   en System.Web.Mvc.DefaultControllerFactory.GetControllerInstance(RequestContext requestContext, Type controllerType)
+   en System.Web.Mvc.MvcHandler.ProcessRequestInit(HttpContextBase httpContext, IController& controller, IControllerFactory& factory)
+   en System.Web.Mvc.MvcHandler.BeginProcessRequest(HttpContextBase httpContext, AsyncCallback callback, Object state)
+   en System.Web.HttpApplication.CallHandlerExecutionStep.System.Web.HttpApplication.IExecutionStep.Execute()
+   en System.Web.HttpApplication.<>c__DisplayClass285_0.<ExecuteStepImpl>b__0()
+   en System.Web.HttpApplication.ExecuteStepImpl(IExecutionStep step)
+   en System.Web.HttpApplication.ExecuteStep(IExecutionStep step, Boolean& completedSynchronously)
+
+
+=== ERROR GLOBAL 2026-03-02 10:31:16.730 ===
+URL: https://localhost:44333/Content/imagenes/favicon.ico
+Usuario: USU_ADMIN
+UserAgent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36 Edg/145.0.0.0
+Excepción: System.Web.HttpException (0x80004005): No se encuentra el controlador de la ruta de acceso '/Content/imagenes/favicon.ico' o no implementa IController.
+   en System.Web.Mvc.DefaultControllerFactory.GetControllerInstance(RequestContext requestContext, Type controllerType)
+   en System.Web.Mvc.MvcHandler.ProcessRequestInit(HttpContextBase httpContext, IController& controller, IControllerFactory& factory)
+   en System.Web.Mvc.MvcHandler.BeginProcessRequest(HttpContextBase httpContext, AsyncCallback callback, Object state)
+   en System.Web.HttpApplication.CallHandlerExecutionStep.System.Web.HttpApplication.IExecutionStep.Execute()
+   en System.Web.HttpApplication.<>c__DisplayClass285_0.<ExecuteStepImpl>b__0()
+   en System.Web.HttpApplication.ExecuteStepImpl(IExecutionStep step)
+   en System.Web.HttpApplication.ExecuteStep(IExecutionStep step, Boolean& completedSynchronously)
+
+
+=== ERROR GLOBAL 2026-03-02 11:28:31.018 ===
+URL: https://localhost:44333/Content/imagenes/favicon.ico
+Usuario: USU_ADMIN
+UserAgent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36 Edg/145.0.0.0
+Excepción: System.Web.HttpException (0x80004005): No se encuentra el controlador de la ruta de acceso '/Content/imagenes/favicon.ico' o no implementa IController.
+   en System.Web.Mvc.DefaultControllerFactory.GetControllerInstance(RequestContext requestContext, Type controllerType)
+   en System.Web.Mvc.MvcHandler.ProcessRequestInit(HttpContextBase httpContext, IController& controller, IControllerFactory& factory)
+   en System.Web.Mvc.MvcHandler.BeginProcessRequest(HttpContextBase httpContext, AsyncCallback callback, Object state)
+   en System.Web.HttpApplication.CallHandlerExecutionStep.System.Web.HttpApplication.IExecutionStep.Execute()
+   en System.Web.HttpApplication.<>c__DisplayClass285_0.<ExecuteStepImpl>b__0()
+   en System.Web.HttpApplication.ExecuteStepImpl(IExecutionStep step)
+   en System.Web.HttpApplication.ExecuteStep(IExecutionStep step, Boolean& completedSynchronously)
+
+
+=== ERROR GLOBAL 2026-03-02 12:21:00.222 ===
+URL: https://localhost:44333/Content/imagenes/favicon.ico
+Usuario: USU_ADMIN
+UserAgent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36 Edg/145.0.0.0
+Excepción: System.Web.HttpException (0x80004005): No se encuentra el controlador de la ruta de acceso '/Content/imagenes/favicon.ico' o no implementa IController.
+   en System.Web.Mvc.DefaultControllerFactory.GetControllerInstance(RequestContext requestContext, Type controllerType)
+   en System.Web.Mvc.MvcHandler.ProcessRequestInit(HttpContextBase httpContext, IController& controller, IControllerFactory& factory)
+   en System.Web.Mvc.MvcHandler.BeginProcessRequest(HttpContextBase httpContext, AsyncCallback callback, Object state)
+   en System.Web.HttpApplication.CallHandlerExecutionStep.System.Web.HttpApplication.IExecutionStep.Execute()
+   en System.Web.HttpApplication.<>c__DisplayClass285_0.<ExecuteStepImpl>b__0()
+   en System.Web.HttpApplication.ExecuteStepImpl(IExecutionStep step)
+   en System.Web.HttpApplication.ExecuteStep(IExecutionStep step, Boolean& completedSynchronously)
+
+
+=== ERROR GLOBAL 2026-03-02 13:52:33.828 ===
+URL: https://localhost:44333/.well-known/appspecific/com.chrome.devtools.json
+Usuario: USU_ADMIN
+UserAgent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36 Edg/145.0.0.0
+Excepción: System.Web.HttpException (0x80004005): No se encuentra el controlador de la ruta de acceso '/.well-known/appspecific/com.chrome.devtools.json' o no implementa IController.
+   en System.Web.Mvc.DefaultControllerFactory.GetControllerInstance(RequestContext requestContext, Type controllerType)
+   en System.Web.Mvc.MvcHandler.ProcessRequestInit(HttpContextBase httpContext, IController& controller, IControllerFactory& factory)
+   en System.Web.Mvc.MvcHandler.BeginProcessRequest(HttpContextBase httpContext, AsyncCallback callback, Object state)
+   en System.Web.HttpApplication.CallHandlerExecutionStep.System.Web.HttpApplication.IExecutionStep.Execute()
+   en System.Web.HttpApplication.<>c__DisplayClass285_0.<ExecuteStepImpl>b__0()
+   en System.Web.HttpApplication.ExecuteStepImpl(IExecutionStep step)
+   en System.Web.HttpApplication.ExecuteStep(IExecutionStep step, Boolean& completedSynchronously)
+
+
+=== ERROR GLOBAL 2026-03-02 13:54:43.046 ===
+URL: https://localhost:44333/Content/imagenes/favicon.ico
+Usuario: USU_ADMIN
+UserAgent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36 Edg/145.0.0.0
+Excepción: System.Web.HttpException (0x80004005): No se encuentra el controlador de la ruta de acceso '/Content/imagenes/favicon.ico' o no implementa IController.
+   en System.Web.Mvc.DefaultControllerFactory.GetControllerInstance(RequestContext requestContext, Type controllerType)
+   en System.Web.Mvc.MvcHandler.ProcessRequestInit(HttpContextBase httpContext, IController& controller, IControllerFactory& factory)
+   en System.Web.Mvc.MvcHandler.BeginProcessRequest(HttpContextBase httpContext, AsyncCallback callback, Object state)
+   en System.Web.HttpApplication.CallHandlerExecutionStep.System.Web.HttpApplication.IExecutionStep.Execute()
+   en System.Web.HttpApplication.<>c__DisplayClass285_0.<ExecuteStepImpl>b__0()
+   en System.Web.HttpApplication.ExecuteStepImpl(IExecutionStep step)
+   en System.Web.HttpApplication.ExecuteStep(IExecutionStep step, Boolean& completedSynchronously)
+
+
+=== ERROR GLOBAL 2026-03-02 13:54:53.566 ===
+URL: https://localhost:44333/.well-known/appspecific/com.chrome.devtools.json
+Usuario: USU_ADMIN
+UserAgent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36 Edg/145.0.0.0
+Excepción: System.Web.HttpException (0x80004005): No se encuentra el controlador de la ruta de acceso '/.well-known/appspecific/com.chrome.devtools.json' o no implementa IController.
+   en System.Web.Mvc.DefaultControllerFactory.GetControllerInstance(RequestContext requestContext, Type controllerType)
+   en System.Web.Mvc.MvcHandler.ProcessRequestInit(HttpContextBase httpContext, IController& controller, IControllerFactory& factory)
+   en System.Web.Mvc.MvcHandler.BeginProcessRequest(HttpContextBase httpContext, AsyncCallback callback, Object state)
+   en System.Web.HttpApplication.CallHandlerExecutionStep.System.Web.HttpApplication.IExecutionStep.Execute()
+   en System.Web.HttpApplication.<>c__DisplayClass285_0.<ExecuteStepImpl>b__0()
+   en System.Web.HttpApplication.ExecuteStepImpl(IExecutionStep step)
+   en System.Web.HttpApplication.ExecuteStep(IExecutionStep step, Boolean& completedSynchronously)
+
+
+=== ERROR GLOBAL 2026-03-02 13:55:07.173 ===
+URL: https://localhost:44333/.well-known/appspecific/com.chrome.devtools.json
+Usuario: USU_ADMIN
+UserAgent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36 Edg/145.0.0.0
+Excepción: System.Web.HttpException (0x80004005): No se encuentra el controlador de la ruta de acceso '/.well-known/appspecific/com.chrome.devtools.json' o no implementa IController.
+   en System.Web.Mvc.DefaultControllerFactory.GetControllerInstance(RequestContext requestContext, Type controllerType)
+   en System.Web.Mvc.MvcHandler.ProcessRequestInit(HttpContextBase httpContext, IController& controller, IControllerFactory& factory)
+   en System.Web.Mvc.MvcHandler.BeginProcessRequest(HttpContextBase httpContext, AsyncCallback callback, Object state)
+   en System.Web.HttpApplication.CallHandlerExecutionStep.System.Web.HttpApplication.IExecutionStep.Execute()
+   en System.Web.HttpApplication.<>c__DisplayClass285_0.<ExecuteStepImpl>b__0()
+   en System.Web.HttpApplication.ExecuteStepImpl(IExecutionStep step)
+   en System.Web.HttpApplication.ExecuteStep(IExecutionStep step, Boolean& completedSynchronously)
+
+
+=== ERROR GLOBAL 2026-03-02 13:59:57.821 ===
+URL: https://localhost:44333/.well-known/appspecific/com.chrome.devtools.json
+Usuario: USU_ADMIN
+UserAgent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36 Edg/145.0.0.0
+Excepción: System.Web.HttpException (0x80004005): No se encuentra el controlador de la ruta de acceso '/.well-known/appspecific/com.chrome.devtools.json' o no implementa IController.
+   en System.Web.Mvc.DefaultControllerFactory.GetControllerInstance(RequestContext requestContext, Type controllerType)
+   en System.Web.Mvc.MvcHandler.ProcessRequestInit(HttpContextBase httpContext, IController& controller, IControllerFactory& factory)
+   en System.Web.Mvc.MvcHandler.BeginProcessRequest(HttpContextBase httpContext, AsyncCallback callback, Object state)
+   en System.Web.HttpApplication.CallHandlerExecutionStep.System.Web.HttpApplication.IExecutionStep.Execute()
+   en System.Web.HttpApplication.<>c__DisplayClass285_0.<ExecuteStepImpl>b__0()
+   en System.Web.HttpApplication.ExecuteStepImpl(IExecutionStep step)
+   en System.Web.HttpApplication.ExecuteStep(IExecutionStep step, Boolean& completedSynchronously)
+
+
+=== ERROR GLOBAL 2026-03-02 14:07:28.944 ===
+URL: https://localhost:44333/Content/imagenes/favicon.ico
+Usuario: USU_ADMIN
+UserAgent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36 Edg/145.0.0.0
+Excepción: System.Web.HttpException (0x80004005): No se encuentra el controlador de la ruta de acceso '/Content/imagenes/favicon.ico' o no implementa IController.
+   en System.Web.Mvc.DefaultControllerFactory.GetControllerInstance(RequestContext requestContext, Type controllerType)
+   en System.Web.Mvc.MvcHandler.ProcessRequestInit(HttpContextBase httpContext, IController& controller, IControllerFactory& factory)
+   en System.Web.Mvc.MvcHandler.BeginProcessRequest(HttpContextBase httpContext, AsyncCallback callback, Object state)
+   en System.Web.HttpApplication.CallHandlerExecutionStep.System.Web.HttpApplication.IExecutionStep.Execute()
+   en System.Web.HttpApplication.<>c__DisplayClass285_0.<ExecuteStepImpl>b__0()
+   en System.Web.HttpApplication.ExecuteStepImpl(IExecutionStep step)
+   en System.Web.HttpApplication.ExecuteStep(IExecutionStep step, Boolean& completedSynchronously)
+
+
+=== ERROR GLOBAL 2026-03-02 14:18:21.360 ===
+URL: https://localhost:44333/Content/imagenes/favicon.ico
+Usuario: USU_ADMIN
+UserAgent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36 Edg/145.0.0.0
+Excepción: System.Web.HttpException (0x80004005): No se encuentra el controlador de la ruta de acceso '/Content/imagenes/favicon.ico' o no implementa IController.
+   en System.Web.Mvc.DefaultControllerFactory.GetControllerInstance(RequestContext requestContext, Type controllerType)
+   en System.Web.Mvc.MvcHandler.ProcessRequestInit(HttpContextBase httpContext, IController& controller, IControllerFactory& factory)
+   en System.Web.Mvc.MvcHandler.BeginProcessRequest(HttpContextBase httpContext, AsyncCallback callback, Object state)
+   en System.Web.HttpApplication.CallHandlerExecutionStep.System.Web.HttpApplication.IExecutionStep.Execute()
+   en System.Web.HttpApplication.<>c__DisplayClass285_0.<ExecuteStepImpl>b__0()
+   en System.Web.HttpApplication.ExecuteStepImpl(IExecutionStep step)
+   en System.Web.HttpApplication.ExecuteStep(IExecutionStep step, Boolean& completedSynchronously)
+
+
+=== ERROR GLOBAL 2026-03-02 14:23:50.261 ===
+URL: https://localhost:44333/Content/imagenes/favicon.ico
+Usuario: USU_ADMIN
+UserAgent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36 Edg/145.0.0.0
+Excepción: System.Web.HttpException (0x80004005): No se encuentra el controlador de la ruta de acceso '/Content/imagenes/favicon.ico' o no implementa IController.
+   en System.Web.Mvc.DefaultControllerFactory.GetControllerInstance(RequestContext requestContext, Type controllerType)
+   en System.Web.Mvc.MvcHandler.ProcessRequestInit(HttpContextBase httpContext, IController& controller, IControllerFactory& factory)
+   en System.Web.Mvc.MvcHandler.BeginProcessRequest(HttpContextBase httpContext, AsyncCallback callback, Object state)
+   en System.Web.HttpApplication.CallHandlerExecutionStep.System.Web.HttpApplication.IExecutionStep.Execute()
+   en System.Web.HttpApplication.<>c__DisplayClass285_0.<ExecuteStepImpl>b__0()
+   en System.Web.HttpApplication.ExecuteStepImpl(IExecutionStep step)
+   en System.Web.HttpApplication.ExecuteStep(IExecutionStep step, Boolean& completedSynchronously)
+
+
+=== ERROR GLOBAL 2026-03-02 14:32:55.387 ===
+URL: https://localhost:44333/Content/imagenes/favicon.ico
+Usuario: USU_ADMIN
+UserAgent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36 Edg/145.0.0.0
+Excepción: System.Web.HttpException (0x80004005): No se encuentra el controlador de la ruta de acceso '/Content/imagenes/favicon.ico' o no implementa IController.
+   en System.Web.Mvc.DefaultControllerFactory.GetControllerInstance(RequestContext requestContext, Type controllerType)
+   en System.Web.Mvc.MvcHandler.ProcessRequestInit(HttpContextBase httpContext, IController& controller, IControllerFactory& factory)
+   en System.Web.Mvc.MvcHandler.BeginProcessRequest(HttpContextBase httpContext, AsyncCallback callback, Object state)
+   en System.Web.HttpApplication.CallHandlerExecutionStep.System.Web.HttpApplication.IExecutionStep.Execute()
+   en System.Web.HttpApplication.<>c__DisplayClass285_0.<ExecuteStepImpl>b__0()
+   en System.Web.HttpApplication.ExecuteStepImpl(IExecutionStep step)
+   en System.Web.HttpApplication.ExecuteStep(IExecutionStep step, Boolean& completedSynchronously)
+
+
+=== ERROR GLOBAL 2026-03-02 14:45:41.840 ===
+URL: https://localhost:44333/Content/imagenes/favicon.ico
+Usuario: USU_ADMIN
+UserAgent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36 Edg/145.0.0.0
+Excepción: System.Web.HttpException (0x80004005): No se encuentra el controlador de la ruta de acceso '/Content/imagenes/favicon.ico' o no implementa IController.
+   en System.Web.Mvc.DefaultControllerFactory.GetControllerInstance(RequestContext requestContext, Type controllerType)
+   en System.Web.Mvc.MvcHandler.ProcessRequestInit(HttpContextBase httpContext, IController& controller, IControllerFactory& factory)
+   en System.Web.Mvc.MvcHandler.BeginProcessRequest(HttpContextBase httpContext, AsyncCallback callback, Object state)
+   en System.Web.HttpApplication.CallHandlerExecutionStep.System.Web.HttpApplication.IExecutionStep.Execute()
+   en System.Web.HttpApplication.<>c__DisplayClass285_0.<ExecuteStepImpl>b__0()
+   en System.Web.HttpApplication.ExecuteStepImpl(IExecutionStep step)
+   en System.Web.HttpApplication.ExecuteStep(IExecutionStep step, Boolean& completedSynchronously)
+
+
+=== ERROR GLOBAL 2026-03-02 14:52:13.569 ===
+URL: https://localhost:44333/Content/imagenes/favicon.ico
+Usuario: USU_ADMIN
+UserAgent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36 Edg/145.0.0.0
+Excepción: System.Web.HttpException (0x80004005): No se encuentra el controlador de la ruta de acceso '/Content/imagenes/favicon.ico' o no implementa IController.
+   en System.Web.Mvc.DefaultControllerFactory.GetControllerInstance(RequestContext requestContext, Type controllerType)
+   en System.Web.Mvc.MvcHandler.ProcessRequestInit(HttpContextBase httpContext, IController& controller, IControllerFactory& factory)
+   en System.Web.Mvc.MvcHandler.BeginProcessRequest(HttpContextBase httpContext, AsyncCallback callback, Object state)
+   en System.Web.HttpApplication.CallHandlerExecutionStep.System.Web.HttpApplication.IExecutionStep.Execute()
+   en System.Web.HttpApplication.<>c__DisplayClass285_0.<ExecuteStepImpl>b__0()
+   en System.Web.HttpApplication.ExecuteStepImpl(IExecutionStep step)
+   en System.Web.HttpApplication.ExecuteStep(IExecutionStep step, Boolean& completedSynchronously)
+
+
+=== ERROR GLOBAL 2026-03-02 15:02:45.360 ===
+URL: https://localhost:44333/Content/imagenes/favicon.ico
+Usuario: USU_ADMIN
+UserAgent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36 Edg/145.0.0.0
+Excepción: System.Web.HttpException (0x80004005): No se encuentra el controlador de la ruta de acceso '/Content/imagenes/favicon.ico' o no implementa IController.
+   en System.Web.Mvc.DefaultControllerFactory.GetControllerInstance(RequestContext requestContext, Type controllerType)
+   en System.Web.Mvc.MvcHandler.ProcessRequestInit(HttpContextBase httpContext, IController& controller, IControllerFactory& factory)
+   en System.Web.Mvc.MvcHandler.BeginProcessRequest(HttpContextBase httpContext, AsyncCallback callback, Object state)
+   en System.Web.HttpApplication.CallHandlerExecutionStep.System.Web.HttpApplication.IExecutionStep.Execute()
+   en System.Web.HttpApplication.<>c__DisplayClass285_0.<ExecuteStepImpl>b__0()
+   en System.Web.HttpApplication.ExecuteStepImpl(IExecutionStep step)
+   en System.Web.HttpApplication.ExecuteStep(IExecutionStep step, Boolean& completedSynchronously)
+
+
+=== ERROR GLOBAL 2026-03-02 15:06:34.480 ===
+URL: https://localhost:44333/Content/imagenes/favicon.ico
+Usuario: USU_ADMIN
+UserAgent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36 Edg/145.0.0.0
+Excepción: System.Web.HttpException (0x80004005): No se encuentra el controlador de la ruta de acceso '/Content/imagenes/favicon.ico' o no implementa IController.
+   en System.Web.Mvc.DefaultControllerFactory.GetControllerInstance(RequestContext requestContext, Type controllerType)
+   en System.Web.Mvc.MvcHandler.ProcessRequestInit(HttpContextBase httpContext, IController& controller, IControllerFactory& factory)
+   en System.Web.Mvc.MvcHandler.BeginProcessRequest(HttpContextBase httpContext, AsyncCallback callback, Object state)
+   en System.Web.HttpApplication.CallHandlerExecutionStep.System.Web.HttpApplication.IExecutionStep.Execute()
+   en System.Web.HttpApplication.<>c__DisplayClass285_0.<ExecuteStepImpl>b__0()
+   en System.Web.HttpApplication.ExecuteStepImpl(IExecutionStep step)
+   en System.Web.HttpApplication.ExecuteStep(IExecutionStep step, Boolean& completedSynchronously)
+
+
+=== ERROR GLOBAL 2026-03-02 15:11:48.202 ===
+URL: https://localhost:44333/Content/imagenes/favicon.ico
+Usuario: USU_ADMIN
+UserAgent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36 Edg/145.0.0.0
+Excepción: System.Web.HttpException (0x80004005): No se encuentra el controlador de la ruta de acceso '/Content/imagenes/favicon.ico' o no implementa IController.
+   en System.Web.Mvc.DefaultControllerFactory.GetControllerInstance(RequestContext requestContext, Type controllerType)
+   en System.Web.Mvc.MvcHandler.ProcessRequestInit(HttpContextBase httpContext, IController& controller, IControllerFactory& factory)
+   en System.Web.Mvc.MvcHandler.BeginProcessRequest(HttpContextBase httpContext, AsyncCallback callback, Object state)
+   en System.Web.HttpApplication.CallHandlerExecutionStep.System.Web.HttpApplication.IExecutionStep.Execute()
+   en System.Web.HttpApplication.<>c__DisplayClass285_0.<ExecuteStepImpl>b__0()
+   en System.Web.HttpApplication.ExecuteStepImpl(IExecutionStep step)
+   en System.Web.HttpApplication.ExecuteStep(IExecutionStep step, Boolean& completedSynchronously)
+
+
+=== ERROR GLOBAL 2026-03-02 15:45:27.281 ===
+URL: https://localhost:44333/Content/imagenes/favicon.ico
+Usuario: GACAJAS
+UserAgent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36 Edg/145.0.0.0
+Excepción: System.Web.HttpException (0x80004005): No se encuentra el controlador de la ruta de acceso '/Content/imagenes/favicon.ico' o no implementa IController.
+   en System.Web.Mvc.DefaultControllerFactory.GetControllerInstance(RequestContext requestContext, Type controllerType)
+   en System.Web.Mvc.MvcHandler.ProcessRequestInit(HttpContextBase httpContext, IController& controller, IControllerFactory& factory)
+   en System.Web.Mvc.MvcHandler.BeginProcessRequest(HttpContextBase httpContext, AsyncCallback callback, Object state)
+   en System.Web.HttpApplication.CallHandlerExecutionStep.System.Web.HttpApplication.IExecutionStep.Execute()
+   en System.Web.HttpApplication.<>c__DisplayClass285_0.<ExecuteStepImpl>b__0()
+   en System.Web.HttpApplication.ExecuteStepImpl(IExecutionStep step)
+   en System.Web.HttpApplication.ExecuteStep(IExecutionStep step, Boolean& completedSynchronously)
+
+
+=== ERROR GLOBAL 2026-03-02 15:45:47.268 ===
+URL: https://localhost:44333/.well-known/appspecific/com.chrome.devtools.json
+Usuario: GACAJAS
+UserAgent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36 Edg/145.0.0.0
+Excepción: System.Web.HttpException (0x80004005): No se encuentra el controlador de la ruta de acceso '/.well-known/appspecific/com.chrome.devtools.json' o no implementa IController.
+   en System.Web.Mvc.DefaultControllerFactory.GetControllerInstance(RequestContext requestContext, Type controllerType)
+   en System.Web.Mvc.MvcHandler.ProcessRequestInit(HttpContextBase httpContext, IController& controller, IControllerFactory& factory)
+   en System.Web.Mvc.MvcHandler.BeginProcessRequest(HttpContextBase httpContext, AsyncCallback callback, Object state)
+   en System.Web.HttpApplication.CallHandlerExecutionStep.System.Web.HttpApplication.IExecutionStep.Execute()
+   en System.Web.HttpApplication.<>c__DisplayClass285_0.<ExecuteStepImpl>b__0()
+   en System.Web.HttpApplication.ExecuteStepImpl(IExecutionStep step)
+   en System.Web.HttpApplication.ExecuteStep(IExecutionStep step, Boolean& completedSynchronously)
+
+
+=== ERROR GLOBAL 2026-03-02 15:51:15.870 ===
+URL: https://localhost:44333/Content/imagenes/favicon.ico
+Usuario: GACAJAS
+UserAgent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36 Edg/145.0.0.0
+Excepción: System.Web.HttpException (0x80004005): No se encuentra el controlador de la ruta de acceso '/Content/imagenes/favicon.ico' o no implementa IController.
+   en System.Web.Mvc.DefaultControllerFactory.GetControllerInstance(RequestContext requestContext, Type controllerType)
+   en System.Web.Mvc.MvcHandler.ProcessRequestInit(HttpContextBase httpContext, IController& controller, IControllerFactory& factory)
+   en System.Web.Mvc.MvcHandler.BeginProcessRequest(HttpContextBase httpContext, AsyncCallback callback, Object state)
+   en System.Web.HttpApplication.CallHandlerExecutionStep.System.Web.HttpApplication.IExecutionStep.Execute()
+   en System.Web.HttpApplication.<>c__DisplayClass285_0.<ExecuteStepImpl>b__0()
+   en System.Web.HttpApplication.ExecuteStepImpl(IExecutionStep step)
+   en System.Web.HttpApplication.ExecuteStep(IExecutionStep step, Boolean& completedSynchronously)
+
+
+=== ERROR GLOBAL 2026-03-02 15:53:53.087 ===
+URL: https://localhost:44333/.well-known/appspecific/com.chrome.devtools.json
+Usuario: GACAJAS
+UserAgent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36 Edg/145.0.0.0
+Excepción: System.Web.HttpException (0x80004005): No se encuentra el controlador de la ruta de acceso '/.well-known/appspecific/com.chrome.devtools.json' o no implementa IController.
+   en System.Web.Mvc.DefaultControllerFactory.GetControllerInstance(RequestContext requestContext, Type controllerType)
+   en System.Web.Mvc.MvcHandler.ProcessRequestInit(HttpContextBase httpContext, IController& controller, IControllerFactory& factory)
+   en System.Web.Mvc.MvcHandler.BeginProcessRequest(HttpContextBase httpContext, AsyncCallback callback, Object state)
+   en System.Web.HttpApplication.CallHandlerExecutionStep.System.Web.HttpApplication.IExecutionStep.Execute()
+   en System.Web.HttpApplication.<>c__DisplayClass285_0.<ExecuteStepImpl>b__0()
+   en System.Web.HttpApplication.ExecuteStepImpl(IExecutionStep step)
+   en System.Web.HttpApplication.ExecuteStep(IExecutionStep step, Boolean& completedSynchronously)
+
+
+=== ERROR GLOBAL 2026-03-02 15:53:57.667 ===
+URL: https://localhost:44333/.well-known/appspecific/com.chrome.devtools.json
+Usuario: GACAJAS
+UserAgent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36 Edg/145.0.0.0
+Excepción: System.Web.HttpException (0x80004005): No se encuentra el controlador de la ruta de acceso '/.well-known/appspecific/com.chrome.devtools.json' o no implementa IController.
+   en System.Web.Mvc.DefaultControllerFactory.GetControllerInstance(RequestContext requestContext, Type controllerType)
+   en System.Web.Mvc.MvcHandler.ProcessRequestInit(HttpContextBase httpContext, IController& controller, IControllerFactory& factory)
+   en System.Web.Mvc.MvcHandler.BeginProcessRequest(HttpContextBase httpContext, AsyncCallback callback, Object state)
+   en System.Web.HttpApplication.CallHandlerExecutionStep.System.Web.HttpApplication.IExecutionStep.Execute()
+   en System.Web.HttpApplication.<>c__DisplayClass285_0.<ExecuteStepImpl>b__0()
+   en System.Web.HttpApplication.ExecuteStepImpl(IExecutionStep step)
+   en System.Web.HttpApplication.ExecuteStep(IExecutionStep step, Boolean& completedSynchronously)
+
+
+=== ERROR GLOBAL 2026-03-02 15:54:13.489 ===
+URL: https://localhost:44333/.well-known/appspecific/com.chrome.devtools.json
+Usuario: GACAJAS
+UserAgent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36 Edg/145.0.0.0
+Excepción: System.Web.HttpException (0x80004005): No se encuentra el controlador de la ruta de acceso '/.well-known/appspecific/com.chrome.devtools.json' o no implementa IController.
+   en System.Web.Mvc.DefaultControllerFactory.GetControllerInstance(RequestContext requestContext, Type controllerType)
+   en System.Web.Mvc.MvcHandler.ProcessRequestInit(HttpContextBase httpContext, IController& controller, IControllerFactory& factory)
+   en System.Web.Mvc.MvcHandler.BeginProcessRequest(HttpContextBase httpContext, AsyncCallback callback, Object state)
+   en System.Web.HttpApplication.CallHandlerExecutionStep.System.Web.HttpApplication.IExecutionStep.Execute()
+   en System.Web.HttpApplication.<>c__DisplayClass285_0.<ExecuteStepImpl>b__0()
+   en System.Web.HttpApplication.ExecuteStepImpl(IExecutionStep step)
+   en System.Web.HttpApplication.ExecuteStep(IExecutionStep step, Boolean& completedSynchronously)
+
+
+=== ERROR GLOBAL 2026-03-03 08:37:35.673 ===
+URL: https://localhost:44333/.well-known/appspecific/com.chrome.devtools.json
+Usuario: GACAJAS
+UserAgent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36 Edg/145.0.0.0
+Excepción: System.Web.HttpException (0x80004005): No se encuentra el controlador de la ruta de acceso '/.well-known/appspecific/com.chrome.devtools.json' o no implementa IController.
+   en System.Web.Mvc.DefaultControllerFactory.GetControllerInstance(RequestContext requestContext, Type controllerType)
+   en System.Web.Mvc.MvcHandler.ProcessRequestInit(HttpContextBase httpContext, IController& controller, IControllerFactory& factory)
+   en System.Web.Mvc.MvcHandler.BeginProcessRequest(HttpContextBase httpContext, AsyncCallback callback, Object state)
+   en System.Web.HttpApplication.CallHandlerExecutionStep.System.Web.HttpApplication.IExecutionStep.Execute()
+   en System.Web.HttpApplication.<>c__DisplayClass285_0.<ExecuteStepImpl>b__0()
+   en System.Web.HttpApplication.ExecuteStepImpl(IExecutionStep step)
+   en System.Web.HttpApplication.ExecuteStep(IExecutionStep step, Boolean& completedSynchronously)
+
+
+=== ERROR GLOBAL 2026-03-03 08:37:56.120 ===
+URL: https://localhost:44333/.well-known/appspecific/com.chrome.devtools.json
+Usuario: GACAJAS
+UserAgent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36 Edg/145.0.0.0
+Excepción: System.Web.HttpException (0x80004005): No se encuentra el controlador de la ruta de acceso '/.well-known/appspecific/com.chrome.devtools.json' o no implementa IController.
+   en System.Web.Mvc.DefaultControllerFactory.GetControllerInstance(RequestContext requestContext, Type controllerType)
+   en System.Web.Mvc.MvcHandler.ProcessRequestInit(HttpContextBase httpContext, IController& controller, IControllerFactory& factory)
+   en System.Web.Mvc.MvcHandler.BeginProcessRequest(HttpContextBase httpContext, AsyncCallback callback, Object state)
+   en System.Web.HttpApplication.CallHandlerExecutionStep.System.Web.HttpApplication.IExecutionStep.Execute()
+   en System.Web.HttpApplication.<>c__DisplayClass285_0.<ExecuteStepImpl>b__0()
+   en System.Web.HttpApplication.ExecuteStepImpl(IExecutionStep step)
+   en System.Web.HttpApplication.ExecuteStep(IExecutionStep step, Boolean& completedSynchronously)
+
+
+=== ERROR GLOBAL 2026-03-03 08:37:58.670 ===
+URL: https://localhost:44333/.well-known/appspecific/com.chrome.devtools.json
+Usuario: GACAJAS
+UserAgent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36 Edg/145.0.0.0
+Excepción: System.Web.HttpException (0x80004005): No se encuentra el controlador de la ruta de acceso '/.well-known/appspecific/com.chrome.devtools.json' o no implementa IController.
+   en System.Web.Mvc.DefaultControllerFactory.GetControllerInstance(RequestContext requestContext, Type controllerType)
+   en System.Web.Mvc.MvcHandler.ProcessRequestInit(HttpContextBase httpContext, IController& controller, IControllerFactory& factory)
+   en System.Web.Mvc.MvcHandler.BeginProcessRequest(HttpContextBase httpContext, AsyncCallback callback, Object state)
+   en System.Web.HttpApplication.CallHandlerExecutionStep.System.Web.HttpApplication.IExecutionStep.Execute()
+   en System.Web.HttpApplication.<>c__DisplayClass285_0.<ExecuteStepImpl>b__0()
+   en System.Web.HttpApplication.ExecuteStepImpl(IExecutionStep step)
+   en System.Web.HttpApplication.ExecuteStep(IExecutionStep step, Boolean& completedSynchronously)
+
+
+=== ERROR GLOBAL 2026-03-03 08:38:00.749 ===
+URL: https://localhost:44333/.well-known/appspecific/com.chrome.devtools.json
+Usuario: GACAJAS
+UserAgent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36 Edg/145.0.0.0
+Excepción: System.Web.HttpException (0x80004005): No se encuentra el controlador de la ruta de acceso '/.well-known/appspecific/com.chrome.devtools.json' o no implementa IController.
+   en System.Web.Mvc.DefaultControllerFactory.GetControllerInstance(RequestContext requestContext, Type controllerType)
+   en System.Web.Mvc.MvcHandler.ProcessRequestInit(HttpContextBase httpContext, IController& controller, IControllerFactory& factory)
+   en System.Web.Mvc.MvcHandler.BeginProcessRequest(HttpContextBase httpContext, AsyncCallback callback, Object state)
+   en System.Web.HttpApplication.CallHandlerExecutionStep.System.Web.HttpApplication.IExecutionStep.Execute()
+   en System.Web.HttpApplication.<>c__DisplayClass285_0.<ExecuteStepImpl>b__0()
+   en System.Web.HttpApplication.ExecuteStepImpl(IExecutionStep step)
+   en System.Web.HttpApplication.ExecuteStep(IExecutionStep step, Boolean& completedSynchronously)
+
+
+=== ERROR GLOBAL 2026-03-03 08:38:02.951 ===
+URL: https://localhost:44333/.well-known/appspecific/com.chrome.devtools.json
+Usuario: GACAJAS
+UserAgent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36 Edg/145.0.0.0
+Excepción: System.Web.HttpException (0x80004005): No se encuentra el controlador de la ruta de acceso '/.well-known/appspecific/com.chrome.devtools.json' o no implementa IController.
+   en System.Web.Mvc.DefaultControllerFactory.GetControllerInstance(RequestContext requestContext, Type controllerType)
+   en System.Web.Mvc.MvcHandler.ProcessRequestInit(HttpContextBase httpContext, IController& controller, IControllerFactory& factory)
+   en System.Web.Mvc.MvcHandler.BeginProcessRequest(HttpContextBase httpContext, AsyncCallback callback, Object state)
+   en System.Web.HttpApplication.CallHandlerExecutionStep.System.Web.HttpApplication.IExecutionStep.Execute()
+   en System.Web.HttpApplication.<>c__DisplayClass285_0.<ExecuteStepImpl>b__0()
+   en System.Web.HttpApplication.ExecuteStepImpl(IExecutionStep step)
+   en System.Web.HttpApplication.ExecuteStep(IExecutionStep step, Boolean& completedSynchronously)
+
+
+=== ERROR GLOBAL 2026-03-03 08:38:11.588 ===
+URL: https://localhost:44333/.well-known/appspecific/com.chrome.devtools.json
+Usuario: GACAJAS
+UserAgent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36 Edg/145.0.0.0
+Excepción: System.Web.HttpException (0x80004005): No se encuentra el controlador de la ruta de acceso '/.well-known/appspecific/com.chrome.devtools.json' o no implementa IController.
+   en System.Web.Mvc.DefaultControllerFactory.GetControllerInstance(RequestContext requestContext, Type controllerType)
+   en System.Web.Mvc.MvcHandler.ProcessRequestInit(HttpContextBase httpContext, IController& controller, IControllerFactory& factory)
+   en System.Web.Mvc.MvcHandler.BeginProcessRequest(HttpContextBase httpContext, AsyncCallback callback, Object state)
+   en System.Web.HttpApplication.CallHandlerExecutionStep.System.Web.HttpApplication.IExecutionStep.Execute()
+   en System.Web.HttpApplication.<>c__DisplayClass285_0.<ExecuteStepImpl>b__0()
+   en System.Web.HttpApplication.ExecuteStepImpl(IExecutionStep step)
+   en System.Web.HttpApplication.ExecuteStep(IExecutionStep step, Boolean& completedSynchronously)
+
+
+=== ERROR GLOBAL 2026-03-03 08:49:42.237 ===
+URL: https://localhost:44333/Content/imagenes/favicon.ico
+Usuario: GACAJAS
+UserAgent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36
+Excepción: System.Web.HttpException (0x80004005): No se encuentra el controlador de la ruta de acceso '/Content/imagenes/favicon.ico' o no implementa IController.
+   en System.Web.Mvc.DefaultControllerFactory.GetControllerInstance(RequestContext requestContext, Type controllerType)
+   en System.Web.Mvc.MvcHandler.ProcessRequestInit(HttpContextBase httpContext, IController& controller, IControllerFactory& factory)
+   en System.Web.Mvc.MvcHandler.BeginProcessRequest(HttpContextBase httpContext, AsyncCallback callback, Object state)
+   en System.Web.HttpApplication.CallHandlerExecutionStep.System.Web.HttpApplication.IExecutionStep.Execute()
+   en System.Web.HttpApplication.<>c__DisplayClass285_0.<ExecuteStepImpl>b__0()
+   en System.Web.HttpApplication.ExecuteStepImpl(IExecutionStep step)
+   en System.Web.HttpApplication.ExecuteStep(IExecutionStep step, Boolean& completedSynchronously)
+
+
+=== ERROR GLOBAL 2026-03-03 08:58:52.831 ===
+URL: https://localhost:44333/Content/imagenes/favicon.ico
+Usuario: GACAJAS
+UserAgent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36
+Excepción: System.Web.HttpException (0x80004005): No se encuentra el controlador de la ruta de acceso '/Content/imagenes/favicon.ico' o no implementa IController.
+   en System.Web.Mvc.DefaultControllerFactory.GetControllerInstance(RequestContext requestContext, Type controllerType)
+   en System.Web.Mvc.MvcHandler.ProcessRequestInit(HttpContextBase httpContext, IController& controller, IControllerFactory& factory)
+   en System.Web.Mvc.MvcHandler.BeginProcessRequest(HttpContextBase httpContext, AsyncCallback callback, Object state)
+   en System.Web.HttpApplication.CallHandlerExecutionStep.System.Web.HttpApplication.IExecutionStep.Execute()
+   en System.Web.HttpApplication.<>c__DisplayClass285_0.<ExecuteStepImpl>b__0()
+   en System.Web.HttpApplication.ExecuteStepImpl(IExecutionStep step)
+   en System.Web.HttpApplication.ExecuteStep(IExecutionStep step, Boolean& completedSynchronously)
+
+
+=== ERROR GLOBAL 2026-03-03 09:04:39.276 ===
+URL: https://localhost:44333/Content/imagenes/favicon.ico
+Usuario: GACAJAS
+UserAgent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36
+Excepción: System.Web.HttpException (0x80004005): No se encuentra el controlador de la ruta de acceso '/Content/imagenes/favicon.ico' o no implementa IController.
+   en System.Web.Mvc.DefaultControllerFactory.GetControllerInstance(RequestContext requestContext, Type controllerType)
+   en System.Web.Mvc.MvcHandler.ProcessRequestInit(HttpContextBase httpContext, IController& controller, IControllerFactory& factory)
+   en System.Web.Mvc.MvcHandler.BeginProcessRequest(HttpContextBase httpContext, AsyncCallback callback, Object state)
+   en System.Web.HttpApplication.CallHandlerExecutionStep.System.Web.HttpApplication.IExecutionStep.Execute()
+   en System.Web.HttpApplication.<>c__DisplayClass285_0.<ExecuteStepImpl>b__0()
+   en System.Web.HttpApplication.ExecuteStepImpl(IExecutionStep step)
+   en System.Web.HttpApplication.ExecuteStep(IExecutionStep step, Boolean& completedSynchronously)
+
+
+=== ERROR GLOBAL 2026-03-03 09:18:02.263 ===
+URL: https://localhost:44333/Content/imagenes/favicon.ico
+Usuario: GACAJAS
+UserAgent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36
+Excepción: System.Web.HttpException (0x80004005): No se encuentra el controlador de la ruta de acceso '/Content/imagenes/favicon.ico' o no implementa IController.
+   en System.Web.Mvc.DefaultControllerFactory.GetControllerInstance(RequestContext requestContext, Type controllerType)
+   en System.Web.Mvc.MvcHandler.ProcessRequestInit(HttpContextBase httpContext, IController& controller, IControllerFactory& factory)
+   en System.Web.Mvc.MvcHandler.BeginProcessRequest(HttpContextBase httpContext, AsyncCallback callback, Object state)
+   en System.Web.HttpApplication.CallHandlerExecutionStep.System.Web.HttpApplication.IExecutionStep.Execute()
+   en System.Web.HttpApplication.<>c__DisplayClass285_0.<ExecuteStepImpl>b__0()
+   en System.Web.HttpApplication.ExecuteStepImpl(IExecutionStep step)
+   en System.Web.HttpApplication.ExecuteStep(IExecutionStep step, Boolean& completedSynchronously)
+
+
+=== ERROR GLOBAL 2026-03-03 09:35:46.511 ===
+URL: https://localhost:44333/Content/imagenes/favicon.ico
+Usuario: GACAJAS
+UserAgent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36
+Excepción: System.Web.HttpException (0x80004005): No se encuentra el controlador de la ruta de acceso '/Content/imagenes/favicon.ico' o no implementa IController.
+   en System.Web.Mvc.DefaultControllerFactory.GetControllerInstance(RequestContext requestContext, Type controllerType)
+   en System.Web.Mvc.MvcHandler.ProcessRequestInit(HttpContextBase httpContext, IController& controller, IControllerFactory& factory)
+   en System.Web.Mvc.MvcHandler.BeginProcessRequest(HttpContextBase httpContext, AsyncCallback callback, Object state)
+   en System.Web.HttpApplication.CallHandlerExecutionStep.System.Web.HttpApplication.IExecutionStep.Execute()
+   en System.Web.HttpApplication.<>c__DisplayClass285_0.<ExecuteStepImpl>b__0()
+   en System.Web.HttpApplication.ExecuteStepImpl(IExecutionStep step)
+   en System.Web.HttpApplication.ExecuteStep(IExecutionStep step, Boolean& completedSynchronously)
+
+
+=== ERROR GLOBAL 2026-03-03 09:48:31.857 ===
+URL: https://localhost:44333/Content/imagenes/favicon.ico
+Usuario: GACAJAS
+UserAgent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36
+Excepción: System.Web.HttpException (0x80004005): No se encuentra el controlador de la ruta de acceso '/Content/imagenes/favicon.ico' o no implementa IController.
+   en System.Web.Mvc.DefaultControllerFactory.GetControllerInstance(RequestContext requestContext, Type controllerType)
+   en System.Web.Mvc.MvcHandler.ProcessRequestInit(HttpContextBase httpContext, IController& controller, IControllerFactory& factory)
+   en System.Web.Mvc.MvcHandler.BeginProcessRequest(HttpContextBase httpContext, AsyncCallback callback, Object state)
+   en System.Web.HttpApplication.CallHandlerExecutionStep.System.Web.HttpApplication.IExecutionStep.Execute()
+   en System.Web.HttpApplication.<>c__DisplayClass285_0.<ExecuteStepImpl>b__0()
+   en System.Web.HttpApplication.ExecuteStepImpl(IExecutionStep step)
+   en System.Web.HttpApplication.ExecuteStep(IExecutionStep step, Boolean& completedSynchronously)
+
+
+=== ERROR GLOBAL 2026-03-03 09:49:07.442 ===
+URL: https://localhost:44333/.well-known/appspecific/com.chrome.devtools.json
+Usuario: GACAJAS
+UserAgent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36
+Excepción: System.Web.HttpException (0x80004005): No se encuentra el controlador de la ruta de acceso '/.well-known/appspecific/com.chrome.devtools.json' o no implementa IController.
+   en System.Web.Mvc.DefaultControllerFactory.GetControllerInstance(RequestContext requestContext, Type controllerType)
+   en System.Web.Mvc.MvcHandler.ProcessRequestInit(HttpContextBase httpContext, IController& controller, IControllerFactory& factory)
+   en System.Web.Mvc.MvcHandler.BeginProcessRequest(HttpContextBase httpContext, AsyncCallback callback, Object state)
+   en System.Web.HttpApplication.CallHandlerExecutionStep.System.Web.HttpApplication.IExecutionStep.Execute()
+   en System.Web.HttpApplication.<>c__DisplayClass285_0.<ExecuteStepImpl>b__0()
+   en System.Web.HttpApplication.ExecuteStepImpl(IExecutionStep step)
+   en System.Web.HttpApplication.ExecuteStep(IExecutionStep step, Boolean& completedSynchronously)
+
+
+=== ERROR GLOBAL 2026-03-03 09:49:13.475 ===
+URL: https://localhost:44333/.well-known/appspecific/com.chrome.devtools.json
+Usuario: GACAJAS
+UserAgent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36
+Excepción: System.Web.HttpException (0x80004005): No se encuentra el controlador de la ruta de acceso '/.well-known/appspecific/com.chrome.devtools.json' o no implementa IController.
+   en System.Web.Mvc.DefaultControllerFactory.GetControllerInstance(RequestContext requestContext, Type controllerType)
+   en System.Web.Mvc.MvcHandler.ProcessRequestInit(HttpContextBase httpContext, IController& controller, IControllerFactory& factory)
+   en System.Web.Mvc.MvcHandler.BeginProcessRequest(HttpContextBase httpContext, AsyncCallback callback, Object state)
+   en System.Web.HttpApplication.CallHandlerExecutionStep.System.Web.HttpApplication.IExecutionStep.Execute()
+   en System.Web.HttpApplication.<>c__DisplayClass285_0.<ExecuteStepImpl>b__0()
+   en System.Web.HttpApplication.ExecuteStepImpl(IExecutionStep step)
+   en System.Web.HttpApplication.ExecuteStep(IExecutionStep step, Boolean& completedSynchronously)
+
+
+=== ERROR GLOBAL 2026-03-03 09:49:17.900 ===
+URL: https://localhost:44333/.well-known/appspecific/com.chrome.devtools.json
+Usuario: GACAJAS
+UserAgent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36
+Excepción: System.Web.HttpException (0x80004005): No se encuentra el controlador de la ruta de acceso '/.well-known/appspecific/com.chrome.devtools.json' o no implementa IController.
+   en System.Web.Mvc.DefaultControllerFactory.GetControllerInstance(RequestContext requestContext, Type controllerType)
+   en System.Web.Mvc.MvcHandler.ProcessRequestInit(HttpContextBase httpContext, IController& controller, IControllerFactory& factory)
+   en System.Web.Mvc.MvcHandler.BeginProcessRequest(HttpContextBase httpContext, AsyncCallback callback, Object state)
+   en System.Web.HttpApplication.CallHandlerExecutionStep.System.Web.HttpApplication.IExecutionStep.Execute()
+   en System.Web.HttpApplication.<>c__DisplayClass285_0.<ExecuteStepImpl>b__0()
+   en System.Web.HttpApplication.ExecuteStepImpl(IExecutionStep step)
+   en System.Web.HttpApplication.ExecuteStep(IExecutionStep step, Boolean& completedSynchronously)
+
+
+=== ERROR GLOBAL 2026-03-03 09:49:22.044 ===
+URL: https://localhost:44333/.well-known/appspecific/com.chrome.devtools.json
+Usuario: GACAJAS
+UserAgent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36
+Excepción: System.Web.HttpException (0x80004005): No se encuentra el controlador de la ruta de acceso '/.well-known/appspecific/com.chrome.devtools.json' o no implementa IController.
+   en System.Web.Mvc.DefaultControllerFactory.GetControllerInstance(RequestContext requestContext, Type controllerType)
+   en System.Web.Mvc.MvcHandler.ProcessRequestInit(HttpContextBase httpContext, IController& controller, IControllerFactory& factory)
+   en System.Web.Mvc.MvcHandler.BeginProcessRequest(HttpContextBase httpContext, AsyncCallback callback, Object state)
+   en System.Web.HttpApplication.CallHandlerExecutionStep.System.Web.HttpApplication.IExecutionStep.Execute()
+   en System.Web.HttpApplication.<>c__DisplayClass285_0.<ExecuteStepImpl>b__0()
+   en System.Web.HttpApplication.ExecuteStepImpl(IExecutionStep step)
+   en System.Web.HttpApplication.ExecuteStep(IExecutionStep step, Boolean& completedSynchronously)
+

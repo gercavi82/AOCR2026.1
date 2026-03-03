@@ -30,6 +30,15 @@ namespace CapaPresentacion
 
             // Registrar servicios
             container.RegisterType<CapaDatos.Services.IEmailService, CapaDatos.Services.EmailService>(new HierarchicalLifetimeManager());
+            container.RegisterType<CapaDatos.Services.ISecureConfigurationService, CapaDatos.Services.SecureConfigurationService>(new HierarchicalLifetimeManager());
+            container.RegisterFactory<CapaDatos.Services.IAuditService>(c =>
+            {
+                var cfg = c.Resolve<CapaDatos.Services.ISecureConfigurationService>();
+                var cs = cfg.GetConnectionString("PostgreSQL")
+                         ?? cfg.GetConnectionString("AOCRConnection")
+                         ?? string.Empty;
+                return new CapaDatos.Services.AuditService(cs);
+            }, new HierarchicalLifetimeManager());
 
             // Registrar repositorio de órdenes
             container.RegisterType<IOrdenRecaudacionRepository, OrdenRecaudacionDAO>(

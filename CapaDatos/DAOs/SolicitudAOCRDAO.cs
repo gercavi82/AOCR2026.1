@@ -435,6 +435,10 @@ WHERE codigo_solicitud=@id AND deleted_at IS NULL;";
                 Telefono = GetString(rd, "telefono"),
                 Direccion = GetString(rd, "direccion"),
                 Ciudad = GetString(rd, "ciudad"),
+                CodCiudad = FirstNonEmpty(
+                    GetString(rd, "cod_ciudad"),
+                    GetString(rd, "codigo_ciudad"),
+                    GetString(rd, "ciudad_codigo")),
                 Provincia = GetString(rd, "provincia"),
                 Pais = GetString(rd, "pais"),
 
@@ -459,15 +463,72 @@ WHERE codigo_solicitud=@id AND deleted_at IS NULL;";
         }
 
         private static string GetString(IDataRecord rd, string col)
-            => rd[col] == DBNull.Value ? null : rd[col].ToString();
+        {
+            object value;
+            return TryGetValue(rd, col, out value) ? value.ToString() : null;
+        }
 
         private static int GetInt(IDataRecord rd, string col)
-            => rd[col] == DBNull.Value ? 0 : Convert.ToInt32(rd[col]);
+        {
+            object value;
+            return TryGetValue(rd, col, out value) ? Convert.ToInt32(value) : 0;
+        }
 
         private static int? GetNullableInt(IDataRecord rd, string col)
-            => rd[col] == DBNull.Value ? (int?)null : Convert.ToInt32(rd[col]);
+        {
+            object value;
+            return TryGetValue(rd, col, out value) ? (int?)Convert.ToInt32(value) : null;
+        }
 
         private static DateTime? GetNullableDateTime(IDataRecord rd, string col)
-            => rd[col] == DBNull.Value ? (DateTime?)null : Convert.ToDateTime(rd[col]);
+        {
+            object value;
+            return TryGetValue(rd, col, out value) ? (DateTime?)Convert.ToDateTime(value) : null;
+        }
+
+        private static bool TryGetValue(IDataRecord rd, string col, out object value)
+        {
+            value = null;
+            if (rd == null || string.IsNullOrWhiteSpace(col))
+            {
+                return false;
+            }
+
+            for (var i = 0; i < rd.FieldCount; i++)
+            {
+                if (!string.Equals(rd.GetName(i), col, StringComparison.OrdinalIgnoreCase))
+                {
+                    continue;
+                }
+
+                if (rd.IsDBNull(i))
+                {
+                    return false;
+                }
+
+                value = rd.GetValue(i);
+                return true;
+            }
+
+            return false;
+        }
+
+        private static string FirstNonEmpty(params string[] values)
+        {
+            if (values == null || values.Length == 0)
+            {
+                return null;
+            }
+
+            foreach (var value in values)
+            {
+                if (!string.IsNullOrWhiteSpace(value))
+                {
+                    return value.Trim();
+                }
+            }
+
+            return null;
+        }
     }
 }

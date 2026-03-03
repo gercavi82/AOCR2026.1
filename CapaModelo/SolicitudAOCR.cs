@@ -19,6 +19,7 @@ namespace CapaModelo
         public string Telefono { get; set; }
         public string Direccion { get; set; }
         public string Ciudad { get; set; }
+        public string CodCiudad { get; set; }
         public string Provincia { get; set; }
         public string Pais { get; set; }
 

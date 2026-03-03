@@ -34,18 +34,6 @@ namespace CapaDatos.DAOs
 
             try
             {
-                // TODO: ODBC driver not available - temporary fallback with common banks
-                // Remove this section and uncomment P9 code once ODBC is properly configured
-                
-                bancos.Add(new BancoP9 { Codigo = "001", Descripcion = "BANCO PICHINCHA" });                           
-                bancos.Add(new BancoP9 { Codigo = "002", Descripcion = "BANCO INTERNACIONAL" });
-                bancos.Add(new BancoP9 { Codigo = "003", Descripcion = "BANCO RUMIÑAHUI" });
-                
-                
-                return bancos;
-
-                /*
-                // Original P9 implementation - requires ODBC configuration
                 using (var connection = GetConnection())
                 {
                     connection.Open();
@@ -70,7 +58,6 @@ namespace CapaDatos.DAOs
                                     Descripcion = reader.IsDBNull(1) ? string.Empty : reader.GetString(1).Trim()
                                 };
 
-                                // Solo agregar si tiene código y descripción válidos
                                 if (!string.IsNullOrEmpty(banco.Codigo) && !string.IsNullOrEmpty(banco.Descripcion))
                                 {
                                     bancos.Add(banco);
@@ -79,23 +66,36 @@ namespace CapaDatos.DAOs
                         }
                     }
                 }
-                */
+
+                if (bancos.Count == 0)
+                {
+                    AgregarBancosFallback(bancos);
+                }
             }
             catch (Exception ex)
             {
                 // Log error but don't break the application
                 System.Diagnostics.Debug.WriteLine($"Error al consultar bancos P9: {ex.Message}");
-                
-                // Return default banks as fallback
+
                 if (bancos.Count == 0)
                 {
-                    bancos.Add(new BancoP9 { Codigo = "001", Descripcion = "BANCO CENTRAL DEL ECUADOR" });
-                    bancos.Add(new BancoP9 { Codigo = "002", Descripcion = "BANCO PICHINCHA" });
-                    bancos.Add(new BancoP9 { Codigo = "003", Descripcion = "BANCO DEL PACIFICO" });
+                    AgregarBancosFallback(bancos);
                 }
             }
 
             return bancos;
+        }
+
+        private static void AgregarBancosFallback(List<BancoP9> bancos)
+        {
+            if (bancos == null)
+            {
+                return;
+            }
+
+            bancos.Add(new BancoP9 { Codigo = "001", Descripcion = "BANCO CENTRAL DEL ECUADOR" });
+            bancos.Add(new BancoP9 { Codigo = "002", Descripcion = "BANCO PICHINCHA" });
+            bancos.Add(new BancoP9 { Codigo = "003", Descripcion = "BANCO DEL PACIFICO" });
         }
 
         /// <summary>

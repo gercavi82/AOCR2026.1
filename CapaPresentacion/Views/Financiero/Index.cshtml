@@ -65,6 +65,15 @@
     </div>
 }
 
+<div class="row mb-3">
+    <div class="col-md-12 text-end">
+        <button type="button" class="btn btn-outline-secondary btn-sm" id="btnHealthPostgres">
+            <i class="fas fa-database"></i> Probar PostgreSQL/DB2
+        </button>
+        <span id="healthResult" class="ms-2 text-muted"></span>
+    </div>
+</div>
+
 <div class="d-flex justify-content-end mb-3">
     <form method="get" class="d-flex align-items-center gap-2">
         <label class="mb-0 text-muted">Estado:</label>
@@ -88,6 +97,7 @@
             <th>Fecha</th>
             <th>Monto</th>
             <th>Estado</th>
+            <th>FR3</th>
             <th>Comprobante</th>
             <th>Acciones</th>
         </tr>
@@ -110,6 +120,26 @@
             <td>@Html.Encode(orden != null ? orden.FechaCreacion.ToString("dd/MM/yyyy") : "")</td>
             <td>@Html.Encode(orden != null ? orden.Total.ToString("N2") : "0.00")</td>
             <td>@Html.Encode(orden != null ? orden.Estado : "")</td>
+            <td>
+                @if (!string.IsNullOrWhiteSpace(item.Fr3Numero))
+                {
+                    <span class="badge bg-success">@Html.Encode(item.Fr3Numero)</span>
+                }
+                else if (!string.IsNullOrWhiteSpace(item.Fr3Estado))
+                {
+                    var cssFr3 = item.Fr3Estado.Equals("FR3_ERROR", StringComparison.OrdinalIgnoreCase) ? "bg-danger" : "bg-secondary";
+                    <span class="badge @cssFr3">@Html.Encode(item.Fr3Estado)</span>
+                    if (!string.IsNullOrWhiteSpace(item.Fr3Error))
+                    {
+                        var fr3ErrorDisplay = System.Web.HttpUtility.HtmlDecode(item.Fr3Error);
+                        <div><small class="text-danger">@fr3ErrorDisplay</small></div>
+                    }
+                }
+                else
+                {
+                    <span class="text-muted">Pendiente</span>
+                }
+            </td>
             <td>
                 @if (orden != null)
                 {
@@ -175,6 +205,16 @@
                                 </div>
                             </div>
                         }
+
+                        @if (item.PuedeReintentarFr3)
+                        {
+                            <button type="button"
+                                    class="btn btn-warning btn-sm btn-accion js-retry-fr3"
+                                    title="Reintentar FR3"
+                                    data-orden-id="@orden.Id">
+                                <i class="fas fa-sync"></i>
+                            </button>
+                        }
                     </div>
                 }
             </td>
@@ -185,7 +225,7 @@
         else
         {
             <tr>
-                <td colspan="8" class="text-center">
+                <td colspan="9" class="text-center">
                     No hay registros para el estado seleccionado.
                 </td>
             </tr>
@@ -194,69 +234,37 @@
 </table>
 
 <div class="modal fade" id="modalAprobarPagoFactura" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-lg">
+    <div class="modal-dialog">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title">Aprobar pago y registrar factura</h5>
+                <h5 class="modal-title">Aprobar y Enviar AS400</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
             </div>
-            <form id="formAprobarPagoFactura" method="post" enctype="multipart/form-data" data-as400-fr3-enabled="@(as400FacturacionHabilitada ? "1" : "0")">
+            <form id="formAprobarPagoFactura" method="post">
                 @Html.AntiForgeryToken()
-                <input type="hidden" id="factura_orden_id" name="OrdenId" />
-                <input type="hidden" id="factura_pago_id" name="PagoId" />
+                <input type="hidden" id="factura_orden_id" name="ordenId" />
                 <div class="modal-body">
-                    <div class="mb-2">
+                    <div class="mb-3">
                         <small class="text-muted">Orden:</small>
                         <div><strong id="factura_numero_orden">-</strong></div>
                     </div>
+                    <div class="mb-3">
+                        <small class="text-muted">Monto:</small>
+                        <div><strong id="factura_monto_orden">-</strong></div>
+                    </div>
 
                     <div id="facturaModalAlert" class="alert d-none" role="alert"></div>
-                    @if (as400FacturacionHabilitada)
-                    {
-                        <div class="alert alert-info py-2" role="alert">
-                            Al aprobar se registrará la factura en AOCR y se intentará sincronizar FR3 en AS400.
-                        </div>
-                    }
 
-                    <div class="row g-3">
-                        <div class="col-md-6">
-                            <label class="form-label">Número de factura *</label>
-                            <input type="text" class="form-control" name="NumeroFactura" id="factura_numero" maxlength="80" required />
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label">Autorización</label>
-                            <input type="text" class="form-control" name="AutorizacionFactura" id="factura_autorizacion" maxlength="80" />
-                        </div>
-                        <div class="col-md-4">
-                            <label class="form-label">Fecha emisión *</label>
-                            <input type="date" class="form-control" name="FechaEmision" id="factura_fecha" required />
-                        </div>
-                        <div class="col-md-4">
-                            <label class="form-label">Subtotal *</label>
-                            <input type="number" class="form-control" step="0.01" min="0" name="Subtotal" id="factura_subtotal" required />
-                        </div>
-                        <div class="col-md-4">
-                            <label class="form-label">IVA *</label>
-                            <input type="number" class="form-control" step="0.01" min="0" name="Iva" id="factura_iva" required />
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label">Total *</label>
-                            <input type="number" class="form-control" step="0.01" min="0.01" name="Total" id="factura_total" required />
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label">Archivo factura *</label>
-                            <input type="file" class="form-control" name="facturaFile" id="factura_archivo" accept=".pdf,.jpg,.jpeg,.png" required />
-                            <small class="text-muted">Formatos permitidos: PDF, JPG, PNG (máx. 10MB)</small>
-                        </div>
-                        <div class="col-12">
-                            <label class="form-label">Observaciones</label>
-                            <textarea class="form-control" name="Observaciones" id="factura_observaciones" rows="2"></textarea>
-                        </div>
+                    <div class="alert alert-info py-2" role="alert">
+                        <i class="fas fa-info-circle me-1"></i>
+                        Se aprobará la orden y se enviará la facturación FR3 al AS400.
                     </div>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                    <button type="submit" id="btnAprobarConFactura" class="btn btn-success">Aprobar y Registrar</button>
+                    <button type="submit" id="btnAprobarConFactura" class="btn btn-success">
+                        <i class="fas fa-paper-plane me-1"></i>Enviar AS400
+                    </button>
                 </div>
             </form>
         </div>
@@ -276,16 +284,9 @@
     var alertBox = document.getElementById('facturaModalAlert');
     var submitButton = document.getElementById('btnAprobarConFactura');
     var numeroOrdenLabel = document.getElementById('factura_numero_orden');
+    var montoOrdenLabel = document.getElementById('factura_monto_orden');
     var inputOrdenId = document.getElementById('factura_orden_id');
-    var inputPagoId = document.getElementById('factura_pago_id');
-    var inputFecha = document.getElementById('factura_fecha');
-    var inputSubtotal = document.getElementById('factura_subtotal');
-    var inputIva = document.getElementById('factura_iva');
-    var inputTotal = document.getElementById('factura_total');
-    var inputArchivo = document.getElementById('factura_archivo');
     var tokenInput = form ? form.querySelector('input[name="__RequestVerificationToken"]') : null;
-    var as400Fr3Enabled = form && form.getAttribute('data-as400-fr3-enabled') === '1';
-    var submitLabelIdle = as400Fr3Enabled ? 'Aprobar, Registrar y Enviar AS400' : 'Aprobar y Registrar';
     var isSubmitting = false;
 
     if (!form || !alertBox || !submitButton) {
@@ -308,9 +309,11 @@
         alertBox.textContent = '';
     }
 
-    function setSubmitting(isSubmitting) {
-        submitButton.disabled = isSubmitting;
-        submitButton.textContent = isSubmitting ? 'Procesando...' : submitLabelIdle;
+    function setSubmitting(val) {
+        submitButton.disabled = val;
+        submitButton.innerHTML = val
+            ? '<i class="fas fa-spinner fa-spin me-1"></i>Procesando...'
+            : '<i class="fas fa-paper-plane me-1"></i>Enviar AS400';
     }
 
     function setInFlight(value) {
@@ -318,33 +321,27 @@
         setSubmitting(isSubmitting);
     }
 
+    function postJson(url, body) {
+        return fetch(url, {
+            method: 'POST',
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+                'Content-Type': 'application/json'
+            },
+            credentials: 'same-origin',
+            body: JSON.stringify(body || {})
+        }).then(function (r) { return r.json(); });
+    }
+
     function openModalFromButton(button) {
         var ordenId = button.getAttribute('data-orden-id') || '';
-        var pagoId = button.getAttribute('data-pago-id') || '';
         var numeroOrden = button.getAttribute('data-numero-orden') || '-';
         var monto = button.getAttribute('data-monto') || '';
 
-        inputOrdenId.value = ordenId;
-        inputPagoId.value = pagoId;
-        numeroOrdenLabel.textContent = numeroOrden;
-
         form.reset();
         inputOrdenId.value = ordenId;
-        inputPagoId.value = pagoId;
         numeroOrdenLabel.textContent = numeroOrden;
-
-        if (inputFecha) {
-            inputFecha.value = new Date().toISOString().slice(0, 10);
-        }
-        if (inputSubtotal && !inputSubtotal.value && monto) {
-            inputSubtotal.value = monto;
-        }
-        if (inputTotal && !inputTotal.value && monto) {
-            inputTotal.value = monto;
-        }
-        if (inputIva && !inputIva.value) {
-            inputIva.value = '0.00';
-        }
+        montoOrdenLabel.textContent = monto ? ('$' + monto) : '-';
 
         clearAlert();
         setInFlight(false);
@@ -376,53 +373,18 @@
         }
 
         clearAlert();
-
-        if (!inputArchivo || !inputArchivo.files || inputArchivo.files.length === 0) {
-            showAlert('danger', 'Debe adjuntar la factura.');
-            return;
-        }
-
-        var file = inputArchivo.files[0];
-        var ext = (file.name.split('.').pop() || '').toLowerCase();
-        var allowed = { pdf: true, jpg: true, jpeg: true, png: true };
-        if (!allowed[ext]) {
-            showAlert('danger', 'Formato no permitido. Solo PDF/JPG/PNG.');
-            return;
-        }
-        if (file.size > (10 * 1024 * 1024)) {
-            showAlert('danger', 'El archivo supera el tamaño máximo (10MB).');
-            return;
-        }
-
-        var subtotal = parseFloat((inputSubtotal.value || '0').replace(',', '.'));
-        var iva = parseFloat((inputIva.value || '0').replace(',', '.'));
-        var total = parseFloat((inputTotal.value || '0').replace(',', '.'));
-        if (isNaN(subtotal) || isNaN(iva) || isNaN(total) || total <= 0) {
-            showAlert('danger', 'Valores de subtotal/IVA/total inválidos.');
-            return;
-        }
-        if (Math.abs((subtotal + iva) - total) > 0.05) {
-            showAlert('danger', 'El total debe coincidir con subtotal + IVA.');
-            return;
-        }
-
         setInFlight(true);
 
-        var actionUrl = '@Url.Action("AprobarPagoConFactura", "Financiero")';
-        var formData = new FormData(form);
-        formData.set('Subtotal', subtotal.toFixed(2));
-        formData.set('Iva', iva.toFixed(2));
-        formData.set('Total', total.toFixed(2));
-        if (inputFecha && inputFecha.value) {
-            formData.set('FechaEmision', inputFecha.value);
-        }
+        var actionUrl = '@Url.Action("AprobarYEnviarAS400", "Financiero")';
+        var fd = new FormData();
+        fd.append('ordenId', inputOrdenId.value);
         if (tokenInput && tokenInput.value) {
-            formData.set('__RequestVerificationToken', tokenInput.value);
+            fd.append('__RequestVerificationToken', tokenInput.value);
         }
 
         fetch(actionUrl, {
             method: 'POST',
-            body: formData,
+            body: fd,
             credentials: 'same-origin',
             headers: {
                 'X-Requested-With': 'XMLHttpRequest'
@@ -447,7 +409,7 @@
                     errorMessage = result.rawText.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
                 }
                 if (!errorMessage) {
-                    errorMessage = 'Error al aprobar pago (HTTP ' + result.response.status + ').';
+                    errorMessage = 'Error al enviar a AS400 (HTTP ' + result.response.status + ').';
                 }
                 throw new Error(errorMessage);
             }
@@ -455,7 +417,7 @@
             var finalMessage = payload.warning
                 ? (payload.message + ' ' + payload.warning)
                 : payload.message;
-            showAlert('success', finalMessage || 'Pago aprobado correctamente.');
+            showAlert('success', finalMessage || 'Enviado a AS400 correctamente.');
 
             setTimeout(function () {
                 modal.hide();
@@ -469,6 +431,86 @@
             setInFlight(false);
         });
     });
+
+    document.addEventListener('click', function (event) {
+        var retryButton = event.target.closest('.js-retry-fr3');
+        if (!retryButton) {
+            return;
+        }
+
+        event.preventDefault();
+        var ordenId = retryButton.getAttribute('data-orden-id');
+        if (!ordenId) {
+            return;
+        }
+
+        if (!confirm('¿Reintentar generación FR3 para esta orden?')) {
+            return;
+        }
+
+        retryButton.disabled = true;
+
+        var fd = new FormData();
+        fd.append('ordenId', ordenId);
+        if (tokenInput && tokenInput.value) {
+            fd.append('__RequestVerificationToken', tokenInput.value);
+        }
+
+        fetch('@Url.Action("ReintentarFr3", "Financiero")', {
+            method: 'POST',
+            body: fd,
+            credentials: 'same-origin',
+            headers: { 'X-Requested-With': 'XMLHttpRequest' }
+        })
+        .then(function (r) {
+            return r.text().then(function (t) {
+                try { return JSON.parse(t); } catch (e) { return { ok: false, message: t || 'Error no controlado.' }; }
+            });
+        })
+        .then(function (payload) {
+            if (!payload || payload.ok !== true) {
+                throw new Error(payload && payload.message ? payload.message : 'No se pudo reintentar FR3.');
+            }
+            alert(payload.message || 'FR3 reintentado correctamente.');
+            window.location.reload();
+        })
+        .catch(function (e) {
+            alert(e && e.message ? e.message : 'Error al reintentar FR3.');
+        })
+        .finally(function () {
+            retryButton.disabled = false;
+        });
+    });
+
+    var btnHealth = document.getElementById('btnHealthPostgres');
+    var healthResult = document.getElementById('healthResult');
+    if (btnHealth && healthResult) {
+        btnHealth.addEventListener('click', function () {
+            btnHealth.disabled = true;
+            healthResult.className = 'ms-2 text-muted';
+            healthResult.textContent = 'Validando...';
+
+            fetch('@Url.Action("HealthFinanciero", "Financiero")', { credentials: 'same-origin' })
+                .then(function (r) { return r.json(); })
+                .then(function (payload) {
+                    if (payload && payload.ok) {
+                        healthResult.className = 'ms-2 text-success';
+                        healthResult.textContent = 'PostgreSQL y DB2: OK';
+                    } else {
+                        var db2Msg = payload && payload.db2 ? (payload.db2.message || 'DB2 no disponible') : 'Error de health check';
+                        healthResult.className = 'ms-2 text-danger';
+                        healthResult.textContent = 'Error: ' + db2Msg;
+                    }
+                })
+                .catch(function () {
+                    healthResult.className = 'ms-2 text-danger';
+                    healthResult.textContent = 'No se pudo ejecutar health check.';
+                })
+                .finally(function () {
+                    btnHealth.disabled = false;
+                });
+        });
+    }
 })();
 </script>
 }

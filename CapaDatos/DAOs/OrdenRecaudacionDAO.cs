@@ -5,6 +5,7 @@ using System.Linq;
 using System.Net;
 using System.Threading.Tasks;
 using Npgsql;
+using NpgsqlTypes;
 using Dapper;
 using CapaDatos.Entidades;
 using CapaDatos.Constants;
@@ -24,6 +25,9 @@ namespace CapaDatos.DAOs
     {
         private readonly string _connectionString;
         private readonly ILoggerService _logger;
+        private static bool _fr3ColumnsNoDisponibles;
+        private static bool _facturaPagoTableNoDisponible;
+        private static readonly object _schemaWarningLock = new object();
 
         public OrdenRecaudacionDAO()
         {
@@ -448,11 +452,16 @@ namespace CapaDatos.DAOs
                                 ruc_cedula = @rucCedula,
                                 correo = @correo,
                                 telefono = @telefono,
-                                concepto_id = @conceptoId
+                                concepto_id = COALESCE(@conceptoId, concepto_id)
                                 WHERE id = @id";
 
                     using (var cmd = new NpgsqlCommand(sql, conn))
                     {
+                        if (!orden.ConceptoId.HasValue)
+                        {
+                            _logger.LogWarning("Actualizar orden id={0} sin concepto_id en payload; se conserva el valor actual.", orden.Id);
+                        }
+
                         cmd.Parameters.AddWithValue("@id", orden.Id);
                         cmd.Parameters.AddWithValue("@codigoUsuario", (object)orden.CodigoUsuario ?? DBNull.Value);
                         cmd.Parameters.AddWithValue("@codigoSolicitud", (object)orden.CodigoSolicitud ?? DBNull.Value);
@@ -469,7 +478,9 @@ namespace CapaDatos.DAOs
                         cmd.Parameters.AddWithValue("@telefono", (object)orden.Telefono ?? DBNull.Value);
                         cmd.Parameters.AddWithValue("@conceptoId", (object)orden.ConceptoId ?? DBNull.Value);
 
-                        return cmd.ExecuteNonQuery() > 0;
+                        var rows = cmd.ExecuteNonQuery();
+                        _logger.LogInfo("Actualizar orden id={0} filas_afectadas={1}", orden.Id, rows);
+                        return rows > 0;
                     }
                 }
             }
@@ -1395,6 +1406,242 @@ namespace CapaDatos.DAOs
             return null;
         }
 
+        public Pago ObtenerPagoPorId(int pagoId)
+        {
+            if (pagoId <= 0)
+            {
+                return null;
+            }
+
+            try
+            {
+                using (var conn = new NpgsqlConnection(_connectionString))
+                {
+                    conn.Open();
+                    const string sql = @"SELECT * FROM aocr_tbpago WHERE codigo_pago = @codigoPago LIMIT 1";
+                    using (var cmd = new NpgsqlCommand(sql, conn))
+                    {
+                        cmd.Parameters.AddWithValue("@codigoPago", pagoId);
+                        using (var reader = cmd.ExecuteReader())
+                        {
+                            if (reader.Read())
+                            {
+                                return MapearPagoEntidad(reader);
+                            }
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error en ObtenerPagoPorId");
+            }
+
+            return null;
+        }
+
+        public bool ActualizarPagoEstadoPorId(int ordenId, int pagoId, string nuevoEstado, string usuario, string observacion = null)
+        {
+            if (ordenId <= 0 || pagoId <= 0 || string.IsNullOrWhiteSpace(nuevoEstado))
+            {
+                return false;
+            }
+
+            try
+            {
+                using (var conn = new NpgsqlConnection(_connectionString))
+                {
+                    conn.Open();
+
+                    const string sql = @"
+                        UPDATE aocr_tbpago p
+                        SET estado = @estado,
+                            fecha_validacion = @fecha_validacion,
+                            validado_por = @validado_por,
+                            observaciones = COALESCE(@observaciones, p.observaciones)
+                        WHERE p.codigo_pago = @pago_id
+                          AND EXISTS (
+                              SELECT 1
+                              FROM aocr_or_orden o
+                              WHERE o.id = @orden_id
+                                AND (p.codigo_solicitud = @orden_id OR p.codigo_solicitud = COALESCE(o.codigo_solicitud::int, @orden_id))
+                          )";
+
+                    using (var cmd = new NpgsqlCommand(sql, conn))
+                    {
+                        cmd.Parameters.AddWithValue("@estado", nuevoEstado);
+                        cmd.Parameters.AddWithValue("@fecha_validacion", DateTime.Now);
+                        cmd.Parameters.AddWithValue("@validado_por", (object)usuario ?? DBNull.Value);
+                        cmd.Parameters.AddWithValue("@observaciones", (object)observacion ?? DBNull.Value);
+                        cmd.Parameters.AddWithValue("@pago_id", pagoId);
+                        cmd.Parameters.AddWithValue("@orden_id", ordenId);
+
+                        return cmd.ExecuteNonQuery() > 0;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error en ActualizarPagoEstadoPorId");
+                return false;
+            }
+        }
+
+        public FacturaPagoRegistroModel ObtenerFacturaPagoPorOrden(int ordenId)
+        {
+            if (ordenId <= 0)
+            {
+                return null;
+            }
+
+            try
+            {
+                using (var conn = new NpgsqlConnection(_connectionString))
+                {
+                    conn.Open();
+                    var includeFr3 = !_fr3ColumnsNoDisponibles;
+
+                    try
+                    {
+                        return EjecutarConsultaFacturaPagoPorOrden(conn, ordenId, includeFr3);
+                    }
+                    catch (PostgresException ex) when (
+                        includeFr3 && string.Equals(ex.SqlState, "42703", StringComparison.OrdinalIgnoreCase))
+                    {
+                        LogWarningOnce(ref _fr3ColumnsNoDisponibles,
+                            "Columnas FR3 aun no desplegadas en aocr_tb_factura_pago. Se aplica fallback sin FR3.");
+                        return EjecutarConsultaFacturaPagoPorOrden(conn, ordenId, includeFr3: false);
+                    }
+                }
+            }
+            catch (PostgresException ex) when (string.Equals(ex.SqlState, "42P01", StringComparison.OrdinalIgnoreCase))
+            {
+                LogWarningOnce(ref _facturaPagoTableNoDisponible,
+                    "Tabla aocr_tb_factura_pago no disponible para ObtenerFacturaPagoPorOrden.");
+                return null;
+            }
+            catch (PostgresException ex) when (string.Equals(ex.SqlState, "42703", StringComparison.OrdinalIgnoreCase))
+            {
+                LogWarningOnce(ref _fr3ColumnsNoDisponibles,
+                    "Columnas FR3 aun no desplegadas en aocr_tb_factura_pago.");
+                return null;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error en ObtenerFacturaPagoPorOrden");
+                return null;
+            }
+        }
+
+        private FacturaPagoRegistroModel EjecutarConsultaFacturaPagoPorOrden(NpgsqlConnection conn, int ordenId, bool includeFr3)
+        {
+            var sql = includeFr3
+                ? @"
+                        SELECT
+                            orden_id,
+                            pago_id,
+                            numero_factura,
+                            autorizacion_factura,
+                            fecha_emision,
+                            subtotal,
+                            iva,
+                            total,
+                            observaciones,
+                            file_name,
+                            content_type,
+                            file_size,
+                            file_path,
+                            fr3_estado,
+                            fr3_numero,
+                            fr3_secuencial,
+                            fr3_aeropuerto,
+                            fr3_anio,
+                            fr3_error
+                        FROM aocr_tb_factura_pago
+                        WHERE orden_id = @ordenId
+                        ORDER BY creado_en DESC
+                        LIMIT 1"
+                : @"
+                        SELECT
+                            orden_id,
+                            pago_id,
+                            numero_factura,
+                            autorizacion_factura,
+                            fecha_emision,
+                            subtotal,
+                            iva,
+                            total,
+                            observaciones,
+                            file_name,
+                            content_type,
+                            file_size,
+                            file_path
+                        FROM aocr_tb_factura_pago
+                        WHERE orden_id = @ordenId
+                        ORDER BY creado_en DESC
+                        LIMIT 1";
+
+            using (var cmd = new NpgsqlCommand(sql, conn))
+            {
+                cmd.Parameters.AddWithValue("@ordenId", ordenId);
+                using (var reader = cmd.ExecuteReader())
+                {
+                    if (!reader.Read())
+                    {
+                        return null;
+                    }
+
+                    var model = new FacturaPagoRegistroModel
+                    {
+                        OrdenId = reader["orden_id"] != DBNull.Value ? Convert.ToInt32(reader["orden_id"]) : 0,
+                        PagoId = reader["pago_id"] != DBNull.Value ? (int?)Convert.ToInt32(reader["pago_id"]) : null,
+                        NumeroFactura = reader["numero_factura"] != DBNull.Value ? reader["numero_factura"].ToString() : null,
+                        AutorizacionFactura = reader["autorizacion_factura"] != DBNull.Value ? reader["autorizacion_factura"].ToString() : null,
+                        FechaEmision = reader["fecha_emision"] != DBNull.Value ? Convert.ToDateTime(reader["fecha_emision"]) : DateTime.Now,
+                        Subtotal = reader["subtotal"] != DBNull.Value ? Convert.ToDecimal(reader["subtotal"]) : 0m,
+                        Iva = reader["iva"] != DBNull.Value ? Convert.ToDecimal(reader["iva"]) : 0m,
+                        Total = reader["total"] != DBNull.Value ? Convert.ToDecimal(reader["total"]) : 0m,
+                        Observaciones = reader["observaciones"] != DBNull.Value ? reader["observaciones"].ToString() : null,
+                        FileName = reader["file_name"] != DBNull.Value ? reader["file_name"].ToString() : null,
+                        ContentType = reader["content_type"] != DBNull.Value ? reader["content_type"].ToString() : null,
+                        FileSize = reader["file_size"] != DBNull.Value ? Convert.ToInt64(reader["file_size"]) : 0L,
+                        FilePath = reader["file_path"] != DBNull.Value ? reader["file_path"].ToString() : null
+                    };
+
+                    if (includeFr3)
+                    {
+                        model.Fr3Estado = reader["fr3_estado"] != DBNull.Value ? reader["fr3_estado"].ToString() : null;
+                        model.Fr3Numero = reader["fr3_numero"] != DBNull.Value ? reader["fr3_numero"].ToString() : null;
+                        model.Fr3Secuencial = reader["fr3_secuencial"] != DBNull.Value ? (decimal?)Convert.ToDecimal(reader["fr3_secuencial"]) : null;
+                        model.Fr3Aeropuerto = reader["fr3_aeropuerto"] != DBNull.Value ? reader["fr3_aeropuerto"].ToString() : null;
+                        model.Fr3Anio = reader["fr3_anio"] != DBNull.Value ? reader["fr3_anio"].ToString() : null;
+                        model.Fr3Error = reader["fr3_error"] != DBNull.Value ? reader["fr3_error"].ToString() : null;
+                    }
+
+                    return model;
+                }
+            }
+        }
+
+        private void LogWarningOnce(ref bool marker, string message)
+        {
+            if (marker)
+            {
+                return;
+            }
+
+            lock (_schemaWarningLock)
+            {
+                if (marker)
+                {
+                    return;
+                }
+
+                _logger.LogWarning(message);
+                marker = true;
+            }
+        }
+
         public string ObtenerRutaFacturaPago(int ordenId)
         {
             if (ordenId <= 0)
@@ -2301,6 +2548,383 @@ namespace CapaDatos.DAOs
             }
         }
 
+        public bool RegistrarResultadoFr3(
+            int ordenId,
+            int? pagoId,
+            FacturacionAS400Result resultadoFr3,
+            string estadoFr3,
+            string detalleError,
+            string usuario,
+            out string err)
+        {
+            err = null;
+
+            if (ordenId <= 0)
+            {
+                err = "Orden inválida para registrar resultado FR3.";
+                return false;
+            }
+
+            if (string.IsNullOrWhiteSpace(estadoFr3))
+            {
+                err = "Estado FR3 no especificado.";
+                return false;
+            }
+
+            var estadoNormalizado = estadoFr3.Trim().ToUpperInvariant();
+            var fr3Numero = resultadoFr3 != null ? resultadoFr3.NumeroFr3 : null;
+            var fr3Secuencial = resultadoFr3 != null ? resultadoFr3.Secuencial : 0m;
+            var fr3Aeropuerto = resultadoFr3 != null ? resultadoFr3.Aeropuerto : null;
+            var fr3Anio = resultadoFr3 != null ? resultadoFr3.Anio : null;
+            var numeroOrden = string.Empty;
+            var correoOrden = string.Empty;
+            var nombreOrden = string.Empty;
+            var codigoSolicitud = ordenId;
+
+            try
+            {
+                using (var conn = new NpgsqlConnection(_connectionString))
+                {
+                    conn.Open();
+                    using (var tx = conn.BeginTransaction())
+                    {
+                        EnsureFacturacionSchema(conn, tx);
+
+                        const string sqlUpdateFactura = @"
+                            UPDATE aocr_tb_factura_pago
+                            SET
+                                fr3_estado = @fr3_estado,
+                                fr3_numero = CASE
+                                    WHEN @fr3_numero IS NULL OR TRIM(@fr3_numero) = '' THEN fr3_numero
+                                    ELSE @fr3_numero
+                                END,
+                                fr3_secuencial = CASE
+                                    WHEN @fr3_secuencial > 0 THEN @fr3_secuencial
+                                    ELSE fr3_secuencial
+                                END,
+                                fr3_aeropuerto = CASE
+                                    WHEN @fr3_aeropuerto IS NULL OR TRIM(@fr3_aeropuerto) = '' THEN fr3_aeropuerto
+                                    ELSE @fr3_aeropuerto
+                                END,
+                                fr3_anio = CASE
+                                    WHEN @fr3_anio IS NULL OR TRIM(@fr3_anio) = '' THEN fr3_anio
+                                    ELSE @fr3_anio
+                                END,
+                                fr3_error = @fr3_error,
+                                fr3_generado_en = CASE
+                                    WHEN @fr3_estado = 'FR3_GENERADO' THEN NOW()
+                                    ELSE fr3_generado_en
+                                END,
+                                fr3_reintentos = COALESCE(fr3_reintentos, 0) + @retry_increment,
+                                updated_at = NOW()
+                            WHERE orden_id = @orden_id
+                              AND (@pago_id IS NULL OR pago_id = @pago_id OR pago_id IS NULL)";
+
+                        using (var cmdFactura = new NpgsqlCommand(sqlUpdateFactura, conn, tx))
+                        {
+                            cmdFactura.Parameters.AddWithValue("@fr3_estado", estadoNormalizado);
+                            cmdFactura.Parameters.Add(new NpgsqlParameter("@fr3_numero", NpgsqlTypes.NpgsqlDbType.Text) { Value = (object)fr3Numero ?? DBNull.Value });
+                            cmdFactura.Parameters.AddWithValue("@fr3_secuencial", fr3Secuencial);
+                            cmdFactura.Parameters.Add(new NpgsqlParameter("@fr3_aeropuerto", NpgsqlTypes.NpgsqlDbType.Text) { Value = (object)fr3Aeropuerto ?? DBNull.Value });
+                            cmdFactura.Parameters.Add(new NpgsqlParameter("@fr3_anio", NpgsqlTypes.NpgsqlDbType.Text) { Value = (object)fr3Anio ?? DBNull.Value });
+                            cmdFactura.Parameters.Add(new NpgsqlParameter("@fr3_error", NpgsqlTypes.NpgsqlDbType.Text) { Value = (object)detalleError ?? DBNull.Value });
+                            cmdFactura.Parameters.AddWithValue("@retry_increment", estadoNormalizado == "FR3_ERROR" ? 1 : 0);
+                            cmdFactura.Parameters.AddWithValue("@orden_id", ordenId);
+                            cmdFactura.Parameters.Add(new NpgsqlParameter("@pago_id", NpgsqlTypes.NpgsqlDbType.Integer) { Value = pagoId.HasValue ? (object)pagoId.Value : DBNull.Value });
+
+                            var rows = cmdFactura.ExecuteNonQuery();
+                            if (rows <= 0)
+                            {
+                                tx.Rollback();
+                                err = "No existe registro de factura asociado para actualizar estado FR3.";
+                                return false;
+                            }
+                        }
+
+                        const string sqlOrdenMeta = @"
+                            SELECT
+                                COALESCE(codigo_solicitud::int, @orden_id) AS codigo_solicitud,
+                                numero_orden,
+                                correo,
+                                compania
+                            FROM aocr_or_orden
+                            WHERE id = @orden_id
+                            LIMIT 1";
+                        using (var cmdOrdenMeta = new NpgsqlCommand(sqlOrdenMeta, conn, tx))
+                        {
+                            cmdOrdenMeta.Parameters.AddWithValue("@orden_id", ordenId);
+                            using (var reader = cmdOrdenMeta.ExecuteReader())
+                            {
+                                if (reader.Read())
+                                {
+                                    codigoSolicitud = reader["codigo_solicitud"] != DBNull.Value
+                                        ? Convert.ToInt32(reader["codigo_solicitud"])
+                                        : ordenId;
+                                    numeroOrden = reader["numero_orden"] != DBNull.Value
+                                        ? reader["numero_orden"].ToString()
+                                        : string.Empty;
+                                    correoOrden = reader["correo"] != DBNull.Value
+                                        ? reader["correo"].ToString()
+                                        : string.Empty;
+                                    nombreOrden = reader["compania"] != DBNull.Value
+                                        ? reader["compania"].ToString()
+                                        : string.Empty;
+                                }
+                            }
+                        }
+
+                        const string sqlUpdateOrden = @"
+                            UPDATE aocr_or_orden
+                            SET
+                                estado = CASE
+                                    WHEN @fr3_estado = 'FR3_GENERADO'
+                                         AND UPPER(COALESCE(estado, '')) = 'FACTURADA'
+                                    THEN 'COMPLETADA'
+                                    ELSE estado
+                                END,
+                                observacion = CASE
+                                    WHEN @nota IS NULL OR TRIM(@nota) = '' THEN observacion
+                                    WHEN observacion IS NULL OR TRIM(observacion) = '' THEN @nota
+                                    ELSE observacion || ' | ' || @nota
+                                END
+                            WHERE id = @orden_id";
+                        using (var cmdOrden = new NpgsqlCommand(sqlUpdateOrden, conn, tx))
+                        {
+                            var nota = estadoNormalizado == "FR3_GENERADO"
+                                ? string.Format("FR3 generado: {0}", fr3Numero ?? "N/D")
+                                : string.Format("FR3 con error: {0}", detalleError ?? "Sin detalle");
+
+                            cmdOrden.Parameters.AddWithValue("@nota", nota);
+                            cmdOrden.Parameters.AddWithValue("@fr3_estado", estadoNormalizado);
+                            cmdOrden.Parameters.AddWithValue("@orden_id", ordenId);
+                            cmdOrden.ExecuteNonQuery();
+                        }
+
+                        var idempotencyKey = string.Format(
+                            "FR3:{0}:{1}:{2}",
+                            ordenId,
+                            pagoId.HasValue ? pagoId.Value.ToString() : "0",
+                            estadoNormalizado);
+
+                        var payload = string.Format(
+                            "{{\"ordenId\":{0},\"pagoId\":{1},\"estado\":\"{2}\",\"fr3Numero\":\"{3}\",\"fr3Aeropuerto\":\"{4}\",\"fr3Anio\":\"{5}\"}}",
+                            ordenId,
+                            pagoId.HasValue ? pagoId.Value.ToString() : "null",
+                            estadoNormalizado,
+                            (fr3Numero ?? string.Empty).Replace("\"", "'"),
+                            (fr3Aeropuerto ?? string.Empty).Replace("\"", "'"),
+                            (fr3Anio ?? string.Empty).Replace("\"", "'"));
+
+                        const string sqlSyncLog = @"
+                            INSERT INTO aocr_tb_sync_log
+                            (
+                                idempotency_key,
+                                orden_id,
+                                pago_id,
+                                modulo,
+                                operacion,
+                                estado,
+                                mensaje,
+                                fr3_numero,
+                                payload,
+                                intentos,
+                                usuario,
+                                created_at
+                            )
+                            VALUES
+                            (
+                                @idempotency_key,
+                                @orden_id,
+                                @pago_id,
+                                'FR3',
+                                'DB2_SYNC',
+                                @estado,
+                                @mensaje,
+                                @fr3_numero,
+                                @payload::jsonb,
+                                @intentos,
+                                @usuario,
+                                NOW()
+                            )
+                            ON CONFLICT (idempotency_key)
+                            DO UPDATE SET
+                                estado = EXCLUDED.estado,
+                                mensaje = EXCLUDED.mensaje,
+                                fr3_numero = EXCLUDED.fr3_numero,
+                                payload = EXCLUDED.payload,
+                                intentos = aocr_tb_sync_log.intentos + 1,
+                                usuario = EXCLUDED.usuario,
+                                updated_at = NOW()";
+
+                        using (var cmdSync = new NpgsqlCommand(sqlSyncLog, conn, tx))
+                        {
+                            cmdSync.Parameters.AddWithValue("@idempotency_key", idempotencyKey);
+                            cmdSync.Parameters.AddWithValue("@orden_id", ordenId);
+                            cmdSync.Parameters.Add(new NpgsqlParameter("@pago_id", NpgsqlTypes.NpgsqlDbType.Integer) { Value = pagoId.HasValue ? (object)pagoId.Value : DBNull.Value });
+                            cmdSync.Parameters.AddWithValue("@estado", estadoNormalizado);
+                            cmdSync.Parameters.AddWithValue("@mensaje", (object)detalleError ?? (estadoNormalizado == "FR3_GENERADO" ? "OK" : "SIN_DETALLE"));
+                            cmdSync.Parameters.Add(new NpgsqlParameter("@fr3_numero", NpgsqlTypes.NpgsqlDbType.Text) { Value = (object)fr3Numero ?? DBNull.Value });
+                            cmdSync.Parameters.AddWithValue("@payload", payload);
+                            cmdSync.Parameters.AddWithValue("@intentos", estadoNormalizado == "FR3_ERROR" ? 1 : 0);
+                            cmdSync.Parameters.AddWithValue("@usuario", (object)usuario ?? "SISTEMA");
+                            cmdSync.ExecuteNonQuery();
+                        }
+
+                        TryEncolarNotificacionFr3(
+                            conn,
+                            tx,
+                            ordenId,
+                            codigoSolicitud,
+                            numeroOrden,
+                            correoOrden,
+                            nombreOrden,
+                            estadoNormalizado,
+                            fr3Numero,
+                            detalleError);
+
+                        tx.Commit();
+                        return true;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                err = ex.Message;
+                _logger.LogError(ex, "Error en RegistrarResultadoFr3");
+                return false;
+            }
+        }
+
+        private void TryEncolarNotificacionFr3(
+            NpgsqlConnection conn,
+            NpgsqlTransaction tx,
+            int ordenId,
+            int codigoSolicitud,
+            string numeroOrden,
+            string correoSolicitante,
+            string nombreSolicitante,
+            string estadoFr3,
+            string fr3Numero,
+            string detalleError)
+        {
+            try
+            {
+                var destinatarios = new List<string>();
+
+                if (!string.IsNullOrWhiteSpace(correoSolicitante))
+                {
+                    destinatarios.Add(correoSolicitante.Trim());
+                }
+
+                var adminEmailsRaw = System.Configuration.ConfigurationManager.AppSettings["AdminEmails"];
+                if (!string.IsNullOrWhiteSpace(adminEmailsRaw))
+                {
+                    foreach (var email in adminEmailsRaw.Split(new[] { ';', ',' }, StringSplitOptions.RemoveEmptyEntries))
+                    {
+                        var clean = email.Trim();
+                        if (!string.IsNullOrWhiteSpace(clean))
+                        {
+                            destinatarios.Add(clean);
+                        }
+                    }
+                }
+
+                destinatarios = destinatarios
+                    .Where(d => !string.IsNullOrWhiteSpace(d))
+                    .Distinct(StringComparer.OrdinalIgnoreCase)
+                    .ToList();
+
+                if (destinatarios.Count == 0)
+                {
+                    return;
+                }
+
+                var ordenLabel = !string.IsNullOrWhiteSpace(numeroOrden)
+                    ? numeroOrden.Trim()
+                    : ordenId.ToString();
+                var estado = string.IsNullOrWhiteSpace(estadoFr3) ? "FR3_ERROR" : estadoFr3.Trim().ToUpperInvariant();
+                var asunto = string.Equals(estado, "FR3_GENERADO", StringComparison.OrdinalIgnoreCase)
+                    ? string.Format("FR3 generado - Orden {0}", ordenLabel)
+                    : string.Format("FR3 con error - Orden {0}", ordenLabel);
+                var cuerpo = ConstruirCuerpoNotificacionFr3(ordenLabel, estado, fr3Numero, detalleError);
+
+                var queueService = new EmailQueueService(_connectionString);
+                foreach (var destinatario in destinatarios)
+                {
+                    bool duplicateEvent;
+                    var eventKey = string.Format(
+                        "ORDEN_{0}_FR3_{1}_{2}",
+                        ordenId,
+                        estado,
+                        NormalizarFragmentoEventKey(destinatario));
+
+                    var item = new EmailQueueItem
+                    {
+                        Para = destinatario,
+                        ParaNombre = string.IsNullOrWhiteSpace(nombreSolicitante) ? "Usuario AOCR" : nombreSolicitante.Trim(),
+                        Asunto = asunto,
+                        Cuerpo = cuerpo,
+                        Estado = "PENDIENTE",
+                        OrdenId = codigoSolicitud > 0 ? (int?)codigoSolicitud : ordenId,
+                        EventKey = eventKey
+                    };
+
+                    queueService.EncolarConAdjuntosEnTransaccion(conn, tx, item, null, out duplicateEvent);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning("No se pudo encolar notificacion FR3: " + ex.Message);
+            }
+        }
+
+        private static string ConstruirCuerpoNotificacionFr3(
+            string numeroOrden,
+            string estadoFr3,
+            string fr3Numero,
+            string detalleError)
+        {
+            var fr3 = string.IsNullOrWhiteSpace(fr3Numero) ? "N/D" : fr3Numero.Trim();
+            var detalle = string.IsNullOrWhiteSpace(detalleError) ? "Sin detalle adicional." : detalleError.Trim();
+
+            if (string.Equals(estadoFr3, "FR3_GENERADO", StringComparison.OrdinalIgnoreCase))
+            {
+                return string.Format(
+                    "<p>Estimado usuario,</p><p>La orden <strong>{0}</strong> completó la generación de FR3.</p><p><strong>FR3:</strong> {1}</p><p>Sistema AOCR</p>",
+                    numeroOrden,
+                    fr3);
+            }
+
+            return string.Format(
+                "<p>Estimado usuario,</p><p>La orden <strong>{0}</strong> presentó un error en la generación FR3.</p><p><strong>Detalle:</strong> {1}</p><p>Sistema AOCR</p>",
+                numeroOrden,
+                detalle);
+        }
+
+        private static string NormalizarFragmentoEventKey(string value)
+        {
+            if (string.IsNullOrWhiteSpace(value))
+            {
+                return "sin_destino";
+            }
+
+            var chars = value
+                .Trim()
+                .ToLowerInvariant()
+                .Select(ch => char.IsLetterOrDigit(ch) ? ch : '_')
+                .ToArray();
+
+            var normalized = new string(chars);
+            while (normalized.Contains("__"))
+            {
+                normalized = normalized.Replace("__", "_");
+            }
+
+            return normalized.Length <= 60
+                ? normalized
+                : normalized.Substring(0, 60);
+        }
+
         private static void EnsureFacturacionSchema(NpgsqlConnection conn, NpgsqlTransaction tx)
         {
             const string sql = @"
@@ -2320,7 +2944,16 @@ namespace CapaDatos.DAOs
                     file_size BIGINT NOT NULL,
                     file_path TEXT NOT NULL,
                     creado_por VARCHAR(120),
-                    creado_en TIMESTAMP NOT NULL DEFAULT NOW()
+                    creado_en TIMESTAMP NOT NULL DEFAULT NOW(),
+                    fr3_estado VARCHAR(30),
+                    fr3_numero VARCHAR(80),
+                    fr3_secuencial NUMERIC(18,0),
+                    fr3_aeropuerto VARCHAR(10),
+                    fr3_anio VARCHAR(4),
+                    fr3_error TEXT,
+                    fr3_generado_en TIMESTAMP,
+                    fr3_reintentos INTEGER NOT NULL DEFAULT 0,
+                    updated_at TIMESTAMP
                 );
 
                 DO $$
@@ -2346,6 +2979,42 @@ namespace CapaDatos.DAOs
 
                 CREATE INDEX IF NOT EXISTS idx_aocr_tb_factura_pago_fecha_emision
                     ON public.aocr_tb_factura_pago(fecha_emision);
+
+                CREATE INDEX IF NOT EXISTS idx_aocr_tb_factura_pago_fr3_estado
+                    ON public.aocr_tb_factura_pago(fr3_estado);
+
+                ALTER TABLE public.aocr_tb_factura_pago ADD COLUMN IF NOT EXISTS fr3_estado VARCHAR(30);
+                ALTER TABLE public.aocr_tb_factura_pago ADD COLUMN IF NOT EXISTS fr3_numero VARCHAR(80);
+                ALTER TABLE public.aocr_tb_factura_pago ADD COLUMN IF NOT EXISTS fr3_secuencial NUMERIC(18,0);
+                ALTER TABLE public.aocr_tb_factura_pago ADD COLUMN IF NOT EXISTS fr3_aeropuerto VARCHAR(10);
+                ALTER TABLE public.aocr_tb_factura_pago ADD COLUMN IF NOT EXISTS fr3_anio VARCHAR(4);
+                ALTER TABLE public.aocr_tb_factura_pago ADD COLUMN IF NOT EXISTS fr3_error TEXT;
+                ALTER TABLE public.aocr_tb_factura_pago ADD COLUMN IF NOT EXISTS fr3_generado_en TIMESTAMP;
+                ALTER TABLE public.aocr_tb_factura_pago ADD COLUMN IF NOT EXISTS fr3_reintentos INTEGER NOT NULL DEFAULT 0;
+                ALTER TABLE public.aocr_tb_factura_pago ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP;
+
+                CREATE TABLE IF NOT EXISTS public.aocr_tb_sync_log (
+                    id BIGSERIAL PRIMARY KEY,
+                    idempotency_key VARCHAR(200) NOT NULL,
+                    orden_id INTEGER NOT NULL,
+                    pago_id INTEGER,
+                    modulo VARCHAR(50) NOT NULL,
+                    operacion VARCHAR(100) NOT NULL,
+                    estado VARCHAR(30) NOT NULL,
+                    mensaje TEXT,
+                    fr3_numero VARCHAR(80),
+                    payload JSONB,
+                    intentos INTEGER NOT NULL DEFAULT 0,
+                    usuario VARCHAR(120),
+                    created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+                    updated_at TIMESTAMP
+                );
+
+                CREATE UNIQUE INDEX IF NOT EXISTS uq_aocr_tb_sync_log_idempotency
+                    ON public.aocr_tb_sync_log(idempotency_key);
+
+                CREATE INDEX IF NOT EXISTS idx_aocr_tb_sync_log_orden_estado
+                    ON public.aocr_tb_sync_log(orden_id, estado, created_at DESC);
 
                 ALTER TABLE public.email_queue ADD COLUMN IF NOT EXISTS event_key VARCHAR(200);
                 ALTER TABLE public.email_queue ADD COLUMN IF NOT EXISTS error_message TEXT;

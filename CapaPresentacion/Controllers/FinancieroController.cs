@@ -53,10 +53,25 @@ namespace CapaPresentacion.Controllers
                 // El DAO espera id de orden para resolver internamente el codigo_solicitud correcto.
                 var pagoEnt = _ordenDAO.ObtenerUltimoPagoPorOrden(orden?.Id ?? 0);
                 var pago = MapearPago(pagoEnt);
+                var factura = _ordenDAO.ObtenerFacturaPagoPorOrden(orden?.Id ?? 0);
+                var fr3Estado = factura?.Fr3Estado;
+                var fr3Numero = factura?.Fr3Numero;
+                var fr3Error = factura?.Fr3Error;
+                var tieneFacturaRegistrada = factura != null && !string.IsNullOrWhiteSpace(factura.NumeroFactura);
+                var puedeReintentarFr3 = FacturacionAS400Service.IsEnabled() &&
+                                         tieneFacturaRegistrada &&
+                                         (string.Equals(fr3Estado, "FR3_ERROR", StringComparison.OrdinalIgnoreCase) ||
+                                          (string.IsNullOrWhiteSpace(fr3Estado) &&
+                                           string.Equals((orden?.Estado ?? "").Trim(), "FACTURADA", StringComparison.OrdinalIgnoreCase)));
+
                 vms.Add(new OrdenValidacionFinancieraVM
                 {
                     Orden = orden,
-                    Pago = pago
+                    Pago = pago,
+                    Fr3Estado = fr3Estado,
+                    Fr3Numero = fr3Numero,
+                    Fr3Error = fr3Error,
+                    PuedeReintentarFr3 = puedeReintentarFr3
                 });
             }
 
@@ -352,6 +367,113 @@ namespace CapaPresentacion.Controllers
 
         [HttpPost]
         [ValidateAntiForgeryToken]
+        [RequirePermission("FIN_APROBAR_PAGO")]
+        public ActionResult AprobarYEnviarAS400(int ordenId)
+        {
+            if (ordenId <= 0)
+            {
+                return JsonErrorLogged("Orden inválida.");
+            }
+
+            var orden = _ordenDAO.ObtenerOrdenPorId(ordenId);
+            if (orden == null)
+            {
+                return JsonErrorLogged("Orden no encontrada.");
+            }
+
+            var estado = ((orden.Estado ?? "").Trim()).ToUpperInvariant().Replace(" ", "_");
+            if (estado != "PROCESADA")
+            {
+                return JsonErrorLogged("Solo se pueden aprobar órdenes en estado PROCESADA. Estado actual: " + (orden.Estado ?? "N/D"));
+            }
+
+            var usuario = User != null && User.Identity != null && !string.IsNullOrWhiteSpace(User.Identity.Name)
+                ? User.Identity.Name
+                : "FINANCIERO";
+
+            try
+            {
+                // 1. Aprobar la orden (marcar como FACTURADA)
+                var pagoEnt = _ordenDAO.ObtenerUltimoPagoPorOrden(ordenId);
+                var pagoId = pagoEnt != null ? (int?)pagoEnt.Id : null;
+
+                string errAprobacion;
+                var aprobado = _ordenDAO.ActualizarPagoYEstadoTransaccional(
+                    ordenId, pagoId, "VALIDADO", usuario, "Aprobado por Finanzas", "FACTURADA", out errAprobacion);
+
+                if (!aprobado)
+                {
+                    return JsonErrorLogged("Error al aprobar la orden. " + (errAprobacion ?? ""));
+                }
+
+                // 2. Enviar PDF por correo
+                try
+                {
+                    var ordenActualizada = _ordenDAO.ObtenerOrdenPorId(ordenId) ?? orden;
+                    var pdf = new CapaPresentacion.Services.PdfGeneratorService().GenerarOrdenRecaudacionPDF(ordenActualizada);
+                    new EmailServiceData().EnviarFacturaGenerada(ordenActualizada, pdf);
+                }
+                catch (Exception exPdf)
+                {
+                    CapaNegocio.LogBL.RegistrarError(
+                        string.Format("Error generando/mandando factura Orden={0}", orden.NumeroOrden),
+                        exPdf.ToString(),
+                        "FinancieroController");
+                }
+
+                // 3. Enviar a AS400 si está habilitado
+                string advertenciaAs400 = null;
+                if (FacturacionAS400Service.IsEnabled())
+                {
+                    var as400Service = new FacturacionAS400Service();
+                    var numeroFactura = pagoEnt != null && !string.IsNullOrWhiteSpace(pagoEnt.NumeroComprobante)
+                        ? pagoEnt.NumeroComprobante
+                        : orden.NumeroOrden;
+                    var subtotal = orden.Subtotal ?? orden.Total ?? 0m;
+                    var iva = orden.Iva ?? 0m;
+                    var total = orden.Total ?? subtotal + iva;
+
+                    if (!as400Service.TryRegistrarFactura(
+                        ordenId,
+                        pagoId,
+                        numeroFactura,
+                        null,
+                        DateTime.Now,
+                        subtotal,
+                        iva,
+                        total,
+                        null,
+                        usuario,
+                        out advertenciaAs400))
+                    {
+                        CapaNegocio.LogBL.RegistrarError(
+                            string.Format("Error registrando factura en AS400. OrdenId={0}", ordenId),
+                            advertenciaAs400 ?? "n/a",
+                            "FinancieroController");
+                    }
+                }
+
+                var mensaje = "Orden aprobada y enviada a AS400 correctamente.";
+                return Json(new
+                {
+                    ok = true,
+                    message = mensaje,
+                    warning = advertenciaAs400
+                });
+            }
+            catch (Exception ex)
+            {
+                CapaNegocio.LogBL.RegistrarError(
+                    string.Format("Excepción en AprobarYEnviarAS400. OrdenId={0}", ordenId),
+                    ex.ToString(),
+                    "FinancieroController");
+                return JsonErrorLogged("Error interno al aprobar y enviar a AS400.", 500);
+            }
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        [RequirePermission("FIN_APROBAR_PAGO")]
         public ActionResult RechazarOrden(int id, string motivo)
         {
             if (string.IsNullOrWhiteSpace(motivo))
@@ -418,6 +540,77 @@ namespace CapaPresentacion.Controllers
                 TempData["Error"] = "Error interno al rechazar la orden.";
             }
             return RedirectToAction("Index");
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        [RequirePermission("FIN_APROBAR_PAGO")]
+        public ActionResult ReintentarFr3(int ordenId)
+        {
+            if (ordenId <= 0)
+            {
+                return JsonErrorLogged("Orden inválida para reintentar FR3.");
+            }
+
+            var usuario = User != null && User.Identity != null && !string.IsNullOrWhiteSpace(User.Identity.Name)
+                ? User.Identity.Name
+                : "FINANCIERO";
+
+            var service = new FacturacionAS400Service();
+            string mensaje;
+            var ok = service.TryReintentarFr3(ordenId, usuario, out mensaje);
+
+            if (!ok)
+            {
+                return JsonErrorLogged(string.IsNullOrWhiteSpace(mensaje) ? "No se pudo reintentar FR3." : mensaje);
+            }
+
+            return Json(new
+            {
+                ok = true,
+                message = string.IsNullOrWhiteSpace(mensaje)
+                    ? "Reintento FR3 ejecutado correctamente."
+                    : mensaje
+            });
+        }
+
+        [HttpGet]
+        [RequirePermission("FIN_VER_PAGOS")]
+        public JsonResult HealthFinanciero()
+        {
+            var postgresOk = false;
+            var db2Ok = false;
+            var db2Mensaje = "N/A";
+
+            try
+            {
+                postgresOk = _ordenDAO.Ping();
+            }
+            catch (Exception exPg)
+            {
+                CapaNegocio.LogBL.RegistrarError("HealthFinanciero PostgreSQL", exPg.ToString(), "FinancieroController");
+                postgresOk = false;
+            }
+
+            try
+            {
+                var facturacionService = new FacturacionAS400Service();
+                db2Ok = facturacionService.TestDb2Connection(out db2Mensaje);
+            }
+            catch (Exception exDb2)
+            {
+                CapaNegocio.LogBL.RegistrarError("HealthFinanciero DB2", exDb2.ToString(), "FinancieroController");
+                db2Ok = false;
+                db2Mensaje = exDb2.Message;
+            }
+
+            return Json(new
+            {
+                ok = postgresOk && db2Ok,
+                postgres = new { ok = postgresOk },
+                db2 = new { ok = db2Ok, message = db2Mensaje ?? string.Empty },
+                timestamp = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss")
+            }, JsonRequestBehavior.AllowGet);
         }
 
         // Compat: redirige la ruta /Financiero/DetalleOrden/{id} a la vista oficial de detalles
@@ -490,8 +683,12 @@ namespace CapaPresentacion.Controllers
 
         private JsonResult JsonErrorLogged(string message, int statusCode = 400)
         {
+            var action = RouteData != null && RouteData.Values != null && RouteData.Values.ContainsKey("action")
+                ? Convert.ToString(RouteData.Values["action"])
+                : "AccionDesconocida";
+
             CapaNegocio.LogBL.RegistrarAdvertencia(
-                string.Format("AprobarPagoConFactura rechazado ({0}): {1}", statusCode, message ?? "Error procesando la solicitud."),
+                string.Format("{0} rechazado ({1}): {2}", action, statusCode, message ?? "Error procesando la solicitud."),
                 "FinancieroController");
             return JsonError(message, statusCode);
         }

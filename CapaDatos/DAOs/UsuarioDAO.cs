@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Configuration;
 using System.Data;
 using System.Linq;
 using Npgsql;
@@ -10,14 +11,31 @@ namespace CapaDatos.DAOs
 {
     public static class UsuarioDAO
     {
-        private static readonly string Host = "172.20.16.55";
-        private static readonly int Puerto = 5432;
-        private static readonly string BaseDatos = "dgac_des";
-        private static readonly string UsuarioDB = "root";
-        private static readonly string Clave = "control";
+        private static readonly Lazy<string> _connectionString = new Lazy<string>(ResolveConnectionString);
 
-        private static string GetConnectionString() =>
-            $"Host={Host};Port={Puerto};Database={BaseDatos};Username={UsuarioDB};Password={Clave};";
+        private static string GetConnectionString()
+        {
+            return _connectionString.Value;
+        }
+
+        private static string ResolveConnectionString()
+        {
+            var envConnection = Environment.GetEnvironmentVariable("AOCR_CONNSTR_AOCRCONNECTION");
+            if (!string.IsNullOrWhiteSpace(envConnection))
+            {
+                return envConnection;
+            }
+
+            var configConnection = ConfigurationManager.ConnectionStrings["AOCRConnection"]?.ConnectionString
+                                   ?? ConfigurationManager.ConnectionStrings["DefaultConnection"]?.ConnectionString
+                                   ?? ConfigurationManager.ConnectionStrings["PostgreSQL"]?.ConnectionString;
+            if (!string.IsNullOrWhiteSpace(configConnection))
+            {
+                return configConnection;
+            }
+
+            throw new InvalidOperationException("No se encontró cadena de conexión PostgreSQL para UsuarioDAO.");
+        }
 
         // ==========================================
         // LOGIN: por usuario o correo

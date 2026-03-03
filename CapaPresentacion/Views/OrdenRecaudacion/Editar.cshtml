@@ -32,8 +32,11 @@
 
                             <div class="mb-3">
                                 <label class="form-label">Lugar de Emisión</label>
-                                @Html.TextBoxFor(m => m.LugarEmision, new { @class = "form-control", placeholder = "Ej: Quito" })
-                                @Html.ValidationMessageFor(m => m.LugarEmision, "", new { @class = "text-danger" })
+                                @Html.HiddenFor(m => m.LugarEmision)
+                                <div class="form-control bg-light" aria-readonly="true" title="Este valor se obtiene directamente de la base de datos.">
+                                    @(Model != null ? (Model.LugarEmision ?? string.Empty) : string.Empty)
+                                </div>
+                                <small class="text-muted">Valor obtenido automáticamente desde la base de datos.</small>
                             </div>
 
                             <div class="mb-3">
@@ -162,53 +165,76 @@
 
 @section Scripts {
     <script>
-        $(document).ready(function () {
-            // Validació del formulario
-            $('#formOrden').validate({
-                rules: {
-                    LugarEmision: { required: true, maxlength: 100 },
-                    Compania: { required: true, maxlength: 100 },
-                    RucCedula: { required: true, minlength: 10, maxlength: 13 },
-                    NombreContribuyente: { required: true, maxlength: 200 },
-                    Correo: { required: true, email: true, maxlength: 100 },
-                    Telefono: { maxlength: 15 },
-                    Observacion: { maxlength: 500 }
-                },
-                messages: {
-                    LugarEmision: {
-                        required: "El lugar de emisión es obligatorio",
-                        maxlength: "Máximo 100 caracteres"
-                    },
-                    Compania: {
-                        required: "La compañia es obligatoria",
-                        maxlength: "Máximo 100 caracteres"
-                    },
-                    RucCedula: {
-                        required: "RUC/Cédula es obligatorio",
-                        minlength: "Mínimo 10 caracteres",
-                        maxlength: "Máximo 13 caracteres"
-                    },
-                    NombreContribuyente: {
-                        required: "El nombre del contribuyente es obligatorio",
-                        maxlength: "Máximo 200 caracteres"
-                    },
-                    Correo: {
-                        required: "El correo es obligatorio",
-                        email: "Formato de correo inválido",
-                        maxlength: "Máximo 100 caracteres"
-                    },
-                    Telefono: { maxlength: "Máximo 15 caracteres" },
-                    Observacion: { maxlength: "Máximo 500 caracteres" }
-                },
-                errorElement: 'div',
-                errorClass: 'invalid-feedback',
-                highlight: function (element) {
-                    $(element).addClass('is-invalid');
-                },
-                unhighlight: function (element) {
-                    $(element).removeClass('is-invalid');
+        (function initEditarValidation(retries) {
+            if (!window.jQuery) {
+                if ((retries || 0) < 50) {
+                    setTimeout(function () {
+                        initEditarValidation((retries || 0) + 1);
+                    }, 100);
+                }
+                return;
+            }
+
+            window.jQuery(function () {
+                try {
+                    var hasValidate = window.jQuery.fn &&
+                        typeof window.jQuery.fn.validate === 'function';
+
+                    if (!hasValidate) {
+                        console.warn('jQuery Validate no está disponible. Se omite validación cliente en Editar.');
+                        return;
+                    }
+
+                    var $form = window.jQuery('#formOrden');
+                    if (!$form.length) {
+                        return;
+                    }
+
+                    $form.validate({
+                        rules: {
+                            Compania: { required: true, maxlength: 100 },
+                            RucCedula: { required: true, minlength: 10, maxlength: 13 },
+                            NombreContribuyente: { required: true, maxlength: 200 },
+                            Correo: { required: true, email: true, maxlength: 100 },
+                            Telefono: { maxlength: 15 },
+                            Observacion: { maxlength: 500 }
+                        },
+                        messages: {
+                            Compania: {
+                                required: "La compañia es obligatoria",
+                                maxlength: "Máximo 100 caracteres"
+                            },
+                            RucCedula: {
+                                required: "RUC/Cédula es obligatorio",
+                                minlength: "Mínimo 10 caracteres",
+                                maxlength: "Máximo 13 caracteres"
+                            },
+                            NombreContribuyente: {
+                                required: "El nombre del contribuyente es obligatorio",
+                                maxlength: "Máximo 200 caracteres"
+                            },
+                            Correo: {
+                                required: "El correo es obligatorio",
+                                email: "Formato de correo inválido",
+                                maxlength: "Máximo 100 caracteres"
+                            },
+                            Telefono: { maxlength: "Máximo 15 caracteres" },
+                            Observacion: { maxlength: "Máximo 500 caracteres" }
+                        },
+                        errorElement: 'div',
+                        errorClass: 'invalid-feedback',
+                        highlight: function (element) {
+                            window.jQuery(element).addClass('is-invalid');
+                        },
+                        unhighlight: function (element) {
+                            window.jQuery(element).removeClass('is-invalid');
+                        }
+                    });
+                } catch (err) {
+                    var msg = (err && err.message) ? err.message : err;
+                    console.warn('Validación cliente de Editar deshabilitada por error: ' + msg);
                 }
             });
-        });
+        })(0);
     </script>
 }

@@ -327,7 +327,6 @@ namespace CapaPresentacion.Controllers
             var model = new CapaPresentacion.Models.OrdenRecaudacionNuevaVM();
             CargarConceptosNueva(model);
             var userId = GetUserId();
-            model.Orden.LugarEmision = "Quito";
             // Prefill bÃ¡sico desde usuario/empresa (editables)
             try
             {
@@ -394,6 +393,7 @@ namespace CapaPresentacion.Controllers
 
             // Completar campos faltantes con la última orden registrada del usuario.
             PrefillDesdeUltimaOrden(userId, model);
+            model.Orden.LugarEmision = ResolverLugarEmisionDesdeDb(model.Orden.CodigoSolicitud, userId);
             return View(model);
         }
 
@@ -466,13 +466,15 @@ namespace CapaPresentacion.Controllers
 
                 var numeroOrden = await GenerarNumeroOrdenAsync();
                 System.Diagnostics.Debug.WriteLine($"Controller Nueva: numeroOrden generado = {numeroOrden}");
+                var codigoSolicitud = int.TryParse(model.Orden?.CodigoSolicitud?.ToString(), out int cs) ? (int?)cs : null;
+                var lugarEmisionDb = ResolverLugarEmisionDesdeDb(codigoSolicitud, idUsuario);
 
                 var orden = new OrdenRecaudacion
                 {
                     NumeroOrden = numeroOrden,
                     CodigoUsuario = idUsuario,
-                    CodigoSolicitud = int.TryParse(model.Orden?.CodigoSolicitud?.ToString(), out int cs) ? (int?)cs : null,
-                    LugarEmision = model.Orden?.LugarEmision ?? "Quito",
+                    CodigoSolicitud = codigoSolicitud,
+                    LugarEmision = lugarEmisionDb,
                     Compania = model.Orden?.Compania,
                     NombreContribuyente = model.Orden?.Compania,
                     RucCedula = model.Orden?.RucCedula,
@@ -706,6 +708,13 @@ namespace CapaPresentacion.Controllers
             if (!string.Equals((orden.Estado ?? "").Trim(), "BORRADOR", StringComparison.OrdinalIgnoreCase))
                 return new HttpStatusCodeResult(403);
 
+            int codigoSolicitud;
+            int.TryParse((orden.CodigoSolicitud ?? string.Empty).Trim(), out codigoSolicitud);
+            orden.LugarEmision = ResolverLugarEmisionDesdeDb(
+                codigoSolicitud > 0 ? (int?)codigoSolicitud : null,
+                orden.CodigoUsuario,
+                orden.LugarEmision);
+
             return View(orden);
         }
 
@@ -719,9 +728,15 @@ namespace CapaPresentacion.Controllers
             if (idUsuario <= 0) return RedirectToAction("Login", "Account");
 
             if (!ModelState.IsValid)
+            {
+                var errores = string.Join(" | ", ModelState
+                    .Where(x => x.Value.Errors.Count > 0)
+                    .SelectMany(x => x.Value.Errors.Select(e => x.Key + ": " + (e.ErrorMessage ?? e.Exception?.Message ?? "Error de validación"))));
+                System.Diagnostics.Debug.WriteLine("OrdenRecaudacion/Editar POST ModelState inválido: " + errores);
                 return View(model);
+            }
 
-            var ordenExistente = _dao.ObtenerOrdenPorIdModel(model.Id);
+            var ordenExistente = _dao.ObtenerPorId(model.Id);
             if (ordenExistente == null || ordenExistente.CodigoUsuario != idUsuario)
                 return HttpNotFound();
 
@@ -731,15 +746,21 @@ namespace CapaPresentacion.Controllers
             try
             {
                 // Actualizar los campos editables
-                ordenExistente.LugarEmision = model.LugarEmision;
-                ordenExistente.Compania = model.Compania;
+                var codigoSolicitudExistente = ordenExistente.CodigoSolicitud;
+                ordenExistente.LugarEmision = ResolverLugarEmisionDesdeDb(
+                    codigoSolicitudExistente > 0 ? codigoSolicitudExistente : null,
+                    ordenExistente.CodigoUsuario ?? idUsuario,
+                    ordenExistente.LugarEmision);
+                ordenExistente.Compania = !string.IsNullOrWhiteSpace(model.Compania)
+                    ? model.Compania
+                    : model.NombreContribuyente;
                 ordenExistente.RucCedula = model.RucCedula;
-                ordenExistente.NombreContribuyente = model.NombreContribuyente;
                 ordenExistente.Correo = model.Correo;
                 ordenExistente.Telefono = model.Telefono;
                 ordenExistente.Observacion = model.Observacion;
 
                 bool result = _dao.ActualizarOrden(ordenExistente);
+                System.Diagnostics.Debug.WriteLine($"OrdenRecaudacion/Editar POST resultado update: id={model.Id}, updated={result}");
                 if (result)
                 {
                     TempData["OK"] = "Orden actualizada correctamente";
@@ -1830,9 +1851,6 @@ En transferencias NO colocar sublínea<br>";
                 var ultimaOrden = _dao.ListarPorUsuario(userId, null).FirstOrDefault();
                 if (ultimaOrden == null) return;
 
-                if (string.IsNullOrWhiteSpace(model.Orden.LugarEmision) && !string.IsNullOrWhiteSpace(ultimaOrden.LugarEmision))
-                    model.Orden.LugarEmision = ultimaOrden.LugarEmision;
-
                 if (string.IsNullOrWhiteSpace(model.Orden.Compania) && !string.IsNullOrWhiteSpace(ultimaOrden.Compania))
                     model.Orden.Compania = ultimaOrden.Compania;
 
@@ -1849,6 +1867,245 @@ En transferencias NO colocar sublínea<br>";
             {
                 // Ignorar errores de prefill por historial para no bloquear el formulario.
             }
+        }
+
+        private string ResolverLugarEmisionDesdeDb(int? codigoSolicitud, int codigoUsuario, string fallback = null)
+        {
+            try
+            {
+                if (codigoSolicitud.HasValue && codigoSolicitud.Value > 0)
+                {
+                    var solicitud = _solicitudDao.ObtenerPorId(codigoSolicitud.Value);
+                    if (solicitud != null)
+                    {
+                        var codCiudad = FirstNonEmpty(
+                            NormalizarCodigoCiudad(solicitud.CodCiudad),
+                            NormalizarCodigoCiudad(ObtenerCodCiudadSolicitudDesdePostgres(codigoSolicitud.Value)),
+                            NormalizarCodigoCiudad(solicitud.Ciudad));
+
+                        var lugarDesdeAs400 = ResolverEstacionDesdeAs400(codCiudad);
+                        if (!string.IsNullOrWhiteSpace(lugarDesdeAs400))
+                        {
+                            return lugarDesdeAs400;
+                        }
+
+                        if (!string.IsNullOrWhiteSpace(solicitud.Ciudad))
+                        {
+                            return solicitud.Ciudad.Trim();
+                        }
+                    }
+                }
+
+                if (codigoUsuario > 0)
+                {
+                    var codCiudadUsuario = FirstNonEmpty(
+                        NormalizarCodigoCiudad(ObtenerCodCiudadUsuarioDesdePostgres(codigoUsuario)),
+                        NormalizarCodigoCiudad(ObtenerCodCiudadUsuarioDesdeAs400(codigoUsuario)));
+
+                    var lugarUsuarioDesdeAs400 = ResolverEstacionDesdeAs400(codCiudadUsuario);
+                    if (!string.IsNullOrWhiteSpace(lugarUsuarioDesdeAs400))
+                    {
+                        return lugarUsuarioDesdeAs400;
+                    }
+
+                    var solicitudConCiudad = _solicitudDao
+                        .ObtenerPorUsuario(codigoUsuario)
+                        .FirstOrDefault(s => !string.IsNullOrWhiteSpace(s.Ciudad));
+
+                    if (solicitudConCiudad != null && !string.IsNullOrWhiteSpace(solicitudConCiudad.Ciudad))
+                    {
+                        return solicitudConCiudad.Ciudad.Trim();
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine("ResolverLugarEmisionDesdeDb: " + ex.Message);
+            }
+
+            if (!string.IsNullOrWhiteSpace(fallback))
+            {
+                return fallback.Trim();
+            }
+
+            return "Quito";
+        }
+
+        private static string ResolverEstacionDesdeAs400(string codCiudad)
+        {
+            if (string.IsNullOrWhiteSpace(codCiudad))
+            {
+                return null;
+            }
+
+            try
+            {
+                var daoUbicacion = CD_UbicacionUsuario.Instancia;
+
+                var ubicacionUsuario = daoUbicacion.UbicacionUsuarioPorCiudad(codCiudad);
+                if (!string.IsNullOrWhiteSpace(ubicacionUsuario?.Estacion))
+                {
+                    return ubicacionUsuario.Estacion.Trim();
+                }
+
+                var ubicacionAeropuerto = daoUbicacion.UbicacionAeropuertoUsuarioPorCiudad(codCiudad);
+                if (!string.IsNullOrWhiteSpace(ubicacionAeropuerto?.Estacion))
+                {
+                    return ubicacionAeropuerto.Estacion.Trim();
+                }
+            }
+            catch
+            {
+                // Si AS400 no responde, conservar fallback de la app sin bloquear flujo.
+            }
+
+            return null;
+        }
+
+        private static string NormalizarCodigoCiudad(string valor)
+        {
+            if (string.IsNullOrWhiteSpace(valor))
+            {
+                return null;
+            }
+
+            var codigo = valor.Trim().ToUpperInvariant();
+            if (codigo.Length < 2 || codigo.Length > 10)
+            {
+                return null;
+            }
+
+            if (!codigo.All(ch => char.IsLetterOrDigit(ch) || ch == '_' || ch == '-'))
+            {
+                return null;
+            }
+
+            return codigo;
+        }
+
+        private string ObtenerCodCiudadSolicitudDesdePostgres(int codigoSolicitud)
+        {
+            return ObtenerCodCiudadDesdePostgres(
+                "aocr_tbsolicitud",
+                "codigo_solicitud = @id",
+                cmd => cmd.Parameters.AddWithValue("@id", codigoSolicitud));
+        }
+
+        private string ObtenerCodCiudadUsuarioDesdePostgres(int codigoUsuario)
+        {
+            return ObtenerCodCiudadDesdePostgres(
+                "usuario",
+                "idusuario = @id",
+                cmd => cmd.Parameters.AddWithValue("@id", codigoUsuario));
+        }
+
+        private string ObtenerCodCiudadUsuarioDesdeAs400(int codigoUsuario)
+        {
+            if (codigoUsuario <= 0)
+            {
+                return null;
+            }
+
+            try
+            {
+                var usuario = UsuarioDAO.ObtenerPorId(codigoUsuario);
+                if (usuario == null || string.IsNullOrWhiteSpace(usuario.CodigoUsuario))
+                {
+                    return null;
+                }
+
+                var as400Dao = new UsuarioAS400DAO(new SecureConfig());
+                return as400Dao.ObtenerCodigoCiudadPorCodigoUsuario(usuario.CodigoUsuario);
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine("ObtenerCodCiudadUsuarioDesdeAs400: " + ex.Message);
+                return null;
+            }
+        }
+
+        private string ObtenerCodCiudadDesdePostgres(string tabla, string whereClause, Action<Npgsql.NpgsqlCommand> bindParams)
+        {
+            try
+            {
+                var cs = ConfigurationManager.ConnectionStrings["AOCRConnection"]?.ConnectionString
+                         ?? ConfigurationManager.ConnectionStrings["PostgreSQL"]?.ConnectionString;
+                if (string.IsNullOrWhiteSpace(cs))
+                {
+                    return null;
+                }
+
+                using (var cn = new Npgsql.NpgsqlConnection(cs))
+                {
+                    cn.Open();
+                    var columnas = ObtenerColumnasTablaPostgres(cn, tabla);
+                    if (columnas.Count == 0)
+                    {
+                        return null;
+                    }
+
+                    var candidatas = new[]
+                    {
+                        "cod_ciudad",
+                        "codigo_ciudad",
+                        "ciudad_codigo",
+                        "codigociudad",
+                        "codigo_ciudad_adic",
+                        "codigo_ciudad_adicional",
+                        "usuco5",
+                        "ciudad"
+                    };
+                    var disponibles = candidatas.Where(c => columnas.Contains(c)).ToList();
+                    if (disponibles.Count == 0)
+                    {
+                        return null;
+                    }
+
+                    var expr = string.Join(", ", disponibles.Select(c => string.Format("NULLIF(BTRIM(CAST({0} AS TEXT)), '')", c)));
+                    var sql = string.Format("SELECT COALESCE({0}) FROM {1} WHERE {2} LIMIT 1", expr, tabla, whereClause);
+
+                    using (var cmd = new Npgsql.NpgsqlCommand(sql, cn))
+                    {
+                        bindParams?.Invoke(cmd);
+                        var value = cmd.ExecuteScalar();
+                        return value == null || value == DBNull.Value
+                            ? null
+                            : value.ToString().Trim();
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine("ObtenerCodCiudadDesdePostgres: " + ex.Message);
+                return null;
+            }
+        }
+
+        private static HashSet<string> ObtenerColumnasTablaPostgres(Npgsql.NpgsqlConnection cn, string tabla)
+        {
+            var columnas = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            const string sql = @"
+                SELECT column_name
+                FROM information_schema.columns
+                WHERE table_name = @tabla
+                  AND table_schema NOT IN ('pg_catalog', 'information_schema')";
+
+            using (var cmd = new Npgsql.NpgsqlCommand(sql, cn))
+            {
+                cmd.Parameters.AddWithValue("@tabla", tabla);
+                using (var rd = cmd.ExecuteReader())
+                {
+                    while (rd.Read())
+                    {
+                        if (!rd.IsDBNull(0))
+                        {
+                            columnas.Add(rd.GetString(0));
+                        }
+                    }
+                }
+            }
+
+            return columnas;
         }
 
         private SolicitudAOCR CrearSolicitudAuto(int userId)
@@ -2041,7 +2298,12 @@ En transferencias NO colocar sublínea<br>";
                 }
 
                 string usuario = User.Identity.Name ?? "SISTEMA";
-                bool resultado = _dao.ActualizarUltimoPagoEstado(ordenId, CapaDatos.Constants.EstadoPago.Validado, usuario, "Pago validado");
+                var resultado = _dao.ActualizarPagoEstadoPorId(
+                    ordenId,
+                    pagoId,
+                    CapaDatos.Constants.EstadoPago.Validado,
+                    usuario,
+                    "Pago validado");
                 
                 if (resultado)
                 {
@@ -2077,7 +2339,12 @@ En transferencias NO colocar sublínea<br>";
                 }
 
                 string usuario = User.Identity.Name ?? "SISTEMA";
-                bool resultado = _dao.ActualizarUltimoPagoEstado(ordenId, CapaDatos.Constants.EstadoPago.Rechazado, usuario, motivo);
+                var resultado = _dao.ActualizarPagoEstadoPorId(
+                    ordenId,
+                    pagoId,
+                    CapaDatos.Constants.EstadoPago.Rechazado,
+                    usuario,
+                    motivo);
                 
                 if (resultado)
                 {

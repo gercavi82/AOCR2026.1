@@ -1,0 +1,870 @@
+using System;
+using System.Collections.Generic;
+using System.Configuration;
+using System.Data;
+using System.Data.Odbc;
+using System.Globalization;
+using System.Linq;
+using CapaDatos.Infrastructure;
+using CapaDatos.Models;
+using CapaDatos.Services;
+
+namespace CapaDatos.DAOs
+{
+    public class FacturacionAS400Result
+    {
+        public bool EsDuplicado { get; set; }
+        public decimal Secuencial { get; set; }
+        public string Aeropuerto { get; set; }
+        public string Anio { get; set; }
+        public string NumeroFactura { get; set; }
+        public string NumeroFr3 { get; set; }
+    }
+
+    public class FacturacionAS400DAO : AS400BaseDAO
+    {
+        private readonly string _schema;
+        private readonly string _tablaCabecera;
+        private readonly string _tablaDetalle;
+        private readonly string _tablaSecuencial;
+        private readonly ILoggingService _logger;
+
+        public FacturacionAS400DAO(ISecureConfigurationService configService) : base(configService)
+        {
+            var creds = configService.GetAS400Credentials();
+            _schema = (creds.Library ?? creds.Database ?? "DGACDAT").Trim().ToUpperInvariant();
+            _tablaCabecera = GetSetting("AS400:Facturacion:OPCAR5Table", "OPCAR5").Trim().ToUpperInvariant();
+            _tablaDetalle = GetSetting("AS400:Facturacion:OPCAR6Table", "OPCAR6").Trim().ToUpperInvariant();
+            _tablaSecuencial = GetSetting("AS400:Facturacion:OPSARCTable", "OPSARC").Trim().ToUpperInvariant();
+            _logger = LoggingServiceFactory.Create();
+        }
+
+        [Obsolete("Use el constructor con ISecureConfigurationService")]
+        public FacturacionAS400DAO() : this(new SecureConfigurationService())
+        {
+        }
+
+        public bool TestConnection(out string message)
+        {
+            return TryTestConnection(out message);
+        }
+
+        public bool RegistrarFactura(FacturaAs400Record record, out string error)
+        {
+            FacturacionAS400Result ignored;
+            return RegistrarFactura(record, out ignored, out error);
+        }
+
+        public bool RegistrarFactura(FacturaAs400Record record, out FacturacionAS400Result result, out string error)
+        {
+            error = null;
+            result = null;
+
+            if (record == null)
+            {
+                error = "Registro de factura vacio.";
+                return false;
+            }
+
+            if (string.IsNullOrWhiteSpace(record.Aeropuerto))
+            {
+                error = "Aeropuerto requerido para facturacion AS400.";
+                return false;
+            }
+
+            if (string.IsNullOrWhiteSpace(record.NumeroFactura))
+            {
+                error = "Numero de factura requerido para FR3.";
+                return false;
+            }
+
+            var aeropuerto = SafeString(record.Aeropuerto).ToUpperInvariant();
+            var anio = ResolveAnio(record);
+            FacturacionAS400Result localResult = null;
+
+            try
+            {
+                ExecuteWithConnection(conn =>
+                {
+                    using (var tx = conn.BeginTransaction(IsolationLevel.Serializable))
+                    {
+                        _logger.LogInfo(string.Format(
+                            "FR3 DB2 inicio: OrdenId={0}, Factura={1}, Aeropuerto={2}, Anio={3}",
+                            record.OrdenId,
+                            record.NumeroFactura,
+                            aeropuerto,
+                            anio));
+
+                        var colsCabecera = GetColumnas(conn, _schema, _tablaCabecera, tx);
+                        if (colsCabecera.Count == 0)
+                        {
+                            throw new InvalidOperationException(
+                                string.Format("No se encontraron columnas en {0}.{1}.", _schema, _tablaCabecera));
+                        }
+
+                        var colsDetalle = GetColumnas(conn, _schema, _tablaDetalle, tx);
+
+                        decimal secuencialExistente;
+                        if (TryObtenerFacturaExistente(conn, tx, colsCabecera, record, aeropuerto, anio, out secuencialExistente))
+                        {
+                            localResult = BuildResult(true, secuencialExistente, aeropuerto, anio, record.NumeroFactura);
+                            tx.Rollback();
+                            _logger.LogWarning(string.Format(
+                                "FR3 duplicado detectado: OrdenId={0}, Factura={1}, Sec={2}",
+                                record.OrdenId,
+                                record.NumeroFactura,
+                                secuencialExistente));
+                            return;
+                        }
+
+                        TryBloquearTablaCabecera(conn, tx);
+                        var secuencial = ObtenerSecuencialSeguro(conn, tx, colsCabecera, aeropuerto, anio);
+                        secuencial = AsegurarSecuencialNoDuplicado(conn, tx, colsCabecera, aeropuerto, anio, secuencial);
+
+                        var valoresCabecera = ConstruirValoresCabecera(record, secuencial);
+                        InsertarRegistro(conn, tx, _schema, _tablaCabecera, valoresCabecera, colsCabecera);
+                        _logger.LogInfo(string.Format(
+                            "FR3 cabecera insertada: Factura={0}, Sec={1}",
+                            record.NumeroFactura,
+                            secuencial.ToString(CultureInfo.InvariantCulture)));
+
+                        if (colsDetalle.Count > 0 && record.Detalles != null && record.Detalles.Count > 0)
+                        {
+                            var secDetalle = 1;
+                            foreach (var det in record.Detalles.Where(d => d != null))
+                            {
+                                var valoresDetalle = ConstruirValoresDetalle(record, det, secuencial, secDetalle);
+                                InsertarRegistro(conn, tx, _schema, _tablaDetalle, valoresDetalle, colsDetalle);
+                                secDetalle++;
+                            }
+                        }
+
+                        TryActualizarSecuencial(conn, tx, aeropuerto, anio, secuencial);
+                        _logger.LogInfo(string.Format(
+                            "FR3 secuencial actualizado: Aeropuerto={0}, Anio={1}, Sec={2}",
+                            aeropuerto,
+                            anio,
+                            secuencial.ToString(CultureInfo.InvariantCulture)));
+
+                        tx.Commit();
+
+                        localResult = BuildResult(false, secuencial, aeropuerto, anio, record.NumeroFactura);
+                        _logger.LogInfo(string.Format(
+                            "FR3 DB2 OK: OrdenId={0}, Factura={1}, FR3={2}",
+                            record.OrdenId,
+                            record.NumeroFactura,
+                            localResult.NumeroFr3));
+                    }
+                });
+
+                result = localResult;
+                return true;
+            }
+            catch (Exception ex)
+            {
+                error = ex.Message;
+                _logger.LogError(ex, new LogContext
+                {
+                    ErrorCode = "FR3_DB2_ERROR",
+                    AdditionalData = new Dictionary<string, object>
+                    {
+                        { "OrdenId", record.OrdenId },
+                        { "Factura", record.NumeroFactura ?? string.Empty },
+                        { "Aeropuerto", aeropuerto },
+                        { "Anio", anio }
+                    }
+                });
+                return false;
+            }
+        }
+
+        private static FacturacionAS400Result BuildResult(
+            bool esDuplicado,
+            decimal secuencial,
+            string aeropuerto,
+            string anio,
+            string numeroFactura)
+        {
+            var sec = secuencial > 0m
+                ? Convert.ToInt64(Math.Truncate(secuencial)).ToString(CultureInfo.InvariantCulture)
+                : "0";
+
+            return new FacturacionAS400Result
+            {
+                EsDuplicado = esDuplicado,
+                Secuencial = secuencial,
+                Aeropuerto = aeropuerto,
+                Anio = anio,
+                NumeroFactura = numeroFactura,
+                NumeroFr3 = string.Format(CultureInfo.InvariantCulture, "{0}-{1}-{2}", sec, aeropuerto, anio)
+            };
+        }
+
+        private bool TryObtenerFacturaExistente(
+            OdbcConnection conn,
+            OdbcTransaction tx,
+            HashSet<string> colsCabecera,
+            FacturaAs400Record record,
+            string aeropuerto,
+            string anio,
+            out decimal secuencial)
+        {
+            secuencial = 0m;
+
+            if (record == null)
+            {
+                return false;
+            }
+
+            if (colsCabecera.Contains("OPCNUM") && !string.IsNullOrWhiteSpace(record.NumeroFactura))
+            {
+                var filtros = new List<string> { "OPCNUM = ?" };
+                var parametros = new List<object> { record.NumeroFactura.Trim() };
+
+                if (colsCabecera.Contains("OPCAER") && !string.IsNullOrWhiteSpace(aeropuerto))
+                {
+                    filtros.Add("OPCAER = ?");
+                    parametros.Add(aeropuerto);
+                }
+                if (colsCabecera.Contains("OPCANO") && !string.IsNullOrWhiteSpace(anio))
+                {
+                    filtros.Add("OPCANO = ?");
+                    parametros.Add(anio);
+                }
+
+                var sql = string.Format(
+                    "SELECT {0} FROM {1}.{2} WHERE {3} FETCH FIRST 1 ROWS ONLY",
+                    colsCabecera.Contains("OPCSEC") ? "OPCSEC" : "1",
+                    _schema,
+                    _tablaCabecera,
+                    string.Join(" AND ", filtros));
+
+                using (var cmd = new OdbcCommand(sql, conn, tx))
+                {
+                    foreach (var parametro in parametros)
+                    {
+                        AddParameter(cmd, parametro, GetOdbcType(parametro));
+                    }
+
+                    var valor = cmd.ExecuteScalar();
+                    if (valor != null && valor != DBNull.Value)
+                    {
+                        secuencial = SafeDecimal(valor);
+                        return true;
+                    }
+                }
+            }
+
+            if (colsCabecera.Contains("OPCOBS"))
+            {
+                var tokenCorrelacion = ExtractCorrelationToken(record.Observaciones);
+                if (!string.IsNullOrWhiteSpace(tokenCorrelacion))
+                {
+                    var filtros = new List<string> { "UPPER(OPCOBS) LIKE ?" };
+                    var parametros = new List<object> { "%" + tokenCorrelacion.ToUpperInvariant() + "%" };
+
+                    if (colsCabecera.Contains("OPCAER") && !string.IsNullOrWhiteSpace(aeropuerto))
+                    {
+                        filtros.Add("OPCAER = ?");
+                        parametros.Add(aeropuerto);
+                    }
+                    if (colsCabecera.Contains("OPCANO") && !string.IsNullOrWhiteSpace(anio))
+                    {
+                        filtros.Add("OPCANO = ?");
+                        parametros.Add(anio);
+                    }
+
+                    var sql = string.Format(
+                        "SELECT {0} FROM {1}.{2} WHERE {3} FETCH FIRST 1 ROWS ONLY",
+                        colsCabecera.Contains("OPCSEC") ? "OPCSEC" : "1",
+                        _schema,
+                        _tablaCabecera,
+                        string.Join(" AND ", filtros));
+
+                    using (var cmd = new OdbcCommand(sql, conn, tx))
+                    {
+                        foreach (var parametro in parametros)
+                        {
+                            AddParameter(cmd, parametro, GetOdbcType(parametro));
+                        }
+
+                        var valor = cmd.ExecuteScalar();
+                        if (valor != null && valor != DBNull.Value)
+                        {
+                            secuencial = SafeDecimal(valor);
+                            return true;
+                        }
+                    }
+                }
+            }
+
+            return false;
+        }
+
+        private void TryBloquearTablaCabecera(OdbcConnection conn, OdbcTransaction tx)
+        {
+            try
+            {
+                var sql = string.Format(
+                    "LOCK TABLE {0}.{1} IN EXCLUSIVE MODE",
+                    _schema,
+                    _tablaCabecera);
+
+                using (var cmd = new OdbcCommand(sql, conn, tx))
+                {
+                    cmd.CommandTimeout = _commandTimeout;
+                    cmd.ExecuteNonQuery();
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning("FR3: lock exclusivo de cabecera no disponible (" + ex.Message + ").");
+            }
+        }
+
+        private decimal ObtenerSecuencialSeguro(
+            OdbcConnection conn,
+            OdbcTransaction tx,
+            HashSet<string> colsCabecera,
+            string aeropuerto,
+            string anio)
+        {
+            var colsSec = GetColumnas(conn, _schema, _tablaSecuencial, tx);
+            var hasOpsSec = colsSec.Contains("OPSSEC");
+            var hasOpsAer = colsSec.Contains("OPSAER");
+            var hasOpsAno = colsSec.Contains("OPSANO");
+
+            if (hasOpsSec && hasOpsAer)
+            {
+                var where = hasOpsAno ? "OPSAER = ? AND OPSANO = ?" : "OPSAER = ?";
+                var sqlSelect = string.Format(
+                    "SELECT OPSSEC FROM {0}.{1} WHERE {2} FOR UPDATE",
+                    _schema,
+                    _tablaSecuencial,
+                    where);
+
+                using (var cmd = new OdbcCommand(sqlSelect, conn, tx))
+                {
+                    AddParameter(cmd, aeropuerto, OdbcType.VarChar);
+                    if (hasOpsAno)
+                    {
+                        AddParameter(cmd, anio, OdbcType.VarChar);
+                    }
+
+                    var valor = cmd.ExecuteScalar();
+                    if (valor != null && valor != DBNull.Value)
+                    {
+                        return SafeDecimal(valor) + 1m;
+                    }
+                }
+            }
+
+            return ObtenerMaxSecuencial(conn, tx, colsCabecera, aeropuerto, anio) + 1m;
+        }
+
+        private decimal AsegurarSecuencialNoDuplicado(
+            OdbcConnection conn,
+            OdbcTransaction tx,
+            HashSet<string> colsCabecera,
+            string aeropuerto,
+            string anio,
+            decimal secuencialInicial)
+        {
+            var secuencial = secuencialInicial <= 0m ? 1m : secuencialInicial;
+
+            for (var attempt = 0; attempt < 10; attempt++)
+            {
+                if (!ExisteSecuencialCabecera(conn, tx, colsCabecera, aeropuerto, anio, secuencial))
+                {
+                    return secuencial;
+                }
+
+                secuencial += 1m;
+            }
+
+            throw new InvalidOperationException("No fue posible reservar un secuencial FR3 unico.");
+        }
+
+        private bool ExisteSecuencialCabecera(
+            OdbcConnection conn,
+            OdbcTransaction tx,
+            HashSet<string> colsCabecera,
+            string aeropuerto,
+            string anio,
+            decimal secuencial)
+        {
+            if (!colsCabecera.Contains("OPCSEC"))
+            {
+                return false;
+            }
+
+            var filtros = new List<string> { "OPCSEC = ?" };
+            var parametros = new List<object> { secuencial };
+
+            if (colsCabecera.Contains("OPCAER") && !string.IsNullOrWhiteSpace(aeropuerto))
+            {
+                filtros.Add("OPCAER = ?");
+                parametros.Add(aeropuerto);
+            }
+
+            if (colsCabecera.Contains("OPCANO") && !string.IsNullOrWhiteSpace(anio))
+            {
+                filtros.Add("OPCANO = ?");
+                parametros.Add(anio);
+            }
+
+            var sql = string.Format(
+                "SELECT 1 FROM {0}.{1} WHERE {2} FETCH FIRST 1 ROWS ONLY",
+                _schema,
+                _tablaCabecera,
+                string.Join(" AND ", filtros));
+
+            using (var cmd = new OdbcCommand(sql, conn, tx))
+            {
+                foreach (var parametro in parametros)
+                {
+                    AddParameter(cmd, parametro, GetOdbcType(parametro));
+                }
+
+                var result = cmd.ExecuteScalar();
+                return result != null && result != DBNull.Value;
+            }
+        }
+
+        private decimal ObtenerMaxSecuencial(
+            OdbcConnection conn,
+            OdbcTransaction tx,
+            HashSet<string> colsCabecera,
+            string aeropuerto,
+            string anio)
+        {
+            var filtros = new List<string>();
+            var parametros = new List<object>();
+
+            if (colsCabecera.Contains("OPCAER") && !string.IsNullOrWhiteSpace(aeropuerto))
+            {
+                filtros.Add("OPCAER = ?");
+                parametros.Add(aeropuerto);
+            }
+            if (colsCabecera.Contains("OPCANO") && !string.IsNullOrWhiteSpace(anio))
+            {
+                filtros.Add("OPCANO = ?");
+                parametros.Add(anio);
+            }
+
+            var where = filtros.Count > 0 ? " WHERE " + string.Join(" AND ", filtros) : string.Empty;
+            var sql = string.Format(
+                "SELECT COALESCE(MAX(OPCSEC), 0) FROM {0}.{1}{2}",
+                _schema,
+                _tablaCabecera,
+                where);
+
+            using (var cmd = new OdbcCommand(sql, conn, tx))
+            {
+                foreach (var parametro in parametros)
+                {
+                    AddParameter(cmd, parametro, GetOdbcType(parametro));
+                }
+
+                var result = cmd.ExecuteScalar();
+                return SafeDecimal(result);
+            }
+        }
+
+        private void TryActualizarSecuencial(
+            OdbcConnection conn,
+            OdbcTransaction tx,
+            string aeropuerto,
+            string anio,
+            decimal secuencial)
+        {
+            try
+            {
+                var cols = GetColumnas(conn, _schema, _tablaSecuencial, tx);
+                if (!cols.Contains("OPSSEC") || !cols.Contains("OPSAER"))
+                {
+                    return;
+                }
+
+                var hasAno = cols.Contains("OPSANO");
+                var where = hasAno ? "OPSAER = ? AND OPSANO = ?" : "OPSAER = ?";
+                var sqlUpdate = string.Format(
+                    "UPDATE {0}.{1} SET OPSSEC = ? WHERE {2}",
+                    _schema,
+                    _tablaSecuencial,
+                    where);
+
+                using (var cmd = new OdbcCommand(sqlUpdate, conn, tx))
+                {
+                    AddParameter(cmd, secuencial, OdbcType.Numeric);
+                    AddParameter(cmd, aeropuerto, OdbcType.VarChar);
+                    if (hasAno)
+                    {
+                        AddParameter(cmd, anio, OdbcType.VarChar);
+                    }
+
+                    var rows = cmd.ExecuteNonQuery();
+                    if (rows > 0)
+                    {
+                        return;
+                    }
+                }
+
+                var insertValues = new Dictionary<string, object>(StringComparer.OrdinalIgnoreCase)
+                {
+                    ["OPSAER"] = aeropuerto,
+                    ["OPSSEC"] = secuencial
+                };
+
+                if (hasAno)
+                {
+                    insertValues["OPSANO"] = anio;
+                }
+                if (cols.Contains("OPSUSU"))
+                {
+                    insertValues["OPSUSU"] = "AOCR";
+                }
+                if (cols.Contains("OPSDA4"))
+                {
+                    insertValues["OPSDA4"] = DateTime.Now.ToString("yyyyMMdd", CultureInfo.InvariantCulture);
+                }
+                if (cols.Contains("OPSH01"))
+                {
+                    insertValues["OPSH01"] = DateTime.Now.ToString("HHmmss", CultureInfo.InvariantCulture);
+                }
+
+                InsertarRegistro(conn, tx, _schema, _tablaSecuencial, insertValues, cols);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning("FR3: no se pudo actualizar OPSARC (" + ex.Message + ").");
+            }
+        }
+
+        private Dictionary<string, object> ConstruirValoresCabecera(FacturaAs400Record record, decimal secuencial)
+        {
+            var fechaControl = string.IsNullOrWhiteSpace(record.FechaControl)
+                ? record.FechaEmision.ToString("yyyyMMdd", CultureInfo.InvariantCulture)
+                : record.FechaControl.Trim();
+
+            var anio = ResolveAnio(record);
+
+            var observacion = string.IsNullOrWhiteSpace(record.Observaciones)
+                ? string.Format("FACTURA {0}", record.NumeroFactura)
+                : record.Observaciones;
+
+            var fechaRecepcion = string.IsNullOrWhiteSpace(record.FechaRecepcion)
+                ? fechaControl
+                : record.FechaRecepcion.Trim();
+
+            var ahora = DateTime.Now;
+            var fechaCreacion = ahora.ToString("yyyyMMdd", CultureInfo.InvariantCulture);
+            var horaCreacion = ahora.ToString("HHmmss", CultureInfo.InvariantCulture);
+
+            return new Dictionary<string, object>(StringComparer.OrdinalIgnoreCase)
+            {
+                ["OPCSEC"] = secuencial,
+                ["OPCAER"] = SafeString(record.Aeropuerto),
+                ["OPCANO"] = SafeString(anio),
+                ["OPCFE4"] = SafeString(fechaControl),
+                ["OPCTIP"] = SafeString(record.TipoOperacion),
+                ["OPCRUT"] = SafeString(record.Ruta),
+                ["OPCNRO"] = record.NumAterrizaPais,
+                ["OPCSUB"] = record.Subtotal,
+                ["OPCTOT"] = record.Total,
+                ["OPCGRA"] = record.Total,
+                ["OPCSON"] = SafeString(record.GranTotalLetras),
+                ["OPCAUT"] = SafeString(string.IsNullOrWhiteSpace(record.Autorizacion) ? record.AutorizacionFactura : record.Autorizacion),
+                ["OPCOBS"] = SafeString(observacion),
+                ["OPCOID"] = record.OidCiaAviacion.HasValue ? (object)record.OidCiaAviacion.Value : 0m,
+                ["OPCORI"] = SafeString(record.Origen),
+                ["OPCDE7"] = SafeString(record.Destino),
+                ["OPCRET"] = SafeString(record.Retorno),
+                ["OPCCAL"] = SafeString(record.Callsign),
+                ["OPCRU1"] = SafeString(record.Ruc),
+                ["OPCEM1"] = SafeString(record.Correo),
+                ["OPCNAC"] = SafeString(record.NacInter),
+                ["OPCTE1"] = SafeString(record.Telefono),
+                ["OPCNO4"] = SafeString(record.Compania),
+                ["OPCNO5"] = SafeString(record.Compania),
+                ["OPCDA4"] = fechaCreacion,
+                ["OPCH01"] = horaCreacion,
+                ["OPCOI1"] = record.IdAeropuerto.HasValue ? (object)record.IdAeropuerto.Value : 0m,
+                ["OPCOI2"] = record.OidUbicacionCliente.HasValue ? (object)record.OidUbicacionCliente.Value : 0m,
+                ["OPCOI3"] = record.OidUbicacion.HasValue ? (object)record.OidUbicacion.Value : 0m,
+                ["OPCFOR"] = SafeString(record.FormaPago),
+                ["OPCBAN"] = SafeString(record.CodigoBanco),
+                ["OPCCHE"] = SafeString(record.Deposito),
+                ["OPCNUM"] = SafeString(record.NumeroFactura),
+                ["OPCFE9"] = SafeString(fechaRecepcion),
+                ["OPCVA6"] = record.Total,
+                ["OPCEST"] = "S",
+                ["OPCUS7"] = SafeString(record.UsuarioRegistro, "AOCR"),
+                ["OPCMOD"] = SafeString(record.Modelo),
+                ["OPCPES"] = record.PesoMatricula.HasValue ? (object)record.PesoMatricula.Value : 0m,
+                ["OPCC08"] = SafeString(record.CodigoOACICia),
+                ["OPCNO6"] = SafeString(record.NombreAeropuerto),
+                ["OPCEM2"] = SafeString(record.EmailUsuarioDGAC),
+                ["OPCMAT"] = SafeString(record.Matricula),
+                ["OPCPRO"] = SafeString(record.Procesado, "E"),
+                ["OPCDI2"] = 0m
+            };
+        }
+
+        private Dictionary<string, object> ConstruirValoresDetalle(
+            FacturaAs400Record record,
+            FacturaAs400Detalle detalle,
+            decimal secuencial,
+            int secuencialDetalle)
+        {
+            var anio = ResolveAnio(record);
+
+            return new Dictionary<string, object>(StringComparer.OrdinalIgnoreCase)
+            {
+                ["OPCSE2"] = secuencial,
+                ["OPCAE1"] = SafeString(record.Aeropuerto),
+                ["OPCAN1"] = SafeString(anio),
+                ["OPCSE1"] = secuencialDetalle,
+                ["OPCTI1"] = SafeString(detalle.TipoCobro, "01"),
+                ["OPCOI4"] = detalle.OidFormulario.HasValue ? (object)detalle.OidFormulario.Value : 0m,
+                ["OPCC05"] = SafeString(detalle.CodigoContable),
+                ["OPCDE8"] = SafeString(detalle.Descripcion),
+                ["OPCCAN"] = detalle.Cantidad,
+                ["OPCVA1"] = detalle.Valor,
+                ["OPCHAC"] = SafeString(detalle.HacerDescuento, "N"),
+                ["OPCCOB"] = SafeString(detalle.CobrarImpuesto, "N"),
+                ["OPCING"] = SafeString(detalle.IngresarCantidad, "S"),
+                ["OPCD01"] = SafeString(detalle.DescripcionCuenta),
+                ["OPCC06"] = SafeString(detalle.Codigo, "FITEM"),
+                ["OPCTO1"] = detalle.Total
+            };
+        }
+
+        private void InsertarRegistro(
+            OdbcConnection conn,
+            OdbcTransaction tx,
+            string schema,
+            string table,
+            Dictionary<string, object> valores,
+            HashSet<string> columnasDisponibles)
+        {
+            var columnas = valores.Keys
+                .Where(c => columnasDisponibles.Contains(c))
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
+
+            if (columnas.Count == 0)
+            {
+                throw new InvalidOperationException(string.Format("No hay columnas validas para insertar en {0}.{1}.", schema, table));
+            }
+
+            var colsInsert = string.Join(", ", columnas);
+            var placeholders = string.Join(", ", columnas.Select(_ => "?"));
+            var sqlInsert = string.Format(
+                "INSERT INTO {0}.{1} ({2}) VALUES ({3})",
+                schema,
+                table,
+                colsInsert,
+                placeholders);
+
+            using (var cmd = new OdbcCommand(sqlInsert, conn, tx))
+            {
+                foreach (var col in columnas)
+                {
+                    AddParameter(cmd, valores[col], GetOdbcType(valores[col]));
+                }
+                cmd.ExecuteNonQuery();
+            }
+        }
+
+        private HashSet<string> GetColumnas(OdbcConnection conn, string schema, string table, OdbcTransaction tx = null)
+        {
+            var columnas = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            try
+            {
+                // Intento 1: QSYS2.SYSCOLUMNS
+                var sql = @"
+                    SELECT COLUMN_NAME
+                    FROM QSYS2.SYSCOLUMNS
+                    WHERE TABLE_SCHEMA = ?
+                      AND TABLE_NAME = ?";
+                using (var cmd = new OdbcCommand(sql, conn))
+                {
+                    if (tx != null) cmd.Transaction = tx;
+                    AddParameter(cmd, schema.ToUpperInvariant(), OdbcType.VarChar);
+                    AddParameter(cmd, table.ToUpperInvariant(), OdbcType.VarChar);
+
+                    using (var reader = cmd.ExecuteReader())
+                    {
+                        while (reader.Read())
+                        {
+                            if (!reader.IsDBNull(0))
+                            {
+                                columnas.Add(reader.GetString(0).Trim().ToUpperInvariant());
+                            }
+                        }
+                    }
+                }
+
+                // Si QSYS2 no devolvió nada, intentar con SYSIBM.SQLCOLUMNS
+                if (columnas.Count == 0)
+                {
+                    _logger.LogWarning(string.Format(
+                        "GetColumnas: QSYS2.SYSCOLUMNS devolvió 0 columnas para {0}.{1}. Intentando SYSIBM.SQLCOLUMNS...",
+                        schema, table));
+
+                    var sql2 = @"
+                        SELECT COLUMN_NAME
+                        FROM SYSIBM.SQLCOLUMNS
+                        WHERE TABLE_SCHEM = ?
+                          AND TABLE_NAME = ?";
+                    using (var cmd2 = new OdbcCommand(sql2, conn))
+                    {
+                        if (tx != null) cmd2.Transaction = tx;
+                        AddParameter(cmd2, schema.ToUpperInvariant(), OdbcType.VarChar);
+                        AddParameter(cmd2, table.ToUpperInvariant(), OdbcType.VarChar);
+
+                        using (var reader2 = cmd2.ExecuteReader())
+                        {
+                            while (reader2.Read())
+                            {
+                                if (!reader2.IsDBNull(0))
+                                {
+                                    columnas.Add(reader2.GetString(0).Trim().ToUpperInvariant());
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // Si aún no hay columnas, intentar con GetSchema de ODBC
+                if (columnas.Count == 0)
+                {
+                    _logger.LogWarning(string.Format(
+                        "GetColumnas: SYSIBM.SQLCOLUMNS también vacío para {0}.{1}. Intentando OdbcConnection.GetSchema...",
+                        schema, table));
+
+                    try
+                    {
+                        var schemaTable = conn.GetSchema("Columns", new string[] { null, schema.ToUpperInvariant(), table.ToUpperInvariant(), null });
+                        foreach (System.Data.DataRow row in schemaTable.Rows)
+                        {
+                            var colName = row["COLUMN_NAME"]?.ToString();
+                            if (!string.IsNullOrWhiteSpace(colName))
+                            {
+                                columnas.Add(colName.Trim().ToUpperInvariant());
+                            }
+                        }
+                    }
+                    catch (Exception exGetSchema)
+                    {
+                        _logger.LogWarning("GetColumnas: GetSchema fallback también falló: " + exGetSchema.Message);
+                    }
+                }
+
+                if (columnas.Count > 0)
+                {
+                    _logger.LogInfo(string.Format("GetColumnas: {0} columnas encontradas en {1}.{2}", columnas.Count, schema, table));
+                }
+                else
+                {
+                    _logger.LogWarning(string.Format("GetColumnas: No se encontraron columnas en {0}.{1} por ningún método.", schema, table));
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(string.Format("GetColumnas: Error consultando {0}.{1}: {2}", schema, table, ex.Message));
+                return new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            }
+
+            return columnas;
+        }
+
+        private static string ResolveAnio(FacturaAs400Record record)
+        {
+            if (record == null)
+            {
+                return DateTime.Now.ToString("yyyy", CultureInfo.InvariantCulture);
+            }
+
+            return string.IsNullOrWhiteSpace(record.Anio)
+                ? record.FechaEmision.ToString("yyyy", CultureInfo.InvariantCulture)
+                : record.Anio.Trim();
+        }
+
+        private static decimal SafeDecimal(object value)
+        {
+            if (value == null || value == DBNull.Value)
+            {
+                return 0m;
+            }
+
+            return Convert.ToDecimal(value, CultureInfo.InvariantCulture);
+        }
+
+        private static string ExtractCorrelationToken(string observaciones)
+        {
+            if (string.IsNullOrWhiteSpace(observaciones))
+            {
+                return null;
+            }
+
+            var raw = observaciones.Trim();
+            var upper = raw.ToUpperInvariant();
+            var idx = upper.IndexOf("SOL:");
+            if (idx < 0)
+            {
+                return null;
+            }
+
+            var segment = raw.Substring(idx);
+            var stop = segment.IndexOfAny(new[] { '|', ';', ',' });
+            if (stop > 0)
+            {
+                segment = segment.Substring(0, stop);
+            }
+
+            return segment.Trim();
+        }
+
+        private static string SafeString(string value, string fallback = "")
+        {
+            if (string.IsNullOrWhiteSpace(value))
+            {
+                return fallback ?? string.Empty;
+            }
+            return value.Trim();
+        }
+
+        private static string GetSetting(string key, string fallback)
+        {
+            var value = ConfigurationManager.AppSettings[key];
+            return string.IsNullOrWhiteSpace(value) ? fallback : value;
+        }
+
+        private static OdbcType GetOdbcType(object value)
+        {
+            if (value == null || value == DBNull.Value)
+            {
+                return OdbcType.VarChar;
+            }
+
+            if (value is int || value is long || value is short)
+            {
+                return OdbcType.Int;
+            }
+
+            if (value is decimal || value is float || value is double)
+            {
+                return OdbcType.Numeric;
+            }
+
+            if (value is DateTime)
+            {
+                return OdbcType.DateTime;
+            }
+
+            return OdbcType.VarChar;
+        }
+    }
+}

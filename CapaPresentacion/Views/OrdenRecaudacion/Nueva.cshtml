@@ -59,7 +59,11 @@
 
                             <div class="mb-3">
                                 <label class="form-label">Lugar de Emisión</label>
-                                @Html.TextBoxFor(m => m.Orden.LugarEmision, new { @class = "form-control", placeholder = "Ej: Quito" })
+                                @Html.HiddenFor(m => m.Orden.LugarEmision)
+                                <div class="form-control bg-light" aria-readonly="true" title="Este valor se obtiene directamente de la base de datos.">
+                                    @(Model != null && Model.Orden != null ? (Model.Orden.LugarEmision ?? string.Empty) : string.Empty)
+                                </div>
+                                <small class="text-muted">Valor obtenido automáticamente desde la base de datos.</small>
                             </div>
 
                             <div class="mb-3">

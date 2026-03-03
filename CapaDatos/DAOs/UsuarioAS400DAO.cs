@@ -34,6 +34,63 @@ namespace CapaDatos.DAOs
             _tablaAdicional = GetSetting("AS400:UsuarioAdicionalTable", "USUAR1").Trim().ToUpperInvariant();
         }
 
+        public string ObtenerCodigoCiudadPorCodigoUsuario(string codigoUsuario)
+        {
+            if (string.IsNullOrWhiteSpace(codigoUsuario))
+            {
+                return null;
+            }
+
+            var codigo = SafeString(codigoUsuario, 10).ToUpperInvariant();
+
+            try
+            {
+                return ExecuteWithConnection(conn =>
+                {
+                    var columnasUsuario = GetColumnas(conn, _schema, _tablaUsuario);
+                    if (columnasUsuario.Contains("USUCO5"))
+                    {
+                        var ciudad = ObtenerCampoPorPk(conn, _schema, _tablaUsuario, "USUCOD", codigo, "USUCO5");
+                        if (!string.IsNullOrWhiteSpace(ciudad))
+                        {
+                            return ciudad;
+                        }
+                    }
+
+                    var columnasAdicional = GetColumnas(conn, _schema, _tablaAdicional);
+                    var pkAdicional = columnasAdicional.Contains("USUCO8")
+                        ? "USUCO8"
+                        : (columnasAdicional.Contains("USUCOD") ? "USUCOD" : null);
+                    if (!string.IsNullOrWhiteSpace(pkAdicional))
+                    {
+                        if (columnasAdicional.Contains("USUCO9"))
+                        {
+                            var ciudadAdicional = ObtenerCampoPorPk(conn, _schema, _tablaAdicional, pkAdicional, codigo, "USUCO9");
+                            if (!string.IsNullOrWhiteSpace(ciudadAdicional))
+                            {
+                                return ciudadAdicional;
+                            }
+                        }
+
+                        if (columnasAdicional.Contains("USUCO5"))
+                        {
+                            var ciudadAlterna = ObtenerCampoPorPk(conn, _schema, _tablaAdicional, pkAdicional, codigo, "USUCO5");
+                            if (!string.IsNullOrWhiteSpace(ciudadAlterna))
+                            {
+                                return ciudadAlterna;
+                            }
+                        }
+                    }
+
+                    return null;
+                });
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
         public bool UpsertUsuarioCompleto(UsuarioAs400Record record, out string error)
         {
             error = null;
@@ -205,6 +262,29 @@ namespace CapaDatos.DAOs
                 AddParameter(cmd, pkValue, GetOdbcType(pkValue));
                 var result = cmd.ExecuteScalar();
                 return result != null && result != DBNull.Value;
+            }
+        }
+
+        private string ObtenerCampoPorPk(
+            OdbcConnection conn,
+            string schema,
+            string table,
+            string pkColumn,
+            string pkValue,
+            string campo)
+        {
+            var sql = $"SELECT TRIM({campo}) FROM {schema}.{table} WHERE {pkColumn} = ? FETCH FIRST 1 ROWS ONLY";
+            using (var cmd = new OdbcCommand(sql, conn))
+            {
+                AddParameter(cmd, pkValue, OdbcType.VarChar);
+                var value = cmd.ExecuteScalar();
+                if (value == null || value == DBNull.Value)
+                {
+                    return null;
+                }
+
+                var texto = value.ToString();
+                return string.IsNullOrWhiteSpace(texto) ? null : texto.Trim();
             }
         }
 
