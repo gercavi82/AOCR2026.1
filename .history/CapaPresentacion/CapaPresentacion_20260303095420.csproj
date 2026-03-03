@@ -62,6 +62,24 @@
     <Reference Include="Dapper, Version=2.0.0.0, Culture=neutral, processorArchitecture=MSIL">
       <HintPath>..\packages\Dapper.2.1.66\lib\net461\Dapper.dll</HintPath>
     </Reference>
+    <Reference Include="ClosedXML">
+      <HintPath>..\packages\ClosedXML.0.102.3\lib\netstandard2.0\ClosedXML.dll</HintPath>
+    </Reference>
+    <Reference Include="DocumentFormat.OpenXml">
+      <HintPath>..\packages\DocumentFormat.OpenXml.2.16.0\lib\net46\DocumentFormat.OpenXml.dll</HintPath>
+    </Reference>
+    <Reference Include="ExcelNumberFormat">
+      <HintPath>..\packages\ExcelNumberFormat.1.1.0\lib\net20\ExcelNumberFormat.dll</HintPath>
+    </Reference>
+    <Reference Include="Irony">
+      <HintPath>..\packages\Irony.NetCore.1.0.11\lib\net461\Irony.dll</HintPath>
+    </Reference>
+    <Reference Include="SixLabors.Fonts">
+      <HintPath>..\packages\SixLabors.Fonts.1.0.0\lib\netstandard2.0\SixLabors.Fonts.dll</HintPath>
+    </Reference>
+    <Reference Include="XLParser">
+      <HintPath>..\packages\XLParser.1.5.2\lib\net461\XLParser.dll</HintPath>
+    </Reference>
     <Reference Include="IBM.Data.DB2.iSeries, Version=12.0.0.0, Culture=neutral, PublicKeyToken=9cdb2ebfb1f93a26, processorArchitecture=MSIL">
       <HintPath>..\packages\IBM.Data.DB2.iSeries.7.1.0\lib\IBM.Data.DB2.iSeries.dll</HintPath>
     </Reference>
@@ -174,6 +192,9 @@
     <Reference Include="System.IO.Pipelines, Version=5.0.0.2, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51, processorArchitecture=MSIL">
       <HintPath>..\packages\System.IO.Pipelines.5.0.2\lib\net461\System.IO.Pipelines.dll</HintPath>
     </Reference>
+    <Reference Include="System.IO.Packaging, Version=6.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL">
+      <HintPath>..\packages\System.IO.Packaging.6.0.0\lib\net461\System.IO.Packaging.dll</HintPath>
+    </Reference>
     <Reference Include="System.Memory, Version=4.0.1.2, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51, processorArchitecture=MSIL">
       <HintPath>..\packages\System.Memory.4.5.5\lib\net461\System.Memory.dll</HintPath>
     </Reference>
@@ -243,24 +264,43 @@
     <Reference Include="WebGrease, Version=1.5.2.14234, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
       <HintPath>..\packages\WebGrease.1.5.2\lib\WebGrease.dll</HintPath>
     </Reference>
+    <Reference Include="Unity, Version=5.11.10.0, Culture=neutral, PublicKeyToken=489b6accfaf20ef0, processorArchitecture=MSIL">
+      <HintPath>..\packages\Unity.5.11.10\lib\net47\Unity.dll</HintPath>
+    </Reference>
+    <Reference Include="Unity.Abstractions, Version=5.11.7.0, Culture=neutral, PublicKeyToken=489b6accfaf20ef0, processorArchitecture=MSIL">
+      <HintPath>..\packages\Unity.Abstractions.5.11.7\lib\net47\Unity.Abstractions.dll</HintPath>
+    </Reference>
+    <Reference Include="Unity.Container, Version=5.11.11.0, Culture=neutral, PublicKeyToken=489b6accfaf20ef0, processorArchitecture=MSIL">
+      <HintPath>..\packages\Unity.Container.5.11.11\lib\net47\Unity.Container.dll</HintPath>
+    </Reference>
+    <Reference Include="Unity.Mvc, Version=5.11.1.0, Culture=neutral, PublicKeyToken=489b6accfaf20ef0, processorArchitecture=MSIL">
+      <HintPath>..\packages\Unity.Mvc.5.11.1\lib\net47\Unity.Mvc.dll</HintPath>
+    </Reference>
   </ItemGroup>
   <ItemGroup>
     <Compile Include="App_Start\BundleConfig.cs" />
     <Compile Include="App_Start\FilterConfig.cs" />
     <Compile Include="App_Start\RouteConfig.cs" />
+    <Compile Include="App_Start\UnityConfig.cs" />
+    <Compile Include="Controllers\ConfigApiController.cs" />
     <Compile Include="Controllers\DashboardController.cs" />
     <Compile Include="Controllers\EmpresaController.cs" />
     <Compile Include="Controllers\ErrorController.cs" />
     <Compile Include="Controllers\AccountController.cs" />
     <Compile Include="Controllers\HealthController.cs" />
     <Compile Include="Controllers\HistorialController.cs" />
+    <Compile Include="Controllers\NotificacionController.cs" />
     <Compile Include="Controllers\OrdenController.cs" />
     <Compile Include="Controllers\OperadorController.cs" />
     <Compile Include="Controllers\OrdenRecaudacionController.cs" />
+    <Compile Include="Controllers\ControlFR3Controller.cs" />
+    <Compile Include="Controllers\OrdenRecaudacionDashboardController.cs" />
+    <Compile Include="Controllers\OrdenRecaudacionDashboardEmpresarialController.cs" />
     <Compile Include="Controllers\SolicitudAOCRController.cs" />
     <Compile Include="Controllers\SolicitudController.cs" />
     <Compile Include="Controllers\HistorialEstadoController.cs" />
     <Compile Include="Controllers\FinancieroController.cs" />
+    <Compile Include="Controllers\ReportesFinancierosController.cs" />
     <Compile Include="Controllers\5_DireccionController.cs" />
     <Compile Include="Controllers\InspeccionController.cs" />
     <Compile Include="Controllers\TecnicoController.cs" />
@@ -272,23 +312,38 @@
     <Compile Include="Controllers\ParametroController.cs" />
     <Compile Include="Controllers\CoordinacionLegalController.cs" />
     <Compile Include="Controllers\AdministradorController.cs" />
+    <Compile Include="Controllers\AdminUsuariosController.cs" />
     <Compile Include="Controllers\InformeController.cs" />
     <Compile Include="Controllers\UsuarioRolController.cs" />
     <Compile Include="Controllers\UsuarioController.cs" />
+    <Compile Include="Controllers\RTController.cs" />
     <Compile Include="Controllers\RolController.cs" />
     <Compile Include="Controllers\HomeController.cs" />
     <Compile Include="Filters\AuditActionFilter.cs" />
     <Compile Include="Filters\GlobalExceptionFilter.cs" />
     <Compile Include="Filters\SessionExpireAttribute.cs" />
     <Compile Include="Filters\SecurityFilters.cs" />
+    <Compile Include="Filters\RequirePermissionAttribute.cs" />
     <Compile Include="Filters\RequireOrdenRecaudacionAttribute.cs" />
     <Compile Include="Global.asax.cs">
       <DependentUpon>Global.asax</DependentUpon>
     </Compile>
+    <Compile Include="Helpers\NotificacionCorreoHelper.cs" />
+    <Compile Include="Infrastructure\OrdenRecaudacionFilters.cs" />
+    <Compile Include="Infrastructure\OrdenRecaudacionRoutes.cs" />
+    <Compile Include="Models\CambiarContrasenaViewModel.cs" />
+    <Compile Include="Models\AdminUsuarios\AdminRolPermisosViewModel.cs" />
+    <Compile Include="Models\AdminUsuarios\AdminUsuarioFormViewModel.cs" />
+    <Compile Include="Models\AdminUsuarios\AdminUsuarioRolesViewModel.cs" />
+    <Compile Include="Models\AdminUsuarios\AdminUsuariosIndexViewModel.cs" />
     <Compile Include="Models\OrdenRecaudacionNuevaVM.cs" />
     <Compile Include="Models\ConceptoOptionVM.cs" />
+    <Compile Include="Models\RT\DeclaracionRTVM.cs" />
+    <Compile Include="Models\RT\DesignacionUploadVM.cs" />
+    <Compile Include="Models\RT\RegistroRTVM.cs" />
     <Compile Include="Models\Validation\RucCedulaValidationAttribute.cs" />
     <Compile Include="Models\ViewModels\OrdenRecaudacionPDFModel.cs" />
+    <Compile Include="Models\ViewModels\ReportesFinancierosViewModel.cs" />
     <Compile Include="Models\OrdenRecaudacionMV.cs" />
     <Compile Include="Models\PagoFinancieroVM.cs" />
     <Compile Include="Models\OrdenValidacionFinancieraVM.cs" />
@@ -304,7 +359,6 @@
     <Compile Include="Models\Placeholders.cs" />
     <Compile Include="Services\SelectPdfStub.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="Services\EmailService.cs" />
     <Compile Include="Services\PdfGeneratorService.cs" />
     <Compile Include="Services\PdfOrdenService.cs" />
   </ItemGroup>
@@ -383,6 +437,10 @@
     <Content Include="Content\assets\imganes\logodgac.png" />
     <Content Include="Content\assets\imganes\logo_gobierno.png" />
     <Content Include="Content\assets\imganes\logo_header.png" />
+    <Content Include="Content\assets\imganes\pdf\footer.png" />
+    <Content Include="Content\assets\imganes\pdf\header.png" />
+    <Content Include="Content\pdf\header.png" />
+    <Content Include="Content\pdf\footer.png" />
     <Content Include="Content\assets\imganes\logo_republicaEcuador.png" />
     <Content Include="Content\assets\imganes\menos.png" />
     <Content Include="Content\assets\imganes\new.png" />
@@ -429,6 +487,7 @@
     <Content Include="Content\css\dgac-theme.css" />
     <Content Include="Content\css\formulario-aocr.css" />
     <Content Include="Content\css\formulario-emision-aocr.css" />
+    <Content Include="Content\css\pagos-mejorados.css" />
     <Content Include="Content\dist\css\adminlte.css" />
     <Content Include="Content\dist\css\adminlte.min.css" />
     <Content Include="Content\dist\css\alt\adminlte.components.css" />
@@ -484,6 +543,8 @@
     <Content Include="Rotativa\help-wkhtmltopdf.txt" />
     <Content Include="Rotativa\wkhtmltoimage.exe" />
     <Content Include="Rotativa\wkhtmltopdf.exe" />
+    <Content Include="Scripts\aocr-config.js" />
+    <Content Include="Scripts\aocr-utils.js" />
     <Content Include="Scripts\app\global.js" />
     <Content Include="Content\dist\js\dgac.js" />
     <Content Include="Content\dist\js\pages\dashboard.js" />
@@ -2721,7 +2782,6 @@
     <Content Include="Content\documents\pagos\pago_4_20260128094248498.pdf" />
     <Content Include="Content\documents\pagos\pago_4_20260128102444522.pdf" />
     <None Include="Scripts\jquery-3.6.4.intellisense.js" />
-    <Content Include="Scripts\formulario-emision-aocr.js" />
     <Content Include="Scripts\jquery-3.6.4.js" />
     <Content Include="Scripts\jquery-3.6.4.min.js" />
     <Content Include="Scripts\jquery-3.6.4.slim.js" />
@@ -2758,6 +2818,7 @@
     <Content Include="Views\Shared\Error.cshtml" />
     <Content Include="Views\Error\Error.cshtml" />
     <Content Include="Views\Shared\_LayoutAOCR.cshtml" />
+    <Content Include="Views\Shared\_PdfLayoutDGAC.cshtml" />
     <Content Include="Views\Home\About.cshtml" />
     <Content Include="Views\Home\Contact.cshtml" />
     <Content Include="Views\Home\Index.cshtml" />
@@ -2811,7 +2872,6 @@
     <Content Include="Views\Shared\_ModalCrearUsuario.cshtml" />
     <Content Include="Views\SolicitudAOCR\_FormularioEmisionAOCR.cshtml" />
     <Content Include="Views\Account\_CuentasBancosPartial.cshtml" />
-    <Content Include="Views\Shared\_ModalRegistroUsuario.cshtml" />
     <Content Include="Views\Shared\_CreateModalUsuario.cshtml" />
     <Content Include="Views\Historial\_HistorialEstados.cshtml" />
     <Content Include="Views\SolicitudAOCR\_ErrorSolicitud.cshtml" />
@@ -2839,6 +2899,10 @@
     <Content Include="Views\OrdenRecaudacion\Nueva.cshtml" />
     <Content Include="Views\OrdenRecaudacion\Detalles.cshtml" />
     <Content Include="Views\OrdenRecaudacion\Editar.cshtml" />
+    <Content Include="Views\ControlFR3\Index.cshtml" />
+    <Content Include="Views\ControlFR3\Detalles.cshtml" />
+    <Content Include="Views\ControlFR3\Nuevo.cshtml" />
+    <Content Include="Views\ControlFR3\Editar.cshtml" />
     <Content Include="Views\Orden\Detalle.cshtml" />
     <Content Include="Views\Orden\MisOrdenes.cshtml" />
     <Content Include="Views\Checklist\EmitirAOCR.cshtml" />
@@ -2854,6 +2918,12 @@
     <Content Include="Views\Direccion\Legalizar.cshtml" />
     <Content Include="Views\Direccion\ValidacionFinal.cshtml" />
     <Content Include="Views\Financiero\TodasOrdenes.cshtml" />
+    <Content Include="Views\ReportesFinancieros\Index.cshtml" />
+    <Content Include="Views\ReportesFinancieros\_Filtros.cshtml" />
+    <Content Include="Views\ReportesFinancieros\_ResumenDashboard.cshtml" />
+    <Content Include="Views\ReportesFinancieros\_Graficos.cshtml" />
+    <Content Include="Views\ReportesFinancieros\_TablaResultados.cshtml" />
+    <Content Include="Views\ReportesFinancieros\ExportPdf.cshtml" />
     <Content Include="Views\Informe\EmitirAOCR.cshtml" />
     <Content Include="Views\Informe\Legalizar.cshtml" />
     <Content Include="Views\Informe\ValidacionFinal.cshtml" />
@@ -2863,6 +2933,24 @@
     <Content Include="Views\Usuario\EmitirAOCR.cshtml" />
     <Content Include="Views\Usuario\Legalizar.cshtml" />
     <Content Include="Views\Usuario\ValidacionFinal.cshtml" />
+    <Content Include="Views\RT\Registro.cshtml" />
+    <Content Include="Views\RT\Declaracion.cshtml" />
+    <Content Include="Views\RT\Designacion.cshtml" />
+    <Content Include="Views\RT\DeclaracionPdf.cshtml" />
+    <Content Include="Views\OrdenRecaudacion\OrdenRecaudacionPDF.cshtml" />
+    <Content Include="Views\Shared\_SidebarEstadoOrdenes.cshtml" />
+    <Content Include="Views\Shared\_NotificacionesBadge.cshtml" />
+    <Content Include="Views\SolicitudAOCR\CertificadoAOCR.cshtml" />
+    <Content Include="Views\Notificacion\Index.cshtml" />
+    <Content Include="Views\OrdenRecaudacion\ExportPdf.cshtml" />
+    <Content Include="Views\AdminUsuarios\Create.cshtml" />
+    <Content Include="Views\AdminUsuarios\Edit.cshtml" />
+    <Content Include="Views\AdminUsuarios\Index.cshtml" />
+    <Content Include="Views\AdminUsuarios\PermisosRol.cshtml" />
+    <Content Include="Views\AdminUsuarios\Roles.cshtml" />
+    <Content Include="Views\AdminUsuarios\_RolesModal.cshtml" />
+    <Content Include="Views\AdminUsuarios\_UserForm.cshtml" />
+    <Content Include="Views\Usuario\RevisarDesignaciones.cshtml" />
   </ItemGroup>
   <ItemGroup>
     <Folder Include="App_Data\" />
@@ -2881,6 +2969,10 @@
     <ProjectReference Include="..\CapaNegocio\CapaNegocio.csproj">
       <Project>{f1e9b7d3-36e1-4660-a971-7c588b08fd82}</Project>
       <Name>CapaNegocio</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\ClassLibrary1\CapaUtilidades.csproj">
+      <Project>{E524B0E7-E9A8-453B-88A7-BC7D06F67B8B}</Project>
+      <Name>CapaUtilidades</Name>
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>
@@ -2907,6 +2999,7 @@
     <Content Include="Scripts\bootstrap.esm.js.map" />
     <Content Include="Scripts\bootstrap.bundle.min.js.map" />
     <Content Include="Scripts\bootstrap.bundle.js.map" />
+    <Content Include="Scripts\admin-usuarios.js" />
   </ItemGroup>
   <PropertyGroup>
     <VisualStudioVersion Condition="'$(VisualStudioVersion)' == ''">10.0</VisualStudioVersion>
