@@ -91,6 +91,150 @@ namespace CapaDatos.DAOs
             }
         }
 
+        public string ObtenerNumeroRucPorCodigoUsuario(string codigoUsuario)
+        {
+            if (string.IsNullOrWhiteSpace(codigoUsuario))
+            {
+                return null;
+            }
+
+            var codigo = SafeString(codigoUsuario, 10).ToUpperInvariant();
+
+            try
+            {
+                return ExecuteWithConnection(conn =>
+                {
+                    // Ruta directa (más robusta): evita depender de metadatos para lectura.
+                    var numero = ObtenerCampoPorPkSeguro(conn, _schema, _tablaUsuario, "USUCOD", codigo, "USUNUM");
+                    if (!string.IsNullOrWhiteSpace(numero))
+                    {
+                        return numero;
+                    }
+
+                    numero = ObtenerCampoPorPkSeguro(conn, _schema, _tablaAdicional, "USUCO8", codigo, "USUNUM");
+                    if (!string.IsNullOrWhiteSpace(numero))
+                    {
+                        return numero;
+                    }
+
+                    numero = ObtenerCampoPorPkSeguro(conn, _schema, _tablaAdicional, "USUCOD", codigo, "USUNUM");
+                    if (!string.IsNullOrWhiteSpace(numero))
+                    {
+                        return numero;
+                    }
+
+                    // Fallback legacy por columnas detectadas.
+                    var columnasUsuario = GetColumnas(conn, _schema, _tablaUsuario);
+                    if (columnasUsuario.Contains("USUNUM"))
+                    {
+                        numero = ObtenerCampoPorPk(conn, _schema, _tablaUsuario, "USUCOD", codigo, "USUNUM");
+                        if (!string.IsNullOrWhiteSpace(numero))
+                        {
+                            return numero;
+                        }
+                    }
+
+                    var columnasAdicional = GetColumnas(conn, _schema, _tablaAdicional);
+                    var pkAdicional = columnasAdicional.Contains("USUCO8")
+                        ? "USUCO8"
+                        : (columnasAdicional.Contains("USUCOD") ? "USUCOD" : null);
+
+                    if (!string.IsNullOrWhiteSpace(pkAdicional) && columnasAdicional.Contains("USUNUM"))
+                    {
+                        var numeroAdicional = ObtenerCampoPorPk(
+                            conn,
+                            _schema,
+                            _tablaAdicional,
+                            pkAdicional,
+                            codigo,
+                            "USUNUM");
+                        if (!string.IsNullOrWhiteSpace(numeroAdicional))
+                        {
+                            return numeroAdicional;
+                        }
+                    }
+
+                    return null;
+                });
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
+        public string ObtenerCedulaPorCodigoUsuario(string codigoUsuario)
+        {
+            if (string.IsNullOrWhiteSpace(codigoUsuario))
+            {
+                return null;
+            }
+
+            var codigo = SafeString(codigoUsuario, 10).ToUpperInvariant();
+
+            try
+            {
+                return ExecuteWithConnection(conn =>
+                {
+                    // Ruta directa (más robusta): evita depender de metadatos para lectura.
+                    var cedula = ObtenerCampoPorPkSeguro(conn, _schema, _tablaUsuario, "USUCOD", codigo, "USUCED");
+                    if (!string.IsNullOrWhiteSpace(cedula))
+                    {
+                        return cedula;
+                    }
+
+                    cedula = ObtenerCampoPorPkSeguro(conn, _schema, _tablaAdicional, "USUCO8", codigo, "USUCED");
+                    if (!string.IsNullOrWhiteSpace(cedula))
+                    {
+                        return cedula;
+                    }
+
+                    cedula = ObtenerCampoPorPkSeguro(conn, _schema, _tablaAdicional, "USUCOD", codigo, "USUCED");
+                    if (!string.IsNullOrWhiteSpace(cedula))
+                    {
+                        return cedula;
+                    }
+
+                    // Fallback legacy por columnas detectadas.
+                    var columnasUsuario = GetColumnas(conn, _schema, _tablaUsuario);
+                    if (columnasUsuario.Contains("USUCED"))
+                    {
+                        cedula = ObtenerCampoPorPk(conn, _schema, _tablaUsuario, "USUCOD", codigo, "USUCED");
+                        if (!string.IsNullOrWhiteSpace(cedula))
+                        {
+                            return cedula;
+                        }
+                    }
+
+                    var columnasAdicional = GetColumnas(conn, _schema, _tablaAdicional);
+                    var pkAdicional = columnasAdicional.Contains("USUCO8")
+                        ? "USUCO8"
+                        : (columnasAdicional.Contains("USUCOD") ? "USUCOD" : null);
+
+                    if (!string.IsNullOrWhiteSpace(pkAdicional) && columnasAdicional.Contains("USUCED"))
+                    {
+                        var cedulaAdicional = ObtenerCampoPorPk(
+                            conn,
+                            _schema,
+                            _tablaAdicional,
+                            pkAdicional,
+                            codigo,
+                            "USUCED");
+                        if (!string.IsNullOrWhiteSpace(cedulaAdicional))
+                        {
+                            return cedulaAdicional;
+                        }
+                    }
+
+                    return null;
+                });
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
         public bool UpsertUsuarioCompleto(UsuarioAs400Record record, out string error)
         {
             error = null;
@@ -285,6 +429,24 @@ namespace CapaDatos.DAOs
 
                 var texto = value.ToString();
                 return string.IsNullOrWhiteSpace(texto) ? null : texto.Trim();
+            }
+        }
+
+        private string ObtenerCampoPorPkSeguro(
+            OdbcConnection conn,
+            string schema,
+            string table,
+            string pkColumn,
+            string pkValue,
+            string campo)
+        {
+            try
+            {
+                return ObtenerCampoPorPk(conn, schema, table, pkColumn, pkValue, campo);
+            }
+            catch
+            {
+                return null;
             }
         }
 

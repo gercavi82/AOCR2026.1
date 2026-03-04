@@ -4,7 +4,7 @@
 @using System.Web.Mvc.Html
 @using System.Collections.Generic
 @{
-    ViewData["Title"] = "Asignar Roles";
+    ViewBag.Title = "Asignar Roles";
 }
 
 <div class="container">
@@ -17,7 +17,8 @@
                     </h4>
                 </div>
                 <div class="card-body">
-                    <form asp-action="AsignarRoles" method="post">
+                    @using (Html.BeginForm("AsignarRoles", "UsuarioRol", FormMethod.Post))
+                    {
                         @Html.AntiForgeryToken()
                         <input type="hidden" name="id" value="@ViewBag.UsuarioId" />
 
@@ -41,7 +42,7 @@
                                                        id="rol_@rol.CodigoRol"
                                                        @(estaAsignado ? "checked" : "") />
                                                 <label class="form-check-label" for="rol_@rol.CodigoRol">
-                                                    <strong>@rol.NombreRol</strong>
+                                                    <strong>@rol.Nombre</strong>
                                                     @if (!string.IsNullOrEmpty(rol.Descripcion))
                                                     {
                                                         <br />
@@ -58,14 +59,14 @@
                         <hr />
 
                         <div class="d-flex justify-content-between">
-                            <a asp-action="Index" class="btn btn-secondary">
+                            <a href="@Url.Action("Index", "UsuarioRol")" class="btn btn-secondary">
                                 <i class="fas fa-arrow-left"></i> Cancelar
                             </a>
                             <button type="submit" class="btn btn-primary">
                                 <i class="fas fa-save"></i> Guardar Roles
                             </button>
                         </div>
-                    </form>
+                    }
                 </div>
             </div>
 
@@ -117,6 +118,7 @@
             $('.btnRemover').on('click', function() {
                 var usuarioId = $(this).data('usuario');
                 var rolId = $(this).data('rol');
+                var token = $('input[name="__RequestVerificationToken"]').first().val();
 
                 Swal.fire({
                     title: '¿Remover rol?',
@@ -132,7 +134,11 @@
                         $.ajax({
                             url: '@Url.Action("RemoverRol", "UsuarioRol")',
                             type: 'POST',
-                            data: { usuarioId: usuarioId, rolId: rolId },
+                            data: {
+                                __RequestVerificationToken: token,
+                                usuarioId: usuarioId,
+                                rolId: rolId
+                            },
                             success: function(response) {
                                 if (response.success) {
                                     Swal.fire('Removido', response.mensaje, 'success')

@@ -2951,6 +2951,7 @@
     <Content Include="Views\AdminUsuarios\_RolesModal.cshtml" />
     <Content Include="Views\AdminUsuarios\_UserForm.cshtml" />
     <Content Include="Views\Usuario\RevisarDesignaciones.cshtml" />
+    <Content Include="Views\Health\Dashboard.cshtml" />
   </ItemGroup>
   <ItemGroup>
     <Folder Include="App_Data\" />

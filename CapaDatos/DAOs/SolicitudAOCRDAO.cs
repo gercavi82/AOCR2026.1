@@ -115,23 +115,7 @@ namespace CapaDatos.DAOs
         public SolicitudAOCR ObtenerPorCodigo(int codigoSolicitud)
         {
             string sql = @"
-        SELECT 
-            codigo_solicitud,
-            numero_solicitud,
-            fecha_solicitud,
-            nombre_operador,
-            ruc,
-            razon_social,
-            email,
-            telefono,
-            direccion,
-            representante_legal,
-            cedula_representante,
-            tipo_operacion,
-            descripcion_operacion,
-            observaciones,
-            estado,
-            codigo_usuario
+        SELECT *
         FROM aocr_tbsolicitud 
         WHERE codigo_solicitud = @CodigoSolicitud
         AND estado != 'Eliminado'";
@@ -155,46 +139,79 @@ namespace CapaDatos.DAOs
         // ============================
         public int InsertarConReturn(SolicitudAOCR solicitud)
         {
-            string sql = @"
-        INSERT INTO aocr_tbsolicitud (
-            numero_solicitud,
-            fecha_solicitud,
-            tipo_solicitud,
-            nombre_operador,
-            ruc,
-            razon_social,
-            email,
-            telefono,
-            direccion,
-            representante_legal,
-            cedula_representante,
-            tipo_operacion,
-            descripcion_operacion,
-            observaciones,
-            estado,
-            codigo_usuario
-        ) VALUES (
-            @NumeroSolicitud,
-            @FechaSolicitud,
-            @TipoSolicitud,
-            @NombreOperador,
-            @Ruc,
-            @RazonSocial,
-            @Email,
-            @Telefono,
-            @Direccion,
-            @RepresentanteLegal,
-            @CedulaRepresentante,
-            @TipoOperacion,
-            @DescripcionOperacion,
-            @Observaciones,
-            @Estado,
-            @CodigoUsuario
-        ) RETURNING codigo_solicitud";
-
             using (var cn = new NpgsqlConnection(ConnectionString))
             {
                 cn.Open();
+                var columnas = ObtenerColumnasTabla(cn, "aocr_tbsolicitud");
+                var columnaCodCiudad = ResolverColumnaCodigoCiudad(columnas);
+
+                var columnasInsert = new List<string>
+                {
+                    "numero_solicitud",
+                    "fecha_solicitud",
+                    "tipo_solicitud",
+                    "nombre_operador",
+                    "ruc",
+                    "razon_social",
+                    "email",
+                    "telefono",
+                    "direccion",
+                    "representante_legal",
+                    "cedula_representante",
+                    "tipo_operacion",
+                    "descripcion_operacion",
+                    "observaciones",
+                    "estado",
+                    "codigo_usuario"
+                };
+                var valoresInsert = new List<string>
+                {
+                    "@NumeroSolicitud",
+                    "@FechaSolicitud",
+                    "@TipoSolicitud",
+                    "@NombreOperador",
+                    "@Ruc",
+                    "@RazonSocial",
+                    "@Email",
+                    "@Telefono",
+                    "@Direccion",
+                    "@RepresentanteLegal",
+                    "@CedulaRepresentante",
+                    "@TipoOperacion",
+                    "@DescripcionOperacion",
+                    "@Observaciones",
+                    "@Estado",
+                    "@CodigoUsuario"
+                };
+
+                if (columnas.Contains("ciudad"))
+                {
+                    columnasInsert.Add("ciudad");
+                    valoresInsert.Add("@Ciudad");
+                }
+                if (columnas.Contains("provincia"))
+                {
+                    columnasInsert.Add("provincia");
+                    valoresInsert.Add("@Provincia");
+                }
+                if (columnas.Contains("pais"))
+                {
+                    columnasInsert.Add("pais");
+                    valoresInsert.Add("@Pais");
+                }
+                if (!string.IsNullOrWhiteSpace(columnaCodCiudad))
+                {
+                    columnasInsert.Add(columnaCodCiudad);
+                    valoresInsert.Add("@CodCiudad");
+                }
+
+                var sql = $@"
+        INSERT INTO aocr_tbsolicitud (
+            {string.Join("," + Environment.NewLine + "            ", columnasInsert)}
+        ) VALUES (
+            {string.Join("," + Environment.NewLine + "            ", valoresInsert)}
+        ) RETURNING codigo_solicitud";
+
                 using (var cmd = new NpgsqlCommand(sql, cn))
                 {
                     cmd.Parameters.AddWithValue("@NumeroSolicitud", (object)(solicitud.NumeroSolicitud ?? ""));
@@ -207,6 +224,10 @@ namespace CapaDatos.DAOs
                     cmd.Parameters.AddWithValue("@Email", (object)(solicitud.Email ?? ""));
                     cmd.Parameters.AddWithValue("@Telefono", (object)(solicitud.Telefono ?? ""));
                     cmd.Parameters.AddWithValue("@Direccion", (object)(solicitud.Direccion ?? ""));
+                    cmd.Parameters.AddWithValue("@Ciudad", (object)(solicitud.Ciudad ?? ""));
+                    cmd.Parameters.AddWithValue("@Provincia", (object)(solicitud.Provincia ?? ""));
+                    cmd.Parameters.AddWithValue("@Pais", (object)(solicitud.Pais ?? ""));
+                    cmd.Parameters.AddWithValue("@CodCiudad", (object)(solicitud.CodCiudad ?? ""));
                     cmd.Parameters.AddWithValue("@RepresentanteLegal", (object)(solicitud.RepresentanteLegal ?? ""));
                     cmd.Parameters.AddWithValue("@CedulaRepresentante", (object)(solicitud.CedulaRepresentante ?? ""));
 
@@ -232,34 +253,55 @@ namespace CapaDatos.DAOs
             using (var cn = new NpgsqlConnection(ConnectionString))
             {
                 cn.Open();
-                const string sql = @"
+                var columnas = ObtenerColumnasTabla(cn, "aocr_tbsolicitud");
+                var columnaCodCiudad = ResolverColumnaCodigoCiudad(columnas);
+                var setClauses = new List<string>
+                {
+                    "numero_solicitud=@numero",
+                    "fecha_solicitud=@fecha",
+                    "tipo_solicitud=@tipo_solicitud",
+                    "estado=@estado",
+                    "nombre_operador=@nombre_operador",
+                    "ruc=@ruc",
+                    "razon_social=@razon_social",
+                    "email=@email",
+                    "telefono=@telefono",
+                    "direccion=@direccion"
+                };
+
+                if (columnas.Contains("ciudad"))
+                {
+                    setClauses.Add("ciudad=@ciudad");
+                }
+
+                if (columnas.Contains("provincia"))
+                {
+                    setClauses.Add("provincia=@provincia");
+                }
+
+                if (columnas.Contains("pais"))
+                {
+                    setClauses.Add("pais=@pais");
+                }
+
+                if (!string.IsNullOrWhiteSpace(columnaCodCiudad))
+                {
+                    setClauses.Add(columnaCodCiudad + "=@cod_ciudad");
+                }
+
+                setClauses.Add("representante_legal=@representante_legal");
+                setClauses.Add("cedula_representante=@cedula_representante");
+                setClauses.Add("tipo_operacion=@tipo_operacion");
+                setClauses.Add("descripcion_operacion=@descripcion_operacion");
+                setClauses.Add("observaciones=@observaciones");
+                setClauses.Add("codigo_tecnico=@codigo_tecnico");
+                setClauses.Add("updated_at=NOW()");
+                setClauses.Add("updated_by=@updated_by");
+
+                var sql = @"
 UPDATE aocr_tbsolicitud
 SET
-  numero_solicitud=@numero,
-  fecha_solicitud=@fecha,
-  tipo_solicitud=@tipo_solicitud,
-  estado=@estado,
-
-  nombre_operador=@nombre_operador,
-  ruc=@ruc,
-  razon_social=@razon_social,
-  email=@email,
-  telefono=@telefono,
-  direccion=@direccion,
-  ciudad=@ciudad,
-  provincia=@provincia,
-  pais=@pais,
-
-  representante_legal=@representante_legal,
-  cedula_representante=@cedula_representante,
-
-  tipo_operacion=@tipo_operacion,
-  descripcion_operacion=@descripcion_operacion,
-  observaciones=@observaciones,
-
-  codigo_tecnico=@codigo_tecnico,
-  updated_at=NOW(),
-  updated_by=@updated_by
+  " + string.Join("," + Environment.NewLine + "  ", setClauses) + @"
 WHERE codigo_solicitud=@id AND deleted_at IS NULL;";
 
                 using (var cmd = new NpgsqlCommand(sql, cn))
@@ -278,9 +320,22 @@ WHERE codigo_solicitud=@id AND deleted_at IS NULL;";
                     cmd.Parameters.AddWithValue("@email", (object)(s.Email ?? ""));
                     cmd.Parameters.AddWithValue("@telefono", (object)(s.Telefono ?? ""));
                     cmd.Parameters.AddWithValue("@direccion", (object)(s.Direccion ?? ""));
-                    cmd.Parameters.AddWithValue("@ciudad", (object)(s.Ciudad ?? ""));
-                    cmd.Parameters.AddWithValue("@provincia", (object)(s.Provincia ?? ""));
-                    cmd.Parameters.AddWithValue("@pais", (object)(s.Pais ?? ""));
+                    if (columnas.Contains("ciudad"))
+                    {
+                        cmd.Parameters.AddWithValue("@ciudad", (object)(s.Ciudad ?? ""));
+                    }
+                    if (columnas.Contains("provincia"))
+                    {
+                        cmd.Parameters.AddWithValue("@provincia", (object)(s.Provincia ?? ""));
+                    }
+                    if (columnas.Contains("pais"))
+                    {
+                        cmd.Parameters.AddWithValue("@pais", (object)(s.Pais ?? ""));
+                    }
+                    if (!string.IsNullOrWhiteSpace(columnaCodCiudad))
+                    {
+                        cmd.Parameters.AddWithValue("@cod_ciudad", (object)(s.CodCiudad ?? ""));
+                    }
 
                     cmd.Parameters.AddWithValue("@representante_legal", (object)(s.RepresentanteLegal ?? ""));
                     cmd.Parameters.AddWithValue("@cedula_representante", (object)(s.CedulaRepresentante ?? ""));
@@ -438,7 +493,12 @@ WHERE codigo_solicitud=@id AND deleted_at IS NULL;";
                 CodCiudad = FirstNonEmpty(
                     GetString(rd, "cod_ciudad"),
                     GetString(rd, "codigo_ciudad"),
-                    GetString(rd, "ciudad_codigo")),
+                    GetString(rd, "ciudad_codigo"),
+                    GetString(rd, "codigociudad"),
+                    GetString(rd, "codigo_ciudad_adic"),
+                    GetString(rd, "codigo_ciudad_adicional"),
+                    GetString(rd, "cod_ciudad_adic"),
+                    GetString(rd, "usuco5")),
                 Provincia = GetString(rd, "provincia"),
                 Pais = GetString(rd, "pais"),
 
@@ -526,6 +586,83 @@ WHERE codigo_solicitud=@id AND deleted_at IS NULL;";
                 {
                     return value.Trim();
                 }
+            }
+
+            return null;
+        }
+
+        private static HashSet<string> ObtenerColumnasTabla(NpgsqlConnection cn, string tabla)
+        {
+            var columnas = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            const string sql = @"
+                SELECT column_name
+                FROM information_schema.columns
+                WHERE table_name = @tabla
+                  AND table_schema NOT IN ('pg_catalog', 'information_schema');";
+
+            using (var cmd = new NpgsqlCommand(sql, cn))
+            {
+                cmd.Parameters.AddWithValue("@tabla", tabla);
+                using (var rd = cmd.ExecuteReader())
+                {
+                    while (rd.Read())
+                    {
+                        if (!rd.IsDBNull(0))
+                        {
+                            columnas.Add(rd.GetString(0));
+                        }
+                    }
+                }
+            }
+
+            return columnas;
+        }
+
+        private static string ResolverColumnaCodigoCiudad(HashSet<string> columnas)
+        {
+            if (columnas == null || columnas.Count == 0)
+            {
+                return null;
+            }
+
+            if (columnas.Contains("cod_ciudad"))
+            {
+                return "cod_ciudad";
+            }
+
+            if (columnas.Contains("codigo_ciudad"))
+            {
+                return "codigo_ciudad";
+            }
+
+            if (columnas.Contains("ciudad_codigo"))
+            {
+                return "ciudad_codigo";
+            }
+
+            if (columnas.Contains("codigociudad"))
+            {
+                return "codigociudad";
+            }
+
+            if (columnas.Contains("codigo_ciudad_adic"))
+            {
+                return "codigo_ciudad_adic";
+            }
+
+            if (columnas.Contains("codigo_ciudad_adicional"))
+            {
+                return "codigo_ciudad_adicional";
+            }
+
+            if (columnas.Contains("cod_ciudad_adic"))
+            {
+                return "cod_ciudad_adic";
+            }
+
+            if (columnas.Contains("usuco5"))
+            {
+                return "usuco5";
             }
 
             return null;

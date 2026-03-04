@@ -6,6 +6,7 @@ using System.Web.Optimization;
 using System.Web.Routing;
 using System.Web.Security;
 using System.Security.Principal;
+using System.Web.Helpers;
 using Dapper;
 using CapaDatos.DAOs;
 using CapaDatos.Services;
@@ -21,6 +22,8 @@ namespace CapaPresentacion
         {
             // Dapper
             Dapper.DefaultTypeMap.MatchNamesWithUnderscores = true;
+            // Evita colisiones de antiforgery con otras apps en localhost.
+            AntiForgeryConfig.CookieName = "__AOCR_RequestVerificationToken";
 
             AreaRegistration.RegisterAllAreas();
             FilterConfig.RegisterGlobalFilters(GlobalFilters.Filters);
@@ -38,6 +41,71 @@ namespace CapaPresentacion
         {
             Response.ContentEncoding = System.Text.Encoding.UTF8;
             Request.ContentEncoding = System.Text.Encoding.UTF8;
+        }
+
+        protected void Application_EndRequest()
+        {
+            try
+            {
+                var context = HttpContext.Current;
+                if (context == null)
+                {
+                    return;
+                }
+
+                var response = context.Response;
+                var request = context.Request;
+                if (response == null || request == null)
+                {
+                    return;
+                }
+
+                if (response.StatusCode != 400)
+                {
+                    return;
+                }
+
+                var path = request.Url != null ? request.Url.AbsolutePath : string.Empty;
+                if (string.IsNullOrWhiteSpace(path) ||
+                    path.IndexOf("/Financiero/AprobarYEnviarAS400", StringComparison.OrdinalIgnoreCase) < 0)
+                {
+                    return;
+                }
+
+                var user = context.User != null && context.User.Identity != null && context.User.Identity.IsAuthenticated
+                    ? context.User.Identity.Name
+                    : "ANON";
+
+                var formKeys = request.Form != null
+                    ? string.Join(",", request.Form.AllKeys.Where(k => !string.IsNullOrWhiteSpace(k)))
+                    : string.Empty;
+                var queryKeys = request.QueryString != null
+                    ? string.Join(",", request.QueryString.AllKeys.Where(k => !string.IsNullOrWhiteSpace(k)))
+                    : string.Empty;
+
+                var headerToken = request.Headers["RequestVerificationToken"] ??
+                                 request.Headers["__RequestVerificationToken"] ??
+                                 request.Headers["X-CSRF-TOKEN"];
+                var formToken = request.Form["__RequestVerificationToken"];
+                var tokenInfo = string.Format("HdrTokenLen={0},FormTokenLen={1}",
+                    string.IsNullOrWhiteSpace(headerToken) ? 0 : headerToken.Length,
+                    string.IsNullOrWhiteSpace(formToken) ? 0 : formToken.Length);
+
+                var mensaje = string.Format(
+                    "AprobarYEnviarAS400 400 (EndRequest). User={0}; Method={1}; Url={2}; FormKeys={3}; QueryKeys={4}; {5}",
+                    user,
+                    request.HttpMethod,
+                    request.Url != null ? request.Url.ToString() : "N/A",
+                    formKeys,
+                    queryKeys,
+                    tokenInfo);
+
+                CapaNegocio.LogBL.RegistrarAdvertencia(mensaje, "Global.asax");
+            }
+            catch
+            {
+                // Evitar fallos en pipeline
+            }
         }
 
         protected void Application_AuthenticateRequest(object sender, EventArgs e)

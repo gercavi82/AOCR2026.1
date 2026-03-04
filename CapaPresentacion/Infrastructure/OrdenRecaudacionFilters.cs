@@ -3,6 +3,7 @@ using System.Configuration;
 using System.Web.Mvc;
 using System.Web.Routing;
 using System.Web.UI;
+using System.Web.Helpers;
 
 namespace CapaPresentacion.Infrastructure
 {
@@ -120,32 +121,113 @@ namespace CapaPresentacion.Infrastructure
             {
                 try
                 {
-                    // Para requests AJAX, el token viene en el header
-                    var token = filterContext.HttpContext.Request.Headers["__RequestVerificationToken"];
-                    if (string.IsNullOrWhiteSpace(token))
-                    {
-                        // O en el formulario
-                        token = filterContext.HttpContext.Request.Form["__RequestVerificationToken"];
-                    }
+                    // Para AJAX aceptar tokens estándar y legacy en headers.
+                    var request = filterContext.HttpContext.Request;
+                    var headerToken =
+                        request.Headers["RequestVerificationToken"] ??
+                        request.Headers["__RequestVerificationToken"] ??
+                        request.Headers["X-CSRF-TOKEN"];
 
-                    if (string.IsNullOrWhiteSpace(token))
+                    var formTokenFromForm = request.Form["__RequestVerificationToken"];
+                    if (string.IsNullOrWhiteSpace(headerToken) && string.IsNullOrWhiteSpace(formTokenFromForm))
                     {
+                        var url = request != null && request.Url != null
+                            ? request.Url.ToString()
+                            : "N/A";
+                        var user = filterContext != null &&
+                                   filterContext.HttpContext != null &&
+                                   filterContext.HttpContext.User != null &&
+                                   filterContext.HttpContext.User.Identity != null &&
+                                   filterContext.HttpContext.User.Identity.IsAuthenticated
+                            ? filterContext.HttpContext.User.Identity.Name
+                            : "ANON";
+                        CapaNegocio.LogBL.RegistrarAdvertencia(
+                            string.Format("CSRF rechazado: token faltante. Metodo={0}, Url={1}, User={2}",
+                                request != null ? request.HttpMethod : "N/A",
+                                url,
+                                user),
+                            "ValidateAntiForgeryTokenAjax");
+
+                        filterContext.HttpContext.Response.StatusCode = 400;
+                        filterContext.HttpContext.Response.TrySkipIisCustomErrors = true;
                         filterContext.Result = new JsonResult
                         {
-                            Data = new { success = false, message = "Token CSRF requerido" },
+                            Data = new { ok = false, message = "Token CSRF requerido" },
                             JsonRequestBehavior = JsonRequestBehavior.AllowGet
                         };
                         return;
                     }
 
-                    // Validar el token usando el mecanismo estándar
-                    System.Web.Helpers.AntiForgery.Validate();
+                    // Admite formato combinado "cookieToken:formToken".
+                    string cookieToken = null;
+                    string formToken = null;
+
+                    if (!string.IsNullOrWhiteSpace(headerToken))
+                    {
+                        var parts = headerToken.Split(':');
+                        if (parts.Length == 2)
+                        {
+                            cookieToken = parts[0];
+                            formToken = parts[1];
+                        }
+                        else
+                        {
+                            formToken = headerToken;
+                        }
+                    }
+
+                    if (string.IsNullOrWhiteSpace(formToken) && !string.IsNullOrWhiteSpace(formTokenFromForm))
+                    {
+                        formToken = formTokenFromForm;
+                    }
+
+                    if (string.IsNullOrWhiteSpace(cookieToken))
+                    {
+                        var antiCookie = request.Cookies[AntiForgeryConfig.CookieName] ??
+                                         request.Cookies["__RequestVerificationToken"];
+                        cookieToken = antiCookie != null ? antiCookie.Value : null;
+                    }
+
+                    if (!string.IsNullOrWhiteSpace(cookieToken) && !string.IsNullOrWhiteSpace(formToken))
+                    {
+                        AntiForgery.Validate(cookieToken, formToken);
+                    }
+                    else if (!string.IsNullOrWhiteSpace(formTokenFromForm))
+                    {
+                        AntiForgery.Validate();
+                    }
+                    else
+                    {
+                        throw new System.Web.Mvc.HttpAntiForgeryException("Token CSRF incompleto.");
+                    }
                 }
                 catch (System.Web.Mvc.HttpAntiForgeryException)
                 {
+                    var request = filterContext != null && filterContext.HttpContext != null
+                        ? filterContext.HttpContext.Request
+                        : null;
+                    var url = request != null && request.Url != null
+                        ? request.Url.ToString()
+                        : "N/A";
+                    var user = filterContext != null &&
+                               filterContext.HttpContext != null &&
+                               filterContext.HttpContext.User != null &&
+                               filterContext.HttpContext.User.Identity != null &&
+                               filterContext.HttpContext.User.Identity.IsAuthenticated
+                        ? filterContext.HttpContext.User.Identity.Name
+                        : "ANON";
+                    CapaNegocio.LogBL.RegistrarAdvertencia(
+                        string.Format("CSRF rechazado: token invalido/expirado. Metodo={0}, Url={1}, User={2}",
+                            request != null ? request.HttpMethod : "N/A",
+                            url,
+                            user),
+                        "ValidateAntiForgeryTokenAjax");
+
+                    filterContext.HttpContext.Response.StatusCode = 400;
+                    filterContext.HttpContext.Response.TrySkipIisCustomErrors = true;
                     filterContext.Result = new JsonResult
                     {
-                        Data = new { success = false, message = "Token CSRF inválido" },
+                        Data = new { ok = false, message = "Token CSRF invalido o expirado" },
                         JsonRequestBehavior = JsonRequestBehavior.AllowGet
                     };
                 }
@@ -159,7 +241,35 @@ namespace CapaPresentacion.Infrastructure
                 }
                 catch (System.Web.Mvc.HttpAntiForgeryException)
                 {
-                    throw;
+                    var request = filterContext != null && filterContext.HttpContext != null
+                        ? filterContext.HttpContext.Request
+                        : null;
+                    var url = request != null && request.Url != null
+                        ? request.Url.ToString()
+                        : "N/A";
+                    var user = filterContext != null &&
+                               filterContext.HttpContext != null &&
+                               filterContext.HttpContext.User != null &&
+                               filterContext.HttpContext.User.Identity != null &&
+                               filterContext.HttpContext.User.Identity.IsAuthenticated
+                        ? filterContext.HttpContext.User.Identity.Name
+                        : "ANON";
+
+                    CapaNegocio.LogBL.RegistrarAdvertencia(
+                        string.Format("CSRF rechazado (no-AJAX): token invalido/expirado. Metodo={0}, Url={1}, User={2}",
+                            request != null ? request.HttpMethod : "N/A",
+                            url,
+                            user),
+                        "ValidateAntiForgeryTokenAjax");
+
+                    filterContext.HttpContext.Response.StatusCode = 400;
+                    filterContext.HttpContext.Response.TrySkipIisCustomErrors = true;
+                    filterContext.Result = new JsonResult
+                    {
+                        Data = new { ok = false, message = "Token CSRF invalido o expirado" },
+                        JsonRequestBehavior = JsonRequestBehavior.AllowGet
+                    };
+                    return;
                 }
             }
         }

@@ -29,7 +29,9 @@ namespace CapaDatos.DAOs
         private readonly string _tablaSecuencial;
         private readonly ILoggingService _logger;
         private readonly Dictionary<string, Dictionary<string, int>> _textColumnLengthCache;
+        private readonly Dictionary<string, Dictionary<string, int>> _numericColumnLengthCache;
         private readonly object _textColumnLengthCacheLock;
+        private readonly object _numericColumnLengthCacheLock;
 
         public FacturacionAS400DAO(ISecureConfigurationService configService) : base(configService)
         {
@@ -40,7 +42,9 @@ namespace CapaDatos.DAOs
             _tablaSecuencial = GetSetting("AS400:Facturacion:OPSARCTable", "OPSARC").Trim().ToUpperInvariant();
             _logger = LoggingServiceFactory.Create();
             _textColumnLengthCache = new Dictionary<string, Dictionary<string, int>>(StringComparer.OrdinalIgnoreCase);
+            _numericColumnLengthCache = new Dictionary<string, Dictionary<string, int>>(StringComparer.OrdinalIgnoreCase);
             _textColumnLengthCacheLock = new object();
+            _numericColumnLengthCacheLock = new object();
         }
 
         [Obsolete("Use el constructor con ISecureConfigurationService")]
@@ -79,6 +83,16 @@ namespace CapaDatos.DAOs
             if (string.IsNullOrWhiteSpace(record.NumeroFactura))
             {
                 error = "Numero de factura requerido para FR3.";
+                return false;
+            }
+
+            // ✅ Sanitizar número de factura (eliminar caracteres especiales problemáticos)
+            record.NumeroFactura = SanitizarNumeroFactura(record.NumeroFactura);
+
+            if (string.IsNullOrWhiteSpace(record.NumeroFactura))
+            {
+                error = "Numero de factura invalido después de sanitización.";
+                _logger.LogWarning("Factura rechazada: contiene solo caracteres especiales inválidos.");
                 return false;
             }
 
@@ -125,18 +139,51 @@ namespace CapaDatos.DAOs
                 }
 
                 error = detailMessage;
+
+                try
+                {
+                    var observacionesLen = record.Observaciones == null ? 0 : record.Observaciones.Length;
+                    var autorizacionLen = record.AutorizacionFactura == null ? 0 : record.AutorizacionFactura.Length;
+                    var numeroFactura = record.NumeroFactura ?? string.Empty;
+                    var deposito = record.Deposito ?? string.Empty;
+
+                    var diag = string.Format(
+                        "FR3 detalle error AS400: OrdenId={0}, Factura={1}, Aeropuerto={2}, Anio={3}, Subtotal={4}, Iva={5}, Total={6}, ObsLen={7}, AutLen={8}, Deposito={9}",
+                        record.OrdenId,
+                        numeroFactura,
+                        aeropuerto,
+                        anio,
+                        record.Subtotal.ToString(CultureInfo.InvariantCulture),
+                        record.Iva.ToString(CultureInfo.InvariantCulture),
+                        record.Total.ToString(CultureInfo.InvariantCulture),
+                        observacionesLen,
+                        autorizacionLen,
+                        deposito);
+
+                    _logger.LogWarning(diag);
+                }
+                catch
+                {
+                    // Ignorar errores de logging detallado
+                }
+                
+                // ✅ Logging mejorado con más contexto
                 _logger.LogError(ex, new LogContext
                 {
                     ErrorCode = "FR3_DB2_ERROR",
                     AdditionalData = new Dictionary<string, object>
                     {
                         { "OrdenId", record.OrdenId },
-                        { "Factura", record.NumeroFactura ?? string.Empty },
+                        { "FacturaOriginal", record.NumeroFactura ?? string.Empty },
                         { "Aeropuerto", aeropuerto },
                         { "Anio", anio },
-                        { "Detalle", detailMessage }
+                        { "TipoError", ex.GetType().Name },
+                        { "SqlState", (ex as OdbcException)?.Errors.Count > 0 ? ((OdbcException)ex).Errors[0].SQLState : "N/A" },
+                        { "Detalle", detailMessage },
+                        { "UserMessage", "Error al registrar factura en AS400. Verifique los datos de entrada." }
                     }
                 });
+                
                 return false;
             }
         }
@@ -247,6 +294,27 @@ namespace CapaDatos.DAOs
             };
         }
 
+        private object NormalizarValorBusquedaNumeroFactura(
+            OdbcConnection conn,
+            OdbcTransaction tx,
+            string numeroFactura)
+        {
+            var normalized = SafeString(numeroFactura);
+            if (string.IsNullOrWhiteSpace(normalized))
+            {
+                return normalized;
+            }
+
+            var numericLengths = GetNumericColumnLengths(conn, _schema, _tablaCabecera, tx);
+            int maxDigits;
+            if (numericLengths != null && numericLengths.TryGetValue("OPCNUM", out maxDigits))
+            {
+                return NormalizeNumericStringValue(_schema, _tablaCabecera, "OPCNUM", normalized, maxDigits, true);
+            }
+
+            return normalized;
+        }
+
         private bool TryObtenerFacturaExistente(
             OdbcConnection conn,
             OdbcTransaction tx,
@@ -265,8 +333,9 @@ namespace CapaDatos.DAOs
 
             if (colsCabecera.Contains("OPCNUM") && !string.IsNullOrWhiteSpace(record.NumeroFactura))
             {
+                var numeroFacturaLookup = NormalizarValorBusquedaNumeroFactura(conn, tx, record.NumeroFactura);
                 var filtros = new List<string> { "OPCNUM = ?" };
-                var parametros = new List<object> { record.NumeroFactura.Trim() };
+                var parametros = new List<object> { numeroFacturaLookup };
 
                 if (colsCabecera.Contains("OPCAER") && !string.IsNullOrWhiteSpace(aeropuerto))
                 {
@@ -651,7 +720,7 @@ namespace CapaDatos.DAOs
                 ["OPCFOR"] = SafeString(record.FormaPago),
                 ["OPCBAN"] = SafeString(record.CodigoBanco),
                 ["OPCCHE"] = SafeString(record.Deposito),
-                ["OPCNUM"] = SafeString(record.NumeroFactura),
+                ["OPCNUM"] = string.Empty,
                 ["OPCFE9"] = SafeString(fechaRecepcion),
                 ["OPCVA6"] = record.Total,
                 ["OPCEST"] = "S",
@@ -724,12 +793,13 @@ namespace CapaDatos.DAOs
                 placeholders);
 
             var textLengths = GetTextColumnLengths(conn, schema, table, tx);
+            var numericLengths = GetNumericColumnLengths(conn, schema, table, tx);
 
             using (var cmd = new OdbcCommand(sqlInsert, conn, tx))
             {
                 foreach (var col in columnas)
                 {
-                    var value = NormalizeColumnValue(schema, table, col, valores[col], textLengths);
+                    var value = NormalizeColumnValue(schema, table, col, valores[col], textLengths, numericLengths);
                     AddParameter(cmd, value, GetOdbcType(value));
                 }
                 cmd.ExecuteNonQuery();
@@ -741,38 +811,177 @@ namespace CapaDatos.DAOs
             string table,
             string column,
             object value,
-            Dictionary<string, int> textLengths)
+            Dictionary<string, int> textLengths,
+            Dictionary<string, int> numericLengths)
         {
             if (value == null || value == DBNull.Value)
             {
                 return value;
             }
 
+            var maxNumericLen = 0;
+            var columnIsNumeric = numericLengths != null && numericLengths.TryGetValue(column, out maxNumericLen);
+            if (!columnIsNumeric)
+            {
+                var knownLen = GetKnownNumericLength(table, column);
+                if (knownLen > 0)
+                {
+                    maxNumericLen = knownLen;
+                    columnIsNumeric = true;
+                }
+            }
+
             var asString = value as string;
-            if (asString == null)
+            if (asString != null)
+            {
+                var normalized = SafeString(asString);
+                if (columnIsNumeric)
+                {
+                    return NormalizeNumericStringValue(schema, table, column, normalized, maxNumericLen, false);
+                }
+
+                int maxLen;
+                if (textLengths != null &&
+                    textLengths.TryGetValue(column, out maxLen) &&
+                    maxLen > 0 &&
+                    normalized.Length > maxLen)
+                {
+                    _logger.LogWarning(string.Format(
+                        "FR3 truncamiento preventivo en {0}.{1}.{2}: len={3}, max={4}.",
+                        schema,
+                        table,
+                        column,
+                        normalized.Length,
+                        maxLen));
+
+                    return normalized.Substring(0, maxLen);
+                }
+
+                return normalized;
+            }
+
+            if (!columnIsNumeric)
             {
                 return value;
             }
 
-            var normalized = SafeString(asString);
-            int maxLen;
-            if (textLengths != null &&
-                textLengths.TryGetValue(column, out maxLen) &&
-                maxLen > 0 &&
-                normalized.Length > maxLen)
+            decimal numericValue;
+            if (!TryConvertToDecimal(value, out numericValue))
+            {
+                return value;
+            }
+
+            if (maxNumericLen <= 0 || numericValue != decimal.Truncate(numericValue))
+            {
+                return numericValue;
+            }
+
+            var sign = numericValue < 0m ? -1m : 1m;
+            var digits = decimal.Truncate(Math.Abs(numericValue)).ToString("0", CultureInfo.InvariantCulture);
+            if (digits.Length <= maxNumericLen)
+            {
+                return numericValue;
+            }
+
+            var truncated = digits.Substring(digits.Length - maxNumericLen, maxNumericLen);
+            _logger.LogWarning(string.Format(
+                "FR3 truncamiento numerico preventivo en {0}.{1}.{2}: digits={3}, max={4}.",
+                schema,
+                table,
+                column,
+                digits.Length,
+                maxNumericLen));
+
+            decimal parsed;
+            if (decimal.TryParse(truncated, NumberStyles.Number, CultureInfo.InvariantCulture, out parsed))
+            {
+                return parsed * sign;
+            }
+
+            return numericValue;
+        }
+
+        private static int GetKnownNumericLength(string table, string column)
+        {
+            if (string.IsNullOrWhiteSpace(table) || string.IsNullOrWhiteSpace(column))
+            {
+                return 0;
+            }
+
+            var tableName = table.Trim().ToUpperInvariant();
+            var columnName = column.Trim().ToUpperInvariant();
+
+            if (tableName == "OPCAR5")
+            {
+                if (columnName == "OPCSEC") return 6;
+                if (columnName == "OPCNRO") return 3;
+                if (columnName == "OPCSUB" || columnName == "OPCTOT" || columnName == "OPCGRA" || columnName == "OPCVA6") return 9;
+                if (columnName == "OPCOID" || columnName == "OPCOI1" || columnName == "OPCOI2" || columnName == "OPCOI3") return 10;
+                if (columnName == "OPCNUM") return 10;
+            }
+            else if (tableName == "OPCAR6")
+            {
+                if (columnName == "OPCSE2") return 6;
+                if (columnName == "OPCSE1" || columnName == "OPCOI4" || columnName == "OPCUBI") return 10;
+                if (columnName == "OPCCAN" || columnName == "OPCPOR" || columnName == "OPCPO1") return 3;
+                if (columnName == "OPCVA1" || columnName == "OPCTO1") return 9;
+            }
+            else if (tableName == "OPSARC")
+            {
+                if (columnName == "OPSSEC") return 6;
+            }
+
+            return 0;
+        }
+
+        private object NormalizeNumericStringValue(
+            string schema,
+            string table,
+            string column,
+            string value,
+            int maxDigits,
+            bool forLookup)
+        {
+            var raw = value ?? string.Empty;
+            var digits = new string(raw.Where(char.IsDigit).ToArray());
+            if (string.IsNullOrWhiteSpace(digits))
+            {
+                return 0m;
+            }
+
+            if (maxDigits > 0 && digits.Length > maxDigits)
             {
                 _logger.LogWarning(string.Format(
-                    "FR3 truncamiento preventivo en {0}.{1}.{2}: len={3}, max={4}.",
+                    "FR3 truncamiento numerico preventivo en {0}.{1}.{2}: digits={3}, max={4}.",
                     schema,
                     table,
                     column,
-                    normalized.Length,
-                    maxLen));
-
-                return normalized.Substring(0, maxLen);
+                    digits.Length,
+                    maxDigits));
+                digits = digits.Substring(digits.Length - maxDigits, maxDigits);
             }
 
-            return normalized;
+            decimal parsed;
+            if (decimal.TryParse(digits, NumberStyles.Number, CultureInfo.InvariantCulture, out parsed))
+            {
+                return parsed;
+            }
+
+            return forLookup ? (object)digits : 0m;
+        }
+
+        private static bool TryConvertToDecimal(object value, out decimal result)
+        {
+            try
+            {
+                result = Convert.ToDecimal(value, CultureInfo.InvariantCulture);
+                return true;
+            }
+            catch
+            {
+                result = 0m;
+                return false;
+            }
         }
 
         private Dictionary<string, int> GetTextColumnLengths(
@@ -915,6 +1124,146 @@ namespace CapaDatos.DAOs
             return lengths;
         }
 
+        private Dictionary<string, int> GetNumericColumnLengths(
+            OdbcConnection conn,
+            string schema,
+            string table,
+            OdbcTransaction tx = null)
+        {
+            var key = string.Format("{0}.{1}", schema.ToUpperInvariant(), table.ToUpperInvariant());
+
+            lock (_numericColumnLengthCacheLock)
+            {
+                Dictionary<string, int> cached;
+                if (_numericColumnLengthCache.TryGetValue(key, out cached))
+                {
+                    return cached;
+                }
+            }
+
+            var loaded = LoadNumericColumnLengths(conn, schema, table, tx);
+
+            lock (_numericColumnLengthCacheLock)
+            {
+                if (!_numericColumnLengthCache.ContainsKey(key))
+                {
+                    _numericColumnLengthCache[key] = loaded;
+                }
+                return _numericColumnLengthCache[key];
+            }
+        }
+
+        private Dictionary<string, int> LoadNumericColumnLengths(
+            OdbcConnection conn,
+            string schema,
+            string table,
+            OdbcTransaction tx = null)
+        {
+            var lengths = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+
+            try
+            {
+                var sql = @"
+                    SELECT COLUMN_NAME, LENGTH, DATA_TYPE
+                    FROM QSYS2.SYSCOLUMNS
+                    WHERE TABLE_SCHEMA = ?
+                      AND TABLE_NAME = ?";
+
+                using (var cmd = new OdbcCommand(sql, conn))
+                {
+                    if (tx != null) cmd.Transaction = tx;
+                    AddParameter(cmd, schema.ToUpperInvariant(), OdbcType.VarChar);
+                    AddParameter(cmd, table.ToUpperInvariant(), OdbcType.VarChar);
+
+                    using (var reader = cmd.ExecuteReader())
+                    {
+                        while (reader.Read())
+                        {
+                            if (reader.IsDBNull(0))
+                            {
+                                continue;
+                            }
+
+                            var column = reader.GetString(0).Trim().ToUpperInvariant();
+                            var dataType = reader.IsDBNull(2) ? string.Empty : reader.GetString(2).Trim().ToUpperInvariant();
+                            if (!IsNumericDataType(dataType))
+                            {
+                                continue;
+                            }
+
+                            int size = 0;
+                            if (!reader.IsDBNull(1))
+                            {
+                                size = Convert.ToInt32(reader.GetValue(1), CultureInfo.InvariantCulture);
+                            }
+
+                            if (size > 0)
+                            {
+                                lengths[column] = size;
+                            }
+                        }
+                    }
+                }
+
+                if (lengths.Count > 0)
+                {
+                    return lengths;
+                }
+
+                var fallbackSql = @"
+                    SELECT COLUMN_NAME, COLUMN_SIZE, TYPE_NAME
+                    FROM SYSIBM.SQLCOLUMNS
+                    WHERE TABLE_SCHEM = ?
+                      AND TABLE_NAME = ?";
+
+                using (var cmd2 = new OdbcCommand(fallbackSql, conn))
+                {
+                    if (tx != null) cmd2.Transaction = tx;
+                    AddParameter(cmd2, schema.ToUpperInvariant(), OdbcType.VarChar);
+                    AddParameter(cmd2, table.ToUpperInvariant(), OdbcType.VarChar);
+
+                    using (var reader2 = cmd2.ExecuteReader())
+                    {
+                        while (reader2.Read())
+                        {
+                            if (reader2.IsDBNull(0))
+                            {
+                                continue;
+                            }
+
+                            var column = reader2.GetString(0).Trim().ToUpperInvariant();
+                            var typeName = reader2.IsDBNull(2) ? string.Empty : reader2.GetString(2).Trim().ToUpperInvariant();
+                            if (!IsNumericDataType(typeName))
+                            {
+                                continue;
+                            }
+
+                            int size = 0;
+                            if (!reader2.IsDBNull(1))
+                            {
+                                size = Convert.ToInt32(reader2.GetValue(1), CultureInfo.InvariantCulture);
+                            }
+
+                            if (size > 0)
+                            {
+                                lengths[column] = size;
+                            }
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(string.Format(
+                    "No se pudo cargar precision numerica para {0}.{1}: {2}",
+                    schema,
+                    table,
+                    ex.Message));
+            }
+
+            return lengths;
+        }
+
         private static bool IsTextDataType(string typeName)
         {
             if (string.IsNullOrWhiteSpace(typeName))
@@ -927,6 +1276,24 @@ namespace CapaDatos.DAOs
                    || normalized.Contains("GRAPHIC")
                    || normalized.Contains("VARCHAR")
                    || normalized.Contains("CLOB");
+        }
+
+        private static bool IsNumericDataType(string typeName)
+        {
+            if (string.IsNullOrWhiteSpace(typeName))
+            {
+                return false;
+            }
+
+            var normalized = typeName.Trim().ToUpperInvariant();
+            return normalized.Contains("DEC")
+                   || normalized.Contains("NUM")
+                   || normalized.Contains("INT")
+                   || normalized.Contains("REAL")
+                   || normalized.Contains("FLOAT")
+                   || normalized.Contains("DOUBLE")
+                   || normalized.Contains("PACKED")
+                   || normalized.Contains("ZONED");
         }
 
         private HashSet<string> GetColumnas(OdbcConnection conn, string schema, string table, OdbcTransaction tx = null)
@@ -1117,6 +1484,38 @@ namespace CapaDatos.DAOs
             }
 
             return OdbcType.VarChar;
+        }
+
+        /// <summary>
+        /// Sanitiza el número de factura eliminando caracteres especiales problemáticos para AS400/DB2
+        /// </summary>
+        /// <param name="numeroFactura">Número de factura original</param>
+        /// <returns>Número de factura sanitizado</returns>
+        private static string SanitizarNumeroFactura(string numeroFactura)
+        {
+            if (string.IsNullOrWhiteSpace(numeroFactura))
+            {
+                return string.Empty;
+            }
+
+            // Eliminar caracteres especiales problemáticos para SQL AS400/DB2
+            // Permitidos: letras, números, guiones y guiones bajos
+            var caracteresProblematicos = new[] { '|', ';', '\'', '"', '\\', '/', '<', '>', '&', '%', '*', '(', ')', '[', ']', '{', '}', '=', '+', '!', '?', ',', ':', '#' };
+            
+            var sanitizado = numeroFactura.Trim();
+            
+            foreach (var c in caracteresProblematicos)
+            {
+                sanitizado = sanitizado.Replace(c.ToString(), string.Empty);
+            }
+
+            // Limitar a 50 caracteres (longitud máxima típica en AS400)
+            if (sanitizado.Length > 50)
+            {
+                sanitizado = sanitizado.Substring(0, 50);
+            }
+
+            return sanitizado.Trim();
         }
     }
 }

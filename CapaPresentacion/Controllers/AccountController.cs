@@ -41,6 +41,8 @@ namespace CapaPresentacion.Controllers
                     };
                     Response.Cookies.Add(c);
                 }
+                // Limpia token de sesión previa para evitar desalineación de antiforgery.
+                ExpirarCookieAntiForgery();
 
                 // Importante: el request actual sigue teniendo el principal autenticado.
                 // Si renderizamos el Login así, @Html.AntiForgeryToken() se genera atado al usuario anterior
@@ -159,6 +161,8 @@ namespace CapaPresentacion.Controllers
                 cookie.Expires = DateTime.Now.AddDays(7);
 
             Response.Cookies.Add(cookie);
+            // Forzar emisión de token antiforgery nuevo en la siguiente vista autenticada.
+            ExpirarCookieAntiForgery();
 
             // ============================
             // SESIÓN UNIFICADA (NO TOCAR)
@@ -319,6 +323,7 @@ namespace CapaPresentacion.Controllers
                 };
                 Response.Cookies.Add(c);
             }
+            ExpirarCookieAntiForgery();
 
             return RedirectToAction("Login", "Account");
         }

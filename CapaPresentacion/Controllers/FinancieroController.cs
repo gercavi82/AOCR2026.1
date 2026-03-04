@@ -11,6 +11,7 @@ using EmailServiceData = CapaDatos.Services.EmailService;
 using CapaNegocio.Services;
 using CapaPresentacion.Models;
 using CapaPresentacion.Filters;
+using CapaPresentacion.Infrastructure;
 using CapaUtilidades;
 
 namespace CapaPresentacion.Controllers
@@ -61,6 +62,7 @@ namespace CapaPresentacion.Controllers
                 var puedeReintentarFr3 = FacturacionAS400Service.IsEnabled() &&
                                          tieneFacturaRegistrada &&
                                          (string.Equals(fr3Estado, "FR3_ERROR", StringComparison.OrdinalIgnoreCase) ||
+                                          string.Equals(fr3Estado, "PENDIENTE", StringComparison.OrdinalIgnoreCase) ||
                                           (string.IsNullOrWhiteSpace(fr3Estado) &&
                                            string.Equals((orden?.Estado ?? "").Trim(), "FACTURADA", StringComparison.OrdinalIgnoreCase)));
 
@@ -366,25 +368,34 @@ namespace CapaPresentacion.Controllers
         }
 
         [HttpPost]
-        [ValidateAntiForgeryToken]
+        [ValidateAntiForgeryTokenAjax]
         [RequirePermission("FIN_APROBAR_PAGO")]
         public ActionResult AprobarYEnviarAS400(int ordenId)
         {
             if (ordenId <= 0)
             {
-                return JsonErrorLogged("Orden inválida.");
+                var rawOrdenId = (Request["ordenId"] ?? Request["id"] ?? string.Empty).Trim();
+                if (!int.TryParse(rawOrdenId, out ordenId) || ordenId <= 0)
+                {
+                    LogAprobarYEnviarAs400Request("ORDEN_INVALIDA", rawOrdenId, null);
+                    return JsonErrorLogged("Orden invalida.");
+                }
             }
 
             var orden = _ordenDAO.ObtenerOrdenPorId(ordenId);
             if (orden == null)
             {
+                LogAprobarYEnviarAs400Request("ORDEN_NO_ENCONTRADA", ordenId.ToString(CultureInfo.InvariantCulture), null);
                 return JsonErrorLogged("Orden no encontrada.");
             }
 
             var estado = ((orden.Estado ?? "").Trim()).ToUpperInvariant().Replace(" ", "_");
-            if (estado != "PROCESADA")
+            var permiteAprobar = estado == "PROCESADA" || estado.StartsWith("PENDIENTE");
+            var yaAprobada = estado == "FACTURADA" || estado == "COMPLETADA";
+            if (!permiteAprobar && !yaAprobada)
             {
-                return JsonErrorLogged("Solo se pueden aprobar órdenes en estado PROCESADA. Estado actual: " + (orden.Estado ?? "N/D"));
+                LogAprobarYEnviarAs400Request("ESTADO_NO_PERMITIDO", ordenId.ToString(CultureInfo.InvariantCulture), orden.Estado);
+                return JsonErrorLogged("Solo se pueden aprobar ordenes en estado PROCESADA o PENDIENTE. Estado actual: " + (orden.Estado ?? "N/D"));
             }
 
             var usuario = User != null && User.Identity != null && !string.IsNullOrWhiteSpace(User.Identity.Name)
@@ -393,35 +404,68 @@ namespace CapaPresentacion.Controllers
 
             try
             {
-                // 1. Aprobar la orden (marcar como FACTURADA)
                 var pagoEnt = _ordenDAO.ObtenerUltimoPagoPorOrden(ordenId);
                 var pagoId = pagoEnt != null ? (int?)pagoEnt.Id : null;
+                var aprobacionIdempotente = false;
 
-                string errAprobacion;
-                var aprobado = _ordenDAO.ActualizarPagoYEstadoTransaccional(
-                    ordenId, pagoId, "VALIDADO", usuario, "Aprobado por Finanzas", "FACTURADA", out errAprobacion);
-
-                if (!aprobado)
+                if (permiteAprobar)
                 {
-                    return JsonErrorLogged("Error al aprobar la orden. " + (errAprobacion ?? ""));
+                    string errAprobacion;
+                    var aprobado = _ordenDAO.ActualizarPagoYEstadoTransaccional(
+                        ordenId, pagoId, "VALIDADO", usuario, "Aprobado por Finanzas", "FACTURADA", out errAprobacion);
+
+                    if (!aprobado)
+                    {
+                        var ordenRevalidada = _ordenDAO.ObtenerOrdenPorId(ordenId);
+                        var estadoRevalidado = ((ordenRevalidada != null ? ordenRevalidada.Estado : null) ?? string.Empty)
+                            .Trim()
+                            .ToUpperInvariant()
+                            .Replace(" ", "_");
+                        if (estadoRevalidado == "FACTURADA" || estadoRevalidado == "COMPLETADA")
+                        {
+                            aprobacionIdempotente = true;
+                            orden = ordenRevalidada ?? orden;
+                            CapaNegocio.LogBL.RegistrarInfo(
+                                string.Format("AprobarYEnviarAS400 idempotente por carrera. OrdenId={0}, Estado={1}", ordenId, estadoRevalidado),
+                                "FinancieroController");
+                        }
+                        else
+                        {
+                            LogAprobarYEnviarAs400Request("ERROR_APROBACION", ordenId.ToString(CultureInfo.InvariantCulture), errAprobacion);
+                            return JsonErrorLogged("Error al aprobar la orden. " + (errAprobacion ?? ""));
+                        }
+                    }
+                    else
+                    {
+                        try
+                        {
+                            var ordenActualizada = _ordenDAO.ObtenerOrdenPorId(ordenId) ?? orden;
+                            var pdf = new CapaPresentacion.Services.PdfGeneratorService().GenerarOrdenRecaudacionPDF(ordenActualizada);
+                            new EmailServiceData().EnviarFacturaGenerada(ordenActualizada, pdf);
+                            orden = ordenActualizada;
+                        }
+                        catch (Exception exPdf)
+                        {
+                            CapaNegocio.LogBL.RegistrarError(
+                                string.Format("Error generando/mandando factura Orden={0}", orden.NumeroOrden),
+                                exPdf.ToString(),
+                                "FinancieroController");
+                        }
+                    }
                 }
-
-                // 2. Enviar PDF por correo
-                try
+                else
                 {
-                    var ordenActualizada = _ordenDAO.ObtenerOrdenPorId(ordenId) ?? orden;
-                    var pdf = new CapaPresentacion.Services.PdfGeneratorService().GenerarOrdenRecaudacionPDF(ordenActualizada);
-                    new EmailServiceData().EnviarFacturaGenerada(ordenActualizada, pdf);
-                }
-                catch (Exception exPdf)
-                {
-                    CapaNegocio.LogBL.RegistrarError(
-                        string.Format("Error generando/mandando factura Orden={0}", orden.NumeroOrden),
-                        exPdf.ToString(),
+                    aprobacionIdempotente = true;
+                    CapaNegocio.LogBL.RegistrarInfo(
+                        string.Format("AprobarYEnviarAS400 invocado para orden ya aprobada. OrdenId={0}, Estado={1}", ordenId, estado),
                         "FinancieroController");
                 }
 
-                // 3. Enviar a AS400 si está habilitado
+                // Releer pago/orden después de la aprobación para usar la referencia más actual al generar FR3.
+                orden = _ordenDAO.ObtenerOrdenPorId(ordenId) ?? orden;
+                pagoEnt = _ordenDAO.ObtenerUltimoPagoPorOrden(ordenId);
+                pagoId = pagoEnt != null ? (int?)pagoEnt.Id : null;
+
                 string advertenciaAs400 = null;
                 if (FacturacionAS400Service.IsEnabled())
                 {
@@ -450,27 +494,89 @@ namespace CapaPresentacion.Controllers
                             string.Format("Error registrando factura en AS400. OrdenId={0}", ordenId),
                             advertenciaAs400 ?? "n/a",
                             "FinancieroController");
+
+                        LogAprobarYEnviarAs400Request("FR3_ERROR", ordenId.ToString(CultureInfo.InvariantCulture), advertenciaAs400);
+
+                        return JsonErrorLogged(
+                            string.IsNullOrWhiteSpace(advertenciaAs400)
+                                ? "No se pudo generar FR3 en AS400."
+                                : advertenciaAs400,
+                            500);
                     }
                 }
+                else
+                {
+                    advertenciaAs400 = "AS400 deshabilitado por configuracion.";
+                }
 
-                var mensaje = "Orden aprobada y enviada a AS400 correctamente.";
+                var mensaje = aprobacionIdempotente
+                    ? "La orden ya estaba aprobada. Se verifico el envio AS400."
+                    : "Orden aprobada y enviada a AS400 correctamente.";
                 return Json(new
                 {
                     ok = true,
                     message = mensaje,
+                    idempotent = aprobacionIdempotente,
                     warning = advertenciaAs400
                 });
             }
             catch (Exception ex)
             {
                 CapaNegocio.LogBL.RegistrarError(
-                    string.Format("Excepción en AprobarYEnviarAS400. OrdenId={0}", ordenId),
+                    string.Format("Excepcion en AprobarYEnviarAS400. OrdenId={0}", ordenId),
                     ex.ToString(),
                     "FinancieroController");
+                LogAprobarYEnviarAs400Request("EXCEPCION", ordenId.ToString(CultureInfo.InvariantCulture), ex.Message);
                 return JsonErrorLogged("Error interno al aprobar y enviar a AS400.", 500);
             }
         }
 
+        private void LogAprobarYEnviarAs400Request(string motivo, string ordenId, string detalle)
+        {
+            try
+            {
+                var request = Request;
+                var url = request != null && request.Url != null ? request.Url.ToString() : "N/A";
+                var method = request != null ? request.HttpMethod : "N/A";
+                var user = User != null && User.Identity != null && User.Identity.IsAuthenticated
+                    ? User.Identity.Name
+                    : "ANON";
+
+                var formKeys = request != null && request.Form != null
+                    ? string.Join(",", request.Form.AllKeys.Where(k => !string.IsNullOrWhiteSpace(k)))
+                    : string.Empty;
+                var queryKeys = request != null && request.QueryString != null
+                    ? string.Join(",", request.QueryString.AllKeys.Where(k => !string.IsNullOrWhiteSpace(k)))
+                    : string.Empty;
+
+                var headerToken = request != null
+                    ? (request.Headers["RequestVerificationToken"] ?? request.Headers["__RequestVerificationToken"] ?? request.Headers["X-CSRF-TOKEN"])
+                    : null;
+                var formToken = request != null && request.Form != null ? request.Form["__RequestVerificationToken"] : null;
+                var tokenInfo = string.Format("HdrTokenLen={0},FormTokenLen={1}",
+                    string.IsNullOrWhiteSpace(headerToken) ? 0 : headerToken.Length,
+                    string.IsNullOrWhiteSpace(formToken) ? 0 : formToken.Length);
+
+                var mensaje = string.Format(
+                    "AprobarYEnviarAS400 400. Motivo={0}; OrdenId={1}; User={2}; Method={3}; Url={4}; FormKeys={5}; QueryKeys={6}; {7}; Detalle={8}",
+                    motivo ?? "N/A",
+                    ordenId ?? "N/A",
+                    user,
+                    method,
+                    url,
+                    formKeys,
+                    queryKeys,
+                    tokenInfo,
+                    detalle ?? string.Empty);
+
+                CapaNegocio.LogBL.RegistrarAdvertencia(mensaje, "FinancieroController");
+                CapaNegocio.LogBL.RegistrarInfo(mensaje, "FinancieroController");
+            }
+            catch
+            {
+                // no bloquear el flujo de la acción por fallos de logging
+            }
+        }
         [HttpPost]
         [ValidateAntiForgeryToken]
         [RequirePermission("FIN_APROBAR_PAGO")]
@@ -543,13 +649,17 @@ namespace CapaPresentacion.Controllers
         }
 
         [HttpPost]
-        [ValidateAntiForgeryToken]
+        [ValidateAntiForgeryTokenAjax]
         [RequirePermission("FIN_APROBAR_PAGO")]
         public ActionResult ReintentarFr3(int ordenId)
         {
             if (ordenId <= 0)
             {
-                return JsonErrorLogged("Orden inválida para reintentar FR3.");
+                var rawOrdenId = (Request["ordenId"] ?? Request["id"] ?? string.Empty).Trim();
+                if (!int.TryParse(rawOrdenId, out ordenId) || ordenId <= 0)
+                {
+                    return JsonErrorLogged("Orden inválida para reintentar FR3.");
+                }
             }
 
             var usuario = User != null && User.Identity != null && !string.IsNullOrWhiteSpace(User.Identity.Name)
@@ -674,6 +784,7 @@ namespace CapaPresentacion.Controllers
         private JsonResult JsonError(string message, int statusCode = 400)
         {
             Response.StatusCode = statusCode;
+            Response.TrySkipIisCustomErrors = true;
             return Json(new
             {
                 ok = false,
@@ -688,6 +799,9 @@ namespace CapaPresentacion.Controllers
                 : "AccionDesconocida";
 
             CapaNegocio.LogBL.RegistrarAdvertencia(
+                string.Format("{0} rechazado ({1}): {2}", action, statusCode, message ?? "Error procesando la solicitud."),
+                "FinancieroController");
+            CapaNegocio.LogBL.RegistrarInfo(
                 string.Format("{0} rechazado ({1}): {2}", action, statusCode, message ?? "Error procesando la solicitud."),
                 "FinancieroController");
             return JsonError(message, statusCode);

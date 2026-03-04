@@ -46,39 +46,31 @@ namespace CapaPresentacion.Controllers
 
         public OrdenRecaudacionController()
         {
-            var logPath = @"C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\debug_nueva.txt";
             try
             {
-                System.IO.File.AppendAllText(logPath, $"\n=== Constructor() INICIADO {DateTime.Now:yyyy-MM-dd HH:mm:ss.fff} ===\n");
-                System.IO.File.AppendAllText(logPath, "Creando OrdenRecaudacionDAO...\n");
                 _ordenDAO = new OrdenRecaudacionDAO();
-                System.IO.File.AppendAllText(logPath, "OrdenRecaudacionDAO creado OK\n");
                 System.Diagnostics.Debug.WriteLine("OrdenRecaudacionController inicializado correctamente");
             }
             catch (Exception ex)
             {
-                System.IO.File.AppendAllText(logPath, "*** ERROR OrdenRecaudacionDAO: " + ex.ToString() + "\n");
                 System.Diagnostics.Debug.WriteLine("ERROR en constructor OrdenRecaudacionController: " + ex.Message);
                 _ordenDAO = null;
             }
 
-            // Eliminar EmailService del orquestador, solo usar EnviarCorreo para notificaciones
             try
             {
-                System.IO.File.AppendAllText(logPath, "Creando OrdenRecaudacionOrchestrator...\n");
                 _orchestrator = new OrdenRecaudacionOrchestrator(
                     new OrdenRecaudacionDAO(),
                     new PagoDAO(),
                     null,
                     null,
-                    null, // EmailService eliminado
+                    null,
                     null
                 );
-                System.IO.File.AppendAllText(logPath, "OrdenRecaudacionOrchestrator creado OK\n");
             }
             catch (Exception ex)
             {
-                System.IO.File.AppendAllText(logPath, "*** ERROR Orchestrator: " + ex.ToString() + "\n\n");
+                System.Diagnostics.Debug.WriteLine("ERROR Orchestrator: " + ex.Message);
                 throw;
             }
         }
@@ -90,8 +82,8 @@ namespace CapaPresentacion.Controllers
             return Json(new { ok = _dao.Ping() }, JsonRequestBehavior.AllowGet);
         }
 
-        // DiagnÓstico de sesió (SIN autorizació para debug)
-        [AllowAnonymous]
+        // Diagnóstico de sesión (solo Administradores)
+        [Authorize(Roles = "Administrador")]
         public ActionResult DiagnosticoSesion()
         {
             var diagnostico = new System.Text.StringBuilder();
@@ -328,10 +320,11 @@ namespace CapaPresentacion.Controllers
             var model = new CapaPresentacion.Models.OrdenRecaudacionNuevaVM();
             CargarConceptosNueva(model);
             var userId = GetUserId();
+            Usuario usuario = null;
             // Prefill bÃ¡sico desde usuario/empresa (editables)
             try
             {
-                var usuario = UsuarioDAO.ObtenerPorId(userId);
+                usuario = UsuarioDAO.ObtenerPorId(userId);
                 var empresaNombre = "";
                 if (!string.IsNullOrWhiteSpace(usuario?.EmpresaCodigo))
                 {
@@ -345,7 +338,7 @@ namespace CapaPresentacion.Controllers
                 else if (!string.IsNullOrWhiteSpace(usuario?.NombreCompleto))
                     model.Orden.Compania = usuario.NombreCompleto;
 
-                var rucCedula = ExtraerRucCedula(usuario?.CodigoUsuario ?? usuario?.NombreUsuario);
+                var rucCedula = ResolverRucCedulaDesdeFuentes(userId, usuario);
                 if (!string.IsNullOrWhiteSpace(rucCedula))
                     model.Orden.RucCedula = rucCedula;
 
@@ -362,6 +355,11 @@ namespace CapaPresentacion.Controllers
                 var solicitudAuto = CrearSolicitudAuto(userId);
                 if (solicitudAuto != null && solicitudAuto.CodigoSolicitud > 0)
                 {
+                    if (string.IsNullOrWhiteSpace(solicitudAuto.Ruc))
+                    {
+                        solicitudAuto.Ruc = ResolverRucCedulaDesdeFuentes(userId, usuario);
+                    }
+
                     model.Solicitudes = new List<CapaPresentacion.Models.OrdenRecaudacionNuevaVM.SolicitudOptionVM>
                     {
                         new CapaPresentacion.Models.OrdenRecaudacionNuevaVM.SolicitudOptionVM
@@ -394,6 +392,10 @@ namespace CapaPresentacion.Controllers
 
             // Completar campos faltantes con la última orden registrada del usuario.
             PrefillDesdeUltimaOrden(userId, model);
+            if (string.IsNullOrWhiteSpace(model.Orden.RucCedula))
+            {
+                model.Orden.RucCedula = ResolverRucCedulaDesdeFuentes(userId, usuario);
+            }
             model.Orden.LugarEmision = ResolverLugarEmisionDesdeDb(model.Orden.CodigoSolicitud, userId);
             return View(model);
         }
@@ -462,6 +464,16 @@ namespace CapaPresentacion.Controllers
                     CargarConceptosNueva(model);
                     return View(model);
                 }
+
+                var usuarioActual = UsuarioDAO.ObtenerPorId(idUsuario);
+                var rucDesdeDb = ResolverRucCedulaDesdeFuentes(idUsuario, usuarioActual);
+                if (string.IsNullOrWhiteSpace(rucDesdeDb))
+                {
+                    ModelState.AddModelError("Orden.RucCedula", "No se encontró RUC/Cédula del contribuyente en base de datos.");
+                    CargarConceptosNueva(model);
+                    return View(model);
+                }
+                model.Orden.RucCedula = rucDesdeDb;
 
                 System.Diagnostics.Debug.WriteLine($"Controller Nueva: idUsuario = {idUsuario}");
 
@@ -723,7 +735,7 @@ namespace CapaPresentacion.Controllers
         [HttpPost]
         [Authorize(Roles = "Solicitante,Administrador")]
         [ValidateAntiForgeryToken]
-        public ActionResult Editar(OrdenRecaudacionModel model)
+        public ActionResult Editar(OrdenRecaudacionModel model, string accion)
         {
             int idUsuario = GetUserId();
             if (idUsuario <= 0) return RedirectToAction("Login", "Account");
@@ -776,19 +788,50 @@ namespace CapaPresentacion.Controllers
                 System.Diagnostics.Debug.WriteLine($"OrdenRecaudacion/Editar POST resultado update: id={model.Id}, updated={result}");
                 if (result)
                 {
+                    var accionNormalizada = (accion ?? string.Empty).Trim().ToUpperInvariant();
+                    var solicitarGeneracion = string.Equals(accionNormalizada, "GENERAR", StringComparison.OrdinalIgnoreCase);
+
+                    if (solicitarGeneracion)
+                    {
+                        if ((ordenExistente.Total ?? 0m) <= 0m)
+                        {
+                            TempData["Error"] = "La orden se actualizó, pero no se puede generar sin valores en el detalle.";
+                            return RedirectToAction("Detalles", new { id = model.Id });
+                        }
+
+                        string errEstado;
+                        var cambioEstado = _dao.CambiarEstadoOrden(model.Id, "PENDIENTE", out errEstado);
+                        if (!cambioEstado)
+                        {
+                            // Fallback de compatibilidad con estados legacy.
+                            cambioEstado = _dao.CambiarEstadoOrden(model.Id, "GENERADA", out errEstado);
+                        }
+
+                        if (!cambioEstado)
+                        {
+                            TempData["Error"] = "La orden se actualizó, pero no se pudo cambiar el estado. " + (errEstado ?? string.Empty);
+                            return RedirectToAction("Detalles", new { id = model.Id });
+                        }
+
+                        TempData["OK"] = "Orden actualizada y generada correctamente (pendiente de pago).";
+                        return RedirectToAction("Detalles", new { id = model.Id });
+                    }
+
                     TempData["OK"] = "Orden actualizada correctamente";
                     return RedirectToAction("Index");
                 }
                 else
                 {
                     ModelState.AddModelError("", "Error al actualizar la orden");
-                    return View(model);
+                    var ordenReload = _dao.ObtenerOrdenPorIdModel(model.Id);
+                    return View(ordenReload ?? model);
                 }
             }
             catch (Exception ex)
             {
                 ModelState.AddModelError("", "Error interno: " + ex.Message);
-                return View(model);
+                var ordenReload = _dao.ObtenerOrdenPorIdModel(model.Id);
+                return View(ordenReload ?? model);
             }
         }
 
@@ -1886,6 +1929,8 @@ En transferencias NO colocar sublínea<br>";
         {
             try
             {
+                string ciudadSolicitudFallback = null;
+
                 if (codigoSolicitud.HasValue && codigoSolicitud.Value > 0)
                 {
                     var solicitud = _solicitudDao.ObtenerPorId(codigoSolicitud.Value);
@@ -1896,15 +1941,22 @@ En transferencias NO colocar sublínea<br>";
                             NormalizarCodigoCiudad(ObtenerCodCiudadSolicitudDesdePostgres(codigoSolicitud.Value)),
                             NormalizarCodigoCiudad(solicitud.Ciudad));
 
+                        System.Diagnostics.Debug.WriteLine(
+                            $"ResolverLugarEmisionDesdeDb: solicitud={codigoSolicitud.Value}, codCiudad={codCiudad ?? "(null)"}, ciudadSolicitud={solicitud.Ciudad ?? "(null)"}");
+
                         var lugarDesdeAs400 = ResolverEstacionDesdeAs400(codCiudad);
                         if (!string.IsNullOrWhiteSpace(lugarDesdeAs400))
                         {
+                            System.Diagnostics.Debug.WriteLine(
+                                $"ResolverLugarEmisionDesdeDb: estación AS400 por solicitud={lugarDesdeAs400}");
                             return lugarDesdeAs400;
                         }
 
                         if (!string.IsNullOrWhiteSpace(solicitud.Ciudad))
                         {
-                            return solicitud.Ciudad.Trim();
+                            System.Diagnostics.Debug.WriteLine(
+                                $"ResolverLugarEmisionDesdeDb: ciudad solicitud disponible (fallback diferido)={solicitud.Ciudad.Trim()}");
+                            ciudadSolicitudFallback = solicitud.Ciudad.Trim();
                         }
                     }
                 }
@@ -1915,9 +1967,14 @@ En transferencias NO colocar sublínea<br>";
                         NormalizarCodigoCiudad(ObtenerCodCiudadUsuarioDesdePostgres(codigoUsuario)),
                         NormalizarCodigoCiudad(ObtenerCodCiudadUsuarioDesdeAs400(codigoUsuario)));
 
+                    System.Diagnostics.Debug.WriteLine(
+                        $"ResolverLugarEmisionDesdeDb: usuario={codigoUsuario}, codCiudadUsuario={codCiudadUsuario ?? "(null)"}");
+
                     var lugarUsuarioDesdeAs400 = ResolverEstacionDesdeAs400(codCiudadUsuario);
                     if (!string.IsNullOrWhiteSpace(lugarUsuarioDesdeAs400))
                     {
+                        System.Diagnostics.Debug.WriteLine(
+                            $"ResolverLugarEmisionDesdeDb: estación AS400 por usuario={lugarUsuarioDesdeAs400}");
                         return lugarUsuarioDesdeAs400;
                     }
 
@@ -1927,8 +1984,17 @@ En transferencias NO colocar sublínea<br>";
 
                     if (solicitudConCiudad != null && !string.IsNullOrWhiteSpace(solicitudConCiudad.Ciudad))
                     {
+                        System.Diagnostics.Debug.WriteLine(
+                            $"ResolverLugarEmisionDesdeDb: fallback ciudad última solicitud usuario={solicitudConCiudad.Ciudad.Trim()}");
                         return solicitudConCiudad.Ciudad.Trim();
                     }
+                }
+
+                if (!string.IsNullOrWhiteSpace(ciudadSolicitudFallback))
+                {
+                    System.Diagnostics.Debug.WriteLine(
+                        $"ResolverLugarEmisionDesdeDb: fallback ciudad solicitud final={ciudadSolicitudFallback}");
+                    return ciudadSolicitudFallback;
                 }
             }
             catch (Exception ex)
@@ -1938,9 +2004,12 @@ En transferencias NO colocar sublínea<br>";
 
             if (!string.IsNullOrWhiteSpace(fallback))
             {
+                System.Diagnostics.Debug.WriteLine(
+                    $"ResolverLugarEmisionDesdeDb: fallback final valor previo={fallback.Trim()}");
                 return fallback.Trim();
             }
 
+            System.Diagnostics.Debug.WriteLine("ResolverLugarEmisionDesdeDb: fallback final Quito");
             return "Quito";
         }
 
@@ -2022,13 +2091,52 @@ En transferencias NO colocar sublínea<br>";
             try
             {
                 var usuario = UsuarioDAO.ObtenerPorId(codigoUsuario);
-                if (usuario == null || string.IsNullOrWhiteSpace(usuario.CodigoUsuario))
+                if (usuario == null)
                 {
                     return null;
                 }
 
                 var as400Dao = new UsuarioAS400DAO(new SecureConfig());
-                return as400Dao.ObtenerCodigoCiudadPorCodigoUsuario(usuario.CodigoUsuario);
+                var candidatos = new List<string>();
+
+                void AgregarCandidato(string valor)
+                {
+                    if (!string.IsNullOrWhiteSpace(valor))
+                    {
+                        candidatos.Add(valor.Trim());
+                    }
+                }
+
+                AgregarCandidato(usuario.CodigoUsuario);
+                AgregarCandidato(usuario.NombreUsuario);
+                AgregarCandidato(ExtraerRucCedula(usuario.CodigoUsuario));
+                AgregarCandidato(ExtraerRucCedula(usuario.NombreUsuario));
+
+                var ultimaSolicitud = _solicitudDao
+                    .ObtenerPorUsuario(codigoUsuario)
+                    .FirstOrDefault();
+                if (ultimaSolicitud != null)
+                {
+                    AgregarCandidato(ultimaSolicitud.Ruc);
+                    AgregarCandidato(ultimaSolicitud.CedulaRepresentante);
+                    AgregarCandidato(ExtraerRucCedula(ultimaSolicitud.Ruc));
+                    AgregarCandidato(ExtraerRucCedula(ultimaSolicitud.CedulaRepresentante));
+                }
+
+                foreach (var candidato in candidatos
+                    .Where(c => !string.IsNullOrWhiteSpace(c))
+                    .Distinct(StringComparer.OrdinalIgnoreCase))
+                {
+                    var codCiudad = as400Dao.ObtenerCodigoCiudadPorCodigoUsuario(candidato);
+                    if (!string.IsNullOrWhiteSpace(codCiudad))
+                    {
+                        System.Diagnostics.Debug.WriteLine(
+                            $"ObtenerCodCiudadUsuarioDesdeAs400: match candidato={candidato}, codCiudad={codCiudad}");
+                        return codCiudad.Trim();
+                    }
+                }
+
+                return null;
             }
             catch (Exception ex)
             {
@@ -2071,6 +2179,8 @@ En transferencias NO colocar sublínea<br>";
                     var disponibles = candidatas.Where(c => columnas.Contains(c)).ToList();
                     if (disponibles.Count == 0)
                     {
+                        System.Diagnostics.Debug.WriteLine(
+                            $"ObtenerCodCiudadDesdePostgres: tabla={tabla}, sin columnas candidatas de ciudad.");
                         return null;
                     }
 
@@ -2144,7 +2254,18 @@ En transferencias NO colocar sublínea<br>";
                 empresaNombre = "";
             }
 
-            var rucCedula = ExtraerRucCedula(usuario?.CodigoUsuario ?? usuario?.NombreUsuario);
+            var rucCedula = ResolverRucCedulaDesdeFuentes(userId, usuario);
+            var codCiudad = FirstNonEmpty(
+                NormalizarCodigoCiudad(ObtenerCodCiudadUsuarioDesdePostgres(userId)),
+                NormalizarCodigoCiudad(ObtenerCodCiudadUsuarioDesdeAs400(userId)));
+            if (string.IsNullOrWhiteSpace(codCiudad))
+            {
+                codCiudad = null;
+            }
+            var ciudadResolvida = FirstNonEmpty(
+                ResolverEstacionDesdeAs400(codCiudad),
+                codCiudad,
+                "Quito");
 
             var solicitud = new SolicitudAOCR
             {
@@ -2160,7 +2281,9 @@ En transferencias NO colocar sublínea<br>";
                 RazonSocial = empresaNombre,
                 Email = usuario?.Email ?? "",
                 Telefono = "",
-                Direccion = ""
+                Direccion = "",
+                Ciudad = ciudadResolvida,
+                CodCiudad = codCiudad
             };
 
             var id = _solicitudDao.InsertarConReturn(solicitud);
@@ -2171,6 +2294,168 @@ En transferencias NO colocar sublínea<br>";
             }
 
             return null;
+        }
+
+        private string ResolverRucCedulaDesdeFuentes(int userId, Usuario usuario = null)
+        {
+            var candidatos = new List<string>();
+
+            void AgregarCandidato(string valor, bool desdeDb = false)
+            {
+                var normalizado = desdeDb
+                    ? NormalizarIdentificacionDesdeDb(valor)
+                    : ExtraerRucCedula(valor);
+
+                if (!string.IsNullOrWhiteSpace(normalizado))
+                {
+                    candidatos.Add(normalizado);
+                }
+            }
+
+            try
+            {
+                if (userId > 0)
+                {
+                    var solicitudConRuc = _solicitudDao
+                        .ObtenerPorUsuario(userId)
+                        .FirstOrDefault(s =>
+                            s != null && (
+                                !string.IsNullOrWhiteSpace(NormalizarIdentificacionDesdeDb(s.Ruc)) ||
+                                !string.IsNullOrWhiteSpace(NormalizarIdentificacionDesdeDb(s.CedulaRepresentante))));
+
+                    if (solicitudConRuc != null)
+                    {
+                        AgregarCandidato(solicitudConRuc.Ruc, true);
+                        AgregarCandidato(solicitudConRuc.CedulaRepresentante, true);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine("ResolverRucCedulaDesdeFuentes (solicitud): " + ex.Message);
+            }
+
+            try
+            {
+                if (userId > 0)
+                {
+                    var rtDao = new RTDao();
+                    var solicitudRt = rtDao.GetSolicitudByUsuario(userId);
+                    if (solicitudRt != null && solicitudRt.CompaniaId > 0)
+                    {
+                        var companiaRt = rtDao.GetCompaniaById(solicitudRt.CompaniaId);
+                        if (companiaRt != null)
+                        {
+                            AgregarCandidato(companiaRt.Ruc, true);
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine("ResolverRucCedulaDesdeFuentes (rt): " + ex.Message);
+            }
+
+            try
+            {
+                if (userId > 0)
+                {
+                    var ultimaOrden = _dao
+                        .ListarPorUsuario(userId, null)
+                        .FirstOrDefault(o => o != null && !string.IsNullOrWhiteSpace(o.RucCedula));
+
+                    if (ultimaOrden != null)
+                    {
+                        AgregarCandidato(ultimaOrden.RucCedula, true);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine("ResolverRucCedulaDesdeFuentes (orden): " + ex.Message);
+            }
+
+            try
+            {
+                if (usuario == null && userId > 0)
+                {
+                    usuario = UsuarioDAO.ObtenerPorId(userId);
+                }
+
+                if (usuario != null)
+                {
+                    AgregarCandidato(usuario.Ruc, true);
+                    AgregarCandidato(usuario.CodigoUsuario);
+                    AgregarCandidato(usuario.NombreUsuario);
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine("ResolverRucCedulaDesdeFuentes (usuario): " + ex.Message);
+            }
+
+            try
+            {
+                if (usuario == null && userId > 0)
+                {
+                    usuario = UsuarioDAO.ObtenerPorId(userId);
+                }
+
+                if (usuario != null)
+                {
+                    var as400Dao = new UsuarioAS400DAO(new SecureConfig());
+                    var rucPorCodigo = as400Dao.ObtenerNumeroRucPorCodigoUsuario(usuario.CodigoUsuario);
+                    var rucPorNombre = as400Dao.ObtenerNumeroRucPorCodigoUsuario(usuario.NombreUsuario);
+                    var cedulaPorCodigo = as400Dao.ObtenerCedulaPorCodigoUsuario(usuario.CodigoUsuario);
+                    var cedulaPorNombre = as400Dao.ObtenerCedulaPorCodigoUsuario(usuario.NombreUsuario);
+
+                    AgregarCandidato(rucPorCodigo, true);
+                    AgregarCandidato(rucPorNombre, true);
+                    AgregarCandidato(cedulaPorCodigo, true);
+                    AgregarCandidato(cedulaPorNombre, true);
+
+                    System.Diagnostics.Debug.WriteLine(
+                        $"ResolverRucCedulaDesdeFuentes (as400): userId={userId}, codigo={usuario.CodigoUsuario ?? "(null)"}, " +
+                        $"rucCod={rucPorCodigo ?? "(null)"}, rucNom={rucPorNombre ?? "(null)"}, " +
+                        $"cedCod={cedulaPorCodigo ?? "(null)"}, cedNom={cedulaPorNombre ?? "(null)"}");
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine("ResolverRucCedulaDesdeFuentes (as400): " + ex.Message);
+            }
+
+            var resultado = candidatos.FirstOrDefault() ?? "";
+            System.Diagnostics.Debug.WriteLine(
+                $"ResolverRucCedulaDesdeFuentes: userId={userId}, totalCandidatos={candidatos.Count}, resultado={resultado ?? "(null)"}");
+            return resultado;
+        }
+
+        private string NormalizarIdentificacionDesdeDb(string valor)
+        {
+            if (string.IsNullOrWhiteSpace(valor))
+            {
+                return "";
+            }
+
+            var texto = valor.Trim();
+            var soloDigitos = new string(texto.Where(char.IsDigit).ToArray());
+
+            // Formato local preferido (cédula/RUC EC)
+            if (soloDigitos.Length == 10 || soloDigitos.Length == 13)
+            {
+                return soloDigitos;
+            }
+
+            // Fallback para identificaciones no-EC guardadas en DB/AS400
+            // (ej. pasaporte, tax-id extranjero, etc.)
+            var compacto = new string(texto.Where(ch => char.IsLetterOrDigit(ch) || ch == '-' || ch == '/').ToArray());
+            if (compacto.Length >= 5 && compacto.Length <= 20)
+            {
+                return compacto.ToUpperInvariant();
+            }
+
+            return "";
         }
 
         private string ExtraerRucCedula(string valor)

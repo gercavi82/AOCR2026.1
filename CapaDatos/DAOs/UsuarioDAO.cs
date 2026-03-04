@@ -49,6 +49,7 @@ namespace CapaDatos.DAOs
                 var selectMustChangePassword = hasMustChangePassword
                     ? "COALESCE(must_change_password, FALSE) AS MustChangePassword,"
                     : "FALSE AS MustChangePassword,";
+                var selectRuc = ConstruirSelectRuc(conn);
 
                 string sql = @"
                     SELECT 
@@ -63,6 +64,7 @@ namespace CapaDatos.DAOs
                         fechacreado::timestamp AS FechaCreacion,
                         fechaultimaconexion AS FechaUltimaConexion,
                         " + selectMustChangePassword + @"
+                        " + selectRuc + @"
                         empresa_codigo AS EmpresaCodigo,
                         ruta_documento_legal AS RutaDocumentoLegal,
                         estado_designacion_rt AS EstadoDesignacionRT,
@@ -92,6 +94,7 @@ namespace CapaDatos.DAOs
                 var selectMustChangePassword = hasMustChangePassword
                     ? "COALESCE(must_change_password, FALSE) AS MustChangePassword,"
                     : "FALSE AS MustChangePassword,";
+                var selectRuc = ConstruirSelectRuc(conn);
 
                 string sql = @"
                     SELECT 
@@ -107,6 +110,7 @@ namespace CapaDatos.DAOs
                         fechacreado::timestamp AS FechaCreacion,
                         fechaultimaconexion AS FechaUltimaConexion,
                         " + selectMustChangePassword + @"
+                        " + selectRuc + @"
                         empresa_codigo AS EmpresaCodigo,
                         ruta_documento_legal AS RutaDocumentoLegal,
                         estado_designacion_rt AS EstadoDesignacionRT,
@@ -870,6 +874,38 @@ namespace CapaDatos.DAOs
                     new { id = idUsuario },
                     tx);
             }
+        }
+
+        private static string ConstruirSelectRuc(IDbConnection conn)
+        {
+            var expresiones = new List<string>();
+
+            if (ExisteColumna(conn, "usuario", "ruc"))
+            {
+                expresiones.Add("NULLIF(TRIM(ruc), '')");
+            }
+
+            if (ExisteColumna(conn, "usuario", "numeroruc"))
+            {
+                expresiones.Add("NULLIF(TRIM(numeroruc), '')");
+            }
+
+            if (ExisteColumna(conn, "usuario", "cedulaidentificacion"))
+            {
+                expresiones.Add("NULLIF(TRIM(cedulaidentificacion), '')");
+            }
+
+            if (ExisteColumna(conn, "usuario", "identificaciontributaria"))
+            {
+                expresiones.Add("NULLIF(TRIM(identificaciontributaria), '')");
+            }
+
+            if (expresiones.Count == 0)
+            {
+                return "'' AS Ruc,";
+            }
+
+            return "COALESCE(" + string.Join(", ", expresiones) + ", '') AS Ruc,";
         }
 
         private static bool ExisteColumna(IDbConnection conn, string tableName, string columnName)

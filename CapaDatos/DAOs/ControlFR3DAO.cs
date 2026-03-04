@@ -349,21 +349,23 @@ namespace CapaDatos.DAOs
         {
             try
             {
+                if (string.IsNullOrWhiteSpace(aeropuerto))
+                {
+                    _logger.LogWarning("No se puede actualizar secuencial: aeropuerto vacío");
+                    return false;
+                }
+
                 using (var conn = new NpgsqlConnection(_connectionString))
                 {
                     conn.Open();
-                    var sql = @"INSERT INTO aocr_fr3_secuencial (aeropuerto, secuencial) 
-                                VALUES (@aeropuerto, @secuencial)
-                                ON CONFLICT (aeropuerto) 
-                                DO UPDATE SET secuencial = @secuencial";
-
-                    using (var cmd = new NpgsqlCommand(sql, conn))
-                    {
-                        cmd.Parameters.AddWithValue("@aeropuerto", aeropuerto ?? "");
-                        cmd.Parameters.AddWithValue("@secuencial", secuencial);
-                        return cmd.ExecuteNonQuery() > 0;
-                    }
+                    ActualizarSecuencialInterno(conn, null, aeropuerto, secuencial);
+                    return true;
                 }
+            }
+            catch (Npgsql.PostgresException pgEx)
+            {
+                _logger.LogError(pgEx, "Error PostgreSQL en ActualizarSecuencial. SqlState={0}", pgEx.SqlState);
+                return false;
             }
             catch (Exception ex)
             {
@@ -790,16 +792,92 @@ namespace CapaDatos.DAOs
 
         private void ActualizarSecuencialInterno(NpgsqlConnection conn, NpgsqlTransaction tran, string aeropuerto, decimal secuencial)
         {
-            var sql = @"INSERT INTO aocr_fr3_secuencial (aeropuerto, secuencial) 
-                        VALUES (@aeropuerto, @secuencial)
-                        ON CONFLICT (aeropuerto) 
-                        DO UPDATE SET secuencial = @secuencial";
-
-            using (var cmd = tran != null ? new NpgsqlCommand(sql, conn, tran) : new NpgsqlCommand(sql, conn))
+            try
             {
-                cmd.Parameters.AddWithValue("@aeropuerto", aeropuerto ?? "");
-                cmd.Parameters.AddWithValue("@secuencial", secuencial);
-                cmd.ExecuteNonQuery();
+                // Normalizar aeropuerto (trim + uppercase para consistencia)
+                string aeropuertoNormalizado = (aeropuerto ?? "").Trim().ToUpper();
+                
+                if (string.IsNullOrWhiteSpace(aeropuertoNormalizado))
+                {
+                    _logger.LogWarning("No se puede actualizar secuencial: aeropuerto vacío");
+                    return;
+                }
+
+                var sql = @"INSERT INTO aocr_fr3_secuencial (aeropuerto, secuencial, fecha_actualizacion) 
+                            VALUES (@aeropuerto, @secuencial, NOW())
+                            ON CONFLICT (aeropuerto) 
+                            DO UPDATE SET 
+                                secuencial = EXCLUDED.secuencial,
+                                fecha_actualizacion = NOW()
+                            WHERE aocr_fr3_secuencial.aeropuerto = EXCLUDED.aeropuerto";
+
+                using (var cmd = tran != null ? new NpgsqlCommand(sql, conn, tran) : new NpgsqlCommand(sql, conn))
+                {
+                    cmd.Parameters.AddWithValue("@aeropuerto", aeropuertoNormalizado);
+                    cmd.Parameters.AddWithValue("@secuencial", secuencial);
+                    
+                    int filasAfectadas = cmd.ExecuteNonQuery();
+                    
+                    if (filasAfectadas > 0)
+                    {
+                        _logger.LogInfo("Secuencial actualizado: Aeropuerto={0}, Secuencial={1}", aeropuertoNormalizado, secuencial);
+                    }
+                }
+            }
+            catch (Npgsql.PostgresException pgEx) when (pgEx.SqlState == "42P10") // Missing constraint
+            {
+                _logger.LogError(pgEx, "❌ ERROR DE BD: La tabla aocr_fr3_secuencial no tiene constraint UNIQUE en columna 'aeropuerto'. Ejecute: ALTER TABLE aocr_fr3_secuencial ADD CONSTRAINT uq_aeropuerto UNIQUE (aeropuerto);");
+                throw new InvalidOperationException(
+                    "Configuración de base de datos incompleta. Contacte al administrador del sistema.", 
+                    pgEx
+                );
+            }
+            catch (Npgsql.PostgresException pgEx) when (pgEx.SqlState == "42703") // Column not found
+            {
+                _logger.LogError(pgEx, "❌ ERROR DE BD: Falta columna 'fecha_actualizacion' en aocr_fr3_secuencial");
+                // Intentar sin fecha_actualizacion (fallback)
+                ActualizarSecuencialInternoFallback(conn, tran, aeropuerto, secuencial);
+            }
+            catch (Npgsql.PostgresException pgEx)
+            {
+                _logger.LogError(pgEx, "Error PostgreSQL actualizando secuencial FR3. SqlState={0}, Message={1}", pgEx.SqlState, pgEx.Message);
+                throw new Exception($"Error de base de datos: {pgEx.Message} (Código: {pgEx.SqlState})", pgEx);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error inesperado actualizando secuencial FR3 para aeropuerto {0}", aeropuerto);
+                throw;
+            }
+        }
+
+        /// <summary>
+        /// Fallback para actualizar secuencial sin columna fecha_actualizacion
+        /// </summary>
+        private void ActualizarSecuencialInternoFallback(NpgsqlConnection conn, NpgsqlTransaction tran, string aeropuerto, decimal secuencial)
+        {
+            try
+            {
+                string aeropuertoNormalizado = (aeropuerto ?? "").Trim().ToUpper();
+                
+                var sql = @"INSERT INTO aocr_fr3_secuencial (aeropuerto, secuencial) 
+                            VALUES (@aeropuerto, @secuencial)
+                            ON CONFLICT (aeropuerto) 
+                            DO UPDATE SET secuencial = EXCLUDED.secuencial
+                            WHERE aocr_fr3_secuencial.aeropuerto = EXCLUDED.aeropuerto";
+
+                using (var cmd = tran != null ? new NpgsqlCommand(sql, conn, tran) : new NpgsqlCommand(sql, conn))
+                {
+                    cmd.Parameters.AddWithValue("@aeropuerto", aeropuertoNormalizado);
+                    cmd.Parameters.AddWithValue("@secuencial", secuencial);
+                    cmd.ExecuteNonQuery();
+                    
+                    _logger.LogInfo("Secuencial actualizado (fallback): Aeropuerto={0}, Secuencial={1}", aeropuertoNormalizado, secuencial);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error en fallback de actualización de secuencial");
+                throw;
             }
         }
 

@@ -77,7 +77,8 @@
 
                             <div class="mb-3">
                                 <label class="form-label">RUC/Cédula</label>
-                                @Html.TextBoxFor(m => m.Orden.RucCedula, new { @class = "form-control", placeholder = "RUC o Cédula" })
+                                @Html.TextBoxFor(m => m.Orden.RucCedula, new { @class = "form-control bg-light", placeholder = "RUC o Cédula", @readonly = "readonly", autocomplete = "off" })
+                                <small class="text-muted">Valor obtenido automáticamente desde la base de datos.</small>
                             </div>
 
                             <div class="mb-3">

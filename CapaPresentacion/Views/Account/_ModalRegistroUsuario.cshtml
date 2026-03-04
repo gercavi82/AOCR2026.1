@@ -11,6 +11,8 @@
     <div class="modal-dialog modal-lg modal-dialog-scrollable">
         <div class="modal-content">
             <form id="crearForm" enctype="multipart/form-data">
+                @Html.AntiForgeryToken()
+
                 <div class="modal-header">
                     <div class="col-sm-12 text-center">
                         <img src="~/Content/imganes/logo_header.png" style="width:180px; height:5em" />

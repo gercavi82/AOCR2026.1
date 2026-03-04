@@ -1340,7 +1340,14 @@ namespace CapaDatos.DAOs
                     var sql = @"SELECT * FROM aocr_tbpago
                                 WHERE codigo_solicitud = @ordenId
                                    OR codigo_solicitud = @codigoSolicitud
-                                ORDER BY fecha_pago DESC, codigo_pago DESC";
+                                ORDER BY
+                                    CASE
+                                        WHEN codigo_solicitud = @codigoSolicitud THEN 0
+                                        WHEN codigo_solicitud = @ordenId THEN 1
+                                        ELSE 2
+                                    END,
+                                    fecha_pago DESC,
+                                    codigo_pago DESC";
 
                     using (var cmd = new NpgsqlCommand(sql, conn))
                     {
@@ -1381,7 +1388,14 @@ namespace CapaDatos.DAOs
                     var sql = @"SELECT * FROM aocr_tbpago
                                 WHERE codigo_solicitud = @ordenId
                                    OR codigo_solicitud = @codigoSolicitud
-                                ORDER BY fecha_pago DESC, codigo_pago DESC
+                                ORDER BY
+                                    CASE
+                                        WHEN codigo_solicitud = @codigoSolicitud THEN 0
+                                        WHEN codigo_solicitud = @ordenId THEN 1
+                                        ELSE 2
+                                    END,
+                                    fecha_pago DESC,
+                                    codigo_pago DESC
                                 LIMIT 1";
 
                     using (var cmd = new NpgsqlCommand(sql, conn))
@@ -1499,6 +1513,10 @@ namespace CapaDatos.DAOs
                 using (var conn = new NpgsqlConnection(_connectionString))
                 {
                     conn.Open();
+                    if (_facturaPagoTableNoDisponible || _fr3ColumnsNoDisponibles)
+                    {
+                        RefreshFacturaPagoSchemaFlags(conn);
+                    }
                     var includeFr3 = !_fr3ColumnsNoDisponibles;
 
                     try
@@ -1530,6 +1548,69 @@ namespace CapaDatos.DAOs
             {
                 _logger.LogError(ex, "Error en ObtenerFacturaPagoPorOrden");
                 return null;
+            }
+        }
+
+        private void RefreshFacturaPagoSchemaFlags(NpgsqlConnection conn)
+        {
+            if (conn == null)
+            {
+                return;
+            }
+
+            try
+            {
+                var tableExists = false;
+                const string sqlTable = @"
+                    SELECT 1
+                    FROM information_schema.tables
+                    WHERE table_schema = 'public'
+                      AND table_name = 'aocr_tb_factura_pago'
+                    LIMIT 1";
+
+                using (var cmd = new NpgsqlCommand(sqlTable, conn))
+                {
+                    var exists = cmd.ExecuteScalar();
+                    tableExists = exists != null && exists != DBNull.Value;
+                }
+
+                if (!tableExists)
+                {
+                    return;
+                }
+
+                var fr3ColumnsCount = 0;
+                const string sqlCols = @"
+                    SELECT COUNT(*)
+                    FROM information_schema.columns
+                    WHERE table_schema = 'public'
+                      AND table_name = 'aocr_tb_factura_pago'
+                      AND column_name IN (
+                        'fr3_estado',
+                        'fr3_numero',
+                        'fr3_secuencial',
+                        'fr3_aeropuerto',
+                        'fr3_anio',
+                        'fr3_error'
+                      )";
+
+                using (var cmdCols = new NpgsqlCommand(sqlCols, conn))
+                {
+                    var countValue = cmdCols.ExecuteScalar();
+                    fr3ColumnsCount = countValue != null && countValue != DBNull.Value
+                        ? Convert.ToInt32(countValue)
+                        : 0;
+                }
+
+                lock (_schemaWarningLock)
+                {
+                    _facturaPagoTableNoDisponible = false;
+                    _fr3ColumnsNoDisponibles = fr3ColumnsCount < 6;
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning("No se pudo refrescar el esquema de aocr_tb_factura_pago: " + ex.Message);
             }
         }
 
@@ -2061,20 +2142,37 @@ namespace CapaDatos.DAOs
                         // Determinar id de pago si no fue proporcionado: obtener ultimo pago por orden
                         
                         int targetPagoId = pagoId ?? 0;
+                        int codigoSolicitud = ordenId;
+                        string numeroOrden = null;
+                        decimal totalOrden = 0m;
                         if (targetPagoId == 0)
                         {
-                            int codigoSolicitud = ordenId;
-                            var sqlCodigoSolicitud = "SELECT codigo_solicitud FROM aocr_or_orden WHERE id = @ordenId";
+                            var sqlCodigoSolicitud = "SELECT codigo_solicitud, numero_orden, total FROM aocr_or_orden WHERE id = @ordenId";
                             using (var cmdCodigo = new NpgsqlCommand(sqlCodigoSolicitud, conn, tx))
                             {
                                 cmdCodigo.Parameters.AddWithValue("@ordenId", ordenId);
-                                var rawCodigo = cmdCodigo.ExecuteScalar();
-                                if (rawCodigo != null && rawCodigo != DBNull.Value)
+                                using (var readerCodigo = cmdCodigo.ExecuteReader())
                                 {
-                                    var parsedCodigo = ParseIntOrDefault(rawCodigo.ToString());
-                                    if (parsedCodigo > 0)
+                                    if (readerCodigo.Read())
                                     {
-                                        codigoSolicitud = parsedCodigo;
+                                        if (readerCodigo["codigo_solicitud"] != DBNull.Value)
+                                        {
+                                            var parsedCodigo = ParseIntOrDefault(readerCodigo["codigo_solicitud"].ToString());
+                                            if (parsedCodigo > 0)
+                                            {
+                                                codigoSolicitud = parsedCodigo;
+                                            }
+                                        }
+
+                                        if (readerCodigo["numero_orden"] != DBNull.Value)
+                                        {
+                                            numeroOrden = readerCodigo["numero_orden"].ToString();
+                                        }
+
+                                        if (readerCodigo["total"] != DBNull.Value)
+                                        {
+                                            totalOrden = Convert.ToDecimal(readerCodigo["total"]);
+                                        }
                                     }
                                 }
                             }
@@ -2083,7 +2181,14 @@ namespace CapaDatos.DAOs
                                            FROM aocr_tbpago
                                            WHERE codigo_solicitud = @ordenId
                                               OR codigo_solicitud = @codigoSolicitud
-                                           ORDER BY fecha_pago DESC, codigo_pago DESC
+                                           ORDER BY
+                                               CASE
+                                                   WHEN codigo_solicitud = @codigoSolicitud THEN 0
+                                                   WHEN codigo_solicitud = @ordenId THEN 1
+                                                   ELSE 2
+                                               END,
+                                               fecha_pago DESC,
+                                               codigo_pago DESC
                                            LIMIT 1";
                             using (var cmdGet = new NpgsqlCommand(sqlGet, conn, tx))
                             {
@@ -2098,9 +2203,35 @@ namespace CapaDatos.DAOs
                         var requierePago = estadoPagoNormalizado != "ANULADO" && estadoPagoNormalizado != "RECHAZADO";
                         if (targetPagoId == 0 && requierePago)
                         {
-                            tx.Rollback();
-                            err = "No se encontró pago para validar.";
-                            return false;
+                            try
+                            {
+                                var numeroFacturaAuto = string.IsNullOrWhiteSpace(numeroOrden)
+                                    ? ("ORDEN-" + ordenId.ToString())
+                                    : numeroOrden.Trim();
+                                var montoAuto = totalOrden > 0m ? totalOrden : 0.01m;
+
+                                targetPagoId = CrearPagoValidadoDesdeOrden(
+                                    conn,
+                                    tx,
+                                    codigoSolicitud,
+                                    numeroFacturaAuto,
+                                    montoAuto,
+                                    usuario,
+                                    observaciones,
+                                    null);
+
+                                _logger.LogInfo(
+                                    "ActualizarPagoYEstadoTransaccional: pago auto-creado para ordenId={0}, codigoSolicitud={1}, pagoId={2}",
+                                    ordenId,
+                                    codigoSolicitud,
+                                    targetPagoId);
+                            }
+                            catch (Exception exAutoPago)
+                            {
+                                tx.Rollback();
+                                err = "No se encontró pago para validar y no se pudo generar uno automáticamente. " + exAutoPago.Message;
+                                return false;
+                            }
                         }
 
                         if (targetPagoId > 0)
@@ -2593,6 +2724,7 @@ namespace CapaDatos.DAOs
                         const string sqlUpdateFactura = @"
                             UPDATE aocr_tb_factura_pago
                             SET
+                                pago_id = COALESCE(pago_id, @pago_id),
                                 fr3_estado = @fr3_estado,
                                 fr3_numero = CASE
                                     WHEN @fr3_numero IS NULL OR TRIM(@fr3_numero) = '' THEN fr3_numero
@@ -2617,8 +2749,20 @@ namespace CapaDatos.DAOs
                                 END,
                                 fr3_reintentos = COALESCE(fr3_reintentos, 0) + @retry_increment,
                                 updated_at = NOW()
-                            WHERE orden_id = @orden_id
-                              AND (@pago_id IS NULL OR pago_id = @pago_id OR pago_id IS NULL)";
+                            WHERE id = (
+                                SELECT id
+                                FROM aocr_tb_factura_pago
+                                WHERE orden_id = @orden_id
+                                ORDER BY
+                                    CASE
+                                        WHEN @pago_id IS NOT NULL AND pago_id = @pago_id THEN 0
+                                        WHEN pago_id IS NULL THEN 1
+                                        ELSE 2
+                                    END,
+                                    creado_en DESC,
+                                    id DESC
+                                LIMIT 1
+                            )";
 
                         using (var cmdFactura = new NpgsqlCommand(sqlUpdateFactura, conn, tx))
                         {
@@ -2635,9 +2779,28 @@ namespace CapaDatos.DAOs
                             var rows = cmdFactura.ExecuteNonQuery();
                             if (rows <= 0)
                             {
-                                tx.Rollback();
-                                err = "No existe registro de factura asociado para actualizar estado FR3.";
-                                return false;
+                                string placeholderError;
+                                if (TryCrearRegistroFacturaPlaceholderParaFr3(
+                                    conn,
+                                    tx,
+                                    ordenId,
+                                    pagoId,
+                                    resultadoFr3,
+                                    usuario,
+                                    out placeholderError))
+                                {
+                                    rows = cmdFactura.ExecuteNonQuery();
+                                }
+
+                                if (rows <= 0)
+                                {
+                                    tx.Rollback();
+                                    err = "No existe registro de factura asociado para actualizar estado FR3."
+                                        + (string.IsNullOrWhiteSpace(placeholderError)
+                                            ? string.Empty
+                                            : (" " + placeholderError));
+                                    return false;
+                                }
                             }
                         }
 
@@ -2793,6 +2956,390 @@ namespace CapaDatos.DAOs
                 _logger.LogError(ex, "Error en RegistrarResultadoFr3");
                 return false;
             }
+        }
+
+        public bool AsegurarFacturaPagoParaFr3(
+            int ordenId,
+            int? pagoId,
+            string numeroFactura,
+            string usuario,
+            out string err)
+        {
+            err = null;
+
+            if (ordenId <= 0)
+            {
+                err = "Orden invalida para preparar trazabilidad FR3.";
+                return false;
+            }
+
+            try
+            {
+                using (var conn = new NpgsqlConnection(_connectionString))
+                {
+                    conn.Open();
+                    using (var tx = conn.BeginTransaction())
+                    {
+                        EnsureFacturacionSchema(conn, tx);
+
+                        var preResultado = new FacturacionAS400Result
+                        {
+                            NumeroFactura = numeroFactura
+                        };
+
+                        string placeholderError;
+                        var ensured = TryCrearRegistroFacturaPlaceholderParaFr3(
+                            conn,
+                            tx,
+                            ordenId,
+                            pagoId,
+                            preResultado,
+                            usuario,
+                            out placeholderError);
+
+                        if (!ensured)
+                        {
+                            tx.Rollback();
+                            err = string.IsNullOrWhiteSpace(placeholderError)
+                                ? "No se pudo asegurar el registro base de factura para FR3."
+                                : placeholderError;
+                            return false;
+                        }
+
+                        const string sqlTouch = @"
+                            UPDATE aocr_tb_factura_pago
+                            SET
+                                pago_id = CASE
+                                    WHEN @pago_id IS NULL THEN pago_id
+                                    WHEN pago_id IS NULL THEN @pago_id
+                                    ELSE pago_id
+                                END,
+                                numero_factura = CASE
+                                    WHEN @numero_factura IS NULL OR TRIM(@numero_factura) = '' THEN numero_factura
+                                    ELSE @numero_factura
+                                END,
+                                fr3_estado = CASE
+                                    WHEN fr3_estado IS NULL OR TRIM(fr3_estado) = '' THEN 'PENDIENTE'
+                                    ELSE fr3_estado
+                                END,
+                                updated_at = NOW()
+                            WHERE orden_id = @orden_id";
+
+                        using (var cmdTouch = new NpgsqlCommand(sqlTouch, conn, tx))
+                        {
+                            cmdTouch.Parameters.AddWithValue("@orden_id", ordenId);
+                            cmdTouch.Parameters.Add(new NpgsqlParameter("@pago_id", NpgsqlDbType.Integer)
+                            {
+                                Value = pagoId.HasValue ? (object)pagoId.Value : DBNull.Value
+                            });
+                            cmdTouch.Parameters.Add(new NpgsqlParameter("@numero_factura", NpgsqlDbType.Text)
+                            {
+                                Value = string.IsNullOrWhiteSpace(numeroFactura) ? (object)DBNull.Value : numeroFactura.Trim()
+                            });
+
+                            var rows = cmdTouch.ExecuteNonQuery();
+                            if (rows <= 0)
+                            {
+                                tx.Rollback();
+                                err = "No se encontro registro de factura para preparar trazabilidad FR3.";
+                                return false;
+                            }
+                        }
+
+                        tx.Commit();
+                        return true;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                err = ex.Message;
+                _logger.LogError(ex, "Error en AsegurarFacturaPagoParaFr3");
+                return false;
+            }
+        }
+
+        private bool TryCrearRegistroFacturaPlaceholderParaFr3(
+            NpgsqlConnection conn,
+            NpgsqlTransaction tx,
+            int ordenId,
+            int? pagoId,
+            FacturacionAS400Result resultadoFr3,
+            string usuario,
+            out string err)
+        {
+            err = null;
+
+            try
+            {
+                const string sqlExiste = @"
+                    SELECT id
+                    FROM aocr_tb_factura_pago
+                    WHERE orden_id = @orden_id
+                    LIMIT 1
+                    FOR UPDATE";
+
+                using (var cmdExiste = new NpgsqlCommand(sqlExiste, conn, tx))
+                {
+                    cmdExiste.Parameters.AddWithValue("@orden_id", ordenId);
+
+                    var existe = cmdExiste.ExecuteScalar();
+                    if (existe != null && existe != DBNull.Value)
+                    {
+                        return true;
+                    }
+                }
+
+                var subtotalExpr = ExisteColumnaEnTabla(conn, tx, "aocr_or_orden", "subtotal")
+                    ? "COALESCE(subtotal, 0)"
+                    : "0::numeric";
+                var ivaExpr = ExisteColumnaEnTabla(conn, tx, "aocr_or_orden", "iva")
+                    ? "COALESCE(iva, 0)"
+                    : "0::numeric";
+                var totalExpr = ExisteColumnaEnTabla(conn, tx, "aocr_or_orden", "total")
+                    ? "COALESCE(total, 0)"
+                    : "0::numeric";
+
+                var sqlOrden = string.Format(
+                    @"SELECT numero_orden,
+                             {0} AS subtotal,
+                             {1} AS iva,
+                             {2} AS total
+                      FROM aocr_or_orden
+                      WHERE id = @orden_id
+                      LIMIT 1",
+                    subtotalExpr,
+                    ivaExpr,
+                    totalExpr);
+
+                string numeroOrden = null;
+                decimal subtotal = 0m;
+                decimal iva = 0m;
+                decimal total = 0m;
+
+                using (var cmdOrden = new NpgsqlCommand(sqlOrden, conn, tx))
+                {
+                    cmdOrden.Parameters.AddWithValue("@orden_id", ordenId);
+                    using (var reader = cmdOrden.ExecuteReader())
+                    {
+                        if (!reader.Read())
+                        {
+                            err = "No se encontró la orden para crear trazabilidad FR3 en aocr_tb_factura_pago.";
+                            return false;
+                        }
+
+                        numeroOrden = reader["numero_orden"] != DBNull.Value
+                            ? reader["numero_orden"].ToString()
+                            : null;
+                        subtotal = reader["subtotal"] != DBNull.Value
+                            ? Convert.ToDecimal(reader["subtotal"])
+                            : 0m;
+                        iva = reader["iva"] != DBNull.Value
+                            ? Convert.ToDecimal(reader["iva"])
+                            : 0m;
+                        total = reader["total"] != DBNull.Value
+                            ? Convert.ToDecimal(reader["total"])
+                            : 0m;
+                    }
+                }
+
+                if (total <= 0m)
+                {
+                    total = subtotal + iva;
+                }
+                if (total <= 0m)
+                {
+                    total = 0.01m;
+                }
+
+                var numeroFactura = NormalizarNumeroFacturaPlaceholder(
+                    resultadoFr3 != null ? resultadoFr3.NumeroFactura : null,
+                    numeroOrden,
+                    ordenId);
+
+                int? pagoIdParaInsertar = pagoId;
+                if (pagoId.HasValue && pagoId.Value > 0)
+                {
+                    const string sqlPagoEnUso = @"
+                        SELECT orden_id
+                        FROM aocr_tb_factura_pago
+                        WHERE pago_id = @pago_id
+                        LIMIT 1";
+
+                    using (var cmdPagoEnUso = new NpgsqlCommand(sqlPagoEnUso, conn, tx))
+                    {
+                        cmdPagoEnUso.Parameters.AddWithValue("@pago_id", pagoId.Value);
+                        var ordenPagoObj = cmdPagoEnUso.ExecuteScalar();
+                        if (ordenPagoObj != null && ordenPagoObj != DBNull.Value)
+                        {
+                            var ordenPago = Convert.ToInt32(ordenPagoObj);
+                            if (ordenPago != ordenId)
+                            {
+                                pagoIdParaInsertar = null;
+                                _logger.LogWarning(
+                                    "Pago ya vinculado a otra orden en aocr_tb_factura_pago. Se creara placeholder sin pago_id. ordenId={0}, pagoId={1}, ordenExistente={2}",
+                                    ordenId,
+                                    pagoId.Value,
+                                    ordenPago);
+                            }
+                        }
+                    }
+                }
+
+                const string sqlInsert = @"
+                    INSERT INTO aocr_tb_factura_pago
+                    (
+                        orden_id,
+                        pago_id,
+                        numero_factura,
+                        autorizacion_factura,
+                        fecha_emision,
+                        subtotal,
+                        iva,
+                        total,
+                        observaciones,
+                        file_name,
+                        content_type,
+                        file_size,
+                        file_path,
+                        creado_por,
+                        creado_en,
+                        fr3_estado,
+                        updated_at
+                    )
+                    VALUES
+                    (
+                        @orden_id,
+                        @pago_id,
+                        @numero_factura,
+                        NULL,
+                        @fecha_emision,
+                        @subtotal,
+                        @iva,
+                        @total,
+                        @observaciones,
+                        @file_name,
+                        @content_type,
+                        @file_size,
+                        @file_path,
+                        @creado_por,
+                        NOW(),
+                        @fr3_estado,
+                        NOW()
+                    )";
+
+                using (var cmdInsert = new NpgsqlCommand(sqlInsert, conn, tx))
+                {
+                    cmdInsert.Parameters.AddWithValue("@orden_id", ordenId);
+                    cmdInsert.Parameters.Add(new NpgsqlParameter("@pago_id", NpgsqlDbType.Integer)
+                    {
+                        Value = pagoIdParaInsertar.HasValue ? (object)pagoIdParaInsertar.Value : DBNull.Value
+                    });
+                    cmdInsert.Parameters.AddWithValue("@numero_factura", numeroFactura);
+                    cmdInsert.Parameters.AddWithValue("@fecha_emision", DateTime.Today);
+                    cmdInsert.Parameters.AddWithValue("@subtotal", subtotal);
+                    cmdInsert.Parameters.AddWithValue("@iva", iva);
+                    cmdInsert.Parameters.AddWithValue("@total", total);
+                    cmdInsert.Parameters.AddWithValue("@observaciones", "Registro automático para trazabilidad FR3.");
+                    cmdInsert.Parameters.AddWithValue("@file_name", "FR3_AUTOGENERADO.txt");
+                    cmdInsert.Parameters.AddWithValue("@content_type", "text/plain");
+                    cmdInsert.Parameters.AddWithValue("@file_size", 0L);
+                    cmdInsert.Parameters.AddWithValue("@file_path", "AUTO://FR3");
+                    cmdInsert.Parameters.AddWithValue("@creado_por", (object)usuario ?? "SISTEMA");
+                    cmdInsert.Parameters.AddWithValue("@fr3_estado", "PENDIENTE");
+                    cmdInsert.ExecuteNonQuery();
+                }
+
+                _logger.LogInfo(
+                    "Se creó registro placeholder en aocr_tb_factura_pago para trazabilidad FR3. ordenId={0}, pagoId={1}, numeroFactura={2}",
+                    ordenId,
+                    pagoId.HasValue ? pagoId.Value.ToString() : "null",
+                    numeroFactura);
+
+                return true;
+            }
+            catch (PostgresException pgEx)
+            {
+                if (pgEx.SqlState == "23505")
+                {
+                    if (ExisteRegistroFacturaPagoPorOrden(conn, tx, ordenId))
+                    {
+                        return true;
+                    }
+
+                    err = "Conflicto de unicidad al crear placeholder FR3 y no existe registro asociado a la orden.";
+                    _logger.LogWarning("No se pudo crear placeholder de factura para FR3. Detalle={0}", pgEx.Message);
+                    return false;
+                }
+
+                err = pgEx.MessageText ?? pgEx.Message;
+                _logger.LogWarning("No se pudo crear placeholder de factura para FR3. Detalle={0}", pgEx.Message);
+                return false;
+            }
+            catch (Exception ex)
+            {
+                err = ex.Message;
+                _logger.LogWarning("No se pudo crear placeholder de factura para FR3. Detalle={0}", ex.Message);
+                return false;
+            }
+        }
+
+        private static bool ExisteRegistroFacturaPagoPorOrden(
+            NpgsqlConnection conn,
+            NpgsqlTransaction tx,
+            int ordenId)
+        {
+            const string sql = @"
+                SELECT 1
+                FROM aocr_tb_factura_pago
+                WHERE orden_id = @orden_id
+                LIMIT 1";
+
+            using (var cmd = new NpgsqlCommand(sql, conn, tx))
+            {
+                cmd.Parameters.AddWithValue("@orden_id", ordenId);
+                var value = cmd.ExecuteScalar();
+                return value != null && value != DBNull.Value;
+            }
+        }
+
+        private static bool ExisteColumnaEnTabla(
+            NpgsqlConnection conn,
+            NpgsqlTransaction tx,
+            string tableName,
+            string columnName)
+        {
+            const string sql = @"
+                SELECT 1
+                FROM information_schema.columns
+                WHERE table_schema = 'public'
+                  AND table_name = @table_name
+                  AND column_name = @column_name
+                LIMIT 1";
+
+            using (var cmd = new NpgsqlCommand(sql, conn, tx))
+            {
+                cmd.Parameters.AddWithValue("@table_name", tableName);
+                cmd.Parameters.AddWithValue("@column_name", columnName);
+                var value = cmd.ExecuteScalar();
+                return value != null && value != DBNull.Value;
+            }
+        }
+
+        private static string NormalizarNumeroFacturaPlaceholder(string numeroFactura, string numeroOrden, int ordenId)
+        {
+            var candidato = string.IsNullOrWhiteSpace(numeroFactura)
+                ? (string.IsNullOrWhiteSpace(numeroOrden) ? string.Empty : numeroOrden.Trim())
+                : numeroFactura.Trim();
+
+            if (string.IsNullOrWhiteSpace(candidato))
+            {
+                candidato = "FR3-" + ordenId;
+            }
+
+            return candidato.Length <= 80
+                ? candidato
+                : candidato.Substring(0, 80);
         }
 
         private void TryEncolarNotificacionFr3(
@@ -2955,6 +3502,22 @@ namespace CapaDatos.DAOs
                     fr3_reintentos INTEGER NOT NULL DEFAULT 0,
                     updated_at TIMESTAMP
                 );
+
+                ALTER TABLE public.aocr_tb_factura_pago ADD COLUMN IF NOT EXISTS orden_id INTEGER;
+                ALTER TABLE public.aocr_tb_factura_pago ADD COLUMN IF NOT EXISTS pago_id INTEGER;
+                ALTER TABLE public.aocr_tb_factura_pago ADD COLUMN IF NOT EXISTS numero_factura VARCHAR(80);
+                ALTER TABLE public.aocr_tb_factura_pago ADD COLUMN IF NOT EXISTS autorizacion_factura VARCHAR(80);
+                ALTER TABLE public.aocr_tb_factura_pago ADD COLUMN IF NOT EXISTS fecha_emision DATE;
+                ALTER TABLE public.aocr_tb_factura_pago ADD COLUMN IF NOT EXISTS subtotal NUMERIC(18,2);
+                ALTER TABLE public.aocr_tb_factura_pago ADD COLUMN IF NOT EXISTS iva NUMERIC(18,2);
+                ALTER TABLE public.aocr_tb_factura_pago ADD COLUMN IF NOT EXISTS total NUMERIC(18,2);
+                ALTER TABLE public.aocr_tb_factura_pago ADD COLUMN IF NOT EXISTS observaciones TEXT;
+                ALTER TABLE public.aocr_tb_factura_pago ADD COLUMN IF NOT EXISTS file_name VARCHAR(255);
+                ALTER TABLE public.aocr_tb_factura_pago ADD COLUMN IF NOT EXISTS content_type VARCHAR(120);
+                ALTER TABLE public.aocr_tb_factura_pago ADD COLUMN IF NOT EXISTS file_size BIGINT;
+                ALTER TABLE public.aocr_tb_factura_pago ADD COLUMN IF NOT EXISTS file_path TEXT;
+                ALTER TABLE public.aocr_tb_factura_pago ADD COLUMN IF NOT EXISTS creado_por VARCHAR(120);
+                ALTER TABLE public.aocr_tb_factura_pago ADD COLUMN IF NOT EXISTS creado_en TIMESTAMP;
 
                 DO $$
                 BEGIN

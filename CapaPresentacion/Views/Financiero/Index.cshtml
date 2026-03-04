@@ -321,16 +321,89 @@
         setSubmitting(isSubmitting);
     }
 
-    function postJson(url, body) {
-        return fetch(url, {
-            method: 'POST',
-            headers: {
-                'X-Requested-With': 'XMLHttpRequest',
-                'Content-Type': 'application/json'
-            },
-            credentials: 'same-origin',
-            body: JSON.stringify(body || {})
-        }).then(function (r) { return r.json(); });
+    function getCsrfToken() {
+        if (tokenInput && tokenInput.value) {
+            return tokenInput.value;
+        }
+
+        var layoutTokenInput = document.querySelector('#__AjaxAntiForgeryForm input[name="__RequestVerificationToken"]');
+        if (layoutTokenInput && layoutTokenInput.value) {
+            return layoutTokenInput.value;
+        }
+
+        var anyTokenInput = document.querySelector('input[name="__RequestVerificationToken"]');
+        return anyTokenInput && anyTokenInput.value ? anyTokenInput.value : '';
+    }
+
+    function getCookieValue(name) {
+        if (!name || !document.cookie) {
+            return '';
+        }
+
+        var encodedName = encodeURIComponent(name) + '=';
+        var rawCookies = document.cookie.split(';');
+        for (var i = 0; i < rawCookies.length; i++) {
+            var cookie = rawCookies[i].trim();
+            if (cookie.indexOf(encodedName) === 0) {
+                return decodeURIComponent(cookie.substring(encodedName.length));
+            }
+        }
+        return '';
+    }
+
+    function getCsrfCookieToken() {
+        var preferredNames = ['__AOCR_RequestVerificationToken', '__RequestVerificationToken'];
+        for (var i = 0; i < preferredNames.length; i++) {
+            var preferredValue = getCookieValue(preferredNames[i]);
+            if (preferredValue) {
+                return preferredValue;
+            }
+        }
+
+        if (!document.cookie) {
+            return '';
+        }
+
+        var rawCookies = document.cookie.split(';');
+        for (var j = 0; j < rawCookies.length; j++) {
+            var part = rawCookies[j].trim();
+            var separator = part.indexOf('=');
+            if (separator <= 0) {
+                continue;
+            }
+
+            var key = decodeURIComponent(part.substring(0, separator));
+            if (/RequestVerificationToken/i.test(key)) {
+                return decodeURIComponent(part.substring(separator + 1));
+            }
+        }
+        return '';
+    }
+
+    function buildAjaxHeaders(csrfToken) {
+        var headers = {
+            'X-Requested-With': 'XMLHttpRequest',
+            'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
+            'Accept': 'application/json, text/plain, */*'
+        };
+
+        if (!csrfToken) {
+            return headers;
+        }
+
+        var cookieToken = getCsrfCookieToken();
+        var headerToken = cookieToken ? (cookieToken + ':' + csrfToken) : csrfToken;
+        headers['RequestVerificationToken'] = headerToken;
+        headers['__RequestVerificationToken'] = csrfToken;
+        return headers;
+    }
+
+    function buildFormBody(values) {
+        var params = new URLSearchParams();
+        Object.keys(values || {}).forEach(function (key) {
+            params.append(key, values[key] == null ? '' : String(values[key]));
+        });
+        return params.toString();
     }
 
     function openModalFromButton(button) {
@@ -374,21 +447,35 @@
 
         clearAlert();
         setInFlight(true);
+        var shouldUnlock = true;
+        var ordenId = (inputOrdenId.value || '').trim();
+        if (!/^\d+$/.test(ordenId)) {
+            shouldUnlock = true;
+            setInFlight(false);
+            showAlert('danger', 'No se pudo identificar la orden. Cierre y vuelva a abrir el modal.');
+            return;
+        }
+
+        var csrfToken = getCsrfToken();
+        if (!csrfToken) {
+            shouldUnlock = true;
+            setInFlight(false);
+            showAlert('danger', 'La sesion expiro. Recargue la pagina e intente nuevamente.');
+            return;
+        }
 
         var actionUrl = '@Url.Action("AprobarYEnviarAS400", "Financiero")';
-        var fd = new FormData();
-        fd.append('ordenId', inputOrdenId.value);
-        if (tokenInput && tokenInput.value) {
-            fd.append('__RequestVerificationToken', tokenInput.value);
-        }
+        var body = buildFormBody({
+            ordenId: ordenId,
+            id: ordenId,
+            __RequestVerificationToken: csrfToken
+        });
 
         fetch(actionUrl, {
             method: 'POST',
-            body: fd,
+            body: body,
             credentials: 'same-origin',
-            headers: {
-                'X-Requested-With': 'XMLHttpRequest'
-            }
+            headers: buildAjaxHeaders(csrfToken)
         })
         .then(function (response) {
             return response.text().then(function (text) {
@@ -411,13 +498,16 @@
                 if (!errorMessage) {
                     errorMessage = 'Error al enviar a AS400 (HTTP ' + result.response.status + ').';
                 }
-                throw new Error(errorMessage);
+                var httpError = new Error(errorMessage);
+                httpError.httpStatus = result.response.status;
+                throw httpError;
             }
 
             var finalMessage = payload.warning
                 ? (payload.message + ' ' + payload.warning)
                 : payload.message;
             showAlert('success', finalMessage || 'Enviado a AS400 correctamente.');
+            shouldUnlock = false;
 
             setTimeout(function () {
                 modal.hide();
@@ -425,10 +515,18 @@
             }, 700);
         })
         .catch(function (error) {
-            showAlert('danger', error && error.message ? error.message : 'No se pudo completar la operación.');
+            var message = error && error.message ? error.message : 'No se pudo completar la operación.';
+            if (error && error.httpStatus === 400 && /bad request|antifals|forgery|token/i.test(message)) {
+                showAlert('danger', 'La sesion o el token de seguridad expiraron. Se recargara la pagina para reintentar.');
+                setTimeout(function () { window.location.reload(); }, 900);
+                return;
+            }
+            showAlert('danger', message);
         })
         .finally(function () {
-            setInFlight(false);
+            if (shouldUnlock) {
+                setInFlight(false);
+            }
         });
     });
 
@@ -440,7 +538,7 @@
 
         event.preventDefault();
         var ordenId = retryButton.getAttribute('data-orden-id');
-        if (!ordenId) {
+        if (!ordenId || !/^\d+$/.test(String(ordenId).trim())) {
             return;
         }
 
@@ -449,18 +547,24 @@
         }
 
         retryButton.disabled = true;
-
-        var fd = new FormData();
-        fd.append('ordenId', ordenId);
-        if (tokenInput && tokenInput.value) {
-            fd.append('__RequestVerificationToken', tokenInput.value);
+        var csrfToken = getCsrfToken();
+        if (!csrfToken) {
+            retryButton.disabled = false;
+            alert('La sesion expiro. Recargue la pagina e intente nuevamente.');
+            return;
         }
+
+        var body = buildFormBody({
+            ordenId: String(ordenId).trim(),
+            id: String(ordenId).trim(),
+            __RequestVerificationToken: csrfToken
+        });
 
         fetch('@Url.Action("ReintentarFr3", "Financiero")', {
             method: 'POST',
-            body: fd,
+            body: body,
             credentials: 'same-origin',
-            headers: { 'X-Requested-With': 'XMLHttpRequest' }
+            headers: buildAjaxHeaders(csrfToken)
         })
         .then(function (r) {
             return r.text().then(function (t) {

@@ -100,6 +100,19 @@ namespace CapaNegocio.Services
                 return true;
             }
 
+            // OPCAR5.OPCNUM = DECIMAL(10,0) en AS400.
+            numeroFactura = NormalizarReferenciaNumericaAs400(
+                numeroFactura,
+                ordenId,
+                10,
+                "numero_factura");
+
+            if (string.IsNullOrWhiteSpace(numeroFactura))
+            {
+                mensaje = "No se pudo determinar un numero de factura valido para AS400.";
+                return false;
+            }
+
             // --- Idempotency check ---
             var claveIdempotencia = IdempotencyService.GenerarClaveFr3(ordenId, numeroFactura);
             string resultadoExistente;
@@ -157,6 +170,23 @@ namespace CapaNegocio.Services
                     pago = ordenDao.ObtenerUltimoPagoPorOrden(ordenId);
                 }
 
+                string errorEnsureFr3;
+                var registroFr3Asegurado = ordenDao.AsegurarFacturaPagoParaFr3(
+                    ordenId,
+                    pago != null ? (int?)pago.Id : pagoId,
+                    numeroFactura,
+                    usuario,
+                    out errorEnsureFr3);
+
+                if (!registroFr3Asegurado)
+                {
+                    mensaje = "No se pudo preparar la trazabilidad local de FR3. " + (errorEnsureFr3 ?? string.Empty);
+                    _syncLog.FallarOperacion(syncLogId, mensaje, "FR3_PG_PREPARE_ERROR", true);
+                    _idempotency.Liberar(claveIdempotencia);
+                    _audit.RegistrarFr3Error(ordenId, mensaje, null, usuario);
+                    return false;
+                }
+
                 var record = MapearFactura(
                     ordenId,
                     pago != null ? (int?)pago.Id : pagoId,
@@ -185,7 +215,7 @@ namespace CapaNegocio.Services
                         ? "FR3 existente reutilizado por idempotencia."
                         : null;
 
-                    ordenDao.RegistrarResultadoFr3(
+                    var registroFr3Ok = ordenDao.RegistrarResultadoFr3(
                         ordenId,
                         pago != null ? (int?)pago.Id : pagoId,
                         resultadoFr3,
@@ -194,9 +224,19 @@ namespace CapaNegocio.Services
                         usuario,
                         out errorRegistro);
 
-                    if (!string.IsNullOrWhiteSpace(errorRegistro))
+                    if (!registroFr3Ok || !string.IsNullOrWhiteSpace(errorRegistro))
                     {
-                        _logger.LogWarning("FR3 generado, pero no se pudo persistir trazabilidad en PG: " + errorRegistro);
+                        var fr3NumeroError = resultadoFr3 != null ? resultadoFr3.NumeroFr3 : null;
+                        mensaje = "FR3 generado en AS400"
+                            + (string.IsNullOrWhiteSpace(fr3NumeroError) ? string.Empty : (" (" + fr3NumeroError + ")"))
+                            + ", pero no se pudo persistir localmente en PostgreSQL. "
+                            + (errorRegistro ?? "Sin detalle.");
+
+                        _logger.LogWarning("FR3 generado, pero no se pudo persistir trazabilidad en PG: " + (errorRegistro ?? "Sin detalle."));
+                        _syncLog.FallarOperacion(syncLogId, mensaje, "FR3_PG_PERSIST_ERROR", true);
+                        _idempotency.Liberar(claveIdempotencia);
+                        _audit.RegistrarFr3Error(ordenId, mensaje, null, usuario);
+                        return false;
                     }
 
                     var fr3Numero = resultadoFr3 != null ? resultadoFr3.NumeroFr3 : null;
@@ -281,7 +321,7 @@ namespace CapaNegocio.Services
             Pago pago)
         {
             var aeropuerto = ResolverCodigoAeropuerto(orden?.LugarEmision);
-            var tipoOperacion = GetSetting("AS400:Facturacion:TipoOperacion", "AO").ToUpperInvariant();
+            var tipoOperacion = GetSetting("AS400:Facturacion:TipoOperacion", "06").ToUpperInvariant();
             var formaPago = ResolverFormaPago(pago);
             var ruta = ConstruirRutaFr3(orden, detalles);
             var bancoDefault = GetSetting("AS400:Facturacion:BancoDefault", string.Empty);
@@ -298,6 +338,15 @@ namespace CapaNegocio.Services
             var numAterriza = cantidadTotal > 0
                 ? cantidadTotal
                 : GetSettingInt("AS400:Facturacion:NumAterrizaDefault", 1);
+            if (numAterriza > 999)
+            {
+                _logger.LogWarning(
+                    string.Format(
+                        "FR3 ajuste preventivo: NumAterrizaPais fuera de rango ({0}) para orden {1}. Se fuerza a 999.",
+                        numAterriza,
+                        ordenId));
+                numAterriza = 999;
+            }
 
             decimal oidFormulario = 0m;
             decimal.TryParse(oidFormularioStr, NumberStyles.Any, CultureInfo.InvariantCulture, out oidFormulario);
@@ -311,9 +360,18 @@ namespace CapaNegocio.Services
                 ? GetSetting("AS400:Facturacion:DescripcionCuentaNacional", "VUELOS CHARTER O ESPECIALES NACIONAL")
                 : GetSetting("AS400:Facturacion:DescripcionCuentaInternacional", "VUELOS CHARTER O ESPECIALES INTERNACIONAL");
             var fechaControl = fechaEmision.ToString("yyyyMMdd", CultureInfo.InvariantCulture);
-            var deposito = !string.IsNullOrWhiteSpace(pago?.NumeroComprobante) ? pago.NumeroComprobante.Trim() : numeroFactura;
+            var depositoOrigen = !string.IsNullOrWhiteSpace(pago?.NumeroComprobante)
+                ? pago.NumeroComprobante.Trim()
+                : numeroFactura;
+            // OPCAR5.OPCCHE = CHAR(15) en AS400.
+            var deposito = NormalizarReferenciaNumericaAs400(
+                depositoOrigen,
+                ordenId,
+                15,
+                "deposito");
             var banco = !string.IsNullOrWhiteSpace(pago?.BancoOrigen) ? pago.BancoOrigen.Trim() : bancoDefault;
             var observacionFr3 = ConstruirObservacionFr3(orden, pago, numeroFactura, observaciones);
+            var usuarioRegistroOrden = ResolverUsuarioRegistroOrden(orden);
 
             var record = new FacturaAs400Record
             {
@@ -339,7 +397,7 @@ namespace CapaNegocio.Services
                 FormaPago = formaPago,
                 CodigoBanco = banco,
                 Deposito = deposito,
-                UsuarioRegistro = string.IsNullOrWhiteSpace(usuario) ? "AOCR" : usuario
+                UsuarioRegistro = usuarioRegistroOrden
             };
 
             record.Autorizacion = NormalizarAutorizacion(autorizacionFactura);
@@ -368,6 +426,15 @@ namespace CapaNegocio.Services
                 foreach (var det in detalles)
                 {
                     var cantidad = det.Cantidad > 0 ? det.Cantidad : 1;
+                    if (cantidad > 999)
+                    {
+                        _logger.LogWarning(
+                            string.Format(
+                                "FR3 ajuste preventivo: cantidad detalle fuera de rango ({0}) para orden {1}. Se fuerza a 999.",
+                                cantidad,
+                                ordenId));
+                        cantidad = 999;
+                    }
                     var valor = det.ValorUnitario > 0 ? det.ValorUnitario : (cantidad > 0 ? det.Subtotal / cantidad : 0m);
                     var totalLinea = det.TotalLinea > 0 ? det.TotalLinea : (valor * cantidad);
                     var descripcionDetalle = ConstruirDescripcionDetalleFr3(det, orden, pago, numeroFactura);
@@ -641,7 +708,103 @@ namespace CapaNegocio.Services
 
         private static string ConstruirGranTotalLetrasFallback(decimal total)
         {
-            return string.Format(CultureInfo.InvariantCulture, "TOTAL {0:0.00}", total);
+            var valor = Math.Round(total, 2, MidpointRounding.AwayFromZero);
+            var negativo = valor < 0m;
+            var absoluto = Math.Abs(valor);
+            var parteEnteraDecimal = decimal.Truncate(absoluto);
+
+            if (parteEnteraDecimal > long.MaxValue)
+            {
+                return string.Format(CultureInfo.InvariantCulture, "{0:0.00}", valor);
+            }
+
+            var parteEntera = (long)parteEnteraDecimal;
+            var centavos = (int)Math.Round(
+                (absoluto - parteEnteraDecimal) * 100m,
+                0,
+                MidpointRounding.AwayFromZero);
+
+            if (centavos == 100)
+            {
+                parteEntera += 1;
+                centavos = 0;
+            }
+
+            var letras = NumeroATexto(parteEntera).Trim();
+            if (string.IsNullOrWhiteSpace(letras))
+            {
+                letras = "CERO";
+            }
+
+            var resultado = string.Format(
+                CultureInfo.InvariantCulture,
+                "{0} CON {1:00}/100",
+                letras,
+                centavos);
+
+            return negativo ? ("MENOS " + resultado) : resultado;
+        }
+
+        private static string NumeroATexto(long numero)
+        {
+            if (numero == 0) return "CERO";
+            if (numero < 0) return "MENOS " + NumeroATexto(Math.Abs(numero));
+
+            string[] unidades =
+            {
+                "", "UNO", "DOS", "TRES", "CUATRO", "CINCO", "SEIS", "SIETE", "OCHO", "NUEVE",
+                "DIEZ", "ONCE", "DOCE", "TRECE", "CATORCE", "QUINCE", "DIECISEIS",
+                "DIECISIETE", "DIECIOCHO", "DIECINUEVE"
+            };
+            string[] decenas =
+            {
+                "", "", "VEINTE", "TREINTA", "CUARENTA", "CINCUENTA",
+                "SESENTA", "SETENTA", "OCHENTA", "NOVENTA"
+            };
+            string[] centenas =
+            {
+                "", "CIENTO", "DOSCIENTOS", "TRESCIENTOS", "CUATROCIENTOS",
+                "QUINIENTOS", "SEISCIENTOS", "SETECIENTOS", "OCHOCIENTOS", "NOVECIENTOS"
+            };
+
+            if (numero == 100) return "CIEN";
+            if (numero < 20) return unidades[(int)numero];
+
+            if (numero < 100)
+            {
+                var d = numero / 10;
+                var r = numero % 10;
+                if (d == 2 && r > 0) return "VEINTI" + unidades[(int)r];
+                return decenas[(int)d] + (r > 0 ? " Y " + unidades[(int)r] : "");
+            }
+
+            if (numero < 1000)
+            {
+                var c = numero / 100;
+                var r = numero % 100;
+                return centenas[(int)c] + (r > 0 ? " " + NumeroATexto(r) : "");
+            }
+
+            if (numero < 1000000)
+            {
+                var m = numero / 1000;
+                var r = numero % 1000;
+                var miles = m == 1 ? "MIL" : NumeroATexto(m) + " MIL";
+                return miles + (r > 0 ? " " + NumeroATexto(r) : "");
+            }
+
+            if (numero < 1000000000)
+            {
+                var m = numero / 1000000;
+                var r = numero % 1000000;
+                var millones = m == 1 ? "UN MILLON" : NumeroATexto(m) + " MILLONES";
+                return millones + (r > 0 ? " " + NumeroATexto(r) : "");
+            }
+
+            var b = numero / 1000000000;
+            var resto = numero % 1000000000;
+            var milesMillones = b == 1 ? "MIL MILLONES" : NumeroATexto(b) + " MIL MILLONES";
+            return milesMillones + (resto > 0 ? " " + NumeroATexto(resto) : "");
         }
 
         private static int GetSettingInt(string key, int fallback)
@@ -656,6 +819,78 @@ namespace CapaNegocio.Services
             var value = ConfigurationManager.AppSettings[key];
             decimal parsed;
             return decimal.TryParse(value, NumberStyles.Any, CultureInfo.InvariantCulture, out parsed) ? parsed : fallback;
+        }
+
+        private string ResolverUsuarioRegistroOrden(OrdenRecaudacion orden)
+        {
+            try
+            {
+                if (orden != null && orden.CodigoUsuario.HasValue && orden.CodigoUsuario.Value > 0)
+                {
+                    var usuarioOrden = UsuarioDAO.ObtenerPorId(orden.CodigoUsuario.Value);
+                    if (usuarioOrden != null)
+                    {
+                        if (!string.IsNullOrWhiteSpace(usuarioOrden.CodigoUsuario))
+                        {
+                            return usuarioOrden.CodigoUsuario.Trim();
+                        }
+
+                        if (!string.IsNullOrWhiteSpace(usuarioOrden.NombreUsuario))
+                        {
+                            return usuarioOrden.NombreUsuario.Trim();
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(
+                    string.Format(
+                        "No se pudo resolver usuario creador de orden para OPCUS7. OrdenId={0}. Detalle={1}",
+                        orden != null ? orden.Id.ToString() : "N/A",
+                        ex.Message));
+            }
+
+            if (!string.IsNullOrWhiteSpace(orden != null ? orden.UsuarioCreacion : null))
+            {
+                return orden.UsuarioCreacion.Trim();
+            }
+
+            return "AOCR";
+        }
+
+        private string NormalizarReferenciaNumericaAs400(string value, int ordenId, int maxLen, string campo)
+        {
+            var original = (value ?? string.Empty).Trim();
+            var soloDigitos = new string(original.Where(char.IsDigit).ToArray());
+
+            if (string.IsNullOrWhiteSpace(soloDigitos))
+            {
+                soloDigitos = Math.Abs(ordenId).ToString(CultureInfo.InvariantCulture);
+            }
+
+            if (string.IsNullOrWhiteSpace(soloDigitos))
+            {
+                soloDigitos = "0";
+            }
+
+            if (maxLen > 0 && soloDigitos.Length > maxLen)
+            {
+                soloDigitos = soloDigitos.Substring(soloDigitos.Length - maxLen, maxLen);
+            }
+
+            if (!string.Equals(original, soloDigitos, StringComparison.Ordinal))
+            {
+                _logger.LogWarning(
+                    string.Format(
+                        "FR3 normalizacion {0}: '{1}' => '{2}' (orden {3}).",
+                        campo ?? "campo",
+                        original,
+                        soloDigitos,
+                        ordenId));
+            }
+
+            return soloDigitos;
         }
 
         private static string Truncar(string value, int max)

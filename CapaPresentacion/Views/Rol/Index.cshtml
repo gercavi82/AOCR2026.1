@@ -3,17 +3,20 @@
 @using System.Web.Mvc
 @using System.Web.Mvc.Html
 @{
-    ViewData["Title"] = "Gestión de Roles";
+    ViewBag.Title = "Gestión de Roles";
 }
 
 <div class="container-fluid">
+    <div class="d-none">
+        @Html.AntiForgeryToken()
+    </div>
     <div class="row mb-4">
         <div class="col-md-8">
             <h2><i class="fas fa-user-shield"></i> Gestión de Roles</h2>
             <p class="text-muted">Administración de roles del sistema</p>
         </div>
         <div class="col-md-4 text-end">
-            <a asp-action="Crear" class="btn btn-primary btn-lg">
+            <a href="@Url.Action("Crear", "Rol")" class="btn btn-primary btn-lg">
                 <i class="fas fa-plus"></i> Nuevo Rol
             </a>
         </div>
@@ -56,11 +59,11 @@
                                 <td>@rol.FechaCreacion?.ToString("dd/MM/yyyy")</td>
                                 <td>
                                     <div class="btn-group" role="group">
-                                        <a asp-action="Editar" asp-route-id="@rol.CodigoRol"
+                                        <a href="@Url.Action("Editar", "Rol", new { id = rol.CodigoRol })"
                                            class="btn btn-sm btn-warning" title="Editar">
                                             <i class="fas fa-edit"></i>
                                         </a>
-                                        <a asp-action="AsignarPermisos" asp-route-id="@rol.CodigoRol"
+                                        <a href="@Url.Action("AsignarPermisos", "Rol", new { id = rol.CodigoRol })"
                                            class="btn btn-sm btn-info" title="Asignar Permisos">
                                             <i class="fas fa-lock"></i>
                                         </a>
@@ -91,6 +94,7 @@
 
             $(document).on('click', '.btnEliminar', function() {
                 var id = $(this).data('id');
+                var token = $('input[name="__RequestVerificationToken"]').first().val();
 
                 Swal.fire({
                     title: '¿Está seguro?',
@@ -106,7 +110,10 @@
                         $.ajax({
                             url: '@Url.Action("Eliminar", "Rol")',
                             type: 'POST',
-                            data: { id: id },
+                            data: {
+                                __RequestVerificationToken: token,
+                                id: id
+                            },
                             success: function(response) {
                                 if (response.success) {
                                     Swal.fire('Eliminado', response.mensaje, 'success')

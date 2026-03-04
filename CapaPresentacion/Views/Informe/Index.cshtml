@@ -8,6 +8,9 @@
 }
 
 <div class="container-fluid">
+    <div class="d-none">
+        @Html.AntiForgeryToken()
+    </div>
     <div class="row mb-4">
         <div class="col-md-8">
             <h2><i class="fas fa-file-alt"></i> Gestión de Informes</h2>
@@ -140,6 +143,7 @@
             // Eliminar informe
             $(document).on('click', '.btnEliminar', function () {
                 var id = $(this).data('id');
+                var token = $('input[name="__RequestVerificationToken"]').first().val();
 
                 Swal.fire({
                     title: '¿Está seguro?',
@@ -155,7 +159,10 @@
                         $.ajax({
                             url: '@Url.Action("Eliminar", "Informe")',
                             type: 'POST',
-                            data: { id: id },
+                            data: {
+                                __RequestVerificationToken: token,
+                                id: id
+                            },
                             success: function (response) {
                                 if (response && response.success) {
                                     Swal.fire('Eliminado', response.mensaje, 'success')

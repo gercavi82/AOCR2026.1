@@ -5,6 +5,7 @@ using CapaModelo;
 
 namespace CapaPresentacion.Controllers
 {
+    [Authorize(Roles = "Administrador")]
     public class RolController : Controller
     {
         // ============================================================
@@ -20,7 +21,7 @@ namespace CapaPresentacion.Controllers
             catch (Exception ex)
             {
                 TempData["Error"] = "Error al cargar roles: " + ex.Message;
-                return View();
+                return View(new System.Collections.Generic.List<Rol>());
             }
         }
 
@@ -29,7 +30,7 @@ namespace CapaPresentacion.Controllers
         // ============================================================
         public ActionResult Crear()
         {
-            return View();
+            return View(new Rol { Activo = true });
         }
 
         // ============================================================
@@ -160,6 +161,8 @@ namespace CapaPresentacion.Controllers
         // ============================================================
         // ELIMINAR
         // ============================================================
+        [HttpPost]
+        [ValidateAntiForgeryToken]
         public ActionResult Eliminar(int id)
         {
             try
@@ -167,15 +170,12 @@ namespace CapaPresentacion.Controllers
                 string mensaje;
                 bool ok = RolBL.Eliminar(id, out mensaje);
 
-                TempData[ok ? "Success" : "Error"] =
-                    ok ? "Rol eliminado correctamente." : mensaje;
+                return Json(new { success = ok, mensaje = ok ? "Rol eliminado correctamente." : mensaje });
             }
             catch (Exception ex)
             {
-                TempData["Error"] = "Error al eliminar rol: " + ex.Message;
+                return Json(new { success = false, mensaje = "Error al eliminar rol: " + ex.Message });
             }
-
-            return RedirectToAction("Index");
         }
     }
 }
