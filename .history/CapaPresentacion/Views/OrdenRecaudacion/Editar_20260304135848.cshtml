@@ -1,0 +1,247 @@
+﻿@inherits System.Web.Mvc.WebViewPage<CapaDatos.Models.OrdenRecaudacionModel>
+@using CapaModelo
+@using System.Web.Mvc
+@using System.Web.Mvc.Html
+@{
+    Layout = "~/Views/Shared/_LayoutAOCR.cshtml";
+    ViewBag.Title = "Editar Orden de recaudación";
+}
+
+<div class="row">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header bg-warning text-dark">
+                <h3 class="card-title mb-0">
+                    <i class="fas fa-edit me-2"></i>@ViewBag.Title
+                </h3>
+                <small class="text-muted">Orden: @Model.NumeroOrden</small>
+            </div>
+
+            @using (Html.BeginForm("Editar", "OrdenRecaudacion", FormMethod.Post, new { id = "formOrden", @class = "form-horizontal", autocomplete = "off" }))
+            {
+                @Html.AntiForgeryToken()
+                @Html.HiddenFor(m => m.Id)
+
+                <div class="card-body">
+                    @Html.ValidationSummary(false, "", new { @class = "alert alert-danger" })
+
+                    <!-- Información básica -->
+                    <div class="row mb-4">
+                        <div class="col-md-6">
+                            <h5><i class="fas fa-info-circle me-2 text-primary"></i>Información General</h5>
+
+                            <div class="mb-3">
+                                <label class="form-label">Lugar de Emisión</label>
+                                @Html.HiddenFor(m => m.LugarEmision)
+                                <div class="form-control bg-light" aria-readonly="true" title="Este valor se obtiene directamente de la base de datos.">
+                                    @(Model != null ? (Model.LugarEmision ?? "") : "")
+                                </div>
+                                <small class="text-muted">Valor obtenido automáticamente desde la base de datos.</small>
+                            </div>
+
+                            <div class="mb-3">
+                                <label class="form-label">Compañia</label>
+                                @Html.TextBoxFor(m => m.Compania, new { @class = "form-control", placeholder = "Nombre de la compañia" })
+                                @Html.ValidationMessageFor(m => m.Compania, "", new { @class = "text-danger" })
+                            </div>
+
+                            <div class="mb-3">
+                                <label class="form-label">RUC/Cédula</label>
+                                @Html.TextBoxFor(m => m.RucCedula, new { @class = "form-control", placeholder = "RUC o Cédula" })
+                                @Html.ValidationMessageFor(m => m.RucCedula, "", new { @class = "text-danger" })
+                            </div>
+                        </div>
+
+                        <div class="col-md-6">
+                            <h5><i class="fas fa-user me-2 text-primary"></i>Información del Contribuyente</h5>
+
+                            <div class="mb-3">
+                                <label class="form-label">Nombre del Contribuyente</label>
+                                @Html.TextBoxFor(m => m.NombreContribuyente, new { @class = "form-control", placeholder = "Nombre completo" })
+                                @Html.ValidationMessageFor(m => m.NombreContribuyente, "", new { @class = "text-danger" })
+                            </div>
+
+                            <div class="mb-3">
+                                <label class="form-label">Correo Electrónico</label>
+                                @Html.TextBoxFor(m => m.Correo, new { @class = "form-control", type = "email", placeholder = "correo@ejemplo.com" })
+                                @Html.ValidationMessageFor(m => m.Correo, "", new { @class = "text-danger" })
+                            </div>
+
+                            <div class="mb-3">
+                                <label class="form-label">Teléfono</label>
+                                @Html.TextBoxFor(m => m.Telefono, new { @class = "form-control", placeholder = "Número de telÃ©fono" })
+                                @Html.ValidationMessageFor(m => m.Telefono, "", new { @class = "text-danger" })
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Observaciones -->
+                    <div class="row mb-4">
+                        <div class="col-md-12">
+                            <h5><i class="fas fa-comment me-2 text-primary"></i>Observaciones</h5>
+                            <div class="mb-3">
+                                @Html.TextAreaFor(m => m.Observacion, new { @class = "form-control", rows = 3, placeholder = "Observaciones adicionales..." })
+                                @Html.ValidationMessageFor(m => m.Observacion, "", new { @class = "text-danger" })
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Detalles de la orden -->
+                    @if (Model.Detalles != null && Model.Detalles.Any())
+                    {
+                        <div class="row mb-4">
+                            <div class="col-md-12">
+                                <h5><i class="fas fa-list me-2 text-primary"></i>Detalles de la Orden</h5>
+                                <div class="table-responsive">
+                                    <table class="table table-striped">
+                                        <thead>
+                                            <tr>
+                                                <th>Concepto</th>
+                                                <th>Cantidad</th>
+                                                <th>Valor Unitario</th>
+                                                <th>Subtotal</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            @foreach (var detalle in Model.Detalles)
+                                            {
+                                                <tr>
+                                                    <td>@detalle.ConceptoNombre</td>
+                                                    <td>@detalle.Cantidad</td>
+                                                    <td>@string.Format("{0:C}", detalle.ValorUnitario)</td>
+                                                    <td>@string.Format("{0:C}", detalle.Subtotal)</td>
+                                                </tr>
+                                            }
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    }
+
+                    <!-- Totales -->
+                    <div class="row mb-4">
+                        <div class="col-md-12">
+                            <div class="card bg-light">
+                                <div class="card-body">
+                                    <div class="row text-center">
+                                        <div class="col-md-4">
+                                            <h6>Subtotal</h6>
+                                            <h4 class="text-primary">@string.Format("{0:C}", Model.Subtotal)</h4>
+                                        </div>
+                                        <div class="col-md-4">
+                                            <h6>Administració</h6>
+                                            <h4 class="text-info">@string.Format("{0:C}", Model.Admin)</h4>
+                                        </div>
+                                        <div class="col-md-4">
+                                            <h6>Total</h6>
+                                            <h4 class="text-success">@string.Format("{0:C}", Model.Total)</h4>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card-footer">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <a href="@Url.Action("Index", "OrdenRecaudacion")" class="btn btn-secondary">
+                                <i class="fas fa-arrow-left me-2"></i>Cancelar
+                            </a>
+                        </div>
+                        <div class="col-md-6 text-end">
+                            <button type="submit" name="accion" value="guardar" class="btn btn-warning me-2">
+                                <i class="fas fa-save me-2"></i>Guardar Borrador
+                            </button>
+                            <button type="submit"
+                                    name="accion"
+                                    value="generar"
+                                    class="btn btn-primary"
+                                    onclick="return confirm('¿Desea guardar y generar la orden? Luego pasará a estado PENDIENTE y ya no se editará como borrador.');">
+                                <i class="fas fa-check-circle me-2"></i>Guardar y Generar
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        (function initEditarValidation(retries) {
+            if (!window.jQuery) {
+                if ((retries || 0) < 50) {
+                    setTimeout(function () {
+                        initEditarValidation((retries || 0) + 1);
+                    }, 100);
+                }
+                return;
+            }
+
+            window.jQuery(function () {
+                try {
+                    var hasValidate = window.jQuery.fn &&
+                        typeof window.jQuery.fn.validate === 'function';
+
+                    if (!hasValidate) {
+                        console.warn('jQuery Validate no está disponible. Se omite validación cliente en Editar.');
+                        return;
+                    }
+
+                    var $form = window.jQuery('#formOrden');
+                    if (!$form.length) {
+                        return;
+                    }
+
+                    $form.validate({
+                        rules: {
+                            Compania: { required: true, maxlength: 100 },
+                            RucCedula: { required: true, minlength: 10, maxlength: 13 },
+                            NombreContribuyente: { required: true, maxlength: 200 },
+                            Correo: { required: true, email: true, maxlength: 100 },
+                            Telefono: { maxlength: 15 },
+                            Observacion: { maxlength: 500 }
+                        },
+                        messages: {
+                            Compania: {
+                                required: "La compañia es obligatoria",
+                                maxlength: "Máximo 100 caracteres"
+                            },
+                            RucCedula: {
+                                required: "RUC/Cédula es obligatorio",
+                                minlength: "Mínimo 10 caracteres",
+                                maxlength: "Máximo 13 caracteres"
+                            },
+                            NombreContribuyente: {
+                                required: "El nombre del contribuyente es obligatorio",
+                                maxlength: "Máximo 200 caracteres"
+                            },
+                            Correo: {
+                                required: "El correo es obligatorio",
+                                email: "Formato de correo inválido",
+                                maxlength: "Máximo 100 caracteres"
+                            },
+                            Telefono: { maxlength: "Máximo 15 caracteres" },
+                            Observacion: { maxlength: "Máximo 500 caracteres" }
+                        },
+                        errorElement: 'div',
+                        errorClass: 'invalid-feedback',
+                        highlight: function (element) {
+                            window.jQuery(element).addClass('is-invalid');
+                        },
+                        unhighlight: function (element) {
+                            window.jQuery(element).removeClass('is-invalid');
+                        }
+                    });
+                } catch (err) {
+                    var msg = (err && err.message) ? err.message : err;
+                    console.warn('Validación cliente de Editar deshabilitada por error: ' + msg);
+                }
+            });
+        })(0);
+    </script>
+}
