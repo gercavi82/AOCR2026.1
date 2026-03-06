@@ -25,10 +25,20 @@ namespace CapaModelo
 
         public string RepresentanteLegal { get; set; }
         public string CedulaRepresentante { get; set; }
+        public string CorreoRepresentanteTecnico { get; set; }
+
+        public string NombreComercial { get; set; }
 
         public string TipoOperacion { get; set; }
         public string DescripcionOperacion { get; set; }
+        public string ResumenOperacionesEae { get; set; }
         public string Observaciones { get; set; }
+
+        public string AprobacionesEspeciales { get; set; }
+        public string AprobacionesEspecialesOtros { get; set; }
+        public string AeropuertosEcuador { get; set; }
+        public string AeropuertosEcuadorOtros { get; set; }
+        public string CompaniasSeleccionadas { get; set; }
 
         public int CodigoUsuario { get; set; }
         public int? CodigoTecnico { get; set; }

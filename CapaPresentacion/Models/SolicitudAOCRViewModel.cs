@@ -22,8 +22,30 @@ namespace CapaPresentacion.Models
         [JsonIgnore]
         public IEnumerable<HttpPostedFileBase> ArchivosSubidos { get; set; }
 
+        // Metadatos de documentos enviados desde UI (tipo/si obligatorio/concepto)
+        public List<DocumentoCargaVM> DocumentosCarga { get; set; } = new List<DocumentoCargaVM>();
+
+        // Catálogo de compañías para selector en el wizard
+        public List<CompaniaCatalogoVM> CompaniasDisponibles { get; set; } = new List<CompaniaCatalogoVM>();
+
         // Usuario logueado - En JSON esto sera null, pero se puede ignorar
         [JsonIgnore]
         public Usuario Usuario { get; set; }
+    }
+
+    public class DocumentoCargaVM
+    {
+        public string InputId { get; set; }
+        public string TipoDocumento { get; set; }
+        public string Concepto { get; set; }
+        public bool Obligatorio { get; set; }
+    }
+
+    public class CompaniaCatalogoVM
+    {
+        public string CodigoOaci { get; set; }
+        public string CodigoIata { get; set; }
+        public string CodigoNumeroCia { get; set; }
+        public string Nombre { get; set; }
     }
 }

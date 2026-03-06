@@ -83,7 +83,7 @@ namespace CapaNegocio
         // ================================
         // 2. Aceptación de usuario con clave temporal
         // ================================
-        public static bool NotificarAceptacionConClaveTemporal(string email, string nombreCompleto, string codigoUsuario, out string mensaje)
+        public static bool NotificarAceptacionConClaveTemporal(string email, string nombreCompleto, string codigoUsuario, string nombreCompania, out string mensaje)
         {
             if (string.IsNullOrWhiteSpace(email))
             {
@@ -101,11 +101,22 @@ namespace CapaNegocio
             }
 
             var asunto = "Designación RT aprobada - Sus credenciales de acceso - Sistema AOCR";
+            var companiaTexto = string.IsNullOrWhiteSpace(nombreCompania)
+                ? "SU COMPAÑÍA"
+                : nombreCompania.Trim().ToUpperInvariant();
+
+            var textoOficialAprobacion =
+                "NOS COMPLACE INFORMARLE QUE SU DESIGNACIÓN COMO RESPONSABLE TÉCNICO (RT) DE LA COMPAÑÍA " +
+                companiaTexto +
+                " HA SIDO APROBADA POR LA DGAC.";
+            var textoOficialContinuidad =
+                "EN TAL VIRTUD CON SU USUARIO PODRÁ CONTINUAR CON LOS TRAMITES EN EL SISTEMA SIMPLIFICADO AOCR";
+
             var cuerpo = $@"
                 <div style='font-family:Arial,sans-serif; font-size:14px; color:#222;'>
                     <p>Estimado/a {nombreCompleto},</p>
-                    <p>Nos complace informarle que su designación como <strong>Responsable Técnico (RT)</strong>
-                       ha sido <strong>aprobada</strong> por la DGAC.</p>
+                    <p><strong>{HttpUtility.HtmlEncode(textoOficialAprobacion)}</strong></p>
+                    <p><strong>{HttpUtility.HtmlEncode(textoOficialContinuidad)}</strong></p>
                     <p>A continuación sus credenciales de acceso al <strong>Sistema AOCR</strong>:</p>
                     <table style='border-collapse:collapse; margin:12px 0;'>
                         <tr><td style='padding:4px 12px 4px 0;'><strong>Usuario:</strong></td><td>{codigoUsuario}</td></tr>

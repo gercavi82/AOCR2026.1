@@ -204,6 +204,46 @@ namespace CapaDatos.DAOs
                     columnasInsert.Add(columnaCodCiudad);
                     valoresInsert.Add("@CodCiudad");
                 }
+                if (columnas.Contains("correo_representante_tecnico"))
+                {
+                    columnasInsert.Add("correo_representante_tecnico");
+                    valoresInsert.Add("@CorreoRepresentanteTecnico");
+                }
+                if (columnas.Contains("nombre_comercial"))
+                {
+                    columnasInsert.Add("nombre_comercial");
+                    valoresInsert.Add("@NombreComercial");
+                }
+                if (columnas.Contains("resumen_operaciones_eae"))
+                {
+                    columnasInsert.Add("resumen_operaciones_eae");
+                    valoresInsert.Add("@ResumenOperacionesEae");
+                }
+                if (columnas.Contains("aprobaciones_especiales"))
+                {
+                    columnasInsert.Add("aprobaciones_especiales");
+                    valoresInsert.Add("@AprobacionesEspeciales");
+                }
+                if (columnas.Contains("aprobaciones_especiales_otros"))
+                {
+                    columnasInsert.Add("aprobaciones_especiales_otros");
+                    valoresInsert.Add("@AprobacionesEspecialesOtros");
+                }
+                if (columnas.Contains("aeropuertos_ecuador"))
+                {
+                    columnasInsert.Add("aeropuertos_ecuador");
+                    valoresInsert.Add("@AeropuertosEcuador");
+                }
+                if (columnas.Contains("aeropuertos_ecuador_otros"))
+                {
+                    columnasInsert.Add("aeropuertos_ecuador_otros");
+                    valoresInsert.Add("@AeropuertosEcuadorOtros");
+                }
+                if (columnas.Contains("companias_seleccionadas"))
+                {
+                    columnasInsert.Add("companias_seleccionadas");
+                    valoresInsert.Add("@CompaniasSeleccionadas");
+                }
 
                 var sql = $@"
         INSERT INTO aocr_tbsolicitud (
@@ -230,10 +270,18 @@ namespace CapaDatos.DAOs
                     cmd.Parameters.AddWithValue("@CodCiudad", (object)(solicitud.CodCiudad ?? ""));
                     cmd.Parameters.AddWithValue("@RepresentanteLegal", (object)(solicitud.RepresentanteLegal ?? ""));
                     cmd.Parameters.AddWithValue("@CedulaRepresentante", (object)(solicitud.CedulaRepresentante ?? ""));
+                    cmd.Parameters.AddWithValue("@CorreoRepresentanteTecnico", (object)(solicitud.CorreoRepresentanteTecnico ?? ""));
+                    cmd.Parameters.AddWithValue("@NombreComercial", (object)(solicitud.NombreComercial ?? ""));
 
                     cmd.Parameters.AddWithValue("@TipoOperacion", (object)(solicitud.TipoOperacion ?? ""));
                     cmd.Parameters.AddWithValue("@DescripcionOperacion", (object)(solicitud.DescripcionOperacion ?? ""));
                     cmd.Parameters.AddWithValue("@Observaciones", (object)(solicitud.Observaciones ?? ""));
+                    cmd.Parameters.AddWithValue("@ResumenOperacionesEae", (object)(solicitud.ResumenOperacionesEae ?? ""));
+                    cmd.Parameters.AddWithValue("@AprobacionesEspeciales", (object)(solicitud.AprobacionesEspeciales ?? ""));
+                    cmd.Parameters.AddWithValue("@AprobacionesEspecialesOtros", (object)(solicitud.AprobacionesEspecialesOtros ?? ""));
+                    cmd.Parameters.AddWithValue("@AeropuertosEcuador", (object)(solicitud.AeropuertosEcuador ?? ""));
+                    cmd.Parameters.AddWithValue("@AeropuertosEcuadorOtros", (object)(solicitud.AeropuertosEcuadorOtros ?? ""));
+                    cmd.Parameters.AddWithValue("@CompaniasSeleccionadas", (object)(solicitud.CompaniasSeleccionadas ?? ""));
 
                     var estadoNormalizado = EstadoSolicitud.Normalizar(solicitud.Estado);
                     cmd.Parameters.AddWithValue("@Estado", estadoNormalizado);
@@ -291,8 +339,40 @@ namespace CapaDatos.DAOs
 
                 setClauses.Add("representante_legal=@representante_legal");
                 setClauses.Add("cedula_representante=@cedula_representante");
+                if (columnas.Contains("correo_representante_tecnico"))
+                {
+                    setClauses.Add("correo_representante_tecnico=@correo_representante_tecnico");
+                }
+                if (columnas.Contains("nombre_comercial"))
+                {
+                    setClauses.Add("nombre_comercial=@nombre_comercial");
+                }
                 setClauses.Add("tipo_operacion=@tipo_operacion");
                 setClauses.Add("descripcion_operacion=@descripcion_operacion");
+                if (columnas.Contains("resumen_operaciones_eae"))
+                {
+                    setClauses.Add("resumen_operaciones_eae=@resumen_operaciones_eae");
+                }
+                if (columnas.Contains("aprobaciones_especiales"))
+                {
+                    setClauses.Add("aprobaciones_especiales=@aprobaciones_especiales");
+                }
+                if (columnas.Contains("aprobaciones_especiales_otros"))
+                {
+                    setClauses.Add("aprobaciones_especiales_otros=@aprobaciones_especiales_otros");
+                }
+                if (columnas.Contains("aeropuertos_ecuador"))
+                {
+                    setClauses.Add("aeropuertos_ecuador=@aeropuertos_ecuador");
+                }
+                if (columnas.Contains("aeropuertos_ecuador_otros"))
+                {
+                    setClauses.Add("aeropuertos_ecuador_otros=@aeropuertos_ecuador_otros");
+                }
+                if (columnas.Contains("companias_seleccionadas"))
+                {
+                    setClauses.Add("companias_seleccionadas=@companias_seleccionadas");
+                }
                 setClauses.Add("observaciones=@observaciones");
                 setClauses.Add("codigo_tecnico=@codigo_tecnico");
                 setClauses.Add("updated_at=NOW()");
@@ -339,9 +419,41 @@ WHERE codigo_solicitud=@id AND deleted_at IS NULL;";
 
                     cmd.Parameters.AddWithValue("@representante_legal", (object)(s.RepresentanteLegal ?? ""));
                     cmd.Parameters.AddWithValue("@cedula_representante", (object)(s.CedulaRepresentante ?? ""));
+                    if (columnas.Contains("correo_representante_tecnico"))
+                    {
+                        cmd.Parameters.AddWithValue("@correo_representante_tecnico", (object)(s.CorreoRepresentanteTecnico ?? ""));
+                    }
+                    if (columnas.Contains("nombre_comercial"))
+                    {
+                        cmd.Parameters.AddWithValue("@nombre_comercial", (object)(s.NombreComercial ?? ""));
+                    }
 
                     cmd.Parameters.AddWithValue("@tipo_operacion", (object)(s.TipoOperacion ?? ""));
                     cmd.Parameters.AddWithValue("@descripcion_operacion", (object)(s.DescripcionOperacion ?? ""));
+                    if (columnas.Contains("resumen_operaciones_eae"))
+                    {
+                        cmd.Parameters.AddWithValue("@resumen_operaciones_eae", (object)(s.ResumenOperacionesEae ?? ""));
+                    }
+                    if (columnas.Contains("aprobaciones_especiales"))
+                    {
+                        cmd.Parameters.AddWithValue("@aprobaciones_especiales", (object)(s.AprobacionesEspeciales ?? ""));
+                    }
+                    if (columnas.Contains("aprobaciones_especiales_otros"))
+                    {
+                        cmd.Parameters.AddWithValue("@aprobaciones_especiales_otros", (object)(s.AprobacionesEspecialesOtros ?? ""));
+                    }
+                    if (columnas.Contains("aeropuertos_ecuador"))
+                    {
+                        cmd.Parameters.AddWithValue("@aeropuertos_ecuador", (object)(s.AeropuertosEcuador ?? ""));
+                    }
+                    if (columnas.Contains("aeropuertos_ecuador_otros"))
+                    {
+                        cmd.Parameters.AddWithValue("@aeropuertos_ecuador_otros", (object)(s.AeropuertosEcuadorOtros ?? ""));
+                    }
+                    if (columnas.Contains("companias_seleccionadas"))
+                    {
+                        cmd.Parameters.AddWithValue("@companias_seleccionadas", (object)(s.CompaniasSeleccionadas ?? ""));
+                    }
                     cmd.Parameters.AddWithValue("@observaciones", (object)(s.Observaciones ?? ""));
 
                     cmd.Parameters.AddWithValue("@codigo_tecnico", (object)s.CodigoTecnico ?? DBNull.Value);
@@ -504,10 +616,26 @@ WHERE codigo_solicitud=@id AND deleted_at IS NULL;";
 
                 RepresentanteLegal = GetString(rd, "representante_legal"),
                 CedulaRepresentante = GetString(rd, "cedula_representante"),
+                CorreoRepresentanteTecnico = FirstNonEmpty(
+                    GetString(rd, "correo_representante_tecnico"),
+                    GetString(rd, "email_representante_tecnico")),
+                NombreComercial = FirstNonEmpty(
+                    GetString(rd, "nombre_comercial"),
+                    GetString(rd, "nombre_comercial_compania")),
 
                 TipoOperacion = GetString(rd, "tipo_operacion"),
                 DescripcionOperacion = GetString(rd, "descripcion_operacion"),
+                ResumenOperacionesEae = FirstNonEmpty(
+                    GetString(rd, "resumen_operaciones_eae"),
+                    GetString(rd, "resumen_operaciones")),
                 Observaciones = GetString(rd, "observaciones"),
+                AprobacionesEspeciales = GetString(rd, "aprobaciones_especiales"),
+                AprobacionesEspecialesOtros = GetString(rd, "aprobaciones_especiales_otros"),
+                AeropuertosEcuador = GetString(rd, "aeropuertos_ecuador"),
+                AeropuertosEcuadorOtros = GetString(rd, "aeropuertos_ecuador_otros"),
+                CompaniasSeleccionadas = FirstNonEmpty(
+                    GetString(rd, "companias_seleccionadas"),
+                    GetString(rd, "companias_relacionadas")),
 
                 CodigoUsuario = GetInt(rd, "codigo_usuario"),
                 CodigoTecnico = GetNullableInt(rd, "codigo_tecnico"),

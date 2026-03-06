@@ -1,5 +1,7 @@
 ﻿using System;
+using System.IO;
 using System.Linq;
+using System.Text.RegularExpressions;
 using System.Web;
 using System.Web.Mvc;
 using System.Collections.Generic;
@@ -10,8 +12,10 @@ using CapaModelo;
 using CapaDatos.Constants;
 using CapaPresentacion.Models;
 using CapaNegocio;
+using CapaNegocio.Integraciones.As400Sync;
 using CapaNegocio.Helpers;
 using CapaUtilidades;
+using Newtonsoft.Json;
 
 namespace CapaPresentacion.Controllers
 {
@@ -25,6 +29,13 @@ namespace CapaPresentacion.Controllers
         private readonly AeronaveSolicitudDAO _aeronaveSolDAO = new AeronaveSolicitudDAO();
         private readonly PagoDAO _pagoDAO = new PagoDAO();
 
+        private static readonly HashSet<string> ExtensionesPermitidasDocumentos = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+        {
+            ".pdf", ".jpg", ".jpeg", ".png"
+        };
+
+        private const int TamanoMaximoDocumentoMb = 10;
+
         public ActionResult Index() => View();
 
         // Obtener solicitudes del usuario actual en formato JSON
@@ -33,13 +44,10 @@ namespace CapaPresentacion.Controllers
         {
             try
             {
-                if (Session["CodigoUsuario"] == null && Session["IdUsuario"] != null)
-                    Session["CodigoUsuario"] = Session["IdUsuario"];
-
-                if (Session["CodigoUsuario"] == null)
+                int codigoUsuario;
+                if (!TryObtenerUsuarioActualId(out codigoUsuario))
                     return Json(new { success = true, data = new List<object>(), message = "Sesion expirada" }, JsonRequestBehavior.AllowGet);
 
-                int codigoUsuario = Convert.ToInt32(Session["CodigoUsuario"]);
                 var solicitudes = _solicitudDAO.ObtenerPorUsuario(codigoUsuario);
 
                 var resultado = solicitudes.Select(s => new
@@ -59,6 +67,71 @@ namespace CapaPresentacion.Controllers
             catch (Exception ex)
             {
                 return Json(new { success = false, message = ex.Message }, JsonRequestBehavior.AllowGet);
+            }
+        }
+
+        [HttpGet]
+        public JsonResult ObtenerCompaniasDisponibles(int take = 5000)
+        {
+            try
+            {
+                if (take <= 0) take = 200;
+                if (take > 10000) take = 10000;
+
+                var data = CargarCatalogoCompanias(take);
+                return Json(new { success = true, data }, JsonRequestBehavior.AllowGet);
+            }
+            catch (Exception ex)
+            {
+                return Json(new { success = false, message = "No se pudo cargar el catálogo de compañías: " + ex.Message }, JsonRequestBehavior.AllowGet);
+            }
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public JsonResult GuardarFlota(GuardarFlotaRequest request)
+        {
+            try
+            {
+                if (request == null || request.CodigoSolicitud <= 0)
+                {
+                    return Json(new { success = false, message = "Solicitud inválida para guardar flota." });
+                }
+
+                var usuarioId = ObtenerUsuarioActualId();
+                if (usuarioId <= 0)
+                {
+                    return Json(new { success = false, message = "Sesión expirada." });
+                }
+
+                var solicitud = _solicitudDAO.ObtenerPorId(request.CodigoSolicitud);
+                if (solicitud == null)
+                {
+                    return Json(new { success = false, message = "La solicitud no existe." });
+                }
+
+                if (!EsAdmin() && solicitud.CodigoUsuario != usuarioId)
+                {
+                    return Json(new { success = false, message = "No tiene permisos para guardar la flota de esta solicitud." });
+                }
+
+                var aeronaves = (request.Aeronaves ?? new List<AeronaveSolicitud>())
+                    .Where(a => a != null && !string.IsNullOrWhiteSpace(a.Matricula))
+                    .ToList();
+
+                if (!aeronaves.Any())
+                {
+                    return Json(new { success = false, message = "Debe ingresar al menos una aeronave válida." });
+                }
+
+                var usuarioCorreo = Session["Correo"]?.ToString() ?? "sistema";
+                _aeronaveSolDAO.ReemplazarPorSolicitud(request.CodigoSolicitud, aeronaves, usuarioCorreo);
+
+                return Json(new { success = true, message = "Flota guardada correctamente.", total = aeronaves.Count });
+            }
+            catch (Exception ex)
+            {
+                return Json(new { success = false, message = "Error al guardar flota: " + ex.Message });
             }
         }
 
@@ -166,20 +239,8 @@ namespace CapaPresentacion.Controllers
                 
                 var vm = new SolicitudAOCRViewModel();
 
-                // A veces el sistema guarda el id en IdUsuario en vez de CodigoUsuario.
-                int usuarioId = 0;
-                if (Session["CodigoUsuario"] != null)
-                {
-                    int.TryParse(Session["CodigoUsuario"].ToString(), out usuarioId);
-                    System.Diagnostics.Debug.WriteLine($"[FormularioEmisionAOCR] Usuario desde CodigoUsuario: {usuarioId}");
-                }
-                else if (Session["IdUsuario"] != null)
-                {
-                    int.TryParse(Session["IdUsuario"].ToString(), out usuarioId);
-                    System.Diagnostics.Debug.WriteLine($"[FormularioEmisionAOCR] Usuario desde IdUsuario: {usuarioId}");
-                }
-
-                if (usuarioId <= 0)
+                int usuarioId;
+                if (!TryObtenerUsuarioActualId(out usuarioId))
                 {
                     System.Diagnostics.Debug.WriteLine("[FormularioEmisionAOCR] Usuario ID es 0 o inválido");
                     return Content("<div class='alert alert-danger m-3'><i class='fas fa-exclamation-circle'></i> Error: Sesión expirada. Por favor, inicie sesión nuevamente.</div>");
@@ -241,6 +302,18 @@ namespace CapaPresentacion.Controllers
                         vm.Banco = pago.MetodoPago;
                         vm.NumeroComprobante = pago.NumeroFactura;
                     }
+
+                    vm.Solicitud.CorreoRepresentanteTecnico = !string.IsNullOrWhiteSpace(vm.Solicitud.CorreoRepresentanteTecnico)
+                        ? vm.Solicitud.CorreoRepresentanteTecnico
+                        : (vm.Usuario?.Email ?? string.Empty);
+
+                    vm.Solicitud.CedulaRepresentante = !string.IsNullOrWhiteSpace(vm.Solicitud.CedulaRepresentante)
+                        ? vm.Solicitud.CedulaRepresentante
+                        : (vm.Usuario?.Ruc ?? vm.Usuario?.CodigoUsuario ?? string.Empty);
+
+                    vm.Solicitud.NombreComercial = !string.IsNullOrWhiteSpace(vm.Solicitud.NombreComercial)
+                        ? vm.Solicitud.NombreComercial
+                        : (vm.Solicitud.NombreOperador ?? string.Empty);
                 }
                 else
                 {
@@ -252,15 +325,19 @@ namespace CapaPresentacion.Controllers
                         Estado = EstadoSolicitud.Pendiente,
                         Email = vm.Usuario != null ? vm.Usuario.Email : "",
                         RepresentanteLegal = vm.Usuario != null ? vm.Usuario.NombreCompleto : "",
+                        CorreoRepresentanteTecnico = vm.Usuario != null ? vm.Usuario.Email : "",
 
-                        // ✅ tu Usuario NO tiene NumeroRuc, así que usamos CodigoUsuario como fallback
-                        // Si el RUC del usuario está en otra tabla/columna, luego lo mapeamos bien.
-                        Ruc = vm.Usuario != null ? vm.Usuario.CodigoUsuario.ToString() : ""
+                        // Si no hay RUC/cédula en BD, usar código de usuario como fallback seguro.
+                        Ruc = vm.Usuario != null ? (vm.Usuario.Ruc ?? vm.Usuario.CodigoUsuario) : "",
+                        CedulaRepresentante = vm.Usuario != null ? (vm.Usuario.Ruc ?? vm.Usuario.CodigoUsuario) : "",
+                        NombreComercial = vm.Usuario != null ? vm.Usuario.EmpresaCodigo : ""
                     };
 
                     vm.Aeronaves = new List<AeronaveSolicitud>();
                     vm.DocumentosExistentes = new List<Documento>();
                 }
+
+                vm.CompaniasDisponibles = CargarCatalogoCompanias(5000);
 
                 return PartialView("_FormularioEmisionAOCR", vm);
             }
@@ -291,6 +368,9 @@ namespace CapaPresentacion.Controllers
         [ValidateAntiForgeryToken]
         public ActionResult TestJson()
         {
+#if !DEBUG
+            return HttpNotFound();
+#else
             try
             {
                 return Json(new { success = true, mensaje = "Endpoint JSON funcionando correctamente", timestamp = DateTime.Now });
@@ -299,12 +379,16 @@ namespace CapaPresentacion.Controllers
             {
                 return Json(new { success = false, mensaje = "Error en test: " + ex.Message });
             }
+#endif
         }
 
         [HttpPost]
         [ValidateAntiForgeryToken]
         public ActionResult TestSession()
         {
+#if !DEBUG
+            return HttpNotFound();
+#else
             try
             {
                 var sessionInfo = new {
@@ -325,12 +409,16 @@ namespace CapaPresentacion.Controllers
             {
                 return Json(new { success = false, mensaje = "Error verificando sesión: " + ex.Message }, JsonRequestBehavior.AllowGet);
             }
+#endif
         }
 
         [HttpPost]
         [ValidateAntiForgeryToken]
         public ActionResult TestFormularioCompleto(SolicitudAOCRViewModel vm)
         {
+#if !DEBUG
+            return HttpNotFound();
+#else
             try
             {
                 System.Diagnostics.Debug.WriteLine($"[TestFormularioCompleto] Recibido ViewModel");
@@ -364,6 +452,7 @@ namespace CapaPresentacion.Controllers
                 System.Diagnostics.Debug.WriteLine($"[TestFormularioCompleto] Excepción: {ex.Message}");
                 return Json(new { success = false, mensaje = "Error en test: " + ex.Message }, JsonRequestBehavior.AllowGet);
             }
+#endif
         }
 
         [HttpPost]
@@ -377,31 +466,30 @@ namespace CapaPresentacion.Controllers
                 // Log de entrada para debugging
                 System.Diagnostics.Debug.WriteLine($"[FormularioCompleto] Iniciando con vm: {vm}");
 
-                // Validación antiforgery para POST JSON: leer token desde header y validar contra la cookie
-                try
+                // Si viene multipart/form-data y el model binder no armó VM, intentar reconstruir desde JSON.
+                if ((vm == null || vm.Solicitud == null) && Request != null && Request.Form != null)
                 {
-                    var headerToken = Request.Headers["RequestVerificationToken"];
-                    var cookie = Request.Cookies[System.Web.Helpers.AntiForgeryConfig.CookieName];
-                    var cookieToken = cookie != null ? cookie.Value : null;
-                    System.Web.Helpers.AntiForgery.Validate(cookieToken, headerToken);
-                }
-                catch (Exception afEx)
-                {
-                    System.Diagnostics.Debug.WriteLine($"[FormularioCompleto] Antiforgery validation failed: {afEx.Message}");
-                    return new HttpStatusCodeResult(403, "Anti-forgery token invalid.");
-                }
-
-                if (Session["CodigoUsuario"] == null)
-                {
-                    if (Session["IdUsuario"] == null)
+                    var vmJson = Request.Form["vmJson"];
+                    if (!string.IsNullOrWhiteSpace(vmJson))
                     {
-                        System.Diagnostics.Debug.WriteLine("[FormularioCompleto] Sesión expirada");
-                        return Json(new { success = false, mensaje = "Sesión expirada." }, JsonRequestBehavior.AllowGet);
+                        try
+                        {
+                            vm = JsonConvert.DeserializeObject<SolicitudAOCRViewModel>(vmJson);
+                        }
+                        catch (Exception exJson)
+                        {
+                            System.Diagnostics.Debug.WriteLine($"[FormularioCompleto] Error parseando vmJson: {exJson.Message}");
+                        }
                     }
-                    Session["CodigoUsuario"] = Session["IdUsuario"];
                 }
 
-                int usuarioId = Convert.ToInt32(Session["CodigoUsuario"]);
+                int usuarioId;
+                if (!TryObtenerUsuarioActualId(out usuarioId))
+                {
+                    System.Diagnostics.Debug.WriteLine("[FormularioCompleto] Sesión expirada");
+                    return Json(new { success = false, mensaje = "Sesión expirada." }, JsonRequestBehavior.AllowGet);
+                }
+
                 string usuarioCorreo = Session["Correo"]?.ToString() ?? "sistema";
 
                 System.Diagnostics.Debug.WriteLine($"[FormularioCompleto] Usuario: {usuarioId}");
@@ -418,10 +506,60 @@ namespace CapaPresentacion.Controllers
                     return Json(new { success = false, mensaje = "Datos de solicitud incompletos." }, JsonRequestBehavior.AllowGet);
                 }
 
+                // Normalización de campos para mantener compatibilidad con estructura actual.
+                vm.Solicitud.CorreoRepresentanteTecnico = string.IsNullOrWhiteSpace(vm.Solicitud.CorreoRepresentanteTecnico)
+                    ? vm.Solicitud.Email
+                    : vm.Solicitud.CorreoRepresentanteTecnico;
+                vm.Solicitud.NombreComercial = string.IsNullOrWhiteSpace(vm.Solicitud.NombreComercial)
+                    ? vm.Solicitud.NombreOperador
+                    : vm.Solicitud.NombreComercial;
+                vm.Solicitud.ResumenOperacionesEae = string.IsNullOrWhiteSpace(vm.Solicitud.ResumenOperacionesEae)
+                    ? vm.Solicitud.DescripcionOperacion
+                    : vm.Solicitud.ResumenOperacionesEae;
+
                 if (string.IsNullOrWhiteSpace(vm.Solicitud.NombreOperador))
                 {
                     System.Diagnostics.Debug.WriteLine($"[FormularioCompleto] NombreOperador vacío: '{vm.Solicitud.NombreOperador}'");
                     return Json(new { success = false, mensaje = "Nombre del operador es obligatorio." }, JsonRequestBehavior.AllowGet);
+                }
+
+                if (string.IsNullOrWhiteSpace(vm.Solicitud.RazonSocial))
+                    return Json(new { success = false, mensaje = "La razón social de la compañía es obligatoria." }, JsonRequestBehavior.AllowGet);
+
+                if (string.IsNullOrWhiteSpace(vm.Solicitud.NombreComercial))
+                    return Json(new { success = false, mensaje = "El nombre comercial de la compañía es obligatorio." }, JsonRequestBehavior.AllowGet);
+
+                if (!string.IsNullOrWhiteSpace(vm.Solicitud.CorreoRepresentanteTecnico) &&
+                    !Regex.IsMatch(vm.Solicitud.CorreoRepresentanteTecnico.Trim(), @"^[^@\s]+@[^@\s]+\.[^@\s]+$"))
+                {
+                    return Json(new { success = false, mensaje = "El correo del Representante Técnico no tiene un formato válido." }, JsonRequestBehavior.AllowGet);
+                }
+
+                if (!string.IsNullOrWhiteSpace(vm.Solicitud.CedulaRepresentante))
+                {
+                    var identificacion = new string(vm.Solicitud.CedulaRepresentante.Where(char.IsDigit).ToArray());
+                    if (identificacion.Length != 10 && identificacion.Length != 13)
+                    {
+                        return Json(new { success = false, mensaje = "La identificación del Representante Técnico debe tener 10 (cédula) o 13 (RUC) dígitos." }, JsonRequestBehavior.AllowGet);
+                    }
+
+                    vm.Solicitud.CedulaRepresentante = identificacion;
+                    vm.Solicitud.Ruc = identificacion;
+                }
+
+                if (!string.IsNullOrWhiteSpace(vm.Solicitud.ResumenOperacionesEae) && vm.Solicitud.ResumenOperacionesEae.Length > 2000)
+                    return Json(new { success = false, mensaje = "El resumen de operaciones EAE no puede superar 2000 caracteres." }, JsonRequestBehavior.AllowGet);
+
+                if (ContieneValorLista(vm.Solicitud.AprobacionesEspeciales, "OTROS") &&
+                    string.IsNullOrWhiteSpace(vm.Solicitud.AprobacionesEspecialesOtros))
+                {
+                    return Json(new { success = false, mensaje = "Debe detallar las aprobaciones especiales en el campo OTROS." }, JsonRequestBehavior.AllowGet);
+                }
+
+                if (ContieneValorLista(vm.Solicitud.AeropuertosEcuador, "OTROS") &&
+                    string.IsNullOrWhiteSpace(vm.Solicitud.AeropuertosEcuadorOtros))
+                {
+                    return Json(new { success = false, mensaje = "Debe detallar el aeropuerto cuando selecciona OTROS." }, JsonRequestBehavior.AllowGet);
                 }
 
                 // Dueño si es nuevo / seguridad si edita
@@ -468,7 +606,12 @@ namespace CapaPresentacion.Controllers
                 System.Diagnostics.Debug.WriteLine($"[FormularioCompleto] Guardando {aeronaves.Count} aeronaves");
                 _aeronaveSolDAO.ReemplazarPorSolicitud(idFinal, aeronaves, usuarioCorreo);
 
-                // 3) Documentos (solo si ArchivosSubidos no es null)
+                // 3) Documentos (desde multipart o colección clásica)
+                if (Request?.Files != null && Request.Files.Count > 0)
+                {
+                    ProcesarArchivosRequest(Request.Files, idFinal, vm.DocumentosCarga, usuarioCorreo);
+                }
+
                 if (vm.ArchivosSubidos != null && vm.ArchivosSubidos.Count() > 0)
                 {
                     System.Diagnostics.Debug.WriteLine($"[FormularioCompleto] Procesando {vm.ArchivosSubidos.Count()} documentos");
@@ -550,6 +693,122 @@ namespace CapaPresentacion.Controllers
             }
         }
 
+        private void ProcesarArchivosRequest(
+            HttpFileCollectionBase archivos,
+            int solicitudId,
+            IList<DocumentoCargaVM> metadatos,
+            string usuarioRegistro)
+        {
+            if (archivos == null || archivos.Count <= 0)
+            {
+                return;
+            }
+
+            var metadatosLookup = (metadatos ?? new List<DocumentoCargaVM>())
+                .Where(m => m != null && !string.IsNullOrWhiteSpace(m.InputId))
+                .GroupBy(m => m.InputId.Trim(), StringComparer.OrdinalIgnoreCase)
+                .ToDictionary(g => g.Key, g => g.First(), StringComparer.OrdinalIgnoreCase);
+
+            for (var i = 0; i < archivos.Count; i++)
+            {
+                var file = archivos[i];
+                if (file == null || file.ContentLength <= 0)
+                {
+                    continue;
+                }
+
+                var inputKey = (archivos.GetKey(i) ?? string.Empty).Trim();
+                var extension = Path.GetExtension(file.FileName) ?? string.Empty;
+                if (!ExtensionesPermitidasDocumentos.Contains(extension))
+                {
+                    continue;
+                }
+
+                if (file.ContentLength > TamanoMaximoDocumentoMb * 1024 * 1024)
+                {
+                    continue;
+                }
+
+                var meta = metadatosLookup.ContainsKey(inputKey)
+                    ? metadatosLookup[inputKey]
+                    : null;
+
+                var tipoDocumento = ResolverTipoDocumento(inputKey, meta);
+                var concepto = meta != null ? meta.Concepto : null;
+
+                var options = new FileUploadOptions
+                {
+                    BasePath = FileStorageHelper.GetPhysicalBasePath("~/App_Data/Uploads/AOCR"),
+                    Subfolder = solicitudId + "/Documentos",
+                    AllowedExtensions = new[] { ".pdf", ".jpg", ".jpeg", ".png" },
+                    AllowedContentTypes = new[] { "application/pdf", "image/jpeg", "image/png" },
+                    MaxSizeMb = TamanoMaximoDocumentoMb,
+                    ValidateMagicBytes = true
+                };
+
+                string error;
+                FileUploadResult result;
+                if (!FileUploadService.TrySave(file, options, out result, out error))
+                {
+                    continue;
+                }
+
+                var rutaRelativa = "~/App_Data/Uploads/AOCR/" + solicitudId + "/Documentos/" + result.StoredName;
+                var doc = new Documento
+                {
+                    CodigoSolicitud = solicitudId,
+                    TipoDocumento = tipoDocumento,
+                    NombreArchivo = result.StoredName,
+                    RutaGuardada = rutaRelativa,
+                    Extension = extension,
+                    TamanoBytes = file.ContentLength,
+                    Estado = "PENDIENTE",
+                    Validado = false,
+                    FechaCarga = DateTime.Now,
+                    Observaciones = concepto,
+                    Version = 1,
+                    UsuarioRegistro = string.IsNullOrWhiteSpace(usuarioRegistro) ? "sistema" : usuarioRegistro
+                };
+
+                _documentoDAO.Crear(doc);
+            }
+        }
+
+        private static string ResolverTipoDocumento(string inputKey, DocumentoCargaVM meta)
+        {
+            if (!string.IsNullOrWhiteSpace(meta != null ? meta.TipoDocumento : null))
+            {
+                return meta.TipoDocumento.Trim();
+            }
+
+            if (string.IsNullOrWhiteSpace(inputKey))
+            {
+                return "OTRO";
+            }
+
+            switch (inputKey.Trim())
+            {
+                case "archivoAOC":
+                    return "COPIA_AOC_VALIDA";
+                case "archivoOpSpecs":
+                    return "OPSPECS_ESPECIFICACIONES_OPERACIONALES";
+                case "archivoManualOperaciones":
+                    return "MANUAL_OPERACIONES";
+                case "archivoPermisoOperacion":
+                    return "PERMISO_OPERACION_CNAC";
+                case "archivoCertificadoRuido":
+                    return "CERTIFICADO_RUIDO_AERONAVES_EAE";
+                case "archivoCertificadoAeronavegabilidad":
+                    return "CERTIFICADO_AERONAVEGABILIDAD";
+                case "archivoPoderRepresentante":
+                    return "COPIA_CERTIFICADA_PODER_REPRESENTANTE_ECUADOR";
+                case "archivoFacturaPago":
+                    return "COMPROBANTE_PAGO";
+                default:
+                    return "OTRO";
+            }
+        }
+
         private static void SetIfExists(object obj, string prop, object value)
         {
             var pi = obj.GetType().GetProperty(prop);
@@ -557,15 +816,27 @@ namespace CapaPresentacion.Controllers
             pi.SetValue(obj, value, null);
         }
 
+        private static bool ContieneValorLista(string lista, string valor)
+        {
+            if (string.IsNullOrWhiteSpace(lista) || string.IsNullOrWhiteSpace(valor))
+                return false;
+
+            return lista
+                .Split(',')
+                .Select(x => (x ?? string.Empty).Trim())
+                .Any(x => x.Equals(valor, StringComparison.OrdinalIgnoreCase));
+        }
+
         // =========================================================
         // Resto de acciones (tu código igual)
         // =========================================================
         public ActionResult MisSolicitudes()
         {
-            if (Session["CodigoUsuario"] == null)
+            int codigoUsuario;
+            if (!TryObtenerUsuarioActualId(out codigoUsuario))
                 return RedirectToAction("Login", "Account");
 
-            return View(_solicitudDAO.ObtenerPorUsuario(Convert.ToInt32(Session["CodigoUsuario"])));
+            return View(_solicitudDAO.ObtenerPorUsuario(codigoUsuario));
         }
 
         public ActionResult RevisarSolicitudes()
@@ -747,9 +1018,118 @@ namespace CapaPresentacion.Controllers
             return RedirectToAction("Detalle", new { id });
         }
 
+        private List<CompaniaCatalogoVM> CargarCatalogoCompanias(int take)
+        {
+            var catalogo = new List<CompaniaCatalogoVM>();
+
+            try
+            {
+                var mirror = new MirrorReadService();
+                var mirrorCompanias = mirror.ListarCompaniasActivas(take);
+                if (mirrorCompanias != null && mirrorCompanias.Count > 0)
+                {
+                    catalogo = mirrorCompanias
+                        .Where(c => c != null && !string.IsNullOrWhiteSpace(c.CodigoOaci))
+                        .Select(c => new CompaniaCatalogoVM
+                        {
+                            CodigoOaci = (c.CodigoOaci ?? string.Empty).Trim(),
+                            CodigoIata = (c.CodigoIata ?? string.Empty).Trim(),
+                            CodigoNumeroCia = (c.CodigoNumeroCia ?? string.Empty).Trim(),
+                            Nombre = (c.NombreCompania ?? string.Empty).Trim()
+                        })
+                        .OrderBy(c => c.Nombre)
+                        .ToList();
+                }
+            }
+            catch (Exception exMirror)
+            {
+                System.Diagnostics.Debug.WriteLine("[SolicitudAOCR] Error catálogo mirror: " + exMirror.Message);
+            }
+
+            if (catalogo.Count == 0)
+            {
+                try
+                {
+                    var dao = new EmpresaAS400DAO();
+                    catalogo = dao.ObtenerEmpresas()
+                        .Where(c => c != null && !string.IsNullOrWhiteSpace(c.CodigoOaci))
+                        .Select(c => new CompaniaCatalogoVM
+                        {
+                            CodigoOaci = (c.CodigoOaci ?? string.Empty).Trim(),
+                            CodigoIata = (c.CodigoIata ?? string.Empty).Trim(),
+                            CodigoNumeroCia = (c.CodigoNumeroCia ?? string.Empty).Trim(),
+                            Nombre = (c.Nombre ?? string.Empty).Trim()
+                        })
+                        .OrderBy(c => c.Nombre)
+                        .ToList();
+                }
+                catch (Exception exAs400)
+                {
+                    System.Diagnostics.Debug.WriteLine("[SolicitudAOCR] Error catálogo AS400: " + exAs400.Message);
+                }
+            }
+
+            if (catalogo.Count > 0)
+            {
+                catalogo = catalogo
+                    .GroupBy(c => c.CodigoOaci ?? string.Empty, StringComparer.OrdinalIgnoreCase)
+                    .Select(g => g.First())
+                    .ToList();
+            }
+
+            return catalogo;
+        }
+
+        public class GuardarFlotaRequest
+        {
+            public int CodigoSolicitud { get; set; }
+            public List<AeronaveSolicitud> Aeronaves { get; set; }
+        }
+
+        private bool TryObtenerUsuarioActualId(out int idUsuario)
+        {
+            idUsuario = 0;
+
+            if (Session["IdUsuario"] != null && int.TryParse(Session["IdUsuario"].ToString(), out idUsuario) && idUsuario > 0)
+            {
+                return true;
+            }
+
+            if (Session["CodigoUsuario"] != null)
+            {
+                var codigoSesion = Session["CodigoUsuario"].ToString();
+                if (int.TryParse(codigoSesion, out idUsuario) && idUsuario > 0)
+                {
+                    Session["IdUsuario"] = idUsuario;
+                    return true;
+                }
+
+                if (!string.IsNullOrWhiteSpace(codigoSesion))
+                {
+                    try
+                    {
+                        var usuario = UsuarioDAO.ObtenerPorNombreUsuario(codigoSesion.Trim());
+                        if (usuario != null && usuario.Id > 0)
+                        {
+                            idUsuario = usuario.Id;
+                            Session["IdUsuario"] = usuario.Id;
+                            return true;
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        System.Diagnostics.Debug.WriteLine("[SolicitudAOCR] Error resolviendo ID de usuario desde CódigoUsuario: " + ex.Message);
+                    }
+                }
+            }
+
+            return false;
+        }
+
         private int ObtenerUsuarioActualId()
         {
-            if (Session["CodigoUsuario"] != null && int.TryParse(Session["CodigoUsuario"].ToString(), out int idUsuario))
+            int idUsuario;
+            if (TryObtenerUsuarioActualId(out idUsuario))
                 return idUsuario;
 
             throw new Exception("No se pudo obtener el ID del usuario actual.");

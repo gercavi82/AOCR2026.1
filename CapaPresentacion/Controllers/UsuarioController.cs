@@ -12,6 +12,7 @@ using CapaDatos.Models;
 using CapaDatos.Services;
 using CapaNegocio;
 using CapaNegocio.Helpers;
+using CapaNegocio.Integraciones.As400Sync;
 using CapaNegocio.Services;
 using CapaUtilidades;
 
@@ -949,11 +950,13 @@ namespace CapaPresentacion.Controllers
             string rutaConstancia = GenerarConstanciaRT(usuario);
             // Marcar como aceptado y guardar la ruta de la constancia
             UsuarioDAO.AceptarDesignacionRT(id, rutaConstancia);
+            var nombreCompania = ResolverNombreCompaniaUsuario(usuario);
             string mensajeCorreo;
             var correoEnviado = UsuarioBL.NotificarAceptacionConClaveTemporal(
                 usuario.Email,
                 usuario.NombreCompleto,
                 usuario.CodigoUsuario,
+                nombreCompania,
                 out mensajeCorreo
             );
 
@@ -962,6 +965,57 @@ namespace CapaPresentacion.Controllers
             else
                 TempData["msg"] = "Designación aceptada y constancia generada. " + (mensajeCorreo ?? "");
             return RedirectToAction("RevisarDesignaciones");
+        }
+
+        private static string ResolverNombreCompaniaUsuario(Usuario usuario)
+        {
+            if (usuario == null)
+            {
+                return string.Empty;
+            }
+
+            var codigoEmpresa = (usuario.EmpresaCodigo ?? string.Empty).Trim();
+            if (string.IsNullOrWhiteSpace(codigoEmpresa))
+            {
+                return string.Empty;
+            }
+
+            try
+            {
+                bool preferirMirror;
+                if (bool.TryParse(ConfigurationManager.AppSettings["Sync:Mirror:PreferReadForEmpresas"], out preferirMirror) && preferirMirror)
+                {
+                    var mirror = new MirrorReadService();
+                    var empresaMirror = mirror.ListarCompaniasActivas(5000)
+                        .FirstOrDefault(x => x != null &&
+                            string.Equals((x.CodigoOaci ?? string.Empty).Trim(), codigoEmpresa, StringComparison.OrdinalIgnoreCase));
+
+                    if (empresaMirror != null && !string.IsNullOrWhiteSpace(empresaMirror.NombreCompania))
+                    {
+                        return empresaMirror.NombreCompania.Trim();
+                    }
+                }
+            }
+            catch (Exception exMirror)
+            {
+                System.Diagnostics.Debug.WriteLine("Usuario/AceptarDesignacion: no se pudo resolver compañía desde mirror: " + exMirror.Message);
+            }
+
+            try
+            {
+                var empresaDao = new EmpresaAS400DAO();
+                var empresa = empresaDao.ObtenerEmpresaPorCodigo(codigoEmpresa);
+                if (empresa != null && !string.IsNullOrWhiteSpace(empresa.Nombre))
+                {
+                    return empresa.Nombre.Trim();
+                }
+            }
+            catch (Exception exAs400)
+            {
+                System.Diagnostics.Debug.WriteLine("Usuario/AceptarDesignacion: no se pudo resolver compañía desde AS400: " + exAs400.Message);
+            }
+
+            return codigoEmpresa;
         }
 
         [HttpPost]

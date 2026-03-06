@@ -1,5 +1,6 @@
 ﻿@model CapaPresentacion.Models.SolicitudAOCRViewModel
 @using CapaModelo
+@using System.Linq
 @using System.Web.Mvc
 @using System.Web.Mvc.Html
 @using System.Web
@@ -7,6 +8,31 @@
     Layout = null;
     var sol = Model != null ? Model.Solicitud : null;
     var codigoSolicitud = sol != null ? sol.CodigoSolicitud : 0;
+    var usuario = Model != null ? Model.Usuario : null;
+    var identificacionUsuario = !string.IsNullOrWhiteSpace(sol != null ? sol.CedulaRepresentante : null)
+        ? sol.CedulaRepresentante
+        : (!string.IsNullOrWhiteSpace(usuario != null ? usuario.Ruc : null) ? usuario.Ruc : (usuario != null ? usuario.CodigoUsuario : ""));
+    var correoRepresentanteTecnico = !string.IsNullOrWhiteSpace(sol != null ? sol.CorreoRepresentanteTecnico : null)
+        ? sol.CorreoRepresentanteTecnico
+        : (usuario != null ? usuario.Email : (sol != null ? sol.Email : ""));
+    var companiasCatalogo = Model != null && Model.CompaniasDisponibles != null
+        ? Model.CompaniasDisponibles
+        : new List<CapaPresentacion.Models.CompaniaCatalogoVM>();
+    var aprobacionesEspecialesSet = new HashSet<string>(
+        ((sol != null ? sol.AprobacionesEspeciales : "") ?? "")
+            .Split(new[] { ',', ';', '|'}, StringSplitOptions.RemoveEmptyEntries)
+            .Select(v => v.Trim().ToUpperInvariant()),
+        StringComparer.OrdinalIgnoreCase);
+    var aeropuertosEcuadorSet = new HashSet<string>(
+        ((sol != null ? sol.AeropuertosEcuador : "") ?? "")
+            .Split(new[] { ',', ';', '|'}, StringSplitOptions.RemoveEmptyEntries)
+            .Select(v => v.Trim().ToUpperInvariant()),
+        StringComparer.OrdinalIgnoreCase);
+    var tipoOperacionNormalizado = ((sol != null ? sol.TipoOperacion : "") ?? "").ToUpperInvariant();
+    var marcaOpsRegulares = tipoOperacionNormalizado.Contains("REGULAR");
+    var marcaOpsNoRegulares = tipoOperacionNormalizado.Contains("NO REGULAR");
+    var marcaPasajeros = tipoOperacionNormalizado.Contains("PASAJEROS");
+    var marcaCarga = tipoOperacionNormalizado.Contains("CARGA");
 }
 
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
@@ -142,18 +168,19 @@
                                         <input type="hidden" id="tipoOperacion" value="@HttpUtility.HtmlEncode(sol != null ? sol.TipoOperacion : "")" />
                                         <input type="hidden" id="descripcionOperacion" value="@HttpUtility.HtmlEncode(sol != null ? sol.DescripcionOperacion : "")" />
                                         <input type="hidden" id="observacionesGenerales" value="@HttpUtility.HtmlEncode(sol != null ? sol.ObservacionesGenerales : "")" />
+                                        <input type="hidden" id="companiasSeleccionadasRaw" value="@HttpUtility.HtmlEncode(sol != null ? sol.CompaniasSeleccionadas : "")" />
 
                                         <div class="bg-light p-3 rounded mb-4 border">
-                                            <h6 class="text-primary font-weight-bold mb-3"><i class="fas fa-map-marker-alt"></i> Punto de Contacto en Ecuador</h6>
+                                            <h6 class="text-primary font-weight-bold mb-3"><i class="fas fa-user-shield"></i> Representante Técnico en Ecuador</h6>
 
                                             <div class="form-row">
                                                 <div class="form-group col-md-6">
-                                                    <label for="nombreRepresentante">Nombre del Representante Legal</label>
-                                                    <input type="text" class="form-control" id="nombreRepresentante" placeholder="Ingrese nombre del representante" value="@HttpUtility.HtmlEncode(sol != null ? sol.RepresentanteLegal : "")" >
+                                                    <label for="nombreRepresentante">Nombre del Representante Técnico</label>
+                                                    <input type="text" class="form-control" id="nombreRepresentante" placeholder="Ingrese nombre del representante técnico" value="@HttpUtility.HtmlEncode(sol != null ? sol.RepresentanteLegal : "")" >
                                                 </div>
                                                 <div class="form-group col-md-6">
-                                                    <label for="rucRepresentante">RUC</label>
-                                                    <input type="text" class="form-control" id="rucRepresentante" placeholder="Ingrese RUC" value="@HttpUtility.HtmlEncode(sol != null ? sol.CedulaRepresentante : "")" >
+                                                    <label for="rucRepresentante">Cédula / Identificación</label>
+                                                    <input type="text" class="form-control" id="rucRepresentante" placeholder="Identificación del usuario" value="@HttpUtility.HtmlEncode(identificacionUsuario)" readonly>
                                                 </div>
                                             </div>
 
@@ -173,8 +200,8 @@
                                                     <input type="text" class="form-control" id="telefonoEcuador" placeholder="Ingrese telefono en Ecuador" value="@HttpUtility.HtmlEncode(sol != null ? sol.Telefono : "")" >
                                                 </div>
                                                 <div class="form-group col-md-6">
-                                                    <label for="emailEcuador">Email en Ecuador</label>
-                                                    <input type="email" class="form-control" id="emailEcuador" placeholder="Ingrese correo en Ecuador" value="@HttpUtility.HtmlEncode(sol != null ? sol.Email : "")" >
+                                                    <label for="emailEcuador">Correo del Representante Técnico</label>
+                                                    <input type="email" class="form-control" id="emailEcuador" placeholder="Ingrese correo del representante técnico" value="@HttpUtility.HtmlEncode(correoRepresentanteTecnico)" >
                                                 </div>
                                             </div>
                                         </div>
@@ -185,11 +212,28 @@
 
                                                 <div class="form-inline mb-3">
                                                     <select id="selectorCompanias" class="form-control mr-2 custom-select" style="width: 60%;">
-                                                        <option value="" disabled selected>Seleccione una compania</option>
-                                                        <option value="Compania A">Compania A</option>
-                                                        <option value="Compania B">Compania B</option>
-                                                        <option value="Compania C">Compania C</option>
-                                                        <option value="Compania D">Compania D</option>
+                                                        <option value="" selected>Seleccione una compania</option>
+                                                        @foreach (var compania in companiasCatalogo)
+                                                        {
+                                                            if (compania == null || string.IsNullOrWhiteSpace(compania.CodigoOaci))
+                                                            {
+                                                                continue;
+                                                            }
+
+                                                            var codigoOaci = compania.CodigoOaci.Trim();
+                                                            var codigoIata = (compania.CodigoIata ?? "").Trim();
+                                                            var nombreCompaniaCatalogo = (compania.Nombre ?? "").Trim();
+                                                            var etiqueta = string.IsNullOrWhiteSpace(codigoIata)
+                                                                ? string.Format("[{0}] {1}", codigoOaci, nombreCompaniaCatalogo)
+                                                                : string.Format("[{0}/{1}] {2}", codigoOaci, codigoIata, nombreCompaniaCatalogo);
+                                                            <option
+                                                                value="@codigoOaci"
+                                                                data-oaci="@codigoOaci"
+                                                                data-iata="@codigoIata"
+                                                                data-nombre="@HttpUtility.HtmlAttributeEncode(nombreCompaniaCatalogo)">
+                                                                @etiqueta
+                                                            </option>
+                                                        }
                                                     </select>
                                                     <button type="button" class="btn btn-outline-primary" onclick="agregarCompania()">
                                                         <i class="fas fa-plus"></i> Agregar
@@ -205,8 +249,13 @@
                                         <div class="bg-light p-3 rounded border">
                                             <h6 class="text-primary font-weight-bold mb-3">Datos de la Compania Principal</h6>
                                             <div class="form-group">
-                                                <label for="nombreCompania">Nombre de la Compania *</label>
-                                                <input type="text" class="form-control" id="nombreCompania" placeholder="Ingrese nombre de la compania" value="@HttpUtility.HtmlEncode(sol != null ? sol.NombreOperador : "")" >
+                                                <label for="razonSocialCompania">Razon social de la compania *</label>
+                                                <input type="text" class="form-control" id="razonSocialCompania" placeholder="Ingrese razon social de la compania" value="@HttpUtility.HtmlEncode(sol != null ? sol.RazonSocial : "")" >
+                                            </div>
+
+                                            <div class="form-group">
+                                                <label for="nombreCompania">Nombre comercial de la compania *</label>
+                                                <input type="text" class="form-control" id="nombreCompania" placeholder="Ingrese nombre comercial de la compania" value="@HttpUtility.HtmlEncode(sol != null ? (sol.NombreComercial ?? sol.NombreOperador) : "")" >
                                                 <small class="form-text text-muted mt-2">
                                                     Los datos de la compania no son correctos?
                                                     <a href="#" id="btnInformacionCompania" class="text-danger font-weight-bold ml-1"><i class="fas fa-exclamation-triangle"></i> Reportar aqui</a>
@@ -244,6 +293,10 @@
                         </div>
                         <div class="card-body card-body-custom">
                             <div style="max-height: 65vh; overflow-y: auto; padding-right: 5px;">
+                                <div class="alert alert-info mb-3">
+                                    <i class="fas fa-info-circle mr-1"></i>
+                                    La informacion de aeronaves debe registrarse completa y esta sujeta a confirmacion de matriculas por la autoridad.
+                                </div>
 
                                 <div class="mb-4 p-3 bg-light rounded border">
                                     <h6 class="text-muted mb-3"><small>Gestion de Flota</small></h6>
@@ -297,6 +350,48 @@
                                     <textarea class="form-control" id="contadorAeronaves" rows="3" readonly disabled style="background-color: #e9ecef; border:none; color: #495057;"></textarea>
                                 </div>
 
+                                <div class="bg-light p-3 rounded border mb-3">
+                                    <label class="font-weight-bold d-block mb-2">Aprobaciones especiales aplicables en operaciones en Ecuador</label>
+                                    <div class="row">
+                                        <div class="col-md-6">
+                                            <div class="custom-control custom-checkbox mb-2">
+                                                <input class="custom-control-input aprobacion-especial" type="checkbox" id="aprobacionRVSM" value="RVSM" @(aprobacionesEspecialesSet.Contains("RVSM") ? "checked" : "")>
+                                                <label class="custom-control-label" for="aprobacionRVSM">RVSM</label>
+                                            </div>
+                                            <div class="custom-control custom-checkbox mb-2">
+                                                <input class="custom-control-input aprobacion-especial" type="checkbox" id="aprobacionPBN" value="PBN" @(aprobacionesEspecialesSet.Contains("PBN") ? "checked" : "")>
+                                                <label class="custom-control-label" for="aprobacionPBN">PBN</label>
+                                            </div>
+                                            <div class="custom-control custom-checkbox mb-2">
+                                                <input class="custom-control-input aprobacion-especial" type="checkbox" id="aprobacionMNPS" value="MNPS" @(aprobacionesEspecialesSet.Contains("MNPS") ? "checked" : "")>
+                                                <label class="custom-control-label" for="aprobacionMNPS">MNPS</label>
+                                            </div>
+                                            <div class="custom-control custom-checkbox mb-2">
+                                                <input class="custom-control-input aprobacion-especial" type="checkbox" id="aprobacionCATIIIII" value="CAT II-III" @(aprobacionesEspecialesSet.Contains("CAT II-III") ? "checked" : "")>
+                                                <label class="custom-control-label" for="aprobacionCATIIIII">CAT II-III</label>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <div class="custom-control custom-checkbox mb-2">
+                                                <input class="custom-control-input aprobacion-especial" type="checkbox" id="aprobacionETOPS" value="ETOPS" @(aprobacionesEspecialesSet.Contains("ETOPS") ? "checked" : "")>
+                                                <label class="custom-control-label" for="aprobacionETOPS">ETOPS</label>
+                                            </div>
+                                            <div class="custom-control custom-checkbox mb-2">
+                                                <input class="custom-control-input aprobacion-especial" type="checkbox" id="aprobacionMERPEL" value="MERPEL" @(aprobacionesEspecialesSet.Contains("MERPEL") ? "checked" : "")>
+                                                <label class="custom-control-label" for="aprobacionMERPEL">MERPEL</label>
+                                            </div>
+                                            <div class="custom-control custom-checkbox mb-2">
+                                                <input class="custom-control-input aprobacion-especial" type="checkbox" id="aprobacionOTROS" value="OTROS" @(aprobacionesEspecialesSet.Contains("OTROS") ? "checked" : "")>
+                                                <label class="custom-control-label" for="aprobacionOTROS">OTROS</label>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="form-group mb-0 mt-2" id="aprobacionOtrosContenedor" style="display:none;">
+                                        <label for="aprobacionOtrosDetalle">Detalle otros</label>
+                                        <input type="text" class="form-control" id="aprobacionOtrosDetalle" maxlength="250" value="@HttpUtility.HtmlEncode(sol != null ? sol.AprobacionesEspecialesOtros : "")" placeholder="Detalle de aprobaciones especiales adicionales" />
+                                    </div>
+                                </div>
+
                                 <div class="text-right mt-4">
                                     <button type="button" class="btn btn-lg btn-primary shadow" id="btnGuardarListadoAeronaves">
                                         <i class="fas fa-save"></i> Guardar Flota
@@ -329,21 +424,21 @@
                                     <div class="row">
                                         <div class="col-md-6">
                                             <div class="custom-control custom-checkbox mb-2">
-                                                <input class="custom-control-input" type="checkbox" id="opsRegulares">
+                                                <input class="custom-control-input" type="checkbox" id="opsRegulares" @(marcaOpsRegulares ? "checked" : "")>
                                                 <label class="custom-control-label" for="opsRegulares">Operaciones Regulares</label>
                                             </div>
                                             <div class="custom-control custom-checkbox mb-2">
-                                                <input class="custom-control-input" type="checkbox" id="opsNoRegulares">
+                                                <input class="custom-control-input" type="checkbox" id="opsNoRegulares" @(marcaOpsNoRegulares ? "checked" : "")>
                                                 <label class="custom-control-label" for="opsNoRegulares">Operaciones No Regulares</label>
                                             </div>
                                         </div>
                                         <div class="col-md-6">
                                             <div class="custom-control custom-checkbox mb-2">
-                                                <input class="custom-control-input" type="checkbox" id="pasajeros">
+                                                <input class="custom-control-input" type="checkbox" id="pasajeros" @(marcaPasajeros ? "checked" : "")>
                                                 <label class="custom-control-label" for="pasajeros">Pasajeros/Carga/Correo</label>
                                             </div>
                                             <div class="custom-control custom-checkbox mb-2">
-                                                <input class="custom-control-input" type="checkbox" id="carga">
+                                                <input class="custom-control-input" type="checkbox" id="carga" @(marcaCarga ? "checked" : "")>
                                                 <label class="custom-control-label" for="carga">Carga solamente</label>
                                             </div>
                                         </div>
@@ -352,8 +447,9 @@
                             </div>
 
                             <div class="form-group">
-                                <label for="resumenOperaciones" class="font-weight-bold">Resumen descriptivo de operaciones</label>
-                                <textarea class="form-control" id="resumenOperaciones" rows="3" placeholder="Describa brevemente..."></textarea>
+                                <label for="resumenOperaciones" class="font-weight-bold">Resumen descriptivo de operaciones en los aeropuertos del Ecuador (aprobaciones especiales y procedimientos en tierra)</label>
+                                <textarea class="form-control" id="resumenOperaciones" rows="4" maxlength="2000" placeholder="Describa brevemente..." >@HttpUtility.HtmlEncode(sol != null ? sol.ResumenOperacionesEae : "")</textarea>
+                                <small class="form-text text-muted">Maximo 2000 caracteres.</small>
                             </div>
 
                             <hr>
@@ -363,16 +459,27 @@
                                     <h6 class="font-weight-bold">Aeropuertos dentro del Ecuador</h6>
                                     <div class="card p-3 bg-light border-0">
                                         <div class="custom-control custom-checkbox">
-                                            <input class="custom-control-input" type="checkbox" id="quito">
+                                            <input class="custom-control-input aeropuerto-ecuador" type="checkbox" id="quito" value="Quito" @(aeropuertosEcuadorSet.Contains("QUITO") ? "checked" : "")>
                                             <label class="custom-control-label" for="quito">Quito (UIO)</label>
                                         </div>
                                         <div class="custom-control custom-checkbox">
-                                            <input class="custom-control-input" type="checkbox" id="guayaquil">
+                                            <input class="custom-control-input aeropuerto-ecuador" type="checkbox" id="guayaquil" value="Guayaquil" @(aeropuertosEcuadorSet.Contains("GUAYAQUIL") ? "checked" : "")>
                                             <label class="custom-control-label" for="guayaquil">Guayaquil (GYE)</label>
                                         </div>
                                         <div class="custom-control custom-checkbox">
-                                            <input class="custom-control-input" type="checkbox" id="cuenca">
-                                            <label class="custom-control-label" for="cuenca">Cuenca (CUE)</label>
+                                            <input class="custom-control-input aeropuerto-ecuador" type="checkbox" id="manta" value="Manta" @(aeropuertosEcuadorSet.Contains("MANTA") ? "checked" : "")>
+                                            <label class="custom-control-label" for="manta">Manta (MEC)</label>
+                                        </div>
+                                        <div class="custom-control custom-checkbox">
+                                            <input class="custom-control-input aeropuerto-ecuador" type="checkbox" id="latacunga" value="Latacunga" @(aeropuertosEcuadorSet.Contains("LATACUNGA") ? "checked" : "")>
+                                            <label class="custom-control-label" for="latacunga">Latacunga (LTX)</label>
+                                        </div>
+                                        <div class="custom-control custom-checkbox">
+                                            <input class="custom-control-input aeropuerto-ecuador" type="checkbox" id="aeropuertoOtros" value="Otros" @(aeropuertosEcuadorSet.Contains("OTROS") ? "checked" : "")>
+                                            <label class="custom-control-label" for="aeropuertoOtros">Otros</label>
+                                        </div>
+                                        <div class="mt-2" id="aeropuertoOtrosContenedor" style="display:none;">
+                                            <input type="text" class="form-control form-control-sm" id="aeropuertoOtrosDetalle" maxlength="200" value="@HttpUtility.HtmlEncode(sol != null ? sol.AeropuertosEcuadorOtros : "")" placeholder="Detalle de otros aeropuertos" />
                                         </div>
                                     </div>
                                 </div>
@@ -512,24 +619,7 @@
 
                                     <div class="anexo-item">
                                         <div class="d-flex justify-content-between">
-                                            <label class="font-weight-bold text-dark"><span class="badge badge-primary mr-2">4</span> Carta aprobacion MEL *</label>
-                                            <i class="fas fa-file-signature text-success fa-lg"></i>
-                                        </div>
-                                        <input type="file" class="form-control-file mb-2 mt-2" id="archivoMEL" accept=".pdf" required onchange="validarArchivo('archivoMEL')">
-                                        <div class="custom-control custom-checkbox mb-2">
-                                            <input class="custom-control-input" type="checkbox" id="chkMEL" onchange="toggleCaptura('archivoMEL', 'capturaMEL', this)">
-                                            <label class="custom-control-label text-muted" for="chkMEL"><small>Supera tamano permitido</small></label>
-                                        </div>
-                                        <div id="capturaMEL" style="display:none;" class="p-2 bg-light border mb-2">
-                                            <input type="file" class="form-control-file" accept=".jpg,.jpeg,.png">
-                                        </div>
-                                        <textarea class="form-control form-control-sm" id="conceptoMEL" rows="1" placeholder="Enlace o descripcion..." required onblur="validarConcepto('conceptoMEL')"></textarea>
-                                        <div class="text-danger small mt-1" id="alertaConceptoMEL" style="display:none;">? Requerido.</div>
-                                    </div>
-
-                                    <div class="anexo-item">
-                                        <div class="d-flex justify-content-between">
-                                            <label class="font-weight-bold text-dark"><span class="badge badge-primary mr-2">5</span> Permiso Operacion C.N.A *</label>
+                                            <label class="font-weight-bold text-dark"><span class="badge badge-primary mr-2">4</span> Permiso Operacion C.N.A.C *</label>
                                             <i class="fas fa-certificate text-warning fa-lg"></i>
                                         </div>
                                         <input type="file" class="form-control-file mb-2 mt-2" id="archivoPermisoOperacion" accept=".pdf" required onchange="validarArchivo('archivoPermisoOperacion')">
@@ -546,27 +636,10 @@
 
                                     <div class="anexo-item">
                                         <div class="d-flex justify-content-between">
-                                            <label class="font-weight-bold text-dark"><span class="badge badge-primary mr-2">6</span> Plan de Seguridad *</label>
-                                            <i class="fas fa-shield-alt text-dark fa-lg"></i>
-                                        </div>
-                                        <input type="file" class="form-control-file mb-2 mt-2" id="archivoPlanSeguridad" accept=".pdf" required onchange="validarArchivo('archivoPlanSeguridad')">
-                                        <div class="custom-control custom-checkbox mb-2">
-                                            <input class="custom-control-input" type="checkbox" id="chkPlanSeguridad" onchange="toggleCaptura('archivoPlanSeguridad', 'capturaPlanSeguridad', this)">
-                                            <label class="custom-control-label text-muted" for="chkPlanSeguridad"><small>Supera tamano permitido</small></label>
-                                        </div>
-                                        <div id="capturaPlanSeguridad" style="display:none;" class="p-2 bg-light border mb-2">
-                                            <input type="file" class="form-control-file" accept=".jpg,.jpeg,.png">
-                                        </div>
-                                        <textarea class="form-control form-control-sm" id="conceptoPlanSeguridad" rows="1" placeholder="Enlace o descripcion..." required onblur="validarConcepto('conceptoPlanSeguridad')"></textarea>
-                                        <div class="text-danger small mt-1" id="alertaConceptoPlanSeguridad" style="display:none;">? Requerido.</div>
-                                    </div>
-
-                                    <div class="anexo-item">
-                                        <div class="d-flex justify-content-between">
-                                            <label class="font-weight-bold text-dark"><span class="badge badge-primary mr-2">7</span> Certificado de Ruido *</label>
+                                            <label class="font-weight-bold text-dark"><span class="badge badge-primary mr-2">5</span> CERTIFICADO DE RUIDO DE AERONAVES, CONFORME A LAS ESPECIFICACIONES OPERACIONALES DEL E.A.E *</label>
                                             <i class="fas fa-volume-up text-secondary fa-lg"></i>
                                         </div>
-                                        <input type="file" class="form-control-file mb-2 mt-2" id="archivoCertificadoRuido" accept=".pdf" required onchange="validarArchivo('archivoCertificadoRuido')">
+                                        <input type="file" class="form-control-file mb-2 mt-2" id="archivoCertificadoRuido" accept=".pdf,.jpg,.jpeg,.png" required onchange="validarArchivo('archivoCertificadoRuido')">
                                         <div class="custom-control custom-checkbox mb-2">
                                             <input class="custom-control-input" type="checkbox" id="chkCertificadoRuido" onchange="toggleCaptura('archivoCertificadoRuido', 'capturaCertificadoRuido', this)">
                                             <label class="custom-control-label text-muted" for="chkCertificadoRuido"><small>Supera tamano permitido</small></label>
@@ -576,6 +649,40 @@
                                         </div>
                                         <textarea class="form-control form-control-sm" id="conceptoCertificadoRuido" rows="1" placeholder="Enlace o descripcion..." required onblur="validarConcepto('conceptoCertificadoRuido')"></textarea>
                                         <div class="text-danger small mt-1" id="alertaConceptoCertificadoRuido" style="display:none;">? Requerido.</div>
+                                    </div>
+
+                                    <div class="anexo-item">
+                                        <div class="d-flex justify-content-between">
+                                            <label class="font-weight-bold text-dark"><span class="badge badge-primary mr-2">6</span> CERTIFICADO DE AERONAVEGABILIDAD *</label>
+                                            <i class="fas fa-file-contract text-secondary fa-lg"></i>
+                                        </div>
+                                        <input type="file" class="form-control-file mb-2 mt-2" id="archivoCertificadoAeronavegabilidad" accept=".pdf,.jpg,.jpeg,.png" required onchange="validarArchivo('archivoCertificadoAeronavegabilidad')">
+                                        <div class="custom-control custom-checkbox mb-2">
+                                            <input class="custom-control-input" type="checkbox" id="chkCertificadoAeronavegabilidad" onchange="toggleCaptura('archivoCertificadoAeronavegabilidad', 'capturaCertificadoAeronavegabilidad', this)">
+                                            <label class="custom-control-label text-muted" for="chkCertificadoAeronavegabilidad"><small>Supera tamano permitido</small></label>
+                                        </div>
+                                        <div id="capturaCertificadoAeronavegabilidad" style="display:none;" class="p-2 bg-light border mb-2">
+                                            <input type="file" class="form-control-file" accept=".jpg,.jpeg,.png">
+                                        </div>
+                                        <textarea class="form-control form-control-sm" id="conceptoCertificadoAeronavegabilidad" rows="1" placeholder="Enlace o descripcion..." required onblur="validarConcepto('conceptoCertificadoAeronavegabilidad')"></textarea>
+                                        <div class="text-danger small mt-1" id="alertaConceptoCertificadoAeronavegabilidad" style="display:none;">? Requerido.</div>
+                                    </div>
+
+                                    <div class="anexo-item">
+                                        <div class="d-flex justify-content-between">
+                                            <label class="font-weight-bold text-dark"><span class="badge badge-primary mr-2">7</span> Copia certificada del poder otorgado al representante legal en el Ecuador *</label>
+                                            <i class="fas fa-user-tie text-dark fa-lg"></i>
+                                        </div>
+                                        <input type="file" class="form-control-file mb-2 mt-2" id="archivoPoderRepresentante" accept=".pdf,.jpg,.jpeg,.png" required onchange="validarArchivo('archivoPoderRepresentante')">
+                                        <div class="custom-control custom-checkbox mb-2">
+                                            <input class="custom-control-input" type="checkbox" id="chkPoderRepresentante" onchange="toggleCaptura('archivoPoderRepresentante', 'capturaPoderRepresentante', this)">
+                                            <label class="custom-control-label text-muted" for="chkPoderRepresentante"><small>Supera tamano permitido</small></label>
+                                        </div>
+                                        <div id="capturaPoderRepresentante" style="display:none;" class="p-2 bg-light border mb-2">
+                                            <input type="file" class="form-control-file" accept=".jpg,.jpeg,.png">
+                                        </div>
+                                        <textarea class="form-control form-control-sm" id="conceptoPoderRepresentante" rows="1" placeholder="Enlace o descripcion..." required onblur="validarConcepto('conceptoPoderRepresentante')"></textarea>
+                                        <div class="text-danger small mt-1" id="alertaConceptoPoderRepresentante" style="display:none;">? Requerido.</div>
                                     </div>
 
                                     <div class="anexo-item border-secondary">
@@ -679,10 +786,10 @@
                                         <tr><td>AOC valido</td><td><span class="badge badge-secondary" id="chkAOCEstado">Pendiente</span></td><td></td></tr>
                                         <tr><td>OpSpecs / Especificaciones</td><td><span class="badge badge-secondary" id="chkOpSpecsEstado">Pendiente</span></td><td></td></tr>
                                         <tr><td>Manual de Operaciones</td><td><span class="badge badge-secondary" id="chkManualEstado">Pendiente</span></td><td></td></tr>
-                                        <tr><td>Aprobacion MEL</td><td><span class="badge badge-secondary" id="chkMELEstado">Pendiente</span></td><td></td></tr>
                                         <tr><td>Permiso CNAC</td><td><span class="badge badge-secondary" id="chkPermisoEstado">Pendiente</span></td><td></td></tr>
-                                        <tr><td>Plan de seguridad</td><td><span class="badge badge-secondary" id="chkPlanEstado">Pendiente</span></td><td></td></tr>
-                                        <tr><td>Certificados de ruido</td><td><span class="badge badge-secondary" id="chkRuidoEstado">Pendiente</span></td><td></td></tr>
+                                        <tr><td>Certificado de ruido de aeronaves</td><td><span class="badge badge-secondary" id="chkRuidoEstado">Pendiente</span></td><td></td></tr>
+                                        <tr><td>Certificado de aeronavegabilidad</td><td><span class="badge badge-secondary" id="chkAeronavegabilidadEstado">Pendiente</span></td><td></td></tr>
+                                        <tr><td>Poder representante legal en Ecuador</td><td><span class="badge badge-secondary" id="chkPoderRepresentanteEstado">Pendiente</span></td><td></td></tr>
                                     </tbody>
                                 </table>
                             </div>
@@ -694,16 +801,6 @@
                     </button>
                     <button class="btn btn-primary btn-lg shadow" type="button" onclick="guardarFormulario()">
                         <i class="fas fa-save"></i> Guardar Solicitud
-                    </button>
-                    <!-- Boton temporal para debugging -->
-                    <button class="btn btn-warning mr-2" type="button" onclick="testJson()">
-                        <i class="fas fa-bug"></i> Test JSON
-                    </button>
-                    <button class="btn btn-info mr-2" type="button" onclick="testFormularioCompleto()">
-                        <i class="fas fa-flask"></i> Test ViewModel
-                    </button>
-                    <button class="btn btn-secondary mr-2" type="button" onclick="testSession()">
-                        <i class="fas fa-user"></i> Test Session
                     </button>
                 </div>
             </div>
@@ -880,8 +977,6 @@
             $('#tablaAeronaves tbody').append($tr);
 
             $('#modalAgregarAeronave').modal('hide');
-
-            $('#modalAgregarAeronave').modal('hide');
             actualizarContador(); // Actualizar contador al agregar
         });
 
@@ -1046,6 +1141,22 @@
 
             lector.readAsArrayBuffer(archivo);
         });
+
+        $('#btnGuardarListadoAeronaves').off('click').on('click', function () {
+            guardarFlota();
+        });
+
+        $('#aprobacionOTROS').on('change', function () {
+            $('#aprobacionOtrosContenedor').toggle(this.checked);
+        });
+
+        $('#aeropuertoOtros').on('change', function () {
+            $('#aeropuertoOtrosContenedor').toggle(this.checked);
+        });
+
+        inicializarCompaniasSeleccionadas();
+        $('#aprobacionOtrosContenedor').toggle($('#aprobacionOTROS').is(':checked'));
+        $('#aeropuertoOtrosContenedor').toggle($('#aeropuertoOtros').is(':checked'));
     });
     //Funcion que activa o desactiva el campo de captura de pantalla
     function validarArchivo(idInput) {
@@ -1055,12 +1166,12 @@
 
         if (!archivo) return true;
 
-        const tamanoMaximo = 2 * 1024 * 1024; // 2 MB en bytes
+        const tamanoMaximo = 10 * 1024 * 1024; // 10 MB en bytes
 
         if (archivo.size > tamanoMaximo) {
             Swal.fire({
                 title: 'Archivo demasiado grande',
-                text: 'El archivo supera los 2MB permitidos. Por favor suba una captura (JPG/PNG) si aplica.',
+                text: 'El archivo supera los 10MB permitidos. Por favor suba una captura (JPG/PNG) si aplica.',
                 icon: 'warning',
                 confirmButtonText: 'OK'
             });
@@ -1201,35 +1312,39 @@
         }
     }
     //funcion para seleccionar companias
-    const companias = new Set();
+    const companias = new Map();
 
-    function agregarCompania() {
-        const select = document.getElementById('selectorCompanias');
+    function actualizarCompaniasSeleccionadasRaw() {
+        const hidden = document.getElementById('companiasSeleccionadasRaw');
+        if (!hidden) {
+            return;
+        }
+        hidden.value = Array.from(companias.keys()).join(',');
+    }
+
+    function agregarCompaniaPorCodigo(codigo, nombre, mostrarAlertas) {
         const contenedor = document.getElementById('companiasSeleccionadas');
-        const seleccion = select.value;
-
-        if (!seleccion) {
-            Swal.fire({ title: 'Seleccione compañía', text: 'Por favor, seleccione una compania.', icon: 'warning', confirmButtonText: 'OK' });
+        if (!contenedor || !codigo) {
             return;
         }
 
-        if (companias.has(seleccion)) {
-            Swal.fire({ title: 'Duplicado', text: 'La compania ya ha sido agregada.', icon: 'info', confirmButtonText: 'OK' });
+        if (companias.has(codigo)) {
+            if (mostrarAlertas) {
+                Swal.fire({ title: 'Duplicado', text: 'La compania ya ha sido agregada.', icon: 'info', confirmButtonText: 'OK' });
+            }
             return;
         }
 
-        companias.add(seleccion);
+        companias.set(codigo, nombre || codigo);
 
-        // Crear la badge
         const badge = document.createElement('span');
         badge.className = 'badge badge-info mr-1 p-2 mb-1';
-        // Construir badge de forma segura: crear elementos y usar textContent para el valor dinámico
         const iconBuild = document.createElement('i');
         iconBuild.className = 'fas fa-building';
         badge.appendChild(iconBuild);
         badge.appendChild(document.createTextNode(' '));
         const spanSel = document.createElement('span');
-        spanSel.textContent = seleccion;
+        spanSel.textContent = codigo + ' - ' + (nombre || codigo);
         badge.appendChild(spanSel);
         badge.appendChild(document.createTextNode(' '));
         const iconClose = document.createElement('i');
@@ -1237,16 +1352,63 @@
         badge.appendChild(iconClose);
         badge.style.cursor = 'pointer';
         badge.title = "Haz click para eliminar";
+        badge.setAttribute('data-codigo', codigo);
 
-        badge.onclick = () => {
-            companias.delete(seleccion);
-            contenedor.removeChild(badge);
+        badge.onclick = function () {
+            companias.delete(codigo);
+            if (badge.parentNode) {
+                badge.parentNode.removeChild(badge);
+            }
+            actualizarCompaniasSeleccionadasRaw();
         };
 
         contenedor.appendChild(badge);
+        actualizarCompaniasSeleccionadasRaw();
+    }
 
-        // Resetear seleccion
+    function agregarCompania() {
+        const select = document.getElementById('selectorCompanias');
+        if (!select) {
+            return;
+        }
+
+        const opcion = select.options[select.selectedIndex];
+        const codigo = (opcion && (opcion.getAttribute('data-oaci') || opcion.value) ? (opcion.getAttribute('data-oaci') || opcion.value) : '').trim();
+        const nombre = (opcion && opcion.getAttribute('data-nombre') ? opcion.getAttribute('data-nombre') : '').trim();
+
+        if (!codigo) {
+            Swal.fire({ title: 'Seleccione compania', text: 'Por favor, seleccione una compania.', icon: 'warning', confirmButtonText: 'OK' });
+            return;
+        }
+
+        agregarCompaniaPorCodigo(codigo, nombre, true);
         select.value = '';
+    }
+
+    function inicializarCompaniasSeleccionadas() {
+        const raw = (document.getElementById('companiasSeleccionadasRaw') || {}).value || '';
+        const valores = raw.split(',').map(function (v) { return (v || '').trim(); }).filter(Boolean);
+        if (valores.length === 0) {
+            return;
+        }
+
+        const select = document.getElementById('selectorCompanias');
+        const lookup = {};
+        if (select && select.options) {
+            for (var i = 0; i < select.options.length; i++) {
+                const opt = select.options[i];
+                const key = (opt.getAttribute('data-oaci') || opt.value || '').trim();
+                if (!key) {
+                    continue;
+                }
+                lookup[key.toUpperCase()] = (opt.getAttribute('data-nombre') || key).trim();
+            }
+        }
+
+        valores.forEach(function (codigo) {
+            const nombre = lookup[codigo.toUpperCase()] || codigo;
+            agregarCompaniaPorCodigo(codigo, nombre, false);
+        });
     }
 </script>
 <script>
@@ -1280,8 +1442,92 @@
   // ====== Checklist 129-04 ======
   function setBadge(id, ok){
     const el=$('#'+id);
+    if (el.length === 0) return;
     el.removeClass('badge-secondary badge-success').addClass(ok?'badge-success':'badge-secondary').text(ok?'Completo':'Pendiente');
   }
+
+  function obtenerAprobacionesEspecialesSeleccionadas() {
+    const valores = [];
+    $('.aprobacion-especial:checked').each(function () {
+      const valor = ($(this).val() || '').trim();
+      if (valor) valores.push(valor);
+    });
+    return valores;
+  }
+
+  function obtenerAeropuertosEcuadorSeleccionados() {
+    const valores = [];
+    $('.aeropuerto-ecuador:checked').each(function () {
+      const valor = ($(this).val() || '').trim();
+      if (valor) valores.push(valor);
+    });
+    return valores;
+  }
+
+  function obtenerAeronavesDesdeTabla() {
+    var aeronaves = [];
+    $('#tablaAeronaves tbody tr').each(function() {
+      var $tr = $(this);
+      var aeronave = {
+        Marca: $tr.find('td').eq(0).text().trim(),
+        Modelo: $tr.find('td').eq(1).text().trim(),
+        Serie: $tr.find('td').eq(2).text().trim(),
+        Matricula: $tr.find('td').eq(3).text().trim(),
+        Configuracion: $tr.find('td').eq(4).text().trim(),
+        EtapaRuido: $tr.find('td').eq(5).text().trim()
+      };
+
+      if (aeronave.Matricula) {
+        aeronaves.push(aeronave);
+      }
+    });
+    return aeronaves;
+  }
+
+  function construirMetadatosDocumentos() {
+    return [
+      { InputId: 'archivoAOC', TipoDocumento: 'COPIA_AOC_VALIDA', Concepto: $('#conceptoAOC').val() || '', Obligatorio: true },
+      { InputId: 'archivoOpSpecs', TipoDocumento: 'OPSPECS_ESPECIFICACIONES_OPERACIONALES', Concepto: $('#conceptoOpSpecs').val() || '', Obligatorio: true },
+      { InputId: 'archivoManualOperaciones', TipoDocumento: 'MANUAL_OPERACIONES', Concepto: $('#conceptoManualOperaciones').val() || '', Obligatorio: true },
+      { InputId: 'archivoPermisoOperacion', TipoDocumento: 'PERMISO_OPERACION_CNAC', Concepto: $('#conceptoPermisoOperacion').val() || '', Obligatorio: true },
+      { InputId: 'archivoCertificadoRuido', TipoDocumento: 'CERTIFICADO_RUIDO_AERONAVES_EAE', Concepto: $('#conceptoCertificadoRuido').val() || '', Obligatorio: true },
+      { InputId: 'archivoCertificadoAeronavegabilidad', TipoDocumento: 'CERTIFICADO_AERONAVEGABILIDAD', Concepto: $('#conceptoCertificadoAeronavegabilidad').val() || '', Obligatorio: true },
+      { InputId: 'archivoPoderRepresentante', TipoDocumento: 'COPIA_CERTIFICADA_PODER_REPRESENTANTE_ECUADOR', Concepto: $('#conceptoPoderRepresentante').val() || '', Obligatorio: true },
+      { InputId: 'archivoFacturaPago', TipoDocumento: 'COMPROBANTE_PAGO', Concepto: $('#conceptoFacturaPago').val() || '', Obligatorio: true },
+      { InputId: 'archivoOtro', TipoDocumento: 'OTRO', Concepto: $('#conceptoOtro').val() || '', Obligatorio: false }
+    ];
+  }
+
+  function validarDocumentosObligatorios() {
+    const obligatorios = [
+      { id: 'archivoFacturaPago', nombre: 'Comprobante de pago' },
+      { id: 'archivoAOC', nombre: 'Copia de AOC valida' },
+      { id: 'archivoOpSpecs', nombre: 'OpSpecs' },
+      { id: 'archivoManualOperaciones', nombre: 'Manual de Operaciones' },
+      { id: 'archivoPermisoOperacion', nombre: 'Permiso Operacion C.N.A.C' },
+      { id: 'archivoCertificadoRuido', nombre: 'Certificado de Ruido de Aeronaves' },
+      { id: 'archivoCertificadoAeronavegabilidad', nombre: 'Certificado de Aeronavegabilidad' },
+      { id: 'archivoPoderRepresentante', nombre: 'Copia certificada del poder del representante legal en Ecuador' }
+    ];
+
+    const faltantes = obligatorios.filter(function (item) {
+      const input = document.getElementById(item.id);
+      return !input || !input.files || input.files.length === 0;
+    });
+
+    if (faltantes.length > 0) {
+      Swal.fire({
+        title: 'Documentos obligatorios pendientes',
+        text: 'Faltan: ' + faltantes.map(function (f) { return f.nombre; }).join(', '),
+        icon: 'warning',
+        confirmButtonText: 'OK'
+      });
+      return false;
+    }
+
+    return true;
+  }
+
   function updateChecklist(){
     setBadge('chkFacturaEstado', ($('#archivoFacturaPago').prop('files')||[]).length>0);
     setBadge('chk12901Estado', !!($('#carta12901Texto').val()||'').trim());
@@ -1291,12 +1537,12 @@
     setBadge('chkAOCEstado', ($('#archivoAOC').prop('files')||[]).length>0);
     setBadge('chkOpSpecsEstado', ($('#archivoOpSpecs').prop('files')||[]).length>0);
     setBadge('chkManualEstado', ($('#archivoManualOperaciones').prop('files')||[]).length>0);
-    setBadge('chkMELEstado', ($('#archivoMEL').prop('files')||[]).length>0);
     setBadge('chkPermisoEstado', ($('#archivoPermisoOperacion').prop('files')||[]).length>0);
-    setBadge('chkPlanEstado', ($('#archivoPlanSeguridad').prop('files')||[]).length>0);
     setBadge('chkRuidoEstado', ($('#archivoCertificadoRuido').prop('files')||[]).length>0);
+    setBadge('chkAeronavegabilidadEstado', ($('#archivoCertificadoAeronavegabilidad').prop('files')||[]).length>0);
+    setBadge('chkPoderRepresentanteEstado', ($('#archivoPoderRepresentante').prop('files')||[]).length>0);
   }
-  $(document).on('change input', '#archivoFacturaPago,#nombreRepresentante,#direccionEcuador,#archivoAOC,#archivoOpSpecs,#archivoManualOperaciones,#archivoMEL,#archivoPermisoOperacion,#archivoPlanSeguridad,#archivoCertificadoRuido', updateChecklist);
+  $(document).on('change input', '#archivoFacturaPago,#nombreRepresentante,#direccionEcuador,#archivoAOC,#archivoOpSpecs,#archivoManualOperaciones,#archivoPermisoOperacion,#archivoCertificadoRuido,#archivoCertificadoAeronavegabilidad,#archivoPoderRepresentante', updateChecklist);
 
   // ====== Mapear UI -> campos VM antes de guardar ======
   function mapearCamposVM(){
@@ -1306,8 +1552,11 @@
     $('#telefonoOperador').val($('#telefonoEcuador').val()||'');
     
     // Manejar razon social
-    var razonSocialVal = $('#razonSocial').val() || $('#nombreCompania').val() || '';
+    var razonSocialVal = $('#razonSocialCompania').val() || $('#razonSocial').val() || $('#nombreCompania').val() || '';
     $('#razonSocial').val(razonSocialVal);
+
+    const aprobaciones = obtenerAprobacionesEspecialesSeleccionadas();
+    const aeropuertosEcuador = obtenerAeropuertosEcuadorSeleccionados();
     
     // Tipo de operacion
     const tipos=[];
@@ -1326,14 +1575,22 @@
       NombreOperador: $('#nombreCompania').val() || '',
       RepresentanteLegal: $('#nombreRepresentante').val() || '',
       CedulaRepresentante: $('#rucRepresentante').val() || '',
+      CorreoRepresentanteTecnico: $('#emailEcuador').val() || '',
       Direccion: $('#direccionEcuador').val() || '',
       Telefono: $('#telefonoEcuador').val() || $('#telefonoCompania').val() || '',
       Email: $('#emailEcuador').val() || $('#correoCompania').val() || '',
       Ruc: $('#rucRepresentante').val() || $('#rucOperador').val() || '',
       RazonSocial: razonSocialVal,
+      NombreComercial: $('#nombreCompania').val() || '',
       TipoOperacion: tipos.join(' | '),
       DescripcionOperacion: $('#resumenOperaciones').val() || '',
-      ObservacionesGenerales: $('#conceptoFacturaPago').val() || ''
+      ResumenOperacionesEae: $('#resumenOperaciones').val() || '',
+      ObservacionesGenerales: $('#conceptoFacturaPago').val() || '',
+      AprobacionesEspeciales: aprobaciones.join(','),
+      AprobacionesEspecialesOtros: $('#aprobacionOtrosDetalle').val() || '',
+      AeropuertosEcuador: aeropuertosEcuador.join(','),
+      AeropuertosEcuadorOtros: $('#aeropuertoOtrosDetalle').val() || '',
+      CompaniasSeleccionadas: $('#companiasSeleccionadasRaw').val() || ''
     };
   }
 
@@ -1350,171 +1607,92 @@
     if (@modeloSolicitudCodigo > 0) {
         codigoSolicitud = @modeloSolicitudCodigo;
     }
+
+    $('#aprobacionOtrosContenedor').toggle($('#aprobacionOTROS').is(':checked'));
+    $('#aeropuertoOtrosContenedor').toggle($('#aeropuertoOtros').is(':checked'));
   });
 </script>
 
 <script>
-  function testSession() {
-    console.log('=== INICIANDO TEST SESION ===');
-    
-    $.ajax({
-      url: '@Url.Action("TestSession", "SolicitudAOCR")',
-      type: 'POST',
-      contentType: 'application/json; charset=utf-8',
-      dataType: 'json',
-      timeout: 10000,
-            success: function (response) {
-        console.log('TEST SESSION SUCCESS:', response);
-        var data = response && response.data ? response.data : {};
-        var codigoUsuario = data && data.codigoUsuario ? data.codigoUsuario : 'N/A';
-        var correo = data && data.correo ? data.correo : 'N/A';
-        Swal.fire({
-          title: 'Test Sesion Exitoso',
-          text: 'Usuario: ' + codigoUsuario + ', Correo: ' + correo,
-          icon: 'success'
-        });
-      },
-      error: function (xhr, status, error) {
-        console.log('TEST SESSION ERROR:', { status: xhr.status, error: error });
-        console.log('Response Text:', xhr.responseText);
-        
-        Swal.fire({
-          title: 'Test Sesion Fallido',
-          text: 'Status: ' + xhr.status + ', Error: ' + error,
-          icon: 'error'
-        });
-      }
-    });
-  }
+  function guardarFlota() {
+    const codigoSolicitud = parseInt($('#codigoSolicitud').val() || '0', 10) || 0;
+    const aeronaves = obtenerAeronavesDesdeTabla();
 
-  function testFormularioCompleto() {
-    console.log('=== INICIANDO TEST FORMULARIO COMPLETO ===');
-    
-    // Crear datos de prueba simples
-    const testVm = {
-      Solicitud: {
-        CodigoSolicitud: 0,
-        NombreOperador: 'TEST OPERADOR',
-        RepresentanteLegal: 'TEST REPRESENTANTE',
-        CedulaRepresentante: '1234567890',
-        Direccion: 'TEST DIRECCION',
-        Telefono: '0999999999',
-        Email: 'test@test.com',
-        Ruc: '1234567890001',
-        RazonSocial: 'TEST EMPRESA',
-        TipoOperacion: 'Test',
-        DescripcionOperacion: 'TEST DESCRIPCION',
-        ObservacionesGenerales: 'TEST OBSERVACIONES',
-        Estado: 'BORRADOR',
-        TipoSolicitud: 1
-      },
-      Banco: 'BANCO TEST',
-      NumeroComprobante: '123456',
-      Aeronaves: [
-        {
-          Marca: 'Boeing',
-          Modelo: '737',
-          Serie: 'TEST123',
-          Matricula: 'HC-TEST',
-          Configuracion: 'Pasajeros',
-          EtapaRuido: '3'
-        }
-      ]
+    if (codigoSolicitud <= 0) {
+      Swal.fire({
+        title: 'Guardar Flota',
+        text: 'Primero debe guardar la solicitud para obtener un codigo valido.',
+        icon: 'warning',
+        confirmButtonText: 'OK'
+      });
+      return;
+    }
+
+    if (aeronaves.length === 0) {
+      Swal.fire({
+        title: 'Guardar Flota',
+        text: 'Debe ingresar al menos una aeronave valida antes de guardar.',
+        icon: 'warning',
+        confirmButtonText: 'OK'
+      });
+      return;
+    }
+
+    const token = $('input[name="__RequestVerificationToken"]').val();
+    const payload = {
+      CodigoSolicitud: codigoSolicitud,
+      Aeronaves: aeronaves
     };
 
-    // AJAX call for testing
-    $.ajax({
-      url: '@Url.Action("FormularioCompleto", "SolicitudAOCR")',
-      type: 'POST',
-      data: JSON.stringify(testVm),
-      contentType: 'application/json; charset=utf-8',
-      dataType: 'json',
-      timeout: 10000,
-      success: function (response) {
-        console.log('TEST FORMULARIO COMPLETO SUCCESS:', response);
-        var data = response && response.data ? response.data : {};
-        var codigoUsuario = data && data.codigoUsuario ? data.codigoUsuario : 'N/A';
-        var correo = data && data.correo ? data.correo : 'N/A';
-        Swal.fire({
-          title: 'Test Formulario Completo Exitoso',
-          text: 'Usuario: ' + codigoUsuario + ', Correo: ' + correo,
-          icon: 'success'
-        });
-      },
-      error: function (xhr, status, error) {
-        console.log('TEST FORMULARIO COMPLETO ERROR:', { status: xhr.status, error: error });
-        console.log('Response Text:', xhr.responseText.substring(0, 500));
-        
-        Swal.fire({
-          title: 'Test Formulario Completo Fallido',
-          text: 'Status: ' + xhr.status + ', Error: ' + error,
-          icon: 'error'
-        });
-      }
-    });
-  }
+    $('#btnGuardarListadoAeronaves').prop('disabled', true);
+    Swal.fire({ title: 'Guardando flota...', allowOutsideClick: false, didOpen: function () { Swal.showLoading(); } });
 
-  function testJson() {
-    console.log('=== INICIANDO TEST JSON ===');
-    
-    // Obtener token antiforgery
-    var token = $('input[name="__RequestVerificationToken"]').val();
-    console.log('Token encontrado:', token ? 'SI' : 'NO');
-    
     $.ajax({
-      url: '@Url.Action("TestJson", "SolicitudAOCR")',
+      url: '@Url.Action("GuardarFlota", "SolicitudAOCR")',
       type: 'POST',
+      data: JSON.stringify(payload),
       contentType: 'application/json; charset=utf-8',
       dataType: 'json',
-      timeout: 10000,
-      beforeSend: function(xhr) {
+      timeout: 30000,
+      beforeSend: function (xhr) {
         if (token) {
           xhr.setRequestHeader('RequestVerificationToken', token);
         }
-      },
-      success: function (response) {
-        console.log('TEST JSON SUCCESS:', response);
-        var data = response && response.data ? response.data : {};
-        var codigoUsuario = data && data.codigoUsuario ? data.codigoUsuario : 'N/A';
-        var correo = data && data.correo ? data.correo : 'N/A';
+      }
+    }).done(function (response) {
+      if (response && response.success) {
         Swal.fire({
-          title: 'Test JSON Exitoso',
-          text: 'Usuario: ' + codigoUsuario + ', Correo: ' + correo,
-          icon: 'success'
+          title: 'Flota guardada',
+          text: response.message || 'La flota se guardo correctamente.',
+          icon: 'success',
+          confirmButtonText: 'OK'
         });
-      },
-      error: function (xhr, status, error) {
-        console.log('TEST JSON ERROR:', { status: xhr.status, error: error });
-        console.log('Response Text:', xhr.responseText);
-        
+      } else {
         Swal.fire({
-          title: 'Test JSON Fallido',
-          text: 'Status: ' + xhr.status + ', Error: ' + error,
-          icon: 'error'
+          title: 'No se pudo guardar la flota',
+          text: (response && response.message) ? response.message : 'Error no controlado.',
+          icon: 'error',
+          confirmButtonText: 'OK'
         });
       }
+    }).fail(function (xhr, status, error) {
+      const mensaje = status === 'timeout'
+        ? 'La solicitud tardo demasiado tiempo. Intente nuevamente.'
+        : ('Error al guardar flota: ' + (error || xhr.statusText || 'desconocido'));
+      Swal.fire({
+        title: 'Error',
+        text: mensaje,
+        icon: 'error',
+        confirmButtonText: 'OK'
+      });
+    }).always(function () {
+      $('#btnGuardarListadoAeronaves').prop('disabled', false);
+      Swal.close();
     });
   }
 
   function guardarFormulario(){
-    // Recopilar aeronaves de la tabla
-    var aeronaves = [];
-    $('#tablaAeronaves tbody tr').each(function() {
-      var $tr = $(this);
-      var aeronave = {
-        Marca: $tr.find('td').eq(0).text().trim(),
-        Modelo: $tr.find('td').eq(1).text().trim(),
-        Serie: $tr.find('td').eq(2).text().trim(),
-        Matricula: $tr.find('td').eq(3).text().trim(),
-        Configuracion: $tr.find('td').eq(4).text().trim(),
-        EtapaRuido: $tr.find('td').eq(5).text().trim()
-      };
-      
-      // Solo agregar si tiene matricula
-      if (aeronave.Matricula) {
-        aeronaves.push(aeronave);
-      }
-    });
+    var aeronaves = obtenerAeronavesDesdeTabla();
     
     // Validacion: debe haber al menos una aeronave
     if (aeronaves.length === 0) {
@@ -1524,6 +1702,10 @@
         icon: 'warning',
         confirmButtonText: 'OK'
       });
+      return;
+    }
+
+    if (!validarDocumentosObligatorios()) {
       return;
     }
     
@@ -1547,22 +1729,31 @@
     const vm = {
       Solicitud: {
         CodigoSolicitud: codigoSolicitud,
-        NombreOperador: datosMapeados.NombreOperador || 'TEST OPERADOR',
-        RepresentanteLegal: datosMapeados.RepresentanteLegal || 'TEST REPRESENTANTE',
-        CedulaRepresentante: datosMapeados.CedulaRepresentante || '1234567890',
-        Direccion: datosMapeados.Direccion || 'TEST DIRECCION',
-        Telefono: datosMapeados.Telefono || '0999999999',
-        Email: datosMapeados.Email || 'test@test.com',
-        Ruc: datosMapeados.Ruc || '1234567890001',
-        RazonSocial: datosMapeados.RazonSocial || 'TEST EMPRESA',
-        TipoOperacion: datosMapeados.TipoOperacion || 'Test',
-        DescripcionOperacion: datosMapeados.DescripcionOperacion || 'TEST DESCRIPCION',
-        ObservacionesGenerales: datosMapeados.ObservacionesGenerales || 'TEST OBSERVACIONES',
+        NombreOperador: datosMapeados.NombreOperador || '',
+        RepresentanteLegal: datosMapeados.RepresentanteLegal || '',
+        CedulaRepresentante: datosMapeados.CedulaRepresentante || '',
+        CorreoRepresentanteTecnico: datosMapeados.CorreoRepresentanteTecnico || '',
+        Direccion: datosMapeados.Direccion || '',
+        Telefono: datosMapeados.Telefono || '',
+        Email: datosMapeados.Email || '',
+        Ruc: datosMapeados.Ruc || '',
+        RazonSocial: datosMapeados.RazonSocial || '',
+        NombreComercial: datosMapeados.NombreComercial || '',
+        TipoOperacion: datosMapeados.TipoOperacion || '',
+        DescripcionOperacion: datosMapeados.DescripcionOperacion || '',
+        ResumenOperacionesEae: datosMapeados.ResumenOperacionesEae || '',
+        AprobacionesEspeciales: datosMapeados.AprobacionesEspeciales || '',
+        AprobacionesEspecialesOtros: datosMapeados.AprobacionesEspecialesOtros || '',
+        AeropuertosEcuador: datosMapeados.AeropuertosEcuador || '',
+        AeropuertosEcuadorOtros: datosMapeados.AeropuertosEcuadorOtros || '',
+        CompaniasSeleccionadas: datosMapeados.CompaniasSeleccionadas || '',
+        ObservacionesGenerales: datosMapeados.ObservacionesGenerales || '',
         Estado: 'BORRADOR',
         TipoSolicitud: 1
       },
       Banco: $('#banco').val() || '',
       NumeroComprobante: $('#numeroComprobante').val() || '',
+      DocumentosCarga: construirMetadatosDocumentos(),
       Aeronaves: aeronaves
     };
     
@@ -1601,20 +1792,42 @@
     
     // Obtener token antiforgery (se añade automáticamente en cabecera por $.ajaxSetup)
 
-    // Preparar payload y verificaciones basicas
-    var payload = null;
+    var vmJson = null;
     try {
-        payload = JSON.stringify(vm);
+        vmJson = JSON.stringify(vm);
     } catch (e) {
         console.error('Error serializando datos:', e);
         Swal.fire('Error', 'No se pudo preparar los datos para el envio.', 'error');
         return;
     }
 
-    if (payload.length > 5 * 1024 * 1024) { // 5MB
+    if (vmJson.length > 5 * 1024 * 1024) { // 5MB
         Swal.fire('Error', 'Los datos a enviar son demasiado grandes. Reduzca la cantidad de aeronaves o archivos.', 'error');
         return;
     }
+
+    const token = $('input[name="__RequestVerificationToken"]').val() || '';
+    const formData = new FormData();
+    formData.append('__RequestVerificationToken', token);
+    formData.append('vmJson', vmJson);
+
+    const inputsArchivos = [
+      'archivoAOC',
+      'archivoOpSpecs',
+      'archivoManualOperaciones',
+      'archivoPermisoOperacion',
+      'archivoCertificadoRuido',
+      'archivoCertificadoAeronavegabilidad',
+      'archivoPoderRepresentante',
+      'archivoFacturaPago',
+      'archivoOtro'
+    ];
+    inputsArchivos.forEach(function (inputId) {
+      const input = document.getElementById(inputId);
+      if (input && input.files && input.files.length > 0) {
+        formData.append(inputId, input.files[0]);
+      }
+    });
 
     // Mostrar loading y deshabilitar boton
     $('#btnGuardarListadoAeronaves').prop('disabled', true);
@@ -1623,8 +1836,9 @@
     $.ajax({
       url: '@Url.Action("FormularioCompleto", "SolicitudAOCR")',
       type: 'POST',
-      data: payload,
-      contentType: 'application/json; charset=utf-8',
+      data: formData,
+      processData: false,
+      contentType: false,
       dataType: 'json',
       timeout: 30000,
       beforeSend: function () {
