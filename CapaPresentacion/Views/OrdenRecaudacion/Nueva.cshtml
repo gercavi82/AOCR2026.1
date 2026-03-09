@@ -68,7 +68,11 @@
 
                             <div class="mb-3">
                                 <label class="form-label">Compañía</label>
-                                @Html.TextBoxFor(m => m.Orden.Compania, new { @class = "form-control", placeholder = "Nombre de la compañía" })
+                                @Html.HiddenFor(m => m.Orden.Compania)
+                                <div id="Orden_Compania_Texto" class="form-control bg-light" aria-readonly="true" title="Este valor se obtiene automáticamente y no es editable.">
+                                    @(Model != null && Model.Orden != null ? (Model.Orden.Compania ?? string.Empty) : string.Empty)
+                                </div>
+                                <small class="text-muted">Valor obtenido automáticamente desde la base de datos.</small>
                             </div>
                         </div>
 
@@ -220,7 +224,10 @@
                                 var correo = $opt.data('correo') || '';
                                 var telefono = $opt.data('telefono') || '';
 
-                                if (compania) $('#Orden_Compania').val(compania);
+                                if (compania) {
+                                    $('#Orden_Compania').val(compania);
+                                    $('#Orden_Compania_Texto').text(compania);
+                                }
                                 if (ruc) $('#Orden_RucCedula').val(ruc);
                                 if (correo) $('#Orden_Correo').val(correo);
                                 if (telefono) $('#Orden_Telefono').val(telefono);

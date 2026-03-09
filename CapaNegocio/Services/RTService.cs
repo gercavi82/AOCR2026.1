@@ -97,7 +97,7 @@ namespace CapaNegocio.Services
             return solicitud.Id;
         }
 
-        public void AceptarDeclaracion(int solicitudId, int usuarioId)
+        public void AceptarDeclaracion(int solicitudId, int usuarioId, string textoDeclaracion = null)
         {
             var solicitud = _rtDao.GetSolicitudById(solicitudId);
             ValidarPropietario(solicitud, usuarioId);
@@ -105,7 +105,7 @@ namespace CapaNegocio.Services
             if (!string.Equals(solicitud.Estado, EstadoBorrador, StringComparison.OrdinalIgnoreCase))
                 throw new InvalidOperationException("La solicitud no está en estado BORRADOR.");
 
-            _rtDao.UpdateDeclaracionAceptada(solicitudId, true);
+            _rtDao.UpdateDeclaracionAceptada(solicitudId, true, textoDeclaracion);
         }
 
         public DocumentoModel SubirDesignacionPdf(int solicitudId, int usuarioId, HttpPostedFileBase pdf)

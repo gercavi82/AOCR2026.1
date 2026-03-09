@@ -38,107 +38,157 @@
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
 
 <style>
-    /* ESTILOS PERSONALIZADOS PARA MEJORAR EL TEMA VISUAL */
-    body {
-        background-color: #f4f6f9; /* Fondo gris muy suave para dar contraste al contenido blanco */
+    .aocr-wizard {
+        background-color: #f4f7fa;
+        border-radius: 12px;
+        padding-top: 0.75rem;
     }
 
-    /* Estilo del menu lateral */
-    .list-group-item {
-        border: none;
-        border-radius: 0.5rem !important;
-        margin-bottom: 5px;
-        color: #495057;
-        font-weight: 500;
-        transition: all 0.3s;
+    .aocr-wizard .wizard-sidebar {
+        border: 0;
+        border-radius: 12px;
+        box-shadow: 0 4px 14px rgba(15, 23, 42, 0.08);
+        position: sticky;
+        top: 10px;
     }
 
-        .list-group-item.active {
-            background-color: #007bff;
-            border-color: #007bff;
-            color: #fff;
-            box-shadow: 0 4px 6px rgba(0, 123, 255, 0.3);
-        }
+    .aocr-wizard .list-group {
+        gap: 6px;
+    }
 
-        .list-group-item i {
-            margin-right: 10px;
-            width: 20px;
-            text-align: center;
-        }
+    .aocr-wizard .wizard-step {
+        border: 0;
+        border-radius: 10px !important;
+        color: #4b5563;
+        font-weight: 600;
+        padding: 0.8rem 0.9rem;
+        transition: all .25s ease;
+    }
 
-    /* Estilo de las Tarjetas (Cards) de contenido */
-    .card-custom {
-        border: none;
-        box-shadow: 0 2px 10px rgba(0,0,0,0.05);
-        border-radius: 0.5rem;
+    .aocr-wizard .wizard-step i {
+        width: 20px;
+        margin-right: 8px;
+        text-align: center;
+        color: #6b7280;
+    }
+
+    .aocr-wizard .wizard-step:hover {
+        background: #eaf2ff;
+        color: #1b4f72;
+    }
+
+    .aocr-wizard .wizard-step.active {
+        background: linear-gradient(135deg, #0c7c86 0%, #1b4f72 100%);
+        color: #fff;
+        box-shadow: 0 8px 18px rgba(12, 124, 134, 0.22);
+    }
+
+    .aocr-wizard .wizard-step.active i {
+        color: #fff;
+    }
+
+    .aocr-wizard .card-custom {
+        border: 0;
+        border-radius: 12px;
+        box-shadow: 0 4px 14px rgba(15, 23, 42, 0.08);
         background-color: #fff;
-        margin-bottom: 1.5rem;
+        margin-bottom: 1rem;
     }
 
-    .card-header-custom {
-        background-color: #fff;
-        border-bottom: 2px solid #f1f1f1;
-        padding: 1rem 1.5rem;
+    .aocr-wizard .card-header-custom {
+        background: #fff;
+        border-bottom: 1px solid #e5e7eb;
+        padding: 1rem 1.25rem;
     }
 
-    .card-body-custom {
-        padding: 1.5rem;
+    .aocr-wizard .card-body-custom {
+        padding: 1.25rem;
     }
 
-    /* Inputs y Formulario */
-    .form-control {
-        border-radius: 0.4rem;
-        border: 1px solid #ced4da;
-        padding: 0.5rem 0.75rem;
-    }
-
-        .form-control:focus {
-            box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.15);
-            border-color: #80bdff;
-        }
-
-    /* Titulos */
-    h5.font-weight-bold {
-        color: #2c3e50;
-        border-left: 4px solid #007bff;
+    .aocr-wizard h5.font-weight-bold {
+        color: #1f2937;
+        border-left: 4px solid #1b4f72;
         padding-left: 10px;
     }
 
-    /* Seccion de Anexos */
-    .anexo-item {
-        background-color: #fff;
-        border: 1px solid #e9ecef;
+    .aocr-wizard .form-control {
         border-radius: 8px;
-        padding: 15px;
-        margin-bottom: 15px;
-        transition: transform 0.2s;
+        border: 1px solid #d1d5db;
     }
 
-        .anexo-item:hover {
-            border-color: #b8daff;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+    .aocr-wizard .form-control:focus {
+        border-color: #1b4f72;
+        box-shadow: 0 0 0 0.2rem rgba(27, 79, 114, 0.15);
+    }
+
+    .aocr-wizard .anexo-item {
+        background-color: #fff;
+        border: 1px solid #e5e7eb;
+        border-radius: 10px;
+        padding: 14px;
+        margin-bottom: 12px;
+        transition: border-color .2s ease, box-shadow .2s ease;
+    }
+
+    .aocr-wizard .anexo-item:hover {
+        border-color: #93c5fd;
+        box-shadow: 0 6px 16px rgba(37, 99, 235, 0.08);
+    }
+
+    .aocr-wizard .anexo-item .badge {
+        background-color: #1b4f72;
+        border-radius: 6px;
+    }
+
+    .aocr-wizard .aocr-actions-bar {
+        display: flex;
+        justify-content: flex-end;
+        align-items: center;
+        gap: 10px;
+        margin-top: 14px;
+        padding: 14px 0 4px 0;
+        border-top: 1px solid #e5e7eb;
+    }
+
+    .aocr-wizard .mr-2 {
+        margin-right: .5rem !important;
+    }
+
+    .aocr-wizard .ml-1 {
+        margin-left: .25rem !important;
+    }
+
+    @@media (max-width: 991.98px) {
+        .aocr-wizard .wizard-sidebar {
+            position: static;
         }
+
+        .aocr-wizard .aocr-actions-bar {
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+    }
 </style>
 
-<div class="container-fluid py-4">
+<div class="container-fluid py-4 aocr-wizard">
     <div class="row">
         <div class="col-md-3 mb-4">
-            <div class="card shadow-sm">
+            <div class="card shadow-sm wizard-sidebar">
                 <div class="card-body p-2">
                     <div class="list-group" id="list-tab" role="tablist">
-                        <a class="list-group-item list-group-item-action active" id="list-explotador-list" data-bs-toggle="list" href="#explotador" role="tab" aria-controls="explotador">
+                        <a class="list-group-item list-group-item-action wizard-step active" id="list-explotador-list" data-bs-toggle="list" href="#explotador" role="tab" aria-controls="explotador">
                             <i class="fas fa-user-tie"></i> 1. Explotador-Solicitante
                         </a>
-                        <a class="list-group-item list-group-item-action" id="list-aeronaves-list" data-bs-toggle="list" href="#aeronaves" role="tab" aria-controls="aeronaves">
+                        <a class="list-group-item list-group-item-action wizard-step" id="list-aeronaves-list" data-bs-toggle="list" href="#aeronaves" role="tab" aria-controls="aeronaves">
                             <i class="fas fa-plane"></i> 2. Informacion de Aeronaves
                         </a>
-                        <a class="list-group-item list-group-item-action" id="list-operaciones-list" data-bs-toggle="list" href="#operaciones" role="tab" aria-controls="operaciones">
+                        <a class="list-group-item list-group-item-action wizard-step" id="list-operaciones-list" data-bs-toggle="list" href="#operaciones" role="tab" aria-controls="operaciones">
                             <i class="fas fa-globe-americas"></i> 3. Operaciones EAE
                         </a>
-                        <a class="list-group-item list-group-item-action" id="list-comprobante-list" data-bs-toggle="list" href="#comprobante" role="tab" aria-controls="comprobante">
+                        <a class="list-group-item list-group-item-action wizard-step" id="list-comprobante-list" data-bs-toggle="list" href="#comprobante" role="tab" aria-controls="comprobante">
                             <i class="fas fa-receipt"></i> 4. Comprobante
                         </a>
-                        <a class="list-group-item list-group-item-action" id="list-anexos-list" data-bs-toggle="list" href="#anexos" role="tab" aria-controls="anexos">
+                        <a class="list-group-item list-group-item-action wizard-step" id="list-anexos-list" data-bs-toggle="list" href="#anexos" role="tab" aria-controls="anexos">
                             <i class="fas fa-paperclip"></i> 5. Anexos
                         </a>
                     </div>
@@ -796,7 +846,9 @@
                         </div>
                     </div>
                 </div>
-                    <button class="btn btn-outline-secondary mr-2" type="button" data-dismiss="modal">
+
+                <div class="aocr-actions-bar">
+                    <button class="btn btn-outline-secondary mr-2" type="button" data-bs-dismiss="modal">
                         <i class="fas fa-times"></i> Cancelar
                     </button>
                     <button class="btn btn-primary btn-lg shadow" type="button" onclick="guardarFormulario()">

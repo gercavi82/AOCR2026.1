@@ -198,20 +198,131 @@ namespace CapaDatos.DAOs
             {
                 conn.Open();
 
-                string sql = @"
-            INSERT INTO usuario
-                (codigousuario, clave, correo, estadoactividad, nombreusuario, rol, 
-                 empresa_codigo, ruta_documento_legal, fechacreado)
-            VALUES
-                (@CodigoUsuario, @Contrasena, @Email, '1', @NombreCompleto, @Rol,
-                 @EmpresaCodigo, @RutaDocumentoLegal, NOW())
-            RETURNING idusuario;";
-
                 // Si no te mandan CodigoUsuario pero sí NombreUsuario, lo usamos como fallback
                 if (string.IsNullOrWhiteSpace(usuario.CodigoUsuario) && !string.IsNullOrWhiteSpace(usuario.NombreUsuario))
                     usuario.CodigoUsuario = usuario.NombreUsuario;
 
-                return conn.ExecuteScalar<int>(sql, usuario);
+                var codigoUsuario = (usuario.CodigoUsuario ?? string.Empty).Trim();
+                var nombreUsuario = (usuario.NombreUsuario ?? string.Empty).Trim();
+                var apellidoUsuario = (usuario.ApellidoUsuario ?? string.Empty).Trim();
+                var nombreCompleto = (usuario.NombreCompleto ?? string.Empty).Trim();
+
+                // Compatibilidad legacy: si antes se guardaba todo en NombreCompleto/nombreusuario,
+                // intentamos separar para poblar nombre y apellido.
+                if (!string.IsNullOrWhiteSpace(nombreCompleto))
+                {
+                    if (string.IsNullOrWhiteSpace(nombreUsuario) ||
+                        string.Equals(nombreUsuario, codigoUsuario, StringComparison.OrdinalIgnoreCase))
+                    {
+                        string nombreSeparado;
+                        string apellidoSeparado;
+                        SepararNombreCompleto(nombreCompleto, out nombreSeparado, out apellidoSeparado);
+                        if (string.IsNullOrWhiteSpace(nombreUsuario))
+                        {
+                            nombreUsuario = nombreSeparado;
+                        }
+                        if (string.IsNullOrWhiteSpace(apellidoUsuario))
+                        {
+                            apellidoUsuario = apellidoSeparado;
+                        }
+                    }
+                    else if (string.IsNullOrWhiteSpace(apellidoUsuario))
+                    {
+                        string nombreSeparado;
+                        string apellidoSeparado;
+                        SepararNombreCompleto(nombreCompleto, out nombreSeparado, out apellidoSeparado);
+                        if (string.IsNullOrWhiteSpace(apellidoSeparado) == false)
+                        {
+                            apellidoUsuario = apellidoSeparado;
+                        }
+                    }
+                }
+
+                if (string.IsNullOrWhiteSpace(nombreUsuario))
+                {
+                    nombreUsuario = !string.IsNullOrWhiteSpace(nombreCompleto)
+                        ? nombreCompleto
+                        : codigoUsuario;
+                }
+
+                if (string.IsNullOrWhiteSpace(nombreCompleto))
+                {
+                    nombreCompleto = string.Format("{0} {1}", nombreUsuario, apellidoUsuario).Trim();
+                }
+
+                var columnas = new List<string>
+                {
+                    "codigousuario",
+                    "clave",
+                    "correo",
+                    "estadoactividad",
+                    "nombreusuario",
+                    "rol",
+                    "empresa_codigo",
+                    "ruta_documento_legal",
+                    "fechacreado"
+                };
+
+                var valores = new List<string>
+                {
+                    "@CodigoUsuario",
+                    "@Contrasena",
+                    "@Email",
+                    "'1'",
+                    "@NombreUsuario",
+                    "@Rol",
+                    "@EmpresaCodigo",
+                    "@RutaDocumentoLegal",
+                    "NOW()"
+                };
+
+                if (ExisteColumna(conn, "usuario", "apellidousuario"))
+                {
+                    columnas.Add("apellidousuario");
+                    valores.Add("@ApellidoUsuario");
+                }
+
+                var sql = string.Format(
+                    "INSERT INTO usuario ({0}) VALUES ({1}) RETURNING idusuario;",
+                    string.Join(", ", columnas),
+                    string.Join(", ", valores));
+
+                return conn.ExecuteScalar<int>(sql, new
+                {
+                    CodigoUsuario = codigoUsuario,
+                    Contrasena = usuario.Contrasena,
+                    Email = usuario.Email,
+                    NombreUsuario = nombreUsuario,
+                    ApellidoUsuario = string.IsNullOrWhiteSpace(apellidoUsuario) ? null : apellidoUsuario,
+                    Rol = usuario.Rol,
+                    EmpresaCodigo = usuario.EmpresaCodigo,
+                    RutaDocumentoLegal = usuario.RutaDocumentoLegal
+                });
+            }
+        }
+
+        public static bool ActualizarEmpresaCodigoPrincipal(int idUsuario, string empresaCodigo)
+        {
+            if (idUsuario <= 0)
+            {
+                return false;
+            }
+
+            using (var conn = new NpgsqlConnection(GetConnectionString()))
+            {
+                conn.Open();
+                const string sql = @"
+UPDATE usuario
+SET empresa_codigo = @empresaCodigo
+WHERE idusuario = @id;";
+
+                var rows = conn.Execute(sql, new
+                {
+                    id = idUsuario,
+                    empresaCodigo = (empresaCodigo ?? string.Empty).Trim()
+                });
+
+                return rows > 0;
             }
         }
 
@@ -378,20 +489,30 @@ namespace CapaDatos.DAOs
 
             using (var conn = new NpgsqlConnection(GetConnectionString()))
             {
-                // Asumiendo que existe una columna 'ruc' en la tabla usuario
-                // Si no existe, ajusta la consulta según tu esquema de BD
-                string sql = "SELECT COUNT(*) FROM usuario WHERE ruc = @ruc";
-                
-                try
+                conn.Open();
+
+                var columnas = new List<string>();
+                if (ExisteColumna(conn, "usuario", "ruc"))
                 {
-                    int count = conn.ExecuteScalar<int>(sql, new { ruc = ruc.Trim() });
-                    return count > 0;
+                    columnas.Add("ruc");
                 }
-                catch
+
+                if (ExisteColumna(conn, "usuario", "numeroruc"))
                 {
-                    // Si la columna no existe, retornar false por ahora
+                    columnas.Add("numeroruc");
+                }
+
+                if (!columnas.Any())
+                {
                     return false;
                 }
+
+                var condiciones = columnas
+                    .Select(c => string.Format("NULLIF(TRIM({0}), '') = @ruc", c));
+
+                var sql = "SELECT COUNT(*) FROM usuario WHERE " + string.Join(" OR ", condiciones) + ";";
+                int count = conn.ExecuteScalar<int>(sql, new { ruc = ruc.Trim() });
+                return count > 0;
             }
         }
 
@@ -949,6 +1070,45 @@ WHERE table_schema = 'public'
   AND table_name = @tableName;";
 
             return conn.ExecuteScalar<int>(sql, new { tableName }, tx) > 0;
+        }
+
+        private static void SepararNombreCompleto(string nombreCompleto, out string nombres, out string apellidos)
+        {
+            nombres = string.Empty;
+            apellidos = string.Empty;
+
+            var limpio = (nombreCompleto ?? string.Empty).Trim();
+            if (string.IsNullOrWhiteSpace(limpio))
+            {
+                return;
+            }
+
+            var partes = limpio
+                .Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries)
+                .ToList();
+
+            if (partes.Count <= 1)
+            {
+                nombres = limpio;
+                return;
+            }
+
+            if (partes.Count == 2)
+            {
+                nombres = partes[0];
+                apellidos = partes[1];
+                return;
+            }
+
+            if (partes.Count == 3)
+            {
+                nombres = string.Join(" ", partes.Take(2));
+                apellidos = partes[2];
+                return;
+            }
+
+            nombres = string.Join(" ", partes.Take(partes.Count - 2));
+            apellidos = string.Join(" ", partes.Skip(partes.Count - 2));
         }
     }
 }

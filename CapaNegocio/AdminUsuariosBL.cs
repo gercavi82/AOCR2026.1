@@ -319,6 +319,94 @@ namespace CapaNegocio
             return true;
         }
 
+        public static List<SeguridadUsuarioDTO> ObtenerUsuariosActivosParaTransferencia(int excluirIdUsuario)
+        {
+            if (excluirIdUsuario <= 0)
+            {
+                return BuscarUsuarios(null, true);
+            }
+
+            return _dao.ObtenerUsuariosActivosParaTransferencia(excluirIdUsuario);
+        }
+
+        public static UsuarioTransferenciaPreviewDTO ObtenerImpactoTransferencia(int idUsuarioOrigen)
+        {
+            if (idUsuarioOrigen <= 0)
+            {
+                return new UsuarioTransferenciaPreviewDTO();
+            }
+
+            return _dao.ObtenerImpactoTransferencia(idUsuarioOrigen);
+        }
+
+        public static bool TransferirYDesactivarUsuario(
+            int idUsuarioOrigen,
+            int idUsuarioDestino,
+            string motivo,
+            int? actorUsuarioId,
+            string actorCodigoUsuario,
+            string ip,
+            out UsuarioTransferenciaResultadoDTO resultado,
+            out string mensaje)
+        {
+            mensaje = string.Empty;
+            resultado = new UsuarioTransferenciaResultadoDTO
+            {
+                Ok = false,
+                Mensaje = "No se pudo completar la transferencia."
+            };
+
+            if (idUsuarioOrigen <= 0 || idUsuarioDestino <= 0)
+            {
+                mensaje = "Debe seleccionar usuario origen y usuario destino.";
+                resultado.Mensaje = mensaje;
+                return false;
+            }
+
+            if (idUsuarioOrigen == idUsuarioDestino)
+            {
+                mensaje = "El usuario destino no puede ser igual al origen.";
+                resultado.Mensaje = mensaje;
+                return false;
+            }
+
+            if (string.IsNullOrWhiteSpace(motivo))
+            {
+                mensaje = "El motivo de transferencia es obligatorio.";
+                resultado.Mensaje = mensaje;
+                return false;
+            }
+
+            if (motivo.Trim().Length < 8)
+            {
+                mensaje = "El motivo de transferencia debe tener al menos 8 caracteres.";
+                resultado.Mensaje = mensaje;
+                return false;
+            }
+
+            var ok = _dao.TransferirYDesactivarUsuario(
+                idUsuarioOrigen,
+                idUsuarioDestino,
+                motivo,
+                actorUsuarioId,
+                actorCodigoUsuario,
+                ip,
+                out resultado);
+
+            mensaje = ok
+                ? "Transferencia ejecutada correctamente."
+                : (resultado != null && !string.IsNullOrWhiteSpace(resultado.Mensaje)
+                    ? resultado.Mensaje
+                    : "No se pudo completar la transferencia.");
+
+            if (resultado != null && string.IsNullOrWhiteSpace(resultado.Mensaje))
+            {
+                resultado.Mensaje = mensaje;
+            }
+
+            return ok;
+        }
+
         private static bool NotificarResetPassword(
             SeguridadUsuarioDTO usuario,
             string passwordTemporal,

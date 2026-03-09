@@ -311,7 +311,7 @@
                 @ViewBag.Title
             </h1>
             <p class="text-muted">
-                Gesti?n de ?rdenes de recaudaci?n requeridas para el proceso AOCR.
+                Gestión de órdenes de recaudación requeridas para el proceso AOCR.
                 @if (tieneOrdenBorrador)
                 {
                     <span class="badge bg-warning ms-2">
@@ -501,12 +501,12 @@
         </div>
     </div>
 
-    <!-- Tabla de ?rdenes -->
+    <!-- Tabla de órdenes -->
     <div class="card hover-shadow">
         <div class="card-header bg-white border-bottom-0 py-3">
             <div class="d-flex justify-content-between align-items-center">
                 <h5 class="card-title mb-0">
-                    <i class="fas fa-list me-2"></i> Listado de ?rdenes de Recaudaci?n
+                    <i class="fas fa-list me-2"></i> Listado de Órdenes de Recaudación
                 </h5>
                 <div>
                     <span class="badge bg-light text-dark me-2" id="badge-contador">
@@ -528,8 +528,8 @@
             {
                 <div class="text-center py-5" id="sin-datos">
                     <i class="fas fa-inbox fa-3x text-muted mb-3"></i>
-                    <h4 class="text-muted">No hay ?rdenes de recaudaci?n</h4>
-                    <p class="text-muted">No se encontraron ?rdenes con los filtros aplicados.</p>
+                    <h4 class="text-muted">No hay órdenes de recaudación</h4>
+                    <p class="text-muted">No se encontraron órdenes con los filtros aplicados.</p>
                     <p class="text-muted mb-0">
                         Usuario actual: <strong>@(User != null ? User.Identity.Name : "N/A")</strong>
                     </p>

@@ -294,6 +294,7 @@
     <Compile Include="DAOs\DireccionDAO.cs" />
     <Compile Include="DAOs\TecnicoDAO.cs" />
     <Compile Include="DAOs\UsuarioDAO.cs" />
+    <Compile Include="DAOs\UsuarioCompaniaRTDAO.cs" />
     <Compile Include="DAOs\UsuarioAS400DAO.cs" />
     <Compile Include="DAOs\FacturacionAS400DAO.cs" />
     <Compile Include="DAOs\RTDao.cs" />

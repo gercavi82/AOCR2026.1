@@ -693,6 +693,1023 @@ DO UPDATE SET
             }
         }
 
+        public List<SeguridadUsuarioDTO> ObtenerUsuariosActivosParaTransferencia(int excluirIdUsuario)
+        {
+            using (var cn = CrearConexion())
+            {
+                cn.Open();
+
+                var sql = @"
+SELECT
+    u.idusuario AS ""IdUsuario"",
+    u.codigousuario AS ""CodigoUsuario"",
+    COALESCE(u.nombreusuario, '') AS ""NombreUsuario"",
+    COALESCE(u.apellidousuario, '') AS ""ApellidoUsuario"",
+    COALESCE(u.correo, '') AS ""Correo"",
+    (COALESCE(NULLIF(TRIM(u.estadoactividad), ''), '1') = '1') AS ""Activo""
+FROM usuario u
+WHERE u.idusuario <> @excluirIdUsuario
+  AND (COALESCE(NULLIF(TRIM(u.estadoactividad), ''), '1') = '1')
+ORDER BY COALESCE(u.nombreusuario, ''), COALESCE(u.apellidousuario, ''), u.codigousuario;";
+
+                return cn.Query<SeguridadUsuarioDTO>(sql, new { excluirIdUsuario = excluirIdUsuario }).ToList();
+            }
+        }
+
+        public UsuarioTransferenciaPreviewDTO ObtenerImpactoTransferencia(int idUsuarioOrigen)
+        {
+            var preview = new UsuarioTransferenciaPreviewDTO
+            {
+                UsuarioOrigenId = idUsuarioOrigen
+            };
+
+            if (idUsuarioOrigen <= 0)
+            {
+                return preview;
+            }
+
+            using (var cn = CrearConexion())
+            {
+                cn.Open();
+
+                var usuarioOrigen = ObtenerUsuarioTransferible(cn, null, idUsuarioOrigen);
+                if (usuarioOrigen == null)
+                {
+                    return preview;
+                }
+
+                preview.UsuarioOrigenCodigo = usuarioOrigen.CodigoUsuario;
+
+                var reglas = ConstruirReglasTransferencia(cn, null);
+                foreach (var regla in reglas)
+                {
+                    if (!ExisteTabla(cn, regla.Tabla) || !ExisteColumna(cn, regla.Tabla, regla.Campo))
+                    {
+                        continue;
+                    }
+
+                    var infoColumna = ObtenerInfoColumna(cn, null, regla.Tabla, regla.Campo);
+                    if (infoColumna == null)
+                    {
+                        continue;
+                    }
+
+                    var registros = ContarRegistrosRegla(cn, null, regla, infoColumna, usuarioOrigen.IdUsuario, usuarioOrigen.CodigoUsuario);
+                    if (registros <= 0)
+                    {
+                        continue;
+                    }
+
+                    preview.Referencias.Add(new UsuarioReferenciaImpactoDTO
+                    {
+                        Grupo = regla.Grupo,
+                        Tabla = regla.Tabla,
+                        Campo = regla.Campo,
+                        Descripcion = regla.Descripcion,
+                        Estrategia = regla.Estrategia,
+                        Transferible = regla.Transferible,
+                        RegistrosDetectados = registros,
+                        RegistrosAfectados = 0,
+                        Observacion = regla.Transferible
+                            ? "Se puede reasignar al usuario destino."
+                            : "Registro historico, no se transfiere."
+                    });
+                }
+            }
+
+            preview.TotalRegistrosDetectados = preview.Referencias.Sum(r => r.RegistrosDetectados);
+            preview.TotalRegistrosTransferibles = preview.Referencias
+                .Where(r => r.Transferible)
+                .Sum(r => r.RegistrosDetectados);
+            preview.TotalRegistrosHistoricos = preview.Referencias
+                .Where(r => !r.Transferible)
+                .Sum(r => r.RegistrosDetectados);
+
+            return preview;
+        }
+
+        public bool TransferirYDesactivarUsuario(
+            int idUsuarioOrigen,
+            int idUsuarioDestino,
+            string motivo,
+            int? actorUsuarioId,
+            string actorCodigoUsuario,
+            string ip,
+            out UsuarioTransferenciaResultadoDTO resultado)
+        {
+            resultado = new UsuarioTransferenciaResultadoDTO
+            {
+                Ok = false,
+                UsuarioOrigenId = idUsuarioOrigen,
+                UsuarioDestinoId = idUsuarioDestino,
+                Mensaje = "No se pudo completar la transferencia."
+            };
+
+            if (idUsuarioOrigen <= 0 || idUsuarioDestino <= 0)
+            {
+                resultado.Mensaje = "Los usuarios origen y destino son obligatorios.";
+                return false;
+            }
+
+            if (idUsuarioOrigen == idUsuarioDestino)
+            {
+                resultado.Mensaje = "El usuario destino no puede ser el mismo usuario origen.";
+                return false;
+            }
+
+            using (var cn = CrearConexion())
+            {
+                cn.Open();
+                using (var tx = cn.BeginTransaction())
+                {
+                    try
+                    {
+                        var auditoriaTransferenciaDisponible = EnsureTablasTransferencia(cn, tx);
+
+                        var usuarioOrigen = ObtenerUsuarioTransferible(cn, tx, idUsuarioOrigen);
+                        if (usuarioOrigen == null)
+                        {
+                            tx.Rollback();
+                            resultado.Mensaje = "Usuario origen no encontrado.";
+                            return false;
+                        }
+
+                        var usuarioDestino = ObtenerUsuarioTransferible(cn, tx, idUsuarioDestino);
+                        if (usuarioDestino == null)
+                        {
+                            tx.Rollback();
+                            resultado.Mensaje = "Usuario destino no encontrado.";
+                            return false;
+                        }
+
+                        if (!usuarioDestino.Activo)
+                        {
+                            tx.Rollback();
+                            resultado.Mensaje = "El usuario destino esta inactivo.";
+                            return false;
+                        }
+
+                        if (EsUsuarioCriticoNoTransferible(usuarioOrigen))
+                        {
+                            tx.Rollback();
+                            resultado.Mensaje = "El usuario seleccionado es critico del sistema y no puede ser eliminado o transferido.";
+                            return false;
+                        }
+
+                        if (actorUsuarioId.HasValue && actorUsuarioId.Value == idUsuarioOrigen)
+                        {
+                            tx.Rollback();
+                            resultado.Mensaje = "No se permite transferir/desactivar su propio usuario.";
+                            return false;
+                        }
+
+                        var reglas = ConstruirReglasTransferencia(cn, tx);
+                        var impactos = new List<UsuarioReferenciaImpactoDTO>();
+                        var totalDetectados = 0;
+                        var totalTransferidos = 0;
+
+                        foreach (var regla in reglas)
+                        {
+                            if (!ExisteTabla(cn, tx, regla.Tabla) || !ExisteColumna(cn, tx, regla.Tabla, regla.Campo))
+                            {
+                                continue;
+                            }
+
+                            var infoColumna = ObtenerInfoColumna(cn, tx, regla.Tabla, regla.Campo);
+                            if (infoColumna == null)
+                            {
+                                continue;
+                            }
+
+                            var detectados = ContarRegistrosRegla(cn, tx, regla, infoColumna, usuarioOrigen.IdUsuario, usuarioOrigen.CodigoUsuario);
+                            if (detectados <= 0)
+                            {
+                                continue;
+                            }
+
+                            var item = new UsuarioReferenciaImpactoDTO
+                            {
+                                Grupo = regla.Grupo,
+                                Tabla = regla.Tabla,
+                                Campo = regla.Campo,
+                                Descripcion = regla.Descripcion,
+                                Estrategia = regla.Estrategia,
+                                Transferible = regla.Transferible,
+                                RegistrosDetectados = detectados,
+                                RegistrosAfectados = 0
+                            };
+
+                            totalDetectados += detectados;
+
+                            if (regla.Transferible)
+                            {
+                                var afectados = EjecutarTransferenciaRegla(
+                                    cn,
+                                    tx,
+                                    regla,
+                                    infoColumna,
+                                    usuarioOrigen.IdUsuario,
+                                    usuarioOrigen.CodigoUsuario,
+                                    usuarioDestino.IdUsuario,
+                                    usuarioDestino.CodigoUsuario);
+
+                                item.RegistrosAfectados = afectados;
+                                totalTransferidos += afectados;
+                                item.Observacion = regla.EliminarEnLugarTransferir
+                                    ? "Registros operativos invalidados para seguridad."
+                                    : "Referencia operativa transferida al usuario destino.";
+                            }
+                            else
+                            {
+                                item.Observacion = "Registro historico conservado para auditoria.";
+                            }
+
+                            impactos.Add(item);
+                        }
+
+                        var filasUsuario = DesactivarUsuarioTransferido(cn, tx, usuarioOrigen.IdUsuario, actorCodigoUsuario);
+                        if (filasUsuario <= 0)
+                        {
+                            tx.Rollback();
+                            resultado.Mensaje = "No se pudo desactivar el usuario origen.";
+                            return false;
+                        }
+
+                        long transferenciaId = 0;
+                        if (auditoriaTransferenciaDisponible)
+                        {
+                            transferenciaId = RegistrarTransferenciaUsuario(
+                                cn,
+                                tx,
+                                usuarioOrigen.IdUsuario,
+                                usuarioDestino.IdUsuario,
+                                actorUsuarioId,
+                                actorCodigoUsuario,
+                                motivo,
+                                ip,
+                                totalDetectados,
+                                totalTransferidos,
+                                impactos);
+
+                            RegistrarTransferenciaDetalle(cn, tx, transferenciaId, impactos);
+                        }
+
+                        try
+                        {
+                            RegistrarAuditoria(
+                                cn,
+                                tx,
+                                actorUsuarioId,
+                                actorCodigoUsuario,
+                                "TRANSFERIR_ELIMINAR_USUARIO",
+                                "USUARIO",
+                                usuarioOrigen.IdUsuario.ToString(),
+                                new
+                                {
+                                    UsuarioOrigen = usuarioOrigen.CodigoUsuario,
+                                    UsuarioDestino = usuarioDestino.CodigoUsuario,
+                                    Motivo = motivo,
+                                    TotalDetectados = totalDetectados,
+                                    TotalTransferidos = totalTransferidos
+                                },
+                                ip);
+                        }
+                        catch (Exception exAudit)
+                        {
+                            System.Diagnostics.Debug.WriteLine("AdminUsuariosDAO.TransferirYDesactivarUsuario - auditoria no registrada: " + exAudit.Message);
+                        }
+
+                        tx.Commit();
+
+                        resultado.Ok = true;
+                        resultado.TransferenciaId = transferenciaId;
+                        resultado.UsuarioOrigenId = usuarioOrigen.IdUsuario;
+                        resultado.UsuarioDestinoId = usuarioDestino.IdUsuario;
+                        resultado.TotalRegistrosDetectados = totalDetectados;
+                        resultado.TotalRegistrosTransferidos = totalTransferidos;
+                        resultado.UsuarioOrigenDesactivado = true;
+                        resultado.Referencias = impactos;
+                        resultado.Mensaje = "Transferencia completada y usuario origen desactivado correctamente.";
+                        return true;
+                    }
+                    catch (PostgresException exPg)
+                    {
+                        tx.Rollback();
+                        resultado.Mensaje = string.Format(
+                            "Error de base de datos en transferencia (SQLSTATE {0}): {1}",
+                            exPg.SqlState,
+                            exPg.MessageText);
+                        return false;
+                    }
+                    catch (Exception ex)
+                    {
+                        tx.Rollback();
+                        resultado.Mensaje = "Error en transferencia de usuario: " + ex.Message;
+                        return false;
+                    }
+                }
+            }
+        }
+
+        private bool EnsureTablasTransferencia(IDbConnection cn, IDbTransaction tx)
+        {
+            try
+            {
+                cn.Execute(@"
+CREATE TABLE IF NOT EXISTS aocr_usuario_transferencia
+(
+    id_transferencia BIGSERIAL PRIMARY KEY,
+    usuario_origen_id INT NOT NULL,
+    usuario_destino_id INT NOT NULL,
+    ejecutado_por_usuario_id INT NULL,
+    ejecutado_por_codigo VARCHAR(100) NULL,
+    motivo VARCHAR(500) NULL,
+    ip VARCHAR(64) NULL,
+    fecha TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT NOW(),
+    total_registros_detectados INT NOT NULL DEFAULT 0,
+    total_registros_transferidos INT NOT NULL DEFAULT 0,
+    resumen_json JSONB NULL
+);", transaction: tx);
+
+                cn.Execute(@"
+CREATE TABLE IF NOT EXISTS aocr_usuario_transferencia_detalle
+(
+    id_detalle BIGSERIAL PRIMARY KEY,
+    transferencia_id BIGINT NOT NULL REFERENCES aocr_usuario_transferencia(id_transferencia) ON DELETE CASCADE,
+    grupo VARCHAR(30) NOT NULL,
+    tabla VARCHAR(128) NOT NULL,
+    campo VARCHAR(128) NOT NULL,
+    descripcion VARCHAR(300) NULL,
+    estrategia VARCHAR(300) NULL,
+    transferible BOOLEAN NOT NULL DEFAULT FALSE,
+    registros_detectados INT NOT NULL DEFAULT 0,
+    registros_afectados INT NOT NULL DEFAULT 0,
+    observacion VARCHAR(500) NULL
+);", transaction: tx);
+
+                cn.Execute("CREATE INDEX IF NOT EXISTS ix_aocr_usuario_transferencia_fecha ON aocr_usuario_transferencia(fecha DESC);", transaction: tx);
+                cn.Execute("CREATE INDEX IF NOT EXISTS ix_aocr_usuario_transferencia_origen ON aocr_usuario_transferencia(usuario_origen_id);", transaction: tx);
+                cn.Execute("CREATE INDEX IF NOT EXISTS ix_aocr_usuario_transferencia_destino ON aocr_usuario_transferencia(usuario_destino_id);", transaction: tx);
+                cn.Execute("CREATE INDEX IF NOT EXISTS ix_aocr_usuario_transferencia_detalle_transferencia ON aocr_usuario_transferencia_detalle(transferencia_id);", transaction: tx);
+            }
+            catch (PostgresException exPg) when (exPg.SqlState == "42501")
+            {
+                // Sin permisos DDL: continuar sin persistir tabla de trazabilidad de transferencias.
+                System.Diagnostics.Debug.WriteLine("AdminUsuariosDAO.EnsureTablasTransferencia - sin permisos para crear tablas: " + exPg.MessageText);
+            }
+            catch (Exception ex)
+            {
+                // No bloquear transferencia operativa por fallas de infraestructura de auditoría.
+                System.Diagnostics.Debug.WriteLine("AdminUsuariosDAO.EnsureTablasTransferencia - error al asegurar tablas: " + ex.Message);
+            }
+
+            return ExisteTabla(cn, tx, "aocr_usuario_transferencia")
+                   && ExisteTabla(cn, tx, "aocr_usuario_transferencia_detalle");
+        }
+
+        private UsuarioTransferibleInfo ObtenerUsuarioTransferible(IDbConnection cn, IDbTransaction tx, int idUsuario)
+        {
+            if (idUsuario <= 0)
+            {
+                return null;
+            }
+
+            const string sql = @"
+SELECT
+    u.idusuario AS ""IdUsuario"",
+    COALESCE(u.codigousuario, '') AS ""CodigoUsuario"",
+    COALESCE(u.nombreusuario, '') AS ""NombreUsuario"",
+    COALESCE(u.apellidousuario, '') AS ""ApellidoUsuario"",
+    COALESCE(u.correo, '') AS ""Correo"",
+    (COALESCE(NULLIF(TRIM(u.estadoactividad), ''), '1') = '1') AS ""Activo""
+FROM usuario u
+WHERE u.idusuario = @idUsuario
+LIMIT 1;";
+
+            return cn.QueryFirstOrDefault<UsuarioTransferibleInfo>(sql, new { idUsuario = idUsuario }, tx);
+        }
+
+        private List<UsuarioTransferRule> ConstruirReglasTransferencia(IDbConnection cn, IDbTransaction tx)
+        {
+            var reglas = new List<UsuarioTransferRule>
+            {
+                // Grupo A: transferibles operativos
+                new UsuarioTransferRule
+                {
+                    Grupo = "A",
+                    Tabla = "aocr_tbsolicitud",
+                    Campo = "codigo_usuario",
+                    Descripcion = "Propietario operativo de la solicitud AOCR",
+                    Estrategia = "Transferir a usuario destino",
+                    Transferible = true
+                },
+                new UsuarioTransferRule
+                {
+                    Grupo = "A",
+                    Tabla = "aocr_tbsolicitud",
+                    Campo = "codigo_tecnico",
+                    Descripcion = "Tecnico responsable actual de la solicitud",
+                    Estrategia = "Transferir a usuario destino",
+                    Transferible = true
+                },
+                new UsuarioTransferRule
+                {
+                    Grupo = "A",
+                    Tabla = "aocr_or_orden",
+                    Campo = "codigo_usuario",
+                    Descripcion = "Responsable operativo de ordenes",
+                    Estrategia = "Transferir a usuario destino",
+                    Transferible = true
+                },
+                new UsuarioTransferRule
+                {
+                    Grupo = "A",
+                    Tabla = "aocr_tbinspeccion",
+                    Campo = "codigo_inspector",
+                    Descripcion = "Inspector asignado",
+                    Estrategia = "Transferir a usuario destino",
+                    Transferible = true
+                },
+                new UsuarioTransferRule
+                {
+                    Grupo = "A",
+                    Tabla = "aocr_tbnotificacion",
+                    Campo = "codigousuario",
+                    Descripcion = "Notificaciones operativas del usuario",
+                    Estrategia = "Transferir a usuario destino",
+                    Transferible = true
+                },
+                new UsuarioTransferRule
+                {
+                    Grupo = "A",
+                    Tabla = "aocr_solicitud_rt",
+                    Campo = "usuario_rt_id",
+                    Descripcion = "Vinculo RT activo de solicitudes",
+                    Estrategia = "Transferir a usuario destino",
+                    Transferible = true
+                },
+                new UsuarioTransferRule
+                {
+                    Grupo = "A",
+                    Tabla = "aocr_usuario_compania_rt",
+                    Campo = "usuario_id",
+                    Descripcion = "Relaciones activas usuario-compania RT",
+                    Estrategia = "Transferir a usuario destino",
+                    Transferible = true
+                },
+                new UsuarioTransferRule
+                {
+                    Grupo = "A",
+                    Tabla = "aocr_tbsubsanacion",
+                    Campo = "codigo_usuario_solicitante",
+                    Descripcion = "Responsable solicitante de subsanacion",
+                    Estrategia = "Transferir a usuario destino",
+                    Transferible = true
+                },
+
+                // Grupo B: historicos no transferibles
+                new UsuarioTransferRule
+                {
+                    Grupo = "B",
+                    Tabla = "aocr_tbhistorialestado",
+                    Campo = "codigousuario",
+                    Descripcion = "Historial de estados",
+                    Estrategia = "Conservar historial",
+                    Transferible = false
+                },
+                new UsuarioTransferRule
+                {
+                    Grupo = "B",
+                    Tabla = "aocr_tblog",
+                    Campo = "codigo_usuario",
+                    Descripcion = "Bitacora de auditoria del sistema",
+                    Estrategia = "Conservar historial",
+                    Transferible = false
+                },
+                new UsuarioTransferRule
+                {
+                    Grupo = "B",
+                    Tabla = "aocr_audit_trail",
+                    Campo = "usuario_id",
+                    Descripcion = "Auditoria tecnica",
+                    Estrategia = "Conservar historial",
+                    Transferible = false
+                },
+                new UsuarioTransferRule
+                {
+                    Grupo = "B",
+                    Tabla = "auditoria_seguridad",
+                    Campo = "actor_usuario_id",
+                    Descripcion = "Auditoria de seguridad",
+                    Estrategia = "Conservar historial",
+                    Transferible = false
+                },
+                new UsuarioTransferRule
+                {
+                    Grupo = "B",
+                    Tabla = "aocr_solicitud_rt_historial",
+                    Campo = "usuario_id",
+                    Descripcion = "Historial de decisiones RT",
+                    Estrategia = "Conservar historial",
+                    Transferible = false
+                },
+                new UsuarioTransferRule
+                {
+                    Grupo = "B",
+                    Tabla = "aocr_tbsolicitud",
+                    Campo = "created_by",
+                    Descripcion = "Autor de creacion de solicitud",
+                    Estrategia = "Conservar historial",
+                    Transferible = false
+                },
+                new UsuarioTransferRule
+                {
+                    Grupo = "B",
+                    Tabla = "aocr_tbsolicitud",
+                    Campo = "updated_by",
+                    Descripcion = "Autor de actualizacion de solicitud",
+                    Estrategia = "Conservar historial",
+                    Transferible = false
+                },
+                new UsuarioTransferRule
+                {
+                    Grupo = "B",
+                    Tabla = "aocr_tbsubsanacion",
+                    Campo = "created_by",
+                    Descripcion = "Autor de creacion de subsanacion",
+                    Estrategia = "Conservar historial",
+                    Transferible = false
+                },
+                new UsuarioTransferRule
+                {
+                    Grupo = "B",
+                    Tabla = "aocr_tbsubsanacion",
+                    Campo = "updated_by",
+                    Descripcion = "Autor de actualizacion de subsanacion",
+                    Estrategia = "Conservar historial",
+                    Transferible = false
+                },
+                new UsuarioTransferRule
+                {
+                    Grupo = "B",
+                    Tabla = "aocr_tbdocumento_subsanacion",
+                    Campo = "codigo_usuario_carga",
+                    Descripcion = "Autor de carga documental historica",
+                    Estrategia = "Conservar historial",
+                    Transferible = false
+                },
+
+                // Grupo C: mixtos
+                new UsuarioTransferRule
+                {
+                    Grupo = "C",
+                    Tabla = "aocr_tbobservacion",
+                    Campo = "codigousuario",
+                    Descripcion = "Observaciones del proceso",
+                    Estrategia = "Mantener autor historico; transferir solo flujo operativo",
+                    Transferible = false
+                },
+                new UsuarioTransferRule
+                {
+                    Grupo = "C",
+                    Tabla = "aocr_tbsubsanacion",
+                    Campo = "codigo_usuario_respuesta",
+                    Descripcion = "Usuario que responde subsanacion",
+                    Estrategia = "Mantener historial; no sobreescribir autor de respuesta",
+                    Transferible = false
+                }
+            };
+
+            if (cn == null)
+            {
+                return reglas;
+            }
+
+            var existentes = new HashSet<string>(
+                reglas.Select(r => string.Format("{0}.{1}", r.Tabla, r.Campo)),
+                StringComparer.OrdinalIgnoreCase);
+
+            const string sqlDescubrimiento = @"
+SELECT
+    table_name AS ""Tabla"",
+    column_name AS ""Campo""
+FROM information_schema.columns
+WHERE table_schema = 'public'
+  AND (
+        column_name LIKE '%usuario%'
+        OR column_name LIKE '%creado_por%'
+        OR column_name LIKE '%aprobado_por%'
+        OR column_name LIKE '%asignado%'
+        OR column_name LIKE '%responsable%'
+      );";
+
+            var detectadas = cn.Query<ColumnaDetectadaUsuario>(sqlDescubrimiento, transaction: tx).ToList();
+            foreach (var detectada in detectadas)
+            {
+                if (detectada == null ||
+                    string.IsNullOrWhiteSpace(detectada.Tabla) ||
+                    string.IsNullOrWhiteSpace(detectada.Campo))
+                {
+                    continue;
+                }
+
+                if (detectada.Tabla.StartsWith("aocr_usuario_transferencia", StringComparison.OrdinalIgnoreCase))
+                {
+                    continue;
+                }
+
+                var llave = string.Format("{0}.{1}", detectada.Tabla, detectada.Campo);
+                if (existentes.Contains(llave))
+                {
+                    continue;
+                }
+
+                reglas.Add(new UsuarioTransferRule
+                {
+                    Grupo = "C",
+                    Tabla = detectada.Tabla,
+                    Campo = detectada.Campo,
+                    Descripcion = "Referencia detectada automaticamente",
+                    Estrategia = "Revision manual recomendada; se conserva para auditoria",
+                    Transferible = false
+                });
+
+                existentes.Add(llave);
+            }
+
+            return reglas;
+        }
+
+        private ColumnaTransferInfo ObtenerInfoColumna(IDbConnection cn, IDbTransaction tx, string tabla, string campo)
+        {
+            const string sql = @"
+SELECT
+    data_type AS ""DataType"",
+    udt_name AS ""UdtName"",
+    (is_nullable = 'YES') AS ""Nullable""
+FROM information_schema.columns
+WHERE table_schema = 'public'
+  AND table_name = @tabla
+  AND column_name = @campo
+LIMIT 1;";
+
+            return cn.QueryFirstOrDefault<ColumnaTransferInfo>(sql, new
+            {
+                tabla = tabla,
+                campo = campo
+            }, tx);
+        }
+
+        private int ContarRegistrosRegla(
+            IDbConnection cn,
+            IDbTransaction tx,
+            UsuarioTransferRule regla,
+            ColumnaTransferInfo infoColumna,
+            int idUsuarioOrigen,
+            string codigoUsuarioOrigen)
+        {
+            var tablaSql = QuoteIdentifier(regla.Tabla);
+            var campoSql = QuoteIdentifier(regla.Campo);
+
+            if (infoColumna.EsNumerica)
+            {
+                var sql = string.Format("SELECT COUNT(1) FROM {0} WHERE {1} = @idUsuarioOrigen;", tablaSql, campoSql);
+                return cn.ExecuteScalar<int>(sql, new { idUsuarioOrigen = idUsuarioOrigen }, tx);
+            }
+
+            if (string.IsNullOrWhiteSpace(codigoUsuarioOrigen))
+            {
+                return 0;
+            }
+
+            var sqlTexto = string.Format(
+                "SELECT COUNT(1) FROM {0} WHERE UPPER(TRIM(COALESCE({1}::text, ''))) = UPPER(TRIM(@codigoUsuarioOrigen));",
+                tablaSql,
+                campoSql);
+
+            return cn.ExecuteScalar<int>(sqlTexto, new { codigoUsuarioOrigen = codigoUsuarioOrigen }, tx);
+        }
+
+        private int EjecutarTransferenciaRegla(
+            IDbConnection cn,
+            IDbTransaction tx,
+            UsuarioTransferRule regla,
+            ColumnaTransferInfo infoColumna,
+            int idUsuarioOrigen,
+            string codigoUsuarioOrigen,
+            int idUsuarioDestino,
+            string codigoUsuarioDestino)
+        {
+            var tablaSql = QuoteIdentifier(regla.Tabla);
+            var campoSql = QuoteIdentifier(regla.Campo);
+
+            if (regla.EliminarEnLugarTransferir)
+            {
+                if (!infoColumna.Nullable)
+                {
+                    return 0;
+                }
+
+                if (infoColumna.EsNumerica)
+                {
+                    var sqlNull = string.Format(
+                        "UPDATE {0} SET {1} = NULL WHERE {1} = @idUsuarioOrigen;",
+                        tablaSql,
+                        campoSql);
+                    return cn.Execute(sqlNull, new { idUsuarioOrigen = idUsuarioOrigen }, tx);
+                }
+
+                var sqlNullTexto = string.Format(
+                    "UPDATE {0} SET {1} = NULL WHERE UPPER(TRIM(COALESCE({1}::text, ''))) = UPPER(TRIM(@codigoUsuarioOrigen));",
+                    tablaSql,
+                    campoSql);
+
+                return cn.Execute(sqlNullTexto, new { codigoUsuarioOrigen = codigoUsuarioOrigen }, tx);
+            }
+
+            if (infoColumna.EsNumerica)
+            {
+                var sql = string.Format(
+                    "UPDATE {0} SET {1} = @idUsuarioDestino WHERE {1} = @idUsuarioOrigen;",
+                    tablaSql,
+                    campoSql);
+
+                return cn.Execute(sql, new
+                {
+                    idUsuarioDestino = idUsuarioDestino,
+                    idUsuarioOrigen = idUsuarioOrigen
+                }, tx);
+            }
+
+            if (string.IsNullOrWhiteSpace(codigoUsuarioDestino))
+            {
+                return 0;
+            }
+
+            var sqlTexto = string.Format(
+                "UPDATE {0} SET {1} = @codigoUsuarioDestino WHERE UPPER(TRIM(COALESCE({1}::text, ''))) = UPPER(TRIM(@codigoUsuarioOrigen));",
+                tablaSql,
+                campoSql);
+
+            return cn.Execute(sqlTexto, new
+            {
+                codigoUsuarioDestino = codigoUsuarioDestino,
+                codigoUsuarioOrigen = codigoUsuarioOrigen
+            }, tx);
+        }
+
+        private int DesactivarUsuarioTransferido(IDbConnection cn, IDbTransaction tx, int idUsuarioOrigen, string actorCodigoUsuario)
+        {
+            var setParts = new List<string>();
+            if (ExisteColumna(cn, tx, "usuario", "estadoactividad"))
+            {
+                setParts.Add("estadoactividad = '0'");
+            }
+
+            if (ExisteColumna(cn, tx, "usuario", "activo"))
+            {
+                setParts.Add("activo = FALSE");
+            }
+
+            if (ExisteColumna(cn, tx, "usuario", "usuariomodificado"))
+            {
+                setParts.Add("usuariomodificado = @actor");
+            }
+
+            if (ExisteColumna(cn, tx, "usuario", "usuarioactualizado"))
+            {
+                setParts.Add("usuarioactualizado = @actor");
+            }
+
+            if (ExisteColumna(cn, tx, "usuario", "fechamodificado"))
+            {
+                setParts.Add("fechamodificado = NOW()");
+            }
+
+            if (ExisteColumna(cn, tx, "usuario", "fechaactualizado"))
+            {
+                setParts.Add("fechaactualizado = NOW()");
+            }
+
+            if (ExisteColumna(cn, tx, "usuario", "fechabaja"))
+            {
+                setParts.Add("fechabaja = NOW()");
+            }
+
+            if (setParts.Count == 0)
+            {
+                return 0;
+            }
+
+            var sql = "UPDATE usuario SET " + string.Join(", ", setParts) + " WHERE idusuario = @idUsuarioOrigen;";
+            return cn.Execute(sql, new
+            {
+                idUsuarioOrigen = idUsuarioOrigen,
+                actor = NullIfWhite(actorCodigoUsuario)
+            }, tx);
+        }
+
+        private long RegistrarTransferenciaUsuario(
+            IDbConnection cn,
+            IDbTransaction tx,
+            int usuarioOrigenId,
+            int usuarioDestinoId,
+            int? actorUsuarioId,
+            string actorCodigoUsuario,
+            string motivo,
+            string ip,
+            int totalDetectados,
+            int totalTransferidos,
+            IList<UsuarioReferenciaImpactoDTO> impactos)
+        {
+            var resumenJson = JsonConvert.SerializeObject(impactos ?? new List<UsuarioReferenciaImpactoDTO>());
+
+            const string sql = @"
+INSERT INTO aocr_usuario_transferencia
+(
+    usuario_origen_id,
+    usuario_destino_id,
+    ejecutado_por_usuario_id,
+    ejecutado_por_codigo,
+    motivo,
+    ip,
+    fecha,
+    total_registros_detectados,
+    total_registros_transferidos,
+    resumen_json
+)
+VALUES
+(
+    @usuarioOrigenId,
+    @usuarioDestinoId,
+    @actorUsuarioId,
+    @actorCodigoUsuario,
+    @motivo,
+    @ip,
+    NOW(),
+    @totalDetectados,
+    @totalTransferidos,
+    CAST(@resumenJson AS jsonb)
+)
+RETURNING id_transferencia;";
+
+            return cn.ExecuteScalar<long>(sql, new
+            {
+                usuarioOrigenId = usuarioOrigenId,
+                usuarioDestinoId = usuarioDestinoId,
+                actorUsuarioId = actorUsuarioId,
+                actorCodigoUsuario = NullIfWhite(actorCodigoUsuario),
+                motivo = NullIfWhite(motivo),
+                ip = NullIfWhite(ip),
+                totalDetectados = totalDetectados,
+                totalTransferidos = totalTransferidos,
+                resumenJson = resumenJson
+            }, tx);
+        }
+
+        private void RegistrarTransferenciaDetalle(
+            IDbConnection cn,
+            IDbTransaction tx,
+            long transferenciaId,
+            IEnumerable<UsuarioReferenciaImpactoDTO> impactos)
+        {
+            var items = impactos != null ? impactos.ToList() : new List<UsuarioReferenciaImpactoDTO>();
+            if (!items.Any())
+            {
+                return;
+            }
+
+            const string sql = @"
+INSERT INTO aocr_usuario_transferencia_detalle
+(
+    transferencia_id,
+    grupo,
+    tabla,
+    campo,
+    descripcion,
+    estrategia,
+    transferible,
+    registros_detectados,
+    registros_afectados,
+    observacion
+)
+VALUES
+(
+    @transferenciaId,
+    @grupo,
+    @tabla,
+    @campo,
+    @descripcion,
+    @estrategia,
+    @transferible,
+    @registrosDetectados,
+    @registrosAfectados,
+    @observacion
+);";
+
+            foreach (var item in items)
+            {
+                cn.Execute(sql, new
+                {
+                    transferenciaId = transferenciaId,
+                    grupo = NullIfWhite(item.Grupo) ?? "N/A",
+                    tabla = NullIfWhite(item.Tabla) ?? "N/A",
+                    campo = NullIfWhite(item.Campo) ?? "N/A",
+                    descripcion = NullIfWhite(item.Descripcion),
+                    estrategia = NullIfWhite(item.Estrategia),
+                    transferible = item.Transferible,
+                    registrosDetectados = item.RegistrosDetectados,
+                    registrosAfectados = item.RegistrosAfectados,
+                    observacion = NullIfWhite(item.Observacion)
+                }, tx);
+            }
+        }
+
+        private bool EsUsuarioCriticoNoTransferible(UsuarioTransferibleInfo usuario)
+        {
+            if (usuario == null)
+            {
+                return false;
+            }
+
+            var codigo = (usuario.CodigoUsuario ?? string.Empty).Trim();
+            var correo = (usuario.Correo ?? string.Empty).Trim();
+
+            if (usuario.IdUsuario == 1)
+            {
+                return true;
+            }
+
+            if (string.Equals(codigo, "USU_ADMIN", StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(codigo, "ADMIN", StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+
+            if (string.Equals(correo, "gercavi82@gmail.com", StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+
+            return false;
+        }
+
+        private static string QuoteIdentifier(string identifier)
+        {
+            return "\"" + (identifier ?? string.Empty).Replace("\"", "\"\"") + "\"";
+        }
+
+        private sealed class UsuarioTransferRule
+        {
+            public string Grupo { get; set; }
+            public string Tabla { get; set; }
+            public string Campo { get; set; }
+            public string Descripcion { get; set; }
+            public string Estrategia { get; set; }
+            public bool Transferible { get; set; }
+            public bool EliminarEnLugarTransferir { get; set; }
+        }
+
+        private sealed class ColumnaTransferInfo
+        {
+            public string DataType { get; set; }
+            public string UdtName { get; set; }
+            public bool Nullable { get; set; }
+
+            public bool EsNumerica
+            {
+                get
+                {
+                    var dataType = (DataType ?? string.Empty).ToLowerInvariant();
+                    var udt = (UdtName ?? string.Empty).ToLowerInvariant();
+                    return dataType.Contains("integer")
+                           || dataType.Contains("numeric")
+                           || dataType.Contains("decimal")
+                           || dataType.Contains("bigint")
+                           || udt == "int2"
+                           || udt == "int4"
+                           || udt == "int8"
+                           || udt == "numeric";
+                }
+            }
+        }
+
+        private sealed class UsuarioTransferibleInfo
+        {
+            public int IdUsuario { get; set; }
+            public string CodigoUsuario { get; set; }
+            public string NombreUsuario { get; set; }
+            public string ApellidoUsuario { get; set; }
+            public string Correo { get; set; }
+            public bool Activo { get; set; }
+        }
+
+        private sealed class ColumnaDetectadaUsuario
+        {
+            public string Tabla { get; set; }
+            public string Campo { get; set; }
+        }
+
         private void ReemplazarRolesInterno(
             IDbConnection cn,
             IDbTransaction tx,
@@ -921,3 +1938,4 @@ WHERE table_schema = 'public'
         }
     }
 }
+

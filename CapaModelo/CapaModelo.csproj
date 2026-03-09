@@ -62,6 +62,7 @@
     <Compile Include="Seguridad\SeguridadAuditoriaDTO.cs" />
     <Compile Include="Seguridad\SeguridadPermisoDTO.cs" />
     <Compile Include="Seguridad\SeguridadRolDTO.cs" />
+    <Compile Include="Seguridad\UsuarioTransferenciaDTO.cs" />
     <Compile Include="Seguridad\SeguridadUsuarioDTO.cs" />
     <Compile Include="ReportesFinancieros\FiltroReporteDTO.cs" />
     <Compile Include="ReportesFinancieros\ReporteOrdenDTO.cs" />
@@ -94,6 +95,7 @@
     <Compile Include="SolicitudAOCR.cs" />
     <Compile Include="Subsanacion.cs" />
     <Compile Include="Usuario.cs" />
+    <Compile Include="UsuarioCompaniaRT.cs" />
     <Compile Include="RT\CompaniaModel.cs" />
     <Compile Include="RT\SolicitudRTModel.cs" />
     <Compile Include="RT\DocumentoModel.cs" />

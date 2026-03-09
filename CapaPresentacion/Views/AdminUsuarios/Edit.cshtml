@@ -20,6 +20,25 @@
     </div>
 }
 
+<div class="card mt-3">
+    <div class="card-header">
+        <strong>Acciones adicionales</strong>
+    </div>
+    <div class="card-body d-flex flex-wrap align-items-center justify-content-between">
+        <div class="text-muted mb-2 mb-md-0">
+            Reenviar al usuario el correo de <strong>Declaración de responsabilidad</strong> con su PDF adjunto.
+        </div>
+        @using (Html.BeginForm("ReenviarDeclaracionResponsabilidad", "AdminUsuarios", FormMethod.Post, new { @class = "m-0" }))
+        {
+            @Html.AntiForgeryToken()
+            @Html.Hidden("idUsuario", Model.IdUsuario)
+            <button type="submit" class="btn btn-outline-primary">
+                Reenviar declaración
+            </button>
+        }
+    </div>
+</div>
+
 @section Scripts {
     <script src="~/Scripts/admin-usuarios.js"></script>
 }

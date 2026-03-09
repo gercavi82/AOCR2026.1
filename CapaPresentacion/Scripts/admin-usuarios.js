@@ -41,5 +41,60 @@
             chkGenerar.addEventListener("change", actualizar);
             actualizar();
         }
+
+        var selectCompanias = document.querySelector(".js-companias-rt-select");
+        var btnSeleccionarTodas = document.getElementById("btnSeleccionarTodasCompaniasAdmin");
+        var btnLimpiar = document.getElementById("btnLimpiarCompaniasAdmin");
+        var contador = document.getElementById("contadorCompaniasAdmin");
+
+        var actualizarContadorCompanias = function () {
+            if (!selectCompanias || !contador) {
+                return;
+            }
+
+            var total = selectCompanias.options.length;
+            var seleccionadas = 0;
+            for (var i = 0; i < total; i++) {
+                if (selectCompanias.options[i].selected) {
+                    seleccionadas++;
+                }
+            }
+
+            contador.textContent = seleccionadas + " seleccionada(s) de " + total;
+        };
+
+        if (selectCompanias) {
+            selectCompanias.addEventListener("mousedown", function (event) {
+                var option = event.target;
+                if (!option || option.tagName !== "OPTION") {
+                    return;
+                }
+
+                event.preventDefault();
+                option.selected = !option.selected;
+                actualizarContadorCompanias();
+            });
+
+            selectCompanias.addEventListener("change", actualizarContadorCompanias);
+            actualizarContadorCompanias();
+        }
+
+        if (btnSeleccionarTodas && selectCompanias) {
+            btnSeleccionarTodas.addEventListener("click", function () {
+                for (var i = 0; i < selectCompanias.options.length; i++) {
+                    selectCompanias.options[i].selected = true;
+                }
+                actualizarContadorCompanias();
+            });
+        }
+
+        if (btnLimpiar && selectCompanias) {
+            btnLimpiar.addEventListener("click", function () {
+                for (var i = 0; i < selectCompanias.options.length; i++) {
+                    selectCompanias.options[i].selected = false;
+                }
+                actualizarContadorCompanias();
+            });
+        }
     });
 })();

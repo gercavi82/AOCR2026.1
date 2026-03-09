@@ -14,6 +14,7 @@ using CapaNegocio.DTOs;
 using CapaNegocio.Interfaces;
 using System.Threading.Tasks;
 using CapaPresentacion.Models;
+using CapaPresentacion.Helpers;
 using CapaModelo;
 using CapaNegocio.Services;
 using CapaNegocio.Helpers;
@@ -326,10 +327,16 @@ namespace CapaPresentacion.Controllers
             {
                 usuario = UsuarioDAO.ObtenerPorId(userId);
                 var empresaNombre = "";
-                if (!string.IsNullOrWhiteSpace(usuario?.EmpresaCodigo))
+                var codigoCompaniaActiva = CompaniaActivaSessionHelper.ObtenerCodigo(Session);
+                if (string.IsNullOrWhiteSpace(codigoCompaniaActiva))
+                {
+                    codigoCompaniaActiva = usuario != null ? usuario.EmpresaCodigo : string.Empty;
+                }
+
+                if (!string.IsNullOrWhiteSpace(codigoCompaniaActiva))
                 {
                     var daoEmpresa = new EmpresaAS400DAO();
-                    var empresa = daoEmpresa.ObtenerEmpresaPorCodigo(usuario.EmpresaCodigo);
+                    var empresa = daoEmpresa.ObtenerEmpresaPorCodigo(codigoCompaniaActiva);
                     empresaNombre = empresa?.Nombre ?? "";
                 }
 
@@ -2242,10 +2249,16 @@ En transferencias NO colocar sublínea<br>";
             var empresaNombre = "";
             try
             {
-                if (!string.IsNullOrWhiteSpace(usuario?.EmpresaCodigo))
+                var codigoCompaniaActiva = CompaniaActivaSessionHelper.ObtenerCodigo(Session);
+                if (string.IsNullOrWhiteSpace(codigoCompaniaActiva))
+                {
+                    codigoCompaniaActiva = usuario != null ? usuario.EmpresaCodigo : string.Empty;
+                }
+
+                if (!string.IsNullOrWhiteSpace(codigoCompaniaActiva))
                 {
                     var daoEmpresa = new EmpresaAS400DAO();
-                    var empresa = daoEmpresa.ObtenerEmpresaPorCodigo(usuario.EmpresaCodigo);
+                    var empresa = daoEmpresa.ObtenerEmpresaPorCodigo(codigoCompaniaActiva);
                     empresaNombre = empresa?.Nombre ?? "";
                 }
             }

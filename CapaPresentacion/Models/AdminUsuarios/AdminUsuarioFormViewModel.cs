@@ -42,6 +42,11 @@ namespace CapaPresentacion.Models.AdminUsuarios
 
         public IEnumerable<SelectListItem> RolesDisponibles { get; set; } = new List<SelectListItem>();
 
+        [Display(Name = "Companias RT")]
+        public IList<string> CompaniasSeleccionadas { get; set; } = new List<string>();
+
+        public IEnumerable<SelectListItem> CatalogoCompanias { get; set; } = new List<SelectListItem>();
+
         public bool IsEditMode
         {
             get { return IdUsuario > 0; }

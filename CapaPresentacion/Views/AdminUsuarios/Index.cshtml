@@ -110,6 +110,11 @@
                                    title="Asignar roles">
                                     <i class="fas fa-user-shield"></i>
                                 </a>
+                                <a class="btn btn-outline-danger"
+                                   href="@Url.Action("TransferirEliminar", "AdminUsuarios", new { id = item.IdUsuario })"
+                                   title="Eliminar / Transferir usuario">
+                                    <i class="fas fa-user-times"></i>
+                                </a>
                             </div>
 
                             @using (Html.BeginForm("ResetPassword", "AdminUsuarios", FormMethod.Post, new { @class = "d-inline-block", data_confirm = "Se generara una contrasena temporal para este usuario. Desea continuar?" }))

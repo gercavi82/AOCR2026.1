@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Configuration;
 using System.Linq;
 using System.Security.Principal;
+using System.Text.RegularExpressions;
 using System.Threading;
 using System.Web;
 using System.Web.Mvc;
@@ -13,6 +14,7 @@ using CapaNegocio.Helpers;
 using CapaNegocio.Integraciones.As400Sync;
 using CapaPresentacion.Models;
 using CapaDatos.DAOs;
+using CapaPresentacion.Helpers;
 
 namespace CapaPresentacion.Controllers
 {
@@ -63,6 +65,10 @@ namespace CapaPresentacion.Controllers
             if (string.Equals(af, "1", StringComparison.OrdinalIgnoreCase))
             {
                 ModelState.AddModelError("", "La sesión expiró o el formulario perdió validez. Recargue la página e intente nuevamente.");
+            }
+            if (TempData["LoginError"] != null)
+            {
+                ModelState.AddModelError("", TempData["LoginError"].ToString());
             }
 
             ViewBag.ReturnUrl = returnUrl;
@@ -178,79 +184,218 @@ namespace CapaPresentacion.Controllers
                 : (usuario.NombreUsuario ?? "Usuario");
 
             Session["Correo"] = usuario.Email;
-            Session["EmpresaCodigo"] = usuario.EmpresaCodigo;
-            Session["EmpresaNombre"] = null;
+            CompaniaActivaSessionHelper.Limpiar(Session);
 
             Session["Roles"] = roles;
             Session["Rol"] = roles.Count > 0 ? roles[0] : null;
             Session["LastActivity"] = DateTime.Now;
 
-            // Datos de empresa para mostrar en sidebar (sin bloquear login si AS400 falla)
-            if (!string.IsNullOrWhiteSpace(usuario.EmpresaCodigo))
-            {
-                try
-                {
-                    string nombreEmpresa = null;
-                    bool preferirMirror;
-                    if (bool.TryParse(ConfigurationManager.AppSettings["Sync:Mirror:PreferReadForEmpresas"], out preferirMirror) &&
-                        preferirMirror)
-                    {
-                        var mirror = new MirrorReadService();
-                        var empresaMirror = mirror.ListarCompaniasActivas(5000)
-                            .FirstOrDefault(x => x != null &&
-                                string.Equals((x.CodigoOaci ?? string.Empty).Trim(), (usuario.EmpresaCodigo ?? string.Empty).Trim(), StringComparison.OrdinalIgnoreCase));
-
-                        if (empresaMirror != null && !string.IsNullOrWhiteSpace(empresaMirror.NombreCompania))
-                        {
-                            nombreEmpresa = empresaMirror.NombreCompania.Trim();
-                        }
-                    }
-
-                    if (string.IsNullOrWhiteSpace(nombreEmpresa))
-                    {
-                        var empresaDao = new EmpresaAS400DAO();
-                        var empresa = empresaDao.ObtenerEmpresaPorCodigo(usuario.EmpresaCodigo);
-                        if (empresa != null && !string.IsNullOrWhiteSpace(empresa.Nombre))
-                        {
-                            nombreEmpresa = empresa.Nombre.Trim();
-                        }
-                    }
-
-                    if (!string.IsNullOrWhiteSpace(nombreEmpresa))
-                    {
-                        Session["EmpresaNombre"] = nombreEmpresa;
-                    }
-                }
-                catch (Exception ex)
-                {
-                    System.Diagnostics.Debug.WriteLine("Account/Login: no se pudo resolver nombre de empresa para sidebar: " + ex.Message);
-                }
-            }
-
-            // Forzar cambio cuando hay marca explicita o cuando la ultima conexion fue limpiada (reset clave).
+            // Forzar cambio cuando hay marca explícita o cuando la última conexión fue limpiada (reset clave).
             if (usuario.MustChangePassword || !usuario.FechaUltimaConexion.HasValue)
             {
+                if (!string.IsNullOrWhiteSpace(returnUrl))
+                {
+                    Session[CompaniaActivaSessionHelper.SessionCompaniaPendienteReturnUrl] = returnUrl;
+                }
                 return RedirectToAction("CambiarContrasena", "Account");
+            }
+
+            var esUsuarioRt = EsUsuarioRt(usuario) && !EsUsuarioAdministrador(usuario, roles);
+            var companiasAsignadas = new List<UsuarioCompaniaRT>();
+            if (esUsuarioRt)
+            {
+                companiasAsignadas = ObtenerCompaniasAsignadasConFallback(usuario);
+                if (companiasAsignadas.Count == 0)
+                {
+                    ModelState.AddModelError("", "Su usuario RT no tiene compañías asignadas. Solicite al administrador la asociación correspondiente.");
+                    return View(model);
+                }
+
+                if (companiasAsignadas.Count == 1)
+                {
+                    var unica = companiasAsignadas[0];
+                    var nombreCompania = !string.IsNullOrWhiteSpace(unica.CompaniaNombre)
+                        ? unica.CompaniaNombre
+                        : ResolverNombreCompaniaPorCodigo(unica.CompaniaCodigo);
+
+                    CompaniaActivaSessionHelper.Establecer(Session, unica.CompaniaCodigo, nombreCompania);
+                }
+                else
+                {
+                    Session[CompaniaActivaSessionHelper.SessionCompaniaPendienteReturnUrl] = returnUrl;
+                    return RedirectToAction("SeleccionarCompania");
+                }
+            }
+            else if (!string.IsNullOrWhiteSpace(usuario.EmpresaCodigo))
+            {
+                var nombreEmpresa = ResolverNombreCompaniaPorCodigo(usuario.EmpresaCodigo);
+                CompaniaActivaSessionHelper.Establecer(Session, usuario.EmpresaCodigo, nombreEmpresa);
             }
 
             // Actualizar última conexión después de autenticación normal.
             UsuarioDAO.ActualizarUltimaConexion(usuario.Id);
+            return RedireccionarDespuesLogin(usuario.Id, returnUrl);
+        }
 
-            // ============================
-            // VERIFICACIÓN DE ORDEN
-            // ============================
-            var ordenDAO = new OrdenRecaudacionDAO();
+        [Authorize]
+        public ActionResult SeleccionarCompania()
+        {
+            var usuarioId = ObtenerUsuarioSesionId();
+            if (usuarioId <= 0)
+            {
+                return RedirectToAction("Login", "Account");
+            }
 
-            bool tieneOrdenGeneradaOPagada = ordenDAO.ExisteORGeneradaOPagada(usuario.Id);
-            bool tieneOrdenBorrador = ordenDAO.ExisteORMinima(usuario.Id);
+            var usuario = UsuarioDAO.ObtenerPorId(usuarioId);
+            if (usuario == null)
+            {
+                TempData["LoginError"] = "No se pudo cargar su perfil de usuario.";
+                return RedirectToAction("Login", "Account");
+            }
 
-            Session["TieneOrdenGenerada"] = tieneOrdenGeneradaOPagada;
-            Session["TieneOrdenBorrador"] = tieneOrdenBorrador;
+            var esUsuarioRt = EsUsuarioRt(usuario) && !EsAdministradorSesion(usuario);
+            var companiasAsignadas = ObtenerCompaniasAsignadasConFallback(usuario);
 
-            if (!tieneOrdenGeneradaOPagada)
-                return RedirectToAction("Obligatoria", "OrdenRecaudacion");
+            if (!esUsuarioRt || companiasAsignadas.Count <= 1)
+            {
+                if (companiasAsignadas.Count == 1)
+                {
+                    var unica = companiasAsignadas[0];
+                    var nombre = !string.IsNullOrWhiteSpace(unica.CompaniaNombre)
+                        ? unica.CompaniaNombre
+                        : ResolverNombreCompaniaPorCodigo(unica.CompaniaCodigo);
+                    CompaniaActivaSessionHelper.Establecer(Session, unica.CompaniaCodigo, nombre);
+                }
 
-            return RedirectToLocal(returnUrl);
+                var returnUrlUnica = Session[CompaniaActivaSessionHelper.SessionCompaniaPendienteReturnUrl] as string;
+                Session.Remove(CompaniaActivaSessionHelper.SessionCompaniaPendienteReturnUrl);
+                return RedireccionarDespuesLogin(usuarioId, returnUrlUnica);
+            }
+
+            var vm = new SeleccionCompaniaViewModel
+            {
+                ReturnUrl = Session[CompaniaActivaSessionHelper.SessionCompaniaPendienteReturnUrl] as string,
+                Companias = companiasAsignadas.Select(c => new CompaniaAsignadaViewModel
+                {
+                    Codigo = c.CompaniaCodigo,
+                    Nombre = !string.IsNullOrWhiteSpace(c.CompaniaNombre)
+                        ? c.CompaniaNombre
+                        : ResolverNombreCompaniaPorCodigo(c.CompaniaCodigo)
+                }).ToList()
+            };
+
+            return View(vm);
+        }
+
+        [HttpPost]
+        [Authorize]
+        [ValidateAntiForgeryToken]
+        public ActionResult SeleccionarCompania(SeleccionCompaniaViewModel model)
+        {
+            var usuarioId = ObtenerUsuarioSesionId();
+            if (usuarioId <= 0)
+            {
+                return RedirectToAction("Login", "Account");
+            }
+
+            var usuario = UsuarioDAO.ObtenerPorId(usuarioId);
+            if (usuario == null)
+            {
+                TempData["LoginError"] = "No se pudo cargar su perfil de usuario.";
+                return RedirectToAction("Login", "Account");
+            }
+
+            if (EsAdministradorSesion(usuario))
+            {
+                return RedireccionarDespuesLogin(usuarioId, model != null ? model.ReturnUrl : null);
+            }
+
+            var companiasAsignadas = ObtenerCompaniasAsignadasConFallback(usuario);
+            var seleccion = companiasAsignadas.FirstOrDefault(c =>
+                string.Equals((c.CompaniaCodigo ?? string.Empty).Trim(), (model?.CompaniaSeleccionada ?? string.Empty).Trim(), StringComparison.OrdinalIgnoreCase));
+
+            if (seleccion == null)
+            {
+                var vm = new SeleccionCompaniaViewModel
+                {
+                    ReturnUrl = model != null ? model.ReturnUrl : null,
+                    CompaniaSeleccionada = model != null ? model.CompaniaSeleccionada : null,
+                    Companias = companiasAsignadas.Select(c => new CompaniaAsignadaViewModel
+                    {
+                        Codigo = c.CompaniaCodigo,
+                        Nombre = !string.IsNullOrWhiteSpace(c.CompaniaNombre)
+                            ? c.CompaniaNombre
+                            : ResolverNombreCompaniaPorCodigo(c.CompaniaCodigo)
+                    }).ToList()
+                };
+
+                ModelState.AddModelError("", "La compañía seleccionada no está asignada a su usuario.");
+                return View(vm);
+            }
+
+            var nombreCompania = !string.IsNullOrWhiteSpace(seleccion.CompaniaNombre)
+                ? seleccion.CompaniaNombre
+                : ResolverNombreCompaniaPorCodigo(seleccion.CompaniaCodigo);
+            CompaniaActivaSessionHelper.Establecer(Session, seleccion.CompaniaCodigo, nombreCompania);
+
+            var returnUrl = model != null ? model.ReturnUrl : null;
+            if (string.IsNullOrWhiteSpace(returnUrl))
+            {
+                returnUrl = Session[CompaniaActivaSessionHelper.SessionCompaniaPendienteReturnUrl] as string;
+            }
+
+            Session.Remove(CompaniaActivaSessionHelper.SessionCompaniaPendienteReturnUrl);
+            return RedireccionarDespuesLogin(usuarioId, returnUrl);
+        }
+
+        [HttpPost]
+        [Authorize]
+        [ValidateAntiForgeryToken]
+        public ActionResult CambiarCompaniaActiva(string companiaCodigo, string returnUrl)
+        {
+            var usuarioId = ObtenerUsuarioSesionId();
+            if (usuarioId <= 0)
+            {
+                return RedirectToAction("Login", "Account");
+            }
+
+            var usuario = UsuarioDAO.ObtenerPorId(usuarioId);
+            if (usuario == null)
+            {
+                TempData["LoginError"] = "No se pudo cargar su perfil de usuario.";
+                if (!string.IsNullOrWhiteSpace(returnUrl) && Url.IsLocalUrl(returnUrl))
+                {
+                    return Redirect(returnUrl);
+                }
+                return RedirectToAction("Index", "Dashboard");
+            }
+
+            var companiasAsignadas = ObtenerCompaniasAsignadasConFallback(usuario);
+            var compania = companiasAsignadas.FirstOrDefault(c =>
+                string.Equals((c.CompaniaCodigo ?? string.Empty).Trim(), (companiaCodigo ?? string.Empty).Trim(), StringComparison.OrdinalIgnoreCase));
+
+            if (compania == null)
+            {
+                TempData["LoginError"] = "No tiene permisos para cambiar a la compañía seleccionada.";
+                if (!string.IsNullOrWhiteSpace(returnUrl) && Url.IsLocalUrl(returnUrl))
+                {
+                    return Redirect(returnUrl);
+                }
+                return RedirectToAction("Index", "Dashboard");
+            }
+
+            var nombre = (compania != null && !string.IsNullOrWhiteSpace(compania.CompaniaNombre))
+                ? compania.CompaniaNombre
+                : ResolverNombreCompaniaPorCodigo(companiaCodigo);
+
+            CompaniaActivaSessionHelper.Establecer(Session, companiaCodigo, nombre);
+
+            if (!string.IsNullOrWhiteSpace(returnUrl) && Url.IsLocalUrl(returnUrl))
+            {
+                return Redirect(returnUrl);
+            }
+
+            return RedirectToAction("Index", "Dashboard");
         }
 
         private void ExpirarCookieAntiForgery()
@@ -387,7 +532,53 @@ namespace CapaPresentacion.Controllers
             }
 
             UsuarioDAO.ActualizarUltimaConexion(idUsuario);
-            return RedirectToAction("Index", "Dashboard");
+
+            var usuarioActualizado = UsuarioDAO.ObtenerPorId(idUsuario);
+            if (usuarioActualizado == null)
+            {
+                FormsAuthentication.SignOut();
+                Session.Clear();
+                Session.Abandon();
+                TempData["LoginError"] = "No se pudo recuperar el perfil del usuario luego de actualizar su contraseña.";
+                return RedirectToAction("Login", "Account");
+            }
+
+            var rolesSesion = ObtenerRolesSesion();
+            var esUsuarioRt = EsUsuarioRt(usuarioActualizado) && !EsUsuarioAdministrador(usuarioActualizado, rolesSesion);
+            if (esUsuarioRt)
+            {
+                var companiasAsignadas = ObtenerCompaniasAsignadasConFallback(usuarioActualizado);
+                if (companiasAsignadas.Count == 0)
+                {
+                    FormsAuthentication.SignOut();
+                    Session.Clear();
+                    Session.Abandon();
+                    TempData["LoginError"] = "Su usuario RT no tiene compañías asignadas. Solicite al administrador la asociación correspondiente.";
+                    return RedirectToAction("Login", "Account");
+                }
+
+                if (companiasAsignadas.Count == 1)
+                {
+                    var unica = companiasAsignadas[0];
+                    var nombreCompania = !string.IsNullOrWhiteSpace(unica.CompaniaNombre)
+                        ? unica.CompaniaNombre
+                        : ResolverNombreCompaniaPorCodigo(unica.CompaniaCodigo);
+                    CompaniaActivaSessionHelper.Establecer(Session, unica.CompaniaCodigo, nombreCompania);
+                }
+                else
+                {
+                    return RedirectToAction("SeleccionarCompania");
+                }
+            }
+            else if (!string.IsNullOrWhiteSpace(usuarioActualizado.EmpresaCodigo))
+            {
+                var nombreEmpresa = ResolverNombreCompaniaPorCodigo(usuarioActualizado.EmpresaCodigo);
+                CompaniaActivaSessionHelper.Establecer(Session, usuarioActualizado.EmpresaCodigo, nombreEmpresa);
+            }
+
+            var returnUrlPendiente = Session[CompaniaActivaSessionHelper.SessionCompaniaPendienteReturnUrl] as string;
+            Session.Remove(CompaniaActivaSessionHelper.SessionCompaniaPendienteReturnUrl);
+            return RedirectToLocal(returnUrlPendiente);
         }
 
         [HttpPost]
@@ -453,6 +644,318 @@ namespace CapaPresentacion.Controllers
         {
             Session["LastActivity"] = DateTime.Now;
             return Json(new { ok = true });
+        }
+
+        private static bool EsUsuarioRt(Usuario usuario)
+        {
+            return usuario != null &&
+                   !string.IsNullOrWhiteSpace(usuario.EstadoDesignacionRT) &&
+                   usuario.EstadoDesignacionRT.Trim().Equals("aceptado", StringComparison.OrdinalIgnoreCase);
+        }
+
+        private bool EsAdministradorSesion(Usuario usuario)
+        {
+            var rolesSesion = ObtenerRolesSesion();
+            return EsUsuarioAdministrador(usuario, rolesSesion);
+        }
+
+        private List<string> ObtenerRolesSesion()
+        {
+            var roles = new List<string>();
+            try
+            {
+                var rolesObj = Session["Roles"];
+                if (rolesObj is List<string>)
+                {
+                    roles.AddRange((List<string>)rolesObj);
+                }
+                else if (rolesObj is string[])
+                {
+                    roles.AddRange((string[])rolesObj);
+                }
+                else if (rolesObj is IEnumerable<string>)
+                {
+                    roles.AddRange((IEnumerable<string>)rolesObj);
+                }
+
+                var rolUnico = Session["Rol"] as string;
+                if (!string.IsNullOrWhiteSpace(rolUnico))
+                {
+                    roles.Add(rolUnico);
+                }
+            }
+            catch
+            {
+                // best-effort
+            }
+
+            return roles
+                .Where(r => !string.IsNullOrWhiteSpace(r))
+                .Select(r => r.Trim())
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
+        }
+
+        private static bool EsUsuarioAdministrador(Usuario usuario, IEnumerable<string> roles)
+        {
+            var rolesNorm = (roles ?? Enumerable.Empty<string>())
+                .Where(r => !string.IsNullOrWhiteSpace(r))
+                .Select(r => r.Trim())
+                .ToList();
+
+            if (rolesNorm.Any(r => r.Equals("Administrador", StringComparison.OrdinalIgnoreCase)))
+            {
+                return true;
+            }
+
+            if (usuario != null &&
+                !string.IsNullOrWhiteSpace(usuario.NombreUsuario) &&
+                usuario.NombreUsuario.Trim().Equals("USU_ADMIN", StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+
+            if (usuario != null &&
+                !string.IsNullOrWhiteSpace(usuario.Email) &&
+                usuario.Email.Trim().Equals("gercavi82@gmail.com", StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+
+            return false;
+        }
+
+        private int ObtenerUsuarioSesionId()
+        {
+            var v = Session["UserId"] ?? Session["IdUsuario"];
+            if (v == null)
+            {
+                return 0;
+            }
+
+            int id;
+            return int.TryParse(v.ToString(), out id) ? id : 0;
+        }
+
+        private List<UsuarioCompaniaRT> ObtenerCompaniasAsignadasConFallback(Usuario usuario)
+        {
+            var resultado = new List<UsuarioCompaniaRT>();
+            if (usuario == null || usuario.Id <= 0)
+            {
+                return resultado;
+            }
+
+            var daoCompanias = new UsuarioCompaniaRTDAO();
+            try
+            {
+                resultado = daoCompanias.ObtenerCompaniasAsignadas(usuario.Id);
+            }
+            catch
+            {
+                resultado = new List<UsuarioCompaniaRT>();
+            }
+
+            var codigosLegacy = ParsearCodigosCompaniaLegacy(usuario.EmpresaCodigo);
+            foreach (var codigo in codigosLegacy)
+            {
+                if (resultado.Any(c => string.Equals((c.CompaniaCodigo ?? string.Empty).Trim(), codigo, StringComparison.OrdinalIgnoreCase)))
+                {
+                    continue;
+                }
+
+                resultado.Add(new UsuarioCompaniaRT
+                {
+                    UsuarioId = usuario.Id,
+                    CompaniaCodigo = codigo,
+                    CompaniaNombre = ResolverNombreCompaniaPorCodigo(codigo),
+                    Activo = true
+                });
+            }
+
+            var codigosHistorial = new List<string>();
+            if (!string.IsNullOrWhiteSpace(usuario.Email))
+            {
+                try
+                {
+                    var declaracionDao = new DeclaracionTemporalDAO();
+                    var historial = declaracionDao.GetUltimaAceptadaHistorial(usuario.Email);
+                    if (historial != null)
+                    {
+                        codigosHistorial = ParsearCodigosCompaniaLegacy(historial.EmpresaCodigo);
+                        if (codigosHistorial.Count == 0)
+                        {
+                            codigosHistorial = ExtraerCodigosCompaniaDesdeTexto(historial.EmpresaNombre);
+                        }
+                    }
+                }
+                catch
+                {
+                    codigosHistorial = new List<string>();
+                }
+            }
+
+            foreach (var codigo in codigosHistorial)
+            {
+                if (resultado.Any(c => string.Equals((c.CompaniaCodigo ?? string.Empty).Trim(), codigo, StringComparison.OrdinalIgnoreCase)))
+                {
+                    continue;
+                }
+
+                resultado.Add(new UsuarioCompaniaRT
+                {
+                    UsuarioId = usuario.Id,
+                    CompaniaCodigo = codigo,
+                    CompaniaNombre = ResolverNombreCompaniaPorCodigo(codigo),
+                    Activo = true
+                });
+            }
+
+            // Best effort: persistir fallback legacy en tabla relacional, sin bloquear login.
+            if (codigosLegacy.Count > 0)
+            {
+                foreach (var codigo in codigosLegacy)
+                {
+                    try
+                    {
+                        if (!daoCompanias.UsuarioTieneCompaniaAsignada(usuario.Id, codigo))
+                        {
+                            daoCompanias.AgregarCompania(usuario.Id, codigo, ResolverNombreCompaniaPorCodigo(codigo), "fallback_legacy");
+                        }
+                    }
+                    catch
+                    {
+                        // Ignorar para no interrumpir autenticacion.
+                    }
+                }
+            }
+
+            if (codigosHistorial.Count > 0)
+            {
+                foreach (var codigo in codigosHistorial)
+                {
+                    try
+                    {
+                        if (!daoCompanias.UsuarioTieneCompaniaAsignada(usuario.Id, codigo))
+                        {
+                            daoCompanias.AgregarCompania(usuario.Id, codigo, ResolverNombreCompaniaPorCodigo(codigo), "fallback_historial");
+                        }
+                    }
+                    catch
+                    {
+                        // Ignorar para no interrumpir autenticacion.
+                    }
+                }
+            }
+
+            return resultado
+                .Where(c => c != null && !string.IsNullOrWhiteSpace(c.CompaniaCodigo))
+                .GroupBy(c => (c.CompaniaCodigo ?? string.Empty).Trim(), StringComparer.OrdinalIgnoreCase)
+                .Select(g => g.First())
+                .OrderBy(c => c.CompaniaCodigo)
+                .ToList();
+        }
+
+        private static List<string> ExtraerCodigosCompaniaDesdeTexto(string texto)
+        {
+            var resultado = new List<string>();
+            var raw = (texto ?? string.Empty).Trim();
+            if (string.IsNullOrWhiteSpace(raw))
+            {
+                return resultado;
+            }
+
+            foreach (Match match in Regex.Matches(raw, "\\[(?<code>[A-Za-z0-9]+)(?:/[^\\]]*)?\\]"))
+            {
+                var codigo = (match.Groups["code"].Value ?? string.Empty).Trim().ToUpperInvariant();
+                if (!string.IsNullOrWhiteSpace(codigo))
+                {
+                    resultado.Add(codigo);
+                }
+            }
+
+            return resultado
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
+        }
+
+        private static List<string> ParsearCodigosCompaniaLegacy(string empresaCodigo)
+        {
+            if (string.IsNullOrWhiteSpace(empresaCodigo))
+            {
+                return new List<string>();
+            }
+
+            return (empresaCodigo ?? string.Empty)
+                .Split(new[] { ',', ';', '|' }, StringSplitOptions.RemoveEmptyEntries)
+                .Select(x => (x ?? string.Empty).Trim().ToUpperInvariant())
+                .Where(x => !string.IsNullOrWhiteSpace(x))
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
+        }
+
+        private string ResolverNombreCompaniaPorCodigo(string codigoEmpresa)
+        {
+            if (string.IsNullOrWhiteSpace(codigoEmpresa))
+            {
+                return string.Empty;
+            }
+
+            try
+            {
+                string nombreEmpresa = null;
+                bool preferirMirror;
+                if (bool.TryParse(ConfigurationManager.AppSettings["Sync:Mirror:PreferReadForEmpresas"], out preferirMirror) &&
+                    preferirMirror)
+                {
+                    var mirror = new MirrorReadService();
+                    var empresaMirror = mirror.ListarCompaniasActivas(5000)
+                        .FirstOrDefault(x => x != null &&
+                            string.Equals((x.CodigoOaci ?? string.Empty).Trim(), (codigoEmpresa ?? string.Empty).Trim(), StringComparison.OrdinalIgnoreCase));
+
+                    if (empresaMirror != null && !string.IsNullOrWhiteSpace(empresaMirror.NombreCompania))
+                    {
+                        nombreEmpresa = empresaMirror.NombreCompania.Trim();
+                    }
+                }
+
+                if (string.IsNullOrWhiteSpace(nombreEmpresa))
+                {
+                    var empresaDao = new EmpresaAS400DAO();
+                    var empresa = empresaDao.ObtenerEmpresaPorCodigo(codigoEmpresa);
+                    if (empresa != null && !string.IsNullOrWhiteSpace(empresa.Nombre))
+                    {
+                        nombreEmpresa = empresa.Nombre.Trim();
+                    }
+                }
+
+                return nombreEmpresa ?? string.Empty;
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine("Account: no se pudo resolver nombre de empresa: " + ex.Message);
+                return string.Empty;
+            }
+        }
+
+        private ActionResult RedireccionarDespuesLogin(int usuarioId, string returnUrl)
+        {
+            // ============================
+            // VERIFICACIÓN DE ORDEN
+            // ============================
+            var ordenDAO = new OrdenRecaudacionDAO();
+
+            bool tieneOrdenGeneradaOPagada = ordenDAO.ExisteORGeneradaOPagada(usuarioId);
+            bool tieneOrdenBorrador = ordenDAO.ExisteORMinima(usuarioId);
+
+            Session["TieneOrdenGenerada"] = tieneOrdenGeneradaOPagada;
+            Session["TieneOrdenBorrador"] = tieneOrdenBorrador;
+
+            if (!tieneOrdenGeneradaOPagada)
+            {
+                return RedirectToAction("Obligatoria", "OrdenRecaudacion");
+            }
+
+            return RedirectToLocal(returnUrl);
         }
     }
 }

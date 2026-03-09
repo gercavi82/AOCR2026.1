@@ -11,6 +11,7 @@ using CapaDatos.Entidades;
 using CapaModelo;
 using CapaDatos.Constants;
 using CapaPresentacion.Models;
+using CapaPresentacion.Helpers;
 using CapaNegocio;
 using CapaNegocio.Integraciones.As400Sync;
 using CapaNegocio.Helpers;
@@ -49,6 +50,11 @@ namespace CapaPresentacion.Controllers
                     return Json(new { success = true, data = new List<object>(), message = "Sesion expirada" }, JsonRequestBehavior.AllowGet);
 
                 var solicitudes = _solicitudDAO.ObtenerPorUsuario(codigoUsuario);
+                var companiaActiva = ObtenerCompaniaActivaCodigo();
+                if (!string.IsNullOrWhiteSpace(companiaActiva))
+                {
+                    solicitudes = FiltrarSolicitudesPorCompaniaActiva(solicitudes, companiaActiva);
+                }
 
                 var resultado = solicitudes.Select(s => new
                 {
@@ -113,6 +119,12 @@ namespace CapaPresentacion.Controllers
                 if (!EsAdmin() && solicitud.CodigoUsuario != usuarioId)
                 {
                     return Json(new { success = false, message = "No tiene permisos para guardar la flota de esta solicitud." });
+                }
+
+                var companiaActiva = ObtenerCompaniaActivaCodigo();
+                if (!EsAdmin() && !SolicitudCoincideConCompaniaActiva(solicitud, companiaActiva))
+                {
+                    return Json(new { success = false, message = "La solicitud no corresponde a la compañía activa seleccionada." });
                 }
 
                 var aeronaves = (request.Aeronaves ?? new List<AeronaveSolicitud>())
@@ -246,6 +258,9 @@ namespace CapaPresentacion.Controllers
                     return Content("<div class='alert alert-danger m-3'><i class='fas fa-exclamation-circle'></i> Error: Sesión expirada. Por favor, inicie sesión nuevamente.</div>");
                 }
 
+                var companiaActivaCodigo = ObtenerCompaniaActivaCodigo();
+                var companiaActivaNombre = ObtenerCompaniaActivaNombre();
+
                 // 1) Cargar usuario logueado
                 System.Diagnostics.Debug.WriteLine($"[FormularioEmisionAOCR] Intentando obtener usuario: {usuarioId}");
                 
@@ -289,6 +304,9 @@ namespace CapaPresentacion.Controllers
                     if (!EsAdmin() && vm.Solicitud.CodigoUsuario != usuarioId)
                         return Content("<div class='alert alert-danger m-3'><i class='fas fa-lock'></i> Error: No tiene permisos para acceder a esta solicitud.</div>");
 
+                    if (!EsAdmin() && !SolicitudCoincideConCompaniaActiva(vm.Solicitud, companiaActivaCodigo))
+                        return Content("<div class='alert alert-danger m-3'><i class='fas fa-lock'></i> Error: La solicitud no corresponde a la compañía activa.</div>");
+
                     // Aeronaves (aocr_tbaeronave_solicitud)
                     vm.Aeronaves = _aeronaveSolDAO.ObtenerPorSolicitud(oid.Value) ?? new List<AeronaveSolicitud>();
 
@@ -314,6 +332,11 @@ namespace CapaPresentacion.Controllers
                     vm.Solicitud.NombreComercial = !string.IsNullOrWhiteSpace(vm.Solicitud.NombreComercial)
                         ? vm.Solicitud.NombreComercial
                         : (vm.Solicitud.NombreOperador ?? string.Empty);
+
+                    if (!string.IsNullOrWhiteSpace(companiaActivaCodigo))
+                    {
+                        vm.Solicitud.CompaniasSeleccionadas = AsegurarCompaniaEnLista(vm.Solicitud.CompaniasSeleccionadas, companiaActivaCodigo);
+                    }
                 }
                 else
                 {
@@ -330,7 +353,13 @@ namespace CapaPresentacion.Controllers
                         // Si no hay RUC/cédula en BD, usar código de usuario como fallback seguro.
                         Ruc = vm.Usuario != null ? (vm.Usuario.Ruc ?? vm.Usuario.CodigoUsuario) : "",
                         CedulaRepresentante = vm.Usuario != null ? (vm.Usuario.Ruc ?? vm.Usuario.CodigoUsuario) : "",
-                        NombreComercial = vm.Usuario != null ? vm.Usuario.EmpresaCodigo : ""
+                        NombreComercial = !string.IsNullOrWhiteSpace(companiaActivaCodigo)
+                            ? companiaActivaCodigo
+                            : (vm.Usuario != null ? vm.Usuario.EmpresaCodigo : ""),
+                        NombreOperador = !string.IsNullOrWhiteSpace(companiaActivaNombre)
+                            ? companiaActivaNombre
+                            : (vm.Usuario != null ? vm.Usuario.EmpresaCodigo : ""),
+                        CompaniasSeleccionadas = companiaActivaCodigo
                     };
 
                     vm.Aeronaves = new List<AeronaveSolicitud>();
@@ -491,6 +520,8 @@ namespace CapaPresentacion.Controllers
                 }
 
                 string usuarioCorreo = Session["Correo"]?.ToString() ?? "sistema";
+                var companiaActivaCodigo = ObtenerCompaniaActivaCodigo();
+                var companiaActivaNombre = ObtenerCompaniaActivaNombre();
 
                 System.Diagnostics.Debug.WriteLine($"[FormularioCompleto] Usuario: {usuarioId}");
 
@@ -516,6 +547,19 @@ namespace CapaPresentacion.Controllers
                 vm.Solicitud.ResumenOperacionesEae = string.IsNullOrWhiteSpace(vm.Solicitud.ResumenOperacionesEae)
                     ? vm.Solicitud.DescripcionOperacion
                     : vm.Solicitud.ResumenOperacionesEae;
+
+                if (!string.IsNullOrWhiteSpace(companiaActivaCodigo))
+                {
+                    vm.Solicitud.CompaniasSeleccionadas = AsegurarCompaniaEnLista(vm.Solicitud.CompaniasSeleccionadas, companiaActivaCodigo);
+                    if (string.IsNullOrWhiteSpace(vm.Solicitud.NombreComercial))
+                    {
+                        vm.Solicitud.NombreComercial = companiaActivaCodigo;
+                    }
+                    if (string.IsNullOrWhiteSpace(vm.Solicitud.NombreOperador) && !string.IsNullOrWhiteSpace(companiaActivaNombre))
+                    {
+                        vm.Solicitud.NombreOperador = companiaActivaNombre;
+                    }
+                }
 
                 if (string.IsNullOrWhiteSpace(vm.Solicitud.NombreOperador))
                 {
@@ -576,6 +620,9 @@ namespace CapaPresentacion.Controllers
 
                     if (!EsAdmin() && actual.CodigoUsuario != usuarioId)
                         return Json(new { success = false, mensaje = "No tiene permisos para modificar esta solicitud." }, JsonRequestBehavior.AllowGet);
+
+                    if (!EsAdmin() && !SolicitudCoincideConCompaniaActiva(actual, companiaActivaCodigo))
+                        return Json(new { success = false, mensaje = "La solicitud no corresponde a la compañía activa." }, JsonRequestBehavior.AllowGet);
 
                     vm.Solicitud.CodigoUsuario = actual.CodigoUsuario;
                 }
@@ -816,6 +863,66 @@ namespace CapaPresentacion.Controllers
             pi.SetValue(obj, value, null);
         }
 
+        private string ObtenerCompaniaActivaCodigo()
+        {
+            return CompaniaActivaSessionHelper.ObtenerCodigo(Session);
+        }
+
+        private string ObtenerCompaniaActivaNombre()
+        {
+            return CompaniaActivaSessionHelper.ObtenerNombre(Session);
+        }
+
+        private List<SolicitudAOCR> FiltrarSolicitudesPorCompaniaActiva(IEnumerable<SolicitudAOCR> solicitudes, string companiaActivaCodigo)
+        {
+            var lista = (solicitudes ?? Enumerable.Empty<SolicitudAOCR>()).ToList();
+            if (string.IsNullOrWhiteSpace(companiaActivaCodigo))
+            {
+                return lista;
+            }
+
+            return lista.Where(s => SolicitudCoincideConCompaniaActiva(s, companiaActivaCodigo)).ToList();
+        }
+
+        private bool SolicitudCoincideConCompaniaActiva(SolicitudAOCR solicitud, string companiaActivaCodigo)
+        {
+            if (solicitud == null || string.IsNullOrWhiteSpace(companiaActivaCodigo))
+            {
+                return true;
+            }
+
+            // Si no hay marca de compañías en el registro existente, no bloqueamos por compatibilidad legacy.
+            if (string.IsNullOrWhiteSpace(solicitud.CompaniasSeleccionadas))
+            {
+                return true;
+            }
+
+            return ContieneValorLista(solicitud.CompaniasSeleccionadas, companiaActivaCodigo);
+        }
+
+        private string AsegurarCompaniaEnLista(string listaCompanias, string companiaCodigo)
+        {
+            var codigo = (companiaCodigo ?? string.Empty).Trim();
+            if (string.IsNullOrWhiteSpace(codigo))
+            {
+                return (listaCompanias ?? string.Empty).Trim();
+            }
+
+            var elementos = (listaCompanias ?? string.Empty)
+                .Split(new[] { ',' }, StringSplitOptions.RemoveEmptyEntries)
+                .Select(x => (x ?? string.Empty).Trim().ToUpperInvariant())
+                .Where(x => !string.IsNullOrWhiteSpace(x))
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
+
+            if (!elementos.Contains(codigo.ToUpperInvariant(), StringComparer.OrdinalIgnoreCase))
+            {
+                elementos.Add(codigo.ToUpperInvariant());
+            }
+
+            return string.Join(",", elementos);
+        }
+
         private static bool ContieneValorLista(string lista, string valor)
         {
             if (string.IsNullOrWhiteSpace(lista) || string.IsNullOrWhiteSpace(valor))
@@ -836,7 +943,11 @@ namespace CapaPresentacion.Controllers
             if (!TryObtenerUsuarioActualId(out codigoUsuario))
                 return RedirectToAction("Login", "Account");
 
-            return View(_solicitudDAO.ObtenerPorUsuario(codigoUsuario));
+            var solicitudes = _solicitudDAO.ObtenerPorUsuario(codigoUsuario);
+            var companiaActiva = ObtenerCompaniaActivaCodigo();
+            solicitudes = FiltrarSolicitudesPorCompaniaActiva(solicitudes, companiaActiva);
+
+            return View(solicitudes);
         }
 
         public ActionResult RevisarSolicitudes()

@@ -1,7 +1,10 @@
 ﻿@inherits System.Web.Mvc.WebViewPage
+@using System
+@using System.Collections.Generic
 @using CapaModelo
 @using System.Web.Mvc.Html
 @using CapaDatos.DAOs
+@using CapaPresentacion.Helpers
 @* ~/Views/Shared/_Sidebar.cshtml *@
 <div class="aocr-sidebar text-white">
     <div class="sidebar-header text-center">
@@ -69,6 +72,90 @@
 
         // Módulo de órdenes visibles solo para rol solicitante u administrador
         bool mostrarModuloOrdenes = esAdministrador || esSolicitanteRol;
+
+        var companiasRtAsignadas = new List<UsuarioCompaniaRT>();
+        var codigoCompaniaActiva = CompaniaActivaSessionHelper.ObtenerCodigo(Session);
+        var nombreCompaniaActiva = CompaniaActivaSessionHelper.ObtenerNombre(Session);
+        var mostrarSelectorCompaniaRt = false;
+        Func<string, List<string>> parsearCompaniasLegacy = raw =>
+        {
+            if (string.IsNullOrWhiteSpace(raw))
+            {
+                return new List<string>();
+            }
+
+            return raw
+                .Split(new[] { ',', ';', '|' }, StringSplitOptions.RemoveEmptyEntries)
+                .Select(x => (x ?? string.Empty).Trim().ToUpperInvariant())
+                .Where(x => !string.IsNullOrWhiteSpace(x))
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
+        };
+        try
+        {
+            if (idUsuario > 0)
+            {
+                var daoCompaniasRt = new UsuarioCompaniaRTDAO();
+                companiasRtAsignadas = daoCompaniasRt.ObtenerCompaniasAsignadas(idUsuario);
+
+                var usuarioActual = UsuarioDAO.ObtenerPorId(idUsuario);
+                if (usuarioActual != null)
+                {
+                    var legacyCodigos = parsearCompaniasLegacy(usuarioActual.EmpresaCodigo);
+                    foreach (var codigo in legacyCodigos)
+                    {
+                        if (companiasRtAsignadas.Any(c => string.Equals((c.CompaniaCodigo ?? string.Empty).Trim(), codigo, StringComparison.OrdinalIgnoreCase)))
+                        {
+                            continue;
+                        }
+
+                        companiasRtAsignadas.Add(new UsuarioCompaniaRT
+                        {
+                            UsuarioId = idUsuario,
+                            CompaniaCodigo = codigo,
+                            CompaniaNombre = codigo,
+                            Activo = true
+                        });
+                    }
+                }
+
+                companiasRtAsignadas = companiasRtAsignadas
+                    .Where(c => c != null && !string.IsNullOrWhiteSpace(c.CompaniaCodigo))
+                    .GroupBy(c => (c.CompaniaCodigo ?? string.Empty).Trim(), StringComparer.OrdinalIgnoreCase)
+                    .Select(g => g.First())
+                    .OrderBy(c => (c.CompaniaCodigo ?? string.Empty).Trim())
+                    .ToList();
+
+                mostrarSelectorCompaniaRt = companiasRtAsignadas.Count > 1;
+
+                if (string.IsNullOrWhiteSpace(codigoCompaniaActiva) && companiasRtAsignadas.Count == 1)
+                {
+                    codigoCompaniaActiva = (companiasRtAsignadas[0].CompaniaCodigo ?? string.Empty).Trim();
+                }
+
+                if (string.IsNullOrWhiteSpace(nombreCompaniaActiva) && !string.IsNullOrWhiteSpace(codigoCompaniaActiva))
+                {
+                    var companiaActiva = companiasRtAsignadas.FirstOrDefault(c =>
+                        string.Equals(
+                            (c.CompaniaCodigo ?? string.Empty).Trim(),
+                            codigoCompaniaActiva.Trim(),
+                            StringComparison.OrdinalIgnoreCase));
+                    if (companiaActiva != null)
+                    {
+                        nombreCompaniaActiva = (companiaActiva.CompaniaNombre ?? string.Empty).Trim();
+                    }
+                }
+
+                if (string.IsNullOrWhiteSpace(nombreCompaniaActiva) && !string.IsNullOrWhiteSpace(codigoCompaniaActiva))
+                {
+                    nombreCompaniaActiva = codigoCompaniaActiva;
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine("_Sidebar: Error consultando companias RT: " + ex.Message);
+        }
     }
 
     <!-- Indicador de estado de orden -->
@@ -101,6 +188,45 @@
                     }
                 </div>
             </div>
+        </div>
+    }
+
+    @if (companiasRtAsignadas.Count > 0)
+    {
+        <div class="compania-contexto mb-3">
+            <div class="compania-label">COMPANIA ACTIVA</div>
+            <div class="compania-name">
+                @if (!string.IsNullOrWhiteSpace(codigoCompaniaActiva))
+                {
+                    <span>[@codigoCompaniaActiva] </span>
+                }
+                @(!string.IsNullOrWhiteSpace(nombreCompaniaActiva) ? nombreCompaniaActiva : "No definida")
+            </div>
+
+            @if (mostrarSelectorCompaniaRt)
+            {
+                using (Html.BeginForm("CambiarCompaniaActiva", "Account", FormMethod.Post, new { @class = "mt-2 mb-0" }))
+                {
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" name="returnUrl" value="@Request.RawUrl" />
+                    <div class="input-group input-group-sm">
+                        <select name="companiaCodigo" class="form-select form-select-sm" required>
+                            @foreach (var compania in companiasRtAsignadas)
+                            {
+                                var codigo = (compania.CompaniaCodigo ?? string.Empty).Trim();
+                                var nombre = (compania.CompaniaNombre ?? string.Empty).Trim();
+                                var selected = string.Equals(codigo, codigoCompaniaActiva, StringComparison.OrdinalIgnoreCase)
+                                    ? "selected"
+                                    : string.Empty;
+                                <option value="@codigo" @selected>
+                                    [@codigo] @(string.IsNullOrWhiteSpace(nombre) ? codigo : nombre)
+                                </option>
+                            }
+                        </select>
+                        <button type="submit" class="btn btn-outline-info">Cambiar</button>
+                    </div>
+                }
+            }
         </div>
     }
 
@@ -349,6 +475,27 @@
     .chip-info { color: #8bd3ff; }
 
     .user-mail { color: #dbeafe; font-size: 0.9rem; }
+
+    .compania-contexto {
+        border: 1px solid rgba(56, 189, 248, 0.3);
+        background: rgba(2, 132, 199, 0.12);
+        border-radius: 10px;
+        padding: 10px;
+    }
+
+    .compania-label {
+        color: #93c5fd;
+        font-size: 0.7rem;
+        letter-spacing: 1px;
+        text-transform: uppercase;
+        margin-bottom: 4px;
+    }
+
+    .compania-name {
+        color: #f8fafc;
+        font-size: 0.82rem;
+        font-weight: 700;
+    }
 
     .section-title {
         text-transform: uppercase;

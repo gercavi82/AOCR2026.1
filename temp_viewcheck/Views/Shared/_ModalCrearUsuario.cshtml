@@ -751,56 +751,40 @@
         }
     }
 
-    function buscarEmpresaPorTexto(textoInput) {
-        var texto = (textoInput || '').trim().toLowerCase();
-        if (!texto || !Array.isArray(empresasCache) || empresasCache.length === 0) {
-            return null;
-        }
-
-        for (var i = 0; i < empresasCache.length; i++) {
-            var item = empresasCache[i];
-            if ((item.texto || '').toLowerCase() === texto) {
-                return item;
-            }
-        }
-
-        var matchCodigo = texto.match(/^\[([^\]]+)\]/);
-        if (matchCodigo && matchCodigo[1]) {
-            var codigo = matchCodigo[1].split('/')[0].trim().toLowerCase();
-            for (var j = 0; j < empresasCache.length; j++) {
-                if ((empresasCache[j].codigo || '').toLowerCase() === codigo) {
-                    return empresasCache[j];
-                }
-            }
-        }
-
-        for (var k = 0; k < empresasCache.length; k++) {
-            var codigoEmpresa = (empresasCache[k].codigo || '').toLowerCase();
-            var nombreEmpresa = (empresasCache[k].nombre || '').toLowerCase();
-            var textoEmpresa = (empresasCache[k].texto || '').toLowerCase();
-            if (codigoEmpresa === texto || codigoEmpresa.indexOf(texto) === 0 || textoEmpresa.indexOf(texto) >= 0 || nombreEmpresa.indexOf(texto) >= 0) {
-                return empresasCache[k];
-            }
-        }
-
-        return null;
-    }
-
     function sincronizarEmpresaDesdeTexto(textoInput) {
-        var $select = $('#EmpresaCodigo');
         var texto = (textoInput || '').trim();
+        var $select = $('#EmpresaCodigo');
         if (!texto) {
             $select.val('');
             return;
         }
 
-        var encontrado = buscarEmpresaPorTexto(texto);
-        if (encontrado) {
-            $select.val(encontrado.codigo);
-            return;
+        var encontrado = null;
+        for (var i = 0; i < empresasCache.length; i++) {
+            if (empresasCache[i].texto.toLowerCase() === texto.toLowerCase()) {
+                encontrado = empresasCache[i];
+                break;
+            }
         }
 
-        $select.val('');
+        if (!encontrado) {
+            var m = texto.match(/^\[([^\]]+)\]/);
+            if (m && m[1]) {
+                var codigo = m[1].split('/')[0];
+                for (var j = 0; j < empresasCache.length; j++) {
+                    if (empresasCache[j].codigo.toLowerCase() === codigo.toLowerCase()) {
+                        encontrado = empresasCache[j];
+                        break;
+                    }
+                }
+            }
+        }
+
+        if (encontrado) {
+            $select.val(encontrado.codigo);
+        } else {
+            $select.val('');
+        }
     }
 
     function cargarEmpresasOperadoras() {
@@ -1156,13 +1140,8 @@
         var nombre = ($select.find('option:selected').data('nombre') || $select.find('option:selected').text() || '').toString().trim();
 
         if (!codigo) {
-            sincronizarEmpresaDesdeTexto($('#EmpresaTexto').val());
-            codigo = ($select.val() || '').trim();
-            nombre = ($select.find('option:selected').data('nombre') || $select.find('option:selected').text() || '').toString().trim();
-            if (!codigo) {
-                mostrarErrorCampo('#EmpresaCodigo', 'Debe seleccionar una empresa antes de agregar.');
-                return;
-            }
+            mostrarErrorCampo('#EmpresaCodigo', 'Debe seleccionar una empresa antes de agregar.');
+            return;
         }
 
         removerErrorCampo('#EmpresaCodigo');
@@ -1220,6 +1199,10 @@
             $hidden.append($('<input type="hidden">').attr('name', 'Companias[' + index + '].IdCompania').val(compania.codigo));
             $hidden.append($('<input type="hidden">').attr('name', 'Companias[' + index + '].NombreCompania').val(compania.nombre));
         });
+
+        if (companiasSeleccionadasRegistro.length > 0) {
+            $('#EmpresaCodigo').val(companiasSeleccionadasRegistro[0].codigo);
+        }
 
         actualizarDeclaracionResponsabilidad();
     }

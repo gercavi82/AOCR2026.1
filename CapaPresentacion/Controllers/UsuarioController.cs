@@ -2,8 +2,10 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Text;
 using System.Web;
 using System.Web.Mvc;
+using System.Web.Script.Serialization;
 using System.Configuration;
 using CapaModelo;
 using CapaModelo.RT.ViewModels;
@@ -14,6 +16,7 @@ using CapaNegocio;
 using CapaNegocio.Helpers;
 using CapaNegocio.Integraciones.As400Sync;
 using CapaNegocio.Services;
+using CapaPresentacion.Models.RT;
 using CapaUtilidades;
 
 namespace CapaPresentacion.Controllers
@@ -132,6 +135,8 @@ namespace CapaPresentacion.Controllers
                 var nombres = Request.Form["NombreUsuario"];
                 var apellidos = Request.Form["ApellidoUsuario"];
                 var empresaCodigo = Request.Form["EmpresaCodigo"];
+                var empresaTexto = Request.Form["EmpresaTexto"];
+                NormalizarNombresApellidos(ref nombres, ref apellidos);
                 var esRepresentanteValue = (Request.Form["esRepresentanteLegal"] ?? "").Trim();
                 var esRepresentante = esRepresentanteValue.Equals("true", StringComparison.OrdinalIgnoreCase) ||
                                       esRepresentanteValue.Equals("on", StringComparison.OrdinalIgnoreCase);
@@ -139,15 +144,39 @@ namespace CapaPresentacion.Controllers
                 var aceptaDeclaracion = aceptaDeclaracionValue.Equals("true", StringComparison.OrdinalIgnoreCase) ||
                                         aceptaDeclaracionValue.Equals("on", StringComparison.OrdinalIgnoreCase);
 
+                // Companías representadas (nuevo esquema multi-compañía).
+                var companiasFormulario = ExtraerCompaniasFormulario();
+                if (!string.IsNullOrWhiteSpace(empresaCodigo))
+                {
+                    var codigoPrincipal = (empresaCodigo ?? string.Empty).Trim().ToUpperInvariant();
+                    if (!companiasFormulario.Any(c => string.Equals((c.CompaniaCodigo ?? string.Empty).Trim(), codigoPrincipal, StringComparison.OrdinalIgnoreCase)))
+                    {
+                        companiasFormulario.Add(new UsuarioCompaniaRT
+                        {
+                            CompaniaCodigo = codigoPrincipal,
+                            CompaniaNombre = (empresaTexto ?? string.Empty).Trim()
+                        });
+                    }
+                }
+
+                companiasFormulario = companiasFormulario
+                    .Where(c => c != null && !string.IsNullOrWhiteSpace(c.CompaniaCodigo))
+                    .GroupBy(c => (c.CompaniaCodigo ?? string.Empty).Trim().ToUpperInvariant(), StringComparer.OrdinalIgnoreCase)
+                    .Select(g => g.First())
+                    .ToList();
+                var companiasDeclaracion = ConstruirCompaniasDeclaracion(companiasFormulario);
+
                 // Identificación según tipo (CI o RUC)
                 var identificacionFinal = (tipoIdentificacion == "RUC") ? ruc : identificacion;
+                var nombreCompletoUsuario = string.Format("{0} {1}", nombres ?? string.Empty, apellidos ?? string.Empty).Trim().ToUpperInvariant();
+                var textoDeclaracionFinal = ConstruirTextoDeclaracionResponsabilidad(nombreCompletoUsuario, companiasDeclaracion);
 
                 // 2. VALIDAR DATOS REQUERIDOS
                 if (string.IsNullOrWhiteSpace(correo) || string.IsNullOrWhiteSpace(identificacionFinal) ||
                     string.IsNullOrWhiteSpace(nombres) || string.IsNullOrWhiteSpace(apellidos) ||
-                    string.IsNullOrWhiteSpace(empresaCodigo))
+                    companiasFormulario.Count == 0 || companiasDeclaracion.Count == 0)
                 {
-                    return Json(new { success = false, message = "Todos los campos obligatorios deben completarse" });
+                    return Json(new { success = false, message = "Debe seleccionar al menos una compañía a representar." });
                 }
 
                 if (!aceptaDeclaracion)
@@ -223,14 +252,16 @@ namespace CapaPresentacion.Controllers
 
                 Usuario nuevoUsuario = new Usuario
                 {
-                    NombreUsuario = codigoUsuarioFinal,  // Login = Código único
                     CodigoUsuario = codigoUsuarioFinal,
+                    // Persistir nombres y apellidos por separado en la tabla usuario.
+                    NombreUsuario = (nombres ?? string.Empty).Trim().ToUpperInvariant(),
+                    ApellidoUsuario = (apellidos ?? string.Empty).Trim().ToUpperInvariant(),
                     Email = correo,
-                    NombreCompleto = $"{nombres} {apellidos}".Trim().ToUpper(),
+                    NombreCompleto = nombreCompletoUsuario,
                     Contrasena = passwordHash, // Hash de contraseña temporal
                     Activo = true,
                     Rol = "Solicitante", // Rol por defecto para usuarios externos
-                    EmpresaCodigo = empresaCodigo,
+                    EmpresaCodigo = companiasDeclaracion[0].Codigo,
                     RutaDocumentoLegal = rutaDocumento
                 };
 
@@ -242,18 +273,43 @@ namespace CapaPresentacion.Controllers
                     return Json(new { success = false, message = "No se pudo crear el usuario" });
                 }
 
+                // Guardar asignaciones multi-compañía del RT y sincronizar empresa principal legacy.
+                var daoCompaniasRt = new UsuarioCompaniaRTDAO();
+                var guardadoCompanias = daoCompaniasRt.GuardarAsignaciones(
+                    usuarioId,
+                    companiasFormulario,
+                    codigoUsuarioFinal,
+                    true);
+                var codigosCompaniaSeleccionados = companiasDeclaracion
+                    .Where(c => c != null && !string.IsNullOrWhiteSpace(c.Codigo))
+                    .Select(c => (c.Codigo ?? string.Empty).Trim().ToUpperInvariant())
+                    .Distinct(StringComparer.OrdinalIgnoreCase)
+                    .ToList();
+                if (!guardadoCompanias)
+                {
+                    var legacyCodigos = string.Join(",", codigosCompaniaSeleccionados);
+                    UsuarioDAO.ActualizarEmpresaCodigoPrincipal(usuarioId, legacyCodigos);
+                    LogBL.RegistrarError(
+                        "[Usuario/Crear] No se pudo persistir tabla relacional de compañías RT. Se aplicó fallback legacy multi-compañía.",
+                        "usuarioId=" + usuarioId + ", codigos=" + legacyCodigos,
+                        "UsuarioController");
+                }
+                else
+                {
+                    UsuarioDAO.ActualizarEmpresaCodigoPrincipal(usuarioId, companiasDeclaracion[0].Codigo);
+                }
+
                 // Marcar designación RT como pendiente y registrar ruta del documento
                 UsuarioDAO.ActualizarDesignacionRT(usuarioId, rutaDocumento);
 
                 // 5.1 Guardar aceptación de declaración en BD (RT) y notificar por correo
                 bool declaracionRegistrada = false;
+                bool declaracionHistorialRegistrada = false;
+                bool pdfDeclaracionGenerado = false;
+                bool correoDeclaracionEnviado = false;
                 try
                 {
-                    var daoEmpresa = new EmpresaAS400DAO();
-                    var empresa = daoEmpresa.ObtenerEmpresaPorCodigo(empresaCodigo);
-                    var nombreEmpresa = empresa != null && !string.IsNullOrWhiteSpace(empresa.Nombre)
-                        ? empresa.Nombre
-                        : empresaCodigo;
+                    var nombreEmpresaPrincipal = companiasDeclaracion[0].Nombre;
 
                     var rtService = new RTService();
                     var solicitudExistente = rtService.GetSolicitudByUsuario(usuarioId);
@@ -261,9 +317,9 @@ namespace CapaPresentacion.Controllers
 
                     if (solicitudExistente == null)
                     {
-                        var registroVm = new RegistroRTVM
+                        var registroVm = new CapaModelo.RT.ViewModels.RegistroRTVM
                         {
-                            RazonSocial = nombreEmpresa,
+                            RazonSocial = nombreEmpresaPrincipal,
                             Ruc = (ruc ?? string.Empty).Trim(),
                             Telefono = string.Empty,
                             Email = correo,
@@ -277,51 +333,128 @@ namespace CapaPresentacion.Controllers
                         solicitudId = solicitudExistente.Id;
                     }
 
-                    rtService.AceptarDeclaracion(solicitudId, usuarioId);
+                    rtService.AceptarDeclaracion(solicitudId, usuarioId, textoDeclaracionFinal);
                     declaracionRegistrada = true;
+
+                    byte[] pdfDeclaracion = null;
+                    var fechaAceptacion = DateTime.Now;
+                    var nombreAdjunto = string.Format(
+                        "Declaracion_Responsabilidad_RT_{0}_{1:yyyyMMddHHmmss}.pdf",
+                        codigoUsuarioFinal,
+                        fechaAceptacion);
 
                     try
                     {
+                        pdfDeclaracion = GenerarPdfDeclaracionResponsabilidad(
+                            nombreCompletoUsuario,
+                            (identificacionFinal ?? string.Empty).Trim(),
+                            companiasDeclaracion,
+                            textoDeclaracionFinal,
+                            fechaAceptacion);
+
+                        pdfDeclaracionGenerado = pdfDeclaracion != null && pdfDeclaracion.Length > 0;
+                    }
+                    catch (Exception exPdf)
+                    {
+                        LogBL.RegistrarError(
+                            "Error generando PDF de declaración de responsabilidad en Usuario/Crear.",
+                            exPdf.ToString(),
+                            "UsuarioController");
+                        pdfDeclaracionGenerado = false;
+                    }
+
+                    try
+                    {
+                        var companiasHtml = ConstruirCompaniasHtmlCorreo(companiasDeclaracion);
                         var asuntoDecl = "Declaración de responsabilidad aceptada - Sistema AOCR";
                         var cuerpoDecl = $@"
                             <div style='font-family:Arial,sans-serif; font-size:14px; color:#222;'>
-                                <p>Estimado/a {nombres} {apellidos},</p>
+                                <p>Estimado/a {HttpUtility.HtmlEncode(nombreCompletoUsuario)},</p>
                                 <p>Hemos registrado la <strong>aceptación</strong> de su declaración de responsabilidad RT.</p>
-                                <p><strong>Empresa:</strong> {nombreEmpresa}</p>
+                                <p><strong>Trámite:</strong> Solicitud RT #{solicitudId}</p>
+                                <p><strong>Fecha de aceptación:</strong> {fechaAceptacion:dd/MM/yyyy HH:mm}</p>
+                                <p><strong>Compañías declaradas:</strong></p>
+                                {companiasHtml}
                                 <p>Su solicitud queda en proceso de validación por la DGAC.</p>
                                 <hr />
                                 <small>Este es un correo automático, por favor no responder.</small>
                             </div>";
 
                         var servicioCorreoDecl = new EnviarCorreo();
-                        servicioCorreoDecl.enviaMensajeCorreo(correo, asuntoDecl, cuerpoDecl);
+                        if (pdfDeclaracionGenerado)
+                        {
+                            correoDeclaracionEnviado = servicioCorreoDecl.enviaMensajeCorreoConAdjunto(
+                                correo,
+                                asuntoDecl,
+                                cuerpoDecl,
+                                pdfDeclaracion,
+                                nombreAdjunto,
+                                "application/pdf");
+                        }
+                        else
+                        {
+                            correoDeclaracionEnviado = servicioCorreoDecl.enviaMensajeCorreo(correo, asuntoDecl, cuerpoDecl);
+                        }
                     }
-                    catch
+                    catch (Exception exCorreoDeclaracion)
                     {
-                        // No bloquear el flujo si falla el correo de declaración
+                        LogBL.RegistrarError(
+                            "Error enviando correo de declaración de responsabilidad en Usuario/Crear.",
+                            exCorreoDeclaracion.ToString(),
+                            "UsuarioController");
+                        correoDeclaracionEnviado = false;
                     }
                 }
-                catch
+                catch (Exception exDeclaracion)
                 {
+                    LogBL.RegistrarError(
+                        "Error registrando aceptación de declaración de responsabilidad en Usuario/Crear.",
+                        exDeclaracion.ToString(),
+                        "UsuarioController");
                     declaracionRegistrada = false;
                 }
 
-                // 5. SI ES REPRESENTANTE LEGAL, PROCESAR COMPAÑÍAS Y ARCHIVOS
+                try
+                {
+                    var historialDao = new DeclaracionTemporalDAO();
+                    historialDao.InsertarHistorial(new DeclaracionTemporal
+                    {
+                        Email = (correo ?? string.Empty).Trim().ToLower(),
+                        Identificacion = (identificacionFinal ?? string.Empty).Trim(),
+                        EmpresaCodigo = string.Join(",", codigosCompaniaSeleccionados),
+                        EmpresaNombre = string.Join(" | ", companiasDeclaracion.Select(FormatearCompaniaDeclaracion)),
+                        Nombres = (nombres ?? string.Empty).Trim(),
+                        Apellidos = (apellidos ?? string.Empty).Trim(),
+                        Aceptada = true,
+                        Ip = Request != null ? Request.UserHostAddress : string.Empty,
+                        UserAgent = Request != null ? Request.UserAgent : string.Empty,
+                        FinalizedAt = DateTime.Now
+                    });
+
+                    declaracionHistorialRegistrada = true;
+                    if (!declaracionRegistrada)
+                    {
+                        declaracionRegistrada = true;
+                    }
+                }
+                catch (Exception exHistorial)
+                {
+                    LogBL.RegistrarError(
+                        "Error registrando historial de declaración en Usuario/Crear.",
+                        exHistorial.ToString(),
+                        "UsuarioController");
+                }
+
+                // 5. SI ES REPRESENTANTE LEGAL, PROCESAR ARCHIVOS DE REPRESENTACIÓN (opcional).
                 if (esRepresentante)
                 {
-                    var companias = new List<int>();
                     var archivos = new List<string>();
-
-                    // Buscar todos los índices de compañías
                     int index = 0;
                     while (Request.Form[$"Companias[{index}].IdCompania"] != null)
                     {
-                        var idCompaniaStr = Request.Form[$"Companias[{index}].IdCompania"];
-                        
-                        if (!string.IsNullOrWhiteSpace(idCompaniaStr) && int.TryParse(idCompaniaStr, out int idCompania))
+                        var codigoCompania = Request.Form[$"Companias[{index}].IdCompania"];
+                        if (!string.IsNullOrWhiteSpace(codigoCompania))
                         {
-                            companias.Add(idCompania);
-
                             // Procesar archivo asociado
                             var archivo = Request.Files[$"Companias[{index}].ArchivoRepresentante"];
                             if (archivo != null && archivo.ContentLength > 0)
@@ -330,19 +463,11 @@ namespace CapaPresentacion.Controllers
                                 if (!string.IsNullOrEmpty(rutaArchivo))
                                 {
                                     archivos.Add(rutaArchivo);
-                                    
-                                    // TODO: Guardar relación usuario-compañía-archivo en tabla correspondiente
-                                    // RepresentanteLegalBL.CrearRelacion(usuarioId, idCompania, rutaArchivo);
                                 }
                             }
                         }
 
                         index++;
-                    }
-
-                    if (companias.Count == 0)
-                    {
-                        return Json(new { success = false, message = "Debe seleccionar al menos una compañía" });
                     }
                 }
 
@@ -380,6 +505,22 @@ namespace CapaPresentacion.Controllers
                 if (!declaracionRegistrada)
                 {
                     mensajeFinal += " No se pudo registrar la aceptación de la declaración en este momento.";
+                }
+                else
+                {
+                    if (!pdfDeclaracionGenerado)
+                    {
+                        mensajeFinal += " La aceptación se registró, pero no se pudo generar el PDF de la declaración.";
+                    }
+                    if (!correoDeclaracionEnviado)
+                    {
+                        mensajeFinal += " La aceptación se registró, pero no se pudo enviar el correo de declaración.";
+                    }
+                }
+
+                if (!declaracionHistorialRegistrada)
+                {
+                    mensajeFinal += " No se pudo registrar el historial de declaración para respaldo.";
                 }
 
                 try
@@ -573,6 +714,7 @@ namespace CapaPresentacion.Controllers
             string apellidos,
             string empresaCodigo,
             string empresaNombre,
+            string companiasJson,
             bool aceptada)
         {
             try
@@ -584,6 +726,24 @@ namespace CapaPresentacion.Controllers
                 }
 
                 var identificacionFinal = (tipoIdentificacion == "RUC") ? ruc : identificacion;
+                var companiasDeclaracion = ParsearCompaniasDeclaracion(companiasJson);
+                if (aceptada && companiasDeclaracion.Count == 0 && string.IsNullOrWhiteSpace(empresaCodigo))
+                {
+                    return Json(new { success = false, message = "Debe seleccionar al menos una compañía para registrar la declaración." });
+                }
+
+                var empresaCodigoTemporal = companiasDeclaracion.Count > 0
+                    ? companiasDeclaracion[0].Codigo
+                    : (empresaCodigo ?? string.Empty).Trim();
+
+                var empresaNombreTemporal = companiasDeclaracion.Count > 0
+                    ? string.Join(" | ", companiasDeclaracion.Select(c => FormatearCompaniaDeclaracion(c)))
+                    : (empresaNombre ?? string.Empty).Trim();
+
+                if (empresaNombreTemporal.Length > 200)
+                {
+                    empresaNombreTemporal = empresaNombreTemporal.Substring(0, 200);
+                }
 
                 var dao = new DeclaracionTemporalDAO();
                 if (!aceptada)
@@ -596,8 +756,8 @@ namespace CapaPresentacion.Controllers
                 {
                     Email = email,
                     Identificacion = (identificacionFinal ?? string.Empty).Trim(),
-                    EmpresaCodigo = (empresaCodigo ?? string.Empty).Trim(),
-                    EmpresaNombre = (empresaNombre ?? string.Empty).Trim(),
+                    EmpresaCodigo = empresaCodigoTemporal,
+                    EmpresaNombre = empresaNombreTemporal,
                     Nombres = (nombres ?? string.Empty).Trim(),
                     Apellidos = (apellidos ?? string.Empty).Trim(),
                     Aceptada = true,
@@ -615,72 +775,38 @@ namespace CapaPresentacion.Controllers
 
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public ActionResult DescargarDeclaracionResponsabilidad(string nombreCompleto, string empresa)
+        public ActionResult DescargarDeclaracionResponsabilidad(string nombreCompleto, string companiasJson, string empresa, string identificacion)
         {
             var nombre = (nombreCompleto ?? "").Trim();
-            var empresaTxt = (empresa ?? "").Trim();
-            if (string.IsNullOrWhiteSpace(nombre)) nombre = "__________________________";
-            if (string.IsNullOrWhiteSpace(empresaTxt)) empresaTxt = "__________________________";
-
-            using (var ms = new MemoryStream())
+            var companiasDeclaracion = ParsearCompaniasDeclaracion(companiasJson);
+            if (companiasDeclaracion.Count == 0 && !string.IsNullOrWhiteSpace(empresa))
             {
-                var doc = new iTextSharp.text.Document(iTextSharp.text.PageSize.A4, 25f, 25f, 120f, 80f);
-                var writer = iTextSharp.text.pdf.PdfWriter.GetInstance(doc, ms);
-                var server = System.Web.HttpContext.Current != null ? System.Web.HttpContext.Current.Server : null;
-                writer.PageEvent = PdfBrandingHelper.CreateITextPageEvent(server, "UsuarioController.DescargarDeclaracionResponsabilidad");
-                doc.Open();
-
-                var titleFont = iTextSharp.text.FontFactory.GetFont(iTextSharp.text.FontFactory.HELVETICA_BOLD, 14);
-                var normalFont = iTextSharp.text.FontFactory.GetFont(iTextSharp.text.FontFactory.HELVETICA, 11);
-                var labelFont = iTextSharp.text.FontFactory.GetFont(iTextSharp.text.FontFactory.HELVETICA_BOLD, 10);
-
-                var titulo = new iTextSharp.text.Paragraph("DECLARACIÓN DE RESPONSABILIDAD", titleFont);
-                titulo.Alignment = iTextSharp.text.Element.ALIGN_CENTER;
-                titulo.SpacingAfter = 14f;
-                doc.Add(titulo);
-
-                var cuerpo = new iTextSharp.text.Paragraph
+                companiasDeclaracion.Add(new CompaniaDeclaracionItem
                 {
-                    Alignment = iTextSharp.text.Element.ALIGN_JUSTIFIED
-                };
-                cuerpo.SetLeading(0f, 1.8f);
-                cuerpo.Add(new iTextSharp.text.Chunk("Yo, ", normalFont));
-                cuerpo.Add(new iTextSharp.text.Chunk(nombre.ToUpperInvariant(), normalFont));
-                cuerpo.Add(new iTextSharp.text.Chunk(" declaro conocer las políticas y procedimientos técnicos y operativos de la compañía ", normalFont));
-                cuerpo.Add(new iTextSharp.text.Chunk(empresaTxt.ToUpperInvariant(), normalFont));
-                cuerpo.Add(new iTextSharp.text.Chunk(" aplicables en las estaciones regulares de Ecuador. Asumo la responsabilidad como RT de mantener comunicación directa con la DGAC del Ecuador, a fin de gestionar los trámites de emisión, renovación o modificación del AOCR; así como también, de mantener la supervisión de las empresas contratadas para la asistencia técnica en tierra a sus aeronaves en los aeropuertos de Ecuador.", normalFont));
-                doc.Add(cuerpo);
-
-                doc.Add(new iTextSharp.text.Paragraph(" "));
-
-                var tabla = new iTextSharp.text.pdf.PdfPTable(2);
-                tabla.WidthPercentage = 100;
-                tabla.SetWidths(new float[] { 30f, 70f });
-                tabla.SpacingBefore = 6f;
-
-                var c1 = new iTextSharp.text.pdf.PdfPCell(new iTextSharp.text.Phrase("Firma:", labelFont));
-                c1.Border = iTextSharp.text.Rectangle.NO_BORDER;
-                c1.PaddingBottom = 6f;
-                tabla.AddCell(c1);
-
-                var c2 = new iTextSharp.text.pdf.PdfPCell(new iTextSharp.text.Phrase("______________________________________________", normalFont));
-                c2.Border = iTextSharp.text.Rectangle.NO_BORDER;
-                c2.PaddingBottom = 6f;
-                tabla.AddCell(c2);
-
-                var c3 = new iTextSharp.text.pdf.PdfPCell(new iTextSharp.text.Phrase("Fecha:", labelFont));
-                c3.Border = iTextSharp.text.Rectangle.NO_BORDER;
-                tabla.AddCell(c3);
-
-                var c4 = new iTextSharp.text.pdf.PdfPCell(new iTextSharp.text.Phrase("____/____/________", normalFont));
-                c4.Border = iTextSharp.text.Rectangle.NO_BORDER;
-                tabla.AddCell(c4);
-
-                doc.Add(tabla);
-
-                doc.Close();
-                return File(ms.ToArray(), "application/pdf", "Declaracion_Responsabilidad_RT.pdf");
+                    Codigo = string.Empty,
+                    Nombre = (empresa ?? string.Empty).Trim()
+                });
             }
+
+            if (string.IsNullOrWhiteSpace(nombre)) nombre = "__________________________";
+            if (companiasDeclaracion.Count == 0)
+            {
+                companiasDeclaracion.Add(new CompaniaDeclaracionItem
+                {
+                    Codigo = string.Empty,
+                    Nombre = "__________________________"
+                });
+            }
+
+            var textoDeclaracion = ConstruirTextoDeclaracionResponsabilidad(nombre, companiasDeclaracion);
+            var pdfBytes = GenerarPdfDeclaracionResponsabilidad(
+                nombre,
+                (identificacion ?? string.Empty).Trim(),
+                companiasDeclaracion,
+                textoDeclaracion,
+                DateTime.Now);
+
+            return File(pdfBytes, "application/pdf", "Declaracion_Responsabilidad_RT.pdf");
         }
 
         // =====================================================
@@ -769,6 +895,7 @@ namespace CapaPresentacion.Controllers
                 var nombres = Request.Form["NombreUsuario"];       // Nombres reales
                 var apellidos = Request.Form["ApellidoUsuario"];   // Apellidos reales
                 var empresaCodigo = Request.Form["Empresa"];
+                NormalizarNombresApellidos(ref nombres, ref apellidos);
 
                 // Lógica del Rol
                 var rolSelect = Request.Form["Rol"];
@@ -845,7 +972,9 @@ namespace CapaPresentacion.Controllers
 
                 Usuario nuevoUsuario = new Usuario
                 {
-                    NombreUsuario = cedula,              // Login = Cédula
+                    CodigoUsuario = cedula, // Login = cédula
+                    NombreUsuario = (nombres ?? string.Empty).Trim().ToUpperInvariant(),
+                    ApellidoUsuario = (apellidos ?? string.Empty).Trim().ToUpperInvariant(),
                     Email = correo,
                     // Unimos Nombres y Apellidos para el NombreCompleto
                     NombreCompleto = $"{nombres} {apellidos}".Trim().ToUpper(),
@@ -894,6 +1023,109 @@ namespace CapaPresentacion.Controllers
         {
             var usuarios = UsuarioDAO.ObtenerUsuariosRTParaRevision();
             return View("RevisarDesignaciones", usuarios);
+        }
+
+        [HttpGet]
+        [Authorize(Roles = "Administrador,CoordinacionLegal,JefaturaTecnica")]
+        public ActionResult GestionarCompaniasRT(int id)
+        {
+            var usuario = UsuarioDAO.ObtenerPorId(id);
+            if (usuario == null)
+            {
+                TempData["error"] = "Usuario no encontrado.";
+                return RedirectToAction("RevisarDesignaciones");
+            }
+
+            var daoCompanias = new UsuarioCompaniaRTDAO();
+            var asignadas = daoCompanias.ObtenerCompaniasAsignadas(id)
+                .Select(c => (c.CompaniaCodigo ?? string.Empty).Trim().ToUpperInvariant())
+                .Where(c => !string.IsNullOrWhiteSpace(c))
+                .ToList();
+
+            if (asignadas.Count == 0)
+            {
+                var codigosLegacy = ParsearCodigosCompaniaLegacy(usuario.EmpresaCodigo);
+                foreach (var codigo in codigosLegacy)
+                {
+                    if (!asignadas.Contains(codigo, StringComparer.OrdinalIgnoreCase))
+                    {
+                        asignadas.Add(codigo);
+                    }
+                }
+            }
+
+            var vm = new GestionCompaniasRTViewModel
+            {
+                UsuarioId = usuario.Id,
+                CodigoUsuario = usuario.CodigoUsuario,
+                NombreUsuario = usuario.NombreCompleto,
+                Correo = usuario.Email,
+                EstadoDesignacionRt = usuario.EstadoDesignacionRT,
+                CompaniasSeleccionadas = asignadas,
+                CatalogoCompanias = ConstruirCatalogoCompaniasSelect(asignadas)
+            };
+
+            return View(vm);
+        }
+
+        [HttpPost]
+        [Authorize(Roles = "Administrador,CoordinacionLegal,JefaturaTecnica")]
+        [ValidateAntiForgeryToken]
+        public ActionResult GestionarCompaniasRT(GestionCompaniasRTViewModel model)
+        {
+            if (model == null || model.UsuarioId <= 0)
+            {
+                TempData["error"] = "Datos inválidos para actualizar compañías RT.";
+                return RedirectToAction("RevisarDesignaciones");
+            }
+
+            var usuario = UsuarioDAO.ObtenerPorId(model.UsuarioId);
+            if (usuario == null)
+            {
+                TempData["error"] = "Usuario no encontrado.";
+                return RedirectToAction("RevisarDesignaciones");
+            }
+
+            var codigos = (model.CompaniasSeleccionadas ?? new List<string>())
+                .Where(c => !string.IsNullOrWhiteSpace(c))
+                .Select(c => c.Trim().ToUpperInvariant())
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
+
+            if (codigos.Count == 0)
+            {
+                ModelState.AddModelError("", "Debe seleccionar al menos una compañía.");
+                model.CatalogoCompanias = ConstruirCatalogoCompaniasSelect(codigos);
+                return View(model);
+            }
+
+            var catalogo = ConstruirCatalogoCompaniasSelect(codigos);
+            var lookupNombres = catalogo
+                .Where(c => c != null && !string.IsNullOrWhiteSpace(c.Value))
+                .ToDictionary(c => c.Value.Trim().ToUpperInvariant(), c => (c.Text ?? string.Empty).Trim(), StringComparer.OrdinalIgnoreCase);
+
+            var asignaciones = codigos.Select(codigo => new UsuarioCompaniaRT
+            {
+                UsuarioId = model.UsuarioId,
+                CompaniaCodigo = codigo,
+                CompaniaNombre = lookupNombres.ContainsKey(codigo) ? lookupNombres[codigo] : codigo,
+                Activo = true
+            }).ToList();
+
+            var daoCompanias = new UsuarioCompaniaRTDAO();
+            var actor = User != null ? User.Identity.Name : "sistema";
+            var ok = daoCompanias.GuardarAsignaciones(model.UsuarioId, asignaciones, actor, true);
+            if (!ok)
+            {
+                ModelState.AddModelError("", "No se pudo guardar la relación usuario RT - compañías.");
+                model.CatalogoCompanias = catalogo;
+                return View(model);
+            }
+
+            UsuarioDAO.ActualizarEmpresaCodigoPrincipal(model.UsuarioId, codigos[0]);
+
+            TempData["msg"] = "Compañías del usuario RT actualizadas correctamente.";
+            return RedirectToAction("RevisarDesignaciones");
         }
 
         [HttpGet]
@@ -950,7 +1182,31 @@ namespace CapaPresentacion.Controllers
             string rutaConstancia = GenerarConstanciaRT(usuario);
             // Marcar como aceptado y guardar la ruta de la constancia
             UsuarioDAO.AceptarDesignacionRT(id, rutaConstancia);
-            var nombreCompania = ResolverNombreCompaniaUsuario(usuario);
+
+            // Compatibilidad: garantizar al menos una compañía asignada para RT.
+            var daoCompaniasRt = new UsuarioCompaniaRTDAO();
+            var companiasAsignadas = daoCompaniasRt.ObtenerCompaniasAsignadas(id);
+            if (companiasAsignadas.Count == 0)
+            {
+                var codigosLegacy = ParsearCodigosCompaniaLegacy(usuario.EmpresaCodigo);
+                var nombreCompaniaLegacy = ResolverNombreCompaniaUsuario(usuario);
+                foreach (var codigoCompania in codigosLegacy)
+                {
+                    daoCompaniasRt.AgregarCompania(id, codigoCompania, nombreCompaniaLegacy, User != null ? User.Identity.Name : "sistema");
+                }
+                companiasAsignadas = daoCompaniasRt.ObtenerCompaniasAsignadas(id);
+            }
+
+            if (companiasAsignadas.Count > 0)
+            {
+                UsuarioDAO.ActualizarEmpresaCodigoPrincipal(id, companiasAsignadas[0].CompaniaCodigo);
+            }
+
+            var nombreCompania = companiasAsignadas.Count > 0
+                ? (!string.IsNullOrWhiteSpace(companiasAsignadas[0].CompaniaNombre)
+                    ? companiasAsignadas[0].CompaniaNombre
+                    : companiasAsignadas[0].CompaniaCodigo)
+                : ResolverNombreCompaniaUsuario(usuario);
             string mensajeCorreo;
             var correoEnviado = UsuarioBL.NotificarAceptacionConClaveTemporal(
                 usuario.Email,
@@ -1016,6 +1272,362 @@ namespace CapaPresentacion.Controllers
             }
 
             return codigoEmpresa;
+        }
+
+        private static List<string> ParsearCodigosCompaniaLegacy(string empresaCodigo)
+        {
+            if (string.IsNullOrWhiteSpace(empresaCodigo))
+            {
+                return new List<string>();
+            }
+
+            return (empresaCodigo ?? string.Empty)
+                .Split(new[] { ',', ';', '|' }, StringSplitOptions.RemoveEmptyEntries)
+                .Select(x => (x ?? string.Empty).Trim().ToUpperInvariant())
+                .Where(x => !string.IsNullOrWhiteSpace(x))
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
+        }
+
+        private List<SelectListItem> ConstruirCatalogoCompaniasSelect(IEnumerable<string> seleccionadas)
+        {
+            var seleccionLookup = new HashSet<string>(
+                (seleccionadas ?? Enumerable.Empty<string>())
+                    .Where(x => !string.IsNullOrWhiteSpace(x))
+                    .Select(x => x.Trim().ToUpperInvariant()),
+                StringComparer.OrdinalIgnoreCase);
+
+            var items = new List<SelectListItem>();
+            var catalogo = new List<Empresa>();
+            try
+            {
+                var daoEmpresa = new EmpresaAS400DAO();
+                catalogo = daoEmpresa.ObtenerEmpresas() ?? new List<Empresa>();
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine("GestionarCompaniasRT: error cargando catálogo AS400: " + ex.Message);
+            }
+
+            foreach (var empresa in catalogo
+                .Where(e => e != null && !string.IsNullOrWhiteSpace(e.CodigoOaci))
+                .OrderBy(e => e.Nombre ?? string.Empty))
+            {
+                var codigo = (empresa.CodigoOaci ?? string.Empty).Trim().ToUpperInvariant();
+                var nombre = (empresa.Nombre ?? string.Empty).Trim();
+                if (string.IsNullOrWhiteSpace(codigo))
+                {
+                    continue;
+                }
+
+                items.Add(new SelectListItem
+                {
+                    Value = codigo,
+                    Text = nombre,
+                    Selected = seleccionLookup.Contains(codigo)
+                });
+            }
+
+            return items;
+        }
+
+        private List<CompaniaDeclaracionItem> ConstruirCompaniasDeclaracion(IEnumerable<UsuarioCompaniaRT> companiasFormulario)
+        {
+            var lista = (companiasFormulario ?? Enumerable.Empty<UsuarioCompaniaRT>())
+                .Where(c => c != null && !string.IsNullOrWhiteSpace(c.CompaniaCodigo))
+                .Select(c => new CompaniaDeclaracionItem
+                {
+                    Codigo = (c.CompaniaCodigo ?? string.Empty).Trim().ToUpperInvariant(),
+                    Nombre = (c.CompaniaNombre ?? string.Empty).Trim()
+                })
+                .GroupBy(c => c.Codigo, StringComparer.OrdinalIgnoreCase)
+                .Select(g => g.First())
+                .ToList();
+
+            foreach (var compania in lista)
+            {
+                if (string.IsNullOrWhiteSpace(compania.Nombre) ||
+                    string.Equals(compania.Nombre.Trim(), compania.Codigo, StringComparison.OrdinalIgnoreCase))
+                {
+                    var nombreResuelto = ResolverNombreCompaniaPorCodigoInterno(compania.Codigo);
+                    if (!string.IsNullOrWhiteSpace(nombreResuelto))
+                    {
+                        compania.Nombre = nombreResuelto.Trim();
+                    }
+                }
+            }
+
+            return lista;
+        }
+
+        private string ResolverNombreCompaniaPorCodigoInterno(string codigoCompania)
+        {
+            var codigo = (codigoCompania ?? string.Empty).Trim().ToUpperInvariant();
+            if (string.IsNullOrWhiteSpace(codigo))
+            {
+                return string.Empty;
+            }
+
+            try
+            {
+                var daoEmpresa = new EmpresaAS400DAO();
+                var empresa = daoEmpresa.ObtenerEmpresaPorCodigo(codigo);
+                if (empresa != null && !string.IsNullOrWhiteSpace(empresa.Nombre))
+                {
+                    return empresa.Nombre.Trim();
+                }
+            }
+            catch (Exception ex)
+            {
+                LogBL.RegistrarError(
+                    "No se pudo resolver el nombre de la compañía para la declaración.",
+                    ex.ToString(),
+                    "UsuarioController");
+            }
+
+            return codigo;
+        }
+
+        private static List<CompaniaDeclaracionItem> ParsearCompaniasDeclaracion(string companiasJson)
+        {
+            if (string.IsNullOrWhiteSpace(companiasJson))
+            {
+                return new List<CompaniaDeclaracionItem>();
+            }
+
+            try
+            {
+                var serializer = new JavaScriptSerializer();
+                var items = serializer.Deserialize<List<CompaniaDeclaracionItem>>(companiasJson) ?? new List<CompaniaDeclaracionItem>();
+                return items
+                    .Where(i => i != null && !string.IsNullOrWhiteSpace(i.Codigo))
+                    .Select(i => new CompaniaDeclaracionItem
+                    {
+                        Codigo = (i.Codigo ?? string.Empty).Trim().ToUpperInvariant(),
+                        Nombre = (i.Nombre ?? string.Empty).Trim()
+                    })
+                    .GroupBy(i => i.Codigo, StringComparer.OrdinalIgnoreCase)
+                    .Select(g => g.First())
+                    .ToList();
+            }
+            catch
+            {
+                return new List<CompaniaDeclaracionItem>();
+            }
+        }
+
+        private static string ConstruirTextoDeclaracionResponsabilidad(string nombreCompleto, IList<CompaniaDeclaracionItem> companias)
+        {
+            var nombre = string.IsNullOrWhiteSpace(nombreCompleto)
+                ? "__________________________"
+                : nombreCompleto.Trim().ToUpperInvariant();
+
+            var listado = (companias ?? new List<CompaniaDeclaracionItem>())
+                .Where(c => c != null && !string.IsNullOrWhiteSpace(c.Codigo))
+                .Select((c, index) => string.Format("{0}. {1}", index + 1, FormatearCompaniaDeclaracion(c)))
+                .ToList();
+
+            if (listado.Count == 0)
+            {
+                listado.Add("1. __________________________");
+            }
+
+            var sb = new StringBuilder();
+            sb.Append("Yo, ");
+            sb.Append(nombre);
+            sb.Append(" declaro conocer las políticas y procedimientos técnicos y operativos aplicables en las estaciones regulares de Ecuador para las siguientes compañías:");
+            sb.AppendLine();
+            sb.AppendLine();
+            sb.Append(string.Join(Environment.NewLine, listado));
+            sb.AppendLine();
+            sb.AppendLine();
+            sb.Append("Asumo la responsabilidad como RT de mantener comunicación directa con la DGAC del Ecuador, a fin de gestionar los trámites de emisión, renovación o modificación del AOCR; así como también, de mantener la supervisión de las empresas contratadas para la asistencia técnica en tierra a sus aeronaves en los aeropuertos de Ecuador.");
+
+            return sb.ToString();
+        }
+
+        private static string ConstruirCompaniasHtmlCorreo(IList<CompaniaDeclaracionItem> companias)
+        {
+            var items = (companias ?? new List<CompaniaDeclaracionItem>())
+                .Where(c => c != null && !string.IsNullOrWhiteSpace(c.Codigo))
+                .Select(FormatearCompaniaDeclaracion)
+                .ToList();
+
+            if (items.Count == 0)
+            {
+                return "<p>No se registraron compañías en la declaración.</p>";
+            }
+
+            var sb = new StringBuilder();
+            sb.Append("<ul>");
+            foreach (var item in items)
+            {
+                sb.Append("<li>");
+                sb.Append(HttpUtility.HtmlEncode(item));
+                sb.Append("</li>");
+            }
+            sb.Append("</ul>");
+            return sb.ToString();
+        }
+
+        private static string FormatearCompaniaDeclaracion(CompaniaDeclaracionItem compania)
+        {
+            if (compania == null)
+            {
+                return "Compañía no especificada";
+            }
+
+            var codigo = (compania.Codigo ?? string.Empty).Trim().ToUpperInvariant();
+            var nombre = (compania.Nombre ?? string.Empty).Trim();
+
+            if (string.IsNullOrWhiteSpace(codigo) && string.IsNullOrWhiteSpace(nombre))
+            {
+                return "Compañía no especificada";
+            }
+
+            if (string.IsNullOrWhiteSpace(codigo))
+            {
+                return nombre;
+            }
+
+            return "[" + codigo + "] " + (string.IsNullOrWhiteSpace(nombre) ? codigo : nombre);
+        }
+
+        private static byte[] GenerarPdfDeclaracionResponsabilidad(
+            string nombreCompleto,
+            string identificacion,
+            IList<CompaniaDeclaracionItem> companias,
+            string textoDeclaracion,
+            DateTime fechaAceptacion)
+        {
+            using (var ms = new MemoryStream())
+            {
+                var doc = new iTextSharp.text.Document(iTextSharp.text.PageSize.A4, 36f, 36f, 130f, 90f);
+                var writer = iTextSharp.text.pdf.PdfWriter.GetInstance(doc, ms);
+                var server = System.Web.HttpContext.Current != null ? System.Web.HttpContext.Current.Server : null;
+                writer.PageEvent = PdfBrandingHelper.CreateITextPageEvent(server, "UsuarioController.GenerarPdfDeclaracionResponsabilidad");
+                doc.Open();
+
+                var titleFont = iTextSharp.text.FontFactory.GetFont(iTextSharp.text.FontFactory.HELVETICA_BOLD, 14);
+                var subtitleFont = iTextSharp.text.FontFactory.GetFont(iTextSharp.text.FontFactory.HELVETICA_BOLD, 11);
+                var normalFont = iTextSharp.text.FontFactory.GetFont(iTextSharp.text.FontFactory.HELVETICA, 10);
+                var smallFont = iTextSharp.text.FontFactory.GetFont(iTextSharp.text.FontFactory.HELVETICA, 9);
+
+                var titulo = new iTextSharp.text.Paragraph("DECLARACIÓN DE RESPONSABILIDAD", titleFont)
+                {
+                    Alignment = iTextSharp.text.Element.ALIGN_CENTER,
+                    SpacingAfter = 10f
+                };
+                doc.Add(titulo);
+
+                var datos = new iTextSharp.text.pdf.PdfPTable(2)
+                {
+                    WidthPercentage = 100,
+                    SpacingAfter = 8f
+                };
+                datos.SetWidths(new[] { 35f, 65f });
+
+                AgregarFilaTabla(datos, "Representante técnico:", string.IsNullOrWhiteSpace(nombreCompleto) ? "N/D" : nombreCompleto.Trim().ToUpperInvariant(), normalFont);
+                AgregarFilaTabla(datos, "Identificación:", string.IsNullOrWhiteSpace(identificacion) ? "N/D" : identificacion.Trim(), normalFont);
+                AgregarFilaTabla(datos, "Fecha aceptación:", fechaAceptacion.ToString("dd/MM/yyyy HH:mm"), normalFont);
+                AgregarFilaTabla(datos, "Referencia:", "DECL-RT-" + fechaAceptacion.ToString("yyyyMMddHHmmss"), normalFont);
+                doc.Add(datos);
+
+                var subtituloCompanias = new iTextSharp.text.Paragraph("Compañías declaradas", subtitleFont)
+                {
+                    SpacingAfter = 4f
+                };
+                doc.Add(subtituloCompanias);
+
+                var companiasNormalizadas = (companias ?? new List<CompaniaDeclaracionItem>())
+                    .Where(c => c != null && !string.IsNullOrWhiteSpace(c.Codigo))
+                    .ToList();
+                if (companiasNormalizadas.Count == 0)
+                {
+                    companiasNormalizadas.Add(new CompaniaDeclaracionItem
+                    {
+                        Codigo = string.Empty,
+                        Nombre = "No especificada"
+                    });
+                }
+
+                var listaCompanias = new iTextSharp.text.List(iTextSharp.text.List.ORDERED, 12f);
+                foreach (var compania in companiasNormalizadas)
+                {
+                    listaCompanias.Add(new iTextSharp.text.ListItem(FormatearCompaniaDeclaracion(compania), normalFont));
+                }
+                doc.Add(listaCompanias);
+                doc.Add(new iTextSharp.text.Paragraph(" "));
+
+                var subtituloDeclaracion = new iTextSharp.text.Paragraph("Texto de la declaración", subtitleFont)
+                {
+                    SpacingAfter = 4f
+                };
+                doc.Add(subtituloDeclaracion);
+
+                var cuerpo = new iTextSharp.text.Paragraph(textoDeclaracion ?? string.Empty, normalFont)
+                {
+                    Alignment = iTextSharp.text.Element.ALIGN_JUSTIFIED,
+                    SpacingAfter = 16f
+                };
+                cuerpo.SetLeading(0f, 1.5f);
+                doc.Add(cuerpo);
+
+                doc.Add(new iTextSharp.text.Paragraph("______________________________________________", normalFont));
+                doc.Add(new iTextSharp.text.Paragraph("Aceptación del Responsable Técnico", smallFont));
+                doc.Add(new iTextSharp.text.Paragraph("Documento generado automáticamente por AOCR.", smallFont));
+
+                doc.Close();
+                return ms.ToArray();
+            }
+        }
+
+        private static void AgregarFilaTabla(iTextSharp.text.pdf.PdfPTable tabla, string etiqueta, string valor, iTextSharp.text.Font font)
+        {
+            var cellEtiqueta = new iTextSharp.text.pdf.PdfPCell(new iTextSharp.text.Phrase(etiqueta, font))
+            {
+                Border = iTextSharp.text.Rectangle.BOX,
+                Padding = 5f,
+                BackgroundColor = new iTextSharp.text.BaseColor(244, 246, 248)
+            };
+
+            var cellValor = new iTextSharp.text.pdf.PdfPCell(new iTextSharp.text.Phrase(valor ?? string.Empty, font))
+            {
+                Border = iTextSharp.text.Rectangle.BOX,
+                Padding = 5f
+            };
+
+            tabla.AddCell(cellEtiqueta);
+            tabla.AddCell(cellValor);
+        }
+
+        private List<UsuarioCompaniaRT> ExtraerCompaniasFormulario()
+        {
+            var resultado = new List<UsuarioCompaniaRT>();
+            if (Request == null || Request.Form == null)
+            {
+                return resultado;
+            }
+
+            var index = 0;
+            while (Request.Form["Companias[" + index + "].IdCompania"] != null)
+            {
+                var codigo = (Request.Form["Companias[" + index + "].IdCompania"] ?? string.Empty).Trim().ToUpperInvariant();
+                var nombre = (Request.Form["Companias[" + index + "].NombreCompania"] ?? string.Empty).Trim();
+
+                if (!string.IsNullOrWhiteSpace(codigo))
+                {
+                    resultado.Add(new UsuarioCompaniaRT
+                    {
+                        CompaniaCodigo = codigo,
+                        CompaniaNombre = nombre
+                    });
+                }
+
+                index++;
+            }
+
+            return resultado;
         }
 
         [HttpPost]
@@ -1112,6 +1724,49 @@ namespace CapaPresentacion.Controllers
             System.IO.File.WriteAllText(archivo, $"Constancia de aceptación de designación RT para {usuario.NombreCompleto} ({usuario.CodigoUsuario}) - Fecha: {DateTime.Now}");
             // Retornar la ruta relativa para guardar en la BD
             return $"~/App_Data/ConstanciasRT/{nombreArchivo}";
+        }
+
+        private static void NormalizarNombresApellidos(ref string nombres, ref string apellidos)
+        {
+            nombres = (nombres ?? string.Empty).Trim();
+            apellidos = (apellidos ?? string.Empty).Trim();
+
+            if (!string.IsNullOrWhiteSpace(apellidos) || string.IsNullOrWhiteSpace(nombres))
+            {
+                return;
+            }
+
+            var partes = nombres
+                .Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries)
+                .ToList();
+
+            if (partes.Count <= 1)
+            {
+                return;
+            }
+
+            if (partes.Count == 2)
+            {
+                nombres = partes[0];
+                apellidos = partes[1];
+                return;
+            }
+
+            if (partes.Count == 3)
+            {
+                nombres = string.Join(" ", partes.Take(2));
+                apellidos = partes[2];
+                return;
+            }
+
+            nombres = string.Join(" ", partes.Take(partes.Count - 2));
+            apellidos = string.Join(" ", partes.Skip(partes.Count - 2));
+        }
+
+        private class CompaniaDeclaracionItem
+        {
+            public string Codigo { get; set; }
+            public string Nombre { get; set; }
         }
     }
 }

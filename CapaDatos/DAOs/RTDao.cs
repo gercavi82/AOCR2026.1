@@ -31,7 +31,14 @@ namespace CapaDatos.DAOs
 
             using (var cn = CrearConexion())
             {
-                return cn.QueryFirstOrDefault<SolicitudRTModel>(sql, new { usuarioId });
+                try
+                {
+                    return cn.QueryFirstOrDefault<SolicitudRTModel>(sql, new { usuarioId });
+                }
+                catch (PostgresException ex) when (EsTablaNoDisponible(ex))
+                {
+                    return null;
+                }
             }
         }
 
@@ -54,7 +61,14 @@ namespace CapaDatos.DAOs
 
             using (var cn = CrearConexion())
             {
-                return cn.QueryFirstOrDefault<SolicitudRTModel>(sql, new { id = solicitudId });
+                try
+                {
+                    return cn.QueryFirstOrDefault<SolicitudRTModel>(sql, new { id = solicitudId });
+                }
+                catch (PostgresException ex) when (EsTablaNoDisponible(ex))
+                {
+                    return null;
+                }
             }
         }
 
@@ -175,17 +189,18 @@ namespace CapaDatos.DAOs
             }
         }
 
-        public void UpdateDeclaracionAceptada(int solicitudId, bool aceptada)
+        public void UpdateDeclaracionAceptada(int solicitudId, bool aceptada, string textoDeclaracion = null)
         {
             const string sql = @"
                 UPDATE aocr_solicitud_rt
                 SET declaracion_aceptada = @aceptada,
+                    declaracion_texto = COALESCE(NULLIF(@textoDeclaracion, ''), declaracion_texto),
                     updated_at = NOW()
                 WHERE id = @id;";
 
             using (var cn = CrearConexion())
             {
-                cn.Execute(sql, new { id = solicitudId, aceptada });
+                cn.Execute(sql, new { id = solicitudId, aceptada, textoDeclaracion });
             }
         }
 
@@ -216,6 +231,18 @@ namespace CapaDatos.DAOs
             {
                 cn.Execute(sql, new { solicitudId, estado, motivo, usuarioId });
             }
+        }
+
+        private static bool EsTablaNoDisponible(PostgresException ex)
+        {
+            if (ex == null)
+            {
+                return false;
+            }
+
+            // 42P01: undefined_table, 42703: undefined_column.
+            return ex.SqlState == "42P01"
+                || ex.SqlState == "42703";
         }
     }
 }
