@@ -28,6 +28,12 @@ namespace CapaPresentacion.Models
         // Catálogo de compañías para selector en el wizard
         public List<CompaniaCatalogoVM> CompaniasDisponibles { get; set; } = new List<CompaniaCatalogoVM>();
 
+        // Datos pre-resueltos para la vista de Solicitud AOCR (evita usar username por error)
+        public string NombreRepresentanteTecnico { get; set; }
+        public string IdentificacionUsuario { get; set; }
+        public string CompaniaActivaCodigo { get; set; }
+        public string CompaniaActivaNombre { get; set; }
+
         // Usuario logueado - En JSON esto sera null, pero se puede ignorar
         [JsonIgnore]
         public Usuario Usuario { get; set; }

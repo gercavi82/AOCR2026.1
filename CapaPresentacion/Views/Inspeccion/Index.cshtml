@@ -41,10 +41,14 @@
                                 @if (!string.IsNullOrWhiteSpace(inspeccion.Estado))
                                 {
                                     <span class="badge 
-                                        @(inspeccion.Estado == "COMPLETADA" ? "bg-success" : 
-                                          inspeccion.Estado == "PROGRAMADA" ? "bg-info" : 
-                                          inspeccion.Estado == "EN_PROGRESO" ? "bg-warning" : 
-                                          inspeccion.Estado == "CANCELADA" ? "bg-secondary" : "bg-light text-dark")">
+                                        @(inspeccion.Estado == "RESULTADO_SATISFACTORIO" || inspeccion.Estado == "APROBADA" ? "bg-success" :
+                                          inspeccion.Estado == "INFORME_ELABORADO" || inspeccion.Estado == "FINALIZADA" ? "bg-success" :
+                                          inspeccion.Estado == "ACEPTADA" || inspeccion.Estado == "VERIFICACION_SOLICITUD" || inspeccion.Estado == "PAGO_VALIDADO" || inspeccion.Estado == "PROGRAMADA" ? "bg-info" :
+                                          inspeccion.Estado == "EN_INSPECCION" || inspeccion.Estado == "EN_CURSO" ? "bg-warning" :
+                                          inspeccion.Estado == "OBSERVADA" || inspeccion.Estado == "OBSERVACION_DOCUMENTAL" || inspeccion.Estado == "RESULTADO_NO_SATISFACTORIO" || inspeccion.Estado == "RECHAZADA" ? "bg-danger" :
+                                          inspeccion.Estado == "VIATICOS_REQUERIDOS" || inspeccion.Estado == "APLAZADA" ? "bg-secondary" :
+                                          inspeccion.Estado == "CERRADA" || inspeccion.Estado == "CANCELADA" ? "bg-dark" :
+                                          "bg-light text-dark")">
                                         @inspeccion.Estado
                                     </span>
                                 }

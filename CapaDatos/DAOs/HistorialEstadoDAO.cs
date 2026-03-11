@@ -1,7 +1,8 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Configuration;
 using System.Data;
+using System.Diagnostics;
 using Npgsql;
 using CapaModelo;
 
@@ -9,10 +10,28 @@ namespace CapaDatos.DAOs
 {
     /// <summary>
     /// DAO de Historial de Estados - AOCR
-    /// Arquitectura: Instancia (Corregido)
+    /// Soporta tablas/columnas legacy y canónicas en PostgreSQL.
     /// </summary>
     public class HistorialEstadoDAO
     {
+        private const string TablaCanonica = "aocr_tbhistorialestado";
+        private const string TablaLegacy = "aocr_tbhistorial_estado";
+
+        private const string SqlStateTablaNoExiste = "42P01";
+        private const string SqlStateColumnaNoExiste = "42703";
+
+        private sealed class HistorialSchema
+        {
+            public string Tabla;
+            public string CodigoHistorial;
+            public string CodigoSolicitud;
+            public string EstadoAnterior;
+            public string EstadoNuevo;
+            public string CodigoUsuario;
+            public string Observaciones;
+            public string FechaCambio;
+        }
+
         // =========================================================
         // Conexión
         // =========================================================
@@ -20,7 +39,9 @@ namespace CapaDatos.DAOs
         {
             var cs = ConfigurationManager.ConnectionStrings["AOCRConnection"]?.ConnectionString;
             if (string.IsNullOrWhiteSpace(cs))
+            {
                 throw new Exception("No existe la cadena de conexión 'AOCRConnection' en el config.");
+            }
 
             return new NpgsqlConnection(cs);
         }
@@ -28,7 +49,7 @@ namespace CapaDatos.DAOs
         // =========================================================
         // Mapeo
         // =========================================================
-        private HistorialEstado Map(IDataRecord r)
+        private static HistorialEstado Map(IDataRecord r)
         {
             return new HistorialEstado
             {
@@ -42,6 +63,87 @@ namespace CapaDatos.DAOs
             };
         }
 
+        private static bool EsErrorEstructuraHistorial(PostgresException ex)
+        {
+            return ex != null &&
+                   (string.Equals(ex.SqlState, SqlStateTablaNoExiste, StringComparison.Ordinal) ||
+                    string.Equals(ex.SqlState, SqlStateColumnaNoExiste, StringComparison.Ordinal));
+        }
+
+        private static void LogEstructuraHistorialInvalida(string operacion, string tabla, PostgresException ex)
+        {
+            Debug.WriteLine(
+                $"[HistorialEstadoDAO] Estructura de historial no disponible/inválida ({tabla}). " +
+                $"Operación omitida: {operacion}. SQLSTATE={ex.SqlState}");
+        }
+
+        // =========================================================
+        // Resolución dinámica de esquema
+        // =========================================================
+        private static bool ExisteTabla(NpgsqlConnection cn, string tabla)
+        {
+            const string sql = "SELECT to_regclass(@tabla) IS NOT NULL;";
+            using (var cmd = new NpgsqlCommand(sql, cn))
+            {
+                cmd.Parameters.AddWithValue("@tabla", tabla);
+                var result = cmd.ExecuteScalar();
+                return result != null && result != DBNull.Value && Convert.ToBoolean(result);
+            }
+        }
+
+        private static bool ExisteColumna(NpgsqlConnection cn, string tabla, string columna)
+        {
+            const string sql = @"
+                SELECT 1
+                FROM pg_attribute a
+                WHERE a.attrelid = to_regclass(@tabla)
+                  AND a.attname = @columna
+                  AND a.attnum > 0
+                  AND NOT a.attisdropped
+                LIMIT 1;";
+
+            using (var cmd = new NpgsqlCommand(sql, cn))
+            {
+                cmd.Parameters.AddWithValue("@tabla", tabla);
+                cmd.Parameters.AddWithValue("@columna", columna);
+                return cmd.ExecuteScalar() != null;
+            }
+        }
+
+        private static string ResolverColumna(NpgsqlConnection cn, string tabla, string canonica, string legacy)
+        {
+            if (ExisteColumna(cn, tabla, canonica))
+            {
+                return canonica;
+            }
+
+            if (ExisteColumna(cn, tabla, legacy))
+            {
+                return legacy;
+            }
+
+            return canonica;
+        }
+
+        private static HistorialSchema ResolverSchema(NpgsqlConnection cn)
+        {
+            var tabla = ExisteTabla(cn, TablaCanonica)
+                ? TablaCanonica
+                : (ExisteTabla(cn, TablaLegacy) ? TablaLegacy : TablaCanonica);
+
+            return new HistorialSchema
+            {
+                Tabla = tabla,
+                CodigoHistorial = ResolverColumna(cn, tabla, "codigohistorial", "codigo_historial"),
+                CodigoSolicitud = ResolverColumna(cn, tabla, "codigosolicitud", "codigo_solicitud"),
+                EstadoAnterior = ResolverColumna(cn, tabla, "estadoanterior", "estado_anterior"),
+                EstadoNuevo = ResolverColumna(cn, tabla, "estadonuevo", "estado_nuevo"),
+                CodigoUsuario = ResolverColumna(cn, tabla, "codigousuario", "codigo_usuario"),
+                Observaciones = "observaciones",
+                FechaCambio = ResolverColumna(cn, tabla, "fechacambio", "fecha_cambio")
+            };
+        }
+
         // =========================================================
         // 1) Obtener todo el historial por solicitud
         // =========================================================
@@ -49,24 +151,43 @@ namespace CapaDatos.DAOs
         {
             var list = new List<HistorialEstado>();
 
-            const string sql = @"
-                SELECT codigohistorial, codigosolicitud, estadoanterior, estadonuevo,
-                       codigousuario, observaciones, fechacambio
-                FROM aocr_tbhistorialestado
-                WHERE codigosolicitud = @id
-                ORDER BY fechacambio DESC;";
-
-            using (var cn = CrearConexion())
-            using (var cmd = new NpgsqlCommand(sql, cn))
+            try
             {
-                cmd.Parameters.AddWithValue("@id", codigoSolicitud);
-                cn.Open();
-
-                using (var rd = cmd.ExecuteReader())
+                using (var cn = CrearConexion())
                 {
-                    while (rd.Read())
-                        list.Add(Map(rd));
+                    cn.Open();
+                    var schema = ResolverSchema(cn);
+
+                    var sql = $@"
+                        SELECT
+                            {schema.CodigoHistorial} AS codigohistorial,
+                            {schema.CodigoSolicitud} AS codigosolicitud,
+                            {schema.EstadoAnterior} AS estadoanterior,
+                            {schema.EstadoNuevo} AS estadonuevo,
+                            {schema.CodigoUsuario} AS codigousuario,
+                            {schema.Observaciones} AS observaciones,
+                            {schema.FechaCambio} AS fechacambio
+                        FROM {schema.Tabla}
+                        WHERE {schema.CodigoSolicitud} = @id
+                        ORDER BY {schema.FechaCambio} DESC;";
+
+                    using (var cmd = new NpgsqlCommand(sql, cn))
+                    {
+                        cmd.Parameters.AddWithValue("@id", codigoSolicitud);
+
+                        using (var rd = cmd.ExecuteReader())
+                        {
+                            while (rd.Read())
+                            {
+                                list.Add(Map(rd));
+                            }
+                        }
+                    }
                 }
+            }
+            catch (PostgresException ex) when (EsErrorEstructuraHistorial(ex))
+            {
+                LogEstructuraHistorialInvalida(nameof(ObtenerPorSolicitud), $"{TablaCanonica}/{TablaLegacy}", ex);
             }
 
             return list;
@@ -77,25 +198,44 @@ namespace CapaDatos.DAOs
         // =========================================================
         public HistorialEstado ObtenerUltimoCambio(int codigoSolicitud)
         {
-            const string sql = @"
-                SELECT codigohistorial, codigosolicitud, estadoanterior, estadonuevo,
-                       codigousuario, observaciones, fechacambio
-                FROM aocr_tbhistorialestado
-                WHERE codigosolicitud = @id
-                ORDER BY fechacambio DESC
-                LIMIT 1;";
-
-            using (var cn = CrearConexion())
-            using (var cmd = new NpgsqlCommand(sql, cn))
+            try
             {
-                cmd.Parameters.AddWithValue("@id", codigoSolicitud);
-                cn.Open();
-
-                using (var rd = cmd.ExecuteReader())
+                using (var cn = CrearConexion())
                 {
-                    if (rd.Read())
-                        return Map(rd);
+                    cn.Open();
+                    var schema = ResolverSchema(cn);
+
+                    var sql = $@"
+                        SELECT
+                            {schema.CodigoHistorial} AS codigohistorial,
+                            {schema.CodigoSolicitud} AS codigosolicitud,
+                            {schema.EstadoAnterior} AS estadoanterior,
+                            {schema.EstadoNuevo} AS estadonuevo,
+                            {schema.CodigoUsuario} AS codigousuario,
+                            {schema.Observaciones} AS observaciones,
+                            {schema.FechaCambio} AS fechacambio
+                        FROM {schema.Tabla}
+                        WHERE {schema.CodigoSolicitud} = @id
+                        ORDER BY {schema.FechaCambio} DESC
+                        LIMIT 1;";
+
+                    using (var cmd = new NpgsqlCommand(sql, cn))
+                    {
+                        cmd.Parameters.AddWithValue("@id", codigoSolicitud);
+
+                        using (var rd = cmd.ExecuteReader())
+                        {
+                            if (rd.Read())
+                            {
+                                return Map(rd);
+                            }
+                        }
+                    }
                 }
+            }
+            catch (PostgresException ex) when (EsErrorEstructuraHistorial(ex))
+            {
+                LogEstructuraHistorialInvalida(nameof(ObtenerUltimoCambio), $"{TablaCanonica}/{TablaLegacy}", ex);
             }
 
             return null;
@@ -108,24 +248,43 @@ namespace CapaDatos.DAOs
         {
             var list = new List<HistorialEstado>();
 
-            const string sql = @"
-                SELECT codigohistorial, codigosolicitud, estadoanterior, estadonuevo,
-                       codigousuario, observaciones, fechacambio
-                FROM aocr_tbhistorialestado
-                WHERE estadonuevo = @estado
-                ORDER BY fechacambio DESC;";
-
-            using (var cn = CrearConexion())
-            using (var cmd = new NpgsqlCommand(sql, cn))
+            try
             {
-                cmd.Parameters.AddWithValue("@estado", (object)estadoNuevo ?? DBNull.Value);
-                cn.Open();
-
-                using (var rd = cmd.ExecuteReader())
+                using (var cn = CrearConexion())
                 {
-                    while (rd.Read())
-                        list.Add(Map(rd));
+                    cn.Open();
+                    var schema = ResolverSchema(cn);
+
+                    var sql = $@"
+                        SELECT
+                            {schema.CodigoHistorial} AS codigohistorial,
+                            {schema.CodigoSolicitud} AS codigosolicitud,
+                            {schema.EstadoAnterior} AS estadoanterior,
+                            {schema.EstadoNuevo} AS estadonuevo,
+                            {schema.CodigoUsuario} AS codigousuario,
+                            {schema.Observaciones} AS observaciones,
+                            {schema.FechaCambio} AS fechacambio
+                        FROM {schema.Tabla}
+                        WHERE {schema.EstadoNuevo} = @estado
+                        ORDER BY {schema.FechaCambio} DESC;";
+
+                    using (var cmd = new NpgsqlCommand(sql, cn))
+                    {
+                        cmd.Parameters.AddWithValue("@estado", (object)estadoNuevo ?? DBNull.Value);
+
+                        using (var rd = cmd.ExecuteReader())
+                        {
+                            while (rd.Read())
+                            {
+                                list.Add(Map(rd));
+                            }
+                        }
+                    }
                 }
+            }
+            catch (PostgresException ex) when (EsErrorEstructuraHistorial(ex))
+            {
+                LogEstructuraHistorialInvalida(nameof(ObtenerPorEstado), $"{TablaCanonica}/{TablaLegacy}", ex);
             }
 
             return list;
@@ -138,24 +297,43 @@ namespace CapaDatos.DAOs
         {
             var list = new List<HistorialEstado>();
 
-            const string sql = @"
-                SELECT codigohistorial, codigosolicitud, estadoanterior, estadonuevo,
-                       codigousuario, observaciones, fechacambio
-                FROM aocr_tbhistorialestado
-                WHERE codigousuario = @user
-                ORDER BY fechacambio DESC;";
-
-            using (var cn = CrearConexion())
-            using (var cmd = new NpgsqlCommand(sql, cn))
+            try
             {
-                cmd.Parameters.AddWithValue("@user", codigoUsuario);
-                cn.Open();
-
-                using (var rd = cmd.ExecuteReader())
+                using (var cn = CrearConexion())
                 {
-                    while (rd.Read())
-                        list.Add(Map(rd));
+                    cn.Open();
+                    var schema = ResolverSchema(cn);
+
+                    var sql = $@"
+                        SELECT
+                            {schema.CodigoHistorial} AS codigohistorial,
+                            {schema.CodigoSolicitud} AS codigosolicitud,
+                            {schema.EstadoAnterior} AS estadoanterior,
+                            {schema.EstadoNuevo} AS estadonuevo,
+                            {schema.CodigoUsuario} AS codigousuario,
+                            {schema.Observaciones} AS observaciones,
+                            {schema.FechaCambio} AS fechacambio
+                        FROM {schema.Tabla}
+                        WHERE {schema.CodigoUsuario} = @user
+                        ORDER BY {schema.FechaCambio} DESC;";
+
+                    using (var cmd = new NpgsqlCommand(sql, cn))
+                    {
+                        cmd.Parameters.AddWithValue("@user", codigoUsuario);
+
+                        using (var rd = cmd.ExecuteReader())
+                        {
+                            while (rd.Read())
+                            {
+                                list.Add(Map(rd));
+                            }
+                        }
+                    }
                 }
+            }
+            catch (PostgresException ex) when (EsErrorEstructuraHistorial(ex))
+            {
+                LogEstructuraHistorialInvalida(nameof(ObtenerPorUsuario), $"{TablaCanonica}/{TablaLegacy}", ex);
             }
 
             return list;
@@ -168,26 +346,45 @@ namespace CapaDatos.DAOs
         {
             var list = new List<HistorialEstado>();
 
-            const string sql = @"
-                SELECT codigohistorial, codigosolicitud, estadoanterior, estadonuevo,
-                       codigousuario, observaciones, fechacambio
-                FROM aocr_tbhistorialestado
-                WHERE fechacambio >= @desde
-                  AND fechacambio <= @hasta
-                ORDER BY fechacambio DESC;";
-
-            using (var cn = CrearConexion())
-            using (var cmd = new NpgsqlCommand(sql, cn))
+            try
             {
-                cmd.Parameters.AddWithValue("@desde", desde);
-                cmd.Parameters.AddWithValue("@hasta", hasta);
-                cn.Open();
-
-                using (var rd = cmd.ExecuteReader())
+                using (var cn = CrearConexion())
                 {
-                    while (rd.Read())
-                        list.Add(Map(rd));
+                    cn.Open();
+                    var schema = ResolverSchema(cn);
+
+                    var sql = $@"
+                        SELECT
+                            {schema.CodigoHistorial} AS codigohistorial,
+                            {schema.CodigoSolicitud} AS codigosolicitud,
+                            {schema.EstadoAnterior} AS estadoanterior,
+                            {schema.EstadoNuevo} AS estadonuevo,
+                            {schema.CodigoUsuario} AS codigousuario,
+                            {schema.Observaciones} AS observaciones,
+                            {schema.FechaCambio} AS fechacambio
+                        FROM {schema.Tabla}
+                        WHERE {schema.FechaCambio} >= @desde
+                          AND {schema.FechaCambio} <= @hasta
+                        ORDER BY {schema.FechaCambio} DESC;";
+
+                    using (var cmd = new NpgsqlCommand(sql, cn))
+                    {
+                        cmd.Parameters.AddWithValue("@desde", desde);
+                        cmd.Parameters.AddWithValue("@hasta", hasta);
+
+                        using (var rd = cmd.ExecuteReader())
+                        {
+                            while (rd.Read())
+                            {
+                                list.Add(Map(rd));
+                            }
+                        }
+                    }
                 }
+            }
+            catch (PostgresException ex) when (EsErrorEstructuraHistorial(ex))
+            {
+                LogEstructuraHistorialInvalida(nameof(ObtenerPorFecha), $"{TablaCanonica}/{TablaLegacy}", ex);
             }
 
             return list;
@@ -201,7 +398,7 @@ namespace CapaDatos.DAOs
         }
 
         // =========================================================
-        // 7) Registrar un cambio de estado
+        // 6) Registrar un cambio de estado
         // =========================================================
         public bool RegistrarCambio(
             int codigoSolicitud,
@@ -210,52 +407,79 @@ namespace CapaDatos.DAOs
             int codigoUsuario,
             string observaciones)
         {
-            const string sql = @"
-                INSERT INTO aocr_tbhistorialestado
-                (codigosolicitud, estadoanterior, estadonuevo, codigousuario, observaciones, fechacambio)
-                VALUES
-                (@sol, @ant, @nuevo, @user, @obs, @fecha);";
-
-            using (var cn = CrearConexion())
-            using (var cmd = new NpgsqlCommand(sql, cn))
+            try
             {
-                cmd.Parameters.AddWithValue("@sol", codigoSolicitud);
-                cmd.Parameters.AddWithValue("@ant", (object)estadoAnterior ?? DBNull.Value);
-                cmd.Parameters.AddWithValue("@nuevo", (object)estadoNuevo ?? DBNull.Value);
-                cmd.Parameters.AddWithValue("@user", codigoUsuario);
-                cmd.Parameters.AddWithValue("@obs", (object)observaciones ?? DBNull.Value);
-                cmd.Parameters.AddWithValue("@fecha", DateTime.Now);
+                using (var cn = CrearConexion())
+                {
+                    cn.Open();
+                    var schema = ResolverSchema(cn);
 
-                cn.Open();
-                return cmd.ExecuteNonQuery() > 0;
+                    var sql = $@"
+                        INSERT INTO {schema.Tabla}
+                        ({schema.CodigoSolicitud}, {schema.EstadoAnterior}, {schema.EstadoNuevo}, {schema.CodigoUsuario}, {schema.Observaciones}, {schema.FechaCambio})
+                        VALUES
+                        (@sol, @ant, @nuevo, @user, @obs, @fecha);";
+
+                    using (var cmd = new NpgsqlCommand(sql, cn))
+                    {
+                        cmd.Parameters.AddWithValue("@sol", codigoSolicitud);
+                        cmd.Parameters.AddWithValue("@ant", (object)estadoAnterior ?? DBNull.Value);
+                        cmd.Parameters.AddWithValue("@nuevo", (object)estadoNuevo ?? DBNull.Value);
+                        cmd.Parameters.AddWithValue("@user", codigoUsuario);
+                        cmd.Parameters.AddWithValue("@obs", (object)observaciones ?? DBNull.Value);
+                        cmd.Parameters.AddWithValue("@fecha", DateTime.Now);
+
+                        return cmd.ExecuteNonQuery() > 0;
+                    }
+                }
+            }
+            catch (PostgresException ex) when (EsErrorEstructuraHistorial(ex))
+            {
+                LogEstructuraHistorialInvalida(nameof(RegistrarCambio), $"{TablaCanonica}/{TablaLegacy}", ex);
+                return false;
             }
         }
 
         // =========================================================
-        // Insertar (Modelo completo)
+        // 7) Insertar (modelo completo)
         // =========================================================
         public bool Insertar(HistorialEstado modelo)
         {
-            if (modelo == null) return false;
-
-            const string sql = @"
-        INSERT INTO aocr_tbhistorialestado
-        (codigosolicitud, estadoanterior, estadonuevo, codigousuario, observaciones, fechacambio)
-        VALUES
-        (@sol, @ant, @nuevo, @user, @obs, @fecha);";
-
-            using (var cn = CrearConexion())
-            using (var cmd = new NpgsqlCommand(sql, cn))
+            if (modelo == null)
             {
-                cmd.Parameters.AddWithValue("@sol", modelo.CodigoSolicitud);
-                cmd.Parameters.AddWithValue("@ant", (object)modelo.EstadoAnterior ?? DBNull.Value);
-                cmd.Parameters.AddWithValue("@nuevo", (object)modelo.EstadoNuevo ?? DBNull.Value);
-                cmd.Parameters.AddWithValue("@user", modelo.CodigoUsuario);
-                cmd.Parameters.AddWithValue("@obs", (object)modelo.Observaciones ?? DBNull.Value);
-                cmd.Parameters.AddWithValue("@fecha", modelo.FechaCambio == DateTime.MinValue ? DateTime.Now : modelo.FechaCambio);
+                return false;
+            }
 
-                cn.Open();
-                return cmd.ExecuteNonQuery() > 0;
+            try
+            {
+                using (var cn = CrearConexion())
+                {
+                    cn.Open();
+                    var schema = ResolverSchema(cn);
+
+                    var sql = $@"
+                        INSERT INTO {schema.Tabla}
+                        ({schema.CodigoSolicitud}, {schema.EstadoAnterior}, {schema.EstadoNuevo}, {schema.CodigoUsuario}, {schema.Observaciones}, {schema.FechaCambio})
+                        VALUES
+                        (@sol, @ant, @nuevo, @user, @obs, @fecha);";
+
+                    using (var cmd = new NpgsqlCommand(sql, cn))
+                    {
+                        cmd.Parameters.AddWithValue("@sol", modelo.CodigoSolicitud);
+                        cmd.Parameters.AddWithValue("@ant", (object)modelo.EstadoAnterior ?? DBNull.Value);
+                        cmd.Parameters.AddWithValue("@nuevo", (object)modelo.EstadoNuevo ?? DBNull.Value);
+                        cmd.Parameters.AddWithValue("@user", modelo.CodigoUsuario);
+                        cmd.Parameters.AddWithValue("@obs", (object)modelo.Observaciones ?? DBNull.Value);
+                        cmd.Parameters.AddWithValue("@fecha", modelo.FechaCambio == DateTime.MinValue ? DateTime.Now : modelo.FechaCambio);
+
+                        return cmd.ExecuteNonQuery() > 0;
+                    }
+                }
+            }
+            catch (PostgresException ex) when (EsErrorEstructuraHistorial(ex))
+            {
+                LogEstructuraHistorialInvalida(nameof(Insertar), $"{TablaCanonica}/{TablaLegacy}", ex);
+                return false;
             }
         }
     }

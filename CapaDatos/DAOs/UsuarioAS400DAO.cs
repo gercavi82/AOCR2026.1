@@ -91,6 +91,79 @@ namespace CapaDatos.DAOs
             }
         }
 
+        public UsuarioInternoAs400Info ObtenerDatosUsuarioInterno(string codigoUsuario)
+        {
+            if (string.IsNullOrWhiteSpace(codigoUsuario))
+            {
+                return null;
+            }
+
+            var codigo = SafeString(codigoUsuario, 10).ToUpperInvariant();
+
+            try
+            {
+                return ExecuteWithConnection(conn =>
+                {
+                    var columnasUsuario = GetColumnas(conn, _schema, _tablaUsuario);
+                    var columnasAdicional = GetColumnas(conn, _schema, _tablaAdicional);
+
+                    var pkAdicional = columnasAdicional.Contains("USUCO8")
+                        ? "USUCO8"
+                        : (columnasAdicional.Contains("USUCOD") ? "USUCOD" : null);
+
+                    var existeUsuario = ObtenerCampoPorPkSeguro(conn, _schema, _tablaUsuario, "USUCOD", codigo, "USUCOD");
+                    if (string.IsNullOrWhiteSpace(existeUsuario) && !string.IsNullOrWhiteSpace(pkAdicional))
+                    {
+                        existeUsuario = ObtenerCampoPorPkSeguro(conn, _schema, _tablaAdicional, pkAdicional, codigo, pkAdicional);
+                    }
+
+                    if (string.IsNullOrWhiteSpace(existeUsuario))
+                    {
+                        return null;
+                    }
+
+                    var ciudad = string.Empty;
+                    if (!string.IsNullOrWhiteSpace(pkAdicional) && columnasAdicional.Contains("USUCO9"))
+                    {
+                        ciudad = ObtenerCampoPorPkSeguro(conn, _schema, _tablaAdicional, pkAdicional, codigo, "USUCO9");
+                    }
+
+                    if (string.IsNullOrWhiteSpace(ciudad) && columnasUsuario.Contains("USUCO5"))
+                    {
+                        ciudad = ObtenerCampoPorPkSeguro(conn, _schema, _tablaUsuario, "USUCOD", codigo, "USUCO5");
+                    }
+
+                    decimal? codigoFinanciero = null;
+                    if (!string.IsNullOrWhiteSpace(pkAdicional) && columnasAdicional.Contains("USUOID"))
+                    {
+                        var valorCrudo = ObtenerCampoPorPkSeguro(conn, _schema, _tablaAdicional, pkAdicional, codigo, "USUOID");
+                        decimal valorNumerico;
+                        if (decimal.TryParse(valorCrudo, NumberStyles.Any, CultureInfo.InvariantCulture, out valorNumerico)
+                            || decimal.TryParse(valorCrudo, NumberStyles.Any, CultureInfo.CurrentCulture, out valorNumerico))
+                        {
+                            if (valorNumerico > 0m)
+                            {
+                                codigoFinanciero = valorNumerico;
+                            }
+                        }
+                    }
+
+                    return new UsuarioInternoAs400Info
+                    {
+                        CodigoUsuario = codigo,
+                        CiudadCodigo = string.IsNullOrWhiteSpace(ciudad)
+                            ? string.Empty
+                            : ciudad.Trim().ToUpperInvariant(),
+                        CodigoFinanciero = codigoFinanciero
+                    };
+                });
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
         public string ObtenerNumeroRucPorCodigoUsuario(string codigoUsuario)
         {
             if (string.IsNullOrWhiteSpace(codigoUsuario))

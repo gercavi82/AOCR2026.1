@@ -1,96 +1,51 @@
 using System;
+using System.Collections.Generic;
 
 namespace CapaDatos.Constants
 {
-    /// <summary>
-    /// Constantes para estados de Órdenes de recaudación
-    /// Elimina magic strings y centraliza valores
-    /// </summary>
     public static class EstadoOrden
     {
-        /// <summary>
-        /// Orden creada pero no finalizada (puede editarse)
-        /// </summary>
         public const string Borrador = "BORRADOR";
-
-        /// <summary>
-        /// Orden generada y lista para envío (no editable)
-        /// </summary>
         public const string Generada = "GENERADA";
-
-        /// <summary>
-        /// Orden pendiente de pago
-        /// </summary>
         public const string Pendiente = "PENDIENTE";
-
-        /// <summary>
-        /// Orden con pago completado
-        /// </summary>
         public const string Completada = "COMPLETADA";
-
-        /// <summary>
-        /// Orden facturada (sinónimo de pagada)
-        /// </summary>
         public const string Facturada = "FACTURADA";
-
-        /// <summary>
-        /// Orden pagada (sinónimo de completada)
-        /// </summary>
         public const string Pagada = "PAGADA";
-
-        /// <summary>
-        /// Orden anulada (no puede modificarse ni pagarse)
-        /// </summary>
         public const string Anulada = "ANULADA";
 
-        /// <summary>
-        /// Verifica si un estado permite edición
-        /// </summary>
         public static bool PermiteEditar(string estado)
         {
-            return string.Equals(estado, Borrador, System.StringComparison.OrdinalIgnoreCase);
+            return string.Equals(estado, Borrador, StringComparison.OrdinalIgnoreCase);
         }
 
-        /// <summary>
-        /// Verifica si un estado permite cambio de estado
-        /// </summary>
         public static bool PermiteCambiarEstado(string estado)
         {
             if (string.IsNullOrWhiteSpace(estado)) return false;
 
-            return string.Equals(estado, Borrador, System.StringComparison.OrdinalIgnoreCase) ||
-                   string.Equals(estado, Generada, System.StringComparison.OrdinalIgnoreCase) ||
-                   string.Equals(estado, Pendiente, System.StringComparison.OrdinalIgnoreCase);
+            return string.Equals(estado, Borrador, StringComparison.OrdinalIgnoreCase) ||
+                   string.Equals(estado, Generada, StringComparison.OrdinalIgnoreCase) ||
+                   string.Equals(estado, Pendiente, StringComparison.OrdinalIgnoreCase);
         }
 
-        /// <summary>
-        /// Verifica si un estado es final (no puede cambiar)
-        /// </summary>
         public static bool EsEstadoFinal(string estado)
         {
             if (string.IsNullOrWhiteSpace(estado)) return false;
 
-            return string.Equals(estado, Pagada, System.StringComparison.OrdinalIgnoreCase) ||
-                   string.Equals(estado, Anulada, System.StringComparison.OrdinalIgnoreCase) ||
-                   string.Equals(estado, Completada, System.StringComparison.OrdinalIgnoreCase) ||
-                   string.Equals(estado, Facturada, System.StringComparison.OrdinalIgnoreCase);
+            return string.Equals(estado, Pagada, StringComparison.OrdinalIgnoreCase) ||
+                   string.Equals(estado, Anulada, StringComparison.OrdinalIgnoreCase) ||
+                   string.Equals(estado, Completada, StringComparison.OrdinalIgnoreCase) ||
+                   string.Equals(estado, Facturada, StringComparison.OrdinalIgnoreCase);
         }
 
-        /// <summary>
-        /// Verifica si un estado representa pago completado
-        /// </summary>
         public static bool EsPagado(string estado)
         {
             if (string.IsNullOrWhiteSpace(estado)) return false;
 
-            return string.Equals(estado, Pagada, System.StringComparison.OrdinalIgnoreCase) ||
-                   string.Equals(estado, Completada, System.StringComparison.OrdinalIgnoreCase) ||
-                   string.Equals(estado, Facturada, System.StringComparison.OrdinalIgnoreCase);
+            return string.Equals(estado, Pagada, StringComparison.OrdinalIgnoreCase) ||
+                   string.Equals(estado, Completada, StringComparison.OrdinalIgnoreCase) ||
+                   string.Equals(estado, Facturada, StringComparison.OrdinalIgnoreCase);
         }
 
-        /// <summary>
-        /// Obtiene el color CSS para el badge según el estado
-        /// </summary>
         public static string ObtenerColorBadge(string estado)
         {
             if (string.IsNullOrWhiteSpace(estado)) return "secondary";
@@ -113,9 +68,6 @@ namespace CapaDatos.Constants
             }
         }
 
-        /// <summary>
-        /// Obtiene todos los estados válidos
-        /// </summary>
         public static string[] ObtenerTodos()
         {
             return new[]
@@ -131,84 +83,34 @@ namespace CapaDatos.Constants
         }
     }
 
-    /// <summary>
-    /// Constantes para estados de Pagos
-    /// </summary>
     public static class EstadoPago
     {
-        /// <summary>
-        /// Pago registrado pero no validado
-        /// </summary>
         public const string Pendiente = "PENDIENTE";
-
-        /// <summary>
-        /// Pago validado por administrador
-        /// </summary>
         public const string Validado = "VALIDADO";
-
-        /// <summary>
-        /// Pago aprobado (sinónimo de validado)
-        /// </summary>
         public const string Aprobado = "APROBADO";
-
-        /// <summary>
-        /// Pago rechazado
-        /// </summary>
         public const string Rechazado = "RECHAZADO";
-
-        /// <summary>
-        /// Pago anulado
-        /// </summary>
         public const string Anulado = "ANULADO";
 
-        /// <summary>
-        /// Verifica si un estado de pago es final
-        /// </summary>
         public static bool EsEstadoFinal(string estado)
         {
             if (string.IsNullOrWhiteSpace(estado)) return false;
 
-            return string.Equals(estado, Validado, System.StringComparison.OrdinalIgnoreCase) ||
-                   string.Equals(estado, Aprobado, System.StringComparison.OrdinalIgnoreCase) ||
-                   string.Equals(estado, Rechazado, System.StringComparison.OrdinalIgnoreCase) ||
-                   string.Equals(estado, Anulado, System.StringComparison.OrdinalIgnoreCase);
+            return string.Equals(estado, Validado, StringComparison.OrdinalIgnoreCase) ||
+                   string.Equals(estado, Aprobado, StringComparison.OrdinalIgnoreCase) ||
+                   string.Equals(estado, Rechazado, StringComparison.OrdinalIgnoreCase) ||
+                   string.Equals(estado, Anulado, StringComparison.OrdinalIgnoreCase);
         }
     }
 
-    /// <summary>
-    /// Constantes para estados de Email Queue
-    /// </summary>
     public static class EstadoEmail
     {
-        /// <summary>
-        /// Email pendiente de envío
-        /// </summary>
         public const string Pendiente = "Pendiente";
-
-        /// <summary>
-        /// Email enviado exitosamente
-        /// </summary>
         public const string Enviado = "Enviado";
-
-        /// <summary>
-        /// Email falló después de reintentos
-        /// </summary>
         public const string Fallido = "Fallido";
-
-        /// <summary>
-        /// Email en proceso de envío
-        /// </summary>
         public const string Procesando = "Procesando";
-
-        /// <summary>
-        /// Email cancelado/descartado
-        /// </summary>
         public const string Cancelado = "Cancelado";
     }
 
-    /// <summary>
-    /// Constantes para estados de Documentos
-    /// </summary>
     public static class EstadoDocumento
     {
         public const string Pendiente = "PENDIENTE";
@@ -217,25 +119,37 @@ namespace CapaDatos.Constants
         public const string Revision = "REVISION";
     }
 
-    /// <summary>
-    /// Constantes para estados de Solicitud
-    /// </summary>
     public static class EstadoSolicitud
     {
+        // Legacy
         public const string Pendiente = "Pendiente";
-        public const string EnRevision = "En Revisión";
-        public const string DocumentacionCompleta = "Documentación Completa";
+        public const string EnRevision = "En Revision";
+        public const string DocumentacionCompleta = "Documentacion Completa";
         public const string PagoPendiente = "Pago Pendiente";
         public const string PagoValidado = "Pago Validado";
-        public const string InspeccionProgramada = "Inspección Programada";
-        public const string InspeccionRealizada = "Inspección Realizada";
+        public const string InspeccionProgramada = "Inspeccion Programada";
+        public const string InspeccionRealizada = "Inspeccion Realizada";
         public const string Aprobada = "Aprobada";
         public const string Rechazada = "Rechazada";
         public const string CertificadoEmitido = "Certificado Emitido";
         public const string Anulada = "Anulada";
 
+        // BPMN AOCR target
+        public const string SolicitudCreada = "Solicitud Creada";
+        public const string DocumentacionPendiente = "Documentacion Pendiente";
+        public const string Observada = "Observada";
+        public const string Subsanada = "Subsanada";
+        public const string AceptacionDocumental = "Aceptacion Documental";
+        public const string EnInspeccion = "En Inspeccion";
+        public const string AOCR_EnElaboracion = "AOCR En Elaboracion";
+        public const string AOCR_EnRevision = "AOCR En Revision";
+        public const string AOCR_Validado = "AOCR Validado";
+        public const string AOCR_Legalizado = "AOCR Legalizado";
+        public const string AOCR_EmitidoRecibido = "AOCR Emitido/Recibido";
+
         private static readonly string[] EstadosValidos =
         {
+            // Legacy
             Pendiente,
             EnRevision,
             DocumentacionCompleta,
@@ -246,80 +160,169 @@ namespace CapaDatos.Constants
             Aprobada,
             Rechazada,
             CertificadoEmitido,
-            Anulada
+            Anulada,
+
+            // BPMN AOCR
+            SolicitudCreada,
+            DocumentacionPendiente,
+            Observada,
+            Subsanada,
+            AceptacionDocumental,
+            EnInspeccion,
+            AOCR_EnElaboracion,
+            AOCR_EnRevision,
+            AOCR_Validado,
+            AOCR_Legalizado,
+            AOCR_EmitidoRecibido
+        };
+
+        private static readonly Dictionary<string, string[]> Transiciones = new Dictionary<string, string[]>(StringComparer.OrdinalIgnoreCase)
+        {
+            { SolicitudCreada, new[] { DocumentacionPendiente, Observada } },
+            { DocumentacionPendiente, new[] { Observada, AceptacionDocumental } },
+            { Observada, new[] { Subsanada } },
+            { Subsanada, new[] { DocumentacionPendiente, AceptacionDocumental } },
+            { AceptacionDocumental, new[] { EnInspeccion } },
+            { EnInspeccion, new[] { AOCR_EnElaboracion } },
+            { AOCR_EnElaboracion, new[] { AOCR_EnRevision } },
+            { AOCR_EnRevision, new[] { AOCR_Validado, Observada } },
+            { AOCR_Validado, new[] { AOCR_Legalizado, Observada } },
+            { AOCR_Legalizado, new[] { AOCR_EmitidoRecibido } },
+            { AOCR_EmitidoRecibido, Array.Empty<string>() }
         };
 
         public static string Normalizar(string estado)
         {
             if (string.IsNullOrWhiteSpace(estado))
+            {
                 return Pendiente;
+            }
 
             var trimmed = estado.Trim();
-            switch (trimmed.ToUpperInvariant())
+            var upper = trimmed
+                .ToUpperInvariant()
+                .Replace("Á", "A")
+                .Replace("É", "E")
+                .Replace("Í", "I")
+                .Replace("Ó", "O")
+                .Replace("Ú", "U");
+
+            switch (upper)
             {
                 case "BORRADOR":
                 case "PENDIENTE":
+                case "SOLICITUD_CREADA":
                     return Pendiente;
+                case "DOCUMENTACION_PENDIENTE":
                 case "ENVIADO":
-                case "ENVIADO_A_INSPECTOR":
-                case "INSPECCION_ASIGNADA":
                 case "PREPARANDO":
                     return EnRevision;
                 case "DOCUMENTOS_COMPLETOS":
                 case "DOCUMENTACION_COMPLETA":
                     return DocumentacionCompleta;
+                case "ACEPTACION_DOCUMENTAL":
+                case "APROBADO_POR_INSPECTOR":
+                    return AceptacionDocumental;
                 case "PAGO_PENDIENTE":
                     return PagoPendiente;
                 case "PAGO_VALIDADO":
                 case "PAGO_VALIDADO_ADMIN":
                     return PagoValidado;
+                case "INSPECCION_ASIGNADA":
+                case "ENVIADO_A_INSPECTOR":
+                case "EN_INSPECCION":
                 case "INSPECCION_PROGRAMADA":
                 case "INSPECCION_A_PROGRAMAR":
-                    return InspeccionProgramada;
+                    return EnInspeccion;
                 case "INSPECCION_REALIZADA":
                 case "INSPECCION_COMPLETADA":
                     return InspeccionRealizada;
+                case "AOCR_EN_ELABORACION":
+                    return AOCR_EnElaboracion;
+                case "AOCR_EN_REVISION":
+                case "ENVIADO_A_JEFATURA":
+                    return AOCR_EnRevision;
                 case "APROBADO":
-                case "APROBADO_POR_INSPECTOR":
                 case "APROBADO_POR_DIRECCION":
                     return Aprobada;
+                case "VALIDADO_TECNICAMENTE":
+                    return AOCR_Validado;
+                case "LEGALIZADO":
+                    return AOCR_Legalizado;
                 case "RECHAZADO":
                 case "OBSERVADO":
                 case "OBSERVADO_JEFATURA":
                 case "RECHAZADO_POR_DIRECCION":
-                    return Rechazada;
-                case "LEGALIZADO":
-                case "VALIDADO_TECNICAMENTE":
+                    return Observada;
+                case "SUBSANADO":
+                case "SUBSANADA":
+                    return Subsanada;
                 case "CERTIFICADO_LEGALIZADO":
                 case "CERTIFICADO_EMITIDO":
-                    return CertificadoEmitido;
+                case "AOCR_EMITIDO":
+                case "AOCR_ENTREGADO":
+                case "AOCR_EMITIDO_RECIBIDO":
+                    return AOCR_EmitidoRecibido;
                 default:
-                    // Si ya es un estado válido, regresar su versión corregida
                     foreach (var valido in EstadosValidos)
                     {
                         if (string.Equals(valido, trimmed, StringComparison.OrdinalIgnoreCase))
+                        {
                             return valido;
+                        }
                     }
+
                     return Pendiente;
             }
         }
 
         public static bool PermiteEdicion(string estado)
         {
-            return string.Equals(Normalizar(estado), Pendiente, StringComparison.OrdinalIgnoreCase);
+            var actual = Normalizar(estado);
+            return string.Equals(actual, Pendiente, StringComparison.OrdinalIgnoreCase) ||
+                   string.Equals(actual, DocumentacionPendiente, StringComparison.OrdinalIgnoreCase) ||
+                   string.Equals(actual, Observada, StringComparison.OrdinalIgnoreCase) ||
+                   string.Equals(actual, Subsanada, StringComparison.OrdinalIgnoreCase);
         }
 
         public static bool EsEstadoValido(string estado)
         {
-            if (string.IsNullOrWhiteSpace(estado)) return false;
+            if (string.IsNullOrWhiteSpace(estado))
+            {
+                return false;
+            }
+
             var normalized = Normalizar(estado);
             foreach (var valido in EstadosValidos)
             {
                 if (string.Equals(normalized, valido, StringComparison.OrdinalIgnoreCase))
+                {
                     return true;
+                }
             }
+
             return false;
         }
 
+        public static bool EsTransicionValida(string estadoActual, string estadoDestino)
+        {
+            var actual = Normalizar(estadoActual);
+            var destino = Normalizar(estadoDestino);
+
+            if (!Transiciones.ContainsKey(actual))
+            {
+                return false;
+            }
+
+            foreach (var permitido in Transiciones[actual])
+            {
+                if (string.Equals(permitido, destino, StringComparison.OrdinalIgnoreCase))
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
     }
 }

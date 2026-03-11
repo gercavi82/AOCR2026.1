@@ -10,6 +10,12 @@ namespace CapaDatos.DAOs
     {
         private string CS => ConexionDAO.CadenaConexion;
         private const string TABLA = "public.aocr_tbhallazgo";
+        private const string SQLSTATE_RELATION_DOES_NOT_EXIST = "42P01";
+
+        private static bool EsRelacionNoExiste(PostgresException ex)
+        {
+            return ex != null && string.Equals(ex.SqlState, SQLSTATE_RELATION_DOES_NOT_EXIST, StringComparison.Ordinal);
+        }
 
         // ✅ Método auxiliar para mapeo
         private Hallazgo MapearDesdeDataReader(NpgsqlDataReader dr)
@@ -70,6 +76,12 @@ namespace CapaDatos.DAOs
                     }
                 }
             }
+            catch (PostgresException ex) when (EsRelacionNoExiste(ex))
+            {
+                // La tabla de hallazgos puede no estar desplegada en ciertos ambientes.
+                // Degradar sin romper el flujo principal de inspección.
+                return 0;
+            }
             catch (Exception ex)
             {
                 System.Diagnostics.Debug.WriteLine($"Error en Insertar: {ex.Message}");
@@ -115,6 +127,10 @@ namespace CapaDatos.DAOs
                     }
                 }
             }
+            catch (PostgresException ex) when (EsRelacionNoExiste(ex))
+            {
+                return false;
+            }
             catch (Exception ex)
             {
                 System.Diagnostics.Debug.WriteLine($"Error en Actualizar: {ex.Message}");
@@ -155,6 +171,11 @@ namespace CapaDatos.DAOs
                     }
                 }
             }
+            catch (PostgresException ex) when (EsRelacionNoExiste(ex))
+            {
+                // Sin tabla de hallazgos, responder vacío para no interrumpir Detalle.
+                return lista;
+            }
             catch (Exception ex)
             {
                 System.Diagnostics.Debug.WriteLine($"Error en ObtenerPorInspeccion: {ex.Message}");
@@ -193,6 +214,10 @@ namespace CapaDatos.DAOs
                         return cmd.ExecuteNonQuery() > 0;
                     }
                 }
+            }
+            catch (PostgresException ex) when (EsRelacionNoExiste(ex))
+            {
+                return false;
             }
             catch (Exception ex)
             {
@@ -249,6 +274,10 @@ namespace CapaDatos.DAOs
                         }
                     }
                 }
+            }
+            catch (PostgresException ex) when (EsRelacionNoExiste(ex))
+            {
+                return estadisticas;
             }
             catch (Exception ex)
             {

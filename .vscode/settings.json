@@ -1,4 +1,7 @@
 {
     "dotnet.preferCSharpExtension": true,
-    "dotnet.defaultSolution": "AOCR.sln"
+    "dotnet.defaultSolution": "AOCR.sln",
+    "chat.tools.terminal.autoApprove": {
+        "&": true
+    }
 }

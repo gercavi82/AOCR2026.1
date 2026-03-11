@@ -6,6 +6,7 @@ namespace CapaModelo
     {
         public int CodigoInspeccion { get; set; }
         public int CodigoSolicitud { get; set; }
+        public string NumeroInspeccion { get; set; }
 
         public int? CodigoInspector { get; set; }
 
@@ -17,10 +18,23 @@ namespace CapaModelo
         public string Latitud { get; set; }
         public string Longitud { get; set; }
 
+        public int? TipoCodigo { get; set; }
         public string Tipo { get; set; }
         public string ObservacionesGenerales { get; set; }
         public string Comentarios { get; set; }
         public string HallazgosPrincipales { get; set; }
+        public bool ViaticosRequeridos { get; set; }
+        public decimal? ViaticosMonto { get; set; }
+        public bool PagoViaticosValidado { get; set; }
+        public DateTime? FechaPagoViaticos { get; set; }
+        public string EstadoDocumental { get; set; }
+        public string ResultadoEvaluacion { get; set; }
+        public string InspectorPrincipalCedula { get; set; }
+        public string InspectorPrincipalNombre { get; set; }
+        public string InspectorPrincipalTipo { get; set; }
+        public string InspectorApoyoCedula { get; set; }
+        public string InspectorApoyoNombre { get; set; }
+        public string InspectorApoyoTipo { get; set; }
 
         public string Estado { get; set; }
 

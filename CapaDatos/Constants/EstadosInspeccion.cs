@@ -5,266 +5,285 @@ using System.Linq;
 namespace CapaDatos.Constants
 {
     /// <summary>
-    /// Estados formalizados del flujo de inspecciones técnicas AOCR
-    /// Nomenclatura: Estados en MAYÚSCULAS con guión bajo
+    /// Estados del workflow de inspecciones AOCR (BPMN), con compatibilidad para estados legacy.
     /// </summary>
     public static class EstadosInspeccion
     {
         // ============================================
-        // CONSTANTES DE ESTADOS
+        // ESTADOS BPMN CANONICOS
         // ============================================
-        
-        /// <summary>Inspección creada, sin programar</summary>
-        public const string CREADA = "CREADA";
-        
-        /// <summary>Inspección programada con fecha/hora/lugar</summary>
-        public const string PROGRAMADA = "PROGRAMADA";
-        
-        /// <summary>Inspector está ejecutando la inspección en campo</summary>
-        public const string EN_CURSO = "EN_CURSO";
-        
-        /// <summary>Inspector solicitó aplazar la inspección</summary>
-        public const string APLAZADA = "APLAZADA";
-        
-        /// <summary>Inspector completó trabajo y generó informe preliminar</summary>
-        public const string FINALIZADA = "FINALIZADA";
-        
-        /// <summary>Informe revisado y aprobado por Jefatura Técnica</summary>
-        public const string APROBADA = "APROBADA";
-        
-        /// <summary>Informe rechazado, requiere correcciones del inspector</summary>
-        public const string RECHAZADA = "RECHAZADA";
-        
-        /// <summary>Inspección cancelada sin completar</summary>
-        public const string CANCELADA = "CANCELADA";
-        
-        /// <summary>Inspección completamente cerrada, no se pueden realizar más cambios</summary>
+        public const string SOLICITUD_INSPECCION_CREADA = "SOLICITUD_INSPECCION_CREADA";
+        public const string VERIFICACION_SOLICITUD = "VERIFICACION_SOLICITUD";
+        public const string ACEPTADA = "ACEPTADA";
+        public const string OBSERVADA = "OBSERVADA";
+        public const string SUBSANADA = "SUBSANADA";
+        public const string VIATICOS_REQUERIDOS = "VIATICOS_REQUERIDOS";
+        public const string PAGO_VALIDADO = "PAGO_VALIDADO";
+        public const string EN_INSPECCION = "EN_INSPECCION";
+        public const string INFORME_ELABORADO = "INFORME_ELABORADO";
+        public const string RESULTADO_SATISFACTORIO = "RESULTADO_SATISFACTORIO";
+        public const string RESULTADO_NO_SATISFACTORIO = "RESULTADO_NO_SATISFACTORIO";
+        public const string OBSERVACION_DOCUMENTAL = "OBSERVACION_DOCUMENTAL";
         public const string CERRADA = "CERRADA";
 
+        // ============================================
+        // ALIASES LEGACY (para no romper módulos previos)
+        // ============================================
+        public const string CREADA = SOLICITUD_INSPECCION_CREADA;
+        public const string PROGRAMADA = VERIFICACION_SOLICITUD;
+        public const string EN_CURSO = EN_INSPECCION;
+        public const string APLAZADA = VIATICOS_REQUERIDOS;
+        public const string FINALIZADA = INFORME_ELABORADO;
+        public const string APROBADA = RESULTADO_SATISFACTORIO;
+        public const string RECHAZADA = RESULTADO_NO_SATISFACTORIO;
+        public const string CANCELADA = CERRADA;
 
-        // ============================================
-        // TODAS LAS CONSTANTES EN ARRAY (para validación)
-        // ============================================
         public static readonly string[] TodosLosEstados = new[]
         {
-            CREADA,
-            PROGRAMADA,
-            EN_CURSO,
-            APLAZADA,
-            FINALIZADA,
-            APROBADA,
-            RECHAZADA,
-            CANCELADA,
+            SOLICITUD_INSPECCION_CREADA,
+            VERIFICACION_SOLICITUD,
+            ACEPTADA,
+            OBSERVADA,
+            SUBSANADA,
+            VIATICOS_REQUERIDOS,
+            PAGO_VALIDADO,
+            EN_INSPECCION,
+            INFORME_ELABORADO,
+            RESULTADO_SATISFACTORIO,
+            RESULTADO_NO_SATISFACTORIO,
+            OBSERVACION_DOCUMENTAL,
             CERRADA
         };
 
-
-        // ============================================
-        // MATRIZ DE TRANSICIONES PERMITIDAS
-        // ============================================
         /// <summary>
-        /// Define qué estados de destino son válidos desde cada estado actual.
-        /// Clave: Estado actual
-        /// Valor: Lista de estados permitidos como siguiente paso
+        /// Transiciones canónicas permitidas según BPMN de inspecciones.
         /// </summary>
-        public static readonly Dictionary<string, List<string>> TransicionesPermitidas = new Dictionary<string, List<string>>
+        public static readonly Dictionary<string, List<string>> TransicionesPermitidas =
+            new Dictionary<string, List<string>>(StringComparer.OrdinalIgnoreCase)
+            {
+                { SOLICITUD_INSPECCION_CREADA, new List<string> { VERIFICACION_SOLICITUD } },
+                { VERIFICACION_SOLICITUD, new List<string> { ACEPTADA, OBSERVADA, CERRADA } },
+                { OBSERVADA, new List<string> { SUBSANADA, CERRADA } },
+                { SUBSANADA, new List<string> { VERIFICACION_SOLICITUD } },
+                { ACEPTADA, new List<string> { VIATICOS_REQUERIDOS, PAGO_VALIDADO, EN_INSPECCION } },
+                { VIATICOS_REQUERIDOS, new List<string> { PAGO_VALIDADO, CERRADA } },
+                { PAGO_VALIDADO, new List<string> { EN_INSPECCION } },
+                { EN_INSPECCION, new List<string> { INFORME_ELABORADO, OBSERVADA } },
+                { INFORME_ELABORADO, new List<string> { RESULTADO_SATISFACTORIO, RESULTADO_NO_SATISFACTORIO, OBSERVACION_DOCUMENTAL } },
+                { OBSERVACION_DOCUMENTAL, new List<string> { SUBSANADA, CERRADA } },
+                { RESULTADO_NO_SATISFACTORIO, new List<string> { OBSERVADA, CERRADA } },
+                { RESULTADO_SATISFACTORIO, new List<string> { CERRADA } },
+                { CERRADA, new List<string>() }
+            };
+
+        /// <summary>
+        /// Normaliza cualquier estado (legacy/BPMN) al estado canónico BPMN.
+        /// </summary>
+        public static string NormalizarEstado(string estado)
         {
-            // CREADA → PROGRAMADA, CANCELADA
-            { CREADA, new List<string> { PROGRAMADA, CANCELADA } },
-            
-            // PROGRAMADA → EN_CURSO, APLAZADA, CANCELADA
-            { PROGRAMADA, new List<string> { EN_CURSO, APLAZADA, CANCELADA } },
-            
-            // EN_CURSO → FINALIZADA, APLAZADA, CANCELADA
-            { EN_CURSO, new List<string> { FINALIZADA, APLAZADA, CANCELADA } },
-            
-            // APLAZADA → PROGRAMADA (reprogramar), CANCELADA
-            { APLAZADA, new List<string> { PROGRAMADA, CANCELADA } },
-            
-            // FINALIZADA → APROBADA, RECHAZADA
-            { FINALIZADA, new List<string> { APROBADA, RECHAZADA } },
-            
-            // RECHAZADA → EN_CURSO (para corregir), FINALIZADA (re-entrega)
-            { RECHAZADA, new List<string> { EN_CURSO, FINALIZADA } },
-            
-            // APROBADA → CERRADA
-            { APROBADA, new List<string> { CERRADA } },
-            
-            // CANCELADA → no tiene transiciones (estado terminal)
-            { CANCELADA, new List<string>() },
-            
-            // CERRADA → no tiene transiciones (estado terminal)
-            { CERRADA, new List<string>() }
-        };
+            if (string.IsNullOrWhiteSpace(estado))
+            {
+                return SOLICITUD_INSPECCION_CREADA;
+            }
 
+            var value = estado.Trim().ToUpperInvariant()
+                .Replace("Á", "A")
+                .Replace("É", "E")
+                .Replace("Í", "I")
+                .Replace("Ó", "O")
+                .Replace("Ú", "U");
 
-        // ============================================
-        // MÉTODOS DE VALIDACIÓN
-        // ============================================
-        
+            switch (value)
+            {
+                case "CREADA":
+                case "SOLICITUD_INSPECCION_CREADA":
+                    return SOLICITUD_INSPECCION_CREADA;
+                case "PROGRAMADA":
+                case "VERIFICACION_SOLICITUD":
+                    return VERIFICACION_SOLICITUD;
+                case "ACEPTADA":
+                    return ACEPTADA;
+                case "OBSERVADA":
+                    return OBSERVADA;
+                case "SUBSANADA":
+                    return SUBSANADA;
+                case "APLAZADA":
+                case "VIATICOS_REQUERIDOS":
+                    return VIATICOS_REQUERIDOS;
+                case "PAGO_VALIDADO":
+                    return PAGO_VALIDADO;
+                case "EN_CURSO":
+                case "EN_INSPECCION":
+                case "EN_PROGRESO":
+                    return EN_INSPECCION;
+                case "FINALIZADA":
+                case "INFORME_ELABORADO":
+                    return INFORME_ELABORADO;
+                case "APROBADA":
+                case "RESULTADO_SATISFACTORIO":
+                    return RESULTADO_SATISFACTORIO;
+                case "RECHAZADA":
+                case "RESULTADO_NO_SATISFACTORIO":
+                    return RESULTADO_NO_SATISFACTORIO;
+                case "OBSERVACION_DOCUMENTAL":
+                    return OBSERVACION_DOCUMENTAL;
+                case "CANCELADA":
+                case "CERRADA":
+                    return CERRADA;
+                default:
+                    return value;
+            }
+        }
+
         /// <summary>
-        /// Verifica si un estado es válido según las constantes definidas
+        /// Mapea un estado canónico a un estado core legacy para compatibilidad
+        /// cuando el constraint en BD aún no acepta estados BPMN extendidos.
         /// </summary>
+        public static string MapearEstadoCoreCompat(string estadoCanonico)
+        {
+            var estado = NormalizarEstado(estadoCanonico);
+            switch (estado)
+            {
+                case SOLICITUD_INSPECCION_CREADA:
+                    return "CREADA";
+                case VERIFICACION_SOLICITUD:
+                case ACEPTADA:
+                case SUBSANADA:
+                case PAGO_VALIDADO:
+                    return "PROGRAMADA";
+                case OBSERVADA:
+                case OBSERVACION_DOCUMENTAL:
+                case RESULTADO_NO_SATISFACTORIO:
+                    return "RECHAZADA";
+                case VIATICOS_REQUERIDOS:
+                    return "APLAZADA";
+                case EN_INSPECCION:
+                    return "EN_CURSO";
+                case INFORME_ELABORADO:
+                    return "FINALIZADA";
+                case RESULTADO_SATISFACTORIO:
+                    return "APROBADA";
+                case CERRADA:
+                    return "CERRADA";
+                default:
+                    return "CREADA";
+            }
+        }
+
         public static bool EsEstadoValido(string estado)
         {
-            if (string.IsNullOrWhiteSpace(estado))
-                return false;
-
-            return TodosLosEstados.Contains(estado.ToUpperInvariant());
+            var normalized = NormalizarEstado(estado);
+            return TodosLosEstados.Any(x => string.Equals(x, normalized, StringComparison.OrdinalIgnoreCase));
         }
 
-
-        /// <summary>
-        /// Valida si una transición de estado es permitida
-        /// </summary>
-        /// <param name="estadoActual">Estado actual de la inspección</param>
-        /// <param name="estadoDestino">Estado al que se desea transicionar</param>
-        /// <returns>True si la transición es válida</returns>
         public static bool EsTransicionValida(string estadoActual, string estadoDestino)
         {
-            if (string.IsNullOrWhiteSpace(estadoActual) || string.IsNullOrWhiteSpace(estadoDestino))
+            var actual = NormalizarEstado(estadoActual);
+            var destino = NormalizarEstado(estadoDestino);
+
+            if (!TransicionesPermitidas.ContainsKey(actual))
+            {
                 return false;
+            }
 
-            // Normalizar a mayúsculas
-            estadoActual = estadoActual.ToUpperInvariant();
-            estadoDestino = estadoDestino.ToUpperInvariant();
-
-            // Validar que ambos estados existan
-            if (!EsEstadoValido(estadoActual) || !EsEstadoValido(estadoDestino))
-                return false;
-
-            // Si no hay reglas definidas para el estado actual, no permite transiciones
-            if (!TransicionesPermitidas.ContainsKey(estadoActual))
-                return false;
-
-            // Verificar si el estado destino está en la lista de permitidos
-            return TransicionesPermitidas[estadoActual].Contains(estadoDestino);
+            return TransicionesPermitidas[actual].Any(x => string.Equals(x, destino, StringComparison.OrdinalIgnoreCase));
         }
 
-
-        /// <summary>
-        /// Obtiene la lista de estados válidos desde el estado actual
-        /// </summary>
         public static List<string> ObtenerEstadosPermitidos(string estadoActual)
         {
-            if (string.IsNullOrWhiteSpace(estadoActual))
+            var actual = NormalizarEstado(estadoActual);
+            if (!TransicionesPermitidas.ContainsKey(actual))
+            {
                 return new List<string>();
+            }
 
-            estadoActual = estadoActual.ToUpperInvariant();
-
-            if (!TransicionesPermitidas.ContainsKey(estadoActual))
-                return new List<string>();
-
-            return new List<string>(TransicionesPermitidas[estadoActual]);
+            return new List<string>(TransicionesPermitidas[actual]);
         }
 
-
-        /// <summary>
-        /// Verifica si un estado es terminal (no permite más transiciones)
-        /// </summary>
         public static bool EsEstadoFinal(string estado)
         {
-            if (string.IsNullOrWhiteSpace(estado))
-                return false;
-
-            estado = estado.ToUpperInvariant();
-
-            return estado == CERRADA || estado == CANCELADA;
+            return string.Equals(NormalizarEstado(estado), CERRADA, StringComparison.OrdinalIgnoreCase);
         }
 
-
-        /// <summary>
-        /// Verifica si una inspección en un estado específico puede ser editada
-        /// </summary>
         public static bool PermiteEdicion(string estado)
         {
-            if (string.IsNullOrWhiteSpace(estado))
-                return false;
-
-            estado = estado.ToUpperInvariant();
-
-            // Solo se puede editar en estados iniciales
-            return estado == CREADA || estado == PROGRAMADA || estado == RECHAZADA;
+            var normalized = NormalizarEstado(estado);
+            return normalized == SOLICITUD_INSPECCION_CREADA ||
+                   normalized == VERIFICACION_SOLICITUD ||
+                   normalized == OBSERVADA ||
+                   normalized == SUBSANADA ||
+                   normalized == ACEPTADA;
         }
 
-
-        /// <summary>
-        /// Verifica si en un estado específico se puede subir informe
-        /// </summary>
         public static bool PermiteSubirInforme(string estado)
         {
-            if (string.IsNullOrWhiteSpace(estado))
-                return false;
-
-            estado = estado.ToUpperInvariant();
-
-            // Puede subir informe en EN_CURSO, FINALIZADA, RECHAZADA (re-entrega)
-            return estado == EN_CURSO || estado == FINALIZADA || estado == RECHAZADA;
+            var normalized = NormalizarEstado(estado);
+            return normalized == EN_INSPECCION ||
+                   normalized == INFORME_ELABORADO ||
+                   normalized == RESULTADO_NO_SATISFACTORIO ||
+                   normalized == OBSERVACION_DOCUMENTAL;
         }
 
-
-        /// <summary>
-        /// Obtiene descripción legible del estado
-        /// </summary>
         public static string ObtenerDescripcion(string estado)
         {
-            if (string.IsNullOrWhiteSpace(estado))
-                return "Estado desconocido";
-
-            switch (estado.ToUpperInvariant())
+            switch (NormalizarEstado(estado))
             {
-                case CREADA:
-                    return "Creada - Sin programar";
-                case PROGRAMADA:
-                    return "Programada - Fecha asignada";
-                case EN_CURSO:
-                    return "En Curso - Inspector trabajando";
-                case APLAZADA:
-                    return "Aplazada - Requiere reprogramación";
-                case FINALIZADA:
-                    return "Finalizada - Informe generado";
-                case APROBADA:
-                    return "Aprobada - Informe validado";
-                case RECHAZADA:
-                    return "Rechazada - Requiere correcciones";
-                case CANCELADA:
-                    return "Cancelada - No se completará";
+                case SOLICITUD_INSPECCION_CREADA:
+                    return "Solicitud de inspección creada";
+                case VERIFICACION_SOLICITUD:
+                    return "Verificación de solicitud";
+                case ACEPTADA:
+                    return "Solicitud aceptada";
+                case OBSERVADA:
+                    return "Solicitud observada";
+                case SUBSANADA:
+                    return "Subsanada";
+                case VIATICOS_REQUERIDOS:
+                    return "Viáticos requeridos";
+                case PAGO_VALIDADO:
+                    return "Pago validado";
+                case EN_INSPECCION:
+                    return "En inspección";
+                case INFORME_ELABORADO:
+                    return "Informe elaborado";
+                case RESULTADO_SATISFACTORIO:
+                    return "Resultado satisfactorio";
+                case RESULTADO_NO_SATISFACTORIO:
+                    return "Resultado no satisfactorio";
+                case OBSERVACION_DOCUMENTAL:
+                    return "Observación documental";
                 case CERRADA:
-                    return "Cerrada - Proceso completo";
+                    return "Cerrada";
                 default:
                     return "Estado desconocido";
             }
         }
 
-
-        /// <summary>
-        /// Obtiene el color CSS para badge según el estado
-        /// </summary>
         public static string ObtenerColorBadge(string estado)
         {
-            if (string.IsNullOrWhiteSpace(estado))
-                return "default";
-
-            switch (estado.ToUpperInvariant())
+            switch (NormalizarEstado(estado))
             {
-                case CREADA:
-                    return "info";           // Azul claro (nuevo)
-                case PROGRAMADA:
-                    return "primary";        // Azul (en planificación)
-                case EN_CURSO:
-                    return "warning";        // Amarillo (en proceso)
-                case APLAZADA:
-                    return "default";        // Gris (suspendido temporal)
-                case FINALIZADA:
-                    return "success";        // Verde claro (completada)
-                case APROBADA:
-                    return "success";        // Verde (validada)
-                case RECHAZADA:
-                    return "danger";         // Rojo (requiere atención)
-                case CANCELADA:
-                    return "default";        // Gris (no activa)
+                case SOLICITUD_INSPECCION_CREADA:
+                    return "info";
+                case VERIFICACION_SOLICITUD:
+                case ACEPTADA:
+                case PAGO_VALIDADO:
+                    return "primary";
+                case OBSERVADA:
+                case OBSERVACION_DOCUMENTAL:
+                case RESULTADO_NO_SATISFACTORIO:
+                    return "danger";
+                case SUBSANADA:
+                    return "warning";
+                case VIATICOS_REQUERIDOS:
+                    return "secondary";
+                case EN_INSPECCION:
+                    return "warning";
+                case INFORME_ELABORADO:
+                case RESULTADO_SATISFACTORIO:
+                    return "success";
                 case CERRADA:
-                    return "inverse";        // Negro (archivada)
+                    return "dark";
                 default:
                     return "default";
             }

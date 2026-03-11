@@ -42,6 +42,12 @@ namespace CapaModelo
 
         public int CodigoUsuario { get; set; }
         public int? CodigoTecnico { get; set; }
+        public string TecnicoResponsableCedula { get; set; }
+        public string TecnicoResponsableNombre { get; set; }
+        public string TecnicoResponsableTipo { get; set; }
+        public string InspectorApoyoCedula { get; set; }
+        public string InspectorApoyoNombre { get; set; }
+        public string InspectorApoyoTipo { get; set; }
 
         public DateTime? CreatedAt { get; set; }
         public DateTime? UpdatedAt { get; set; }

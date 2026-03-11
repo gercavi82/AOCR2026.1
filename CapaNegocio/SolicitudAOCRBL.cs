@@ -90,10 +90,24 @@ namespace CapaNegocio
         }
 
         // 12. Asignar inspectores (CORREGIDO: Delega al DAO)
-        public static bool AsignarInspectores(int id, int principal, int? apoyo, DateTime fecha, string obs, out string mensaje)
+        public static bool AsignarInspectores(
+            int id,
+            string principalCedula,
+            string apoyoCedula,
+            DateTime fecha,
+            string obs,
+            string tipoInspector,
+            out string mensaje)
         {
             // Ya no hay código SQL aquí, se movió al DAO para evitar errores de Npgsql en esta capa
-            return new SolicitudAOCRDAO().AsignarInspectores(id, principal, apoyo, fecha, obs, out mensaje);
+            return new SolicitudAOCRDAO().AsignarInspectores(
+                id,
+                principalCedula,
+                apoyoCedula,
+                fecha,
+                obs,
+                tipoInspector,
+                out mensaje);
         }
     }
 }

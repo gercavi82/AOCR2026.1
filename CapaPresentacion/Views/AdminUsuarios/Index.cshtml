@@ -2,11 +2,19 @@
 
 @{
     ViewBag.Title = "Administracion - Usuarios";
+    var rolSesion = Session["Rol"] != null ? Session["Rol"].ToString() : string.Empty;
+    var esAdminSesion = string.Equals(rolSesion, "Administrador", System.StringComparison.OrdinalIgnoreCase);
 }
 
 <div class="d-flex flex-wrap justify-content-between align-items-center mb-3">
     <h2 class="mb-2 mb-md-0">Administracion de usuarios</h2>
     <div class="d-flex">
+        @if (esAdminSesion)
+        {
+            <a class="btn btn-outline-dark mr-2" href="@Url.Action("CrearUsuarioInternoRT", "AdminUsuarios")">
+                <i class="fas fa-user-plus mr-1"></i> Crear Usuario Interno RT
+            </a>
+        }
         <a class="btn btn-outline-primary" href="@Url.Action("PermisosRol", "AdminUsuarios")">
             <i class="fas fa-key mr-1"></i> Permisos por rol
         </a>
