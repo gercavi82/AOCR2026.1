@@ -30,6 +30,14 @@
     </div>
 }
 
+@if (TempData["Info"] != null)
+{
+    <div class="alert alert-info alert-dismissible fade show" role="alert">
+        <i class="glyphicon glyphicon-info-sign"></i> @TempData["Info"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+}
+
 <div class="card">
     <div class="card-body">
         @if (Model != null && Model.Any())
@@ -50,10 +58,10 @@
                         @foreach (var s in Model)
                         {
                             <tr>
-                                <td>@s.CodigoSolicitud</td>
-                                <td>@s.NumeroSolicitud</td>
-                                <td>@s.NombreOperador</td>
-                                <td>@(s.FechaSolicitud.HasValue ? s.FechaSolicitud.Value.ToString("dd/MM/yyyy") : "-")</td>
+                                <td>@Html.Encode(s.CodigoSolicitud)</td>
+                                <td>@Html.Encode(s.NumeroSolicitud)</td>
+                                <td>@Html.Encode(s.NombreOperador)</td>
+                                <td>@Html.Encode(s.FechaSolicitud.HasValue ? s.FechaSolicitud.Value.ToString("dd/MM/yyyy") : "-")</td>
                                 <td>
                                     <span class="badge 
                                         @(s.Estado == "APROBADA" ? "bg-success" : 
