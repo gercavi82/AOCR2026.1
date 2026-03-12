@@ -1,0 +1,325 @@
+@using System.Collections.Generic
+@model CapaPresentacion.Models.AdminUsuarios.AdminUsuarioInternoRTViewModel
+
+@{
+    ViewBag.Title = "Administracion - Crear Usuario Interno RT";
+}
+
+<div class="d-flex flex-wrap justify-content-between align-items-center mb-3">
+    <h2 class="mb-2 mb-md-0">Crear Usuario Interno RT</h2>
+    <a class="btn btn-outline-secondary" href="@Url.Action("Index", "AdminUsuarios")">
+        <i class="fas fa-arrow-left mr-1"></i> Volver
+    </a>
+</div>
+
+<p class="text-muted">
+    Consulte el usuario interno en la base institucional y registre su configuracion de aeropuerto.
+</p>
+
+@if (TempData["Success"] != null)
+{
+    <div class="alert alert-success">@TempData["Success"]</div>
+}
+@if (TempData["Error"] != null)
+{
+    <div class="alert alert-danger">@TempData["Error"]</div>
+}
+
+@using (Html.BeginForm("CrearUsuarioInternoRT", "AdminUsuarios", FormMethod.Post, new { id = "formUsuarioInternoRt", autocomplete = "off" }))
+{
+    @Html.AntiForgeryToken()
+    @Html.ValidationSummary(true, "", new { @class = "alert alert-danger" })
+
+    <div class="card mb-3">
+        <div class="card-header">
+            <strong>Busqueda de usuario interno</strong>
+        </div>
+        <div class="card-body">
+            <div class="row g-3 align-items-end">
+                <div class="col-md-6">
+                    @Html.LabelFor(m => m.CodigoUsuarioBusqueda, new { @class = "form-label" })
+                    <div class="input-group">
+                        @Html.TextBoxFor(m => m.CodigoUsuarioBusqueda, new
+                        {
+                            @class = "form-control",
+                            maxlength = "64",
+                            placeholder = "Ingrese cedula o nombre del inspector",
+                            id = "CodigoUsuarioBusqueda"
+                        })
+                        <button class="btn btn-primary" type="button" id="btnBuscarUsuarioInternoRT">
+                            <i class="fas fa-search mr-1"></i> Buscar
+                        </button>
+                    </div>
+                    @Html.ValidationMessageFor(m => m.CodigoUsuarioBusqueda, null, new { @class = "text-danger d-block mt-1" })
+                </div>
+            </div>
+            <div id="msgBusquedaUsuarioInternoRT" class="small mt-2"></div>
+
+            <div id="tablaResultadosContainer" class="mt-3" style="display:none;">
+                <p class="small text-muted mb-1">Seleccione un inspector de la lista:</p>
+                <div class="table-responsive">
+                    <table class="table table-sm table-hover table-bordered" id="tablaResultados">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Cedula</th>
+                                <th>Nombre completo</th>
+                                <th>Tipo</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody id="tbodyResultados"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card mb-3" id="cardDatosInspector" style="display:none;">
+        <div class="card-header">
+            <strong>Datos del inspector</strong>
+        </div>
+        <div class="card-body">
+            <div class="row g-3">
+                <div class="col-md-4">
+                    <label class="form-label">Cedula</label>
+                    <input type="text" class="form-control" id="txtCedula" readonly />
+                    @Html.HiddenFor(m => m.Cedula, new { id = "Cedula" })
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Nombre completo</label>
+                    <input type="text" class="form-control" id="txtNombre" readonly />
+                    @Html.HiddenFor(m => m.NombreCompleto, new { id = "NombreCompleto" })
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Tipo inspector</label>
+                    <input type="text" class="form-control" id="txtTipo" readonly />
+                    @Html.HiddenFor(m => m.TipoInspector, new { id = "TipoInspector" })
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card mb-3">
+        <div class="card-header">
+            <strong>Datos institucionales y destino</strong>
+        </div>
+        <div class="card-body">
+            @Html.HiddenFor(m => m.CodigoUsuario, new { id = "CodigoUsuario" })
+            @Html.HiddenFor(m => m.Opcaer, new { id = "Opcaer" })
+
+            <div class="row g-3">
+                <div class="col-md-4">
+                    @Html.LabelFor(m => m.CiudadCodigo, new { @class = "form-label" })
+                    @Html.TextBoxFor(m => m.CiudadCodigo, new
+                    {
+                        @class = "form-control",
+                        id = "CiudadCodigo",
+                        @readonly = "readonly"
+                    })
+                </div>
+                <div class="col-md-4">
+                    @Html.LabelFor(m => m.CodigoFinanciero, new { @class = "form-label" })
+                    @Html.TextBoxFor(m => m.CodigoFinanciero, new
+                    {
+                        @class = "form-control",
+                        id = "CodigoFinanciero",
+                        @readonly = "readonly"
+                    })
+                </div>
+                <div class="col-md-4">
+                    @Html.LabelFor(m => m.Opcoi3, new { @class = "form-label" })
+                    @Html.TextBoxFor(m => m.Opcoi3, new
+                    {
+                        @class = "form-control",
+                        id = "Opcoi3",
+                        @readonly = "readonly"
+                    })
+                </div>
+            </div>
+
+            <div class="row g-3 mt-1">
+                <div class="col-md-6">
+                    @Html.LabelFor(m => m.Opcar5, new { @class = "form-label" })
+                    @Html.DropDownListFor(
+                        m => m.Opcar5,
+                        Model.Aeropuertos ?? new List<SelectListItem>(),
+                        new { @class = "form-control", id = "Opcar5" })
+                    @Html.ValidationMessageFor(m => m.Opcar5, null, new { @class = "text-danger d-block mt-1" })
+                    <small class="text-muted">Al guardar se almacenara tambien en OPCAER.</small>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="d-flex justify-content-end mt-3">
+        <a class="btn btn-outline-secondary mr-2" href="@Url.Action("Index", "AdminUsuarios")">Cancelar</a>
+        <button type="submit" class="btn btn-success">
+            <i class="fas fa-save mr-1"></i> Guardar
+        </button>
+    </div>
+}
+
+@section Scripts {
+    <script src="~/Scripts/admin-usuarios.js"></script>
+    <script>
+        (function () {
+            function byId(id) { return document.getElementById(id); }
+
+            var btnBuscar = byId("btnBuscarUsuarioInternoRT");
+            var txtBusqueda = byId("CodigoUsuarioBusqueda");
+            var msg = byId("msgBusquedaUsuarioInternoRT");
+            var txtCodigo = byId("CodigoUsuario");
+            var txtCiudad = byId("CiudadCodigo");
+            var txtFinanciero = byId("CodigoFinanciero");
+            var txtOpcoi3 = byId("Opcoi3");
+            var ddlOpcar5 = byId("Opcar5");
+            var txtOpcaer = byId("Opcaer");
+
+            var tablaContainer = byId("tablaResultadosContainer");
+            var tbody = byId("tbodyResultados");
+            var cardInspector = byId("cardDatosInspector");
+            var txtCedula = byId("txtCedula");
+            var hidCedula = byId("Cedula");
+            var txtNombre = byId("txtNombre");
+            var hidNombre = byId("NombreCompleto");
+            var txtTipo = byId("txtTipo");
+            var hidTipo = byId("TipoInspector");
+
+            function limpiarMensaje() {
+                if (!msg) { return; }
+                msg.className = "small mt-2";
+                msg.textContent = "";
+            }
+
+            function mostrarMensaje(texto, esError) {
+                if (!msg) { return; }
+                msg.className = esError ? "small mt-2 text-danger" : "small mt-2 text-success";
+                msg.textContent = texto || "";
+            }
+
+            function ocultarTabla() {
+                if (tablaContainer) { tablaContainer.style.display = "none"; }
+                if (tbody) { tbody.innerHTML = ""; }
+            }
+
+            function ocultarInspector() {
+                if (cardInspector) { cardInspector.style.display = "none"; }
+            }
+
+            function llenarInspector(data) {
+                if (cardInspector) { cardInspector.style.display = ""; }
+                if (txtCedula) { txtCedula.value = data.cedula || ""; }
+                if (hidCedula) { hidCedula.value = data.cedula || ""; }
+                if (txtNombre) { txtNombre.value = data.nombre || ""; }
+                if (hidNombre) { hidNombre.value = data.nombre || ""; }
+                if (txtTipo) { txtTipo.value = data.tipo || ""; }
+                if (hidTipo) { hidTipo.value = data.tipo || ""; }
+                if (txtCodigo) { txtCodigo.value = data.codigoUsuario || data.cedula || ""; }
+                if (txtBusqueda) { txtBusqueda.value = data.cedula || ""; }
+                if (txtCiudad) { txtCiudad.value = data.ciudadCodigo || ""; }
+                if (txtFinanciero) { txtFinanciero.value = (data.codigoFinanciero && data.tieneFinanciero) ? data.codigoFinanciero : ""; }
+                if (txtOpcoi3) { txtOpcoi3.value = (data.codigoFinanciero && data.tieneFinanciero) ? data.codigoFinanciero : ""; }
+                sincronizarAeropuerto();
+            }
+
+            function mostrarTabla(resultados) {
+                if (!tablaContainer || !tbody) { return; }
+                tbody.innerHTML = "";
+                for (var i = 0; i < resultados.length; i++) {
+                    var r = resultados[i];
+                    var tr = document.createElement("tr");
+                    tr.style.cursor = "pointer";
+                    tr.setAttribute("data-cedula", r.cedula || "");
+                    tr.innerHTML =
+                        "<td>" + escapeHtml(r.cedula || "") + "</td>" +
+                        "<td>" + escapeHtml(r.nombre || "") + "</td>" +
+                        "<td>" + escapeHtml(r.tipo || "") + "</td>" +
+                        '<td><button type="button" class="btn btn-sm btn-outline-primary btnSeleccionar">Seleccionar</button></td>';
+                    tbody.appendChild(tr);
+                }
+                tablaContainer.style.display = "";
+
+                $(tbody).off("click", ".btnSeleccionar").on("click", ".btnSeleccionar", function () {
+                    var fila = $(this).closest("tr");
+                    var cedula = fila.attr("data-cedula");
+                    if (cedula && txtBusqueda) {
+                        txtBusqueda.value = cedula;
+                        ocultarTabla();
+                        btnBuscar.click();
+                    }
+                });
+            }
+
+            function escapeHtml(str) {
+                var div = document.createElement("div");
+                div.appendChild(document.createTextNode(str));
+                return div.innerHTML;
+            }
+
+            function sincronizarAeropuerto() {
+                if (txtOpcaer && ddlOpcar5) {
+                    txtOpcaer.value = ddlOpcar5.value || "";
+                }
+            }
+
+            if (ddlOpcar5) {
+                ddlOpcar5.addEventListener("change", sincronizarAeropuerto);
+                sincronizarAeropuerto();
+            }
+
+            if (!btnBuscar) {
+                return;
+            }
+
+            btnBuscar.addEventListener("click", function () {
+                limpiarMensaje();
+                ocultarTabla();
+                ocultarInspector();
+
+                var codigo = (txtBusqueda && txtBusqueda.value ? txtBusqueda.value : "").trim();
+                if (!codigo) {
+                    mostrarMensaje("Debe ingresar cedula o nombre para buscar.", true);
+                    if (txtBusqueda) { txtBusqueda.focus(); }
+                    return;
+                }
+
+                btnBuscar.disabled = true;
+                var url = "@Url.Action("BuscarUsuarioInternoRT", "AdminUsuarios")" + "?codigoUsuario=" + encodeURIComponent(codigo);
+
+                $.ajax({
+                    url: url,
+                    method: "GET",
+                    dataType: "json"
+                }).done(function (data) {
+                    if (!data || !data.success) {
+                        mostrarMensaje((data && data.message) ? data.message : "No se encontro coincidencia por cedula o nombre en la base institucional.", true);
+                        return;
+                    }
+
+                    if (data.multiple) {
+                        mostrarMensaje(data.message || "Multiples resultados encontrados.", false);
+                        mostrarTabla(data.resultados || []);
+                        return;
+                    }
+
+                    llenarInspector(data);
+
+                    if (data.yaRegistrado) {
+                        mostrarMensaje(data.message || "El usuario ya tiene un registro interno RT activo.", true);
+                    } else {
+                        var msgOk = "Datos cargados correctamente.";
+                        if (!data.tieneFinanciero) {
+                            msgOk += " (Sin codigo financiero en USUAR1; ingrese manualmente si es necesario.)";
+                        }
+                        msgOk += " Seleccione el aeropuerto y guarde.";
+                        mostrarMensaje(msgOk, false);
+                    }
+                }).fail(function () {
+                    mostrarMensaje("Error al consultar la base institucional.", true);
+                }).always(function () {
+                    btnBuscar.disabled = false;
+                });
+            });
+        })();
+    </script>
+}
