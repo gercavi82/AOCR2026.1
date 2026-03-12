@@ -56,8 +56,7 @@
         bool esTecnicaRol = esRol("Inspector") || esRol("Tecnico") || esRol("EvaluadorTecnico") || esRol("CoordinadorInspecciones");
         bool esFinancieroRol = esRol("Financiero") || esRol("CoordinadorFinanciero");
         bool esLegalRol = esRol("CoordinacionLegal") || esRol("CoordinadorLegal");
-        bool esDireccionRol = esRol("Direccion") || esRol("JefaturaTecnica") || esRol("DirectorFinanciero") || esRol("DirectorGeneral");
-        bool esCoordinacionJefaturaRol = esLegalRol || esDireccionRol;
+        bool esDireccionRol = esRol("Direccion") || esRol("JefaturaTecnica") || esRol("DirectorFinanciero");
         bool esAprobadorUsuariosRol = esLegalRol || esRol("JefaturaTecnica");
 
         // Solo Solicitante/Operador requieren crear su propia orden
@@ -68,7 +67,6 @@
         bool puedeFinanciero = esAdministrador || esFinancieroRol;
         bool puedeLegal = esAdministrador || esLegalRol;
         bool puedeDireccion = esAdministrador || esDireccionRol;
-        bool puedeCoordinacionJefatura = esAdministrador || esCoordinacionJefaturaRol;
         bool puedeAprobarUsuarios = esAdministrador || esAprobadorUsuariosRol;
         bool puedeAdministracion = esAdministrador || esRol("Direccion") || esRol("JefaturaTecnica");
 
@@ -344,32 +342,31 @@
             </div>
         }
 
-        @* ===================== COORDINACION Y JEFATURA (bloque BPMN unificado) ===================== *@
-        @if (puedeCoordinacionJefatura)
+        @* ===================== COORDINACIÓN LEGAL (solo si la orden ya está generada) ===================== *@
+        @if (puedeLegal)
+        {
+            <div class="nav-group mb-4">
+                <div class="group-title text-purple">
+                    <i class="fas fa-balance-scale mr-1"></i> COORDINACIÓN LEGAL
+                </div>
+                <ul class="aocr-nav">
+                    <li><a class="aocr-link" href="@Url.Action("RevisarLegal", "CoordinacionLegal")"><i class="fas fa-gavel text-white-50 mr-2"></i> Revisión Legal</a></li>
+                    <li><a class="aocr-link" href="@Url.Action("GenerarCertificados", "CoordinacionLegal")"><i class="fas fa-file-contract text-white-50 mr-2"></i> Generar Certificados</a></li>
+                </ul>
+            </div>
+        }
+
+        @* ===================== DIRECCIÓN / JEFATURA (solo si la orden ya está generada) ===================== *@
+        @if (puedeDireccion)
         {
             <div class="nav-group mb-4">
                 <div class="group-title text-danger">
-                    <i class="fas fa-user-tie mr-1"></i> COORDINACIÓN Y JEFATURA
+                    <i class="fas fa-user-tie mr-1"></i> DIRECCIÓN / JEFATURA
                 </div>
                 <ul class="aocr-nav">
-                    @if (esAdministrador || esRol("Direccion") || esRol("JefaturaTecnica") || esRol("DirectorGeneral"))
-                    {
-                        <li><a class="aocr-link" href="@Url.Action("DashboardGerencial", "CoordinacionJefatura")"><i class="fas fa-chart-line text-white-50 mr-2"></i> Dashboard Gerencial</a></li>
-                    }
-                    <li><a class="aocr-link" href="@Url.Action("RevisionVerificacion", "CoordinacionJefatura")"><i class="fas fa-search text-white-50 mr-2"></i> Revisión / Verificación</a></li>
-                    @if (esAdministrador || esRol("Direccion") || esRol("JefaturaTecnica"))
-                    {
-                        <li><a class="aocr-link" href="@Url.Action("AprobarSolicitudes", "CoordinacionJefatura")"><i class="fas fa-check-double text-white-50 mr-2"></i> Aprobar Solicitudes</a></li>
-                    }
-                    @if (esAdministrador || esRol("JefaturaTecnica"))
-                    {
-                        <li><a class="aocr-link" href="@Url.Action("ValidarAocr", "CoordinacionJefatura")"><i class="fas fa-stamp text-white-50 mr-2"></i> Validar AOCR</a></li>
-                    }
-                    @if (esAdministrador || esRol("CoordinacionLegal") || esRol("CoordinadorLegal") || esRol("DirectorGeneral"))
-                    {
-                        <li><a class="aocr-link" href="@Url.Action("LegalizarAocr", "CoordinacionJefatura")"><i class="fas fa-gavel text-white-50 mr-2"></i> Legalizar AOCR</a></li>
-                        <li><a class="aocr-link" href="@Url.Action("GenerarCertificados", "CoordinacionJefatura")"><i class="fas fa-file-contract text-white-50 mr-2"></i> Generar Certificados</a></li>
-                    }
+                    <li><a class="aocr-link" href="@Url.Action("DashboardGerencial", "Direccion")"><i class="fas fa-chart-line text-white-50 mr-2"></i> Dashboard Gerencial</a></li>
+                    <li><a class="aocr-link" href="@Url.Action("AprobarSolicitudes", "Direccion")"><i class="fas fa-check-double text-white-50 mr-2"></i> Aprobar Solicitudes</a></li>
+                    <li><a class="aocr-link" href="@Url.Action("ConfiguracionSistema", "Direccion")"><i class="fas fa-cogs text-white-50 mr-2"></i> Configuración Sistema</a></li>
                 </ul>
             </div>
         }
@@ -384,11 +381,6 @@
                 <ul class="aocr-nav">
                     @if (puedeAdministracion)
                     {
-                        <li>
-                            <a class="aocr-link" href="@Url.Action("ConfiguracionSistema", "Direccion")">
-                                <i class="fas fa-cogs text-white-50 mr-2"></i> Configuración Sistema
-                            </a>
-                        </li>
                         <li>
                             <a class="aocr-link" href="@Url.Action("Index", "AdminUsuarios")">
                                 <i class="fas fa-users-cog text-white-50 mr-2"></i> Gestionar Usuarios

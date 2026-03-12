@@ -31,16 +31,50 @@
         ? (Model.InspectorApoyoNombre + " - " + Model.InspectorApoyoCedula)
         : "No asignado";
     var tieneInforme = Model != null && !string.IsNullOrWhiteSpace(Model.RutaInforme);
-    var puedeGestionarCoordinacion = User.IsInRole("CoordinadorInspecciones") || User.IsInRole("JefaturaTecnica") || User.IsInRole("Administrador");
-    var puedeGestionarInspector = User.IsInRole("Inspector") || User.IsInRole("Administrador");
-    var puedePlanificar = User.IsInRole("CoordinadorInspecciones") || User.IsInRole("Administrador");
-    var puedeCerrar = User.IsInRole("JefaturaTecnica") || User.IsInRole("Administrador");
+    var estadoActualNormalizado = EstadosInspeccion.NormalizarEstado(estadoActual);
+    var estadosPermitidosDesdeActual = EstadosInspeccion.ObtenerEstadosPermitidos(estadoActualNormalizado);
+    Func<string, bool> usuarioTieneRol = rol => User != null && User.IsInRole(rol);
+    Func<string[], bool> usuarioTieneAlgunRol = roles =>
+        roles != null && roles.Any(r => !string.IsNullOrWhiteSpace(r) && usuarioTieneRol(r));
+    Func<string, bool> transicionPermitida = estadoDestino =>
+        estadosPermitidosDesdeActual.Any(x =>
+            string.Equals(
+                EstadosInspeccion.NormalizarEstado(x),
+                EstadosInspeccion.NormalizarEstado(estadoDestino),
+                System.StringComparison.OrdinalIgnoreCase));
+    var rolesCoordinacionJefatura = new[]
+    {
+        "CoordinadorInspecciones",
+        "Coordinador",
+        "JefaturaTecnica",
+        "Jefe",
+        "Direccion",
+        "Director",
+        "Legal",
+        "CoordinacionLegal",
+        "CoordinadorLegal"
+    };
+    var esAdministrador = usuarioTieneRol("Administrador");
+    var esInspector = usuarioTieneRol("Inspector");
+    var puedeGestionarCoordinacion = esAdministrador || usuarioTieneAlgunRol(rolesCoordinacionJefatura);
+    var puedeGestionarInspector = esAdministrador || esInspector;
+    var puedeVerificacion = puedeGestionarCoordinacion && transicionPermitida(EstadosInspeccion.VERIFICACION_SOLICITUD);
+    var puedeAceptarSolicitud = puedeGestionarCoordinacion && transicionPermitida(EstadosInspeccion.ACEPTADA);
+    var puedeObservar = puedeGestionarCoordinacion && transicionPermitida(EstadosInspeccion.OBSERVADA);
+    var puedeSubsanada = puedeGestionarCoordinacion && transicionPermitida(EstadosInspeccion.SUBSANADA);
+    var puedeCerrar = puedeGestionarCoordinacion && transicionPermitida(EstadosInspeccion.CERRADA);
+    var puedeIniciarInspeccion = puedeGestionarInspector && transicionPermitida(EstadosInspeccion.EN_INSPECCION);
+    var puedeInformeElaborado = puedeGestionarInspector && transicionPermitida(EstadosInspeccion.INFORME_ELABORADO);
+    var puedeObservacionDocumental = puedeGestionarInspector && transicionPermitida(EstadosInspeccion.OBSERVACION_DOCUMENTAL);
+    var hayAccionesCoordinacionDisponibles = puedeVerificacion || puedeAceptarSolicitud || puedeObservar || puedeSubsanada || puedeCerrar;
+    var hayAccionesInspectorDisponibles = puedeIniciarInspeccion || puedeInformeElaborado || puedeObservacionDocumental;
+    var puedePlanificar = puedeGestionarCoordinacion;
     var puedeSubirInforme = User.IsInRole("Inspector") || User.IsInRole("Administrador");
-    var puedeSolicitarViaticos = User.IsInRole("Inspector") || User.IsInRole("CoordinadorInspecciones") || User.IsInRole("Administrador");
+    var puedeSolicitarViaticos = esInspector || puedeGestionarCoordinacion;
     var puedeValidarViaticos = User.IsInRole("CoordinadorFinanciero") || User.IsInRole("DirectorFinanciero") || User.IsInRole("Administrador");
-    var puedeRegistrarResultado = User.IsInRole("Inspector") || User.IsInRole("JefaturaTecnica") || User.IsInRole("Administrador");
+    var puedeRegistrarResultado = esInspector || puedeGestionarCoordinacion;
     var puedeRegistrarHallazgo = User.IsInRole("Inspector") || User.IsInRole("Administrador");
-    var puedeEditarInformeTecnico = User.IsInRole("Inspector") || User.IsInRole("CoordinadorInspecciones") || User.IsInRole("JefaturaTecnica") || User.IsInRole("Administrador");
+    var puedeEditarInformeTecnico = esInspector || puedeGestionarCoordinacion;
     var puedeSubirCorreccionSolicitante = User.IsInRole("Solicitante") || User.IsInRole("Administrador");
     var esSolicitante = User.IsInRole("Solicitante");
     var correoSolicitante = solicitud != null && !string.IsNullOrWhiteSpace(solicitud.CorreoRepresentanteTecnico)
@@ -728,79 +762,112 @@
                         </div>
                     </div>
 
-                    @if (puedeGestionarCoordinacion)
+                                        @if (puedeGestionarCoordinacion)
                     {
                         <div class="mb-3">
-                            <div class="mb-2"><span class="status-pill primary"><i class="fas fa-user-shield"></i> Coordinación y jefatura</span></div>
+                            <div class="mb-2"><span class="status-pill primary"><i class="fas fa-user-shield"></i> COORDINACION Y JEFATURA</span></div>
                             <div class="button-flow">
-                                @using (Html.BeginForm("CambiarEstado", "Inspeccion", FormMethod.Post))
+                                @if (puedeVerificacion)
                                 {
-                                    @Html.AntiForgeryToken()
-                                    @Html.Hidden("id", Model.CodigoInspeccion)
-                                    @Html.Hidden("estado", "VERIFICACION_SOLICITUD")
-                                    <button type="submit" class="btn btn-outline-primary">Verificación</button>
+                                    using (Html.BeginForm("CambiarEstado", "Inspeccion", FormMethod.Post))
+                                    {
+                                        @Html.AntiForgeryToken()
+                                        @Html.Hidden("id", Model.CodigoInspeccion)
+                                        @Html.Hidden("estado", EstadosInspeccion.VERIFICACION_SOLICITUD)
+                                        <button type="submit" class="btn btn-outline-primary">Verificacion</button>
+                                    }
                                 }
-                                @using (Html.BeginForm("CambiarEstado", "Inspeccion", FormMethod.Post))
+                                @if (puedeAceptarSolicitud)
                                 {
-                                    @Html.AntiForgeryToken()
-                                    @Html.Hidden("id", Model.CodigoInspeccion)
-                                    @Html.Hidden("estado", "ACEPTADA")
-                                    <button type="submit" class="btn btn-outline-success">Aceptar solicitud</button>
+                                    using (Html.BeginForm("CambiarEstado", "Inspeccion", FormMethod.Post))
+                                    {
+                                        @Html.AntiForgeryToken()
+                                        @Html.Hidden("id", Model.CodigoInspeccion)
+                                        @Html.Hidden("estado", EstadosInspeccion.ACEPTADA)
+                                        <button type="submit" class="btn btn-outline-success">Aceptar solicitud</button>
+                                    }
                                 }
-                                @using (Html.BeginForm("CambiarEstado", "Inspeccion", FormMethod.Post))
+                                @if (puedeObservar)
                                 {
-                                    @Html.AntiForgeryToken()
-                                    @Html.Hidden("id", Model.CodigoInspeccion)
-                                    @Html.Hidden("estado", "OBSERVADA")
-                                    <button type="submit" class="btn btn-outline-danger">Observar</button>
+                                    using (Html.BeginForm("CambiarEstado", "Inspeccion", FormMethod.Post))
+                                    {
+                                        @Html.AntiForgeryToken()
+                                        @Html.Hidden("id", Model.CodigoInspeccion)
+                                        @Html.Hidden("estado", EstadosInspeccion.OBSERVADA)
+                                        <button type="submit" class="btn btn-outline-danger">Observar</button>
+                                    }
                                 }
-                                @using (Html.BeginForm("CambiarEstado", "Inspeccion", FormMethod.Post))
+                                @if (puedeSubsanada)
                                 {
-                                    @Html.AntiForgeryToken()
-                                    @Html.Hidden("id", Model.CodigoInspeccion)
-                                    @Html.Hidden("estado", "SUBSANADA")
-                                    <button type="submit" class="btn btn-outline-warning">Subsanada</button>
+                                    using (Html.BeginForm("CambiarEstado", "Inspeccion", FormMethod.Post))
+                                    {
+                                        @Html.AntiForgeryToken()
+                                        @Html.Hidden("id", Model.CodigoInspeccion)
+                                        @Html.Hidden("estado", EstadosInspeccion.SUBSANADA)
+                                        <button type="submit" class="btn btn-outline-warning">Subsanada</button>
+                                    }
                                 }
-                                @using (Html.BeginForm("CambiarEstado", "Inspeccion", FormMethod.Post))
+                                @if (puedeCerrar)
                                 {
-                                    @Html.AntiForgeryToken()
-                                    @Html.Hidden("id", Model.CodigoInspeccion)
-                                    @Html.Hidden("estado", "CERRADA")
-                                    <button type="submit" class="btn btn-outline-dark">Cerrar</button>
+                                    using (Html.BeginForm("CambiarEstado", "Inspeccion", FormMethod.Post))
+                                    {
+                                        @Html.AntiForgeryToken()
+                                        @Html.Hidden("id", Model.CodigoInspeccion)
+                                        @Html.Hidden("estado", EstadosInspeccion.CERRADA)
+                                        <button type="submit" class="btn btn-outline-dark">Cerrar</button>
+                                    }
                                 }
                             </div>
+                            @if (!hayAccionesCoordinacionDisponibles)
+                            {
+                                <small class="text-muted d-block mt-2">No hay transiciones habilitadas para este bloque desde el estado actual (@estadoActualNormalizado).</small>
+                            }
                         </div>
                     }
 
                     @if (puedeGestionarInspector)
                     {
                         <div>
-                            <div class="mb-2"><span class="status-pill warning"><i class="fas fa-user-check"></i> Operación de inspector</span></div>
+                            <div class="mb-2"><span class="status-pill warning"><i class="fas fa-user-check"></i> OPERACION DE INSPECTOR</span></div>
                             <div class="button-flow">
-                                @using (Html.BeginForm("CambiarEstado", "Inspeccion", FormMethod.Post))
+                                @if (puedeIniciarInspeccion)
                                 {
-                                    @Html.AntiForgeryToken()
-                                    @Html.Hidden("id", Model.CodigoInspeccion)
-                                    @Html.Hidden("estado", "EN_INSPECCION")
-                                    <button type="submit" class="btn btn-outline-warning">Iniciar inspección</button>
+                                    using (Html.BeginForm("CambiarEstado", "Inspeccion", FormMethod.Post))
+                                    {
+                                        @Html.AntiForgeryToken()
+                                        @Html.Hidden("id", Model.CodigoInspeccion)
+                                        @Html.Hidden("estado", EstadosInspeccion.EN_INSPECCION)
+                                        <button type="submit" class="btn btn-outline-warning">Iniciar inspeccion</button>
+                                    }
                                 }
-                                @using (Html.BeginForm("CambiarEstado", "Inspeccion", FormMethod.Post))
+                                @if (puedeInformeElaborado)
                                 {
-                                    @Html.AntiForgeryToken()
-                                    @Html.Hidden("id", Model.CodigoInspeccion)
-                                    @Html.Hidden("estado", "INFORME_ELABORADO")
-                                    <button type="submit" class="btn btn-outline-info">Informe elaborado</button>
+                                    using (Html.BeginForm("CambiarEstado", "Inspeccion", FormMethod.Post))
+                                    {
+                                        @Html.AntiForgeryToken()
+                                        @Html.Hidden("id", Model.CodigoInspeccion)
+                                        @Html.Hidden("estado", EstadosInspeccion.INFORME_ELABORADO)
+                                        <button type="submit" class="btn btn-outline-info">Informe elaborado</button>
+                                    }
                                 }
-                                @using (Html.BeginForm("CambiarEstado", "Inspeccion", FormMethod.Post))
+                                @if (puedeObservacionDocumental)
                                 {
-                                    @Html.AntiForgeryToken()
-                                    @Html.Hidden("id", Model.CodigoInspeccion)
-                                    @Html.Hidden("estado", "OBSERVACION_DOCUMENTAL")
-                                    <button type="submit" class="btn btn-outline-danger">Observación documental</button>
+                                    using (Html.BeginForm("CambiarEstado", "Inspeccion", FormMethod.Post))
+                                    {
+                                        @Html.AntiForgeryToken()
+                                        @Html.Hidden("id", Model.CodigoInspeccion)
+                                        @Html.Hidden("estado", EstadosInspeccion.OBSERVACION_DOCUMENTAL)
+                                        <button type="submit" class="btn btn-outline-danger">Observacion documental</button>
+                                    }
                                 }
                             </div>
+                            @if (!hayAccionesInspectorDisponibles)
+                            {
+                                <small class="text-muted d-block mt-2">No hay transiciones habilitadas para inspector desde el estado actual (@estadoActualNormalizado).</small>
+                            }
                         </div>
                     }
+
                 </div>
             </div>
 
@@ -811,8 +878,8 @@
                             <i class="fas fa-file-pdf"></i>
                         </div>
                         <div>
-                            <h2 class="section-title">Informe técnico</h2>
-                            <p class="section-copy">Redacción estructurada del informe, generación automática de PDF y notificación al solicitante.</p>
+                            <h2 class="section-title">Informe tecnico</h2>
+                            <p class="section-copy">Redaccion estructurada del informe, generacion automatica de PDF y notificacion al solicitante.</p>
                         </div>
                     </div>
 

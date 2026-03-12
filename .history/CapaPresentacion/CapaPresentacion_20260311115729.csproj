@@ -310,7 +310,6 @@
     <Compile Include="Controllers\ChecklistController.cs" />
     <Compile Include="Controllers\LogController.cs" />
     <Compile Include="Controllers\ParametroController.cs" />
-    <Compile Include="Controllers\CoordinacionJefaturaController.cs" />
     <Compile Include="Controllers\CoordinacionLegalController.cs" />
     <Compile Include="Controllers\AdministradorController.cs" />
     <Compile Include="Controllers\AdminUsuariosController.cs" />
@@ -355,7 +354,6 @@
     <Compile Include="Models\OrdenValidacionFinancieraVM.cs" />
     <Compile Include="Models\ResultadoInspeccionVM.cs" />
     <Compile Include="Models\ProgramarInspeccionVM.cs" />
-    <Compile Include="Models\CoordinacionJefaturaRevisionViewModel.cs" />
     <Compile Include="Models\DashboardViewModel.cs" />
     <Compile Include="Models\DashboardGerencialViewModel.cs" />
     <Compile Include="Models\UsuarioRegistroViewModel.cs" />
@@ -2895,7 +2893,6 @@
     <Content Include="Views\Shared\_SeleccionarRol.cshtml" />
     <Content Include="Views\SolicitudAOCR\ResultadoInspeccion.cshtml" />
     <Content Include="Views\Documento\RevisarDocumentos.cshtml" />
-    <Content Include="Views\CoordinacionJefatura\RevisionVerificacion.cshtml" />
     <Content Include="Views\Direccion\DashboardGerencial.cshtml" />
     <Content Include="Views\Direccion\ConfiguracionSistema.cshtml" />
     <Content Include="Views\Financiero\Index.cshtml" />

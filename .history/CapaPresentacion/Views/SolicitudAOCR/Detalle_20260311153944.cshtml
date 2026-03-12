@@ -45,10 +45,6 @@
         (User.IsInRole("CoordinacionLegal") || User.IsInRole("DirectorGeneral") || User.IsInRole("Administrador")) &&
         estadoActual == EstadoSolicitud.AOCR_Legalizado;
 
-    var usuarioActualId = (int)(ViewBag.UsuarioActualId ?? 0);
-    var esPropietario = usuarioActualId > 0 && Model.CodigoUsuario == usuarioActualId;
-    var puedeSubsanar = esPropietario && estadoActual == EstadoSolicitud.Observada;
-
     var direccionCompleta = string.Join(", ", new[]
     {
         Model.Direccion,
@@ -459,24 +455,6 @@
         </div>
     }
 
-    @if (puedeSubsanar)
-    {
-        <div class="card border-info mb-4" style="border-left: 5px solid #17a2b8 !important;">
-            <div class="card-body p-4">
-                <div class="d-flex align-items-start gap-3">
-                    <div class="text-info fs-3"><i class="fas fa-tools"></i></div>
-                    <div class="flex-grow-1">
-                        <h5 class="fw-bold text-info mb-1">Subsanar Documentación</h5>
-                        <p class="text-muted mb-3">Su solicitud ha sido observada. Corrija la documentación y vuelva a enviar para que sea revisada nuevamente.</p>
-                        <a href="@Url.Action("FormularioEmisionAOCR", "SolicitudAOCR", new { oid = Model.CodigoSolicitud })" class="btn btn-info">
-                            <i class="fas fa-edit me-1"></i> Corregir y Reenviar Solicitud
-                        </a>
-                    </div>
-                </div>
-            </div>
-        </div>
-    }
-
     <div class="card aocr-detail-card aocr-action-card mb-4">
         <div class="card-body p-4">
             <div class="aocr-section-title">
@@ -543,7 +521,7 @@
                     </div>
                     <p class="text-muted mb-0">La documentacion fue aceptada y el tramite esta listo para pasar a la fase de inspeccion.</p>
                 </div>
-                <a href="@Url.Action("SolicitarInspeccion", "SolicitudAOCR", new { id = Model.CodigoSolicitud })" class="btn btn-outline-primary aocr-action-btn flex-shrink-0">
+                <a href="@Url.Action("SolicitarInspeccion", "SolicitudAOCR", new { id = Model.CodigoSolicitud })" class="btn btn-outline-primary aocr-action-btn">
                     <i class="fas fa-arrow-right"></i>
                     Pasar a En Inspeccion
                 </a>
@@ -562,18 +540,14 @@
                 <form method="post" action="@Url.Action("MarcarAocrEnElaboracion", "SolicitudAOCR")">
                     @Html.AntiForgeryToken()
                     @Html.Hidden("id", Model.CodigoSolicitud)
-                    <div class="row g-3 align-items-end">
-                        <div class="col-md-8">
-                            <label class="form-label fw-semibold" for="obsElaboracion">Observacion</label>
-                            <textarea class="form-control" id="obsElaboracion" name="observacion" rows="3"></textarea>
-                        </div>
-                        <div class="col-md-4 d-flex justify-content-end">
-                            <button type="submit" class="btn btn-primary aocr-action-btn w-100">
-                                <i class="fas fa-file-signature"></i>
-                                Marcar en Elaboracion
-                            </button>
-                        </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold" for="obsElaboracion">Observacion</label>
+                        <textarea class="form-control" id="obsElaboracion" name="observacion" rows="3"></textarea>
                     </div>
+                    <button type="submit" class="btn btn-primary aocr-action-btn">
+                        <i class="fas fa-file-signature"></i>
+                        Marcar AOCR en Elaboracion
+                    </button>
                 </form>
             </div>
         </div>
@@ -590,18 +564,14 @@
                 <form method="post" action="@Url.Action("MarcarAocrEnRevision", "SolicitudAOCR")">
                     @Html.AntiForgeryToken()
                     @Html.Hidden("id", Model.CodigoSolicitud)
-                    <div class="row g-3 align-items-end">
-                        <div class="col-md-8">
-                            <label class="form-label fw-semibold" for="obsRevision">Observacion</label>
-                            <textarea class="form-control" id="obsRevision" name="observacion" rows="3"></textarea>
-                        </div>
-                        <div class="col-md-4 d-flex justify-content-end">
-                            <button type="submit" class="btn btn-primary aocr-action-btn w-100">
-                                <i class="fas fa-search"></i>
-                                Marcar en Revision
-                            </button>
-                        </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold" for="obsRevision">Observacion</label>
+                        <textarea class="form-control" id="obsRevision" name="observacion" rows="3"></textarea>
                     </div>
+                    <button type="submit" class="btn btn-primary aocr-action-btn">
+                        <i class="fas fa-search"></i>
+                        Marcar AOCR en Revision
+                    </button>
                 </form>
             </div>
         </div>
@@ -652,18 +622,14 @@
                 <form method="post" action="@Url.Action("Legalizar", "SolicitudAOCR")">
                     @Html.AntiForgeryToken()
                     @Html.Hidden("id", Model.CodigoSolicitud)
-                    <div class="row g-3 align-items-end">
-                        <div class="col-md-8">
-                            <label for="observacionLegal" class="form-label fw-semibold">Observaciones de legalizacion</label>
-                            <textarea class="form-control" id="observacionLegal" name="observacionLegal" rows="4"></textarea>
-                        </div>
-                        <div class="col-md-4 d-flex justify-content-end">
-                            <button type="submit" class="btn btn-success aocr-action-btn w-100">
-                                <i class="fas fa-balance-scale"></i>
-                                Legalizar AOCR
-                            </button>
-                        </div>
+                    <div class="mb-3">
+                        <label for="observacionLegal" class="form-label fw-semibold">Observaciones de legalizacion</label>
+                        <textarea class="form-control" id="observacionLegal" name="observacionLegal" rows="4"></textarea>
                     </div>
+                    <button type="submit" class="btn btn-success aocr-action-btn">
+                        <i class="fas fa-balance-scale"></i>
+                        Legalizar AOCR
+                    </button>
                 </form>
             </div>
         </div>
@@ -680,18 +646,14 @@
                 <form method="post" action="@Url.Action("EmitirAocr", "SolicitudAOCR")">
                     @Html.AntiForgeryToken()
                     @Html.Hidden("id", Model.CodigoSolicitud)
-                    <div class="row g-3 align-items-end">
-                        <div class="col-md-8">
-                            <label for="observacionEmitir" class="form-label fw-semibold">Observaciones</label>
-                            <textarea class="form-control" id="observacionEmitir" name="observacion" rows="3"></textarea>
-                        </div>
-                        <div class="col-md-4 d-flex justify-content-end">
-                            <button type="submit" class="btn btn-success aocr-action-btn w-100">
-                                <i class="fas fa-file-export"></i>
-                                Emitir / Recibir AOCR
-                            </button>
-                        </div>
+                    <div class="mb-3">
+                        <label for="observacionEmitir" class="form-label fw-semibold">Observaciones</label>
+                        <textarea class="form-control" id="observacionEmitir" name="observacion" rows="3"></textarea>
                     </div>
+                    <button type="submit" class="btn btn-success aocr-action-btn">
+                        <i class="fas fa-file-export"></i>
+                        Emitir / Recibir AOCR
+                    </button>
                 </form>
             </div>
         </div>

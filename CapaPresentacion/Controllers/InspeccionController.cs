@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Text;
 using System.Web;
 using System.Web.Mvc;
@@ -32,9 +33,23 @@ namespace CapaPresentacion.Controllers
 
         private const string ROL_ADMIN = "Administrador";
         private const string ROL_COORD = "CoordinadorInspecciones";
+        private const string ROL_COORD_ALIAS = "Coordinador";
         private const string ROL_INSPECTOR = "Inspector";
         private const string ROL_JEFATURA = "JefaturaTecnica";
+        private const string ROL_JEFE = "Jefe";
+        private const string ROL_DIRECCION = "Direccion";
+        private const string ROL_DIRECTOR = "Director";
+        private const string ROL_LEGAL = "Legal";
+        private const string ROL_COORD_LEGAL = "CoordinacionLegal";
+        private const string ROL_COORDINADOR_LEGAL = "CoordinadorLegal";
         private const string ROL_SOLICITANTE = "Solicitante";
+
+        private const string ROLES_COORDINACION_Y_JEFATURA =
+            ROL_COORD + "," + ROL_COORD_ALIAS + "," + ROL_JEFATURA + "," + ROL_JEFE + "," + ROL_DIRECCION + "," + ROL_DIRECTOR + "," + ROL_LEGAL + "," + ROL_COORD_LEGAL + "," + ROL_COORDINADOR_LEGAL + "," + ROL_ADMIN;
+        private const string ROLES_GESTION_INSPECCION =
+            ROLES_COORDINACION_Y_JEFATURA + "," + ROL_INSPECTOR;
+        private const string ROLES_GESTION_INSPECCION_CON_SOLICITANTE =
+            ROLES_GESTION_INSPECCION + "," + ROL_SOLICITANTE;
 
         // Seguridad: tamaño máximo permitido para PDF (10MB)
         private const int MAX_PDF_BYTES = 10 * 1024 * 1024;
@@ -67,6 +82,40 @@ namespace CapaPresentacion.Controllers
 
         private bool EsAdmin() => User != null && User.IsInRole(ROL_ADMIN);
 
+        private bool UsuarioTieneAlMenosUnRol(params string[] roles)
+        {
+            if (User == null || roles == null || roles.Length == 0)
+            {
+                return false;
+            }
+
+            return roles.Any(rol => !string.IsNullOrWhiteSpace(rol) && User.IsInRole(rol));
+        }
+
+        private bool EsRolCoordinacionYJefatura()
+        {
+            if (EsAdmin())
+            {
+                return true;
+            }
+
+            return UsuarioTieneAlMenosUnRol(
+                ROL_COORD,
+                ROL_COORD_ALIAS,
+                ROL_JEFATURA,
+                ROL_JEFE,
+                ROL_DIRECCION,
+                ROL_DIRECTOR,
+                ROL_LEGAL,
+                ROL_COORD_LEGAL,
+                ROL_COORDINADOR_LEGAL);
+        }
+
+        private bool EsRolInspector()
+        {
+            return User != null && User.IsInRole(ROL_INSPECTOR);
+        }
+
         private bool PuedeAccederInspeccion(Inspeccion ins)
         {
             if (ins == null) return false;
@@ -77,11 +126,11 @@ namespace CapaPresentacion.Controllers
                 return PuedeAccederSolicitante(ins);
             }
 
-            if (User.IsInRole(ROL_COORD) || User.IsInRole(ROL_JEFATURA))
+            if (EsRolCoordinacionYJefatura())
                 return true;
 
             var codigoUsuario = ObtenerCodigoUsuario();
-            if (User.IsInRole(ROL_INSPECTOR))
+            if (EsRolInspector())
                 return ins.CodigoInspector.HasValue && ins.CodigoInspector.Value == codigoUsuario;
 
             return false;
@@ -90,14 +139,14 @@ namespace CapaPresentacion.Controllers
         // ============================================================
         // ✅ LISTADO (POR ROL)
         // ============================================================
-        [Authorize(Roles = ROL_COORD + "," + ROL_INSPECTOR + "," + ROL_JEFATURA + "," + ROL_ADMIN)]
+        [Authorize(Roles = ROLES_GESTION_INSPECCION)]
         public ActionResult Index()
         {
             _logger.LogInfo("[InspeccionesController] Inicio pantalla gestion inspecciones. Usuario=" + ObtenerUsuarioActual() + ", Rol=" + ObtenerRolActual());
 
             List<Inspeccion> lista;
 
-            if (EsAdmin() || User.IsInRole(ROL_COORD) || User.IsInRole(ROL_JEFATURA))
+            if (EsRolCoordinacionYJefatura())
                 lista = _inspeccionBL.ListarTodas();
             else
                 lista = _inspeccionBL.ListarPorInspector(ObtenerCodigoUsuario());
@@ -121,7 +170,7 @@ namespace CapaPresentacion.Controllers
         // ============================================================
         // ✅ DETALLE
         // ============================================================
-        [Authorize(Roles = ROL_COORD + "," + ROL_INSPECTOR + "," + ROL_JEFATURA + "," + ROL_ADMIN + "," + ROL_SOLICITANTE)]
+        [Authorize(Roles = ROLES_GESTION_INSPECCION_CON_SOLICITANTE)]
         public ActionResult Detalle(int id)
         {
             if (id <= 0) return new HttpStatusCodeResult(400, "ID inválido.");
@@ -252,13 +301,27 @@ namespace CapaPresentacion.Controllers
         // ✅ CAMBIAR ESTADO
         // ============================================================
         [HttpPost]
-        [Authorize(Roles = ROL_JEFATURA + "," + ROL_COORD + "," + ROL_INSPECTOR + "," + ROL_ADMIN)]
+        [Authorize(Roles = ROLES_GESTION_INSPECCION)]
         [ValidateAntiForgeryToken]
         public ActionResult CambiarEstado(int id, string estado)
         {
             if (id <= 0) return new HttpStatusCodeResult(400, "ID inválido.");
 
             _logger.LogInfo("[GestionInspeccion] Inicio CambiarEstado. InspeccionId=" + id + ", EstadoSolicitado=" + (estado ?? "") + ", Usuario=" + ObtenerUsuarioActual() + ", Rol=" + ObtenerRolActual());
+
+            var inspeccion = _inspeccionDAO.ObtenerPorId(id);
+            if (inspeccion == null)
+            {
+                TempData["Error"] = "Inspección no encontrada.";
+                return RedirectToAction("Index");
+            }
+
+            if (!PuedeAccederInspeccion(inspeccion))
+            {
+                _logger.LogWarning("[GestionInspeccion] PuedeGestionar=False, Motivo=Sin acceso a inspeccion. InspeccionId=" + id + ", Usuario=" + ObtenerUsuarioActual());
+                TempData["Error"] = "No tiene permisos para gestionar esta inspección.";
+                return RedirectToAction("Detalle", new { id });
+            }
 
             if (string.IsNullOrWhiteSpace(estado))
             {
@@ -267,8 +330,17 @@ namespace CapaPresentacion.Controllers
                 return RedirectToAction("Detalle", new { id });
             }
 
+            var estadoActual = EstadosInspeccion.NormalizarEstado(inspeccion.Estado);
             var estadoDestino = EstadosInspeccion.NormalizarEstado(estado);
-            if (!UsuarioActualPuedeCambiarEstadoInspeccion(estadoDestino))
+
+            if (!EstadosInspeccion.EsTransicionValida(estadoActual, estadoDestino))
+            {
+                _logger.LogWarning("[GestionInspeccion] PuedeGestionar=False, Motivo=Transicion no permitida. EstadoActual=" + estadoActual + ", EstadoDestino=" + estadoDestino + ", InspeccionId=" + id);
+                TempData["Error"] = "Transición no permitida: " + estadoActual + " -> " + estadoDestino;
+                return RedirectToAction("Detalle", new { id });
+            }
+
+            if (!UsuarioActualPuedeCambiarEstadoInspeccion(estadoActual, estadoDestino))
             {
                 _logger.LogWarning("[GestionInspeccion] PuedeGestionar=False, Motivo=Rol sin permisos para estado destino. EstadoDestino=" + estadoDestino + ", Rol=" + ObtenerRolActual());
                 TempData["Error"] = "No tiene permisos para cambiar a ese estado.";
@@ -278,7 +350,17 @@ namespace CapaPresentacion.Controllers
             try
             {
                 int codigoUsuario = ObtenerCodigoUsuario();
-                bool ok = _inspeccionBL.CambiarEstado(id, estadoDestino, codigoUsuario, "Cambio manual de estado desde detalle de inspección.", ObtenerUsuarioActual(), "DETALLE_INSPECCION");
+                string bloqueBpmn = EstadosInspeccion.EsEstadoBloqueInspector(estadoDestino)
+                    ? "OPERACION_INSPECTOR"
+                    : "COORDINACION_Y_JEFATURA";
+
+                bool ok = _inspeccionBL.CambiarEstado(
+                    id,
+                    estadoDestino,
+                    codigoUsuario,
+                    "Cambio de estado BPMN desde bloque " + bloqueBpmn + ".",
+                    ObtenerUsuarioActual(),
+                    bloqueBpmn);
 
                 _logger.LogInfo("[GestionInspeccion] PuedeGestionar=" + ok + ", InspeccionId=" + id + ", EstadoDestino=" + estadoDestino + ", Usuario=" + ObtenerUsuarioActual());
 
@@ -299,7 +381,7 @@ namespace CapaPresentacion.Controllers
         // ✅✅✅ VER INFORME (ÚNICO) - SEGURO
         // ============================================================
         [HttpGet]
-        [Authorize(Roles = ROL_COORD + "," + ROL_INSPECTOR + "," + ROL_JEFATURA + "," + ROL_ADMIN + "," + ROL_SOLICITANTE)]
+        [Authorize(Roles = ROLES_GESTION_INSPECCION_CON_SOLICITANTE)]
         public ActionResult VerInforme(int id)
         {
             if (id <= 0) return new HttpStatusCodeResult(400, "ID inválido.");
@@ -348,7 +430,7 @@ namespace CapaPresentacion.Controllers
         }
 
         [HttpGet]
-        [Authorize(Roles = ROL_COORD + "," + ROL_INSPECTOR + "," + ROL_JEFATURA + "," + ROL_ADMIN + "," + ROL_SOLICITANTE)]
+        [Authorize(Roles = ROLES_GESTION_INSPECCION_CON_SOLICITANTE)]
         public ActionResult VerDocumentoSolicitante(int documentoId)
         {
             if (documentoId <= 0)
@@ -1018,31 +1100,40 @@ namespace CapaPresentacion.Controllers
             return true;
         }
 
-        private bool UsuarioActualPuedeCambiarEstadoInspeccion(string estadoDestino)
+        private bool UsuarioActualPuedeCambiarEstadoInspeccion(string estadoActual, string estadoDestino)
         {
             if (EsAdmin())
             {
                 return true;
             }
 
+            var actual = EstadosInspeccion.NormalizarEstado(estadoActual);
             var destino = EstadosInspeccion.NormalizarEstado(estadoDestino);
 
-            if (User.IsInRole(ROL_INSPECTOR))
+            if (!EstadosInspeccion.EsTransicionValida(actual, destino))
             {
-                return destino == EstadosInspeccion.EN_INSPECCION
-                    || destino == EstadosInspeccion.INFORME_ELABORADO
-                    || destino == EstadosInspeccion.RESULTADO_SATISFACTORIO
-                    || destino == EstadosInspeccion.RESULTADO_NO_SATISFACTORIO
-                    || destino == EstadosInspeccion.OBSERVACION_DOCUMENTAL
-                    || destino == EstadosInspeccion.SUBSANADA;
+                return false;
             }
 
-            if (User.IsInRole(ROL_COORD) || User.IsInRole(ROL_JEFATURA))
+            if (EstadosInspeccion.EsEstadoBloqueCoordinacionJefatura(destino))
             {
-                return true;
+                return EsRolCoordinacionYJefatura();
             }
 
-            return false;
+            if (EstadosInspeccion.EsEstadoBloqueInspector(destino))
+            {
+                return EsRolInspector();
+            }
+
+            if (destino == EstadosInspeccion.RESULTADO_SATISFACTORIO
+                || destino == EstadosInspeccion.RESULTADO_NO_SATISFACTORIO
+                || destino == EstadosInspeccion.VIATICOS_REQUERIDOS
+                || destino == EstadosInspeccion.PAGO_VALIDADO)
+            {
+                return EsRolInspector() || EsRolCoordinacionYJefatura();
+            }
+
+            return EsRolCoordinacionYJefatura();
         }
 
         private bool PuedeAccederSolicitante(Inspeccion ins)
@@ -1222,8 +1313,15 @@ namespace CapaPresentacion.Controllers
             {
                 if (User.IsInRole(ROL_ADMIN)) roles.Add(ROL_ADMIN);
                 if (User.IsInRole(ROL_COORD)) roles.Add(ROL_COORD);
+                if (User.IsInRole(ROL_COORD_ALIAS)) roles.Add(ROL_COORD_ALIAS);
                 if (User.IsInRole(ROL_INSPECTOR)) roles.Add(ROL_INSPECTOR);
                 if (User.IsInRole(ROL_JEFATURA)) roles.Add(ROL_JEFATURA);
+                if (User.IsInRole(ROL_JEFE)) roles.Add(ROL_JEFE);
+                if (User.IsInRole(ROL_DIRECCION)) roles.Add(ROL_DIRECCION);
+                if (User.IsInRole(ROL_DIRECTOR)) roles.Add(ROL_DIRECTOR);
+                if (User.IsInRole(ROL_LEGAL)) roles.Add(ROL_LEGAL);
+                if (User.IsInRole(ROL_COORD_LEGAL)) roles.Add(ROL_COORD_LEGAL);
+                if (User.IsInRole(ROL_COORDINADOR_LEGAL)) roles.Add(ROL_COORDINADOR_LEGAL);
             }
 
             return roles.Count == 0 ? "SIN_ROL_DETECTADO" : string.Join(",", roles);

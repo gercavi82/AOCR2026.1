@@ -45,10 +45,6 @@
         (User.IsInRole("CoordinacionLegal") || User.IsInRole("DirectorGeneral") || User.IsInRole("Administrador")) &&
         estadoActual == EstadoSolicitud.AOCR_Legalizado;
 
-    var usuarioActualId = (int)(ViewBag.UsuarioActualId ?? 0);
-    var esPropietario = usuarioActualId > 0 && Model.CodigoUsuario == usuarioActualId;
-    var puedeSubsanar = esPropietario && estadoActual == EstadoSolicitud.Observada;
-
     var direccionCompleta = string.Join(", ", new[]
     {
         Model.Direccion,
@@ -453,24 +449,6 @@
                     <div>
                         <h5 class="fw-bold text-warning mb-1">Observaciones</h5>
                         <p class="mb-0" style="white-space: pre-line;">@Model.Observaciones</p>
-                    </div>
-                </div>
-            </div>
-        </div>
-    }
-
-    @if (puedeSubsanar)
-    {
-        <div class="card border-info mb-4" style="border-left: 5px solid #17a2b8 !important;">
-            <div class="card-body p-4">
-                <div class="d-flex align-items-start gap-3">
-                    <div class="text-info fs-3"><i class="fas fa-tools"></i></div>
-                    <div class="flex-grow-1">
-                        <h5 class="fw-bold text-info mb-1">Subsanar Documentación</h5>
-                        <p class="text-muted mb-3">Su solicitud ha sido observada. Corrija la documentación y vuelva a enviar para que sea revisada nuevamente.</p>
-                        <a href="@Url.Action("FormularioEmisionAOCR", "SolicitudAOCR", new { oid = Model.CodigoSolicitud })" class="btn btn-info">
-                            <i class="fas fa-edit me-1"></i> Corregir y Reenviar Solicitud
-                        </a>
                     </div>
                 </div>
             </div>

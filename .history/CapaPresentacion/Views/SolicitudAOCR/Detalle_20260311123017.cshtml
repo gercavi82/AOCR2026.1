@@ -2,7 +2,6 @@
 @using CapaDatos.Constants
 @using CapaModelo
 @using System.Collections.Generic
-@using System.Linq
 @using System.Web.Mvc
 @using System.Web.Mvc.Html
 
@@ -44,17 +43,73 @@
     var puedeEmitirAocr =
         (User.IsInRole("CoordinacionLegal") || User.IsInRole("DirectorGeneral") || User.IsInRole("Administrador")) &&
         estadoActual == EstadoSolicitud.AOCR_Legalizado;
+}
 
-    var usuarioActualId = (int)(ViewBag.UsuarioActualId ?? 0);
-    var esPropietario = usuarioActualId > 0 && Model.CodigoUsuario == usuarioActualId;
-    var puedeSubsanar = esPropietario && estadoActual == EstadoSolicitud.Observada;
+<h2 class="mb-4">Detalle de Solicitud AOCR</h2>
 
-    var direccionCompleta = string.Join(", ", new[]
-    {
-        Model.Direccion,
-        (string.Concat(Model.Ciudad, " ", Model.Provincia)).Trim(),
-        Model.Pais
-    }.Where(x => !string.IsNullOrWhiteSpace(x)));
+<div class="card">
+    <div class="card-body">
+        <dl class="row">
+            <dt class="col-sm-4">ID Solicitud</dt>
+            <dd class="col-sm-8">@Model.CodigoSolicitud</dd>
+
+            <dt class="col-sm-4">Fecha Solicitud</dt>
+            <dd class="col-sm-8">@(Model.FechaSolicitud.HasValue ? Model.FechaSolicitud.Value.ToString("yyyy-MM-dd HH:mm") : "")</dd>
+
+            <dt class="col-sm-4">Estado</dt>
+            <dd class="col-sm-8">@Model.Estado</dd>
+
+            <dt class="col-sm-4">Operador</dt>
+            <dd class="col-sm-8">@Model.NombreOperador</dd>
+
+            <dt class="col-sm-4">RUC</dt>
+            <dd class="col-sm-8">@Model.Ruc</dd>
+
+            <dt class="col-sm-4">Email</dt>
+            <dd class="col-sm-8">@Model.Email</dd>
+
+            <dt class="col-sm-4">Telefono</dt>
+            <dd class="col-sm-8">@Model.Telefono</dd>
+
+            <dt class="col-sm-4">Direccion</dt>
+            <dd class="col-sm-8">@Model.Direccion, @Model.Ciudad @Model.Provincia, @Model.Pais</dd>
+
+            <dt class="col-sm-4">Representante Legal</dt>
+            <dd class="col-sm-8">@Model.RepresentanteLegal (@Model.CedulaRepresentante)</dd>
+
+            <dt class="col-sm-4">Tipo de Operacion</dt>
+            <dd class="col-sm-8">@Model.TipoOperacion</dd>
+
+            <dt class="col-sm-4">Descripcion de Operacion</dt>
+            <dd class="col-sm-8">@Model.DescripcionOperacion</dd>
+
+            <dt class="col-sm-4">Tecnico Responsable</dt>
+            <dd class="col-sm-8">@(string.IsNullOrWhiteSpace(Model.TecnicoResponsableNombre) ? "-" : Model.TecnicoResponsableNombre + " - " + Model.TecnicoResponsableCedula)</dd>
+        </dl>
+
+        @if (User.IsInRole("Inspector"))
+        {
+            <hr class="my-4" />
+            <h5 class="mb-3">Gestion de Documentos AOCR</h5>
+            <div class="d-flex flex-column gap-2 mb-3">
+                <a href="@Url.Action("Subir", "Documento", new { solicitudId = Model.CodigoSolicitud })" class="btn btn-outline-primary">
+                    <i class="fas fa-upload"></i> Subir Documento/Borrador AOCR
+                </a>
+                <a href="@Url.Action("Lista", "Documento", new { solicitudId = Model.CodigoSolicitud })" class="btn btn-outline-secondary">
+                    <i class="fas fa-file-alt"></i> Ver Documentos de la Solicitud
+                </a>
+            </div>
+        }
+    </div>
+</div>
+
+@if (puedeInspectorDocumental)
+{
+    <hr class="my-4" />
+    <h5 class="mb-3">Revision Documental (Inspector)</h5>
+    <div class="card border-info">
+        <div class="card-body bg-light">
+            <form method="post">
 
     Func<string, string> estadoCss = estado =>
     {
@@ -83,8 +138,8 @@
 
         return "aocr-badge warning";
     };
-}
-
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="id" value="@Model.CodigoSolicitud" />
 <style>
     .aocr-detail-shell {
         padding: 1.5rem 0 2rem;
@@ -259,35 +314,11 @@
         display: inline-flex;
         align-items: center;
         justify-content: center;
-        gap: 0.5rem;
-        border-radius: 8px;
-        font-weight: 600;
-        font-size: 0.875rem;
-        padding: 0.5rem 1.25rem;
-        white-space: nowrap;
-    }
-
-    .aocr-action-btn-full {
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
         gap: 0.6rem;
         width: 100%;
         min-height: 52px;
         border-radius: 14px;
         font-weight: 600;
-    }
-
-    .aocr-review-actions {
-        display: flex;
-        flex-direction: column;
-        gap: 0.5rem;
-        justify-content: flex-end;
-        height: 100%;
-    }
-
-    .aocr-review-actions .btn {
-        width: 100%;
     }
 
     .aocr-review-card {
@@ -302,8 +333,8 @@
         border-left-color: #d97706;
     }
 
-    .aocr-review-card.info {
-        border-left-color: #2563eb;
+    .aocr-review-card.danger {
+        border-left-color: #c2410c;
     }
 
     .aocr-review-card.legal {
@@ -367,11 +398,11 @@
                     <div class="aocr-summary-value">@Model.NombreOperador</div>
                 </div>
                 <div class="aocr-summary-item">
-                    <div class="aocr-summary-label">Tipo de operacion</div>
+                    <div class="aocr-summary-label">Tipo de operación</div>
                     <div class="aocr-summary-value">@(string.IsNullOrWhiteSpace(Model.TipoOperacion) ? "No definido" : Model.TipoOperacion)</div>
                 </div>
                 <div class="aocr-summary-item">
-                    <div class="aocr-summary-label">Tecnico responsable</div>
+                    <div class="aocr-summary-label">Técnico responsable</div>
                     <div class="aocr-summary-value">@(string.IsNullOrWhiteSpace(Model.TecnicoResponsableNombre) ? "Sin asignar" : Model.TecnicoResponsableNombre)</div>
                 </div>
             </div>
@@ -393,7 +424,7 @@
                             <div class="aocr-info-value">@(string.IsNullOrWhiteSpace(Model.Ruc) ? "No registrado" : Model.Ruc)</div>
                         </div>
                         <div class="aocr-info-item">
-                            <div class="aocr-info-label"><i class="fas fa-building"></i> Nombre operador</div>
+                            <div class="aocr-info-label"><i class="fas fa-building-user"></i> Nombre operador</div>
                             <div class="aocr-info-value">@(string.IsNullOrWhiteSpace(Model.NombreOperador) ? "No registrado" : Model.NombreOperador)</div>
                         </div>
                         <div class="aocr-info-item">
@@ -401,16 +432,20 @@
                             <div class="aocr-info-value">@(string.IsNullOrWhiteSpace(Model.Email) ? "No registrado" : Model.Email)</div>
                         </div>
                         <div class="aocr-info-item">
-                            <div class="aocr-info-label"><i class="fas fa-phone"></i> Telefono</div>
+                            <div class="aocr-info-label"><i class="fas fa-phone"></i> Teléfono</div>
                             <div class="aocr-info-value">@(string.IsNullOrWhiteSpace(Model.Telefono) ? "No registrado" : Model.Telefono)</div>
                         </div>
                         <div class="aocr-info-item">
-                            <div class="aocr-info-label"><i class="fas fa-map-marker-alt"></i> Direccion</div>
-                            <div class="aocr-info-value">@(string.IsNullOrWhiteSpace(direccionCompleta) ? "No registrada" : direccionCompleta)</div>
+                            <div class="aocr-info-label"><i class="fas fa-location-dot"></i> Dirección</div>
+                            <div class="aocr-info-value">@string.Join(", ", new[] { Model.Direccion, (Model.Ciudad + " " + Model.Provincia).Trim(), Model.Pais }.Where(x => !string.IsNullOrWhiteSpace(x)))</div>
                         </div>
                         <div class="aocr-info-item">
                             <div class="aocr-info-label"><i class="fas fa-user-tie"></i> Representante legal</div>
-                            <div class="aocr-info-value">@(string.IsNullOrWhiteSpace(Model.RepresentanteLegal) ? "No registrado" : Model.RepresentanteLegal + (string.IsNullOrWhiteSpace(Model.CedulaRepresentante) ? string.Empty : " (" + Model.CedulaRepresentante + ")"))</div>
+                            <div class="aocr-info-value">
+                                @(string.IsNullOrWhiteSpace(Model.RepresentanteLegal)
+                                    ? "No registrado"
+                                    : Model.RepresentanteLegal + (string.IsNullOrWhiteSpace(Model.CedulaRepresentante) ? string.Empty : " (" + Model.CedulaRepresentante + ")"))
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -421,21 +456,21 @@
             <div class="card aocr-detail-card h-100">
                 <div class="card-body p-4">
                     <div class="aocr-section-title">
-                        <i class="fas fa-cogs"></i>
-                        <span>Informacion de Operacion</span>
+                        <i class="fas fa-gears"></i>
+                        <span>Información de Operación</span>
                     </div>
 
                     <div class="aocr-info-grid">
                         <div class="aocr-info-item">
-                            <div class="aocr-info-label"><i class="fas fa-briefcase"></i> Tipo de operacion</div>
+                            <div class="aocr-info-label"><i class="fas fa-briefcase"></i> Tipo de operación</div>
                             <div class="aocr-info-value">@(string.IsNullOrWhiteSpace(Model.TipoOperacion) ? "No definido" : Model.TipoOperacion)</div>
                         </div>
                         <div class="aocr-info-item">
-                            <div class="aocr-info-label"><i class="fas fa-align-left"></i> Descripcion</div>
+                            <div class="aocr-info-label"><i class="fas fa-align-left"></i> Descripción</div>
                             <div class="aocr-info-value">@(string.IsNullOrWhiteSpace(Model.DescripcionOperacion) ? "No definida" : Model.DescripcionOperacion)</div>
                         </div>
                         <div class="aocr-info-item">
-                            <div class="aocr-info-label"><i class="fas fa-user-cog"></i> Tecnico responsable</div>
+                            <div class="aocr-info-label"><i class="fas fa-user-gear"></i> Técnico responsable</div>
                             <div class="aocr-info-value">@(string.IsNullOrWhiteSpace(Model.TecnicoResponsableNombre) ? "Sin asignar" : Model.TecnicoResponsableNombre + (string.IsNullOrWhiteSpace(Model.TecnicoResponsableCedula) ? string.Empty : " - " + Model.TecnicoResponsableCedula))</div>
                         </div>
                     </div>
@@ -444,53 +479,20 @@
         </div>
     </div>
 
-    @if (!string.IsNullOrWhiteSpace(Model.Observaciones))
-    {
-        <div class="card border-warning mb-4" style="border-left: 5px solid #ffc107 !important;">
-            <div class="card-body p-4">
-                <div class="d-flex align-items-start gap-3">
-                    <div class="text-warning fs-3"><i class="fas fa-exclamation-triangle"></i></div>
-                    <div>
-                        <h5 class="fw-bold text-warning mb-1">Observaciones</h5>
-                        <p class="mb-0" style="white-space: pre-line;">@Model.Observaciones</p>
-                    </div>
-                </div>
-            </div>
-        </div>
-    }
-
-    @if (puedeSubsanar)
-    {
-        <div class="card border-info mb-4" style="border-left: 5px solid #17a2b8 !important;">
-            <div class="card-body p-4">
-                <div class="d-flex align-items-start gap-3">
-                    <div class="text-info fs-3"><i class="fas fa-tools"></i></div>
-                    <div class="flex-grow-1">
-                        <h5 class="fw-bold text-info mb-1">Subsanar Documentación</h5>
-                        <p class="text-muted mb-3">Su solicitud ha sido observada. Corrija la documentación y vuelva a enviar para que sea revisada nuevamente.</p>
-                        <a href="@Url.Action("FormularioEmisionAOCR", "SolicitudAOCR", new { oid = Model.CodigoSolicitud })" class="btn btn-info">
-                            <i class="fas fa-edit me-1"></i> Corregir y Reenviar Solicitud
-                        </a>
-                    </div>
-                </div>
-            </div>
-        </div>
-    }
-
     <div class="card aocr-detail-card aocr-action-card mb-4">
         <div class="card-body p-4">
             <div class="aocr-section-title">
                 <i class="fas fa-folder-open"></i>
-                <span>Gestion Documental</span>
+                <span>Gestión Documental</span>
             </div>
 
             <div class="aocr-action-grid">
-                <a href="@Url.Action("Subir", "Documento", new { solicitudId = Model.CodigoSolicitud })" class="btn btn-primary aocr-action-btn-full">
+                <a href="@Url.Action("Subir", "Documento", new { solicitudId = Model.CodigoSolicitud })" class="btn btn-primary aocr-action-btn">
                     <i class="fas fa-upload"></i>
                     Subir Documento / Borrador AOCR
                 </a>
-                <a href="@Url.Action("Lista", "Documento", new { solicitudId = Model.CodigoSolicitud })" class="btn btn-outline-primary aocr-action-btn-full">
-                    <i class="fas fa-file-alt"></i>
+                <a href="@Url.Action("Lista", "Documento", new { solicitudId = Model.CodigoSolicitud })" class="btn btn-outline-primary aocr-action-btn">
+                    <i class="fas fa-file-lines"></i>
                     Ver Documentos de la Solicitud
                 </a>
             </div>
@@ -499,33 +501,29 @@
 
     @if (puedeInspectorDocumental)
     {
-        <div class="card aocr-detail-card aocr-review-card success mb-4">
+        <div class="card aocr-detail-card aocr-review-card mb-4 success">
             <div class="card-body p-4">
                 <div class="aocr-section-title mb-3">
                     <i class="fas fa-clipboard-check"></i>
-                    <span>Revision Documental</span>
+                    <span>Revisión Documental</span>
                 </div>
-                <p class="text-muted mb-3">Registre observaciones y decida si la documentacion pasa a aceptacion documental o vuelve observada.</p>
+                <p class="text-muted mb-3">Registre observaciones y decida si la documentación pasa a aceptación documental o vuelve observada.</p>
                 <form method="post">
                     @Html.AntiForgeryToken()
                     <input type="hidden" name="id" value="@Model.CodigoSolicitud" />
-                    <div class="row g-3 align-items-end">
-                        <div class="col-md-8">
-                            <label for="observacionInspector" class="form-label fw-semibold">Observaciones</label>
-                            <textarea class="form-control" id="observacionInspector" name="observacion" rows="4" placeholder="Ingrese observaciones si aplica"></textarea>
-                        </div>
-                        <div class="col-md-4">
-                            <div class="aocr-review-actions">
-                                <button formaction="@Url.Action("Aprobar", "SolicitudAOCR")" class="btn btn-success aocr-action-btn" type="submit">
-                                    <i class="fas fa-check-circle"></i>
-                                    Aceptar Documentacion
-                                </button>
-                                <button formaction="@Url.Action("Observar", "SolicitudAOCR")" class="btn btn-outline-danger aocr-action-btn" type="submit">
-                                    <i class="fas fa-exclamation-circle"></i>
-                                    Observar
-                                </button>
-                            </div>
-                        </div>
+                    <div class="mb-3">
+                        <label for="observacionInspector" class="form-label fw-semibold">Observaciones</label>
+                        <textarea class="form-control" id="observacionInspector" name="observacion" rows="4" placeholder="Ingrese observaciones si aplica"></textarea>
+                    </div>
+                    <div class="aocr-form-actions">
+                        <button formaction="@Url.Action("Aprobar", "SolicitudAOCR")" class="btn btn-success aocr-action-btn" type="submit">
+                            <i class="fas fa-check-circle"></i>
+                            Aceptar Documentación
+                        </button>
+                        <button formaction="@Url.Action("Observar", "SolicitudAOCR")" class="btn btn-danger aocr-action-btn" type="submit">
+                            <i class="fas fa-circle-exclamation"></i>
+                            Observar
+                        </button>
                     </div>
                 </form>
             </div>
@@ -534,18 +532,18 @@
 
     @if (puedeSolicitarInspeccion)
     {
-        <div class="card aocr-detail-card aocr-review-card warning mb-4">
+        <div class="card aocr-detail-card aocr-review-card mb-4 warning">
             <div class="card-body p-4 d-flex flex-column flex-lg-row justify-content-between align-items-lg-center gap-3">
                 <div>
                     <div class="aocr-section-title mb-2">
                         <i class="fas fa-clipboard-list"></i>
-                        <span>Gestion de Inspeccion</span>
+                        <span>Gestión de Inspección</span>
                     </div>
-                    <p class="text-muted mb-0">La documentacion fue aceptada y el tramite esta listo para pasar a la fase de inspeccion.</p>
+                    <p class="text-muted mb-0">La documentación fue aceptada y el trámite está listo para pasar a la fase de inspección.</p>
                 </div>
-                <a href="@Url.Action("SolicitarInspeccion", "SolicitudAOCR", new { id = Model.CodigoSolicitud })" class="btn btn-outline-primary aocr-action-btn flex-shrink-0">
+                <a href="@Url.Action("SolicitarInspeccion", "SolicitudAOCR", new { id = Model.CodigoSolicitud })" class="btn btn-outline-primary aocr-action-btn">
                     <i class="fas fa-arrow-right"></i>
-                    Pasar a En Inspeccion
+                    Pasar a En Inspección
                 </a>
             </div>
         </div>
@@ -553,27 +551,23 @@
 
     @if (puedeMarcarElaboracion)
     {
-        <div class="card aocr-detail-card aocr-review-card warning mb-4">
+        <div class="card aocr-detail-card aocr-review-card mb-4 warning">
             <div class="card-body p-4">
                 <div class="aocr-section-title mb-3">
-                    <i class="fas fa-file-signature"></i>
-                    <span>AOCR en Elaboracion</span>
+                    <i class="fas fa-file-pen"></i>
+                    <span>AOCR en Elaboración</span>
                 </div>
                 <form method="post" action="@Url.Action("MarcarAocrEnElaboracion", "SolicitudAOCR")">
                     @Html.AntiForgeryToken()
                     @Html.Hidden("id", Model.CodigoSolicitud)
-                    <div class="row g-3 align-items-end">
-                        <div class="col-md-8">
-                            <label class="form-label fw-semibold" for="obsElaboracion">Observacion</label>
-                            <textarea class="form-control" id="obsElaboracion" name="observacion" rows="3"></textarea>
-                        </div>
-                        <div class="col-md-4 d-flex justify-content-end">
-                            <button type="submit" class="btn btn-primary aocr-action-btn w-100">
-                                <i class="fas fa-file-signature"></i>
-                                Marcar en Elaboracion
-                            </button>
-                        </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold" for="obsElaboracion">Observación</label>
+                        <textarea class="form-control" id="obsElaboracion" name="observacion" rows="3"></textarea>
                     </div>
+                    <button type="submit" class="btn btn-primary aocr-action-btn">
+                        <i class="fas fa-file-signature"></i>
+                        Marcar AOCR en Elaboración
+                    </button>
                 </form>
             </div>
         </div>
@@ -581,27 +575,23 @@
 
     @if (puedeMarcarRevision)
     {
-        <div class="card aocr-detail-card aocr-review-card info mb-4">
+        <div class="card aocr-detail-card aocr-review-card mb-4 info">
             <div class="card-body p-4">
                 <div class="aocr-section-title mb-3">
-                    <i class="fas fa-search"></i>
-                    <span>Validar paso a Revision</span>
+                    <i class="fas fa-magnifying-glass-chart"></i>
+                    <span>Validar paso a Revisión</span>
                 </div>
                 <form method="post" action="@Url.Action("MarcarAocrEnRevision", "SolicitudAOCR")">
                     @Html.AntiForgeryToken()
                     @Html.Hidden("id", Model.CodigoSolicitud)
-                    <div class="row g-3 align-items-end">
-                        <div class="col-md-8">
-                            <label class="form-label fw-semibold" for="obsRevision">Observacion</label>
-                            <textarea class="form-control" id="obsRevision" name="observacion" rows="3"></textarea>
-                        </div>
-                        <div class="col-md-4 d-flex justify-content-end">
-                            <button type="submit" class="btn btn-primary aocr-action-btn w-100">
-                                <i class="fas fa-search"></i>
-                                Marcar en Revision
-                            </button>
-                        </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold" for="obsRevision">Observación</label>
+                        <textarea class="form-control" id="obsRevision" name="observacion" rows="3"></textarea>
                     </div>
+                    <button type="submit" class="btn btn-primary aocr-action-btn">
+                        <i class="fas fa-search"></i>
+                        Marcar AOCR en Revisión
+                    </button>
                 </form>
             </div>
         </div>
@@ -609,32 +599,28 @@
 
     @if (puedeValidarJefatura)
     {
-        <div class="card aocr-detail-card aocr-review-card warning mb-4">
+        <div class="card aocr-detail-card aocr-review-card mb-4 warning">
             <div class="card-body p-4">
                 <div class="aocr-section-title mb-3">
                     <i class="fas fa-stamp"></i>
-                    <span>Validacion Tecnica de Jefatura</span>
+                    <span>Validación Técnica de Jefatura</span>
                 </div>
                 <form method="post">
                     @Html.AntiForgeryToken()
                     <input type="hidden" name="id" value="@Model.CodigoSolicitud" />
-                    <div class="row g-3 align-items-end">
-                        <div class="col-md-8">
-                            <label for="observacionJefatura" class="form-label fw-semibold">Observaciones</label>
-                            <textarea class="form-control" id="observacionJefatura" name="observaciones" rows="4" placeholder="Observaciones de jefatura"></textarea>
-                        </div>
-                        <div class="col-md-4">
-                            <div class="aocr-review-actions">
-                                <button formaction="@Url.Action("AprobarPorJefatura", "SolicitudAOCR")" class="btn btn-success aocr-action-btn" type="submit">
-                                    <i class="fas fa-check-circle"></i>
-                                    Validar AOCR
-                                </button>
-                                <button formaction="@Url.Action("ObservarPorJefatura", "SolicitudAOCR")" class="btn btn-outline-danger aocr-action-btn" type="submit">
-                                    <i class="fas fa-exclamation-triangle"></i>
-                                    Observar
-                                </button>
-                            </div>
-                        </div>
+                    <div class="mb-3">
+                        <label for="observacionJefatura" class="form-label fw-semibold">Observaciones</label>
+                        <textarea class="form-control" id="observacionJefatura" name="observaciones" rows="4" placeholder="Observaciones de jefatura"></textarea>
+                    </div>
+                    <div class="aocr-form-actions">
+                        <button formaction="@Url.Action("AprobarPorJefatura", "SolicitudAOCR")" class="btn btn-success aocr-action-btn" type="submit">
+                            <i class="fas fa-badge-check"></i>
+                            Validar AOCR
+                        </button>
+                        <button formaction="@Url.Action("ObservarPorJefatura", "SolicitudAOCR")" class="btn btn-danger aocr-action-btn" type="submit">
+                            <i class="fas fa-triangle-exclamation"></i>
+                            Observar
+                        </button>
                     </div>
                 </form>
             </div>
@@ -643,27 +629,23 @@
 
     @if (puedeLegalizar)
     {
-        <div class="card aocr-detail-card aocr-review-card legal mb-4">
+        <div class="card aocr-detail-card aocr-review-card mb-4 legal">
             <div class="card-body p-4">
                 <div class="aocr-section-title mb-3">
                     <i class="fas fa-gavel"></i>
-                    <span>Legalizacion AOCR</span>
+                    <span>Legalización AOCR</span>
                 </div>
                 <form method="post" action="@Url.Action("Legalizar", "SolicitudAOCR")">
                     @Html.AntiForgeryToken()
                     @Html.Hidden("id", Model.CodigoSolicitud)
-                    <div class="row g-3 align-items-end">
-                        <div class="col-md-8">
-                            <label for="observacionLegal" class="form-label fw-semibold">Observaciones de legalizacion</label>
-                            <textarea class="form-control" id="observacionLegal" name="observacionLegal" rows="4"></textarea>
-                        </div>
-                        <div class="col-md-4 d-flex justify-content-end">
-                            <button type="submit" class="btn btn-success aocr-action-btn w-100">
-                                <i class="fas fa-balance-scale"></i>
-                                Legalizar AOCR
-                            </button>
-                        </div>
+                    <div class="mb-3">
+                        <label for="observacionLegal" class="form-label fw-semibold">Observaciones de legalización</label>
+                        <textarea class="form-control" id="observacionLegal" name="observacionLegal" rows="4"></textarea>
                     </div>
+                    <button type="submit" class="btn btn-success aocr-action-btn">
+                        <i class="fas fa-scale-balanced"></i>
+                        Legalizar AOCR
+                    </button>
                 </form>
             </div>
         </div>
@@ -671,80 +653,140 @@
 
     @if (puedeEmitirAocr)
     {
-        <div class="card aocr-detail-card aocr-review-card emit mb-4">
+        <div class="card aocr-detail-card aocr-review-card mb-4 emit">
             <div class="card-body p-4">
                 <div class="aocr-section-title mb-3">
-                    <i class="fas fa-file-alt"></i>
-                    <span>Emision / Recepcion AOCR</span>
+                    <i class="fas fa-file-circle-check"></i>
+                    <span>Emisión / Recepción AOCR</span>
                 </div>
                 <form method="post" action="@Url.Action("EmitirAocr", "SolicitudAOCR")">
                     @Html.AntiForgeryToken()
                     @Html.Hidden("id", Model.CodigoSolicitud)
-                    <div class="row g-3 align-items-end">
-                        <div class="col-md-8">
-                            <label for="observacionEmitir" class="form-label fw-semibold">Observaciones</label>
-                            <textarea class="form-control" id="observacionEmitir" name="observacion" rows="3"></textarea>
-                        </div>
-                        <div class="col-md-4 d-flex justify-content-end">
-                            <button type="submit" class="btn btn-success aocr-action-btn w-100">
-                                <i class="fas fa-file-export"></i>
-                                Emitir / Recibir AOCR
-                            </button>
-                        </div>
+                    <div class="mb-3">
+                        <label for="observacionEmitir" class="form-label fw-semibold">Observaciones</label>
+                        <textarea class="form-control" id="observacionEmitir" name="observacion" rows="3"></textarea>
                     </div>
+                    <button type="submit" class="btn btn-success aocr-action-btn">
+                        <i class="fas fa-file-export"></i>
+                        Emitir / Recibir AOCR
+                    </button>
                 </form>
             </div>
         </div>
     }
+            <i class="fas fa-search"></i> Marcar AOCR En Revision
+        </button>
+    </form>
+}
 
-    @if (ViewBag.HistorialEstados != null)
-    {
-        var historial = (List<HistorialEstado>)ViewBag.HistorialEstados;
-        if (historial.Count > 0)
-        {
-            <div class="card aocr-detail-card mt-4">
-                <div class="card-header bg-white border-0 pt-4 px-4">
-                    <div class="aocr-section-title mb-0">
-                        <i class="fas fa-history"></i>
-                        <span>Historial de Cambios y Observaciones</span>
-                    </div>
-                </div>
-                <div class="card-body p-0">
-                    <div class="table-responsive">
-                        <table class="table table-hover table-sm mb-0 aocr-history-table">
-                            <thead class="table-light">
-                                <tr>
-                                    <th>Fecha</th>
-                                    <th>Estado Anterior</th>
-                                    <th>Estado Nuevo</th>
-                                    <th>Observaciones</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                @foreach (var item in historial)
-                                {
-                                    <tr>
-                                        <td>@Convert.ToDateTime(item.FechaCambio).ToString("yyyy-MM-dd HH:mm")</td>
-                                        <td>@Html.Encode(item.EstadoAnterior)</td>
-                                        <td>@Html.Encode(item.EstadoNuevo)</td>
-                                        <td>@Html.Raw(System.Web.HttpUtility.HtmlEncode(item.Observaciones).Replace("\n", "<br/>"))</td>
-                                    </tr>
-                                }
-                            </tbody>
-                        </table>
-                    </div>
+@if (puedeValidarJefatura)
+        <div class="card aocr-detail-card mt-4">
+            <div class="card-header bg-white border-0 pt-4 px-4">
+                <div class="aocr-section-title mb-0">
+                    <i class="fas fa-clock-rotate-left"></i>
+                    <span>Historial de Cambios y Observaciones</span>
                 </div>
             </div>
-        }
-        else
-        {
-            <div class="alert alert-light mt-3">No hay observaciones registradas.</div>
-        }
+    <h5 class="mb-3">Validacion Tecnica (Jefatura)</h5>
+                <div class="table-responsive">
+                <table class="table table-hover table-sm mb-0 aocr-history-table">
+                    <thead class="table-light">
+            <form method="post">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="id" value="@Model.CodigoSolicitud" />
+                <div class="mb-3">
+                    <label for="observacionJefatura" class="form-label">Observaciones (si aplica)</label>
+                    <textarea class="form-control" id="observacionJefatura" name="observaciones" rows="3" placeholder="Observaciones de jefatura"></textarea>
+                </div>
+                <div class="d-flex gap-2">
+                    <button formaction="@Url.Action("AprobarPorJefatura", "SolicitudAOCR")" class="btn btn-success">
+                        <i class="fas fa-check"></i> Validar AOCR
+                    </button>
+                    <button type="submit" formaction="@Url.Action("ObservarPorJefatura", "SolicitudAOCR")" class="btn btn-danger">
+                        <i class="fas fa-times-circle"></i> Observar
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+}
+
+@if (puedeLegalizar)
+{
+    <hr class="my-4" />
+    <h5 class="mb-3">Legalizacion AOCR</h5>
+    <form method="post" action="@Url.Action("Legalizar", "SolicitudAOCR")">
+        @Html.AntiForgeryToken()
+        @Html.Hidden("id", Model.CodigoSolicitud)
+        <div class="mb-3">
+            <label for="observacionLegal" class="form-label">Observaciones de legalizacion (opcional)</label>
+            <textarea class="form-control" id="observacionLegal" name="observacionLegal" rows="3"></textarea>
+        </div>
+        <button type="submit" class="btn btn-success">
+            <i class="fas fa-check-circle"></i> Legalizar AOCR
+        </button>
+    </form>
+}
+
+@if (puedeEmitirAocr)
+{
+    <hr class="my-4" />
+    <h5 class="mb-3">Emision AOCR</h5>
+    <form method="post" action="@Url.Action("EmitirAocr", "SolicitudAOCR")">
+        @Html.AntiForgeryToken()
+        @Html.Hidden("id", Model.CodigoSolicitud)
+        <div class="mb-3">
+            <label for="observacionEmitir" class="form-label">Observaciones (opcional)</label>
+            <textarea class="form-control" id="observacionEmitir" name="observacion" rows="2"></textarea>
+        </div>
+        <button type="submit" class="btn btn-success">
+            <i class="fas fa-file-export"></i> Emitir / Recibir AOCR
+        </button>
+    </form>
+}
+
+@if (ViewBag.HistorialEstados != null)
+{
+    var historial = (List<CapaModelo.HistorialEstado>)ViewBag.HistorialEstados;
+    if (historial.Count > 0)
+    {
+        <div class="card mt-4">
+            <div class="card-header bg-secondary text-white">Historial de Cambios y Observaciones</div>
+            <div class="card-body p-0">
+                <table class="table table-bordered table-sm mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Fecha</th>
+                            <th>Estado Anterior</th>
+                            <th>Estado Nuevo</th>
+                            <th>Observaciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var item in historial)
+                        {
+                            <tr>
+                                <td>@Convert.ToDateTime(item.FechaCambio).ToString("yyyy-MM-dd HH:mm")</td>
+                                <td>@Html.Encode(item.EstadoAnterior)</td>
+                                <td>@Html.Encode(item.EstadoNuevo)</td>
+                                <td>@Html.Raw(System.Web.HttpUtility.HtmlEncode(item.Observaciones).Replace("\n", "<br/>"))</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+                </div>
+            </div>
+        </div>
     }
     else
     {
-        <div class="alert alert-light mt-3">No hay historial registrado para esta solicitud.</div>
+        <div class="alert alert-light mt-3">No hay observaciones registradas.</div>
     }
+}
+else
+{
+    <div class="alert alert-light mt-3">No hay historial registrado para esta solicitud.</div>
+}
 
     <div class="mt-4 d-flex justify-content-end">
         @Html.ActionLink("Volver al listado", "Index", null, new { @class = "btn btn-outline-secondary px-4" })

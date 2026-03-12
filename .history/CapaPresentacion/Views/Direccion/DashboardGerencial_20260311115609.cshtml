@@ -35,23 +35,6 @@
             </div>
         </div>
         <div class="col-lg-6">
-            <div class="card mb-3">
-                <div class="card-header"><strong>Cuellos de botella</strong></div>
-                <div class="card-body">
-                    @if (Model.CuellosBotella == null || !Model.CuellosBotella.Any())
-                    {
-                        <div class="text-muted">No hay acumulaciones relevantes.</div>
-                    }
-                    else
-                    {
-                        foreach (var item in Model.CuellosBotella)
-                        {
-                            <div class="d-flex justify-content-between"><span>@item.Estado</span><span>@item.Total</span></div>
-                        }
-                    }
-                </div>
-            </div>
-
             <div class="card">
                 <div class="card-header"><strong>Distribución de estados</strong></div>
                 <div class="card-body p-0">

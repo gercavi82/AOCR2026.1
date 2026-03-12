@@ -1635,7 +1635,6 @@ namespace CapaPresentacion.Controllers
 
             var historialDAO = new HistorialEstadoDAO();
             ViewBag.HistorialEstados = historialDAO.ObtenerPorSolicitud(id);
-            ViewBag.UsuarioActualId = ObtenerUsuarioActualId();
 
             return View(solicitud);
         }

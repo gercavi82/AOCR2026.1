@@ -226,62 +226,35 @@ namespace CapaPresentacion.Controllers
         private string ObtenerEstadoLegible(string estado)
         {
             if (string.IsNullOrEmpty(estado)) return "Pendiente";
-
-            var norm = EstadoSolicitud.Normalizar(estado);
-
-            if (norm == EstadoSolicitud.Pendiente || norm == EstadoSolicitud.SolicitudCreada)
-                return "Pendiente";
-            if (norm == EstadoSolicitud.DocumentacionPendiente)
-                return "Documentación Pendiente";
-            if (norm == EstadoSolicitud.Observada)
-                return "Observada";
-            if (norm == EstadoSolicitud.Subsanada)
-                return "Subsanada";
-            if (norm == EstadoSolicitud.AceptacionDocumental || norm == EstadoSolicitud.DocumentacionCompleta)
-                return "Documentación Aceptada";
-            if (norm == EstadoSolicitud.EnInspeccion || norm == EstadoSolicitud.InspeccionProgramada)
-                return "En Inspección";
-            if (norm == EstadoSolicitud.InspeccionRealizada)
-                return "Inspección Realizada";
-            if (norm == EstadoSolicitud.AOCR_EnElaboracion)
-                return "AOCR en Elaboración";
-            if (norm == EstadoSolicitud.AOCR_EnRevision)
-                return "AOCR en Revisión";
-            if (norm == EstadoSolicitud.AOCR_Validado)
-                return "Validado por Jefatura";
-            if (norm == EstadoSolicitud.AOCR_Legalizado)
-                return "Legalizado";
-            if (norm == EstadoSolicitud.AOCR_EmitidoRecibido || norm == EstadoSolicitud.CertificadoEmitido)
-                return "AOCR Emitido";
-            if (norm == EstadoSolicitud.Rechazada)
-                return "Rechazada";
-            if (norm == EstadoSolicitud.Anulada)
-                return "Anulada";
-            if (norm == EstadoSolicitud.EnRevision)
-                return "En Revisión";
-
-            return estado;
+            
+            switch (estado.ToUpper())
+            {
+                case "PENDIENTE": return "Pendiente";
+                case "EN_REVISION": return "En Proceso";
+                case "APROBADO": return "Aprobado";
+                case "RECHAZADO": return "Observado";
+                case "FINALIZADO": return "Finalizado";
+                case "ENVIADO_A_INSPECTOR": return "En Trámite";
+                case "ENVIADO_A_JEFATURA": return "En Jefatura";
+                default: return estado;
+            }
         }
 
         private string ObtenerCategoria(string estado)
         {
             if (string.IsNullOrEmpty(estado)) return "tramite";
-
-            var norm = EstadoSolicitud.Normalizar(estado);
-
-            // Observadas / Rechazadas
-            if (norm == EstadoSolicitud.Observada || norm == EstadoSolicitud.Rechazada)
-                return "observado";
-
-            // Finalizadas / Aprobadas
-            if (norm == EstadoSolicitud.AOCR_EmitidoRecibido ||
-                norm == EstadoSolicitud.CertificadoEmitido ||
-                norm == EstadoSolicitud.Aprobada ||
-                norm == EstadoSolicitud.Anulada)
-                return "aprobado";
-
-            // Todo lo demás es trámite en curso
-            return "tramite";
+            
+            switch (estado.ToUpper())
+            {
+                case "APROBADO":
+                case "FINALIZADO":
+                    return "aprobado";
+                case "RECHAZADO":
+                case "OBSERVADO":
+                    return "observado";
+                default:
+                    return "tramite";
+            }
         }
 
         // =========================================================
@@ -1635,7 +1608,6 @@ namespace CapaPresentacion.Controllers
 
             var historialDAO = new HistorialEstadoDAO();
             ViewBag.HistorialEstados = historialDAO.ObtenerPorSolicitud(id);
-            ViewBag.UsuarioActualId = ObtenerUsuarioActualId();
 
             return View(solicitud);
         }

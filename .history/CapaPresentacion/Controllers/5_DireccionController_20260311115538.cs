@@ -45,12 +45,6 @@ namespace CapaPresentacion.Controllers
                 .OrderByDescending(x => x.Total)
                 .ToList();
 
-            var cuellosBotella = estados
-                .Where(x => x.Total > 0
-                    && x.Estado != EstadoSolicitud.AOCR_EmitidoRecibido)
-                .Take(5)
-                .ToList();
-
             var model = new DashboardGerencialViewModel
             {
                 TotalSolicitudes = solicitudes.Count,
@@ -68,8 +62,7 @@ namespace CapaPresentacion.Controllers
                 AocrValidados = solicitudes.Count(s => EstadoSolicitud.Normalizar(s.Estado) == EstadoSolicitud.AOCR_Validado),
                 AocrLegalizados = solicitudes.Count(s => EstadoSolicitud.Normalizar(s.Estado) == EstadoSolicitud.AOCR_Legalizado),
                 AocrEmitidosRecibidos = solicitudes.Count(s => EstadoSolicitud.Normalizar(s.Estado) == EstadoSolicitud.AOCR_EmitidoRecibido),
-                EstadosSolicitud = estados,
-                CuellosBotella = cuellosBotella
+                EstadosSolicitud = estados
             };
 
             return View(model);
@@ -189,7 +182,7 @@ namespace CapaPresentacion.Controllers
                 "VALIDADO_TECNICAMENTE",
                 "ENVIADO_A_JEFATURA",
                 EstadoSolicitud.AOCR_EnRevision,
-                EstadoSolicitud.AOCR_Validado);
+                StateoSolicitudCompatAocrValidado());
 
             return View(solicitudesPendientes);
         }
@@ -199,6 +192,11 @@ namespace CapaPresentacion.Controllers
         {
             var parametros = _parametroDao.ListarTodos() ?? new List<Parametro>();
             return View(parametros);
+        }
+
+        private static string StateoSolicitudCompatAocrValidado()
+        {
+            return EstadoSolicitud.AOCR_Validado;
         }
 
         // ============================================================

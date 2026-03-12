@@ -56,6 +56,28 @@ namespace CapaDatos.Constants
         };
 
         /// <summary>
+        /// Estados accionables del bloque BPMN "COORDINACION Y JEFATURA".
+        /// </summary>
+        public static readonly string[] EstadosBloqueCoordinacionJefatura = new[]
+        {
+            VERIFICACION_SOLICITUD,
+            ACEPTADA,
+            OBSERVADA,
+            SUBSANADA,
+            CERRADA
+        };
+
+        /// <summary>
+        /// Estados accionables del bloque BPMN "OPERACION DE INSPECTOR".
+        /// </summary>
+        public static readonly string[] EstadosBloqueInspector = new[]
+        {
+            EN_INSPECCION,
+            INFORME_ELABORADO,
+            OBSERVACION_DOCUMENTAL
+        };
+
+        /// <summary>
         /// Transiciones canónicas permitidas según BPMN de inspecciones.
         /// </summary>
         public static readonly Dictionary<string, List<string>> TransicionesPermitidas =
@@ -64,12 +86,12 @@ namespace CapaDatos.Constants
                 { SOLICITUD_INSPECCION_CREADA, new List<string> { VERIFICACION_SOLICITUD } },
                 { VERIFICACION_SOLICITUD, new List<string> { ACEPTADA, OBSERVADA, CERRADA } },
                 { OBSERVADA, new List<string> { SUBSANADA, CERRADA } },
-                { SUBSANADA, new List<string> { VERIFICACION_SOLICITUD } },
+                { SUBSANADA, new List<string> { VERIFICACION_SOLICITUD, EN_INSPECCION } },
                 { ACEPTADA, new List<string> { VIATICOS_REQUERIDOS, PAGO_VALIDADO, EN_INSPECCION } },
                 { VIATICOS_REQUERIDOS, new List<string> { PAGO_VALIDADO, CERRADA } },
                 { PAGO_VALIDADO, new List<string> { EN_INSPECCION } },
                 { EN_INSPECCION, new List<string> { INFORME_ELABORADO, OBSERVADA } },
-                { INFORME_ELABORADO, new List<string> { RESULTADO_SATISFACTORIO, RESULTADO_NO_SATISFACTORIO, OBSERVACION_DOCUMENTAL } },
+                { INFORME_ELABORADO, new List<string> { RESULTADO_SATISFACTORIO, RESULTADO_NO_SATISFACTORIO, OBSERVACION_DOCUMENTAL, CERRADA } },
                 { OBSERVACION_DOCUMENTAL, new List<string> { SUBSANADA, CERRADA } },
                 { RESULTADO_NO_SATISFACTORIO, new List<string> { OBSERVADA, CERRADA } },
                 { RESULTADO_SATISFACTORIO, new List<string> { CERRADA } },
@@ -174,6 +196,18 @@ namespace CapaDatos.Constants
         {
             var normalized = NormalizarEstado(estado);
             return TodosLosEstados.Any(x => string.Equals(x, normalized, StringComparison.OrdinalIgnoreCase));
+        }
+
+        public static bool EsEstadoBloqueCoordinacionJefatura(string estado)
+        {
+            var normalized = NormalizarEstado(estado);
+            return EstadosBloqueCoordinacionJefatura.Any(x => string.Equals(x, normalized, StringComparison.OrdinalIgnoreCase));
+        }
+
+        public static bool EsEstadoBloqueInspector(string estado)
+        {
+            var normalized = NormalizarEstado(estado);
+            return EstadosBloqueInspector.Any(x => string.Equals(x, normalized, StringComparison.OrdinalIgnoreCase));
         }
 
         public static bool EsTransicionValida(string estadoActual, string estadoDestino)

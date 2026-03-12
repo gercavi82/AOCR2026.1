@@ -1,0 +1,146 @@
+@inherits System.Web.Mvc.WebViewPage<CapaPresentacion.Models.CoordinacionJefaturaRevisionViewModel>
+@using System.Linq
+@{
+    ViewBag.Title = "Revisión / Verificación";
+    Layout = "~/Views/Shared/_LayoutAOCR.cshtml";
+}
+
+<div class="container-fluid py-3">
+    <h3 class="mb-3"><i class="fas fa-project-diagram"></i> @ViewBag.Title</h3>
+    <p class="text-muted">Bandeja unificada de control documental, revisión AOCR y seguimiento de inspecciones.</p>
+
+    <div class="row g-3 mb-3">
+        <div class="col-md-4"><div class="card"><div class="card-body"><div class="text-muted">Control documental</div><h4>@Model.SolicitudesControlDocumental.Count</h4></div></div></div>
+        <div class="col-md-4"><div class="card"><div class="card-body"><div class="text-muted">AOCR en revisión</div><h4>@Model.SolicitudesAocrRevision.Count</h4></div></div></div>
+        <div class="col-md-4"><div class="card"><div class="card-body"><div class="text-muted">Inspecciones por coord./jefatura</div><h4>@Model.InspeccionesSeguimiento.Count</h4></div></div></div>
+    </div>
+
+    <div class="card mb-3">
+        <div class="card-header"><strong>Solicitudes para revisión documental</strong></div>
+        <div class="card-body p-0">
+            @if (!Model.SolicitudesControlDocumental.Any())
+            {
+                <div class="p-3 text-muted">No hay solicitudes pendientes de revisión documental.</div>
+            }
+            else
+            {
+                <div class="table-responsive">
+                    <table class="table table-sm table-striped mb-0">
+                        <thead>
+                            <tr>
+                                <th>Solicitud</th>
+                                <th>Operador</th>
+                                <th>Estado</th>
+                                <th>Fecha</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                        @foreach (var item in Model.SolicitudesControlDocumental)
+                        {
+                            <tr>
+                                <td>@item.CodigoSolicitud</td>
+                                <td>@Html.Encode(item.NombreOperador)</td>
+                                <td>@Html.Encode(item.Estado)</td>
+                                <td>@(item.FechaSolicitud.HasValue ? item.FechaSolicitud.Value.ToString("yyyy-MM-dd") : string.Empty)</td>
+                                <td>
+                                    <a class="btn btn-sm btn-info" href="@Url.Action("Detalle", "SolicitudAOCR", new { id = item.CodigoSolicitud })">Detalle</a>
+                                    <a class="btn btn-sm btn-outline-primary" href="@Url.Action("RevisarSolicitudes", "SolicitudAOCR")">Bandeja técnica</a>
+                                </td>
+                            </tr>
+                        }
+                        </tbody>
+                    </table>
+                </div>
+            }
+        </div>
+    </div>
+
+    <div class="card mb-3">
+        <div class="card-header"><strong>AOCR para validar, legalizar o cerrar</strong></div>
+        <div class="card-body p-0">
+            @if (!Model.SolicitudesAocrRevision.Any())
+            {
+                <div class="p-3 text-muted">No hay AOCR en cola de revisión.</div>
+            }
+            else
+            {
+                <div class="table-responsive">
+                    <table class="table table-sm table-striped mb-0">
+                        <thead>
+                            <tr>
+                                <th>Solicitud</th>
+                                <th>Operador</th>
+                                <th>Estado</th>
+                                <th>Fecha</th>
+                                <th>Ruta</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                        @foreach (var item in Model.SolicitudesAocrRevision)
+                        {
+                            <tr>
+                                <td>@item.CodigoSolicitud</td>
+                                <td>@Html.Encode(item.NombreOperador)</td>
+                                <td>@Html.Encode(item.Estado)</td>
+                                <td>@(item.FechaSolicitud.HasValue ? item.FechaSolicitud.Value.ToString("yyyy-MM-dd") : string.Empty)</td>
+                                <td>
+                                    <a class="btn btn-sm btn-info" href="@Url.Action("Detalle", "SolicitudAOCR", new { id = item.CodigoSolicitud })">Detalle</a>
+                                    @if (User.IsInRole("JefaturaTecnica") || User.IsInRole("Administrador"))
+                                    {
+                                        <a class="btn btn-sm btn-warning" href="@Url.Action("ValidarAocr", "CoordinacionJefatura")">Validar AOCR</a>
+                                    }
+                                    @if (User.IsInRole("CoordinacionLegal") || User.IsInRole("CoordinadorLegal") || User.IsInRole("DirectorGeneral") || User.IsInRole("Administrador"))
+                                    {
+                                        <a class="btn btn-sm btn-success" href="@Url.Action("LegalizarAocr", "CoordinacionJefatura")">Legalizar AOCR</a>
+                                    }
+                                </td>
+                            </tr>
+                        }
+                        </tbody>
+                    </table>
+                </div>
+            }
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-header"><strong>Inspecciones en seguimiento de coordinación / jefatura</strong></div>
+        <div class="card-body p-0">
+            @if (!Model.InspeccionesSeguimiento.Any())
+            {
+                <div class="p-3 text-muted">No hay inspecciones en seguimiento para este bloque.</div>
+            }
+            else
+            {
+                <div class="table-responsive">
+                    <table class="table table-sm table-striped mb-0">
+                        <thead>
+                            <tr>
+                                <th>Inspección</th>
+                                <th>Solicitud</th>
+                                <th>Estado</th>
+                                <th>Resultado</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                        @foreach (var item in Model.InspeccionesSeguimiento)
+                        {
+                            <tr>
+                                <td>@item.CodigoInspeccion</td>
+                                <td>@item.CodigoSolicitud</td>
+                                <td>@Html.Encode(item.Estado)</td>
+                                <td>@Html.Encode(item.Resultado)</td>
+                                <td>
+                                    <a class="btn btn-sm btn-info" href="@Url.Action("Detalle", "Inspeccion", new { id = item.CodigoInspeccion })">Detalle</a>
+                                </td>
+                            </tr>
+                        }
+                        </tbody>
+                    </table>
+                </div>
+            }
+        </div>
+    </div>
+</div>

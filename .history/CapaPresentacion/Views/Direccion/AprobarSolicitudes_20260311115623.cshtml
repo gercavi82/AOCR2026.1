@@ -53,14 +53,8 @@
                         </td>
                         <td>
                             @Html.ActionLink("Ver Detalle", "Detalle", "SolicitudAOCR", new { id = solicitud.CodigoSolicitud }, new { @class = "btn btn-info btn-sm" })
-                            @if (User.IsInRole("JefaturaTecnica"))
-                            {
-                                @Html.ActionLink("Revisión Jefatura", "RevisarPorJefatura", "SolicitudAOCR", null, new { @class = "btn btn-warning btn-sm" })
-                            }
-                            @if (User.IsInRole("CoordinacionLegal") || User.IsInRole("Administrador") || User.IsInRole("DirectorGeneral"))
-                            {
-                                @Html.ActionLink("Revisión Legal", "RevisarLegalizacion", "SolicitudAOCR", null, new { @class = "btn btn-success btn-sm" })
-                            }
+                            @Html.ActionLink("Revisión Jefatura", "RevisarPorJefatura", "SolicitudAOCR", null, new { @class = "btn btn-warning btn-sm" })
+                            @Html.ActionLink("Revisión Legal", "RevisarLegalizacion", "SolicitudAOCR", null, new { @class = "btn btn-success btn-sm" })
                         </td>
                     </tr>
                 }
