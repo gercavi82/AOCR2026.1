@@ -1628,6 +1628,253 @@ namespace CapaPresentacion.Controllers
             return RedirectToAction("RevisarPorJefatura");
         }
 
+        // =========================================================
+        // GET: Subsanar — Vista enfocada de subsanación
+        // =========================================================
+        public ActionResult Subsanar(int id)
+        {
+            var solicitud = _solicitudDAO.ObtenerPorId(id);
+            if (solicitud == null) return HttpNotFound();
+
+            int usuarioId;
+            if (!TryObtenerUsuarioActualId(out usuarioId))
+                return RedirectToAction("Login", "Account");
+
+            var estadoActual = EstadoSolicitud.Normalizar(solicitud.Estado);
+            if (!string.Equals(estadoActual, EstadoSolicitud.Observada, StringComparison.OrdinalIgnoreCase))
+            {
+                TempData["NotificacionTipo"] = "warning";
+                TempData["NotificacionMensaje"] = "La solicitud no se encuentra en estado Observada.";
+                return RedirectToAction("Detalle", new { id });
+            }
+
+            if (!EsAdmin() && solicitud.CodigoUsuario != usuarioId)
+            {
+                TempData["NotificacionTipo"] = "error";
+                TempData["NotificacionMensaje"] = "No tiene permisos para subsanar esta solicitud.";
+                return RedirectToAction("Detalle", new { id });
+            }
+
+            var documentos = _documentoDAO.ObtenerPorSolicitud(id) ?? new List<Documento>();
+            var historialDAO = new HistorialEstadoDAO();
+            var historial = historialDAO.ObtenerPorSolicitud(id) ?? new List<HistorialEstado>();
+
+            // Extraer nombre del inspector asignado
+            var inspectorNombre = !string.IsNullOrWhiteSpace(solicitud.TecnicoResponsableNombre)
+                ? solicitud.TecnicoResponsableNombre
+                : "Sin asignar";
+
+            // Historial de observaciones (cambios a estado Observada)
+            var historialObs = historial
+                .Where(h => string.Equals(EstadoSolicitud.Normalizar(h.EstadoNuevo), EstadoSolicitud.Observada, StringComparison.OrdinalIgnoreCase)
+                         && !string.IsNullOrWhiteSpace(h.Observaciones))
+                .OrderByDescending(h => h.FechaCambio)
+                .Select(h => new HistorialObservacionVM
+                {
+                    Fecha = h.FechaCambio,
+                    Observacion = h.Observaciones,
+                    Usuario = h.NombreUsuario ?? "Inspector"
+                })
+                .ToList();
+
+            var vm = new SubsanacionViewModel
+            {
+                CodigoSolicitud = solicitud.CodigoSolicitud,
+                NumeroSolicitud = solicitud.NumeroSolicitud,
+                Compania = !string.IsNullOrWhiteSpace(solicitud.NombreComercial)
+                    ? solicitud.NombreComercial
+                    : solicitud.NombreOperador,
+                FechaSolicitud = solicitud.FechaSolicitud,
+                Estado = estadoActual,
+                InspectorNombre = inspectorNombre,
+                ObservacionesInspector = solicitud.Observaciones,
+                HistorialObservaciones = historialObs,
+                DocumentosObservados = documentos.Select(d => new DocumentoSubsanacionVM
+                {
+                    CodigoDocumento = d.CodigoDocumento,
+                    TipoDocumento = d.TipoDocumento,
+                    NombreArchivo = d.NombreArchivo,
+                    Estado = d.Estado,
+                    Observaciones = d.Observaciones,
+                    FechaCarga = d.FechaCarga
+                }).ToList()
+            };
+
+            return View(vm);
+        }
+
+        // =========================================================
+        // POST: SubsanarPost — Procesar corrección de documentos
+        // =========================================================
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public ActionResult SubsanarPost(int codigoSolicitud, string comentario)
+        {
+            int usuarioId;
+            if (!TryObtenerUsuarioActualId(out usuarioId))
+                return RedirectToAction("Login", "Account");
+
+            var solicitud = _solicitudDAO.ObtenerPorId(codigoSolicitud);
+            if (solicitud == null) return HttpNotFound();
+
+            var estadoActual = EstadoSolicitud.Normalizar(solicitud.Estado);
+            if (!string.Equals(estadoActual, EstadoSolicitud.Observada, StringComparison.OrdinalIgnoreCase))
+            {
+                TempData["NotificacionTipo"] = "warning";
+                TempData["NotificacionMensaje"] = "La solicitud ya no se encuentra en estado Observada.";
+                return RedirectToAction("Detalle", new { id = codigoSolicitud });
+            }
+
+            if (!EsAdmin() && solicitud.CodigoUsuario != usuarioId)
+            {
+                TempData["NotificacionTipo"] = "error";
+                TempData["NotificacionMensaje"] = "No tiene permisos para subsanar esta solicitud.";
+                return RedirectToAction("Detalle", new { id = codigoSolicitud });
+            }
+
+            try
+            {
+                var archivosSubidos = 0;
+                var usuarioRegistro = (Session["CodigoUsuario"] ?? usuarioId.ToString()).ToString();
+
+                // Procesar cada archivo subido
+                for (var i = 0; i < Request.Files.Count; i++)
+                {
+                    var file = Request.Files[i];
+                    if (file == null || file.ContentLength <= 0) continue;
+
+                    var key = Request.Files.GetKey(i) ?? string.Empty;
+                    // key format: archivos_{codigoDocumento}
+                    int docId;
+                    var parts = key.Split('_');
+                    if (parts.Length < 2 || !int.TryParse(parts[1], out docId)) continue;
+
+                    var extension = Path.GetExtension(file.FileName) ?? string.Empty;
+                    if (!ExtensionesPermitidasDocumentos.Contains(extension))
+                    {
+                        TempData["NotificacionTipo"] = "error";
+                        TempData["NotificacionMensaje"] = "Extensión no permitida: " + extension;
+                        return RedirectToAction("Subsanar", new { id = codigoSolicitud });
+                    }
+
+                    if (file.ContentLength > TamanoMaximoDocumentoMb * 1024 * 1024)
+                    {
+                        TempData["NotificacionTipo"] = "error";
+                        TempData["NotificacionMensaje"] = "El archivo supera el límite de " + TamanoMaximoDocumentoMb + " MB.";
+                        return RedirectToAction("Subsanar", new { id = codigoSolicitud });
+                    }
+
+                    // Obtener documento original para preservar tipo
+                    var docOriginal = _documentoDAO.ObtenerPorId(docId);
+                    var tipoDoc = docOriginal != null ? docOriginal.TipoDocumento : "Documento Subsanado";
+
+                    var options = new FileUploadOptions
+                    {
+                        BasePath = FileStorageHelper.GetPhysicalBasePath("~/App_Data/Uploads/AOCR"),
+                        Subfolder = codigoSolicitud + "/Documentos",
+                        AllowedExtensions = new[] { ".pdf", ".jpg", ".jpeg", ".png", ".doc", ".docx", ".xls", ".xlsx" },
+                        AllowedContentTypes = new[] { "application/pdf", "image/jpeg", "image/png",
+                            "application/msword", "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                            "application/vnd.ms-excel", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" },
+                        MaxSizeMb = TamanoMaximoDocumentoMb,
+                        ValidateMagicBytes = true
+                    };
+
+                    string error;
+                    FileUploadResult result;
+                    if (!FileUploadService.TrySave(file, options, out result, out error))
+                    {
+                        TempData["NotificacionTipo"] = "error";
+                        TempData["NotificacionMensaje"] = "Error al guardar archivo: " + error;
+                        return RedirectToAction("Subsanar", new { id = codigoSolicitud });
+                    }
+
+                    var rutaRelativa = "~/App_Data/Uploads/AOCR/" + codigoSolicitud + "/Documentos/" + result.StoredName;
+                    var versionAnterior = docOriginal != null && docOriginal.Version.HasValue ? docOriginal.Version.Value : 1;
+
+                    var nuevoDoc = new Documento
+                    {
+                        CodigoSolicitud = codigoSolicitud,
+                        TipoDocumento = tipoDoc,
+                        NombreArchivo = result.StoredName,
+                        RutaGuardada = rutaRelativa,
+                        Extension = extension,
+                        TamanoBytes = file.ContentLength,
+                        Estado = "Subsanado",
+                        Validado = false,
+                        FechaCarga = DateTime.Now,
+                        Observaciones = "Subsanación: " + (comentario ?? "").Trim(),
+                        Version = versionAnterior + 1,
+                        UsuarioRegistro = usuarioRegistro
+                    };
+
+                    _documentoDAO.Crear(nuevoDoc);
+                    archivosSubidos++;
+                }
+
+                if (archivosSubidos == 0)
+                {
+                    TempData["NotificacionTipo"] = "warning";
+                    TempData["NotificacionMensaje"] = "Debe subir al menos un documento corregido.";
+                    return RedirectToAction("Subsanar", new { id = codigoSolicitud });
+                }
+
+                // Cambiar estado a Subsanada
+                var observacionCambio = "Subsanación documental enviada por el operador.";
+                if (!string.IsNullOrWhiteSpace(comentario))
+                    observacionCambio += " Comentario: " + comentario.Trim();
+
+                _solicitudDAO.CambiarEstado(codigoSolicitud, EstadoSolicitud.Subsanada, usuarioId, observacionCambio);
+
+                // Registrar historial
+                try
+                {
+                    new HistorialEstadoDAO().RegistrarCambio(
+                        codigoSolicitud,
+                        EstadoSolicitud.Observada,
+                        EstadoSolicitud.Subsanada,
+                        usuarioId,
+                        observacionCambio);
+                }
+                catch { /* historial auxiliar */ }
+
+                // Notificar al inspector / owner
+                try
+                {
+                    NotificacionBL.NotificarCambioEstado(solicitud.CodigoUsuario, codigoSolicitud, EstadoSolicitud.Subsanada);
+                }
+                catch { /* notificación auxiliar */ }
+
+                // Enviar email al inspector si tiene correo
+                try
+                {
+                    if (!string.IsNullOrWhiteSpace(solicitud.Email))
+                    {
+                        EmailHelper.EnviarEmail(
+                            solicitud.Email,
+                            "Subsanación Recibida - Solicitud AOCR #" + codigoSolicitud,
+                            "La solicitud AOCR <strong>#" + codigoSolicitud + "</strong> ha sido subsanada por el operador.<br><br>" +
+                            "<b>Documentos corregidos:</b> " + archivosSubidos + "<br>" +
+                            (!string.IsNullOrWhiteSpace(comentario) ? "<b>Comentario:</b> " + comentario + "<br>" : "") +
+                            "<br>Ingrese al sistema para revisar los documentos actualizados."
+                        );
+                    }
+                }
+                catch { /* email auxiliar */ }
+
+                TempData["NotificacionTipo"] = "success";
+                TempData["NotificacionMensaje"] = "Corrección enviada exitosamente. Se subieron " + archivosSubidos + " documento(s).";
+                return RedirectToAction("Detalle", new { id = codigoSolicitud });
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine("[SubsanarPost] Error: " + ex.Message);
+                TempData["NotificacionTipo"] = "error";
+                TempData["NotificacionMensaje"] = "Error al procesar la subsanación: " + ex.Message;
+                return RedirectToAction("Subsanar", new { id = codigoSolicitud });
+            }
+        }
+
         public ActionResult Detalle(int id)
         {
             var solicitud = _solicitudDAO.ObtenerPorId(id);
@@ -1636,6 +1883,10 @@ namespace CapaPresentacion.Controllers
             var historialDAO = new HistorialEstadoDAO();
             ViewBag.HistorialEstados = historialDAO.ObtenerPorSolicitud(id);
             ViewBag.UsuarioActualId = ObtenerUsuarioActualId();
+
+            var rtDao = new UsuarioInternoRTDAO();
+            ViewBag.AsignacionActiva = rtDao.ObtenerAsignacionActiva(id);
+            ViewBag.HistorialAsignaciones = rtDao.ObtenerHistorialAsignacion(id);
 
             return View(solicitud);
         }
@@ -1681,6 +1932,25 @@ namespace CapaPresentacion.Controllers
             }
 
             return RedirectToAction("RevisarLegalizacion");
+        }
+
+        [Authorize(Roles = "Inspector,CoordinadorInspecciones,Administrador")]
+        public ActionResult MarcarPendienteAsignacionRT(int id)
+        {
+            var solicitud = _solicitudDAO.ObtenerPorId(id);
+            if (solicitud == null) return HttpNotFound();
+
+            string mensajeCambio;
+            if (!CambiarEstadoConReglasAocr(id, EstadoSolicitud.PendienteAsignacionRT, "Documentación aceptada — pendiente de asignación de RT/Inspector", out mensajeCambio))
+            {
+                TempData["NotificacionMensaje"] = mensajeCambio;
+                TempData["NotificacionTipo"] = "error";
+                return RedirectToAction("Detalle", new { id });
+            }
+
+            TempData["NotificacionMensaje"] = "Solicitud marcada como pendiente de asignación de RT/Inspector.";
+            TempData["NotificacionTipo"] = "success";
+            return RedirectToAction("Detalle", new { id });
         }
 
         [Authorize(Roles = "Inspector,Administrador")]
@@ -1894,6 +2164,18 @@ namespace CapaPresentacion.Controllers
                 return true;
             }
 
+            if (actual == EstadoSolicitud.AceptacionDocumental &&
+                destino == EstadoSolicitud.PendienteAsignacionRT)
+            {
+                return true;
+            }
+
+            if (actual == EstadoSolicitud.PendienteAsignacionRT &&
+                destino == EstadoSolicitud.EnInspeccion)
+            {
+                return true;
+            }
+
             if ((actual == EstadoSolicitud.Aprobada || actual == EstadoSolicitud.AOCR_EnRevision) &&
                 destino == EstadoSolicitud.AOCR_Validado)
             {
@@ -1931,6 +2213,11 @@ namespace CapaPresentacion.Controllers
             if (destino == EstadoSolicitud.AceptacionDocumental)
             {
                 return User != null && User.IsInRole("Inspector");
+            }
+
+            if (destino == EstadoSolicitud.PendienteAsignacionRT)
+            {
+                return User != null && (User.IsInRole("Inspector") || User.IsInRole("CoordinadorInspecciones"));
             }
 
             if (destino == EstadoSolicitud.EnInspeccion || destino == EstadoSolicitud.AOCR_EnElaboracion)

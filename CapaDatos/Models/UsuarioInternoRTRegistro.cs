@@ -7,6 +7,9 @@ namespace CapaDatos.Models
         public int Id { get; set; }
         public int? UsuarioId { get; set; }
         public string CodigoUsuario { get; set; }
+        public string NombreCompleto { get; set; }
+        public string Tipo { get; set; }
+        public string EstadoAs400 { get; set; }
         public string CiudadCodigo { get; set; }
         public decimal CodigoFinanciero { get; set; }
         public string Opcar5 { get; set; }

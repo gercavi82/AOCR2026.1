@@ -699,7 +699,6 @@ WHERE codigo_solicitud=@id AND deleted_at IS NULL;";
 
                         var estadoActualNormalizado = EstadoSolicitud.Normalizar(estadoAnterior);
                         if (!string.Equals(estadoActualNormalizado, EstadoSolicitud.PendienteAsignacionRT, StringComparison.OrdinalIgnoreCase) &&
-                            !string.Equals(estadoActualNormalizado, EstadoSolicitud.Pendiente, StringComparison.OrdinalIgnoreCase) &&
                             !string.Equals(estadoActualNormalizado, EstadoSolicitud.AceptacionDocumental, StringComparison.OrdinalIgnoreCase) &&
                             !string.Equals(estadoActualNormalizado, EstadoSolicitud.DocumentacionCompleta, StringComparison.OrdinalIgnoreCase))
                         {

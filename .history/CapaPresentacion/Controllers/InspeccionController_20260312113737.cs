@@ -1405,13 +1405,7 @@ namespace CapaPresentacion.Controllers
                     || string.IsNullOrWhiteSpace(inspeccion.InspectorPrincipalTipo)
                     || string.IsNullOrWhiteSpace(inspeccion.InspectorPrincipalCedula)))
                 {
-                    var principal = daoAs400.ObtenerActivoPorCedula(
-                        cedulaPrincipal,
-                        FirstNonEmpty(inspeccion.InspectorPrincipalTipo, solicitud != null ? solicitud.TecnicoResponsableTipo : null));
-                    if (principal == null)
-                    {
-                        principal = daoAs400.ObtenerActivoPorCedula(cedulaPrincipal);
-                    }
+                    var principal = daoAs400.ObtenerActivoPorCedula(cedulaPrincipal, inspeccion.InspectorPrincipalTipo);
                     if (principal != null)
                     {
                         inspeccion.InspectorPrincipalCedula = FirstNonEmpty(inspeccion.InspectorPrincipalCedula, principal.Cedula);
@@ -1425,13 +1419,7 @@ namespace CapaPresentacion.Controllers
                     || string.IsNullOrWhiteSpace(inspeccion.InspectorApoyoTipo)
                     || string.IsNullOrWhiteSpace(inspeccion.InspectorApoyoCedula)))
                 {
-                    var apoyo = daoAs400.ObtenerActivoPorCedula(
-                        cedulaApoyo,
-                        FirstNonEmpty(inspeccion.InspectorApoyoTipo, solicitud != null ? solicitud.InspectorApoyoTipo : null));
-                    if (apoyo == null)
-                    {
-                        apoyo = daoAs400.ObtenerActivoPorCedula(cedulaApoyo);
-                    }
+                    var apoyo = daoAs400.ObtenerActivoPorCedula(cedulaApoyo, inspeccion.InspectorApoyoTipo);
                     if (apoyo != null)
                     {
                         inspeccion.InspectorApoyoCedula = FirstNonEmpty(inspeccion.InspectorApoyoCedula, apoyo.Cedula);

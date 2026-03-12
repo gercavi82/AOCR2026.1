@@ -124,52 +124,94 @@ namespace CapaPresentacion.Controllers
         [RequirePermission("ADM_GESTION_USUARIOS")]
         public JsonResult BuscarUsuarioInternoRT(string codigoUsuario)
         {
-            var codigo = NormalizarCodigo(codigoUsuario);
-            if (string.IsNullOrWhiteSpace(codigo))
+            var texto = (codigoUsuario ?? string.Empty).Trim();
+            if (string.IsNullOrWhiteSpace(texto))
             {
                 return Json(
                     new
                     {
                         success = false,
-                        message = "Debe ingresar el codigo del usuario interno."
+                        message = "Debe ingresar cedula o nombre para buscar."
                     },
                     JsonRequestBehavior.AllowGet);
             }
 
-            var as400Dao = new UsuarioAS400DAO(new SecureConfigurationService());
-            var fuente = as400Dao.ObtenerDatosUsuarioInterno(codigo);
-            if (fuente == null)
+            var esNumerico = texto.All(char.IsDigit);
+            System.Diagnostics.Debug.WriteLine("[BuscarUsuarioInternoRT] Valor buscado: " + texto);
+            System.Diagnostics.Debug.WriteLine("[BuscarUsuarioInternoRT] Tipo de busqueda: " + (esNumerico ? "cedula" : "nombre"));
+
+            var inspectorDao = new InspectorAS400DAO(new SecureConfigurationService());
+            var resultados = inspectorDao.BuscarPorCedulaONombre(texto);
+
+            System.Diagnostics.Debug.WriteLine("[BuscarUsuarioInternoRT] Resultados encontrados: " + resultados.Count);
+
+            if (resultados.Count == 0)
             {
                 return Json(
                     new
                     {
                         success = false,
-                        message = "No se encontro el usuario en la base institucional."
+                        message = "No se encontro coincidencia por cedula o nombre en la base institucional."
                     },
                     JsonRequestBehavior.AllowGet);
             }
 
-            if (!fuente.CodigoFinanciero.HasValue || fuente.CodigoFinanciero.Value <= 0m)
+            if (resultados.Count > 1)
             {
                 return Json(
                     new
                     {
-                        success = false,
-                        message = "El usuario no tiene codigo financiero (usuoid) en la base institucional."
+                        success = true,
+                        multiple = true,
+                        resultados = resultados.Select(r => new
+                        {
+                            cedula = (r.Cedula ?? string.Empty).Trim(),
+                            nombre = (r.NombreCompleto ?? string.Empty).Trim(),
+                            tipo = (r.Tipo ?? string.Empty).Trim()
+                        }),
+                        message = resultados.Count + " coincidencias encontradas. Seleccione una."
                     },
                     JsonRequestBehavior.AllowGet);
+            }
+
+            var inspector = resultados[0];
+            var cedula = (inspector.Cedula ?? string.Empty).Trim();
+            var nombre = (inspector.NombreCompleto ?? string.Empty).Trim();
+            var tipo = (inspector.Tipo ?? string.Empty).Trim();
+
+            string ciudadCodigo = string.Empty;
+            decimal? codigoFinanciero = null;
+
+            try
+            {
+                var as400Dao = new UsuarioAS400DAO(new SecureConfigurationService());
+                var fuente = as400Dao.ObtenerDatosUsuarioInterno(cedula);
+                if (fuente != null)
+                {
+                    ciudadCodigo = (fuente.CiudadCodigo ?? string.Empty).Trim();
+                    codigoFinanciero = fuente.CodigoFinanciero;
+                }
+            }
+            catch
+            {
+                System.Diagnostics.Debug.WriteLine("[BuscarUsuarioInternoRT] No se pudo obtener datos financieros para cedula=" + cedula);
             }
 
             var daoInterno = new UsuarioInternoRTDAO();
-            var existente = daoInterno.ObtenerActivoPorCodigoUsuario(codigo);
+            var existente = daoInterno.ObtenerActivoPorCodigoUsuario(cedula);
 
             return Json(
                 new
                 {
                     success = true,
-                    codigoUsuario = fuente.CodigoUsuario,
-                    ciudadCodigo = fuente.CiudadCodigo,
-                    codigoFinanciero = fuente.CodigoFinanciero.Value,
+                    multiple = false,
+                    cedula = cedula,
+                    nombre = nombre,
+                    tipo = tipo,
+                    codigoUsuario = cedula,
+                    ciudadCodigo = ciudadCodigo,
+                    codigoFinanciero = codigoFinanciero.HasValue ? codigoFinanciero.Value : 0m,
+                    tieneFinanciero = codigoFinanciero.HasValue && codigoFinanciero.Value > 0m,
                     yaRegistrado = existente != null,
                     message = existente != null
                         ? "El usuario ya tiene un registro interno RT activo."
@@ -191,7 +233,7 @@ namespace CapaPresentacion.Controllers
 
             if (string.IsNullOrWhiteSpace(model.CodigoUsuarioBusqueda))
             {
-                ModelState.AddModelError("CodigoUsuarioBusqueda", "Debe ingresar el codigo del usuario interno.");
+                ModelState.AddModelError("CodigoUsuarioBusqueda", "Debe ingresar la cedula del inspector.");
             }
 
             if (string.IsNullOrWhiteSpace(model.Opcar5))
@@ -205,45 +247,68 @@ namespace CapaPresentacion.Controllers
                 return View(model);
             }
 
-            var as400Dao = new UsuarioAS400DAO(new SecureConfigurationService());
-            var fuente = as400Dao.ObtenerDatosUsuarioInterno(model.CodigoUsuarioBusqueda);
-            if (fuente == null)
+            var inspectorDao = new InspectorAS400DAO(new SecureConfigurationService());
+            var inspector = inspectorDao.ObtenerActivoPorCedula(model.CodigoUsuarioBusqueda);
+            if (inspector == null)
             {
-                ModelState.AddModelError("CodigoUsuarioBusqueda", "No se encontro el usuario en la base institucional.");
+                ModelState.AddModelError("CodigoUsuarioBusqueda", "No se encontro coincidencia por cedula o nombre en la base institucional.");
                 CargarAeropuertosUsuarioInterno(model, model.Opcar5);
                 return View(model);
             }
 
-            if (!fuente.CodigoFinanciero.HasValue || fuente.CodigoFinanciero.Value <= 0m)
+            var cedula = (inspector.Cedula ?? string.Empty).Trim();
+            model.CodigoUsuario = cedula;
+            model.Cedula = cedula;
+            model.NombreCompleto = (inspector.NombreCompleto ?? string.Empty).Trim();
+            model.TipoInspector = (inspector.Tipo ?? string.Empty).Trim();
+
+            string ciudadCodigo = string.Empty;
+            decimal? codigoFinanciero = null;
+
+            try
             {
-                ModelState.AddModelError("CodigoUsuarioBusqueda", "El usuario no tiene codigo financiero (usuoid).");
-                CargarAeropuertosUsuarioInterno(model, model.Opcar5);
-                return View(model);
+                var as400Dao = new UsuarioAS400DAO(new SecureConfigurationService());
+                var fuente = as400Dao.ObtenerDatosUsuarioInterno(cedula);
+                if (fuente != null)
+                {
+                    ciudadCodigo = (fuente.CiudadCodigo ?? string.Empty).Trim().ToUpperInvariant();
+                    codigoFinanciero = fuente.CodigoFinanciero;
+                }
+            }
+            catch
+            {
+                // Financial data cross-reference failed; continue with form values
             }
 
-            model.CodigoUsuario = fuente.CodigoUsuario;
-            model.CiudadCodigo = (fuente.CiudadCodigo ?? string.Empty).Trim().ToUpperInvariant();
-            model.CodigoFinanciero = fuente.CodigoFinanciero.Value;
-            model.Opcoi3 = fuente.CodigoFinanciero.Value;
+            model.CiudadCodigo = !string.IsNullOrWhiteSpace(ciudadCodigo)
+                ? ciudadCodigo
+                : (model.CiudadCodigo ?? string.Empty).Trim().ToUpperInvariant();
+
+            if (codigoFinanciero.HasValue && codigoFinanciero.Value > 0m)
+            {
+                model.CodigoFinanciero = codigoFinanciero.Value;
+                model.Opcoi3 = codigoFinanciero.Value;
+            }
+            else
+            {
+                model.Opcoi3 = model.CodigoFinanciero;
+            }
+
             model.Opcaer = model.Opcar5;
-
-            if (string.IsNullOrWhiteSpace(model.CiudadCodigo))
-            {
-                ModelState.AddModelError("CodigoUsuarioBusqueda", "El usuario no tiene ciudad (usucod9) en la base institucional.");
-                CargarAeropuertosUsuarioInterno(model, model.Opcar5);
-                return View(model);
-            }
 
             var daoInterno = new UsuarioInternoRTDAO();
             var registro = new UsuarioInternoRTRegistro
             {
-                UsuarioId = daoInterno.ObtenerUsuarioIdPorCodigoUsuario(model.CodigoUsuario),
-                CodigoUsuario = model.CodigoUsuario,
+                UsuarioId = daoInterno.ObtenerUsuarioIdPorCodigoUsuario(cedula),
+                CodigoUsuario = cedula,
+                NombreCompleto = model.NombreCompleto,
+                Tipo = model.TipoInspector,
+                EstadoAs400 = "AC",
                 CiudadCodigo = model.CiudadCodigo,
-                CodigoFinanciero = fuente.CodigoFinanciero.Value,
+                CodigoFinanciero = model.CodigoFinanciero ?? 0m,
                 Opcar5 = model.Opcar5,
                 Opcaer = model.Opcar5,
-                Opcoi3 = fuente.CodigoFinanciero.Value,
+                Opcoi3 = model.Opcoi3 ?? 0m,
                 Activo = true
             };
 
@@ -259,6 +324,15 @@ namespace CapaPresentacion.Controllers
 
             TempData["Success"] = mensaje;
             return RedirectToAction("CrearUsuarioInternoRT");
+        }
+
+        [HttpGet]
+        [Authorize(Roles = "Administrador")]
+        public ActionResult ListarUsuariosInternosRT()
+        {
+            var dao = new UsuarioInternoRTDAO();
+            var lista = dao.ListarActivos();
+            return View(lista);
         }
 
         [HttpGet]

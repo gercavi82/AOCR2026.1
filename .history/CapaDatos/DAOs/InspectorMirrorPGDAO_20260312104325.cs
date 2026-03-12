@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Configuration;
 using System.Linq;
 using Npgsql;
-using CapaDatos.Infrastructure;
 using CapaDatos.Models;
 using CapaDatos.Services;
 
@@ -220,7 +219,7 @@ namespace CapaDatos.DAOs
         {
             try
             {
-                var source = new InspectorAS400DAO(new SecureConfigurationService());
+                var source = new InspectorAS400DAO();
                 var inspectores = source.ListarActivosPorTipos(new[] { "OPS", "AIR" });
                 return SincronizarDesdeDb2(inspectores);
             }

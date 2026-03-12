@@ -7,13 +7,25 @@ namespace CapaPresentacion.Models.AdminUsuarios
     public class AdminUsuarioInternoRTViewModel
     {
         [Required]
-        [Display(Name = "Usuario interno")]
+        [Display(Name = "Buscar por cedula o nombre")]
         [StringLength(64)]
         public string CodigoUsuarioBusqueda { get; set; }
 
         [Display(Name = "Codigo usuario")]
         [StringLength(64)]
         public string CodigoUsuario { get; set; }
+
+        [Display(Name = "Cedula")]
+        [StringLength(20)]
+        public string Cedula { get; set; }
+
+        [Display(Name = "Nombre completo")]
+        [StringLength(100)]
+        public string NombreCompleto { get; set; }
+
+        [Display(Name = "Tipo inspector")]
+        [StringLength(10)]
+        public string TipoInspector { get; set; }
 
         [Display(Name = "Ciudad (usucod9)")]
         [StringLength(10)]

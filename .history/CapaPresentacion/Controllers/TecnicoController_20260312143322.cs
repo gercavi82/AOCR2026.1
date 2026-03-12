@@ -235,7 +235,6 @@ namespace CapaPresentacion.Controllers
             string inspectorPrincipal,
             string inspectorApoyo,
             DateTime fechaInspeccion,
-            string horaInspeccion,
             string observaciones,
             string tipoInspector = "OPS")
         {
@@ -265,14 +264,6 @@ namespace CapaPresentacion.Controllers
                 var existeEnDb2 = inspectorDb2 != null;
                 var existeEnPg = new InspectorMirrorPGDAO().ExisteInspectorActivoEnPg(inspectorPrincipal, tipoInspector);
 
-                TimeSpan horaRevision;
-                if (!TimeSpan.TryParse(horaInspeccion, out horaRevision))
-                {
-                    horaRevision = new TimeSpan(9, 0, 0);
-                }
-
-                var fechaHoraInspeccion = fechaInspeccion.Date.Add(horaRevision);
-
                 _logger.LogInfo("[GestionInspeccion] ExisteEnDB2=" + existeEnDb2 + ", ExisteEnPG=" + existeEnPg);
 
                 string mensaje;
@@ -280,7 +271,7 @@ namespace CapaPresentacion.Controllers
                     solicitudId,
                     inspectorPrincipal,
                     inspectorApoyo,
-                    fechaHoraInspeccion,
+                    fechaInspeccion,
                     observaciones,
                     tipoInspector,
                     ObtenerUsuarioActual(),
@@ -301,7 +292,7 @@ namespace CapaPresentacion.Controllers
                     var correoEnviado = NotificarSolicitanteAsignacionTecnico(
                         solicitudActualizada,
                         nombreTecnico,
-                        fechaHoraInspeccion,
+                        fechaInspeccion,
                         out mensajeCorreo);
 
                     if (correoEnviado)

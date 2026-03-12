@@ -97,6 +97,7 @@ namespace CapaNegocio
             DateTime fecha,
             string obs,
             string tipoInspector,
+            string usuarioAsignador,
             out string mensaje)
         {
             // Ya no hay código SQL aquí, se movió al DAO para evitar errores de Npgsql en esta capa
@@ -107,6 +108,7 @@ namespace CapaNegocio
                 fecha,
                 obs,
                 tipoInspector,
+                usuarioAsignador,
                 out mensaje);
         }
     }

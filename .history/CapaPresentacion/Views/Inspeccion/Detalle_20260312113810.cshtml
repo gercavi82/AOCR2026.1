@@ -25,38 +25,14 @@
     var estadoDocumental = Model != null && !string.IsNullOrWhiteSpace(Model.EstadoDocumental) ? Model.EstadoDocumental : "Pendiente";
     var inspectorAsignado = Model != null && Model.CodigoInspector.HasValue ? Model.CodigoInspector.Value.ToString() : "No asignado";
     var inspectorPrincipalNombre = Model != null ? (Model.InspectorPrincipalNombre ?? string.Empty).Trim() : string.Empty;
-    if (string.IsNullOrWhiteSpace(inspectorPrincipalNombre) && solicitud != null)
-    {
-        inspectorPrincipalNombre = (solicitud.TecnicoResponsableNombre ?? string.Empty).Trim();
-    }
     var inspectorPrincipalCedula = Model != null ? (Model.InspectorPrincipalCedula ?? string.Empty).Trim() : string.Empty;
-    if (string.IsNullOrWhiteSpace(inspectorPrincipalCedula) && solicitud != null)
-    {
-        inspectorPrincipalCedula = (solicitud.TecnicoResponsableCedula ?? string.Empty).Trim();
-    }
-    if (string.IsNullOrWhiteSpace(inspectorPrincipalCedula) && Model != null && Model.CodigoInspector.HasValue)
-    {
-        inspectorPrincipalCedula = Model.CodigoInspector.Value.ToString();
-    }
-    if (string.IsNullOrWhiteSpace(inspectorPrincipalCedula) && solicitud != null && solicitud.CodigoTecnico.HasValue)
-    {
-        inspectorPrincipalCedula = solicitud.CodigoTecnico.Value.ToString();
-    }
     var inspectorPrincipal = !string.IsNullOrWhiteSpace(inspectorPrincipalNombre)
         ? (string.IsNullOrWhiteSpace(inspectorPrincipalCedula) || string.Equals(inspectorPrincipalNombre, inspectorPrincipalCedula, System.StringComparison.OrdinalIgnoreCase)
             ? inspectorPrincipalNombre
             : (inspectorPrincipalNombre + " - " + inspectorPrincipalCedula))
         : (!string.IsNullOrWhiteSpace(inspectorPrincipalCedula) ? inspectorPrincipalCedula : "No asignado");
     var inspectorApoyoNombre = Model != null ? (Model.InspectorApoyoNombre ?? string.Empty).Trim() : string.Empty;
-    if (string.IsNullOrWhiteSpace(inspectorApoyoNombre) && solicitud != null)
-    {
-        inspectorApoyoNombre = (solicitud.InspectorApoyoNombre ?? string.Empty).Trim();
-    }
     var inspectorApoyoCedula = Model != null ? (Model.InspectorApoyoCedula ?? string.Empty).Trim() : string.Empty;
-    if (string.IsNullOrWhiteSpace(inspectorApoyoCedula) && solicitud != null)
-    {
-        inspectorApoyoCedula = (solicitud.InspectorApoyoCedula ?? string.Empty).Trim();
-    }
     var inspectorApoyo = !string.IsNullOrWhiteSpace(inspectorApoyoNombre)
         ? (string.IsNullOrWhiteSpace(inspectorApoyoCedula) || string.Equals(inspectorApoyoNombre, inspectorApoyoCedula, System.StringComparison.OrdinalIgnoreCase)
             ? inspectorApoyoNombre

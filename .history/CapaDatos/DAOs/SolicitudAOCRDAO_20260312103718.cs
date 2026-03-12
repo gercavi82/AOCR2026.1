@@ -87,7 +87,6 @@ namespace CapaDatos.DAOs
             {
                 "PENDIENTE_ASIGNACION_RT",
                 "PENDIENTE ASIGNACION RT",
-                "PENDIENTE",
                 "ACEPTACION_DOCUMENTAL",
                 "DOCUMENTACION_COMPLETA",
                 "DOCUMENTOS_COMPLETOS",
@@ -95,7 +94,6 @@ namespace CapaDatos.DAOs
                 "PENDIENTE ASIGNACION TECNICA",
                 "PENDIENTE_ASIGNACION",
                 EstadoSolicitud.PendienteAsignacionRT,
-                EstadoSolicitud.Pendiente,
                 EstadoSolicitud.AceptacionDocumental,
                 EstadoSolicitud.DocumentacionCompleta
             }
@@ -699,7 +697,6 @@ WHERE codigo_solicitud=@id AND deleted_at IS NULL;";
 
                         var estadoActualNormalizado = EstadoSolicitud.Normalizar(estadoAnterior);
                         if (!string.Equals(estadoActualNormalizado, EstadoSolicitud.PendienteAsignacionRT, StringComparison.OrdinalIgnoreCase) &&
-                            !string.Equals(estadoActualNormalizado, EstadoSolicitud.Pendiente, StringComparison.OrdinalIgnoreCase) &&
                             !string.Equals(estadoActualNormalizado, EstadoSolicitud.AceptacionDocumental, StringComparison.OrdinalIgnoreCase) &&
                             !string.Equals(estadoActualNormalizado, EstadoSolicitud.DocumentacionCompleta, StringComparison.OrdinalIgnoreCase))
                         {

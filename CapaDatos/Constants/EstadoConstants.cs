@@ -140,6 +140,7 @@ namespace CapaDatos.Constants
         public const string Observada = "Observada";
         public const string Subsanada = "Subsanada";
         public const string AceptacionDocumental = "Aceptacion Documental";
+        public const string PendienteAsignacionRT = "Pendiente Asignacion RT";
         public const string EnInspeccion = "En Inspeccion";
         public const string AOCR_EnElaboracion = "AOCR En Elaboracion";
         public const string AOCR_EnRevision = "AOCR En Revision";
@@ -168,6 +169,7 @@ namespace CapaDatos.Constants
             Observada,
             Subsanada,
             AceptacionDocumental,
+            PendienteAsignacionRT,
             EnInspeccion,
             AOCR_EnElaboracion,
             AOCR_EnRevision,
@@ -182,7 +184,8 @@ namespace CapaDatos.Constants
             { DocumentacionPendiente, new[] { Observada, AceptacionDocumental } },
             { Observada, new[] { Subsanada } },
             { Subsanada, new[] { DocumentacionPendiente, AceptacionDocumental } },
-            { AceptacionDocumental, new[] { EnInspeccion } },
+            { AceptacionDocumental, new[] { PendienteAsignacionRT, EnInspeccion } },
+            { PendienteAsignacionRT, new[] { EnInspeccion } },
             { EnInspeccion, new[] { AOCR_EnElaboracion } },
             { AOCR_EnElaboracion, new[] { AOCR_EnRevision } },
             { AOCR_EnRevision, new[] { AOCR_Validado, Observada } },
@@ -223,6 +226,12 @@ namespace CapaDatos.Constants
                 case "ACEPTACION_DOCUMENTAL":
                 case "APROBADO_POR_INSPECTOR":
                     return AceptacionDocumental;
+                case "PENDIENTE_ASIGNACION_RT":
+                case "PENDIENTE ASIGNACION RT":
+                case "PENDIENTE_ASIGNACION_TECNICA":
+                case "PENDIENTE ASIGNACION TECNICA":
+                case "PENDIENTE_ASIGNACION":
+                    return PendienteAsignacionRT;
                 case "PAGO_PENDIENTE":
                     return PagoPendiente;
                 case "PAGO_VALIDADO":

@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Web;
 using CapaModelo;
 using Newtonsoft.Json;
@@ -53,5 +54,36 @@ namespace CapaPresentacion.Models
         public string CodigoIata { get; set; }
         public string CodigoNumeroCia { get; set; }
         public string Nombre { get; set; }
+    }
+
+    public class SubsanacionViewModel
+    {
+        public int CodigoSolicitud { get; set; }
+        public string NumeroSolicitud { get; set; }
+        public string Compania { get; set; }
+        public DateTime? FechaSolicitud { get; set; }
+        public string Estado { get; set; }
+        public string InspectorNombre { get; set; }
+
+        public string ObservacionesInspector { get; set; }
+        public List<HistorialObservacionVM> HistorialObservaciones { get; set; } = new List<HistorialObservacionVM>();
+        public List<DocumentoSubsanacionVM> DocumentosObservados { get; set; } = new List<DocumentoSubsanacionVM>();
+    }
+
+    public class HistorialObservacionVM
+    {
+        public DateTime? Fecha { get; set; }
+        public string Observacion { get; set; }
+        public string Usuario { get; set; }
+    }
+
+    public class DocumentoSubsanacionVM
+    {
+        public int CodigoDocumento { get; set; }
+        public string TipoDocumento { get; set; }
+        public string NombreArchivo { get; set; }
+        public string Estado { get; set; }
+        public string Observaciones { get; set; }
+        public DateTime? FechaCarga { get; set; }
     }
 }

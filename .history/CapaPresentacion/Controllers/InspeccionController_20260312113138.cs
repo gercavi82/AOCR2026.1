@@ -279,8 +279,6 @@ namespace CapaPresentacion.Controllers
                 ViewBag.Solicitud = null;
             }
 
-            EnriquecerInspectoresDetalle(inspeccion, ViewBag.Solicitud as SolicitudAOCR);
-
             return View("~/Views/Inspeccion/Detalle.cshtml", inspeccion);
         }
 
@@ -1374,119 +1372,6 @@ namespace CapaPresentacion.Controllers
             if (valor == "OPS" || valor == "AIR")
             {
                 return valor;
-            }
-
-            return null;
-        }
-
-        private void EnriquecerInspectoresDetalle(Inspeccion inspeccion, SolicitudAOCR solicitud)
-        {
-            if (inspeccion == null)
-            {
-                return;
-            }
-
-            var cedulaPrincipal = FirstNonEmpty(
-                inspeccion.InspectorPrincipalCedula,
-                solicitud != null ? solicitud.TecnicoResponsableCedula : null,
-                inspeccion.CodigoInspector.HasValue ? inspeccion.CodigoInspector.Value.ToString() : null,
-                solicitud != null && solicitud.CodigoTecnico.HasValue ? solicitud.CodigoTecnico.Value.ToString() : null);
-
-            var cedulaApoyo = FirstNonEmpty(
-                inspeccion.InspectorApoyoCedula,
-                solicitud != null ? solicitud.InspectorApoyoCedula : null);
-
-            try
-            {
-                var daoAs400 = new InspectorAS400DAO(new SecureConfigurationService());
-
-                if (!string.IsNullOrWhiteSpace(cedulaPrincipal) &&
-                    (string.IsNullOrWhiteSpace(inspeccion.InspectorPrincipalNombre)
-                    || string.IsNullOrWhiteSpace(inspeccion.InspectorPrincipalTipo)
-                    || string.IsNullOrWhiteSpace(inspeccion.InspectorPrincipalCedula)))
-                {
-                    var principal = daoAs400.ObtenerActivoPorCedula(
-                        cedulaPrincipal,
-                        FirstNonEmpty(inspeccion.InspectorPrincipalTipo, solicitud != null ? solicitud.TecnicoResponsableTipo : null));
-                    if (principal == null)
-                    {
-                        principal = daoAs400.ObtenerActivoPorCedula(cedulaPrincipal);
-                    }
-                    if (principal != null)
-                    {
-                        inspeccion.InspectorPrincipalCedula = FirstNonEmpty(inspeccion.InspectorPrincipalCedula, principal.Cedula);
-                        inspeccion.InspectorPrincipalNombre = FirstNonEmpty(inspeccion.InspectorPrincipalNombre, principal.NombreCompleto);
-                        inspeccion.InspectorPrincipalTipo = FirstNonEmpty(inspeccion.InspectorPrincipalTipo, principal.Tipo);
-                    }
-                }
-
-                if (!string.IsNullOrWhiteSpace(cedulaApoyo) &&
-                    (string.IsNullOrWhiteSpace(inspeccion.InspectorApoyoNombre)
-                    || string.IsNullOrWhiteSpace(inspeccion.InspectorApoyoTipo)
-                    || string.IsNullOrWhiteSpace(inspeccion.InspectorApoyoCedula)))
-                {
-                    var apoyo = daoAs400.ObtenerActivoPorCedula(
-                        cedulaApoyo,
-                        FirstNonEmpty(inspeccion.InspectorApoyoTipo, solicitud != null ? solicitud.InspectorApoyoTipo : null));
-                    if (apoyo == null)
-                    {
-                        apoyo = daoAs400.ObtenerActivoPorCedula(cedulaApoyo);
-                    }
-                    if (apoyo != null)
-                    {
-                        inspeccion.InspectorApoyoCedula = FirstNonEmpty(inspeccion.InspectorApoyoCedula, apoyo.Cedula);
-                        inspeccion.InspectorApoyoNombre = FirstNonEmpty(inspeccion.InspectorApoyoNombre, apoyo.NombreCompleto);
-                        inspeccion.InspectorApoyoTipo = FirstNonEmpty(inspeccion.InspectorApoyoTipo, apoyo.Tipo);
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                _logger.LogWarning("[GestionInspeccion] Error enriqueciendo inspectores desde AS400. InspeccionId=" + inspeccion.CodigoInspeccion + ", Error=" + ex.Message);
-            }
-
-            if (string.IsNullOrWhiteSpace(inspeccion.InspectorPrincipalCedula))
-            {
-                inspeccion.InspectorPrincipalCedula = cedulaPrincipal;
-            }
-
-            if (string.IsNullOrWhiteSpace(inspeccion.InspectorPrincipalNombre) && !string.IsNullOrWhiteSpace(inspeccion.InspectorPrincipalCedula))
-            {
-                inspeccion.InspectorPrincipalNombre = inspeccion.InspectorPrincipalCedula;
-            }
-
-            if (string.IsNullOrWhiteSpace(inspeccion.InspectorApoyoCedula))
-            {
-                inspeccion.InspectorApoyoCedula = cedulaApoyo;
-            }
-
-            if (string.IsNullOrWhiteSpace(inspeccion.InspectorApoyoNombre) && !string.IsNullOrWhiteSpace(inspeccion.InspectorApoyoCedula))
-            {
-                inspeccion.InspectorApoyoNombre = inspeccion.InspectorApoyoCedula;
-            }
-
-            _logger.LogInfo("[GestionInspeccion] Detalle inspectores enriquecidos. InspeccionId=" + inspeccion.CodigoInspeccion
-                + ", PrincipalCedula=" + (inspeccion.InspectorPrincipalCedula ?? "")
-                + ", PrincipalNombre=" + (inspeccion.InspectorPrincipalNombre ?? "")
-                + ", PrincipalTipo=" + (inspeccion.InspectorPrincipalTipo ?? "")
-                + ", ApoyoCedula=" + (inspeccion.InspectorApoyoCedula ?? "")
-                + ", ApoyoNombre=" + (inspeccion.InspectorApoyoNombre ?? "")
-                + ", ApoyoTipo=" + (inspeccion.InspectorApoyoTipo ?? ""));
-        }
-
-        private static string FirstNonEmpty(params string[] values)
-        {
-            if (values == null)
-            {
-                return null;
-            }
-
-            foreach (var value in values)
-            {
-                if (!string.IsNullOrWhiteSpace(value))
-                {
-                    return value.Trim();
-                }
             }
 
             return null;
