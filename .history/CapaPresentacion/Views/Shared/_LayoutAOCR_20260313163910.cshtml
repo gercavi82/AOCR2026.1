@@ -1,0 +1,872 @@
+﻿@inherits System.Web.Mvc.WebViewPage
+@using CapaModelo
+@using System.Web.Mvc.Html
+@using System.Web.Optimization
+<!DOCTYPE html>
+<html lang="es" data-theme="light">
+<head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes" />
+    <meta name="description" content="Sistema AOCR - Dirección General de Aviación Civil Ecuador" />
+    <meta name="author" content="DGAC Ecuador" />
+    <meta name="keywords" content="DGAC, Aviación Civil, Ecuador, AOCR, Órdenes de Recaudación" />
+
+    <!-- CSP simplificado (compatible con DataTables y plugins) -->
+    <meta http-equiv="Content-Security-Policy"
+          content="default-src 'self' https:;
+                   script-src 'self' 'unsafe-inline' 'unsafe-eval'
+                             https://cdn.jsdelivr.net https://code.jquery.com https://cdnjs.cloudflare.com https://cdn.datatables.net;
+                   style-src  'self' 'unsafe-inline'
+                             https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://cdn.datatables.net;
+                   img-src    'self' data: https:;
+                   font-src   'self' data: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net;
+                   connect-src 'self' https:;" />
+
+    <!-- Preconexiones para mejorar performance -->
+    <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+    <link rel="dns-prefetch" href="https://cdn.jsdelivr.net">
+
+    @{
+        var pageTitle = ViewBag.Title != null
+            ? System.Web.HttpUtility.HtmlDecode(System.Web.HttpUtility.HtmlDecode(ViewBag.Title.ToString()))
+            : "";
+    }
+
+    <title>@pageTitle - DGAC Sistema AOCR</title>
+
+    <!-- FontAwesome desde CDN compatible con CSP -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <!-- Bootstrap 5 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+
+    <!-- Favicon con múltiples formatos y fallbacks -->
+        <link rel="icon" type="image/x-icon" href="@Url.Content("~/favicon.ico")"
+          onerror="this.href='data:image/x-icon;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAACXBIWXMAAA7EAAAOxAGVKw4bAAABfklEQVQ4jY2Tv0tVYRTFf9/3Pdd7vQb2cP0BhVlkiGRlIUYRDn8FBS6CQ7i4OIkgBFHgIo6+haogbWk2gTi4lJOS3YcNQU6F+F7fPX3jfclL+A6Hc87nnMM5B3KSASDpOFAH3gFngL8X9PaAmqS1Uwb2OjADGGfsDdA0s1VJfUl9AUnTwFNgAHyR9GdInATcBrYktYcWAAeAL4AfJEs6kvQF6BZ2NWBFUv8CGe7kPevxpZ6neFftApckvbvInxU1rQB7QCrJj3ww7wJcB35Kena83DnIAdDJap0FXgOvgHttN3sE9AAAEABJREFUeNrtlWlsW2Uaxt9zvuMlXhIntZPGu+wkTdM0TZYW0rZ0I22h0MoCIhRQYaaCSr0BNJAQEpcxSCMhwYUZIIo0YwRCgJYhVUtpKUHZ0nQf23HiJW4c70u8OZ9fO3aSmab9ix8/xfru9z7P93zP+7zH6/8B0McN1sxkxh5TvN91WY0u1ap1Gq9HDVbzjq0P5KQ2i64z0LFq7yKk/hmG+39kZX9lXVf/B0bXePH3eyB9jfXuZ8GXlz8F59veew3Xw9ux8Kk/IHde9oLrge2ApJs27iBQWbqAM/0DAv9BxTUsq6r0vNeRWF9Zaf7gV/sG3rq/2aSwQNThQvJb8P6NsD0BxQdSGuQQn/oq2W+Y9e5nwby5BAPtP8BafzubN2xnoL2NdZt3MNB+4W7AdVuZedP0BdD6un7wtt50Q+/QhHRXU2X8V09+99+1mQ1aSZJcUX+E1CxS2A8S5tJqknE4/X9mKmoADIIBAAp1cxn4W1z1eUmpHk29mVmW0+SmJ8l3TC1h0zv3wvIcDN0gNBrh7dU4j27l2jdf4P7D97zUe/Q46zY/vkA1ejyeBdo0Cz4P3PcB3MPw1dLSE3l99tjO1f5Pdh/9HGuVixWWgrDLgT1eBZ4sDd3iYdXKBt4b0i8TvETu+2x96GFUKjU1tfX85o29HLp9Cx/V19FjdXBsPI42I0h77aBlGgqQpQp4wEyw9uRxtv/mZTb9/lXqN24mGgwKEkGKC/4D2qIP+RCLzrEAAAAASUVORK5CYII=';" />
+        <link rel="apple-touch-icon" href="@Url.Content("~/Content/assets/imganes/icons/favicon.png")">
+
+    <!-- CSS Bundles con fallback directo -->
+    @if (System.Web.Optimization.BundleTable.EnableOptimizations)
+    {
+        @System.Web.Optimization.Styles.Render("~/Content/css")
+        @System.Web.Optimization.Styles.Render("~/Content/plugins-css")
+        <link href="@Url.Content("~/Content/aocr-institucional.css")" rel="stylesheet" />
+    }
+    else
+    {
+        <!-- AdminLTE CSS -->
+        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/admin-lte@3.2/dist/css/adminlte.min.css">
+
+        <!-- DataTables CSS -->
+        <link rel="stylesheet" href="https://cdn.datatables.net/1.13.4/css/dataTables.bootstrap5.min.css">
+        <link rel="stylesheet" href="https://cdn.datatables.net/responsive/2.4.1/css/responsive.bootstrap5.min.css">
+
+        <!-- CSS Personalizado -->
+        <link href="@Url.Content("~/Content/Site.css")" rel="stylesheet" />
+        <link href="@Url.Content("~/Content/aocr-institucional.css")" rel="stylesheet" />
+    }
+
+    <!-- Estilos personalizados críticos (inline para performance) -->
+    <style>
+        :root {
+            --dgac-primary: #1B4F72;
+            --dgac-secondary: #0C7C86;
+            --dgac-success: #28a745;
+            --dgac-warning: #ffc107;
+            --dgac-danger: #dc3545;
+            --dgac-light: #f8f9fa;
+            --dgac-dark: #343a40;
+            --transition-fast: 0.2s ease;
+        }
+
+        /* Loader global crítico */
+        #global-loader {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: white;
+            z-index: 9999;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+        }
+
+        .loader-spinner {
+            width: 50px;
+            height: 50px;
+            border: 5px solid #f3f3f3;
+            border-top: 5px solid var(--dgac-primary);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @@keyframes spin {
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+
+        /* Fallback para imágenes */
+        .img-fallback {
+            background: linear-gradient(135deg, var(--dgac-primary), var(--dgac-secondary));
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
+
+        /* Estado de carga */
+        body.waiting {
+            cursor: wait !important;
+        }
+
+            body.waiting::after {
+                content: '';
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                background: rgba(255, 255, 255, 0.7);
+                z-index: 9998;
+            }
+
+        /* Accesibilidad */
+        @@media (prefers-reduced-motion: reduce) {
+            * {
+                animation-duration: 0.01ms !important;
+                animation-iteration-count: 1 !important;
+                transition-duration: 0.01ms !important;
+            }
+        }
+
+        .sr-only {
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            padding: 0;
+            margin: -1px;
+            overflow: hidden;
+            clip: rect(0, 0, 0, 0);
+            white-space: nowrap;
+            border: 0;
+        }
+
+        .aocr-page-subtitle {
+            color: #5d7386;
+            font-size: 0.88rem;
+            letter-spacing: 0.2px;
+            margin-top: 0.2rem;
+        }
+
+        .aocr-breadcrumb {
+            background: #ffffff;
+            border: 1px solid #d9e3ea;
+            border-radius: 999px;
+            padding: 0.42rem 0.85rem;
+            margin: 0;
+            display: inline-flex;
+            gap: 0.38rem;
+            align-items: center;
+            box-shadow: 0 3px 10px rgba(12, 48, 72, 0.06);
+        }
+
+        .aocr-breadcrumb .breadcrumb-item + .breadcrumb-item::before {
+            content: ">";
+            color: #6f8799;
+            float: none;
+            padding-right: 0.35rem;
+        }
+
+        .aocr-breadcrumb .breadcrumb-item a {
+            color: #1b4f72;
+            font-weight: 600;
+            text-decoration: none;
+        }
+
+        .aocr-breadcrumb .breadcrumb-item.active {
+            color: #264b62;
+            font-weight: 700;
+        }
+
+        .aocr-footer {
+            background: linear-gradient(180deg, #f9fbfc 0%, #f1f6f9 100%);
+        }
+
+        .aocr-footer .footer-title {
+            color: #153a57;
+            font-weight: 700;
+        }
+
+        .aocr-footer .footer-subtitle,
+        .aocr-footer .footer-meta {
+            color: #557183;
+        }
+    </style>
+
+    @RenderSection("Styles", required: false)
+</head>
+
+<body class="hold-transition sidebar-mini layout-fixed layout-navbar-fixed">
+
+    <!-- ✅ CORRECCIÓN: AntiForgeryToken para AJAX (FORMA CORRECTA) -->
+    <!-- (no lo pongas dentro de value="", porque Html.AntiForgeryToken() devuelve un input completo) -->
+    <form id="__AjaxAntiForgeryForm" style="display:none;">
+        @System.Web.Helpers.AntiForgery.GetHtml()
+    </form>
+
+    <!-- Global Loader -->
+    <div id="global-loader">
+        <div class="loader-spinner"></div>
+        <div class="mt-3 text-muted">Cargando sistema AOCR...</div>
+    </div>
+
+    <!-- Session timeout warning -->
+    <div id="session-timeout-warning" class="modal fade" data-bs-backdrop="static" data-bs-keyboard="false">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header bg-warning">
+                    <h5 class="modal-title"><i class="fas fa-clock me-2"></i>Sesión por expirar</h5>
+                </div>
+                <div class="modal-body text-center">
+                    <p>Su sesión expirará en <span id="session-countdown" class="fw-bold">5:00</span> minutos.</p>
+                    <p>¿Desea extender la sesión?</p>
+                </div>
+                <div class="modal-footer justify-content-center">
+                    <button type="button" class="btn btn-outline-secondary me-2" id="btn-logout-now">
+                        <i class="fas fa-sign-out-alt me-1"></i> Cerrar Sesión
+                    </button>
+                    <button type="button" class="btn btn-primary" id="btn-extend-session">
+                        <i class="fas fa-sync-alt me-1"></i> Extender Sesión
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="wrapper aocr-main-wrapper">
+        <!-- Navbar Principal -->
+        <nav class="main-header navbar navbar-expand navbar-white navbar-light border-bottom aocr-topbar">
+            <!-- Botón sidebar -->
+            <ul class="navbar-nav">
+                <li class="nav-item">
+                    <a class="nav-link" data-widget="pushmenu" href="#" role="button"
+                       aria-label="Alternar menú lateral">
+                        <i class="fas fa-bars"></i>
+                    </a>
+                </li>
+                <li class="nav-item d-none d-sm-inline-block">
+                    <span class="nav-link text-dark fw-bold">
+                        <i class="fas fa-plane me-1 text-primary"></i>
+                        <span id="org-name">Dirección General de Aviación Civil - Ecuador</span>
+                    </span>
+                </li>
+            </ul>
+
+            <!-- Controles derecho -->
+            <ul class="navbar-nav ms-auto">
+                <!-- Notificaciones -->
+                @Html.Partial("_NotificacionesBadge")
+
+                <!-- Menú Usuario -->
+                <li class="nav-item dropdown user-menu">
+                    <a href="#" class="nav-link dropdown-toggle" data-bs-toggle="dropdown"
+                       aria-haspopup="true" aria-expanded="false">
+                        @{
+                            var avatarUrl = Url.Content("~/Content/imganes/user.png");
+                            var avatarAlt = Session["NombreUsuario"] as string ?? "Usuario";
+                            var defaultAvatar = Url.Content("~/Content/imganes/user.png");
+                            var rolSidebar = (Session["Rol"] as string ?? string.Empty).Trim();
+                            var empresaNombreSidebar = (Session["EmpresaNombre"] as string ?? string.Empty).Trim();
+                            var empresaCodigoSidebar = (Session["EmpresaCodigo"] as string ?? string.Empty).Trim();
+                            var mostrarEmpresaEnSidebar = rolSidebar.Equals("Solicitante", StringComparison.OrdinalIgnoreCase)
+                                                       || rolSidebar.Equals("Operador", StringComparison.OrdinalIgnoreCase);
+                            var subtituloSidebar = rolSidebar;
+                            if (mostrarEmpresaEnSidebar)
+                            {
+                                subtituloSidebar = !string.IsNullOrWhiteSpace(empresaNombreSidebar)
+                                    ? empresaNombreSidebar
+                                    : (!string.IsNullOrWhiteSpace(empresaCodigoSidebar) ? empresaCodigoSidebar : rolSidebar);
+                            }
+                        }
+                        <img src="@avatarUrl"
+                             class="user-image img-circle elevation-1"
+                             alt="@avatarAlt"
+                             width="32" height="32"
+                             onerror="this.onerror=null; this.src='@defaultAvatar';">
+                        <span class="d-none d-md-inline ms-2" id="user-display-name">@avatarAlt</span>
+                    </a>
+                    <div class="dropdown-menu dropdown-menu-lg dropdown-menu-end">
+                        <div class="user-header bg-light p-3 text-center">
+                            <img src="@avatarUrl"
+                                 class="img-circle elevation-2 mb-2"
+                                 alt="@avatarAlt"
+                                 width="90" height="90"
+                                 onerror="this.onerror=null; this.src='@defaultAvatar';">
+                            <p class="mb-0">
+                                <span id="user-fullname" class="d-block">@Session["NombreUsuario"]</span>
+                                <small id="user-role" class="text-muted">@Session["Rol"]</small>
+                            </p>
+                        </div>
+                        <div class="user-footer p-3">
+                            <div class="row">
+                                <div class="col-6">
+                                    <a class="btn btn-default btn-block" href="@Url.Action("MiPerfil", "Usuario")">
+                                        <i class="fas fa-user me-1"></i> Perfil
+                                    </a>
+                                </div>
+                                <div class="col-6">
+                                    <a class="btn btn-danger btn-block" href="@Url.Action("Logout", "Account")"
+                                       id="logout-link">
+                                        <i class="fas fa-sign-out-alt me-1"></i> Salir
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </li>
+            </ul>
+        </nav>
+
+        <!-- Sidebar -->
+        <aside class="main-sidebar sidebar-dark-primary elevation-4 aocr-sidebar">
+            <div class="sidebar">
+                <!-- Información usuario sidebar -->
+                <div class="user-panel d-flex align-items-center compact-user-panel">
+                    <div class="image">
+                        <img src="@avatarUrl"
+                             class="img-circle elevation-2"
+                             alt="@avatarAlt"
+                             width="40" height="40"
+                             onerror="this.onerror=null; this.src='@defaultAvatar';">
+                    </div>
+                    <div class="info">
+                        <a href="@Url.Action("MiPerfil", "Usuario")" class="d-block">@avatarAlt</a>
+                        <small class="text-muted" title="@subtituloSidebar">@subtituloSidebar</small>
+                    </div>
+                </div>
+
+                <!-- Menu Sidebar -->
+                @Html.Partial("_SideBar")
+            </div>
+        </aside>
+
+        <!-- Contenido Principal -->
+        <div class="content-wrapper">
+            @Html.Partial("_PageHeader")
+
+            <!-- Contenido -->
+            <section class="content aocr-content-shell px-3 pb-4">
+                @RenderBody()
+            </section>
+        </div>
+
+        <!-- Footer -->
+        <footer class="main-footer aocr-footer text-center border-top pt-3 no-print">
+            <div class="container-fluid">
+                <div class="row">
+                    <div class="col-md-6 text-md-start">
+                        @{
+                            string fechaCompilacion;
+                            try
+                            {
+                                var ensamblado = System.Reflection.Assembly.GetExecutingAssembly().Location;
+                                fechaCompilacion = System.IO.File.GetLastWriteTime(ensamblado).ToString("dd/MM/yyyy HH:mm");
+                            }
+                            catch
+                            {
+                                fechaCompilacion = DateTime.Now.ToString("dd/MM/yyyy HH:mm");
+                            }
+                        }
+                        <div class="footer-title">Sistema AOCR</div>
+                        <small class="d-block footer-subtitle">
+                            Dirección General de Aviación Civil - Ecuador
+                        </small>
+                        <small class="d-block footer-meta">
+                            Versión v@(System.Reflection.Assembly.GetExecutingAssembly().GetName().Version)
+                            · Compilación @fechaCompilacion
+                        </small>
+                    </div>
+                    <div class="col-md-6 text-md-end">
+                        <small class="footer-meta">
+                            <i class="fas fa-shield-alt"></i>
+                            @(HttpContext.Current.IsDebuggingEnabled ? "Desarrollo" : "Producción")
+                            · Último acceso <span id="last-access-time">@DateTime.Now.ToString("dd/MM/yyyy HH:mm")</span>
+                        </small>
+                    </div>
+                </div>
+            </div>
+        </footer>
+    </div>
+
+    <!-- ========== SCRIPTS EN ORDEN CORRECTO ========== -->
+    <!-- ✅ CORRECCIÓN: jQuery PRIMERO, luego dependencias -->
+    <!-- 1. jQuery local (3.6.4) con fallback seguro sin document.write -->
+    <script src="@Url.Content("~/Scripts/jquery-3.6.4.min.js")"></script>
+    <script>
+        (function () {
+            if (window.jQuery) return;
+            console.warn('⚠️ jQuery local no cargó, intentando CDN (async)...');
+            var s = document.createElement('script');
+            s.src = 'https://code.jquery.com/jquery-3.6.4.min.js';
+            s.onload = s.onreadystatechange = function () {
+                if (!this.readyState || this.readyState === 'loaded' || this.readyState === 'complete') {
+                    window.$ = window.jQuery;
+                }
+            };
+            document.head.appendChild(s);
+        })();
+    </script>
+
+    <!-- 1.1 jQuery Validate (necesario para validación cliente en vistas MVC) -->
+    <script src="@Url.Content("~/Scripts/jquery.validate.min.js")"></script>
+    <script src="@Url.Content("~/Scripts/jquery.validate.unobtrusive.min.js")"></script>
+    <script>
+        (function () {
+            function loadScript(src) {
+                var s = document.createElement('script');
+                s.src = src;
+                s.async = false;
+                document.head.appendChild(s);
+            }
+
+            function ensureValidationPlugins(retries) {
+                if (!window.jQuery) {
+                    if ((retries || 0) < 40) {
+                        setTimeout(function () {
+                            ensureValidationPlugins((retries || 0) + 1);
+                        }, 50);
+                    }
+                    return;
+                }
+
+                if (!window.jQuery.fn || typeof window.jQuery.fn.validate !== 'function') {
+                    loadScript('https://cdnjs.cloudflare.com/ajax/libs/jquery-validate/1.19.5/jquery.validate.min.js');
+                }
+
+                if (!window.jQuery.validator || !window.jQuery.validator.unobtrusive) {
+                    loadScript('https://cdnjs.cloudflare.com/ajax/libs/jquery-validation-unobtrusive/3.2.12/jquery.validate.unobtrusive.min.js');
+                }
+            }
+
+            ensureValidationPlugins(0);
+        })();
+    </script>
+
+    <!-- 2. Bootstrap 5 JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"
+            integrity="sha384-w76AqPfDkMBDXo30jS1Sgez6pr3x5MlQ1ZAGC+nuZB+EYdgRZgiwxhTBTkF7CXvN"
+            crossorigin="anonymous"></script>
+
+    <!-- 3. Loader optimizado que espera jQuery -->
+    <script>
+    // ✅ CARGA SEGURA DE DEPENDENCIAS
+    (function initScriptLoader() {
+        // Estado de carga
+        var loadedScripts = {
+            jquery: false,
+            bootstrap: false,
+            datatables: false,
+            sweetalert: false,
+            adminlte: false
+        };
+
+        // Verificar si jQuery ya está listo
+        function checkJQuery() {
+            if (window.jQuery && typeof jQuery !== 'undefined') {
+                loadedScripts.jquery = true;
+                // Asegurar que $ esté disponible globalmente
+                if (typeof window.$ === 'undefined') {
+                    window.$ = jQuery;
+                }
+                console.log('✅ jQuery verificado');
+                checkBootstrap();
+            } else {
+                console.log('⏳ Esperando jQuery...');
+                setTimeout(checkJQuery, 50);
+            }
+        }
+
+        // Verificar si Bootstrap está listo
+        function checkBootstrap() {
+            if (window.bootstrap && typeof bootstrap !== 'undefined') {
+                loadedScripts.bootstrap = true;
+                console.log('✅ Bootstrap verificado');
+                loadDataTables();
+            } else {
+                console.log('⏳ Esperando Bootstrap...');
+                setTimeout(checkBootstrap, 50);
+            }
+        }
+
+        // Iniciar chequeo
+        checkJQuery();
+
+        // Utilidades AOCR (escape helpers) - cargadas localmente para evitar depender de CDN en páginas que usan Layout=null
+        (function(){
+            var s = document.createElement('script');
+            s.src = '@Url.Content("~/Scripts/aocr-utils.js")';
+            s.async = false;
+            document.head.appendChild(s);
+        })();
+
+        function loadDataTables() {
+            console.log('📊 Cargando DataTables...');
+
+            // Cargar en orden secuencial
+            var dtScripts = [
+                'https://cdn.datatables.net/1.13.4/js/jquery.dataTables.min.js',
+                'https://cdn.datatables.net/1.13.4/js/dataTables.bootstrap5.min.js',
+                'https://cdn.datatables.net/responsive/2.4.1/js/dataTables.responsive.min.js'
+            ];
+
+            function loadNextScript(index) {
+                if (index >= dtScripts.length) {
+                    loadedScripts.datatables = true;
+                    console.log('✅ DataTables cargado');
+                    document.dispatchEvent(new Event('AOCR.DataTablesReady'));
+                    if (window.AOCR) {
+                        window.AOCR.dataTablesLoaded = true;
+                    }
+                    loadSweetAlert();
+                    return;
+                }
+
+                var script = document.createElement('script');
+                script.src = dtScripts[index];
+                script.async = false;
+
+                script.onload = function () {
+                    console.log('✅ ' + dtScripts[index].split('/').pop());
+                    loadNextScript(index + 1);
+                };
+
+                script.onerror = function () {
+                    console.warn('⚠️ Error cargando: ' + dtScripts[index]);
+                    loadNextScript(index + 1);
+                };
+
+                document.body.appendChild(script);
+            }
+
+            loadNextScript(0);
+        }
+
+        function loadSweetAlert() {
+            console.log('💫 Cargando SweetAlert...');
+            var script = document.createElement('script');
+            script.src = 'https://cdn.jsdelivr.net/npm/sweetalert2@11';
+            script.async = false;
+
+            script.onload = function () {
+                loadedScripts.sweetalert = true;
+                console.log('✅ SweetAlert2 cargado');
+                loadAdminLTE();
+            };
+
+            script.onerror = function () {
+                console.warn('⚠️ SweetAlert no se pudo cargar');
+                loadedScripts.sweetalert = false;
+                loadAdminLTE();
+            };
+
+            document.body.appendChild(script);
+        }
+
+        function loadAdminLTE() {
+            console.log('🎨 Cargando AdminLTE...');
+            var script = document.createElement('script');
+            script.src = 'https://cdn.jsdelivr.net/npm/admin-lte@3.2/dist/js/adminlte.min.js';
+            script.async = false;
+
+            script.onload = function () {
+                loadedScripts.adminlte = true;
+                console.log('✅ AdminLTE cargado');
+                loadLocalScripts();
+            };
+
+            script.onerror = function () {
+                console.warn('⚠️ AdminLTE no se pudo cargar');
+                loadedScripts.adminlte = false;
+                loadLocalScripts();
+            };
+
+            document.body.appendChild(script);
+        }
+
+        function loadLocalScripts() {
+            console.log('📁 Cargando scripts locales...');
+
+            // Cargar site.js
+            var siteScript = document.createElement('script');
+            siteScript.src = '@Url.Content("~/Scripts/site.js")';
+            siteScript.async = false;
+            siteScript.onload = function() {
+                console.log('✅ site.js cargado');
+                loadAppJS();
+            };
+            siteScript.onerror = function() {
+                console.warn('⚠️ site.js no se pudo cargar');
+                loadAppJS();
+            };
+            document.body.appendChild(siteScript);
+        }
+
+        function loadAppJS() {
+            // Cargar app.js
+            var appScript = document.createElement('script');
+            appScript.src = '@Url.Content("~/Scripts/app.js")';
+            appScript.async = false;
+            appScript.onload = function() {
+                console.log('✅ app.js cargado');
+                initializeAOCRSystem();
+            };
+            appScript.onerror = function() {
+                console.warn('⚠️ app.js no se pudo cargar');
+                initializeAOCRSystem();
+            };
+            document.body.appendChild(appScript);
+        }
+
+        function initializeAOCRSystem() {
+            console.log('🚀 Inicializando sistema AOCR...');
+
+            // Verificar dependencias mínimas
+            if (!loadedScripts.jquery) {
+                console.error('❌ jQuery no cargado - abortando inicialización');
+                return;
+            }
+
+            $(document).ready(function () {
+                // Configuración global
+                window.AOCR_CONFIG = {
+                    apiBaseUrl: '@Url.Content("~/")',
+                    debug: @(HttpContext.Current.IsDebuggingEnabled ? "true" : "false"),
+                    uploadMaxSize: 10 * 1024 * 1024,
+                    sessionTimeout: 20 * 60 * 1000,
+                    user: {
+                        id: '@(Session["UserId"] ?? "")',
+                        name: '@(Session["NombreUsuario"] ?? "")',
+                        role: '@(Session["Rol"] ?? "")'
+                    }
+                };
+
+                // Ocultar loader global
+                $('#global-loader').fadeOut(300, function () {
+                    $(this).remove();
+                    console.log('✅ Loader ocultado');
+                });
+
+                // Inicializar componentes globales
+                initGlobalComponents();
+                initSessionManagement();
+                setupAjaxDefaults();
+
+                // Integración con site.js y app.js
+                integrateWithSiteJS();
+
+                console.log('✅ Sistema AOCR inicializado completamente');
+                console.log('📊 Dependencias:', loadedScripts);
+            });
+        }
+
+        function initGlobalComponents() {
+            // Tooltips de Bootstrap 5
+            if (window.bootstrap && bootstrap.Tooltip) {
+                try {
+                    var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+                    tooltipTriggerList.forEach(function (el) {
+                        try {
+                            // Solo crear si no existe
+                            if (!el._tooltip) {
+                                new bootstrap.Tooltip(el);
+                            }
+                        } catch (e) {
+                            console.warn('Tooltip error:', e);
+                        }
+                    });
+                    console.log('✅ Tooltips globales inicializados:', tooltipTriggerList.length);
+                } catch (e) {
+                    console.error('Error inicializando tooltips:', e);
+                }
+            }
+
+            // Alertas auto-ocultantes
+            $('.alert-auto-hide').delay(5000).fadeOut(400);
+        }
+
+        function initSessionManagement() {
+            // Tu código existente de gestión de sesión
+            var sessionTimer, warningTimer, countdownTimer;
+            var WARNING_TIME = 5 * 60 * 1000;
+            var TOTAL_TIMEOUT = 25 * 60 * 1000;
+
+            function resetSessionTimers() {
+                clearTimeout(sessionTimer);
+                clearTimeout(warningTimer);
+
+                warningTimer = setTimeout(showSessionWarning, TOTAL_TIMEOUT - WARNING_TIME);
+                sessionTimer = setTimeout(function () {
+                    window.location.href = '@Url.Action("Logout", "Account")?timeout=true';
+                }, TOTAL_TIMEOUT);
+            }
+
+            function showSessionWarning() {
+                if (!window.bootstrap || !bootstrap.Modal) {
+                    console.warn('Bootstrap Modal no disponible para advertencia de sesión');
+                    return;
+                }
+
+                try {
+                    var modalElement = document.getElementById('session-timeout-warning');
+                    if (!modalElement) return;
+
+                    var modal = new bootstrap.Modal(modalElement);
+                    var timeLeft = 300;
+                    var countdownEl = document.getElementById('session-countdown');
+
+                    function updateCountdown() {
+                        var minutes = Math.floor(timeLeft / 60);
+                        var seconds = timeLeft % 60;
+                        if (countdownEl) {
+                            countdownEl.textContent = minutes + ':' + (seconds < 10 ? '0' : '') + seconds;
+                        }
+                        timeLeft--;
+
+                        if (timeLeft >= 0) {
+                            countdownTimer = setTimeout(updateCountdown, 1000);
+                        } else {
+                            modal.hide();
+                            window.location.href = '@Url.Action("Logout", "Account")?timeout=true';
+                        }
+                    }
+
+                    modal.show();
+                    updateCountdown();
+
+                    $('#btn-extend-session').off('click').on('click', function () {
+                        if (countdownTimer) {
+                            clearTimeout(countdownTimer);
+                            countdownTimer = null;
+                        }
+                        var token = $('#__AjaxAntiForgeryForm input[name="__RequestVerificationToken"]').val();
+                        $.post('@Url.Action("ExtenderSesion", "Account")', {
+                                __RequestVerificationToken: token
+                            })
+                            .done(function () {
+                                modal.hide();
+                                resetSessionTimers();
+                                // Usar Site.notify si existe, o AOCR.showAlert
+                                if (window.Site && Site.notify) {
+                                    Site.notify('Sesión extendida exitosamente', 'success');
+                                } else if (window.AOCR) {
+                                    AOCR.showAlert('Éxito', 'Sesión extendida', 'success');
+                                }
+                            })
+                            .fail(function () {
+                                window.location.href = '@Url.Action("Logout", "Account")';
+                            });
+                    });
+
+                    $('#btn-logout-now').off('click').on('click', function () {
+                        if (countdownTimer) {
+                            clearTimeout(countdownTimer);
+                            countdownTimer = null;
+                        }
+                        window.location.href = '@Url.Action("Logout", "Account")';
+                    });
+
+                } catch (error) {
+                    console.error('Error en advertencia de sesión:', error);
+                }
+            }
+
+            resetSessionTimers();
+            $(document).on('click keypress mousemove', resetSessionTimers);
+        }
+
+        function setupAjaxDefaults() {
+            $.ajaxSetup({
+                beforeSend: function (xhr) {
+                    var token = $('#__AjaxAntiForgeryForm input[name="__RequestVerificationToken"]').val();
+                    if (token) {
+                        xhr.setRequestHeader('RequestVerificationToken', token);
+                    }
+                    $('body').addClass('waiting');
+                },
+                complete: function () {
+                    $('body').removeClass('waiting');
+                },
+                error: function (xhr) {
+                    var message = 'Error en la comunicación con el servidor';
+
+                    if (xhr.status === 401) {
+                        window.location.href = '@Url.Action("Login", "Account")';
+                        return;
+                    }
+                    if (xhr.status === 403) message = 'Acceso no autorizado';
+                    if (xhr.status === 404) message = 'Recurso no encontrado';
+                    if (xhr.status === 500) message = 'Error interno del servidor';
+
+                    // Usar Site.notify si existe, o alert
+                    if (window.Site && Site.notify) {
+                        Site.notify(message, 'error');
+                    } else {
+                        alert('Error: ' + message);
+                    }
+                }
+            });
+        }
+
+        function integrateWithSiteJS() {
+            // Combinar funcionalidades de Site y AOCR
+            if (!window.AOCR) window.AOCR = {};
+
+            // Si Site.notify existe, usarlo para AOCR.showAlert
+            if (window.Site && Site.notify) {
+                window.AOCR.showAlert = function(title, message, type) {
+                    Site.notify(title + ': ' + message, type);
+                };
+            } else {
+                window.AOCR.showAlert = function(title, message, type) {
+                    if (window.Swal) {
+                        Swal.fire({ icon: type || 'info', title: title, text: message });
+                    } else {
+                        alert(title + ': ' + message);
+                    }
+                };
+            }
+
+            // Funciones de utilidad
+            window.AOCR.formatCurrency = function (amount) {
+                return '$ ' + parseFloat(amount).toFixed(2).replace(/\d(?=(\d{3})+\.)/g, '$&,');
+            };
+
+            window.AOCR.formatDate = function (dateStr) {
+                if (!dateStr) return '';
+                var date = new Date(dateStr);
+                return date.toLocaleDateString('es-EC');
+            };
+        }
+    })();
+    </script>
+
+    <!-- ✅ ÚNICA LLAMADA A RenderSection("Scripts") -->
+    @RenderSection("Scripts", required: false)
+</body>
+</html>
+
+
+
+
+

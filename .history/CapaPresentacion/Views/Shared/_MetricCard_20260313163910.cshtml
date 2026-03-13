@@ -1,0 +1,17 @@
+@inherits System.Web.Mvc.WebViewPage
+@{
+    var label = ViewData["Label"] != null ? ViewData["Label"].ToString() : string.Empty;
+    var value = ViewData["Value"] != null ? ViewData["Value"].ToString() : "0";
+    var iconClass = ViewData["IconClass"] != null ? ViewData["IconClass"].ToString() : "fas fa-chart-bar";
+    var tone = ViewData["Tone"] != null ? ViewData["Tone"].ToString() : "";
+}
+
+<div class="card aocr-card aocr-metric-card @tone">
+    <div class="card-body d-flex align-items-center justify-content-between">
+        <div>
+            <div class="aocr-metric-label">@label</div>
+            <div class="aocr-metric-value">@value</div>
+        </div>
+        <i class="@iconClass text-muted"></i>
+    </div>
+</div>

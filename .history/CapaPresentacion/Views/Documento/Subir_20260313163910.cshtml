@@ -1,0 +1,72 @@
+@inherits System.Web.Mvc.WebViewPage<CapaModelo.Documento>
+@using CapaModelo
+@using System.Web.Mvc
+@using System.Web.Mvc.Html
+
+@{
+    ViewBag.Title = "Subir Borrador AOCR";
+    ViewBag.PageSubtitle = "Gestion Documental";
+    Layout = "~/Views/Shared/_LayoutAOCR.cshtml";
+}
+
+<div class="container-fluid aocr-page aocr-shell">
+    @Html.Partial("_HeroPanel", null, new ViewDataDictionary {
+        { "IconClass", "fas fa-upload" },
+        { "Overline", "Solicitud AOCR" },
+        { "Title", "Carga de Documentos" },
+        { "Subtitle", "Borrador de Certificado AOCR" },
+        { "Description", "Suba el archivo requerido para continuar con el flujo de revision documental." }
+    })
+
+    @if (TempData["Error"] != null)
+    {
+        <div class="alert alert-danger">@TempData["Error"]</div>
+    }
+    @if (TempData["Exito"] != null)
+    {
+        <div class="alert alert-success">@TempData["Exito"]</div>
+    }
+
+    <div class="card aocr-form-card">
+        <div class="card-body">
+            @using (Html.BeginForm("Subir", "Documento", FormMethod.Post, new { enctype = "multipart/form-data" }))
+            {
+                @Html.AntiForgeryToken()
+                @Html.HiddenFor(m => m.CodigoSolicitud)
+
+                <div class="aocr-form-section">
+                    <label for="tipoDocumento" class="aocr-field-label">Tipo de documento</label>
+                    @Html.DropDownList("tipoDocumento",
+                        new SelectList(new[] {
+                            new { Value = "BORRADOR_AOCR", Text = "Borrador de Certificado AOCR" }
+                        }, "Value", "Text", "BORRADOR_AOCR"),
+                        new { @class = "form-select", @disabled = "disabled" })
+                    <input type="hidden" name="tipoDocumento" value="BORRADOR_AOCR" />
+                    <small class="aocr-field-help">El tipo se fija automaticamente para este flujo.</small>
+                </div>
+
+                <div class="aocr-form-section">
+                    <label for="archivo" class="aocr-field-label">Archivo</label>
+                    <input type="file" name="archivo" id="archivo" class="form-control" required />
+                    <small class="aocr-field-help">Formatos permitidos: .pdf, .jpg, .png, .doc, .docx, .zip. Maximo 10 MB.</small>
+                </div>
+
+                <div class="aocr-form-section">
+                    <label for="observaciones" class="aocr-field-label">Observaciones</label>
+                    <textarea name="observaciones" id="observaciones" class="form-control" rows="3" placeholder="Opcional">@Model.Observaciones</textarea>
+                </div>
+
+                @Html.Partial("_ActionToolbar", null, new ViewDataDictionary {
+                    { "LeftTitle", "Acciones" },
+                    { "LeftDescription", "Confirme la informacion y suba el documento." },
+                    { "BackUrl", Url.Action("Detalle", "SolicitudAOCR", new { id = Model.CodigoSolicitud }) },
+                    { "BackText", "Cancelar" }
+                })
+
+                <button type="submit" class="btn btn-primary">
+                    <i class="fas fa-upload mr-1"></i> Subir Documento
+                </button>
+            }
+        </div>
+    </div>
+</div>
