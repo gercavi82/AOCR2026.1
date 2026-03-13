@@ -1,0 +1,28 @@
+@inherits System.Web.Mvc.WebViewPage
+@{
+    var leftTitle = ViewData["LeftTitle"] != null ? ViewData["LeftTitle"].ToString() : string.Empty;
+    var leftDescription = ViewData["LeftDescription"] != null ? ViewData["LeftDescription"].ToString() : string.Empty;
+    var primaryActionUrl = ViewData["PrimaryActionUrl"] != null ? ViewData["PrimaryActionUrl"].ToString() : string.Empty;
+    var primaryActionText = ViewData["PrimaryActionText"] != null ? ViewData["PrimaryActionText"].ToString() : string.Empty;
+    var primaryActionIcon = ViewData["PrimaryActionIcon"] != null ? ViewData["PrimaryActionIcon"].ToString() : "fas fa-plus";
+}
+
+<div class="aocr-action-toolbar">
+    <div>
+        @if (!string.IsNullOrWhiteSpace(leftTitle))
+        {
+            <h5 class="mb-1">@leftTitle</h5>
+        }
+        @if (!string.IsNullOrWhiteSpace(leftDescription))
+        {
+            <p class="text-muted mb-0">@leftDescription</p>
+        }
+    </div>
+
+    @if (!string.IsNullOrWhiteSpace(primaryActionUrl) && !string.IsNullOrWhiteSpace(primaryActionText))
+    {
+        <a href="@primaryActionUrl" class="btn btn-primary">
+            <i class="@primaryActionIcon mr-1"></i> @primaryActionText
+        </a>
+    }
+</div>

@@ -20,6 +20,7 @@ namespace CapaPresentacion.Controllers
     public class FinancieroController : Controller
     {
         private readonly OrdenRecaudacionDAO _ordenDAO = new OrdenRecaudacionDAO();
+        private readonly CapaDatos.Services.ILoggingService _runtimeLogger = CapaDatos.Services.LoggingServiceFactory.Create();
 
         [RequirePermission("FIN_VER_PAGOS")]
         public ActionResult Index(string estado = "TODAS")
@@ -439,16 +440,13 @@ namespace CapaPresentacion.Controllers
                     {
                         try
                         {
-                            var ordenActualizada = _ordenDAO.ObtenerOrdenPorId(ordenId) ?? orden;
-                            var pdf = new CapaPresentacion.Services.PdfGeneratorService().GenerarOrdenRecaudacionPDF(ordenActualizada);
-                            new EmailServiceData().EnviarFacturaGenerada(ordenActualizada, pdf);
-                            orden = ordenActualizada;
+                            orden = _ordenDAO.ObtenerOrdenPorId(ordenId) ?? orden;
                         }
-                        catch (Exception exPdf)
+                        catch (Exception exOrden)
                         {
                             CapaNegocio.LogBL.RegistrarError(
-                                string.Format("Error generando/mandando factura Orden={0}", orden.NumeroOrden),
-                                exPdf.ToString(),
+                                string.Format("Error releyendo orden aprobada para notificacion. OrdenId={0}", ordenId),
+                                exOrden.ToString(),
                                 "FinancieroController");
                         }
                     }
@@ -467,6 +465,7 @@ namespace CapaPresentacion.Controllers
                 pagoId = pagoEnt != null ? (int?)pagoEnt.Id : null;
 
                 string advertenciaAs400 = null;
+                bool fr3Ok = true;
                 if (FacturacionAS400Service.IsEnabled())
                 {
                     var as400Service = new FacturacionAS400Service();
@@ -490,23 +489,29 @@ namespace CapaPresentacion.Controllers
                         usuario,
                         out advertenciaAs400))
                     {
+                        fr3Ok = false;
                         CapaNegocio.LogBL.RegistrarError(
                             string.Format("Error registrando factura en AS400. OrdenId={0}", ordenId),
                             advertenciaAs400 ?? "n/a",
                             "FinancieroController");
 
                         LogAprobarYEnviarAs400Request("FR3_ERROR", ordenId.ToString(CultureInfo.InvariantCulture), advertenciaAs400);
-
-                        return JsonErrorLogged(
-                            string.IsNullOrWhiteSpace(advertenciaAs400)
-                                ? "No se pudo generar FR3 en AS400."
-                                : advertenciaAs400,
-                            500);
                     }
                 }
                 else
                 {
                     advertenciaAs400 = "AS400 deshabilitado por configuracion.";
+                }
+
+                NotificarSolicitanteAprobacionFinanciera(orden, usuario);
+
+                if (!fr3Ok)
+                {
+                    return JsonErrorLogged(
+                        string.IsNullOrWhiteSpace(advertenciaAs400)
+                            ? "No se pudo generar FR3 en AS400."
+                            : advertenciaAs400,
+                        500);
                 }
 
                 var mensaje = aprobacionIdempotente
@@ -739,6 +744,430 @@ namespace CapaPresentacion.Controllers
         }
 
         #region Helpers
+        private void NotificarSolicitanteAprobacionFinanciera(CapaDatos.Entidades.OrdenRecaudacion orden, string usuario)
+        {
+            var ordenId = orden != null ? orden.Id : 0;
+            if (orden == null || ordenId <= 0)
+            {
+                LogNotificacionAdvertencia(
+                    "Notificacion solicitante omitida: orden invalida en aprobacion financiera.",
+                    ordenId,
+                    null,
+                    usuario);
+                return;
+            }
+
+            var solicitudId = orden.CodigoSolicitud ?? 0;
+            if (solicitudId <= 0)
+            {
+                try
+                {
+                    var pago = _ordenDAO.ObtenerUltimoPagoPorOrden(ordenId);
+                    if (pago != null && pago.CodigoSolicitud > 0)
+                    {
+                        solicitudId = pago.CodigoSolicitud;
+                    }
+                }
+                catch (Exception exPago)
+                {
+                    LogNotificacionAdvertencia(
+                        string.Format(
+                            "Notificacion solicitante: no se pudo resolver solicitud desde pago. OrdenId={0}; Detalle={1}",
+                            ordenId,
+                            exPago.Message),
+                        ordenId,
+                        null,
+                        usuario);
+                }
+            }
+
+            if (solicitudId <= 0)
+            {
+                solicitudId = ordenId;
+                LogNotificacionAdvertencia(
+                    string.Format(
+                        "Notificacion solicitante: usando fallback SolicitudId=OrdenId por falta de relacion explicita. OrdenId={0}",
+                        ordenId),
+                    ordenId,
+                    solicitudId,
+                    usuario);
+            }
+
+            LogNotificacionInfo(
+                string.Format(
+                    "Notificacion solicitante inicio. OrdenId={0}; SolicitudId={1}; Usuario={2}",
+                    ordenId,
+                    solicitudId,
+                    string.IsNullOrWhiteSpace(usuario) ? "N/A" : usuario),
+                ordenId,
+                solicitudId,
+                usuario);
+
+            CapaModelo.SolicitudAOCR solicitud = null;
+            try
+            {
+                solicitud = new SolicitudAOCRDAO().ObtenerPorCodigo(solicitudId);
+            }
+            catch (Exception exSolicitud)
+            {
+                LogNotificacionError(
+                    string.Format(
+                        "Notificacion solicitante fallo al consultar solicitud. OrdenId={0}; SolicitudId={1}",
+                        ordenId,
+                        solicitudId),
+                    exSolicitud,
+                    ordenId,
+                    solicitudId,
+                    usuario);
+                return;
+            }
+
+            if (solicitud == null)
+            {
+                LogNotificacionAdvertencia(
+                    string.Format(
+                        "Notificacion solicitante omitida: no existe solicitud relacionada. OrdenId={0}; SolicitudId={1}",
+                        ordenId,
+                        solicitudId),
+                    ordenId,
+                    solicitudId,
+                    usuario);
+                return;
+            }
+
+            var correoSolicitante = FirstNonEmpty(
+                solicitud.Email,
+                solicitud.CorreoRepresentanteTecnico,
+                orden.Correo);
+
+            if (string.IsNullOrWhiteSpace(correoSolicitante))
+            {
+                try
+                {
+                    var codigoUsuarioSolicitud = solicitud.CodigoUsuario > 0
+                        ? solicitud.CodigoUsuario
+                        : (orden.CodigoUsuario ?? 0);
+
+                    if (codigoUsuarioSolicitud > 0)
+                    {
+                        var usuarioSolicitud = UsuarioDAO.ObtenerPorId(codigoUsuarioSolicitud);
+                        correoSolicitante = FirstNonEmpty(correoSolicitante, usuarioSolicitud != null ? usuarioSolicitud.Email : null);
+                    }
+                }
+                catch (Exception exCorreoUsuario)
+                {
+                    LogNotificacionAdvertencia(
+                        string.Format(
+                            "Notificacion solicitante: no se pudo resolver correo desde usuario. OrdenId={0}; SolicitudId={1}; Detalle={2}",
+                            ordenId,
+                            solicitud.CodigoSolicitud,
+                            exCorreoUsuario.Message),
+                        ordenId,
+                        solicitud.CodigoSolicitud,
+                        usuario);
+                }
+            }
+
+            if (string.IsNullOrWhiteSpace(correoSolicitante))
+            {
+                LogNotificacionAdvertencia(
+                    string.Format(
+                        "Notificacion solicitante omitida: solicitud sin correo. OrdenId={0}; SolicitudId={1}; NumeroSolicitud={2}",
+                        ordenId,
+                        solicitud.CodigoSolicitud,
+                        string.IsNullOrWhiteSpace(solicitud.NumeroSolicitud) ? "N/A" : solicitud.NumeroSolicitud),
+                    ordenId,
+                    solicitud.CodigoSolicitud,
+                    usuario);
+                return;
+            }
+
+            var nombreSolicitante = FirstNonEmpty(
+                solicitud.NombreOperador,
+                solicitud.RazonSocial,
+                orden.Compania,
+                "Solicitante");
+
+            var numeroSolicitud = FirstNonEmpty(
+                solicitud.NumeroSolicitud,
+                solicitud.CodigoSolicitud > 0 ? solicitud.CodigoSolicitud.ToString(CultureInfo.InvariantCulture) : null,
+                "N/A");
+
+            var numeroOrden = FirstNonEmpty(
+                orden.NumeroOrden,
+                ordenId.ToString(CultureInfo.InvariantCulture));
+
+            var asunto = string.Format(
+                "AOCR aprobada financieramente - Solicitud {0} / Orden {1}",
+                numeroSolicitud,
+                numeroOrden);
+
+            LogNotificacionInfo(
+                string.Format(
+                    "Notificacion solicitante datos detectados. OrdenId={0}; SolicitudId={1}; Correo={2}; Asunto={3}",
+                    ordenId,
+                    solicitud.CodigoSolicitud,
+                    correoSolicitante,
+                    asunto),
+                ordenId,
+                solicitud.CodigoSolicitud,
+                usuario);
+
+            var cuerpo = ConstruirCuerpoNotificacionAprobacionFinanciera(
+                nombreSolicitante,
+                numeroSolicitud,
+                numeroOrden);
+
+            var eventKey = string.Format(
+                "FIN_APROBADA_AS400_SOL_{0}_ORD_{1}",
+                solicitud.CodigoSolicitud,
+                ordenId);
+
+            try
+            {
+                LogNotificacionInfo(
+                    string.Format(
+                        "Notificacion solicitante: intento de envio SMTP directo. OrdenId={0}; SolicitudId={1}; Correo={2}",
+                        ordenId,
+                        solicitud.CodigoSolicitud,
+                        correoSolicitante),
+                    ordenId,
+                    solicitud.CodigoSolicitud,
+                    usuario);
+
+                var smtpResult = new EmailServiceData().EnviarAsync(
+                    correoSolicitante.Trim(),
+                    nombreSolicitante,
+                    asunto,
+                    cuerpo).GetAwaiter().GetResult();
+
+                if (smtpResult != null && smtpResult.Success)
+                {
+                    LogNotificacionInfo(
+                        string.Format(
+                            "Notificacion solicitante enviada por SMTP directo. OrdenId={0}; SolicitudId={1}; Correo={2}; MessageId={3}",
+                            ordenId,
+                            solicitud.CodigoSolicitud,
+                            correoSolicitante,
+                            string.IsNullOrWhiteSpace(smtpResult.MessageId) ? "N/A" : smtpResult.MessageId),
+                        ordenId,
+                        solicitud.CodigoSolicitud,
+                        usuario);
+                    return;
+                }
+
+                LogNotificacionAdvertencia(
+                    string.Format(
+                        "Notificacion solicitante: fallo SMTP directo, se intentara cola. OrdenId={0}; SolicitudId={1}; Correo={2}; Detalle={3}",
+                        ordenId,
+                        solicitud.CodigoSolicitud,
+                        correoSolicitante,
+                        smtpResult != null && !string.IsNullOrWhiteSpace(smtpResult.Error) ? smtpResult.Error : "Sin detalle"),
+                    ordenId,
+                    solicitud.CodigoSolicitud,
+                    usuario);
+            }
+            catch (Exception exSmtpDirecto)
+            {
+                LogNotificacionError(
+                    string.Format(
+                        "Notificacion solicitante: excepcion en SMTP directo, se intentara cola. OrdenId={0}; SolicitudId={1}; Correo={2}",
+                        ordenId,
+                        solicitud.CodigoSolicitud,
+                        correoSolicitante),
+                    exSmtpDirecto,
+                    ordenId,
+                    solicitud.CodigoSolicitud,
+                    usuario);
+            }
+
+            try
+            {
+                var queueService = new EmailQueueService();
+                var item = new EmailQueueItem
+                {
+                    Para = correoSolicitante.Trim(),
+                    ParaNombre = nombreSolicitante,
+                    Asunto = asunto,
+                    Cuerpo = cuerpo,
+                    EsHtml = true,
+                    Estado = "PENDIENTE",
+                    OrdenId = solicitud.CodigoSolicitud > 0 ? (int?)solicitud.CodigoSolicitud : null,
+                    EventKey = eventKey,
+                    CorrelationId = Guid.NewGuid().ToString("N").Substring(0, 12),
+                    NumeroOrden = numeroOrden,
+                    TipoNotificacion = "FIN_APROBADA_AS400_SOLICITANTE",
+                    MaxIntentos = 3
+                };
+
+                var queueId = queueService.EncolarAsync(item).GetAwaiter().GetResult();
+
+                LogNotificacionInfo(
+                    string.Format(
+                        "Notificacion solicitante encolada. OrdenId={0}; SolicitudId={1}; QueueId={2}; Correo={3}; EventKey={4}",
+                        ordenId,
+                        solicitud.CodigoSolicitud,
+                        queueId,
+                        correoSolicitante,
+                        eventKey),
+                    ordenId,
+                    solicitud.CodigoSolicitud,
+                    usuario);
+            }
+            catch (Exception exQueue)
+            {
+                LogNotificacionError(
+                    string.Format(
+                        "Notificacion solicitante fallo en cola. OrdenId={0}; SolicitudId={1}; Correo={2}",
+                        ordenId,
+                        solicitud.CodigoSolicitud,
+                        correoSolicitante),
+                    exQueue,
+                    ordenId,
+                    solicitud.CodigoSolicitud,
+                    usuario);
+            }
+        }
+
+        private static string FirstNonEmpty(params string[] values)
+        {
+            if (values == null || values.Length == 0)
+            {
+                return null;
+            }
+
+            foreach (var value in values)
+            {
+                if (!string.IsNullOrWhiteSpace(value))
+                {
+                    return value.Trim();
+                }
+            }
+
+            return null;
+        }
+
+        private static string ConstruirCuerpoNotificacionAprobacionFinanciera(
+            string nombreSolicitante,
+            string numeroSolicitud,
+            string numeroOrden)
+        {
+            var nombreSafe = HttpUtility.HtmlEncode(string.IsNullOrWhiteSpace(nombreSolicitante) ? "Solicitante" : nombreSolicitante);
+            var solicitudSafe = HttpUtility.HtmlEncode(string.IsNullOrWhiteSpace(numeroSolicitud) ? "N/A" : numeroSolicitud);
+            var ordenSafe = HttpUtility.HtmlEncode(string.IsNullOrWhiteSpace(numeroOrden) ? "N/A" : numeroOrden);
+            var fechaSafe = HttpUtility.HtmlEncode(DateTime.Now.ToString("dd/MM/yyyy HH:mm", CultureInfo.InvariantCulture));
+
+            return string.Format(@"
+<!DOCTYPE html>
+<html>
+<head><meta charset='utf-8'></head>
+<body style='font-family: Arial, sans-serif; margin:0; padding:20px; background:#f4f6f8;'>
+  <div style='max-width:640px; margin:0 auto; background:#ffffff; border:1px solid #d9dee5; border-radius:8px; padding:24px;'>
+    <h2 style='margin:0 0 16px 0; color:#1f3a5f;'>Aprobacion financiera completada</h2>
+    <p style='margin:0 0 12px 0;'>Estimado/a <strong>{0}</strong>,</p>
+    <p style='margin:0 0 12px 0;'>Su solicitud AOCR <strong>{1}</strong> y la orden de recaudacion <strong>{2}</strong> fueron aprobadas por el area financiera y enviadas a AS400.</p>
+    <p style='margin:0 0 10px 0;'>Fecha: {3}</p>
+    <hr style='margin:20px 0; border:none; border-top:1px solid #e8ecf1;' />
+    <p style='margin:0; font-size:12px; color:#6b7785;'>Mensaje automatico del sistema AOCR - DGAC.</p>
+  </div>
+</body>
+</html>",
+                nombreSafe,
+                solicitudSafe,
+                ordenSafe,
+                fechaSafe);
+        }
+
+        private CapaDatos.Services.LogContext CrearContextoNotificacion(int? ordenId, int? solicitudId, string usuario)
+        {
+            var context = new CapaDatos.Services.LogContext
+            {
+                Controller = "Financiero",
+                Action = "AprobarYEnviarAS400",
+                UserId = string.IsNullOrWhiteSpace(usuario)
+                    ? (User != null && User.Identity != null ? User.Identity.Name : null)
+                    : usuario
+            };
+
+            if (ordenId.HasValue && ordenId.Value > 0)
+            {
+                context.NumeroOrden = ordenId.Value.ToString(CultureInfo.InvariantCulture);
+            }
+
+            if (solicitudId.HasValue && solicitudId.Value > 0)
+            {
+                context.CodigoSolicitud = solicitudId.Value.ToString(CultureInfo.InvariantCulture);
+            }
+
+            return context;
+        }
+
+        private void LogNotificacionInfo(string mensaje, int? ordenId, int? solicitudId, string usuario)
+        {
+            CapaNegocio.LogBL.RegistrarInfo(mensaje, "FinancieroController");
+            System.Diagnostics.Debug.WriteLine(mensaje);
+            try
+            {
+                _runtimeLogger.LogInfo(mensaje, CrearContextoNotificacion(ordenId, solicitudId, usuario));
+            }
+            catch
+            {
+                System.Diagnostics.Debug.WriteLine(mensaje);
+            }
+        }
+
+        private void LogNotificacionAdvertencia(string mensaje, int? ordenId, int? solicitudId, string usuario)
+        {
+            CapaNegocio.LogBL.RegistrarAdvertencia(mensaje, "FinancieroController");
+            System.Diagnostics.Debug.WriteLine(mensaje);
+            try
+            {
+                _runtimeLogger.LogWarning(mensaje, CrearContextoNotificacion(ordenId, solicitudId, usuario));
+            }
+            catch
+            {
+                System.Diagnostics.Debug.WriteLine(mensaje);
+            }
+        }
+
+        private void LogNotificacionError(string mensaje, Exception ex, int? ordenId, int? solicitudId, string usuario)
+        {
+            CapaNegocio.LogBL.RegistrarError(mensaje, ex != null ? ex.ToString() : null, "FinancieroController");
+            System.Diagnostics.Debug.WriteLine(mensaje + (ex != null ? " | " + ex.Message : string.Empty));
+            try
+            {
+                if (ex != null)
+                {
+                    _runtimeLogger.LogError(ex, CrearContextoNotificacion(ordenId, solicitudId, usuario));
+                }
+                else
+                {
+                    _runtimeLogger.LogError(mensaje, CrearContextoNotificacion(ordenId, solicitudId, usuario));
+                }
+            }
+            catch
+            {
+                System.Diagnostics.Debug.WriteLine(mensaje);
+            }
+        }
+
+        private void LogNotificacionError(string mensaje, string detalle, int? ordenId, int? solicitudId, string usuario)
+        {
+            CapaNegocio.LogBL.RegistrarError(mensaje, detalle, "FinancieroController");
+            System.Diagnostics.Debug.WriteLine(mensaje + (string.IsNullOrWhiteSpace(detalle) ? string.Empty : " | " + detalle));
+            try
+            {
+                var mensajeFinal = string.IsNullOrWhiteSpace(detalle)
+                    ? mensaje
+                    : string.Format("{0} | Detalle={1}", mensaje, detalle);
+                _runtimeLogger.LogError(mensajeFinal, CrearContextoNotificacion(ordenId, solicitudId, usuario));
+            }
+            catch
+            {
+                System.Diagnostics.Debug.WriteLine(mensaje);
+            }
+        }
+
         private OrdenRecaudacionModel MapearOrden(CapaDatos.Entidades.OrdenRecaudacion o)
         {
             if (o == null) return null;
