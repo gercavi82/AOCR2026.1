@@ -504,72 +504,35 @@
 
     @if (puedeInspectorDocumental)
     {
-        var documentosRevision = (ViewBag.DocumentosSolicitud as List<Documento>) ?? new List<Documento>();
         <div class="card aocr-detail-card aocr-review-card success mb-4">
             <div class="card-body p-4">
                 <div class="aocr-section-title mb-3">
                     <i class="fas fa-clipboard-check"></i>
                     <span>Revision Documental</span>
                 </div>
-                <p class="text-muted mb-3">Revise cada documento y defina su estado: Aceptado, Devuelto u Observado.</p>
-
-                @if (documentosRevision.Count == 0)
-                {
-                    <div class="alert alert-light mb-0">No existen documentos cargados para revisar en esta solicitud.</div>
-                }
-                else
-                {
-                    <div class="table-responsive">
-                        <table class="table table-sm table-hover align-middle mb-0">
-                            <thead class="table-light">
-                                <tr>
-                                    <th>Documento</th>
-                                    <th>Estado actual</th>
-                                    <th>Decision</th>
-                                    <th>Observacion</th>
-                                    <th class="text-end">Accion</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                @foreach (var doc in documentosRevision)
-                                {
-                                    var estadoDoc = (doc.Estado ?? "PENDIENTE").Trim().ToUpperInvariant();
-                                    var formId = "frmRevisionDoc_" + doc.CodigoDocumento;
-                                    var claseBadge = estadoDoc == "APROBADO"
-                                        ? "badge bg-success"
-                                        : (estadoDoc == "RECHAZADO" ? "badge bg-danger" : "badge bg-secondary");
-                                    <tr>
-                                        <td>
-                                            <div class="fw-semibold">@(string.IsNullOrWhiteSpace(doc.TipoDocumento) ? "Documento" : doc.TipoDocumento)</div>
-                                            <small class="text-muted">@doc.NombreArchivo</small>
-                                        </td>
-                                        <td><span class="@claseBadge">@estadoDoc</span></td>
-                                        <td style="min-width: 170px;">
-                                            <select name="decision" class="form-select form-select-sm" required form="@formId">
-                                                <option value="ACEPTADO">Aceptado</option>
-                                                <option value="DEVUELTO">Devuelto</option>
-                                                <option value="OBSERVADO">Observado</option>
-                                            </select>
-                                        </td>
-                                        <td style="min-width: 280px;">
-                                            <input type="text" name="observacion" class="form-control form-control-sm" placeholder="Observacion del revisor" maxlength="500" form="@formId" />
-                                        </td>
-                                        <td class="text-end">
-                                            <form id="@formId" method="post" action="@Url.Action("RevisarDocumentoItem", "SolicitudAOCR")" class="d-inline">
-                                                @Html.AntiForgeryToken()
-                                                <input type="hidden" name="id" value="@Model.CodigoSolicitud" />
-                                                <input type="hidden" name="codigoDocumento" value="@doc.CodigoDocumento" />
-                                                <button type="submit" class="btn btn-sm btn-primary">
-                                                    <i class="fas fa-save"></i> Registrar
-                                                </button>
-                                            </form>
-                                        </td>
-                                    </tr>
-                                }
-                            </tbody>
-                        </table>
+                <p class="text-muted mb-3">Registre observaciones y decida si la documentacion pasa a aceptacion documental o vuelve observada.</p>
+                <form method="post">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" name="id" value="@Model.CodigoSolicitud" />
+                    <div class="row g-3 align-items-end">
+                        <div class="col-md-8">
+                            <label for="observacionInspector" class="form-label fw-semibold">Observaciones</label>
+                            <textarea class="form-control" id="observacionInspector" name="observacion" rows="4" placeholder="Ingrese observaciones si aplica"></textarea>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="aocr-review-actions">
+                                <button formaction="@Url.Action("Aprobar", "SolicitudAOCR")" class="btn btn-success aocr-action-btn" type="submit">
+                                    <i class="fas fa-check-circle"></i>
+                                    Aceptar Documentacion
+                                </button>
+                                <button formaction="@Url.Action("Observar", "SolicitudAOCR")" class="btn btn-outline-danger aocr-action-btn" type="submit">
+                                    <i class="fas fa-exclamation-circle"></i>
+                                    Observar
+                                </button>
+                            </div>
+                        </div>
                     </div>
-                }
+                </form>
             </div>
         </div>
     }

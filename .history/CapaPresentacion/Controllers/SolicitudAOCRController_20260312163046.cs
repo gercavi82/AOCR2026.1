@@ -17,7 +17,6 @@ using CapaNegocio;
 using CapaNegocio.Integraciones.As400Sync;
 using CapaNegocio.Helpers;
 using CapaUtilidades;
-using CapaDatos.Services;
 using Newtonsoft.Json;
 using Npgsql;
 
@@ -1702,81 +1701,6 @@ namespace CapaPresentacion.Controllers
             return RedirectToAction("RevisarSolicitudes");
         }
 
-        [HttpPost]
-        [Authorize(Roles = "Inspector,Administrador")]
-        [ValidateAntiForgeryToken]
-        public ActionResult RevisarDocumentoItem(int id, int codigoDocumento, string decision, string observacion)
-        {
-            var solicitud = _solicitudDAO.ObtenerPorId(id);
-            if (solicitud == null)
-            {
-                TempData["NotificacionTipo"] = "error";
-                TempData["NotificacionMensaje"] = "La solicitud no existe.";
-                return RedirectToAction("Detalle", new { id });
-            }
-
-            var documento = _documentoDAO.ObtenerPorId(codigoDocumento);
-            if (documento == null || documento.CodigoSolicitud != id)
-            {
-                TempData["NotificacionTipo"] = "error";
-                TempData["NotificacionMensaje"] = "El documento no pertenece a la solicitud seleccionada.";
-                return RedirectToAction("Detalle", new { id });
-            }
-
-            var decisionNorm = (decision ?? string.Empty).Trim().ToUpperInvariant();
-            if (decisionNorm != "ACEPTADO" && decisionNorm != "DEVUELTO" && decisionNorm != "OBSERVADO")
-            {
-                TempData["NotificacionTipo"] = "warning";
-                TempData["NotificacionMensaje"] = "La decisión documental no es válida.";
-                return RedirectToAction("Detalle", new { id });
-            }
-
-            var estadoDocumento = decisionNorm == "ACEPTADO" ? "APROBADO" : "RECHAZADO";
-            documento.Estado = estadoDocumento;
-            documento.Validado = decisionNorm == "ACEPTADO";
-            documento.Observaciones = (observacion ?? string.Empty).Trim();
-            documento.FechaCarga = documento.FechaCarga ?? DateTime.Now;
-            documento.UsuarioRegistro = (Session["CodigoUsuario"] ?? "sistema").ToString();
-
-            if (!_documentoDAO.Actualizar(documento))
-            {
-                TempData["NotificacionTipo"] = "error";
-                TempData["NotificacionMensaje"] = "No se pudo registrar la revisión del documento.";
-                return RedirectToAction("Detalle", new { id });
-            }
-
-            var usuarioId = ObtenerUsuarioActualId();
-            var usuarioRegistro = (Session["CodigoUsuario"] ?? User.Identity.Name ?? "sistema").ToString();
-            var daoRevision = new RevisionDocumentalDAO();
-            daoRevision.RegistrarRevision(id, codigoDocumento, decisionNorm, observacion, usuarioId, usuarioRegistro);
-            daoRevision.RegistrarEventoHistorial(
-                id,
-                codigoDocumento,
-                "REVISION_DOCUMENTAL",
-                "Documento " + (documento.TipoDocumento ?? "N/A") + " marcado como " + decisionNorm + ". " + (observacion ?? string.Empty),
-                usuarioId,
-                usuarioRegistro);
-
-            var documentos = _documentoDAO.ObtenerPorSolicitud(id) ?? new List<Documento>();
-            if (documentos.Count > 0)
-            {
-                if (documentos.Any(d => string.Equals((d.Estado ?? string.Empty).Trim(), "RECHAZADO", StringComparison.OrdinalIgnoreCase)))
-                {
-                    string msgObs;
-                    CambiarEstadoConReglasAocr(id, EstadoSolicitud.Observada, "Documentación observada por revisión por documento.", out msgObs);
-                }
-                else if (documentos.All(d => string.Equals((d.Estado ?? string.Empty).Trim(), "APROBADO", StringComparison.OrdinalIgnoreCase)))
-                {
-                    string msgApr;
-                    CambiarEstadoConReglasAocr(id, EstadoSolicitud.AceptacionDocumental, "Todos los documentos fueron aceptados por revisión por documento.", out msgApr);
-                }
-            }
-
-            TempData["NotificacionTipo"] = "success";
-            TempData["NotificacionMensaje"] = "Revisión documental registrada para el documento seleccionado.";
-            return RedirectToAction("Detalle", new { id });
-        }
-
         [Authorize(Roles = "JefaturaTecnica")]
         public ActionResult RevisarPorJefatura()
         {
@@ -2075,7 +1999,6 @@ namespace CapaPresentacion.Controllers
             var rtDao = new UsuarioInternoRTDAO();
             ViewBag.AsignacionActiva = rtDao.ObtenerAsignacionActiva(id);
             ViewBag.HistorialAsignaciones = rtDao.ObtenerHistorialAsignacion(id);
-            ViewBag.DocumentosSolicitud = _documentoDAO.ObtenerPorSolicitud(id) ?? new List<Documento>();
 
             return View(solicitud);
         }

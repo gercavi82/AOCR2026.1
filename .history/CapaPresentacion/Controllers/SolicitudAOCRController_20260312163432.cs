@@ -17,7 +17,6 @@ using CapaNegocio;
 using CapaNegocio.Integraciones.As400Sync;
 using CapaNegocio.Helpers;
 using CapaUtilidades;
-using CapaDatos.Services;
 using Newtonsoft.Json;
 using Npgsql;
 

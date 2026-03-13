@@ -12,6 +12,7 @@ namespace CapaModelo
         public string Estado { get; set; }
 
         public string NombreOperador { get; set; }
+        public string CodigoOaci { get; set; }
         public string Ruc { get; set; }
         public string RazonSocial { get; set; }
 

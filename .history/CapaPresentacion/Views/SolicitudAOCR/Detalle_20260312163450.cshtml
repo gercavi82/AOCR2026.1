@@ -534,7 +534,6 @@
                                 @foreach (var doc in documentosRevision)
                                 {
                                     var estadoDoc = (doc.Estado ?? "PENDIENTE").Trim().ToUpperInvariant();
-                                    var formId = "frmRevisionDoc_" + doc.CodigoDocumento;
                                     var claseBadge = estadoDoc == "APROBADO"
                                         ? "badge bg-success"
                                         : (estadoDoc == "RECHAZADO" ? "badge bg-danger" : "badge bg-secondary");
@@ -545,20 +544,20 @@
                                         </td>
                                         <td><span class="@claseBadge">@estadoDoc</span></td>
                                         <td style="min-width: 170px;">
-                                            <select name="decision" class="form-select form-select-sm" required form="@formId">
-                                                <option value="ACEPTADO">Aceptado</option>
-                                                <option value="DEVUELTO">Devuelto</option>
-                                                <option value="OBSERVADO">Observado</option>
-                                            </select>
-                                        </td>
-                                        <td style="min-width: 280px;">
-                                            <input type="text" name="observacion" class="form-control form-control-sm" placeholder="Observacion del revisor" maxlength="500" form="@formId" />
-                                        </td>
-                                        <td class="text-end">
-                                            <form id="@formId" method="post" action="@Url.Action("RevisarDocumentoItem", "SolicitudAOCR")" class="d-inline">
+                                            <form method="post" action="@Url.Action("RevisarDocumentoItem", "SolicitudAOCR")" class="d-flex gap-2">
                                                 @Html.AntiForgeryToken()
                                                 <input type="hidden" name="id" value="@Model.CodigoSolicitud" />
                                                 <input type="hidden" name="codigoDocumento" value="@doc.CodigoDocumento" />
+                                                <select name="decision" class="form-select form-select-sm" required>
+                                                    <option value="ACEPTADO">Aceptado</option>
+                                                    <option value="DEVUELTO">Devuelto</option>
+                                                    <option value="OBSERVADO">Observado</option>
+                                                </select>
+                                        </td>
+                                        <td style="min-width: 280px;">
+                                                <input type="text" name="observacion" class="form-control form-control-sm" placeholder="Observacion del revisor" maxlength="500" />
+                                        </td>
+                                        <td class="text-end">
                                                 <button type="submit" class="btn btn-sm btn-primary">
                                                     <i class="fas fa-save"></i> Registrar
                                                 </button>

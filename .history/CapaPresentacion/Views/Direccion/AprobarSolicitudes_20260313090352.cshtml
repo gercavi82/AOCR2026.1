@@ -21,7 +21,7 @@
                 <p class="hero-subtitle mb-0">Dirección / Jefatura</p>
             </div>
             <div class="hero-stat text-center">
-                <div class="hero-stat-number">@(Model != null ? Model.Count : 0)</div>
+                <div class="hero-stat-number">@(Model?.Count ?? 0)</div>
                 <div class="hero-stat-label">Pendientes</div>
             </div>
         </div>
@@ -52,9 +52,12 @@
         @foreach (var solicitud in Model)
         {
             var estadoRaw = (solicitud.Estado ?? string.Empty).Trim().ToUpperInvariant();
-            var numeroSolicitudTexto = !string.IsNullOrWhiteSpace(solicitud.NumeroSolicitud)
-                ? solicitud.NumeroSolicitud
-                : solicitud.CodigoSolicitud.ToString();
+            var badgeClass = "badge badge-secondary";
+            if (estadoRaw.Contains("APROBAD")) { badgeClass = "badge badge-success"; }
+            else if (estadoRaw.Contains("OBSERV") || estadoRaw.Contains("RECHAZ")) { badgeClass = "badge badge-danger"; }
+            else if (estadoRaw.Contains("REVISION") || estadoRaw.Contains("ENVIADO")) { badgeClass = "badge badge-primary"; }
+            else if (estadoRaw.Contains("PENDIENT") || estadoRaw.Contains("VALIDAD")) { badgeClass = "badge badge-warning"; }
+
             var estadoTexto = string.IsNullOrWhiteSpace(estadoRaw)
                 ? "Sin estado"
                 : System.Globalization.CultureInfo.CurrentCulture.TextInfo.ToTitleCase(estadoRaw.Replace("_", " ").ToLowerInvariant());
@@ -66,29 +69,10 @@
                             <div>
                                 <p class="solicitud-kicker mb-1">Solicitud AOCR</p>
                                 <h5 class="mb-0">
-                                    #@numeroSolicitudTexto
+                                    <span class="solicitud-number">#@(!string.IsNullOrWhiteSpace(solicitud.NumeroSolicitud) ? solicitud.NumeroSolicitud : solicitud.CodigoSolicitud.ToString())</span>
                                 </h5>
                             </div>
-                            @if (estadoRaw.Contains("APROBAD"))
-                            {
-                                <span class="badge badge-success">@estadoTexto</span>
-                            }
-                            else if (estadoRaw.Contains("OBSERV") || estadoRaw.Contains("RECHAZ"))
-                            {
-                                <span class="badge badge-danger">@estadoTexto</span>
-                            }
-                            else if (estadoRaw.Contains("REVISION") || estadoRaw.Contains("ENVIADO"))
-                            {
-                                <span class="badge badge-primary">@estadoTexto</span>
-                            }
-                            else if (estadoRaw.Contains("PENDIENT") || estadoRaw.Contains("VALIDAD"))
-                            {
-                                <span class="badge badge-warning">@estadoTexto</span>
-                            }
-                            else
-                            {
-                                <span class="badge badge-secondary">@estadoTexto</span>
-                            }
+                            <span class="@badgeClass">@estadoTexto</span>
                         </div>
 
                         <dl class="solicitud-metadata mb-3">

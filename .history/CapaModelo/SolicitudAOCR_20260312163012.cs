@@ -12,6 +12,7 @@ namespace CapaModelo
         public string Estado { get; set; }
 
         public string NombreOperador { get; set; }
+        public string CodigoOaci { get; set; }
         public string Ruc { get; set; }
         public string RazonSocial { get; set; }
 
@@ -19,18 +20,35 @@ namespace CapaModelo
         public string Telefono { get; set; }
         public string Direccion { get; set; }
         public string Ciudad { get; set; }
+        public string CodCiudad { get; set; }
         public string Provincia { get; set; }
         public string Pais { get; set; }
 
         public string RepresentanteLegal { get; set; }
         public string CedulaRepresentante { get; set; }
+        public string CorreoRepresentanteTecnico { get; set; }
+
+        public string NombreComercial { get; set; }
 
         public string TipoOperacion { get; set; }
         public string DescripcionOperacion { get; set; }
+        public string ResumenOperacionesEae { get; set; }
         public string Observaciones { get; set; }
+
+        public string AprobacionesEspeciales { get; set; }
+        public string AprobacionesEspecialesOtros { get; set; }
+        public string AeropuertosEcuador { get; set; }
+        public string AeropuertosEcuadorOtros { get; set; }
+        public string CompaniasSeleccionadas { get; set; }
 
         public int CodigoUsuario { get; set; }
         public int? CodigoTecnico { get; set; }
+        public string TecnicoResponsableCedula { get; set; }
+        public string TecnicoResponsableNombre { get; set; }
+        public string TecnicoResponsableTipo { get; set; }
+        public string InspectorApoyoCedula { get; set; }
+        public string InspectorApoyoNombre { get; set; }
+        public string InspectorApoyoTipo { get; set; }
 
         public DateTime? CreatedAt { get; set; }
         public DateTime? UpdatedAt { get; set; }
@@ -51,65 +69,10 @@ namespace CapaModelo
         public DateTime FechaCreacion { get; set; }
         public DateTime? FechaEnvioRevision { get; set; }
         public DateTime? FechaRevision { get; set; }
-        
-        /// <summary>
-        /// Fecha en que se recepcionó formalmente la solicitud (estado RECEPCIONADO)
-        /// </summary>
-        public DateTime? FechaRecepcion { get; set; }
-        
-        /// <summary>
-        /// Fecha en que se solicitó subsanación de documentos (estado SUBSANACION)
-        /// </summary>
-        public DateTime? FechaSolicitudSubsanacion { get; set; }
-        
-        /// <summary>
-        /// Fecha en que el operador completó la subsanación (estado SUBSANADO)
-        /// </summary>
         public DateTime? FechaSubsanacion { get; set; }
-        
-        /// <summary>
-        /// Fecha de aprobación por el Coordinador
-        /// </summary>
-        public DateTime? FechaAprobacionCoordinador { get; set; }
-        
-        /// <summary>
-        /// Fecha de aprobación final por el Director
-        /// </summary>
         public DateTime? FechaAprobacion { get; set; }
-        
-        /// <summary>
-        /// Fecha en que se emitió el certificado AOCR (estado AOCR_EMITIDO)
-        /// </summary>
-        public DateTime? FechaEmisionAOCR { get; set; }
-        
-        /// <summary>
-        /// Fecha en que se entregó físicamente el certificado AOCR (estado AOCR_ENTREGADO)
-        /// </summary>
-        public DateTime? FechaEntregaAOCR { get; set; }
-        
-        /// <summary>
-        /// Número único del certificado AOCR emitido (ej: AOCR-2024-001)
-        /// </summary>
-        public string NumeroAOCR { get; set; }
-        
-        /// <summary>
-        /// Ruta del archivo PDF del certificado AOCR generado
-        /// </summary>
-        public string RutaArchivoPDFAOCR { get; set; }
-        
         public int? UsuarioRevisionId { get; set; }
         public int? UsuarioAprobacionId { get; set; }
-        
-        /// <summary>
-        /// Usuario Coordinador que aprobó la solicitud
-        /// </summary>
-        public int? UsuarioAprobacionCoordinadorId { get; set; }
-        
-        /// <summary>
-        /// Usuario Director que aprobó finalmente
-        /// </summary>
-        public int? UsuarioAprobacionDirectorId { get; set; }
-        
         public List<Documento> Documentos { get; set; } = new List<Documento>();
         public List<Pago> Pagos { get; set; } = new List<Pago>();
         public List<Inspeccion> Inspecciones { get; set; } = new List<Inspeccion>();
