@@ -2804,11 +2804,6 @@
     <Content Include="Scripts\jquery.validate.unobtrusive.min.js" />
     <Content Include="Scripts\ordenes-config.js" />
     <Content Include="Scripts\site.js" />
-    <Content Include="Views\5_Direccion\Crear.cshtml" />
-    <Content Include="Views\5_Direccion\Detalle.cshtml" />
-    <Content Include="Views\5_Direccion\Editar.cshtml" />
-    <Content Include="Views\5_Direccion\Eliminar.cshtml" />
-    <Content Include="Views\5_Direccion\Index.cshtml" />
     <Content Include="Views\Account\_ModalRegistroUsuario.cshtml" />
     <Content Include="Scripts\modernizr-2.8.3.js" />
     <Content Include="Views\Account\Login.cshtml" />
@@ -2816,7 +2811,6 @@
     <Content Include="Views\Tecnico\AsignarInspector.cshtml" />
     <Content Include="Views\Tecnico\Index.cshtml" />
     <Content Include="Views\Tecnico\VerificarDoc.cshtml" />
-    <Content Include="Views\Usuario\CambiarContrasena.cshtml" />
     <Content Include="Web.config">
       <SubType>Designer</SubType>
     </Content>
@@ -2855,6 +2849,11 @@
     <Content Include="Views\Rol\Index.cshtml" />
     <Content Include="Views\Rol\Crear.cshtml" />
     <Content Include="Views\Rol\Editar.cshtml" />
+    <Content Include="Views\5_Direccion\Index.cshtml" />
+    <Content Include="Views\5_Direccion\Crear.cshtml" />
+    <Content Include="Views\5_Direccion\Editar.cshtml" />
+    <Content Include="Views\5_Direccion\Detalle.cshtml" />
+    <Content Include="Views\5_Direccion\Eliminar.cshtml" />
     <Content Include="Views\Shared\_ValidationScriptsPartial.cshtml" />
     <Content Include="Views\Usuario\Crear.cshtml" />
     <Content Include="Views\Usuario\Detalle.cshtml" />
@@ -2878,6 +2877,7 @@
     <Content Include="Views\Log\Index.cshtml" />
     <Content Include="Views\Shared\_LoginPartial.cshtml" />
     <Content Include="Views\Shared\_AlertPartial.cshtml" />
+    <Content Include="Views\Usuario\CambiarContrasena.cshtml" />
     <Content Include="Views\Usuario\_FormularioPartial.cshtml" />
     <Content Include="Views\Views_Partial\_ModalVisualizarUsuario.cshtml" />
     <Content Include="Views\Shared\_ModalCrearUsuario.cshtml" />

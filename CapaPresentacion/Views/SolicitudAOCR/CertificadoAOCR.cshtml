@@ -146,7 +146,7 @@
 </div>
 
 <div class="certificado-numero">
-    CERTIFICADO N&deg; @(!string.IsNullOrWhiteSpace(Model.NumeroAOCR) ? System.Web.HttpUtility.HtmlEncode(Model.NumeroAOCR) : "-")
+    CERTIFICADO N&deg; @(!string.IsNullOrWhiteSpace(Model?.NumeroAOCR) ? System.Web.HttpUtility.HtmlEncode(Model.NumeroAOCR) : "-")
 </div>
 
 <div class="campo" style="text-align: center; margin: 10px 0;">

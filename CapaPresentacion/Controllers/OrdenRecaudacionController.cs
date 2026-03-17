@@ -900,6 +900,7 @@ namespace CapaPresentacion.Controllers
 
             try
             {
+                string err;
                 var result = await _dao.CambiarEstadoOrdenAsync(id, "PENDIENTE");
                 if (!result)
                 {
@@ -925,11 +926,11 @@ namespace CapaPresentacion.Controllers
             }
         }
 
-        private Task EnviarNotificacionOrdenGeneradaAsync(OrdenRecaudacionModel orden)
+        private async Task EnviarNotificacionOrdenGeneradaAsync(OrdenRecaudacionModel orden)
         {
             try
             {
-            if (orden == null) return Task.CompletedTask;
+                if (orden == null) return;
 
                 var emailDestino = orden.Correo;
                 if (string.IsNullOrWhiteSpace(emailDestino))
@@ -954,7 +955,7 @@ namespace CapaPresentacion.Controllers
                     emailDestino = solicitud?.Email;
                 }
 
-                if (string.IsNullOrWhiteSpace(emailDestino)) return Task.CompletedTask;
+                if (string.IsNullOrWhiteSpace(emailDestino)) return;
 
                 // Obtener lista de bancos (se mantiene para otros usos, pero la leyenda con cuentas
                 // se toma del modelo PDF para asegurar consistencia entre correo y comprobante)
@@ -1031,8 +1032,6 @@ En transferencias NO colocar sublínea<br>";
             {
                 System.Diagnostics.Debug.WriteLine("Error enviando notificación de orden generada: " + ex.Message);
             }
-
-            return Task.CompletedTask;
         }
 
         // POST: /OrdenRecaudacion/Enviar/5
@@ -1110,7 +1109,7 @@ En transferencias NO colocar sublínea<br>";
                     Label = string.Format("{0} - {1} (${2})", c.Codigo, c.Nombre, c.ValorBase.ToString("0.00"))
                 }).ToList();
             }
-            catch (Exception)
+            catch (Exception ex)
             {
                 model.Conceptos = new List<CapaPresentacion.Models.ConceptoOptionVM>();
                 ModelState.AddModelError("", "No se pudieron cargar los conceptos. Verifique la conexión a la base de datos.");
@@ -1136,7 +1135,7 @@ En transferencias NO colocar sublínea<br>";
                         Compania = string.IsNullOrWhiteSpace(s.RazonSocial) ? s.NombreOperador : s.RazonSocial
                     }).ToList();
             }
-            catch (Exception)
+            catch (Exception ex)
             {
                 model.Solicitudes = new List<CapaPresentacion.Models.OrdenRecaudacionNuevaVM.SolicitudOptionVM>();
             }
@@ -2534,7 +2533,7 @@ En transferencias NO colocar sublínea<br>";
             decimal x; return decimal.TryParse(d[key].ToString(), out x) ? x : 0m;
         }
 
-        private Task CargarViewBagsParaNueva()
+        private async Task CargarViewBagsParaNueva()
         {
             try
             {
@@ -2546,7 +2545,6 @@ En transferencias NO colocar sublínea<br>";
             }
             
             ViewBag.Contribuyentes = new List<object>();
-            return Task.CompletedTask;
         }
 
         // Mï¿½todo helper con tipo correcto:

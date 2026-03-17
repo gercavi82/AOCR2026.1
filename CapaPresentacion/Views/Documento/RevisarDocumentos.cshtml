@@ -46,7 +46,7 @@
                                 <tr>
                                     <td class="align-middle font-weight-bold">@doc.NombreArchivo</td>
                                     <td class="align-middle"><span class="badge badge-info">@doc.TipoDocumento</span></td>
-                                    <td class="align-middle">@(doc.FechaCarga.HasValue ? doc.FechaCarga.Value.ToString("dd/MM/yyyy HH:mm") : "")</td>
+                                    <td class="align-middle">@doc.FechaCarga?.ToString("dd/MM/yyyy HH:mm")</td>
                                     <td class="align-middle">@doc.UsuarioRegistro</td>
                                     <td class="text-center align-middle">
                                         <div class="btn-group" role="group">

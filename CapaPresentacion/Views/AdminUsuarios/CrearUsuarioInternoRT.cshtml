@@ -142,7 +142,7 @@
                     @Html.LabelFor(m => m.Opcar5, new { @class = "form-label" })
                     @Html.DropDownListFor(
                         m => m.Opcar5,
-                        Model.Aeropuertos ?? new List<System.Web.Mvc.SelectListItem>(),
+                        Model.Aeropuertos ?? new List<SelectListItem>(),
                         new { @class = "form-control", id = "Opcar5" })
                     @Html.ValidationMessageFor(m => m.Opcar5, null, new { @class = "text-danger d-block mt-1" })
                     <small class="text-muted">Al guardar se almacenara tambien en OPCAER.</small>

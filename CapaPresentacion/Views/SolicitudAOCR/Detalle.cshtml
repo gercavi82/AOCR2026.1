@@ -8,7 +8,6 @@
 
 @{
     ViewBag.Title = "Detalle de Solicitud AOCR";
-    ViewBag.PageSubtitle = "Solicitudes AOCR";
     Layout = "~/Views/Shared/_LayoutAOCR.cshtml";
 
     var estadoActual = EstadoSolicitud.Normalizar(Model.Estado);
@@ -58,6 +57,33 @@
         Model.Pais
     }.Where(x => !string.IsNullOrWhiteSpace(x)));
 
+    Func<string, string> estadoCss = estado =>
+    {
+        var normalized = EstadoSolicitud.Normalizar(estado);
+        if (normalized == EstadoSolicitud.Observada)
+        {
+            return "aocr-badge danger";
+        }
+
+        if (normalized == EstadoSolicitud.AOCR_Validado
+            || normalized == EstadoSolicitud.AceptacionDocumental
+            || normalized == EstadoSolicitud.AOCR_Legalizado
+            || normalized == EstadoSolicitud.AOCR_EmitidoRecibido
+            || normalized == EstadoSolicitud.Aprobada)
+        {
+            return "aocr-badge success";
+        }
+
+        if (normalized == EstadoSolicitud.EnRevision
+            || normalized == EstadoSolicitud.AOCR_EnRevision
+            || normalized == EstadoSolicitud.AOCR_EnElaboracion
+            || normalized == EstadoSolicitud.EnInspeccion)
+        {
+            return "aocr-badge info";
+        }
+
+        return "aocr-badge warning";
+    };
 }
 
 <style>
@@ -102,6 +128,38 @@
     .aocr-hero-subtitle {
         color: rgba(255, 255, 255, 0.84);
         margin-bottom: 0;
+    }
+
+    .aocr-badge {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-width: 132px;
+        padding: 0.65rem 0.95rem;
+        border-radius: 999px;
+        font-size: 0.84rem;
+        font-weight: 700;
+        letter-spacing: 0.02em;
+    }
+
+    .aocr-badge.success {
+        background: #dcfce7;
+        color: #166534;
+    }
+
+    .aocr-badge.warning {
+        background: #fef3c7;
+        color: #92400e;
+    }
+
+    .aocr-badge.danger {
+        background: #fee2e2;
+        color: #b91c1c;
+    }
+
+    .aocr-badge.info {
+        background: #dbeafe;
+        color: #1d4ed8;
     }
 
     .aocr-summary-grid {
@@ -282,8 +340,6 @@
     }
 </style>
 
-@Html.Partial("_PageHeader")
-
 <div class="container-fluid aocr-detail-shell">
     <div class="card aocr-detail-card aocr-hero mb-4">
         <div class="card-body">
@@ -298,7 +354,7 @@
                 </div>
                 <div class="text-lg-end">
                     <div class="mb-2 small text-uppercase opacity-75">Estado del tramite</div>
-                    @Html.Partial("_StatusBadge", null, new ViewDataDictionary { { "Status", Model.Estado } })
+                    <span class="@estadoCss(Model.Estado)">@Model.Estado</span>
                 </div>
             </div>
 

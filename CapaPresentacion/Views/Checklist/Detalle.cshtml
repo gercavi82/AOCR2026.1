@@ -39,7 +39,7 @@
                                 </dd>
 
                                 <dt class="col-sm-4">Fecha Creación:</dt>
-                                <dd class="col-sm-8">@(Model.CreatedAt.HasValue ? Model.CreatedAt.Value.ToString("dd/MM/yyyy HH:mm") : "")</dd>
+                                <dd class="col-sm-8">@Model.CreatedAt?.ToString("dd/MM/yyyy HH:mm")</dd>
 
                                 <dt class="col-sm-4">Usuario:</dt>
                                 <dd class="col-sm-8">@Model.CreatedBy</dd>

@@ -5,66 +5,36 @@
 
 @{
     ViewBag.Title = "Validación por Jefatura Técnica";
-    ViewBag.PageSubtitle = "Jefatura Técnica";
     Layout = "~/Views/Shared/_LayoutAOCR.cshtml";
 }
 
-<div class="container-fluid aocr-shell">
-    @Html.Partial("_HeroPanel", null, new ViewDataDictionary {
-        { "IconClass", "fas fa-user-tie" },
-        { "Overline", "Aprobación Técnica" },
-        { "Title", "Validación por Jefatura Técnica" },
-        { "Subtitle", "Bandeja de revisión" },
-        { "Description", "Evalúe solicitudes y continúe con la validación técnica según el cumplimiento documental." },
-        { "MetricLabel", "Pendientes" },
-        { "MetricValue", Model != null ? Model.Count : 0 }
-    })
+<h3>Solicitudes pendientes de Validación Técnica</h3>
 
-    <div class="card aocr-table-card">
-        <div class="card-body p-0">
-            @if (Model != null && Model.Count > 0)
-            {
-                <div class="table-responsive">
-                    <table class="table table-hover align-middle mb-0">
-                        <thead>
-                            <tr>
-                                <th>Código</th>
-                                <th>Operador</th>
-                                <th>Fecha</th>
-                                <th>Estado</th>
-                                <th style="width:130px;">Acciones</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @foreach (var sol in Model)
-                            {
-                                <tr>
-                                    <td>@Html.Encode(sol.CodigoSolicitud)</td>
-                                    <td>@Html.Encode(sol.NombreOperador)</td>
-                                    <td>@Html.Encode(sol.FechaSolicitud.HasValue ? sol.FechaSolicitud.Value.ToString("dd/MM/yyyy") : "")</td>
-                                    <td>@Html.Partial("_StatusBadge", null, new ViewDataDictionary { { "Status", sol.Estado } })</td>
-                                    <td>
-                                        @Html.ActionLink("Ver Detalle", "Detalle", "SolicitudAOCR", new { id = sol.CodigoSolicitud }, new { @class = "btn btn-sm btn-primary" })
-                                    </td>
-                                </tr>
-                            }
-                        </tbody>
-                    </table>
-                </div>
-            }
-            else
-            {
-                <div class="p-3">
-                    @Html.Partial("_EmptyState", null, new ViewDataDictionary {
-                        { "IconClass", "fas fa-list-check" },
-                        { "Title", "No hay solicitudes pendientes" },
-                        { "Description", "No existen solicitudes para validación de jefatura en este momento." }
-                    })
-                </div>
-            }
-        </div>
-    </div>
-</div>
+<table class="table table-striped">
+    <thead>
+        <tr>
+            <th>Código</th>
+            <th>Operador</th>
+            <th>Fecha</th>
+            <th>Estado</th>
+            <th>Acciones</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var sol in Model)
+        {
+            <tr>
+                <td>@Html.Encode(sol.CodigoSolicitud)</td>
+                <td>@Html.Encode(sol.NombreOperador)</td>
+                <td>@Html.Encode(sol.FechaSolicitud.HasValue ? sol.FechaSolicitud.Value.ToString("yyyy-MM-dd") : "")</td>
+                <td>@Html.Encode(sol.Estado)</td>
+                <td>
+                    @Html.ActionLink("Ver Detalle", "Detalle", "SolicitudAOCR", new { id = sol.CodigoSolicitud }, new { @class = "btn btn-info btn-sm" })
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>
 
 
 

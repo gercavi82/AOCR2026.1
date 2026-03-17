@@ -63,7 +63,7 @@
                                             @checklist.Descripcion
                                         }
                                     </td>
-                                    <td>@(checklist.CreatedAt.HasValue ? checklist.CreatedAt.Value.ToString("dd/MM/yyyy HH:mm") : "")</td>
+                                    <td>@checklist.CreatedAt?.ToString("dd/MM/yyyy HH:mm")</td>
                                     <td>@checklist.CreatedBy</td>
                                     <td>
                                         <div class="btn-group" role="group">

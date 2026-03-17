@@ -21,7 +21,7 @@
             <dt>Inspector:</dt>
             <dd>@Model.CodigoInspector</dd>
             <dt>Fecha Programada:</dt>
-            <dd>@(Model.FechaProgramada.HasValue ? Model.FechaProgramada.Value.ToString("dd/MM/yyyy") : "")</dd>
+            <dd>@Model.FechaProgramada?.ToString("dd/MM/yyyy")</dd>
             <dt>Ubicación:</dt>
             <dd>@Model.Lugar</dd>
         </dl>

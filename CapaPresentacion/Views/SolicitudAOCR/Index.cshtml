@@ -4,7 +4,6 @@
 @using System.Web.Mvc.Html
 @{
     ViewBag.Title = "Operador";
-    ViewBag.PageSubtitle = "Solicitudes AOCR";
     Layout = "~/Views/Shared/_LayoutAOCR.cshtml";
 }
 
@@ -136,51 +135,42 @@
     </style>
 }
 
-<div class="container-fluid aocr-shell">
-    @Html.Partial("_HeroPanel", null, new ViewDataDictionary {
-        { "IconClass", "fas fa-folder-open" },
-        { "Overline", "Módulo Operador" },
-        { "Title", "Tablero de Solicitudes AOCR" },
-        { "Subtitle", "Gestión de Certificados AOCR" },
-        { "Description", "Cree, consulte y haga seguimiento de sus solicitudes desde una misma bandeja operativa." }
-    })
-
-    <div class="aocr-action-toolbar">
-        <div>
-            <h5 class="mb-1">Acciones de solicitud</h5>
-            <p class="text-muted mb-0">Seleccione el tipo de trámite a registrar.</p>
-        </div>
-
-        <div class="btn-group">
-            <button type="button"
-                    class="btn btn-white-perfect dropdown-toggle"
-                    data-bs-toggle="dropdown"
-                    aria-expanded="false">
-                <i class="bi bi-plus-lg text-info"></i> NUEVA SOLICITUD
-            </button>
-
-            <div class="dropdown-menu dropdown-menu-end border-0 shadow-lg p-2" style="border-radius:12px; min-width:240px;">
-                <h6 class="dropdown-header text-uppercase fw-bold text-muted mb-1" style="font-size:.75rem;">Seleccione Trámite</h6>
-
-                <a id="btnEmisionAOCR" class="dropdown-item rounded py-2" href="#">
-                    <i class="bi bi-file-earmark-plus text-primary me-2"></i> Emisión AOCR
-                </a>
-
-                <a class="dropdown-item rounded py-2" href="@Url.Action("Modificacion", "Operador")">
-                    <i class="bi bi-pencil-square text-info me-2"></i> Modificación
-                </a>
-
-                <div class="dropdown-divider"></div>
-
-                <a class="dropdown-item rounded py-2" href="/Ambitos/Formulario_Actualizacion?oidSol=-1">
-                    <i class="bi bi-arrow-repeat text-warning me-2"></i> Renovación
-                </a>
-            </div>
-        </div>
+<div class="header-modern">
+    <div>
+        <h3 class="m-0 fw-bold text-dark">Tablero de Control</h3>
+        <p class="text-muted m-0 small">Gestión de Certificados AOCR</p>
     </div>
 
-    <section class="content pt-2 px-0">
-    <div class="container-fluid px-0">
+    <div class="btn-group">
+        <button type="button"
+                class="btn btn-white-perfect dropdown-toggle"
+                data-bs-toggle="dropdown"
+                aria-expanded="false">
+            <i class="bi bi-plus-lg text-info"></i> NUEVA SOLICITUD
+        </button>
+
+        <div class="dropdown-menu dropdown-menu-end border-0 shadow-lg p-2" style="border-radius:12px; min-width:240px;">
+            <h6 class="dropdown-header text-uppercase fw-bold text-muted mb-1" style="font-size:.75rem;">Seleccione Trámite</h6>
+
+            <a id="btnEmisionAOCR" class="dropdown-item rounded py-2" href="#">
+                <i class="bi bi-file-earmark-plus text-primary me-2"></i> Emisión AOCR
+            </a>
+
+            <a class="dropdown-item rounded py-2" href="@Url.Action("Modificacion", "Operador")">
+                <i class="bi bi-pencil-square text-info me-2"></i> Modificación
+            </a>
+
+            <div class="dropdown-divider"></div>
+
+            <a class="dropdown-item rounded py-2" href="/Ambitos/Formulario_Actualizacion?oidSol=-1">
+                <i class="bi bi-arrow-repeat text-warning me-2"></i> Renovación
+            </a>
+        </div>
+    </div>
+</div>
+
+<section class="content pt-4 px-3">
+    <div class="container-fluid">
 
         <div class="d-flex justify-content-between align-items-center flex-wrap mb-3">
             <div class="filter-tabs" id="filterContainer">
@@ -196,7 +186,7 @@
             </div>
         </div>
 
-        <div class="card aocr-table-card border-0 shadow-sm" style="border-radius: 12px;">
+        <div class="card border-0 shadow-sm" style="border-radius: 12px;">
             <div class="card-body p-0">
                 <div class="table-container-responsive">
                     <table id="tablaSolicitudes" class="table table-dgac mb-0 text-nowrap w-100">
@@ -216,11 +206,8 @@
                     </table>
 
                     <div id="noResults" class="text-center py-5 text-muted" style="display:none;">
-                        @Html.Partial("_EmptyState", null, new ViewDataDictionary {
-                            { "IconClass", "fas fa-search" },
-                            { "Title", "Sin resultados para el filtro actual" },
-                            { "Description", "Ajuste los filtros o el texto de búsqueda para encontrar solicitudes." }
-                        })
+                        <i class="bi bi-search h3"></i>
+                        <p>No se encontraron resultados.</p>
                     </div>
                 </div>
             </div>
@@ -228,7 +215,6 @@
 
     </div>
 </section>
-</div>
 
 <!-- Modal para crear/editar solicitud AOCR (solo se declara aquí porque el layout no lo incluye) -->
 <div class="modal fade" id="modalFormulario" tabindex="-1" aria-labelledby="modalFormularioLabel" aria-hidden="true">

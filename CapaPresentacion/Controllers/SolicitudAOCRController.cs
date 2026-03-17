@@ -42,14 +42,6 @@ namespace CapaPresentacion.Controllers
 
         public ActionResult Index() => View();
 
-        [HttpGet]
-        public ActionResult CargarDocumentos()
-        {
-            // Punto de entrada legacy desde sidebar: redirige al tablero de solicitudes.
-            TempData["Info"] = "Seleccione una solicitud para cargar o gestionar documentos.";
-            return RedirectToAction("Index");
-        }
-
         // Obtener solicitudes del usuario actual en formato JSON
         [HttpGet]
         public JsonResult ObtenerMisSolicitudes()

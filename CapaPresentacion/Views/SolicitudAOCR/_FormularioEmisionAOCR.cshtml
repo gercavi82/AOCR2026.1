@@ -265,7 +265,7 @@
                                                 </div>
                                                 <div class="form-group col-md-6">
                                                     <label for="emailEcuador">Correo del Representante Técnico</label>
-                                                    <input type="email" class="form-control" id="emailEcuador" placeholder="Ingrese correo del representante técnico" value="@HttpUtility.HtmlEncode(correoRepresentanteTecnico)" required>
+                                                    <input type="email" class="form-control" id="emailEcuador" placeholder="Ingrese correo del representante técnico" value="@HttpUtility.HtmlEncode(correoRepresentanteTecnico)" >
                                                 </div>
                                             </div>
                                         </div>
@@ -284,6 +284,7 @@
                                                 </div>
 
                                                 <div class="form-group mb-0">
+                                                    <label for="companiaActivaCodigoVista">Código de compañía</label>
                                                     <input type="text"
                                                            class="form-control"
                                                            id="companiaActivaCodigoVista"
@@ -291,6 +292,15 @@
                                                            readonly />
                                                 </div>
 
+                                                <div class="form-group mt-3 mb-0">
+                                                    <label for="codigoOaci">Código OACI *</label>
+                                                    <input type="text"
+                                                           class="form-control text-uppercase"
+                                                           id="codigoOaci"
+                                                           value="@HttpUtility.HtmlEncode(codigoOaciInicial)"
+                                                           maxlength="8"
+                                                           required />
+                                                </div>
                                             </div>
                                         </div>
 
@@ -322,7 +332,7 @@
                                                 </div>
                                                 <div class="form-group col-md-6">
                                                     <label for="correoCompania">Correo Electronico</label>
-                                                    <input type="email" class="form-control" id="correoCompania" placeholder="Ingrese correo" value="@HttpUtility.HtmlEncode(sol != null ? sol.Email : "")" required>
+                                                    <input type="email" class="form-control" id="correoCompania" placeholder="Ingrese correo" value="@HttpUtility.HtmlEncode(sol != null ? sol.Email : "")" >
                                                 </div>
                                             </div>
                                         </div>
@@ -1572,44 +1582,6 @@
         return /^[0-9]{6,15}$/.test(t);
     }
 
-    function esCorreoValido(valor) {
-        const c = (valor || '').trim();
-        if (!c || c.indexOf(' ') >= 0) {
-            return false;
-        }
-
-        var atPos = c.indexOf(String.fromCharCode(64));
-        var dotPos = c.lastIndexOf('.');
-        return atPos > 0 && dotPos > atPos + 1 && dotPos < c.length - 1;
-    }
-
-    function validarCorreosObligatorios() {
-        const correoRepresentante = ($('#emailEcuador').val() || '').trim();
-        const correoCompania = ($('#correoCompania').val() || '').trim();
-
-        if (!correoRepresentante || !correoCompania) {
-            Swal.fire({
-                title: 'Validacion',
-                text: 'Los correos del representante tecnico y de la compania son obligatorios.',
-                icon: 'warning',
-                confirmButtonText: 'OK'
-            });
-            return false;
-        }
-
-        if (!esCorreoValido(correoRepresentante) || !esCorreoValido(correoCompania)) {
-            Swal.fire({
-                title: 'Validacion',
-                text: 'Ingrese correos electronicos validos para el representante tecnico y la compania.',
-                icon: 'warning',
-                confirmButtonText: 'OK'
-            });
-            return false;
-        }
-
-        return true;
-    }
-
     function permitirSoloNumerosInput(selector) {
         $(document).on('input', selector, function () {
             this.value = (this.value || '').replace(/\D/g, '').slice(0, 15);
@@ -1727,10 +1699,6 @@
                 icon: 'warning',
                 confirmButtonText: 'OK'
             });
-            return;
-        }
-
-        if (!validarCorreosObligatorios()) {
             return;
         }
     

@@ -3,7 +3,6 @@ using System.Net;
 using System.Net.Mail;
 using System.Reflection;
 using System.Threading.Tasks;
-using CapaDatos.DAOs;
 
 namespace CapaDatos.Services
 {
@@ -128,7 +127,7 @@ namespace CapaDatos.Services
         // ============================================================
         public void EnviarFacturaGenerada(object orden, byte[] pdfBytes)
         {
-            var correoDestino = ResolverCorreoDestino(orden);
+            var correoDestino = ObtenerPropiedadComoTexto(orden, "Correo", "EmailContribuyente", "CorreoContribuyente", "Email");
             if (string.IsNullOrWhiteSpace(correoDestino))
             {
                 _logger.LogWarning("No se envió correo de factura: la orden no tiene correo de destinatario.",
@@ -204,7 +203,7 @@ namespace CapaDatos.Services
 
         public void EnviarNotificacionRechazo(object orden, string motivo)
         {
-            var correoDestino = ResolverCorreoDestino(orden);
+            var correoDestino = ObtenerPropiedadComoTexto(orden, "Correo", "EmailContribuyente", "CorreoContribuyente", "Email");
             if (string.IsNullOrWhiteSpace(correoDestino))
             {
                 _logger.LogWarning("No se envió correo de rechazo: la orden no tiene correo de destinatario.",
@@ -278,57 +277,6 @@ namespace CapaDatos.Services
                     }
                 });
             }
-        }
-
-        private string ResolverCorreoDestino(object orden)
-        {
-            var correoDestino = ObtenerPropiedadComoTexto(orden, "Correo", "EmailContribuyente", "CorreoContribuyente", "Email");
-            if (!string.IsNullOrWhiteSpace(correoDestino))
-            {
-                return correoDestino;
-            }
-
-            var codigoUsuarioTexto = ObtenerPropiedadComoTexto(orden, "CodigoUsuario", "IdUsuario", "UsuarioId");
-            int codigoUsuario;
-            if (!int.TryParse(codigoUsuarioTexto, out codigoUsuario) || codigoUsuario <= 0)
-            {
-                return null;
-            }
-
-            try
-            {
-                var usuario = UsuarioDAO.ObtenerPorId(codigoUsuario);
-                var correoUsuario = (usuario != null ? usuario.Email : null) ?? string.Empty;
-                correoUsuario = correoUsuario.Trim();
-                if (!string.IsNullOrWhiteSpace(correoUsuario))
-                {
-                    _logger.LogInfo("Correo de destinatario resuelto por fallback de usuario.",
-                        new LogContext
-                        {
-                            ErrorCode = "EMAIL_FACTURA_DESTINO_FALLBACK",
-                            AdditionalData = new System.Collections.Generic.Dictionary<string, object>
-                            {
-                                ["CodigoUsuario"] = codigoUsuario,
-                                ["NumeroOrden"] = ObtenerPropiedadComoTexto(orden, "NumeroOrden") ?? string.Empty
-                            }
-                        });
-                    return correoUsuario;
-                }
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, new LogContext
-                {
-                    ErrorCode = "EMAIL_FACTURA_DESTINO_FALLBACK_EX",
-                    AdditionalData = new System.Collections.Generic.Dictionary<string, object>
-                    {
-                        ["CodigoUsuario"] = codigoUsuario,
-                        ["NumeroOrden"] = ObtenerPropiedadComoTexto(orden, "NumeroOrden") ?? string.Empty
-                    }
-                });
-            }
-
-            return null;
         }
 
         private static string ObtenerPropiedadComoTexto(object origen, params string[] candidatos)

@@ -5,16 +5,14 @@
 @{
     ViewBag.Title = "Asignar Inspector";
     Layout = "~/Views/Shared/_LayoutAOCR.cshtml";
-    ViewBag.PageSubtitle = "Gestión Técnica";
     var tipoInspectorSeleccionado = (ViewBag.TipoInspector as string) ?? "OPS";
     var warningInspectores = ViewBag.WarningInspectores as string;
-    var fechaMinimaInspeccion = DateTime.Today.ToString("yyyy-MM-dd");
     var tipoInspectorTexto = tipoInspectorSeleccionado;
     var tiposInspectorSelectList = ViewBag.TiposInspector as SelectList;
 
     if (tiposInspectorSelectList != null)
     {
-        var tipoSeleccionadoItem = tiposInspectorSelectList.Cast<System.Web.Mvc.SelectListItem>().FirstOrDefault(x => x.Value == tipoInspectorSeleccionado);
+        var tipoSeleccionadoItem = tiposInspectorSelectList.Cast<SelectListItem>().FirstOrDefault(x => x.Value == tipoInspectorSeleccionado);
         if (tipoSeleccionadoItem != null && !string.IsNullOrWhiteSpace(tipoSeleccionadoItem.Text))
         {
             tipoInspectorTexto = tipoSeleccionadoItem.Text;
@@ -389,40 +387,6 @@
             font-size: 0.9rem;
         }
 
-        .assign-inspector-page .selection-summary {
-            margin-top: 1rem;
-            border: 1px solid rgba(27, 79, 114, 0.12);
-            border-radius: 16px;
-            background: #f8fbfe;
-            padding: 0.85rem 1rem;
-        }
-
-        .assign-inspector-page .selection-summary small {
-            display: block;
-            font-size: 0.76rem;
-            color: var(--assign-muted);
-            text-transform: uppercase;
-            letter-spacing: 0.04em;
-            margin-bottom: 0.15rem;
-            font-weight: 700;
-        }
-
-        .assign-inspector-page .selection-summary strong {
-            color: var(--assign-text);
-            font-size: 0.95rem;
-        }
-
-        .assign-inspector-page .alert-inline-validation {
-            border: 0;
-            border-left: 4px solid #dc3545;
-            border-radius: 14px;
-            background: rgba(220, 53, 69, 0.08);
-            color: #8a2430;
-            padding: 0.8rem 1rem;
-            margin-top: 1rem;
-            display: none;
-        }
-
         @@media (max-width: 991.98px) {
             .assign-inspector-page .progress-strip,
             .assign-inspector-page .info-grid {
@@ -603,19 +567,6 @@
                         </div>
                     </div>
 
-                    <div class="selection-summary" aria-live="polite">
-                        <div class="row g-3">
-                            <div class="col-lg-6">
-                                <small>Inspector principal seleccionado</small>
-                                <strong id="summaryInspectorPrincipal">Sin seleccionar</strong>
-                            </div>
-                            <div class="col-lg-6">
-                                <small>Inspector de apoyo seleccionado</small>
-                                <strong id="summaryInspectorApoyo">No aplica</strong>
-                            </div>
-                        </div>
-                    </div>
-
                     <div class="empty-state-note">
                         <i class="fas fa-shield-halved me-2"></i>
                         La asignación conserva los nombres de campo originales y mantiene la integración actual con el controller y el model binding de Razor.
@@ -638,7 +589,7 @@
                             <label class="form-label-strong" for="fechaInspeccion">Fecha de inspección<span class="field-required">*</span></label>
                             <div class="input-group-modern">
                                 <span class="input-icon"><i class="fas fa-calendar-check"></i></span>
-                                <input type="date" id="fechaInspeccion" name="fechaInspeccion" class="form-control" required min="@fechaMinimaInspeccion" value="@DateTime.Now.ToString("yyyy-MM-dd")" />
+                                <input type="date" id="fechaInspeccion" name="fechaInspeccion" class="form-control" required value="@DateTime.Now.ToString("yyyy-MM-dd")" />
                             </div>
 
                             <div class="mt-3">
@@ -658,8 +609,6 @@
                             </div>
                         </div>
                     </div>
-
-                    <div id="assignmentValidationMsg" class="alert-inline-validation" role="alert"></div>
 
                     <div class="action-bar">
                         <a href="@Url.Action("Index")" class="btn btn-action btn-cancel">
@@ -704,9 +653,6 @@
         function evaluarHabilitacionBoton() {
             var btn = document.querySelector(".assignment-submit");
             var selectPrincipal = document.getElementById("inspectorPrincipal");
-            var selectApoyo = document.getElementById("inspectorApoyo");
-            var fechaInput = document.getElementById("fechaInspeccion");
-            var alertBox = document.getElementById("assignmentValidationMsg");
             if (!btn || !selectPrincipal) {
                 return;
             }
@@ -720,57 +666,10 @@
             } else if (!selectPrincipal.value) {
                 habilitado = false;
                 motivo = "sin inspector seleccionado";
-            } else if (selectApoyo && selectApoyo.value && selectPrincipal.value === selectApoyo.value) {
-                habilitado = false;
-                motivo = "inspector principal y apoyo no pueden ser iguales";
-            }
-
-            if (habilitado && fechaInput && fechaInput.value) {
-                var hoy = new Date();
-                hoy.setHours(0, 0, 0, 0);
-                var fechaSeleccionada = new Date(fechaInput.value + "T00:00:00");
-                if (fechaSeleccionada < hoy) {
-                    habilitado = false;
-                    motivo = "fecha de inspeccion no puede ser anterior a hoy";
-                }
-            }
-
-            if (alertBox) {
-                if (habilitado) {
-                    alertBox.style.display = "none";
-                    alertBox.textContent = "";
-                } else if (motivo) {
-                    alertBox.style.display = "block";
-                    alertBox.textContent = "Revise la asignación: " + motivo + ".";
-                }
             }
 
             btn.disabled = !habilitado;
             logInfo("Boton gestionar habilitado=" + habilitado + ", motivo=" + (motivo || "OK"));
-        }
-
-        function obtenerTextoSeleccionado(selectEl, fallback) {
-            if (!selectEl || !selectEl.options || selectEl.selectedIndex < 0) {
-                return fallback;
-            }
-
-            var texto = selectEl.options[selectEl.selectedIndex].text || "";
-            texto = texto.replace(/^\s+|\s+$/g, "");
-            return texto && texto.indexOf("--") !== 0 ? texto : fallback;
-        }
-
-        function refrescarResumenSeleccion() {
-            var selectPrincipal = document.getElementById("inspectorPrincipal");
-            var selectApoyo = document.getElementById("inspectorApoyo");
-            var summaryPrincipal = document.getElementById("summaryInspectorPrincipal");
-            var summaryApoyo = document.getElementById("summaryInspectorApoyo");
-
-            if (summaryPrincipal) {
-                summaryPrincipal.textContent = obtenerTextoSeleccionado(selectPrincipal, "Sin seleccionar");
-            }
-            if (summaryApoyo) {
-                summaryApoyo.textContent = obtenerTextoSeleccionado(selectApoyo, "No aplica");
-            }
         }
 
         document.addEventListener("DOMContentLoaded", function () {
@@ -788,7 +687,6 @@
                 logInfo("Inspectores recibidos en respuesta (render server)=" + Math.max(0, selectPrincipal.options.length - 1));
                 selectPrincipal.addEventListener("change", function () {
                     logInfo("Valor seleccionado inspectorPrincipal=" + (selectPrincipal.value || "(vacio)"));
-                    refrescarResumenSeleccion();
                     evaluarHabilitacionBoton();
                 });
             }
@@ -796,35 +694,6 @@
             if (selectApoyo) {
                 selectApoyo.addEventListener("change", function () {
                     logInfo("Valor seleccionado inspectorApoyo=" + (selectApoyo.value || "(vacio)"));
-                    refrescarResumenSeleccion();
-                    evaluarHabilitacionBoton();
-                });
-            }
-
-            var fechaInspeccion = document.getElementById("fechaInspeccion");
-            if (fechaInspeccion) {
-                fechaInspeccion.addEventListener("change", function () {
-                    logInfo("Fecha seleccionada=" + (fechaInspeccion.value || "(vacio)"));
-                    evaluarHabilitacionBoton();
-                });
-            }
-
-            var form = document.querySelector(".assign-form");
-            if (form) {
-                form.addEventListener("submit", function (evt) {
-                    evaluarHabilitacionBoton();
-
-                    var btn = document.querySelector(".assignment-submit");
-                    if (btn && btn.disabled) {
-                        evt.preventDefault();
-                        logWarn("Submit bloqueado por validaciones de UX");
-                        return;
-                    }
-
-                    if (btn) {
-                        btn.disabled = true;
-                        btn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Procesando asignación...';
-                    }
                 });
             }
 
@@ -850,7 +719,6 @@
                 logError("Error AJAX cargando inspectores", error);
             })
             .finally(function () {
-                refrescarResumenSeleccion();
                 evaluarHabilitacionBoton();
             });
         });

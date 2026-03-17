@@ -435,7 +435,7 @@
                                                 </div>
                                                 <p class="mb-1">@doc.Descripcion</p>
                                                 <small class="text-muted">
-                                                    Subido: @(doc.FechaCarga.HasValue ? doc.FechaCarga.Value.ToString("dd/MM/yyyy HH:mm") : "")<br />
+                                                    Subido: @doc.FechaCarga?.ToString("dd/MM/yyyy HH:mm")<br />
                                                     Estado: @doc.Estado
                                                 </small>
                                                 <div class="mt-2">

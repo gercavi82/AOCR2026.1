@@ -5,84 +5,54 @@
 
 @{
     ViewBag.Title = "Solicitudes para Legalización";
-    ViewBag.PageSubtitle = "Coordinación Legal";
     Layout = "~/Views/Shared/_LayoutAOCR.cshtml";
 }
 
-<div class="container-fluid aocr-shell">
-    @Html.Partial("_HeroPanel", null, new ViewDataDictionary {
-        { "IconClass", "fas fa-scale-balanced" },
-        { "Overline", "Flujo Legal AOCR" },
-        { "Title", "Solicitudes pendientes de Legalización" },
-        { "Subtitle", "Coordinación legal" },
-        { "Description", "Revise el estado de cada solicitud y confirme su legalización para continuar con la emisión." },
-        { "MetricLabel", "Pendientes" },
-        { "MetricValue", Model != null ? Model.Count : 0 }
-    })
+<h2 class="mb-4">Solicitudes pendientes de Legalización AOCR</h2>
 
-    @if (TempData["Error"] != null)
-    {
-        <div class="alert alert-danger">@TempData["Error"]</div>
-    }
-    @if (TempData["Exito"] != null)
-    {
-        <div class="alert alert-success">@TempData["Exito"]</div>
-    }
+@if (TempData["Error"] != null)
+{
+    <div class="alert alert-danger">@TempData["Error"]</div>
+}
+@if (TempData["Exito"] != null)
+{
+    <div class="alert alert-success">@TempData["Exito"]</div>
+}
 
-    <div class="card aocr-table-card">
-        <div class="card-body p-0">
-            @if (Model != null && Model.Count > 0)
-            {
-                <div class="table-responsive">
-                    <table class="table table-hover align-middle mb-0">
-                        <thead>
-                            <tr>
-                                <th>ID</th>
-                                <th>Operador</th>
-                                <th>Fecha</th>
-                                <th>Estado</th>
-                                <th style="width:220px;">Acciones</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @foreach (var sol in Model)
-                            {
-                                <tr>
-                                    <td>@Html.Encode(sol.CodigoSolicitud)</td>
-                                    <td>@Html.Encode(sol.NombreOperador)</td>
-                                    <td>@Html.Encode(sol.FechaSolicitud.HasValue ? sol.FechaSolicitud.Value.ToString("dd/MM/yyyy HH:mm") : "")</td>
-                                    <td>@Html.Partial("_StatusBadge", null, new ViewDataDictionary { { "Status", sol.Estado } })</td>
-                                    <td>
-                                        <a href="@Url.Action("Detalle", "SolicitudAOCR", new { id = sol.CodigoSolicitud })" class="btn btn-sm btn-outline-primary">
-                                            <i class="fas fa-eye"></i> Ver
-                                        </a>
+<table class="table table-bordered table-hover">
+    <thead class="table-light">
+        <tr>
+            <th>ID</th>
+            <th>Operador</th>
+            <th>Fecha</th>
+            <th>Estado</th>
+            <th>Acciones</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var sol in Model)
+        {
+            <tr>
+                <td>@Html.Encode(sol.CodigoSolicitud)</td>
+                <td>@Html.Encode(sol.NombreOperador)</td>
+                <td>@Html.Encode(sol.FechaSolicitud.HasValue ? sol.FechaSolicitud.Value.ToString("yyyy-MM-dd HH:mm") : "")</td>
+                <td>@Html.Encode(sol.Estado)</td>
+                <td>
+                    <a href="@Url.Action("Detalle", "SolicitudAOCR", new { id = sol.CodigoSolicitud })" class="btn btn-sm btn-info">
+                        <i class="fas fa-eye"></i> Ver
+                    </a>
 
-                                        <button class="btn btn-sm btn-success"
-                                                data-bs-toggle="modal"
-                                                data-bs-target="#modalLegalizar"
-                                                data-id="@sol.CodigoSolicitud">
-                                            <i class="fas fa-check"></i> Legalizar
-                                        </button>
-                                    </td>
-                                </tr>
-                            }
-                        </tbody>
-                    </table>
-                </div>
-            }
-            else
-            {
-                <div class="p-3">
-                    @Html.Partial("_EmptyState", null, new ViewDataDictionary {
-                        { "IconClass", "fas fa-gavel" },
-                        { "Title", "No hay solicitudes para legalizar" },
-                        { "Description", "Cuando existan solicitudes en estado legalizable, aparecerán en esta bandeja." }
-                    })
-                </div>
-            }
-        </div>
-    </div>
-</div>
+                    <button class="btn btn-sm btn-success"
+                            data-bs-toggle="modal"
+                            data-bs-target="#modalLegalizar"
+                            data-id="@sol.CodigoSolicitud">
+                        <i class="fas fa-check"></i> Legalizar
+                    </button>
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>
 
 <!-- Modal para confirmar legalizaci�n -->
 <div class="modal fade" id="modalLegalizar" tabindex="-1" aria-hidden="true">

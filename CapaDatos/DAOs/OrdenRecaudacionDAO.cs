@@ -1517,12 +1517,6 @@ namespace CapaDatos.DAOs
                     {
                         RefreshFacturaPagoSchemaFlags(conn);
                     }
-
-                    if (_facturaPagoTableNoDisponible)
-                    {
-                        return null;
-                    }
-
                     var includeFr3 = !_fr3ColumnsNoDisponibles;
 
                     try
@@ -1582,10 +1576,6 @@ namespace CapaDatos.DAOs
 
                 if (!tableExists)
                 {
-                    lock (_schemaWarningLock)
-                    {
-                        _facturaPagoTableNoDisponible = true;
-                    }
                     return;
                 }
 

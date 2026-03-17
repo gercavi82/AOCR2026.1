@@ -2,39 +2,25 @@
 @using System.Linq
 @{
     ViewBag.Title = "Revisión / Verificación";
-    ViewBag.PageSubtitle = "Dirección / Jefatura";
     Layout = "~/Views/Shared/_LayoutAOCR.cshtml";
 }
 
-<div class="container-fluid aocr-shell">
-    @Html.Partial("_HeroPanel", null, new ViewDataDictionary {
-        { "IconClass", "fas fa-project-diagram" },
-        { "Overline", "Bandeja Ejecutiva AOCR" },
-        { "Title", "Revisión y Verificación" },
-        { "Subtitle", "Coordinación y Jefatura" },
-        { "Description", "Controle documental, revisión AOCR y seguimiento de inspecciones en un tablero unificado." },
-        { "MetricLabel", "Total en bandeja" },
-        { "MetricValue", (Model.SolicitudesControlDocumental.Count + Model.SolicitudesAocrRevision.Count + Model.InspeccionesSeguimiento.Count) }
-    })
+<div class="container-fluid py-3">
+    <h3 class="mb-3"><i class="fas fa-project-diagram"></i> @ViewBag.Title</h3>
+    <p class="text-muted">Bandeja unificada de control documental, revisión AOCR y seguimiento de inspecciones.</p>
 
     <div class="row g-3 mb-3">
-        <div class="col-md-4">@Html.Partial("_MetricCard", null, new ViewDataDictionary { { "Label", "Control documental" }, { "Value", Model.SolicitudesControlDocumental.Count }, { "IconClass", "fas fa-folder-check" }, { "Tone", "metric-info" } })</div>
-        <div class="col-md-4">@Html.Partial("_MetricCard", null, new ViewDataDictionary { { "Label", "AOCR en revisión" }, { "Value", Model.SolicitudesAocrRevision.Count }, { "IconClass", "fas fa-file-signature" }, { "Tone", "metric-warning" } })</div>
-        <div class="col-md-4">@Html.Partial("_MetricCard", null, new ViewDataDictionary { { "Label", "Inspecciones seguimiento" }, { "Value", Model.InspeccionesSeguimiento.Count }, { "IconClass", "fas fa-magnifying-glass-chart" }, { "Tone", "metric-success" } })</div>
+        <div class="col-md-4"><div class="card"><div class="card-body"><div class="text-muted">Control documental</div><h4>@Model.SolicitudesControlDocumental.Count</h4></div></div></div>
+        <div class="col-md-4"><div class="card"><div class="card-body"><div class="text-muted">AOCR en revisión</div><h4>@Model.SolicitudesAocrRevision.Count</h4></div></div></div>
+        <div class="col-md-4"><div class="card"><div class="card-body"><div class="text-muted">Inspecciones por coord./jefatura</div><h4>@Model.InspeccionesSeguimiento.Count</h4></div></div></div>
     </div>
 
-    <div class="card aocr-table-card mb-3">
+    <div class="card mb-3">
         <div class="card-header"><strong>Solicitudes para revisión documental</strong></div>
         <div class="card-body p-0">
             @if (!Model.SolicitudesControlDocumental.Any())
             {
-                <div class="p-3">
-                    @Html.Partial("_EmptyState", null, new ViewDataDictionary {
-                        { "IconClass", "fas fa-folder-open" },
-                        { "Title", "Sin pendientes documentales" },
-                        { "Description", "No hay solicitudes pendientes de revisión documental en este momento." }
-                    })
-                </div>
+                <div class="p-3 text-muted">No hay solicitudes pendientes de revisión documental.</div>
             }
             else
             {
@@ -55,7 +41,7 @@
                             <tr>
                                 <td>@item.CodigoSolicitud</td>
                                 <td>@Html.Encode(item.NombreOperador)</td>
-                                <td>@Html.Partial("_StatusBadge", null, new ViewDataDictionary { { "Status", item.Estado } })</td>
+                                <td>@Html.Encode(item.Estado)</td>
                                 <td>@(item.FechaSolicitud.HasValue ? item.FechaSolicitud.Value.ToString("yyyy-MM-dd") : string.Empty)</td>
                                 <td>
                                     <a class="btn btn-sm btn-info" href="@Url.Action("Detalle", "SolicitudAOCR", new { id = item.CodigoSolicitud })">Detalle</a>
@@ -70,18 +56,12 @@
         </div>
     </div>
 
-    <div class="card aocr-table-card mb-3">
+    <div class="card mb-3">
         <div class="card-header"><strong>AOCR para validar, legalizar o cerrar</strong></div>
         <div class="card-body p-0">
             @if (!Model.SolicitudesAocrRevision.Any())
             {
-                <div class="p-3">
-                    @Html.Partial("_EmptyState", null, new ViewDataDictionary {
-                        { "IconClass", "fas fa-check-double" },
-                        { "Title", "Sin AOCR en cola" },
-                        { "Description", "Actualmente no existen AOCR para validación o legalización." }
-                    })
-                </div>
+                <div class="p-3 text-muted">No hay AOCR en cola de revisión.</div>
             }
             else
             {
@@ -102,7 +82,7 @@
                             <tr>
                                 <td>@item.CodigoSolicitud</td>
                                 <td>@Html.Encode(item.NombreOperador)</td>
-                                <td>@Html.Partial("_StatusBadge", null, new ViewDataDictionary { { "Status", item.Estado } })</td>
+                                <td>@Html.Encode(item.Estado)</td>
                                 <td>@(item.FechaSolicitud.HasValue ? item.FechaSolicitud.Value.ToString("yyyy-MM-dd") : string.Empty)</td>
                                 <td>
                                     <a class="btn btn-sm btn-info" href="@Url.Action("Detalle", "SolicitudAOCR", new { id = item.CodigoSolicitud })">Detalle</a>
@@ -124,18 +104,12 @@
         </div>
     </div>
 
-    <div class="card aocr-table-card">
+    <div class="card">
         <div class="card-header"><strong>Inspecciones en seguimiento de coordinación / jefatura</strong></div>
         <div class="card-body p-0">
             @if (!Model.InspeccionesSeguimiento.Any())
             {
-                <div class="p-3">
-                    @Html.Partial("_EmptyState", null, new ViewDataDictionary {
-                        { "IconClass", "fas fa-clipboard-list" },
-                        { "Title", "Sin inspecciones en seguimiento" },
-                        { "Description", "No hay inspecciones en seguimiento para coordinación o jefatura." }
-                    })
-                </div>
+                <div class="p-3 text-muted">No hay inspecciones en seguimiento para este bloque.</div>
             }
             else
             {
@@ -156,7 +130,7 @@
                             <tr>
                                 <td>@item.CodigoInspeccion</td>
                                 <td>@item.CodigoSolicitud</td>
-                                <td>@Html.Partial("_StatusBadge", null, new ViewDataDictionary { { "Status", item.Estado } })</td>
+                                <td>@Html.Encode(item.Estado)</td>
                                 <td>@Html.Encode(item.Resultado)</td>
                                 <td>
                                     <a class="btn btn-sm btn-info" href="@Url.Action("Detalle", "Inspeccion", new { id = item.CodigoInspeccion })">Detalle</a>

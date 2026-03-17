@@ -17,7 +17,7 @@ else
                     <strong class="text-primary">@item.EstadoNuevo</strong>
                     <div class="small text-muted">
                         Cambio desde <strong>@item.EstadoAnterior</strong><br />
-                        Fecha: @(item.FechaCambio.HasValue ? item.FechaCambio.Value.ToString("yyyy-MM-dd HH:mm") : "")<br />
+                        Fecha: @item.FechaCambio?.ToString("yyyy-MM-dd HH:mm")<br />
                         Usuario ID: @item.CodigoUsuario
                     </div>
                     @if (!string.IsNullOrWhiteSpace(item.Observaciones))

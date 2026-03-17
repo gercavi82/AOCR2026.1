@@ -8,98 +8,95 @@
 
 @{
     ViewBag.Title = "Gestionar Inspecciones";
-    ViewBag.PageSubtitle = "Módulo de Inspección";
     Layout = "~/Views/Shared/_LayoutAOCR.cshtml";
 }
 
-<div class="container-fluid aocr-shell">
-    @Html.Partial("_HeroPanel", null, new ViewDataDictionary {
-        { "IconClass", "fas fa-clipboard-check" },
-        { "Overline", "Control de Inspecciones" },
-        { "Title", "Gestionar Inspecciones" },
-        { "Subtitle", "Seguimiento técnico" },
-        { "Description", "Consulte estado, resultado y acciones disponibles para cada inspección registrada." },
-        { "MetricLabel", "Total" },
-        { "MetricValue", Model != null ? Model.Count : 0 }
-    })
+<h2 class="mb-3">Gestionar Inspecciones</h2>
 
-    <div class="card aocr-table-card">
-        <div class="card-body p-0">
-            @if (Model != null && Model.Any())
-            {
-                <div class="table-responsive">
-                    <table class="table table-hover align-middle mb-0">
-                        <thead>
-                            <tr>
-                                <th>Código</th>
-                                <th>Solicitud</th>
-                                <th>Inspector</th>
-                                <th>Fecha Programada</th>
-                                <th>Estado</th>
-                                <th>Resultado</th>
-                                <th style="width:120px;">Acciones</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @foreach (var inspeccion in Model)
-                            {
-                                <tr>
-                                    <td>@inspeccion.CodigoInspeccion</td>
-                                    <td>@inspeccion.CodigoSolicitud</td>
-                                    <td>@(inspeccion.CodigoInspector.HasValue ? inspeccion.CodigoInspector.Value.ToString() : "No asignado")</td>
-                                    <td>@(inspeccion.FechaProgramada.HasValue ? inspeccion.FechaProgramada.Value.ToString("dd/MM/yyyy") : "-")</td>
-                                    <td>
-                                        @if (!string.IsNullOrWhiteSpace(inspeccion.Estado))
-                                        {
-                                            @Html.Partial("_StatusBadge", null, new ViewDataDictionary { { "Status", inspeccion.Estado } })
-                                        }
-                                        else
-                                        {
-                                            <span class="text-muted">-</span>
-                                        }
-                                    </td>
-                                    <td>
-                                        @if (!string.IsNullOrWhiteSpace(inspeccion.Resultado))
-                                        {
-                                            @Html.Partial("_StatusBadge", null, new ViewDataDictionary { { "Status", inspeccion.Resultado } })
-                                        }
-                                        else
-                                        {
-                                            <span class="text-muted">Pendiente</span>
-                                        }
-                                    </td>
-                                    <td>
-                                        <div class="btn-group btn-group-sm" role="group">
-                                            <a href="@Url.Action("Detalle", "Inspeccion", new { id = inspeccion.CodigoInspeccion })"
-                                               class="btn btn-outline-primary" title="Ver detalle">
-                                                <i class="fa fa-eye"></i>
-                                            </a>
-                                            @if (User.IsInRole("Inspector") || User.IsInRole("Administrador"))
-                                            {
-                                                <a href="@Url.Action("Editar", "Inspeccion", new { id = inspeccion.CodigoInspeccion })"
-                                                   class="btn btn-outline-warning" title="Editar">
-                                                    <i class="fa fa-edit"></i>
-                                                </a>
-                                            }
-                                        </div>
-                                    </td>
-                                </tr>
-                            }
-                        </tbody>
-                    </table>
-                </div>
-            }
-            else
-            {
-                <div class="p-3">
-                    @Html.Partial("_EmptyState", null, new ViewDataDictionary {
-                        { "IconClass", "fas fa-clipboard" },
-                        { "Title", "No hay inspecciones registradas" },
-                        { "Description", "Cuando se creen inspecciones, se mostrarán en esta bandeja." }
-                    })
-                </div>
-            }
-        </div>
+<div class="card">
+    <div class="card-body">
+        @if (Model != null && Model.Any())
+        {
+            <table class="table table-striped table-hover">
+                <thead>
+                    <tr>
+                        <th>Código</th>
+                        <th>Solicitud</th>
+                        <th>Inspector</th>
+                        <th>Fecha Programada</th>
+                        <th>Estado</th>
+                        <th>Resultado</th>
+                        <th>Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var inspeccion in Model)
+                    {
+                        <tr>
+                            <td>@inspeccion.CodigoInspeccion</td>
+                            <td>@inspeccion.CodigoSolicitud</td>
+                            <td>@(inspeccion.CodigoInspector.HasValue ? inspeccion.CodigoInspector.Value.ToString() : "No asignado")</td>
+                            <td>@(inspeccion.FechaProgramada.HasValue ? inspeccion.FechaProgramada.Value.ToString("dd/MM/yyyy") : "-")</td>
+                            <td>
+                                @if (!string.IsNullOrWhiteSpace(inspeccion.Estado))
+                                {
+                                    <span class="badge 
+                                        @(inspeccion.Estado == "RESULTADO_SATISFACTORIO" || inspeccion.Estado == "APROBADA" ? "bg-success" :
+                                          inspeccion.Estado == "INFORME_ELABORADO" || inspeccion.Estado == "FINALIZADA" ? "bg-success" :
+                                          inspeccion.Estado == "ACEPTADA" || inspeccion.Estado == "VERIFICACION_SOLICITUD" || inspeccion.Estado == "PAGO_VALIDADO" || inspeccion.Estado == "PROGRAMADA" ? "bg-info" :
+                                          inspeccion.Estado == "EN_INSPECCION" || inspeccion.Estado == "EN_CURSO" ? "bg-warning" :
+                                          inspeccion.Estado == "OBSERVADA" || inspeccion.Estado == "OBSERVACION_DOCUMENTAL" || inspeccion.Estado == "RESULTADO_NO_SATISFACTORIO" || inspeccion.Estado == "RECHAZADA" ? "bg-danger" :
+                                          inspeccion.Estado == "VIATICOS_REQUERIDOS" || inspeccion.Estado == "APLAZADA" ? "bg-secondary" :
+                                          inspeccion.Estado == "CERRADA" || inspeccion.Estado == "CANCELADA" ? "bg-dark" :
+                                          "bg-light text-dark")">
+                                        @inspeccion.Estado
+                                    </span>
+                                }
+                                else
+                                {
+                                    <span class="text-muted">-</span>
+                                }
+                            </td>
+                            <td>
+                                @if (!string.IsNullOrWhiteSpace(inspeccion.Resultado))
+                                {
+                                    <span class="badge 
+                                        @(inspeccion.Resultado == "APROBADO" ? "bg-success" : 
+                                          inspeccion.Resultado == "RECHAZADO" ? "bg-danger" : "bg-warning")">
+                                        @inspeccion.Resultado
+                                    </span>
+                                }
+                                else
+                                {
+                                    <span class="text-muted">Pendiente</span>
+                                }
+                            </td>
+                            <td>
+                                <div class="btn-group btn-group-sm" role="group">
+                                    <a href="@Url.Action("Detalle", "Inspeccion", new { id = inspeccion.CodigoInspeccion })" 
+                                       class="btn btn-outline-primary" title="Ver detalle">
+                                        <i class="fa fa-eye"></i>
+                                    </a>
+                                    @if (User.IsInRole("Inspector") || User.IsInRole("Administrador"))
+                                    {
+                                        <a href="@Url.Action("Editar", "Inspeccion", new { id = inspeccion.CodigoInspeccion })" 
+                                           class="btn btn-outline-warning" title="Editar">
+                                            <i class="fa fa-edit"></i>
+                                        </a>
+                                    }
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+        else
+        {
+            <div class="alert alert-info mb-0">
+                <i class="fa fa-info-circle"></i> No hay inspecciones registradas.
+            </div>
+        }
     </div>
 </div>
 

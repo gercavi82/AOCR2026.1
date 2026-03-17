@@ -4,29 +4,21 @@
 @using System.Web.Mvc.Html
 @{
     ViewBag.Title = "Dashboard";
-    ViewBag.PageSubtitle = "Panel General AOCR";
     Layout = "~/Views/Shared/_LayoutAOCR.cshtml";
 }
 
-@section Styles {
-    <link rel="stylesheet" href="@Url.Content("~/Content/css/dashboard.css")" />
-}
-
-<div class="container-fluid aocr-shell">
-
-    @Html.Partial("_HeroPanel", null, new ViewDataDictionary {
-        { "IconClass", "fas fa-chart-line" },
-        { "Overline", "Sistema Institucional DGAC" },
-        { "Title", "Dashboard AOCR" },
-        { "Subtitle", "Bienvenido al Sistema de Órdenes de Recaudación" },
-        { "Description", "Visualice métricas de órdenes, recaudación y accesos rápidos en un solo panel." },
-        { "MetricLabel", "Última actualización" },
-        { "MetricValue", DateTime.Now.ToString("dd/MM/yyyy HH:mm") }
-    })
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <h1 class="mt-4">Dashboard AOCR</h1>
+            <p class="lead">Bienvenido al Sistema de Órdenes de Recaudación</p>
+            <hr />
+        </div>
+    </div>
 
     <div class="row">
         <div class="col-xl-3 col-md-6 mb-4">
-            <div class="card aocr-content-card border-start border-primary shadow-sm h-100 py-2">
+            <div class="card border-start border-primary shadow h-100 py-2">
                 <div class="card-body d-flex justify-content-between align-items-center">
                     <div>
                         <div class="text-uppercase small fw-bold text-primary mb-1">Órdenes Pendientes</div>
@@ -38,7 +30,7 @@
         </div>
 
         <div class="col-xl-3 col-md-6 mb-4">
-            <div class="card aocr-content-card border-start border-success shadow-sm h-100 py-2">
+            <div class="card border-start border-success shadow h-100 py-2">
                 <div class="card-body d-flex justify-content-between align-items-center">
                     <div>
                         <div class="text-uppercase small fw-bold text-success mb-1">Órdenes Completadas</div>
@@ -50,7 +42,7 @@
         </div>
 
         <div class="col-xl-3 col-md-6 mb-4">
-            <div class="card aocr-content-card border-start border-info shadow-sm h-100 py-2">
+            <div class="card border-start border-info shadow h-100 py-2">
                 <div class="card-body d-flex justify-content-between align-items-center">
                     <div>
                         <div class="text-uppercase small fw-bold text-info mb-1">Total Recaudado</div>
@@ -62,7 +54,7 @@
         </div>
 
         <div class="col-xl-3 col-md-6 mb-4">
-            <div class="card aocr-content-card border-start border-warning shadow-sm h-100 py-2">
+            <div class="card border-start border-warning shadow h-100 py-2">
                 <div class="card-body d-flex justify-content-between align-items-center">
                     <div>
                         <div class="text-uppercase small fw-bold text-warning mb-1">Última Orden</div>
@@ -77,7 +69,7 @@
     <!-- Órdenes Recientes -->
     <div class="row">
         <div class="col-12">
-            <div class="card aocr-content-card shadow-sm mb-4">
+            <div class="card shadow mb-4">
                 <div class="card-header py-3 d-flex justify-content-between align-items-center">
                     <h6 class="m-0 fw-bold text-primary">Órdenes Recientes</h6>
                     <div id="loadingOrdenes" class="text-muted d-none">
@@ -113,7 +105,7 @@
     <!-- Acciones Rápidas -->
     <div class="row">
         <div class="col-12">
-            <div class="card aocr-content-card shadow-sm">
+            <div class="card shadow">
                 <div class="card-header py-3">
                     <h6 class="m-0 fw-bold text-primary">Acciones Rápidas</h6>
                 </div>

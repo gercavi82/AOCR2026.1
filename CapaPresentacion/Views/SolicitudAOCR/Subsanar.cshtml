@@ -6,7 +6,6 @@
 
 @{
     ViewBag.Title = "Subsanar Documentación";
-    ViewBag.PageSubtitle = "Solicitudes AOCR";
     Layout = "~/Views/Shared/_LayoutAOCR.cshtml";
     var estadoBadge = "badge bg-warning text-dark";
 }
@@ -27,8 +26,7 @@
     .step-number { width: 36px; height: 36px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-weight: 700; font-size: 1rem; flex-shrink: 0; }
 </style>
 
-<div class="container-fluid aocr-shell">
-<div class="subsanar-container py-2">
+<div class="subsanar-container py-4">
 
     @* ── ENCABEZADO ── *@
     <div class="d-flex align-items-center gap-3 mb-4">
@@ -238,7 +236,6 @@
             </button>
         </div>
     </form>
-</div>
 </div>
 
 @section scripts {

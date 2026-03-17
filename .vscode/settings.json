@@ -3,15 +3,5 @@
     "dotnet.defaultSolution": "AOCR.sln",
     "chat.tools.terminal.autoApprove": {
         "&": true
-    },
-    "files.exclude": {
-        "**/.history": true
-    },
-    "search.exclude": {
-        "**/.history/**": true
-    },
-    "files.watcherExclude": {
-        "**/.history/**": true
-    },
-    "razor.languageServer.enabled": false
+    }
 }

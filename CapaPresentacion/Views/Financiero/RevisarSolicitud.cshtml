@@ -23,7 +23,7 @@
     <div class="panel-heading"><strong>Datos Generales</strong></div>
     <div class="panel-body">
         <p><strong>Operador: </strong>@Model.NombreOperador</p>
-        <p><strong>Fecha Registro: </strong>@(Model.FechaSolicitud.HasValue ? Model.FechaSolicitud.Value.ToString("dd/MM/yyyy") : "")</p>
+        <p><strong>Fecha Registro: </strong>@Model.FechaSolicitud?.ToString("dd/MM/yyyy")</p>
 
         <p><strong>Estado:</strong> @Model.Estado</p>
     </div>
@@ -46,7 +46,7 @@
             @foreach (var p in pagos)
             {
                 <tr>
-                    <td>$@(p.Monto.HasValue ? p.Monto.Value.ToString("N2") : "0.00")</td>
+                    <td>$@p.Monto?.ToString("N2")</td>
                     <td>@p.MetodoPago</td>
                     <td>@p.Estado</td>
                     <td>

@@ -45,7 +45,7 @@
                                 <tr>
                                     <td>@item.CodigoPago</td>
                                     <td>@item.CodigoSolicitud</td>
-                                    <td>$ @(item.Monto.HasValue ? item.Monto.Value.ToString("N2") : "0.00")</td>
+                                    <td>$ @item.Monto?.ToString("N2")</td>
                                     <td>@(item.FechaPago.HasValue ? item.FechaPago.Value.ToString("dd/MM/yyyy") : "--")</td>
                                     <td>
                                         <span class="badge badge-warning">@item.Estado</span>
