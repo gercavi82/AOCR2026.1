@@ -1,85 +1,105 @@
 ﻿@inherits System.Web.Mvc.WebViewPage
-@using CapaModelo
-@using System.Web.Mvc
-@using System.Web.Mvc.Html
+@using System.Collections.Generic
+@using System.Web
 @{
-    ViewBag.Title = "Dashboard";
     Layout = "~/Views/Shared/_LayoutAOCR.cshtml";
+    ViewBag.Title = "Dashboard";
+    var usuarioActual = ((Session["NombreUsuario"] as string) ?? "Usuario AOCR").Trim();
+    var rolActual = ((Session["Rol"] as string) ?? "Perfil institucional").Trim();
+    var fechaActual = DateTime.Now.ToString("dd/MM/yyyy");
+    ViewBag.AocrHeaderSubtitle = "Panel ergonómico para seguimiento operativo, control de órdenes y accesos directos del ecosistema AOCR.";
+    ViewBag.AocrHeaderContextBadge = "Dashboard operativo";
+    ViewBag.AocrHeaderDateValue = fechaActual;
+    ViewBag.AocrHeaderDateText = "Panel habilitado para seguimiento y decisiones rápidas";
+
+    var pageHeaderData = new ViewDataDictionary
+    {
+        { "Kicker", "Inicio" },
+        { "Title", "Dashboard Institucional" },
+        { "Subtitle", "Vista ejecutiva del sistema AOCR con accesos directos, estado operativo y seguimiento de órdenes en tiempo real." },
+        { "Breadcrumbs", new[]
+            {
+                new { Text = "Dashboard", Url = string.Empty }
+            }
+        }
+    };
 }
 
-<div class="container-fluid">
-    <div class="row">
-        <div class="col-12">
-            <h1 class="mt-4">Dashboard AOCR</h1>
-            <p class="lead">Bienvenido al Sistema de Órdenes de Recaudación</p>
-            <hr />
+<div class="aocr-view aocr-dashboard-view">
+    @Html.Partial("_PageHeader", null, pageHeaderData)
+
+    <div class="row g-3 mb-4">
+        <div class="col-12 col-md-6 col-xl-3">
+            @Html.Partial("_MetricCard", null, new ViewDataDictionary { { "Label", "Pendientes" }, { "Value", 0 }, { "ValueId", "ordenesPendientes" }, { "Modifier", "warning" }, { "Icon", "fas fa-clipboard-list" }, { "Caption", "Bandeja por atender" } })
+        </div>
+        <div class="col-12 col-md-6 col-xl-3">
+            @Html.Partial("_MetricCard", null, new ViewDataDictionary { { "Label", "Completadas" }, { "Value", 0 }, { "ValueId", "ordenesCompletadas" }, { "Modifier", "success" }, { "Icon", "fas fa-circle-check" }, { "Caption", "Órdenes cerradas correctamente" } })
+        </div>
+        <div class="col-12 col-md-6 col-xl-3">
+            @Html.Partial("_MetricCard", null, new ViewDataDictionary { { "Label", "Recaudación" }, { "Value", "$0.00" }, { "ValueId", "totalRecaudado" }, { "Modifier", "info" }, { "Icon", "fas fa-dollar-sign" }, { "Caption", "Valor acumulado del período" } })
+        </div>
+        <div class="col-12 col-md-6 col-xl-3">
+            @Html.Partial("_MetricCard", null, new ViewDataDictionary { { "Label", "Última orden" }, { "Value", "N/A" }, { "ValueId", "ultimaOrden" }, { "Modifier", "primary" }, { "Icon", "fas fa-calendar-check" }, { "Caption", "Último registro actualizado" } })
         </div>
     </div>
 
-    <div class="row">
-        <div class="col-xl-3 col-md-6 mb-4">
-            <div class="card border-start border-primary shadow h-100 py-2">
-                <div class="card-body d-flex justify-content-between align-items-center">
-                    <div>
-                        <div class="text-uppercase small fw-bold text-primary mb-1">Órdenes Pendientes</div>
-                        <div class="h5 mb-0 fw-bold text-dark" id="ordenesPendientes">0</div>
-                    </div>
-                    <i class="fas fa-clipboard-list fa-2x text-secondary opacity-50"></i>
-                </div>
+    <section class="aocr-quick-actions">
+        <div class="row g-3">
+            <div class="col-12 col-md-6 col-xl-3">
+                <a href="@Url.Action("Index", "SolicitudAOCR", new { abrir = "nueva" })" class="aocr-quick-action">
+                    <span class="aocr-quick-action__icon"><i class="fas fa-file-circle-plus"></i></span>
+                    <span class="aocr-quick-action__body">
+                        <strong class="aocr-quick-action__title">Crear solicitud</strong>
+                        <span class="aocr-quick-action__text">Inicie una nueva solicitud AOCR desde la bandeja institucional.</span>
+                    </span>
+                </a>
+            </div>
+            <div class="col-12 col-md-6 col-xl-3">
+                <a href="@Url.Action("Index", "SolicitudAOCR")" class="aocr-quick-action">
+                    <span class="aocr-quick-action__icon"><i class="fas fa-folder-open"></i></span>
+                    <span class="aocr-quick-action__body">
+                        <strong class="aocr-quick-action__title">Mis solicitudes</strong>
+                        <span class="aocr-quick-action__text">Revise el estado de sus trámites, observaciones y documentación.</span>
+                    </span>
+                </a>
+            </div>
+            <div class="col-12 col-md-6 col-xl-3">
+                <a href="@Url.Action("Nueva", "OrdenRecaudacion")" class="aocr-quick-action">
+                    <span class="aocr-quick-action__icon"><i class="fas fa-receipt"></i></span>
+                    <span class="aocr-quick-action__body">
+                        <strong class="aocr-quick-action__title">Nueva orden</strong>
+                        <span class="aocr-quick-action__text">Genere una orden de recaudación y continúe el flujo financiero.</span>
+                    </span>
+                </a>
+            </div>
+            <div class="col-12 col-md-6 col-xl-3">
+                <a href="@Url.Action("Index", "Reportes")" class="aocr-quick-action">
+                    <span class="aocr-quick-action__icon"><i class="fas fa-chart-column"></i></span>
+                    <span class="aocr-quick-action__body">
+                        <strong class="aocr-quick-action__title">Reportes</strong>
+                        <span class="aocr-quick-action__text">Acceda a reportes operativos y métricas clave del sistema.</span>
+                    </span>
+                </a>
             </div>
         </div>
+    </section>
 
-        <div class="col-xl-3 col-md-6 mb-4">
-            <div class="card border-start border-success shadow h-100 py-2">
-                <div class="card-body d-flex justify-content-between align-items-center">
-                    <div>
-                        <div class="text-uppercase small fw-bold text-success mb-1">Órdenes Completadas</div>
-                        <div class="h5 mb-0 fw-bold text-dark" id="ordenesCompletadas">0</div>
-                    </div>
-                    <i class="fas fa-check-circle fa-2x text-secondary opacity-50"></i>
-                </div>
-            </div>
-        </div>
-
-        <div class="col-xl-3 col-md-6 mb-4">
-            <div class="card border-start border-info shadow h-100 py-2">
-                <div class="card-body d-flex justify-content-between align-items-center">
-                    <div>
-                        <div class="text-uppercase small fw-bold text-info mb-1">Total Recaudado</div>
-                        <div class="h5 mb-0 fw-bold text-dark" id="totalRecaudado">$0.00</div>
-                    </div>
-                    <i class="fas fa-dollar-sign fa-2x text-secondary opacity-50"></i>
-                </div>
-            </div>
-        </div>
-
-        <div class="col-xl-3 col-md-6 mb-4">
-            <div class="card border-start border-warning shadow h-100 py-2">
-                <div class="card-body d-flex justify-content-between align-items-center">
-                    <div>
-                        <div class="text-uppercase small fw-bold text-warning mb-1">Última Orden</div>
-                        <div class="h5 mb-0 fw-bold text-dark" id="ultimaOrden">N/A</div>
-                    </div>
-                    <i class="fas fa-calendar-alt fa-2x text-secondary opacity-50"></i>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Órdenes Recientes -->
-    <div class="row">
-        <div class="col-12">
-            <div class="card shadow mb-4">
-                <div class="card-header py-3 d-flex justify-content-between align-items-center">
-                    <h6 class="m-0 fw-bold text-primary">Órdenes Recientes</h6>
-                    <div id="loadingOrdenes" class="text-muted d-none">
-                        <i class="fas fa-spinner fa-spin me-1"></i> Cargando...
-                    </div>
-                </div>
-
+    <div class="row g-4">
+        <div class="col-12 col-xl-8">
+            <div class="card aocr-content-card aocr-table-card h-100">
                 <div class="card-body">
-                    <div class="table-responsive">
-                        <table class="table table-bordered table-striped align-middle" id="tablaOrdenes" width="100%">
+                    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+                        <div>
+                            <h3 class="aocr-section-title mb-1"><i class="fas fa-clock-rotate-left"></i> Órdenes recientes</h3>
+                            <p class="text-muted mb-0">Seguimiento en línea de las órdenes más recientes y sus estados operativos.</p>
+                        </div>
+                        <div id="loadingOrdenes" class="text-muted d-none">
+                            <i class="fas fa-spinner fa-spin"></i> Cargando...
+                        </div>
+                    </div>
+
+                    <div class="table-responsive aocr-table-wrap">
+                        <table class="table aocr-table align-middle mb-0" id="tablaOrdenes" width="100%">
                             <thead>
                                 <tr>
                                     <th>Número</th>
@@ -89,46 +109,42 @@
                                     <th style="width:140px;">Acciones</th>
                                 </tr>
                             </thead>
-                            <tbody>
-                                <!-- DataTables manejará el contenido -->
-                            </tbody>
+                            <tbody></tbody>
                         </table>
                     </div>
-                    <small class="text-muted">
-                        Nota: Si no carga la tabla, revisa que jQuery y DataTables estén en bundles antes de este script.
-                    </small>
+                    <small class="text-muted d-block mt-3">La tabla conserva DataTables y los scripts existentes del módulo.</small>
                 </div>
             </div>
         </div>
-    </div>
 
-    <!-- Acciones Rápidas -->
-    <div class="row">
-        <div class="col-12">
-            <div class="card shadow">
-                <div class="card-header py-3">
-                    <h6 class="m-0 fw-bold text-primary">Acciones Rápidas</h6>
-                </div>
-                <div class="card-body">
-                    <div class="row">
-                        <div class="col-md-3 mb-3">
-                            <a href="@Url.Action("Nueva", "OrdenRecaudacion")" class="btn btn-primary w-100">
-                                <i class="fas fa-plus"></i> Nueva Orden
-                            </a>
+        <div class="col-12 col-xl-4">
+            <div class="card aocr-content-card h-100">
+                <div class="card-body d-flex flex-column">
+                    <div class="mb-3">
+                        <h3 class="aocr-section-title mb-1"><i class="fas fa-bolt"></i> Resumen de sesión</h3>
+                        <p class="text-muted mb-0">Identidad activa, contexto institucional y accesos auxiliares del dashboard.</p>
+                    </div>
+
+                    <div class="aocr-dashboard-aside mt-auto">
+                        <div class="aocr-dashboard-aside__item">
+                            <span class="aocr-dashboard-aside__label">Usuario</span>
+                            <strong class="aocr-dashboard-aside__value">@usuarioActual</strong>
                         </div>
-                        <div class="col-md-3 mb-3">
-                            <a href="@Url.Action("Obligatoria", "OrdenRecaudacion")" class="btn btn-success w-100">
-                                <i class="fas fa-list"></i> Ver Mis Órdenes
-                            </a>
+                        <div class="aocr-dashboard-aside__item">
+                            <span class="aocr-dashboard-aside__label">Rol</span>
+                            <strong class="aocr-dashboard-aside__value">@rolActual</strong>
                         </div>
-                        <div class="col-md-3 mb-3">
-                            <a href="@Url.Action("Index", "Reportes")" class="btn btn-info w-100 text-white">
-                                <i class="fas fa-chart-bar"></i> Reportes
-                            </a>
+                        <div class="aocr-dashboard-aside__item">
+                            <span class="aocr-dashboard-aside__label">Fecha</span>
+                            <strong class="aocr-dashboard-aside__value">@fechaActual</strong>
                         </div>
-                        <div class="col-md-3 mb-3">
-                            <a href="@Url.Action("Logout", "Account")" class="btn btn-warning w-100">
-                                <i class="fas fa-sign-out-alt"></i> Cerrar Sesión
+
+                        <div class="d-grid gap-2 mt-3">
+                            <a href="@Url.Action("Obligatoria", "OrdenRecaudacion")" class="btn btn-aocr-secondary w-100">
+                                <i class="fas fa-list"></i><span>Mis órdenes</span>
+                            </a>
+                            <a href="@Url.Action("Logout", "Account")" class="btn btn-aocr-secondary w-100">
+                                <i class="fas fa-sign-out-alt"></i><span>Cerrar sesión</span>
                             </a>
                         </div>
                     </div>
@@ -190,12 +206,10 @@
         return new Intl.NumberFormat('es-EC', { style: 'currency', currency: 'USD' }).format(n);
     }
 
-    // Rutas base desde servidor (evitan hardcoded / path issues)
     var detalleBase = '@Url.Action("Detalle", "Orden")';
     var descargarBase = '@Url.Action("DescargarPdf", "OrdenRecaudacion")';
 
     function initTable() {
-        // Validación fuerte: si jQuery o DataTables no cargaron, no rompas la página
         if (!window.jQuery) {
             console.error("jQuery NO está cargado -> '$ is not defined'. Revisa Layout/Bundles/CSP.");
             return false;
@@ -205,21 +219,17 @@
             return false;
         }
 
-        // Evitar doble inicialización si el partial se renderiza 2 veces
         if ($.fn.DataTable.isDataTable('#tablaOrdenes')) {
             dt = $('#tablaOrdenes').DataTable();
             return true;
         }
 
         dt = $('#tablaOrdenes').DataTable({
-            // ✅ Idioma LOCAL (evita CSP/CDN)
             language: { url: '@Url.Content("~/Content/plugins/datatables/i18n/Spanish.json")' },
-
             order: [[1, 'desc']],
             autoWidth: false,
             responsive: true,
             processing: true,
-
             columns: [
                 { data: 'numeroOrden', defaultContent: '', render: function(data) { return escapeHtml(data || ''); } },
                 {
@@ -246,7 +256,6 @@
                         var detalleUrl = detalleBase + '/' + encodeURIComponent(id);
                         var pdfUrl = descargarBase + '/' + encodeURIComponent(id);
 
-                        // Build DOM elements safely instead of string concatenation
                         var container = document.createElement('div');
 
                         var linkDetalle = document.createElement('a');
@@ -313,11 +322,7 @@
         });
     });
 
-    // opcional: refrescar cada X segundos
-    // setInterval(cargarDatosDashboard, 60000);
-
 })();
     </script>
 }
-
 

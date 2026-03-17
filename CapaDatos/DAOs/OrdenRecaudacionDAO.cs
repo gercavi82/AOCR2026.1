@@ -2276,9 +2276,9 @@ namespace CapaDatos.DAOs
                             string detalleCambioSolicitud;
                             if (!ActualizarSolicitudPendienteAsignacionRt(conn, tx, codigoSolicitud, usuario, out detalleCambioSolicitud))
                             {
-                                tx.Rollback();
-                                err = "No se pudo actualizar el estado de la solicitud para asignación RT. " + (detalleCambioSolicitud ?? string.Empty);
-                                return false;
+                                _logger.LogWarning(
+                                    "ActualizarPagoYEstadoTransaccional: transicion solicitud omitida (no critica). OrdenId={0}, CodigoSolicitud={1}, Detalle={2}",
+                                    ordenId, codigoSolicitud, detalleCambioSolicitud ?? string.Empty);
                             }
                         }
 
@@ -2607,9 +2607,9 @@ namespace CapaDatos.DAOs
                         string detalleCambioSolicitudPago;
                         if (!ActualizarSolicitudPendienteAsignacionRt(conn, tx, codigoSolicitud, usuarioAprobador, out detalleCambioSolicitudPago))
                         {
-                            tx.Rollback();
-                            err = "No se pudo actualizar el estado de la solicitud para asignación RT. " + (detalleCambioSolicitudPago ?? string.Empty);
-                            return false;
+                            _logger.LogWarning(
+                                "AprobarPagoConFacturaTransaccional: transicion solicitud omitida (no critica). OrdenId={0}, CodigoSolicitud={1}, Detalle={2}",
+                                ordenId, codigoSolicitud, detalleCambioSolicitudPago ?? string.Empty);
                         }
 
                         var eventKey = string.Format("ORDEN_{0}_FACTURA_REGISTRADA", ordenId);

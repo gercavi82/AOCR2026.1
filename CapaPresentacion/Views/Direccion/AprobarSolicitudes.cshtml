@@ -1,278 +1,175 @@
 ﻿@inherits System.Web.Mvc.WebViewPage<List<CapaModelo.SolicitudAOCR>>
-@using CapaModelo
-@using System.Web.Mvc
-@using System.Web.Mvc.Html
+@using System.Collections.Generic
 @using System.Linq
-
+@using System.Web
+@using CapaModelo
 @{
-    ViewBag.Title = "Aprobación de Solicitudes AOCR";
-    ViewBag.PageSubtitle = "Dirección / Jefatura";
     Layout = "~/Views/Shared/_LayoutAOCR.cshtml";
-}
+    ViewBag.Title = "Aprobación de Solicitudes AOCR";
 
-<section class="aocr-approval-hero card shadow-sm border-0 mb-4">
-    <div class="card-body">
-        <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
-            <div>
-                <p class="hero-overline mb-2">
-                    <i class="fas fa-landmark mr-1"></i> Sistema Institucional DGAC
-                </p>
-                <h2 class="hero-title mb-1">Aprobación de Solicitudes AOCR</h2>
-                <p class="hero-subtitle mb-0">Dirección / Jefatura</p>
-            </div>
-            <div class="hero-stat text-center">
-                <div class="hero-stat-number">@(Model != null ? Model.Count : 0)</div>
-                <div class="hero-stat-label">Pendientes</div>
-            </div>
-        </div>
-        <div class="hero-separator mt-3"></div>
-        <p class="hero-note mt-3 mb-0">
-            Revise y formalice la decisión de cada solicitud en cumplimiento del flujo institucional AOCR.
-        </p>
-    </div>
-</section>
+    var solicitudes = Model ?? new List<SolicitudAOCR>();
+    var totalPendientes = solicitudes.Count;
+    var totalObservadas = solicitudes.Count(x => !string.IsNullOrWhiteSpace(x.Estado) && x.Estado.ToUpperInvariant().Contains("OBSERV"));
+    var totalRevision = solicitudes.Count(x => !string.IsNullOrWhiteSpace(x.Estado) && (x.Estado.ToUpperInvariant().Contains("REVISION") || x.Estado.ToUpperInvariant().Contains("VALID")));
+    var totalSubsanadas = solicitudes.Count(x => !string.IsNullOrWhiteSpace(x.Estado) && x.Estado.ToUpperInvariant().Contains("SUBSAN"));
 
-@if (TempData["success"] != null)
-{
-    <div class="alert alert-success shadow-sm border-0">
-        <i class="glyphicon glyphicon-ok"></i> @TempData["success"]
-    </div>
-}
-
-@if (TempData["error"] != null)
-{
-    <div class="alert alert-danger shadow-sm border-0">
-        <i class="glyphicon glyphicon-remove"></i> @TempData["error"]
-    </div>
-}
-
-@if (Model != null && Model.Any())
-{
-    <div class="approval-grid row">
-        @foreach (var solicitud in Model)
-        {
-            var estadoRaw = (solicitud.Estado ?? string.Empty).Trim().ToUpperInvariant();
-            var numeroSolicitudTexto = !string.IsNullOrWhiteSpace(solicitud.NumeroSolicitud)
-                ? solicitud.NumeroSolicitud
-                : solicitud.CodigoSolicitud.ToString();
-            var estadoTexto = string.IsNullOrWhiteSpace(estadoRaw)
-                ? "Sin estado"
-                : System.Globalization.CultureInfo.CurrentCulture.TextInfo.ToTitleCase(estadoRaw.Replace("_", " ").ToLowerInvariant());
-
-            <div class="col-12 col-lg-6 d-flex mb-4">
-                <article class="card solicitud-card shadow-sm border-0 w-100">
-                    <div class="card-body d-flex flex-column">
-                        <div class="d-flex justify-content-between align-items-start mb-3 gap-2 flex-wrap">
-                            <div>
-                                <p class="solicitud-kicker mb-1">Solicitud AOCR</p>
-                                <h5 class="mb-0">
-                                    #@numeroSolicitudTexto
-                                </h5>
-                            </div>
-                            @if (estadoRaw.Contains("APROBAD"))
-                            {
-                                <span class="badge badge-success">@estadoTexto</span>
-                            }
-                            else if (estadoRaw.Contains("OBSERV") || estadoRaw.Contains("RECHAZ"))
-                            {
-                                <span class="badge badge-danger">@estadoTexto</span>
-                            }
-                            else if (estadoRaw.Contains("REVISION") || estadoRaw.Contains("ENVIADO"))
-                            {
-                                <span class="badge badge-primary">@estadoTexto</span>
-                            }
-                            else if (estadoRaw.Contains("PENDIENT") || estadoRaw.Contains("VALIDAD"))
-                            {
-                                <span class="badge badge-warning">@estadoTexto</span>
-                            }
-                            else
-                            {
-                                <span class="badge badge-secondary">@estadoTexto</span>
-                            }
-                        </div>
-
-                        <dl class="solicitud-metadata mb-3">
-                            <div><dt>Compañía</dt><dd>@(string.IsNullOrWhiteSpace(solicitud.NombreOperador) ? "No especificada" : solicitud.NombreOperador)</dd></div>
-                            <div><dt>Código OACI</dt><dd>@(string.IsNullOrWhiteSpace(solicitud.CodigoOaci) ? "No registrado" : solicitud.CodigoOaci)</dd></div>
-                            <div><dt>Representante Técnico</dt><dd>@(string.IsNullOrWhiteSpace(solicitud.RepresentanteLegal) ? "No registrado" : solicitud.RepresentanteLegal)</dd></div>
-                            <div><dt>Fecha de solicitud</dt><dd>@(solicitud.FechaSolicitud.HasValue ? solicitud.FechaSolicitud.Value.ToString("dd/MM/yyyy") : "No registrada")</dd></div>
-                        </dl>
-
-                        <div class="mt-auto d-flex flex-wrap gap-2">
-                            @Html.ActionLink("Revisar solicitud", "Detalle", "SolicitudAOCR", new { id = solicitud.CodigoSolicitud }, new { @class = "btn btn-primary btn-sm" })
-
-                            @if (User.IsInRole("JefaturaTecnica"))
-                            {
-                                @Html.ActionLink("Revisión Jefatura", "RevisarPorJefatura", "SolicitudAOCR", null, new { @class = "btn btn-outline-warning btn-sm" })
-                            }
-
-                            @if (User.IsInRole("CoordinacionLegal") || User.IsInRole("Administrador") || User.IsInRole("DirectorGeneral"))
-                            {
-                                @Html.ActionLink("Revisión Legal", "RevisarLegalizacion", "SolicitudAOCR", null, new { @class = "btn btn-outline-success btn-sm" })
-                            }
-                        </div>
-                    </div>
-                </article>
-            </div>
+    var pageHeaderData = new ViewDataDictionary
+    {
+        { "Kicker", "Dirección / Jefatura" },
+        { "Title", "Aprobación de Solicitudes AOCR" },
+        { "Subtitle", "Decisión ejecutiva institucional sobre solicitudes en validación, observación o cierre formal" },
+        { "Breadcrumbs", new[]
+            {
+                new { Text = "Dirección / Jefatura", Url = string.Empty },
+                new { Text = "Aprobación de Solicitudes AOCR", Url = string.Empty }
+            }
         }
-    </div>
+    };
+
+    var heroData = new ViewDataDictionary
+    {
+        { "Kicker", "Sistema institucional DGAC" },
+        { "Title", "Bandeja ejecutiva de aprobación" },
+        { "Subtitle", "Gobierno de decisiones del flujo AOCR" },
+        { "Description", "Revise la información crítica de cada solicitud y escale acciones de jefatura o coordinación legal bajo una misma línea visual institucional." },
+        { "MetricTitle", "Pendientes" },
+        { "MetricValue", totalPendientes },
+        { "MetricSubtitle", "Solicitudes listas para decisión" }
+    };
+
+    var toolbarLinks = new List<string>
+    {
+        "<a href=\"" + Url.Action("RevisarPorJefatura", "SolicitudAOCR") + "\" class=\"btn btn-aocr-secondary\"><i class=\"fas fa-user-shield\"></i><span>Jefatura técnica</span></a>",
+        "<a href=\"" + Url.Action("RevisarLegalizacion", "SolicitudAOCR") + "\" class=\"btn btn-aocr-secondary\"><i class=\"fas fa-scale-balanced\"></i><span>Revisión legal</span></a>"
+    };
+
+    var toolbarData = new ViewDataDictionary
+    {
+        { "VolverUrl", Url.Action("Index", "Dashboard") },
+        { "VolverTexto", "Volver al dashboard" },
+        { "CustomActionsHtml", new HtmlString(string.Join("", toolbarLinks)) }
+    };
 }
-else
-{
-    <div class="empty-state card border-0 shadow-sm">
-        <div class="card-body text-center py-5">
-            <div class="empty-state-icon mx-auto mb-3">
-                <i class="fas fa-clipboard-check"></i>
-            </div>
-            <h4 class="mb-2">No existen solicitudes pendientes de aprobación.</h4>
-            <p class="text-muted mb-0">
-                Cuando existan solicitudes, aparecerán aquí para revisión por Dirección o Jefatura.
-            </p>
+
+<div class="aocr-view">
+    @Html.Partial("_PageHeader", null, pageHeaderData)
+    @Html.Partial("_HeroPanel", null, heroData)
+
+    <div class="row g-3 mb-4">
+        <div class="col-12 col-md-6 col-xl-3">
+            @Html.Partial("_MetricCard", null, new ViewDataDictionary { { "Label", "Pendientes" }, { "Value", totalPendientes }, { "Modifier", "warning" }, { "Icon", "fas fa-hourglass-half" }, { "Caption", "Bandeja total de dirección" } })
+        </div>
+        <div class="col-12 col-md-6 col-xl-3">
+            @Html.Partial("_MetricCard", null, new ViewDataDictionary { { "Label", "En revisión" }, { "Value", totalRevision }, { "Modifier", "info" }, { "Icon", "fas fa-magnifying-glass" }, { "Caption", "Solicitudes con validación activa" } })
+        </div>
+        <div class="col-12 col-md-6 col-xl-3">
+            @Html.Partial("_MetricCard", null, new ViewDataDictionary { { "Label", "Observadas" }, { "Value", totalObservadas }, { "Modifier", "danger" }, { "Icon", "fas fa-triangle-exclamation" }, { "Caption", "Requieren revisión adicional" } })
+        </div>
+        <div class="col-12 col-md-6 col-xl-3">
+            @Html.Partial("_MetricCard", null, new ViewDataDictionary { { "Label", "Subsanadas" }, { "Value", totalSubsanadas }, { "Modifier", "success" }, { "Icon", "fas fa-file-pen" }, { "Caption", "Listas para decisión final" } })
         </div>
     </div>
-}
 
-@section Styles {
-    <style>
-        .aocr-approval-hero {
-            background: linear-gradient(120deg, #0b3f66 0%, #0f6a7f 52%, #f3f8fb 52%, #f3f8fb 100%);
-            color: #0f2d44;
-            overflow: hidden;
-        }
+    @Html.Partial("_ActionToolbar", null, toolbarData)
 
-        .hero-overline {
-            color: #d3e8f4;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            font-size: 0.74rem;
-            font-weight: 700;
-        }
+    @if (TempData["success"] != null)
+    {
+        <div class="alert alert-success border-0 shadow-sm mb-3">
+            <i class="fas fa-circle-check"></i> @TempData["success"]
+        </div>
+    }
+    @if (TempData["error"] != null)
+    {
+        <div class="alert alert-danger border-0 shadow-sm mb-3">
+            <i class="fas fa-circle-exclamation"></i> @TempData["error"]
+        </div>
+    }
 
-        .hero-title {
-            color: #ffffff;
-            font-size: 1.7rem;
-            font-weight: 700;
-            letter-spacing: 0.2px;
-        }
+    <div class="card aocr-content-card">
+        <div class="card-body">
+            <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-4">
+                <div>
+                    <h3 class="aocr-section-title mb-1"><i class="fas fa-clipboard-check"></i> Bandeja de aprobación</h3>
+                    <p class="text-muted mb-0">Vista ejecutiva consolidada para revisar contexto, estado y acciones disponibles por solicitud.</p>
+                </div>
+                @Html.Partial("_StatusBadge", null, new ViewDataDictionary { { "Estado", solicitudes.Any() ? "En bandeja" : "Completado" } })
+            </div>
 
-        .hero-subtitle {
-            color: #d3e8f4;
-            font-size: 1rem;
-            font-weight: 500;
-        }
-
-        .hero-separator {
-            height: 2px;
-            width: 100%;
-            background: linear-gradient(90deg, rgba(255,255,255,0.45), rgba(255,255,255,0));
-        }
-
-        .hero-note {
-            color: #d7e5ef;
-            max-width: 66ch;
-        }
-
-        .hero-stat {
-            min-width: 124px;
-            background: rgba(255, 255, 255, 0.94);
-            border-radius: 12px;
-            padding: 12px 14px;
-            box-shadow: 0 8px 18px rgba(11, 63, 102, 0.16);
-        }
-
-        .hero-stat-number {
-            color: #0b3f66;
-            font-size: 1.7rem;
-            font-weight: 700;
-            line-height: 1;
-        }
-
-        .hero-stat-label {
-            color: #4d6475;
-            font-size: 0.8rem;
-            text-transform: uppercase;
-            letter-spacing: 0.8px;
-            margin-top: 4px;
-        }
-
-        .solicitud-card {
-            border-left: 4px solid #0f6a7f;
-            transition: transform 0.2s ease, box-shadow 0.2s ease;
-        }
-
-        .solicitud-card:hover {
-            transform: translateY(-3px);
-            box-shadow: 0 14px 24px rgba(16, 47, 68, 0.13) !important;
-        }
-
-        .solicitud-kicker {
-            color: #507089;
-            text-transform: uppercase;
-            letter-spacing: 0.8px;
-            font-size: 0.76rem;
-            font-weight: 700;
-        }
-
-        .solicitud-metadata {
-            margin: 0;
-        }
-
-        .solicitud-metadata > div {
-            display: grid;
-            grid-template-columns: 165px 1fr;
-            gap: 8px;
-            padding: 6px 0;
-            border-bottom: 1px dashed #e3eaf0;
-        }
-
-        .solicitud-metadata > div:last-child {
-            border-bottom: 0;
-        }
-
-        .solicitud-metadata dt {
-            margin: 0;
-            color: #597184;
-            font-size: 0.84rem;
-            font-weight: 600;
-        }
-
-        .solicitud-metadata dd {
-            margin: 0;
-            color: #1d2e3f;
-            font-weight: 600;
-        }
-
-        .empty-state {
-            background: radial-gradient(circle at top right, rgba(15,106,127,0.11), transparent 42%), #ffffff;
-        }
-
-        .empty-state-icon {
-            width: 86px;
-            height: 86px;
-            border-radius: 50%;
-            background: linear-gradient(145deg, #0b3f66, #0f6a7f);
-            color: #fff;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 2rem;
-            box-shadow: 0 10px 24px rgba(11, 63, 102, 0.28);
-        }
-
-        @@media (max-width: 768px) {
-            .aocr-approval-hero {
-                background: linear-gradient(160deg, #0b3f66 0%, #0f6a7f 100%);
+            @if (!solicitudes.Any())
+            {
+                @Html.Partial("_EmptyState", null, new ViewDataDictionary {
+                    { "Icon", "fas fa-clipboard-check" },
+                    { "Title", "No hay solicitudes pendientes de aprobación" },
+                    { "Description", "Cuando existan solicitudes en estado AOCR en revisión o validado, aparecerán aquí para decisión de dirección o jefatura." }
+                })
             }
+            else
+            {
+                <div class="row g-4">
+                    @foreach (var solicitud in solicitudes)
+                    {
+                        var numeroSolicitud = !string.IsNullOrWhiteSpace(solicitud.NumeroSolicitud) ? solicitud.NumeroSolicitud : solicitud.CodigoSolicitud.ToString();
+                        var nombreOperador = !string.IsNullOrWhiteSpace(solicitud.NombreOperador) ? solicitud.NombreOperador : "No especificado";
+                        var codigoOaci = !string.IsNullOrWhiteSpace(solicitud.CodigoOaci) ? solicitud.CodigoOaci : "No registrado";
+                        var representante = !string.IsNullOrWhiteSpace(solicitud.RepresentanteLegal) ? solicitud.RepresentanteLegal : "No registrado";
+                        var fechaSolicitud = solicitud.FechaSolicitud.HasValue ? solicitud.FechaSolicitud.Value.ToString("dd/MM/yyyy") : "No registrada";
+                        var correo = !string.IsNullOrWhiteSpace(solicitud.Email) ? solicitud.Email : "Sin correo";
 
-            .hero-stat {
-                width: 100%;
-            }
+                        <div class="col-12 col-xl-6 d-flex">
+                            <article class="aocr-solicitud-card w-100 d-flex flex-column">
+                                <div class="d-flex flex-wrap justify-content-between align-items-start gap-3 mb-3">
+                                    <div>
+                                        <span class="aocr-solicitud-kicker">Solicitud AOCR</span>
+                                        <h4 class="mb-1 text-primary fw-bold">@numeroSolicitud</h4>
+                                        <p class="text-muted mb-0">@nombreOperador</p>
+                                    </div>
+                                    @Html.Partial("_StatusBadge", null, new ViewDataDictionary { { "Estado", solicitud.Estado } })
+                                </div>
 
-            .solicitud-metadata > div {
-                grid-template-columns: 1fr;
-                gap: 2px;
+                                <div class="aocr-detail-grid mb-3">
+                                    <div>
+                                        <span class="aocr-detail-grid__label">Código OACI</span>
+                                        <strong>@codigoOaci</strong>
+                                    </div>
+                                    <div>
+                                        <span class="aocr-detail-grid__label">Representante técnico</span>
+                                        <strong>@representante</strong>
+                                    </div>
+                                    <div>
+                                        <span class="aocr-detail-grid__label">Fecha de solicitud</span>
+                                        <strong>@fechaSolicitud</strong>
+                                    </div>
+                                    <div>
+                                        <span class="aocr-detail-grid__label">Correo</span>
+                                        <strong>@correo</strong>
+                                    </div>
+                                </div>
+
+                                <div class="mt-auto d-flex flex-wrap gap-2">
+                                    <a href="@Url.Action("Detalle", "SolicitudAOCR", new { id = solicitud.CodigoSolicitud })" class="btn btn-aocr-primary">
+                                        <i class="fas fa-eye"></i><span>Revisar solicitud</span>
+                                    </a>
+
+                                    @if (User.IsInRole("JefaturaTecnica") || User.IsInRole("Administrador"))
+                                    {
+                                        <a href="@Url.Action("RevisarPorJefatura", "SolicitudAOCR")" class="btn btn-aocr-secondary">
+                                            <i class="fas fa-user-shield"></i><span>Validar jefatura</span>
+                                        </a>
+                                    }
+
+                                    @if (User.IsInRole("CoordinacionLegal") || User.IsInRole("Administrador") || User.IsInRole("DirectorGeneral"))
+                                    {
+                                        <a href="@Url.Action("RevisarLegalizacion", "SolicitudAOCR")" class="btn btn-aocr-secondary">
+                                            <i class="fas fa-scale-balanced"></i><span>Revisión legal</span>
+                                        </a>
+                                    }
+                                </div>
+                            </article>
+                        </div>
+                    }
+                </div>
             }
-        }
-    </style>
-}
+        </div>
+    </div>
+</div>
 

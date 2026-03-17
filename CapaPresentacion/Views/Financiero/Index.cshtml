@@ -9,97 +9,66 @@
     var as400FacturacionHabilitada = FacturacionAS400Service.IsEnabled();
 }
 
-<style>
-    .acciones-cell {
-        min-width: 150px;
-    }
-
-    .acciones-orden {
-        display: flex;
-        align-items: center;
-        gap: .35rem;
-        flex-wrap: wrap;
-    }
-
-    .acciones-orden form {
-        margin: 0;
-    }
-
-    .btn-accion {
-        width: 32px;
-        height: 32px;
-        padding: 0;
-        border-radius: 8px;
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        line-height: 1;
-    }
-
-    .btn-pdf {
-        width: 30px;
-        height: 30px;
-        padding: 0;
-        border-radius: 8px;
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-    }
-</style>
-
-<h2>Financiero – Validación de Órdenes</h2>
-<hr />
-
-@if (TempData["Success"] != null)
-{
-    <div class="alert alert-success">@TempData["Success"]</div>
-}
-@if (TempData["Error"] != null)
-{
-    <div class="alert alert-danger">@TempData["Error"]</div>
-}
-@if (ViewBag.SinResultadosConFiltro == true)
-{
-    <div class="alert alert-warning">
-        No se encontraron órdenes con el estado seleccionado. Se muestran todas las órdenes disponibles (Total: @ViewBag.TotalSinFiltro).
+<div class="aocr-module-header mb-3">
+    <div class="aocr-module-header-left">
+        <h2 class="aocr-module-header-title">Financiero – Validación de Órdenes</h2>
+        <p class="aocr-module-header-subtitle">Área Financiera — Revisión y gestión de órdenes de recaudación</p>
     </div>
-}
-
-<div class="row mb-3">
-    <div class="col-md-12 text-end">
+    <div class="aocr-module-header-right">
         <button type="button" class="btn btn-outline-secondary btn-sm" id="btnHealthPostgres">
-            <i class="fas fa-database"></i> Probar PostgreSQL/DB2
+            <i class="fas fa-database me-1"></i> Probar PostgreSQL/DB2
         </button>
         <span id="healthResult" class="ms-2 text-muted"></span>
     </div>
 </div>
 
-<div class="d-flex justify-content-end mb-3">
-    <form method="get" class="d-flex align-items-center gap-2">
-        <label class="mb-0 text-muted">Estado:</label>
-        <select name="estado" class="form-select form-select-sm" onchange="this.form.submit()">
+
+@if (TempData["Success"] != null)
+{
+    <div class="alert alert-aocr alert-success mb-3"><i class="fas fa-check-circle me-1"></i> @TempData["Success"]</div>
+}
+@if (TempData["Error"] != null)
+{
+    <div class="alert alert-aocr alert-danger mb-3"><i class="fas fa-exclamation-circle me-1"></i> @TempData["Error"]</div>
+}
+@if (ViewBag.SinResultadosConFiltro == true)
+{
+    <div class="alert alert-aocr alert-warning mb-3">
+        <i class="fas fa-filter me-1"></i> No se encontraron órdenes con el estado seleccionado. Se muestran todas las órdenes disponibles (Total: @ViewBag.TotalSinFiltro).
+    </div>
+}
+
+
+<div class="aocr-toolbar mb-3">
+    <div class="aocr-toolbar-right">
+        <form method="get" class="d-flex align-items-center gap-2">
+            <label class="mb-0 aocr-field-label">Estado:</label>
+            <select name="estado" class="form-select form-select-sm" onchange="this.form.submit()" style="min-width:150px;">
 <option value="PROCESADA" @(ViewBag.EstadoFiltro == "PROCESADA" ? "selected" : "")>En revisión</option>
 <option value="PENDIENTE" @(ViewBag.EstadoFiltro == "PENDIENTE" ? "selected" : "")>Pendiente</option>
 <option value="FACTURADA" @(ViewBag.EstadoFiltro == "FACTURADA" ? "selected" : "")>Facturada</option>
 <option value="COMPLETADA" @(ViewBag.EstadoFiltro == "COMPLETADA" ? "selected" : "")>Completada</option>
 <option value="ANULADA" @(ViewBag.EstadoFiltro == "ANULADA" ? "selected" : "")>Anulada</option>
 <option value="TODAS" @(ViewBag.EstadoFiltro == "TODAS" ? "selected" : "")>Todas</option>
-        </select>
-    </form>
+            </select>
+        </form>
+    </div>
 </div>
 
-<table class="table table-striped">
+
+<div class="aocr-table-container">
+<table class="table table-dgac mb-0">
     <thead>
         <tr>
             <th>#</th>
-            <th>Orden</th>
+            <th>Órden</th>
             <th>Compañía</th>
             <th>Fecha</th>
             <th>Monto</th>
             <th>Estado</th>
             <th>FR3</th>
             <th>Comprobante</th>
-            <th>Acciones</th>
+            <th class="text-center">Acciones</th>
         </tr>
     </thead>
     <tbody>
@@ -225,13 +194,16 @@
         else
         {
             <tr>
-                <td colspan="9" class="text-center">
+                <td colspan="9" class="text-center aocr-no-results">
+                    <i class="fas fa-inbox" style="font-size:1.5rem;display:block;margin-bottom:0.4rem;opacity:0.4;"></i>
                     No hay registros para el estado seleccionado.
                 </td>
             </tr>
         }
     </tbody>
 </table>
+</div>
+
 
 <div class="modal fade" id="modalAprobarPagoFactura" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog">

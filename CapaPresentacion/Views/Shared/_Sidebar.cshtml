@@ -6,13 +6,15 @@
 @using CapaDatos.DAOs
 @using CapaPresentacion.Helpers
 @* ~/Views/Shared/_Sidebar.cshtml *@
-<div class="aocr-sidebar text-white">
-    <div class="sidebar-header text-center">
+<div class="aocr-sidebar-shell text-white">
+    <div class="sidebar-header aocr-sidebar-panel text-center">
         <img src="@Url.Content("~/Content/imganes/logo1.png")"
              alt="DGAC Logo"
              class="logo shadow-sm" />
 
-        <div class="mt-3">
+        <div class="mt-3 aocr-sidebar-user-card">
+            <div class="aocr-sidebar-user-card__name">@((Session["NombreUsuario"] as string) ?? "Usuario AOCR")</div>
+            <div class="aocr-sidebar-user-card__role">@((Session["Rol"] as string) ?? "Perfil institucional")</div>
             <span class="chip chip-info">USUARIO ACTIVO</span>
             <div class="user-mail">@Session["Correo"]</div>
             <div class="mt-2">
@@ -163,7 +165,7 @@
     <!-- Indicador de estado de orden -->
     @if (requiereOrden)
     {
-        <div class="alert @(tieneOrdenGenerada ? "alert-success" : tieneOrdenBorrador ? "alert-warning" : "alert-danger")
+        <div class="alert aocr-sidebar-alert @(tieneOrdenGenerada ? "alert-success" : tieneOrdenBorrador ? "alert-warning" : "alert-danger")
              mb-3 py-2 small" role="alert">
             <div class="d-flex align-items-center">
                 <i class="fas fa-file-invoice-dollar @(tieneOrdenGenerada ? "text-success" : tieneOrdenBorrador ? "text-warning" : "text-danger")
@@ -195,7 +197,7 @@
 
     @if (companiasRtAsignadas.Count > 0)
     {
-        <div class="compania-contexto mb-3">
+        <div class="compania-contexto aocr-sidebar-panel mb-3">
             <div class="compania-label">COMPANIA ACTIVA</div>
             <div class="compania-name">
                 @if (!string.IsNullOrWhiteSpace(codigoCompaniaActiva))
@@ -232,32 +234,32 @@
         </div>
     }
 
-    <div class="menu-container">
-        <div class="section-title">Navegación Institucional</div>
+    <div class="menu-container aocr-sidebar-sections">
+        <div class="section-title aocr-sidebar-title">Navegación Institucional</div>
 
         @* ===================== ORDENES DE RECAUDACIÓN ===================== *@
         @if (mostrarModuloOrdenes)
         {
-            <div class="nav-group mb-4">
-                <div class="group-title text-primary">
+            <div class="nav-group aocr-sidebar-section mb-4">
+                <div class="group-title aocr-sidebar-section__title text-primary">
                     <i class="fas fa-file-invoice-dollar mr-1"></i> Órdenes de Recaudación
                 </div>
                 <ul class="aocr-nav">
                     <li>
-                        <a class="aocr-link @(tieneOrdenBorrador ? "text-warning fw-bold" : "")" href="@(tieneOrdenBorrador ? Url.Action("Obligatoria","OrdenRecaudacion") : Url.Action("Nueva","OrdenRecaudacion"))">
+                        <a class="aocr-link aocr-sidebar-item @(tieneOrdenBorrador ? "text-warning fw-bold" : "")" href="@(tieneOrdenBorrador ? Url.Action("Obligatoria","OrdenRecaudacion") : Url.Action("Nueva","OrdenRecaudacion"))">
                             <i class="fas fa-plus-circle @(tieneOrdenBorrador ? "text-warning" : "text-success") mr-2"></i>
                             @(tieneOrdenBorrador ? "Completar Orden Pendiente" : "Nueva Orden")
                         </a>
                     </li>
                     <li>
-                        <a class="aocr-link" href="@Url.Action("MisOrdenes", "Orden")">
+                        <a class="aocr-link aocr-sidebar-item" href="@Url.Action("MisOrdenes", "Orden")">
                             <i class="fas fa-history text-white-50 mr-2"></i> Mis Órdenes
                         </a>
                     </li>
                     @if (esAdministrador)
                     {
                         <li>
-                            <a class="aocr-link" href="@Url.Action("TodasOrdenes", "Financiero")">
+                            <a class="aocr-link aocr-sidebar-item" href="@Url.Action("TodasOrdenes", "Financiero")">
                                 <i class="fas fa-list-alt text-white-50 mr-2"></i> Todas las Órdenes
                             </a>
                         </li>
@@ -269,8 +271,8 @@
         @* ===================== SOLICITANTE ===================== *@
         @if (puedeSolicitante)
         {
-            <div class="nav-group mb-4">
-                <div class="group-title text-warning">
+            <div class="nav-group aocr-sidebar-section mb-4">
+                <div class="group-title aocr-sidebar-section__title text-warning">
                     <i class="fas fa-user-edit mr-1"></i> Solicitudes AOCR
                 </div>
                 <ul class="aocr-nav">
@@ -278,14 +280,14 @@
                     @if (tieneOrdenGenerada)
                     {
                         <li>
-                            <a class="aocr-link" href="@Url.Action("Index", "SolicitudAOCR", new { abrir = "nueva" })">
+                            <a class="aocr-link aocr-sidebar-item" href="@Url.Action("Index", "SolicitudAOCR", new { abrir = "nueva" })">
                                 <i class="fas fa-plus text-success mr-2"></i> Nueva Solicitud AOCR
                             </a>
                         </li>
                     }
 
                     <li>
-                        <a class="aocr-link" href="@Url.Action("Index", "SolicitudAOCR")">
+                        <a class="aocr-link aocr-sidebar-item" href="@Url.Action("Index", "SolicitudAOCR")">
                             <i class="fas fa-folder-open text-white-50 mr-2"></i> Mis Solicitudes
                         </a>
                     </li>
@@ -293,7 +295,7 @@
                     @if (tieneOrdenGenerada)
                     {
                         <li>
-                            <a class="aocr-link" href="@Url.Action("CargarDocumentos", "SolicitudAOCR")">
+                            <a class="aocr-link aocr-sidebar-item" href="@Url.Action("CargarDocumentos", "SolicitudAOCR")">
                                 <i class="fas fa-file-upload text-info mr-2"></i> Cargar Documentos
                             </a>
                         </li>
@@ -305,23 +307,23 @@
         @* ===================== INSPECCIÓN / TÉCNICA (solo si la orden ya está generada) ===================== *@
         @if (puedeTecnica)
         {
-            <div class="nav-group mb-4">
-                <div class="group-title text-info">
+            <div class="nav-group aocr-sidebar-section mb-4">
+                <div class="group-title aocr-sidebar-section__title text-info">
                     <i class="fas fa-search mr-1"></i> Gestión Técnica
                 </div>
                 <ul class="aocr-nav">
                     <li>
-                        <a class="aocr-link" href="@Url.Action("RevisarSolicitudes", "SolicitudAOCR")">
+                        <a class="aocr-link aocr-sidebar-item" href="@Url.Action("RevisarSolicitudes", "SolicitudAOCR")">
                             <i class="fas fa-tasks text-white-50 mr-2"></i> Revisar Solicitudes
                         </a>
                     </li>
                     <li>
-                        <a class="aocr-link" href="@Url.Action("Index", "Tecnico")">
+                        <a class="aocr-link aocr-sidebar-item" href="@Url.Action("Index", "Tecnico")">
                             <i class="fas fa-user-check text-white-50 mr-2"></i> Asignar Inspector
                         </a>
                     </li>
                     <li>
-                        <a class="aocr-link" href="@Url.Action("Index", "Inspeccion")">
+                        <a class="aocr-link aocr-sidebar-item" href="@Url.Action("Index", "Inspeccion")">
                             <i class="fas fa-clipboard-check text-success mr-2"></i> Gestionar Inspecciones
                         </a>
                     </li>
@@ -332,14 +334,14 @@
         @* ===================== FINANCIERO (solo si la orden ya está generada) ===================== *@
         @if (puedeFinanciero)
         {
-            <div class="nav-group mb-4">
-                <div class="group-title text-success">
+            <div class="nav-group aocr-sidebar-section mb-4">
+                <div class="group-title aocr-sidebar-section__title text-success">
                     <i class="fas fa-money-bill-wave mr-1"></i> Área Financiera
                 </div>
                 <ul class="aocr-nav">
-                    <li><a class="aocr-link" href="@Url.Action("TodasOrdenes", "Financiero")"><i class="fas fa-receipt text-white-50 mr-2"></i> Gestionar Órdenes</a></li>
-                    <li><a class="aocr-link" href="@Url.Action("Index", "Financiero")"><i class="fas fa-check-circle text-white-50 mr-2"></i> Verificar Pagos</a></li>
-                    <li><a class="aocr-link" href="@Url.Action("Index", "ReportesFinancieros")"><i class="fas fa-file-invoice text-white-50 mr-2"></i> Reportes Financieros</a></li>
+                    <li><a class="aocr-link aocr-sidebar-item" href="@Url.Action("TodasOrdenes", "Financiero")"><i class="fas fa-receipt text-white-50 mr-2"></i> Gestionar Órdenes</a></li>
+                    <li><a class="aocr-link aocr-sidebar-item" href="@Url.Action("Index", "Financiero")"><i class="fas fa-check-circle text-white-50 mr-2"></i> Verificar Pagos</a></li>
+                    <li><a class="aocr-link aocr-sidebar-item" href="@Url.Action("Index", "ReportesFinancieros")"><i class="fas fa-file-invoice text-white-50 mr-2"></i> Reportes Financieros</a></li>
                 </ul>
             </div>
         }
@@ -347,28 +349,28 @@
         @* ===================== COORDINACION Y JEFATURA (bloque BPMN unificado) ===================== *@
         @if (puedeCoordinacionJefatura)
         {
-            <div class="nav-group mb-4">
-                <div class="group-title text-danger">
+            <div class="nav-group aocr-sidebar-section mb-4">
+                <div class="group-title aocr-sidebar-section__title text-danger">
                     <i class="fas fa-user-tie mr-1"></i> Dirección / Jefatura
                 </div>
                 <ul class="aocr-nav">
                     @if (esAdministrador || esRol("Direccion") || esRol("JefaturaTecnica") || esRol("DirectorGeneral"))
                     {
-                        <li><a class="aocr-link" href="@Url.Action("DashboardGerencial", "CoordinacionJefatura")"><i class="fas fa-chart-line text-white-50 mr-2"></i> Dashboard Gerencial</a></li>
+                        <li><a class="aocr-link aocr-sidebar-item" href="@Url.Action("DashboardGerencial", "CoordinacionJefatura")"><i class="fas fa-chart-line text-white-50 mr-2"></i> Dashboard Gerencial</a></li>
                     }
-                    <li><a class="aocr-link" href="@Url.Action("RevisionVerificacion", "CoordinacionJefatura")"><i class="fas fa-search text-white-50 mr-2"></i> Revisión / Verificación</a></li>
+                    <li><a class="aocr-link aocr-sidebar-item" href="@Url.Action("RevisionVerificacion", "CoordinacionJefatura")"><i class="fas fa-search text-white-50 mr-2"></i> Revisión / Verificación</a></li>
                     @if (esAdministrador || esRol("Direccion") || esRol("JefaturaTecnica"))
                     {
-                        <li><a class="aocr-link" href="@Url.Action("AprobarSolicitudes", "CoordinacionJefatura")"><i class="fas fa-check-double text-white-50 mr-2"></i> Aprobar Solicitudes</a></li>
+                        <li><a class="aocr-link aocr-sidebar-item" href="@Url.Action("AprobarSolicitudes", "CoordinacionJefatura")"><i class="fas fa-check-double text-white-50 mr-2"></i> Aprobar Solicitudes</a></li>
                     }
                     @if (esAdministrador || esRol("JefaturaTecnica"))
                     {
-                        <li><a class="aocr-link" href="@Url.Action("ValidarAocr", "CoordinacionJefatura")"><i class="fas fa-stamp text-white-50 mr-2"></i> Validar AOCR</a></li>
+                        <li><a class="aocr-link aocr-sidebar-item" href="@Url.Action("ValidarAocr", "CoordinacionJefatura")"><i class="fas fa-stamp text-white-50 mr-2"></i> Validar AOCR</a></li>
                     }
                     @if (esAdministrador || esRol("CoordinacionLegal") || esRol("CoordinadorLegal") || esRol("DirectorGeneral"))
                     {
-                        <li><a class="aocr-link" href="@Url.Action("LegalizarAocr", "CoordinacionJefatura")"><i class="fas fa-gavel text-white-50 mr-2"></i> Legalizar AOCR</a></li>
-                        <li><a class="aocr-link" href="@Url.Action("GenerarCertificados", "CoordinacionJefatura")"><i class="fas fa-file-contract text-white-50 mr-2"></i> Generar Certificados</a></li>
+                        <li><a class="aocr-link aocr-sidebar-item" href="@Url.Action("LegalizarAocr", "CoordinacionJefatura")"><i class="fas fa-gavel text-white-50 mr-2"></i> Legalizar AOCR</a></li>
+                        <li><a class="aocr-link aocr-sidebar-item" href="@Url.Action("GenerarCertificados", "CoordinacionJefatura")"><i class="fas fa-file-contract text-white-50 mr-2"></i> Generar Certificados</a></li>
                     }
                 </ul>
             </div>
@@ -377,25 +379,25 @@
         @* ===================== ADMINISTRACIÓN ===================== *@
         @if (puedeAdministracion || puedeAprobarUsuarios)
         {
-            <div class="nav-group mb-4">
-                <div class="group-title text-warning">
+            <div class="nav-group aocr-sidebar-section mb-4">
+                <div class="group-title aocr-sidebar-section__title text-warning">
                     <i class="fas fa-user-cog mr-1"></i> Administración
                 </div>
                 <ul class="aocr-nav">
                     @if (puedeAdministracion)
                     {
                         <li>
-                            <a class="aocr-link" href="@Url.Action("ConfiguracionSistema", "Direccion")">
+                            <a class="aocr-link aocr-sidebar-item" href="@Url.Action("ConfiguracionSistema", "Direccion")">
                                 <i class="fas fa-cogs text-white-50 mr-2"></i> Configuración Sistema
                             </a>
                         </li>
                         <li>
-                            <a class="aocr-link" href="@Url.Action("Index", "AdminUsuarios")">
+                            <a class="aocr-link aocr-sidebar-item" href="@Url.Action("Index", "AdminUsuarios")">
                                 <i class="fas fa-users-cog text-white-50 mr-2"></i> Gestionar Usuarios
                             </a>
                         </li>
                         <li>
-                            <a class="aocr-link" href="@Url.Action("PermisosRol", "AdminUsuarios")">
+                            <a class="aocr-link aocr-sidebar-item" href="@Url.Action("PermisosRol", "AdminUsuarios")">
                                 <i class="fas fa-shield-alt text-white-50 mr-2"></i> Roles y Permisos
                             </a>
                         </li>
@@ -404,12 +406,12 @@
                     @if (esAdministrador)
                     {
                         <li>
-                            <a class="aocr-link" href="@Url.Action("CrearUsuarioInternoRT", "AdminUsuarios")">
+                            <a class="aocr-link aocr-sidebar-item" href="@Url.Action("CrearUsuarioInternoRT", "AdminUsuarios")">
                                 <i class="fas fa-user-plus text-white-50 mr-2"></i> Crear Usuario Interno RT
                             </a>
                         </li>
                         <li>
-                            <a class="aocr-link" href="@Url.Action("Index", "SyncAdmin")">
+                            <a class="aocr-link aocr-sidebar-item" href="@Url.Action("Index", "SyncAdmin")">
                                 <i class="fas fa-sync-alt text-white-50 mr-2"></i> Sync RT DB2
                             </a>
                         </li>
@@ -418,7 +420,7 @@
                     @if (puedeAprobarUsuarios)
                     {
                         <li>
-                            <a class="aocr-link" href="@Url.Action("RevisarDesignaciones", "Usuario")">
+                            <a class="aocr-link aocr-sidebar-item" href="@Url.Action("RevisarDesignaciones", "Usuario")">
                                 <i class="fas fa-clipboard-check text-white-50 mr-2"></i> Aprobar Usuarios RT
                             </a>
                         </li>
@@ -428,12 +430,12 @@
         }
     </div>
 
-    <hr class="bg-secondary opacity-25" />
+    <div class="aocr-sidebar-divider"></div>
 
-    <div class="mt-auto">
+    <div class="aocr-sidebar-footer mt-auto">
         <ul class="aocr-nav">
             <li>
-                <a class="aocr-link" href="@Url.Action("Index", "Home")">
+                <a class="aocr-link aocr-sidebar-item" href="@Url.Action("Index", "Home")">
                     <i class="fas fa-home text-info mr-2"></i> Dashboard Inicio
                 </a>
             </li>
@@ -441,168 +443,20 @@
             @if (!tieneOrdenGenerada && requiereOrden)
             {
                 <li>
-                    <a class="aocr-link text-warning fw-bold" href="@Url.Action("Obligatoria", "OrdenRecaudacion")">
+                    <a class="aocr-link aocr-sidebar-item text-warning fw-bold" href="@Url.Action("Obligatoria", "OrdenRecaudacion")">
                         <i class="fas fa-exclamation-triangle text-warning mr-2"></i> ⚠ Orden Requerida
                     </a>
                 </li>
             }
 
             <li>
-                <a class="aocr-link text-danger fw-bold" href="@Url.Action("Logout", "Account")">
+                <a class="aocr-link aocr-sidebar-item text-danger fw-bold" href="@Url.Action("Logout", "Account")">
                     <i class="fas fa-sign-out-alt text-danger mr-2"></i> Cerrar Sesión
                 </a>
             </li>
         </ul>
     </div>
 </div>
-
-<style>
-    .main-sidebar .sidebar {
-        padding-top: 4px;
-    }
-
-    .compact-user-panel {
-        margin-top: 0.25rem !important;
-        margin-bottom: 0.5rem !important;
-        padding: 0.35rem 0.25rem 0.45rem !important;
-        justify-content: center;
-        flex-direction: column;
-        text-align: center;
-        gap: 0.2rem;
-    }
-
-    .compact-user-panel .image img {
-        width: 32px;
-        height: 32px;
-    }
-
-    .compact-user-panel .info {
-        padding-top: 0;
-        padding-left: 0 !important;
-        width: 100%;
-        text-align: center;
-    }
-
-    .aocr-sidebar {
-        min-height: 100vh;
-        width: 260px;
-        padding: 10px 14px 18px;
-        background: radial-gradient(circle at 20% 20%, rgba(33,150,243,0.14), transparent 45%),
-                    linear-gradient(180deg, #0f172a 0%, #0a0f1d 100%);
-        box-shadow: 4px 0 18px rgba(0,0,0,0.25);
-        display: flex;
-        flex-direction: column;
-        position: relative;
-        overflow: hidden;
-    }
-
-    .sidebar-header {
-        border-bottom: 1px solid rgba(255,255,255,0.08);
-        padding-bottom: 10px;
-    }
-
-    .logo {
-        max-height: 58px;
-        border-radius: 10px;
-    }
-
-    .chip {
-        display: inline-block;
-        padding: 4px 10px;
-        border-radius: 12px;
-        font-size: 0.72rem;
-        letter-spacing: 0.6px;
-        background: rgba(56, 189, 248, 0.15);
-        border: 1px solid rgba(56, 189, 248, 0.35);
-    }
-    .chip-info { color: #8bd3ff; }
-
-    .user-mail { color: #dbeafe; font-size: 0.9rem; }
-
-    .compania-contexto {
-        border: 1px solid rgba(56, 189, 248, 0.3);
-        background: rgba(2, 132, 199, 0.12);
-        border-radius: 10px;
-        padding: 10px;
-    }
-
-    .compania-label {
-        color: #93c5fd;
-        font-size: 0.7rem;
-        letter-spacing: 1px;
-        text-transform: uppercase;
-        margin-bottom: 4px;
-    }
-
-    .compania-name {
-        color: #f8fafc;
-        font-size: 0.82rem;
-        font-weight: 700;
-    }
-
-    .section-title {
-        text-transform: uppercase;
-        color: #94a3b8;
-        font-size: 0.72rem;
-        letter-spacing: 1.2px;
-        margin-bottom: 10px;
-    }
-
-    .nav-group {
-        padding: 10px 10px 8px;
-        border: 1px solid rgba(148, 163, 184, 0.22);
-        background: rgba(15, 23, 42, 0.28);
-        border-radius: 10px;
-    }
-
-    .nav-group.mb-4 {
-        margin-bottom: 0.85rem !important;
-    }
-
-    .group-title {
-        font-weight: 700;
-        font-size: 0.79rem;
-        text-transform: uppercase;
-        letter-spacing: 0.85px;
-        margin-bottom: 9px;
-        padding-bottom: 6px;
-        border-bottom: 1px dashed rgba(255,255,255,0.16);
-    }
-
-    .aocr-nav { list-style: none; padding-left: 0; margin: 0; }
-    .aocr-nav li { margin-bottom: 4px; }
-
-    .aocr-link {
-        color: #dce5ef;
-        text-decoration: none;
-        display: flex;
-        align-items: center;
-        padding: 7px 10px;
-        border-radius: 9px;
-        border: 1px solid transparent;
-        transition: all 0.2s ease;
-        background: transparent;
-    }
-
-    .aocr-link:hover {
-        background: linear-gradient(90deg, rgba(56, 189, 248, 0.16), rgba(56, 189, 248, 0.06));
-        border-color: rgba(56, 189, 248, 0.28);
-        transform: translateX(3px);
-        color: #c3edff !important;
-        text-decoration: none;
-    }
-
-    .nav-group .aocr-link i { width: 18px; text-align: center; }
-
-    .alert {
-        border: none;
-        border-radius: 8px;
-        font-size: 0.82rem;
-        background: rgba(255,255,255,0.05);
-    }
-
-    .text-purple { color: #c084fc; }
-</style>
 
 <script>
     (function waitForJQuery() {

@@ -8,51 +8,59 @@
     Layout = "~/Views/Shared/_LayoutAOCR.cshtml";
 }
 
-<h2 class="mb-4">Solicitudes pendientes de Legalización AOCR</h2>
+@Html.Partial("_PageHeader", new ViewDataDictionary {
+    { "Title", "Solicitudes para Legalización" },
+    { "Subtitle", "Solicitudes AOCR pendientes de legalización institucional" }
+})
 
 @if (TempData["Error"] != null)
 {
-    <div class="alert alert-danger">@TempData["Error"]</div>
+    <div class="alert alert-aocr alert-danger mb-3"><i class="fas fa-exclamation-circle me-1"></i> @TempData["Error"]</div>
 }
 @if (TempData["Exito"] != null)
 {
-    <div class="alert alert-success">@TempData["Exito"]</div>
+    <div class="alert alert-aocr alert-success mb-3"><i class="fas fa-check-circle me-1"></i> @TempData["Exito"]</div>
 }
 
-<table class="table table-bordered table-hover">
-    <thead class="table-light">
-        <tr>
-            <th>ID</th>
-            <th>Operador</th>
-            <th>Fecha</th>
-            <th>Estado</th>
-            <th>Acciones</th>
-        </tr>
-    </thead>
-    <tbody>
-        @foreach (var sol in Model)
-        {
-            <tr>
-                <td>@Html.Encode(sol.CodigoSolicitud)</td>
-                <td>@Html.Encode(sol.NombreOperador)</td>
-                <td>@Html.Encode(sol.FechaSolicitud.HasValue ? sol.FechaSolicitud.Value.ToString("yyyy-MM-dd HH:mm") : "")</td>
-                <td>@Html.Encode(sol.Estado)</td>
-                <td>
-                    <a href="@Url.Action("Detalle", "SolicitudAOCR", new { id = sol.CodigoSolicitud })" class="btn btn-sm btn-info">
-                        <i class="fas fa-eye"></i> Ver
-                    </a>
-
-                    <button class="btn btn-sm btn-success"
-                            data-bs-toggle="modal"
-                            data-bs-target="#modalLegalizar"
-                            data-id="@sol.CodigoSolicitud">
-                        <i class="fas fa-check"></i> Legalizar
-                    </button>
-                </td>
-            </tr>
-        }
-    </tbody>
-</table>
+<div class="card aocr-table-card">
+    <div class="card-body p-0">
+        <div class="aocr-table-wrap">
+            <table class="table table-dgac mb-0">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Operador</th>
+                        <th>Fecha</th>
+                        <th>Estado</th>
+                        <th class="text-center">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var sol in Model)
+                    {
+                        <tr>
+                            <td class="fw-bold text-primary">@Html.Encode(sol.CodigoSolicitud)</td>
+                            <td>@Html.Encode(sol.NombreOperador)</td>
+                            <td>@Html.Encode(sol.FechaSolicitud.HasValue ? sol.FechaSolicitud.Value.ToString("dd/MM/yyyy HH:mm") : "")</td>
+                            <td>@Html.Partial("_StatusBadge", new ViewDataDictionary { { "Estado", sol.Estado } })</td>
+                            <td class="text-center">
+                                <a href="@Url.Action("Detalle", "SolicitudAOCR", new { id = sol.CodigoSolicitud })" class="btn btn-sm btn-aocr-secondary">
+                                    <i class="fas fa-eye"></i> Ver
+                                </a>
+                                <button class="btn btn-sm btn-aocr-primary"
+                                        data-bs-toggle="modal"
+                                        data-bs-target="#modalLegalizar"
+                                        data-id="@sol.CodigoSolicitud">
+                                    <i class="fas fa-check"></i> Legalizar
+                                </button>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
 
 <!-- Modal para confirmar legalizaci�n -->
 <div class="modal fade" id="modalLegalizar" tabindex="-1" aria-hidden="true">

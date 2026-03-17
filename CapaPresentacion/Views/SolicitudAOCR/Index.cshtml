@@ -9,162 +9,34 @@
 
 @section Styles {
     <link rel="stylesheet" href="@Url.Content("~/Content/css/dgac-theme.css")" />
-    <style>
-        body {
-            background-color: #f4f7fa;
-        }
-
-        .btn-white-perfect {
-            background: #fff;
-            color: var(--dgac-blue);
-            border: 1px solid #d1d5db;
-            font-weight: 700;
-            padding: 10px 24px;
-            border-radius: 8px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
-            transition: .2s;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 8px;
-        }
-
-            .btn-white-perfect:hover, .btn-white-perfect[aria-expanded="true"] {
-                border-color: var(--dgac-teal);
-                color: var(--dgac-teal);
-                box-shadow: 0 4px 12px rgba(12,124,134,.15);
-                transform: translateY(-1px);
-            }
-
-        .header-modern {
-            background: #fff;
-            padding: 1.5rem 2rem;
-            border-bottom: 1px solid #edf2f7;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            background-image: radial-gradient(#eef2f5 1px,transparent 1px);
-            background-size: 20px 20px;
-        }
-
-        .table-container-responsive {
-            max-height: 650px;
-            overflow-y: auto;
-            border-radius: 12px;
-            background: #fff;
-        }
-
-        .table-dgac thead th {
-            background-color: var(--dgac-blue);
-            color: #fff;
-            font-weight: 600;
-            font-size: .85rem;
-            border: none;
-            padding: 16px 12px;
-            white-space: nowrap;
-            text-align: center;
-            position: sticky;
-            top: 0;
-            z-index: 10;
-        }
-
-        .table-dgac tbody td {
-            font-size: .9rem;
-            vertical-align: middle;
-            color: #555;
-            padding: 12px;
-            border-bottom: 1px solid #f0f0f0;
-        }
-
-        .table-dgac tbody tr:hover {
-            background-color: #f8fbff;
-        }
-
-        .filter-tabs {
-            display: flex;
-            gap: 10px;
-            flex-wrap: wrap;
-        }
-
-        .filter-tab {
-            padding: 8px 16px;
-            border-radius: 30px;
-            font-size: .85rem;
-            font-weight: 600;
-            color: #64748b;
-            background: #fff;
-            border: 1px solid #e2e8f0;
-            cursor: pointer;
-            transition: .2s;
-        }
-
-            .filter-tab.active, .filter-tab:hover {
-                background: var(--dgac-blue);
-                color: #fff;
-                border-color: var(--dgac-blue);
-                box-shadow: 0 4px 10px rgba(27,79,114,.2);
-            }
-
-        .badge-pill-custom {
-            padding: 6px 12px;
-            border-radius: 20px;
-            font-size: .75rem;
-            font-weight: 600;
-            display: inline-block;
-        }
-
-        .bg-aprobado {
-            background: #d1fae5;
-            color: #065f46;
-        }
-
-        .bg-pendiente {
-            background: #fef3c7;
-            color: #92400e;
-        }
-
-        .bg-tramite {
-            background: #dbeafe;
-            color: #1e40af;
-        }
-
-        .bg-observado {
-            background: #fee2e2;
-            color: #991b1b;
-        }
-    </style>
 }
 
-<div class="header-modern">
-    <div>
-        <h3 class="m-0 fw-bold text-dark">Tablero de Control</h3>
-        <p class="text-muted m-0 small">Gestión de Certificados AOCR</p>
+<div class="aocr-module-header">
+    <div class="aocr-module-header-left">
+        <h2 class="aocr-module-header-title">Tablero de Control</h2>
+        <p class="aocr-module-header-subtitle">Gestión de Certificados AOCR</p>
     </div>
-
-    <div class="btn-group">
-        <button type="button"
-                class="btn btn-white-perfect dropdown-toggle"
-                data-bs-toggle="dropdown"
-                aria-expanded="false">
-            <i class="bi bi-plus-lg text-info"></i> NUEVA SOLICITUD
-        </button>
-
-        <div class="dropdown-menu dropdown-menu-end border-0 shadow-lg p-2" style="border-radius:12px; min-width:240px;">
-            <h6 class="dropdown-header text-uppercase fw-bold text-muted mb-1" style="font-size:.75rem;">Seleccione Trámite</h6>
-
-            <a id="btnEmisionAOCR" class="dropdown-item rounded py-2" href="#">
-                <i class="bi bi-file-earmark-plus text-primary me-2"></i> Emisión AOCR
-            </a>
-
-            <a class="dropdown-item rounded py-2" href="@Url.Action("Modificacion", "Operador")">
-                <i class="bi bi-pencil-square text-info me-2"></i> Modificación
-            </a>
-
-            <div class="dropdown-divider"></div>
-
-            <a class="dropdown-item rounded py-2" href="/Ambitos/Formulario_Actualizacion?oidSol=-1">
-                <i class="bi bi-arrow-repeat text-warning me-2"></i> Renovación
-            </a>
+    <div class="aocr-module-header-right">
+        <div class="btn-group">
+            <button type="button"
+                    class="btn-aocr-primary dropdown-toggle"
+                    data-bs-toggle="dropdown"
+                    aria-expanded="false">
+                <i class="fas fa-plus"></i> Nueva Solicitud
+            </button>
+            <div class="dropdown-menu dropdown-menu-end aocr-dropdown-menu">
+                <div class="aocr-dropdown-header">Seleccione Trámite</div>
+                <a id="btnEmisionAOCR" class="dropdown-item" href="#">
+                    <i class="fas fa-file-alt text-primary me-2"></i> Emisión AOCR
+                </a>
+                <a class="dropdown-item" href="@Url.Action("Modificacion", "Operador")">
+                    <i class="fas fa-edit text-info me-2"></i> Modificación
+                </a>
+                <div class="dropdown-divider"></div>
+                <a class="dropdown-item" href="/Ambitos/Formulario_Actualizacion?oidSol=-1">
+                    <i class="fas fa-sync text-warning me-2"></i> Renovación
+                </a>
+            </div>
         </div>
     </div>
 </div>
@@ -172,44 +44,42 @@
 <section class="content pt-4 px-3">
     <div class="container-fluid">
 
-        <div class="d-flex justify-content-between align-items-center flex-wrap mb-3">
-            <div class="filter-tabs" id="filterContainer">
-                <div class="filter-tab active" data-filter="all">Todos</div>
-                <div class="filter-tab" data-filter="tramite"><i class="bi bi-hourglass-split me-1"></i> En Trámite</div>
-                <div class="filter-tab" data-filter="aprobado"><i class="bi bi-check-circle me-1"></i> Aprobados</div>
-                <div class="filter-tab" data-filter="observado"><i class="bi bi-exclamation-circle me-1"></i> Observados</div>
+        <div class="aocr-toolbar aocr-action-toolbar mb-3">
+            <div class="aocr-toolbar-left">
+                <div class="aocr-filter-tabs" id="filterContainer">
+                    <div class="aocr-filter-tab filter-tab active" data-filter="all">Todos</div>
+                    <div class="aocr-filter-tab filter-tab" data-filter="tramite"><i class="fas fa-hourglass-half me-1"></i> En Trámite</div>
+                    <div class="aocr-filter-tab filter-tab" data-filter="aprobado"><i class="fas fa-check-circle me-1"></i> Aprobados</div>
+                    <div class="aocr-filter-tab filter-tab" data-filter="observado"><i class="fas fa-exclamation-circle me-1"></i> Observados</div>
+                </div>
             </div>
-
-            <div class="input-group shadow-sm" style="width: 320px; border-radius: 20px; overflow: hidden; background: white;">
-                <span class="input-group-text bg-white border-0 ps-3"><i class="bi bi-search text-muted"></i></span>
-                <input type="text" id="searchInput" class="form-control border-0" placeholder="Buscar solicitud...">
+            <div class="aocr-toolbar-right">
+                <div class="aocr-search-bar" style="min-width:260px;">
+                    <i class="fas fa-search"></i>
+                    <input type="text" id="searchInput" placeholder="Buscar solicitud..." />
+                </div>
             </div>
         </div>
 
-        <div class="card border-0 shadow-sm" style="border-radius: 12px;">
-            <div class="card-body p-0">
-                <div class="table-container-responsive">
-                    <table id="tablaSolicitudes" class="table table-dgac mb-0 text-nowrap w-100">
-                        <thead>
-                            <tr>
-                                <th style="width:60px;">ID</th>
-                                <th>Fecha</th>
-                                <th>Tipo</th>
-                                <th class="text-start ps-4">Compañía</th>
-                                <th class="text-start ps-4">Inspector</th>
-                                <th>Estado Global</th>
-                                <th class="text-end pe-4">Viáticos</th>
-                                <th style="width:80px;">Acción</th>
-                            </tr>
-                        </thead>
-                        <tbody id="cuerpoTabla"></tbody>
-                    </table>
-
-                    <div id="noResults" class="text-center py-5 text-muted" style="display:none;">
-                        <i class="bi bi-search h3"></i>
-                        <p>No se encontraron resultados.</p>
-                    </div>
-                </div>
+        <div class="aocr-table-container">
+            <table id="tablaSolicitudes" class="table table-dgac mb-0 text-nowrap w-100">
+                <thead>
+                    <tr>
+                        <th style="width:60px;">ID</th>
+                        <th>Fecha</th>
+                        <th>Tipo</th>
+                        <th class="text-start">Compañía</th>
+                        <th class="text-start">Inspector</th>
+                        <th>Estado</th>
+                        <th class="text-end">Viáticos</th>
+                        <th style="width:80px;">Acción</th>
+                    </tr>
+                </thead>
+                <tbody id="cuerpoTabla"></tbody>
+            </table>
+            <div id="noResults" class="aocr-no-results" style="display:none;">
+                <i class="fas fa-search"></i>
+                <p class="mb-0">No se encontraron resultados para la búsqueda.</p>
             </div>
         </div>
 
@@ -266,7 +136,7 @@
                         // Mostrar mensaje de error en la tabla de forma segura
                         var $row = $('<tr>');
                         var $cell = $('<td>').attr('colspan', 8).addClass('text-center text-danger py-4');
-                        $cell.append($('<i>').addClass('bi bi-exclamation-triangle h3'));
+                    $cell.append($('<i>').addClass('fas fa-exclamation-triangle'));
                         $cell.append($('<p>').text(response.message || 'Error al cargar solicitudes'));
                         $row.append($cell);
                         $('#cuerpoTabla').empty().append($row);
@@ -276,7 +146,7 @@
                     console.error('Error AJAX:', error);
                     var $row = $('<tr>');
                     var $cell = $('<td>').attr('colspan', 8).addClass('text-center text-danger py-4');
-                    $cell.append($('<i>').addClass('bi bi-x-circle h3'));
+                    $cell.append($('<i>').addClass('fas fa-times-circle'));
                     $cell.append($('<p>').text('Error de conexión. Por favor, recargue la página.'));
                     $row.append($cell);
                     $('#cuerpoTabla').empty().append($row);

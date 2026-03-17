@@ -32,81 +32,92 @@
     var tamanioTotal = statInt("TamanioTotal");
 }
 
-<h2 class="mb-4">Documentos de la Solicitud AOCR (#@ViewBag.SolicitudId)</h2>
+@Html.Partial("_PageHeader", new ViewDataDictionary {
+    { "Title", "Documentos de la Solicitud (#" + ViewBag.SolicitudId + ")" },
+    { "Subtitle", "Archivos cargados para esta solicitud AOCR" }
+})
 
 @if (TempData["Error"] != null)
 {
-    <div class="alert alert-danger">@TempData["Error"]</div>
+    <div class="alert alert-aocr alert-danger mb-3"><i class="fas fa-exclamation-circle me-1"></i> @TempData["Error"]</div>
 }
 @if (TempData["Exito"] != null)
 {
-    <div class="alert alert-success">@TempData["Exito"]</div>
+    <div class="alert alert-aocr alert-success mb-3"><i class="fas fa-check-circle me-1"></i> @TempData["Exito"]</div>
 }
 
-<div class="mb-3">
-    <strong>Total:</strong> @totalDocs |
-    <strong>Pendientes:</strong> @pendientesDocs |
-    <strong>Aprobados:</strong> @aprobadosDocs |
-    <strong>Rechazados:</strong> @rechazadosDocs |
-    <strong>Tamano:</strong> @tamanioTotal bytes
+<div class="aocr-summary-strip mb-3">
+    @Html.Partial("_MetricCard", new ViewDataDictionary { { "Label", "Total" }, { "Value", totalDocs }, { "Icon", "fas fa-folder-open" } })
+    @Html.Partial("_MetricCard", new ViewDataDictionary { { "Label", "Pendientes" }, { "Value", pendientesDocs }, { "Modifier", "warning" }, { "Icon", "fas fa-clock" } })
+    @Html.Partial("_MetricCard", new ViewDataDictionary { { "Label", "Aprobados" }, { "Value", aprobadosDocs }, { "Modifier", "success" }, { "Icon", "fas fa-check" } })
+    @Html.Partial("_MetricCard", new ViewDataDictionary { { "Label", "Rechazados" }, { "Value", rechazadosDocs }, { "Modifier", "danger" }, { "Icon", "fas fa-times" } })
 </div>
 
+@Html.Partial("_ActionToolbar", new ViewDataDictionary {
+    { "VolverUrl", Url.Action("Detalle", "SolicitudAOCR", new { id = ViewBag.SolicitudId }) }
+})
+
 <div class="mb-3">
-    <label for="filtroTipo" class="form-label">Filtrar por tipo de documento:</label>
-    <select id="filtroTipo" class="form-select w-auto d-inline-block">
+    <label for="filtroTipo" class="aocr-field-label">Filtrar por tipo:</label>
+    <select id="filtroTipo" class="form-select form-select-sm w-auto d-inline-block">
         <option value="">-- Todos --</option>
         <option value="BORRADOR_AOCR">Borrador AOCR</option>
         <option value="Otro">Otros</option>
     </select>
 </div>
 
-<table class="table table-bordered table-hover" id="tablaDocumentos">
-    <thead class="table-light">
-        <tr>
-            <th>Tipo</th>
-            <th>Archivo</th>
-            <th>Fecha</th>
-            <th>Estado</th>
-            <th>Acciones</th>
-        </tr>
-    </thead>
-    <tbody>
-        @if (Model != null && Model.Any())
-        {
-            foreach (var doc in Model)
-            {
-                <tr data-tipo="@doc.TipoDocumento">
-                    <td>@doc.TipoDocumento</td>
-                    <td>@doc.NombreArchivo</td>
-                    <td>@doc.FechaCarga?.ToString("yyyy-MM-dd HH:mm")</td>
-                    <td>@doc.Estado</td>
-                    <td>
-                        <a href="@Url.Action("Descargar", "Documento", new { id = doc.CodigoDocumento })" class="btn btn-sm btn-primary">
-                            <i class="fas fa-download"></i> Descargar
-                        </a>
-
-                        @if (doc.TipoDocumento == "BORRADOR_AOCR" && User.IsInRole("Inspector"))
+<div class="card aocr-table-card">
+    <div class="card-body p-0">
+        <div class="aocr-table-wrap">
+            <table class="table table-dgac mb-0" id="tablaDocumentos">
+                <thead>
+                    <tr>
+                        <th>Tipo</th>
+                        <th>Archivo</th>
+                        <th>Fecha</th>
+                        <th>Estado</th>
+                        <th class="text-center">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (Model != null && Model.Any())
+                    {
+                        foreach (var doc in Model)
                         {
-                            <a href="@Url.Action("Editar", "Documento", new { id = doc.CodigoDocumento })" class="btn btn-sm btn-warning">
-                                <i class="fas fa-edit"></i> Editar
-                            </a>
+                            <tr data-tipo="@doc.TipoDocumento">
+                                <td>@Html.Encode(doc.TipoDocumento)</td>
+                                <td>@Html.Encode(doc.NombreArchivo)</td>
+                                <td>@(doc.FechaCarga.HasValue ? doc.FechaCarga.Value.ToString("dd/MM/yyyy HH:mm") : "-")</td>
+                                <td>@Html.Partial("_StatusBadge", new ViewDataDictionary { { "Estado", doc.Estado } })</td>
+                                <td class="text-center">
+                                    <a href="@Url.Action("Descargar", "Documento", new { id = doc.CodigoDocumento })" class="btn btn-sm btn-aocr-primary">
+                                        <i class="fas fa-download"></i> Descargar
+                                    </a>
+                                    @if (doc.TipoDocumento == "BORRADOR_AOCR" && User.IsInRole("Inspector"))
+                                    {
+                                        <a href="@Url.Action("Editar", "Documento", new { id = doc.CodigoDocumento })" class="btn btn-sm btn-aocr-secondary">
+                                            <i class="fas fa-edit"></i> Editar
+                                        </a>
+                                    }
+                                </td>
+                            </tr>
                         }
-                    </td>
-                </tr>
-            }
-        }
-        else
-        {
-            <tr>
-                <td colspan="5" class="text-center text-muted">No hay documentos disponibles.</td>
-            </tr>
-        }
-    </tbody>
-</table>
-
-<a href="@Url.Action("Detalle", "SolicitudAOCR", new { id = ViewBag.SolicitudId })" class="btn btn-secondary">
-    <i class="fas fa-arrow-left"></i> Volver
-</a>
+                    }
+                    else
+                    {
+                        <tr><td colspan="5">
+                            @Html.Partial("_EmptyState", new ViewDataDictionary {
+                                { "Icon", "fas fa-folder-open" },
+                                { "Title", "Sin documentos" },
+                                { "Description", "No hay documentos cargados para esta solicitud." }
+                            })
+                        </td></tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
 
 @section Scripts {
     <script>

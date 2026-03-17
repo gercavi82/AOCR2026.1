@@ -111,58 +111,57 @@
     </style>
 }
 
-<div class="header-modern">
-    <div>
-        <!-- ✅ BS5: fw-bold en vez de font-weight-bold -->
-        <h3 class="m-0 fw-bold text-dark">Tablero de Control</h3>
-        <p class="text-muted m-0 small">Gestión de Certificados AOCR</p>
+<div class="aocr-module-header mb-3">
+    <div class="aocr-module-header-left">
+        <h2 class="aocr-module-header-title">Tablero de Control</h2>
+        <p class="aocr-module-header-subtitle">Gestión de Certificados AOCR</p>
     </div>
-
-    <!-- ✅ Dropdown BS5 -->
-    <div class="dropdown">
-        <button type="button"
-                class="btn btn-white-perfect dropdown-toggle"
-                data-bs-toggle="dropdown"
-                aria-expanded="false">
-            <i class="bi bi-plus-lg text-info"></i> NUEVA SOLICITUD
-        </button>
-
-        <ul class="dropdown-menu dropdown-menu-end border-0 shadow-lg p-2">
-            <li>
-                <a class="dropdown-item rounded py-2"
-                   href="javascript:void(0)"
-                   onclick="window.cargarFormulario(null)">
-                    <i class="bi bi-file-earmark-plus text-primary me-2"></i> Emisión AOCR
-                </a>
-            </li>
-            <li>
-                <a class="dropdown-item rounded py-2" href="#">
-                    <i class="bi bi-pencil-square text-info me-2"></i> Modificación
-                </a>
-            </li>
-        </ul>
+    <div class="aocr-module-header-right">
+        <div class="dropdown">
+            <button type="button"
+                    class="btn btn-aocr-primary dropdown-toggle"
+                    data-bs-toggle="dropdown"
+                    aria-expanded="false">
+                <i class="fas fa-plus"></i> Nueva Solicitud
+            </button>
+            <ul class="dropdown-menu aocr-dropdown-menu dropdown-menu-end">
+                <li class="aocr-dropdown-header">Seleccione Trámite</li>
+                <li>
+                    <a class="dropdown-item"
+                       href="javascript:void(0)"
+                       onclick="window.cargarFormulario(null)">
+                        <i class="fas fa-file-alt text-primary me-2"></i> Emisión AOCR
+                    </a>
+                </li>
+                <li>
+                    <a class="dropdown-item" href="#">
+                        <i class="fas fa-edit text-info me-2"></i> Modificación
+                    </a>
+                </li>
+            </ul>
+        </div>
     </div>
 </div>
 
 <section class="content pt-4 px-3">
     <div class="container-fluid">
         <div class="d-flex justify-content-between align-items-center mb-3">
-            <div class="filter-tabs d-flex gap-2 flex-wrap">
-                <div class="filter-tab active" data-filter="all">Todos</div>
-                <div class="filter-tab" data-filter="tramite">En Trámite</div>
-                <div class="filter-tab" data-filter="aprobado">Aprobados</div>
-                <div class="filter-tab" data-filter="observado">Observados</div>
+            <div class="aocr-filter-tabs">
+                <div class="aocr-filter-tab active" data-filter="all">Todos</div>
+                <div class="aocr-filter-tab" data-filter="tramite">En Trámite</div>
+                <div class="aocr-filter-tab" data-filter="aprobado">Aprobados</div>
+                <div class="aocr-filter-tab" data-filter="observado">Observados</div>
             </div>
 
-            <div class="input-group shadow-sm"
-                 style="width: 300px; border-radius: 20px; overflow: hidden; background: white;">
-                <input type="text" id="searchInput" class="form-control border-0" placeholder="Buscar solicitud...">
+            <div class="aocr-search-bar" style="max-width:300px;">
+                <i class="fas fa-search"></i>
+                <input type="text" id="searchInput" placeholder="Buscar solicitud...">
             </div>
         </div>
 
-        <div class="card border-0 shadow-sm" style="border-radius: 12px;">
+        <div class="card aocr-table-card">
             <div class="card-body p-0">
-                <div class="table-container-responsive">
+                <div class="aocr-table-container">
                     <table id="tablaSolicitudes" class="table table-dgac mb-0 w-100 text-center">
                         <thead>
                             <tr>

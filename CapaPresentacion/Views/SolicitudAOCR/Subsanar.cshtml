@@ -26,18 +26,17 @@
     .step-number { width: 36px; height: 36px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-weight: 700; font-size: 1rem; flex-shrink: 0; }
 </style>
 
+@Html.Partial("_PageHeader", new ViewDataDictionary {
+    { "Title", "Subsanar Documentación" },
+    { "Subtitle", "Corrija las observaciones y reenvíe los documentos solicitados" }
+})
+
 <div class="subsanar-container py-4">
 
-    @* ── ENCABEZADO ── *@
-    <div class="d-flex align-items-center gap-3 mb-4">
-        <a href="@Url.Action("Detalle", "SolicitudAOCR", new { id = Model.CodigoSolicitud })" class="btn btn-outline-secondary btn-sm" title="Volver al detalle">
-            <i class="fas fa-arrow-left"></i>
-        </a>
-        <div>
-            <h4 class="mb-0 fw-bold"><i class="fas fa-tools text-info me-2"></i>Subsanar Documentación</h4>
-            <small class="text-muted">Corrija las observaciones y reenvíe los documentos solicitados</small>
-        </div>
-    </div>
+    @Html.Partial("_ActionToolbar", new ViewDataDictionary {
+        { "VolverUrl", Url.Action("Detalle", "SolicitudAOCR", new { id = Model.CodigoSolicitud }) }
+    })
+
 
     @* ══════════════════════════════════════════════════════════════
        BLOQUE 1 — RESUMEN DE LA SOLICITUD

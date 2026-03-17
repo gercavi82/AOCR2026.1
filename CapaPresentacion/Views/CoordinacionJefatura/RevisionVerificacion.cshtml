@@ -1,146 +1,280 @@
-@inherits System.Web.Mvc.WebViewPage<CapaPresentacion.Models.CoordinacionJefaturaRevisionViewModel>
+﻿@inherits System.Web.Mvc.WebViewPage<CapaPresentacion.Models.CoordinacionJefaturaRevisionViewModel>
+@using System.Collections.Generic
 @using System.Linq
+@using System.Web
+@using CapaModelo
 @{
-    ViewBag.Title = "Revisión / Verificación";
     Layout = "~/Views/Shared/_LayoutAOCR.cshtml";
+    ViewBag.Title = "Revisión / Verificación";
+
+    var viewModel = Model ?? new CapaPresentacion.Models.CoordinacionJefaturaRevisionViewModel();
+    var solicitudesControl = viewModel.SolicitudesControlDocumental ?? new List<SolicitudAOCR>();
+    var solicitudesRevision = viewModel.SolicitudesAocrRevision ?? new List<SolicitudAOCR>();
+    var inspeccionesSeguimiento = viewModel.InspeccionesSeguimiento ?? new List<Inspeccion>();
+
+    var totalBandeja = solicitudesControl.Count + solicitudesRevision.Count + inspeccionesSeguimiento.Count;
+
+    var pageHeaderData = new ViewDataDictionary
+    {
+        { "Kicker", "Coordinación y Jefatura" },
+        { "Title", "Revisión / Verificación" },
+        { "Subtitle", "Bandeja unificada de control documental, revisión AOCR y seguimiento de inspecciones" },
+        { "Breadcrumbs", new[]
+            {
+                new { Text = "Coordinación y Jefatura", Url = string.Empty },
+                new { Text = "Revisión / Verificación", Url = string.Empty }
+            }
+        }
+    };
+
+    var heroData = new ViewDataDictionary
+    {
+        { "Kicker", "Sistema institucional DGAC" },
+        { "Title", "Control documental y validación ejecutiva" },
+        { "Subtitle", "Seguimiento consolidado de solicitudes AOCR e inspecciones" },
+        { "Description", "Concentre la revisión técnica, la validación documental y el seguimiento de inspecciones en una sola bandeja institucional con trazabilidad visual uniforme." },
+        { "MetricTitle", "En bandeja" },
+        { "MetricValue", totalBandeja },
+        { "MetricSubtitle", "Casos activos para gestión inmediata" }
+    };
+
+    var toolbarLinks = new List<string>
+    {
+        "<a href=\"" + Url.Action("RevisarSolicitudes", "SolicitudAOCR") + "\" class=\"btn btn-aocr-secondary\"><i class=\"fas fa-list-check\"></i><span>Bandeja técnica</span></a>",
+        "<a href=\"" + Url.Action("Index", "Dashboard") + "\" class=\"btn btn-aocr-secondary\"><i class=\"fas fa-chart-line\"></i><span>Dashboard</span></a>"
+    };
+
+    if (User.IsInRole("JefaturaTecnica") || User.IsInRole("Administrador"))
+    {
+        toolbarLinks.Add("<a href=\"" + Url.Action("ValidarAocr", "CoordinacionJefatura") + "\" class=\"btn btn-aocr-primary\"><i class=\"fas fa-stamp\"></i><span>Validar AOCR</span></a>");
+    }
+
+    if (User.IsInRole("CoordinacionLegal") || User.IsInRole("CoordinadorLegal") || User.IsInRole("DirectorGeneral") || User.IsInRole("Administrador"))
+    {
+        toolbarLinks.Add("<a href=\"" + Url.Action("LegalizarAocr", "CoordinacionJefatura") + "\" class=\"btn btn-aocr-primary\"><i class=\"fas fa-scale-balanced\"></i><span>Legalizar AOCR</span></a>");
+    }
+
+    var toolbarData = new ViewDataDictionary
+    {
+        { "VolverUrl", Url.Action("Index", "Dashboard") },
+        { "VolverTexto", "Volver al dashboard" },
+        { "CustomActionsHtml", new HtmlString(string.Join("", toolbarLinks)) }
+    };
 }
 
-<div class="container-fluid py-3">
-    <h3 class="mb-3"><i class="fas fa-project-diagram"></i> @ViewBag.Title</h3>
-    <p class="text-muted">Bandeja unificada de control documental, revisión AOCR y seguimiento de inspecciones.</p>
+<div class="aocr-view">
+    @Html.Partial("_PageHeader", null, pageHeaderData)
+    @Html.Partial("_HeroPanel", null, heroData)
 
-    <div class="row g-3 mb-3">
-        <div class="col-md-4"><div class="card"><div class="card-body"><div class="text-muted">Control documental</div><h4>@Model.SolicitudesControlDocumental.Count</h4></div></div></div>
-        <div class="col-md-4"><div class="card"><div class="card-body"><div class="text-muted">AOCR en revisión</div><h4>@Model.SolicitudesAocrRevision.Count</h4></div></div></div>
-        <div class="col-md-4"><div class="card"><div class="card-body"><div class="text-muted">Inspecciones por coord./jefatura</div><h4>@Model.InspeccionesSeguimiento.Count</h4></div></div></div>
-    </div>
-
-    <div class="card mb-3">
-        <div class="card-header"><strong>Solicitudes para revisión documental</strong></div>
-        <div class="card-body p-0">
-            @if (!Model.SolicitudesControlDocumental.Any())
-            {
-                <div class="p-3 text-muted">No hay solicitudes pendientes de revisión documental.</div>
-            }
-            else
-            {
-                <div class="table-responsive">
-                    <table class="table table-sm table-striped mb-0">
-                        <thead>
-                            <tr>
-                                <th>Solicitud</th>
-                                <th>Operador</th>
-                                <th>Estado</th>
-                                <th>Fecha</th>
-                                <th>Acciones</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                        @foreach (var item in Model.SolicitudesControlDocumental)
-                        {
-                            <tr>
-                                <td>@item.CodigoSolicitud</td>
-                                <td>@Html.Encode(item.NombreOperador)</td>
-                                <td>@Html.Encode(item.Estado)</td>
-                                <td>@(item.FechaSolicitud.HasValue ? item.FechaSolicitud.Value.ToString("yyyy-MM-dd") : string.Empty)</td>
-                                <td>
-                                    <a class="btn btn-sm btn-info" href="@Url.Action("Detalle", "SolicitudAOCR", new { id = item.CodigoSolicitud })">Detalle</a>
-                                    <a class="btn btn-sm btn-outline-primary" href="@Url.Action("RevisarSolicitudes", "SolicitudAOCR")">Bandeja técnica</a>
-                                </td>
-                            </tr>
-                        }
-                        </tbody>
-                    </table>
-                </div>
-            }
+    <div class="row g-3 mb-4">
+        <div class="col-12 col-md-6 col-xl-3">
+            @Html.Partial("_MetricCard", null, new ViewDataDictionary { { "Label", "En bandeja" }, { "Value", totalBandeja }, { "Modifier", "info" }, { "Icon", "fas fa-inbox" }, { "Caption", "Total consolidado del módulo" } })
+        </div>
+        <div class="col-12 col-md-6 col-xl-3">
+            @Html.Partial("_MetricCard", null, new ViewDataDictionary { { "Label", "Control documental" }, { "Value", solicitudesControl.Count }, { "Modifier", "warning" }, { "Icon", "fas fa-folder-open" }, { "Caption", "Solicitudes pendientes de revisión" } })
+        </div>
+        <div class="col-12 col-md-6 col-xl-3">
+            @Html.Partial("_MetricCard", null, new ViewDataDictionary { { "Label", "AOCR en revisión" }, { "Value", solicitudesRevision.Count }, { "Modifier", "primary" }, { "Icon", "fas fa-file-signature" }, { "Caption", "Casos listos para validar o legalizar" } })
+        </div>
+        <div class="col-12 col-md-6 col-xl-3">
+            @Html.Partial("_MetricCard", null, new ViewDataDictionary { { "Label", "Inspecciones" }, { "Value", inspeccionesSeguimiento.Count }, { "Modifier", "success" }, { "Icon", "fas fa-user-check" }, { "Caption", "Seguimiento coordinado activo" } })
         </div>
     </div>
 
-    <div class="card mb-3">
-        <div class="card-header"><strong>AOCR para validar, legalizar o cerrar</strong></div>
-        <div class="card-body p-0">
-            @if (!Model.SolicitudesAocrRevision.Any())
-            {
-                <div class="p-3 text-muted">No hay AOCR en cola de revisión.</div>
-            }
-            else
-            {
-                <div class="table-responsive">
-                    <table class="table table-sm table-striped mb-0">
-                        <thead>
-                            <tr>
-                                <th>Solicitud</th>
-                                <th>Operador</th>
-                                <th>Estado</th>
-                                <th>Fecha</th>
-                                <th>Ruta</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                        @foreach (var item in Model.SolicitudesAocrRevision)
-                        {
-                            <tr>
-                                <td>@item.CodigoSolicitud</td>
-                                <td>@Html.Encode(item.NombreOperador)</td>
-                                <td>@Html.Encode(item.Estado)</td>
-                                <td>@(item.FechaSolicitud.HasValue ? item.FechaSolicitud.Value.ToString("yyyy-MM-dd") : string.Empty)</td>
-                                <td>
-                                    <a class="btn btn-sm btn-info" href="@Url.Action("Detalle", "SolicitudAOCR", new { id = item.CodigoSolicitud })">Detalle</a>
-                                    @if (User.IsInRole("JefaturaTecnica") || User.IsInRole("Administrador"))
-                                    {
-                                        <a class="btn btn-sm btn-warning" href="@Url.Action("ValidarAocr", "CoordinacionJefatura")">Validar AOCR</a>
-                                    }
-                                    @if (User.IsInRole("CoordinacionLegal") || User.IsInRole("CoordinadorLegal") || User.IsInRole("DirectorGeneral") || User.IsInRole("Administrador"))
-                                    {
-                                        <a class="btn btn-sm btn-success" href="@Url.Action("LegalizarAocr", "CoordinacionJefatura")">Legalizar AOCR</a>
-                                    }
-                                </td>
-                            </tr>
-                        }
-                        </tbody>
-                    </table>
-                </div>
-            }
-        </div>
-    </div>
+    @Html.Partial("_ActionToolbar", null, toolbarData)
 
-    <div class="card">
-        <div class="card-header"><strong>Inspecciones en seguimiento de coordinación / jefatura</strong></div>
-        <div class="card-body p-0">
-            @if (!Model.InspeccionesSeguimiento.Any())
-            {
-                <div class="p-3 text-muted">No hay inspecciones en seguimiento para este bloque.</div>
-            }
-            else
-            {
-                <div class="table-responsive">
-                    <table class="table table-sm table-striped mb-0">
-                        <thead>
-                            <tr>
-                                <th>Inspección</th>
-                                <th>Solicitud</th>
-                                <th>Estado</th>
-                                <th>Resultado</th>
-                                <th>Acciones</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                        @foreach (var item in Model.InspeccionesSeguimiento)
-                        {
-                            <tr>
-                                <td>@item.CodigoInspeccion</td>
-                                <td>@item.CodigoSolicitud</td>
-                                <td>@Html.Encode(item.Estado)</td>
-                                <td>@Html.Encode(item.Resultado)</td>
-                                <td>
-                                    <a class="btn btn-sm btn-info" href="@Url.Action("Detalle", "Inspeccion", new { id = item.CodigoInspeccion })">Detalle</a>
-                                </td>
-                            </tr>
-                        }
-                        </tbody>
-                    </table>
+    <div class="row g-4">
+        <div class="col-12">
+            <div class="card aocr-content-card aocr-table-card">
+                <div class="card-body">
+                    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+                        <div>
+                            <h3 class="aocr-section-title mb-1"><i class="fas fa-folder-open"></i> Control documental</h3>
+                            <p class="text-muted mb-0">Solicitudes pendientes de revisión documental y validación previa.</p>
+                        </div>
+                        @Html.Partial("_StatusBadge", null, new ViewDataDictionary { { "Estado", solicitudesControl.Any() ? "En bandeja" : "Completado" } })
+                    </div>
+
+                    @if (!solicitudesControl.Any())
+                    {
+                        @Html.Partial("_EmptyState", null, new ViewDataDictionary {
+                            { "Icon", "fas fa-folder-open" },
+                            { "Title", "Sin pendientes en control documental" },
+                            { "Description", "No existen solicitudes pendientes de revisión documental en este momento." }
+                        })
+                    }
+                    else
+                    {
+                        <div class="table-responsive aocr-table-wrap">
+                            <table class="table aocr-table align-middle mb-0">
+                                <thead>
+                                    <tr>
+                                        <th>Solicitud</th>
+                                        <th>Operador</th>
+                                        <th>Estado</th>
+                                        <th>Fecha</th>
+                                        <th class="text-end">Acciones</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var item in solicitudesControl)
+                                    {
+                                        var numeroSolicitud = !string.IsNullOrWhiteSpace(item.NumeroSolicitud) ? item.NumeroSolicitud : item.CodigoSolicitud.ToString();
+                                        <tr>
+                                            <td>
+                                                <div class="fw-semibold text-primary">@numeroSolicitud</div>
+                                                <small class="text-muted">Código @item.CodigoSolicitud</small>
+                                            </td>
+                                            <td>@(string.IsNullOrWhiteSpace(item.NombreOperador) ? "No especificado" : item.NombreOperador)</td>
+                                            <td>@Html.Partial("_StatusBadge", null, new ViewDataDictionary { { "Estado", item.Estado } })</td>
+                                            <td>@(item.FechaSolicitud.HasValue ? item.FechaSolicitud.Value.ToString("dd/MM/yyyy") : "No registrada")</td>
+                                            <td class="text-end">
+                                                <a class="btn btn-sm btn-outline-primary" href="@Url.Action("Detalle", "SolicitudAOCR", new { id = item.CodigoSolicitud })">
+                                                    <i class="fas fa-eye"></i> Detalle
+                                                </a>
+                                                <a class="btn btn-sm btn-outline-secondary" href="@Url.Action("RevisarSolicitudes", "SolicitudAOCR")">
+                                                    <i class="fas fa-list-check"></i> Bandeja técnica
+                                                </a>
+                                            </td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    }
                 </div>
-            }
+            </div>
+        </div>
+
+        <div class="col-12">
+            <div class="card aocr-content-card aocr-table-card">
+                <div class="card-body">
+                    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+                        <div>
+                            <h3 class="aocr-section-title mb-1"><i class="fas fa-file-contract"></i> AOCR en revisión</h3>
+                            <p class="text-muted mb-0">Documentos listos para validación de jefatura, coordinación legal o cierre formal.</p>
+                        </div>
+                        @Html.Partial("_StatusBadge", null, new ViewDataDictionary { { "Estado", solicitudesRevision.Any() ? "En revisión" : "Completado" } })
+                    </div>
+
+                    @if (!solicitudesRevision.Any())
+                    {
+                        @Html.Partial("_EmptyState", null, new ViewDataDictionary {
+                            { "Icon", "fas fa-file-contract" },
+                            { "Title", "Sin AOCR pendientes de revisión" },
+                            { "Description", "No existen AOCR listos para validar, legalizar o cerrar en esta bandeja." }
+                        })
+                    }
+                    else
+                    {
+                        <div class="table-responsive aocr-table-wrap">
+                            <table class="table aocr-table align-middle mb-0">
+                                <thead>
+                                    <tr>
+                                        <th>Solicitud</th>
+                                        <th>Operador</th>
+                                        <th>Estado</th>
+                                        <th>Fecha</th>
+                                        <th class="text-end">Acciones</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var item in solicitudesRevision)
+                                    {
+                                        var numeroSolicitud = !string.IsNullOrWhiteSpace(item.NumeroSolicitud) ? item.NumeroSolicitud : item.CodigoSolicitud.ToString();
+                                        <tr>
+                                            <td>
+                                                <div class="fw-semibold text-primary">@numeroSolicitud</div>
+                                                <small class="text-muted">Código @item.CodigoSolicitud</small>
+                                            </td>
+                                            <td>@(string.IsNullOrWhiteSpace(item.NombreOperador) ? "No especificado" : item.NombreOperador)</td>
+                                            <td>@Html.Partial("_StatusBadge", null, new ViewDataDictionary { { "Estado", item.Estado } })</td>
+                                            <td>@(item.FechaSolicitud.HasValue ? item.FechaSolicitud.Value.ToString("dd/MM/yyyy") : "No registrada")</td>
+                                            <td class="text-end">
+                                                <a class="btn btn-sm btn-outline-primary" href="@Url.Action("Detalle", "SolicitudAOCR", new { id = item.CodigoSolicitud })">
+                                                    <i class="fas fa-eye"></i> Detalle
+                                                </a>
+                                                @if (User.IsInRole("JefaturaTecnica") || User.IsInRole("Administrador"))
+                                                {
+                                                    <a class="btn btn-sm btn-outline-warning" href="@Url.Action("ValidarAocr", "CoordinacionJefatura")">
+                                                        <i class="fas fa-stamp"></i> Validar
+                                                    </a>
+                                                }
+                                                @if (User.IsInRole("CoordinacionLegal") || User.IsInRole("CoordinadorLegal") || User.IsInRole("DirectorGeneral") || User.IsInRole("Administrador"))
+                                                {
+                                                    <a class="btn btn-sm btn-outline-success" href="@Url.Action("LegalizarAocr", "CoordinacionJefatura")">
+                                                        <i class="fas fa-scale-balanced"></i> Legalizar
+                                                    </a>
+                                                }
+                                            </td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+
+        <div class="col-12">
+            <div class="card aocr-content-card aocr-table-card">
+                <div class="card-body">
+                    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+                        <div>
+                            <h3 class="aocr-section-title mb-1"><i class="fas fa-search"></i> Inspecciones en seguimiento</h3>
+                            <p class="text-muted mb-0">Seguimiento coordinado de inspecciones asociadas al flujo AOCR institucional.</p>
+                        </div>
+                        @Html.Partial("_StatusBadge", null, new ViewDataDictionary { { "Estado", inspeccionesSeguimiento.Any() ? "En seguimiento" : "Completado" } })
+                    </div>
+
+                    @if (!inspeccionesSeguimiento.Any())
+                    {
+                        @Html.Partial("_EmptyState", null, new ViewDataDictionary {
+                            { "Icon", "fas fa-user-check" },
+                            { "Title", "Sin inspecciones en seguimiento" },
+                            { "Description", "No existen inspecciones activas en la bandeja de coordinación y jefatura." }
+                        })
+                    }
+                    else
+                    {
+                        <div class="table-responsive aocr-table-wrap">
+                            <table class="table aocr-table align-middle mb-0">
+                                <thead>
+                                    <tr>
+                                        <th>Inspección</th>
+                                        <th>Solicitud</th>
+                                        <th>Estado</th>
+                                        <th>Resultado</th>
+                                        <th class="text-end">Acciones</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var item in inspeccionesSeguimiento)
+                                    {
+                                        var numeroInspeccion = !string.IsNullOrWhiteSpace(item.NumeroInspeccion) ? item.NumeroInspeccion : item.CodigoInspeccion.ToString();
+                                        <tr>
+                                            <td>
+                                                <div class="fw-semibold text-primary">@numeroInspeccion</div>
+                                                <small class="text-muted">Código @item.CodigoInspeccion</small>
+                                            </td>
+                                            <td>@item.CodigoSolicitud</td>
+                                            <td>@Html.Partial("_StatusBadge", null, new ViewDataDictionary { { "Estado", item.Estado } })</td>
+                                            <td>@(string.IsNullOrWhiteSpace(item.Resultado) ? "Pendiente" : item.Resultado)</td>
+                                            <td class="text-end">
+                                                <a class="btn btn-sm btn-outline-primary" href="@Url.Action("Detalle", "Inspeccion", new { id = item.CodigoInspeccion })">
+                                                    <i class="fas fa-eye"></i> Detalle
+                                                </a>
+                                            </td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    }
+                </div>
+            </div>
         </div>
     </div>
 </div>
+

@@ -372,6 +372,7 @@
     <Compile Include="Services\PdfOrdenService.cs" />
   </ItemGroup>
   <ItemGroup>
+    <Content Include="Content\aocr-institucional.css" />
     <Content Include="Content\assets\css\bootstrap.min.css" />
     <Content Include="Content\assets\css\chartist-custom.css" />
     <Content Include="Content\assets\css\dgac.css" />
@@ -2967,6 +2968,12 @@
     <Content Include="Views\AdminUsuarios\_UserForm.cshtml" />
     <Content Include="Views\Usuario\RevisarDesignaciones.cshtml" />
     <Content Include="Views\Health\Dashboard.cshtml" />
+    <Content Include="Views\Shared\_PageHeader.cshtml" />
+    <Content Include="Views\Shared\_HeroPanel.cshtml" />
+    <Content Include="Views\Shared\_MetricCard.cshtml" />
+    <Content Include="Views\Shared\_EmptyState.cshtml" />
+    <Content Include="Views\Shared\_StatusBadge.cshtml" />
+    <Content Include="Views\Shared\_ActionToolbar.cshtml" />
   </ItemGroup>
   <ItemGroup>
     <Folder Include="App_Data\" />

@@ -4,30 +4,33 @@
 @using System.Web.Mvc.Html
 
 @{
-                /**/
-
-                ViewBag.Title = "Subir Borrador AOCR";
-                Layout = "~/Views/Shared/_LayoutAOCR.cshtml";
+    ViewBag.Title = "Subir Borrador AOCR";
+    Layout = "~/Views/Shared/_LayoutAOCR.cshtml";
 }
 
-<h2 class="mb-4">Subir Borrador de Certificado AOCR</h2>
+@Html.Partial("_PageHeader", new ViewDataDictionary {
+    { "Title", "Subir Borrador de Certificado AOCR" },
+    { "Subtitle", "Carga de documentos para la solicitud" }
+})
 
 @if (TempData["Error"] != null)
 {
-    <div class="alert alert-danger">@TempData["Error"]</div>
+    <div class="alert alert-aocr alert-danger mb-3"><i class="fas fa-exclamation-circle me-1"></i> @TempData["Error"]</div>
 }
 @if (TempData["Exito"] != null)
 {
-    <div class="alert alert-success">@TempData["Exito"]</div>
+    <div class="alert alert-aocr alert-success mb-3"><i class="fas fa-check-circle me-1"></i> @TempData["Exito"]</div>
 }
 
+<div class="card aocr-form-card">
+    <div class="card-body">
 @using (Html.BeginForm("Subir", "Documento", FormMethod.Post, new { enctype = "multipart/form-data" }))
 {
     @Html.AntiForgeryToken()
     @Html.HiddenFor(m => m.CodigoSolicitud)
 
     <div class="mb-3">
-        <label for="tipoDocumento" class="form-label">Tipo de Documento</label>
+        <label for="tipoDocumento" class="aocr-field-label">Tipo de Documento</label>
         @Html.DropDownList("tipoDocumento",
             new SelectList(new[] {
                 new { Value = "BORRADOR_AOCR", Text = "Borrador de Certificado AOCR" }
@@ -41,22 +44,26 @@
 
 
     <div class="mb-3">
-        <label for="archivo" class="form-label">Archivo</label>
+        <label for="archivo" class="aocr-field-label">Archivo</label>
         <input type="file" name="archivo" id="archivo" class="form-control" required />
-        <small class="form-text text-muted">Formatos permitidos: .pdf, .jpg, .png, .doc, .docx, .zip. Máx: 10 MB</small>
+        <div class="aocr-field-help">Formatos permitidos: .pdf, .jpg, .png, .doc, .docx, .zip. Máx: 10 MB</div>
     </div>
 
     <div class="mb-3">
-        <label for="observaciones" class="form-label">Observaciones</label>
+        <label for="observaciones" class="aocr-field-label">Observaciones</label>
         <textarea name="observaciones" class="form-control" rows="3" placeholder="Opcional">@Model.Observaciones</textarea>
     </div>
 
-    <button type="submit" class="btn btn-primary">
-        <i class="fas fa-upload"></i> Subir Documento
-    </button>
-    <a href="@Url.Action("Detalle", "SolicitudAOCR", new { id = Model.CodigoSolicitud })" class="btn btn-secondary ms-2">
-        Cancelar
-    </a>
+    <div class="d-flex gap-2">
+        <button type="submit" class="btn btn-aocr-primary">
+            <i class="fas fa-upload"></i> Subir Documento
+        </button>
+        <a href="@Url.Action("Detalle", "SolicitudAOCR", new { id = Model.CodigoSolicitud })" class="btn btn-aocr-secondary">
+            <i class="fas fa-arrow-left me-1"></i> Cancelar
+        </a>
+    </div>
 }
+    </div>
+</div>
 
 

@@ -421,6 +421,11 @@
     </style>
 }
 
+@Html.Partial("_PageHeader", new ViewDataDictionary {
+    { "Title", "Asignar Inspector" },
+    { "Subtitle", "Gestión Técnica — Designación institucional de inspectores" }
+})
+
 <div class="container-fluid mt-4 assign-inspector-page">
     <div class="assign-shell">
         <div class="card hero-card mb-4">

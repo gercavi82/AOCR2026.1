@@ -8,39 +8,45 @@
     Layout = "~/Views/Shared/_LayoutAOCR.cshtml";
 }
 
-<div class="container-fluid">
-    <div class="row">
-        <div class="col-md-12">
-            <div class="card">
-                <div class="card-header">
-                    <h4>@ViewBag.Title</h4>
-                </div>
-                <div class="card-body">
-                    <dl class="row">
-                        <dt class="col-sm-3">Número de Orden</dt>
-                        <dd class="col-sm-9">@Model.NumeroOrden</dd>
+@Html.Partial("_PageHeader", new ViewDataDictionary {
+    { "Title", "Detalle de Orden de Recaudación" },
+    { "Subtitle", "Orden #" + Model.NumeroOrden }
+})
 
-                        <dt class="col-sm-3">Fecha de Creación</dt>
-                        <dd class="col-sm-9">@Model.FechaCreacion.ToString("dd/MM/yyyy")</dd>
+@Html.Partial("_ActionToolbar", new ViewDataDictionary {
+    { "VolverUrl", Url.Action("MisOrdenes", "Orden") }
+})
 
-                        <dt class="col-sm-3">Estado</dt>
-                        <dd class="col-sm-9">@Html.Encode(WebUtility.HtmlDecode(Model.Estado))</dd>
-
-                        <dt class="col-sm-3">Subtotal</dt>
-                        <dd class="col-sm-9">@Model.Subtotal.ToString("N2") USD</dd>
-
-                        <dt class="col-sm-3">Administración</dt>
-                        <dd class="col-sm-9">@Model.Admin.ToString("N2") USD</dd>
-
-                        <dt class="col-sm-3">Total</dt>
-                        <dd class="col-sm-9">@Model.Total.ToString("N2") USD</dd>
-                    </dl>
-
-                    <a href="@Url.Action("MisOrdenes", "Orden")" class="btn btn-secondary">Volver a Mis Órdenes</a>
-                </div>
+<div class="card aocr-card">
+    <div class="card-body">
+        <div class="aocr-detail-grid">
+            <div class="aocr-detail-item">
+                <div class="aocr-detail-label">Número de Orden</div>
+                <div class="aocr-detail-value">@Model.NumeroOrden</div>
+            </div>
+            <div class="aocr-detail-item">
+                <div class="aocr-detail-label">Fecha de Creación</div>
+                <div class="aocr-detail-value">@Model.FechaCreacion.ToString("dd/MM/yyyy")</div>
+            </div>
+            <div class="aocr-detail-item">
+                <div class="aocr-detail-label">Estado</div>
+                <div class="aocr-detail-value">@Html.Partial("_StatusBadge", new ViewDataDictionary { { "Estado", WebUtility.HtmlDecode(Model.Estado) } })</div>
+            </div>
+            <div class="aocr-detail-item">
+                <div class="aocr-detail-label">Subtotal</div>
+                <div class="aocr-detail-value">@Model.Subtotal.ToString("N2") USD</div>
+            </div>
+            <div class="aocr-detail-item">
+                <div class="aocr-detail-label">Administración</div>
+                <div class="aocr-detail-value">@Model.Admin.ToString("N2") USD</div>
+            </div>
+            <div class="aocr-detail-item">
+                <div class="aocr-detail-label">Total</div>
+                <div class="aocr-detail-value fw-bold" style="font-size:1.2rem; color:var(--aocr-primary);">@Model.Total.ToString("N2") USD</div>
             </div>
         </div>
     </div>
 </div>
+
 
 

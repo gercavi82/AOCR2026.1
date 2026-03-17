@@ -7,14 +7,17 @@
     ViewBag.Title = "Nueva Orden de recaudación";
 }
 
-<div class="row">
-    <div class="col-md-12">
-        <div class="card">
-            <div class="card-header bg-primary text-white">
-                <h3 class="card-title mb-0">
-                    <i class="fas fa-plus-circle me-2"></i>@ViewBag.Title
-                </h3>
-            </div>
+@Html.Partial("_PageHeader", new ViewDataDictionary {
+    { "Title", "Nueva Orden de Recaudación" },
+    { "Subtitle", "Creación de orden para el flujo financiero AOCR" }
+})
+
+<div class="card aocr-form-card">
+    <div class="card-header" style="background: linear-gradient(135deg, var(--aocr-primary), var(--aocr-secondary)); color:#fff; border-radius: var(--aocr-radius-md) var(--aocr-radius-md) 0 0;">
+        <h3 class="card-title mb-0">
+            <i class="fas fa-plus-circle me-2"></i>@ViewBag.Title
+        </h3>
+    </div>
 
             @using (Html.BeginForm("Nueva", "OrdenRecaudacion", FormMethod.Post, new { id = "formOrden", @class = "form-horizontal", autocomplete = "off" }))
             {
@@ -201,7 +204,8 @@
             }
         </div>
     </div>
-</div>
+
+
 
 @section Scripts {
     <script>

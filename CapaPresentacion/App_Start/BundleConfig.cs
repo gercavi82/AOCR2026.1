@@ -16,7 +16,8 @@ namespace CapaPresentacion
                 "~/Content/bootstrap.min.css",
                 "~/Content/adminlte.min.css",
                 "~/Content/site.css",
-                "~/Content/fontawesome-all.min.css"
+                "~/Content/fontawesome-all.min.css",
+                "~/Content/aocr-institucional.css"
             ));
 
             bundles.Add(new StyleBundle("~/Content/plugins-css").Include(

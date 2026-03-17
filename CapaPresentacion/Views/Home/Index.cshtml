@@ -6,95 +6,62 @@
 @{
     ViewBag.Title = "Inicio - Sistema AOCR";
     Layout = "~/Views/Shared/_LayoutAOCR.cshtml";
+    ViewBag.AocrHeaderUserName = Model.NombreUsuario;
+    ViewBag.AocrHeaderRole = Model.RolUsuario;
+    ViewBag.AocrHeaderSubtitle = "Panel ergonómico para seguimiento operativo, control institucional y acceso directo a las acciones del sistema AOCR.";
+    ViewBag.AocrHeaderContextBadge = "Inicio";
+    ViewBag.AocrHeaderDateValue = DateTime.Now.ToString("dd/MM/yyyy");
+    ViewBag.AocrHeaderDateText = "Resumen habilitado para navegación y seguimiento diario";
 }
 
-@section Styles {
-    <link rel="stylesheet"
-          href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
-
-    <link rel="stylesheet"
-          href="@Url.Content("~/Content/css/dashboard.css")" />
-}
-
-<div class="container-fluid py-4">
-
-    <!-- HERO -->
-    <div class="hero-banner mb-4">
-        <div class="row align-items-center">
-            <div class="col-auto">
-                <img src="@Url.Content("~/Content/imganes/logo1.png")"
-                     class="hero-logo"
-                     alt="Logo DGAC" />
-            </div>
-            <div class="col">
-                <h2 class="mb-1 fw-bold">Bienvenido, @Model.NombreUsuario</h2>
-                <p class="mb-0">
-                    <i class="fas fa-user-shield me-2"></i>
-                    Perfil: <strong>@Model.RolUsuario</strong>
-                </p>
-            </div>
+<div class="aocr-view">
+    <div class="row g-3 mb-4">
+        <div class="col-12 col-md-6 col-xl-3">
+            @Html.Partial("_MetricCard", null, new ViewDataDictionary { { "Label", "Pendientes" }, { "Value", Model.SolicitudesPendientes }, { "Modifier", "warning" }, { "Icon", "fas fa-inbox" }, { "Caption", "Solicitudes por revisar" } })
+        </div>
+        <div class="col-12 col-md-6 col-xl-3">
+            @Html.Partial("_MetricCard", null, new ViewDataDictionary { { "Label", "En proceso" }, { "Value", Model.TramitesEnCurso }, { "Modifier", "info" }, { "Icon", "fas fa-gears" }, { "Caption", "Trámites en curso" } })
+        </div>
+        <div class="col-12 col-md-6 col-xl-3">
+            @Html.Partial("_MetricCard", null, new ViewDataDictionary { { "Label", "Avisos" }, { "Value", Model.NotificacionesNuevas }, { "Modifier", "success" }, { "Icon", "fas fa-bell" }, { "Caption", "Notificaciones nuevas" } })
+        </div>
+        <div class="col-12 col-md-6 col-xl-3">
+            @Html.Partial("_MetricCard", null, new ViewDataDictionary { { "Label", "Fecha" }, { "Value", DateTime.Now.ToString("dd MMM yyyy") }, { "Modifier", "primary" }, { "Icon", "fas fa-calendar-day" }, { "Caption", "Referencia institucional" } })
         </div>
     </div>
 
-    <!-- KPIS -->
-    <div class="row mb-4">
-        <div class="col-md-3 mb-3">
-            <div class="kpi-card">
-                <p class="kpi-title">Pendientes</p>
-                <h3 class="kpi-value">@Model.SolicitudesPendientes</h3>
-            </div>
-        </div>
-
-        <div class="col-md-3 mb-3">
-            <div class="kpi-card" style="border-left-color:#3b82f6;">
-                <p class="kpi-title">En proceso</p>
-                <h3 class="kpi-value">@Model.TramitesEnCurso</h3>
-            </div>
-        </div>
-
-        <div class="col-md-3 mb-3">
-            <div class="kpi-card" style="border-left-color:#10b981;">
-                <p class="kpi-title">Avisos</p>
-                <h3 class="kpi-value">@Model.NotificacionesNuevas</h3>
-            </div>
-        </div>
-
-        <div class="col-md-3 mb-3">
-            <div class="kpi-card" style="border-left-color:#6c757d;">
-                <p class="kpi-title">Fecha</p>
-                <h3 class="kpi-value">@DateTime.Now.ToString("dd MMM yyyy")</h3>
-            </div>
-        </div>
-    </div>
-
-    <!-- ACCIONES -->
-    <div class="card shadow-sm p-3">
-        <h5 class="text-muted mb-3">
-            <i class="fas fa-bolt me-2"></i> Acciones rápidas
-        </h5>
-
-        <div class="row">
-            @if (Model.MostrarModuloOperador)
-            {
-                <div class="col-md-3 mb-2">
-                    <button class="btn btn-dgac-primary text-white w-100"
-                            onclick="cargarFormulario(0)">
-                        <i class="fas fa-plus-circle me-2"></i>
-                        Crear Solicitud
-                    </button>
+    <div class="card aocr-card">
+        <div class="card-body">
+            <h5 class="aocr-section-title"><i class="fas fa-bolt me-2"></i> Acciones rápidas</h5>
+            <div class="row g-3">
+                @if (Model.MostrarModuloOperador)
+                {
+                    <div class="col-md-3 col-sm-6">
+                        <button class="aocr-quick-action w-100 border-0 text-start"
+                                onclick="cargarFormulario(0)">
+                            <span class="aocr-quick-action__icon">
+                                <i class="fas fa-plus-circle"></i>
+                            </span>
+                            <span class="aocr-quick-action__body">
+                                <strong class="aocr-quick-action__title">Crear Solicitud</strong>
+                                <span class="aocr-quick-action__text">Nueva solicitud AOCR</span>
+                            </span>
+                        </button>
+                    </div>
+                }
+                <div class="col-md-3 col-sm-6">
+                    <a class="aocr-quick-action w-100"
+                       href="@Url.Action("Index", "SolicitudAOCR")">
+                        <span class="aocr-quick-action__icon">
+                            <i class="fas fa-file-alt"></i>
+                        </span>
+                        <span class="aocr-quick-action__body">
+                            <strong class="aocr-quick-action__title">Mis Solicitudes</strong>
+                            <span class="aocr-quick-action__text">Gestionar mis trámites</span>
+                        </span>
+                    </a>
                 </div>
-            }
-
-            <div class="col-md-3 mb-2">
-                <a class="btn btn-outline-secondary w-100"
-                   href="@Url.Action("MisSolicitudes","SolicitudAOCR")">
-                    <i class="fas fa-file-alt me-2"></i>
-                    Mis Solicitudes
-                </a>
             </div>
         </div>
     </div>
-
 </div>
-
-

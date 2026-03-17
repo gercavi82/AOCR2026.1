@@ -1,0 +1,96 @@
+@inherits System.Web.Mvc.WebViewPage
+@using System
+@{
+    Func<string, string> getValue = key =>
+    {
+        var raw = ViewData[key];
+        return raw == null ? string.Empty : raw.ToString().Trim();
+    };
+
+    var nombreUsuario = getValue("AocrHeaderUserName");
+    if (string.IsNullOrWhiteSpace(nombreUsuario))
+    {
+        nombreUsuario = ((Session["NombreUsuario"] as string) ?? "Usuario AOCR").Trim();
+    }
+
+    var rolActual = getValue("AocrHeaderRole");
+    if (string.IsNullOrWhiteSpace(rolActual))
+    {
+        rolActual = ((Session["Rol"] as string) ?? "Perfil institucional").Trim();
+    }
+
+    var kicker = getValue("AocrHeaderKicker");
+    if (string.IsNullOrWhiteSpace(kicker))
+    {
+        kicker = "SISTEMA INSTITUCIONAL DGAC";
+    }
+
+    var subtitulo = getValue("AocrHeaderSubtitle");
+    if (string.IsNullOrWhiteSpace(subtitulo))
+    {
+        subtitulo = "Panel institucional para seguimiento operativo, control de procesos y acceso directo al ecosistema AOCR.";
+    }
+
+    var badgeExtra = getValue("AocrHeaderContextBadge");
+    var sidecardLabel = getValue("AocrHeaderDateLabel");
+    if (string.IsNullOrWhiteSpace(sidecardLabel))
+    {
+        sidecardLabel = "FECHA INSTITUCIONAL";
+    }
+
+    var fechaInstitucional = getValue("AocrHeaderDateValue");
+    if (string.IsNullOrWhiteSpace(fechaInstitucional))
+    {
+        fechaInstitucional = DateTime.Now.ToString("dd/MM/yyyy");
+    }
+
+    var sidecardText = getValue("AocrHeaderDateText");
+    if (string.IsNullOrWhiteSpace(sidecardText))
+    {
+        sidecardText = "Panel habilitado para seguimiento y decisiones rápidas";
+    }
+}
+
+<section class="aocr-header-hero" aria-label="Resumen institucional AOCR">
+    <div class="aocr-header-hero-body">
+        <div class="aocr-header-hero-grid">
+            <div class="aocr-header-main">
+                <div class="aocr-header-logo-wrap">
+                    <img src="@Url.Content("~/Content/imganes/logo1.png")"
+                         alt="Logo DAC"
+                         class="aocr-header-logo" />
+                </div>
+
+                <div class="aocr-header-copy">
+                    <span class="aocr-header-kicker">@kicker</span>
+                    <h1 class="aocr-header-title">Bienvenido, @nombreUsuario</h1>
+                    <p class="aocr-header-subtitle">@subtitulo</p>
+
+                    <div class="aocr-header-badges">
+                        <span class="aocr-header-badge">
+                            <i class="fas fa-user-shield"></i>
+                            @rolActual
+                        </span>
+                        <span class="aocr-header-badge aocr-header-badge--soft">
+                            <i class="fas fa-circle-check"></i>
+                            Sesión activa
+                        </span>
+                        @if (!string.IsNullOrWhiteSpace(badgeExtra))
+                        {
+                            <span class="aocr-header-badge aocr-header-badge--ghost">
+                                <i class="fas fa-compass"></i>
+                                @badgeExtra
+                            </span>
+                        }
+                    </div>
+                </div>
+            </div>
+
+            <div class="aocr-header-sidecard">
+                <span class="aocr-header-sidecard-label">@sidecardLabel</span>
+                <strong class="aocr-header-sidecard-value">@fechaInstitucional</strong>
+                <span class="aocr-header-sidecard-text">@sidecardText</span>
+            </div>
+        </div>
+    </div>
+</section>
