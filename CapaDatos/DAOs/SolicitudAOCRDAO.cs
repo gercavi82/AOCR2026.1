@@ -16,6 +16,13 @@ namespace CapaDatos.DAOs
     {
         private readonly ILoggingService _logger = LoggingServiceFactory.Create();
 
+        private sealed class InspeccionExistenteInfo
+        {
+            public int CodigoInspeccion { get; set; }
+            public string NumeroInspeccion { get; set; }
+            public string Estado { get; set; }
+        }
+
         private string ConnectionString =>
             ConfigurationManager.ConnectionStrings["AOCRConnection"].ConnectionString;
 
@@ -711,18 +718,6 @@ WHERE codigo_solicitud=@id AND deleted_at IS NULL;";
                             estadoAnterior = value.ToString();
                         }
 
-                        var estadoActualNormalizado = EstadoSolicitud.Normalizar(estadoAnterior);
-                        if (!string.Equals(estadoActualNormalizado, EstadoSolicitud.PendienteAsignacionRT, StringComparison.OrdinalIgnoreCase) &&
-                            !string.Equals(estadoActualNormalizado, EstadoSolicitud.Pendiente, StringComparison.OrdinalIgnoreCase) &&
-                            !string.Equals(estadoActualNormalizado, EstadoSolicitud.AceptacionDocumental, StringComparison.OrdinalIgnoreCase) &&
-                            !string.Equals(estadoActualNormalizado, EstadoSolicitud.DocumentacionCompleta, StringComparison.OrdinalIgnoreCase))
-                        {
-                            _logger.LogWarning("[GestionInspeccion] PuedeGestionar=False. Motivo=Estado no permitido para asignacion. EstadoActual=" + (estadoAnterior ?? ""));
-                            mensaje = "La solicitud no se encuentra en un estado válido para asignación técnica.";
-                            tx.Rollback();
-                            return false;
-                        }
-
                         string estadoRecaudacion;
                         if (!TieneRecaudacionFinalizada(cn, tx, codigoSolicitud, out estadoRecaudacion))
                         {
@@ -734,6 +729,36 @@ WHERE codigo_solicitud=@id AND deleted_at IS NULL;";
 
                         var columnasSolicitud = ObtenerColumnasTabla(cn, "aocr_tbsolicitud");
                         var columnasInspeccion = ObtenerColumnasTabla(cn, "aocr_tbinspeccion");
+                        var estadoActualNormalizado = EstadoSolicitud.Normalizar(estadoAnterior);
+                        var inspeccionExistente = ObtenerUltimaInspeccionPorSolicitud(cn, tx, codigoSolicitud);
+                        var esReasignacion = inspeccionExistente != null && PermiteReasignacion(inspeccionExistente.Estado);
+
+                        var estadoPermiteAsignacionInicial =
+                            string.Equals(estadoActualNormalizado, EstadoSolicitud.PendienteAsignacionRT, StringComparison.OrdinalIgnoreCase) ||
+                            string.Equals(estadoActualNormalizado, EstadoSolicitud.Pendiente, StringComparison.OrdinalIgnoreCase) ||
+                            string.Equals(estadoActualNormalizado, EstadoSolicitud.AceptacionDocumental, StringComparison.OrdinalIgnoreCase) ||
+                            string.Equals(estadoActualNormalizado, EstadoSolicitud.DocumentacionCompleta, StringComparison.OrdinalIgnoreCase);
+
+                        var estadoPermiteReasignacion =
+                            string.Equals(estadoActualNormalizado, EstadoSolicitud.EnInspeccion, StringComparison.OrdinalIgnoreCase) &&
+                            esReasignacion;
+
+                        if (!estadoPermiteAsignacionInicial && !estadoPermiteReasignacion)
+                        {
+                            if (inspeccionExistente != null && !PermiteReasignacion(inspeccionExistente.Estado))
+                            {
+                                _logger.LogWarning("[GestionInspeccion] PuedeGestionar=False. Motivo=Inspeccion ya iniciada/no editable. EstadoSolicitud=" + (estadoAnterior ?? "") + ", EstadoInspeccion=" + (inspeccionExistente.Estado ?? ""));
+                                mensaje = "La solicitud ya tiene una inspección en ejecución y no puede reasignarse desde esta pantalla.";
+                            }
+                            else
+                            {
+                                _logger.LogWarning("[GestionInspeccion] PuedeGestionar=False. Motivo=Estado no permitido para asignacion. EstadoActual=" + (estadoAnterior ?? ""));
+                                mensaje = "La solicitud no se encuentra en un estado válido para asignación técnica.";
+                            }
+
+                            tx.Rollback();
+                            return false;
+                        }
 
                         var inspectorPrincipalCodigo = ParseIntSafe(inspectorPrincipal.Cedula);
                         var principalCedulaPersist = (inspectorPrincipal.Cedula ?? string.Empty).Trim();
@@ -796,136 +821,186 @@ WHERE codigo_solicitud=@id AND deleted_at IS NULL;";
                             }
                         }
 
-                        var numeroInspeccion = GenerarNumeroInspeccionUnico(cn, tx, codigoSolicitud, columnasInspeccion);
-
-                        var columnasInsert = new List<string>();
-                        var valoresInsert = new List<string>();
-
-                        columnasInsert.Add("codigo_solicitud");
-                        valoresInsert.Add("@codigo_solicitud");
-
-                        if (columnasInspeccion.Contains("numero_inspeccion"))
-                        {
-                            columnasInsert.Add("numero_inspeccion");
-                            valoresInsert.Add("@numero_inspeccion");
-                        }
-
-                        if (columnasInspeccion.Contains("tipo"))
-                        {
-                            columnasInsert.Add("tipo");
-                            valoresInsert.Add("@tipo");
-                        }
-
-                        if (columnasInspeccion.Contains("fecha_programada"))
-                        {
-                            columnasInsert.Add("fecha_programada");
-                            valoresInsert.Add("@fecha_programada");
-                        }
-
-                        if (columnasInspeccion.Contains("estado"))
-                        {
-                            columnasInsert.Add("estado");
-                            valoresInsert.Add("@estado_inspeccion");
-                        }
-
-                        if (columnasInspeccion.Contains("codigo_inspector"))
-                        {
-                            columnasInsert.Add("codigo_inspector");
-                            valoresInsert.Add("@codigo_inspector");
-                        }
-
-                        if (columnasInspeccion.Contains("comentarios"))
-                        {
-                            columnasInsert.Add("comentarios");
-                            valoresInsert.Add("@comentarios");
-                        }
-
-                        if (columnasInspeccion.Contains("created_at"))
-                        {
-                            columnasInsert.Add("created_at");
-                            valoresInsert.Add("NOW()");
-                        }
-
-                        if (columnasInspeccion.Contains("created_by"))
-                        {
-                            columnasInsert.Add("created_by");
-                            valoresInsert.Add("@created_by");
-                        }
-
-                        if (columnasInspeccion.Contains("updated_at"))
-                        {
-                            columnasInsert.Add("updated_at");
-                            valoresInsert.Add("NOW()");
-                        }
-
-                        if (columnasInspeccion.Contains("updated_by"))
-                        {
-                            columnasInsert.Add("updated_by");
-                            valoresInsert.Add("@updated_by_ins");
-                        }
-
-                        if (columnasInspeccion.Contains("inspector_principal_cedula"))
-                        {
-                            columnasInsert.Add("inspector_principal_cedula");
-                            valoresInsert.Add("@inspector_principal_cedula");
-                        }
-
-                        if (columnasInspeccion.Contains("inspector_principal_nombre"))
-                        {
-                            columnasInsert.Add("inspector_principal_nombre");
-                            valoresInsert.Add("@inspector_principal_nombre");
-                        }
-
-                        if (columnasInspeccion.Contains("inspector_principal_tipo"))
-                        {
-                            columnasInsert.Add("inspector_principal_tipo");
-                            valoresInsert.Add("@inspector_principal_tipo");
-                        }
-
-                        if (columnasInspeccion.Contains("inspector_apoyo_cedula"))
-                        {
-                            columnasInsert.Add("inspector_apoyo_cedula");
-                            valoresInsert.Add("@inspector_apoyo_cedula_ins");
-                        }
-
-                        if (columnasInspeccion.Contains("inspector_apoyo_nombre"))
-                        {
-                            columnasInsert.Add("inspector_apoyo_nombre");
-                            valoresInsert.Add("@inspector_apoyo_nombre_ins");
-                        }
-
-                        if (columnasInspeccion.Contains("inspector_apoyo_tipo"))
-                        {
-                            columnasInsert.Add("inspector_apoyo_tipo");
-                            valoresInsert.Add("@inspector_apoyo_tipo_ins");
-                        }
-
-                        var sqlInsertInspeccion = "INSERT INTO aocr_tbinspeccion (" +
-                                                  string.Join(", ", columnasInsert) +
-                                                  ") VALUES (" +
-                                                  string.Join(", ", valoresInsert) +
-                                                  ") RETURNING codigo_inspeccion;";
-
                         int codigoInspeccion;
-                        using (var cmdIns = new NpgsqlCommand(sqlInsertInspeccion, cn, tx))
+                        if (esReasignacion)
                         {
-                            cmdIns.Parameters.AddWithValue("@codigo_solicitud", codigoSolicitud);
-                            cmdIns.Parameters.AddWithValue("@numero_inspeccion", (object)(numeroInspeccion ?? string.Empty));
-                            cmdIns.Parameters.AddWithValue("@tipo", 1);
-                            cmdIns.Parameters.AddWithValue("@fecha_programada", fecha.Date);
-                            cmdIns.Parameters.AddWithValue("@estado_inspeccion", (object)estadoInspeccionPersistencia ?? DBNull.Value);
-                            cmdIns.Parameters.AddWithValue("@codigo_inspector", (object)inspectorPrincipalCodigo ?? DBNull.Value);
-                            cmdIns.Parameters.AddWithValue("@comentarios", (object)ConstruirComentarioAsignacion(obs, inspectorPrincipal, inspectorApoyo) ?? DBNull.Value);
-                            cmdIns.Parameters.AddWithValue("@created_by", (object)actorAsignador ?? DBNull.Value);
-                            cmdIns.Parameters.AddWithValue("@updated_by_ins", (object)actorAsignador ?? DBNull.Value);
-                            cmdIns.Parameters.AddWithValue("@inspector_principal_cedula", (object)principalCedulaPersist ?? DBNull.Value);
-                            cmdIns.Parameters.AddWithValue("@inspector_principal_nombre", (object)inspectorPrincipalNombre ?? DBNull.Value);
-                            cmdIns.Parameters.AddWithValue("@inspector_principal_tipo", (object)inspectorPrincipalTipo ?? DBNull.Value);
-                            cmdIns.Parameters.AddWithValue("@inspector_apoyo_cedula_ins", inspectorApoyoCedulaValue);
-                            cmdIns.Parameters.AddWithValue("@inspector_apoyo_nombre_ins", inspectorApoyoNombreValue);
-                            cmdIns.Parameters.AddWithValue("@inspector_apoyo_tipo_ins", inspectorApoyoTipoValue);
+                            var setInspeccion = new List<string>();
+                            if (columnasInspeccion.Contains("tipo")) setInspeccion.Add("tipo=@tipo");
+                            if (columnasInspeccion.Contains("fecha_programada")) setInspeccion.Add("fecha_programada=@fecha_programada");
+                            if (columnasInspeccion.Contains("estado")) setInspeccion.Add("estado=@estado_inspeccion");
+                            if (columnasInspeccion.Contains("codigo_inspector")) setInspeccion.Add("codigo_inspector=@codigo_inspector");
+                            if (columnasInspeccion.Contains("comentarios")) setInspeccion.Add("comentarios=@comentarios");
+                            if (columnasInspeccion.Contains("updated_at")) setInspeccion.Add("updated_at=NOW()");
+                            if (columnasInspeccion.Contains("updated_by")) setInspeccion.Add("updated_by=@updated_by_ins");
+                            if (columnasInspeccion.Contains("inspector_principal_cedula")) setInspeccion.Add("inspector_principal_cedula=@inspector_principal_cedula");
+                            if (columnasInspeccion.Contains("inspector_principal_nombre")) setInspeccion.Add("inspector_principal_nombre=@inspector_principal_nombre");
+                            if (columnasInspeccion.Contains("inspector_principal_tipo")) setInspeccion.Add("inspector_principal_tipo=@inspector_principal_tipo");
+                            if (columnasInspeccion.Contains("inspector_apoyo_cedula")) setInspeccion.Add("inspector_apoyo_cedula=@inspector_apoyo_cedula_ins");
+                            if (columnasInspeccion.Contains("inspector_apoyo_nombre")) setInspeccion.Add("inspector_apoyo_nombre=@inspector_apoyo_nombre_ins");
+                            if (columnasInspeccion.Contains("inspector_apoyo_tipo")) setInspeccion.Add("inspector_apoyo_tipo=@inspector_apoyo_tipo_ins");
 
-                            codigoInspeccion = Convert.ToInt32(cmdIns.ExecuteScalar());
+                            if (setInspeccion.Count == 0)
+                            {
+                                throw new Exception("No existen columnas editables en aocr_tbinspeccion para registrar la reasignación.");
+                            }
+
+                            var sqlUpdateInspeccion = "UPDATE aocr_tbinspeccion SET " + string.Join(", ", setInspeccion) + " WHERE codigo_inspeccion=@codigo_inspeccion;";
+                            using (var cmdIns = new NpgsqlCommand(sqlUpdateInspeccion, cn, tx))
+                            {
+                                cmdIns.Parameters.AddWithValue("@codigo_inspeccion", inspeccionExistente.CodigoInspeccion);
+                                cmdIns.Parameters.AddWithValue("@tipo", 1);
+                                cmdIns.Parameters.AddWithValue("@fecha_programada", fecha.Date);
+                                cmdIns.Parameters.AddWithValue("@estado_inspeccion", (object)estadoInspeccionPersistencia ?? DBNull.Value);
+                                cmdIns.Parameters.AddWithValue("@codigo_inspector", (object)inspectorPrincipalCodigo ?? DBNull.Value);
+                                cmdIns.Parameters.AddWithValue("@comentarios", (object)ConstruirComentarioAsignacion(obs, inspectorPrincipal, inspectorApoyo) ?? DBNull.Value);
+                                cmdIns.Parameters.AddWithValue("@updated_by_ins", (object)actorAsignador ?? DBNull.Value);
+                                cmdIns.Parameters.AddWithValue("@inspector_principal_cedula", (object)principalCedulaPersist ?? DBNull.Value);
+                                cmdIns.Parameters.AddWithValue("@inspector_principal_nombre", (object)inspectorPrincipalNombre ?? DBNull.Value);
+                                cmdIns.Parameters.AddWithValue("@inspector_principal_tipo", (object)inspectorPrincipalTipo ?? DBNull.Value);
+                                cmdIns.Parameters.AddWithValue("@inspector_apoyo_cedula_ins", inspectorApoyoCedulaValue);
+                                cmdIns.Parameters.AddWithValue("@inspector_apoyo_nombre_ins", inspectorApoyoNombreValue);
+                                cmdIns.Parameters.AddWithValue("@inspector_apoyo_tipo_ins", inspectorApoyoTipoValue);
+
+                                if (cmdIns.ExecuteNonQuery() <= 0)
+                                {
+                                    throw new Exception("No fue posible actualizar la inspección vigente para la reasignación.");
+                                }
+                            }
+
+                            codigoInspeccion = inspeccionExistente.CodigoInspeccion;
+                        }
+                        else
+                        {
+                            var numeroInspeccion = GenerarNumeroInspeccionUnico(cn, tx, codigoSolicitud, columnasInspeccion);
+
+                            var columnasInsert = new List<string>();
+                            var valoresInsert = new List<string>();
+
+                            columnasInsert.Add("codigo_solicitud");
+                            valoresInsert.Add("@codigo_solicitud");
+
+                            if (columnasInspeccion.Contains("numero_inspeccion"))
+                            {
+                                columnasInsert.Add("numero_inspeccion");
+                                valoresInsert.Add("@numero_inspeccion");
+                            }
+
+                            if (columnasInspeccion.Contains("tipo"))
+                            {
+                                columnasInsert.Add("tipo");
+                                valoresInsert.Add("@tipo");
+                            }
+
+                            if (columnasInspeccion.Contains("fecha_programada"))
+                            {
+                                columnasInsert.Add("fecha_programada");
+                                valoresInsert.Add("@fecha_programada");
+                            }
+
+                            if (columnasInspeccion.Contains("estado"))
+                            {
+                                columnasInsert.Add("estado");
+                                valoresInsert.Add("@estado_inspeccion");
+                            }
+
+                            if (columnasInspeccion.Contains("codigo_inspector"))
+                            {
+                                columnasInsert.Add("codigo_inspector");
+                                valoresInsert.Add("@codigo_inspector");
+                            }
+
+                            if (columnasInspeccion.Contains("comentarios"))
+                            {
+                                columnasInsert.Add("comentarios");
+                                valoresInsert.Add("@comentarios");
+                            }
+
+                            if (columnasInspeccion.Contains("created_at"))
+                            {
+                                columnasInsert.Add("created_at");
+                                valoresInsert.Add("NOW()");
+                            }
+
+                            if (columnasInspeccion.Contains("created_by"))
+                            {
+                                columnasInsert.Add("created_by");
+                                valoresInsert.Add("@created_by");
+                            }
+
+                            if (columnasInspeccion.Contains("updated_at"))
+                            {
+                                columnasInsert.Add("updated_at");
+                                valoresInsert.Add("NOW()");
+                            }
+
+                            if (columnasInspeccion.Contains("updated_by"))
+                            {
+                                columnasInsert.Add("updated_by");
+                                valoresInsert.Add("@updated_by_ins");
+                            }
+
+                            if (columnasInspeccion.Contains("inspector_principal_cedula"))
+                            {
+                                columnasInsert.Add("inspector_principal_cedula");
+                                valoresInsert.Add("@inspector_principal_cedula");
+                            }
+
+                            if (columnasInspeccion.Contains("inspector_principal_nombre"))
+                            {
+                                columnasInsert.Add("inspector_principal_nombre");
+                                valoresInsert.Add("@inspector_principal_nombre");
+                            }
+
+                            if (columnasInspeccion.Contains("inspector_principal_tipo"))
+                            {
+                                columnasInsert.Add("inspector_principal_tipo");
+                                valoresInsert.Add("@inspector_principal_tipo");
+                            }
+
+                            if (columnasInspeccion.Contains("inspector_apoyo_cedula"))
+                            {
+                                columnasInsert.Add("inspector_apoyo_cedula");
+                                valoresInsert.Add("@inspector_apoyo_cedula_ins");
+                            }
+
+                            if (columnasInspeccion.Contains("inspector_apoyo_nombre"))
+                            {
+                                columnasInsert.Add("inspector_apoyo_nombre");
+                                valoresInsert.Add("@inspector_apoyo_nombre_ins");
+                            }
+
+                            if (columnasInspeccion.Contains("inspector_apoyo_tipo"))
+                            {
+                                columnasInsert.Add("inspector_apoyo_tipo");
+                                valoresInsert.Add("@inspector_apoyo_tipo_ins");
+                            }
+
+                            var sqlInsertInspeccion = "INSERT INTO aocr_tbinspeccion (" +
+                                                      string.Join(", ", columnasInsert) +
+                                                      ") VALUES (" +
+                                                      string.Join(", ", valoresInsert) +
+                                                      ") RETURNING codigo_inspeccion;";
+
+                            using (var cmdIns = new NpgsqlCommand(sqlInsertInspeccion, cn, tx))
+                            {
+                                cmdIns.Parameters.AddWithValue("@codigo_solicitud", codigoSolicitud);
+                                cmdIns.Parameters.AddWithValue("@numero_inspeccion", (object)(numeroInspeccion ?? string.Empty));
+                                cmdIns.Parameters.AddWithValue("@tipo", 1);
+                                cmdIns.Parameters.AddWithValue("@fecha_programada", fecha.Date);
+                                cmdIns.Parameters.AddWithValue("@estado_inspeccion", (object)estadoInspeccionPersistencia ?? DBNull.Value);
+                                cmdIns.Parameters.AddWithValue("@codigo_inspector", (object)inspectorPrincipalCodigo ?? DBNull.Value);
+                                cmdIns.Parameters.AddWithValue("@comentarios", (object)ConstruirComentarioAsignacion(obs, inspectorPrincipal, inspectorApoyo) ?? DBNull.Value);
+                                cmdIns.Parameters.AddWithValue("@created_by", (object)actorAsignador ?? DBNull.Value);
+                                cmdIns.Parameters.AddWithValue("@updated_by_ins", (object)actorAsignador ?? DBNull.Value);
+                                cmdIns.Parameters.AddWithValue("@inspector_principal_cedula", (object)principalCedulaPersist ?? DBNull.Value);
+                                cmdIns.Parameters.AddWithValue("@inspector_principal_nombre", (object)inspectorPrincipalNombre ?? DBNull.Value);
+                                cmdIns.Parameters.AddWithValue("@inspector_principal_tipo", (object)inspectorPrincipalTipo ?? DBNull.Value);
+                                cmdIns.Parameters.AddWithValue("@inspector_apoyo_cedula_ins", inspectorApoyoCedulaValue);
+                                cmdIns.Parameters.AddWithValue("@inspector_apoyo_nombre_ins", inspectorApoyoNombreValue);
+                                cmdIns.Parameters.AddWithValue("@inspector_apoyo_tipo_ins", inspectorApoyoTipoValue);
+
+                                codigoInspeccion = Convert.ToInt32(cmdIns.ExecuteScalar());
+                            }
                         }
 
                         var daoAsignacionRt = new UsuarioInternoRTDAO();
@@ -944,7 +1019,7 @@ WHERE codigo_solicitud=@id AND deleted_at IS NULL;";
 
                         tx.Commit();
 
-                        _logger.LogInfo("[GestionInspeccion] PuedeGestionar=True. SolicitudId=" + codigoSolicitud + ", CodigoInspeccion=" + codigoInspeccion + ", EstadoAnterior=" + (estadoAnterior ?? "") + ", EstadoNuevo=" + (estadoNuevo ?? ""));
+                        _logger.LogInfo("[GestionInspeccion] PuedeGestionar=True. Operacion=" + (esReasignacion ? "REASIGNACION" : "ASIGNACION") + ", SolicitudId=" + codigoSolicitud + ", CodigoInspeccion=" + codigoInspeccion + ", EstadoAnterior=" + (estadoAnterior ?? "") + ", EstadoNuevo=" + (estadoNuevo ?? ""));
 
                         try
                         {
@@ -953,14 +1028,16 @@ WHERE codigo_solicitud=@id AND deleted_at IS NULL;";
                                 estadoAnterior,
                                 estadoNuevo,
                                 inspectorPrincipalCodigo ?? 0,
-                                "Asignación de inspección Nro. " + codigoInspeccion);
+                                (esReasignacion ? "Reasignación" : "Asignación") + " de inspección Nro. " + codigoInspeccion);
                         }
                         catch
                         {
                             // El historial es auxiliar; la transacción principal ya se consolidó.
                         }
 
-                        mensaje = "Asignación realizada con éxito. Inspección creada: " + codigoInspeccion;
+                        mensaje = esReasignacion
+                            ? "Reasignación realizada con éxito. Inspección actualizada: " + codigoInspeccion
+                            : "Asignación realizada con éxito. Inspección creada: " + codigoInspeccion;
                         return true;
                     }
                 }
@@ -1295,6 +1372,46 @@ WHERE codigo_solicitud=@id AND deleted_at IS NULL;";
         {
             int parsed;
             return int.TryParse(value, out parsed) ? (int?)parsed : null;
+        }
+
+        private static InspeccionExistenteInfo ObtenerUltimaInspeccionPorSolicitud(
+            NpgsqlConnection cn,
+            NpgsqlTransaction tx,
+            int codigoSolicitud)
+        {
+            const string sql = @"
+                SELECT codigo_inspeccion, numero_inspeccion, estado
+                FROM aocr_tbinspeccion
+                WHERE codigo_solicitud = @codigoSolicitud
+                ORDER BY codigo_inspeccion DESC
+                LIMIT 1
+                FOR UPDATE;";
+
+            using (var cmd = new NpgsqlCommand(sql, cn, tx))
+            {
+                cmd.Parameters.AddWithValue("@codigoSolicitud", codigoSolicitud);
+                using (var rd = cmd.ExecuteReader())
+                {
+                    if (!rd.Read())
+                    {
+                        return null;
+                    }
+
+                    return new InspeccionExistenteInfo
+                    {
+                        CodigoInspeccion = rd["codigo_inspeccion"] != DBNull.Value ? Convert.ToInt32(rd["codigo_inspeccion"]) : 0,
+                        NumeroInspeccion = rd["numero_inspeccion"] != DBNull.Value ? rd["numero_inspeccion"].ToString() : null,
+                        Estado = rd["estado"] != DBNull.Value ? rd["estado"].ToString() : null
+                    };
+                }
+            }
+        }
+
+        private static bool PermiteReasignacion(string estadoInspeccion)
+        {
+            var estadoNormalizado = EstadosInspeccion.NormalizarEstado(estadoInspeccion);
+            return string.Equals(estadoNormalizado, EstadosInspeccion.SOLICITUD_INSPECCION_CREADA, StringComparison.OrdinalIgnoreCase)
+                || string.Equals(estadoNormalizado, EstadosInspeccion.VERIFICACION_SOLICITUD, StringComparison.OrdinalIgnoreCase);
         }
 
         private static string ConstruirComentarioAsignacion(string observaciones, InspectorAs400Record principal, InspectorAs400Record apoyo)

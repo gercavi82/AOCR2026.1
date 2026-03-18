@@ -284,23 +284,16 @@
                                                 </div>
 
                                                 <div class="form-group mb-0">
-                                                    <label for="companiaActivaCodigoVista">Código de compañía</label>
+                                                    <label for="companiaActivaCodigoVista">Código de compañía (OACI)</label>
                                                     <input type="text"
                                                            class="form-control"
                                                            id="companiaActivaCodigoVista"
-                                                           value="@HttpUtility.HtmlEncode(companiaActivaCodigo)"
+                                                           value="@HttpUtility.HtmlEncode(codigoOaciInicial)"
                                                            readonly />
                                                 </div>
-
-                                                <div class="form-group mt-3 mb-0">
-                                                    <label for="codigoOaci">Código OACI *</label>
-                                                    <input type="text"
-                                                           class="form-control text-uppercase"
-                                                           id="codigoOaci"
-                                                           value="@HttpUtility.HtmlEncode(codigoOaciInicial)"
-                                                           maxlength="8"
-                                                           required />
-                                                </div>
+                                                <input type="hidden"
+                                                       id="codigoOaci"
+                                                       value="@HttpUtility.HtmlEncode(codigoOaciInicial)" />
                                             </div>
                                         </div>
 

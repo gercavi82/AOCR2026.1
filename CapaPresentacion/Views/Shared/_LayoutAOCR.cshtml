@@ -283,16 +283,22 @@
             <div class="sidebar">
                 <!-- Información usuario sidebar -->
                 <div class="user-panel d-flex align-items-center compact-user-panel aocr-sidebar-summary">
-                    <div class="image">
+                    <div class="image aocr-sidebar-summary__avatar">
+                        <span class="aocr-sidebar-summary__status-dot"></span>
                         <img src="@avatarUrl"
                              class="img-circle elevation-2"
                              alt="@avatarAlt"
                              width="40" height="40"
                              onerror="this.onerror=null; this.src='@defaultAvatar';">
                     </div>
-                    <div class="info">
+                    <div class="info aocr-sidebar-summary__info">
+                        <span class="aocr-sidebar-summary__eyebrow">Acceso institucional</span>
                         <a href="@Url.Action("MiPerfil", "Usuario")" class="d-block aocr-sidebar-summary__name">@avatarAlt</a>
                         <small class="aocr-sidebar-summary__role" title="@subtituloSidebar">@subtituloSidebar</small>
+                        <span class="aocr-sidebar-summary__badge">
+                            <i class="fas fa-circle-check"></i>
+                            Usuario activo
+                        </span>
                     </div>
                 </div>
 

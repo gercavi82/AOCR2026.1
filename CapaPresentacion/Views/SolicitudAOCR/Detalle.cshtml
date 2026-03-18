@@ -16,8 +16,11 @@
         (estadoActual == EstadoSolicitud.Pendiente
          || estadoActual == EstadoSolicitud.EnRevision
          || estadoActual == EstadoSolicitud.DocumentacionPendiente
-         || estadoActual == EstadoSolicitud.Observada
          || estadoActual == EstadoSolicitud.Subsanada);
+
+    var revisionesDocumentales = ViewBag.RevisionesDocumentales as Dictionary<int, Tuple<string, string>>
+        ?? new Dictionary<int, Tuple<string, string>>();
+    var puedeFinalizarRevisionDocumental = (bool)(ViewBag.PuedeFinalizarRevisionDocumental ?? false);
 
     var puedeSolicitarInspeccion =
         (User.IsInRole("Inspector") || User.IsInRole("Administrador")) &&
@@ -505,13 +508,63 @@
     @if (puedeInspectorDocumental)
     {
         var documentosRevision = (ViewBag.DocumentosSolicitud as List<Documento>) ?? new List<Documento>();
+        var totalDocumentosRevision = documentosRevision.Count;
+        var documentosRevisados = documentosRevision.Count(doc =>
+        {
+            var estadoDoc = (doc.Estado ?? string.Empty).Trim().ToUpperInvariant();
+            Tuple<string, string> revisionActual;
+            return revisionesDocumentales.TryGetValue(doc.CodigoDocumento, out revisionActual)
+                   || estadoDoc == "APROBADO"
+                   || estadoDoc == "RECHAZADO";
+        });
+        var documentosConObservacionPendiente = documentosRevision.Count(doc =>
+        {
+            Tuple<string, string> revisionActual;
+            var decisionActual = string.Empty;
+            var observacionActual = (doc.Observaciones ?? string.Empty).Trim();
+
+            if (revisionesDocumentales.TryGetValue(doc.CodigoDocumento, out revisionActual) && revisionActual != null)
+            {
+                decisionActual = (revisionActual.Item1 ?? string.Empty).Trim().ToUpperInvariant();
+                observacionActual = string.IsNullOrWhiteSpace(revisionActual.Item2) ? observacionActual : revisionActual.Item2.Trim();
+            }
+            else if (string.Equals((doc.Estado ?? string.Empty).Trim(), "RECHAZADO", StringComparison.OrdinalIgnoreCase))
+            {
+                decisionActual = "DEVUELTO";
+            }
+
+            return (decisionActual == "DEVUELTO" || decisionActual == "OBSERVADO")
+                   && string.IsNullOrWhiteSpace(observacionActual);
+        });
+
         <div class="card aocr-detail-card aocr-review-card success mb-4">
             <div class="card-body p-4">
                 <div class="aocr-section-title mb-3">
                     <i class="fas fa-clipboard-check"></i>
                     <span>Revision Documental</span>
                 </div>
-                <p class="text-muted mb-3">Revise cada documento y defina su estado: Aceptado, Devuelto u Observado.</p>
+                <p class="text-muted mb-3">Revise cada documento vigente y registre su decisión. La solicitud solo podrá enviarse cuando todos los documentos tengan revisión y cada devolución/observación tenga su motivo.</p>
+
+                <div class="row g-3 mb-3">
+                    <div class="col-md-4">
+                        <div class="aocr-info-item">
+                            <div class="aocr-info-label"><i class="fas fa-folder-open"></i> Documentos vigentes</div>
+                            <div class="aocr-info-value">@totalDocumentosRevision</div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="aocr-info-item">
+                            <div class="aocr-info-label"><i class="fas fa-check-circle"></i> Revisados</div>
+                            <div class="aocr-info-value">@documentosRevisados / @totalDocumentosRevision</div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="aocr-info-item">
+                            <div class="aocr-info-label"><i class="fas fa-exclamation-triangle"></i> Observaciones pendientes</div>
+                            <div class="aocr-info-value">@documentosConObservacionPendiente</div>
+                        </div>
+                    </div>
+                </div>
 
                 @if (documentosRevision.Count == 0)
                 {
@@ -535,6 +588,14 @@
                                 {
                                     var estadoDoc = (doc.Estado ?? "PENDIENTE").Trim().ToUpperInvariant();
                                     var formId = "frmRevisionDoc_" + doc.CodigoDocumento;
+                                    Tuple<string, string> revisionActual;
+                                    var tieneRevisionGuardada = revisionesDocumentales.TryGetValue(doc.CodigoDocumento, out revisionActual) && revisionActual != null;
+                                    var decisionActual = tieneRevisionGuardada
+                                        ? (revisionActual.Item1 ?? string.Empty).Trim().ToUpperInvariant()
+                                        : (estadoDoc == "APROBADO" ? "ACEPTADO" : (estadoDoc == "RECHAZADO" ? "DEVUELTO" : string.Empty));
+                                    var observacionActual = tieneRevisionGuardada
+                                        ? (revisionActual.Item2 ?? string.Empty).Trim()
+                                        : (doc.Observaciones ?? string.Empty).Trim();
                                     var claseBadge = estadoDoc == "APROBADO"
                                         ? "badge bg-success"
                                         : (estadoDoc == "RECHAZADO" ? "badge bg-danger" : "badge bg-secondary");
@@ -545,17 +606,18 @@
                                         </td>
                                         <td><span class="@claseBadge">@estadoDoc</span></td>
                                         <td style="min-width: 170px;">
-                                            <select name="decision" class="form-select form-select-sm" required form="@formId">
-                                                <option value="ACEPTADO">Aceptado</option>
-                                                <option value="DEVUELTO">Devuelto</option>
-                                                <option value="OBSERVADO">Observado</option>
+                                            <select name="decision" class="form-select form-select-sm js-decision-documental" required form="@formId">
+                                                <option value="">Seleccione</option>
+                                                <option value="ACEPTADO" @(decisionActual == "ACEPTADO" ? "selected" : null)>Aceptado</option>
+                                                <option value="DEVUELTO" @(decisionActual == "DEVUELTO" ? "selected" : null)>Devuelto</option>
+                                                <option value="OBSERVADO" @(decisionActual == "OBSERVADO" ? "selected" : null)>Observado</option>
                                             </select>
                                         </td>
                                         <td style="min-width: 280px;">
-                                            <input type="text" name="observacion" class="form-control form-control-sm" placeholder="Observacion del revisor" maxlength="500" form="@formId" />
+                                            <input type="text" name="observacion" class="form-control form-control-sm js-observacion-documental" placeholder="Observacion del revisor" maxlength="500" value="@observacionActual" form="@formId" />
                                         </td>
                                         <td class="text-end">
-                                            <form id="@formId" method="post" action="@Url.Action("RevisarDocumentoItem", "SolicitudAOCR")" class="d-inline">
+                                            <form id="@formId" method="post" action="@Url.Action("RevisarDocumentoItem", "SolicitudAOCR")" class="d-inline js-form-revision-documental">
                                                 @Html.AntiForgeryToken()
                                                 <input type="hidden" name="id" value="@Model.CodigoSolicitud" />
                                                 <input type="hidden" name="codigoDocumento" value="@doc.CodigoDocumento" />
@@ -568,6 +630,25 @@
                                 }
                             </tbody>
                         </table>
+                    </div>
+
+                    <div class="alert alert-light border mt-3 mb-0">
+                        <div class="d-flex flex-column flex-lg-row justify-content-between align-items-lg-center gap-3">
+                            <div>
+                                <div class="fw-semibold text-dark">Cierre de revisión documental</div>
+                                <div class="text-muted small">Antes de enviar, todos los documentos deben estar revisados y cada documento devuelto/observado debe incluir una observación.</div>
+                            </div>
+                            <form method="post" action="@Url.Action("FinalizarRevisionDocumental", "SolicitudAOCR")" class="m-0">
+                                @Html.AntiForgeryToken()
+                                <input type="hidden" name="id" value="@Model.CodigoSolicitud" />
+                                <button type="submit"
+                                        class="btn btn-success aocr-action-btn"
+                                        @(puedeFinalizarRevisionDocumental ? null : "disabled=\"disabled\" title=\"Complete todas las revisiones documentales antes de enviar.\"")>
+                                    <i class="fas fa-paper-plane"></i>
+                                    Enviar revisión documental
+                                </button>
+                            </form>
+                        </div>
                     </div>
                 }
             </div>
@@ -792,3 +873,39 @@
         @Html.ActionLink("Volver al listado", "Index", null, new { @class = "btn btn-outline-secondary px-4" })
     </div>
 </div>
+
+@section scripts {
+    <script>
+        (function () {
+            function requiereObservacion(decision) {
+                return decision === "DEVUELTO" || decision === "OBSERVADO";
+            }
+
+            document.querySelectorAll(".js-form-revision-documental").forEach(function (form) {
+                form.addEventListener("submit", function (event) {
+                    var decision = form.elements.namedItem("decision");
+                    var observacion = form.elements.namedItem("observacion");
+                    var valorDecision = decision ? (decision.value || "").trim().toUpperCase() : "";
+                    var valorObservacion = observacion ? (observacion.value || "").trim() : "";
+
+                    if (!valorDecision) {
+                        event.preventDefault();
+                        alert("Debe seleccionar una decisión para el documento.");
+                        if (decision) {
+                            decision.focus();
+                        }
+                        return;
+                    }
+
+                    if (requiereObservacion(valorDecision) && !valorObservacion) {
+                        event.preventDefault();
+                        alert("Debe registrar una observación cuando el documento sea devuelto u observado.");
+                        if (observacion) {
+                            observacion.focus();
+                        }
+                    }
+                });
+            });
+        })();
+    </script>
+}

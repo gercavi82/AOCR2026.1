@@ -3,12 +3,25 @@
 @using System.Web.Mvc
 @using System.Web.Mvc.Html
 @{
-    ViewBag.Title = "Asignar Inspector";
     Layout = "~/Views/Shared/_LayoutAOCR.cshtml";
     var tipoInspectorSeleccionado = (ViewBag.TipoInspector as string) ?? "OPS";
     var warningInspectores = ViewBag.WarningInspectores as string;
+    var esReasignacion = ViewBag.EsReasignacion is bool && (bool)ViewBag.EsReasignacion;
+    var tituloAccion = esReasignacion ? "Reasignar Inspector" : "Asignar Inspector";
+    var tituloSeccion = esReasignacion ? "Reasignación de inspectores" : "Asignación de inspectores";
+    var textoSeccion = esReasignacion
+        ? "Actualice el inspector principal responsable y, de ser necesario, el inspector de apoyo de la inspección vigente."
+        : "Defina el inspector principal responsable y, de ser necesario, un inspector de apoyo para el proceso.";
+    var textoHintPrincipal = esReasignacion
+        ? "Campo obligatorio para confirmar la reasignación."
+        : "Campo obligatorio para confirmar la asignación.";
+    var textoBoton = "Reasignar al inspector";
+    var textoNota = esReasignacion
+        ? "La solicitud ya tiene un inspector asignado. Esta acción actualizará la inspección vigente y mantendrá la trazabilidad del proceso."
+        : "La asignación conserva los nombres de campo originales y mantiene la integración actual con el controller y el model binding de Razor.";
     var tipoInspectorTexto = tipoInspectorSeleccionado;
     var tiposInspectorSelectList = ViewBag.TiposInspector as SelectList;
+    ViewBag.Title = tituloAccion;
 
     if (tiposInspectorSelectList != null)
     {
@@ -423,7 +436,7 @@
 
 @Html.Partial("_PageHeader", new ViewDataDictionary {
     { "Title", "Asignar Inspector" },
-    { "Subtitle", "Gestión Técnica — Designación institucional de inspectores" }
+    { "Subtitle", "Dirección / Jefatura — Designación institucional de inspectores" }
 })
 
 <div class="container-fluid mt-4 assign-inspector-page">
@@ -547,8 +560,8 @@
                     <div class="section-heading">
                         <span class="section-icon"><i class="fas fa-user-tie"></i></span>
                         <div>
-                            <h2 class="section-title">Asignación de inspectores</h2>
-                            <p class="section-copy">Defina el inspector principal responsable y, de ser necesario, un inspector de apoyo para el proceso.</p>
+                            <h2 class="section-title">@tituloSeccion</h2>
+                            <p class="section-copy">@textoSeccion</p>
                         </div>
                     </div>
 
@@ -559,14 +572,14 @@
                                 <span class="input-icon"><i class="fas fa-user-check"></i></span>
                                 @Html.DropDownList("inspectorPrincipal", (SelectList)ViewBag.Inspectores, "-- Seleccione --", new { @class = "form-select form-control", required = "required" })
                             </div>
-                            <span class="field-hint">Campo obligatorio para confirmar la asignación.</span>
+                            <span class="field-hint">@textoHintPrincipal</span>
                         </div>
 
                         <div class="col-lg-6">
                             <label class="form-label-strong" for="inspectorApoyo">Inspector de Apoyo</label>
                             <div class="input-group-modern">
                                 <span class="input-icon"><i class="fas fa-user-plus"></i></span>
-                                @Html.DropDownList("inspectorApoyo", (SelectList)ViewBag.Inspectores, "-- Opcional --", new { @class = "form-select form-control" })
+                                @Html.DropDownList("inspectorApoyo", (SelectList)ViewBag.InspectoresApoyo, "-- Opcional --", new { @class = "form-select form-control" })
                             </div>
                             <span class="field-hint">Utilice este campo cuando la inspección requiera acompañamiento técnico.</span>
                         </div>
@@ -574,7 +587,7 @@
 
                     <div class="empty-state-note">
                         <i class="fas fa-shield-halved me-2"></i>
-                        La asignación conserva los nombres de campo originales y mantiene la integración actual con el controller y el model binding de Razor.
+                        @textoNota
                     </div>
                 </div>
             </div>
@@ -620,7 +633,7 @@
                             <i class="fas fa-arrow-left me-2"></i>Cancelar
                         </a>
                         <button type="submit" class="btn btn-action btn-confirm assignment-submit">
-                            <i class="fas fa-check me-2"></i>Confirmar Asignación
+                            <i class="fas fa-check me-2"></i>@textoBoton
                         </button>
                     </div>
                 </div>

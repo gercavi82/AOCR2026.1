@@ -65,7 +65,7 @@
         // Solo Solicitante/Operador requieren crear su propia orden
         bool requiereOrden = esSolicitanteRol;
 
-        bool puedeSolicitante = esAdministrador || esSolicitanteRol;
+        bool puedeSolicitante = esSolicitanteRol;
         bool puedeTecnica = esAdministrador || esTecnicaRol;
         bool puedeFinanciero = esAdministrador || esFinancieroRol;
         bool puedeLegal = esAdministrador || esLegalRol;
@@ -74,8 +74,8 @@
         bool puedeAprobarUsuarios = esAdministrador || esAprobadorUsuariosRol;
         bool puedeAdministracion = esAdministrador || esRol("Direccion") || esRol("JefaturaTecnica");
 
-        // Módulo de órdenes visibles solo para rol solicitante u administrador
-        bool mostrarModuloOrdenes = esAdministrador || esSolicitanteRol;
+        // Módulo de órdenes visibles solo para rol solicitante
+        bool mostrarModuloOrdenes = esSolicitanteRol;
 
         var companiasRtAsignadas = new List<UsuarioCompaniaRT>();
         var codigoCompaniaActiva = CompaniaActivaSessionHelper.ObtenerCodigo(Session);
@@ -318,11 +318,6 @@
                         </a>
                     </li>
                     <li>
-                        <a class="aocr-link aocr-sidebar-item" href="@Url.Action("Index", "Tecnico")">
-                            <i class="fas fa-user-check text-white-50 mr-2"></i> Asignar Inspector
-                        </a>
-                    </li>
-                    <li>
                         <a class="aocr-link aocr-sidebar-item" href="@Url.Action("Index", "Inspeccion")">
                             <i class="fas fa-clipboard-check text-success mr-2"></i> Gestionar Inspecciones
                         </a>
@@ -361,6 +356,7 @@
                     <li><a class="aocr-link aocr-sidebar-item" href="@Url.Action("RevisionVerificacion", "CoordinacionJefatura")"><i class="fas fa-search text-white-50 mr-2"></i> Revisión / Verificación</a></li>
                     @if (esAdministrador || esRol("Direccion") || esRol("JefaturaTecnica"))
                     {
+                        <li><a class="aocr-link aocr-sidebar-item" href="@Url.Action("Index", "Tecnico")"><i class="fas fa-user-check text-white-50 mr-2"></i> Asignar Inspector</a></li>
                         <li><a class="aocr-link aocr-sidebar-item" href="@Url.Action("AprobarSolicitudes", "CoordinacionJefatura")"><i class="fas fa-check-double text-white-50 mr-2"></i> Aprobar Solicitudes</a></li>
                     }
                     @if (esAdministrador || esRol("JefaturaTecnica"))

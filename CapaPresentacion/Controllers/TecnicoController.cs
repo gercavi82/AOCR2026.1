@@ -27,7 +27,7 @@ namespace CapaPresentacion.Controllers
         // =======================================================
         // LISTADO - Solicitudes pendientes de asignación
         // =======================================================
-        [Authorize(Roles = "Tecnico,Administrador,CoordinadorInspecciones")]
+        [Authorize(Roles = "Administrador,Direccion,JefaturaTecnica")]
         public ActionResult Index()
         {
             _logger.LogInfo("[InspeccionesController] Inicio pantalla gestion (Tecnico/Index). Usuario=" + ObtenerUsuarioActual() + ", Rol=" + ObtenerRolActual());
@@ -142,7 +142,7 @@ namespace CapaPresentacion.Controllers
         // ASIGNAR INSPECTOR (GET)
         // =======================================================
         [HttpGet]
-        [Authorize(Roles = "Tecnico,Administrador,CoordinadorInspecciones")]
+        [Authorize(Roles = "Administrador,Direccion,JefaturaTecnica")]
         public ActionResult AsignarInspector(int? solicitudId, string tipoInspector = "OPS")
         {
             _logger.LogInfo("[InspeccionesController] Inicio pantalla gestion de asignacion. Usuario=" + ObtenerUsuarioActual() + ", Rol=" + ObtenerRolActual() + ", SolicitudId=" + (solicitudId.HasValue ? solicitudId.Value.ToString() : "null"));
@@ -163,6 +163,8 @@ namespace CapaPresentacion.Controllers
             }
 
             _logger.LogInfo("[InspeccionesController] SolicitudId=" + solicitud.CodigoSolicitud + ", EstadoActual=" + (solicitud.Estado ?? "(null)") + ", NumeroSolicitud=" + (solicitud.NumeroSolicitud ?? ""));
+
+            var esReasignacion = TieneInspectorAsignado(solicitud);
 
             var tipoInspectorNormalizado = NormalizarTipoInspector(tipoInspector);
             var inspectores = new List<CapaDatos.Models.InspectorAs400Record>();
@@ -217,7 +219,18 @@ namespace CapaPresentacion.Controllers
                     Etiqueta = i.EtiquetaLista
                 }),
                 "Cedula",
-                "Etiqueta");
+                "Etiqueta",
+                solicitud.TecnicoResponsableCedula);
+            ViewBag.InspectoresApoyo = new SelectList(
+                inspectores.Select(i => new
+                {
+                    Cedula = i.Cedula,
+                    Etiqueta = i.EtiquetaLista
+                }),
+                "Cedula",
+                "Etiqueta",
+                solicitud.InspectorApoyoCedula);
+            ViewBag.EsReasignacion = esReasignacion;
 
             _logger.LogInfo("[InspeccionesController] ViewModel cargado correctamente. SolicitudId=" + solicitud.CodigoSolicitud + ", ViewBagInspectores=" + inspectores.Count);
 
@@ -228,7 +241,7 @@ namespace CapaPresentacion.Controllers
         // ASIGNAR INSPECTOR (POST)
         // =======================================================
         [HttpPost]
-        [Authorize(Roles = "Tecnico,Administrador,CoordinadorInspecciones")]
+        [Authorize(Roles = "Administrador,Direccion,JefaturaTecnica")]
         [ValidateAntiForgeryToken]
         public ActionResult AsignarInspector(
             int solicitudId,
@@ -258,6 +271,7 @@ namespace CapaPresentacion.Controllers
             try
             {
                 var solicitud = SolicitudAOCRBL.ObtenerPorId(solicitudId);
+                var esReasignacion = TieneInspectorAsignado(solicitud);
                 _logger.LogInfo("[GestionInspeccion] EstadoActual=" + (solicitud == null ? "(solicitud-null)" : (solicitud.Estado ?? "(null)")));
 
                 var db2Dao = new InspectorAS400DAO(new SecureConfigurationService());
@@ -302,15 +316,16 @@ namespace CapaPresentacion.Controllers
                         solicitudActualizada,
                         nombreTecnico,
                         fechaHoraInspeccion,
+                        esReasignacion,
                         out mensajeCorreo);
 
                     if (correoEnviado)
                     {
-                        TempData["Success"] = (mensaje ?? "Asignación realizada correctamente.") + " Correo enviado al solicitante.";
+                        TempData["Success"] = (mensaje ?? (esReasignacion ? "Reasignación realizada correctamente." : "Asignación realizada correctamente.")) + " Correo enviado al solicitante.";
                     }
                     else
                     {
-                        TempData["Success"] = (mensaje ?? "Asignación realizada correctamente.");
+                        TempData["Success"] = (mensaje ?? (esReasignacion ? "Reasignación realizada correctamente." : "Asignación realizada correctamente."));
                         if (!string.IsNullOrWhiteSpace(mensajeCorreo))
                         {
                             TempData["Warning"] = mensajeCorreo;
@@ -335,7 +350,7 @@ namespace CapaPresentacion.Controllers
         }
 
         [HttpGet]
-        [Authorize(Roles = "Tecnico,Administrador,CoordinadorInspecciones,Inspector")]
+        [Authorize(Roles = "Administrador,Direccion,JefaturaTecnica")]
         public JsonResult ListarInspectoresActivos(string tipoInspector = "OPS")
         {
             _logger.LogInfo("[InspeccionesController] Inicio endpoint AJAX inspectores. Usuario=" + ObtenerUsuarioActual() + ", Rol=" + ObtenerRolActual() + ", TipoInspector=" + (tipoInspector ?? ""));
@@ -392,14 +407,14 @@ namespace CapaPresentacion.Controllers
 
         private string ObtenerRolActual()
         {
-            var roles = new[] { "Administrador", "Tecnico", "CoordinadorInspecciones", "Inspector", "JefaturaTecnica" }
+            var roles = new[] { "Administrador", "Direccion", "JefaturaTecnica" }
                 .Where(r => User != null && User.IsInRole(r))
                 .ToList();
 
             return roles.Count == 0 ? "SIN_ROL_DETECTADO" : string.Join(",", roles);
         }
 
-        private bool NotificarSolicitanteAsignacionTecnico(SolicitudAOCR solicitud, string nombreTecnico, DateTime fechaInspeccion, out string mensaje)
+        private bool NotificarSolicitanteAsignacionTecnico(SolicitudAOCR solicitud, string nombreTecnico, DateTime fechaInspeccion, bool esReasignacion, out string mensaje)
         {
             mensaje = string.Empty;
 
@@ -433,11 +448,17 @@ namespace CapaPresentacion.Controllers
                 enlaceDetalle = string.Empty;
             }
 
-            var asunto = "AOCR - Técnico asignado para su proceso " + numeroSolicitud;
+            var asunto = esReasignacion
+                ? "AOCR - Inspector reasignado para su proceso " + numeroSolicitud
+                : "AOCR - Técnico asignado para su proceso " + numeroSolicitud;
             var cuerpo = "<p>Estimado/a solicitante,</p>"
-                + "<p>Le informamos que ya se asignó un técnico para su proceso AOCR <strong>" + HttpUtility.HtmlEncode(numeroSolicitud) + "</strong>.</p>"
+                + "<p>Le informamos que "
+                + (esReasignacion
+                    ? "se actualizó la asignación del inspector para su proceso AOCR <strong>" + HttpUtility.HtmlEncode(numeroSolicitud) + "</strong>."
+                    : "ya se asignó un técnico para su proceso AOCR <strong>" + HttpUtility.HtmlEncode(numeroSolicitud) + "</strong>.")
+                + "</p>"
                 + "<ul>"
-                + "<li><strong>Técnico asignado:</strong> " + HttpUtility.HtmlEncode(tecnico) + "</li>"
+                + "<li><strong>" + (esReasignacion ? "Inspector reasignado" : "Técnico asignado") + ":</strong> " + HttpUtility.HtmlEncode(tecnico) + "</li>"
                 + "<li><strong>Fecha de inspección:</strong> " + HttpUtility.HtmlEncode(fechaTexto) + "</li>"
                 + "<li><strong>Hora de inspección:</strong> " + HttpUtility.HtmlEncode(horaTexto) + "</li>"
                 + "</ul>"
@@ -463,6 +484,18 @@ namespace CapaPresentacion.Controllers
                 mensaje = "La asignación fue guardada, pero ocurrió un error enviando el correo al solicitante.";
                 return false;
             }
+        }
+
+        private static bool TieneInspectorAsignado(SolicitudAOCR solicitud)
+        {
+            if (solicitud == null)
+            {
+                return false;
+            }
+
+            return solicitud.CodigoTecnico.HasValue && solicitud.CodigoTecnico.Value > 0
+                || !string.IsNullOrWhiteSpace(solicitud.TecnicoResponsableCedula)
+                || !string.IsNullOrWhiteSpace(solicitud.TecnicoResponsableNombre);
         }
 
         private static string FirstNonEmpty(params string[] values)

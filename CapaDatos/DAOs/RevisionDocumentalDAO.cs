@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Configuration;
 using Npgsql;
 
@@ -65,6 +66,66 @@ namespace CapaDatos.DAOs
                     return cmd.ExecuteNonQuery() > 0;
                 }
             }
+        }
+
+        public Dictionary<int, Tuple<string, string>> ObtenerUltimasRevisionesPorSolicitud(int codigoSolicitud)
+        {
+            var resultado = new Dictionary<int, Tuple<string, string>>();
+            if (codigoSolicitud <= 0)
+            {
+                return resultado;
+            }
+
+            using (var cn = new NpgsqlConnection(ConnectionString))
+            {
+                cn.Open();
+                if (!ExisteTabla(cn, "aocr_tbrevision_documental"))
+                {
+                    return resultado;
+                }
+
+                const string sql = @"
+                    SELECT codigo_documento, decision, observacion
+                    FROM
+                    (
+                        SELECT
+                            codigo_documento,
+                            decision,
+                            observacion,
+                            ROW_NUMBER() OVER
+                            (
+                                PARTITION BY codigo_documento
+                                ORDER BY COALESCE(fecha_revision, created_at) DESC, created_at DESC, codigo_documento DESC
+                            ) AS rn
+                        FROM aocr_tbrevision_documental
+                        WHERE codigo_solicitud = @codigo_solicitud
+                    ) q
+                    WHERE rn = 1;";
+
+                using (var cmd = new NpgsqlCommand(sql, cn))
+                {
+                    cmd.Parameters.AddWithValue("@codigo_solicitud", codigoSolicitud);
+                    using (var rd = cmd.ExecuteReader())
+                    {
+                        while (rd.Read())
+                        {
+                            var codigoDocumento = rd["codigo_documento"] == DBNull.Value ? 0 : Convert.ToInt32(rd["codigo_documento"]);
+                            if (codigoDocumento <= 0)
+                            {
+                                continue;
+                            }
+
+                            var decision = rd["decision"] == DBNull.Value ? string.Empty : rd["decision"].ToString();
+                            var observacion = rd["observacion"] == DBNull.Value ? string.Empty : rd["observacion"].ToString();
+                            resultado[codigoDocumento] = Tuple.Create(
+                                (decision ?? string.Empty).Trim().ToUpperInvariant(),
+                                (observacion ?? string.Empty).Trim());
+                        }
+                    }
+                }
+            }
+
+            return resultado;
         }
 
         public bool RegistrarEventoHistorial(
