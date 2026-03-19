@@ -1152,11 +1152,13 @@
         var $select = $('#EmpresaCodigo');
         var codigo = ($select.val() || '').trim();
         var nombre = ($select.find('option:selected').data('nombre') || $select.find('option:selected').text() || '').toString().trim();
+        var usuoid = ($select.find('option:selected').data('numero') || '').toString().trim();
 
         if (!codigo) {
             sincronizarEmpresaDesdeTexto($('#EmpresaTexto').val());
             codigo = ($select.val() || '').trim();
             nombre = ($select.find('option:selected').data('nombre') || $select.find('option:selected').text() || '').toString().trim();
+            usuoid = ($select.find('option:selected').data('numero') || '').toString().trim();
             if (!codigo) {
                 mostrarErrorCampo('#EmpresaCodigo', 'Debe seleccionar una empresa antes de agregar.');
                 return;
@@ -1175,7 +1177,8 @@
 
         companiasSeleccionadasRegistro.push({
             codigo: codigo,
-            nombre: nombre || codigo
+            nombre: nombre || codigo,
+            usuoid: usuoid
         });
 
         renderCompaniasSeleccionadasRegistro();
@@ -1228,6 +1231,7 @@
 
             $hidden.append($('<input type="hidden">').attr('name', 'Companias[' + index + '].IdCompania').val(compania.codigo));
             $hidden.append($('<input type="hidden">').attr('name', 'Companias[' + index + '].NombreCompania').val(compania.nombre));
+            $hidden.append($('<input type="hidden">').attr('name', 'Companias[' + index + '].Usuoid').val(compania.usuoid || ''));
         });
 
         actualizarDeclaracionResponsabilidad();

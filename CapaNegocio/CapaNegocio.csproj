@@ -165,6 +165,7 @@
     <Compile Include="Services\TramiteService.cs" />
     <Compile Include="SolicitudAOCRBL.cs" />
     <Compile Include="SeguridadBL.cs" />
+    <Compile Include="UsuarioInternoRTBL.cs" />
     <Compile Include="UsuarioRolBL.cs" />
     <Compile Include="ViaticoBL.cs" />
     <Compile Include="SesionBL.cs" />

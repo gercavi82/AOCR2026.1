@@ -345,6 +345,7 @@
     <Compile Include="Models\FacturaPagoRegistroModel.cs" />
     <Compile Include="Models\UsuarioInternoAs400Info.cs" />
     <Compile Include="Models\AsignacionRTRegistro.cs" />
+    <Compile Include="Models\TecnicoInternoDisponible.cs" />
     <Compile Include="Models\UsuarioInternoRTRegistro.cs" />
     <Compile Include="Models\InspectorAs400Record.cs" />
     <Compile Include="Models\UbicacionUsuarioRecord.cs" />
@@ -356,6 +357,7 @@
     <Compile Include="Services\AuditService.cs" />
     <Compile Include="Services\EnviarCorreo.cs" />
     <Compile Include="Services\EmailService.cs" />
+    <Compile Include="Services\GestionTecnicaNotificationService.cs" />
     <Compile Include="Services\SecureConfigurationService.cs" />
     <Compile Include="Services\LoggingService.cs" />
     <Compile Include="Services\EmailQueueService.cs" />

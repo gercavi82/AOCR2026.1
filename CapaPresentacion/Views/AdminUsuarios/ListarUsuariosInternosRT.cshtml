@@ -60,6 +60,10 @@
                     <div class="rt-kpi-label">Tipo AIR</div>
                     <div class="rt-kpi-value">@lista.Count(x => (x.Tipo ?? "").Equals("AIR", StringComparison.OrdinalIgnoreCase))</div>
                 </div>
+                <div class="rt-kpi">
+                    <div class="rt-kpi-label">Inactivos</div>
+                    <div class="rt-kpi-value">@lista.Count(x => !x.Activo)</div>
+                </div>
             </div>
         </div>
     </div>
@@ -90,10 +94,14 @@
                                 <th>Cedula</th>
                                 <th>Nombre Completo</th>
                                 <th>Tipo</th>
+                                <th>Rol interno</th>
+                                <th>Correo institucional</th>
                                 <th>Aeropuerto</th>
                                 <th>Ciudad</th>
                                 <th>Cod. Financiero</th>
+                                <th>Estado</th>
                                 <th>Registrado</th>
+                                <th>Acciones</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -105,10 +113,33 @@
                                     <td class="fw-semibold">@Html.Encode(rt.CodigoUsuario)</td>
                                     <td>@Html.Encode(string.IsNullOrWhiteSpace(rt.NombreCompleto) ? "-" : rt.NombreCompleto)</td>
                                     <td><span class="@tipoBadge">@Html.Encode(string.IsNullOrWhiteSpace(rt.Tipo) ? "-" : rt.Tipo)</span></td>
+                                    <td>@Html.Encode(string.IsNullOrWhiteSpace(rt.RolInterno) ? "-" : rt.RolInterno)</td>
+                                    <td>@Html.Encode(string.IsNullOrWhiteSpace(rt.CorreoInstitucional) ? "-" : rt.CorreoInstitucional)</td>
                                     <td>@Html.Encode(string.IsNullOrWhiteSpace(rt.Opcar5) ? "-" : rt.Opcar5)</td>
                                     <td>@Html.Encode(string.IsNullOrWhiteSpace(rt.CiudadCodigo) ? "-" : rt.CiudadCodigo)</td>
                                     <td>@(rt.CodigoFinanciero > 0 ? rt.CodigoFinanciero.ToString("0") : "-")</td>
+                                    <td>
+                                        <span class="badge @(rt.Activo ? "bg-success" : "bg-secondary")">
+                                            @(rt.Activo ? "Activo" : "Inactivo")
+                                        </span>
+                                    </td>
                                     <td class="text-muted small">@rt.CreatedAt.ToString("yyyy-MM-dd")</td>
+                                    <td class="text-nowrap">
+                                        <a href="@Url.Action("EditarUsuarioInternoRT", "AdminUsuarios", new { id = rt.Id })"
+                                           class="btn btn-sm btn-outline-primary">
+                                            <i class="fas fa-pen me-1"></i> Editar
+                                        </a>
+                                        @using (Html.BeginForm("CambiarEstadoUsuarioInternoRT", "AdminUsuarios", FormMethod.Post, new { @class = "d-inline-block" }))
+                                        {
+                                            @Html.AntiForgeryToken()
+                                            @Html.Hidden("id", rt.Id)
+                                            @Html.Hidden("activo", (!rt.Activo).ToString().ToLowerInvariant())
+                                            <button type="submit" class="btn btn-sm @(rt.Activo ? "btn-outline-danger" : "btn-outline-success")">
+                                                <i class="fas @(rt.Activo ? "fa-ban" : "fa-check") me-1"></i>
+                                                @(rt.Activo ? "Inactivar" : "Activar")
+                                            </button>
+                                        }
+                                    </td>
                                 </tr>
                             }
                         </tbody>

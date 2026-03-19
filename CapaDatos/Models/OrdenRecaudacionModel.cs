@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations;
 using System.Linq;
 
 namespace CapaDatos.Models
@@ -20,7 +21,11 @@ namespace CapaDatos.Models
         public string Compania { get; set; }
         public string RucCedula { get; set; }
         public string Correo { get; set; }
+
+        [StringLength(15, ErrorMessage = "Máximo 15 dígitos")]
+        [RegularExpression(@"^\d{0,15}$", ErrorMessage = "El teléfono solo debe contener números")]
         public string Telefono { get; set; }
+
         public string Observacion { get; set; }
         public string Observaciones { get { return Observacion; } set { Observacion = value; } }
         public decimal Admin { get; set; }

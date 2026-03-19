@@ -6,6 +6,8 @@ namespace CapaPresentacion.Models.AdminUsuarios
 {
     public class AdminUsuarioInternoRTViewModel
     {
+        public int Id { get; set; }
+
         [Required]
         [Display(Name = "Buscar por cedula o nombre")]
         [StringLength(64)]
@@ -46,6 +48,25 @@ namespace CapaPresentacion.Models.AdminUsuarios
         [Display(Name = "OPCOI3 (= usuoid)")]
         public decimal? Opcoi3 { get; set; }
 
+        [Required]
+        [Display(Name = "Rol interno")]
+        [StringLength(100)]
+        public string RolInterno { get; set; }
+
+        [Required]
+        [EmailAddress]
+        [Display(Name = "Correo institucional")]
+        [StringLength(200)]
+        public string CorreoInstitucional { get; set; }
+
+        [Display(Name = "Observaciones")]
+        [StringLength(1000)]
+        public string Observaciones { get; set; }
+
+        [Display(Name = "Activo")]
+        public bool Activo { get; set; } = true;
+
         public IEnumerable<SelectListItem> Aeropuertos { get; set; } = new List<SelectListItem>();
+        public IEnumerable<SelectListItem> RolesInternos { get; set; } = new List<SelectListItem>();
     }
 }

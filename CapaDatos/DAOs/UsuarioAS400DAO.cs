@@ -98,12 +98,18 @@ namespace CapaDatos.DAOs
                 return null;
             }
 
-            var codigo = SafeString(codigoUsuario, 10).ToUpperInvariant();
+            var codigoEntrada = SafeString(codigoUsuario, 10).ToUpperInvariant();
 
             try
             {
                 return ExecuteWithConnection(conn =>
                 {
+                    var codigo = ResolverCodigoUsuarioInterno(conn, codigoEntrada);
+                    if (string.IsNullOrWhiteSpace(codigo))
+                    {
+                        return null;
+                    }
+
                     var columnasUsuario = GetColumnas(conn, _schema, _tablaUsuario);
                     var columnasAdicional = GetColumnas(conn, _schema, _tablaAdicional);
 
@@ -162,6 +168,72 @@ namespace CapaDatos.DAOs
             {
                 return null;
             }
+        }
+
+        private string ResolverCodigoUsuarioInterno(OdbcConnection conn, string codigoOIdentificacion)
+        {
+            if (string.IsNullOrWhiteSpace(codigoOIdentificacion))
+            {
+                return null;
+            }
+
+            var valor = SafeString(codigoOIdentificacion, 10).ToUpperInvariant();
+            if (string.IsNullOrWhiteSpace(valor))
+            {
+                return null;
+            }
+
+            var codigo = ObtenerCampoPorPkSeguro(conn, _schema, _tablaUsuario, "USUCOD", valor, "USUCOD");
+            if (!string.IsNullOrWhiteSpace(codigo))
+            {
+                return codigo.Trim().ToUpperInvariant();
+            }
+
+            codigo = ObtenerCampoPorPkSeguro(conn, _schema, _tablaAdicional, "USUCO8", valor, "USUCO8");
+            if (!string.IsNullOrWhiteSpace(codigo))
+            {
+                return codigo.Trim().ToUpperInvariant();
+            }
+
+            codigo = ObtenerCampoPorPkSeguro(conn, _schema, _tablaAdicional, "USUCOD", valor, "USUCOD");
+            if (!string.IsNullOrWhiteSpace(codigo))
+            {
+                return codigo.Trim().ToUpperInvariant();
+            }
+
+            var columnasUsuario = GetColumnas(conn, _schema, _tablaUsuario);
+            if (columnasUsuario.Contains("USUCED"))
+            {
+                codigo = ObtenerCampoPorFiltroSeguro(conn, _schema, _tablaUsuario, "USUCED", valor, "USUCOD");
+                if (!string.IsNullOrWhiteSpace(codigo))
+                {
+                    return codigo.Trim().ToUpperInvariant();
+                }
+            }
+
+            var columnasAdicional = GetColumnas(conn, _schema, _tablaAdicional);
+            if (columnasAdicional.Contains("USUCED"))
+            {
+                if (columnasAdicional.Contains("USUCO8"))
+                {
+                    codigo = ObtenerCampoPorFiltroSeguro(conn, _schema, _tablaAdicional, "USUCED", valor, "USUCO8");
+                    if (!string.IsNullOrWhiteSpace(codigo))
+                    {
+                        return codigo.Trim().ToUpperInvariant();
+                    }
+                }
+
+                if (columnasAdicional.Contains("USUCOD"))
+                {
+                    codigo = ObtenerCampoPorFiltroSeguro(conn, _schema, _tablaAdicional, "USUCED", valor, "USUCOD");
+                    if (!string.IsNullOrWhiteSpace(codigo))
+                    {
+                        return codigo.Trim().ToUpperInvariant();
+                    }
+                }
+            }
+
+            return null;
         }
 
         public string ObtenerNumeroRucPorCodigoUsuario(string codigoUsuario)
@@ -505,6 +577,29 @@ namespace CapaDatos.DAOs
             }
         }
 
+        private string ObtenerCampoPorFiltro(
+            OdbcConnection conn,
+            string schema,
+            string table,
+            string filtroColumn,
+            string filtroValue,
+            string campo)
+        {
+            var sql = $"SELECT TRIM({campo}) FROM {schema}.{table} WHERE {filtroColumn} = ? FETCH FIRST 1 ROWS ONLY";
+            using (var cmd = new OdbcCommand(sql, conn))
+            {
+                AddParameter(cmd, filtroValue, OdbcType.VarChar);
+                var value = cmd.ExecuteScalar();
+                if (value == null || value == DBNull.Value)
+                {
+                    return null;
+                }
+
+                var texto = value.ToString();
+                return string.IsNullOrWhiteSpace(texto) ? null : texto.Trim();
+            }
+        }
+
         private string ObtenerCampoPorPkSeguro(
             OdbcConnection conn,
             string schema,
@@ -516,6 +611,24 @@ namespace CapaDatos.DAOs
             try
             {
                 return ObtenerCampoPorPk(conn, schema, table, pkColumn, pkValue, campo);
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
+        private string ObtenerCampoPorFiltroSeguro(
+            OdbcConnection conn,
+            string schema,
+            string table,
+            string filtroColumn,
+            string filtroValue,
+            string campo)
+        {
+            try
+            {
+                return ObtenerCampoPorFiltro(conn, schema, table, filtroColumn, filtroValue, campo);
             }
             catch
             {

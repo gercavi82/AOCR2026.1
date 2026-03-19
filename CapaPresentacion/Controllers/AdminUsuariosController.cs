@@ -114,8 +114,12 @@ namespace CapaPresentacion.Controllers
         [RequirePermission("ADM_GESTION_USUARIOS")]
         public ActionResult CrearUsuarioInternoRT()
         {
-            var vm = new AdminUsuarioInternoRTViewModel();
+            var vm = new AdminUsuarioInternoRTViewModel
+            {
+                Activo = true
+            };
             CargarAeropuertosUsuarioInterno(vm, null);
+            CargarRolesUsuarioInterno(vm, null);
             return View(vm);
         }
 
@@ -244,6 +248,7 @@ namespace CapaPresentacion.Controllers
             if (!ModelState.IsValid)
             {
                 CargarAeropuertosUsuarioInterno(model, model.Opcar5);
+                CargarRolesUsuarioInterno(model, model.RolInterno);
                 return View(model);
             }
 
@@ -253,6 +258,7 @@ namespace CapaPresentacion.Controllers
             {
                 ModelState.AddModelError("CodigoUsuarioBusqueda", "No se encontro coincidencia por cedula o nombre en la base institucional.");
                 CargarAeropuertosUsuarioInterno(model, model.Opcar5);
+                CargarRolesUsuarioInterno(model, model.RolInterno);
                 return View(model);
             }
 
@@ -261,6 +267,10 @@ namespace CapaPresentacion.Controllers
             model.Cedula = cedula;
             model.NombreCompleto = (inspector.NombreCompleto ?? string.Empty).Trim();
             model.TipoInspector = (inspector.Tipo ?? string.Empty).Trim();
+
+            string nombres;
+            string apellidos;
+            SepararNombreCompleto(model.NombreCompleto, out nombres, out apellidos);
 
             string ciudadCodigo = string.Empty;
             decimal? codigoFinanciero = null;
@@ -300,6 +310,9 @@ namespace CapaPresentacion.Controllers
             var registro = new UsuarioInternoRTRegistro
             {
                 UsuarioId = daoInterno.ObtenerUsuarioIdPorCodigoUsuario(cedula),
+                Identificacion = cedula,
+                Nombres = nombres,
+                Apellidos = apellidos,
                 CodigoUsuario = cedula,
                 NombreCompleto = model.NombreCompleto,
                 Tipo = model.TipoInspector,
@@ -309,30 +322,149 @@ namespace CapaPresentacion.Controllers
                 Opcar5 = model.Opcar5,
                 Opcaer = model.Opcar5,
                 Opcoi3 = model.Opcoi3 ?? 0m,
-                Activo = true
+                CorreoInstitucional = (model.CorreoInstitucional ?? string.Empty).Trim(),
+                RolInterno = (model.RolInterno ?? string.Empty).Trim(),
+                Observaciones = (model.Observaciones ?? string.Empty).Trim(),
+                Activo = model.Activo
             };
 
             string mensaje;
-            if (!daoInterno.GuardarRegistro(registro, ObtenerActorCodigoUsuario(), out mensaje))
+            if (!UsuarioInternoRTBL.CrearUsuarioInterno(registro, ObtenerActorCodigoUsuario(), out mensaje))
             {
                 ModelState.AddModelError(string.Empty, string.IsNullOrWhiteSpace(mensaje)
                     ? "No se pudo guardar el usuario interno RT."
                     : mensaje);
                 CargarAeropuertosUsuarioInterno(model, model.Opcar5);
+                CargarRolesUsuarioInterno(model, model.RolInterno);
                 return View(model);
             }
 
             TempData["Success"] = mensaje;
-            return RedirectToAction("CrearUsuarioInternoRT");
+            return RedirectToAction("ListarUsuariosInternosRT");
         }
 
         [HttpGet]
         [Authorize(Roles = "Administrador")]
         public ActionResult ListarUsuariosInternosRT()
         {
-            var dao = new UsuarioInternoRTDAO();
-            var lista = dao.ListarActivos();
+            var lista = UsuarioInternoRTBL.ListarUsuariosInternos(true);
             return View(lista);
+        }
+
+        [HttpGet]
+        [Authorize(Roles = "Administrador")]
+        [RequirePermission("ADM_GESTION_USUARIOS")]
+        public ActionResult EditarUsuarioInternoRT(int id)
+        {
+            var registro = UsuarioInternoRTBL.ObtenerPorId(id);
+            if (registro == null)
+            {
+                TempData["Error"] = "No se encontro el usuario interno RT solicitado.";
+                return RedirectToAction("ListarUsuariosInternosRT");
+            }
+
+            var model = MapearUsuarioInternoRTViewModel(registro);
+            CargarAeropuertosUsuarioInterno(model, model.Opcar5);
+            CargarRolesUsuarioInterno(model, model.RolInterno);
+            return View("CrearUsuarioInternoRT", model);
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        [Authorize(Roles = "Administrador")]
+        [RequirePermission("ADM_GESTION_USUARIOS")]
+        public ActionResult EditarUsuarioInternoRT(AdminUsuarioInternoRTViewModel model)
+        {
+            model = model ?? new AdminUsuarioInternoRTViewModel();
+            model.CodigoUsuarioBusqueda = NormalizarCodigo(model.CodigoUsuarioBusqueda);
+            model.CodigoUsuario = NormalizarCodigo(model.CodigoUsuario);
+            model.Cedula = NormalizarCodigo(model.Cedula);
+            model.Opcar5 = NormalizarCodigo(model.Opcar5, 10);
+            model.Opcaer = model.Opcar5;
+
+            if (model.Id <= 0)
+            {
+                TempData["Error"] = "Identificador de usuario interno RT invalido.";
+                return RedirectToAction("ListarUsuariosInternosRT");
+            }
+
+            if (string.IsNullOrWhiteSpace(model.CodigoUsuario))
+            {
+                ModelState.AddModelError("CodigoUsuarioBusqueda", "Debe mantener la cedula del inspector.");
+            }
+
+            if (string.IsNullOrWhiteSpace(model.Opcar5))
+            {
+                ModelState.AddModelError("Opcar5", "Debe seleccionar un aeropuerto.");
+            }
+
+            if (!ModelState.IsValid)
+            {
+                CargarAeropuertosUsuarioInterno(model, model.Opcar5);
+                CargarRolesUsuarioInterno(model, model.RolInterno);
+                return View("CrearUsuarioInternoRT", model);
+            }
+
+            var registro = new UsuarioInternoRTRegistro
+            {
+                Id = model.Id,
+                UsuarioId = string.IsNullOrWhiteSpace(model.CodigoUsuario)
+                    ? (int?)null
+                    : new UsuarioInternoRTDAO().ObtenerUsuarioIdPorCodigoUsuario(model.CodigoUsuario),
+                Identificacion = (model.Cedula ?? string.Empty).Trim(),
+                Nombres = string.Empty,
+                Apellidos = string.Empty,
+                CodigoUsuario = model.CodigoUsuario,
+                NombreCompleto = (model.NombreCompleto ?? string.Empty).Trim(),
+                Tipo = (model.TipoInspector ?? string.Empty).Trim(),
+                EstadoAs400 = "AC",
+                CiudadCodigo = (model.CiudadCodigo ?? string.Empty).Trim(),
+                CodigoFinanciero = model.CodigoFinanciero ?? 0m,
+                Opcar5 = model.Opcar5,
+                Opcaer = model.Opcar5,
+                Opcoi3 = model.Opcoi3 ?? model.CodigoFinanciero ?? 0m,
+                CorreoInstitucional = (model.CorreoInstitucional ?? string.Empty).Trim(),
+                RolInterno = (model.RolInterno ?? string.Empty).Trim(),
+                Observaciones = (model.Observaciones ?? string.Empty).Trim(),
+                Activo = model.Activo
+            };
+
+            string nombres;
+            string apellidos;
+            SepararNombreCompleto(model.NombreCompleto, out nombres, out apellidos);
+            registro.Nombres = nombres;
+            registro.Apellidos = apellidos;
+
+            string mensaje;
+            if (!UsuarioInternoRTBL.ActualizarUsuarioInterno(registro, ObtenerActorCodigoUsuario(), out mensaje))
+            {
+                ModelState.AddModelError(string.Empty, string.IsNullOrWhiteSpace(mensaje)
+                    ? "No se pudo actualizar el usuario interno RT."
+                    : mensaje);
+                CargarAeropuertosUsuarioInterno(model, model.Opcar5);
+                CargarRolesUsuarioInterno(model, model.RolInterno);
+                return View("CrearUsuarioInternoRT", model);
+            }
+
+            TempData["Success"] = mensaje;
+            return RedirectToAction("ListarUsuariosInternosRT");
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        [Authorize(Roles = "Administrador")]
+        [RequirePermission("ADM_GESTION_USUARIOS")]
+        public ActionResult CambiarEstadoUsuarioInternoRT(int id, bool activo)
+        {
+            string mensaje;
+            if (!UsuarioInternoRTBL.CambiarEstado(id, activo, ObtenerActorCodigoUsuario(), out mensaje))
+            {
+                TempData["Error"] = mensaje;
+                return RedirectToAction("ListarUsuariosInternosRT");
+            }
+
+            TempData["Success"] = mensaje;
+            return RedirectToAction("ListarUsuariosInternosRT");
         }
 
         [HttpGet]
@@ -1557,6 +1689,57 @@ namespace CapaPresentacion.Controllers
                 Value = a.Codigo,
                 Text = a.Texto,
                 Selected = string.Equals(a.Codigo, selectedCode, StringComparison.OrdinalIgnoreCase)
+            }).ToList();
+        }
+
+        private static AdminUsuarioInternoRTViewModel MapearUsuarioInternoRTViewModel(UsuarioInternoRTRegistro registro)
+        {
+            return new AdminUsuarioInternoRTViewModel
+            {
+                Id = registro.Id,
+                CodigoUsuarioBusqueda = registro.Identificacion,
+                CodigoUsuario = registro.CodigoUsuario,
+                Cedula = registro.Identificacion,
+                NombreCompleto = registro.NombreCompleto,
+                TipoInspector = registro.Tipo,
+                CiudadCodigo = registro.CiudadCodigo,
+                CodigoFinanciero = registro.CodigoFinanciero,
+                Opcar5 = registro.Opcar5,
+                Opcaer = registro.Opcaer,
+                Opcoi3 = registro.Opcoi3,
+                RolInterno = registro.RolInterno,
+                CorreoInstitucional = registro.CorreoInstitucional,
+                Observaciones = registro.Observaciones,
+                Activo = registro.Activo
+            };
+        }
+
+        private static void CargarRolesUsuarioInterno(AdminUsuarioInternoRTViewModel model, string seleccionado)
+        {
+            if (model == null)
+            {
+                return;
+            }
+
+            var selectedRole = (seleccionado ?? string.Empty).Trim();
+            var roles = new[]
+            {
+                "",
+                "Tecnico",
+                "Inspector",
+                "Coordinador",
+                "Jefatura Tecnica",
+                "Direccion",
+                "Legal",
+                "Financiero",
+                "Administrador"
+            };
+
+            model.RolesInternos = roles.Select(r => new SelectListItem
+            {
+                Value = r,
+                Text = string.IsNullOrWhiteSpace(r) ? "-- Seleccione --" : r,
+                Selected = string.Equals(r, selectedRole, StringComparison.OrdinalIgnoreCase)
             }).ToList();
         }
     }

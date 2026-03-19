@@ -2961,6 +2961,7 @@
     <Content Include="Views\AdminUsuarios\CrearUsuarioInternoRT.cshtml" />
     <Content Include="Views\AdminUsuarios\Edit.cshtml" />
     <Content Include="Views\AdminUsuarios\Index.cshtml" />
+    <Content Include="Views\AdminUsuarios\ListarUsuariosInternosRT.cshtml" />
     <Content Include="Views\AdminUsuarios\PermisosRol.cshtml" />
     <Content Include="Views\AdminUsuarios\Roles.cshtml" />
     <Content Include="Views\AdminUsuarios\TransferirEliminar.cshtml" />

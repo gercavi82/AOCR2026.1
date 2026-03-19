@@ -51,8 +51,8 @@ namespace CapaPresentacion.Models
             [Display(Name = "Correo Electrónico")]
             public string Correo { get; set; }
 
-            [Phone(ErrorMessage = "Formato de teléfono inválido")]
-            [StringLength(15, ErrorMessage = "Máximo 15 caracteres")]
+            [RegularExpression(@"^\d{0,15}$", ErrorMessage = "El teléfono solo debe contener números")]
+            [StringLength(15, ErrorMessage = "Máximo 15 dígitos")]
             [Display(Name = "Teléfono")]
             public string Telefono { get; set; }
 

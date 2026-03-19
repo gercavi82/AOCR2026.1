@@ -5,6 +5,7 @@ using System.Data;
 using System.Linq;
 using System.Text.RegularExpressions;
 using Npgsql;
+using Dapper;
 using CapaDatos.Constants;
 using CapaDatos.Models;
 using CapaDatos.Services;
@@ -1023,6 +1024,39 @@ WHERE codigo_solicitud=@id AND deleted_at IS NULL;";
 
                         try
                         {
+                            var destinatarioInterno = daoAsignacionRt.ResolverDestinatarioAsignacionPorCodigoUsuario(principalCedulaPersist);
+                            if (destinatarioInterno != null && !string.IsNullOrWhiteSpace(destinatarioInterno.CorreoInstitucional))
+                            {
+                                string mensajeCorreoInterno;
+                                var numeroSolicitud = ObtenerNumeroSolicitudParaNotificacion(cn, codigoSolicitud);
+                                var servicioNotificacionInterna = new GestionTecnicaNotificationService();
+                                var notificado = servicioNotificacionInterna.EnviarAsignacionUsuarioInterno(
+                                    destinatarioInterno,
+                                    codigoSolicitud,
+                                    numeroSolicitud,
+                                    "Gestion Tecnica",
+                                    DateTime.Now,
+                                    actorAsignador,
+                                    obs,
+                                    out mensajeCorreoInterno);
+
+                                if (!notificado)
+                                {
+                                    _logger.LogWarning("[GestionInspeccion] Asignacion guardada sin correo institucional. SolicitudId=" + codigoSolicitud + ", Detalle=" + (mensajeCorreoInterno ?? ""));
+                                }
+                            }
+                            else
+                            {
+                                _logger.LogWarning("[GestionInspeccion] No existe usuario interno activo con correo institucional para el inspector asignado. SolicitudId=" + codigoSolicitud + ", Codigo=" + (principalCedulaPersist ?? ""));
+                            }
+                        }
+                        catch (Exception exCorreo)
+                        {
+                            _logger.LogWarning("[GestionInspeccion] Error no critico enviando correo institucional de asignacion. SolicitudId=" + codigoSolicitud + ", Error=" + exCorreo.Message);
+                        }
+
+                        try
+                        {
                             new HistorialEstadoDAO().RegistrarCambio(
                                 codigoSolicitud,
                                 estadoAnterior,
@@ -1178,6 +1212,30 @@ WHERE codigo_solicitud=@id AND deleted_at IS NULL;";
         {
             object value;
             return TryGetValue(rd, col, out value) ? value.ToString() : null;
+        }
+
+        private string ObtenerNumeroSolicitudParaNotificacion(NpgsqlConnection cn, int codigoSolicitud)
+        {
+            if (cn == null || codigoSolicitud <= 0)
+            {
+                return codigoSolicitud > 0 ? codigoSolicitud.ToString() : string.Empty;
+            }
+
+            try
+            {
+                const string sql = @"
+SELECT COALESCE(NULLIF(TRIM(numero_solicitud), ''), codigo_solicitud::text)
+FROM aocr_tbsolicitud
+WHERE codigo_solicitud = @codigoSolicitud
+LIMIT 1;";
+
+                var numero = cn.QueryFirstOrDefault<string>(sql, new { codigoSolicitud = codigoSolicitud });
+                return string.IsNullOrWhiteSpace(numero) ? codigoSolicitud.ToString() : numero.Trim();
+            }
+            catch
+            {
+                return codigoSolicitud.ToString();
+            }
         }
 
         private static int GetInt(IDataRecord rd, string col)

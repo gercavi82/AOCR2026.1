@@ -909,6 +909,8 @@ namespace CapaPresentacion.Controllers
                 // 2. VALIDAR EMPRESA (Tu lógica original estaba bien)
                 var daoEmpresa = new EmpresaAS400DAO();
                 var empresas = daoEmpresa.ObtenerEmpresas();
+                var empresaSeleccionada = empresas.FirstOrDefault(e =>
+                    string.Equals((e.Codigo ?? string.Empty).Trim(), (empresaCodigo ?? string.Empty).Trim(), StringComparison.OrdinalIgnoreCase));
 
                 if (!empresas.Any(e => e.Codigo == empresaCodigo))
                 {
@@ -990,6 +992,35 @@ namespace CapaPresentacion.Controllers
 
                 if (resultadoId > 0)
                 {
+                    try
+                    {
+                        var daoCompaniasRt = new UsuarioCompaniaRTDAO();
+                        daoCompaniasRt.GuardarAsignaciones(
+                            resultadoId,
+                            new[]
+                            {
+                                new UsuarioCompaniaRT
+                                {
+                                    UsuarioId = resultadoId,
+                                    CompaniaCodigo = (empresaCodigo ?? string.Empty).Trim().ToUpperInvariant(),
+                                    CompaniaNombre = empresaSeleccionada != null ? (empresaSeleccionada.Nombre ?? string.Empty).Trim() : string.Empty,
+                                    Usuoid = empresaSeleccionada != null ? (empresaSeleccionada.CodigoNumeroCia ?? string.Empty).Trim() : string.Empty,
+                                    Activo = true
+                                }
+                            },
+                            cedula,
+                            true);
+
+                        UsuarioDAO.ActualizarEmpresaCodigoPrincipal(resultadoId, empresaCodigo);
+                    }
+                    catch (Exception exCompania)
+                    {
+                        LogBL.RegistrarError(
+                            "[Usuario/RegistrarUsuario] No se pudo persistir USUOID de la compañía seleccionada.",
+                            exCompania.ToString() + " | usuarioId=" + resultadoId + ", empresaCodigo=" + (empresaCodigo ?? string.Empty),
+                            "UsuarioController");
+                    }
+
                     return Json(new { success = true, message = "¡Registro exitoso! Su usuario es su número de cédula." });
                 }
                 else
@@ -1614,13 +1645,15 @@ namespace CapaPresentacion.Controllers
             {
                 var codigo = (Request.Form["Companias[" + index + "].IdCompania"] ?? string.Empty).Trim().ToUpperInvariant();
                 var nombre = (Request.Form["Companias[" + index + "].NombreCompania"] ?? string.Empty).Trim();
+                var usuoid = (Request.Form["Companias[" + index + "].Usuoid"] ?? string.Empty).Trim();
 
                 if (!string.IsNullOrWhiteSpace(codigo))
                 {
                     resultado.Add(new UsuarioCompaniaRT
                     {
                         CompaniaCodigo = codigo,
-                        CompaniaNombre = nombre
+                        CompaniaNombre = nombre,
+                        Usuoid = usuoid
                     });
                 }
 

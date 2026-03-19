@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Data;
 using CapaDatos.Models;
+using CapaDatos.Services;
 using Dapper;
 using Npgsql;
 
@@ -9,6 +10,33 @@ namespace CapaDatos.DAOs
 {
     public class UsuarioInternoRTDAO
     {
+        private const string SelectUsuarioInterno = @"
+SELECT
+    id                               AS Id,
+    usuario_id                       AS UsuarioId,
+    tecnico_id                       AS TecnicoId,
+    codigo_usuario                   AS CodigoUsuario,
+    COALESCE(identificacion,'')      AS Identificacion,
+    COALESCE(nombres,'')             AS Nombres,
+    COALESCE(apellidos,'')           AS Apellidos,
+    COALESCE(nombre_completo,'')     AS NombreCompleto,
+    COALESCE(tipo,'')                AS Tipo,
+    COALESCE(estado_as400,'')        AS EstadoAs400,
+    COALESCE(ciudad_codigo,'')       AS CiudadCodigo,
+    COALESCE(codigo_financiero, 0)   AS CodigoFinanciero,
+    COALESCE(opcar5,'')              AS Opcar5,
+    COALESCE(opcaer,'')              AS Opcaer,
+    COALESCE(opcoi3, 0)              AS Opcoi3,
+    COALESCE(correo_institucional,'') AS CorreoInstitucional,
+    COALESCE(rol_interno,'')         AS RolInterno,
+    COALESCE(observaciones,'')       AS Observaciones,
+    activo                           AS Activo,
+    created_at                       AS CreatedAt,
+    created_by                       AS CreatedBy,
+    updated_at                       AS UpdatedAt,
+    updated_by                       AS UpdatedBy
+FROM aocr_usuario_interno_rt";
+
         private NpgsqlConnection CrearConexion()
         {
             return ConexionDAO.CrearConexion();
@@ -55,6 +83,8 @@ namespace CapaDatos.DAOs
                 return false;
             }
 
+            CompletarDatosInstitucionalesDesdeAs400(registro);
+
             var codigo = NormalizarCodigo(registro.CodigoUsuario);
             if (string.IsNullOrWhiteSpace(codigo))
             {
@@ -64,7 +94,7 @@ namespace CapaDatos.DAOs
 
             if (registro.CodigoFinanciero <= 0m)
             {
-                mensaje = "El codigo financiero (usuoid) es obligatorio.";
+                mensaje = "No se pudo obtener el codigo financiero (usuoid) desde AS400 para el usuario seleccionado.";
                 return false;
             }
 
@@ -109,14 +139,18 @@ namespace CapaDatos.DAOs
 
                         const string sql = @"
 INSERT INTO aocr_usuario_interno_rt
-    (usuario_id, codigo_usuario, nombre_completo, tipo, estado_as400, ciudad_codigo, codigo_financiero, opcar5, opcaer, opcoi3, activo, created_at, created_by)
+    (usuario_id, tecnico_id, codigo_usuario, identificacion, nombres, apellidos, nombre_completo, tipo, estado_as400, ciudad_codigo, codigo_financiero, opcar5, opcaer, opcoi3, correo_institucional, rol_interno, observaciones, activo, created_at, created_by)
 VALUES
-    (@UsuarioId, @CodigoUsuario, @NombreCompleto, @Tipo, @EstadoAs400, @CiudadCodigo, @CodigoFinanciero, @Opcar5, @Opcaer, @Opcoi3, TRUE, NOW(), @Actor);";
+    (@UsuarioId, @TecnicoId, @CodigoUsuario, @Identificacion, @Nombres, @Apellidos, @NombreCompleto, @Tipo, @EstadoAs400, @CiudadCodigo, @CodigoFinanciero, @Opcar5, @Opcaer, @Opcoi3, @CorreoInstitucional, @RolInterno, @Observaciones, TRUE, NOW(), @Actor);";
 
                         cn.Execute(sql, new
                         {
                             UsuarioId = usuarioId,
+                            TecnicoId = registro.TecnicoId,
                             CodigoUsuario = codigo,
+                            Identificacion = (registro.Identificacion ?? string.Empty).Trim(),
+                            Nombres = (registro.Nombres ?? string.Empty).Trim(),
+                            Apellidos = (registro.Apellidos ?? string.Empty).Trim(),
                             NombreCompleto = (registro.NombreCompleto ?? string.Empty).Trim(),
                             Tipo = (registro.Tipo ?? string.Empty).Trim(),
                             EstadoAs400 = (registro.EstadoAs400 ?? "AC").Trim(),
@@ -125,6 +159,9 @@ VALUES
                             Opcar5 = aeropuerto,
                             Opcaer = aeropuerto,
                             Opcoi3 = registro.CodigoFinanciero,
+                            CorreoInstitucional = NormalizarTexto(registro.CorreoInstitucional, 200),
+                            RolInterno = NormalizarTexto(registro.RolInterno, 100),
+                            Observaciones = NormalizarTexto(registro.Observaciones, 2000),
                             Actor = actorRegistro
                         }, tx);
 
@@ -153,26 +190,11 @@ VALUES
             IDbTransaction tx,
             string codigoUsuario)
         {
-            const string sql = @"
-SELECT
-    id                 AS Id,
-    usuario_id         AS UsuarioId,
-    codigo_usuario     AS CodigoUsuario,
-    COALESCE(nombre_completo,'') AS NombreCompleto,
-    COALESCE(tipo,'')  AS Tipo,
-    COALESCE(estado_as400,'') AS EstadoAs400,
-    ciudad_codigo      AS CiudadCodigo,
-    codigo_financiero  AS CodigoFinanciero,
-    opcar5             AS Opcar5,
-    opcaer             AS Opcaer,
-    opcoi3             AS Opcoi3,
-    activo             AS Activo,
-    created_at         AS CreatedAt,
-    created_by         AS CreatedBy,
-    updated_at         AS UpdatedAt,
-    updated_by         AS UpdatedBy
-FROM aocr_usuario_interno_rt
-WHERE UPPER(TRIM(codigo_usuario)) = UPPER(TRIM(@codigoUsuario))
+            var sql = SelectUsuarioInterno + @"
+WHERE (
+        UPPER(TRIM(codigo_usuario)) = UPPER(TRIM(@codigoUsuario))
+        OR UPPER(TRIM(COALESCE(identificacion, ''))) = UPPER(TRIM(@codigoUsuario))
+      )
   AND activo = TRUE
 ORDER BY id DESC
 LIMIT 1;";
@@ -234,6 +256,13 @@ DO $$ BEGIN
     ALTER TABLE aocr_usuario_interno_rt ADD COLUMN IF NOT EXISTS nombre_completo VARCHAR(200) NULL;
     ALTER TABLE aocr_usuario_interno_rt ADD COLUMN IF NOT EXISTS tipo VARCHAR(10) NULL;
     ALTER TABLE aocr_usuario_interno_rt ADD COLUMN IF NOT EXISTS estado_as400 VARCHAR(10) NULL;
+    ALTER TABLE aocr_usuario_interno_rt ADD COLUMN IF NOT EXISTS tecnico_id INT NULL;
+    ALTER TABLE aocr_usuario_interno_rt ADD COLUMN IF NOT EXISTS identificacion VARCHAR(32) NULL;
+    ALTER TABLE aocr_usuario_interno_rt ADD COLUMN IF NOT EXISTS nombres VARCHAR(120) NULL;
+    ALTER TABLE aocr_usuario_interno_rt ADD COLUMN IF NOT EXISTS apellidos VARCHAR(120) NULL;
+    ALTER TABLE aocr_usuario_interno_rt ADD COLUMN IF NOT EXISTS correo_institucional VARCHAR(200) NULL;
+    ALTER TABLE aocr_usuario_interno_rt ADD COLUMN IF NOT EXISTS rol_interno VARCHAR(100) NULL;
+    ALTER TABLE aocr_usuario_interno_rt ADD COLUMN IF NOT EXISTS observaciones TEXT NULL;
 EXCEPTION WHEN OTHERS THEN NULL;
 END $$;
 
@@ -280,28 +309,376 @@ CREATE INDEX IF NOT EXISTS idx_aocr_asignacion_rt_solicitud
             {
                 cn.Open();
                 AsegurarEstructuraBasica(cn, null);
-                const string sql = @"
-SELECT
-    id                 AS Id,
-    usuario_id         AS UsuarioId,
-    codigo_usuario     AS CodigoUsuario,
-    COALESCE(nombre_completo,'') AS NombreCompleto,
-    COALESCE(tipo,'')  AS Tipo,
-    COALESCE(estado_as400,'') AS EstadoAs400,
-    ciudad_codigo      AS CiudadCodigo,
-    codigo_financiero  AS CodigoFinanciero,
-    opcar5             AS Opcar5,
-    opcaer             AS Opcaer,
-    opcoi3             AS Opcoi3,
-    activo             AS Activo,
-    created_at         AS CreatedAt,
-    created_by         AS CreatedBy,
-    updated_at         AS UpdatedAt,
-    updated_by         AS UpdatedBy
-FROM aocr_usuario_interno_rt
+                var sql = SelectUsuarioInterno + @"
 WHERE activo = TRUE
 ORDER BY COALESCE(nombre_completo, codigo_usuario);";
                 return cn.Query<UsuarioInternoRTRegistro>(sql).AsList();
+            }
+        }
+
+        public List<UsuarioInternoRTRegistro> ListarTodos()
+        {
+            using (var cn = CrearConexion())
+            {
+                cn.Open();
+                AsegurarEstructuraBasica(cn, null);
+                var sql = SelectUsuarioInterno + @"
+ORDER BY activo DESC, COALESCE(nombre_completo, codigo_usuario);";
+                return cn.Query<UsuarioInternoRTRegistro>(sql).AsList();
+            }
+        }
+
+        public UsuarioInternoRTRegistro ObtenerPorId(int id)
+        {
+            if (id <= 0)
+            {
+                return null;
+            }
+
+            using (var cn = CrearConexion())
+            {
+                cn.Open();
+                AsegurarEstructuraBasica(cn, null);
+                return ObtenerPorId(cn, null, id);
+            }
+        }
+
+        public List<TecnicoInternoDisponible> BuscarTecnicosDisponibles(string filtro, int? excluirUsuarioInternoId = null)
+        {
+            var criterio = (filtro ?? string.Empty).Trim();
+            using (var cn = CrearConexion())
+            {
+                cn.Open();
+                AsegurarEstructuraBasica(cn, null);
+
+                if (!ExisteTabla(cn, null, "aocr_tbtecnico") || !ExisteTabla(cn, null, "usuario"))
+                {
+                    return new List<TecnicoInternoDisponible>();
+                }
+
+                var sql = @"
+SELECT
+    t.codigotecnico AS CodigoTecnico,
+    u.idusuario AS UsuarioId,
+    COALESCE(u.codigousuario, '') AS CodigoUsuario,
+    COALESCE(NULLIF(TRIM(u.codigousuario), ''), '') AS Identificacion,
+    COALESCE(u.nombreusuario, '') AS Nombres,
+    COALESCE(u.apellidousuario, '') AS Apellidos,
+    TRIM(COALESCE(u.nombreusuario, '') || ' ' || COALESCE(u.apellidousuario, '')) AS NombreCompleto,
+    COALESCE(u.correo, '') AS CorreoActual,
+    COALESCE(t.especialidad, '') AS Especialidad,
+    COALESCE(t.activo, FALSE) AS Activo,
+    EXISTS (
+        SELECT 1
+        FROM aocr_usuario_interno_rt rt
+        WHERE rt.tecnico_id = t.codigotecnico
+          AND rt.activo = TRUE
+          AND (@excluirId IS NULL OR rt.id <> @excluirId)
+    ) AS YaVinculado
+FROM aocr_tbtecnico t
+INNER JOIN usuario u ON u.idusuario = t.codigousuario
+WHERE (@criterio = ''
+       OR UPPER(COALESCE(u.codigousuario, '')) LIKE UPPER(@like)
+       OR UPPER(COALESCE(u.nombreusuario, '')) LIKE UPPER(@like)
+       OR UPPER(COALESCE(u.apellidousuario, '')) LIKE UPPER(@like)
+       OR UPPER(TRIM(COALESCE(u.nombreusuario, '') || ' ' || COALESCE(u.apellidousuario, ''))) LIKE UPPER(@like)
+       OR UPPER(COALESCE(u.correo, '')) LIKE UPPER(@like)
+       OR UPPER(COALESCE(t.especialidad, '')) LIKE UPPER(@like))
+ORDER BY TRIM(COALESCE(u.nombreusuario, '') || ' ' || COALESCE(u.apellidousuario, ''))
+LIMIT 50;";
+
+                try
+                {
+                    return cn.Query<TecnicoInternoDisponible>(
+                        sql,
+                        new
+                        {
+                            criterio,
+                            like = "%" + criterio + "%",
+                            excluirId = excluirUsuarioInternoId
+                        }).AsList();
+                }
+                catch (PostgresException ex) when (ex.SqlState == "42P01")
+                {
+                    return new List<TecnicoInternoDisponible>();
+                }
+            }
+        }
+
+        public TecnicoInternoDisponible ObtenerTecnicoDisponiblePorId(int tecnicoId)
+        {
+            if (tecnicoId <= 0)
+            {
+                return null;
+            }
+
+            using (var cn = CrearConexion())
+            {
+                cn.Open();
+                AsegurarEstructuraBasica(cn, null);
+
+                if (!ExisteTabla(cn, null, "aocr_tbtecnico") || !ExisteTabla(cn, null, "usuario"))
+                {
+                    return null;
+                }
+
+                const string sql = @"
+SELECT
+    t.codigotecnico AS CodigoTecnico,
+    u.idusuario AS UsuarioId,
+    COALESCE(u.codigousuario, '') AS CodigoUsuario,
+    COALESCE(NULLIF(TRIM(u.codigousuario), ''), '') AS Identificacion,
+    COALESCE(u.nombreusuario, '') AS Nombres,
+    COALESCE(u.apellidousuario, '') AS Apellidos,
+    TRIM(COALESCE(u.nombreusuario, '') || ' ' || COALESCE(u.apellidousuario, '')) AS NombreCompleto,
+    COALESCE(u.correo, '') AS CorreoActual,
+    COALESCE(t.especialidad, '') AS Especialidad,
+    COALESCE(t.activo, FALSE) AS Activo,
+    EXISTS (
+        SELECT 1
+        FROM aocr_usuario_interno_rt rt
+        WHERE rt.tecnico_id = t.codigotecnico
+          AND rt.activo = TRUE
+    ) AS YaVinculado
+FROM aocr_tbtecnico t
+INNER JOIN usuario u ON u.idusuario = t.codigousuario
+WHERE t.codigotecnico = @tecnicoId
+LIMIT 1;";
+
+                try
+                {
+                    return cn.QueryFirstOrDefault<TecnicoInternoDisponible>(sql, new { tecnicoId });
+                }
+                catch (PostgresException ex) when (ex.SqlState == "42P01")
+                {
+                    return null;
+                }
+            }
+        }
+
+        public bool ActualizarRegistro(UsuarioInternoRTRegistro registro, string actor, out string mensaje)
+        {
+            mensaje = string.Empty;
+
+            if (registro == null || registro.Id <= 0)
+            {
+                mensaje = "No se recibio informacion valida para actualizar el usuario interno RT.";
+                return false;
+            }
+
+            CompletarDatosInstitucionalesDesdeAs400(registro);
+
+            using (var cn = CrearConexion())
+            {
+                cn.Open();
+                using (var tx = cn.BeginTransaction())
+                {
+                    try
+                    {
+                        AsegurarEstructuraBasica(cn, tx);
+
+                        var actual = ObtenerPorId(cn, tx, registro.Id);
+                        if (actual == null)
+                        {
+                            tx.Rollback();
+                            mensaje = "No se encontro el usuario interno RT.";
+                            return false;
+                        }
+
+                        var codigo = NormalizarCodigo(string.IsNullOrWhiteSpace(registro.CodigoUsuario) ? actual.CodigoUsuario : registro.CodigoUsuario);
+                        var identificacion = NormalizarTexto(
+                            string.IsNullOrWhiteSpace(registro.Identificacion) ? actual.Identificacion : registro.Identificacion,
+                            32);
+                        var nombres = NormalizarTexto(
+                            string.IsNullOrWhiteSpace(registro.Nombres) ? actual.Nombres : registro.Nombres,
+                            120);
+                        var apellidos = NormalizarTexto(
+                            string.IsNullOrWhiteSpace(registro.Apellidos) ? actual.Apellidos : registro.Apellidos,
+                            120);
+                        var nombreCompleto = NormalizarTexto(
+                            string.IsNullOrWhiteSpace(registro.NombreCompleto) ? actual.NombreCompleto : registro.NombreCompleto,
+                            200);
+
+                        const string sql = @"
+UPDATE aocr_usuario_interno_rt
+SET usuario_id = @UsuarioId,
+    tecnico_id = @TecnicoId,
+    codigo_usuario = @CodigoUsuario,
+    identificacion = @Identificacion,
+    nombres = @Nombres,
+    apellidos = @Apellidos,
+    nombre_completo = @NombreCompleto,
+    tipo = @Tipo,
+    estado_as400 = @EstadoAs400,
+    ciudad_codigo = @CiudadCodigo,
+    codigo_financiero = @CodigoFinanciero,
+    opcar5 = @Opcar5,
+    opcaer = @Opcaer,
+    opcoi3 = @Opcoi3,
+    correo_institucional = @CorreoInstitucional,
+    rol_interno = @RolInterno,
+    observaciones = @Observaciones,
+    activo = @Activo,
+    updated_at = NOW(),
+    updated_by = @Actor
+WHERE id = @Id;";
+
+                        cn.Execute(sql, new
+                        {
+                            Id = registro.Id,
+                            UsuarioId = registro.UsuarioId ?? actual.UsuarioId,
+                            TecnicoId = registro.TecnicoId ?? actual.TecnicoId,
+                            CodigoUsuario = codigo,
+                            Identificacion = identificacion,
+                            Nombres = nombres,
+                            Apellidos = apellidos,
+                            NombreCompleto = nombreCompleto,
+                            Tipo = NormalizarTexto(string.IsNullOrWhiteSpace(registro.Tipo) ? actual.Tipo : registro.Tipo, 10),
+                            EstadoAs400 = NormalizarTexto(string.IsNullOrWhiteSpace(registro.EstadoAs400) ? actual.EstadoAs400 : registro.EstadoAs400, 10),
+                            CiudadCodigo = NormalizarTexto(string.IsNullOrWhiteSpace(registro.CiudadCodigo) ? actual.CiudadCodigo : registro.CiudadCodigo, 10),
+                            CodigoFinanciero = registro.CodigoFinanciero > 0m ? registro.CodigoFinanciero : actual.CodigoFinanciero,
+                            Opcar5 = NormalizarTexto(string.IsNullOrWhiteSpace(registro.Opcar5) ? actual.Opcar5 : registro.Opcar5, 10),
+                            Opcaer = NormalizarTexto(string.IsNullOrWhiteSpace(registro.Opcaer) ? actual.Opcaer : registro.Opcaer, 10),
+                            Opcoi3 = registro.Opcoi3 > 0m ? registro.Opcoi3 : actual.Opcoi3,
+                            CorreoInstitucional = NormalizarTexto(string.IsNullOrWhiteSpace(registro.CorreoInstitucional) ? actual.CorreoInstitucional : registro.CorreoInstitucional, 200),
+                            RolInterno = NormalizarTexto(string.IsNullOrWhiteSpace(registro.RolInterno) ? actual.RolInterno : registro.RolInterno, 100),
+                            Observaciones = NormalizarTexto(registro.Observaciones ?? actual.Observaciones, 2000),
+                            Activo = registro.Activo,
+                            Actor = string.IsNullOrWhiteSpace(actor) ? "sistema" : actor.Trim()
+                        }, tx);
+
+                        tx.Commit();
+                        mensaje = "Usuario interno RT actualizado correctamente.";
+                        return true;
+                    }
+                    catch (Exception ex)
+                    {
+                        tx.Rollback();
+                        mensaje = "Error al actualizar usuario interno RT: " + ex.Message;
+                        return false;
+                    }
+                }
+            }
+        }
+
+        public bool CambiarEstado(int id, bool activo, string actor, out string mensaje)
+        {
+            mensaje = string.Empty;
+            if (id <= 0)
+            {
+                mensaje = "Identificador invalido.";
+                return false;
+            }
+
+            using (var cn = CrearConexion())
+            {
+                cn.Open();
+                AsegurarEstructuraBasica(cn, null);
+                var sql = @"
+UPDATE aocr_usuario_interno_rt
+SET activo = @activo,
+    updated_at = NOW(),
+    updated_by = @actor
+WHERE id = @id;";
+
+                var rows = cn.Execute(sql, new
+                {
+                    id,
+                    activo,
+                    actor = string.IsNullOrWhiteSpace(actor) ? "sistema" : actor.Trim()
+                });
+
+                if (rows <= 0)
+                {
+                    mensaje = "No se encontro el usuario interno RT.";
+                    return false;
+                }
+
+                mensaje = activo
+                    ? "Usuario interno RT activado correctamente."
+                    : "Usuario interno RT inactivado correctamente.";
+                return true;
+            }
+        }
+
+        public UsuarioInternoRTRegistro ResolverDestinatarioAsignacionPorCodigoUsuario(string codigoUsuario)
+        {
+            return ObtenerActivoPorCodigoUsuario(codigoUsuario);
+        }
+
+        public string ObtenerCorreoInstitucionalPorTecnicoId(int tecnicoId)
+        {
+            if (tecnicoId <= 0)
+            {
+                return string.Empty;
+            }
+
+            using (var cn = CrearConexion())
+            {
+                cn.Open();
+                AsegurarEstructuraBasica(cn, null);
+                const string sql = @"
+SELECT COALESCE(correo_institucional, '')
+FROM aocr_usuario_interno_rt
+WHERE tecnico_id = @tecnicoId
+  AND activo = TRUE
+ORDER BY id DESC
+LIMIT 1;";
+
+                return cn.QueryFirstOrDefault<string>(sql, new { tecnicoId }) ?? string.Empty;
+            }
+        }
+
+        public bool ExisteCorreoInstitucional(string correo, int? excluirId = null)
+        {
+            var correoNormalizado = NormalizarTexto(correo, 200);
+            if (string.IsNullOrWhiteSpace(correoNormalizado))
+            {
+                return false;
+            }
+
+            using (var cn = CrearConexion())
+            {
+                cn.Open();
+                AsegurarEstructuraBasica(cn, null);
+                const string sql = @"
+SELECT COUNT(1)
+FROM aocr_usuario_interno_rt
+WHERE activo = TRUE
+  AND LOWER(TRIM(COALESCE(correo_institucional, ''))) = LOWER(TRIM(@correo))
+  AND (@excluirId IS NULL OR id <> @excluirId);";
+
+                return cn.ExecuteScalar<int>(sql, new
+                {
+                    correo = correoNormalizado,
+                    excluirId
+                }) > 0;
+            }
+        }
+
+        public bool ExisteTecnicoActivo(int tecnicoId, int? excluirId = null)
+        {
+            if (tecnicoId <= 0)
+            {
+                return false;
+            }
+
+            using (var cn = CrearConexion())
+            {
+                cn.Open();
+                AsegurarEstructuraBasica(cn, null);
+                const string sql = @"
+SELECT COUNT(1)
+FROM aocr_usuario_interno_rt
+WHERE tecnico_id = @tecnicoId
+  AND activo = TRUE
+  AND (@excluirId IS NULL OR id <> @excluirId);";
+
+                return cn.ExecuteScalar<int>(sql, new
+                {
+                    tecnicoId,
+                    excluirId
+                }) > 0;
             }
         }
 
@@ -401,6 +778,105 @@ WHERE codigo_solicitud = @sol AND activo = TRUE
 ORDER BY created_at DESC
 LIMIT 1;";
                 return cn.QueryFirstOrDefault<AsignacionRTRegistro>(sql, new { sol = codigoSolicitud });
+            }
+        }
+
+        private static UsuarioInternoRTRegistro ObtenerPorId(NpgsqlConnection cn, IDbTransaction tx, int id)
+        {
+            var sql = SelectUsuarioInterno + @"
+WHERE id = @id
+LIMIT 1;";
+
+            return cn.QueryFirstOrDefault<UsuarioInternoRTRegistro>(sql, new { id }, tx);
+        }
+
+        private static bool ExisteTabla(IDbConnection cn, IDbTransaction tx, string tableName)
+        {
+            const string sql = @"
+SELECT COUNT(1)
+FROM information_schema.tables
+WHERE table_schema = 'public'
+  AND table_name = @tableName;";
+
+            return cn.ExecuteScalar<int>(sql, new { tableName }, tx) > 0;
+        }
+
+        private static string NormalizarTexto(string value, int maxLength)
+        {
+            if (string.IsNullOrWhiteSpace(value))
+            {
+                return string.Empty;
+            }
+
+            var texto = value.Trim();
+            if (texto.Length > maxLength)
+            {
+                texto = texto.Substring(0, maxLength);
+            }
+
+            return texto;
+        }
+
+        private static void CompletarDatosInstitucionalesDesdeAs400(UsuarioInternoRTRegistro registro)
+        {
+            if (registro == null)
+            {
+                return;
+            }
+
+            var valorBusqueda = !string.IsNullOrWhiteSpace(registro.CodigoUsuario)
+                ? registro.CodigoUsuario
+                : registro.Identificacion;
+
+            if (string.IsNullOrWhiteSpace(valorBusqueda))
+            {
+                return;
+            }
+
+            try
+            {
+                var dao = new UsuarioAS400DAO(new SecureConfigurationService());
+                var info = dao.ObtenerDatosUsuarioInterno(valorBusqueda);
+
+                if (info == null && !string.IsNullOrWhiteSpace(registro.Identificacion) &&
+                    !string.Equals(valorBusqueda, registro.Identificacion, StringComparison.OrdinalIgnoreCase))
+                {
+                    info = dao.ObtenerDatosUsuarioInterno(registro.Identificacion);
+                }
+
+                if (info == null && !string.IsNullOrWhiteSpace(registro.CodigoUsuario) &&
+                    !string.Equals(valorBusqueda, registro.CodigoUsuario, StringComparison.OrdinalIgnoreCase))
+                {
+                    info = dao.ObtenerDatosUsuarioInterno(registro.CodigoUsuario);
+                }
+
+                if (info == null)
+                {
+                    return;
+                }
+
+                if (string.IsNullOrWhiteSpace(registro.CodigoUsuario) && !string.IsNullOrWhiteSpace(info.CodigoUsuario))
+                {
+                    registro.CodigoUsuario = info.CodigoUsuario.Trim().ToUpperInvariant();
+                }
+
+                if (string.IsNullOrWhiteSpace(registro.CiudadCodigo) && !string.IsNullOrWhiteSpace(info.CiudadCodigo))
+                {
+                    registro.CiudadCodigo = info.CiudadCodigo.Trim().ToUpperInvariant();
+                }
+
+                if (registro.CodigoFinanciero <= 0m && info.CodigoFinanciero.HasValue && info.CodigoFinanciero.Value > 0m)
+                {
+                    registro.CodigoFinanciero = info.CodigoFinanciero.Value;
+                }
+
+                if (registro.Opcoi3 <= 0m && info.CodigoFinanciero.HasValue && info.CodigoFinanciero.Value > 0m)
+                {
+                    registro.Opcoi3 = info.CodigoFinanciero.Value;
+                }
+            }
+            catch
+            {
             }
         }
     }

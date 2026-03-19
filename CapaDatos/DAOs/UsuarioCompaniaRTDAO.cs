@@ -4,6 +4,7 @@ using System.Data;
 using System.Linq;
 using System.Text;
 using CapaModelo;
+using CapaDatos.Services;
 using Dapper;
 using Npgsql;
 
@@ -34,6 +35,7 @@ namespace CapaDatos.DAOs
 
                     var hasId = ExisteColumna(cn, null, "aocr_usuario_compania_rt", "id");
                     var hasNombre = ExisteColumna(cn, null, "aocr_usuario_compania_rt", "compania_nombre");
+                    var hasUsuoid = ExisteColumna(cn, null, "aocr_usuario_compania_rt", "usuoid");
                     var hasActivo = ExisteColumna(cn, null, "aocr_usuario_compania_rt", "activo");
                     var hasCreatedAt = ExisteColumna(cn, null, "aocr_usuario_compania_rt", "created_at");
                     var hasCreatedBy = ExisteColumna(cn, null, "aocr_usuario_compania_rt", "created_by");
@@ -46,6 +48,7 @@ namespace CapaDatos.DAOs
                     sql.AppendLine("    usuario_id AS UsuarioId,");
                     sql.AppendLine("    compania_codigo AS CompaniaCodigo,");
                     sql.AppendLine("    " + (hasNombre ? "COALESCE(compania_nombre, '')" : "''") + " AS CompaniaNombre,");
+                    sql.AppendLine("    " + (hasUsuoid ? "COALESCE(usuoid, '')" : "''") + " AS Usuoid,");
                     sql.AppendLine("    " + (hasActivo ? "COALESCE(activo, TRUE)" : "TRUE") + " AS Activo,");
                     sql.AppendLine("    " + (hasCreatedAt ? "created_at" : "NOW()") + " AS CreatedAt,");
                     sql.AppendLine("    " + (hasCreatedBy ? "COALESCE(created_by, '')" : "''") + " AS CreatedBy,");
@@ -121,6 +124,7 @@ WHERE usuario_id = @usuarioId
                     UsuarioId = usuarioId,
                     CompaniaCodigo = (c.CompaniaCodigo ?? string.Empty).Trim().ToUpperInvariant(),
                     CompaniaNombre = (c.CompaniaNombre ?? string.Empty).Trim(),
+                    Usuoid = NormalizarUsuoid(c.Usuoid),
                     Activo = true
                 })
                 .GroupBy(c => c.CompaniaCodigo, StringComparer.OrdinalIgnoreCase)
@@ -139,6 +143,8 @@ WHERE usuario_id = @usuarioId
                 {
                     try
                     {
+                        CompletarMetadataCompanias(listaNormalizada);
+
                         if (!TablaUsuarioCompaniaDisponible(cn, tx))
                         {
                             tx.Rollback();
@@ -146,6 +152,7 @@ WHERE usuario_id = @usuarioId
                         }
 
                         var hasNombre = ExisteColumna(cn, tx, "aocr_usuario_compania_rt", "compania_nombre");
+                        var hasUsuoid = ExisteColumna(cn, tx, "aocr_usuario_compania_rt", "usuoid");
                         var hasActivo = ExisteColumna(cn, tx, "aocr_usuario_compania_rt", "activo");
                         var hasCreatedAt = ExisteColumna(cn, tx, "aocr_usuario_compania_rt", "created_at");
                         var hasCreatedBy = ExisteColumna(cn, tx, "aocr_usuario_compania_rt", "created_by");
@@ -184,6 +191,10 @@ WHERE usuario_id = @usuarioId;";
                         {
                             setActualizar.Add("compania_nombre = @CompaniaNombre");
                         }
+                        if (hasUsuoid)
+                        {
+                            setActualizar.Add("usuoid = @Usuoid");
+                        }
                         if (hasActivo)
                         {
                             setActualizar.Add("activo = TRUE");
@@ -213,6 +224,11 @@ WHERE usuario_id = @UsuarioId
                         {
                             columnasInsert.Add("compania_nombre");
                             valoresInsert.Add("@CompaniaNombre");
+                        }
+                        if (hasUsuoid)
+                        {
+                            columnasInsert.Add("usuoid");
+                            valoresInsert.Add("@Usuoid");
                         }
                         if (hasActivo)
                         {
@@ -260,6 +276,7 @@ WHERE NOT EXISTS
                                 compania.UsuarioId,
                                 compania.CompaniaCodigo,
                                 compania.CompaniaNombre,
+                                compania.Usuoid,
                                 Actor = actor
                             };
 
@@ -369,6 +386,7 @@ CREATE TABLE IF NOT EXISTS aocr_usuario_compania_rt
 );
 
 ALTER TABLE aocr_usuario_compania_rt ADD COLUMN IF NOT EXISTS compania_nombre VARCHAR(250);
+ALTER TABLE aocr_usuario_compania_rt ADD COLUMN IF NOT EXISTS usuoid VARCHAR(30);
 ALTER TABLE aocr_usuario_compania_rt ADD COLUMN IF NOT EXISTS activo BOOLEAN NOT NULL DEFAULT TRUE;
 ALTER TABLE aocr_usuario_compania_rt ADD COLUMN IF NOT EXISTS created_at TIMESTAMP NOT NULL DEFAULT NOW();
 ALTER TABLE aocr_usuario_compania_rt ADD COLUMN IF NOT EXISTS created_by VARCHAR(120) NOT NULL DEFAULT 'sistema';
@@ -376,13 +394,90 @@ ALTER TABLE aocr_usuario_compania_rt ADD COLUMN IF NOT EXISTS updated_at TIMESTA
 ALTER TABLE aocr_usuario_compania_rt ADD COLUMN IF NOT EXISTS updated_by VARCHAR(120) NULL;
 
 CREATE INDEX IF NOT EXISTS idx_aocr_usuario_compania_rt_usuario_id ON aocr_usuario_compania_rt (usuario_id);
-CREATE INDEX IF NOT EXISTS idx_aocr_usuario_compania_rt_usuario_codigo ON aocr_usuario_compania_rt (usuario_id, compania_codigo);";
+CREATE INDEX IF NOT EXISTS idx_aocr_usuario_compania_rt_usuario_codigo ON aocr_usuario_compania_rt (usuario_id, compania_codigo);
+CREATE INDEX IF NOT EXISTS idx_aocr_usuario_compania_rt_usuoid ON aocr_usuario_compania_rt (usuoid);";
 
                 cn.Execute(ddl, transaction: tx);
             }
             catch (PostgresException ex) when (EsErrorInfraestructura(ex))
             {
                 // Best effort. If DDL is not permitted, main operations continue with fallbacks.
+            }
+        }
+
+        private static string NormalizarUsuoid(string usuoid)
+        {
+            if (string.IsNullOrWhiteSpace(usuoid))
+            {
+                return string.Empty;
+            }
+
+            var valor = usuoid.Trim().ToUpperInvariant();
+            if (valor.Length > 30)
+            {
+                valor = valor.Substring(0, 30);
+            }
+
+            return valor;
+        }
+
+        private static void CompletarMetadataCompanias(IList<UsuarioCompaniaRT> companias)
+        {
+            if (companias == null || companias.Count == 0)
+            {
+                return;
+            }
+
+            EmpresaAS400DAO empresaDao = null;
+            var cache = new Dictionary<string, Empresa>(StringComparer.OrdinalIgnoreCase);
+
+            foreach (var compania in companias)
+            {
+                if (compania == null || string.IsNullOrWhiteSpace(compania.CompaniaCodigo))
+                {
+                    continue;
+                }
+
+                if (!string.IsNullOrWhiteSpace(compania.CompaniaNombre) && !string.IsNullOrWhiteSpace(compania.Usuoid))
+                {
+                    continue;
+                }
+
+                var codigo = (compania.CompaniaCodigo ?? string.Empty).Trim().ToUpperInvariant();
+                Empresa empresa;
+                if (!cache.TryGetValue(codigo, out empresa))
+                {
+                    try
+                    {
+                        if (empresaDao == null)
+                        {
+                            empresaDao = new EmpresaAS400DAO(new SecureConfigurationService());
+                        }
+
+                        empresa = empresaDao.ObtenerEmpresaPorCodigo(codigo);
+                    }
+                    catch
+                    {
+                        empresa = null;
+                    }
+
+                    cache[codigo] = empresa;
+                }
+
+                if (empresa == null)
+                {
+                    continue;
+                }
+
+                if (string.IsNullOrWhiteSpace(compania.CompaniaNombre) && !string.IsNullOrWhiteSpace(empresa.Nombre))
+                {
+                    compania.CompaniaNombre = empresa.Nombre.Trim();
+                }
+
+                if (string.IsNullOrWhiteSpace(compania.Usuoid) && !string.IsNullOrWhiteSpace(empresa.CodigoNumeroCia))
+                {
+                    compania.Usuoid = NormalizarUsuoid(empresa.CodigoNumeroCia);
+                }
             }
         }
     }
