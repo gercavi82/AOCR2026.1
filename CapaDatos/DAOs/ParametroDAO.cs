@@ -33,19 +33,62 @@ namespace CapaDatos.DAOs
         {
             return new Parametro
             {
-                CodigoParametro = r["codigoparametro"] != DBNull.Value ? Convert.ToInt32(r["codigoparametro"]) : 0,
+                CodigoParametro = GetInt32OrDefault(r, "codigoparametro"),
                 Clave = r["clave"]?.ToString(),
                 Valor = r["valor"]?.ToString(),
                 Descripcion = r["descripcion"]?.ToString(),
                 Activo = r["activo"] != DBNull.Value && Convert.ToBoolean(r["activo"]),
 
                 CreatedAt = r["createdat"] != DBNull.Value ? (DateTime?)Convert.ToDateTime(r["createdat"]) : null,
-                CreatedBy = r["createdby"] != DBNull.Value ? (int?)Convert.ToInt32(r["createdby"]) : null,
+                CreatedBy = GetNullableInt32(r, "createdby"),
                 UpdatedAt = r["updatedat"] != DBNull.Value ? (DateTime?)Convert.ToDateTime(r["updatedat"]) : null,
-                UpdatedBy = r["updatedby"] != DBNull.Value ? (int?)Convert.ToInt32(r["updatedby"]) : null,
+                UpdatedBy = GetNullableInt32(r, "updatedby"),
                 DeletedAt = r["deletedat"] != DBNull.Value ? (DateTime?)Convert.ToDateTime(r["deletedat"]) : null,
-                DeletedBy = r["deletedby"] != DBNull.Value ? (int?)Convert.ToInt32(r["deletedby"]) : null
+                DeletedBy = GetNullableInt32(r, "deletedby")
             };
+        }
+
+        private static int GetInt32OrDefault(IDataRecord record, string columnName, int defaultValue = 0)
+        {
+            var valor = GetNullableInt32(record, columnName);
+            return valor ?? defaultValue;
+        }
+
+        private static int? GetNullableInt32(IDataRecord record, string columnName)
+        {
+            if (record == null || string.IsNullOrWhiteSpace(columnName))
+            {
+                return null;
+            }
+
+            object raw;
+            try
+            {
+                raw = record[columnName];
+            }
+            catch (IndexOutOfRangeException)
+            {
+                return null;
+            }
+
+            if (raw == null || raw == DBNull.Value)
+            {
+                return null;
+            }
+
+            if (raw is int)
+            {
+                return (int)raw;
+            }
+
+            var texto = Convert.ToString(raw)?.Trim();
+            if (string.IsNullOrWhiteSpace(texto))
+            {
+                return null;
+            }
+
+            int valor;
+            return int.TryParse(texto, out valor) ? (int?)valor : null;
         }
 
         // ==============================

@@ -22,8 +22,6 @@ namespace CapaPresentacion.Controllers
     [Authorize(Roles = "Administrador,Direccion,JefaturaTecnica")]
     public class AdminUsuariosController : Controller
     {
-        private readonly ILoggingService _logger = LoggingServiceFactory.Create();
-
         [HttpGet]
         [RequirePermission("ADM_GESTION_USUARIOS")]
         public ActionResult Index(string filtro, bool? activo)
@@ -121,11 +119,7 @@ namespace CapaPresentacion.Controllers
             {
                 Activo = true
             };
-            vm.CompaniaCodigoSeleccionada = ObtenerCodigoCompaniaOperativa(null);
-            AplicarDatosFinancierosCompaniaActiva(vm, vm.CompaniaCodigoSeleccionada);
-            _logger.LogInfo("[AdminUsuariosController] CrearUsuarioInternoRT GET. Usuario=" + ObtenerActorCodigoUsuario()
-                + ", CompaniaOperativa=" + (vm.CompaniaCodigoSeleccionada ?? string.Empty)
-                + ", CodigoFinanciero=" + (vm.CodigoFinanciero.HasValue ? vm.CodigoFinanciero.Value.ToString("0.##") : "null"));
+            AplicarDatosFinancierosCompaniaActiva(vm);
             CargarAeropuertosUsuarioInterno(vm, null);
             CargarRolesUsuarioInterno(vm, null);
             return View(vm);
@@ -134,14 +128,9 @@ namespace CapaPresentacion.Controllers
         [HttpGet]
         [Authorize(Roles = "Administrador")]
         [RequirePermission("ADM_GESTION_USUARIOS")]
-        public JsonResult BuscarUsuarioInternoRT(string codigoUsuario, string companiaCodigo)
+        public JsonResult BuscarUsuarioInternoRT(string codigoUsuario)
         {
             var texto = (codigoUsuario ?? string.Empty).Trim();
-            _logger.LogInfo("[AdminUsuariosController] BuscarUsuarioInternoRT inicio. Usuario=" + ObtenerActorCodigoUsuario()
-                + ", Busqueda=" + texto
-                + ", CompaniaRequest=" + ((companiaCodigo ?? string.Empty).Trim().ToUpperInvariant())
-                + ", CompaniaSesion=" + ((CompaniaActivaSessionHelper.ObtenerCodigo(Session) ?? string.Empty).Trim().ToUpperInvariant()));
-
             if (string.IsNullOrWhiteSpace(texto))
             {
                 return Json(
@@ -154,12 +143,13 @@ namespace CapaPresentacion.Controllers
             }
 
             var esNumerico = texto.All(char.IsDigit);
-            _logger.LogInfo("[AdminUsuariosController] BuscarUsuarioInternoRT criterio=" + (esNumerico ? "cedula" : "nombre"));
+            System.Diagnostics.Debug.WriteLine("[BuscarUsuarioInternoRT] Valor buscado: " + texto);
+            System.Diagnostics.Debug.WriteLine("[BuscarUsuarioInternoRT] Tipo de busqueda: " + (esNumerico ? "cedula" : "nombre"));
 
             var inspectorDao = new InspectorAS400DAO(new SecureConfigurationService());
             var resultados = inspectorDao.BuscarPorCedulaONombre(texto);
 
-            _logger.LogInfo("[AdminUsuariosController] BuscarUsuarioInternoRT resultados=" + resultados.Count);
+            System.Diagnostics.Debug.WriteLine("[BuscarUsuarioInternoRT] Resultados encontrados: " + resultados.Count);
 
             if (resultados.Count == 0)
             {
@@ -194,11 +184,9 @@ namespace CapaPresentacion.Controllers
             var cedula = (inspector.Cedula ?? string.Empty).Trim();
             var nombre = (inspector.NombreCompleto ?? string.Empty).Trim();
             var tipo = (inspector.Tipo ?? string.Empty).Trim();
+
             string ciudadCodigo = string.Empty;
-            var datosCompania = ResolverDatosFinancierosCompaniaActiva(companiaCodigo);
-            _logger.LogInfo("[AdminUsuariosController] BuscarUsuarioInternoRT compania resuelta. Codigo=" + (datosCompania.Codigo ?? string.Empty)
-                + ", Nombre=" + (datosCompania.Nombre ?? string.Empty)
-                + ", Usuoid=" + (datosCompania.Usuoid.HasValue ? datosCompania.Usuoid.Value.ToString("0.##") : "null"));
+            var datosCompania = ResolverDatosFinancierosCompaniaActiva();
 
             try
             {
@@ -211,7 +199,7 @@ namespace CapaPresentacion.Controllers
             }
             catch
             {
-                _logger.LogWarning("[AdminUsuariosController] BuscarUsuarioInternoRT sin ciudad institucional para cedula=" + cedula);
+                System.Diagnostics.Debug.WriteLine("[BuscarUsuarioInternoRT] No se pudo obtener ciudad institucional para cedula=" + cedula);
             }
 
             var daoInterno = new UsuarioInternoRTDAO();
@@ -251,16 +239,11 @@ namespace CapaPresentacion.Controllers
         {
             model = model ?? new AdminUsuarioInternoRTViewModel();
             model.CodigoUsuarioBusqueda = NormalizarCodigo(model.CodigoUsuarioBusqueda);
-            model.CompaniaCodigoSeleccionada = ObtenerCodigoCompaniaOperativa(model.CompaniaCodigoSeleccionada);
             model.Opcar5 = NormalizarCodigo(model.Opcar5, 10);
             model.Opcaer = model.Opcar5;
-            AplicarDatosFinancierosCompaniaActiva(model, model.CompaniaCodigoSeleccionada);
+            AplicarDatosFinancierosCompaniaActiva(model);
 
-            var datosCompania = ResolverDatosFinancierosCompaniaActiva(model.CompaniaCodigoSeleccionada);
-            _logger.LogInfo("[AdminUsuariosController] CrearUsuarioInternoRT POST. Usuario=" + ObtenerActorCodigoUsuario()
-                + ", InspectorBusqueda=" + (model.CodigoUsuarioBusqueda ?? string.Empty)
-                + ", CompaniaOperativa=" + (model.CompaniaCodigoSeleccionada ?? string.Empty)
-                + ", Usuoid=" + (datosCompania.Usuoid.HasValue ? datosCompania.Usuoid.Value.ToString("0.##") : "null"));
+            var datosCompania = ResolverDatosFinancierosCompaniaActiva();
 
             if (string.IsNullOrWhiteSpace(model.CodigoUsuarioBusqueda))
             {
@@ -1574,17 +1557,14 @@ namespace CapaPresentacion.Controllers
             }
         }
 
-        private void AplicarDatosFinancierosCompaniaActiva(AdminUsuarioInternoRTViewModel model, string companiaCodigoPreferida)
+        private void AplicarDatosFinancierosCompaniaActiva(AdminUsuarioInternoRTViewModel model)
         {
             if (model == null)
             {
                 return;
             }
 
-            var codigoOperativo = ObtenerCodigoCompaniaOperativa(companiaCodigoPreferida);
-            model.CompaniaCodigoSeleccionada = codigoOperativo;
-
-            var datos = ResolverDatosFinancierosCompaniaActiva(codigoOperativo);
+            var datos = ResolverDatosFinancierosCompaniaActiva();
             if (!datos.Usuoid.HasValue || datos.Usuoid.Value <= 0m)
             {
                 return;
@@ -1594,10 +1574,10 @@ namespace CapaPresentacion.Controllers
             model.Opcoi3 = datos.Usuoid.Value;
         }
 
-        private CompaniaFinancieraInfo ResolverDatosFinancierosCompaniaActiva(string companiaCodigoPreferida)
+        private CompaniaFinancieraInfo ResolverDatosFinancierosCompaniaActiva()
         {
-            var codigo = ObtenerCodigoCompaniaOperativa(companiaCodigoPreferida);
-            var nombre = ResolverNombreCompaniaOperativa(codigo);
+            var codigo = (CompaniaActivaSessionHelper.ObtenerCodigo(Session) ?? string.Empty).Trim().ToUpperInvariant();
+            var nombre = (CompaniaActivaSessionHelper.ObtenerNombre(Session) ?? string.Empty).Trim();
             var resultado = new CompaniaFinancieraInfo
             {
                 Codigo = codigo,
@@ -1606,8 +1586,6 @@ namespace CapaPresentacion.Controllers
 
             if (string.IsNullOrWhiteSpace(codigo))
             {
-                _logger.LogWarning("[AdminUsuariosController] ResolverDatosFinancierosCompaniaActiva sin codigo operativo. Preferido="
-                    + ((companiaCodigoPreferida ?? string.Empty).Trim().ToUpperInvariant()));
                 return resultado;
             }
 
@@ -1616,7 +1594,6 @@ namespace CapaPresentacion.Controllers
                 var empresa = new EmpresaAS400DAO(new SecureConfigurationService()).ObtenerEmpresaPorCodigo(codigo);
                 if (empresa == null)
                 {
-                    _logger.LogWarning("[AdminUsuariosController] ResolverDatosFinancierosCompaniaActiva sin empresa AS400 para codigo=" + codigo);
                     return resultado;
                 }
 
@@ -1630,93 +1607,13 @@ namespace CapaPresentacion.Controllers
                 {
                     resultado.Usuoid = usuoid;
                 }
-
-                _logger.LogInfo("[AdminUsuariosController] ResolverDatosFinancierosCompaniaActiva OK. Codigo=" + codigo
-                    + ", Nombre=" + (resultado.Nombre ?? string.Empty)
-                    + ", CodigoNumeroCia=" + ((empresa.CodigoNumeroCia ?? string.Empty).Trim())
-                    + ", Usuoid=" + (resultado.Usuoid.HasValue ? resultado.Usuoid.Value.ToString("0.##") : "null"));
             }
             catch (Exception ex)
             {
-                _logger.LogWarning("[AdminUsuariosController] ResolverDatosFinancierosCompaniaActiva error para codigo=" + codigo + ": " + ex.Message);
+                System.Diagnostics.Debug.WriteLine("[AdminUsuariosController] No se pudo resolver USUOID por compañía activa " + codigo + ": " + ex.Message);
             }
 
             return resultado;
-        }
-
-        private string ObtenerCodigoCompaniaOperativa(string companiaCodigoPreferida)
-        {
-            var codigoPreferido = (companiaCodigoPreferida ?? string.Empty).Trim().ToUpperInvariant();
-            var codigoSesion = (CompaniaActivaSessionHelper.ObtenerCodigo(Session) ?? string.Empty).Trim().ToUpperInvariant();
-
-            var usuarioId = ObtenerActorId() ?? 0;
-            if (usuarioId > 0)
-            {
-                var usuarioDb = UsuarioDAO.ObtenerPorId(usuarioId);
-                var companiasPermitidas = ObtenerCompaniasDeclaracionUsuario(usuarioId, usuarioDb);
-
-                if (!string.IsNullOrWhiteSpace(codigoPreferido))
-                {
-                    var coincidenciaPreferida = companiasPermitidas.FirstOrDefault(c =>
-                        string.Equals((c.Codigo ?? string.Empty).Trim(), codigoPreferido, StringComparison.OrdinalIgnoreCase));
-                    if (coincidenciaPreferida != null)
-                    {
-                        return (coincidenciaPreferida.Codigo ?? string.Empty).Trim().ToUpperInvariant();
-                    }
-                }
-
-                if (!string.IsNullOrWhiteSpace(codigoSesion))
-                {
-                    var coincidenciaSesion = companiasPermitidas.FirstOrDefault(c =>
-                        string.Equals((c.Codigo ?? string.Empty).Trim(), codigoSesion, StringComparison.OrdinalIgnoreCase));
-                    if (coincidenciaSesion != null)
-                    {
-                        return (coincidenciaSesion.Codigo ?? string.Empty).Trim().ToUpperInvariant();
-                    }
-                }
-
-                if (companiasPermitidas.Count == 1)
-                {
-                    return (companiasPermitidas[0].Codigo ?? string.Empty).Trim().ToUpperInvariant();
-                }
-            }
-
-            if (!string.IsNullOrWhiteSpace(codigoPreferido))
-            {
-                return codigoPreferido;
-            }
-
-            return codigoSesion;
-        }
-
-        private string ResolverNombreCompaniaOperativa(string companiaCodigo)
-        {
-            var codigo = (companiaCodigo ?? string.Empty).Trim().ToUpperInvariant();
-            if (string.IsNullOrWhiteSpace(codigo))
-            {
-                return (CompaniaActivaSessionHelper.ObtenerNombre(Session) ?? string.Empty).Trim();
-            }
-
-            var usuarioId = ObtenerActorId() ?? 0;
-            if (usuarioId > 0)
-            {
-                var usuarioDb = UsuarioDAO.ObtenerPorId(usuarioId);
-                var coincidencia = ObtenerCompaniasDeclaracionUsuario(usuarioId, usuarioDb)
-                    .FirstOrDefault(c => string.Equals((c.Codigo ?? string.Empty).Trim(), codigo, StringComparison.OrdinalIgnoreCase));
-                if (coincidencia != null && !string.IsNullOrWhiteSpace(coincidencia.Nombre))
-                {
-                    return coincidencia.Nombre.Trim();
-                }
-            }
-
-            var nombreSesion = (CompaniaActivaSessionHelper.ObtenerNombre(Session) ?? string.Empty).Trim();
-            if (!string.IsNullOrWhiteSpace(nombreSesion) &&
-                string.Equals((CompaniaActivaSessionHelper.ObtenerCodigo(Session) ?? string.Empty).Trim(), codigo, StringComparison.OrdinalIgnoreCase))
-            {
-                return nombreSesion;
-            }
-
-            return ResolverNombreCompania(codigo);
         }
 
         private bool GuardarCompaniaActivaParaUsuarioInterno(int? usuarioId, CompaniaFinancieraInfo datosCompania, out string mensaje)

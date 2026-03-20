@@ -31,7 +31,6 @@
     @Html.AntiForgeryToken()
     @Html.ValidationSummary(true, "", new { @class = "alert alert-danger" })
     @Html.HiddenFor(m => m.Id)
-    @Html.HiddenFor(m => m.CompaniaCodigoSeleccionada, new { id = "CompaniaCodigoSeleccionada" })
 
     <div class="card mb-3" style="display:@(esEdicion ? "none" : "block")">
         <div class="card-header">
@@ -221,7 +220,6 @@
             var txtOpcoi3 = byId("Opcoi3");
             var ddlOpcar5 = byId("Opcar5");
             var txtOpcaer = byId("Opcaer");
-            var hidCompaniaCodigo = byId("CompaniaCodigoSeleccionada");
 
             var tablaContainer = byId("tablaResultadosContainer");
             var tbody = byId("tbodyResultados");
@@ -232,23 +230,6 @@
             var hidNombre = byId("NombreCompleto");
             var txtTipo = byId("txtTipo");
             var hidTipo = byId("TipoInspector");
-
-            function obtenerSelectorCompaniaSidebar() {
-                return document.querySelector('.compania-contexto select[name="companiaCodigo"]');
-            }
-
-            function sincronizarCompaniaSeleccionada() {
-                if (!hidCompaniaCodigo) { return ""; }
-
-                var selector = obtenerSelectorCompaniaSidebar();
-                var codigo = selector && selector.value ? selector.value.trim() : "";
-                if (!codigo && hidCompaniaCodigo.value) {
-                    codigo = hidCompaniaCodigo.value.trim();
-                }
-
-                hidCompaniaCodigo.value = codigo;
-                return codigo;
-            }
 
             function limpiarMensaje() {
                 if (!msg) { return; }
@@ -332,12 +313,6 @@
                 sincronizarAeropuerto();
             }
 
-            var selectorCompaniaSidebar = obtenerSelectorCompaniaSidebar();
-            if (selectorCompaniaSidebar) {
-                selectorCompaniaSidebar.addEventListener("change", sincronizarCompaniaSeleccionada);
-            }
-            sincronizarCompaniaSeleccionada();
-
             if (!btnBuscar || @Html.Raw(esEdicion ? "true" : "false")) {
                 return;
             }
@@ -355,11 +330,7 @@
                 }
 
                 btnBuscar.disabled = true;
-                var companiaCodigo = sincronizarCompaniaSeleccionada();
                 var url = "@Url.Action("BuscarUsuarioInternoRT", "AdminUsuarios")" + "?codigoUsuario=" + encodeURIComponent(codigo);
-                if (companiaCodigo) {
-                    url += "&companiaCodigo=" + encodeURIComponent(companiaCodigo);
-                }
 
                 $.ajax({
                     url: url,

@@ -842,9 +842,8 @@ namespace CapaDatos.DAOs
                     return NormalizeNumericStringValue(schema, table, column, normalized, maxNumericLen, false);
                 }
 
-                var maxLen = 0;
-                var hasConfiguredTextLength = textLengths != null && textLengths.TryGetValue(column, out maxLen);
-                if (!hasConfiguredTextLength || maxLen <= 0)
+                int maxLen;
+                if ((!textLengths?.TryGetValue(column, out maxLen) ?? true) || maxLen <= 0)
                 {
                     maxLen = GetKnownTextLength(table, column);
                 }
@@ -862,8 +861,8 @@ namespace CapaDatos.DAOs
 
                 if (maxLen > 0)
                 {
-                    var truncatedValue = TruncateToByteLength(normalized, maxLen);
-                    if (!string.Equals(normalized, truncatedValue, StringComparison.Ordinal))
+                    var truncated = TruncateToByteLength(normalized, maxLen);
+                    if (!string.Equals(normalized, truncated, StringComparison.Ordinal))
                     {
                         _logger.LogWarning(string.Format(
                             "FR3 truncamiento preventivo en {0}.{1}.{2}: bytes={3}, max={4}.",
@@ -874,7 +873,7 @@ namespace CapaDatos.DAOs
                             maxLen));
                     }
 
-                            return truncatedValue;
+                    return truncated;
                 }
 
                 return normalized;

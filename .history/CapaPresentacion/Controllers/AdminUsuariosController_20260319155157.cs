@@ -22,8 +22,6 @@ namespace CapaPresentacion.Controllers
     [Authorize(Roles = "Administrador,Direccion,JefaturaTecnica")]
     public class AdminUsuariosController : Controller
     {
-        private readonly ILoggingService _logger = LoggingServiceFactory.Create();
-
         [HttpGet]
         [RequirePermission("ADM_GESTION_USUARIOS")]
         public ActionResult Index(string filtro, bool? activo)
@@ -123,9 +121,6 @@ namespace CapaPresentacion.Controllers
             };
             vm.CompaniaCodigoSeleccionada = ObtenerCodigoCompaniaOperativa(null);
             AplicarDatosFinancierosCompaniaActiva(vm, vm.CompaniaCodigoSeleccionada);
-            _logger.LogInfo("[AdminUsuariosController] CrearUsuarioInternoRT GET. Usuario=" + ObtenerActorCodigoUsuario()
-                + ", CompaniaOperativa=" + (vm.CompaniaCodigoSeleccionada ?? string.Empty)
-                + ", CodigoFinanciero=" + (vm.CodigoFinanciero.HasValue ? vm.CodigoFinanciero.Value.ToString("0.##") : "null"));
             CargarAeropuertosUsuarioInterno(vm, null);
             CargarRolesUsuarioInterno(vm, null);
             return View(vm);
@@ -137,11 +132,6 @@ namespace CapaPresentacion.Controllers
         public JsonResult BuscarUsuarioInternoRT(string codigoUsuario, string companiaCodigo)
         {
             var texto = (codigoUsuario ?? string.Empty).Trim();
-            _logger.LogInfo("[AdminUsuariosController] BuscarUsuarioInternoRT inicio. Usuario=" + ObtenerActorCodigoUsuario()
-                + ", Busqueda=" + texto
-                + ", CompaniaRequest=" + ((companiaCodigo ?? string.Empty).Trim().ToUpperInvariant())
-                + ", CompaniaSesion=" + ((CompaniaActivaSessionHelper.ObtenerCodigo(Session) ?? string.Empty).Trim().ToUpperInvariant()));
-
             if (string.IsNullOrWhiteSpace(texto))
             {
                 return Json(
@@ -154,12 +144,13 @@ namespace CapaPresentacion.Controllers
             }
 
             var esNumerico = texto.All(char.IsDigit);
-            _logger.LogInfo("[AdminUsuariosController] BuscarUsuarioInternoRT criterio=" + (esNumerico ? "cedula" : "nombre"));
+            System.Diagnostics.Debug.WriteLine("[BuscarUsuarioInternoRT] Valor buscado: " + texto);
+            System.Diagnostics.Debug.WriteLine("[BuscarUsuarioInternoRT] Tipo de busqueda: " + (esNumerico ? "cedula" : "nombre"));
 
             var inspectorDao = new InspectorAS400DAO(new SecureConfigurationService());
             var resultados = inspectorDao.BuscarPorCedulaONombre(texto);
 
-            _logger.LogInfo("[AdminUsuariosController] BuscarUsuarioInternoRT resultados=" + resultados.Count);
+            System.Diagnostics.Debug.WriteLine("[BuscarUsuarioInternoRT] Resultados encontrados: " + resultados.Count);
 
             if (resultados.Count == 0)
             {
@@ -196,9 +187,6 @@ namespace CapaPresentacion.Controllers
             var tipo = (inspector.Tipo ?? string.Empty).Trim();
             string ciudadCodigo = string.Empty;
             var datosCompania = ResolverDatosFinancierosCompaniaActiva(companiaCodigo);
-            _logger.LogInfo("[AdminUsuariosController] BuscarUsuarioInternoRT compania resuelta. Codigo=" + (datosCompania.Codigo ?? string.Empty)
-                + ", Nombre=" + (datosCompania.Nombre ?? string.Empty)
-                + ", Usuoid=" + (datosCompania.Usuoid.HasValue ? datosCompania.Usuoid.Value.ToString("0.##") : "null"));
 
             try
             {
@@ -211,7 +199,7 @@ namespace CapaPresentacion.Controllers
             }
             catch
             {
-                _logger.LogWarning("[AdminUsuariosController] BuscarUsuarioInternoRT sin ciudad institucional para cedula=" + cedula);
+                System.Diagnostics.Debug.WriteLine("[BuscarUsuarioInternoRT] No se pudo obtener ciudad institucional para cedula=" + cedula);
             }
 
             var daoInterno = new UsuarioInternoRTDAO();
@@ -257,10 +245,6 @@ namespace CapaPresentacion.Controllers
             AplicarDatosFinancierosCompaniaActiva(model, model.CompaniaCodigoSeleccionada);
 
             var datosCompania = ResolverDatosFinancierosCompaniaActiva(model.CompaniaCodigoSeleccionada);
-            _logger.LogInfo("[AdminUsuariosController] CrearUsuarioInternoRT POST. Usuario=" + ObtenerActorCodigoUsuario()
-                + ", InspectorBusqueda=" + (model.CodigoUsuarioBusqueda ?? string.Empty)
-                + ", CompaniaOperativa=" + (model.CompaniaCodigoSeleccionada ?? string.Empty)
-                + ", Usuoid=" + (datosCompania.Usuoid.HasValue ? datosCompania.Usuoid.Value.ToString("0.##") : "null"));
 
             if (string.IsNullOrWhiteSpace(model.CodigoUsuarioBusqueda))
             {
@@ -1606,8 +1590,6 @@ namespace CapaPresentacion.Controllers
 
             if (string.IsNullOrWhiteSpace(codigo))
             {
-                _logger.LogWarning("[AdminUsuariosController] ResolverDatosFinancierosCompaniaActiva sin codigo operativo. Preferido="
-                    + ((companiaCodigoPreferida ?? string.Empty).Trim().ToUpperInvariant()));
                 return resultado;
             }
 
@@ -1616,7 +1598,6 @@ namespace CapaPresentacion.Controllers
                 var empresa = new EmpresaAS400DAO(new SecureConfigurationService()).ObtenerEmpresaPorCodigo(codigo);
                 if (empresa == null)
                 {
-                    _logger.LogWarning("[AdminUsuariosController] ResolverDatosFinancierosCompaniaActiva sin empresa AS400 para codigo=" + codigo);
                     return resultado;
                 }
 
@@ -1630,15 +1611,10 @@ namespace CapaPresentacion.Controllers
                 {
                     resultado.Usuoid = usuoid;
                 }
-
-                _logger.LogInfo("[AdminUsuariosController] ResolverDatosFinancierosCompaniaActiva OK. Codigo=" + codigo
-                    + ", Nombre=" + (resultado.Nombre ?? string.Empty)
-                    + ", CodigoNumeroCia=" + ((empresa.CodigoNumeroCia ?? string.Empty).Trim())
-                    + ", Usuoid=" + (resultado.Usuoid.HasValue ? resultado.Usuoid.Value.ToString("0.##") : "null"));
             }
             catch (Exception ex)
             {
-                _logger.LogWarning("[AdminUsuariosController] ResolverDatosFinancierosCompaniaActiva error para codigo=" + codigo + ": " + ex.Message);
+                System.Diagnostics.Debug.WriteLine("[AdminUsuariosController] No se pudo resolver USUOID por compañía activa " + codigo + ": " + ex.Message);
             }
 
             return resultado;

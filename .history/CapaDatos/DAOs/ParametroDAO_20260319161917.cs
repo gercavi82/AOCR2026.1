@@ -33,19 +33,62 @@ namespace CapaDatos.DAOs
         {
             return new Parametro
             {
-                CodigoParametro = r["codigoparametro"] != DBNull.Value ? Convert.ToInt32(r["codigoparametro"]) : 0,
+                CodigoParametro = GetInt32OrDefault(r, "codigoparametro"),
                 Clave = r["clave"]?.ToString(),
                 Valor = r["valor"]?.ToString(),
                 Descripcion = r["descripcion"]?.ToString(),
                 Activo = r["activo"] != DBNull.Value && Convert.ToBoolean(r["activo"]),
 
                 CreatedAt = r["createdat"] != DBNull.Value ? (DateTime?)Convert.ToDateTime(r["createdat"]) : null,
-                CreatedBy = r["createdby"] != DBNull.Value ? (int?)Convert.ToInt32(r["createdby"]) : null,
+                CreatedBy = GetNullableInt32(r, "createdby"),
                 UpdatedAt = r["updatedat"] != DBNull.Value ? (DateTime?)Convert.ToDateTime(r["updatedat"]) : null,
-                UpdatedBy = r["updatedby"] != DBNull.Value ? (int?)Convert.ToInt32(r["updatedby"]) : null,
+                UpdatedBy = GetNullableInt32(r, "updatedby"),
                 DeletedAt = r["deletedat"] != DBNull.Value ? (DateTime?)Convert.ToDateTime(r["deletedat"]) : null,
-                DeletedBy = r["deletedby"] != DBNull.Value ? (int?)Convert.ToInt32(r["deletedby"]) : null
+                DeletedBy = GetNullableInt32(r, "deletedby")
             };
+        }
+
+        private static int GetInt32OrDefault(IDataRecord record, string columnName, int defaultValue = 0)
+        {
+            var valor = GetNullableInt32(record, columnName);
+            return valor ?? defaultValue;
+        }
+
+        private static int? GetNullableInt32(IDataRecord record, string columnName)
+        {
+            if (record == null || string.IsNullOrWhiteSpace(columnName))
+            {
+                return null;
+            }
+
+            object raw;
+            try
+            {
+                raw = record[columnName];
+            }
+            catch (IndexOutOfRangeException)
+            {
+                return null;
+            }
+
+            if (raw == null || raw == DBNull.Value)
+            {
+                return null;
+            }
+
+            if (raw is int)
+            {
+                return (int)raw;
+            }
+
+            var texto = Convert.ToString(raw)?.Trim();
+            if (string.IsNullOrWhiteSpace(texto))
+            {
+                return null;
+            }
+
+            int valor;
+            return int.TryParse(texto, out valor) ? (int?)valor : null;
         }
 
         // ==============================
@@ -238,124 +281,68 @@ namespace CapaDatos.DAOs
         }
 
         // ==============================
-        // Métodos especializados para configuraciones
+        // Configuraciones especiales (API Config)
         // ==============================
-        
-        /// <summary>
-        /// Obtiene valores de prueba/test desde parámetros
-        /// </summary>
         public Dictionary<string, string> ObtenerValoresTest()
         {
-            var valores = new Dictionary<string, string>();
-
-            const string sql = @"
-                SELECT clave, valor
-                FROM aocr_tbparametro
-                WHERE activo = TRUE AND deletedat IS NULL
-                  AND (clave LIKE 'TEST_%' OR clave LIKE 'DEMO_%')
-                ORDER BY clave;";
-
-            using (var cn = CrearConexion())
-            using (var cmd = new NpgsqlCommand(sql, cn))
-            {
-                cn.Open();
-                using (var rd = cmd.ExecuteReader())
-                {
-                    while (rd.Read())
-                    {
-                        var clave = rd["clave"]?.ToString();
-                        var valor = rd["valor"]?.ToString();
-                        
-                        if (!string.IsNullOrEmpty(clave))
-                        {
-                            valores[clave] = valor ?? "";
-                        }
-                    }
-                }
-            }
-
-            // Valores por defecto si no existen en base de datos
-            if (!valores.ContainsKey("TEST_OPERADOR_DEFECTO"))
-                valores["TEST_OPERADOR_DEFECTO"] = "EMPRESA DEMO S.A.";
-            
-            if (!valores.ContainsKey("TEST_REPRESENTANTE_DEFECTO"))
-                valores["TEST_REPRESENTANTE_DEFECTO"] = "Juan Carlos Pérez Demo";
-
-            return valores;
+            return ObtenerValoresPorPrefijos(new[] { "TEST_" });
         }
 
-        /// <summary>
-        /// Obtiene configuración específica para PDF
-        /// </summary>
-        public Dictionary<string, object> ObtenerConfiguracionPDF()
+        public Dictionary<string, string> ObtenerConfiguracionPDF()
         {
-            var config = new Dictionary<string, object>();
-
-            const string sql = @"
-                SELECT clave, valor
-                FROM aocr_tbparametro
-                WHERE activo = TRUE AND deletedat IS NULL
-                  AND (clave LIKE 'PDF_%' OR clave LIKE 'ROTATIVA_%')
-                ORDER BY clave;";
-
-            using (var cn = CrearConexion())
-            using (var cmd = new NpgsqlCommand(sql, cn))
-            {
-                cn.Open();
-                using (var rd = cmd.ExecuteReader())
-                {
-                    while (rd.Read())
-                    {
-                        var clave = rd["clave"]?.ToString();
-                        var valor = rd["valor"]?.ToString();
-                        
-                        if (!string.IsNullOrEmpty(clave))
-                        {
-                            // Intentar convertir valores numéricos
-                            if (decimal.TryParse(valor, out decimal valorDecimal))
-                            {
-                                config[clave] = valorDecimal;
-                            }
-                            else if (bool.TryParse(valor, out bool valorBool))
-                            {
-                                config[clave] = valorBool;
-                            }
-                            else
-                            {
-                                config[clave] = valor ?? "";
-                            }
-                        }
-                    }
-                }
-            }
-
-            // Configuración por defecto
-            if (!config.ContainsKey("PDF_FORMATO"))
-                config["PDF_FORMATO"] = "A4";
-            
-            if (!config.ContainsKey("PDF_ORIENTACION"))
-                config["PDF_ORIENTACION"] = "Portrait";
-
-            return config;
+            return ObtenerValoresPorPrefijos(new[] { "PDF_", "CFG_PDF_", "CONFIG_PDF_" });
         }
 
-        /// <summary>
-        /// Obtiene montos de demostración configurables
-        /// </summary>
-        public Dictionary<string, decimal> ObtenerMontosDemo()
+        public Dictionary<string, string> ObtenerMontosDemo()
         {
-            var montos = new Dictionary<string, decimal>();
+            return ObtenerValoresPorPrefijos(new[] { "DEMO_", "MONTO_DEMO_" });
+        }
 
-            const string sql = @"
+        private Dictionary<string, string> ObtenerValoresPorPrefijos(IEnumerable<string> prefijos)
+        {
+            var result = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+            if (prefijos == null)
+            {
+                return result;
+            }
+
+            var filtros = new List<string>();
+            var parametros = new List<NpgsqlParameter>();
+            int idx = 0;
+
+            foreach (var p in prefijos)
+            {
+                if (string.IsNullOrWhiteSpace(p))
+                {
+                    continue;
+                }
+                var paramName = "@p" + idx;
+                filtros.Add("clave LIKE " + paramName);
+                parametros.Add(new NpgsqlParameter(paramName, p.Trim() + "%"));
+                idx++;
+            }
+
+            if (filtros.Count == 0)
+            {
+                return result;
+            }
+
+            var sql = @"
                 SELECT clave, valor
                 FROM aocr_tbparametro
-                WHERE activo = TRUE AND deletedat IS NULL
-                  AND (clave LIKE 'MONTO_%' OR clave LIKE 'TARIFA_%')
+                WHERE activo = TRUE
+                  AND deletedat IS NULL
+                  AND (" + string.Join(" OR ", filtros) + @")
                 ORDER BY clave;";
 
             using (var cn = CrearConexion())
             using (var cmd = new NpgsqlCommand(sql, cn))
             {
+                foreach (var p in parametros)
+                {
+                    cmd.Parameters.Add(p);
+                }
+
                 cn.Open();
                 using (var rd = cmd.ExecuteReader())
                 {
@@ -363,26 +350,15 @@ namespace CapaDatos.DAOs
                     {
                         var clave = rd["clave"]?.ToString();
                         var valor = rd["valor"]?.ToString();
-                        
-                        if (!string.IsNullOrEmpty(clave) && decimal.TryParse(valor, out decimal valorDecimal))
+                        if (!string.IsNullOrWhiteSpace(clave))
                         {
-                            montos[clave] = valorDecimal;
+                            result[clave] = valor ?? string.Empty;
                         }
                     }
                 }
             }
 
-            // Montos por defecto si no existen en base de datos
-            if (!montos.ContainsKey("MONTO_BASE"))
-                montos["MONTO_BASE"] = 100.00m;
-            
-            if (!montos.ContainsKey("TARIFA_SERVICIO"))
-                montos["TARIFA_SERVICIO"] = 25.00m;
-            
-            if (!montos.ContainsKey("MONTO_IVA"))
-                montos["MONTO_IVA"] = 12.00m;
-
-            return montos;
+            return result;
         }
     }
 }
