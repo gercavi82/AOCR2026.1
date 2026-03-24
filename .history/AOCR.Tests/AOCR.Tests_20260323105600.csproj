@@ -43,14 +43,12 @@
     <Compile Include="Unit\ValidacionesTests.cs" />
     <Compile Include="Unit\EmailQueueTests.cs" />
     <Compile Include="Unit\EstadoSolicitudTransitionMatrixTests.cs" />
-    <Compile Include="Unit\SolicitudEstadoTransitionBLTests.cs" />
     <Compile Include="Unit\PdfGeneratorTests.cs" />
     <Compile Include="Unit\SecurityTests.cs" />
     <Compile Include="Integration\FlujoCompletoTests.cs" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\CapaDatos\CapaDatos.csproj" />
-    <ProjectReference Include="..\CapaNegocio\CapaNegocio.csproj" />
   </ItemGroup>
   <ItemGroup>
     <None Include="app.config" />

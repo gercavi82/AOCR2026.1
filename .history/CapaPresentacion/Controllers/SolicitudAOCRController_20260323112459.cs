@@ -1815,7 +1815,7 @@ namespace CapaPresentacion.Controllers
 
             var usuarioId = ObtenerUsuarioActualId();
             var usuarioRegistro = (Session["CodigoUsuario"] ?? User.Identity.Name ?? "sistema").ToString();
-            _solicitudAocrInfraBL.RegistrarEventoHistorialRevision(
+            daoRevision.RegistrarEventoHistorial(
                 id,
                 null,
                 "REVISION_DOCUMENTAL_FINALIZADA",

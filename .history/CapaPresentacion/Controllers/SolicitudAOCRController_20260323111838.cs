@@ -27,7 +27,6 @@ namespace CapaPresentacion.Controllers
     public class SolicitudAOCRController : Controller
     {
         private readonly SolicitudBL _solicitudBL = new SolicitudBL();
-        private readonly SolicitudAocrInfraBL _solicitudAocrInfraBL = new SolicitudAocrInfraBL();
         private readonly SolicitudEstadoTransitionBL _solicitudEstadoTransitionBL = new SolicitudEstadoTransitionBL();
         private readonly SolicitudAOCRDAO _solicitudDAO = new SolicitudAOCRDAO();
         private readonly DocumentoDAO _documentoDAO = new DocumentoDAO();
@@ -204,7 +203,8 @@ namespace CapaPresentacion.Controllers
             try
             {
                 // Obtener inspecciones asociadas a la solicitud
-                var inspecciones = _solicitudAocrInfraBL.ListarInspeccionesPorSolicitud(codigoSolicitud);
+                var inspeccionDAO = new InspeccionDAO();
+                var inspecciones = inspeccionDAO.ListarPorSolicitud(codigoSolicitud);
                 if (inspecciones == null || inspecciones.Count == 0)
                     return 0m;
 
@@ -1279,13 +1279,14 @@ namespace CapaPresentacion.Controllers
 
             try
             {
-                var cedula = NormalizarIdentificacion(_solicitudAocrInfraBL.ObtenerCedulaPorCodigoUsuario(codigoUsuario));
+                var as400Dao = new UsuarioAS400DAO();
+                var cedula = NormalizarIdentificacion(as400Dao.ObtenerCedulaPorCodigoUsuario(codigoUsuario));
                 if (!string.IsNullOrWhiteSpace(cedula))
                 {
                     return cedula;
                 }
 
-                var ruc = NormalizarIdentificacion(_solicitudAocrInfraBL.ObtenerNumeroRucPorCodigoUsuario(codigoUsuario));
+                var ruc = NormalizarIdentificacion(as400Dao.ObtenerNumeroRucPorCodigoUsuario(codigoUsuario));
                 if (!string.IsNullOrWhiteSpace(ruc))
                 {
                     return ruc;
@@ -1489,7 +1490,8 @@ namespace CapaPresentacion.Controllers
 
             try
             {
-                var empresa = _solicitudAocrInfraBL.ObtenerEmpresaPorCodigo(codigo);
+                var dao = new EmpresaAS400DAO();
+                var empresa = dao.ObtenerEmpresaPorCodigo(codigo);
                 if (empresa != null && !string.IsNullOrWhiteSpace(empresa.Nombre))
                 {
                     return empresa.Nombre.Trim();
@@ -1726,8 +1728,9 @@ namespace CapaPresentacion.Controllers
 
             var usuarioId = ObtenerUsuarioActualId();
             var usuarioRegistro = (Session["CodigoUsuario"] ?? User.Identity.Name ?? "sistema").ToString();
-            _solicitudAocrInfraBL.RegistrarRevisionDocumental(id, codigoDocumento, decisionNorm, observacionNormalizada, usuarioId, usuarioRegistro);
-            _solicitudAocrInfraBL.RegistrarEventoHistorialRevision(
+            var daoRevision = new RevisionDocumentalDAO();
+            daoRevision.RegistrarRevision(id, codigoDocumento, decisionNorm, observacionNormalizada, usuarioId, usuarioRegistro);
+            daoRevision.RegistrarEventoHistorial(
                 id,
                 codigoDocumento,
                 "REVISION_DOCUMENTAL",
@@ -1761,7 +1764,8 @@ namespace CapaPresentacion.Controllers
                 return RedirectToAction("Detalle", new { id });
             }
 
-            var revisiones = _solicitudAocrInfraBL.ObtenerUltimasRevisionesPorSolicitud(id);
+            var daoRevision = new RevisionDocumentalDAO();
+            var revisiones = daoRevision.ObtenerUltimasRevisionesPorSolicitud(id);
 
             var documentosSinDecision = documentosRevision
                 .Where(d => !DocumentoTieneDecisionFinal(d, revisiones))
@@ -1815,7 +1819,7 @@ namespace CapaPresentacion.Controllers
 
             var usuarioId = ObtenerUsuarioActualId();
             var usuarioRegistro = (Session["CodigoUsuario"] ?? User.Identity.Name ?? "sistema").ToString();
-            _solicitudAocrInfraBL.RegistrarEventoHistorialRevision(
+            daoRevision.RegistrarEventoHistorial(
                 id,
                 null,
                 "REVISION_DOCUMENTAL_FINALIZADA",
@@ -1909,7 +1913,8 @@ namespace CapaPresentacion.Controllers
             }
 
             var documentos = _documentoDAO.ObtenerPorSolicitud(id) ?? new List<Documento>();
-            var historial = _solicitudAocrInfraBL.ObtenerHistorialEstadosPorSolicitud(id);
+            var historialDAO = new HistorialEstadoDAO();
+            var historial = historialDAO.ObtenerPorSolicitud(id) ?? new List<HistorialEstado>();
 
             // Extraer nombre del inspector asignado
             var inspectorNombre = !string.IsNullOrWhiteSpace(solicitud.TecnicoResponsableNombre)
@@ -2121,13 +2126,15 @@ namespace CapaPresentacion.Controllers
             var solicitud = _solicitudDAO.ObtenerPorId(id);
             if (solicitud == null) return HttpNotFound();
 
-            ViewBag.HistorialEstados = _solicitudAocrInfraBL.ObtenerHistorialEstadosPorSolicitud(id);
+            var historialDAO = new HistorialEstadoDAO();
+            ViewBag.HistorialEstados = historialDAO.ObtenerPorSolicitud(id);
             ViewBag.UsuarioActualId = ObtenerUsuarioActualId();
 
-            ViewBag.AsignacionActiva = _solicitudAocrInfraBL.ObtenerAsignacionActiva(id);
-            ViewBag.HistorialAsignaciones = _solicitudAocrInfraBL.ObtenerHistorialAsignacion(id);
+            var rtDao = new UsuarioInternoRTDAO();
+            ViewBag.AsignacionActiva = rtDao.ObtenerAsignacionActiva(id);
+            ViewBag.HistorialAsignaciones = rtDao.ObtenerHistorialAsignacion(id);
             var documentosRevision = ObtenerDocumentosVigentesParaRevision(id);
-            var revisionesDocumentales = _solicitudAocrInfraBL.ObtenerUltimasRevisionesPorSolicitud(id);
+            var revisionesDocumentales = new RevisionDocumentalDAO().ObtenerUltimasRevisionesPorSolicitud(id);
             ViewBag.DocumentosSolicitud = documentosRevision;
             ViewBag.RevisionesDocumentales = revisionesDocumentales;
             ViewBag.PuedeFinalizarRevisionDocumental =
@@ -2289,7 +2296,7 @@ namespace CapaPresentacion.Controllers
         private bool SolicitudTieneInspeccionSatisfactoria(int codigoSolicitud, out string mensaje)
         {
             mensaje = string.Empty;
-            var inspecciones = _solicitudAocrInfraBL.ListarInspeccionesPorSolicitud(codigoSolicitud) ?? new List<Inspeccion>();
+            var inspecciones = new InspeccionDAO().ListarPorSolicitud(codigoSolicitud) ?? new List<Inspeccion>();
 
             if (inspecciones.Count == 0)
             {
@@ -2592,7 +2599,8 @@ namespace CapaPresentacion.Controllers
             {
                 try
                 {
-                    catalogo = _solicitudAocrInfraBL.ObtenerEmpresas()
+                    var dao = new EmpresaAS400DAO();
+                    catalogo = dao.ObtenerEmpresas()
                         .Where(c => c != null && !string.IsNullOrWhiteSpace(c.CodigoOaci))
                         .Select(c => new CompaniaCatalogoVM
                         {

@@ -306,6 +306,7 @@
                         var esAceptada = estadoNorm == "ACEPTADA" || estadoNorm == "RESULTADO_SATISFACTORIO" || estadoNorm == "APROBADA";
                         var esObservada = estadoNorm == "OBSERVADA" || estadoNorm == "OBSERVACION_DOCUMENTAL" || estadoNorm == "RECHAZADA";
                         var esNoSatisfactorio = estadoNorm == "RESULTADO_NO_SATISFACTORIO";
+                        var esPendiente = !(esAceptada || esObservada || esNoSatisfactorio);
                         var rowClass = esNoSatisfactorio ? "insp-row-no" : (esObservada ? "insp-row-obs" : string.Empty);
                         var observacion = !string.IsNullOrWhiteSpace(inspeccion.Comentarios)
                             ? inspeccion.Comentarios

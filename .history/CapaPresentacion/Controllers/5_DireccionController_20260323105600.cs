@@ -359,7 +359,7 @@ namespace CapaPresentacion.Controllers
             if (Session["CodigoUsuario"] != null && int.TryParse(Session["CodigoUsuario"].ToString(), out int idUsuario))
                 return idUsuario;
 
-            throw new InvalidOperationException("No se pudo obtener el ID del usuario actual.");
+            throw new Exception("No se pudo obtener el ID del usuario actual.");
         }
 
         private bool CambiarEstadoDireccionConReglas(int codigoSolicitud, string nuevoEstado, string observacion, out string mensaje)

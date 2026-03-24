@@ -447,22 +447,7 @@ namespace CapaPresentacion.Controllers
                     ObtenerUsuarioActual(),
                     bloqueBpmn);
 
-                string estadoPersistido = "N/A";
-                if (ok)
-                {
-                    var inspeccionActualizada = _inspeccionDAO.ObtenerPorId(id);
-                    if (inspeccionActualizada != null)
-                    {
-                        estadoPersistido = EstadosInspeccion.NormalizarEstado(inspeccionActualizada.Estado);
-                    }
-
-                    if (!string.Equals(estadoPersistido, estadoDestino, StringComparison.OrdinalIgnoreCase))
-                    {
-                        _logger.LogWarning("[GestionInspeccion] DesalineacionEstadoDetectada. InspeccionId=" + id + ", EstadoSolicitado=" + estadoDestino + ", EstadoPersistido=" + estadoPersistido + ", Usuario=" + ObtenerUsuarioActual());
-                    }
-                }
-
-                _logger.LogInfo("[GestionInspeccion] PuedeGestionar=" + ok + ", InspeccionId=" + id + ", EstadoDestino=" + estadoDestino + ", EstadoPersistido=" + estadoPersistido + ", Usuario=" + ObtenerUsuarioActual());
+                _logger.LogInfo("[GestionInspeccion] PuedeGestionar=" + ok + ", InspeccionId=" + id + ", EstadoDestino=" + estadoDestino + ", Usuario=" + ObtenerUsuarioActual());
 
                 TempData[ok ? "Success" : "Error"] = ok
                     ? "Estado actualizado correctamente."

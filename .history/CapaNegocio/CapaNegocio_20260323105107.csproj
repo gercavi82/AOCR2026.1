@@ -164,7 +164,6 @@
     <Compile Include="Services\TecnicoService.cs" />
     <Compile Include="Services\TramiteService.cs" />
     <Compile Include="SolicitudAOCRBL.cs" />
-    <Compile Include="SolicitudAocrInfraBL.cs" />
     <Compile Include="SolicitudEstadoTransitionBL.cs" />
     <Compile Include="SeguridadBL.cs" />
     <Compile Include="UsuarioInternoRTBL.cs" />
