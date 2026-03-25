@@ -251,6 +251,7 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Constants\EstadosInspeccionCore.cs" />
     <Compile Include="Constants\EstadosInspeccion.cs" />
     <Compile Include="Constants\EstadosSolicitudAOCR.cs" />
     <Compile Include="Constants\RolesAOCR.cs" />

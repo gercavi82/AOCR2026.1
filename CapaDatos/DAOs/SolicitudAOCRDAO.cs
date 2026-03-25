@@ -120,18 +120,21 @@ namespace CapaDatos.DAOs
                 placeholders.Add("@e" + i);
             }
 
-                        var sql = @"
+                                                var sql = @"
                                 SELECT s.*
                                 FROM aocr_tbsolicitud s
-                                WHERE UPPER(COALESCE(s.estado, '')) IN (" + string.Join(", ", placeholders) + @")
-                                    AND s.deleted_at IS NULL
-                                AND EXISTS (
+                                                                WHERE TRIM(TRANSLATE(UPPER(COALESCE(s.estado, '')), 'ÁÉÍÓÚ', 'AEIOU')) IN (" + string.Join(", ", placeholders) + @")
+                                                                    AND s.deleted_at IS NULL
+                                                                    AND (
+                                                                        TRIM(TRANSLATE(UPPER(COALESCE(s.estado, '')), 'ÁÉÍÓÚ', 'AEIOU')) IN ('ACEPTACION DOCUMENTAL', 'ACEPTACION_DOCUMENTAL')
+                                                                        OR EXISTS (
                                     SELECT 1
                                     FROM aocr_or_orden o
                                     WHERE COALESCE(o.codigo_solicitud::text, '') = s.codigo_solicitud::text
                                       AND UPPER(COALESCE(o.estado, '')) IN ('FACTURADA', 'COMPLETADA', 'PAGADA')
-                                )
-                                    AND NOT EXISTS (
+                                                                        )
+                                                                    )
+                                                                    AND NOT EXISTS (
                                             SELECT 1
                                             FROM aocr_tbinspeccion i
                                             WHERE i.codigo_solicitud = s.codigo_solicitud
@@ -719,8 +722,14 @@ WHERE codigo_solicitud=@id AND deleted_at IS NULL;";
                             estadoAnterior = value.ToString();
                         }
 
+                        var columnasSolicitud = ObtenerColumnasTabla(cn, "aocr_tbsolicitud");
+                        var columnasInspeccion = ObtenerColumnasTabla(cn, "aocr_tbinspeccion");
+                        var estadoActualNormalizado = EstadoSolicitud.Normalizar(estadoAnterior);
+                        var permiteAsignacionPorAceptacionDocumental =
+                            string.Equals(estadoActualNormalizado, EstadoSolicitud.AceptacionDocumental, StringComparison.OrdinalIgnoreCase);
+
                         string estadoRecaudacion;
-                        if (!TieneRecaudacionFinalizada(cn, tx, codigoSolicitud, out estadoRecaudacion))
+                        if (!permiteAsignacionPorAceptacionDocumental && !TieneRecaudacionFinalizada(cn, tx, codigoSolicitud, out estadoRecaudacion))
                         {
                             _logger.LogWarning("[GestionInspeccion] PuedeGestionar=False. Motivo=Recaudacion no finalizada. EstadoRecaudacion=" + (estadoRecaudacion ?? "SIN_ORDEN"));
                             mensaje = "No se puede asignar inspector hasta que la recaudación esté finalizada.";
@@ -728,9 +737,6 @@ WHERE codigo_solicitud=@id AND deleted_at IS NULL;";
                             return false;
                         }
 
-                        var columnasSolicitud = ObtenerColumnasTabla(cn, "aocr_tbsolicitud");
-                        var columnasInspeccion = ObtenerColumnasTabla(cn, "aocr_tbinspeccion");
-                        var estadoActualNormalizado = EstadoSolicitud.Normalizar(estadoAnterior);
                         var inspeccionExistente = ObtenerUltimaInspeccionPorSolicitud(cn, tx, codigoSolicitud);
                         var esReasignacion = inspeccionExistente != null && PermiteReasignacion(inspeccionExistente.Estado);
 

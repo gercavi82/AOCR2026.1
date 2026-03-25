@@ -10,6 +10,9 @@ namespace CapaModelo
         public string Titulo { get; set; }
         public string Mensaje { get; set; }
         public string Url { get; set; }
+        public string Modulo { get; set; }
+        public int? EntidadId { get; set; }
+        public string TipoEntidad { get; set; }
         public bool Leida { get; set; }
         public DateTime? FechaCreacion { get; set; }
         public DateTime? FechaLectura { get; set; }

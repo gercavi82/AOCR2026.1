@@ -62,6 +62,22 @@ namespace CapaDatos.DAOs
             if (r["leida"] != DBNull.Value)
                 not.Leida = Convert.ToBoolean(r["leida"]);
 
+            var modulo = GetFieldValue(r, "modulo");
+            if (modulo != null && modulo != DBNull.Value)
+                not.Modulo = modulo.ToString();
+
+            var entidadId = GetFieldValue(r, "entidad_id");
+            if (entidadId != null && entidadId != DBNull.Value)
+                not.EntidadId = Convert.ToInt32(entidadId);
+
+            var tipoEntidad = GetFieldValue(r, "tipo_entidad");
+            if (tipoEntidad != null && tipoEntidad != DBNull.Value)
+                not.TipoEntidad = tipoEntidad.ToString();
+
+            var fechaLectura = GetFieldValue(r, "fecha_lectura");
+            if (fechaLectura != null && fechaLectura != DBNull.Value)
+                not.FechaLectura = Convert.ToDateTime(fechaLectura);
+
             return not;
         }
 
@@ -70,30 +86,86 @@ namespace CapaDatos.DAOs
         // ==============================
         public static bool Insertar(Notificacion notificacion)
         {
-            const string sql = @"
-                INSERT INTO aocr_tbnotificacion
-                (codigousuario, titulo, mensaje, tipo, url, fechacreacion, leida)
-                VALUES
-                (@user, @tit, @msg, @tipo, @url, @fec, @leida)
-                RETURNING codigonotificacion;";
-
             using (var cn = CrearConexion())
-            using (var cmd = new NpgsqlCommand(sql, cn))
             {
-                cmd.Parameters.AddWithValue("@user", notificacion.CodigoUsuario);
-                cmd.Parameters.AddWithValue("@tit", (object)notificacion.Titulo ?? DBNull.Value);
-                cmd.Parameters.AddWithValue("@msg", (object)notificacion.Mensaje ?? DBNull.Value);
-                cmd.Parameters.AddWithValue("@tipo", (object)notificacion.Tipo ?? DBNull.Value);
-                cmd.Parameters.AddWithValue("@url", (object)notificacion.Url ?? DBNull.Value);
-                cmd.Parameters.AddWithValue("@fec", (object)notificacion.FechaCreacion ?? DateTime.Now);
-                cmd.Parameters.AddWithValue("@leida", notificacion.Leida);
-
                 cn.Open();
-                var obj = cmd.ExecuteScalar();
-                if (obj != null && obj != DBNull.Value)
-                    notificacion.CodigoNotificacion = Convert.ToInt32(obj);
 
-                return notificacion.CodigoNotificacion > 0;
+                var tieneModulo = ExisteColumna(cn, "aocr_tbnotificacion", "modulo");
+                var tieneEntidadId = ExisteColumna(cn, "aocr_tbnotificacion", "entidad_id");
+                var tieneTipoEntidad = ExisteColumna(cn, "aocr_tbnotificacion", "tipo_entidad");
+                var tieneFechaLectura = ExisteColumna(cn, "aocr_tbnotificacion", "fecha_lectura");
+
+                var columnas = new List<string>
+                {
+                    "codigousuario", "titulo", "mensaje", "tipo", "url", "fechacreacion", "leida"
+                };
+                var valores = new List<string>
+                {
+                    "@user", "@tit", "@msg", "@tipo", "@url", "@fec", "@leida"
+                };
+
+                if (tieneModulo)
+                {
+                    columnas.Add("modulo");
+                    valores.Add("@modulo");
+                }
+
+                if (tieneEntidadId)
+                {
+                    columnas.Add("entidad_id");
+                    valores.Add("@entidad_id");
+                }
+
+                if (tieneTipoEntidad)
+                {
+                    columnas.Add("tipo_entidad");
+                    valores.Add("@tipo_entidad");
+                }
+
+                if (tieneFechaLectura)
+                {
+                    columnas.Add("fecha_lectura");
+                    valores.Add("@fecha_lectura");
+                }
+
+                var sql = "INSERT INTO aocr_tbnotificacion (" + string.Join(", ", columnas) + ") VALUES (" + string.Join(", ", valores) + ") RETURNING codigonotificacion;";
+
+                using (var cmd = new NpgsqlCommand(sql, cn))
+                {
+                    cmd.Parameters.AddWithValue("@user", notificacion.CodigoUsuario);
+                    cmd.Parameters.AddWithValue("@tit", (object)notificacion.Titulo ?? DBNull.Value);
+                    cmd.Parameters.AddWithValue("@msg", (object)notificacion.Mensaje ?? DBNull.Value);
+                    cmd.Parameters.AddWithValue("@tipo", (object)notificacion.Tipo ?? DBNull.Value);
+                    cmd.Parameters.AddWithValue("@url", (object)notificacion.Url ?? DBNull.Value);
+                    cmd.Parameters.AddWithValue("@fec", (object)notificacion.FechaCreacion ?? DateTime.Now);
+                    cmd.Parameters.AddWithValue("@leida", notificacion.Leida);
+
+                    if (tieneModulo)
+                    {
+                        cmd.Parameters.AddWithValue("@modulo", (object)notificacion.Modulo ?? DBNull.Value);
+                    }
+
+                    if (tieneEntidadId)
+                    {
+                        cmd.Parameters.AddWithValue("@entidad_id", (object)notificacion.EntidadId ?? DBNull.Value);
+                    }
+
+                    if (tieneTipoEntidad)
+                    {
+                        cmd.Parameters.AddWithValue("@tipo_entidad", (object)notificacion.TipoEntidad ?? DBNull.Value);
+                    }
+
+                    if (tieneFechaLectura)
+                    {
+                        cmd.Parameters.AddWithValue("@fecha_lectura", (object)notificacion.FechaLectura ?? DBNull.Value);
+                    }
+
+                    var obj = cmd.ExecuteScalar();
+                    if (obj != null && obj != DBNull.Value)
+                        notificacion.CodigoNotificacion = Convert.ToInt32(obj);
+
+                    return notificacion.CodigoNotificacion > 0;
+                }
             }
         }
 
@@ -102,36 +174,55 @@ namespace CapaDatos.DAOs
         // ==============================
         public static bool MarcarComoLeida(int codigoNotificacion)
         {
-            const string sql = @"
-                UPDATE aocr_tbnotificacion
-                SET leida = TRUE
-                WHERE codigonotificacion = @id;";
-
             using (var cn = CrearConexion())
-            using (var cmd = new NpgsqlCommand(sql, cn))
             {
-                cmd.Parameters.AddWithValue("@id", codigoNotificacion);
-
                 cn.Open();
-                return cmd.ExecuteNonQuery() > 0;
+
+                var tieneFechaLectura = ExisteColumna(cn, "aocr_tbnotificacion", "fecha_lectura");
+                var sql = tieneFechaLectura
+                    ? @"
+                        UPDATE aocr_tbnotificacion
+                        SET leida = TRUE,
+                            fecha_lectura = COALESCE(fecha_lectura, NOW())
+                        WHERE codigonotificacion = @id;"
+                    : @"
+                        UPDATE aocr_tbnotificacion
+                        SET leida = TRUE
+                        WHERE codigonotificacion = @id;";
+
+                using (var cmd = new NpgsqlCommand(sql, cn))
+                {
+                    cmd.Parameters.AddWithValue("@id", codigoNotificacion);
+                    return cmd.ExecuteNonQuery() > 0;
+                }
             }
         }
 
         public static bool MarcarTodasComoLeidas(int codigoUsuario)
         {
-            const string sql = @"
-                UPDATE aocr_tbnotificacion
-                SET leida = TRUE
-                WHERE codigousuario = @user
-                  AND leida = FALSE;";
-
             using (var cn = CrearConexion())
-            using (var cmd = new NpgsqlCommand(sql, cn))
             {
-                cmd.Parameters.AddWithValue("@user", codigoUsuario);
-
                 cn.Open();
-                return cmd.ExecuteNonQuery() > 0;
+
+                var tieneFechaLectura = ExisteColumna(cn, "aocr_tbnotificacion", "fecha_lectura");
+                var sql = tieneFechaLectura
+                    ? @"
+                        UPDATE aocr_tbnotificacion
+                        SET leida = TRUE,
+                            fecha_lectura = COALESCE(fecha_lectura, NOW())
+                        WHERE codigousuario = @user
+                          AND leida = FALSE;"
+                    : @"
+                        UPDATE aocr_tbnotificacion
+                        SET leida = TRUE
+                        WHERE codigousuario = @user
+                          AND leida = FALSE;";
+
+                using (var cmd = new NpgsqlCommand(sql, cn))
+                {
+                    cmd.Parameters.AddWithValue("@user", codigoUsuario);
+                    return cmd.ExecuteNonQuery() > 0;
+                }
             }
         }
 
@@ -178,24 +269,25 @@ namespace CapaDatos.DAOs
         {
             var list = new List<Notificacion>();
 
-            const string sql = @"
-                SELECT
-                    codigonotificacion, codigousuario, titulo, mensaje,
-                    tipo, url, fechacreacion, leida
-                FROM aocr_tbnotificacion
-                WHERE codigousuario = @user
-                ORDER BY fechacreacion DESC;";
-
             using (var cn = CrearConexion())
-            using (var cmd = new NpgsqlCommand(sql, cn))
             {
-                cmd.Parameters.AddWithValue("@user", codigoUsuario);
-
                 cn.Open();
-                using (var rd = cmd.ExecuteReader())
+
+                var sql = @"
+                    SELECT " + ObtenerColumnasConsulta(cn) + @"
+                    FROM aocr_tbnotificacion
+                    WHERE codigousuario = @user
+                    ORDER BY fechacreacion DESC;";
+
+                using (var cmd = new NpgsqlCommand(sql, cn))
                 {
-                    while (rd.Read())
-                        list.Add(Map(rd));
+                    cmd.Parameters.AddWithValue("@user", codigoUsuario);
+
+                    using (var rd = cmd.ExecuteReader())
+                    {
+                        while (rd.Read())
+                            list.Add(Map(rd));
+                    }
                 }
             }
 
@@ -206,25 +298,26 @@ namespace CapaDatos.DAOs
         {
             var list = new List<Notificacion>();
 
-            const string sql = @"
-                SELECT
-                    codigonotificacion, codigousuario, titulo, mensaje,
-                    tipo, url, fechacreacion, leida
-                FROM aocr_tbnotificacion
-                WHERE codigousuario = @user
-                  AND leida = FALSE
-                ORDER BY fechacreacion DESC;";
-
             using (var cn = CrearConexion())
-            using (var cmd = new NpgsqlCommand(sql, cn))
             {
-                cmd.Parameters.AddWithValue("@user", codigoUsuario);
-
                 cn.Open();
-                using (var rd = cmd.ExecuteReader())
+
+                var sql = @"
+                    SELECT " + ObtenerColumnasConsulta(cn) + @"
+                    FROM aocr_tbnotificacion
+                    WHERE codigousuario = @user
+                      AND leida = FALSE
+                    ORDER BY fechacreacion DESC;";
+
+                using (var cmd = new NpgsqlCommand(sql, cn))
                 {
-                    while (rd.Read())
-                        list.Add(Map(rd));
+                    cmd.Parameters.AddWithValue("@user", codigoUsuario);
+
+                    using (var rd = cmd.ExecuteReader())
+                    {
+                        while (rd.Read())
+                            list.Add(Map(rd));
+                    }
                 }
             }
 
@@ -257,26 +350,27 @@ namespace CapaDatos.DAOs
         {
             var list = new List<Notificacion>();
 
-            const string sql = @"
-                SELECT
-                    codigonotificacion, codigousuario, titulo, mensaje,
-                    tipo, url, fechacreacion, leida
-                FROM aocr_tbnotificacion
-                WHERE codigousuario = @user
-                  AND UPPER(tipo) = UPPER(@tipo)
-                ORDER BY fechacreacion DESC;";
-
             using (var cn = CrearConexion())
-            using (var cmd = new NpgsqlCommand(sql, cn))
             {
-                cmd.Parameters.AddWithValue("@user", codigoUsuario);
-                cmd.Parameters.AddWithValue("@tipo", (object)tipo ?? DBNull.Value);
-
                 cn.Open();
-                using (var rd = cmd.ExecuteReader())
+
+                var sql = @"
+                    SELECT " + ObtenerColumnasConsulta(cn) + @"
+                    FROM aocr_tbnotificacion
+                    WHERE codigousuario = @user
+                      AND UPPER(tipo) = UPPER(@tipo)
+                    ORDER BY fechacreacion DESC;";
+
+                using (var cmd = new NpgsqlCommand(sql, cn))
                 {
-                    while (rd.Read())
-                        list.Add(Map(rd));
+                    cmd.Parameters.AddWithValue("@user", codigoUsuario);
+                    cmd.Parameters.AddWithValue("@tipo", (object)tipo ?? DBNull.Value);
+
+                    using (var rd = cmd.ExecuteReader())
+                    {
+                        while (rd.Read())
+                            list.Add(Map(rd));
+                    }
                 }
             }
 
@@ -290,26 +384,27 @@ namespace CapaDatos.DAOs
         {
             var list = new List<Notificacion>();
 
-            const string sql = @"
-                SELECT
-                    codigonotificacion, codigousuario, titulo, mensaje,
-                    tipo, url, fechacreacion, leida
-                FROM aocr_tbnotificacion
-                WHERE codigousuario = @user
-                ORDER BY fechacreacion DESC
-                LIMIT @cant;";
-
             using (var cn = CrearConexion())
-            using (var cmd = new NpgsqlCommand(sql, cn))
             {
-                cmd.Parameters.AddWithValue("@user", codigoUsuario);
-                cmd.Parameters.AddWithValue("@cant", cantidad);
-
                 cn.Open();
-                using (var rd = cmd.ExecuteReader())
+
+                var sql = @"
+                    SELECT " + ObtenerColumnasConsulta(cn) + @"
+                    FROM aocr_tbnotificacion
+                    WHERE codigousuario = @user
+                    ORDER BY fechacreacion DESC
+                    LIMIT @cant;";
+
+                using (var cmd = new NpgsqlCommand(sql, cn))
                 {
-                    while (rd.Read())
-                        list.Add(Map(rd));
+                    cmd.Parameters.AddWithValue("@user", codigoUsuario);
+                    cmd.Parameters.AddWithValue("@cant", cantidad);
+
+                    using (var rd = cmd.ExecuteReader())
+                    {
+                        while (rd.Read())
+                            list.Add(Map(rd));
+                    }
                 }
             }
 
@@ -335,6 +430,73 @@ namespace CapaDatos.DAOs
                 cn.Open();
                 return cmd.ExecuteNonQuery() > 0;
             }
+        }
+
+        private static object GetFieldValue(IDataRecord r, string field)
+        {
+            try
+            {
+                return r[field];
+            }
+            catch (IndexOutOfRangeException)
+            {
+                return null;
+            }
+        }
+
+        private static bool ExisteColumna(NpgsqlConnection cn, string tabla, string columna)
+        {
+            const string sql = @"
+                SELECT 1
+                FROM information_schema.columns
+                WHERE table_schema = 'public'
+                  AND table_name = @tabla
+                  AND column_name = @columna
+                LIMIT 1;";
+
+            using (var cmd = new NpgsqlCommand(sql, cn))
+            {
+                cmd.Parameters.AddWithValue("@tabla", tabla.Replace("public.", string.Empty));
+                cmd.Parameters.AddWithValue("@columna", columna);
+                return cmd.ExecuteScalar() != null;
+            }
+        }
+
+        private static string ObtenerColumnasConsulta(NpgsqlConnection cn)
+        {
+            var columnas = new List<string>
+            {
+                "codigonotificacion",
+                "codigousuario",
+                "titulo",
+                "mensaje",
+                "tipo",
+                "url",
+                "fechacreacion",
+                "leida"
+            };
+
+            if (ExisteColumna(cn, "aocr_tbnotificacion", "modulo"))
+            {
+                columnas.Add("modulo");
+            }
+
+            if (ExisteColumna(cn, "aocr_tbnotificacion", "entidad_id"))
+            {
+                columnas.Add("entidad_id");
+            }
+
+            if (ExisteColumna(cn, "aocr_tbnotificacion", "tipo_entidad"))
+            {
+                columnas.Add("tipo_entidad");
+            }
+
+            if (ExisteColumna(cn, "aocr_tbnotificacion", "fecha_lectura"))
+            {
+                columnas.Add("fecha_lectura");
+            }
+
+            return string.Join(", ", columnas);
         }
     }
 }

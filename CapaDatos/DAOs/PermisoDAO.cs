@@ -1,22 +1,4 @@
-﻿// ==========================================================
-// PermisoDAO.cs (COMPATIBLE CON TU MODELO ACTUAL)
-// PostgreSQL - Npgsql - .NET Framework 4.7.2
-//
-// ✅ Soluciona:
-//   - CS0117 si tu modelo Permiso no tiene Leer/Crear/Editar/Eliminar/Modulo
-//   - CS0103 por variables mal declaradas en patrones bool?
-//   - CS0266 int? -> int en Map()
-//
-// ✅ Estrategia:
-//   Usa Reflection para leer/escribir flags y Modulo solo si existen.
-//
-// 📌 Tabla esperada: aocr_tbpermiso
-// Columnas esperadas:
-//  idpermiso, codigorol, idmenu, idsubmenu,
-//  leer, crear, editar, eliminar, modulo
-// ==========================================================
-
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Configuration;
 using System.Data;

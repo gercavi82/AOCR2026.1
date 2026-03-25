@@ -40,7 +40,7 @@
 
     var toolbarLinks = new List<string>
     {
-        "<a href=\"" + Url.Action("RevisarSolicitudes", "SolicitudAOCR") + "\" class=\"btn btn-aocr-secondary\"><i class=\"fas fa-list-check\"></i><span>Bandeja técnica</span></a>",
+        "<a href=\"" + Url.Action("Index", "Tecnico") + "\" class=\"btn btn-aocr-secondary\"><i class=\"fas fa-list-check\"></i><span>Bandeja técnica</span></a>",
         "<a href=\"" + Url.Action("Index", "Dashboard") + "\" class=\"btn btn-aocr-secondary\"><i class=\"fas fa-chart-line\"></i><span>Dashboard</span></a>"
     };
 
@@ -132,8 +132,8 @@
                                                 <a class="btn btn-sm btn-outline-primary" href="@Url.Action("Detalle", "SolicitudAOCR", new { id = item.CodigoSolicitud })">
                                                     <i class="fas fa-eye"></i> Detalle
                                                 </a>
-                                                <a class="btn btn-sm btn-outline-secondary" href="@Url.Action("RevisarSolicitudes", "SolicitudAOCR")">
-                                                    <i class="fas fa-list-check"></i> Bandeja técnica
+                                                <a class="btn btn-sm btn-outline-secondary" href="@Url.Action("AsignarInspector", "Tecnico", new { solicitudId = item.CodigoSolicitud })">
+                                                    <i class="fas fa-user-check"></i> Asignar técnico
                                                 </a>
                                             </td>
                                         </tr>

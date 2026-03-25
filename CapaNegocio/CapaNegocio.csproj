@@ -148,10 +148,14 @@
     <Compile Include="Services\EmailService.cs" />
     <Compile Include="Services\DashboardOrdenesService.cs" />
     <Compile Include="Services\EstadoOrdenService.cs" />
+    <Compile Include="Services\AuditoriaService.cs" />
     <Compile Include="Services\InspeccionService.cs" />
+    <Compile Include="Services\InspeccionWorkflowService.cs" />
+    <Compile Include="Services\IntegracionInspeccionOrService.cs" />
     <Compile Include="Services\LoggingService.cs" />
     <Compile Include="Services\NotificacionService.cs" />
     <Compile Include="Services\OrdenPdfService.cs" />
+    <Compile Include="Services\ValidacionDocumentalService.cs" />
     <Compile Include="Services\CertificacionService.cs" />
     <Compile Include="Services\ComprobanteService.cs" />
     <Compile Include="Services\DireccionService.cs" />

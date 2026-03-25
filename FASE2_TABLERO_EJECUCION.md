@@ -3,6 +3,28 @@
 Fecha: 2026-03-23
 Objetivo: Ejecutar la consolidacion tecnica del workflow AOCR (solicitud + inspeccion + hallazgos/NC) sin ruptura de modulos legacy.
 
+## Actualizacion 2026-03-24 - Modulo de Inspeccion
+
+Se agrego un entregable especifico para reestructuracion BPMN del modulo de inspeccion:
+
+- BPMN_INSPECCION_OPTIMIZADO.md
+
+Resumen ejecutivo:
+
+- Se definio un flujo BPMN por swimlanes: Sistema AOCR, Inspector, Coordinador, RT y DIRDAC.
+- Se aislo un ciclo unico de NC: generar, validar, subsanar y revalidar.
+- Se definio una capa de estados core de negocio compatible con los estados persistidos actuales.
+- Se identificaron gateways documentales, de aprobacion y de habilitacion OR.
+- Se dejo un flujo tecnico de implementacion incremental sobre InspeccionController, InspeccionService, ValidacionDocumentalService y AuditoriaService.
+
+Backlog incremental recomendado para inspeccion:
+
+- P0: Estado core + mapper de compatibilidad.
+- P0: Unificacion de transiciones duplicadas entre controller y service.
+- P1: Ciclo NC unico y gates documentales centralizados.
+- P1: Formalizacion de envio y devolucion DIRDAC.
+- P2: Idempotencia de notificaciones y endurecimiento de auditoria.
+
 ## 1) Roadmap de Sprints
 
 - Sprint 1 (P0): Maquina de estados canonicos de Solicitud + mapeo legacy/canonico.

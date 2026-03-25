@@ -312,9 +312,12 @@
                     <i class="fas fa-search mr-1"></i> Gestión Técnica
                 </div>
                 <ul class="aocr-nav">
+                    @{ 
+                        var usarDashboardInspector = esAdministrador || esRol("Inspector") || esRol("CoordinadorInspecciones") || esRol("JefaturaTecnica");
+                    }
                     <li>
-                        <a class="aocr-link aocr-sidebar-item" href="@Url.Action("Index", "Dashboard")">
-                            <i class="fas fa-chart-pie text-info mr-2"></i> Dashboard Técnico
+                        <a class="aocr-link aocr-sidebar-item" href="@Url.Action(usarDashboardInspector ? "Inspector" : "Index", "Dashboard")">
+                            <i class="fas fa-gauge-high text-warning mr-2"></i> Dashboard Técnico / Inspector
                         </a>
                     </li>
                     <li>
@@ -339,6 +342,7 @@
                     <i class="fas fa-money-bill-wave mr-1"></i> Área Financiera
                 </div>
                 <ul class="aocr-nav">
+                    <li><a class="aocr-link aocr-sidebar-item" href="@Url.Action("Dashboard", "Financiero")"><i class="fas fa-chart-line text-white-50 mr-2"></i> Dashboard Financiero</a></li>
                     <li><a class="aocr-link aocr-sidebar-item" href="@Url.Action("TodasOrdenes", "Financiero")"><i class="fas fa-receipt text-white-50 mr-2"></i> Gestionar Órdenes</a></li>
                     <li><a class="aocr-link aocr-sidebar-item" href="@Url.Action("Index", "Financiero")"><i class="fas fa-check-circle text-white-50 mr-2"></i> Verificar Pagos</a></li>
                     <li><a class="aocr-link aocr-sidebar-item" href="@Url.Action("Index", "ReportesFinancieros")"><i class="fas fa-file-invoice text-white-50 mr-2"></i> Reportes Financieros</a></li>
@@ -387,6 +391,11 @@
                 <ul class="aocr-nav">
                     @if (puedeAdministracion)
                     {
+                        <li>
+                            <a class="aocr-link aocr-sidebar-item" href="@Url.Action("Index", "AdminUsuarios")">
+                                <i class="fas fa-gauge-high text-warning mr-2"></i> Dashboard Administración
+                            </a>
+                        </li>
                         <li>
                             <a class="aocr-link aocr-sidebar-item" href="@Url.Action("ConfiguracionSistema", "Direccion")">
                                 <i class="fas fa-cogs text-white-50 mr-2"></i> Configuración Sistema

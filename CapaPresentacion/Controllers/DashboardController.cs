@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Web.Mvc;
 using CapaDatos.DAOs;
 using CapaDatos.Models;
+using CapaPresentacion.Services;
 
 namespace CapaPresentacion.Controllers
 {
@@ -11,10 +12,12 @@ namespace CapaPresentacion.Controllers
     public class DashboardController : Controller
     {
         private readonly OrdenRecaudacionDAO _dao;
+        private readonly InspectorDashboardService _inspectorDashboardService;
 
         public DashboardController()
         {
             _dao = new OrdenRecaudacionDAO();
+            _inspectorDashboardService = new InspectorDashboardService();
         }
 
         // GET: Dashboard
@@ -26,13 +29,8 @@ namespace CapaPresentacion.Controllers
                 if (idUsuario <= 0)
                     return RedirectToAction("Login", "Account");
 
-                bool tieneOrdenGenerada = _dao.ExisteORGeneradaOPagada(idUsuario);
-                bool tieneOrdenBorrador = _dao.ExisteORMinima(idUsuario);
-
-                ViewBag.TieneOrdenGenerada = tieneOrdenGenerada;
-                ViewBag.TieneOrdenBorrador = tieneOrdenBorrador;
-
-                return View();
+                // Mantener /Dashboard como alias del hub institucional nuevo.
+                return RedirectToAction("Index", "Home");
             }
             catch
             {
@@ -106,6 +104,73 @@ namespace CapaPresentacion.Controllers
             }
         }
 
+        [HttpGet]
+        [Authorize(Roles = "Inspector,Administrador,CoordinadorInspecciones,JefaturaTecnica")]
+        public ActionResult Inspector(DateTime? fechaDesde = null, DateTime? fechaHasta = null, string estado = null, string compania = null, int? codigoSolicitud = null)
+        {
+            try
+            {
+                var codigoInspector = ObtenerCodigoInspector();
+                if (codigoInspector <= 0)
+                {
+                    TempData["Error"] = "No se pudo identificar el inspector en sesión.";
+                    return RedirectToAction("Index", "Inspeccion");
+                }
+
+                var vm = _inspectorDashboardService.ObtenerDashboard(
+                    codigoInspector,
+                    fechaDesde,
+                    fechaHasta,
+                    estado,
+                    compania,
+                    codigoSolicitud);
+
+                vm.NombreInspector = (Session["NombreUsuario"] as string) ?? User.Identity.Name;
+                return View("Inspector", vm);
+            }
+            catch
+            {
+                TempData["Error"] = "No fue posible cargar el dashboard del inspector en este momento.";
+                return RedirectToAction("Index", "Inspeccion");
+            }
+        }
+
+        [HttpGet]
+        [Authorize(Roles = "Inspector,Administrador,CoordinadorInspecciones,JefaturaTecnica")]
+        public JsonResult ObtenerDatosInspectorDashboard(DateTime? fechaDesde = null, DateTime? fechaHasta = null, string estado = null, string compania = null, int? codigoSolicitud = null)
+        {
+            try
+            {
+                var codigoInspector = ObtenerCodigoInspector();
+                if (codigoInspector <= 0)
+                {
+                    return Json(new { success = false, message = "No se identificó inspector en sesión." }, JsonRequestBehavior.AllowGet);
+                }
+
+                var vm = _inspectorDashboardService.ObtenerDashboard(codigoInspector, fechaDesde, fechaHasta, estado, compania, codigoSolicitud);
+                return Json(new
+                {
+                    success = true,
+                    metricas = new
+                    {
+                        vm.InspeccionesAsignadas,
+                        vm.InspeccionesPendientes,
+                        vm.InspeccionesConNc,
+                        vm.InspeccionesCerradas,
+                        vm.InspeccionesRequierenNueva,
+                        vm.DocumentosPendientesRevision,
+                        vm.TiempoPromedioAtencionHoras
+                    },
+                    ultimasInspecciones = vm.UltimasInspecciones,
+                    alertasUrgentes = vm.AlertasUrgentes
+                }, JsonRequestBehavior.AllowGet);
+            }
+            catch (Exception ex)
+            {
+                return Json(new { success = false, message = ex.Message }, JsonRequestBehavior.AllowGet);
+            }
+        }
+
         private int ObtenerIdUsuario()
         {
             if (Session["IdUsuario"] != null &&
@@ -113,6 +178,22 @@ namespace CapaPresentacion.Controllers
             {
                 return idUsuario;
             }
+            return 0;
+        }
+
+        private int ObtenerCodigoInspector()
+        {
+            int codigo;
+            if (Session["CodigoUsuario"] != null && int.TryParse(Session["CodigoUsuario"].ToString(), out codigo))
+            {
+                return codigo;
+            }
+
+            if (Session["IdUsuario"] != null && int.TryParse(Session["IdUsuario"].ToString(), out codigo))
+            {
+                return codigo;
+            }
+
             return 0;
         }
     }

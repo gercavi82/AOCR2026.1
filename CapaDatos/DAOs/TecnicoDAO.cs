@@ -1,43 +1,4 @@
-﻿// ==========================================================
-// TecnicoDAO.cs (COMPLETO Y COMPATIBLE CON TU MODELO ACTUAL)
-// PostgreSQL - Npgsql - .NET Framework 4.7.2
-//
-// ✅ Métodos usados por TecnicoBL:
-//   - Insertar
-//   - Actualizar
-//   - Eliminar
-//   - ObtenerPorId
-//   - ObtenerTodos
-//   - ExistePorUsuario
-//   - ObtenerPorUsuario
-//   - ObtenerActivos
-//   - ObtenerPorEspecialidad
-//   - ObtenerDisponibles
-//
-// ✅ SOLUCIONA:
-//   - CS0117: Tecnico no contiene CodigoUsuario/Certificaciones/AniosExperiencia/Activo/Disponible
-//   - CS1061: accesos directos a props inexistentes
-//   - CS0266: bool? -> bool
-//
-// ✅ Estrategia:
-//   - Solo usa propiedades "seguras" directamente:
-//       CodigoTecnico, Especialidad
-//   - Todo lo demás por Reflection (si existe lo usa, si no existe lo ignora)
-//
-// 📌 Tabla sugerida: aocr_tbtecnico
-// Columnas mínimas esperadas:
-//  codigotecnico   SERIAL/INT PK
-//  codigousuario   INT FK
-//  especialidad    VARCHAR
-//  certificaciones TEXT/VARCHAR NULL
-//  aniosexperiencia INT NULL
-//  activo          BOOLEAN NULL
-//  disponible      BOOLEAN NULL
-//
-// Si tu tabla usa otros nombres, ajusta los SQL.
-// ==========================================================
-
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Configuration;
 using System.Data;

@@ -58,6 +58,12 @@ namespace CapaNegocio
         public static bool EnviarNotificacion(int codigoUsuario, string titulo, string mensaje,
             string tipo = "INFO", string url = null)
         {
+            return EnviarNotificacion(codigoUsuario, titulo, mensaje, tipo, url, null, null, null);
+        }
+
+        public static bool EnviarNotificacion(int codigoUsuario, string titulo, string mensaje,
+            string tipo, string url, string modulo, int? entidadId, string tipoEntidad)
+        {
             try
             {
                 var notificacion = new Notificacion
@@ -67,6 +73,9 @@ namespace CapaNegocio
                     Mensaje = mensaje,
                     Tipo = tipo,
                     Url = url,
+                    Modulo = modulo,
+                    EntidadId = entidadId,
+                    TipoEntidad = tipoEntidad,
                     FechaCreacion = DateTime.Now,
                     Leida = false
                 };
@@ -329,7 +338,10 @@ namespace CapaNegocio
                 titulo,
                 $"La solicitud #{codigoSolicitud} cambió a estado: {estado}",
                 tipo,
-                $"/SolicitudAOCR/Detalle/{codigoSolicitud}"
+                $"/SolicitudAOCR/Detalle/{codigoSolicitud}",
+                "SolicitudAOCR",
+                codigoSolicitud,
+                "aocr_tbsolicitud"
             );
 
             var correoOk = EncolarCorreoCambioEstadoIdempotente(

@@ -11,9 +11,13 @@ using CapaModelo;
 using CapaDatos.DAOs;
 using CapaDatos.Services;
 using CapaNegocio.Helpers;
+using CapaNegocio.Services;
 using CapaUtilidades;
 using CapaPresentacion.Models.ViewModels;
 using Rotativa;
+using LoggingServiceType = CapaDatos.Services.ILoggingService;
+using LoggingFactoryType = CapaDatos.Services.LoggingServiceFactory;
+using SecureConfigType = CapaDatos.Services.SecureConfigurationService;
 
 namespace CapaPresentacion.Controllers
 {
@@ -21,7 +25,7 @@ namespace CapaPresentacion.Controllers
     public class InspeccionController : Controller
     {
         private readonly HallazgoBL _hallazgoBL;
-        private readonly ILoggingService _logger;
+        private readonly LoggingServiceType _logger;
 
         // ✅ Inyección simple (no static)
         private readonly InspeccionBL _inspeccionBL;
@@ -30,6 +34,7 @@ namespace CapaPresentacion.Controllers
         private readonly InspeccionInformeDAO _informeDAO;
         private readonly DocumentoInspeccionDAO _documentoDAO;
         private readonly SolicitudAOCRDAO _solicitudDAO;
+        private readonly InspeccionService _inspeccionService;
 
         private const string ROL_ADMIN = "Administrador";
         private const string ROL_COORD = "CoordinadorInspecciones";
@@ -68,7 +73,8 @@ namespace CapaPresentacion.Controllers
             _informeDAO = new InspeccionInformeDAO();
             _documentoDAO = new DocumentoInspeccionDAO();
             _solicitudDAO = new SolicitudAOCRDAO();
-            _logger = LoggingServiceFactory.Create();
+            _inspeccionService = new InspeccionService();
+            _logger = LoggingFactoryType.Create();
         }
 
         private int ObtenerCodigoUsuario()
@@ -1056,45 +1062,76 @@ namespace CapaPresentacion.Controllers
             if (!PuedeAccederInspeccion(inspeccion)) return new HttpStatusCodeResult(403, "No autorizado.");
 
             var usuarioId = ObtenerCodigoUsuario();
-            var resultadoNormalizado = (resultado ?? string.Empty).Trim().ToUpperInvariant();
-            var esSatisfactorio = resultadoNormalizado == "SATISFACTORIO" || resultadoNormalizado == "APROBADO";
-            var estadoDestino = esSatisfactorio
-                ? EstadosInspeccion.RESULTADO_SATISFACTORIO
-                : EstadosInspeccion.RESULTADO_NO_SATISFACTORIO;
+            var usuarioNombre = ObtenerUsuarioActual();
+            var op = _inspeccionService.RegistrarResultadoInspeccion(id, resultado, observacion, usuarioId, usuarioNombre);
 
-            inspeccion.ResultadoEvaluacion = esSatisfactorio ? "RESULTADO_SATISFACTORIO" : "RESULTADO_NO_SATISFACTORIO";
-            inspeccion.Resultado = esSatisfactorio ? "APROBADO" : "RECHAZADO";
-            inspeccion.EstadoDocumental = esSatisfactorio ? "ACEPTADA" : "OBSERVACION_DOCUMENTAL";
-            inspeccion.ObservacionesGenerales = string.IsNullOrWhiteSpace(observacion)
-                ? inspeccion.ObservacionesGenerales
-                : observacion;
+            TempData[op.Exitoso ? "Success" : "Error"] = op.Mensaje;
 
-            var okUpdate = _inspeccionBL.Actualizar(inspeccion, usuarioId);
-            var okInformeElaborado = false;
-            var okResultado = false;
+            return RedirectToAction("Detalle", new { id });
+        }
 
-            try
-            {
-                okInformeElaborado = _inspeccionBL.CambiarEstado(id, EstadosInspeccion.INFORME_ELABORADO, usuarioId, "Resultado registrado con informe asociado.", ObtenerUsuarioActual(), "RESULTADO_INSPECCION");
-            }
-            catch
-            {
-                okInformeElaborado = false;
-            }
+        [HttpPost]
+        [Authorize(Roles = ROL_INSPECTOR + "," + ROL_JEFATURA + "," + ROL_ADMIN)]
+        [ValidateAntiForgeryToken]
+        public ActionResult Evaluar(int id, string resultado, string observacion = "")
+        {
+            var usuarioId = ObtenerCodigoUsuario();
+            var usuarioNombre = ObtenerUsuarioActual();
+            var op = _inspeccionService.EvaluarInspeccion(id, resultado, observacion, usuarioId, usuarioNombre);
 
-            try
-            {
-                okResultado = _inspeccionBL.CambiarEstado(id, estadoDestino, usuarioId, observacion, ObtenerUsuarioActual(), "RESULTADO_INSPECCION");
-            }
-            catch
-            {
-                okResultado = false;
-            }
+            TempData[op.Exitoso ? "Success" : "Error"] = op.Mensaje;
+            return RedirectToAction("Detalle", new { id });
+        }
 
-            TempData[(okUpdate && okInformeElaborado && okResultado) ? "Success" : "Error"] = (okUpdate && okInformeElaborado && okResultado)
-                ? "Resultado de inspección registrado correctamente."
-                : "No se pudo registrar el resultado de la inspección.";
+        [HttpPost]
+        [Authorize(Roles = ROL_SOLICITANTE + "," + ROL_COORD + "," + ROL_COORD_ALIAS + "," + ROL_JEFATURA + "," + ROL_ADMIN)]
+        [ValidateAntiForgeryToken]
+        public ActionResult Subsanar(int id, string observacion = "")
+        {
+            var usuarioId = ObtenerCodigoUsuario();
+            var usuarioNombre = ObtenerUsuarioActual();
+            var op = _inspeccionService.SubsanarInspeccion(id, observacion, usuarioId, usuarioNombre);
 
+            TempData[op.Exitoso ? "Success" : "Error"] = op.Mensaje;
+            return RedirectToAction("Detalle", new { id });
+        }
+
+        [HttpPost]
+        [Authorize(Roles = ROL_COORD + "," + ROL_COORD_ALIAS + "," + ROL_JEFATURA + "," + ROL_ADMIN)]
+        [ValidateAntiForgeryToken]
+        public ActionResult Revalidar(int id, bool aprobada, string observacion = "")
+        {
+            var usuarioId = ObtenerCodigoUsuario();
+            var usuarioNombre = ObtenerUsuarioActual();
+            var op = _inspeccionService.RevalidarInspeccion(id, aprobada, observacion, usuarioId, usuarioNombre);
+
+            TempData[op.Exitoso ? "Success" : "Error"] = op.Mensaje;
+            return RedirectToAction("Detalle", new { id });
+        }
+
+        [HttpPost]
+        [Authorize(Roles = ROL_COORD + "," + ROL_COORD_ALIAS + "," + ROL_JEFATURA + "," + ROL_ADMIN)]
+        [ValidateAntiForgeryToken]
+        public ActionResult SolicitarNueva(int id, string observacion = "")
+        {
+            var usuarioId = ObtenerCodigoUsuario();
+            var usuarioNombre = ObtenerUsuarioActual();
+            var op = _inspeccionService.SolicitarNuevaInspeccion(id, observacion, usuarioId, usuarioNombre);
+
+            TempData[op.Exitoso ? "Success" : "Error"] = op.Mensaje;
+            return RedirectToAction("Detalle", new { id });
+        }
+
+        [HttpPost]
+        [Authorize(Roles = ROL_INSPECTOR + "," + ROL_ADMIN)]
+        [ValidateAntiForgeryToken]
+        public ActionResult RegistrarNoConforme(int id, string descripcion, string criticidad = "MEDIA")
+        {
+            var usuarioId = ObtenerCodigoUsuario();
+            var usuarioNombre = ObtenerUsuarioActual();
+            var op = _inspeccionService.RegistrarNoConformidad(id, descripcion, criticidad, usuarioId, usuarioNombre);
+
+            TempData[op.Exitoso ? "Success" : "Error"] = op.Mensaje;
             return RedirectToAction("Detalle", new { id });
         }
 
@@ -1160,7 +1197,7 @@ namespace CapaPresentacion.Controllers
                 return true;
             }
 
-            var dao = new InspectorAS400DAO(new SecureConfigurationService());
+            var dao = new InspectorAS400DAO(new SecureConfigType());
 
             if (!string.IsNullOrWhiteSpace(cedulaPrincipal))
             {
@@ -1420,7 +1457,7 @@ namespace CapaPresentacion.Controllers
 
             try
             {
-                var daoAs400 = new InspectorAS400DAO(new SecureConfigurationService());
+                var daoAs400 = new InspectorAS400DAO(new SecureConfigType());
 
                 if (!string.IsNullOrWhiteSpace(cedulaPrincipal) &&
                     (string.IsNullOrWhiteSpace(inspeccion.InspectorPrincipalNombre)

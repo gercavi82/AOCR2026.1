@@ -1,30 +1,4 @@
-﻿// ==========================================================
-// SubmenuDAO.cs (COMPLETO y TOLERANTE AL MODELO)
-// PostgreSQL - Npgsql - .NET Framework 4.7.2
-//
-// Métodos usados por SubmenuBL y MenuBL:
-//   - Insertar(Submenu)
-//   - Actualizar(Submenu)
-//   - Eliminar(int)
-//   - ObtenerPorId(int)
-//   - ObtenerTodos()
-//   - ObtenerPorMenu(int)
-//   - ObtenerPorRol(int)
-//   - CambiarOrden(int,int)
-//
-// Tabla sugerida: aocr_tbsubmenu
-// Columnas mínimas esperadas:
-//  idsubmenu (PK serial/int)
-//  idmenu (FK int)
-//  nombresubmenu (varchar)
-//  descripcion (varchar/text null)   <-- opcional en el modelo
-//  url (varchar null)
-//  icono (varchar null)
-//  orden (int null)
-//  activo (bool null)
-//
-// Si tu tabla usa otros nombres, ajusta los SQL.
-// ==========================================================
+﻿
 
 using System;
 using System.Collections.Generic;

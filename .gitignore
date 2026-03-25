@@ -219,6 +219,9 @@ UpgradeLog*.htm
 *.bim.layout
 *.bim_*.settings
 
+# VS Code local history snapshots
+.history/
+
 # Microsoft Fakes
 FakesAssemblies/
 

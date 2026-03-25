@@ -24,6 +24,17 @@ namespace CapaPresentacion.Controllers
     [AllowAnonymous]
     public class UsuarioController : Controller
     {
+        [Authorize]
+        public ActionResult MiPerfil()
+        {
+            if (Session["IdUsuario"] == null && Session["UserId"] == null)
+            {
+                return RedirectToAction("Login", "Account");
+            }
+
+            return RedirectToAction("CambiarContrasena", "Account");
+        }
+
         // =====================================================
         // VALIDACIONES ASÍNCRONAS PARA EL MODAL
         // =====================================================

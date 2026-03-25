@@ -1,27 +1,4 @@
-﻿// ==========================================================
-// ObservacionDAO.cs (CORREGIDO - SIN ERRORES CS1061/CS0117)
-// PostgreSQL - Npgsql - .NET Framework 4.7.2
-//
-// ✅ SOLUCIONA:
-//   - CS1061 / CS0117 sobre Observacion.CodigoUsuario
-//   - EVITA depender en compile-time de propiedades opcionales
-//     (Estado, Observaciones, FechaObservacion, FechaResolucion,
-//      CodigoUsuario) usando REFLECTION.
-//
-// 📌 Tabla esperada: aocr_tbobservacion
-// Columnas sugeridas:
-//   codigoobservacion (PK, int)
-//   codigoinspeccion  (int, FK)
-//   descripcion       (text/varchar)
-//   gravedad          (varchar)
-//   estado            (varchar, opcional)
-//   observaciones     (text, opcional)
-//   fechaobservacion  (timestamp, opcional)
-//   fecharesolucion   (timestamp, opcional)
-//   codigousuario     (int, opcional)
-// ==========================================================
-
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Configuration;
 using System.Data;

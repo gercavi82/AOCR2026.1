@@ -1,19 +1,3 @@
-// ===================================================================
-// SubsanacionDAO.cs
-// ===================================================================
-// Propósito: Acceso a datos para gestión de subsanaciones de solicitudes AOCR
-// Tabla: aocr_tbsubsanacion
-// 
-// Operaciones CRUD:
-//   - Insertar nueva subsanación
-//   - Actualizar subsanación (cuando operador responde)
-//   - Obtener por código de solicitud
-//   - Obtener pendientes
-//   - Obtener historial completo
-//
-// Fecha: 2025-01-05
-// ===================================================================
-
 using System;
 using System.Collections.Generic;
 using System.Data;

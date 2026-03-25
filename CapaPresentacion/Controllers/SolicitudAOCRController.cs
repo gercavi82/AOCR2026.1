@@ -1839,7 +1839,20 @@ namespace CapaPresentacion.Controllers
             TempData["NotificacionMensaje"] = tieneDocumentosDevueltos
                 ? "La revisión documental fue cerrada y la solicitud se devolvió al operador con observaciones."
                 : "La revisión documental fue cerrada y la solicitud avanzó a Aceptación Documental.";
+
+            if (!tieneDocumentosDevueltos && UsuarioPuedeAsignarInspector())
+            {
+                return RedirectToAction("AsignarInspector", "Tecnico", new { solicitudId = id });
+            }
+
             return RedirectToAction("Detalle", new { id });
+        }
+
+        private bool UsuarioPuedeAsignarInspector()
+        {
+            return User.IsInRole("Administrador")
+                || User.IsInRole("Direccion")
+                || User.IsInRole("JefaturaTecnica");
         }
 
         [Authorize(Roles = "JefaturaTecnica")]

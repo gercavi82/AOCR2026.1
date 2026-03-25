@@ -16,13 +16,24 @@ using CapaUtilidades;
 
 namespace CapaPresentacion.Controllers
 {
-    [Authorize(Roles = "Financiero,Administrador")]
+    [Authorize(Roles = "Financiero,CoordinadorFinanciero,Administrador")]
     public class FinancieroController : Controller
     {
         private readonly OrdenRecaudacionDAO _ordenDAO = new OrdenRecaudacionDAO();
 
         [RequirePermission("FIN_VER_PAGOS")]
+        public ActionResult Dashboard(string estado = "TODAS")
+        {
+            return ConstruirDashboardFinanciero(estado);
+        }
+
+        [RequirePermission("FIN_VER_PAGOS")]
         public ActionResult Index(string estado = "TODAS")
+        {
+            return ConstruirDashboardFinanciero(estado);
+        }
+
+        private ActionResult ConstruirDashboardFinanciero(string estado)
         {
             var estadoFiltro = string.IsNullOrWhiteSpace(estado)
                 ? "TODAS"
@@ -78,7 +89,7 @@ namespace CapaPresentacion.Controllers
             }
 
             ViewBag.EstadoFiltro = estadoFiltro;
-            return View(vms);
+            return View("Index", vms);
         }
 
         [HttpPost]

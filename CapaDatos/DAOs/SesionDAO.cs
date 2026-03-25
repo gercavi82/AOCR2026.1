@@ -1,31 +1,4 @@
-﻿// ==========================================================
-// SesionDAO.cs (COMPATIBLE CON TU MODELO ACTUAL)
-// PostgreSQL - Npgsql - .NET Framework 4.7.2
-//
-// ✅ SOLUCIONA:
-//   - CS0117: 'Sesion' no contiene una definición para 'FechaFin'
-//   - CS0266: int? -> int (especialmente CodigoUsuario en Map)
-//
-// ✅ Estrategia:
-//   No se asignan int? a propiedades base.
-//   Propiedades opcionales se manejan con Reflection:
-//     - FechaFin (opcional)
-//     - IpAddress (opcional)
-//     - Activa (opcional)
-//     - Token (opcional)
-//
-// 📌 Tabla sugerida: aocr_tbsesion
-// Columnas sugeridas:
-//  codigosesion   SERIAL/INT PK
-//  codigousuario  INT FK
-//  fechainicio    TIMESTAMP NULL
-//  fechafin       TIMESTAMP NULL
-//  ipaddress      VARCHAR NULL
-//  activa         BOOLEAN NULL
-//  token          VARCHAR NULL
-// ==========================================================
-
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Configuration;
 using System.Data;

@@ -2,72 +2,498 @@
 @{
     ViewBag.Title = "Dashboard Gerencial";
     Layout = "~/Views/Shared/_LayoutAOCR.cshtml";
+
+    var vm = Model ?? new CapaPresentacion.Models.DashboardGerencialViewModel();
+    var estados = vm.EstadosSolicitud ?? new List<CapaPresentacion.Models.EstadoResumenItem>();
+    var cuellos = vm.CuellosBotella ?? new List<CapaPresentacion.Models.EstadoResumenItem>();
+    var totalBase = Math.Max(1, vm.TotalSolicitudes);
+    var porcentajePendientes = Math.Round((decimal)vm.SolicitudesPendientes * 100m / totalBase, 0);
+    var porcentajeEmitidos = Math.Round((decimal)vm.AocrEmitidosRecibidos * 100m / totalBase, 0);
+    var porcentajeRevision = Math.Round((decimal)vm.AocrEnRevision * 100m / totalBase, 0);
+
+    Func<int, int> calcularAltura = valor =>
+    {
+        return Math.Max(12, (int)Math.Round((decimal)valor * 100m / totalBase));
+    };
 }
 
-<div class="container-fluid py-4">
-    <div class="d-flex justify-content-between align-items-center mb-3">
-        <h3 class="mb-0"><i class="fas fa-chart-line"></i> @ViewBag.Title</h3>
+<style>
+    .ger-dashboard {
+        --ger-bg: linear-gradient(180deg, #eef4f7 0%, #e3ebf1 100%);
+        --ger-panel: #ffffff;
+        --ger-border: rgba(17, 52, 73, 0.08);
+        --ger-text: #183246;
+        --ger-muted: #718594;
+        --ger-blue: #47b3df;
+        --ger-green: #7bc043;
+        --ger-yellow: #f5c84b;
+        --ger-red: #f06a5f;
+        --ger-pink: #d892ca;
+        --ger-shadow: 0 16px 36px rgba(20, 43, 62, 0.08);
+        background: var(--ger-bg);
+        border: 1px solid var(--ger-border);
+        border-radius: 24px;
+        padding: 24px;
+        color: var(--ger-text);
+    }
+
+    .ger-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        gap: 16px;
+        margin-bottom: 18px;
+    }
+
+    .ger-title {
+        margin: 0;
+        font-size: 1.9rem;
+        font-weight: 800;
+        letter-spacing: -0.03em;
+    }
+
+    .ger-subtitle {
+        margin: 6px 0 0;
+        color: var(--ger-muted);
+        font-size: 0.97rem;
+    }
+
+    .ger-grid,
+    .ger-grid-secondary,
+    .ger-grid-tertiary {
+        display: grid;
+        gap: 14px;
+        margin-bottom: 14px;
+    }
+
+    .ger-grid,
+    .ger-grid-secondary {
+        grid-template-columns: 0.95fr 1.45fr 1.45fr 0.95fr;
+    }
+
+    .ger-grid-tertiary {
+        grid-template-columns: 1.1fr 1.9fr;
+    }
+
+    .ger-card,
+    .ger-table-card {
+        background: var(--ger-panel);
+        border-radius: 18px;
+        border: 1px solid var(--ger-border);
+        box-shadow: var(--ger-shadow);
+    }
+
+    .ger-card {
+        padding: 18px;
+        position: relative;
+        overflow: hidden;
+    }
+
+    .ger-card.tall {
+        min-height: 206px;
+    }
+
+    .ger-label {
+        color: var(--ger-muted);
+        font-size: 0.78rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+    }
+
+    .ger-value {
+        margin-top: 10px;
+        font-size: 2rem;
+        line-height: 1;
+        font-weight: 800;
+    }
+
+    .ger-note {
+        margin-top: 10px;
+        color: var(--ger-muted);
+        font-size: 0.85rem;
+    }
+
+    .ger-accent {
+        position: absolute;
+        inset: auto -22px -32px auto;
+        width: 96px;
+        height: 96px;
+        border-radius: 50%;
+        opacity: 0.12;
+        background: currentColor;
+    }
+
+    .ger-blue { color: var(--ger-blue); }
+    .ger-green { color: var(--ger-green); }
+    .ger-yellow { color: var(--ger-yellow); }
+    .ger-red { color: var(--ger-red); }
+    .ger-pink { color: var(--ger-pink); }
+
+    .ger-ring-wrap {
+        display: flex;
+        gap: 18px;
+        align-items: center;
+        min-height: 170px;
+        position: relative;
+    }
+
+    .ger-ring {
+        --size: 132px;
+        --thickness: 16px;
+        width: var(--size);
+        height: var(--size);
+        border-radius: 50%;
+        background: conic-gradient(var(--ring-color, #47b3df) calc(var(--ring-percent, 0) * 1%), #e8eef3 0);
+        display: grid;
+        place-items: center;
+        flex-shrink: 0;
+    }
+
+    .ger-ring::before {
+        content: "";
+        width: calc(var(--size) - var(--thickness) * 2);
+        height: calc(var(--size) - var(--thickness) * 2);
+        border-radius: 50%;
+        background: #fff;
+        box-shadow: inset 0 0 0 1px rgba(17, 52, 73, 0.05);
+    }
+
+    .ger-ring-center {
+        position: absolute;
+        text-align: center;
+        left: 34px;
+        top: 48px;
+        width: 64px;
+    }
+
+    .ger-ring-center strong {
+        display: block;
+        font-size: 1.55rem;
+        line-height: 1;
+    }
+
+    .ger-ring-center span {
+        display: block;
+        margin-top: 6px;
+        color: var(--ger-muted);
+        font-size: 0.74rem;
+        line-height: 1.2;
+    }
+
+    .ger-legend,
+    .ger-list {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+        width: 100%;
+    }
+
+    .ger-legend li,
+    .ger-list li {
+        display: flex;
+        justify-content: space-between;
+        gap: 12px;
+        padding: 8px 0;
+        border-bottom: 1px solid rgba(17, 52, 73, 0.06);
+        font-size: 0.88rem;
+    }
+
+    .ger-legend li:last-child,
+    .ger-list li:last-child {
+        border-bottom: 0;
+    }
+
+    .ger-dot {
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        display: inline-block;
+        margin-right: 8px;
+        flex-shrink: 0;
+    }
+
+    .ger-bars {
+        display: flex;
+        align-items: end;
+        justify-content: space-between;
+        gap: 10px;
+        min-height: 132px;
+        margin-top: 12px;
+    }
+
+    .ger-bar-item {
+        flex: 1;
+        text-align: center;
+    }
+
+    .ger-bar-stack {
+        height: 120px;
+        display: flex;
+        align-items: end;
+        justify-content: center;
+    }
+
+    .ger-bar {
+        width: 16px;
+        border-radius: 10px 10px 0 0;
+        min-height: 8px;
+    }
+
+    .ger-bar-label {
+        display: block;
+        margin-top: 8px;
+        color: var(--ger-muted);
+        font-size: 0.78rem;
+    }
+
+    .ger-table-card {
+        overflow: hidden;
+    }
+
+    .ger-table-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 12px;
+        padding: 16px 18px;
+        border-bottom: 1px solid rgba(17, 52, 73, 0.07);
+        background: linear-gradient(180deg, #fff 0%, #f7fafc 100%);
+    }
+
+    .ger-table-header h3 {
+        margin: 0;
+        font-size: 1rem;
+        font-weight: 800;
+    }
+
+    .ger-chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        border-radius: 999px;
+        padding: 6px 10px;
+        font-size: 0.78rem;
+        font-weight: 700;
+        background: #eef4f7;
+        color: #4d6b7e;
+    }
+
+    @@media (max-width: 1200px) {
+        .ger-grid,
+        .ger-grid-secondary,
+        .ger-grid-tertiary {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+    }
+
+    @@media (max-width: 768px) {
+        .ger-dashboard {
+            padding: 16px;
+            border-radius: 18px;
+        }
+
+        .ger-header,
+        .ger-ring-wrap,
+        .ger-table-header {
+            flex-direction: column;
+            align-items: flex-start;
+        }
+
+        .ger-grid,
+        .ger-grid-secondary,
+        .ger-grid-tertiary {
+            grid-template-columns: 1fr;
+        }
+    }
+</style>
+
+<div class="ger-dashboard">
+    <div class="ger-header">
+        <div>
+            <h2 class="ger-title">Dashboard Gerencial</h2>
+            <p class="ger-subtitle">Visión consolidada del pipeline AOCR, estado de solicitudes, inspecciones y puntos de congestión para dirección y jefatura.</p>
+        </div>
+        <div>
+            <span class="ger-chip"><i class="fas fa-chart-line"></i> @vm.TotalSolicitudes solicitudes monitoreadas</span>
+        </div>
     </div>
 
-    <div class="row g-3 mb-3">
-        <div class="col-md-3"><div class="card"><div class="card-body"><div class="text-muted">Total solicitudes</div><h4>@Model.TotalSolicitudes</h4></div></div></div>
-        <div class="col-md-3"><div class="card"><div class="card-body"><div class="text-muted">Pendientes</div><h4>@Model.SolicitudesPendientes</h4></div></div></div>
-        <div class="col-md-3"><div class="card"><div class="card-body"><div class="text-muted">Observadas</div><h4>@Model.SolicitudesObservadas</h4></div></div></div>
-        <div class="col-md-3"><div class="card"><div class="card-body"><div class="text-muted">Aceptación documental</div><h4>@Model.SolicitudesAceptadasDocumental</h4></div></div></div>
+    <div class="ger-grid">
+        <div class="ger-card ger-blue">
+            <div class="ger-label">Total Solicitudes</div>
+            <div class="ger-value">@vm.TotalSolicitudes</div>
+            <div class="ger-note">Volumen integral visible para decisión gerencial.</div>
+            <span class="ger-accent"></span>
+        </div>
+
+        <div class="ger-card tall">
+            <div class="ger-label">Flujo Documental</div>
+            <div class="ger-ring-wrap">
+                <div class="ger-ring" style="--ring-percent:@porcentajePendientes; --ring-color:#47b3df;"></div>
+                <div class="ger-ring-center">
+                    <strong>@vm.SolicitudesPendientes</strong>
+                    <span>Pendientes</span>
+                </div>
+                <ul class="ger-legend">
+                    <li><span><span class="ger-dot" style="background:#47b3df;"></span>Pendientes</span><strong>@vm.SolicitudesPendientes</strong></li>
+                    <li><span><span class="ger-dot" style="background:#f06a5f;"></span>Observadas</span><strong>@vm.SolicitudesObservadas</strong></li>
+                    <li><span><span class="ger-dot" style="background:#7bc043;"></span>Acept. documental</span><strong>@vm.SolicitudesAceptadasDocumental</strong></li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="ger-card tall">
+            <div class="ger-label">Pipeline AOCR</div>
+            <div class="ger-ring-wrap">
+                <div class="ger-ring" style="--ring-percent:@porcentajeEmitidos; --ring-color:#7bc043;"></div>
+                <div class="ger-ring-center">
+                    <strong>@vm.AocrEmitidosRecibidos</strong>
+                    <span>Emitidos</span>
+                </div>
+                <ul class="ger-legend">
+                    <li><span><span class="ger-dot" style="background:#f5c84b;"></span>En revisión</span><strong>@vm.AocrEnRevision</strong></li>
+                    <li><span><span class="ger-dot" style="background:#47b3df;"></span>Validados</span><strong>@vm.AocrValidados</strong></li>
+                    <li><span><span class="ger-dot" style="background:#d892ca;"></span>Legalizados</span><strong>@vm.AocrLegalizados</strong></li>
+                    <li><span><span class="ger-dot" style="background:#7bc043;"></span>Emitidos/recibidos</span><strong>@vm.AocrEmitidosRecibidos</strong></li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="ger-card ger-green">
+            <div class="ger-label">Inspecciones Finalizadas</div>
+            <div class="ger-value">@vm.InspeccionesFinalizadas</div>
+            <div class="ger-note">Resultado consolidado de cierre operativo.</div>
+            <span class="ger-accent"></span>
+        </div>
     </div>
 
-    <div class="row g-3 mb-3">
-        <div class="col-md-3"><div class="card"><div class="card-body"><div class="text-muted">Inspecciones pendientes</div><h4>@Model.InspeccionesPendientes</h4></div></div></div>
-        <div class="col-md-3"><div class="card"><div class="card-body"><div class="text-muted">Inspecciones en curso</div><h4>@Model.InspeccionesEnCurso</h4></div></div></div>
-        <div class="col-md-3"><div class="card"><div class="card-body"><div class="text-muted">Inspecciones finalizadas</div><h4>@Model.InspeccionesFinalizadas</h4></div></div></div>
-        <div class="col-md-3"><div class="card"><div class="card-body"><div class="text-muted">AOCR emitidos/recibidos</div><h4>@Model.AocrEmitidosRecibidos</h4></div></div></div>
-    </div>
+    <div class="ger-grid-secondary">
+        <div class="ger-card ger-yellow">
+            <div class="ger-label">Inspecciones Pendientes</div>
+            <div class="ger-value">@vm.InspeccionesPendientes</div>
+            <div class="ger-note">Casos aún no resueltos dentro del bloque técnico.</div>
+            <span class="ger-accent"></span>
+        </div>
 
-    <div class="row g-3">
-        <div class="col-lg-6">
-            <div class="card">
-                <div class="card-header"><strong>Pipeline AOCR</strong></div>
-                <div class="card-body">
-                    <div class="d-flex justify-content-between"><span>AOCR en revisión</span><span>@Model.AocrEnRevision</span></div>
-                    <div class="d-flex justify-content-between"><span>AOCR validados</span><span>@Model.AocrValidados</span></div>
-                    <div class="d-flex justify-content-between"><span>AOCR legalizados</span><span>@Model.AocrLegalizados</span></div>
+        <div class="ger-card">
+            <div class="d-flex justify-content-between align-items-center">
+                <div class="ger-label">Distribución Ejecutiva</div>
+                <strong class="small text-muted">AOCR y solicitudes</strong>
+            </div>
+            <div class="ger-bars">
+                <div class="ger-bar-item">
+                    <div class="ger-bar-stack"><div class="ger-bar" style="height:@(calcularAltura(vm.SolicitudesPendientes))px;background:#47b3df;"></div></div>
+                    <span class="ger-bar-label">Pend.</span>
+                </div>
+                <div class="ger-bar-item">
+                    <div class="ger-bar-stack"><div class="ger-bar" style="height:@(calcularAltura(vm.SolicitudesObservadas))px;background:#f06a5f;"></div></div>
+                    <span class="ger-bar-label">Obs.</span>
+                </div>
+                <div class="ger-bar-item">
+                    <div class="ger-bar-stack"><div class="ger-bar" style="height:@(calcularAltura(vm.AocrEnRevision))px;background:#f5c84b;"></div></div>
+                    <span class="ger-bar-label">Rev.</span>
+                </div>
+                <div class="ger-bar-item">
+                    <div class="ger-bar-stack"><div class="ger-bar" style="height:@(calcularAltura(vm.AocrValidados))px;background:#47b3df;"></div></div>
+                    <span class="ger-bar-label">Val.</span>
+                </div>
+                <div class="ger-bar-item">
+                    <div class="ger-bar-stack"><div class="ger-bar" style="height:@(calcularAltura(vm.AocrLegalizados))px;background:#d892ca;"></div></div>
+                    <span class="ger-bar-label">Leg.</span>
+                </div>
+                <div class="ger-bar-item">
+                    <div class="ger-bar-stack"><div class="ger-bar" style="height:@(calcularAltura(vm.AocrEmitidosRecibidos))px;background:#7bc043;"></div></div>
+                    <span class="ger-bar-label">Emit.</span>
                 </div>
             </div>
         </div>
-        <div class="col-lg-6">
-            <div class="card mb-3">
-                <div class="card-header"><strong>Cuellos de botella</strong></div>
-                <div class="card-body">
-                    @if (Model.CuellosBotella == null || !Model.CuellosBotella.Any())
+
+        <div class="ger-card tall">
+            <div class="ger-label">Supervisión de Inspecciones</div>
+            <div class="ger-ring-wrap">
+                <div class="ger-ring" style="--ring-percent:@porcentajeRevision; --ring-color:#d892ca;"></div>
+                <div class="ger-ring-center">
+                    <strong>@vm.InspeccionesEnCurso</strong>
+                    <span>En curso</span>
+                </div>
+                <ul class="ger-legend">
+                    <li><span><span class="ger-dot" style="background:#f5c84b;"></span>Pendientes</span><strong>@vm.InspeccionesPendientes</strong></li>
+                    <li><span><span class="ger-dot" style="background:#47b3df;"></span>En curso</span><strong>@vm.InspeccionesEnCurso</strong></li>
+                    <li><span><span class="ger-dot" style="background:#7bc043;"></span>Finalizadas</span><strong>@vm.InspeccionesFinalizadas</strong></li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="ger-card ger-pink">
+            <div class="ger-label">AOCR Emitidos / Recibidos</div>
+            <div class="ger-value">@vm.AocrEmitidosRecibidos</div>
+            <div class="ger-note">Casos culminados dentro del pipeline institucional.</div>
+            <span class="ger-accent"></span>
+        </div>
+    </div>
+
+    <div class="ger-grid-tertiary">
+        <div class="ger-card">
+            <div class="ger-label">Cuellos de Botella</div>
+            <ul class="ger-list">
+                @if (!cuellos.Any())
+                {
+                    <li>
+                        <div>
+                            <div class="fw-bold">Sin acumulaciones relevantes</div>
+                            <div class="ger-note">No hay estados críticos con carga acumulada.</div>
+                        </div>
+                    </li>
+                }
+                else
+                {
+                    foreach (var item in cuellos)
                     {
-                        <div class="text-muted">No hay acumulaciones relevantes.</div>
+                        <li>
+                            <div>
+                                <div class="fw-bold">@item.Estado</div>
+                                <div class="ger-note">Estado con mayor presión operativa</div>
+                            </div>
+                            <strong>@item.Total</strong>
+                        </li>
+                    }
+                }
+            </ul>
+        </div>
+
+        <div class="ger-table-card">
+            <div class="ger-table-header">
+                <div>
+                    <h3>Distribución de Estados</h3>
+                    <div class="text-muted small">Lectura consolidada de los estados de solicitud para priorización gerencial.</div>
+                </div>
+                <span class="ger-chip"><i class="fas fa-layer-group"></i> Estados normalizados</span>
+            </div>
+            <div class="table-responsive">
+                <table class="table table-sm mb-0">
+                    <thead>
+                        <tr><th>Estado</th><th class="text-end">Total</th></tr>
+                    </thead>
+                    <tbody>
+                    @if (!estados.Any())
+                    {
+                        <tr>
+                            <td colspan="2" class="text-center text-muted">No existen estados disponibles para mostrar.</td>
+                        </tr>
                     }
                     else
                     {
-                        foreach (var item in Model.CuellosBotella)
-                        {
-                            <div class="d-flex justify-content-between"><span>@item.Estado</span><span>@item.Total</span></div>
-                        }
-                    }
-                </div>
-            </div>
-
-            <div class="card">
-                <div class="card-header"><strong>Distribución de estados</strong></div>
-                <div class="card-body p-0">
-                    <table class="table table-sm mb-0">
-                        <thead><tr><th>Estado</th><th class="text-end">Total</th></tr></thead>
-                        <tbody>
-                        @foreach (var item in Model.EstadosSolicitud)
+                        foreach (var item in estados)
                         {
                             <tr>
                                 <td>@item.Estado</td>
                                 <td class="text-end">@item.Total</td>
                             </tr>
                         }
-                        </tbody>
-                    </table>
-                </div>
+                    }
+                    </tbody>
+                </table>
             </div>
         </div>
     </div>

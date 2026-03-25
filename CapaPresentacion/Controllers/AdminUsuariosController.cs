@@ -28,12 +28,44 @@ namespace CapaPresentacion.Controllers
         [RequirePermission("ADM_GESTION_USUARIOS")]
         public ActionResult Index(string filtro, bool? activo)
         {
+            var usuarios = AdminUsuariosBL.BuscarUsuarios(filtro, activo) ?? new List<SeguridadUsuarioDTO>();
+            var ahora = DateTime.Now;
+
             var vm = new AdminUsuariosIndexViewModel
             {
                 Filtro = filtro,
                 Activo = activo,
-                Usuarios = AdminUsuariosBL.BuscarUsuarios(filtro, activo)
+                Usuarios = usuarios,
+                TotalUsuarios = usuarios.Count,
+                UsuariosActivos = usuarios.Count(u => u != null && u.Activo),
+                UsuariosInactivos = usuarios.Count(u => u != null && !u.Activo),
+                UsuariosConRoles = usuarios.Count(u => u != null && !string.IsNullOrWhiteSpace(u.RolesTexto)),
+                UsuariosSinRoles = usuarios.Count(u => u != null && string.IsNullOrWhiteSpace(u.RolesTexto)),
+                UsuariosConAccesoReciente = usuarios.Count(u => u != null && u.UltimoLogin.HasValue && u.UltimoLogin.Value >= ahora.AddDays(-7)),
+                UsuariosRecientes = usuarios
+                    .Where(u => u != null && u.UltimoLogin.HasValue)
+                    .OrderByDescending(u => u.UltimoLogin)
+                    .Take(5)
+                    .ToList()
             };
+
+            try
+            {
+                vm.RolesActivos = AdminUsuariosBL.ObtenerRolesActivos()?.Count ?? 0;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning("AdminUsuarios.Index: no se pudo obtener roles activos: " + ex.Message);
+            }
+
+            try
+            {
+                vm.PendientesDesignacionRt = UsuarioDAO.ObtenerUsuariosPendientesDesignacion()?.Count ?? 0;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning("AdminUsuarios.Index: no se pudo obtener designaciones RT pendientes: " + ex.Message);
+            }
 
             return View(vm);
         }
