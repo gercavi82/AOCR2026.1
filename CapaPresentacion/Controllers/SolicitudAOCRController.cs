@@ -18,6 +18,7 @@ using CapaNegocio.Integraciones.As400Sync;
 using CapaNegocio.Helpers;
 using CapaUtilidades;
 using CapaDatos.Services;
+using CapaNegocio.Services;
 using Newtonsoft.Json;
 using Npgsql;
 
@@ -31,6 +32,7 @@ namespace CapaPresentacion.Controllers
         private readonly SolicitudEstadoTransitionBL _solicitudEstadoTransitionBL = new SolicitudEstadoTransitionBL();
         private readonly SolicitudAOCRDAO _solicitudDAO = new SolicitudAOCRDAO();
         private readonly DocumentoDAO _documentoDAO = new DocumentoDAO();
+        private readonly SolicitudAocrCorreoService _solicitudAocrCorreoService = new SolicitudAocrCorreoService();
 
         private readonly AeronaveSolicitudDAO _aeronaveSolDAO = new AeronaveSolicitudDAO();
         private readonly PagoDAO _pagoDAO = new PagoDAO();
@@ -1851,6 +1853,8 @@ namespace CapaPresentacion.Controllers
         private bool UsuarioPuedeAsignarInspector()
         {
             return User.IsInRole("Administrador")
+                || User.IsInRole("Coordinador")
+                || User.IsInRole("CoordinadorInspecciones")
                 || User.IsInRole("Direccion")
                 || User.IsInRole("JefaturaTecnica");
         }
@@ -2175,14 +2179,8 @@ namespace CapaPresentacion.Controllers
                     return RedirectToAction("RevisarLegalizacion");
                 }
 
-                if (!string.IsNullOrWhiteSpace(solicitud.Email))
-                {
-                    EmailHelper.EnviarEmail(
-                        solicitud.Email,
-                        "AOCR Legalizado",
-                        $"Estimado operador,<br><br>Su solicitud AOCR #{id} ha sido <strong>legalizada</strong>.<br><br><b>Observaciones:</b> {observacionLegal}<br><br>Gracias por su gestión."
-                    );
-                }
+                var solicitudActualizada = _solicitudDAO.ObtenerPorId(id);
+                _solicitudAocrCorreoService.NotificarEvento(solicitudActualizada, "AOCR_LEGALIZADO", observacionLegal);
 
                 TempData["Exito"] = "Solicitud legalizada correctamente.";
             }
@@ -2293,6 +2291,8 @@ namespace CapaPresentacion.Controllers
             }
             else
             {
+                var solicitudActualizada = _solicitudDAO.ObtenerPorId(id);
+                _solicitudAocrCorreoService.NotificarEvento(solicitudActualizada, "AOCR_EMITIDO_RECIBIDO", observacion);
                 TempData["Exito"] = "AOCR emitido y marcado como recibido.";
             }
 

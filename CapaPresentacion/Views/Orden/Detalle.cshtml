@@ -8,12 +8,12 @@
     Layout = "~/Views/Shared/_LayoutAOCR.cshtml";
 }
 
-@Html.Partial("_PageHeader", new ViewDataDictionary {
+@Html.Partial("_PageHeader", null, new ViewDataDictionary {
     { "Title", "Detalle de Orden de Recaudación" },
     { "Subtitle", "Orden #" + Model.NumeroOrden }
 })
 
-@Html.Partial("_ActionToolbar", new ViewDataDictionary {
+@Html.Partial("_ActionToolbar", null, new ViewDataDictionary {
     { "VolverUrl", Url.Action("MisOrdenes", "Orden") }
 })
 

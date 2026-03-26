@@ -69,9 +69,24 @@ namespace CapaNegocio
             return _dao.ResolverDestinatarioAsignacionPorCodigoUsuario(codigoUsuario);
         }
 
+        public static List<UsuarioInternoRTRegistro> ListarInspectoresAsignables(string tipoInspector)
+        {
+            return _dao.ListarInspectoresAsignables(tipoInspector);
+        }
+
+        public static UsuarioInternoRTRegistro ObtenerInspectorAsignable(string codigoUsuario, string tipoInspector)
+        {
+            return _dao.ObtenerInspectorAsignableActivo(codigoUsuario, tipoInspector);
+        }
+
         public static string ObtenerCorreoInstitucionalPorTecnicoId(int tecnicoId)
         {
             return _dao.ObtenerCorreoInstitucionalPorTecnicoId(tecnicoId);
+        }
+
+        public static string ObtenerCorreoInstitucionalPorCodigoUsuario(string codigoUsuario)
+        {
+            return _dao.ObtenerCorreoInstitucionalPorCodigoUsuario(codigoUsuario);
         }
 
         public static bool ExisteCorreoInstitucional(string correo, int? excluirId = null)

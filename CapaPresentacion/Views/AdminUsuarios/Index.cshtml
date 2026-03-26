@@ -646,6 +646,14 @@
                         </div>
                         <i class="fas fa-id-badge"></i>
                     </a>
+
+                    <a class="admin-link-card" href="@Url.Action("ListarUsuariosInternosRT", "AdminUsuarios")">
+                        <div>
+                            <strong>Ver usuarios internos RT</strong>
+                            <span>Consulta el listado de usuarios internos creados y su estado actual.</span>
+                        </div>
+                        <i class="fas fa-users"></i>
+                    </a>
                 }
 
                 <a class="admin-link-card" href="@Url.Action("ConfiguracionSistema", "Direccion")">
@@ -761,6 +769,9 @@
                     <a class="btn btn-outline-dark mr-2 mb-2" href="@Url.Action("CrearUsuarioInternoRT", "AdminUsuarios")">
                         <i class="fas fa-user-plus mr-1"></i> Crear Usuario Interno RT
                     </a>
+                    <a class="btn btn-outline-secondary mr-2 mb-2" href="@Url.Action("ListarUsuariosInternosRT", "AdminUsuarios")">
+                        <i class="fas fa-users mr-1"></i> Ver Usuarios Internos RT
+                    </a>
                 }
                 <a class="btn btn-outline-primary mr-2 mb-2" href="@Url.Action("PermisosRol", "AdminUsuarios")">
                     <i class="fas fa-key mr-1"></i> Permisos por rol
@@ -855,11 +866,20 @@
                                         </a>
                                     </div>
 
+                                    @using (Html.BeginForm("ReenviarCredenciales", "AdminUsuarios", FormMethod.Post, new { @class = "d-inline-block", data_confirm = "Se generara una nueva contrasena temporal y se reenviara por correo al usuario. Desea continuar?" }))
+                                    {
+                                        @Html.AntiForgeryToken()
+                                        <input type="hidden" name="id" value="@item.IdUsuario" />
+                                        <button type="submit" class="btn btn-info btn-sm" title="Reenviar credenciales">
+                                            <i class="fas fa-envelope"></i>
+                                        </button>
+                                    }
+
                                     @using (Html.BeginForm("ResetPassword", "AdminUsuarios", FormMethod.Post, new { @class = "d-inline-block", data_confirm = "Se generara una contrasena temporal para este usuario. Desea continuar?" }))
                                     {
                                         @Html.AntiForgeryToken()
                                         <input type="hidden" name="id" value="@item.IdUsuario" />
-                                        <button type="submit" class="btn btn-warning btn-sm" title="Reset password">
+                                        <button type="submit" class="btn btn-warning btn-sm" title="Generar nueva clave temporal">
                                             <i class="fas fa-key"></i>
                                         </button>
                                     }

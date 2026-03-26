@@ -153,12 +153,7 @@ namespace CapaPresentacion.Controllers
             {
                 Activo = true
             };
-            vm.CompaniaCodigoSeleccionada = ObtenerCodigoCompaniaOperativa(null);
-            AplicarDatosFinancierosCompaniaActiva(vm, vm.CompaniaCodigoSeleccionada);
-            _logger.LogInfo("[AdminUsuariosController] CrearUsuarioInternoRT GET. Usuario=" + ObtenerActorCodigoUsuario()
-                + ", CompaniaOperativa=" + (vm.CompaniaCodigoSeleccionada ?? string.Empty)
-                + ", CodigoFinanciero=" + (vm.CodigoFinanciero.HasValue ? vm.CodigoFinanciero.Value.ToString("0.##") : "null"));
-            CargarAeropuertosUsuarioInterno(vm, null);
+            _logger.LogInfo("[AdminUsuariosController] CrearUsuarioInternoRT GET. Usuario=" + ObtenerActorCodigoUsuario());
             CargarRolesUsuarioInterno(vm, null);
             return View(vm);
         }
@@ -166,13 +161,11 @@ namespace CapaPresentacion.Controllers
         [HttpGet]
         [Authorize(Roles = "Administrador")]
         [RequirePermission("ADM_GESTION_USUARIOS")]
-        public JsonResult BuscarUsuarioInternoRT(string codigoUsuario, string companiaCodigo)
+        public JsonResult BuscarUsuarioInternoRT(string codigoUsuario)
         {
             var texto = (codigoUsuario ?? string.Empty).Trim();
             _logger.LogInfo("[AdminUsuariosController] BuscarUsuarioInternoRT inicio. Usuario=" + ObtenerActorCodigoUsuario()
-                + ", Busqueda=" + texto
-                + ", CompaniaRequest=" + ((companiaCodigo ?? string.Empty).Trim().ToUpperInvariant())
-                + ", CompaniaSesion=" + ((CompaniaActivaSessionHelper.ObtenerCodigo(Session) ?? string.Empty).Trim().ToUpperInvariant()));
+            + ", Busqueda=" + texto);
 
             if (string.IsNullOrWhiteSpace(texto))
             {
@@ -226,25 +219,6 @@ namespace CapaPresentacion.Controllers
             var cedula = (inspector.Cedula ?? string.Empty).Trim();
             var nombre = (inspector.NombreCompleto ?? string.Empty).Trim();
             var tipo = (inspector.Tipo ?? string.Empty).Trim();
-            string ciudadCodigo = string.Empty;
-            var datosCompania = ResolverDatosFinancierosCompaniaActiva(companiaCodigo);
-            _logger.LogInfo("[AdminUsuariosController] BuscarUsuarioInternoRT compania resuelta. Codigo=" + (datosCompania.Codigo ?? string.Empty)
-                + ", Nombre=" + (datosCompania.Nombre ?? string.Empty)
-                + ", Usuoid=" + (datosCompania.Usuoid.HasValue ? datosCompania.Usuoid.Value.ToString("0.##") : "null"));
-
-            try
-            {
-                var as400Dao = new UsuarioAS400DAO(new SecureConfigurationService());
-                var fuente = as400Dao.ObtenerDatosUsuarioInterno(cedula);
-                if (fuente != null)
-                {
-                    ciudadCodigo = (fuente.CiudadCodigo ?? string.Empty).Trim();
-                }
-            }
-            catch
-            {
-                _logger.LogWarning("[AdminUsuariosController] BuscarUsuarioInternoRT sin ciudad institucional para cedula=" + cedula);
-            }
 
             var daoInterno = new UsuarioInternoRTDAO();
             var existente = daoInterno.ObtenerActivoPorCodigoUsuario(cedula);
@@ -258,19 +232,10 @@ namespace CapaPresentacion.Controllers
                     nombre = nombre,
                     tipo = tipo,
                     codigoUsuario = cedula,
-                    ciudadCodigo = ciudadCodigo,
-                    codigoFinanciero = datosCompania.Usuoid.HasValue ? datosCompania.Usuoid.Value : 0m,
-                    tieneFinanciero = datosCompania.Usuoid.HasValue && datosCompania.Usuoid.Value > 0m,
-                    companiaActivaCodigo = datosCompania.Codigo,
-                    companiaActivaNombre = datosCompania.Nombre,
                     yaRegistrado = existente != null,
                     message = existente != null
                         ? "El usuario ya tiene un registro interno RT activo."
-                        : datosCompania.TieneCompaniaActiva
-                            ? (datosCompania.Usuoid.HasValue && datosCompania.Usuoid.Value > 0m
-                                ? string.Empty
-                                : "La compañía activa no devolvió USUOID desde AS400. Revise la parametrización de la compañía.")
-                            : "Debe seleccionar una compañía activa antes de registrar el RT."
+                        : "Datos cargados correctamente. Complete el rol interno y guarde."
                 },
                 JsonRequestBehavior.AllowGet);
         }
@@ -283,43 +248,16 @@ namespace CapaPresentacion.Controllers
         {
             model = model ?? new AdminUsuarioInternoRTViewModel();
             model.CodigoUsuarioBusqueda = NormalizarCodigo(model.CodigoUsuarioBusqueda);
-            model.CompaniaCodigoSeleccionada = ObtenerCodigoCompaniaOperativa(model.CompaniaCodigoSeleccionada);
-            model.Opcar5 = NormalizarCodigo(model.Opcar5, 10);
-            model.Opcaer = model.Opcar5;
-            AplicarDatosFinancierosCompaniaActiva(model, model.CompaniaCodigoSeleccionada);
-
-            var datosCompania = ResolverDatosFinancierosCompaniaActiva(model.CompaniaCodigoSeleccionada);
             _logger.LogInfo("[AdminUsuariosController] CrearUsuarioInternoRT POST. Usuario=" + ObtenerActorCodigoUsuario()
-                + ", InspectorBusqueda=" + (model.CodigoUsuarioBusqueda ?? string.Empty)
-                + ", CompaniaOperativa=" + (model.CompaniaCodigoSeleccionada ?? string.Empty)
-                + ", Usuoid=" + (datosCompania.Usuoid.HasValue ? datosCompania.Usuoid.Value.ToString("0.##") : "null"));
+                + ", InspectorBusqueda=" + (model.CodigoUsuarioBusqueda ?? string.Empty));
 
             if (string.IsNullOrWhiteSpace(model.CodigoUsuarioBusqueda))
             {
                 ModelState.AddModelError("CodigoUsuarioBusqueda", "Debe ingresar la cedula del inspector.");
             }
 
-            if (string.IsNullOrWhiteSpace(model.Opcar5))
-            {
-                ModelState.AddModelError("Opcar5", "Debe seleccionar un aeropuerto.");
-            }
-
-            if (!datosCompania.TieneCompaniaActiva)
-            {
-                ModelState.AddModelError(string.Empty, "Debe seleccionar una compañía activa antes de registrar el RT.");
-            }
-            else if (!datosCompania.Usuoid.HasValue || datosCompania.Usuoid.Value <= 0m)
-            {
-                var etiquetaCompania = !string.IsNullOrWhiteSpace(datosCompania.Nombre)
-                    ? datosCompania.Nombre
-                    : datosCompania.Codigo;
-                ModelState.AddModelError(string.Empty,
-                    "No se pudo obtener el USUOID desde AS400 para la compañía activa " + etiquetaCompania + ".");
-            }
-
             if (!ModelState.IsValid)
             {
-                CargarAeropuertosUsuarioInterno(model, model.Opcar5);
                 CargarRolesUsuarioInterno(model, model.RolInterno);
                 return View(model);
             }
@@ -329,7 +267,6 @@ namespace CapaPresentacion.Controllers
             if (inspector == null)
             {
                 ModelState.AddModelError("CodigoUsuarioBusqueda", "No se encontro coincidencia por cedula o nombre en la base institucional.");
-                CargarAeropuertosUsuarioInterno(model, model.Opcar5);
                 CargarRolesUsuarioInterno(model, model.RolInterno);
                 return View(model);
             }
@@ -344,31 +281,6 @@ namespace CapaPresentacion.Controllers
             string apellidos;
             SepararNombreCompleto(model.NombreCompleto, out nombres, out apellidos);
 
-            string ciudadCodigo = string.Empty;
-
-            try
-            {
-                var as400Dao = new UsuarioAS400DAO(new SecureConfigurationService());
-                var fuente = as400Dao.ObtenerDatosUsuarioInterno(cedula);
-                if (fuente != null)
-                {
-                    ciudadCodigo = (fuente.CiudadCodigo ?? string.Empty).Trim().ToUpperInvariant();
-                }
-            }
-            catch
-            {
-                // No bloquear si falla la ciudad del inspector; el dato financiero ya se resuelve por compañía.
-            }
-
-            model.CiudadCodigo = !string.IsNullOrWhiteSpace(ciudadCodigo)
-                ? ciudadCodigo
-                : (model.CiudadCodigo ?? string.Empty).Trim().ToUpperInvariant();
-
-            model.CodigoFinanciero = datosCompania.Usuoid.Value;
-            model.Opcoi3 = datosCompania.Usuoid.Value;
-
-            model.Opcaer = model.Opcar5;
-
             var daoInterno = new UsuarioInternoRTDAO();
             var registro = new UsuarioInternoRTRegistro
             {
@@ -380,11 +292,11 @@ namespace CapaPresentacion.Controllers
                 NombreCompleto = model.NombreCompleto,
                 Tipo = model.TipoInspector,
                 EstadoAs400 = "AC",
-                CiudadCodigo = model.CiudadCodigo,
-                CodigoFinanciero = model.CodigoFinanciero ?? 0m,
-                Opcar5 = model.Opcar5,
-                Opcaer = model.Opcar5,
-                Opcoi3 = model.Opcoi3 ?? 0m,
+                CiudadCodigo = string.Empty,
+                CodigoFinanciero = 0m,
+                Opcar5 = string.Empty,
+                Opcaer = string.Empty,
+                Opcoi3 = 0m,
                 CorreoInstitucional = (model.CorreoInstitucional ?? string.Empty).Trim(),
                 RolInterno = (model.RolInterno ?? string.Empty).Trim(),
                 Observaciones = (model.Observaciones ?? string.Empty).Trim(),
@@ -397,17 +309,8 @@ namespace CapaPresentacion.Controllers
                 ModelState.AddModelError(string.Empty, string.IsNullOrWhiteSpace(mensaje)
                     ? "No se pudo guardar el usuario interno RT."
                     : mensaje);
-                CargarAeropuertosUsuarioInterno(model, model.Opcar5);
                 CargarRolesUsuarioInterno(model, model.RolInterno);
                 return View(model);
-            }
-
-            string mensajeCompania;
-            if (!GuardarCompaniaActivaParaUsuarioInterno(registro.UsuarioId, datosCompania, out mensajeCompania))
-            {
-                TempData["Error"] = string.IsNullOrWhiteSpace(mensajeCompania)
-                    ? "Usuario interno RT creado, pero no se pudo guardar la compañía activa asociada."
-                    : mensajeCompania;
             }
 
             TempData["Success"] = mensaje;
@@ -435,7 +338,6 @@ namespace CapaPresentacion.Controllers
             }
 
             var model = MapearUsuarioInternoRTViewModel(registro);
-            CargarAeropuertosUsuarioInterno(model, model.Opcar5);
             CargarRolesUsuarioInterno(model, model.RolInterno);
             return View("CrearUsuarioInternoRT", model);
         }
@@ -450,8 +352,6 @@ namespace CapaPresentacion.Controllers
             model.CodigoUsuarioBusqueda = NormalizarCodigo(model.CodigoUsuarioBusqueda);
             model.CodigoUsuario = NormalizarCodigo(model.CodigoUsuario);
             model.Cedula = NormalizarCodigo(model.Cedula);
-            model.Opcar5 = NormalizarCodigo(model.Opcar5, 10);
-            model.Opcaer = model.Opcar5;
 
             if (model.Id <= 0)
             {
@@ -464,14 +364,8 @@ namespace CapaPresentacion.Controllers
                 ModelState.AddModelError("CodigoUsuarioBusqueda", "Debe mantener la cedula del inspector.");
             }
 
-            if (string.IsNullOrWhiteSpace(model.Opcar5))
-            {
-                ModelState.AddModelError("Opcar5", "Debe seleccionar un aeropuerto.");
-            }
-
             if (!ModelState.IsValid)
             {
-                CargarAeropuertosUsuarioInterno(model, model.Opcar5);
                 CargarRolesUsuarioInterno(model, model.RolInterno);
                 return View("CrearUsuarioInternoRT", model);
             }
@@ -489,11 +383,11 @@ namespace CapaPresentacion.Controllers
                 NombreCompleto = (model.NombreCompleto ?? string.Empty).Trim(),
                 Tipo = (model.TipoInspector ?? string.Empty).Trim(),
                 EstadoAs400 = "AC",
-                CiudadCodigo = (model.CiudadCodigo ?? string.Empty).Trim(),
-                CodigoFinanciero = model.CodigoFinanciero ?? 0m,
-                Opcar5 = model.Opcar5,
-                Opcaer = model.Opcar5,
-                Opcoi3 = model.Opcoi3 ?? model.CodigoFinanciero ?? 0m,
+                CiudadCodigo = string.Empty,
+                CodigoFinanciero = 0m,
+                Opcar5 = string.Empty,
+                Opcaer = string.Empty,
+                Opcoi3 = 0m,
                 CorreoInstitucional = (model.CorreoInstitucional ?? string.Empty).Trim(),
                 RolInterno = (model.RolInterno ?? string.Empty).Trim(),
                 Observaciones = (model.Observaciones ?? string.Empty).Trim(),
@@ -512,7 +406,6 @@ namespace CapaPresentacion.Controllers
                 ModelState.AddModelError(string.Empty, string.IsNullOrWhiteSpace(mensaje)
                     ? "No se pudo actualizar el usuario interno RT."
                     : mensaje);
-                CargarAeropuertosUsuarioInterno(model, model.Opcar5);
                 CargarRolesUsuarioInterno(model, model.RolInterno);
                 return View("CrearUsuarioInternoRT", model);
             }
@@ -535,6 +428,71 @@ namespace CapaPresentacion.Controllers
             }
 
             TempData["Success"] = mensaje;
+            return RedirectToAction("ListarUsuariosInternosRT");
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        [Authorize(Roles = "Administrador")]
+        [RequirePermission("ADM_RESET_PASSWORD")]
+        public ActionResult ReenviarNotificacionUsuarioInternoRT(int id)
+        {
+            var registro = UsuarioInternoRTBL.ObtenerPorId(id);
+            if (registro == null)
+            {
+                TempData["Error"] = "No se encontro el usuario interno RT solicitado.";
+                return RedirectToAction("ListarUsuariosInternosRT");
+            }
+
+            var correoDestino = (registro.CorreoInstitucional ?? string.Empty).Trim();
+            if (string.IsNullOrWhiteSpace(correoDestino))
+            {
+                TempData["Error"] = "El usuario interno RT no tiene correo institucional registrado.";
+                return RedirectToAction("ListarUsuariosInternosRT");
+            }
+
+            var usuarioId = registro.UsuarioId;
+            if ((!usuarioId.HasValue || usuarioId.Value <= 0) && !string.IsNullOrWhiteSpace(registro.CodigoUsuario))
+            {
+                usuarioId = new UsuarioInternoRTDAO().ObtenerUsuarioIdPorCodigoUsuario(registro.CodigoUsuario);
+            }
+
+            if (usuarioId.HasValue && usuarioId.Value > 0)
+            {
+                string passwordTemporal;
+                string mensaje;
+                var ok = AdminUsuariosBL.ResetPassword(
+                    usuarioId.Value,
+                    true,
+                    null,
+                    ObtenerActorId(),
+                    ObtenerActorCodigoUsuario(),
+                    Request != null ? Request.UserHostAddress : null,
+                    correoDestino,
+                    out passwordTemporal,
+                    out mensaje);
+
+                if (ok)
+                {
+                    TempData["Success"] = "Correo de credenciales reenviado correctamente. " + mensaje;
+                    if (!string.IsNullOrWhiteSpace(passwordTemporal))
+                    {
+                        TempData["PasswordTemporal"] = string.Format(
+                            "Nueva contrasena temporal generada: {0}",
+                            passwordTemporal);
+                    }
+                }
+                else
+                {
+                    TempData["Error"] = mensaje;
+                }
+
+                return RedirectToAction("ListarUsuariosInternosRT");
+            }
+
+            string mensajeNotificacion;
+            var notificacionOk = EnviarNotificacionAltaUsuarioInternoRT(registro, correoDestino, out mensajeNotificacion);
+            TempData[notificacionOk ? "Success" : "Error"] = mensajeNotificacion;
             return RedirectToAction("ListarUsuariosInternosRT");
         }
 
@@ -797,6 +755,42 @@ namespace CapaPresentacion.Controllers
                 out mensaje);
 
             TempData[ok ? "Success" : "Error"] = mensaje;
+            return RedirectToAction("Index");
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        [RequirePermission("ADM_RESET_PASSWORD")]
+        public ActionResult ReenviarCredenciales(int id)
+        {
+            string passwordTemporal;
+            string mensaje;
+
+            var ok = AdminUsuariosBL.ResetPassword(
+                id,
+                true,
+                null,
+                ObtenerActorId(),
+                ObtenerActorCodigoUsuario(),
+                Request != null ? Request.UserHostAddress : null,
+                out passwordTemporal,
+                out mensaje);
+
+            if (ok)
+            {
+                TempData["Success"] = "Credenciales reenviadas correctamente. " + mensaje;
+                if (!string.IsNullOrWhiteSpace(passwordTemporal))
+                {
+                    TempData["PasswordTemporal"] = string.Format(
+                        "Nueva contrasena temporal generada: {0}",
+                        passwordTemporal);
+                }
+            }
+            else
+            {
+                TempData["Error"] = mensaje;
+            }
+
             return RedirectToAction("Index");
         }
 
@@ -1606,76 +1600,6 @@ namespace CapaPresentacion.Controllers
             }
         }
 
-        private void AplicarDatosFinancierosCompaniaActiva(AdminUsuarioInternoRTViewModel model, string companiaCodigoPreferida)
-        {
-            if (model == null)
-            {
-                return;
-            }
-
-            var codigoOperativo = ObtenerCodigoCompaniaOperativa(companiaCodigoPreferida);
-            model.CompaniaCodigoSeleccionada = codigoOperativo;
-
-            var datos = ResolverDatosFinancierosCompaniaActiva(codigoOperativo);
-            if (!datos.Usuoid.HasValue || datos.Usuoid.Value <= 0m)
-            {
-                return;
-            }
-
-            model.CodigoFinanciero = datos.Usuoid.Value;
-            model.Opcoi3 = datos.Usuoid.Value;
-        }
-
-        private CompaniaFinancieraInfo ResolverDatosFinancierosCompaniaActiva(string companiaCodigoPreferida)
-        {
-            var codigo = ObtenerCodigoCompaniaOperativa(companiaCodigoPreferida);
-            var nombre = ResolverNombreCompaniaOperativa(codigo);
-            var resultado = new CompaniaFinancieraInfo
-            {
-                Codigo = codigo,
-                Nombre = nombre
-            };
-
-            if (string.IsNullOrWhiteSpace(codigo))
-            {
-                _logger.LogWarning("[AdminUsuariosController] ResolverDatosFinancierosCompaniaActiva sin codigo operativo. Preferido="
-                    + ((companiaCodigoPreferida ?? string.Empty).Trim().ToUpperInvariant()));
-                return resultado;
-            }
-
-            try
-            {
-                var empresa = new EmpresaAS400DAO(new SecureConfigurationService()).ObtenerEmpresaPorCodigo(codigo);
-                if (empresa == null)
-                {
-                    _logger.LogWarning("[AdminUsuariosController] ResolverDatosFinancierosCompaniaActiva sin empresa AS400 para codigo=" + codigo);
-                    return resultado;
-                }
-
-                if (string.IsNullOrWhiteSpace(resultado.Nombre) && !string.IsNullOrWhiteSpace(empresa.Nombre))
-                {
-                    resultado.Nombre = empresa.Nombre.Trim();
-                }
-
-                decimal usuoid;
-                if (decimal.TryParse((empresa.CodigoNumeroCia ?? string.Empty).Trim(), out usuoid) && usuoid > 0m)
-                {
-                    resultado.Usuoid = usuoid;
-                }
-
-                _logger.LogInfo("[AdminUsuariosController] ResolverDatosFinancierosCompaniaActiva OK. Codigo=" + codigo
-                    + ", Nombre=" + (resultado.Nombre ?? string.Empty)
-                    + ", CodigoNumeroCia=" + ((empresa.CodigoNumeroCia ?? string.Empty).Trim())
-                    + ", Usuoid=" + (resultado.Usuoid.HasValue ? resultado.Usuoid.Value.ToString("0.##") : "null"));
-            }
-            catch (Exception ex)
-            {
-                _logger.LogWarning("[AdminUsuariosController] ResolverDatosFinancierosCompaniaActiva error para codigo=" + codigo + ": " + ex.Message);
-            }
-
-            return resultado;
-        }
-
         private string ObtenerCodigoCompaniaOperativa(string companiaCodigoPreferida)
         {
             var codigoPreferido = (companiaCodigoPreferida ?? string.Empty).Trim().ToUpperInvariant();
@@ -1749,63 +1673,6 @@ namespace CapaPresentacion.Controllers
             }
 
             return ResolverNombreCompania(codigo);
-        }
-
-        private bool GuardarCompaniaActivaParaUsuarioInterno(int? usuarioId, CompaniaFinancieraInfo datosCompania, out string mensaje)
-        {
-            mensaje = string.Empty;
-
-            if (!usuarioId.HasValue || usuarioId.Value <= 0)
-            {
-                return true;
-            }
-
-            if (datosCompania == null || string.IsNullOrWhiteSpace(datosCompania.Codigo))
-            {
-                return true;
-            }
-
-            try
-            {
-                var guardado = new UsuarioCompaniaRTDAO().GuardarAsignaciones(
-                    usuarioId.Value,
-                    new[]
-                    {
-                        new UsuarioCompaniaRT
-                        {
-                            UsuarioId = usuarioId.Value,
-                            CompaniaCodigo = datosCompania.Codigo,
-                            CompaniaNombre = datosCompania.Nombre,
-                            Usuoid = datosCompania.Usuoid.HasValue ? datosCompania.Usuoid.Value.ToString("0") : string.Empty,
-                            Activo = true
-                        }
-                    },
-                    ObtenerActorCodigoUsuario(),
-                    false);
-
-                if (!guardado)
-                {
-                    mensaje = "Usuario interno RT creado, pero no se pudo persistir la compañía activa en la relación RT-compañía.";
-                }
-
-                return guardado;
-            }
-            catch (Exception ex)
-            {
-                mensaje = "Usuario interno RT creado, pero no se pudo persistir la compañía activa asociada: " + ex.Message;
-                return false;
-            }
-        }
-
-        private sealed class CompaniaFinancieraInfo
-        {
-            public string Codigo { get; set; }
-            public string Nombre { get; set; }
-            public decimal? Usuoid { get; set; }
-            public bool TieneCompaniaActiva
-            {
-                get { return !string.IsNullOrWhiteSpace(Codigo); }
-            }
         }
 
         private IEnumerable<SelectListItem> ObtenerRolesSelectList(IEnumerable<int> seleccionados)
@@ -1937,34 +1804,6 @@ namespace CapaPresentacion.Controllers
             return normalizado;
         }
 
-        private static void CargarAeropuertosUsuarioInterno(AdminUsuarioInternoRTViewModel model, string seleccionado)
-        {
-            if (model == null)
-            {
-                return;
-            }
-
-            var selectedCode = NormalizarCodigo(seleccionado, 10);
-            var catalogo = new[]
-            {
-                new { Codigo = "", Texto = "-- Seleccione --" },
-                new { Codigo = "SEQU", Texto = "SEQU - Quito" },
-                new { Codigo = "SEGU", Texto = "SEGU - Guayaquil" },
-                new { Codigo = "SECU", Texto = "SECU - Cuenca" },
-                new { Codigo = "SEMT", Texto = "SEMT - Manta" },
-                new { Codigo = "SELT", Texto = "SELT - Latacunga" },
-                new { Codigo = "SEST", Texto = "SEST - San Cristobal" },
-                new { Codigo = "SEGS", Texto = "SEGS - Galapagos/Baltra" }
-            };
-
-            model.Aeropuertos = catalogo.Select(a => new SelectListItem
-            {
-                Value = a.Codigo,
-                Text = a.Texto,
-                Selected = string.Equals(a.Codigo, selectedCode, StringComparison.OrdinalIgnoreCase)
-            }).ToList();
-        }
-
         private static AdminUsuarioInternoRTViewModel MapearUsuarioInternoRTViewModel(UsuarioInternoRTRegistro registro)
         {
             return new AdminUsuarioInternoRTViewModel
@@ -1975,16 +1814,92 @@ namespace CapaPresentacion.Controllers
                 Cedula = registro.Identificacion,
                 NombreCompleto = registro.NombreCompleto,
                 TipoInspector = registro.Tipo,
-                CiudadCodigo = registro.CiudadCodigo,
-                CodigoFinanciero = registro.CodigoFinanciero,
-                Opcar5 = registro.Opcar5,
-                Opcaer = registro.Opcaer,
-                Opcoi3 = registro.Opcoi3,
                 RolInterno = registro.RolInterno,
                 CorreoInstitucional = registro.CorreoInstitucional,
                 Observaciones = registro.Observaciones,
                 Activo = registro.Activo
             };
+        }
+
+        private bool EnviarNotificacionAltaUsuarioInternoRT(UsuarioInternoRTRegistro registro, string correoDestino, out string mensaje)
+        {
+            mensaje = string.Empty;
+            var asunto = "Registro como Usuario RT / Inspector - Sistema AOCR";
+            var cuerpo = ConstruirCorreoAltaUsuarioInternoRT(registro);
+
+            try
+            {
+                var queueService = new EmailQueueService();
+                var configService = new SecureConfigurationService();
+                var servicioCorreo = new EnviarCorreo(configService, queueService);
+
+                if (servicioCorreo.EnviarEncolado(correoDestino, asunto, cuerpo, null, "RT_USUARIO_CREADO"))
+                {
+                    mensaje = "Correo de notificacion enviado correctamente al inspector.";
+                    return true;
+                }
+
+                if (servicioCorreo.enviaMensajeCorreo(correoDestino, asunto, cuerpo))
+                {
+                    mensaje = "La cola de correos fallo, pero el correo de notificacion se envio directamente.";
+                    return true;
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning("[AdminUsuariosController] Error enviando correo RT creado: " + ex.Message);
+            }
+
+            try
+            {
+                var servicioCorreo = new EnviarCorreo();
+                if (servicioCorreo.enviaMensajeCorreo(correoDestino, asunto, cuerpo))
+                {
+                    mensaje = "La cola de correos fallo, pero el correo de notificacion se envio directamente.";
+                    return true;
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning("[AdminUsuariosController] Error en envio directo de correo RT creado: " + ex.Message);
+            }
+
+            mensaje = "No se pudo enviar el correo de notificacion para el usuario RT / inspector.";
+            return false;
+        }
+
+        private static string ConstruirCorreoAltaUsuarioInternoRT(UsuarioInternoRTRegistro registro)
+        {
+            var nombre = HttpUtility.HtmlEncode(registro != null ? registro.NombreVisual : "Usuario");
+            var codigo = HttpUtility.HtmlEncode(registro != null ? registro.UsuarioLogin : string.Empty);
+            var rol = HttpUtility.HtmlEncode(registro != null ? (registro.RolInterno ?? string.Empty) : string.Empty);
+            var tipo = HttpUtility.HtmlEncode(registro != null ? (registro.Tipo ?? string.Empty) : string.Empty);
+            var fecha = HttpUtility.HtmlEncode(DateTime.Now.ToString("dd/MM/yyyy HH:mm"));
+
+            return string.Format(@"
+<!DOCTYPE html>
+<html>
+<head><meta charset='utf-8'></head>
+<body style='font-family: Arial, sans-serif; margin:0; padding:20px; background:#f4f6f8;'>
+  <div style='max-width:620px; margin:0 auto; background:#ffffff; border:1px solid #d9dee5; border-radius:8px; padding:24px;'>
+    <h2 style='margin:0 0 16px 0; color:#1f3a5f;'>Registro como Usuario RT / Inspector</h2>
+    <p style='margin:0 0 12px 0;'>Estimado/a <strong>{0}</strong>,</p>
+    <p style='margin:0 0 12px 0;'>Se confirma su registro en AOCR como usuario interno RT / inspector.</p>
+    <p style='margin:0 0 8px 0;'><strong>Usuario:</strong> {1}</p>
+    <p style='margin:0 0 8px 0;'><strong>Tipo:</strong> {2}</p>
+    <p style='margin:0 0 8px 0;'><strong>Rol interno:</strong> {3}</p>
+    <p style='margin:0 0 8px 0;'><strong>Fecha de notificacion:</strong> {4}</p>
+    <p style='margin:16px 0 12px 0;'>Si requiere credenciales de acceso o restablecimiento de contrasena, contacte al administrador del sistema.</p>
+    <hr style='margin:20px 0; border:none; border-top:1px solid #e8ecf1;' />
+    <p style='margin:0; font-size:12px; color:#6b7785;'>Mensaje automatico del sistema AOCR.</p>
+  </div>
+</body>
+</html>",
+                nombre,
+                codigo,
+                tipo,
+                rol,
+                fecha);
         }
 
         private static void CargarRolesUsuarioInterno(AdminUsuarioInternoRTViewModel model, string seleccionado)

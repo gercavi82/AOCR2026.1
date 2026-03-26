@@ -29,29 +29,6 @@ namespace CapaPresentacion.Models.AdminUsuarios
         [StringLength(10)]
         public string TipoInspector { get; set; }
 
-        [Display(Name = "Ciudad (usucod9)")]
-        [StringLength(10)]
-        public string CiudadCodigo { get; set; }
-
-        [Display(Name = "Codigo financiero (usuoid)")]
-        public decimal? CodigoFinanciero { get; set; }
-
-        [Display(Name = "Compania seleccionada")]
-        [StringLength(20)]
-        public string CompaniaCodigoSeleccionada { get; set; }
-
-        [Required]
-        [Display(Name = "OPCAR5 (aeropuerto)")]
-        [StringLength(10)]
-        public string Opcar5 { get; set; }
-
-        [Display(Name = "OPCAER (aeropuerto)")]
-        [StringLength(10)]
-        public string Opcaer { get; set; }
-
-        [Display(Name = "OPCOI3 (= usuoid)")]
-        public decimal? Opcoi3 { get; set; }
-
         [Required]
         [Display(Name = "Rol interno")]
         [StringLength(100)]
@@ -70,7 +47,6 @@ namespace CapaPresentacion.Models.AdminUsuarios
         [Display(Name = "Activo")]
         public bool Activo { get; set; } = true;
 
-        public IEnumerable<SelectListItem> Aeropuertos { get; set; } = new List<SelectListItem>();
-        public IEnumerable<SelectListItem> RolesInternos { get; set; } = new List<SelectListItem>();
+        public IEnumerable<SelectListItem> RolesInternos { get; set; }
     }
 }

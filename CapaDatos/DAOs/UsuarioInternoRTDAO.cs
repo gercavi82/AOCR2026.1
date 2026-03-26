@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using System.Data;
 using CapaDatos.Models;
-using CapaDatos.Services;
 using Dapper;
 using Npgsql;
 
@@ -83,8 +82,6 @@ FROM aocr_usuario_interno_rt";
                 return false;
             }
 
-            CompletarDatosInstitucionalesDesdeAs400(registro);
-
             var codigo = NormalizarCodigo(registro.CodigoUsuario);
             if (string.IsNullOrWhiteSpace(codigo))
             {
@@ -92,25 +89,11 @@ FROM aocr_usuario_interno_rt";
                 return false;
             }
 
-            if (registro.CodigoFinanciero <= 0m)
-            {
-                mensaje = "No se pudo obtener el codigo financiero (usuoid) desde AS400 para el usuario seleccionado.";
-                return false;
-            }
-
-            var aeropuerto = NormalizarCodigo(registro.Opcar5, 10);
-            if (string.IsNullOrWhiteSpace(aeropuerto))
-            {
-                mensaje = "Debe seleccionar un aeropuerto.";
-                return false;
-            }
-
             var ciudad = NormalizarCodigo(registro.CiudadCodigo, 10);
-            if (string.IsNullOrWhiteSpace(ciudad))
-            {
-                mensaje = "No se pudo resolver la ciudad del usuario desde AS400.";
-                return false;
-            }
+            var codigoFinanciero = registro.CodigoFinanciero > 0m ? registro.CodigoFinanciero : 0m;
+            var aeropuerto = NormalizarCodigo(registro.Opcar5, 10);
+            var aeropuertoEspejo = NormalizarCodigo(registro.Opcaer, 10);
+            var opcoi3 = registro.Opcoi3 > 0m ? registro.Opcoi3 : 0m;
 
             var actorRegistro = string.IsNullOrWhiteSpace(actor) ? "sistema" : actor.Trim();
 
@@ -155,10 +138,10 @@ VALUES
                             Tipo = (registro.Tipo ?? string.Empty).Trim(),
                             EstadoAs400 = (registro.EstadoAs400 ?? "AC").Trim(),
                             CiudadCodigo = ciudad,
-                            CodigoFinanciero = registro.CodigoFinanciero,
+                            CodigoFinanciero = codigoFinanciero,
                             Opcar5 = aeropuerto,
-                            Opcaer = aeropuerto,
-                            Opcoi3 = registro.CodigoFinanciero,
+                            Opcaer = aeropuertoEspejo,
+                            Opcoi3 = opcoi3,
                             CorreoInstitucional = NormalizarTexto(registro.CorreoInstitucional, 200),
                             RolInterno = NormalizarTexto(registro.RolInterno, 100),
                             Observaciones = NormalizarTexto(registro.Observaciones, 2000),
@@ -303,6 +286,17 @@ CREATE INDEX IF NOT EXISTS idx_aocr_asignacion_rt_solicitud
             return normalizado;
         }
 
+        private static string NormalizarTipoInspectorFiltro(string tipoInspector)
+        {
+            if (string.IsNullOrWhiteSpace(tipoInspector))
+            {
+                return string.Empty;
+            }
+
+            var tipo = tipoInspector.Trim().ToUpperInvariant();
+            return tipo == "OPS" || tipo == "AIR" ? tipo : string.Empty;
+        }
+
         public List<UsuarioInternoRTRegistro> ListarActivos()
         {
             using (var cn = CrearConexion())
@@ -313,6 +307,24 @@ CREATE INDEX IF NOT EXISTS idx_aocr_asignacion_rt_solicitud
 WHERE activo = TRUE
 ORDER BY COALESCE(nombre_completo, codigo_usuario);";
                 return cn.Query<UsuarioInternoRTRegistro>(sql).AsList();
+            }
+        }
+
+        public List<UsuarioInternoRTRegistro> ListarInspectoresAsignables(string tipoInspector = null)
+        {
+            using (var cn = CrearConexion())
+            {
+                cn.Open();
+                AsegurarEstructuraBasica(cn, null);
+
+                var tipoNormalizado = NormalizarTipoInspectorFiltro(tipoInspector);
+                var sql = SelectUsuarioInterno + @"
+WHERE activo = TRUE
+  AND UPPER(TRIM(COALESCE(rol_interno, ''))) LIKE 'INSPECTOR%'
+  AND (@tipo = '' OR UPPER(TRIM(COALESCE(tipo, ''))) = @tipo)
+ORDER BY COALESCE(nombre_completo, codigo_usuario), codigo_usuario;";
+
+                return cn.Query<UsuarioInternoRTRegistro>(sql, new { tipo = tipoNormalizado }).AsList();
             }
         }
 
@@ -466,8 +478,6 @@ LIMIT 1;";
                 return false;
             }
 
-            CompletarDatosInstitucionalesDesdeAs400(registro);
-
             using (var cn = CrearConexion())
             {
                 cn.Open();
@@ -606,6 +616,39 @@ WHERE id = @id;";
             return ObtenerActivoPorCodigoUsuario(codigoUsuario);
         }
 
+        public UsuarioInternoRTRegistro ObtenerInspectorAsignableActivo(string codigoUsuario, string tipoInspector = null)
+        {
+            var codigo = NormalizarCodigo(codigoUsuario);
+            if (string.IsNullOrWhiteSpace(codigo))
+            {
+                return null;
+            }
+
+            using (var cn = CrearConexion())
+            {
+                cn.Open();
+                AsegurarEstructuraBasica(cn, null);
+
+                var tipoNormalizado = NormalizarTipoInspectorFiltro(tipoInspector);
+                var sql = SelectUsuarioInterno + @"
+WHERE activo = TRUE
+  AND UPPER(TRIM(COALESCE(rol_interno, ''))) LIKE 'INSPECTOR%'
+  AND (
+        UPPER(TRIM(COALESCE(codigo_usuario, ''))) = UPPER(TRIM(@codigoUsuario))
+        OR UPPER(TRIM(COALESCE(identificacion, ''))) = UPPER(TRIM(@codigoUsuario))
+      )
+  AND (@tipo = '' OR UPPER(TRIM(COALESCE(tipo, ''))) = @tipo)
+ORDER BY id DESC
+LIMIT 1;";
+
+                return cn.QueryFirstOrDefault<UsuarioInternoRTRegistro>(sql, new
+                {
+                    codigoUsuario = codigo,
+                    tipo = tipoNormalizado
+                });
+            }
+        }
+
         public string ObtenerCorreoInstitucionalPorTecnicoId(int tecnicoId)
         {
             if (tecnicoId <= 0)
@@ -627,6 +670,12 @@ LIMIT 1;";
 
                 return cn.QueryFirstOrDefault<string>(sql, new { tecnicoId }) ?? string.Empty;
             }
+        }
+
+        public string ObtenerCorreoInstitucionalPorCodigoUsuario(string codigoUsuario)
+        {
+            var registro = ObtenerActivoPorCodigoUsuario(codigoUsuario);
+            return registro != null ? (registro.CorreoInstitucional ?? string.Empty).Trim() : string.Empty;
         }
 
         public bool ExisteCorreoInstitucional(string correo, int? excluirId = null)
@@ -817,67 +866,5 @@ WHERE table_schema = 'public'
             return texto;
         }
 
-        private static void CompletarDatosInstitucionalesDesdeAs400(UsuarioInternoRTRegistro registro)
-        {
-            if (registro == null)
-            {
-                return;
-            }
-
-            var valorBusqueda = !string.IsNullOrWhiteSpace(registro.CodigoUsuario)
-                ? registro.CodigoUsuario
-                : registro.Identificacion;
-
-            if (string.IsNullOrWhiteSpace(valorBusqueda))
-            {
-                return;
-            }
-
-            try
-            {
-                var dao = new UsuarioAS400DAO(new SecureConfigurationService());
-                var info = dao.ObtenerDatosUsuarioInterno(valorBusqueda);
-
-                if (info == null && !string.IsNullOrWhiteSpace(registro.Identificacion) &&
-                    !string.Equals(valorBusqueda, registro.Identificacion, StringComparison.OrdinalIgnoreCase))
-                {
-                    info = dao.ObtenerDatosUsuarioInterno(registro.Identificacion);
-                }
-
-                if (info == null && !string.IsNullOrWhiteSpace(registro.CodigoUsuario) &&
-                    !string.Equals(valorBusqueda, registro.CodigoUsuario, StringComparison.OrdinalIgnoreCase))
-                {
-                    info = dao.ObtenerDatosUsuarioInterno(registro.CodigoUsuario);
-                }
-
-                if (info == null)
-                {
-                    return;
-                }
-
-                if (string.IsNullOrWhiteSpace(registro.CodigoUsuario) && !string.IsNullOrWhiteSpace(info.CodigoUsuario))
-                {
-                    registro.CodigoUsuario = info.CodigoUsuario.Trim().ToUpperInvariant();
-                }
-
-                if (string.IsNullOrWhiteSpace(registro.CiudadCodigo) && !string.IsNullOrWhiteSpace(info.CiudadCodigo))
-                {
-                    registro.CiudadCodigo = info.CiudadCodigo.Trim().ToUpperInvariant();
-                }
-
-                if (registro.CodigoFinanciero <= 0m && info.CodigoFinanciero.HasValue && info.CodigoFinanciero.Value > 0m)
-                {
-                    registro.CodigoFinanciero = info.CodigoFinanciero.Value;
-                }
-
-                if (registro.Opcoi3 <= 0m && info.CodigoFinanciero.HasValue && info.CodigoFinanciero.Value > 0m)
-                {
-                    registro.Opcoi3 = info.CodigoFinanciero.Value;
-                }
-            }
-            catch
-            {
-            }
-        }
     }
 }

@@ -311,17 +311,37 @@ namespace CapaDatos.DAOs
             using (var cn = new NpgsqlConnection(GetConnectionString()))
             {
                 cn.Open();
-                string sql = @"SELECT * FROM usuario WHERE LOWER(rol) = LOWER(@rol)";
-                using (var cmd = new NpgsqlCommand(sql, cn))
+
+                var tieneActivoUsuarioRol = ExisteColumna(cn, "usuario_rol", "activo");
+                var tieneActivoRol = ExisteColumna(cn, "rol", "activo");
+                var tieneEstadoActividad = ExisteColumna(cn, "usuario", "estadoactividad");
+
+                var sqlPrincipal = @"
+                    SELECT DISTINCT
+                        u.idusuario,
+                        u.codigousuario,
+                        u.nombreusuario,
+                        u.apellidousuario,
+                        COALESCE(r.descripcion, u.rol) AS rol,
+                        u.correo
+                    FROM usuario u
+                    INNER JOIN usuario_rol ur ON u.codigousuario::text = ur.codigousuario::text
+                    INNER JOIN rol r ON r.codigorol = ur.codigorol
+                    WHERE LOWER(COALESCE(r.descripcion, '')) = LOWER(@rol)" +
+                    (tieneActivoUsuarioRol ? " AND COALESCE(ur.activo, TRUE) = TRUE" : string.Empty) +
+                    (tieneActivoRol ? " AND COALESCE(r.activo, TRUE) = TRUE" : string.Empty) +
+                    (tieneEstadoActividad ? " AND COALESCE(u.estadoactividad::text, '1') = '1'" : string.Empty) +
+                    @" ORDER BY u.nombreusuario, u.apellidousuario, u.codigousuario;";
+
+                using (var cmd = new NpgsqlCommand(sqlPrincipal, cn))
                 {
-                    cmd.Parameters.AddWithValue("@rol", rol);
+                    cmd.Parameters.AddWithValue("@rol", rol ?? string.Empty);
                     using (var rd = cmd.ExecuteReader())
                     {
                         while (rd.Read())
                         {
                             lista.Add(new Usuario
                             {
-                                // OJO: tu modelo tiene Id e IdUsuario. Usa Id como estándar.
                                 Id = rd["idusuario"] == DBNull.Value ? 0 : Convert.ToInt32(rd["idusuario"]),
                                 CodigoUsuario = rd["codigousuario"] == DBNull.Value ? "" : rd["codigousuario"].ToString(),
                                 NombreUsuario = rd["nombreusuario"] == DBNull.Value ? "" : rd["nombreusuario"].ToString(),
@@ -329,6 +349,33 @@ namespace CapaDatos.DAOs
                                 Rol = rd["rol"] == DBNull.Value ? "" : rd["rol"].ToString(),
                                 Email = rd["correo"] == DBNull.Value ? "" : rd["correo"].ToString()
                             });
+                        }
+                    }
+                }
+
+                if (lista.Count == 0)
+                {
+                    string sqlFallback = @"SELECT * FROM usuario WHERE LOWER(COALESCE(rol, '')) = LOWER(@rol)" +
+                        (tieneEstadoActividad ? " AND COALESCE(estadoactividad::text, '1') = '1'" : string.Empty) +
+                        @" ORDER BY nombreusuario, apellidousuario, codigousuario;";
+
+                    using (var cmd = new NpgsqlCommand(sqlFallback, cn))
+                    {
+                        cmd.Parameters.AddWithValue("@rol", rol ?? string.Empty);
+                        using (var rd = cmd.ExecuteReader())
+                        {
+                            while (rd.Read())
+                            {
+                                lista.Add(new Usuario
+                                {
+                                    Id = rd["idusuario"] == DBNull.Value ? 0 : Convert.ToInt32(rd["idusuario"]),
+                                    CodigoUsuario = rd["codigousuario"] == DBNull.Value ? "" : rd["codigousuario"].ToString(),
+                                    NombreUsuario = rd["nombreusuario"] == DBNull.Value ? "" : rd["nombreusuario"].ToString(),
+                                    ApellidoUsuario = rd["apellidousuario"] == DBNull.Value ? "" : rd["apellidousuario"].ToString(),
+                                    Rol = rd["rol"] == DBNull.Value ? "" : rd["rol"].ToString(),
+                                    Email = rd["correo"] == DBNull.Value ? "" : rd["correo"].ToString()
+                                });
+                            }
                         }
                     }
                 }

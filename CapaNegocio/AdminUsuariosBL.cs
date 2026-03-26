@@ -140,7 +140,12 @@ namespace CapaNegocio
                 return false;
             }
 
-            mensaje = "Usuario creado correctamente.";
+            string mensajeCorreo;
+            var correoOk = NotificarCredencialesCreacion(usuario, passwordPlano, actorCodigoUsuario, out mensajeCorreo);
+            mensaje = correoOk
+                ? "Usuario creado correctamente. " + mensajeCorreo
+                : "Usuario creado correctamente, pero " + mensajeCorreo;
+
             return true;
         }
 
@@ -272,6 +277,29 @@ namespace CapaNegocio
             out string passwordTemporal,
             out string mensaje)
         {
+            return ResetPassword(
+                idUsuario,
+                generarTemporal,
+                passwordNueva,
+                actorUsuarioId,
+                actorCodigoUsuario,
+                ip,
+                null,
+                out passwordTemporal,
+                out mensaje);
+        }
+
+        public static bool ResetPassword(
+            int idUsuario,
+            bool generarTemporal,
+            string passwordNueva,
+            int? actorUsuarioId,
+            string actorCodigoUsuario,
+            string ip,
+            string correoDestinoOverride,
+            out string passwordTemporal,
+            out string mensaje)
+        {
             passwordTemporal = null;
             mensaje = string.Empty;
 
@@ -293,6 +321,11 @@ namespace CapaNegocio
             {
                 mensaje = "Usuario invalido.";
                 return false;
+            }
+
+            if (!string.IsNullOrWhiteSpace(correoDestinoOverride))
+            {
+                usuario.Correo = correoDestinoOverride.Trim();
             }
 
             var validacion = PasswordHelper.ValidarFortaleza(passwordPlano);
@@ -432,7 +465,48 @@ namespace CapaNegocio
             }
 
             var asunto = "Cambio de contrasena - Sistema AOCR";
-            var cuerpo = ConstruirPlantillaResetPassword(nombre, passwordTemporal, actorCodigoUsuario);
+            var cuerpo = ConstruirPlantillaResetPassword(nombre, usuario.CodigoUsuario, passwordTemporal, actorCodigoUsuario);
+
+            return EnviarCorreoCredenciales(usuario.Correo, asunto, cuerpo, out mensaje);
+        }
+
+        private static bool NotificarCredencialesCreacion(
+            SeguridadUsuarioDTO usuario,
+            string passwordTemporal,
+            string actorCodigoUsuario,
+            out string mensaje)
+        {
+            mensaje = string.Empty;
+
+            if (usuario == null || string.IsNullOrWhiteSpace(usuario.Correo))
+            {
+                mensaje = "el usuario no tiene correo registrado.";
+                return false;
+            }
+
+            var nombre = string.Format(
+                "{0} {1}",
+                (usuario.NombreUsuario ?? string.Empty).Trim(),
+                (usuario.ApellidoUsuario ?? string.Empty).Trim()).Trim();
+
+            if (string.IsNullOrWhiteSpace(nombre))
+            {
+                nombre = (usuario.CodigoUsuario ?? "Usuario").Trim();
+            }
+
+            var asunto = "Cuenta creada - Sistema AOCR";
+            var cuerpo = ConstruirPlantillaCreacionUsuario(nombre, usuario.CodigoUsuario, passwordTemporal, actorCodigoUsuario);
+
+            return EnviarCorreoCredenciales(usuario.Correo, asunto, cuerpo, out mensaje);
+        }
+
+        private static bool EnviarCorreoCredenciales(
+            string correoDestino,
+            string asunto,
+            string cuerpo,
+            out string mensaje)
+        {
+            mensaje = string.Empty;
 
             try
             {
@@ -440,13 +514,13 @@ namespace CapaNegocio
                 var configService = new SecureConfigurationService();
                 var servicioCorreo = new EnviarCorreo(configService, queueService);
 
-                if (servicioCorreo.EnviarEncolado(usuario.Correo, asunto, cuerpo, null, "RESET_PASSWORD"))
+                if (servicioCorreo.EnviarEncolado(correoDestino, asunto, cuerpo, null, "USER_CREDENTIALS"))
                 {
-                    mensaje = "se envio un correo con la nueva contrasena temporal.";
+                    mensaje = "se envio un correo con las credenciales temporales.";
                     return true;
                 }
 
-                if (servicioCorreo.enviaMensajeCorreo(usuario.Correo, asunto, cuerpo))
+                if (servicioCorreo.enviaMensajeCorreo(correoDestino, asunto, cuerpo))
                 {
                     mensaje = "la cola de correos fallo, pero se envio el correo directamente.";
                     return true;
@@ -460,7 +534,7 @@ namespace CapaNegocio
                 try
                 {
                     var servicioCorreo = new EnviarCorreo();
-                    if (servicioCorreo.enviaMensajeCorreo(usuario.Correo, asunto, cuerpo))
+                    if (servicioCorreo.enviaMensajeCorreo(correoDestino, asunto, cuerpo))
                     {
                         mensaje = "la cola de correos fallo, pero se envio el correo directamente.";
                         return true;
@@ -478,10 +552,12 @@ namespace CapaNegocio
 
         private static string ConstruirPlantillaResetPassword(
             string nombreUsuario,
+            string codigoUsuario,
             string passwordTemporal,
             string actorCodigoUsuario)
         {
             var nombreSeguro = WebUtility.HtmlEncode(string.IsNullOrWhiteSpace(nombreUsuario) ? "Usuario" : nombreUsuario);
+            var codigoSeguro = WebUtility.HtmlEncode(string.IsNullOrWhiteSpace(codigoUsuario) ? string.Empty : codigoUsuario);
             var passwordSegura = WebUtility.HtmlEncode(passwordTemporal ?? string.Empty);
             var actorSeguro = WebUtility.HtmlEncode(string.IsNullOrWhiteSpace(actorCodigoUsuario) ? "Administrador" : actorCodigoUsuario);
             var fecha = WebUtility.HtmlEncode(DateTime.Now.ToString("dd/MM/yyyy HH:mm"));
@@ -495,11 +571,12 @@ namespace CapaNegocio
     <h2 style='margin:0 0 16px 0; color:#1f3a5f;'>Contrasena restablecida</h2>
     <p style='margin:0 0 12px 0;'>Estimado/a <strong>{0}</strong>,</p>
     <p style='margin:0 0 12px 0;'>Se registro un cambio de contrasena para su cuenta en AOCR.</p>
+        <p style='margin:0 0 12px 0;'><strong>Usuario:</strong> {1}</p>
     <div style='margin:16px 0; padding:12px; background:#f8fbff; border:1px solid #d7e7ff; border-radius:6px;'>
-      <strong>Nueva contrasena temporal:</strong> {1}
+            <strong>Nueva contrasena temporal:</strong> {2}
     </div>
-    <p style='margin:0 0 8px 0;'>Usuario que realizo el cambio: <strong>{2}</strong></p>
-    <p style='margin:0 0 8px 0;'>Fecha: {3}</p>
+        <p style='margin:0 0 8px 0;'>Usuario que realizo el cambio: <strong>{3}</strong></p>
+        <p style='margin:0 0 8px 0;'>Fecha: {4}</p>
     <p style='margin:0 0 12px 0;'>Por seguridad, en el proximo inicio de sesion se le pedira cambiar su contrasena.</p>
     <hr style='margin:20px 0; border:none; border-top:1px solid #e8ecf1;' />
     <p style='margin:0; font-size:12px; color:#6b7785;'>Mensaje automatico del sistema AOCR.</p>
@@ -507,9 +584,50 @@ namespace CapaNegocio
 </body>
 </html>",
                 nombreSeguro,
+                                codigoSeguro,
                 passwordSegura,
                 actorSeguro,
                 fecha);
         }
+
+                private static string ConstruirPlantillaCreacionUsuario(
+                        string nombreUsuario,
+                        string codigoUsuario,
+                        string passwordTemporal,
+                        string actorCodigoUsuario)
+                {
+                        var nombreSeguro = WebUtility.HtmlEncode(string.IsNullOrWhiteSpace(nombreUsuario) ? "Usuario" : nombreUsuario);
+                        var codigoSeguro = WebUtility.HtmlEncode(string.IsNullOrWhiteSpace(codigoUsuario) ? string.Empty : codigoUsuario);
+                        var passwordSegura = WebUtility.HtmlEncode(passwordTemporal ?? string.Empty);
+                        var actorSeguro = WebUtility.HtmlEncode(string.IsNullOrWhiteSpace(actorCodigoUsuario) ? "Administrador" : actorCodigoUsuario);
+                        var fecha = WebUtility.HtmlEncode(DateTime.Now.ToString("dd/MM/yyyy HH:mm"));
+
+                        return string.Format(@"
+<!DOCTYPE html>
+<html>
+<head><meta charset='utf-8'></head>
+<body style='font-family: Arial, sans-serif; margin:0; padding:20px; background:#f4f6f8;'>
+    <div style='max-width:620px; margin:0 auto; background:#ffffff; border:1px solid #d9dee5; border-radius:8px; padding:24px;'>
+        <h2 style='margin:0 0 16px 0; color:#1f3a5f;'>Bienvenido/a al sistema AOCR</h2>
+        <p style='margin:0 0 12px 0;'>Estimado/a <strong>{0}</strong>,</p>
+        <p style='margin:0 0 12px 0;'>Su cuenta de acceso fue creada correctamente.</p>
+        <p style='margin:0 0 12px 0;'><strong>Usuario:</strong> {1}</p>
+        <div style='margin:16px 0; padding:12px; background:#f8fbff; border:1px solid #d7e7ff; border-radius:6px;'>
+            <strong>Contrasena temporal:</strong> {2}
+        </div>
+        <p style='margin:0 0 8px 0;'>Usuario administrador que realizo el alta: <strong>{3}</strong></p>
+        <p style='margin:0 0 8px 0;'>Fecha de creacion: {4}</p>
+        <p style='margin:0 0 12px 0;'>Por seguridad, en el primer inicio de sesion se le solicitara cambiar su contrasena.</p>
+        <hr style='margin:20px 0; border:none; border-top:1px solid #e8ecf1;' />
+        <p style='margin:0; font-size:12px; color:#6b7785;'>Mensaje automatico del sistema AOCR.</p>
+    </div>
+</body>
+</html>",
+                                nombreSeguro,
+                                codigoSeguro,
+                                passwordSegura,
+                                actorSeguro,
+                                fecha);
+                }
     }
 }

@@ -5,6 +5,7 @@ using System.Web.Mvc;
 using CapaDatos.Constants;
 using CapaDatos.DAOs;
 using CapaNegocio;
+using CapaNegocio.Services;
 using CapaModelo;
 using CapaPresentacion.Models;
 
@@ -17,6 +18,7 @@ namespace CapaPresentacion.Controllers
         private readonly SolicitudEstadoTransitionBL _solicitudEstadoTransitionBL = new SolicitudEstadoTransitionBL();
         private readonly SolicitudAOCRDAO _solicitudDao = new SolicitudAOCRDAO();
         private readonly ParametroDAO _parametroDao = new ParametroDAO();
+        private readonly SolicitudAocrCorreoService _solicitudAocrCorreoService = new SolicitudAocrCorreoService();
 
         // ============================================================
         // LISTADO
@@ -241,6 +243,8 @@ namespace CapaPresentacion.Controllers
                     }
 
                     TempData["success"] = "Solicitud aprobada correctamente. Pasará a legalización.";
+                    var solicitudActualizada = _solicitudDao.ObtenerPorId(id);
+                    _solicitudAocrCorreoService.NotificarEvento(solicitudActualizada, "AOCR_APROBADO_DIRECCION", observaciones);
                     return RedirectToAction("Legalizar", new { id });
                 }
                 else
@@ -301,6 +305,8 @@ namespace CapaPresentacion.Controllers
                 }
 
                 TempData["success"] = "Certificado legalizado correctamente.";
+                var solicitudActualizada = _solicitudDao.ObtenerPorId(id);
+                _solicitudAocrCorreoService.NotificarEvento(solicitudActualizada, "AOCR_LEGALIZADO", "Certificado legalizado y firmado");
                 return RedirectToAction("EmitirAOCR", new { id });
             }
             catch (Exception ex)
@@ -345,6 +351,8 @@ namespace CapaPresentacion.Controllers
                 }
 
                 TempData["success"] = "Certificado AOCR emitido correctamente.";
+                var solicitudActualizada = _solicitudDao.ObtenerPorId(id);
+                _solicitudAocrCorreoService.NotificarEvento(solicitudActualizada, "AOCR_EMITIDO_RECIBIDO", "Certificado AOCR emitido");
                 return RedirectToAction("AprobarSolicitudes");
             }
             catch (Exception ex)

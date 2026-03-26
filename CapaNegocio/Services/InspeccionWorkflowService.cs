@@ -19,6 +19,7 @@ namespace CapaNegocio.Services
         private readonly AuditoriaService _auditoriaService;
         private readonly ValidacionDocumentalService _validacionDocumentalService;
         private readonly IntegracionInspeccionOrService _integracionInspeccionOrService;
+        private readonly InspeccionCorreoService _inspeccionCorreoService;
 
         public InspeccionWorkflowService()
         {
@@ -29,6 +30,7 @@ namespace CapaNegocio.Services
             _auditoriaService = new AuditoriaService();
             _validacionDocumentalService = new ValidacionDocumentalService();
             _integracionInspeccionOrService = new IntegracionInspeccionOrService();
+            _inspeccionCorreoService = new InspeccionCorreoService();
         }
 
         public ResultadoOperacion RegistrarResultadoInspeccion(int inspeccionId, string resultado, string observacion, int usuarioId, string usuarioNombre)
@@ -467,6 +469,8 @@ namespace CapaNegocio.Services
                         inspeccion.CodigoInspeccion,
                         "aocr_tbinspeccion");
                 }
+
+                _inspeccionCorreoService.NotificarEvento(inspeccion, solicitud, evento, observacion);
             }
             catch
             {

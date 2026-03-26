@@ -39,7 +39,7 @@
                 <div>
                     <div class="rt-eyebrow"><i class="fas fa-user-shield"></i> Administracion AOCR</div>
                     <h1 class="rt-hero-title">Usuarios RT / Inspectores</h1>
-                    <p class="rt-hero-sub">Listado de inspectores y tecnicos responsables registrados desde la base institucional (OPINSPECTORES / OPIAR2).</p>
+                    <p class="rt-hero-sub">Listado de inspectores y tecnicos responsables registrados para operar en AOCR por rol interno.</p>
                 </div>
                 <div class="text-lg-end flex-shrink-0">
                     <a href="@Url.Action("CrearUsuarioInternoRT", "AdminUsuarios")" class="btn btn-light fw-bold">
@@ -82,6 +82,13 @@
             <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
         </div>
     }
+    @if (TempData["PasswordTemporal"] != null)
+    {
+        <div class="alert alert-warning alert-dismissible fade show" role="alert">
+            <i class="fas fa-key me-1"></i> @TempData["PasswordTemporal"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    }
 
     <div class="card rt-card">
         <div class="card-body p-4">
@@ -96,9 +103,6 @@
                                 <th>Tipo</th>
                                 <th>Rol interno</th>
                                 <th>Correo institucional</th>
-                                <th>Aeropuerto</th>
-                                <th>Ciudad</th>
-                                <th>Cod. Financiero</th>
                                 <th>Estado</th>
                                 <th>Registrado</th>
                                 <th>Acciones</th>
@@ -115,9 +119,6 @@
                                     <td><span class="@tipoBadge">@Html.Encode(string.IsNullOrWhiteSpace(rt.Tipo) ? "-" : rt.Tipo)</span></td>
                                     <td>@Html.Encode(string.IsNullOrWhiteSpace(rt.RolInterno) ? "-" : rt.RolInterno)</td>
                                     <td>@Html.Encode(string.IsNullOrWhiteSpace(rt.CorreoInstitucional) ? "-" : rt.CorreoInstitucional)</td>
-                                    <td>@Html.Encode(string.IsNullOrWhiteSpace(rt.Opcar5) ? "-" : rt.Opcar5)</td>
-                                    <td>@Html.Encode(string.IsNullOrWhiteSpace(rt.CiudadCodigo) ? "-" : rt.CiudadCodigo)</td>
-                                    <td>@(rt.CodigoFinanciero > 0 ? rt.CodigoFinanciero.ToString("0") : "-")</td>
                                     <td>
                                         <span class="badge @(rt.Activo ? "bg-success" : "bg-secondary")">
                                             @(rt.Activo ? "Activo" : "Inactivo")
@@ -125,6 +126,14 @@
                                     </td>
                                     <td class="text-muted small">@rt.CreatedAt.ToString("yyyy-MM-dd")</td>
                                     <td class="text-nowrap">
+                                        @using (Html.BeginForm("ReenviarNotificacionUsuarioInternoRT", "AdminUsuarios", FormMethod.Post, new { @class = "d-inline-block" }))
+                                        {
+                                            @Html.AntiForgeryToken()
+                                            @Html.Hidden("id", rt.Id)
+                                            <button type="submit" class="btn btn-sm btn-outline-info" title="Enviar correo de notificacion">
+                                                <i class="fas fa-envelope me-1"></i> Correo
+                                            </button>
+                                        }
                                         <a href="@Url.Action("EditarUsuarioInternoRT", "AdminUsuarios", new { id = rt.Id })"
                                            class="btn btn-sm btn-outline-primary">
                                             <i class="fas fa-pen me-1"></i> Editar

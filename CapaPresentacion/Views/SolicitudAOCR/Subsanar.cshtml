@@ -27,14 +27,14 @@
     .step-number { width: 36px; height: 36px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-weight: 700; font-size: 1rem; flex-shrink: 0; }
 </style>
 
-@Html.Partial("_PageHeader", new ViewDataDictionary {
+@Html.Partial("_PageHeader", null, new ViewDataDictionary {
     { "Title", "Subsanar Documentación" },
     { "Subtitle", "Corrija las observaciones y reenvíe los documentos solicitados" }
 })
 
 <div class="subsanar-container py-4">
 
-    @Html.Partial("_ActionToolbar", new ViewDataDictionary {
+    @Html.Partial("_ActionToolbar", null, new ViewDataDictionary {
         { "VolverUrl", Url.Action("Detalle", "SolicitudAOCR", new { id = Model.CodigoSolicitud }) }
     })
 

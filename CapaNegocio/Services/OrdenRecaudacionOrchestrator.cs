@@ -26,6 +26,7 @@ namespace CapaNegocio.Services
         private readonly IPdfGeneratorService _pdfService;
         private readonly DataEmailService _emailService;
         private readonly IFileStorageService _fileService;
+        private readonly OrdenRecaudacionCorreoService _ordenCorreoService;
 
         #endregion
 
@@ -53,6 +54,7 @@ namespace CapaNegocio.Services
             _pdfService = pdfService;
             _emailService = emailService;
             _fileService = fileService;
+            _ordenCorreoService = new OrdenRecaudacionCorreoService();
         }
 
         #endregion
@@ -375,67 +377,32 @@ namespace CapaNegocio.Services
         {
             try
             {
-                if (_emailService == null)
-                {
-                    return OperationResult<EnviarNotificacionResponse>.Fail("Servicio de email no disponible", "SERVICE_UNAVAILABLE");
-                }
-
-                if (string.IsNullOrWhiteSpace(request.EmailDestino))
-                {
-                    return OperationResult<EnviarNotificacionResponse>.Fail("Email destino requerido", "VALIDATION_ERROR");
-                }
-
                 var orden = await _ordenRepository.ObtenerPorIdAsync(request.OrdenId);
                 if (orden == null)
                 {
                     return OperationResult<EnviarNotificacionResponse>.Fail("Orden no encontrada", "NOT_FOUND");
                 }
 
-                // Construir asunto y cuerpo según tipo de notificación
-                string asunto;
-                string cuerpo;
-
-                switch (request.TipoNotificacion.ToUpperInvariant())
+                if (string.IsNullOrWhiteSpace(orden.Correo) && string.IsNullOrWhiteSpace(request.EmailDestino))
                 {
-                    case "ORDEN_CREADA":
-                        asunto = "Nueva Orden de recaudación - " + orden.NumeroOrden;
-                        cuerpo = ConstruirCuerpoOrdenCreada(orden);
-                        break;
-
-                    case "PAGO_REGISTRADO":
-                        asunto = "Pago Registrado - Orden " + orden.NumeroOrden;
-                        cuerpo = ConstruirCuerpoPagoRegistrado(orden);
-                        break;
-
-                    case "PAGO_VALIDADO":
-                        asunto = "Pago Validado - Orden " + orden.NumeroOrden;
-                        cuerpo = ConstruirCuerpoPagoValidado(orden);
-                        break;
-
-                    case "FACTURA_GENERADA":
-                        asunto = "Factura Generada - Orden " + orden.NumeroOrden;
-                        cuerpo = ConstruirCuerpoFacturaGenerada(orden);
-                        break;
-
-                    default:
-                        asunto = "Notificación - Orden " + orden.NumeroOrden;
-                        cuerpo = "Se ha realizado una actualización en su orden de recaudación.";
-                        break;
+                    return OperationResult<EnviarNotificacionResponse>.Fail("Email destino requerido", "VALIDATION_ERROR");
                 }
 
-                // Enviar email
-                var resultado = await EnviarEmailAsync(
+                var resultadoOperacion = _ordenCorreoService.NotificarEvento(
+                    orden,
+                    request.TipoNotificacion,
                     request.EmailDestino,
                     request.NombreDestino,
-                    asunto,
-                    cuerpo);
+                    request.AdjuntarPdf ? request.AdjuntoPdf : null,
+                    request.AdjuntarPdf ? request.NombreAdjunto : null);
+                var resultado = resultadoOperacion.Exitoso;
 
                 var response = new EnviarNotificacionResponse
                 {
                     Enviado = resultado,
                     MessageId = resultado ? Guid.NewGuid().ToString() : null,
                     FechaEnvio = resultado ? DateTime.Now : (DateTime?)null,
-                    Error = resultado ? null : "Error al enviar el email"
+                    Error = resultado ? null : resultadoOperacion.Mensaje
                 };
 
                 return resultado
@@ -452,34 +419,6 @@ namespace CapaNegocio.Services
         #endregion
 
         #region Operaciones de Consulta
-
-        /// <summary>
-        /// Helper para enviar email de forma segura; si el servicio no está configurado,
-        /// devuelve false sin lanzar excepción.
-        /// </summary>
-        private async Task<bool> EnviarEmailAsync(string email, string nombre, string asunto, string cuerpoHtml)
-        {
-            if (_emailService == null)
-                return false;
-
-            try
-            {
-                var result = await _emailService.EnviarAsync(
-                    email,
-                    nombre,
-                    asunto,
-                    cuerpoHtml,
-                    null,
-                    null);
-
-                return result != null && result.Success;
-            }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine("Error EnviarEmailAsync: " + ex.Message);
-                return false;
-            }
-        }
 
         public async Task<OperationResult<FlujoOrdenCompleto>> ObtenerEstadoFlujoAsync(int ordenId)
         {

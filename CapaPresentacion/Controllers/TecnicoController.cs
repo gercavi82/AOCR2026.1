@@ -5,19 +5,23 @@ using System.Web;
 using System.Web.Mvc;
 using CapaModelo;
 using CapaNegocio;
+using CapaNegocio.Services;
 using CapaDatos.DAOs;
-using CapaDatos.Services;
+using DataSecureConfigurationService = CapaDatos.Services.SecureConfigurationService;
+using DataEnviarCorreo = CapaDatos.Services.EnviarCorreo;
 
 namespace CapaPresentacion.Controllers
 {
     [Authorize] // No restringas aquí para no bloquear otras acciones por rol
     public class TecnicoController : Controller
     {
-        private readonly ILoggingService _logger;
+        private readonly CapaNegocio.Services.ILoggingService _logger;
+        private readonly SolicitudAocrCorreoService _solicitudAocrCorreoService;
 
         public TecnicoController()
         {
-            _logger = LoggingServiceFactory.Create();
+            _logger = CapaNegocio.Services.LoggingServiceFactory.Create();
+            _solicitudAocrCorreoService = new SolicitudAocrCorreoService();
         }
 
         // ✅ Según tu error, tu carpeta REAL parece ser: Views/Tecnico
@@ -27,7 +31,7 @@ namespace CapaPresentacion.Controllers
         // =======================================================
         // LISTADO - Solicitudes pendientes de asignación
         // =======================================================
-        [Authorize(Roles = "Administrador,Direccion,JefaturaTecnica")]
+        [Authorize(Roles = "Administrador,Direccion,JefaturaTecnica,Coordinador,CoordinadorInspecciones")]
         public ActionResult Index()
         {
             _logger.LogInfo("[InspeccionesController] Inicio pantalla gestion (Tecnico/Index). Usuario=" + ObtenerUsuarioActual() + ", Rol=" + ObtenerRolActual());
@@ -142,7 +146,7 @@ namespace CapaPresentacion.Controllers
         // ASIGNAR INSPECTOR (GET)
         // =======================================================
         [HttpGet]
-        [Authorize(Roles = "Administrador,Direccion,JefaturaTecnica")]
+        [Authorize(Roles = "Administrador,Direccion,JefaturaTecnica,Coordinador,CoordinadorInspecciones")]
         public ActionResult AsignarInspector(int? solicitudId, string tipoInspector = "OPS")
         {
             _logger.LogInfo("[InspeccionesController] Inicio pantalla gestion de asignacion. Usuario=" + ObtenerUsuarioActual() + ", Rol=" + ObtenerRolActual() + ", SolicitudId=" + (solicitudId.HasValue ? solicitudId.Value.ToString() : "null"));
@@ -167,38 +171,15 @@ namespace CapaPresentacion.Controllers
             var esReasignacion = TieneInspectorAsignado(solicitud);
 
             var tipoInspectorNormalizado = NormalizarTipoInspector(tipoInspector);
-            var inspectores = new List<CapaDatos.Models.InspectorAs400Record>();
-            var origenInspectores = "DB2";
+            var inspectores = UsuarioInternoRTBL.ListarInspectoresAsignables(tipoInspectorNormalizado) ?? new List<CapaDatos.Models.UsuarioInternoRTRegistro>();
+            var origenInspectores = "Usuarios RT / Inspectores";
 
-            try
+            _logger.LogInfo("[InspeccionesController] Origen inspectores=" + origenInspectores + ", TipoFiltro=" + tipoInspectorNormalizado + ", InspectoresRecibidos=" + inspectores.Count);
+
+            if (inspectores.Count == 0)
             {
-                var inspectorAs400Dao = new InspectorAS400DAO(new SecureConfigurationService());
-                inspectores = tipoInspectorNormalizado == "TODOS"
-                    ? inspectorAs400Dao.ListarActivosPorTipos(new[] { "OPS", "AIR" })
-                    : inspectorAs400Dao.ListarActivosPorTipo(tipoInspectorNormalizado);
-
-                var mirrorDiagnostic = new InspectorMirrorPGDAO().DiagnosticarEspejo(inspectores);
-                if (mirrorDiagnostic.TablaExiste)
-                {
-                    origenInspectores = "DB2 + diagnostico espejo PostgreSQL";
-                }
-                else
-                {
-                    _logger.LogWarning("[InspectoresDAO-PG] Espejo no disponible (tabla inexistente). Flujo usa DB2 directo.");
-                }
-
-                _logger.LogInfo("[InspeccionesController] Origen inspectores=" + origenInspectores + ", TipoFiltro=" + tipoInspectorNormalizado + ", InspectoresRecibidos=" + (inspectores == null ? -1 : inspectores.Count));
-
-                if (inspectores == null || inspectores.Count == 0)
-                {
-                    _logger.LogWarning("[InspeccionesController] Lista de inspectores vacia para SolicitudId=" + solicitud.CodigoSolicitud + ".");
-                    ViewBag.WarningInspectores = "No se encontraron inspectores en AS400 para el filtro seleccionado. Verifique estado/tipo en OPIAR2.";
-                }
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError("[InspeccionesController] Error al cargar inspectores: " + ex);
-                TempData["Error"] = "No se pudo cargar inspectores institucionales desde AS400: " + ex.Message;
+                _logger.LogWarning("[InspeccionesController] Lista de inspectores RT vacia para SolicitudId=" + solicitud.CodigoSolicitud + ".");
+                ViewBag.WarningInspectores = "No se encontraron usuarios RT activos con rol Inspector para el filtro seleccionado.";
             }
 
             ViewBag.TipoInspector = tipoInspectorNormalizado;
@@ -215,8 +196,8 @@ namespace CapaPresentacion.Controllers
             ViewBag.Inspectores = new SelectList(
                 inspectores.Select(i => new
                 {
-                    Cedula = i.Cedula,
-                    Etiqueta = i.EtiquetaLista
+                    Cedula = i.UsuarioLogin,
+                    Etiqueta = ConstruirEtiquetaInspectorRt(i)
                 }),
                 "Cedula",
                 "Etiqueta",
@@ -224,8 +205,8 @@ namespace CapaPresentacion.Controllers
             ViewBag.InspectoresApoyo = new SelectList(
                 inspectores.Select(i => new
                 {
-                    Cedula = i.Cedula,
-                    Etiqueta = i.EtiquetaLista
+                    Cedula = i.UsuarioLogin,
+                    Etiqueta = ConstruirEtiquetaInspectorRt(i)
                 }),
                 "Cedula",
                 "Etiqueta",
@@ -241,7 +222,7 @@ namespace CapaPresentacion.Controllers
         // ASIGNAR INSPECTOR (POST)
         // =======================================================
         [HttpPost]
-        [Authorize(Roles = "Administrador,Direccion,JefaturaTecnica")]
+        [Authorize(Roles = "Administrador,Direccion,JefaturaTecnica,Coordinador,CoordinadorInspecciones")]
         [ValidateAntiForgeryToken]
         public ActionResult AsignarInspector(
             int solicitudId,
@@ -268,16 +249,37 @@ namespace CapaPresentacion.Controllers
                 return RedirectToAction("AsignarInspector", new { solicitudId, tipoInspector });
             }
 
+            if (!string.IsNullOrWhiteSpace(inspectorApoyo)
+                && string.Equals(inspectorPrincipal.Trim(), inspectorApoyo.Trim(), StringComparison.OrdinalIgnoreCase))
+            {
+                TempData["Error"] = "El inspector principal y el inspector de apoyo no pueden ser el mismo.";
+                return RedirectToAction("AsignarInspector", new { solicitudId, tipoInspector });
+            }
+
             try
             {
                 var solicitud = SolicitudAOCRBL.ObtenerPorId(solicitudId);
                 var esReasignacion = TieneInspectorAsignado(solicitud);
                 _logger.LogInfo("[GestionInspeccion] EstadoActual=" + (solicitud == null ? "(solicitud-null)" : (solicitud.Estado ?? "(null)")));
 
-                var db2Dao = new InspectorAS400DAO(new SecureConfigurationService());
-                var inspectorDb2 = db2Dao.ObtenerActivoPorCedula(inspectorPrincipal, tipoInspector);
-                var existeEnDb2 = inspectorDb2 != null;
-                var existeEnPg = new InspectorMirrorPGDAO().ExisteInspectorActivoEnPg(inspectorPrincipal, tipoInspector);
+                var tipoInspectorNormalizado = NormalizarTipoInspector(tipoInspector);
+                var inspectorPrincipalRegistro = UsuarioInternoRTBL.ObtenerInspectorAsignable(inspectorPrincipal, tipoInspectorNormalizado);
+                if (inspectorPrincipalRegistro == null)
+                {
+                    TempData["Error"] = "El inspector principal seleccionado ya no está activo o no pertenece al catálogo Usuarios RT / Inspectores.";
+                    return RedirectToAction("AsignarInspector", new { solicitudId, tipoInspector });
+                }
+
+                CapaDatos.Models.UsuarioInternoRTRegistro inspectorApoyoRegistro = null;
+                if (!string.IsNullOrWhiteSpace(inspectorApoyo))
+                {
+                    inspectorApoyoRegistro = UsuarioInternoRTBL.ObtenerInspectorAsignable(inspectorApoyo, tipoInspectorNormalizado);
+                    if (inspectorApoyoRegistro == null)
+                    {
+                        TempData["Error"] = "El inspector de apoyo seleccionado ya no está activo o no pertenece al catálogo Usuarios RT / Inspectores.";
+                        return RedirectToAction("AsignarInspector", new { solicitudId, tipoInspector });
+                    }
+                }
 
                 TimeSpan horaRevision;
                 if (!TimeSpan.TryParse(horaInspeccion, out horaRevision))
@@ -287,16 +289,16 @@ namespace CapaPresentacion.Controllers
 
                 var fechaHoraInspeccion = fechaInspeccion.Date.Add(horaRevision);
 
-                _logger.LogInfo("[GestionInspeccion] ExisteEnDB2=" + existeEnDb2 + ", ExisteEnPG=" + existeEnPg);
+                _logger.LogInfo("[GestionInspeccion] Inspectores RT validados. Principal=" + inspectorPrincipalRegistro.UsuarioLogin + ", Apoyo=" + (inspectorApoyoRegistro != null ? inspectorApoyoRegistro.UsuarioLogin : string.Empty));
 
                 string mensaje;
                 bool ok = SolicitudAOCRBL.AsignarInspectores(
                     solicitudId,
-                    inspectorPrincipal,
-                    inspectorApoyo,
+                    inspectorPrincipalRegistro.UsuarioLogin,
+                    inspectorApoyoRegistro != null ? inspectorApoyoRegistro.UsuarioLogin : null,
                     fechaHoraInspeccion,
                     observaciones,
-                    tipoInspector,
+                    tipoInspectorNormalizado,
                     ObtenerUsuarioActual(),
                     out mensaje
                 );
@@ -308,8 +310,45 @@ namespace CapaPresentacion.Controllers
                     var solicitudActualizada = SolicitudAOCRBL.ObtenerPorId(solicitudId) ?? solicitud;
                     var nombreTecnico = FirstNonEmpty(
                         solicitudActualizada != null ? solicitudActualizada.TecnicoResponsableNombre : null,
-                        inspectorDb2 != null ? inspectorDb2.NombreCompleto : null,
-                        inspectorPrincipal);
+                        inspectorPrincipalRegistro.NombreVisual,
+                        inspectorPrincipalRegistro.UsuarioLogin);
+                    var nombreOperador = solicitudActualizada != null
+                        ? FirstNonEmpty(solicitudActualizada.NombreOperador, solicitudActualizada.RazonSocial, "No disponible")
+                        : "No disponible";
+                    var detalleNotificacion = string.Format(
+                        "Inspector principal asignado: {0}. Inspector de apoyo: {1}. Fecha programada: {2:dd/MM/yyyy HH:mm}. Operador/compañia: {3}. Asignado por: {4}.{5}",
+                        nombreTecnico,
+                        inspectorApoyoRegistro != null ? inspectorApoyoRegistro.NombreVisual : "No aplica",
+                        fechaHoraInspeccion,
+                        nombreOperador,
+                        ObtenerUsuarioActual(),
+                        string.IsNullOrWhiteSpace(observaciones) ? string.Empty : " Observacion: " + observaciones.Trim());
+                    var resultadoNotificacionInterna = _solicitudAocrCorreoService.NotificarEvento(
+                        solicitudActualizada,
+                        "INSPECTOR_ASIGNADO",
+                        detalleNotificacion);
+
+                    string mensajeCorreoInspector;
+                    var correoInspectorEnviado = NotificarInspectorAsignado(
+                        solicitudActualizada,
+                        inspectorPrincipalRegistro,
+                        fechaHoraInspeccion,
+                        esReasignacion,
+                        "Principal",
+                        observaciones,
+                        out mensajeCorreoInspector);
+
+                    var mensajeCorreoInspectorApoyo = string.Empty;
+                    var correoInspectorApoyoEnviado = inspectorApoyoRegistro != null
+                        ? NotificarInspectorAsignado(
+                            solicitudActualizada,
+                            inspectorApoyoRegistro,
+                            fechaHoraInspeccion,
+                            esReasignacion,
+                            "Apoyo",
+                            observaciones,
+                            out mensajeCorreoInspectorApoyo)
+                        : true;
 
                     string mensajeCorreo;
                     var correoEnviado = NotificarSolicitanteAsignacionTecnico(
@@ -330,6 +369,30 @@ namespace CapaPresentacion.Controllers
                         {
                             TempData["Warning"] = mensajeCorreo;
                         }
+                    }
+
+                    if (!resultadoNotificacionInterna.Exitoso)
+                    {
+                        var warningActual = TempData["Warning"] as string;
+                        TempData["Warning"] = string.IsNullOrWhiteSpace(warningActual)
+                            ? resultadoNotificacionInterna.Mensaje
+                            : warningActual + " " + resultadoNotificacionInterna.Mensaje;
+                    }
+
+                    if (!correoInspectorEnviado && !string.IsNullOrWhiteSpace(mensajeCorreoInspector))
+                    {
+                        var warningActual = TempData["Warning"] as string;
+                        TempData["Warning"] = string.IsNullOrWhiteSpace(warningActual)
+                            ? mensajeCorreoInspector
+                            : warningActual + " " + mensajeCorreoInspector;
+                    }
+
+                    if (!correoInspectorApoyoEnviado && !string.IsNullOrWhiteSpace(mensajeCorreoInspectorApoyo))
+                    {
+                        var warningActual = TempData["Warning"] as string;
+                        TempData["Warning"] = string.IsNullOrWhiteSpace(warningActual)
+                            ? mensajeCorreoInspectorApoyo
+                            : warningActual + " " + mensajeCorreoInspectorApoyo;
                     }
                 }
                 else
@@ -356,25 +419,24 @@ namespace CapaPresentacion.Controllers
             _logger.LogInfo("[InspeccionesController] Inicio endpoint AJAX inspectores. Usuario=" + ObtenerUsuarioActual() + ", Rol=" + ObtenerRolActual() + ", TipoInspector=" + (tipoInspector ?? ""));
 
             var tipoNormalizado = NormalizarTipoInspector(tipoInspector);
-            var dao = new InspectorAS400DAO(new SecureConfigurationService());
-            var data = tipoNormalizado == "TODOS"
-                ? dao.ListarActivosPorTipos(new[] { "OPS", "AIR" })
-                : dao.ListarActivosPorTipo(tipoNormalizado);
+            var data = UsuarioInternoRTBL.ListarInspectoresAsignables(tipoNormalizado) ?? new List<CapaDatos.Models.UsuarioInternoRTRegistro>();
 
             var payload = data
-                .Where(x => x != null && !string.IsNullOrWhiteSpace(x.Cedula))
+                .Where(x => x != null && !string.IsNullOrWhiteSpace(x.UsuarioLogin))
                 .Select(x => new
                 {
-                    cedula = x.Cedula,
-                    nombre = x.NombreCompleto,
+                    cedula = x.UsuarioLogin,
+                    nombre = x.NombreVisual,
                     tipo = x.Tipo,
-                    etiqueta = x.EtiquetaLista
+                    etiqueta = ConstruirEtiquetaInspectorRt(x),
+                    correo = x.CorreoInstitucional,
+                    rol = x.RolInterno
                 })
                 .ToList();
 
-            _logger.LogInfo("[InspeccionesController] Endpoint AJAX inspectores OK. Origen=DB2, Tipo=" + tipoNormalizado + ", Cantidad=" + payload.Count);
+            _logger.LogInfo("[InspeccionesController] Endpoint AJAX inspectores OK. Origen=Usuarios RT / Inspectores, Tipo=" + tipoNormalizado + ", Cantidad=" + payload.Count);
 
-            return Json(new { success = true, tipo = tipoNormalizado, origen = "DB2", items = payload }, JsonRequestBehavior.AllowGet);
+            return Json(new { success = true, tipo = tipoNormalizado, origen = "Usuarios RT / Inspectores", items = payload }, JsonRequestBehavior.AllowGet);
         }
 
         private static string NormalizarTipoInspector(string tipoInspector)
@@ -469,7 +531,7 @@ namespace CapaPresentacion.Controllers
 
             try
             {
-                var servicioCorreo = new EnviarCorreo();
+                var servicioCorreo = new DataEnviarCorreo();
                 var enviado = servicioCorreo.enviaMensajeCorreo(destinatario, asunto, cuerpo);
                 if (!enviado)
                 {
@@ -484,6 +546,93 @@ namespace CapaPresentacion.Controllers
                 mensaje = "La asignación fue guardada, pero ocurrió un error enviando el correo al solicitante.";
                 return false;
             }
+        }
+
+        private bool NotificarInspectorAsignado(
+            SolicitudAOCR solicitud,
+            CapaDatos.Models.UsuarioInternoRTRegistro inspector,
+            DateTime fechaInspeccion,
+            bool esReasignacion,
+            string rolAsignado,
+            string observaciones,
+            out string mensaje)
+        {
+            mensaje = string.Empty;
+
+            if (solicitud == null || inspector == null)
+            {
+                mensaje = "No se pudo notificar al inspector porque no se encontró el registro asignado.";
+                return false;
+            }
+
+            var destinatario = FirstNonEmpty(
+                inspector.CorreoInstitucional,
+                UsuarioInternoRTBL.ObtenerCorreoInstitucionalPorCodigoUsuario(inspector.UsuarioLogin));
+            if (string.IsNullOrWhiteSpace(destinatario))
+            {
+                mensaje = "No se envió correo al inspector porque no tiene correo institucional configurado.";
+                return false;
+            }
+
+            var tecnico = FirstNonEmpty(inspector.NombreVisual, inspector.UsuarioLogin, "Inspector asignado");
+            var empresa = FirstNonEmpty(solicitud.NombreOperador, solicitud.RazonSocial, solicitud.NombreComercial, "Operador no disponible");
+            var fechaTexto = fechaInspeccion.ToString("dd/MM/yyyy");
+            var horaTexto = fechaInspeccion.TimeOfDay == TimeSpan.Zero
+                ? "No especificada"
+                : fechaInspeccion.ToString("HH:mm");
+            var numeroSolicitud = FirstNonEmpty(solicitud.NumeroSolicitud, "#" + solicitud.CodigoSolicitud);
+            var asunto = esReasignacion
+                ? "AOCR - Reasignación de inspección para empresa " + empresa
+                : "AOCR - Asignación de inspección para empresa " + empresa;
+
+            var cuerpo = "<p>Estimado/a <strong>" + HttpUtility.HtmlEncode(tecnico) + "</strong>,</p>"
+                + "<p>Le informamos que "
+                + (esReasignacion ? "ha sido reasignado" : "ha sido asignado")
+                + " para realizar la inspección de la empresa <strong>" + HttpUtility.HtmlEncode(empresa) + "</strong>.</p>"
+                + "<ul>"
+                + "<li><strong>Solicitud AOCR:</strong> " + HttpUtility.HtmlEncode(numeroSolicitud) + "</li>"
+                + "<li><strong>Empresa / Operador:</strong> " + HttpUtility.HtmlEncode(empresa) + "</li>"
+                + "<li><strong>Rol asignado:</strong> " + HttpUtility.HtmlEncode(rolAsignado) + "</li>"
+                + "<li><strong>Fecha de inspección:</strong> " + HttpUtility.HtmlEncode(fechaTexto) + "</li>"
+                + "<li><strong>Hora de inspección:</strong> " + HttpUtility.HtmlEncode(horaTexto) + "</li>"
+                + "<li><strong>Asignado por:</strong> " + HttpUtility.HtmlEncode(ObtenerUsuarioActual()) + "</li>"
+                + "</ul>"
+                + (string.IsNullOrWhiteSpace(observaciones)
+                    ? string.Empty
+                    : "<p><strong>Observaciones:</strong> " + HttpUtility.HtmlEncode(observaciones.Trim()) + "</p>")
+                + "<p>Por favor revise el sistema AOCR para continuar con la gestión de la inspección asignada.</p>"
+                + "<p>Atentamente,<br/>Dirección General de Aviación Civil</p>";
+
+            try
+            {
+                var servicioCorreo = new DataEnviarCorreo();
+                var enviado = servicioCorreo.enviaMensajeCorreo(destinatario, asunto, cuerpo);
+                if (!enviado)
+                {
+                    mensaje = "La asignación fue guardada, pero no se pudo enviar el correo al inspector asignado.";
+                }
+
+                return enviado;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning("[GestionInspeccion] Error enviando correo al inspector. SolicitudId=" + solicitud.CodigoSolicitud + ", Inspector=" + inspector.UsuarioLogin + ", Error=" + ex.Message);
+                mensaje = "La asignación fue guardada, pero ocurrió un error enviando el correo al inspector.";
+                return false;
+            }
+        }
+
+        private static string ConstruirEtiquetaInspectorRt(CapaDatos.Models.UsuarioInternoRTRegistro inspector)
+        {
+            if (inspector == null)
+            {
+                return string.Empty;
+            }
+
+            var nombre = FirstNonEmpty(inspector.NombreVisual, inspector.UsuarioLogin, "Inspector");
+            var tipo = string.IsNullOrWhiteSpace(inspector.Tipo) ? string.Empty : " [" + inspector.Tipo.Trim().ToUpperInvariant() + "]";
+            var correo = string.IsNullOrWhiteSpace(inspector.CorreoInstitucional) ? string.Empty : " - " + inspector.CorreoInstitucional.Trim();
+            return nombre + tipo + correo;
         }
 
         private static bool TieneInspectorAsignado(SolicitudAOCR solicitud)

@@ -31,6 +31,8 @@ namespace CapaPresentacion.Controllers
     [Authorize]
     public class OrdenRecaudacionController : Controller
     {
+        private readonly OrdenRecaudacionCorreoService _ordenCorreoService = new OrdenRecaudacionCorreoService();
+
         private static readonly Dictionary<string, string> TablasCiudadPermitidas =
             new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
             {
@@ -1030,9 +1032,26 @@ En transferencias NO colocar sublínea<br>";
                 }
                 else
                 {
-                    var servicioCorreo = new CapaDatos.Services.EnviarCorreo();
-                    var enviado = servicioCorreo.enviaMensajeCorreoConAdjunto(emailDestino, asunto, cuerpo, pdfBytes, nombreArchivo, "application/pdf");
-                    System.Diagnostics.Debug.WriteLine($"Correo enviado con adjunto PDF: {enviado}");
+                    var ordenEntidad = new OrdenRecaudacion
+                    {
+                        Id = orden.Id,
+                        NumeroOrden = orden.NumeroOrden,
+                        Estado = orden.Estado,
+                        Total = orden.Total,
+                        Correo = emailDestino,
+                        Compania = orden.Compania,
+                        NombreContribuyente = orden.NombreContribuyente
+                    };
+
+                    var resultadoCorreo = _ordenCorreoService.NotificarEvento(
+                        ordenEntidad,
+                        "ORDEN_CREADA",
+                        emailDestino,
+                        contribuyente,
+                        pdfBytes,
+                        nombreArchivo,
+                        "Orden de recaudacion generada con comprobante adjunto.");
+                    System.Diagnostics.Debug.WriteLine($"Correo encolado con adjunto PDF: {resultadoCorreo.Exitoso}");
                 }
             }
             catch (Exception ex)

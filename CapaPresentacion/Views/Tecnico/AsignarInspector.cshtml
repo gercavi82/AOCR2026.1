@@ -434,9 +434,9 @@
     </style>
 }
 
-@Html.Partial("_PageHeader", new ViewDataDictionary {
+@Html.Partial("_PageHeader", null, new ViewDataDictionary {
     { "Title", "Asignar Inspector" },
-    { "Subtitle", "Dirección / Jefatura — Designación institucional de inspectores" }
+    { "Subtitle", "Coordinación / Dirección / Jefatura — Designación institucional de inspectores" }
 })
 
 <div class="container-fluid mt-4 assign-inspector-page">
@@ -452,7 +452,7 @@
                         <h1 class="hero-title">
                             <i class="fas fa-user-check me-2"></i>Asignación de Inspectores
                         </h1>
-                        <p class="hero-subtitle">Gestione la designación institucional de inspectores para la solicitud seleccionada, manteniendo trazabilidad y control operativo.</p>
+                        <p class="hero-subtitle">Gestione la designación institucional de inspectores para la solicitud seleccionada, manteniendo trazabilidad, contexto de compañía y control operativo.</p>
                     </div>
                     <div class="col-lg-4">
                         <div class="hero-meta justify-content-lg-end">
@@ -531,6 +531,14 @@
                                 <span class="info-value">@(string.IsNullOrWhiteSpace(Model.Estado) ? "No definido" : Model.Estado)</span>
                             </div>
                             <div class="info-tile">
+                                <span class="info-label">Compañía / operador</span>
+                                <span class="info-value">@(string.IsNullOrWhiteSpace(Model.NombreOperador) ? (string.IsNullOrWhiteSpace(Model.RazonSocial) ? "No disponible" : Model.RazonSocial) : Model.NombreOperador)</span>
+                            </div>
+                            <div class="info-tile">
+                                <span class="info-label">Representante técnico</span>
+                                <span class="info-value">@(string.IsNullOrWhiteSpace(Model.RepresentanteLegal) ? "No disponible" : Model.RepresentanteLegal)</span>
+                            </div>
+                            <div class="info-tile">
                                 <span class="info-label">Tipo de inspector</span>
                                 <span class="info-value">@tipoInspectorTexto</span>
                             </div>
@@ -587,7 +595,7 @@
 
                     <div class="empty-state-note">
                         <i class="fas fa-shield-halved me-2"></i>
-                        @textoNota
+                        @textoNota La compañía se toma desde la solicitud registrada por el RT, no desde el alta del usuario interno.
                     </div>
                 </div>
             </div>
@@ -671,6 +679,7 @@
         function evaluarHabilitacionBoton() {
             var btn = document.querySelector(".assignment-submit");
             var selectPrincipal = document.getElementById("inspectorPrincipal");
+            var selectApoyo = document.getElementById("inspectorApoyo");
             if (!btn || !selectPrincipal) {
                 return;
             }
@@ -684,6 +693,9 @@
             } else if (!selectPrincipal.value) {
                 habilitado = false;
                 motivo = "sin inspector seleccionado";
+            } else if (selectApoyo && selectApoyo.value && selectPrincipal.value === selectApoyo.value) {
+                habilitado = false;
+                motivo = "principal y apoyo iguales";
             }
 
             btn.disabled = !habilitado;
@@ -712,6 +724,18 @@
             if (selectApoyo) {
                 selectApoyo.addEventListener("change", function () {
                     logInfo("Valor seleccionado inspectorApoyo=" + (selectApoyo.value || "(vacio)"));
+                    evaluarHabilitacionBoton();
+                });
+            }
+
+            var form = document.querySelector(".assign-form");
+            if (form) {
+                form.addEventListener("submit", function (event) {
+                    if (selectPrincipal && selectApoyo && selectPrincipal.value && selectPrincipal.value === selectApoyo.value) {
+                        event.preventDefault();
+                        logWarn("Validacion UI bloqueada: inspector principal y apoyo son iguales.");
+                        alert("El inspector principal y el inspector de apoyo no pueden ser el mismo.");
+                    }
                 });
             }
 

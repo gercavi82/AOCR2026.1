@@ -83,7 +83,7 @@
         else
         {
             <div class="p-3">
-            @Html.Partial("_EmptyState", new ViewDataDictionary {
+            @Html.Partial("_EmptyState", null, new ViewDataDictionary {
                 { "Icon",        "fas fa-user-check" },
                 { "Title",       "Sin solicitudes pendientes" },
                 { "Description", "No hay solicitudes pendientes de asignación de inspector en este momento." }

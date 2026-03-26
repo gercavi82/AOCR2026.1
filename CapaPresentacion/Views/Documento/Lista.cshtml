@@ -33,7 +33,7 @@
     var tamanioTotal = statInt("TamanioTotal");
 }
 
-@Html.Partial("_PageHeader", new ViewDataDictionary {
+@Html.Partial("_PageHeader", null, new ViewDataDictionary {
     { "Title", "Documentos de la Solicitud (#" + ViewBag.SolicitudId + ")" },
     { "Subtitle", "Archivos cargados para esta solicitud AOCR" }
 })
@@ -48,13 +48,13 @@
 }
 
 <div class="aocr-summary-strip mb-3">
-    @Html.Partial("_MetricCard", new ViewDataDictionary { { "Label", "Total" }, { "Value", totalDocs }, { "Icon", "fas fa-folder-open" } })
-    @Html.Partial("_MetricCard", new ViewDataDictionary { { "Label", "Pendientes" }, { "Value", pendientesDocs }, { "Modifier", "warning" }, { "Icon", "fas fa-clock" } })
-    @Html.Partial("_MetricCard", new ViewDataDictionary { { "Label", "Aceptados" }, { "Value", aprobadosDocs }, { "Modifier", "success" }, { "Icon", "fas fa-check" } })
-    @Html.Partial("_MetricCard", new ViewDataDictionary { { "Label", "Devueltos" }, { "Value", rechazadosDocs }, { "Modifier", "danger" }, { "Icon", "fas fa-times" } })
+    @Html.Partial("_MetricCard", null, new ViewDataDictionary { { "Label", "Total" }, { "Value", totalDocs }, { "Icon", "fas fa-folder-open" } })
+    @Html.Partial("_MetricCard", null, new ViewDataDictionary { { "Label", "Pendientes" }, { "Value", pendientesDocs }, { "Modifier", "warning" }, { "Icon", "fas fa-clock" } })
+    @Html.Partial("_MetricCard", null, new ViewDataDictionary { { "Label", "Aceptados" }, { "Value", aprobadosDocs }, { "Modifier", "success" }, { "Icon", "fas fa-check" } })
+    @Html.Partial("_MetricCard", null, new ViewDataDictionary { { "Label", "Devueltos" }, { "Value", rechazadosDocs }, { "Modifier", "danger" }, { "Icon", "fas fa-times" } })
 </div>
 
-@Html.Partial("_ActionToolbar", new ViewDataDictionary {
+@Html.Partial("_ActionToolbar", null, new ViewDataDictionary {
     { "VolverUrl", Url.Action("Detalle", "SolicitudAOCR", new { id = ViewBag.SolicitudId }) }
 })
 
@@ -109,7 +109,7 @@
                     else
                     {
                         <tr><td colspan="5">
-                            @Html.Partial("_EmptyState", new ViewDataDictionary {
+                            @Html.Partial("_EmptyState", null, new ViewDataDictionary {
                                 { "Icon", "fas fa-folder-open" },
                                 { "Title", "Sin documentos" },
                                 { "Description", "No hay documentos cargados para esta solicitud." }

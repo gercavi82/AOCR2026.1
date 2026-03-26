@@ -670,29 +670,29 @@ WHERE codigo_solicitud=@id AND deleted_at IS NULL;";
                     return false;
                 }
 
-                var inspectorAs400Dao = new InspectorAS400DAO(new SecureConfigurationService());
-                var inspectorPrincipal = inspectorAs400Dao.ObtenerActivoPorCedula(cedulaPrincipal, tipoInspectorNormalizado);
+                var usuarioInternoRtDao = new UsuarioInternoRTDAO();
+                var inspectorPrincipal = usuarioInternoRtDao.ObtenerInspectorAsignableActivo(cedulaPrincipal, tipoInspectorNormalizado);
                 if (inspectorPrincipal == null)
                 {
-                    _logger.LogWarning("[GestionInspeccion] PuedeGestionar=False. Motivo=Inspector principal no existe/activo en DB2. Cedula=" + cedulaPrincipal);
-                    mensaje = "El inspector principal seleccionado no existe o no está activo en OPINSPECTORES.";
+                    _logger.LogWarning("[GestionInspeccion] PuedeGestionar=False. Motivo=Inspector principal no existe/activo en RT. Cedula=" + cedulaPrincipal);
+                    mensaje = "El inspector principal seleccionado no existe o no está activo en Usuarios RT / Inspectores.";
                     return false;
                 }
 
-                InspectorAs400Record inspectorApoyo = null;
+                UsuarioInternoRTRegistro inspectorApoyo = null;
                 if (!string.IsNullOrWhiteSpace(cedulaApoyo))
                 {
-                    inspectorApoyo = inspectorAs400Dao.ObtenerActivoPorCedula(cedulaApoyo, tipoInspectorNormalizado);
+                    inspectorApoyo = usuarioInternoRtDao.ObtenerInspectorAsignableActivo(cedulaApoyo, tipoInspectorNormalizado);
                     if (inspectorApoyo == null)
                     {
-                        _logger.LogWarning("[GestionInspeccion] PuedeGestionar=False. Motivo=Inspector apoyo no existe/activo en DB2. Cedula=" + cedulaApoyo);
-                        mensaje = "El inspector de apoyo seleccionado no existe o no está activo en OPINSPECTORES.";
+                        _logger.LogWarning("[GestionInspeccion] PuedeGestionar=False. Motivo=Inspector apoyo no existe/activo en RT. Cedula=" + cedulaApoyo);
+                        mensaje = "El inspector de apoyo seleccionado no existe o no está activo en Usuarios RT / Inspectores.";
                         return false;
                     }
 
                     if (string.Equals(
-                        (inspectorPrincipal.Cedula ?? string.Empty).Trim(),
-                        (inspectorApoyo.Cedula ?? string.Empty).Trim(),
+                        (inspectorPrincipal.UsuarioLogin ?? string.Empty).Trim(),
+                        (inspectorApoyo.UsuarioLogin ?? string.Empty).Trim(),
                         StringComparison.OrdinalIgnoreCase))
                     {
                         _logger.LogWarning("[GestionInspeccion] PuedeGestionar=False. Motivo=Inspector principal y apoyo son iguales.");
@@ -767,16 +767,20 @@ WHERE codigo_solicitud=@id AND deleted_at IS NULL;";
                             return false;
                         }
 
-                        var inspectorPrincipalCodigo = ParseIntSafe(inspectorPrincipal.Cedula);
-                        var principalCedulaPersist = (inspectorPrincipal.Cedula ?? string.Empty).Trim();
-                        var inspectorPrincipalNombre = (inspectorPrincipal.NombreCompleto ?? string.Empty).Trim();
+                        var inspectorPrincipalCodigo = inspectorPrincipal.UsuarioId.HasValue && inspectorPrincipal.UsuarioId.Value > 0
+                            ? inspectorPrincipal.UsuarioId
+                            : (inspectorPrincipal.TecnicoId.HasValue && inspectorPrincipal.TecnicoId.Value > 0
+                                ? inspectorPrincipal.TecnicoId
+                                : ParseIntSafe(inspectorPrincipal.UsuarioLogin));
+                        var principalCedulaPersist = (inspectorPrincipal.UsuarioLogin ?? string.Empty).Trim();
+                        var inspectorPrincipalNombre = (inspectorPrincipal.NombreVisual ?? string.Empty).Trim();
                         var inspectorPrincipalTipo = (inspectorPrincipal.Tipo ?? string.Empty).Trim();
                         var inspectorApoyoCedulaValue = inspectorApoyo == null
                             ? (object)DBNull.Value
-                            : (object)(inspectorApoyo.Cedula ?? string.Empty).Trim();
+                            : (object)(inspectorApoyo.UsuarioLogin ?? string.Empty).Trim();
                         var inspectorApoyoNombreValue = inspectorApoyo == null
                             ? (object)DBNull.Value
-                            : (object)(inspectorApoyo.NombreCompleto ?? string.Empty).Trim();
+                            : (object)(inspectorApoyo.NombreVisual ?? string.Empty).Trim();
                         var inspectorApoyoTipoValue = inspectorApoyo == null
                             ? (object)DBNull.Value
                             : (object)(inspectorApoyo.Tipo ?? string.Empty).Trim();
@@ -1027,39 +1031,6 @@ WHERE codigo_solicitud=@id AND deleted_at IS NULL;";
                         tx.Commit();
 
                         _logger.LogInfo("[GestionInspeccion] PuedeGestionar=True. Operacion=" + (esReasignacion ? "REASIGNACION" : "ASIGNACION") + ", SolicitudId=" + codigoSolicitud + ", CodigoInspeccion=" + codigoInspeccion + ", EstadoAnterior=" + (estadoAnterior ?? "") + ", EstadoNuevo=" + (estadoNuevo ?? ""));
-
-                        try
-                        {
-                            var destinatarioInterno = daoAsignacionRt.ResolverDestinatarioAsignacionPorCodigoUsuario(principalCedulaPersist);
-                            if (destinatarioInterno != null && !string.IsNullOrWhiteSpace(destinatarioInterno.CorreoInstitucional))
-                            {
-                                string mensajeCorreoInterno;
-                                var numeroSolicitud = ObtenerNumeroSolicitudParaNotificacion(cn, codigoSolicitud);
-                                var servicioNotificacionInterna = new GestionTecnicaNotificationService();
-                                var notificado = servicioNotificacionInterna.EnviarAsignacionUsuarioInterno(
-                                    destinatarioInterno,
-                                    codigoSolicitud,
-                                    numeroSolicitud,
-                                    "Gestion Tecnica",
-                                    DateTime.Now,
-                                    actorAsignador,
-                                    obs,
-                                    out mensajeCorreoInterno);
-
-                                if (!notificado)
-                                {
-                                    _logger.LogWarning("[GestionInspeccion] Asignacion guardada sin correo institucional. SolicitudId=" + codigoSolicitud + ", Detalle=" + (mensajeCorreoInterno ?? ""));
-                                }
-                            }
-                            else
-                            {
-                                _logger.LogWarning("[GestionInspeccion] No existe usuario interno activo con correo institucional para el inspector asignado. SolicitudId=" + codigoSolicitud + ", Codigo=" + (principalCedulaPersist ?? ""));
-                            }
-                        }
-                        catch (Exception exCorreo)
-                        {
-                            _logger.LogWarning("[GestionInspeccion] Error no critico enviando correo institucional de asignacion. SolicitudId=" + codigoSolicitud + ", Error=" + exCorreo.Message);
-                        }
 
                         try
                         {
@@ -1478,14 +1449,16 @@ LIMIT 1;";
                 || string.Equals(estadoNormalizado, EstadosInspeccion.VERIFICACION_SOLICITUD, StringComparison.OrdinalIgnoreCase);
         }
 
-        private static string ConstruirComentarioAsignacion(string observaciones, InspectorAs400Record principal, InspectorAs400Record apoyo)
+        private static string ConstruirComentarioAsignacion(string observaciones, UsuarioInternoRTRegistro principal, UsuarioInternoRTRegistro apoyo)
         {
             var comentarios = string.IsNullOrWhiteSpace(observaciones)
                 ? string.Empty
                 : observaciones.Trim();
 
-            var principalTexto = "Inspector principal: " + (principal?.EtiquetaLista ?? string.Empty);
-            var apoyoTexto = apoyo == null ? string.Empty : " | Inspector apoyo: " + apoyo.EtiquetaLista;
+            var principalTexto = "Inspector principal: " + (principal != null ? ((principal.NombreVisual ?? principal.UsuarioLogin) ?? string.Empty).Trim() : string.Empty);
+            var apoyoTexto = apoyo == null
+                ? string.Empty
+                : " | Inspector apoyo: " + (((apoyo.NombreVisual ?? apoyo.UsuarioLogin) ?? string.Empty).Trim());
 
             if (string.IsNullOrWhiteSpace(comentarios))
             {
