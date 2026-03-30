@@ -29,6 +29,20 @@ namespace CapaPresentacion.Models.AdminUsuarios
         [StringLength(10)]
         public string TipoInspector { get; set; }
 
+        [Display(Name = "Ciudad (usucod9)")]
+        [StringLength(10)]
+        public string CiudadCodigo { get; set; }
+
+        [Display(Name = "Codigo financiero (usuoid)")]
+        public decimal? CodigoFinanciero { get; set; }
+
+        [Display(Name = "OPCOI3 (= usuoid)")]
+        public decimal? Opcoi3 { get; set; }
+
+        [Display(Name = "OPCAR5 (aeropuerto)")]
+        [StringLength(10)]
+        public string Opcar5 { get; set; }
+
         [Required]
         [Display(Name = "Rol interno")]
         [StringLength(100)]

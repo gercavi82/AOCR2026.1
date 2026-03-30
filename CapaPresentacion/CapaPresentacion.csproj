@@ -330,6 +330,8 @@
       <DependentUpon>Global.asax</DependentUpon>
     </Compile>
     <Compile Include="Helpers\CompaniaActivaSessionHelper.cs" />
+    <Compile Include="Helpers\DashboardInspeccionBadgeHelper.cs" />
+    <Compile Include="Helpers\InformeTecnicoTemplateHelper.cs" />
     <Compile Include="Helpers\NotificacionCorreoHelper.cs" />
     <Compile Include="Helpers\RevisionDocumentalDisplayHelper.cs" />
     <Compile Include="Infrastructure\OrdenRecaudacionFilters.cs" />
@@ -358,6 +360,7 @@
     <Compile Include="Models\ResultadoInspeccionVM.cs" />
     <Compile Include="Models\ProgramarInspeccionVM.cs" />
     <Compile Include="Models\CoordinacionJefaturaRevisionViewModel.cs" />
+    <Compile Include="Models\DashboardInspeccionViewModel.cs" />
     <Compile Include="Models\DashboardViewModel.cs" />
     <Compile Include="Models\DashboardGerencialViewModel.cs" />
     <Compile Include="Models\UsuarioRegistroViewModel.cs" />
@@ -2828,11 +2831,14 @@
       <SubType>Designer</SubType>
     </Content>
     <Content Include="Views\_ViewStart.cshtml" />
-    <Content Include="Views\Shared\Error.cshtml" />
-    <Content Include="Views\Error\Error.cshtml" />
-    <Content Include="Views\Shared\_LayoutAOCR.cshtml" />
-    <Content Include="Views\Shared\_PdfLayoutDGAC.cshtml" />
-    <Content Include="Views\Home\About.cshtml" />
+      <Content Include="Views\Shared\Error.cshtml" />
+      <Content Include="Views\Error\Error.cshtml" />
+      <Content Include="Views\Shared\_LayoutAOCR.cshtml" />
+      <Content Include="Views\Shared\_PdfBrandingFooter.cshtml" />
+      <Content Include="Views\Shared\_PdfBrandingHeader.cshtml" />
+      <Content Include="Views\Shared\_PdfLayoutDGAC.cshtml" />
+      <Content Include="Views\Shared\_PdfLayoutDGACAocr.cshtml" />
+      <Content Include="Views\Home\About.cshtml" />
     <Content Include="Views\Home\Contact.cshtml" />
     <Content Include="Views\Home\Index.cshtml" />
     <Content Include="Views\SolicitudAOCR\Create.cshtml" />
@@ -2899,6 +2905,9 @@
     <Content Include="Views\Shared\_SeleccionarRol.cshtml" />
     <Content Include="Views\SolicitudAOCR\ResultadoInspeccion.cshtml" />
     <Content Include="Views\Documento\RevisarDocumentos.cshtml" />
+    <Content Include="Views\CoordinacionJefatura\ValidarAocr.cshtml" />
+    <Content Include="Views\CoordinacionJefatura\AocrReconocimientoPdf.cshtml" />
+    <Content Include="Views\CoordinacionJefatura\AocrCondicionesLimitacionesPdf.cshtml" />
     <Content Include="Views\CoordinacionJefatura\RevisionVerificacion.cshtml" />
     <Content Include="Views\Direccion\DashboardGerencial.cshtml" />
     <Content Include="Views\Direccion\ConfiguracionSistema.cshtml" />

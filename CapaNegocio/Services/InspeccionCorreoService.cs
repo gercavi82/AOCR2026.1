@@ -72,9 +72,74 @@ namespace CapaNegocio.Services
             }
         }
 
+        public ResultadoOperacion NotificarInformeTecnicoFirmadoFinal(Inspeccion inspeccion, SolicitudAOCR solicitud, InspeccionInformeTecnico informe, byte[] pdfFirmado, string enlaceDocumento, string observacion)
+        {
+            try
+            {
+                if (inspeccion == null || solicitud == null)
+                {
+                    return ResultadoOperacion.Error("No existe contexto suficiente para notificar el informe técnico firmado.");
+                }
+
+                if (pdfFirmado == null || pdfFirmado.Length == 0)
+                {
+                    return ResultadoOperacion.Error("No existe un PDF firmado final para adjuntar.");
+                }
+
+                var plantilla = ConstruirPlantilla(inspeccion, solicitud, "INFORME_TECNICO_FIRMADO", observacion);
+                if (plantilla == null)
+                {
+                    return ResultadoOperacion.Error("No existe plantilla configurada para el informe técnico firmado.");
+                }
+
+                var destinatarios = _policyService.ResolverDestinatarios(
+                    solicitud,
+                    inspeccion,
+                    NotificacionDestinatarioPolicyService.GrupoRepresentanteTecnico,
+                    NotificacionDestinatarioPolicyService.GrupoCoordinacionInspeccion,
+                    NotificacionDestinatarioPolicyService.GrupoInspectorAsignado);
+
+                if (destinatarios.Count == 0)
+                {
+                    return ResultadoOperacion.Ok(null, "No existen destinatarios resolubles para el informe técnico firmado.");
+                }
+
+                var servicioCorreo = new EnviarCorreo();
+                var cuerpo = ConstruirCuerpoHtmlConEnlace(
+                    plantilla,
+                    inspeccion,
+                    solicitud,
+                    observacion,
+                    enlaceDocumento,
+                    null);
+                var numeroSolicitud = ObtenerNumeroSolicitudVisible(solicitud);
+                var nombreAdjunto = string.Format("InformeTecnico_{0}_Firmado.pdf", numeroSolicitud.Replace("/", "_").Replace("\\", "_"));
+                var enviados = 0;
+
+                foreach (var destinatario in destinatarios)
+                {
+                    var html = cuerpo.Replace("@@DESTINATARIO@@", System.Web.HttpUtility.HtmlEncode(string.IsNullOrWhiteSpace(destinatario.Nombre) ? "Usuario AOCR" : destinatario.Nombre));
+                    if (servicioCorreo.enviaMensajeCorreoConAdjunto(destinatario.Email, plantilla.Asunto, html, pdfFirmado, nombreAdjunto, "application/pdf"))
+                    {
+                        enviados++;
+                    }
+                }
+
+                return enviados > 0
+                    ? ResultadoOperacion.Ok(enviados, "Notificación final del informe técnico enviada correctamente.")
+                    : ResultadoOperacion.Error("No fue posible enviar la notificación final del informe técnico.");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning("InspeccionCorreoService.NotificarInformeTecnicoFirmadoFinal: " + ex.Message);
+                return ResultadoOperacion.Error("No fue posible enviar la notificación final del informe técnico firmado.");
+            }
+        }
+
         private static PlantillaCorreoInspeccion ConstruirPlantilla(Inspeccion inspeccion, SolicitudAOCR solicitud, string evento, string observacion)
         {
             var eventoNormalizado = (evento ?? string.Empty).Trim().ToUpperInvariant();
+            var numeroSolicitud = ObtenerNumeroSolicitudVisible(solicitud);
             switch (eventoNormalizado)
             {
                 case "NC_GENERADAS":
@@ -156,6 +221,30 @@ namespace CapaNegocio.Services
                             NotificacionDestinatarioPolicyService.GrupoOperadorSolicitante
                         }
                     };
+                case "PENDIENTE_FIRMA_DIRDAC":
+                    return new PlantillaCorreoInspeccion
+                    {
+                        Asunto = "AOCR - Documento pendiente de firma " + numeroSolicitud,
+                        Titulo = "Documento pendiente de firma DIRDAC",
+                        Mensaje = "Se informa que existe un informe técnico pendiente de firma institucional por DIRDAC.",
+                        GruposDestinatarios = new[]
+                        {
+                            NotificacionDestinatarioPolicyService.GrupoDireccionFinal
+                        }
+                    };
+                case "INFORME_TECNICO_FIRMADO":
+                    return new PlantillaCorreoInspeccion
+                    {
+                        Asunto = "AOCR - Informe técnico firmado " + numeroSolicitud,
+                        Titulo = "Informe técnico firmado",
+                        Mensaje = "El informe técnico ya cuenta con las firmas institucionales requeridas y queda legalizado para el expediente AOCR.",
+                        GruposDestinatarios = new[]
+                        {
+                            NotificacionDestinatarioPolicyService.GrupoRepresentanteTecnico,
+                            NotificacionDestinatarioPolicyService.GrupoCoordinacionInspeccion,
+                            NotificacionDestinatarioPolicyService.GrupoInspectorAsignado
+                        }
+                    };
                 default:
                     return null;
             }
@@ -163,10 +252,19 @@ namespace CapaNegocio.Services
 
         private static string ConstruirCuerpoHtml(string nombreDestino, PlantillaCorreoInspeccion plantilla, Inspeccion inspeccion, SolicitudAOCR solicitud, string observacion)
         {
+            return ConstruirCuerpoHtmlConEnlace(plantilla, inspeccion, solicitud, observacion, null, nombreDestino);
+        }
+
+        private static string ConstruirCuerpoHtmlConEnlace(PlantillaCorreoInspeccion plantilla, Inspeccion inspeccion, SolicitudAOCR solicitud, string observacion, string enlaceDocumento, string nombreDestino)
+        {
             var operador = string.IsNullOrWhiteSpace(solicitud.NombreOperador) ? (solicitud.RazonSocial ?? "Operador") : solicitud.NombreOperador;
             var observacionHtml = string.IsNullOrWhiteSpace(observacion)
                 ? string.Empty
                 : "<p><strong>Observaciones:</strong> " + System.Web.HttpUtility.HtmlEncode(observacion) + "</p>";
+            var enlaceHtml = string.IsNullOrWhiteSpace(enlaceDocumento)
+                ? string.Empty
+                : "<p><strong>Documento / detalle:</strong> <a href=\"" + System.Web.HttpUtility.HtmlAttributeEncode(enlaceDocumento) + "\">Abrir expediente</a></p>";
+            var numeroSolicitud = ObtenerNumeroSolicitudVisible(solicitud);
 
             return string.Format(@"<!DOCTYPE html>
 <html>
@@ -187,7 +285,7 @@ namespace CapaNegocio.Services
                 </tr>
                 <tr>
                     <td style='padding:10px; border:1px solid #e4edf4; background:#f8fbfd; font-weight:bold;'>Solicitud AOCR</td>
-                    <td style='padding:10px; border:1px solid #e4edf4;'>#{4}</td>
+                    <td style='padding:10px; border:1px solid #e4edf4;'>{4}</td>
                 </tr>
                 <tr>
                     <td style='padding:10px; border:1px solid #e4edf4; background:#f8fbfd; font-weight:bold;'>Operador</td>
@@ -199,6 +297,7 @@ namespace CapaNegocio.Services
                 </tr>
             </table>
             {7}
+            {8}
             <p>Puede revisar el expediente desde el sistema AOCR en el detalle de inspeccion correspondiente.</p>
             <p style='margin-top:24px; color:#617588; font-size:12px;'>Este es un mensaje automatico del workflow de inspeccion AOCR.</p>
         </div>
@@ -206,13 +305,26 @@ namespace CapaNegocio.Services
 </body>
 </html>",
                 plantilla.Titulo,
-                System.Web.HttpUtility.HtmlEncode(string.IsNullOrWhiteSpace(nombreDestino) ? "Usuario AOCR" : nombreDestino),
+                System.Web.HttpUtility.HtmlEncode(string.IsNullOrWhiteSpace(nombreDestino) ? "@@DESTINATARIO@@" : nombreDestino),
                 System.Web.HttpUtility.HtmlEncode(plantilla.Mensaje),
                 inspeccion.CodigoInspeccion,
-                solicitud.CodigoSolicitud,
+                System.Web.HttpUtility.HtmlEncode(numeroSolicitud),
                 System.Web.HttpUtility.HtmlEncode(operador),
                 System.Web.HttpUtility.HtmlEncode(inspeccion.Estado ?? "PENDIENTE"),
-                observacionHtml);
+                observacionHtml,
+                enlaceHtml);
+        }
+
+        private static string ObtenerNumeroSolicitudVisible(SolicitudAOCR solicitud)
+        {
+            if (solicitud == null)
+            {
+                return "N/D";
+            }
+
+            return string.IsNullOrWhiteSpace(solicitud.NumeroSolicitud)
+                ? "DGAC-GOP-2026-AOCR" + solicitud.CodigoSolicitud
+                : solicitud.NumeroSolicitud.Trim();
         }
 
         private sealed class PlantillaCorreoInspeccion

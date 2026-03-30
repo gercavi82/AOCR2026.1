@@ -118,11 +118,12 @@ namespace CapaNegocio.Services
                         }
                     };
                 case "INSPECTOR_ASIGNADO":
+                    var numeroSolicitud = ObtenerNumeroSolicitudVisible(solicitud);
                     return new PlantillaSolicitudCorreo
                     {
-                        Asunto = "AOCR - Inspector asignado a solicitud #" + solicitud.CodigoSolicitud,
+                        Asunto = "AOCR - Inspector asignado a solicitud " + numeroSolicitud,
                         Titulo = "Inspector asignado",
-                        Mensaje = "La solicitud ya cuenta con un inspector asignado y el flujo continúa con base en la compañía registrada en el trámite del RT.",
+                        Mensaje = "Por medio del presente, se informa que ha sido asignado/a como Inspector a la solicitud " + numeroSolicitud + ".",
                         GruposDestinatarios = new[]
                         {
                             NotificacionDestinatarioPolicyService.GrupoInspectorAsignado,
@@ -138,11 +139,11 @@ namespace CapaNegocio.Services
 
         private static string ConstruirCuerpoHtml(string nombreDestino, PlantillaSolicitudCorreo plantilla, SolicitudAOCR solicitud, string observacion)
         {
-            var observacionHtml = string.IsNullOrWhiteSpace(observacion)
-                ? string.Empty
-                : "<p><strong>Observaciones:</strong> " + System.Web.HttpUtility.HtmlEncode(observacion) + "</p>";
-
             var operador = string.IsNullOrWhiteSpace(solicitud.NombreOperador) ? (solicitud.RazonSocial ?? "Operador") : solicitud.NombreOperador;
+            var numeroSolicitud = ObtenerNumeroSolicitudVisible(solicitud);
+            var detalleHtml = string.IsNullOrWhiteSpace(observacion)
+                ? string.Empty
+                : "<p><strong>Detalle:</strong> " + System.Web.HttpUtility.HtmlEncode(observacion) + "</p>";
 
             return string.Format(@"<!DOCTYPE html>
 <html>
@@ -185,10 +186,22 @@ namespace CapaNegocio.Services
                 System.Web.HttpUtility.HtmlEncode(string.IsNullOrWhiteSpace(nombreDestino) ? "Usuario AOCR" : nombreDestino),
                 System.Web.HttpUtility.HtmlEncode(plantilla.Mensaje),
                 solicitud.CodigoSolicitud,
-                System.Web.HttpUtility.HtmlEncode(solicitud.NumeroSolicitud ?? "N/D"),
+                System.Web.HttpUtility.HtmlEncode(numeroSolicitud),
                 System.Web.HttpUtility.HtmlEncode(operador),
                 System.Web.HttpUtility.HtmlEncode(solicitud.Estado ?? "PENDIENTE"),
-                observacionHtml);
+                detalleHtml);
+        }
+
+        private static string ObtenerNumeroSolicitudVisible(SolicitudAOCR solicitud)
+        {
+            if (solicitud == null)
+            {
+                return "N/D";
+            }
+
+            return string.IsNullOrWhiteSpace(solicitud.NumeroSolicitud)
+                ? "DGAC-GOP-2026-AOCR" + solicitud.CodigoSolicitud
+                : solicitud.NumeroSolicitud.Trim();
         }
 
         private sealed class PlantillaSolicitudCorreo

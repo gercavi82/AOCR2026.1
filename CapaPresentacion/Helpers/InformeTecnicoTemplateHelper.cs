@@ -1,0 +1,260 @@
+using System;
+using System.Collections.Generic;
+
+namespace CapaPresentacion.Helpers
+{
+    public static class InformeTecnicoTemplateHelper
+    {
+        public sealed class ServicioEstacionFila
+        {
+            public string Key { get; set; }
+            public string Label { get; set; }
+            public string Uio { get; set; }
+            public string Gye { get; set; }
+            public string Mec { get; set; }
+            public string Ltx { get; set; }
+        }
+
+        private sealed class ServicioEstacionDef
+        {
+            public ServicioEstacionDef(string key, string label)
+            {
+                Key = key;
+                Label = label;
+            }
+
+            public string Key { get; private set; }
+            public string Label { get; private set; }
+        }
+
+        private static readonly ServicioEstacionDef[] ServicioDefs = new[]
+        {
+            new ServicioEstacionDef("supervisor_responsable_estacion", "Supervisor / Responsable de Estacion"),
+            new ServicioEstacionDef("servicio_rampa", "Servicio de Rampa"),
+            new ServicioEstacionDef("servicio_despacho_aeronaves", "Servicio Despacho Aeronaves"),
+            new ServicioEstacionDef("servicio_seguridad_aeroportuaria", "Servicio Seguridad Aeroportuaria"),
+            new ServicioEstacionDef("servicio_atencion_pasajeros", "Servicio Atencion de Pasajeros"),
+            new ServicioEstacionDef("servicio_provision_combustible", "Servicio Provision de combustible"),
+            new ServicioEstacionDef("servicio_mantenimiento_linea", "Servicio Mantenimiento en Linea"),
+            new ServicioEstacionDef("servicio_procesamiento_carga", "Servicio Procesamiento de Carga"),
+            new ServicioEstacionDef("instalaciones", "Instalaciones")
+        };
+
+        private static readonly string[] DocumentosAdjuntosBase = new[]
+        {
+            "LISTA DE VERIFICACION",
+            "REPORTE DE INFRACCION",
+            "REPORTE DE SUSPENSION DE FUNCIONES",
+            "EVIDENCIAS DE LA INSPECCION"
+        };
+
+        public static IList<ServicioEstacionFila> GetServicioRows(string serialized)
+        {
+            var values = ParseServicioRows(serialized);
+            var rows = new List<ServicioEstacionFila>();
+
+            foreach (var def in ServicioDefs)
+            {
+                string[] cells;
+                if (!values.TryGetValue(def.Key, out cells) || cells == null)
+                {
+                    cells = new string[4];
+                }
+
+                rows.Add(new ServicioEstacionFila
+                {
+                    Key = def.Key,
+                    Label = def.Label,
+                    Uio = GetCell(cells, 0),
+                    Gye = GetCell(cells, 1),
+                    Mec = GetCell(cells, 2),
+                    Ltx = GetCell(cells, 3)
+                });
+            }
+
+            return rows;
+        }
+
+        public static IList<string> GetDocumentosAdjuntosBase()
+        {
+            return new List<string>(DocumentosAdjuntosBase);
+        }
+
+        public static string SerializeServicioRows(IDictionary<string, string[]> values)
+        {
+            if (values == null || values.Count == 0)
+            {
+                return null;
+            }
+
+            var lines = new List<string>();
+
+            foreach (var def in ServicioDefs)
+            {
+                string[] cells;
+                if (!values.TryGetValue(def.Key, out cells) || cells == null)
+                {
+                    cells = new string[4];
+                }
+
+                var uio = NormalizeCell(GetCell(cells, 0));
+                var gye = NormalizeCell(GetCell(cells, 1));
+                var mec = NormalizeCell(GetCell(cells, 2));
+                var ltx = NormalizeCell(GetCell(cells, 3));
+
+                if (string.IsNullOrWhiteSpace(uio) &&
+                    string.IsNullOrWhiteSpace(gye) &&
+                    string.IsNullOrWhiteSpace(mec) &&
+                    string.IsNullOrWhiteSpace(ltx))
+                {
+                    continue;
+                }
+
+                lines.Add(def.Key + "|" + uio + "|" + gye + "|" + mec + "|" + ltx);
+            }
+
+            return lines.Count == 0 ? null : string.Join("\n", lines);
+        }
+
+        public static IList<string> SplitLines(string value)
+        {
+            var items = new List<string>();
+            if (string.IsNullOrWhiteSpace(value))
+            {
+                return items;
+            }
+
+            var normalized = value.Replace("\r\n", "\n").Replace('\r', '\n');
+            var parts = normalized.Split(new[] { '\n' }, StringSplitOptions.RemoveEmptyEntries);
+            foreach (var part in parts)
+            {
+                var cleaned = CleanLine(part);
+                if (!string.IsNullOrWhiteSpace(cleaned))
+                {
+                    items.Add(cleaned);
+                }
+            }
+
+            return items;
+        }
+
+        public static string SerializeLines(IEnumerable<string> values)
+        {
+            if (values == null)
+            {
+                return null;
+            }
+
+            var items = new List<string>();
+            foreach (var value in values)
+            {
+                var cleaned = CleanLine(value);
+                if (!string.IsNullOrWhiteSpace(cleaned))
+                {
+                    items.Add(cleaned);
+                }
+            }
+
+            return items.Count == 0 ? null : string.Join("\n", items);
+        }
+
+        public static string GetResultadoLabel(string resultado)
+        {
+            var normalized = NormalizeResultado(resultado);
+            if (normalized == "SATISFACTORIO")
+            {
+                return "Satisfactorio";
+            }
+
+            if (normalized == "NO_SATISFACTORIO" || normalized == "INSATISFACTORIO")
+            {
+                return "Insatisfactorio";
+            }
+
+            if (normalized == "OBSERVACION_DOCUMENTAL")
+            {
+                return "Observacion documental";
+            }
+
+            return string.IsNullOrWhiteSpace(resultado) ? "Pendiente" : resultado.Trim();
+        }
+
+        public static bool IsResultadoSatisfactorio(string resultado)
+        {
+            return NormalizeResultado(resultado) == "SATISFACTORIO";
+        }
+
+        public static bool IsResultadoInsatisfactorio(string resultado)
+        {
+            var normalized = NormalizeResultado(resultado);
+            return normalized == "NO_SATISFACTORIO" || normalized == "INSATISFACTORIO";
+        }
+
+        private static Dictionary<string, string[]> ParseServicioRows(string serialized)
+        {
+            var values = new Dictionary<string, string[]>(StringComparer.OrdinalIgnoreCase);
+            foreach (var line in SplitLines(serialized))
+            {
+                var parts = line.Split('|');
+                if (parts.Length == 0)
+                {
+                    continue;
+                }
+
+                var key = CleanLine(parts[0]);
+                if (string.IsNullOrWhiteSpace(key))
+                {
+                    continue;
+                }
+
+                var cells = new string[4];
+                for (var i = 0; i < 4; i++)
+                {
+                    cells[i] = parts.Length > (i + 1) ? CleanLine(parts[i + 1]) : string.Empty;
+                }
+
+                values[key] = cells;
+            }
+
+            return values;
+        }
+
+        private static string NormalizeResultado(string resultado)
+        {
+            return string.IsNullOrWhiteSpace(resultado) ? string.Empty : resultado.Trim().ToUpperInvariant();
+        }
+
+        private static string NormalizeCell(string value)
+        {
+            var cleaned = CleanLine(value);
+            if (string.IsNullOrWhiteSpace(cleaned))
+            {
+                return string.Empty;
+            }
+
+            cleaned = cleaned.Replace("|", "/");
+            return cleaned.Length > 160 ? cleaned.Substring(0, 160) : cleaned;
+        }
+
+        private static string CleanLine(string value)
+        {
+            if (string.IsNullOrWhiteSpace(value))
+            {
+                return null;
+            }
+
+            var cleaned = value.Replace("\0", string.Empty).Trim();
+            return cleaned.Length == 0 ? null : cleaned;
+        }
+
+        private static string GetCell(string[] values, int index)
+        {
+            if (values == null || index < 0 || index >= values.Length)
+            {
+                return string.Empty;
+            }
+
+            return values[index] ?? string.Empty;
+        }
+    }
+}

@@ -1,5 +1,8 @@
 @using System.Collections.Generic
-@model CapaPresentacion.Models.AdminUsuarios.AdminUsuarioInternoRTViewModel
+@inherits System.Web.Mvc.WebViewPage<CapaPresentacion.Models.AdminUsuarios.AdminUsuarioInternoRTViewModel>
+@using System.Linq
+@using System.Web.Mvc
+@using System.Web.Mvc.Html
 
 @{
     var esEdicion = Model != null && Model.Id > 0;
@@ -103,6 +106,36 @@
 
     <div class="card mb-3">
         <div class="card-header">
+            <strong>Datos institucionales y destino</strong>
+        </div>
+        <div class="card-body">
+            <div class="row g-3">
+                <div class="col-md-4">
+                    @Html.LabelFor(m => m.CiudadCodigo, new { @class = "form-label" })
+                    @Html.TextBoxFor(m => m.CiudadCodigo, new { @class = "form-control", id = "CiudadCodigo", @readonly = "readonly" })
+                </div>
+                <div class="col-md-4">
+                    @Html.LabelFor(m => m.CodigoFinanciero, new { @class = "form-label" })
+                    @Html.TextBoxFor(m => m.CodigoFinanciero, new { @class = "form-control", id = "CodigoFinanciero", @readonly = "readonly" })
+                </div>
+                <div class="col-md-4">
+                    @Html.LabelFor(m => m.Opcoi3, new { @class = "form-label" })
+                    @Html.TextBoxFor(m => m.Opcoi3, new { @class = "form-control", id = "Opcoi3", @readonly = "readonly" })
+                </div>
+            </div>
+
+            <div class="row g-3 mt-1">
+                <div class="col-md-6">
+                    @Html.LabelFor(m => m.Opcar5, new { @class = "form-label" })
+                    @Html.TextBoxFor(m => m.Opcar5, new { @class = "form-control", id = "Opcar5", maxlength = "10", placeholder = "Aeropuerto destino" })
+                    <small class="text-muted">Al guardarse se almacenara tambien en OPCAER.</small>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card mb-3">
+        <div class="card-header">
             <strong>Configuracion operativa</strong>
         </div>
         <div class="card-body">
@@ -113,7 +146,7 @@
                     @Html.LabelFor(m => m.RolInterno, new { @class = "form-label" })
                     @Html.DropDownListFor(
                         m => m.RolInterno,
-                        Model.RolesInternos ?? new List<SelectListItem>(),
+                        Model.RolesInternos ?? Enumerable.Empty<System.Web.Mvc.SelectListItem>(),
                         new { @class = "form-control", id = "RolInterno" })
                     @Html.ValidationMessageFor(m => m.RolInterno, null, new { @class = "text-danger d-block mt-1" })
                 </div>
@@ -185,6 +218,9 @@
             var hidNombre = byId("NombreCompleto");
             var txtTipo = byId("txtTipo");
             var hidTipo = byId("TipoInspector");
+            var txtCiudadCodigo = byId("CiudadCodigo");
+            var txtCodigoFinanciero = byId("CodigoFinanciero");
+            var txtOpcoi3 = byId("Opcoi3");
 
             function limpiarMensaje() {
                 if (!msg) { return; }
@@ -217,6 +253,9 @@
                 if (hidTipo) { hidTipo.value = data.tipo || ""; }
                 if (txtCodigo) { txtCodigo.value = data.codigoUsuario || data.cedula || ""; }
                 if (txtBusqueda) { txtBusqueda.value = data.cedula || ""; }
+                if (txtCiudadCodigo) { txtCiudadCodigo.value = data.ciudadCodigo || ""; }
+                if (txtCodigoFinanciero) { txtCodigoFinanciero.value = data.codigoFinanciero != null ? data.codigoFinanciero : ""; }
+                if (txtOpcoi3) { txtOpcoi3.value = data.opcoi3 != null ? data.opcoi3 : ""; }
             }
 
             function mostrarTabla(resultados) {

@@ -220,6 +220,11 @@ namespace CapaPresentacion.Controllers
             var nombre = (inspector.NombreCompleto ?? string.Empty).Trim();
             var tipo = (inspector.Tipo ?? string.Empty).Trim();
 
+            var usuarioAs400Dao = new UsuarioAS400DAO(new SecureConfigurationService());
+            var infoAs400 = usuarioAs400Dao.ObtenerDatosUsuarioInterno(cedula)
+                           ?? usuarioAs400Dao.ObtenerDatosUsuarioInterno(nombre)
+                           ?? usuarioAs400Dao.ObtenerDatosUsuarioInterno(cedula.PadLeft(10, '0'));
+
             var daoInterno = new UsuarioInternoRTDAO();
             var existente = daoInterno.ObtenerActivoPorCodigoUsuario(cedula);
 
@@ -232,6 +237,9 @@ namespace CapaPresentacion.Controllers
                     nombre = nombre,
                     tipo = tipo,
                     codigoUsuario = cedula,
+                    ciudadCodigo = infoAs400 != null ? (infoAs400.CiudadCodigo ?? string.Empty) : string.Empty,
+                    codigoFinanciero = infoAs400 != null ? infoAs400.CodigoFinanciero : null,
+                    opcoi3 = infoAs400 != null ? infoAs400.Opcoi3 : null,
                     yaRegistrado = existente != null,
                     message = existente != null
                         ? "El usuario ya tiene un registro interno RT activo."
@@ -277,6 +285,15 @@ namespace CapaPresentacion.Controllers
             model.NombreCompleto = (inspector.NombreCompleto ?? string.Empty).Trim();
             model.TipoInspector = (inspector.Tipo ?? string.Empty).Trim();
 
+            var usuarioAs400Dao = new UsuarioAS400DAO(new SecureConfigurationService());
+            var infoAs400 = usuarioAs400Dao.ObtenerDatosUsuarioInterno(cedula)
+                           ?? usuarioAs400Dao.ObtenerDatosUsuarioInterno(model.CodigoUsuario)
+                           ?? usuarioAs400Dao.ObtenerDatosUsuarioInterno(model.NombreCompleto);
+
+            model.CiudadCodigo = infoAs400 != null ? (infoAs400.CiudadCodigo ?? string.Empty) : (model.CiudadCodigo ?? string.Empty);
+            model.CodigoFinanciero = infoAs400 != null ? infoAs400.CodigoFinanciero : model.CodigoFinanciero;
+            model.Opcoi3 = infoAs400 != null ? infoAs400.Opcoi3 : model.Opcoi3;
+
             string nombres;
             string apellidos;
             SepararNombreCompleto(model.NombreCompleto, out nombres, out apellidos);
@@ -292,11 +309,11 @@ namespace CapaPresentacion.Controllers
                 NombreCompleto = model.NombreCompleto,
                 Tipo = model.TipoInspector,
                 EstadoAs400 = "AC",
-                CiudadCodigo = string.Empty,
-                CodigoFinanciero = 0m,
-                Opcar5 = string.Empty,
+                CiudadCodigo = (model.CiudadCodigo ?? string.Empty).Trim(),
+                CodigoFinanciero = model.CodigoFinanciero ?? 0m,
+                Opcar5 = (model.Opcar5 ?? string.Empty).Trim(),
                 Opcaer = string.Empty,
-                Opcoi3 = 0m,
+                Opcoi3 = model.Opcoi3 ?? (model.CodigoFinanciero ?? 0m),
                 CorreoInstitucional = (model.CorreoInstitucional ?? string.Empty).Trim(),
                 RolInterno = (model.RolInterno ?? string.Empty).Trim(),
                 Observaciones = (model.Observaciones ?? string.Empty).Trim(),
@@ -383,11 +400,11 @@ namespace CapaPresentacion.Controllers
                 NombreCompleto = (model.NombreCompleto ?? string.Empty).Trim(),
                 Tipo = (model.TipoInspector ?? string.Empty).Trim(),
                 EstadoAs400 = "AC",
-                CiudadCodigo = string.Empty,
-                CodigoFinanciero = 0m,
-                Opcar5 = string.Empty,
+                CiudadCodigo = (model.CiudadCodigo ?? string.Empty).Trim(),
+                CodigoFinanciero = model.CodigoFinanciero ?? 0m,
+                Opcar5 = (model.Opcar5 ?? string.Empty).Trim(),
                 Opcaer = string.Empty,
-                Opcoi3 = 0m,
+                Opcoi3 = model.Opcoi3 ?? (model.CodigoFinanciero ?? 0m),
                 CorreoInstitucional = (model.CorreoInstitucional ?? string.Empty).Trim(),
                 RolInterno = (model.RolInterno ?? string.Empty).Trim(),
                 Observaciones = (model.Observaciones ?? string.Empty).Trim(),
@@ -1814,6 +1831,10 @@ namespace CapaPresentacion.Controllers
                 Cedula = registro.Identificacion,
                 NombreCompleto = registro.NombreCompleto,
                 TipoInspector = registro.Tipo,
+                CiudadCodigo = registro.CiudadCodigo,
+                CodigoFinanciero = registro.CodigoFinanciero,
+                Opcoi3 = registro.Opcoi3,
+                Opcar5 = registro.Opcar5,
                 RolInterno = registro.RolInterno,
                 CorreoInstitucional = registro.CorreoInstitucional,
                 Observaciones = registro.Observaciones,

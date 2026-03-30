@@ -160,7 +160,8 @@ namespace CapaDatos.DAOs
                         CiudadCodigo = string.IsNullOrWhiteSpace(ciudad)
                             ? string.Empty
                             : ciudad.Trim().ToUpperInvariant(),
-                        CodigoFinanciero = codigoFinanciero
+                        CodigoFinanciero = codigoFinanciero,
+                        Opcoi3 = codigoFinanciero
                     };
                 });
             }

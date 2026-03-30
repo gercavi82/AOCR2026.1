@@ -13,6 +13,7 @@ using CapaDatos.Services;
 using CapaNegocio.Helpers;
 using CapaNegocio.Services;
 using CapaUtilidades;
+using CapaPresentacion.Helpers;
 using CapaPresentacion.Models.ViewModels;
 using Rotativa;
 using LoggingServiceType = CapaDatos.Services.ILoggingService;
@@ -35,6 +36,9 @@ namespace CapaPresentacion.Controllers
         private readonly DocumentoInspeccionDAO _documentoDAO;
         private readonly SolicitudAOCRDAO _solicitudDAO;
         private readonly InspeccionService _inspeccionService;
+        private readonly InspeccionCorreoService _inspeccionCorreoService;
+        private readonly FirmaDigitalService _firmaDigitalService;
+        private readonly SolicitudEstadoTransitionBL _solicitudEstadoTransitionBL;
 
         private const string ROL_ADMIN = "Administrador";
         private const string ROL_COORD = "CoordinadorInspecciones";
@@ -55,6 +59,7 @@ namespace CapaPresentacion.Controllers
             ROLES_COORDINACION_Y_JEFATURA + "," + ROL_INSPECTOR;
         private const string ROLES_GESTION_INSPECCION_CON_SOLICITANTE =
             ROLES_GESTION_INSPECCION + "," + ROL_SOLICITANTE;
+        private const string ROLES_FIRMA_DIRDAC = ROL_DIRECCION + "," + ROL_DIRECTOR + "," + ROL_JEFATURA + "," + ROL_JEFE + "," + ROL_ADMIN;
 
         // Seguridad: tamaño máximo permitido para PDF (10MB)
         private const int MAX_PDF_BYTES = 10 * 1024 * 1024;
@@ -62,6 +67,7 @@ namespace CapaPresentacion.Controllers
         // Carpeta de informes
         private const string CARPETA_VIRTUAL_INFORMES = "~/App_Data/Uploads/Inspecciones";
         private const string CARPETA_VIRTUAL_INFORMES_TECNICOS = "~/App_Data/Uploads/Inspecciones/InformesTecnicos";
+        private const string CARPETA_VIRTUAL_INFORMES_TECNICOS_FIRMADOS = "~/App_Data/Uploads/Inspecciones/InformesTecnicos/Firmados";
         private const string CARPETA_VIRTUAL_DOCUMENTOS_SOLICITANTE = "~/App_Data/Uploads/Inspecciones/DocumentosSolicitante";
 
         public InspeccionController()
@@ -74,6 +80,9 @@ namespace CapaPresentacion.Controllers
             _documentoDAO = new DocumentoInspeccionDAO();
             _solicitudDAO = new SolicitudAOCRDAO();
             _inspeccionService = new InspeccionService();
+            _inspeccionCorreoService = new InspeccionCorreoService();
+            _firmaDigitalService = new FirmaDigitalService();
+            _solicitudEstadoTransitionBL = new SolicitudEstadoTransitionBL();
             _logger = LoggingFactoryType.Create();
         }
 
@@ -115,6 +124,22 @@ namespace CapaPresentacion.Controllers
                 ROL_LEGAL,
                 ROL_COORD_LEGAL,
                 ROL_COORDINADOR_LEGAL);
+        }
+
+        private bool EsRolDecisionCoordinacionJefatura()
+        {
+            if (EsAdmin())
+            {
+                return true;
+            }
+
+            return UsuarioTieneAlMenosUnRol(
+                ROL_COORD,
+                ROL_COORD_ALIAS,
+                ROL_JEFATURA,
+                ROL_JEFE,
+                ROL_DIRECCION,
+                ROL_DIRECTOR);
         }
 
         private bool EsRolInspector()
@@ -290,6 +315,39 @@ namespace CapaPresentacion.Controllers
             return View("~/Views/Inspeccion/Detalle.cshtml", inspeccion);
         }
 
+        [HttpGet]
+        [Authorize(Roles = ROLES_FIRMA_DIRDAC)]
+        public ActionResult PendientesFirmaDirdac()
+        {
+            try
+            {
+                var pendientes = (_informeDAO.ListarPendientesFirmaDirdac() ?? new List<InspeccionInformeTecnico>())
+                    .Select(informe =>
+                    {
+                        var inspeccion = _inspeccionDAO.ObtenerPorId(informe.CodigoInspeccion);
+                        var solicitud = inspeccion != null ? _solicitudDAO.ObtenerPorId(inspeccion.CodigoSolicitud) : null;
+                        return new
+                        {
+                            Inspeccion = inspeccion,
+                            Solicitud = solicitud,
+                            Informe = informe
+                        };
+                    })
+                    .Where(x => x.Inspeccion != null)
+                    .OrderByDescending(x => x.Informe.FechaEnvioDirdac ?? x.Informe.FechaFinalizacion ?? x.Informe.UpdatedAt ?? DateTime.MinValue)
+                    .Select(x => Tuple.Create(x.Inspeccion, x.Solicitud, x.Informe))
+                    .ToList();
+
+                return View("~/Views/Inspeccion/PendientesFirmaDirdac.cshtml", pendientes);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError("[GestionInspeccion] Error cargando pendientes DIRDAC: " + ex);
+                TempData["Error"] = "No se pudo cargar el listado de documentos pendientes de firma DIRDAC.";
+                return RedirectToAction("Index");
+            }
+        }
+
         // ============================================================
         // ✅ CREAR (GET)
         // ============================================================
@@ -394,7 +452,7 @@ namespace CapaPresentacion.Controllers
         [HttpPost]
         [Authorize(Roles = ROLES_GESTION_INSPECCION)]
         [ValidateAntiForgeryToken]
-        public ActionResult CambiarEstado(int id, string estado)
+        public ActionResult CambiarEstado(int id, string estado, string returnUrl = null)
         {
             if (id <= 0) return new HttpStatusCodeResult(400, "ID inválido.");
 
@@ -411,14 +469,14 @@ namespace CapaPresentacion.Controllers
             {
                 _logger.LogWarning("[GestionInspeccion] PuedeGestionar=False, Motivo=Sin acceso a inspeccion. InspeccionId=" + id + ", Usuario=" + ObtenerUsuarioActual());
                 TempData["Error"] = "No tiene permisos para gestionar esta inspección.";
-                return RedirectToAction("Detalle", new { id });
+                return RedirigirTrasCambioEstado(id, returnUrl);
             }
 
             if (string.IsNullOrWhiteSpace(estado))
             {
                 _logger.LogWarning("[GestionInspeccion] PuedeGestionar=False, Motivo=Estado destino vacio.");
                 TempData["Error"] = "Debe seleccionar un estado.";
-                return RedirectToAction("Detalle", new { id });
+                return RedirigirTrasCambioEstado(id, returnUrl);
             }
 
             var estadoActual = EstadosInspeccion.NormalizarEstado(inspeccion.Estado);
@@ -428,14 +486,14 @@ namespace CapaPresentacion.Controllers
             {
                 _logger.LogWarning("[GestionInspeccion] PuedeGestionar=False, Motivo=Transicion no permitida. EstadoActual=" + estadoActual + ", EstadoDestino=" + estadoDestino + ", InspeccionId=" + id);
                 TempData["Error"] = "Transición no permitida: " + estadoActual + " -> " + estadoDestino;
-                return RedirectToAction("Detalle", new { id });
+                return RedirigirTrasCambioEstado(id, returnUrl);
             }
 
             if (!UsuarioActualPuedeCambiarEstadoInspeccion(estadoActual, estadoDestino))
             {
                 _logger.LogWarning("[GestionInspeccion] PuedeGestionar=False, Motivo=Rol sin permisos para estado destino. EstadoDestino=" + estadoDestino + ", Rol=" + ObtenerRolActual());
                 TempData["Error"] = "No tiene permisos para cambiar a ese estado.";
-                return RedirectToAction("Detalle", new { id });
+                return RedirigirTrasCambioEstado(id, returnUrl);
             }
 
             try
@@ -480,7 +538,7 @@ namespace CapaPresentacion.Controllers
                 TempData["Error"] = ex.Message;
             }
 
-            return RedirectToAction("Detalle", new { id });
+            return RedirigirTrasCambioEstado(id, returnUrl);
         }
 
         // ============================================================
@@ -489,6 +547,18 @@ namespace CapaPresentacion.Controllers
         [HttpGet]
         [Authorize(Roles = ROLES_GESTION_INSPECCION_CON_SOLICITANTE)]
         public ActionResult VerInforme(int id)
+        {
+            return ServirInformePdf(id, false);
+        }
+
+        [HttpGet]
+        [Authorize(Roles = ROLES_GESTION_INSPECCION_CON_SOLICITANTE)]
+        public ActionResult DescargarInforme(int id)
+        {
+            return ServirInformePdf(id, true);
+        }
+
+        private ActionResult ServirInformePdf(int id, bool descargar)
         {
             if (id <= 0) return new HttpStatusCodeResult(400, "ID inválido.");
 
@@ -499,7 +569,12 @@ namespace CapaPresentacion.Controllers
             if (!PuedeAccederInspeccion(inspeccion))
                 return new HttpStatusCodeResult(403, "No autorizado para ver el informe.");
 
-            var rutaRelativa = (inspeccion.RutaInforme ?? string.Empty).Trim();
+            var informeTecnico = _informeDAO.ObtenerUltimoPorInspeccion(id);
+            var rutaRelativa = FirstNonEmpty(
+                informeTecnico != null ? informeTecnico.RutaDocumentoFirmado : null,
+                inspeccion.RutaInforme,
+                informeTecnico != null ? informeTecnico.RutaPdf : null,
+                string.Empty);
 
             if (string.IsNullOrWhiteSpace(rutaRelativa))
             {
@@ -530,7 +605,7 @@ namespace CapaPresentacion.Controllers
             }
 
             Response.Headers["X-Content-Type-Options"] = "nosniff";
-            Response.AddHeader("Content-Disposition", "inline; filename=InformeInspeccion_" + id + ".pdf");
+            Response.AddHeader("Content-Disposition", (descargar ? "attachment" : "inline") + "; filename=InformeInspeccion_" + id + ".pdf");
 
             return File(fullPath, "application/pdf");
         }
@@ -614,23 +689,48 @@ namespace CapaPresentacion.Controllers
                     return new HttpStatusCodeResult(403, "No autorizado para editar el informe técnico.");
                 }
 
-                var titulo = form?["titulo"];
-                var resumen = form?["resumen"];
-                var resultado = form?["resultado"];
-                var observaciones = form?["observaciones"];
-                var conclusiones = form?["conclusiones"];
-                var recomendaciones = form?["recomendaciones"];
+                var informeActual = _informeDAO.ObtenerUltimoPorInspeccion(id);
+                var titulo = TomarCampoTexto(form, "titulo", 250, informeActual != null ? informeActual.Titulo : null);
+                var resumen = TomarCampoTexto(form, "resumen", 8000, informeActual != null ? informeActual.Resumen : null);
+                var antecedentes = TomarCampoTexto(form, "antecedentes", 8000, informeActual != null ? informeActual.Antecedentes : null);
+                var alcance = TomarCampoTexto(form, "alcance", 8000, informeActual != null ? informeActual.Alcance : null);
+                var desarrollo = TomarCampoTexto(form, "desarrollo", 12000, informeActual != null ? informeActual.Desarrollo : null);
+                var evidencias = TomarCampoTexto(form, "evidencias", 12000, informeActual != null ? informeActual.Evidencias : null);
+                var numeroLicenciaInspector = TomarCampoTexto(form, "numeroLicenciaInspector", 120, informeActual != null ? informeActual.NumeroLicenciaInspector : null);
+                var trabajosRealizados = TomarCampoTexto(form, "trabajosRealizados", 12000, informeActual != null ? informeActual.TrabajosRealizados : null);
+                var operacionComercial = TomarCampoTexto(form, "operacionComercial", 500, informeActual != null ? informeActual.OperacionComercial : null);
+                var serviciosEstaciones = TomarServiciosEstaciones(form, informeActual != null ? informeActual.ServiciosEstaciones : null);
+                var notas = TomarCampoTexto(form, "notas", 8000, informeActual != null ? informeActual.Notas : null);
+                var noConformidades = TomarCampoTexto(form, "noConformidades", 8000, informeActual != null ? informeActual.NoConformidades : null);
+                var documentosAdjuntos = TomarDocumentosAdjuntos(form, informeActual != null ? informeActual.DocumentosAdjuntos : null);
+                var otrosAdjuntos = TomarCampoTexto(form, "otrosAdjuntos", 4000, informeActual != null ? informeActual.OtrosAdjuntos : null);
+                var resultado = TomarCampoTexto(form, "resultado", 120, informeActual != null ? informeActual.Resultado : null);
+                var observaciones = TomarCampoTexto(form, "observaciones", 8000, informeActual != null ? informeActual.Observaciones : null);
+                var conclusiones = TomarCampoTexto(form, "conclusiones", 8000, informeActual != null ? informeActual.Conclusiones : null);
+                var recomendaciones = TomarCampoTexto(form, "recomendaciones", 8000, informeActual != null ? informeActual.Recomendaciones : null);
 
                 var usuarioId = ObtenerCodigoUsuario();
                 var informe = _informeDAO.GuardarBorrador(new InspeccionInformeTecnico
                 {
                     CodigoInspeccion = id,
-                    Titulo = LimpiarTextoLibre(titulo, 250),
-                    Resumen = LimpiarTextoLibre(resumen, 8000),
-                    Resultado = LimpiarTextoLibre(resultado, 120),
-                    Observaciones = LimpiarTextoLibre(observaciones, 8000),
-                    Conclusiones = LimpiarTextoLibre(conclusiones, 8000),
-                    Recomendaciones = LimpiarTextoLibre(recomendaciones, 8000)
+                    Titulo = titulo,
+                    Resumen = resumen,
+                    Antecedentes = antecedentes,
+                    Alcance = alcance,
+                    Desarrollo = desarrollo,
+                    Evidencias = evidencias,
+                    NumeroLicenciaInspector = numeroLicenciaInspector,
+                    TrabajosRealizados = trabajosRealizados,
+                    OperacionComercial = operacionComercial,
+                    ServiciosEstaciones = serviciosEstaciones,
+                    Notas = notas,
+                    NoConformidades = noConformidades,
+                    DocumentosAdjuntos = documentosAdjuntos,
+                    OtrosAdjuntos = otrosAdjuntos,
+                    Resultado = resultado,
+                    Observaciones = observaciones,
+                    Conclusiones = conclusiones,
+                    Recomendaciones = recomendaciones
                 }, usuarioId);
 
                 if (!finalizar)
@@ -642,10 +742,10 @@ namespace CapaPresentacion.Controllers
                 var solicitud = _solicitudDAO.ObtenerPorId(inspeccion.CodigoSolicitud);
                 var pdfBytes = GenerarPdfInformeTecnico(inspeccion, solicitud, informe);
                 var rutaPdf = GuardarInformeTecnicoPdf(id, informe.Version, pdfBytes);
-                var correoEnviado = EnviarInformeTecnicoAlSolicitante(inspeccion, solicitud, informe, pdfBytes);
 
-                _informeDAO.MarcarFinalizado(informe.CodigoInforme, rutaPdf, correoEnviado, usuarioId);
+                _informeDAO.MarcarFinalizado(informe.CodigoInforme, rutaPdf, false, "GENERADO", usuarioId);
                 _inspeccionBL.GuardarInforme(id, rutaPdf, usuarioId);
+                RegistrarAuditoriaInformeDigital(id, "BORRADOR", "GENERADO", rutaPdf, null, "Informe técnico generado en PDF. IP=" + ObtenerIpCliente(), usuarioId, ObtenerUsuarioActual(), "INFORME_GENERADO");
 
                 var estadoActual = CapaDatos.Constants.EstadosInspeccion.NormalizarEstado(inspeccion.Estado);
                 if (!string.Equals(estadoActual, CapaDatos.Constants.EstadosInspeccion.INFORME_ELABORADO, StringComparison.OrdinalIgnoreCase))
@@ -663,9 +763,7 @@ namespace CapaPresentacion.Controllers
                     }
                 }
 
-                TempData["Success"] = correoEnviado
-                    ? "Informe técnico finalizado, PDF generado y correo enviado al solicitante."
-                    : "Informe técnico finalizado y PDF generado. No se pudo enviar el correo al solicitante.";
+                TempData["Success"] = "Informe técnico finalizado y PDF generado. El documento quedó pendiente de firma del inspector.";
 
                 return RedirectToAction("Detalle", new { id });
             }
@@ -756,6 +854,55 @@ namespace CapaPresentacion.Controllers
 
             TempData["Success"] = "Documento corregido cargado correctamente. Se registró una nueva versión para revisión técnica.";
             return RedirectToAction("Detalle", new { id });
+        }
+
+        [HttpPost]
+        [Authorize(Roles = ROL_INSPECTOR + "," + ROL_COORD + "," + ROL_COORD_ALIAS + "," + ROL_JEFATURA + "," + ROL_ADMIN)]
+        [ValidateAntiForgeryToken]
+        public ActionResult FirmarInformeInspector(int id, string passwordCertificado)
+        {
+            return FirmarInformePorRol(id, passwordCertificado, "CertificadoInspector", "INSPECTOR", "FIRMADO_INSPECTOR", autoEnviarADirdac: true);
+        }
+
+        [HttpPost]
+        [Authorize(Roles = ROL_INSPECTOR + "," + ROL_COORD + "," + ROL_COORD_ALIAS + "," + ROL_JEFATURA + "," + ROL_ADMIN)]
+        [ValidateAntiForgeryToken]
+        public ActionResult EnviarADirdac(int id)
+        {
+            if (id <= 0)
+            {
+                return new HttpStatusCodeResult(400, "ID inválido.");
+            }
+
+            var inspeccion = _inspeccionDAO.ObtenerPorId(id);
+            if (inspeccion == null)
+            {
+                return HttpNotFound("Inspección no encontrada.");
+            }
+
+            if (!PuedeAccederInspeccion(inspeccion))
+            {
+                return new HttpStatusCodeResult(403, "No autorizado para enviar el informe a DIRDAC.");
+            }
+
+            var informe = _informeDAO.ObtenerUltimoPorInspeccion(id);
+            var solicitud = _solicitudDAO.ObtenerPorId(inspeccion.CodigoSolicitud);
+            var resultado = EnviarInformeADirdacInterno(inspeccion, solicitud, informe, ObtenerCodigoUsuario());
+            var informeActualizado = _informeDAO.ObtenerUltimoPorInspeccion(id);
+            var mensajeKey = resultado.Exitoso
+                ? "Success"
+                : (InformeEstaEnviadoADirdac(informeActualizado) ? "Warning" : "Error");
+
+            TempData[mensajeKey] = resultado.Mensaje;
+            return RedirectToAction("Detalle", new { id });
+        }
+
+        [HttpPost]
+        [Authorize(Roles = ROLES_FIRMA_DIRDAC)]
+        [ValidateAntiForgeryToken]
+        public ActionResult FirmarInformeDirdac(int id, string passwordCertificado)
+        {
+            return FirmarInformePorRol(id, passwordCertificado, "CertificadoDirdac", "DIRDAC", "FIRMADO_FINAL", autoEnviarADirdac: false);
         }
 
         // ============================================================
@@ -1261,7 +1408,7 @@ namespace CapaPresentacion.Controllers
 
             if (EstadosInspeccion.EsEstadoBloqueCoordinacionJefatura(destino))
             {
-                return EsRolCoordinacionYJefatura();
+                return EsRolDecisionCoordinacionJefatura();
             }
 
             if (EstadosInspeccion.EsEstadoBloqueInspector(destino))
@@ -1274,10 +1421,20 @@ namespace CapaPresentacion.Controllers
                 || destino == EstadosInspeccion.VIATICOS_REQUERIDOS
                 || destino == EstadosInspeccion.PAGO_VALIDADO)
             {
-                return EsRolInspector() || EsRolCoordinacionYJefatura();
+                return EsRolInspector() || EsRolDecisionCoordinacionJefatura();
             }
 
-            return EsRolCoordinacionYJefatura();
+            return EsRolDecisionCoordinacionJefatura();
+        }
+
+        private ActionResult RedirigirTrasCambioEstado(int id, string returnUrl)
+        {
+            if (!string.IsNullOrWhiteSpace(returnUrl) && Url != null && Url.IsLocalUrl(returnUrl))
+            {
+                return Redirect(returnUrl);
+            }
+
+            return RedirectToAction("Detalle", new { id });
         }
 
         private bool PuedeAccederSolicitante(Inspeccion ins)
@@ -1332,10 +1489,171 @@ namespace CapaPresentacion.Controllers
             {
                 PageSize = Rotativa.Options.Size.A4,
                 PageOrientation = Rotativa.Options.Orientation.Portrait,
-                PageMargins = new Rotativa.Options.Margins(12, 12, 14, 14)
+                CustomSwitches = ConstruirSwitchesPdfInformeTecnico()
             };
 
             return pdf.BuildFile(ControllerContext);
+        }
+
+        private string ConstruirSwitchesPdfInformeTecnico()
+        {
+            var switches = PdfBrandingHelper.StandardRotativaSwitches
+                + " --disable-smart-shrinking --margin-top 30mm --margin-bottom 26mm --margin-left 8mm --margin-right 8mm --header-spacing 0 --footer-spacing 0";
+
+            var headerHtmlPath = CrearArchivoBrandingTemporalInformeTecnico(true);
+            var footerHtmlPath = CrearArchivoBrandingTemporalInformeTecnico(false);
+
+            if (!string.IsNullOrWhiteSpace(headerHtmlPath))
+            {
+                switches += " --header-html \"" + ConvertirRutaFisicaAUrlArchivo(headerHtmlPath) + "\"";
+            }
+
+            if (!string.IsNullOrWhiteSpace(footerHtmlPath))
+            {
+                switches += " --footer-html \"" + ConvertirRutaFisicaAUrlArchivo(footerHtmlPath) + "\"";
+            }
+
+            return switches;
+        }
+
+        private string CrearArchivoBrandingTemporalInformeTecnico(bool esHeader)
+        {
+            if (Server == null)
+            {
+                return null;
+            }
+
+            var carpetaTemporal = Server.MapPath("~/App_Data/Temp/PdfBranding");
+            if (!Directory.Exists(carpetaTemporal))
+            {
+                Directory.CreateDirectory(carpetaTemporal);
+            }
+
+            var fileName = esHeader ? "informe_tecnico_header.html" : "informe_tecnico_footer.html";
+            var htmlPath = Path.Combine(carpetaTemporal, fileName);
+            var html = esHeader ? ConstruirHtmlHeaderHojaInformeTecnico() : ConstruirHtmlFooterHojaInformeTecnico();
+
+            if (string.IsNullOrWhiteSpace(html))
+            {
+                html = ConstruirHtmlBrandingFallbackInformeTecnico(esHeader);
+            }
+
+            if (string.IsNullOrWhiteSpace(html))
+            {
+                return null;
+            }
+
+            System.IO.File.WriteAllText(htmlPath, html, Encoding.UTF8);
+            return htmlPath;
+        }
+
+        private string ConstruirHtmlHeaderHojaInformeTecnico()
+        {
+            var barra = ObtenerFuenteBrandingHojaInformeTecnico("barra.png");
+            var escudo = ObtenerFuenteBrandingHojaInformeTecnico("escudo.png");
+            var dgca = ObtenerFuenteBrandingHojaInformeTecnico("DGCA.png");
+
+            if (string.IsNullOrWhiteSpace(barra) || string.IsNullOrWhiteSpace(escudo) || string.IsNullOrWhiteSpace(dgca))
+            {
+                return null;
+            }
+
+            return string.Format(
+                "<!DOCTYPE html><html><head><meta charset=\"utf-8\" />"
+                + "<style>html,body{{margin:0;padding:0;width:194mm;height:26mm;background:transparent;overflow:hidden;}}"
+                + ".header{{position:relative;width:194mm;height:26mm;}}"
+                + ".barra{{position:absolute;top:0;right:0;width:129mm;height:3.2mm;}}"
+                + ".escudo{{position:absolute;left:0;top:6.2mm;width:34mm;height:auto;}}"
+                + ".dgca{{position:absolute;right:0;top:8.2mm;width:82mm;height:auto;}}</style>"
+                + "</head><body><div class=\"header\">"
+                + "<img class=\"barra\" src=\"{0}\" alt=\"\" />"
+                + "<img class=\"escudo\" src=\"{1}\" alt=\"Escudo Republica del Ecuador\" />"
+                + "<img class=\"dgca\" src=\"{2}\" alt=\"Direccion General de Aviacion Civil\" />"
+                + "</div></body></html>",
+                HttpUtility.HtmlAttributeEncode(barra),
+                HttpUtility.HtmlAttributeEncode(escudo),
+                HttpUtility.HtmlAttributeEncode(dgca));
+        }
+
+        private string ConstruirHtmlFooterHojaInformeTecnico()
+        {
+            var barra = ObtenerFuenteBrandingHojaInformeTecnico("barra.png");
+            var direccion = ObtenerFuenteBrandingHojaInformeTecnico("direccion.png");
+            var nuevo = ObtenerFuenteBrandingHojaInformeTecnico("nuevo.png");
+
+            if (string.IsNullOrWhiteSpace(barra) || string.IsNullOrWhiteSpace(direccion) || string.IsNullOrWhiteSpace(nuevo))
+            {
+                return null;
+            }
+
+            return string.Format(
+                "<!DOCTYPE html><html><head><meta charset=\"utf-8\" />"
+                + "<style>html,body{{margin:0;padding:0;width:194mm;height:26mm;background:transparent;overflow:hidden;}}"
+                + ".footer{{position:relative;width:194mm;height:26mm;}}"
+                + ".barra{{position:absolute;left:0;top:0;width:72mm;height:3.2mm;}}"
+                + ".direccion{{position:absolute;left:0mm;top:7.2mm;width:64mm;height:auto;}}"
+                + ".nuevo{{position:absolute;right:0;top:6.2mm;width:44mm;height:auto;}}</style>"
+                + "</head><body><div class=\"footer\">"
+                + "<img class=\"barra\" src=\"{0}\" alt=\"\" />"
+                + "<img class=\"direccion\" src=\"{1}\" alt=\"Direccion DGAC\" />"
+                + "<img class=\"nuevo\" src=\"{2}\" alt=\"El Nuevo Ecuador\" />"
+                + "</div></body></html>",
+                HttpUtility.HtmlAttributeEncode(barra),
+                HttpUtility.HtmlAttributeEncode(direccion),
+                HttpUtility.HtmlAttributeEncode(nuevo));
+        }
+
+        private string ConstruirHtmlBrandingFallbackInformeTecnico(bool esHeader)
+        {
+            var assets = PdfBrandingHelper.ResolveAssets(Server, "InspeccionController.CrearArchivoBrandingTemporalInformeTecnico");
+            var imageSrc = esHeader
+                ? ObtenerFuenteBrandingInformeTecnico(assets != null ? assets.HeaderPhysicalPath : null, assets != null ? assets.HeaderDataUri : null)
+                : ObtenerFuenteBrandingInformeTecnico(assets != null ? assets.FooterPhysicalPath : null, assets != null ? assets.FooterDataUri : null);
+
+            if (string.IsNullOrWhiteSpace(imageSrc))
+            {
+                return null;
+            }
+
+            return string.Format(
+                "<!DOCTYPE html><html><head><meta charset=\"utf-8\" />"
+                + "<style>html,body{{margin:0;padding:0;width:194mm;background:transparent;}}"
+                + ".wrap{{width:100%;text-align:center;line-height:0;}}"
+                + ".wrap img{{display:block;width:194mm;max-width:194mm;height:auto;margin:0 auto;}}</style>"
+                + "</head><body><div class=\"wrap\"><img src=\"{0}\" alt=\"{1}\" /></div></body></html>",
+                HttpUtility.HtmlAttributeEncode(imageSrc),
+                esHeader ? "Header institucional DGAC" : "Footer institucional DGAC");
+        }
+
+        private string ObtenerFuenteBrandingHojaInformeTecnico(string fileName)
+        {
+            var physicalPath = Server.MapPath("~/Content/assets/imganes/hoja/" + fileName);
+            if (string.IsNullOrWhiteSpace(physicalPath) || !System.IO.File.Exists(physicalPath))
+            {
+                return null;
+            }
+
+            return ConvertirRutaFisicaAUrlArchivo(physicalPath);
+        }
+
+        private static string ObtenerFuenteBrandingInformeTecnico(string physicalPath, string dataUri)
+        {
+            if (!string.IsNullOrWhiteSpace(physicalPath) && System.IO.File.Exists(physicalPath))
+            {
+                return ConvertirRutaFisicaAUrlArchivo(physicalPath);
+            }
+
+            return dataUri;
+        }
+
+        private static string ConvertirRutaFisicaAUrlArchivo(string physicalPath)
+        {
+            if (string.IsNullOrWhiteSpace(physicalPath))
+            {
+                return null;
+            }
+
+            return "file:///" + physicalPath.Replace('\\', '/');
         }
 
         private string GuardarInformeTecnicoPdf(int codigoInspeccion, int version, byte[] pdfBytes)
@@ -1350,6 +1668,25 @@ namespace CapaPresentacion.Controllers
             var fullPath = Path.Combine(basePath, fileName);
             System.IO.File.WriteAllBytes(fullPath, pdfBytes ?? new byte[0]);
             return CARPETA_VIRTUAL_INFORMES_TECNICOS.TrimStart('~') + "/" + fileName;
+        }
+
+        private string GuardarInformeTecnicoFirmadoPdf(int codigoInspeccion, int version, string sufijo, byte[] pdfBytes)
+        {
+            var basePath = Server.MapPath(CARPETA_VIRTUAL_INFORMES_TECNICOS_FIRMADOS);
+            if (!Directory.Exists(basePath))
+            {
+                Directory.CreateDirectory(basePath);
+            }
+
+            var fileName = string.Format(
+                "InformeTecnico_{0}_v{1}_{2}_{3}.pdf",
+                codigoInspeccion,
+                version,
+                (sufijo ?? "firmado").Trim().ToLowerInvariant(),
+                DateTime.Now.ToString("yyyyMMddHHmmss"));
+            var fullPath = Path.Combine(basePath, fileName);
+            System.IO.File.WriteAllBytes(fullPath, pdfBytes ?? new byte[0]);
+            return CARPETA_VIRTUAL_INFORMES_TECNICOS_FIRMADOS.TrimStart('~') + "/" + fileName;
         }
 
         private bool EnviarInformeTecnicoAlSolicitante(Inspeccion inspeccion, SolicitudAOCR solicitud, InspeccionInformeTecnico informe, byte[] pdfBytes)
@@ -1390,6 +1727,493 @@ namespace CapaPresentacion.Controllers
             }
         }
 
+        private ActionResult FirmarInformePorRol(int id, string passwordCertificado, string nombreCampoArchivo, string rolFirma, string estadoFinal, bool autoEnviarADirdac)
+        {
+            if (id <= 0)
+            {
+                return new HttpStatusCodeResult(400, "ID inválido.");
+            }
+
+            var inspeccion = _inspeccionDAO.ObtenerPorId(id);
+            if (inspeccion == null)
+            {
+                return HttpNotFound("Inspección no encontrada.");
+            }
+
+            if (!PuedeAccederInspeccion(inspeccion) && !User.IsInRole(ROL_DIRECCION) && !User.IsInRole(ROL_DIRECTOR))
+            {
+                return new HttpStatusCodeResult(403, "No autorizado para firmar el informe técnico.");
+            }
+
+            var informe = _informeDAO.ObtenerUltimoPorInspeccion(id);
+            if (informe == null || !informe.Finalizado)
+            {
+                TempData["Error"] = "Debe generar el PDF del informe técnico antes de firmarlo.";
+                return RedirectToAction("Detalle", new { id });
+            }
+
+            if (string.Equals(rolFirma, "INSPECTOR", StringComparison.OrdinalIgnoreCase) && informe.FirmadoInspector)
+            {
+                TempData["Error"] = "El informe técnico ya fue firmado por el inspector.";
+                return RedirectToAction("Detalle", new { id });
+            }
+
+            if (string.Equals(rolFirma, "DIRDAC", StringComparison.OrdinalIgnoreCase))
+            {
+                if (!informe.FirmadoInspector)
+                {
+                    TempData["Error"] = "El informe debe contar primero con la firma del inspector.";
+                    return RedirectToAction("Detalle", new { id });
+                }
+
+                if (informe.FirmadoDirdac)
+                {
+                    TempData["Error"] = "El informe técnico ya cuenta con la firma final de DIRDAC.";
+                    return RedirectToAction("Detalle", new { id });
+                }
+
+                if (!string.Equals((informe.EstadoInforme ?? string.Empty).Trim(), "ENVIADO_A_DIRDAC", StringComparison.OrdinalIgnoreCase))
+                {
+                    TempData["Error"] = "El informe aún no ha sido enviado formalmente a DIRDAC para firma.";
+                    return RedirectToAction("Detalle", new { id });
+                }
+            }
+
+            var certificado = Request.Files[nombreCampoArchivo];
+            string mensajeValidacion;
+            if (!EsCertificadoDigitalValido(certificado, out mensajeValidacion))
+            {
+                TempData["Error"] = mensajeValidacion;
+                return RedirectToAction("Detalle", new { id });
+            }
+
+            var rutaFuente = string.Equals(rolFirma, "DIRDAC", StringComparison.OrdinalIgnoreCase)
+                ? FirstNonEmpty(informe.RutaDocumentoFirmado, inspeccion.RutaInforme, informe.RutaPdf)
+                : FirstNonEmpty(informe.RutaPdf, inspeccion.RutaInforme, informe.RutaDocumentoFirmado);
+            var pathFuente = ResolverRutaAbsolutaInforme(rutaFuente);
+            if (string.IsNullOrWhiteSpace(pathFuente) || !System.IO.File.Exists(pathFuente))
+            {
+                TempData["Error"] = "No se encontró el documento PDF a firmar en el servidor.";
+                return RedirectToAction("Detalle", new { id });
+            }
+
+            byte[] pdfFirmado;
+            string hashDocumento;
+            using (var ms = new MemoryStream())
+            {
+                certificado.InputStream.CopyTo(ms);
+                _logger.LogInfo("[GestionInspeccion] Inicio firma digital. InspeccionId=" + id
+                    + ", RolFirma=" + rolFirma
+                    + ", InformeId=" + informe.CodigoInforme
+                    + ", VersionInforme=" + informe.Version
+                    + ", RutaFuente=" + pathFuente
+                    + ", PdfBytes=" + new FileInfo(pathFuente).Length
+                    + ", CertificadoBytes=" + ms.Length
+                    + ", Usuario=" + ObtenerUsuarioActual());
+
+                var resultadoFirma = _firmaDigitalService.FirmarPdf(
+                    System.IO.File.ReadAllBytes(pathFuente),
+                    ms.ToArray(),
+                    passwordCertificado,
+                    ObtenerUsuarioActual(),
+                    string.Equals(rolFirma, "DIRDAC", StringComparison.OrdinalIgnoreCase)
+                        ? "Firma institucional DIRDAC del informe técnico AOCR"
+                        : "Firma del inspector sobre el informe técnico AOCR",
+                    "Sistema AOCR DGAC",
+                    string.Equals(rolFirma, "DIRDAC", StringComparison.OrdinalIgnoreCase)
+                        ? "INFORME_TECNICO_DIRDAC"
+                        : "INFORME_TECNICO_INSPECTOR");
+
+                if (!resultadoFirma.Exitoso)
+                {
+                    _logger.LogError("[GestionInspeccion] Firma digital fallida. InspeccionId=" + id
+                        + ", RolFirma=" + rolFirma
+                        + ", InformeId=" + informe.CodigoInforme
+                        + ", Mensaje=" + resultadoFirma.Mensaje);
+                    TempData["Error"] = resultadoFirma.Mensaje;
+                    return RedirectToAction("Detalle", new { id });
+                }
+
+                pdfFirmado = resultadoFirma.PdfFirmado;
+                hashDocumento = resultadoFirma.HashSha256;
+                _logger.LogInfo("[GestionInspeccion] Firma digital generada. InspeccionId=" + id
+                    + ", RolFirma=" + rolFirma
+                    + ", InformeId=" + informe.CodigoInforme
+                    + ", Hash=" + hashDocumento
+                    + ", PdfFirmadoBytes=" + (pdfFirmado != null ? pdfFirmado.Length : 0));
+            }
+
+            var rutaFirmada = GuardarInformeTecnicoFirmadoPdf(id, informe.Version, rolFirma, pdfFirmado);
+            var usuarioId = ObtenerCodigoUsuario();
+            var usuarioActual = ObtenerUsuarioActual();
+            var estadoAnterior = FirstNonEmpty(informe.EstadoInforme, informe.Finalizado ? "GENERADO" : "BORRADOR", "BORRADOR");
+
+            _logger.LogInfo("[GestionInspeccion] Persistiendo firma digital. InspeccionId=" + id
+                + ", RolFirma=" + rolFirma
+                + ", InformeId=" + informe.CodigoInforme
+                + ", RutaFirmada=" + rutaFirmada
+                + ", EstadoAnterior=" + estadoAnterior
+                + ", EstadoFinal=" + estadoFinal
+                + ", UsuarioId=" + usuarioId);
+
+            if (string.Equals(rolFirma, "DIRDAC", StringComparison.OrdinalIgnoreCase))
+            {
+                _informeDAO.RegistrarFirmaDirdac(informe.CodigoInforme, rutaFirmada, hashDocumento, DateTime.Now, usuarioActual, estadoFinal, usuarioId);
+            }
+            else
+            {
+                _informeDAO.RegistrarFirmaInspector(informe.CodigoInforme, rutaFirmada, hashDocumento, DateTime.Now, usuarioActual, estadoFinal, usuarioId);
+            }
+
+            _inspeccionBL.GuardarInforme(id, rutaFirmada, usuarioId);
+            _logger.LogInfo("[GestionInspeccion] Firma digital persistida. InspeccionId=" + id
+                + ", RolFirma=" + rolFirma
+                + ", InformeId=" + informe.CodigoInforme
+                + ", RutaFirmada=" + rutaFirmada);
+            RegistrarAuditoriaInformeDigital(
+                id,
+                estadoAnterior,
+                estadoFinal,
+                rutaFirmada,
+                hashDocumento,
+                string.Format("Firma digital aplicada por {0}. Rol={1}. IP={2}", usuarioActual, rolFirma, ObtenerIpCliente()),
+                usuarioId,
+                usuarioActual,
+                "FIRMA_DIGITAL_" + rolFirma);
+
+            if (autoEnviarADirdac)
+            {
+                var solicitud = _solicitudDAO.ObtenerPorId(inspeccion.CodigoSolicitud);
+                var informeActualizado = _informeDAO.ObtenerPorId(informe.CodigoInforme);
+                var resultadoEnvio = EnviarInformeADirdacInterno(inspeccion, solicitud, informeActualizado, usuarioId);
+                TempData[resultadoEnvio.Exitoso ? "Success" : "Warning"] = resultadoEnvio.Exitoso
+                    ? "Informe firmado por inspector y enviado a DIRDAC para firma institucional."
+                    : "Informe firmado por inspector. " + resultadoEnvio.Mensaje;
+                return RedirectToAction("Detalle", new { id });
+            }
+
+            var solicitudFinal = _solicitudDAO.ObtenerPorId(inspeccion.CodigoSolicitud);
+            var informeFinal = _informeDAO.ObtenerPorId(informe.CodigoInforme);
+            var resultadoNotificacion = _inspeccionCorreoService.NotificarInformeTecnicoFirmadoFinal(
+                inspeccion,
+                solicitudFinal,
+                informeFinal,
+                pdfFirmado,
+                ConstruirUrlDetalle(id),
+                ConstruirDetalleCorreoFirmaFinal(inspeccion, solicitudFinal, informeFinal));
+
+            TempData[resultadoNotificacion.Exitoso ? "Success" : "Warning"] = resultadoNotificacion.Exitoso
+                ? "Documento firmado por DIRDAC y notificado a los actores del proceso."
+                : "Documento firmado por DIRDAC. No fue posible enviar todas las notificaciones finales.";
+
+            SincronizarSolicitudAocrTrasFirmaFinal(inspeccion, solicitudFinal, usuarioId, usuarioActual);
+
+            return RedirectToAction("Detalle", new { id });
+        }
+
+        private void SincronizarSolicitudAocrTrasFirmaFinal(Inspeccion inspeccion, SolicitudAOCR solicitud, int usuarioId, string usuarioActual)
+        {
+            if (inspeccion == null || solicitud == null || usuarioId <= 0)
+            {
+                return;
+            }
+
+            var estadoActual = EstadoSolicitud.Normalizar(solicitud.Estado);
+            if (!string.Equals(estadoActual, EstadoSolicitud.EnInspeccion, StringComparison.OrdinalIgnoreCase))
+            {
+                return;
+            }
+
+            string mensajeCambio;
+            var observacion = "Firma final del informe tecnico completada; documentos AOCR habilitados para validacion.";
+            var actualizado = _solicitudEstadoTransitionBL.CambiarEstadoConReglasAocr(
+                solicitud.CodigoSolicitud,
+                EstadoSolicitud.AOCR_EnElaboracion,
+                observacion,
+                usuarioId,
+                destino => string.Equals(destino, EstadoSolicitud.AOCR_EnElaboracion, StringComparison.OrdinalIgnoreCase),
+                out mensajeCambio);
+
+            if (!actualizado)
+            {
+                _logger.LogWarning("[GestionInspeccion] No se pudo sincronizar solicitud AOCR tras firma final. SolicitudId=" + solicitud.CodigoSolicitud + ", InspeccionId=" + inspeccion.CodigoInspeccion + ", Mensaje=" + mensajeCambio);
+                return;
+            }
+
+            _logger.LogInfo("[GestionInspeccion] Solicitud AOCR sincronizada tras firma final. SolicitudId=" + solicitud.CodigoSolicitud + ", EstadoNuevo=" + EstadoSolicitud.AOCR_EnElaboracion + ", Usuario=" + usuarioActual);
+        }
+
+        private ResultadoOperacion EnviarInformeADirdacInterno(Inspeccion inspeccion, SolicitudAOCR solicitud, InspeccionInformeTecnico informe, int usuarioId)
+        {
+            if (inspeccion == null || solicitud == null || informe == null)
+            {
+                return ResultadoOperacion.Error("No existe contexto suficiente para enviar el informe técnico a DIRDAC.");
+            }
+
+            if (!informe.Finalizado)
+            {
+                return ResultadoOperacion.Error("El informe técnico aún no ha sido finalizado en PDF.");
+            }
+
+            if (!informe.FirmadoInspector)
+            {
+                return ResultadoOperacion.Error("Debe firmar primero el informe con el certificado del inspector.");
+            }
+
+            if (informe.FirmadoDirdac)
+            {
+                return ResultadoOperacion.Error("El informe técnico ya cuenta con la firma final de DIRDAC.");
+            }
+
+            var yaEnviadoADirdac = InformeEstaEnviadoADirdac(informe);
+            if (yaEnviadoADirdac && informe.CorreoEnviado)
+            {
+                return ResultadoOperacion.Error("El documento ya fue notificado a DIRDAC y está pendiente de firma final.");
+            }
+
+            if (!yaEnviadoADirdac)
+            {
+                var estadoAnterior = FirstNonEmpty(informe.EstadoInforme, "FIRMADO_INSPECTOR", "GENERADO");
+                _informeDAO.MarcarEnviadoADirdac(informe.CodigoInforme, DateTime.Now, ObtenerUsuarioActual(), false, "ENVIADO_A_DIRDAC", usuarioId);
+                RegistrarAuditoriaInformeDigital(
+                    inspeccion.CodigoInspeccion,
+                    estadoAnterior,
+                    "ENVIADO_A_DIRDAC",
+                    FirstNonEmpty(informe.RutaDocumentoFirmado, informe.RutaPdf, inspeccion.RutaInforme),
+                    informe.HashDocumento,
+                    "Documento transferido automáticamente a la bandeja de firma DIRDAC. IP=" + ObtenerIpCliente(),
+                    usuarioId,
+                    ObtenerUsuarioActual(),
+                    "ENVIO_DIRDAC");
+
+                informe = _informeDAO.ObtenerPorId(informe.CodigoInforme) ?? informe;
+            }
+
+            var detalle = ConstruirDetalleCorreoPendienteDirDac(inspeccion, solicitud, informe);
+            var resultadoCorreo = _inspeccionCorreoService.NotificarEvento(inspeccion, solicitud, "PENDIENTE_FIRMA_DIRDAC", detalle);
+            _informeDAO.ActualizarCorreoEnviado(informe.CodigoInforme, resultadoCorreo.Exitoso, usuarioId);
+
+            var notificacionInternaOk = !yaEnviadoADirdac && NotificarInternamentePendienteDirdac(inspeccion, solicitud);
+
+            if (yaEnviadoADirdac)
+            {
+                RegistrarAuditoriaInformeDigital(
+                    inspeccion.CodigoInspeccion,
+                    "ENVIADO_A_DIRDAC",
+                    "ENVIADO_A_DIRDAC",
+                    FirstNonEmpty(informe.RutaDocumentoFirmado, informe.RutaPdf, inspeccion.RutaInforme),
+                    informe.HashDocumento,
+                    "Reintento de notificación formal a DIRDAC. ResultadoCorreo=" + (resultadoCorreo.Exitoso ? "OK" : "ERROR") + ". IP=" + ObtenerIpCliente(),
+                    usuarioId,
+                    ObtenerUsuarioActual(),
+                    "REENVIO_NOTIFICACION_DIRDAC");
+            }
+
+            if (resultadoCorreo.Exitoso)
+            {
+                return ResultadoOperacion.Ok(null,
+                    yaEnviadoADirdac
+                        ? "La notificacion formal a DIRDAC se reenvio correctamente. El documento continua pendiente de firma final."
+                        : "Documento pendiente de firma enviado a DIRDAC correctamente.");
+            }
+
+            return ResultadoOperacion.Error(
+                yaEnviadoADirdac
+                    ? "El documento ya está en la bandeja DIRDAC, pero continúa pendiente el correo formal. Puede reintentar la notificación más tarde."
+                    : (notificacionInternaOk
+                        ? "El documento pasó a la bandeja DIRDAC, pero falló el correo formal a Dirección. La notificación interna ya fue registrada."
+                        : "El documento pasó a la bandeja DIRDAC, pero no fue posible enviar la notificación formal a Dirección."));
+        }
+
+        private bool InformeEstaEnviadoADirdac(InspeccionInformeTecnico informe)
+        {
+            return informe != null
+                && string.Equals((informe.EstadoInforme ?? string.Empty).Trim(), "ENVIADO_A_DIRDAC", StringComparison.OrdinalIgnoreCase);
+        }
+
+        private bool NotificarInternamentePendienteDirdac(Inspeccion inspeccion, SolicitudAOCR solicitud)
+        {
+            if (inspeccion == null)
+            {
+                return false;
+            }
+
+            var usuariosDireccion = new[]
+                {
+                    ROL_DIRECCION,
+                    "DirectorGeneral",
+                    ROL_JEFATURA,
+                    ROL_ADMIN
+                }
+                .SelectMany(rol => UsuarioDAO.ListarPorRol(rol) ?? new List<Usuario>())
+                .Where(usuario => usuario != null && usuario.Id > 0)
+                .GroupBy(usuario => usuario.Id)
+                .Select(grupo => grupo.First())
+                .ToList();
+
+            if (!usuariosDireccion.Any())
+            {
+                return false;
+            }
+
+            var numeroSolicitud = ObtenerNumeroSolicitudVisible(solicitud);
+            var compania = FirstNonEmpty(solicitud != null ? solicitud.RazonSocial : null, solicitud != null ? solicitud.NombreOperador : null, "No disponible");
+            var titulo = "Informe técnico pendiente de firma DIRDAC";
+            var mensaje = string.Format(
+                "La inspección #{0} de la solicitud {1} ({2}) ya fue firmada por el inspector y quedó disponible para firma institucional.",
+                inspeccion.CodigoInspeccion,
+                numeroSolicitud,
+                compania);
+            var url = "/Inspeccion/Detalle/" + inspeccion.CodigoInspeccion;
+
+            var enviado = false;
+            foreach (var usuario in usuariosDireccion)
+            {
+                try
+                {
+                    enviado = NotificacionBL.EnviarNotificacion(
+                        usuario.Id,
+                        titulo,
+                        mensaje,
+                        "INFO",
+                        url,
+                        "Inspeccion",
+                        inspeccion.CodigoInspeccion,
+                        "aocr_tbinspeccion") || enviado;
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning("[GestionInspeccion] Error enviando notificación interna DIRDAC. InspeccionId=" + inspeccion.CodigoInspeccion + ", UsuarioId=" + usuario.Id + ", Error=" + ex.Message);
+                }
+            }
+
+            return enviado;
+        }
+
+        private bool EsCertificadoDigitalValido(HttpPostedFileBase archivo, out string mensaje)
+        {
+            mensaje = string.Empty;
+            if (archivo == null || archivo.ContentLength <= 0)
+            {
+                mensaje = "Debe cargar un certificado digital en formato .p12 o .pfx.";
+                return false;
+            }
+
+            var extension = Path.GetExtension(archivo.FileName ?? string.Empty);
+            if (!string.Equals(extension, ".p12", StringComparison.OrdinalIgnoreCase)
+                && !string.Equals(extension, ".pfx", StringComparison.OrdinalIgnoreCase))
+            {
+                mensaje = "Solo se admiten certificados digitales .p12 o .pfx.";
+                return false;
+            }
+
+            if (archivo.ContentLength > 5 * 1024 * 1024)
+            {
+                mensaje = "El certificado digital supera el tamaño máximo permitido.";
+                return false;
+            }
+
+            return true;
+        }
+
+        private string ResolverRutaAbsolutaInforme(string rutaRelativa)
+        {
+            if (string.IsNullOrWhiteSpace(rutaRelativa))
+            {
+                return null;
+            }
+
+            var ruta = rutaRelativa.Trim();
+            if (!ruta.StartsWith("~"))
+            {
+                ruta = "~" + (ruta.StartsWith("/") ? ruta : "/" + ruta);
+            }
+
+            return Server.MapPath(ruta);
+        }
+
+        private void RegistrarAuditoriaInformeDigital(int codigoInspeccion, string estadoAnterior, string estadoNuevo, string rutaDocumento, string hashDocumento, string detalle, int usuarioId, string usuarioNombre, string origen)
+        {
+            try
+            {
+                var observacion = string.Format(
+                    "Documento={0}; Hash={1}; {2}",
+                    string.IsNullOrWhiteSpace(rutaDocumento) ? "N/D" : rutaDocumento,
+                    string.IsNullOrWhiteSpace(hashDocumento) ? "N/D" : hashDocumento,
+                    string.IsNullOrWhiteSpace(detalle) ? string.Empty : detalle);
+
+                _historialDAO.Registrar(
+                    codigoInspeccion,
+                    estadoAnterior,
+                    estadoNuevo,
+                    usuarioId,
+                    usuarioNombre,
+                    observacion,
+                    origen);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning("[GestionInspeccion] Error registrando auditoría de firma digital. InspeccionId=" + codigoInspeccion + ", Error=" + ex.Message);
+            }
+        }
+
+        private string ConstruirDetalleCorreoPendienteDirDac(Inspeccion inspeccion, SolicitudAOCR solicitud, InspeccionInformeTecnico informe)
+        {
+            var numeroSolicitud = ObtenerNumeroSolicitudVisible(solicitud);
+            var compania = FirstNonEmpty(solicitud != null ? solicitud.RazonSocial : null, solicitud != null ? solicitud.NombreOperador : null, "No disponible");
+            return string.Format(
+                "Solicitud: {0}. Compañía: {1}. Estado informe: {2}. Generado el: {3:dd/MM/yyyy HH:mm}. Enlace: {4}",
+                numeroSolicitud,
+                compania,
+                FirstNonEmpty(informe != null ? informe.EstadoInforme : null, "GENERADO"),
+                informe != null && informe.FechaFinalizacion.HasValue ? informe.FechaFinalizacion.Value : DateTime.Now,
+                ConstruirUrlDetalle(inspeccion.CodigoInspeccion));
+        }
+
+        private string ConstruirDetalleCorreoFirmaFinal(Inspeccion inspeccion, SolicitudAOCR solicitud, InspeccionInformeTecnico informe)
+        {
+            var numeroSolicitud = ObtenerNumeroSolicitudVisible(solicitud);
+            var compania = FirstNonEmpty(solicitud != null ? solicitud.RazonSocial : null, solicitud != null ? solicitud.NombreOperador : null, "No disponible");
+            return string.Format(
+                "Solicitud: {0}. Compañía: {1}. Fecha firma final: {2:dd/MM/yyyy HH:mm}. Firmado por: {3}. Hash documento: {4}. Enlace: {5}",
+                numeroSolicitud,
+                compania,
+                informe != null && informe.FechaFirma2.HasValue ? informe.FechaFirma2.Value : DateTime.Now,
+                FirstNonEmpty(informe != null ? informe.UsuarioFirma2 : null, ObtenerUsuarioActual()),
+                informe != null ? informe.HashDocumento : "N/D",
+                ConstruirUrlDetalle(inspeccion.CodigoInspeccion));
+        }
+
+        private string ObtenerNumeroSolicitudVisible(SolicitudAOCR solicitud)
+        {
+            if (solicitud == null)
+            {
+                return "DGAC-GOP-2026-AOCR0000";
+            }
+
+            return string.IsNullOrWhiteSpace(solicitud.NumeroSolicitud)
+                ? "DGAC-GOP-2026-AOCR" + solicitud.CodigoSolicitud
+                : solicitud.NumeroSolicitud.Trim();
+        }
+
+        private string ObtenerIpCliente()
+        {
+            try
+            {
+                var forwarded = Request != null ? Request.ServerVariables["HTTP_X_FORWARDED_FOR"] : null;
+                if (!string.IsNullOrWhiteSpace(forwarded))
+                {
+                    return forwarded.Split(',')[0].Trim();
+                }
+
+                return Request != null ? Request.UserHostAddress : "IP_NO_DISPONIBLE";
+            }
+            catch
+            {
+                return "IP_NO_DISPONIBLE";
+            }
+        }
+
         private string ConstruirUrlDetalle(int codigoInspeccion)
         {
             try
@@ -1404,6 +2228,73 @@ namespace CapaPresentacion.Controllers
             }
 
             return Url.Action("Detalle", "Inspeccion", new { id = codigoInspeccion }) ?? string.Empty;
+        }
+
+        private static string TomarCampoTexto(System.Collections.Specialized.NameValueCollection form, string key, int maxLen, string valorActual)
+        {
+            if (!TieneCampo(form, key))
+            {
+                return valorActual;
+            }
+
+            return LimpiarTextoLibre(form[key], maxLen);
+        }
+
+        private static string TomarServiciosEstaciones(System.Collections.Specialized.NameValueCollection form, string valorActual)
+        {
+            if (!TieneCampo(form, "serviciosEstacionesPresent"))
+            {
+                return valorActual;
+            }
+
+            var values = new Dictionary<string, string[]>();
+            foreach (var row in InformeTecnicoTemplateHelper.GetServicioRows(null))
+            {
+                values[row.Key] = new[]
+                {
+                    form["servicio_" + row.Key + "_uio"],
+                    form["servicio_" + row.Key + "_gye"],
+                    form["servicio_" + row.Key + "_mec"],
+                    form["servicio_" + row.Key + "_ltx"]
+                };
+            }
+
+            return InformeTecnicoTemplateHelper.SerializeServicioRows(values);
+        }
+
+        private static string TomarDocumentosAdjuntos(System.Collections.Specialized.NameValueCollection form, string valorActual)
+        {
+            if (!TieneCampo(form, "documentosAdjuntosPresent"))
+            {
+                return valorActual;
+            }
+
+            var seleccionados = form.GetValues("documentosAdjuntos");
+            return InformeTecnicoTemplateHelper.SerializeLines(seleccionados);
+        }
+
+        private static bool TieneCampo(System.Collections.Specialized.NameValueCollection form, string key)
+        {
+            if (form == null || string.IsNullOrWhiteSpace(key))
+            {
+                return false;
+            }
+
+            var keys = form.AllKeys;
+            if (keys == null)
+            {
+                return false;
+            }
+
+            for (var i = 0; i < keys.Length; i++)
+            {
+                if (string.Equals(keys[i], key, StringComparison.OrdinalIgnoreCase))
+                {
+                    return true;
+                }
+            }
+
+            return false;
         }
 
         private static string LimpiarTextoLibre(string valor, int maxLen)

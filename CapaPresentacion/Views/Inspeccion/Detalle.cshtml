@@ -1,6 +1,7 @@
 @inherits System.Web.Mvc.WebViewPage<CapaModelo.Inspeccion>
 @using CapaModelo
 @using CapaDatos.Constants
+@using CapaPresentacion.Helpers
 @using System.Web.Mvc
 @using System.Web.Mvc.Html
 @using System.Linq
@@ -8,8 +9,8 @@
 @{
     ViewBag.Title = "Detalle Inspeccion";
     Layout = "~/Views/Shared/_LayoutAOCR.cshtml";
-    var hallazgos = ViewBag.Hallazgos as IEnumerable<dynamic>;
-    var hallazgosLista = hallazgos != null ? hallazgos.ToList() : new List<dynamic>();
+    var hallazgos = ViewBag.Hallazgos as IEnumerable<Hallazgo>;
+    var hallazgosLista = hallazgos != null ? hallazgos.ToList() : new List<Hallazgo>();
     var historialEstados = ViewBag.HistorialEstados as IEnumerable<InspeccionHistorialEstado>;
     var historialLista = historialEstados != null ? historialEstados.ToList() : new List<InspeccionHistorialEstado>();
     var informeTecnico = ViewBag.InformeTecnico as InspeccionInformeTecnico;
@@ -62,7 +63,12 @@
             ? inspectorApoyoNombre
             : (inspectorApoyoNombre + " - " + inspectorApoyoCedula))
         : (!string.IsNullOrWhiteSpace(inspectorApoyoCedula) ? inspectorApoyoCedula : "No asignado");
-    var tieneInforme = Model != null && !string.IsNullOrWhiteSpace(Model.RutaInforme);
+    var rutaInformeVisual = !string.IsNullOrWhiteSpace(informeTecnico != null ? informeTecnico.RutaDocumentoFirmado : null)
+        ? informeTecnico.RutaDocumentoFirmado
+        : (!string.IsNullOrWhiteSpace(Model != null ? Model.RutaInforme : null)
+            ? Model.RutaInforme
+            : (informeTecnico != null ? informeTecnico.RutaPdf : null));
+    var tieneInforme = !string.IsNullOrWhiteSpace(rutaInformeVisual);
     var estadoActualNormalizado = EstadosInspeccion.NormalizarEstado(estadoActual);
     var estadosPermitidosDesdeActual = EstadosInspeccion.ObtenerEstadosPermitidos(estadoActualNormalizado);
     Func<string, bool> usuarioTieneRol = rol => User != null && User.IsInRole(rol);
@@ -81,10 +87,7 @@
         "JefaturaTecnica",
         "Jefe",
         "Direccion",
-        "Director",
-        "Legal",
-        "CoordinacionLegal",
-        "CoordinadorLegal"
+        "Director"
     };
     var esAdministrador = usuarioTieneRol("Administrador");
     var esInspector = usuarioTieneRol("Inspector");
@@ -100,7 +103,29 @@
     var puedeObservacionDocumental = puedeGestionarInspector && transicionPermitida(EstadosInspeccion.OBSERVACION_DOCUMENTAL);
     var hayAccionesCoordinacionDisponibles = puedeVerificacion || puedeAceptarSolicitud || puedeObservar || puedeSubsanada || puedeCerrar;
     var hayAccionesInspectorDisponibles = puedeIniciarInspeccion || puedeInformeElaborado || puedeObservacionDocumental;
-    var puedePlanificar = puedeGestionarCoordinacion;
+    var mostrarBloqueCoordinacionDetalle = false;
+    var mostrarAvisoCoordinacionDetalle = puedeGestionarCoordinacion && !esInspector;
+    var mostrarBloqueInspectorDetalle = esInspector || (esAdministrador && EstadosInspeccion.EsEstadoBloqueInspector(estadoActualNormalizado));
+    var mostrarAccionesCierreDetalle = false;
+    var urlRevisionVerificacion = Url.Action("RevisionVerificacion", "CoordinacionJefatura");
+    var puedeDerivarAsignacionInspector = puedeGestionarCoordinacion
+        && Model != null
+        && Model.CodigoSolicitud > 0
+        && (string.Equals(estadoActualNormalizado, EstadosInspeccion.ACEPTADA, System.StringComparison.OrdinalIgnoreCase)
+            || string.Equals(estadoActualNormalizado, EstadosInspeccion.SUBSANADA, System.StringComparison.OrdinalIgnoreCase)
+            || string.Equals(estadoActualNormalizado, EstadosInspeccion.PAGO_VALIDADO, System.StringComparison.OrdinalIgnoreCase));
+    var urlAsignarInspectorDetalle = puedeDerivarAsignacionInspector
+        ? Url.Action("AsignarInspector", "Tecnico", new { solicitudId = Model.CodigoSolicitud })
+        : string.Empty;
+    var mensajeCoordinacionDetalle = string.Equals(estadoActualNormalizado, EstadosInspeccion.VERIFICACION_SOLICITUD, System.StringComparison.OrdinalIgnoreCase)
+        ? "La verificacion institucional de esta solicitud se ejecuta desde la bandeja de Direccion / Jefatura. Alli se concentran las decisiones de aceptar, observar o cerrar sin duplicar acciones en la pantalla operativa de inspeccion."
+        : (string.Equals(estadoActualNormalizado, EstadosInspeccion.ACEPTADA, System.StringComparison.OrdinalIgnoreCase)
+            ? "La solicitud ya fue aceptada. El siguiente paso institucional es asignar inspector o revisar el avance desde Direccion / Jefatura."
+            : "Las decisiones institucionales de este tramite se controlan desde Direccion / Jefatura para mantener una sola trazabilidad operativa por rol y estado.");
+    var mensajeInspectorSinAcciones = EstadosInspeccion.EsEstadoBloqueCoordinacionJefatura(estadoActualNormalizado)
+        ? "El tramite se encuentra en etapa de verificacion por Direccion / Jefatura. Aun no existen acciones disponibles para el Inspector."
+        : "No existen acciones operativas disponibles para el Inspector en la etapa actual del tramite.";
+    var puedePlanificar = esAdministrador || usuarioTieneRol("CoordinadorInspecciones");
     var puedeSubirInforme = User.IsInRole("Inspector") || User.IsInRole("Administrador");
     var puedeSolicitarViaticos = esInspector || puedeGestionarCoordinacion;
     var puedeValidarViaticos = User.IsInRole("CoordinadorFinanciero") || User.IsInRole("DirectorFinanciero") || User.IsInRole("Administrador");
@@ -109,9 +134,42 @@
     var puedeEditarInformeTecnico = esInspector || puedeGestionarCoordinacion;
     var puedeSubirCorreccionSolicitante = User.IsInRole("Solicitante") || User.IsInRole("Administrador");
     var esSolicitante = User.IsInRole("Solicitante");
+    var esDirdac = esAdministrador || usuarioTieneAlgunRol(new[] { "Direccion", "Director", "JefaturaTecnica", "Jefe" });
+    var estadoInformeTecnico = informeTecnico != null && !string.IsNullOrWhiteSpace(informeTecnico.EstadoInforme)
+        ? informeTecnico.EstadoInforme
+        : (informeTecnico != null && informeTecnico.Finalizado ? "GENERADO" : "BORRADOR");
+    var puedeFirmarInspector = puedeEditarInformeTecnico && informeTecnico != null && informeTecnico.Finalizado && !informeTecnico.FirmadoInspector;
+    var informeEnviadoADirdac = informeTecnico != null && string.Equals(estadoInformeTecnico, "ENVIADO_A_DIRDAC", System.StringComparison.OrdinalIgnoreCase);
+    var notificacionFormalDirdac = informeTecnico != null && informeEnviadoADirdac && informeTecnico.CorreoEnviado;
+    var puedeEnviarADirdac = puedeEditarInformeTecnico && informeTecnico != null && informeTecnico.Finalizado && informeTecnico.FirmadoInspector && !informeEnviadoADirdac && !informeTecnico.FirmadoDirdac;
+    var puedeReintentarNotificacionDirdac = puedeEditarInformeTecnico && informeTecnico != null && informeTecnico.Finalizado && informeTecnico.FirmadoInspector && informeEnviadoADirdac && !notificacionFormalDirdac && !informeTecnico.FirmadoDirdac;
+    var puedeFirmarDirdac = esDirdac && informeTecnico != null && informeTecnico.FirmadoInspector && !informeTecnico.FirmadoDirdac && string.Equals(estadoInformeTecnico, "ENVIADO_A_DIRDAC", System.StringComparison.OrdinalIgnoreCase);
     var correoSolicitante = solicitud != null && !string.IsNullOrWhiteSpace(solicitud.CorreoRepresentanteTecnico)
         ? solicitud.CorreoRepresentanteTecnico
         : (solicitud != null ? solicitud.Email : "-");
+    var numeroInspeccionVisual = Model != null
+        ? (!string.IsNullOrWhiteSpace(Model.NumeroInspeccion) ? Model.NumeroInspeccion : Model.CodigoInspeccion.ToString())
+        : "-";
+    var operadorInspeccionado = solicitud != null
+        ? (!string.IsNullOrWhiteSpace(solicitud.RazonSocial)
+            ? solicitud.RazonSocial
+            : (!string.IsNullOrWhiteSpace(solicitud.NombreOperador) ? solicitud.NombreOperador : "-"))
+        : "-";
+    var serviciosEstacionesInforme = InformeTecnicoTemplateHelper.GetServicioRows(informeTecnico != null ? informeTecnico.ServiciosEstaciones : null);
+    var documentosAdjuntosBase = InformeTecnicoTemplateHelper.GetDocumentosAdjuntosBase();
+    var documentosAdjuntosSeleccionados = InformeTecnicoTemplateHelper.SplitLines(informeTecnico != null ? informeTecnico.DocumentosAdjuntos : null);
+    var numeroLicenciaInspector = informeTecnico != null && !string.IsNullOrWhiteSpace(informeTecnico.NumeroLicenciaInspector)
+        ? informeTecnico.NumeroLicenciaInspector
+        : (!string.IsNullOrWhiteSpace(inspectorPrincipalCedula) ? inspectorPrincipalCedula : string.Empty);
+    var trabajosRealizadosInforme = informeTecnico != null && !string.IsNullOrWhiteSpace(informeTecnico.TrabajosRealizados)
+        ? informeTecnico.TrabajosRealizados
+        : (informeTecnico != null ? informeTecnico.Resumen : string.Empty);
+    var operacionComercialInforme = informeTecnico != null ? informeTecnico.OperacionComercial : string.Empty;
+    var notasInforme = informeTecnico != null ? informeTecnico.Notas : string.Empty;
+    var noConformidadesInforme = informeTecnico != null && !string.IsNullOrWhiteSpace(informeTecnico.NoConformidades)
+        ? informeTecnico.NoConformidades
+        : (informeTecnico != null ? informeTecnico.Observaciones : string.Empty);
+    var otrosAdjuntosInforme = informeTecnico != null ? informeTecnico.OtrosAdjuntos : string.Empty;
 }
 
 @section Styles {
@@ -227,6 +285,65 @@
             font-size: 1rem;
             font-weight: 800;
             color: #fff;
+        }
+
+        .inspection-detail-page .inspection-doc-note {
+            margin-top: 0.35rem;
+            color: var(--inspection-muted);
+            font-size: 0.82rem;
+        }
+
+        .inspection-detail-page .inspection-services-table {
+            margin-bottom: 0;
+            font-size: 0.92rem;
+        }
+
+        .inspection-detail-page .inspection-services-table th,
+        .inspection-detail-page .inspection-services-table td {
+            vertical-align: middle;
+        }
+
+        .inspection-detail-page .inspection-services-table td:not(:first-child) {
+            text-align: center;
+        }
+
+        .inspection-detail-page .inspection-services-table .service-check {
+            width: 18px;
+            height: 18px;
+            accent-color: var(--inspection-primary);
+        }
+
+        .inspection-detail-page .inspection-checklist {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 0.75rem 1.25rem;
+        }
+
+        .inspection-detail-page .inspection-check {
+            display: flex;
+            align-items: flex-start;
+            gap: 0.55rem;
+            padding: 0.75rem 0.95rem;
+            border: 1px solid var(--inspection-border);
+            border-radius: 16px;
+            background: #fff;
+        }
+
+        .inspection-detail-page .inspection-check input {
+            margin-top: 0.2rem;
+        }
+
+        .inspection-detail-page .inspection-check strong {
+            display: block;
+            color: var(--inspection-primary-dark);
+            font-size: 0.9rem;
+        }
+
+        .inspection-detail-page .inspection-check span {
+            display: block;
+            color: var(--inspection-muted);
+            font-size: 0.8rem;
+            margin-top: 0.15rem;
         }
 
         .inspection-detail-page .status-strip {
@@ -687,8 +804,8 @@
                             <span class="hero-metric-value">@(informeTecnico != null ? informeTecnico.Version.ToString() : "0")</span>
                         </div>
                         <div class="hero-metric">
-                            <span class="hero-metric-label">Correo enviado</span>
-                            <span class="hero-metric-value">@(informeTecnico != null && informeTecnico.CorreoEnviado ? "SI" : "NO")</span>
+                            <span class="hero-metric-label">DIRDAC formalmente notificado</span>
+                            <span class="hero-metric-value">@(informeTecnico == null ? "NO" : (notificacionFormalDirdac ? "SI" : (informeEnviadoADirdac ? "PENDIENTE" : "NO")))</span>
                         </div>
                     </div>
                 }
@@ -703,6 +820,11 @@
         @if (TempData["Error"] != null)
         {
             <div class="alert alert-danger alert-inline mb-4">@TempData["Error"]</div>
+        }
+
+        @if (TempData["Warning"] != null)
+        {
+            <div class="alert alert-warning alert-inline mb-4">@TempData["Warning"]</div>
         }
 
         <div class="status-strip">
@@ -794,7 +916,32 @@
                         </div>
                     </div>
 
-                                        @if (puedeGestionarCoordinacion)
+                    @if (mostrarAvisoCoordinacionDetalle)
+                    {
+                        <div class="alert alert-info mb-3" role="alert">
+                            <strong>Gestion institucional centralizada en Direccion / Jefatura.</strong>
+                            <div class="mt-2">@mensajeCoordinacionDetalle</div>
+                            <div class="d-flex flex-wrap gap-3 mt-3 small">
+                                <span><strong>Solicitud:</strong> @(solicitud != null && !string.IsNullOrWhiteSpace(solicitud.NumeroSolicitud) ? solicitud.NumeroSolicitud : (Model != null ? Model.CodigoSolicitud.ToString() : "-"))</span>
+                                <span><strong>Compania:</strong> @operadorInspeccionado</span>
+                                <span><strong>Estado actual:</strong> @estadoActualNormalizado</span>
+                                <span><strong>Inspector:</strong> @inspectorPrincipal</span>
+                            </div>
+                            <div class="d-flex flex-wrap gap-2 mt-3">
+                                <a href="@urlRevisionVerificacion" class="btn btn-sm btn-outline-primary">
+                                    <i class="fas fa-search"></i> Abrir Revisión / Verificación
+                                </a>
+                                @if (puedeDerivarAsignacionInspector)
+                                {
+                                    <a href="@urlAsignarInspectorDetalle" class="btn btn-sm btn-outline-secondary">
+                                        <i class="fas fa-user-check"></i> Asignar inspector
+                                    </a>
+                                }
+                            </div>
+                        </div>
+                    }
+
+                    @if (mostrarBloqueCoordinacionDetalle)
                     {
                         <div class="mb-3">
                             <div class="mb-2"><span class="status-pill primary"><i class="fas fa-user-shield"></i> COORDINACION Y JEFATURA</span></div>
@@ -857,7 +1004,7 @@
                         </div>
                     }
 
-                    @if (puedeGestionarInspector)
+                    @if (mostrarBloqueInspectorDetalle)
                     {
                         <div>
                             <div class="mb-2"><span class="status-pill warning"><i class="fas fa-user-check"></i> OPERACION DE INSPECTOR</span></div>
@@ -895,7 +1042,7 @@
                             </div>
                             @if (!hayAccionesInspectorDisponibles)
                             {
-                                <small class="text-muted d-block mt-2">No hay transiciones habilitadas para inspector desde el estado actual (@estadoActualNormalizado).</small>
+                                <small class="text-muted d-block mt-2">@mensajeInspectorSinAcciones</small>
                             }
                         </div>
                     }
@@ -911,7 +1058,7 @@
                         </div>
                         <div>
                             <h2 class="section-title">Informe tecnico</h2>
-                            <p class="section-copy">Redaccion estructurada del informe, generacion automatica de PDF y notificacion al solicitante.</p>
+                            <p class="section-copy">Redacción estructurada del informe, generación automática del PDF y flujo formal de firma digital hasta DIRDAC.</p>
                         </div>
                     </div>
 
@@ -921,46 +1068,137 @@
                         {
                             @Html.AntiForgeryToken()
                             @Html.Hidden("id", Model.CodigoInspeccion)
+                            @Html.Hidden("titulo", string.IsNullOrWhiteSpace(informeTecnico != null ? informeTecnico.Titulo : null) ? "Informe de inspeccion" : informeTecnico.Titulo)
 
                             <div class="detail-grid mb-3">
                                 <div class="detail-item">
-                                    <label class="detail-label">Título del informe</label>
-                                    <input type="text" class="form-control" name="titulo" value="@(informeTecnico != null ? informeTecnico.Titulo : string.Empty)" placeholder="Informe técnico de inspección AOCR" />
+                                    <label class="detail-label">Orden de inspección</label>
+                                    <input type="text" class="form-control" value="@numeroInspeccionVisual" readonly />
                                 </div>
                                 <div class="detail-item">
-                                    <label class="detail-label">Resultado técnico</label>
+                                    <label class="detail-label">Operador inspeccionado</label>
+                                    <input type="text" class="form-control" value="@operadorInspeccionado" readonly />
+                                </div>
+                                <div class="detail-item">
+                                    <label class="detail-label">Inspector DGAC</label>
+                                    <input type="text" class="form-control" value="@inspectorPrincipal" readonly />
+                                </div>
+                                <div class="detail-item">
+                                    <label class="detail-label">Fecha programada</label>
+                                    <input type="text" class="form-control" value="@fechaProgramada" readonly />
+                                </div>
+                            </div>
+
+                            <div class="detail-grid mb-3">
+                                <div class="detail-item">
+                                    <label class="detail-label">No. licencia inspector</label>
+                                    <input type="text" class="form-control" name="numeroLicenciaInspector" value="@numeroLicenciaInspector" placeholder="Licencia o identificacion del inspector" />
+                                </div>
+                                <div class="detail-item">
+                                    <label class="detail-label">Resultado tecnico</label>
                                     <select name="resultado" class="form-control result-select" required>
                                         <option value="" @(string.IsNullOrWhiteSpace(informeTecnico != null ? informeTecnico.Resultado : null) ? "selected" : null) disabled>Seleccione</option>
                                         <option value="SATISFACTORIO" @(string.Equals(informeTecnico != null ? informeTecnico.Resultado : null, "SATISFACTORIO", System.StringComparison.OrdinalIgnoreCase) ? "selected" : null)>Satisfactorio</option>
-                                        <option value="NO_SATISFACTORIO" @(string.Equals(informeTecnico != null ? informeTecnico.Resultado : null, "NO_SATISFACTORIO", System.StringComparison.OrdinalIgnoreCase) ? "selected" : null)>No satisfactorio</option>
-                                        <option value="OBSERVACION_DOCUMENTAL" @(string.Equals(informeTecnico != null ? informeTecnico.Resultado : null, "OBSERVACION_DOCUMENTAL", System.StringComparison.OrdinalIgnoreCase) ? "selected" : null)>Observación documental</option>
+                                        <option value="NO_SATISFACTORIO" @(string.Equals(informeTecnico != null ? informeTecnico.Resultado : null, "NO_SATISFACTORIO", System.StringComparison.OrdinalIgnoreCase) ? "selected" : null)>Insatisfactorio</option>
+                                        <option value="OBSERVACION_DOCUMENTAL" @(string.Equals(informeTecnico != null ? informeTecnico.Resultado : null, "OBSERVACION_DOCUMENTAL", System.StringComparison.OrdinalIgnoreCase) ? "selected" : null)>Observacion documental</option>
                                     </select>
                                 </div>
                             </div>
 
                             <div class="mb-3">
-                                <label class="detail-label">Resumen ejecutivo</label>
-                                <textarea class="form-control" name="resumen" rows="4" placeholder="Síntesis de la inspección, alcance y verificación realizada.">@(informeTecnico != null ? informeTecnico.Resumen : string.Empty)</textarea>
+                                <label class="detail-label">1. Trabajos realizados</label>
+                                <textarea class="form-control" name="trabajosRealizados" rows="5" placeholder="Redacte el cuerpo del numeral 1 del anexo: fecha, estaciones inspeccionadas, compañía verificada, facilidades, personal técnico y alcance de la verificación.">@trabajosRealizadosInforme</textarea>
+                                <div class="inspection-doc-note">Este bloque alimenta el párrafo principal del anexo antes de la matriz UIO / GYE / MEC / LTX.</div>
+                            </div>
+
+                            <div class="detail-grid mb-3">
+                                <div class="detail-item">
+                                    <label class="detail-label">Operación comercial</label>
+                                    <input type="text" class="form-control" name="operacionComercial" value="@operacionComercialInforme" placeholder="Operación comercial de la compañía inspeccionada" />
+                                </div>
+                                <div class="detail-item">
+                                    <label class="detail-label">Anexo</label>
+                                    <input type="text" class="form-control" value="ANEXO 1 - INFORME DE INSPECCIÓN" readonly />
+                                </div>
                             </div>
 
                             <div class="mb-3">
-                                <label class="detail-label">Observaciones</label>
-                                <textarea class="form-control" name="observaciones" rows="4" placeholder="Observaciones técnicas, hallazgos y desviaciones detectadas.">@(informeTecnico != null ? informeTecnico.Observaciones : string.Empty)</textarea>
+                                <label class="detail-label">Cobertura por estación</label>
+                                <input type="hidden" name="serviciosEstacionesPresent" value="true" />
+                                <div class="table-responsive">
+                                    <table class="table table-bordered inspection-services-table">
+                                        <thead>
+                                            <tr>
+                                                <th>Servicio / responsabilidad</th>
+                                                <th class="text-center">UIO</th>
+                                                <th class="text-center">GYE</th>
+                                                <th class="text-center">MEC</th>
+                                                <th class="text-center">LTX</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            @foreach (var fila in serviciosEstacionesInforme)
+                                            {
+                                                <tr>
+                                                    <td>@fila.Label</td>
+                                                    <td><input type="checkbox" class="service-check" name="@("servicio_" + fila.Key + "_uio")" value="X" @(!string.IsNullOrWhiteSpace(fila.Uio) ? "checked" : null) /></td>
+                                                    <td><input type="checkbox" class="service-check" name="@("servicio_" + fila.Key + "_gye")" value="X" @(!string.IsNullOrWhiteSpace(fila.Gye) ? "checked" : null) /></td>
+                                                    <td><input type="checkbox" class="service-check" name="@("servicio_" + fila.Key + "_mec")" value="X" @(!string.IsNullOrWhiteSpace(fila.Mec) ? "checked" : null) /></td>
+                                                    <td><input type="checkbox" class="service-check" name="@("servicio_" + fila.Key + "_ltx")" value="X" @(!string.IsNullOrWhiteSpace(fila.Ltx) ? "checked" : null) /></td>
+                                                </tr>
+                                            }
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+
+                            <div class="detail-grid mb-3">
+                                <div class="detail-item">
+                                    <label class="detail-label">Notas</label>
+                                    <textarea class="form-control" name="notas" rows="5" placeholder="Ingrese una nota por línea para que se muestre como viñeta en el PDF.">@notasInforme</textarea>
+                                </div>
+                                <div class="detail-item">
+                                    <label class="detail-label">No conformidades</label>
+                                    <textarea class="form-control" name="noConformidades" rows="5" placeholder="Ingrese una no conformidad por línea.">@noConformidadesInforme</textarea>
+                                </div>
                             </div>
 
                             <div class="mb-3">
-                                <label class="detail-label">Conclusiones</label>
-                                <textarea class="form-control" name="conclusiones" rows="3" placeholder="Conclusión técnica del equipo inspector.">@(informeTecnico != null ? informeTecnico.Conclusiones : string.Empty)</textarea>
+                                <label class="detail-label">2. Conclusión</label>
+                                <textarea class="form-control" name="conclusiones" rows="3" placeholder="Describa la conclusión del informe técnico.">@(informeTecnico != null ? informeTecnico.Conclusiones : string.Empty)</textarea>
                             </div>
 
                             <div class="mb-3">
-                                <label class="detail-label">Recomendaciones</label>
-                                <textarea class="form-control" name="recomendaciones" rows="3" placeholder="Acciones recomendadas para cierre o subsanación.">@(informeTecnico != null ? informeTecnico.Recomendaciones : string.Empty)</textarea>
+                                <label class="detail-label">3. Recomendaciones</label>
+                                <textarea class="form-control" name="recomendaciones" rows="4" placeholder="Ingrese una recomendación por línea.">@(informeTecnico != null ? informeTecnico.Recomendaciones : string.Empty)</textarea>
+                            </div>
+
+                            <div class="mb-3">
+                                <label class="detail-label">Documentos adjuntos</label>
+                                <input type="hidden" name="documentosAdjuntosPresent" value="true" />
+                                <div class="inspection-checklist">
+                                    @foreach (var adjunto in documentosAdjuntosBase)
+                                    {
+                                        var estaSeleccionado = documentosAdjuntosSeleccionados.Any(item => string.Equals(item, adjunto, System.StringComparison.OrdinalIgnoreCase));
+                                        <label class="inspection-check">
+                                            <input type="checkbox" name="documentosAdjuntos" value="@adjunto" @(estaSeleccionado ? "checked" : null) />
+                                            <div>
+                                                <strong>@adjunto</strong>
+                                                <span>Se mostrará en la hoja de adjuntos del PDF.</span>
+                                            </div>
+                                        </label>
+                                    }
+                                </div>
+                            </div>
+
+                            <div class="mb-3">
+                                <label class="detail-label">Otros documentos adjuntos</label>
+                                <textarea class="form-control" name="otrosAdjuntos" rows="3" placeholder="Ingrese otros documentos, uno por línea.">@otrosAdjuntosInforme</textarea>
                             </div>
 
                             <div class="button-flow mb-3">
                                 <button type="submit" class="btn btn-outline-primary">Guardar borrador</button>
-                                <button type="submit" class="btn btn-primary" name="finalizar" value="true">Finalizar informe, generar PDF y notificar</button>
+                                <button type="submit" class="btn btn-primary" name="finalizar" value="true">Finalizar informe y generar PDF</button>
                             </div>
                         }
                     }
@@ -969,8 +1207,8 @@
                     {
                         <div class="report-pdf-bar d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-3">
                             <div>
-                                <span class="report-pdf-title">Informe cargado</span>
-                                <div class="report-pdf-path">@Model.RutaInforme</div>
+                                <span class="report-pdf-title">Documento disponible para revisión / firma</span>
+                                <div class="report-pdf-path">@rutaInformeVisual</div>
                             </div>
                             <a class="btn btn-ver-pdf"
                                href="@Url.Action("VerInforme", "Inspeccion", new { id = Model.CodigoInspeccion })"
@@ -985,16 +1223,117 @@
                     }
 
                     <div class="alert alert-info alert-inline mb-0">
-                        El informe PDF se genera automáticamente al guardar o finalizar el informe técnico.
+                        El informe PDF se genera automáticamente al finalizar el informe. La firma digital se aplica después sobre ese PDF, sin modificar la generación base.
                     </div>
 
                     @if (informeTecnico != null)
                     {
                         <div class="alert alert-light alert-inline mt-3 mb-0">
                             <strong>Versión actual del informe:</strong> @informeTecnico.Version
-                            <span class="ms-3"><strong>Estado:</strong> @(informeTecnico.Finalizado ? "Finalizado" : "Borrador")</span>
-                            <span class="ms-3"><strong>Correo:</strong> @(informeTecnico.CorreoEnviado ? "Enviado" : "Pendiente")</span>
+                            <span class="ms-3"><strong>Estado documento:</strong> @estadoInformeTecnico</span>
+                            <span class="ms-3"><strong>DIRDAC:</strong> @(notificacionFormalDirdac ? "Notificado" : (informeEnviadoADirdac ? "En bandeja / correo pendiente" : "Pendiente"))</span>
+                            <span class="ms-3"><strong>Firma inspector:</strong> @(informeTecnico.FirmadoInspector ? "Aplicada" : "Pendiente")</span>
+                            <span class="ms-3"><strong>Firma DIRDAC:</strong> @(informeTecnico.FirmadoDirdac ? "Aplicada" : "Pendiente")</span>
                         </div>
+
+                        if (puedeReintentarNotificacionDirdac)
+                        {
+                            <div class="alert alert-warning alert-inline mt-3 mb-0">
+                                El documento ya fue transferido a la bandeja de DIRDAC, pero la notificación formal por correo sigue pendiente. Puede reintentar el envío sin duplicar la transición de estado.
+                            </div>
+                        }
+
+                        <div class="detail-grid mt-3">
+                            <div class="detail-item">
+                                <span class="detail-label">Hash del documento</span>
+                                <div class="detail-value">@(!string.IsNullOrWhiteSpace(informeTecnico.HashDocumento) ? informeTecnico.HashDocumento : "Pendiente")</div>
+                            </div>
+                            <div class="detail-item">
+                                <span class="detail-label">Inspector firmante</span>
+                                <div class="detail-value">@(!string.IsNullOrWhiteSpace(informeTecnico.UsuarioFirma1) ? informeTecnico.UsuarioFirma1 : "Pendiente")</div>
+                            </div>
+                            <div class="detail-item">
+                                <span class="detail-label">Fecha firma inspector</span>
+                                <div class="detail-value">@(informeTecnico.FechaFirma1.HasValue ? informeTecnico.FechaFirma1.Value.ToString("yyyy-MM-dd HH:mm") : "Pendiente")</div>
+                            </div>
+                            <div class="detail-item">
+                                <span class="detail-label">Fecha envío DIRDAC</span>
+                                <div class="detail-value">@(informeTecnico.FechaEnvioDirdac.HasValue ? informeTecnico.FechaEnvioDirdac.Value.ToString("yyyy-MM-dd HH:mm") : "Pendiente")</div>
+                            </div>
+                            <div class="detail-item">
+                                <span class="detail-label">Usuario envío DIRDAC</span>
+                                <div class="detail-value">@(!string.IsNullOrWhiteSpace(informeTecnico.UsuarioEnvioDirdac) ? informeTecnico.UsuarioEnvioDirdac : "Pendiente")</div>
+                            </div>
+                            <div class="detail-item">
+                                <span class="detail-label">Firmante DIRDAC</span>
+                                <div class="detail-value">@(!string.IsNullOrWhiteSpace(informeTecnico.UsuarioFirma2) ? informeTecnico.UsuarioFirma2 : "Pendiente")</div>
+                            </div>
+                            <div class="detail-item">
+                                <span class="detail-label">Fecha firma DIRDAC</span>
+                                <div class="detail-value">@(informeTecnico.FechaFirma2.HasValue ? informeTecnico.FechaFirma2.Value.ToString("yyyy-MM-dd HH:mm") : "Pendiente")</div>
+                            </div>
+                        </div>
+
+                        if (puedeFirmarInspector)
+                        {
+                            using (Html.BeginForm("FirmarInformeInspector", "Inspeccion", FormMethod.Post, new { enctype = "multipart/form-data", @class = "upload-panel mt-3" }))
+                            {
+                                @Html.AntiForgeryToken()
+                                @Html.Hidden("id", Model.CodigoInspeccion)
+                                <div class="compact-form">
+                                    <div class="form-field">
+                                        <label>Certificado inspector (.p12 / .pfx)</label>
+                                        <input type="file" name="CertificadoInspector" class="form-control" accept=".p12,.pfx" required />
+                                    </div>
+                                    <div class="form-field">
+                                        <label>Contraseña del certificado</label>
+                                        <input type="password" name="passwordCertificado" class="form-control" autocomplete="off" required />
+                                    </div>
+                                    <div>
+                                        <button type="submit" class="btn btn-outline-success">Firmar Informe</button>
+                                    </div>
+                                </div>
+                            }
+                        }
+
+                        if (puedeEnviarADirdac || puedeReintentarNotificacionDirdac)
+                        {
+                            using (Html.BeginForm("EnviarADirdac", "Inspeccion", FormMethod.Post, new { @class = "mt-3" }))
+                            {
+                                @Html.AntiForgeryToken()
+                                @Html.Hidden("id", Model.CodigoInspeccion)
+                                <button type="submit" class="btn btn-outline-primary">@(puedeReintentarNotificacionDirdac ? "Reintentar notificación a Dirección" : "Enviar a Dirección")</button>
+                            }
+                        }
+
+                        if (puedeFirmarDirdac)
+                        {
+                            using (Html.BeginForm("FirmarInformeDirdac", "Inspeccion", FormMethod.Post, new { enctype = "multipart/form-data", @class = "upload-panel mt-3" }))
+                            {
+                                @Html.AntiForgeryToken()
+                                @Html.Hidden("id", Model.CodigoInspeccion)
+                                <div class="compact-form">
+                                    <div class="form-field">
+                                        <label>Certificado DIRDAC (.p12 / .pfx)</label>
+                                        <input type="file" name="CertificadoDirdac" class="form-control" accept=".p12,.pfx" required />
+                                    </div>
+                                    <div class="form-field">
+                                        <label>Contraseña del certificado</label>
+                                        <input type="password" name="passwordCertificado" class="form-control" autocomplete="off" required />
+                                    </div>
+                                    <div>
+                                        <button type="submit" class="btn btn-primary">Firmar Documento (DIRDAC)</button>
+                                    </div>
+                                </div>
+                            }
+                        }
+
+                        if (esDirdac)
+                        {
+                            <div class="action-footer mt-3">
+                                <a class="btn btn-outline-dark" href="@Url.Action("PendientesFirmaDirdac", "Inspeccion")">Ver documentos pendientes DIRDAC</a>
+                            </div>
+                        }
                     }
                 </div>
             </div>
@@ -1235,7 +1574,7 @@
                                 foreach (var h in hallazgosLista)
                                 {
                                     <tr>
-                                        <td>@(h.Severidad ?? "-")</td>
+                                        <td>@(h.Criticidad ?? "-")</td>
                                         <td>@(h.Descripcion ?? "-")</td>
                                         <td>@(h.Estado ?? "-")</td>
                                     </tr>
@@ -1263,7 +1602,7 @@
                 </a>
             }
 
-            @if (puedeCerrar)
+            @if (mostrarAccionesCierreDetalle && puedeCerrar)
             {
                 using (Html.BeginForm("Cerrar", "Inspeccion", FormMethod.Post, new { @class = "button-flow" }))
                 {
@@ -1272,6 +1611,14 @@
                     <button type="submit" name="resultado" value="APROBADO" class="btn btn-success">Aprobar</button>
                     <button type="submit" name="resultado" value="RECHAZADO" class="btn btn-danger">Rechazar</button>
                 }
+            }
+            else if (puedeGestionarCoordinacion && !esInspector && puedeCerrar)
+            {
+                <div class="alert alert-info mb-0" role="alert">
+                    El cierre institucional de esta inspeccion se ejecuta desde
+                    <a href="@Url.Action("RevisionVerificacion", "CoordinacionJefatura")" class="alert-link">Direccion / Jefatura</a>
+                    para mantener una sola bandeja de decision y trazabilidad.
+                </div>
             }
         </div>
     </div>

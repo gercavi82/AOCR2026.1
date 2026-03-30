@@ -149,6 +149,7 @@
     <Compile Include="Services\DashboardOrdenesService.cs" />
     <Compile Include="Services\EstadoOrdenService.cs" />
     <Compile Include="Services\AuditoriaService.cs" />
+    <Compile Include="Services\FirmaDigitalService.cs" />
     <Compile Include="Services\InspeccionService.cs" />
     <Compile Include="Services\InspeccionCorreoService.cs" />
     <Compile Include="Services\InspeccionWorkflowService.cs" />

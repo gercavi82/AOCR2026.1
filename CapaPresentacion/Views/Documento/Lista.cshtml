@@ -10,6 +10,9 @@
     ViewBag.Title = "Documentos de la Solicitud AOCR";
     Layout = "~/Views/Shared/_LayoutAOCR.cshtml";
 
+    var solicitudIdRaw = ViewData["SolicitudId"] ?? ViewBag.SolicitudId;
+    var solicitudIdTexto = solicitudIdRaw != null ? solicitudIdRaw.ToString() : string.Empty;
+
     var stats = (ViewBag.Stats as IDictionary<string, object>)
                 ?? (ViewBag.Estadisticas as IDictionary<string, object>)
                 ?? new Dictionary<string, object>();
@@ -34,7 +37,7 @@
 }
 
 @Html.Partial("_PageHeader", null, new ViewDataDictionary {
-    { "Title", "Documentos de la Solicitud (#" + ViewBag.SolicitudId + ")" },
+    { "Title", string.IsNullOrWhiteSpace(solicitudIdTexto) ? "Documentos de la Solicitud" : "Documentos de la Solicitud (#" + solicitudIdTexto + ")" },
     { "Subtitle", "Archivos cargados para esta solicitud AOCR" }
 })
 
@@ -55,7 +58,7 @@
 </div>
 
 @Html.Partial("_ActionToolbar", null, new ViewDataDictionary {
-    { "VolverUrl", Url.Action("Detalle", "SolicitudAOCR", new { id = ViewBag.SolicitudId }) }
+    { "VolverUrl", string.IsNullOrWhiteSpace(solicitudIdTexto) ? Url.Action("Index", "SolicitudAOCR") : Url.Action("Detalle", "SolicitudAOCR", new { id = solicitudIdTexto }) }
 })
 
 <div class="mb-3">

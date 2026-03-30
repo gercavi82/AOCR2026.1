@@ -10,9 +10,28 @@
     var viewModel = Model ?? new CapaPresentacion.Models.CoordinacionJefaturaRevisionViewModel();
     var solicitudesControl = viewModel.SolicitudesControlDocumental ?? new List<SolicitudAOCR>();
     var solicitudesRevision = viewModel.SolicitudesAocrRevision ?? new List<SolicitudAOCR>();
-    var inspeccionesSeguimiento = viewModel.InspeccionesSeguimiento ?? new List<Inspeccion>();
+    var inspeccionesSeguimientoItems = viewModel.InspeccionesSeguimientoItems ?? new List<CapaPresentacion.Models.CoordinacionJefaturaInspeccionSeguimientoItemViewModel>();
 
-    var totalBandeja = solicitudesControl.Count + solicitudesRevision.Count + inspeccionesSeguimiento.Count;
+    var totalBandeja = solicitudesControl.Count + solicitudesRevision.Count + inspeccionesSeguimientoItems.Count;
+    var returnUrlRevision = Url.Action("RevisionVerificacion", "CoordinacionJefatura");
+    var puedeDecidirRevision = User.IsInRole("Administrador")
+        || User.IsInRole("CoordinadorInspecciones")
+        || User.IsInRole("Coordinador")
+        || User.IsInRole("JefaturaTecnica")
+        || User.IsInRole("Jefe")
+        || User.IsInRole("Direccion")
+        || User.IsInRole("Director");
+    var puedeAsignarInspectorRevision = User.IsInRole("Administrador")
+        || User.IsInRole("Direccion")
+        || User.IsInRole("JefaturaTecnica")
+        || User.IsInRole("Director");
+    var puedeVerDetalleInspeccion = User.IsInRole("Administrador")
+        || User.IsInRole("CoordinadorInspecciones")
+        || User.IsInRole("Coordinador")
+        || User.IsInRole("JefaturaTecnica")
+        || User.IsInRole("Jefe")
+        || User.IsInRole("Direccion")
+        || User.IsInRole("Director");
 
     var pageHeaderData = new ViewDataDictionary
     {
@@ -66,6 +85,23 @@
     @Html.Partial("_PageHeader", null, pageHeaderData)
     @Html.Partial("_HeroPanel", null, heroData)
 
+    @if (TempData["Success"] != null)
+    {
+        <div class="alert alert-success" role="alert">@TempData["Success"]</div>
+    }
+    @if (TempData["Warning"] != null)
+    {
+        <div class="alert alert-warning" role="alert">@TempData["Warning"]</div>
+    }
+    @if (TempData["Info"] != null)
+    {
+        <div class="alert alert-info" role="alert">@TempData["Info"]</div>
+    }
+    @if (TempData["Error"] != null)
+    {
+        <div class="alert alert-danger" role="alert">@TempData["Error"]</div>
+    }
+
     <div class="row g-3 mb-4">
         <div class="col-12 col-md-6 col-xl-3">
             @Html.Partial("_MetricCard", null, new ViewDataDictionary { { "Label", "En bandeja" }, { "Value", totalBandeja }, { "Modifier", "info" }, { "Icon", "fas fa-inbox" }, { "Caption", "Total consolidado del módulo" } })
@@ -77,7 +113,7 @@
             @Html.Partial("_MetricCard", null, new ViewDataDictionary { { "Label", "AOCR en revisión" }, { "Value", solicitudesRevision.Count }, { "Modifier", "primary" }, { "Icon", "fas fa-file-signature" }, { "Caption", "Casos listos para validar o legalizar" } })
         </div>
         <div class="col-12 col-md-6 col-xl-3">
-            @Html.Partial("_MetricCard", null, new ViewDataDictionary { { "Label", "Inspecciones" }, { "Value", inspeccionesSeguimiento.Count }, { "Modifier", "success" }, { "Icon", "fas fa-user-check" }, { "Caption", "Seguimiento coordinado activo" } })
+            @Html.Partial("_MetricCard", null, new ViewDataDictionary { { "Label", "Inspecciones" }, { "Value", inspeccionesSeguimientoItems.Count }, { "Modifier", "success" }, { "Icon", "fas fa-user-check" }, { "Caption", "Seguimiento coordinado activo" } })
         </div>
     </div>
 
@@ -131,9 +167,6 @@
                                             <td class="text-end">
                                                 <a class="btn btn-sm btn-outline-primary" href="@Url.Action("Detalle", "SolicitudAOCR", new { id = item.CodigoSolicitud })">
                                                     <i class="fas fa-eye"></i> Detalle
-                                                </a>
-                                                <a class="btn btn-sm btn-outline-secondary" href="@Url.Action("AsignarInspector", "Tecnico", new { solicitudId = item.CodigoSolicitud })">
-                                                    <i class="fas fa-user-check"></i> Asignar técnico
                                                 </a>
                                             </td>
                                         </tr>
@@ -225,10 +258,10 @@
                             <h3 class="aocr-section-title mb-1"><i class="fas fa-search"></i> Inspecciones en seguimiento</h3>
                             <p class="text-muted mb-0">Seguimiento coordinado de inspecciones asociadas al flujo AOCR institucional.</p>
                         </div>
-                        @Html.Partial("_StatusBadge", null, new ViewDataDictionary { { "Estado", inspeccionesSeguimiento.Any() ? "En seguimiento" : "Completado" } })
+                        @Html.Partial("_StatusBadge", null, new ViewDataDictionary { { "Estado", inspeccionesSeguimientoItems.Any() ? "En seguimiento" : "Completado" } })
                     </div>
 
-                    @if (!inspeccionesSeguimiento.Any())
+                    @if (!inspeccionesSeguimientoItems.Any())
                     {
                         @Html.Partial("_EmptyState", null, new ViewDataDictionary {
                             { "Icon", "fas fa-user-check" },
@@ -243,28 +276,99 @@
                                 <thead>
                                     <tr>
                                         <th>Inspección</th>
-                                        <th>Solicitud</th>
-                                        <th>Estado</th>
-                                        <th>Resultado</th>
+                                        <th>Solicitud / compañía</th>
+                                        <th>Etapa actual</th>
+                                        <th>Inspector</th>
+                                        <th>Contexto operativo</th>
                                         <th class="text-end">Acciones</th>
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    @foreach (var item in inspeccionesSeguimiento)
+                                    @foreach (var item in inspeccionesSeguimientoItems)
                                     {
-                                        var numeroInspeccion = !string.IsNullOrWhiteSpace(item.NumeroInspeccion) ? item.NumeroInspeccion : item.CodigoInspeccion.ToString();
+                                        var inspeccion = item.Inspeccion;
+                                        var hayAccionesFila = (puedeDecidirRevision && (item.PuedeAceptarSolicitud || item.PuedeObservar || item.PuedeCerrar))
+                                            || (puedeAsignarInspectorRevision && item.PuedeAsignarInspector);
+                                        if (inspeccion == null)
+                                        {
+                                            continue;
+                                        }
                                         <tr>
                                             <td>
-                                                <div class="fw-semibold text-primary">@numeroInspeccion</div>
-                                                <small class="text-muted">Código @item.CodigoInspeccion</small>
+                                                <div class="fw-semibold text-primary">@item.NumeroInspeccion</div>
+                                                <small class="text-muted">Código @inspeccion.CodigoInspeccion</small>
                                             </td>
-                                            <td>@item.CodigoSolicitud</td>
-                                            <td>@Html.Partial("_StatusBadge", null, new ViewDataDictionary { { "Estado", item.Estado } })</td>
-                                            <td>@(string.IsNullOrWhiteSpace(item.Resultado) ? "Pendiente" : item.Resultado)</td>
+                                            <td>
+                                                <div class="fw-semibold">@item.NumeroSolicitud</div>
+                                                <small class="text-muted">@item.OperadorNombre</small>
+                                            </td>
+                                            <td>
+                                                @Html.Partial("_StatusBadge", null, new ViewDataDictionary { { "Estado", item.EtapaActual } })
+                                                <div class="small text-muted mt-1">@item.EstadoNormalizado</div>
+                                            </td>
+                                            <td>@item.InspectorAsignado</td>
+                                            <td>
+                                                <div class="small text-muted">@item.MensajeOperativo</div>
+                                                <div class="small text-primary mt-1">@item.ResumenAcciones</div>
+                                            </td>
                                             <td class="text-end">
-                                                <a class="btn btn-sm btn-outline-primary" href="@Url.Action("Detalle", "Inspeccion", new { id = item.CodigoInspeccion })">
-                                                    <i class="fas fa-eye"></i> Detalle
-                                                </a>
+                                                <div class="d-flex flex-wrap justify-content-end gap-2">
+                                                    @if (!hayAccionesFila)
+                                                    {
+                                                        <span class="small text-muted align-self-center">@item.MensajeSinAcciones</span>
+                                                    }
+                                                    @if (puedeDecidirRevision && item.PuedeAceptarSolicitud)
+                                                    {
+                                                        using (Html.BeginForm("CambiarEstado", "Inspeccion", FormMethod.Post, new { @class = "d-inline-flex" }))
+                                                        {
+                                                            @Html.AntiForgeryToken()
+                                                            @Html.Hidden("id", inspeccion.CodigoInspeccion)
+                                                            @Html.Hidden("estado", CapaDatos.Constants.EstadosInspeccion.ACEPTADA)
+                                                            @Html.Hidden("returnUrl", returnUrlRevision)
+                                                            <button type="submit" class="btn btn-sm btn-outline-success">
+                                                                <i class="fas fa-check"></i> Aceptar
+                                                            </button>
+                                                        }
+                                                    }
+                                                    @if (puedeDecidirRevision && item.PuedeObservar)
+                                                    {
+                                                        using (Html.BeginForm("CambiarEstado", "Inspeccion", FormMethod.Post, new { @class = "d-inline-flex" }))
+                                                        {
+                                                            @Html.AntiForgeryToken()
+                                                            @Html.Hidden("id", inspeccion.CodigoInspeccion)
+                                                            @Html.Hidden("estado", CapaDatos.Constants.EstadosInspeccion.OBSERVADA)
+                                                            @Html.Hidden("returnUrl", returnUrlRevision)
+                                                            <button type="submit" class="btn btn-sm btn-outline-danger">
+                                                                <i class="fas fa-circle-exclamation"></i> Observar
+                                                            </button>
+                                                        }
+                                                    }
+                                                    @if (puedeDecidirRevision && item.PuedeCerrar)
+                                                    {
+                                                        using (Html.BeginForm("CambiarEstado", "Inspeccion", FormMethod.Post, new { @class = "d-inline-flex" }))
+                                                        {
+                                                            @Html.AntiForgeryToken()
+                                                            @Html.Hidden("id", inspeccion.CodigoInspeccion)
+                                                            @Html.Hidden("estado", CapaDatos.Constants.EstadosInspeccion.CERRADA)
+                                                            @Html.Hidden("returnUrl", returnUrlRevision)
+                                                            <button type="submit" class="btn btn-sm btn-outline-dark">
+                                                                <i class="fas fa-xmark"></i> Cerrar
+                                                            </button>
+                                                        }
+                                                    }
+                                                    @if (puedeAsignarInspectorRevision && item.PuedeAsignarInspector)
+                                                    {
+                                                        <a class="btn btn-sm btn-outline-secondary" href="@Url.Action("AsignarInspector", "Tecnico", new { solicitudId = inspeccion.CodigoSolicitud })">
+                                                            <i class="fas fa-user-check"></i> Asignar inspector
+                                                        </a>
+                                                    }
+                                                    @if (puedeVerDetalleInspeccion)
+                                                    {
+                                                        <a class="btn btn-sm btn-outline-primary" href="@Url.Action("Detalle", "Inspeccion", new { id = inspeccion.CodigoInspeccion })">
+                                                            <i class="fas fa-eye"></i> Detalle
+                                                        </a>
+                                                    }
+                                                </div>
                                             </td>
                                         </tr>
                                     }
@@ -277,4 +381,3 @@
         </div>
     </div>
 </div>
-

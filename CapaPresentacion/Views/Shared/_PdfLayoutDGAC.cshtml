@@ -72,6 +72,9 @@
             right: 0 !important;
             width: 210mm; /* Ancho A4 */
             margin: 0 auto;
+            display: flex;
+            align-items: center;
+            justify-content: center;
             box-sizing: border-box;
             overflow: hidden;
             z-index: 0; /* ✅ detrás (para que nunca tape) */
@@ -90,10 +93,12 @@
 
             #pdf-header img, #pdf-footer img {
                 display: block;
-                width: 210mm;
-                max-width: 100%;
+                width: 100%;
+                max-width: 210mm;
                 height: auto;
                 object-fit: contain;
+                object-position: center center;
+                margin: 0 auto;
             }
 
         /* ==========================

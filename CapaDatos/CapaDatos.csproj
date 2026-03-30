@@ -260,6 +260,7 @@
     <Compile Include="DAOs\ArchivoDAO.cs" />
     <Compile Include="DAOs\AdminUsuariosDAO.cs" />
     <Compile Include="DAOs\AuditoriaDAO.cs" />
+    <Compile Include="DAOs\AocrFirmaDocumentoDAO.cs" />
     <Compile Include="DAOs\AeronaveDAO.cs" />
     <Compile Include="DAOs\BancoP9DAO.cs" />
     <Compile Include="DAOs\CD_ListaValor.cs" />
@@ -306,6 +307,7 @@
     <Compile Include="DAOs\RolDAO.cs" />
     <Compile Include="ConexionDAO.cs" />
     <Compile Include="DAOs\CertificadoDAO.cs" />
+    <Compile Include="DAOs\DashboardInspeccionDAO.cs" />
     <Compile Include="DAOs\HallazgoDAO.cs" />
     <Compile Include="DAOs\PagoDAO.cs" />
     <Compile Include="DAOs\DocumentoDAO.cs" />

@@ -1,7 +1,0 @@
-C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\CapaPresentacion\Views\AdminUsuarios\Create.cshtml
-C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\CapaPresentacion\Views\AdminUsuarios\Edit.cshtml
-C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\CapaPresentacion\Views\Direccion\Crear.cshtml
-C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\CapaPresentacion\Views\Direccion\Editar.cshtml
-C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\CapaPresentacion\Views\Tecnico\AsignarInspector.cshtml
-C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\CapaPresentacion\Views\Usuario\Crear.cshtml
-C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\CapaPresentacion\Views\Usuario\Editar.cshtml

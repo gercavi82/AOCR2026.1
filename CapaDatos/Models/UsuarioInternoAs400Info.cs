@@ -5,5 +5,6 @@ namespace CapaDatos.Models
         public string CodigoUsuario { get; set; }
         public string CiudadCodigo { get; set; }
         public decimal? CodigoFinanciero { get; set; }
+        public decimal? Opcoi3 { get; set; }
     }
 }

@@ -1,14 +1,12 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Web;
 using System.Web.Mvc;
 using CapaModelo;
 using CapaNegocio;
 using CapaNegocio.Services;
 using CapaDatos.DAOs;
 using DataSecureConfigurationService = CapaDatos.Services.SecureConfigurationService;
-using DataEnviarCorreo = CapaDatos.Services.EnviarCorreo;
 
 namespace CapaPresentacion.Controllers
 {
@@ -328,48 +326,7 @@ namespace CapaPresentacion.Controllers
                         "INSPECTOR_ASIGNADO",
                         detalleNotificacion);
 
-                    string mensajeCorreoInspector;
-                    var correoInspectorEnviado = NotificarInspectorAsignado(
-                        solicitudActualizada,
-                        inspectorPrincipalRegistro,
-                        fechaHoraInspeccion,
-                        esReasignacion,
-                        "Principal",
-                        observaciones,
-                        out mensajeCorreoInspector);
-
-                    var mensajeCorreoInspectorApoyo = string.Empty;
-                    var correoInspectorApoyoEnviado = inspectorApoyoRegistro != null
-                        ? NotificarInspectorAsignado(
-                            solicitudActualizada,
-                            inspectorApoyoRegistro,
-                            fechaHoraInspeccion,
-                            esReasignacion,
-                            "Apoyo",
-                            observaciones,
-                            out mensajeCorreoInspectorApoyo)
-                        : true;
-
-                    string mensajeCorreo;
-                    var correoEnviado = NotificarSolicitanteAsignacionTecnico(
-                        solicitudActualizada,
-                        nombreTecnico,
-                        fechaHoraInspeccion,
-                        esReasignacion,
-                        out mensajeCorreo);
-
-                    if (correoEnviado)
-                    {
-                        TempData["Success"] = (mensaje ?? (esReasignacion ? "Reasignación realizada correctamente." : "Asignación realizada correctamente.")) + " Correo enviado al solicitante.";
-                    }
-                    else
-                    {
-                        TempData["Success"] = (mensaje ?? (esReasignacion ? "Reasignación realizada correctamente." : "Asignación realizada correctamente."));
-                        if (!string.IsNullOrWhiteSpace(mensajeCorreo))
-                        {
-                            TempData["Warning"] = mensajeCorreo;
-                        }
-                    }
+                    TempData["Success"] = (mensaje ?? (esReasignacion ? "Reasignación realizada correctamente." : "Asignación realizada correctamente."));
 
                     if (!resultadoNotificacionInterna.Exitoso)
                     {
@@ -377,22 +334,6 @@ namespace CapaPresentacion.Controllers
                         TempData["Warning"] = string.IsNullOrWhiteSpace(warningActual)
                             ? resultadoNotificacionInterna.Mensaje
                             : warningActual + " " + resultadoNotificacionInterna.Mensaje;
-                    }
-
-                    if (!correoInspectorEnviado && !string.IsNullOrWhiteSpace(mensajeCorreoInspector))
-                    {
-                        var warningActual = TempData["Warning"] as string;
-                        TempData["Warning"] = string.IsNullOrWhiteSpace(warningActual)
-                            ? mensajeCorreoInspector
-                            : warningActual + " " + mensajeCorreoInspector;
-                    }
-
-                    if (!correoInspectorApoyoEnviado && !string.IsNullOrWhiteSpace(mensajeCorreoInspectorApoyo))
-                    {
-                        var warningActual = TempData["Warning"] as string;
-                        TempData["Warning"] = string.IsNullOrWhiteSpace(warningActual)
-                            ? mensajeCorreoInspectorApoyo
-                            : warningActual + " " + mensajeCorreoInspectorApoyo;
                     }
                 }
                 else
@@ -474,152 +415,6 @@ namespace CapaPresentacion.Controllers
                 .ToList();
 
             return roles.Count == 0 ? "SIN_ROL_DETECTADO" : string.Join(",", roles);
-        }
-
-        private bool NotificarSolicitanteAsignacionTecnico(SolicitudAOCR solicitud, string nombreTecnico, DateTime fechaInspeccion, bool esReasignacion, out string mensaje)
-        {
-            mensaje = string.Empty;
-
-            if (solicitud == null)
-            {
-                mensaje = "No fue posible enviar correo: la solicitud no está disponible.";
-                return false;
-            }
-
-            var destinatario = FirstNonEmpty(solicitud.CorreoRepresentanteTecnico, solicitud.Email);
-            if (string.IsNullOrWhiteSpace(destinatario))
-            {
-                mensaje = "No se envió correo al solicitante porque no tiene correo registrado.";
-                return false;
-            }
-
-            var tecnico = FirstNonEmpty(nombreTecnico, "Técnico asignado");
-            var fechaTexto = fechaInspeccion.ToString("dd/MM/yyyy");
-            var horaTexto = fechaInspeccion.TimeOfDay == TimeSpan.Zero
-                ? "No especificada"
-                : fechaInspeccion.ToString("HH:mm");
-            var numeroSolicitud = FirstNonEmpty(solicitud.NumeroSolicitud, "#" + solicitud.CodigoSolicitud);
-
-            string enlaceDetalle;
-            try
-            {
-                enlaceDetalle = Url.Action("Detalle", "SolicitudAOCR", new { id = solicitud.CodigoSolicitud }, Request != null && Request.Url != null ? Request.Url.Scheme : "http");
-            }
-            catch
-            {
-                enlaceDetalle = string.Empty;
-            }
-
-            var asunto = esReasignacion
-                ? "AOCR - Inspector reasignado para su proceso " + numeroSolicitud
-                : "AOCR - Técnico asignado para su proceso " + numeroSolicitud;
-            var cuerpo = "<p>Estimado/a solicitante,</p>"
-                + "<p>Le informamos que "
-                + (esReasignacion
-                    ? "se actualizó la asignación del inspector para su proceso AOCR <strong>" + HttpUtility.HtmlEncode(numeroSolicitud) + "</strong>."
-                    : "ya se asignó un técnico para su proceso AOCR <strong>" + HttpUtility.HtmlEncode(numeroSolicitud) + "</strong>.")
-                + "</p>"
-                + "<ul>"
-                + "<li><strong>" + (esReasignacion ? "Inspector reasignado" : "Técnico asignado") + ":</strong> " + HttpUtility.HtmlEncode(tecnico) + "</li>"
-                + "<li><strong>Fecha de inspección:</strong> " + HttpUtility.HtmlEncode(fechaTexto) + "</li>"
-                + "<li><strong>Hora de inspección:</strong> " + HttpUtility.HtmlEncode(horaTexto) + "</li>"
-                + "</ul>"
-                + (!string.IsNullOrWhiteSpace(enlaceDetalle)
-                    ? "<p>Puede revisar el detalle de su solicitud en el siguiente enlace: <a href=\"" + HttpUtility.HtmlAttributeEncode(enlaceDetalle) + "\">Ver detalle</a>.</p>"
-                    : string.Empty)
-                + "<p>Atentamente,<br/>Dirección General de Aviación Civil</p>";
-
-            try
-            {
-                var servicioCorreo = new DataEnviarCorreo();
-                var enviado = servicioCorreo.enviaMensajeCorreo(destinatario, asunto, cuerpo);
-                if (!enviado)
-                {
-                    mensaje = "La asignación fue guardada, pero no se pudo enviar el correo al solicitante.";
-                }
-
-                return enviado;
-            }
-            catch (Exception ex)
-            {
-                _logger.LogWarning("[GestionInspeccion] Error enviando correo de asignación. SolicitudId=" + solicitud.CodigoSolicitud + ", Error=" + ex.Message);
-                mensaje = "La asignación fue guardada, pero ocurrió un error enviando el correo al solicitante.";
-                return false;
-            }
-        }
-
-        private bool NotificarInspectorAsignado(
-            SolicitudAOCR solicitud,
-            CapaDatos.Models.UsuarioInternoRTRegistro inspector,
-            DateTime fechaInspeccion,
-            bool esReasignacion,
-            string rolAsignado,
-            string observaciones,
-            out string mensaje)
-        {
-            mensaje = string.Empty;
-
-            if (solicitud == null || inspector == null)
-            {
-                mensaje = "No se pudo notificar al inspector porque no se encontró el registro asignado.";
-                return false;
-            }
-
-            var destinatario = FirstNonEmpty(
-                inspector.CorreoInstitucional,
-                UsuarioInternoRTBL.ObtenerCorreoInstitucionalPorCodigoUsuario(inspector.UsuarioLogin));
-            if (string.IsNullOrWhiteSpace(destinatario))
-            {
-                mensaje = "No se envió correo al inspector porque no tiene correo institucional configurado.";
-                return false;
-            }
-
-            var tecnico = FirstNonEmpty(inspector.NombreVisual, inspector.UsuarioLogin, "Inspector asignado");
-            var empresa = FirstNonEmpty(solicitud.NombreOperador, solicitud.RazonSocial, solicitud.NombreComercial, "Operador no disponible");
-            var fechaTexto = fechaInspeccion.ToString("dd/MM/yyyy");
-            var horaTexto = fechaInspeccion.TimeOfDay == TimeSpan.Zero
-                ? "No especificada"
-                : fechaInspeccion.ToString("HH:mm");
-            var numeroSolicitud = FirstNonEmpty(solicitud.NumeroSolicitud, "#" + solicitud.CodigoSolicitud);
-            var asunto = esReasignacion
-                ? "AOCR - Reasignación de inspección para empresa " + empresa
-                : "AOCR - Asignación de inspección para empresa " + empresa;
-
-            var cuerpo = "<p>Estimado/a <strong>" + HttpUtility.HtmlEncode(tecnico) + "</strong>,</p>"
-                + "<p>Le informamos que "
-                + (esReasignacion ? "ha sido reasignado" : "ha sido asignado")
-                + " para realizar la inspección de la empresa <strong>" + HttpUtility.HtmlEncode(empresa) + "</strong>.</p>"
-                + "<ul>"
-                + "<li><strong>Solicitud AOCR:</strong> " + HttpUtility.HtmlEncode(numeroSolicitud) + "</li>"
-                + "<li><strong>Empresa / Operador:</strong> " + HttpUtility.HtmlEncode(empresa) + "</li>"
-                + "<li><strong>Rol asignado:</strong> " + HttpUtility.HtmlEncode(rolAsignado) + "</li>"
-                + "<li><strong>Fecha de inspección:</strong> " + HttpUtility.HtmlEncode(fechaTexto) + "</li>"
-                + "<li><strong>Hora de inspección:</strong> " + HttpUtility.HtmlEncode(horaTexto) + "</li>"
-                + "<li><strong>Asignado por:</strong> " + HttpUtility.HtmlEncode(ObtenerUsuarioActual()) + "</li>"
-                + "</ul>"
-                + (string.IsNullOrWhiteSpace(observaciones)
-                    ? string.Empty
-                    : "<p><strong>Observaciones:</strong> " + HttpUtility.HtmlEncode(observaciones.Trim()) + "</p>")
-                + "<p>Por favor revise el sistema AOCR para continuar con la gestión de la inspección asignada.</p>"
-                + "<p>Atentamente,<br/>Dirección General de Aviación Civil</p>";
-
-            try
-            {
-                var servicioCorreo = new DataEnviarCorreo();
-                var enviado = servicioCorreo.enviaMensajeCorreo(destinatario, asunto, cuerpo);
-                if (!enviado)
-                {
-                    mensaje = "La asignación fue guardada, pero no se pudo enviar el correo al inspector asignado.";
-                }
-
-                return enviado;
-            }
-            catch (Exception ex)
-            {
-                _logger.LogWarning("[GestionInspeccion] Error enviando correo al inspector. SolicitudId=" + solicitud.CodigoSolicitud + ", Inspector=" + inspector.UsuarioLogin + ", Error=" + ex.Message);
-                mensaje = "La asignación fue guardada, pero ocurrió un error enviando el correo al inspector.";
-                return false;
-            }
         }
 
         private static string ConstruirEtiquetaInspectorRt(CapaDatos.Models.UsuarioInternoRTRegistro inspector)
