@@ -147,6 +147,20 @@ namespace CapaDatos.DAOs
             }
         }
 
+        private static int? GetFirstIntNullableProp(object obj, params string[] propNames)
+        {
+            if (propNames == null) return null;
+
+            foreach (var propName in propNames)
+            {
+                var value = GetIntNullableProp(obj, propName);
+                if (value.HasValue)
+                    return value;
+            }
+
+            return null;
+        }
+
         private static void SetIntProp(object obj, string propName, int? value)
         {
             try
@@ -210,6 +224,7 @@ namespace CapaDatos.DAOs
             if (r["codigousuario"] != DBNull.Value)
             {
                 int? codUser = Convert.ToInt32(r["codigousuario"]);
+                SetIntProp(obs, "CodigoUsuarioRegistro", codUser);
                 SetIntProp(obs, "CodigoUsuario", codUser);
             }
 
@@ -223,8 +238,8 @@ namespace CapaDatos.DAOs
         {
             const string sql = @"
                 INSERT INTO aocr_tbobservacion
-                (codigoinspeccion, descripcion, gravedad, estado, observaciones,
-                 fechaobservacion, fecharesolucion, codigousuario)
+                (codigo_inspeccion, descripcion, gravedad, estado, observaciones,
+                 fecha_observacion, fecha_resolucion, codigo_usuario)
                 VALUES
                 (@ins, @desc, @grav, @estado, @obs,
                  @fobs, @fres, @user);";
@@ -258,7 +273,7 @@ namespace CapaDatos.DAOs
                     (object)fRes ?? DBNull.Value);
 
                 // CodigoUsuario opcional vía reflection
-                int? codUser = GetIntNullableProp(observacion, "CodigoUsuario");
+                int? codUser = GetFirstIntNullableProp(observacion, "CodigoUsuarioRegistro", "CodigoUsuario");
                 cmd.Parameters.AddWithValue("@user",
                     (object)codUser ?? DBNull.Value);
 
@@ -275,15 +290,15 @@ namespace CapaDatos.DAOs
             const string sql = @"
                 UPDATE aocr_tbobservacion
                 SET
-                    codigoinspeccion = @ins,
+                    codigo_inspeccion = @ins,
                     descripcion = @desc,
                     gravedad = @grav,
                     estado = @estado,
                     observaciones = @obs,
-                    fechaobservacion = @fobs,
-                    fecharesolucion = @fres,
-                    codigousuario = @user
-                WHERE codigoobservacion = @id;";
+                    fecha_observacion = @fobs,
+                    fecha_resolucion = @fres,
+                    codigo_usuario = @user
+                WHERE codigo_observacion = @id;";
 
             using (var cn = CrearConexion())
             using (var cmd = new NpgsqlCommand(sql, cn))
@@ -311,7 +326,7 @@ namespace CapaDatos.DAOs
                 cmd.Parameters.AddWithValue("@fres",
                     (object)fRes ?? DBNull.Value);
 
-                int? codUser = GetIntNullableProp(observacion, "CodigoUsuario");
+                int? codUser = GetFirstIntNullableProp(observacion, "CodigoUsuarioRegistro", "CodigoUsuario");
                 cmd.Parameters.AddWithValue("@user",
                     (object)codUser ?? DBNull.Value);
 
@@ -329,7 +344,7 @@ namespace CapaDatos.DAOs
         {
             const string sql = @"
                 DELETE FROM aocr_tbobservacion
-                WHERE codigoobservacion = @id;";
+                WHERE codigo_observacion = @id;";
 
             using (var cn = CrearConexion())
             using (var cmd = new NpgsqlCommand(sql, cn))
@@ -348,11 +363,17 @@ namespace CapaDatos.DAOs
         {
             const string sql = @"
                 SELECT
-                    codigoobservacion, codigoinspeccion, descripcion,
-                    gravedad, estado, observaciones,
-                    fechaobservacion, fecharesolucion, codigousuario
+                    codigo_observacion AS codigoobservacion,
+                    codigo_inspeccion AS codigoinspeccion,
+                    descripcion,
+                    gravedad,
+                    estado,
+                    observaciones,
+                    fecha_observacion AS fechaobservacion,
+                    fecha_resolucion AS fecharesolucion,
+                    codigo_usuario AS codigousuario
                 FROM aocr_tbobservacion
-                WHERE codigoobservacion = @id;";
+                WHERE codigo_observacion = @id;";
 
             using (var cn = CrearConexion())
             using (var cmd = new NpgsqlCommand(sql, cn))
@@ -379,12 +400,18 @@ namespace CapaDatos.DAOs
 
             const string sql = @"
                 SELECT
-                    codigoobservacion, codigoinspeccion, descripcion,
-                    gravedad, estado, observaciones,
-                    fechaobservacion, fecharesolucion, codigousuario
+                    codigo_observacion AS codigoobservacion,
+                    codigo_inspeccion AS codigoinspeccion,
+                    descripcion,
+                    gravedad,
+                    estado,
+                    observaciones,
+                    fecha_observacion AS fechaobservacion,
+                    fecha_resolucion AS fecharesolucion,
+                    codigo_usuario AS codigousuario
                 FROM aocr_tbobservacion
-                WHERE codigoinspeccion = @ins
-                ORDER BY codigoobservacion DESC;";
+                WHERE codigo_inspeccion = @ins
+                ORDER BY codigo_observacion DESC;";
 
             using (var cn = CrearConexion())
             using (var cmd = new NpgsqlCommand(sql, cn))
@@ -411,12 +438,18 @@ namespace CapaDatos.DAOs
 
             const string sql = @"
                 SELECT
-                    codigoobservacion, codigoinspeccion, descripcion,
-                    gravedad, estado, observaciones,
-                    fechaobservacion, fecharesolucion, codigousuario
+                    codigo_observacion AS codigoobservacion,
+                    codigo_inspeccion AS codigoinspeccion,
+                    descripcion,
+                    gravedad,
+                    estado,
+                    observaciones,
+                    fecha_observacion AS fechaobservacion,
+                    fecha_resolucion AS fecharesolucion,
+                    codigo_usuario AS codigousuario
                 FROM aocr_tbobservacion
                 WHERE UPPER(gravedad) = UPPER(@grav)
-                ORDER BY codigoobservacion DESC;";
+                ORDER BY codigo_observacion DESC;";
 
             using (var cn = CrearConexion())
             using (var cmd = new NpgsqlCommand(sql, cn))
@@ -443,12 +476,18 @@ namespace CapaDatos.DAOs
 
             const string sql = @"
                 SELECT
-                    codigoobservacion, codigoinspeccion, descripcion,
-                    gravedad, estado, observaciones,
-                    fechaobservacion, fecharesolucion, codigousuario
+                    codigo_observacion AS codigoobservacion,
+                    codigo_inspeccion AS codigoinspeccion,
+                    descripcion,
+                    gravedad,
+                    estado,
+                    observaciones,
+                    fecha_observacion AS fechaobservacion,
+                    fecha_resolucion AS fecharesolucion,
+                    codigo_usuario AS codigousuario
                 FROM aocr_tbobservacion
                 WHERE UPPER(estado) = UPPER(@estado)
-                ORDER BY codigoobservacion DESC;";
+                ORDER BY codigo_observacion DESC;";
 
             using (var cn = CrearConexion())
             using (var cmd = new NpgsqlCommand(sql, cn))
@@ -474,7 +513,7 @@ namespace CapaDatos.DAOs
             const string sql = @"
                 UPDATE aocr_tbobservacion
                 SET estado = @estado
-                WHERE codigoobservacion = @id;";
+                WHERE codigo_observacion = @id;";
 
             using (var cn = CrearConexion())
             using (var cmd = new NpgsqlCommand(sql, cn))

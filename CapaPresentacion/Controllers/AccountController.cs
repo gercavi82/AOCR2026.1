@@ -12,6 +12,7 @@ using CapaModelo;
 using CapaNegocio;
 using CapaNegocio.Helpers;
 using CapaNegocio.Integraciones.As400Sync;
+using CapaDatos.Services;
 using CapaPresentacion.Models;
 using CapaDatos.DAOs;
 using CapaPresentacion.Helpers;
@@ -920,7 +921,7 @@ namespace CapaPresentacion.Controllers
 
                 if (string.IsNullOrWhiteSpace(nombreEmpresa))
                 {
-                    var empresaDao = new EmpresaAS400DAO();
+                    var empresaDao = new EmpresaAS400DAO(new SecureConfigurationService());
                     var empresa = empresaDao.ObtenerEmpresaPorCodigo(codigoEmpresa);
                     if (empresa != null && !string.IsNullOrWhiteSpace(empresa.Nombre))
                     {

@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Web.Mvc;
 using CapaDatos.DAOs; // Donde reside EmpresaAS400DAO
+using CapaDatos.Services;
 
 namespace CapaPresentacion.Controllers
 {
@@ -15,7 +16,7 @@ namespace CapaPresentacion.Controllers
             {
                 Response.SuppressFormsAuthenticationRedirect = true;
                 // Conexión directa al AS/400 (IP 190.152.8.185)
-                var dao = new EmpresaAS400DAO();
+                var dao = new EmpresaAS400DAO(new SecureConfigurationService());
                 var empresas = dao.ObtenerEmpresas();
 
                 // Retorna la lista de empresas (Codigo y Nombre)
@@ -49,7 +50,7 @@ namespace CapaPresentacion.Controllers
                     return Json(new { error = "Código requerido" }, JsonRequestBehavior.AllowGet);
                 }
 
-                var dao = new EmpresaAS400DAO();
+                var dao = new EmpresaAS400DAO(new SecureConfigurationService());
                 var empresa = dao.ObtenerEmpresaPorCodigo(codigo);
 
                 if (empresa == null)

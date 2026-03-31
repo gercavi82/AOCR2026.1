@@ -134,7 +134,7 @@
     var puedeEditarInformeTecnico = esInspector || puedeGestionarCoordinacion;
     var puedeSubirCorreccionSolicitante = User.IsInRole("Solicitante") || User.IsInRole("Administrador");
     var esSolicitante = User.IsInRole("Solicitante");
-    var esDirdac = esAdministrador || usuarioTieneAlgunRol(new[] { "Direccion", "Director", "JefaturaTecnica", "Jefe" });
+    var esDirdac = esAdministrador || usuarioTieneAlgunRol(new[] { "DIRDAC", "Direccion", "Director", "JefaturaTecnica", "Jefe" });
     var estadoInformeTecnico = informeTecnico != null && !string.IsNullOrWhiteSpace(informeTecnico.EstadoInforme)
         ? informeTecnico.EstadoInforme
         : (informeTecnico != null && informeTecnico.Finalizado ? "GENERADO" : "BORRADOR");

@@ -48,6 +48,7 @@ namespace CapaPresentacion.Controllers
         private const string ROL_JEFE = "Jefe";
         private const string ROL_DIRECCION = "Direccion";
         private const string ROL_DIRECTOR = "Director";
+        private const string ROL_DIRDAC = "DIRDAC";
         private const string ROL_LEGAL = "Legal";
         private const string ROL_COORD_LEGAL = "CoordinacionLegal";
         private const string ROL_COORDINADOR_LEGAL = "CoordinadorLegal";
@@ -59,7 +60,7 @@ namespace CapaPresentacion.Controllers
             ROLES_COORDINACION_Y_JEFATURA + "," + ROL_INSPECTOR;
         private const string ROLES_GESTION_INSPECCION_CON_SOLICITANTE =
             ROLES_GESTION_INSPECCION + "," + ROL_SOLICITANTE;
-        private const string ROLES_FIRMA_DIRDAC = ROL_DIRECCION + "," + ROL_DIRECTOR + "," + ROL_JEFATURA + "," + ROL_JEFE + "," + ROL_ADMIN;
+        private const string ROLES_FIRMA_DIRDAC = ROL_DIRECCION + "," + ROL_DIRECTOR + "," + ROL_JEFATURA + "," + ROL_JEFE + "," + ROL_ADMIN + "," + ROL_DIRDAC;
 
         // Seguridad: tamaño máximo permitido para PDF (10MB)
         private const int MAX_PDF_BYTES = 10 * 1024 * 1024;
@@ -121,6 +122,7 @@ namespace CapaPresentacion.Controllers
                 ROL_JEFE,
                 ROL_DIRECCION,
                 ROL_DIRECTOR,
+                ROL_DIRDAC,
                 ROL_LEGAL,
                 ROL_COORD_LEGAL,
                 ROL_COORDINADOR_LEGAL);
@@ -139,7 +141,8 @@ namespace CapaPresentacion.Controllers
                 ROL_JEFATURA,
                 ROL_JEFE,
                 ROL_DIRECCION,
-                ROL_DIRECTOR);
+                ROL_DIRECTOR,
+                ROL_DIRDAC);
         }
 
         private bool EsRolInspector()

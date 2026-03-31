@@ -18,6 +18,7 @@ using CapaNegocio.Integraciones.As400Sync;
 using CapaNegocio.Services;
 using CapaPresentacion.Models.RT;
 using CapaUtilidades;
+using DataSecureConfig = CapaDatos.Services.SecureConfigurationService;
 
 namespace CapaPresentacion.Controllers
 {
@@ -254,7 +255,7 @@ namespace CapaPresentacion.Controllers
                     }
 
                     string as400Error;
-                    var as400Dao = new UsuarioAS400DAO();
+                    var as400Dao = new UsuarioAS400DAO(new DataSecureConfig());
                     if (!as400Dao.UpsertUsuarioCompleto(usuarioAs400, out as400Error))
                     {
                         return Json(new { success = false, message = "Error al registrar usuario en AS400: " + as400Error });
@@ -918,7 +919,7 @@ namespace CapaPresentacion.Controllers
                                   : rolSelect;
 
                 // 2. VALIDAR EMPRESA (Tu lógica original estaba bien)
-                var daoEmpresa = new EmpresaAS400DAO();
+                var daoEmpresa = new EmpresaAS400DAO(new DataSecureConfig());
                 var empresas = daoEmpresa.ObtenerEmpresas();
                 var empresaSeleccionada = empresas.FirstOrDefault(e =>
                     string.Equals((e.Codigo ?? string.Empty).Trim(), (empresaCodigo ?? string.Empty).Trim(), StringComparison.OrdinalIgnoreCase));
@@ -976,7 +977,7 @@ namespace CapaPresentacion.Controllers
                         "AOCR");
 
                     string as400Error;
-                    var as400Dao = new UsuarioAS400DAO();
+                    var as400Dao = new UsuarioAS400DAO(new DataSecureConfig());
                     if (!as400Dao.UpsertUsuarioCompleto(usuarioAs400, out as400Error))
                     {
                         return Json(new { success = false, message = "Error al registrar usuario en AS400: " + as400Error });
@@ -1301,7 +1302,7 @@ namespace CapaPresentacion.Controllers
 
             try
             {
-                var empresaDao = new EmpresaAS400DAO();
+                var empresaDao = new EmpresaAS400DAO(new DataSecureConfig());
                 var empresa = empresaDao.ObtenerEmpresaPorCodigo(codigoEmpresa);
                 if (empresa != null && !string.IsNullOrWhiteSpace(empresa.Nombre))
                 {
@@ -1343,7 +1344,7 @@ namespace CapaPresentacion.Controllers
             var catalogo = new List<Empresa>();
             try
             {
-                var daoEmpresa = new EmpresaAS400DAO();
+                var daoEmpresa = new EmpresaAS400DAO(new DataSecureConfig());
                 catalogo = daoEmpresa.ObtenerEmpresas() ?? new List<Empresa>();
             }
             catch (Exception ex)
@@ -1412,7 +1413,7 @@ namespace CapaPresentacion.Controllers
 
             try
             {
-                var daoEmpresa = new EmpresaAS400DAO();
+                var daoEmpresa = new EmpresaAS400DAO(new DataSecureConfig());
                 var empresa = daoEmpresa.ObtenerEmpresaPorCodigo(codigo);
                 if (empresa != null && !string.IsNullOrWhiteSpace(empresa.Nombre))
                 {

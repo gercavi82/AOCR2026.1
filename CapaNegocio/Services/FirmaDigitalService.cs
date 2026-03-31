@@ -143,7 +143,7 @@ namespace CapaNegocio.Services
             var rol = (rolFirmante ?? string.Empty).Trim().ToUpperInvariant();
             if (rol == "AOCR_FIRMANTE")
             {
-                return new Rectangle(372f, 668f, 540f, 756f);
+                return new Rectangle(382f, 644f, 536f, 706f);
             }
 
             if (rol == "INFORME_TECNICO_INSPECTOR")
@@ -170,7 +170,7 @@ namespace CapaNegocio.Services
             if (rol == "AOCR_FIRMANTE")
             {
                 var totalAocr = ObtenerRectanguloFirma(rolFirmante);
-                return new Rectangle(totalAocr.Left + 5f, totalAocr.Bottom + 16f, totalAocr.Left + 53f, totalAocr.Bottom + 64f);
+                return new Rectangle(totalAocr.Left + 4f, totalAocr.Bottom + 10f, totalAocr.Left + 44f, totalAocr.Bottom + 50f);
             }
 
             if (rol == "INFORME_TECNICO_INSPECTOR" || rol == "INFORME_TECNICO_DIRDAC")
@@ -189,7 +189,7 @@ namespace CapaNegocio.Services
             if (rol == "AOCR_FIRMANTE")
             {
                 var totalAocr = ObtenerRectanguloFirma(rolFirmante);
-                return new Rectangle(totalAocr.Left + 58f, totalAocr.Bottom + 10f, totalAocr.Right - 6f, totalAocr.Top - 8f);
+                return new Rectangle(totalAocr.Left + 50f, totalAocr.Bottom + 6f, totalAocr.Right - 4f, totalAocr.Top - 4f);
             }
 
             if (rol == "INFORME_TECNICO_INSPECTOR" || rol == "INFORME_TECNICO_DIRDAC")
@@ -225,7 +225,7 @@ namespace CapaNegocio.Services
                     return "Firmado electronicamente por:\n";
                 }
 
-                return "FIRMA AUTORIZACION\n";
+                return string.Empty;
             }
 
             return "Firmado electronicamente por:\n";
@@ -335,12 +335,16 @@ namespace CapaNegocio.Services
                     }
 
                     var tituloFont = new Font(baseNormal, esAocr ? 6.5f : (esInformeTecnico ? 5.2f : 9f), Font.NORMAL, BaseColor.BLACK);
-                    var nombreFont = new Font(baseBold, esAocr ? 8.8f : (esInformeTecnico ? 8.8f : 16f), Font.BOLD, BaseColor.BLACK);
-                    var detalleFont = new Font(baseNormal, esAocr ? 5.8f : (esInformeTecnico ? 4.8f : 8.5f), Font.NORMAL, BaseColor.BLACK);
+                    var nombreFont = new Font(baseBold, esAocr ? 7.1f : (esInformeTecnico ? 8.8f : 16f), Font.BOLD, BaseColor.BLACK);
+                    var detalleFont = new Font(baseNormal, esAocr ? 5.1f : (esInformeTecnico ? 4.8f : 8.5f), Font.NORMAL, BaseColor.BLACK);
 
                     var ct = new ColumnText(canvas);
-                    ct.SetSimpleColumn(rectTexto.Left, rectTexto.Bottom, rectTexto.Right, rectTexto.Top, esAocr ? 7.4f : (esInformeTecnico ? 6.3f : 12f), Element.ALIGN_LEFT);
-                    ct.AddText(new Phrase(ObtenerTituloBloqueFirma(rolFirmante), tituloFont));
+                    ct.SetSimpleColumn(rectTexto.Left, rectTexto.Bottom, rectTexto.Right, rectTexto.Top, esAocr ? 5.7f : (esInformeTecnico ? 6.3f : 12f), Element.ALIGN_LEFT);
+                    var tituloBloque = ObtenerTituloBloqueFirma(rolFirmante);
+                    if (!string.IsNullOrWhiteSpace(tituloBloque))
+                    {
+                        ct.AddText(new Phrase(tituloBloque, tituloFont));
+                    }
                     ct.AddText(new Phrase((string.IsNullOrWhiteSpace(nombreFirmante) ? "USUARIO AOCR" : nombreFirmante.Trim().ToUpperInvariant()) + "\n", nombreFont));
                     if (!esAocr && !esInformeTecnico)
                     {

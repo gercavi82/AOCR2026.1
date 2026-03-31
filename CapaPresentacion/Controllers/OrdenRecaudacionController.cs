@@ -45,7 +45,7 @@ namespace CapaPresentacion.Controllers
         private readonly OrdenRecaudacionBL _bl = new OrdenRecaudacionBL();
         private readonly ConceptoDAO _conceptoDao = new ConceptoDAO();
         private readonly SolicitudAOCRDAO _solicitudDao = new SolicitudAOCRDAO();
-        private readonly BancoP9DAO _bancoDao = new BancoP9DAO();
+        private readonly BancoP9DAO _bancoDao = new BancoP9DAO(new SecureConfig());
         private readonly ParametroDAO _parametroDao = new ParametroDAO();
         private readonly IOrdenRecaudacionOrchestrator _orchestrator;
 
@@ -344,7 +344,7 @@ namespace CapaPresentacion.Controllers
 
                 if (!string.IsNullOrWhiteSpace(codigoCompaniaActiva))
                 {
-                    var daoEmpresa = new EmpresaAS400DAO();
+                    var daoEmpresa = new EmpresaAS400DAO(new SecureConfig());
                     var empresa = daoEmpresa.ObtenerEmpresaPorCodigo(codigoCompaniaActiva);
                     empresaNombre = empresa?.Nombre ?? "";
                 }
@@ -909,7 +909,6 @@ namespace CapaPresentacion.Controllers
 
             try
             {
-                string err;
                 var result = await _dao.CambiarEstadoOrdenAsync(id, "PENDIENTE");
                 if (!result)
                 {
@@ -1135,7 +1134,7 @@ En transferencias NO colocar sublínea<br>";
                     Label = string.Format("{0} - {1} (${2})", c.Codigo, c.Nombre, c.ValorBase.ToString("0.00"))
                 }).ToList();
             }
-            catch (Exception ex)
+            catch (Exception)
             {
                 model.Conceptos = new List<CapaPresentacion.Models.ConceptoOptionVM>();
                 ModelState.AddModelError("", "No se pudieron cargar los conceptos. Verifique la conexión a la base de datos.");
@@ -1161,7 +1160,7 @@ En transferencias NO colocar sublínea<br>";
                         Compania = string.IsNullOrWhiteSpace(s.RazonSocial) ? s.NombreOperador : s.RazonSocial
                     }).ToList();
             }
-            catch (Exception ex)
+            catch (Exception)
             {
                 model.Solicitudes = new List<CapaPresentacion.Models.OrdenRecaudacionNuevaVM.SolicitudOptionVM>();
             }
@@ -2327,7 +2326,7 @@ En transferencias NO colocar sublínea<br>";
 
                 if (!string.IsNullOrWhiteSpace(codigoCompaniaActiva))
                 {
-                    var daoEmpresa = new EmpresaAS400DAO();
+                    var daoEmpresa = new EmpresaAS400DAO(new SecureConfig());
                     var empresa = daoEmpresa.ObtenerEmpresaPorCodigo(codigoCompaniaActiva);
                     empresaNombre = empresa?.Nombre ?? "";
                 }
@@ -2774,7 +2773,7 @@ En transferencias NO colocar sublínea<br>";
         {
             try
             {
-                var bancoPDao = new CapaDatos.DAOs.BancoP9DAO();
+                var bancoPDao = new CapaDatos.DAOs.BancoP9DAO(new SecureConfig());
                 var resultado = bancoPDao.ProbarConexionAS400();
                 
                 if (resultado.StartsWith("OK"))
@@ -2800,7 +2799,7 @@ En transferencias NO colocar sublínea<br>";
         {
             try
             {
-                var bancoPDao = new CapaDatos.DAOs.BancoP9DAO();
+                var bancoPDao = new CapaDatos.DAOs.BancoP9DAO(new SecureConfig());
                 var resultado = bancoPDao.VerificarDriverODBC();
                 
                 if (resultado.StartsWith("âœ…"))
@@ -2826,7 +2825,7 @@ En transferencias NO colocar sublínea<br>";
         {
             try
             {
-                var bancoPDao = new CapaDatos.DAOs.BancoP9DAO();
+                var bancoPDao = new CapaDatos.DAOs.BancoP9DAO(new SecureConfig());
                 var resultado = bancoPDao.ListarDriversODBC();
                 return Content(resultado, "text/plain");
             }

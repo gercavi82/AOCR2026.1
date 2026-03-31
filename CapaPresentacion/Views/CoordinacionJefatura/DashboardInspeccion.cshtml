@@ -15,7 +15,7 @@
     var tablero = model.TableroAocr ?? new CapaPresentacion.Models.TableroAocrViewModel();
     const int kanbanPreviewLimit = 5;
     var puedeGestionarAsignacion = User.IsInRole("Administrador") || User.IsInRole("Direccion") || User.IsInRole("JefaturaTecnica");
-    var puedeVerPendientesDirdac = User.IsInRole("Administrador") || User.IsInRole("Direccion") || User.IsInRole("Director") || User.IsInRole("JefaturaTecnica") || User.IsInRole("Jefe");
+    var puedeVerPendientesDirdac = User.IsInRole("Administrador") || User.IsInRole("DIRDAC") || User.IsInRole("Direccion") || User.IsInRole("Director") || User.IsInRole("JefaturaTecnica") || User.IsInRole("Jefe");
 
     var toolbarLinks = new System.Collections.Generic.List<string>();
     if (puedeVerPendientesDirdac)

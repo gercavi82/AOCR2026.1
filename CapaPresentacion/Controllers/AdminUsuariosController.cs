@@ -1255,7 +1255,7 @@ namespace CapaPresentacion.Controllers
 
             try
             {
-                var daoEmpresa = new EmpresaAS400DAO();
+                var daoEmpresa = new EmpresaAS400DAO(new SecureConfigurationService());
                 var empresa = daoEmpresa.ObtenerEmpresaPorCodigo(codigo);
                 if (empresa != null && !string.IsNullOrWhiteSpace(empresa.Nombre))
                 {
@@ -1520,7 +1520,7 @@ namespace CapaPresentacion.Controllers
             var catalogo = new List<Empresa>();
             try
             {
-                var daoEmpresa = new EmpresaAS400DAO();
+                var daoEmpresa = new EmpresaAS400DAO(new SecureConfigurationService());
                 catalogo = daoEmpresa.ObtenerEmpresas() ?? new List<Empresa>();
             }
             catch

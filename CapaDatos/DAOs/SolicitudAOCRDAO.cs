@@ -43,10 +43,7 @@ namespace CapaDatos.DAOs
 
         public List<SolicitudAOCR> ObtenerPorEstado(string estado)
         {
-            return ObtenerPorFiltro(
-                "estado = @e AND deleted_at IS NULL",
-                cmd => cmd.Parameters.AddWithValue("@e", estado ?? "")
-            );
+            return ObtenerPorEstados(estado);
         }
 
         // Múltiples estados a la vez
@@ -55,17 +52,114 @@ namespace CapaDatos.DAOs
             if (estados == null || estados.Length == 0)
                 return ObtenerTodos();
 
-            var placeholders = new List<string>();
-            for (int i = 0; i < estados.Length; i++)
-                placeholders.Add($"@e{i}");
+            var estadosFiltro = ExpandirEstadosEquivalentes(estados);
+            if (estadosFiltro.Count == 0)
+                return ObtenerTodos();
 
-            string where = $"estado = ANY (ARRAY[{string.Join(",", placeholders)}]) AND deleted_at IS NULL";
+            const string where = @"
+                REPLACE(TRIM(TRANSLATE(UPPER(COALESCE(estado, '')), 'ÁÉÍÓÚ', 'AEIOU')), '_', ' ') = ANY (@estados)
+                AND deleted_at IS NULL";
 
             return ObtenerPorFiltro(where, cmd =>
             {
-                for (int i = 0; i < estados.Length; i++)
-                    cmd.Parameters.AddWithValue($"@e{i}", estados[i] ?? string.Empty);
+                cmd.Parameters.AddWithValue("@estados", estadosFiltro.ToArray());
             });
+        }
+
+        private static List<string> ExpandirEstadosEquivalentes(IEnumerable<string> estados)
+        {
+            var equivalencias = new Dictionary<string, string[]>(StringComparer.OrdinalIgnoreCase)
+            {
+                {
+                    EstadoSolicitud.AOCR_EnRevision,
+                    new[]
+                    {
+                        EstadoSolicitud.AOCR_EnRevision,
+                        "ENVIADO_A_JEFATURA",
+                        "ENVIADO A JEFATURA"
+                    }
+                },
+                {
+                    EstadoSolicitud.AOCR_Validado,
+                    new[]
+                    {
+                        EstadoSolicitud.AOCR_Validado,
+                        "VALIDADO_TECNICAMENTE",
+                        "ENVIADO_A_LEGALIZACION",
+                        "ENVIADO A LEGALIZACION"
+                    }
+                },
+                {
+                    EstadoSolicitud.AOCR_Legalizado,
+                    new[]
+                    {
+                        EstadoSolicitud.AOCR_Legalizado,
+                        "LEGALIZADO",
+                        "CERTIFICADO_LEGALIZADO"
+                    }
+                },
+                {
+                    EstadoSolicitud.AOCR_EmitidoRecibido,
+                    new[]
+                    {
+                        EstadoSolicitud.AOCR_EmitidoRecibido,
+                        "CERTIFICADO_EMITIDO",
+                        "AOCR_EMITIDO",
+                        "AOCR_ENTREGADO",
+                        "AOCR_EMITIDO_RECIBIDO"
+                    }
+                }
+            };
+
+            var resultado = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            foreach (var estado in estados ?? Enumerable.Empty<string>())
+            {
+                if (string.IsNullOrWhiteSpace(estado))
+                {
+                    continue;
+                }
+
+                var normalizado = EstadoSolicitud.Normalizar(estado);
+                resultado.Add(NormalizarEstadoFiltro(estado));
+                resultado.Add(NormalizarEstadoFiltro(normalizado));
+
+                string[] alias;
+                if (equivalencias.TryGetValue(normalizado, out alias))
+                {
+                    foreach (var item in alias)
+                    {
+                        resultado.Add(NormalizarEstadoFiltro(item));
+                    }
+                }
+            }
+
+            return resultado
+                .Where(e => !string.IsNullOrWhiteSpace(e))
+                .ToList();
+        }
+
+        private static string NormalizarEstadoFiltro(string estado)
+        {
+            if (string.IsNullOrWhiteSpace(estado))
+            {
+                return string.Empty;
+            }
+
+            var valor = estado.Trim()
+                .ToUpperInvariant()
+                .Replace("Á", "A")
+                .Replace("É", "E")
+                .Replace("Í", "I")
+                .Replace("Ó", "O")
+                .Replace("Ú", "U")
+                .Replace('_', ' ');
+
+            while (valor.Contains("  "))
+            {
+                valor = valor.Replace("  ", " ");
+            }
+
+            return valor;
         }
 
         public List<SolicitudAOCR> ObtenerPendientesRevision()

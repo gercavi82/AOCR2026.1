@@ -36,12 +36,12 @@ namespace CapaPresentacion.Controllers
             return RedirectToAction("DashboardGerencial", "Direccion");
         }
 
-        [Authorize(Roles = "Direccion,JefaturaTecnica,DirectorGeneral,Administrador,CoordinacionLegal,CoordinadorLegal")]
+        [Authorize(Roles = "DIRDAC,Direccion,JefaturaTecnica,DirectorGeneral,Administrador,CoordinacionLegal,CoordinadorLegal")]
         public ActionResult DashboardInspeccion(string compania = null, string inspector = null, string estado = null, string quickFilter = null)
         {
             var urlHelper = new UrlHelper(ControllerContext.RequestContext);
             var puedeGestionarAsignacion = User.IsInRole("Administrador") || User.IsInRole("Direccion") || User.IsInRole("JefaturaTecnica");
-            var puedeVerPendientesDirdac = User.IsInRole("Administrador") || User.IsInRole("Direccion") || User.IsInRole("Director") || User.IsInRole("JefaturaTecnica") || User.IsInRole("Jefe");
+            var puedeVerPendientesDirdac = User.IsInRole("Administrador") || User.IsInRole("DIRDAC") || User.IsInRole("Direccion") || User.IsInRole("Director") || User.IsInRole("JefaturaTecnica") || User.IsInRole("Jefe");
             var puedeValidarAocr = User.IsInRole("Administrador") || User.IsInRole("JefaturaTecnica");
             var quickFilterNormalizado = NormalizarQuickFilter(quickFilter);
 
