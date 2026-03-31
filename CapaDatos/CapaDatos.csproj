@@ -261,6 +261,7 @@
     <Compile Include="DAOs\AdminUsuariosDAO.cs" />
     <Compile Include="DAOs\AuditoriaDAO.cs" />
     <Compile Include="DAOs\AocrFirmaDocumentoDAO.cs" />
+    <Compile Include="DAOs\AocrFirmaPosicionDocumentoDAO.cs" />
     <Compile Include="DAOs\AeronaveDAO.cs" />
     <Compile Include="DAOs\BancoP9DAO.cs" />
     <Compile Include="DAOs\CD_ListaValor.cs" />

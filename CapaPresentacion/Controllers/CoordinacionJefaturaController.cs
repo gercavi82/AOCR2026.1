@@ -1,5 +1,7 @@
 using System;
+using System.Collections.Specialized;
 using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Text;
@@ -27,6 +29,7 @@ namespace CapaPresentacion.Controllers
         private readonly AeronaveSolicitudDAO _aeronaveSolicitudDao = new AeronaveSolicitudDAO();
         private readonly HistorialEstadoDAO _historialEstadoDao = new HistorialEstadoDAO();
         private readonly AocrFirmaDocumentoDAO _aocrFirmaDocumentoDao = new AocrFirmaDocumentoDAO();
+        private readonly AocrFirmaPosicionDocumentoDAO _aocrFirmaPosicionDocumentoDao = new AocrFirmaPosicionDocumentoDAO();
         private readonly FirmaDigitalService _firmaDigitalService = new FirmaDigitalService();
         private readonly DashboardInspeccionDAO _dashboardInspeccionDao = new DashboardInspeccionDAO();
 
@@ -906,6 +909,7 @@ namespace CapaPresentacion.Controllers
                 }
 
                 var model = ConstruirDocumentoEdicionModel(item, tipoNormalizado);
+                AplicarPosicionFirmaAocr(model, tipoNormalizado);
                 var viewName = tipoNormalizado == "RECONOCIMIENTO"
                     ? "~/Views/CoordinacionJefatura/EditarReconocimientoAocr.cshtml"
                     : "~/Views/CoordinacionJefatura/EditarCondicionesLimitacionesAocr.cshtml";
@@ -921,6 +925,48 @@ namespace CapaPresentacion.Controllers
             {
                 var referencia = RegistrarErrorValidacionAocr("EditarDocumentoValidacionAocr", ex, solicitudId, null, tipo);
                 return new HttpStatusCodeResult(500, "Error interno al cargar la plantilla AOCR. Ref: " + referencia);
+            }
+        }
+
+        [Authorize(Roles = "Direccion,JefaturaTecnica,DirectorGeneral,Administrador")]
+        public ActionResult PreviewDocumentoValidacionAocr(int solicitudId, string tipo)
+        {
+            try
+            {
+                var tipoNormalizado = NormalizarTipoDocumento(tipo);
+                if (tipoNormalizado == null)
+                {
+                    return new HttpStatusCodeResult(400, "Tipo de documento AOCR no valido.");
+                }
+
+                var item = ObtenerContextoDocumentoValidacion(solicitudId);
+                if (item == null)
+                {
+                    return HttpNotFound("No existe contexto disponible para el documento AOCR solicitado.");
+                }
+
+                if (!item.FirmaCompleta)
+                {
+                    return new HttpStatusCodeResult(409, "La firma del informe tecnico aun no esta completa para habilitar este documento.");
+                }
+
+                var modelEdicion = ConstruirDocumentoEdicionModel(item, tipoNormalizado);
+                var documentoModel = ConstruirDocumentoPdfModel(item, modelEdicion, tipoNormalizado);
+                var viewName = tipoNormalizado == "RECONOCIMIENTO"
+                    ? "~/Views/CoordinacionJefatura/AocrReconocimientoPdf.cshtml"
+                    : "~/Views/CoordinacionJefatura/AocrCondicionesLimitacionesPdf.cshtml";
+
+                return View(viewName, documentoModel);
+            }
+            catch (PostgresException exPg)
+            {
+                var referencia = RegistrarErrorValidacionAocr("PreviewDocumentoValidacionAocr", exPg, solicitudId, null, tipo);
+                return new HttpStatusCodeResult(500, "Error de base de datos al cargar la vista previa AOCR. Ref: " + referencia);
+            }
+            catch (Exception ex)
+            {
+                var referencia = RegistrarErrorValidacionAocr("PreviewDocumentoValidacionAocr", ex, solicitudId, null, tipo);
+                return new HttpStatusCodeResult(500, "Error interno al cargar la vista previa AOCR. Ref: " + referencia);
             }
         }
 
@@ -970,8 +1016,9 @@ namespace CapaPresentacion.Controllers
         {
             try
             {
+                model = CompletarDocumentoEdicionDesdeFormulario(model);
                 var tipoNormalizado = NormalizarTipoDocumento(model != null ? model.TipoDocumento : null);
-                if (model == null || tipoNormalizado == null)
+                if (model == null || model.SolicitudId <= 0 || tipoNormalizado == null)
                 {
                     return new HttpStatusCodeResult(400, "No se recibieron datos validos para generar el documento AOCR.");
                 }
@@ -1027,6 +1074,7 @@ namespace CapaPresentacion.Controllers
                             ? "Firma digital del reconocimiento AOCR"
                             : "Firma digital del documento de condiciones y limitaciones AOCR";
                         var contenidoQr = ConstruirContenidoQrFirmaAocr(item, model, tipoNormalizado, infoCertificado, nombreFirmante);
+                        var posicionFirmaVisual = ConstruirPosicionFirmaVisualPdf(model);
 
                         var resultadoFirma = _firmaDigitalService.FirmarPdf(
                             pdfBytes,
@@ -1036,7 +1084,8 @@ namespace CapaPresentacion.Controllers
                             motivoFirma,
                             "Sistema AOCR DGAC",
                             "AOCR_FIRMANTE",
-                            contenidoQr);
+                            contenidoQr,
+                            posicionFirmaVisual);
 
                         if (!resultadoFirma.Exitoso)
                         {
@@ -1058,6 +1107,11 @@ namespace CapaPresentacion.Controllers
                             contenidoQr,
                             infoCertificado,
                             nombreFirmante);
+
+                        if (posicionFirmaVisual != null && posicionFirmaVisual.EsValida)
+                        {
+                            GuardarPosicionFirmaAocr(item, model, tipoNormalizado, posicionFirmaVisual, "PUNTERO");
+                        }
                     }
                 }
 
@@ -1074,6 +1128,57 @@ namespace CapaPresentacion.Controllers
             {
                 var referencia = RegistrarErrorValidacionAocr("GenerarDocumentoValidacionAocr", ex, model != null ? (int?)model.SolicitudId : null, model != null ? model.InspeccionId : null, model != null ? model.TipoDocumento : null);
                 return new HttpStatusCodeResult(500, "Error interno al generar documento AOCR. Ref: " + referencia);
+            }
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        [Authorize(Roles = "Direccion,JefaturaTecnica,DirectorGeneral,Administrador")]
+        public JsonResult GuardarPosicionFirmaAocr(AocrFirmaPosicionEdicionViewModel model)
+        {
+            try
+            {
+                var tipoNormalizado = NormalizarTipoDocumento(model != null ? model.TipoDocumento : null);
+                if (model == null || tipoNormalizado == null)
+                {
+                    Response.StatusCode = 400;
+                    return Json(new { ok = false, mensaje = "No se recibieron coordenadas validas para la firma AOCR." });
+                }
+
+                var item = ObtenerContextoDocumentoValidacion(model.SolicitudId);
+                if (item == null)
+                {
+                    Response.StatusCode = 404;
+                    return Json(new { ok = false, mensaje = "No existe contexto disponible para el documento AOCR solicitado." });
+                }
+
+                if (!item.FirmaCompleta)
+                {
+                    Response.StatusCode = 409;
+                    return Json(new { ok = false, mensaje = "La firma del informe tecnico aun no esta completa para habilitar este documento." });
+                }
+
+                var posicionFirmaVisual = ConstruirPosicionFirmaVisualPdf(model);
+                if (posicionFirmaVisual == null || !posicionFirmaVisual.EsValida)
+                {
+                    Response.StatusCode = 400;
+                    return Json(new { ok = false, mensaje = "Las coordenadas de firma son invalidas o incompletas." });
+                }
+
+                GuardarPosicionFirmaAocr(item, model, tipoNormalizado, posicionFirmaVisual, "PUNTERO");
+                return Json(new { ok = true, mensaje = "La posicion de firma fue guardada correctamente." });
+            }
+            catch (PostgresException exPg)
+            {
+                var referencia = RegistrarErrorValidacionAocr("GuardarPosicionFirmaAocr", exPg, model != null ? (int?)model.SolicitudId : null, model != null ? model.InspeccionId : null, model != null ? model.TipoDocumento : null);
+                Response.StatusCode = 500;
+                return Json(new { ok = false, mensaje = "Error de base de datos al guardar la posicion de firma. Ref: " + referencia });
+            }
+            catch (Exception ex)
+            {
+                var referencia = RegistrarErrorValidacionAocr("GuardarPosicionFirmaAocr", ex, model != null ? (int?)model.SolicitudId : null, model != null ? model.InspeccionId : null, model != null ? model.TipoDocumento : null);
+                Response.StatusCode = 500;
+                return Json(new { ok = false, mensaje = "Error interno al guardar la posicion de firma. Ref: " + referencia });
             }
         }
 
@@ -1390,6 +1495,188 @@ namespace CapaPresentacion.Controllers
                 : null;
         }
 
+        private AocrDocumentoEdicionViewModel CompletarDocumentoEdicionDesdeFormulario(AocrDocumentoEdicionViewModel model)
+        {
+            var form = Request != null ? Request.Form : null;
+            if (form == null || form.Count == 0)
+            {
+                return model;
+            }
+
+            var hydrated = model ?? new AocrDocumentoEdicionViewModel();
+
+            hydrated.SolicitudId = ObtenerEnteroFormulario(form, "SolicitudId", hydrated.SolicitudId);
+            hydrated.InspeccionId = ObtenerEnteroNullableFormulario(form, "InspeccionId", hydrated.InspeccionId);
+            hydrated.TipoDocumento = ObtenerTextoFormulario(form, "TipoDocumento", hydrated.TipoDocumento);
+            hydrated.NumeroAocr = ObtenerTextoFormulario(form, "NumeroAocr", hydrated.NumeroAocr);
+            hydrated.NombreDocumento = ObtenerTextoFormulario(form, "NombreDocumento", hydrated.NombreDocumento);
+            hydrated.AocOriginalNumero = ObtenerTextoFormulario(form, "AocOriginalNumero", hydrated.AocOriginalNumero);
+            hydrated.EstadoOtorgante = ObtenerTextoFormulario(form, "EstadoOtorgante", hydrated.EstadoOtorgante);
+            hydrated.NombreExplotador = ObtenerTextoFormulario(form, "NombreExplotador", hydrated.NombreExplotador);
+            hydrated.EstadoExplotador = ObtenerTextoFormulario(form, "EstadoExplotador", hydrated.EstadoExplotador);
+            hydrated.RazonSocial = ObtenerTextoFormulario(form, "RazonSocial", hydrated.RazonSocial);
+            hydrated.DireccionExplotador = ObtenerTextoFormulario(form, "DireccionExplotador", hydrated.DireccionExplotador);
+            hydrated.TelefonoExplotador = ObtenerTextoFormulario(form, "TelefonoExplotador", hydrated.TelefonoExplotador);
+            hydrated.CorreoExplotador = ObtenerTextoFormulario(form, "CorreoExplotador", hydrated.CorreoExplotador);
+            hydrated.PuntoContactoEcuador = ObtenerTextoFormulario(form, "PuntoContactoEcuador", hydrated.PuntoContactoEcuador);
+            hydrated.ContactoDireccion = ObtenerTextoFormulario(form, "ContactoDireccion", hydrated.ContactoDireccion);
+            hydrated.ContactoTelefono = ObtenerTextoFormulario(form, "ContactoTelefono", hydrated.ContactoTelefono);
+            hydrated.ContactoCorreo = ObtenerTextoFormulario(form, "ContactoCorreo", hydrated.ContactoCorreo);
+            hydrated.PuntosContactoOperacionales = ObtenerTextoFormulario(form, "PuntosContactoOperacionales", hydrated.PuntosContactoOperacionales);
+            hydrated.BaseLegalReferencia = ObtenerTextoFormulario(form, "BaseLegalReferencia", hydrated.BaseLegalReferencia);
+            hydrated.ObservacionesReconocimiento = ObtenerTextoFormulario(form, "ObservacionesReconocimiento", hydrated.ObservacionesReconocimiento);
+            hydrated.RepresentanteTecnico = ObtenerTextoFormulario(form, "RepresentanteTecnico", hydrated.RepresentanteTecnico);
+            hydrated.CondicionBaseOperacion = ObtenerTextoFormulario(form, "CondicionBaseOperacion", hydrated.CondicionBaseOperacion);
+            hydrated.RestriccionesCondiciones = ObtenerTextoFormulario(form, "RestriccionesCondiciones", hydrated.RestriccionesCondiciones);
+            hydrated.CondicionesAdicionales = ObtenerTextoFormulario(form, "CondicionesAdicionales", hydrated.CondicionesAdicionales);
+            hydrated.ObservacionesValidacionFinal = ObtenerTextoFormulario(form, "ObservacionesValidacionFinal", hydrated.ObservacionesValidacionFinal);
+            hydrated.ElaboradoPor = ObtenerTextoFormulario(form, "ElaboradoPor", hydrated.ElaboradoPor);
+            hydrated.RevisadoPor = ObtenerTextoFormulario(form, "RevisadoPor", hydrated.RevisadoPor);
+            hydrated.FirmanteNombre = ObtenerTextoFormulario(form, "FirmanteNombre", hydrated.FirmanteNombre);
+            hydrated.FirmanteCargo = ObtenerTextoFormulario(form, "FirmanteCargo", hydrated.FirmanteCargo);
+            hydrated.UsaPosicionFirmaPersonalizada = ObtenerBooleanoFormulario(form, "UsaPosicionFirmaPersonalizada", hydrated.UsaPosicionFirmaPersonalizada);
+            hydrated.NumeroPaginaFirma = ObtenerEnteroFormulario(form, "NumeroPaginaFirma", hydrated.NumeroPaginaFirma > 0 ? hydrated.NumeroPaginaFirma : 1);
+            hydrated.PosicionFirmaX = ObtenerTextoFormulario(form, "PosicionFirmaX", hydrated.PosicionFirmaX);
+            hydrated.PosicionFirmaY = ObtenerTextoFormulario(form, "PosicionFirmaY", hydrated.PosicionFirmaY);
+            hydrated.AnchoFirma = ObtenerTextoFormulario(form, "AnchoFirma", hydrated.AnchoFirma);
+            hydrated.AltoFirma = ObtenerTextoFormulario(form, "AltoFirma", hydrated.AltoFirma);
+            hydrated.FechaEmisionDocumento = ObtenerFechaFormulario(form, "FechaEmisionDocumento", hydrated.FechaEmisionDocumento);
+            hydrated.FechaExpedicion = ObtenerFechaNullableFormulario(form, "FechaExpedicion", hydrated.FechaExpedicion);
+            hydrated.FechaRenovacion = ObtenerFechaNullableFormulario(form, "FechaRenovacion", hydrated.FechaRenovacion);
+            hydrated.FechaVencimiento = ObtenerFechaNullableFormulario(form, "FechaVencimiento", hydrated.FechaVencimiento);
+
+            var aeronaves = ObtenerAeronavesCondicionesFormulario(form);
+            if (aeronaves.Count > 0)
+            {
+                hydrated.AeronavesCondiciones = aeronaves;
+            }
+
+            return hydrated;
+        }
+
+        private static List<AocrCondicionAeronaveFilaViewModel> ObtenerAeronavesCondicionesFormulario(NameValueCollection form)
+        {
+            var filas = new List<AocrCondicionAeronaveFilaViewModel>();
+            if (form == null || form.Count == 0)
+            {
+                return filas;
+            }
+
+            for (var index = 0; index < 500; index++)
+            {
+                var prefix = "AeronavesCondiciones[" + index + "].";
+                var tieneDatos = form.AllKeys.Any(key => key != null && key.StartsWith(prefix, StringComparison.OrdinalIgnoreCase));
+                if (!tieneDatos)
+                {
+                    if (index > 0)
+                    {
+                        break;
+                    }
+
+                    continue;
+                }
+
+                filas.Add(new AocrCondicionAeronaveFilaViewModel
+                {
+                    ModeloTipo = ObtenerTextoFormulario(form, prefix + "ModeloTipo", null),
+                    Matricula = ObtenerTextoFormulario(form, prefix + "Matricula", null),
+                    Serie = ObtenerTextoFormulario(form, prefix + "Serie", null),
+                    Uio = ObtenerTextoFormulario(form, prefix + "Uio", null),
+                    Gye = ObtenerTextoFormulario(form, prefix + "Gye", null),
+                    Mec = ObtenerTextoFormulario(form, prefix + "Mec", null),
+                    Ltx = ObtenerTextoFormulario(form, prefix + "Ltx", null)
+                });
+            }
+
+            return filas;
+        }
+
+        private static string ObtenerTextoFormulario(NameValueCollection form, string key, string fallback)
+        {
+            if (form == null || string.IsNullOrWhiteSpace(key))
+            {
+                return fallback;
+            }
+
+            var value = form[key];
+            return value ?? fallback;
+        }
+
+        private static int ObtenerEnteroFormulario(NameValueCollection form, string key, int fallback)
+        {
+            if (form == null || string.IsNullOrWhiteSpace(key))
+            {
+                return fallback;
+            }
+
+            int value;
+            return int.TryParse(form[key], NumberStyles.Integer, CultureInfo.InvariantCulture, out value)
+                || int.TryParse(form[key], NumberStyles.Integer, CultureInfo.CurrentCulture, out value)
+                ? value
+                : fallback;
+        }
+
+        private static int? ObtenerEnteroNullableFormulario(NameValueCollection form, string key, int? fallback)
+        {
+            if (form == null || string.IsNullOrWhiteSpace(key))
+            {
+                return fallback;
+            }
+
+            int value;
+            return int.TryParse(form[key], NumberStyles.Integer, CultureInfo.InvariantCulture, out value)
+                || int.TryParse(form[key], NumberStyles.Integer, CultureInfo.CurrentCulture, out value)
+                ? (int?)value
+                : fallback;
+        }
+
+        private static bool ObtenerBooleanoFormulario(NameValueCollection form, string key, bool fallback)
+        {
+            if (form == null || string.IsNullOrWhiteSpace(key))
+            {
+                return fallback;
+            }
+
+            var value = form[key];
+            bool parsed;
+            return bool.TryParse(value, out parsed) ? parsed : fallback;
+        }
+
+        private static DateTime ObtenerFechaFormulario(NameValueCollection form, string key, DateTime fallback)
+        {
+            DateTime value;
+            if (TryParseFechaFormulario(form != null ? form[key] : null, out value))
+            {
+                return value;
+            }
+
+            return fallback != default(DateTime) ? fallback : DateTime.Now;
+        }
+
+        private static DateTime? ObtenerFechaNullableFormulario(NameValueCollection form, string key, DateTime? fallback)
+        {
+            DateTime value;
+            if (TryParseFechaFormulario(form != null ? form[key] : null, out value))
+            {
+                return value;
+            }
+
+            return fallback;
+        }
+
+        private static bool TryParseFechaFormulario(string value, out DateTime result)
+        {
+            if (string.IsNullOrWhiteSpace(value))
+            {
+                result = default(DateTime);
+                return false;
+            }
+
+            return DateTime.TryParseExact(value, "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out result)
+                || DateTime.TryParse(value, CultureInfo.CurrentCulture, DateTimeStyles.None, out result)
+                || DateTime.TryParse(value, CultureInfo.InvariantCulture, DateTimeStyles.None, out result);
+        }
+
         private string ConstruirSwitchesPdfValidacionAocr()
         {
             var switches = PdfBrandingHelper.StandardRotativaSwitches
@@ -1646,6 +1933,165 @@ namespace CapaPresentacion.Controllers
             System.IO.File.WriteAllBytes(rutaAbsoluta, contenido ?? new byte[0]);
 
             return VirtualPathUtility.ToAbsolute(carpetaRelativa.TrimStart('~') + "/" + nombreSeguro);
+        }
+
+        private void AplicarPosicionFirmaAocr(AocrDocumentoEdicionViewModel model, string tipoDocumento)
+        {
+            if (model == null)
+            {
+                return;
+            }
+
+            var posicion = _aocrFirmaPosicionDocumentoDao.Obtener(model.SolicitudId, tipoDocumento, "AOCR_FIRMANTE");
+            if (EsPosicionFirmaAocrLegada(posicion))
+            {
+                posicion = null;
+            }
+
+            if (posicion != null)
+            {
+                model.UsaPosicionFirmaPersonalizada = true;
+                model.NumeroPaginaFirma = posicion.NumeroPagina > 0 ? posicion.NumeroPagina : 1;
+                model.PosicionFirmaX = FormatearDecimalInvariante(posicion.PosicionXRatio);
+                model.PosicionFirmaY = FormatearDecimalInvariante(posicion.PosicionYRatio);
+                model.AnchoFirma = FormatearDecimalInvariante(posicion.AnchoRatio);
+                model.AltoFirma = FormatearDecimalInvariante(posicion.AltoRatio);
+                return;
+            }
+
+            model.UsaPosicionFirmaPersonalizada = false;
+            model.NumeroPaginaFirma = 2;
+            model.PosicionFirmaX = "0.020000";
+            model.PosicionFirmaY = "0.060000";
+            model.AnchoFirma = "0.940000";
+            model.AltoFirma = "0.820000";
+        }
+
+        private PosicionFirmaVisualPdf ConstruirPosicionFirmaVisualPdf(AocrDocumentoEdicionViewModel model)
+        {
+            if (model == null || !model.UsaPosicionFirmaPersonalizada)
+            {
+                return null;
+            }
+
+            return ConstruirPosicionFirmaVisualPdf(new AocrFirmaPosicionEdicionViewModel
+            {
+                SolicitudId = model.SolicitudId,
+                InspeccionId = model.InspeccionId,
+                TipoDocumento = model.TipoDocumento,
+                RolFirmante = "AOCR_FIRMANTE",
+                NumeroPaginaFirma = model.NumeroPaginaFirma,
+                PosicionFirmaX = model.PosicionFirmaX,
+                PosicionFirmaY = model.PosicionFirmaY,
+                AnchoFirma = model.AnchoFirma,
+                AltoFirma = model.AltoFirma
+            });
+        }
+
+        private static PosicionFirmaVisualPdf ConstruirPosicionFirmaVisualPdf(AocrFirmaPosicionEdicionViewModel model)
+        {
+            if (model == null)
+            {
+                return null;
+            }
+
+            decimal posicionX;
+            decimal posicionY;
+            decimal ancho;
+            decimal alto;
+
+            if (!TryParseDecimalInvariant(model.PosicionFirmaX, out posicionX)
+                || !TryParseDecimalInvariant(model.PosicionFirmaY, out posicionY)
+                || !TryParseDecimalInvariant(model.AnchoFirma, out ancho)
+                || !TryParseDecimalInvariant(model.AltoFirma, out alto))
+            {
+                return null;
+            }
+
+            return new PosicionFirmaVisualPdf
+            {
+                NumeroPagina = model.NumeroPaginaFirma > 0 ? model.NumeroPaginaFirma : 1,
+                PosicionXRatio = (float)posicionX,
+                PosicionYRatio = (float)posicionY,
+                AnchoRatio = (float)ancho,
+                AltoRatio = (float)alto
+            };
+        }
+
+        private void GuardarPosicionFirmaAocr(ValidarAocrSolicitudItemViewModel item, AocrDocumentoEdicionViewModel model, string tipoDocumento, PosicionFirmaVisualPdf posicion, string origenPosicion)
+        {
+            GuardarPosicionFirmaAocr(
+                item,
+                new AocrFirmaPosicionEdicionViewModel
+                {
+                    SolicitudId = model != null ? model.SolicitudId : 0,
+                    InspeccionId = model != null ? model.InspeccionId : null,
+                    TipoDocumento = tipoDocumento,
+                    RolFirmante = "AOCR_FIRMANTE",
+                    NumeroPaginaFirma = posicion != null ? posicion.NumeroPagina : 1,
+                    PosicionFirmaX = posicion != null ? FormatearDecimalInvariante((decimal)posicion.PosicionXRatio) : null,
+                    PosicionFirmaY = posicion != null ? FormatearDecimalInvariante((decimal)posicion.PosicionYRatio) : null,
+                    AnchoFirma = posicion != null ? FormatearDecimalInvariante((decimal)posicion.AnchoRatio) : null,
+                    AltoFirma = posicion != null ? FormatearDecimalInvariante((decimal)posicion.AltoRatio) : null
+                },
+                tipoDocumento,
+                posicion,
+                origenPosicion);
+        }
+
+        private void GuardarPosicionFirmaAocr(ValidarAocrSolicitudItemViewModel item, AocrFirmaPosicionEdicionViewModel model, string tipoDocumento, PosicionFirmaVisualPdf posicion, string origenPosicion)
+        {
+            if (item == null || item.Solicitud == null || posicion == null || !posicion.EsValida)
+            {
+                return;
+            }
+
+            _aocrFirmaPosicionDocumentoDao.Guardar(new AocrFirmaPosicionDocumento
+            {
+                CodigoSolicitud = item.Solicitud.CodigoSolicitud,
+                CodigoInspeccion = model != null ? model.InspeccionId : item.Inspeccion != null ? (int?)item.Inspeccion.CodigoInspeccion : null,
+                TipoDocumento = tipoDocumento,
+                RolFirmante = "AOCR_FIRMANTE",
+                OrigenPosicion = string.IsNullOrWhiteSpace(origenPosicion) ? "PUNTERO" : origenPosicion,
+                NumeroPagina = posicion.NumeroPagina,
+                PosicionXRatio = (decimal)posicion.PosicionXRatio,
+                PosicionYRatio = (decimal)posicion.PosicionYRatio,
+                AnchoRatio = (decimal)posicion.AnchoRatio,
+                AltoRatio = (decimal)posicion.AltoRatio,
+                CodigoUsuario = ObtenerUsuarioActualIdSeguro() > 0 ? (int?)ObtenerUsuarioActualIdSeguro() : null,
+                UsuarioNombre = User != null && User.Identity != null ? User.Identity.Name : null
+            });
+        }
+
+        private static bool TryParseDecimalInvariant(string value, out decimal result)
+        {
+            return decimal.TryParse(value, NumberStyles.Float, CultureInfo.InvariantCulture, out result);
+        }
+
+        private static bool EsPosicionFirmaAocrLegada(AocrFirmaPosicionDocumento posicion)
+        {
+            if (posicion == null)
+            {
+                return false;
+            }
+
+            return (SonDecimalesCercanos(posicion.PosicionXRatio, 0.642017m)
+                && SonDecimalesCercanos(posicion.PosicionYRatio, 0.161520m)
+                && SonDecimalesCercanos(posicion.AnchoRatio, 0.258824m)
+                && SonDecimalesCercanos(posicion.AltoRatio, 0.073634m))
+                || (posicion.NumeroPagina >= 1
+                    && posicion.AnchoRatio <= 0.40m
+                    && posicion.AltoRatio <= 0.20m);
+        }
+
+        private static bool SonDecimalesCercanos(decimal valor, decimal esperado)
+        {
+            return Math.Abs(valor - esperado) <= 0.0005m;
+        }
+
+        private static string FormatearDecimalInvariante(decimal value)
+        {
+            return value.ToString("0.######", CultureInfo.InvariantCulture);
         }
 
         private void RegistrarFirmaDigitalAocr(

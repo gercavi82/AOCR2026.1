@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Text;
@@ -14,6 +15,7 @@ using CapaNegocio.Helpers;
 using CapaNegocio.Services;
 using CapaUtilidades;
 using CapaPresentacion.Helpers;
+using CapaPresentacion.Models;
 using CapaPresentacion.Models.ViewModels;
 using Rotativa;
 using LoggingServiceType = CapaDatos.Services.ILoggingService;
@@ -34,6 +36,7 @@ namespace CapaPresentacion.Controllers
         private readonly InspeccionHistorialDAO _historialDAO;
         private readonly InspeccionInformeDAO _informeDAO;
         private readonly DocumentoInspeccionDAO _documentoDAO;
+        private readonly AocrFirmaPosicionDocumentoDAO _firmaPosicionDocumentoDAO;
         private readonly SolicitudAOCRDAO _solicitudDAO;
         private readonly InspeccionService _inspeccionService;
         private readonly InspeccionCorreoService _inspeccionCorreoService;
@@ -79,6 +82,7 @@ namespace CapaPresentacion.Controllers
             _historialDAO = new InspeccionHistorialDAO();
             _informeDAO = new InspeccionInformeDAO();
             _documentoDAO = new DocumentoInspeccionDAO();
+            _firmaPosicionDocumentoDAO = new AocrFirmaPosicionDocumentoDAO();
             _solicitudDAO = new SolicitudAOCRDAO();
             _inspeccionService = new InspeccionService();
             _inspeccionCorreoService = new InspeccionCorreoService();
@@ -313,6 +317,8 @@ namespace CapaPresentacion.Controllers
                 ViewBag.Solicitud = null;
             }
 
+            AplicarPosicionesFirmaInformeTecnicoDetalle(id);
+
             EnriquecerInspectoresDetalle(inspeccion, ViewBag.Solicitud as SolicitudAOCR);
 
             return View("~/Views/Inspeccion/Detalle.cshtml", inspeccion);
@@ -348,6 +354,82 @@ namespace CapaPresentacion.Controllers
                 _logger.LogError("[GestionInspeccion] Error cargando pendientes DIRDAC: " + ex);
                 TempData["Error"] = "No se pudo cargar el listado de documentos pendientes de firma DIRDAC.";
                 return RedirectToAction("Index");
+            }
+        }
+
+        [HttpGet]
+        [Authorize(Roles = ROLES_GESTION_INSPECCION_CON_SOLICITANTE + "," + ROL_DIRDAC)]
+        public ActionResult PreviewFirmaInformeTecnico(int id)
+        {
+            if (id <= 0)
+            {
+                return new HttpStatusCodeResult(400, "ID inválido.");
+            }
+
+            var inspeccion = _inspeccionDAO.ObtenerPorId(id);
+            if (inspeccion == null)
+            {
+                return HttpNotFound("Inspección no encontrada.");
+            }
+
+            if (!PuedeAccederInspeccion(inspeccion) && !User.IsInRole(ROL_DIRECCION) && !User.IsInRole(ROL_DIRECTOR) && !User.IsInRole(ROL_DIRDAC) && !EsAdmin())
+            {
+                return new HttpStatusCodeResult(403, "No autorizado para visualizar la firma del informe técnico.");
+            }
+
+            var solicitud = _solicitudDAO.ObtenerPorId(inspeccion.CodigoSolicitud);
+            var informe = _informeDAO.ObtenerUltimoPorInspeccion(id);
+            var vm = new InformeTecnicoPdfViewModel
+            {
+                Inspeccion = inspeccion,
+                Solicitud = solicitud,
+                Informe = informe
+            };
+
+            return View("~/Views/Inspeccion/InformeTecnicoFirmaPreview.cshtml", vm);
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        [Authorize(Roles = ROLES_FIRMA_DIRDAC + "," + ROL_INSPECTOR)]
+        public JsonResult GuardarPosicionFirmaInformeTecnico(int id, string rolFirmaVisual, int numeroPaginaFirma, string posicionFirmaX, string posicionFirmaY, string anchoFirma, string altoFirma)
+        {
+            try
+            {
+                if (id <= 0)
+                {
+                    Response.StatusCode = 400;
+                    return Json(new { ok = false, mensaje = "Inspección inválida para guardar la posición de firma." });
+                }
+
+                var inspeccion = _inspeccionDAO.ObtenerPorId(id);
+                if (inspeccion == null)
+                {
+                    Response.StatusCode = 404;
+                    return Json(new { ok = false, mensaje = "Inspección no encontrada." });
+                }
+
+                if (!PuedeFirmarInformePorRol(inspeccion, rolFirmaVisual))
+                {
+                    Response.StatusCode = 403;
+                    return Json(new { ok = false, mensaje = "No autorizado para configurar la posición de esta firma." });
+                }
+
+                var posicion = ConstruirPosicionFirmaVisualDesdeValores(numeroPaginaFirma, posicionFirmaX, posicionFirmaY, anchoFirma, altoFirma);
+                if (posicion == null || !posicion.EsValida)
+                {
+                    Response.StatusCode = 400;
+                    return Json(new { ok = false, mensaje = "Las coordenadas de firma del informe técnico son inválidas." });
+                }
+
+                GuardarPosicionFirmaInformeTecnico(inspeccion, rolFirmaVisual, posicion);
+                return Json(new { ok = true, mensaje = "La posición de firma del informe técnico fue guardada correctamente." });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError("[GestionInspeccion] Error guardando posición de firma informe técnico. InspeccionId=" + id + ", Rol=" + (rolFirmaVisual ?? string.Empty) + ", Error=" + ex);
+                Response.StatusCode = 500;
+                return Json(new { ok = false, mensaje = "Ocurrió un error interno al guardar la posición de firma." });
             }
         }
 
@@ -1802,6 +1884,8 @@ namespace CapaPresentacion.Controllers
 
             byte[] pdfFirmado;
             string hashDocumento;
+            var claveFirmaVisual = ObtenerClaveFirmaVisualInforme(rolFirma);
+            var posicionFirmaVisual = ObtenerPosicionFirmaInformeDesdeRequest(id, claveFirmaVisual);
             using (var ms = new MemoryStream())
             {
                 certificado.InputStream.CopyTo(ms);
@@ -1825,7 +1909,9 @@ namespace CapaPresentacion.Controllers
                     "Sistema AOCR DGAC",
                     string.Equals(rolFirma, "DIRDAC", StringComparison.OrdinalIgnoreCase)
                         ? "INFORME_TECNICO_DIRDAC"
-                        : "INFORME_TECNICO_INSPECTOR");
+                        : "INFORME_TECNICO_INSPECTOR",
+                    null,
+                    posicionFirmaVisual);
 
                 if (!resultadoFirma.Exitoso)
                 {
@@ -1869,6 +1955,11 @@ namespace CapaPresentacion.Controllers
             }
 
             _inspeccionBL.GuardarInforme(id, rutaFirmada, usuarioId);
+            if (posicionFirmaVisual != null && posicionFirmaVisual.EsValida)
+            {
+                GuardarPosicionFirmaInformeTecnico(inspeccion, claveFirmaVisual, posicionFirmaVisual);
+            }
+
             _logger.LogInfo("[GestionInspeccion] Firma digital persistida. InspeccionId=" + id
                 + ", RolFirma=" + rolFirma
                 + ", InformeId=" + informe.CodigoInforme
@@ -2117,6 +2208,161 @@ namespace CapaPresentacion.Controllers
             }
 
             return true;
+        }
+
+        private void AplicarPosicionesFirmaInformeTecnicoDetalle(int codigoInspeccion)
+        {
+            var posicionInspector = _firmaPosicionDocumentoDAO.Obtener(codigoInspeccion, "INFORME_TECNICO", "INFORME_TECNICO_INSPECTOR");
+            var posicionDirdac = _firmaPosicionDocumentoDAO.Obtener(codigoInspeccion, "INFORME_TECNICO", "INFORME_TECNICO_DIRDAC");
+
+            AsignarViewBagPosicionFirma("Inspector", posicionInspector, 2, 0.655462m, 0.209026m, 0.248739m, 0.106888m);
+            AsignarViewBagPosicionFirma("Dirdac", posicionDirdac, 2, 0.655462m, 0.209026m, 0.248739m, 0.106888m);
+        }
+
+        private void AsignarViewBagPosicionFirma(string prefijo, AocrFirmaPosicionDocumento posicion, int paginaDefault, decimal xDefault, decimal yDefault, decimal anchoDefault, decimal altoDefault)
+        {
+            ViewData[prefijo + "FirmaUsaPosicionPersonalizada"] = posicion != null ? "true" : "false";
+            ViewData[prefijo + "FirmaNumeroPagina"] = posicion != null && posicion.NumeroPagina > 0 ? posicion.NumeroPagina : paginaDefault;
+            ViewData[prefijo + "FirmaPosicionX"] = FormatearDecimalInvariante(posicion != null ? posicion.PosicionXRatio : xDefault);
+            ViewData[prefijo + "FirmaPosicionY"] = FormatearDecimalInvariante(posicion != null ? posicion.PosicionYRatio : yDefault);
+            ViewData[prefijo + "FirmaAncho"] = FormatearDecimalInvariante(posicion != null ? posicion.AnchoRatio : anchoDefault);
+            ViewData[prefijo + "FirmaAlto"] = FormatearDecimalInvariante(posicion != null ? posicion.AltoRatio : altoDefault);
+        }
+
+        private bool PuedeFirmarInformePorRol(Inspeccion inspeccion, string rolFirmaVisual)
+        {
+            var rolNormalizado = ObtenerClaveFirmaVisualInforme(rolFirmaVisual);
+            if (string.Equals(rolNormalizado, "INFORME_TECNICO_INSPECTOR", StringComparison.OrdinalIgnoreCase))
+            {
+                return PuedeAccederInspeccion(inspeccion) && (User.IsInRole(ROL_INSPECTOR) || EsAdmin());
+            }
+
+            if (string.Equals(rolNormalizado, "INFORME_TECNICO_DIRDAC", StringComparison.OrdinalIgnoreCase))
+            {
+                return User.IsInRole(ROL_DIRDAC) || User.IsInRole(ROL_DIRECCION) || User.IsInRole(ROL_DIRECTOR) || User.IsInRole(ROL_JEFATURA) || User.IsInRole(ROL_JEFE) || EsAdmin();
+            }
+
+            return false;
+        }
+
+        private static string ObtenerClaveFirmaVisualInforme(string rolFirmaVisual)
+        {
+            var rol = (rolFirmaVisual ?? string.Empty).Trim().ToUpperInvariant();
+            if (rol == "DIRDAC" || rol == "INFORME_TECNICO_DIRDAC")
+            {
+                return "INFORME_TECNICO_DIRDAC";
+            }
+
+            return "INFORME_TECNICO_INSPECTOR";
+        }
+
+        private PosicionFirmaVisualPdf ObtenerPosicionFirmaInformeDesdeRequest(int codigoInspeccion, string rolFirmaVisual)
+        {
+            var sufijo = string.Equals(rolFirmaVisual, "INFORME_TECNICO_DIRDAC", StringComparison.OrdinalIgnoreCase)
+                ? "Dirdac"
+                : "Inspector";
+            var usaPersonalizada = (Request.Form["UsaPosicionFirmaPersonalizada" + sufijo] ?? string.Empty).Trim();
+            if (!string.Equals(usaPersonalizada, "true", StringComparison.OrdinalIgnoreCase))
+            {
+                var posicionGuardada = _firmaPosicionDocumentoDAO.Obtener(codigoInspeccion, "INFORME_TECNICO", rolFirmaVisual);
+                return ConvertirPosicionFirmaVisual(posicionGuardada);
+            }
+
+            var posicion = ConstruirPosicionFirmaVisualDesdeValores(
+                ParseIntSeguro(Request.Form["NumeroPaginaFirma" + sufijo], 2),
+                Request.Form["PosicionFirmaX" + sufijo],
+                Request.Form["PosicionFirmaY" + sufijo],
+                Request.Form["AnchoFirma" + sufijo],
+                Request.Form["AltoFirma" + sufijo]);
+
+            if (posicion != null && posicion.EsValida)
+            {
+                return posicion;
+            }
+
+            var fallback = _firmaPosicionDocumentoDAO.Obtener(codigoInspeccion, "INFORME_TECNICO", rolFirmaVisual);
+            return ConvertirPosicionFirmaVisual(fallback);
+        }
+
+        private void GuardarPosicionFirmaInformeTecnico(Inspeccion inspeccion, string rolFirmaVisual, PosicionFirmaVisualPdf posicion)
+        {
+            if (inspeccion == null || posicion == null || !posicion.EsValida)
+            {
+                return;
+            }
+
+            _firmaPosicionDocumentoDAO.Guardar(new AocrFirmaPosicionDocumento
+            {
+                CodigoSolicitud = inspeccion.CodigoInspeccion,
+                CodigoInspeccion = inspeccion.CodigoInspeccion,
+                TipoDocumento = "INFORME_TECNICO",
+                RolFirmante = ObtenerClaveFirmaVisualInforme(rolFirmaVisual),
+                OrigenPosicion = "PUNTERO",
+                NumeroPagina = posicion.NumeroPagina,
+                PosicionXRatio = (decimal)posicion.PosicionXRatio,
+                PosicionYRatio = (decimal)posicion.PosicionYRatio,
+                AnchoRatio = (decimal)posicion.AnchoRatio,
+                AltoRatio = (decimal)posicion.AltoRatio,
+                CodigoUsuario = ObtenerCodigoUsuario() > 0 ? (int?)ObtenerCodigoUsuario() : null,
+                UsuarioNombre = ObtenerUsuarioActual()
+            });
+        }
+
+        private static PosicionFirmaVisualPdf ConvertirPosicionFirmaVisual(AocrFirmaPosicionDocumento posicion)
+        {
+            if (posicion == null)
+            {
+                return null;
+            }
+
+            return new PosicionFirmaVisualPdf
+            {
+                NumeroPagina = posicion.NumeroPagina > 0 ? posicion.NumeroPagina : 2,
+                PosicionXRatio = (float)posicion.PosicionXRatio,
+                PosicionYRatio = (float)posicion.PosicionYRatio,
+                AnchoRatio = (float)posicion.AnchoRatio,
+                AltoRatio = (float)posicion.AltoRatio
+            };
+        }
+
+        private static PosicionFirmaVisualPdf ConstruirPosicionFirmaVisualDesdeValores(int numeroPagina, string posicionX, string posicionY, string ancho, string alto)
+        {
+            decimal x;
+            decimal y;
+            decimal width;
+            decimal height;
+            if (!TryParseDecimalInvariant(posicionX, out x)
+                || !TryParseDecimalInvariant(posicionY, out y)
+                || !TryParseDecimalInvariant(ancho, out width)
+                || !TryParseDecimalInvariant(alto, out height))
+            {
+                return null;
+            }
+
+            return new PosicionFirmaVisualPdf
+            {
+                NumeroPagina = numeroPagina > 0 ? numeroPagina : 2,
+                PosicionXRatio = (float)x,
+                PosicionYRatio = (float)y,
+                AnchoRatio = (float)width,
+                AltoRatio = (float)height
+            };
+        }
+
+        private static bool TryParseDecimalInvariant(string value, out decimal result)
+        {
+            return decimal.TryParse(value, NumberStyles.Float, CultureInfo.InvariantCulture, out result);
+        }
+
+        private static int ParseIntSeguro(string value, int defaultValue)
+        {
+            int result;
+            return int.TryParse(value, out result) ? result : defaultValue;
+        }
+
+        private static string FormatearDecimalInvariante(decimal value)
+        {
+            return value.ToString("0.######", CultureInfo.InvariantCulture);
         }
 
         private string ResolverRutaAbsolutaInforme(string rutaRelativa)

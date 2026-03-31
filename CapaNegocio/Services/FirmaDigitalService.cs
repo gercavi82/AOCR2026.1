@@ -55,7 +55,7 @@ namespace CapaNegocio.Services
             }
         }
 
-        public ResultadoFirmaDigital FirmarPdf(byte[] pdfBytes, byte[] certificadoBytes, string passwordCertificado, string nombreFirmante, string motivo, string ubicacion, string rolFirmante, string contenidoQr = null)
+        public ResultadoFirmaDigital FirmarPdf(byte[] pdfBytes, byte[] certificadoBytes, string passwordCertificado, string nombreFirmante, string motivo, string ubicacion, string rolFirmante, string contenidoQr = null, PosicionFirmaVisualPdf posicionFirmaVisual = null)
         {
             try
             {
@@ -95,7 +95,7 @@ namespace CapaNegocio.Services
                     ? contenidoQr
                     : ConstruirContenidoQrPorDefecto(nombreFirmante, rolFirmante, motivo, ubicacion, certificado, fechaFirma);
 
-                var pdfFuente = EstamparBloqueFirmaVisual(pdfBytes, qrPayload, nombreFirmante, rolFirmante, fechaFirma);
+                var pdfFuente = EstamparBloqueFirmaVisual(pdfBytes, qrPayload, nombreFirmante, rolFirmante, fechaFirma, posicionFirmaVisual);
 
                 using (var reader = new PdfReader(pdfFuente))
                 using (var output = new MemoryStream())
@@ -143,7 +143,7 @@ namespace CapaNegocio.Services
             var rol = (rolFirmante ?? string.Empty).Trim().ToUpperInvariant();
             if (rol == "AOCR_FIRMANTE")
             {
-                return new Rectangle(382f, 644f, 536f, 706f);
+                return new Rectangle(385.44f, 627.20f, 552.48f, 709.52f);
             }
 
             if (rol == "INFORME_TECNICO_INSPECTOR")
@@ -164,41 +164,41 @@ namespace CapaNegocio.Services
             return new Rectangle(30f, 30f, 295f, 135f);
         }
 
-        private static Rectangle ObtenerRectanguloQr(string rolFirmante)
+        private static Rectangle ObtenerRectanguloQr(string rolFirmante, Rectangle rectanguloFirma = null)
         {
             var rol = (rolFirmante ?? string.Empty).Trim().ToUpperInvariant();
             if (rol == "AOCR_FIRMANTE")
             {
-                var totalAocr = ObtenerRectanguloFirma(rolFirmante);
-                return new Rectangle(totalAocr.Left + 4f, totalAocr.Bottom + 10f, totalAocr.Left + 44f, totalAocr.Bottom + 50f);
+                var totalAocr = rectanguloFirma ?? ObtenerRectanguloFirma(rolFirmante);
+                return new Rectangle(totalAocr.Left + 12f, totalAocr.Bottom + 19f, totalAocr.Left + 54f, totalAocr.Bottom + 61f);
             }
 
             if (rol == "INFORME_TECNICO_INSPECTOR" || rol == "INFORME_TECNICO_DIRDAC")
             {
-                var totalInforme = ObtenerRectanguloFirma(rolFirmante);
+                var totalInforme = rectanguloFirma ?? ObtenerRectanguloFirma(rolFirmante);
                 return new Rectangle(totalInforme.Left + 6f, totalInforme.Bottom + 20f, totalInforme.Left + 46f, totalInforme.Bottom + 60f);
             }
 
-            var total = ObtenerRectanguloFirma(rolFirmante);
+            var total = rectanguloFirma ?? ObtenerRectanguloFirma(rolFirmante);
             return new Rectangle(total.Left + 6f, total.Bottom + 6f, total.Left + 96f, total.Bottom + 96f);
         }
 
-        private static Rectangle ObtenerRectanguloTextoFirma(string rolFirmante)
+        private static Rectangle ObtenerRectanguloTextoFirma(string rolFirmante, Rectangle rectanguloFirma = null)
         {
             var rol = (rolFirmante ?? string.Empty).Trim().ToUpperInvariant();
             if (rol == "AOCR_FIRMANTE")
             {
-                var totalAocr = ObtenerRectanguloFirma(rolFirmante);
-                return new Rectangle(totalAocr.Left + 50f, totalAocr.Bottom + 6f, totalAocr.Right - 4f, totalAocr.Top - 4f);
+                var totalAocr = rectanguloFirma ?? ObtenerRectanguloFirma(rolFirmante);
+                return new Rectangle(totalAocr.Left + 62f, totalAocr.Bottom + 16f, totalAocr.Right - 10f, totalAocr.Top - 14f);
             }
 
             if (rol == "INFORME_TECNICO_INSPECTOR" || rol == "INFORME_TECNICO_DIRDAC")
             {
-                var totalInforme = ObtenerRectanguloFirma(rolFirmante);
+                var totalInforme = rectanguloFirma ?? ObtenerRectanguloFirma(rolFirmante);
                 return new Rectangle(totalInforme.Left + 50f, totalInforme.Bottom + 8f, totalInforme.Right - 4f, totalInforme.Top - 4f);
             }
 
-            var total = ObtenerRectanguloFirma(rolFirmante);
+            var total = rectanguloFirma ?? ObtenerRectanguloFirma(rolFirmante);
             return new Rectangle(total.Left + 104f, total.Bottom + 8f, total.Right - 8f, total.Top - 8f);
         }
 
@@ -280,39 +280,33 @@ namespace CapaNegocio.Services
             versionField.SetValue(null, constructor.Invoke(null));
         }
 
-        private static byte[] EstamparBloqueFirmaVisual(byte[] pdfBytes, string contenidoQr, string nombreFirmante, string rolFirmante, DateTime fechaFirma)
+        private static byte[] EstamparBloqueFirmaVisual(byte[] pdfBytes, string contenidoQr, string nombreFirmante, string rolFirmante, DateTime fechaFirma, PosicionFirmaVisualPdf posicionFirmaVisual)
         {
             using (var reader = new PdfReader(pdfBytes))
             using (var output = new MemoryStream())
             {
                 using (var stamper = new PdfStamper(reader, output))
                 {
+                    var pagina = ObtenerNumeroPaginaFirma(reader, posicionFirmaVisual);
+                    var rectTotal = ObtenerRectanguloFirmaPersonalizado(reader, pagina, rolFirmante, posicionFirmaVisual);
                     var qr = new BarcodeQRCode(contenidoQr, 120, 120, null);
                     var qrImage = qr.GetImage();
-                    var rectQr = ObtenerRectanguloQr(rolFirmante);
-                    var rectTexto = ObtenerRectanguloTextoFirma(rolFirmante);
-                    var rectTotal = ObtenerRectanguloFirma(rolFirmante);
+                    var rectQr = ObtenerRectanguloQr(rolFirmante, rectTotal);
+                    var rectTexto = ObtenerRectanguloTextoFirma(rolFirmante, rectTotal);
                     qrImage.ScaleAbsolute(rectQr.Right - rectQr.Left, rectQr.Top - rectQr.Bottom);
                     qrImage.SetAbsolutePosition(rectQr.Left, rectQr.Bottom);
 
-                    var pagina = reader.NumberOfPages;
                     var canvas = stamper.GetOverContent(pagina);
                     canvas.SaveState();
                     var rol = (rolFirmante ?? string.Empty).Trim().ToUpperInvariant();
                     var esAocr = rol == "AOCR_FIRMANTE";
                     var esFirmaIntegrada = EsFirmaIntegradaEnPlantilla(rolFirmante);
                     var esInformeTecnico = rol == "INFORME_TECNICO_INSPECTOR" || rol == "INFORME_TECNICO_DIRDAC";
-                    if (esInformeTecnico)
+                    if (esFirmaIntegrada)
                     {
                         canvas.SetColorFill(BaseColor.WHITE);
                         canvas.Rectangle(rectTotal.Left, rectTotal.Bottom, rectTotal.Right - rectTotal.Left, rectTotal.Top - rectTotal.Bottom);
                         canvas.Fill();
-                        canvas.Rectangle(rectTotal.Left, rectTotal.Bottom, rectTotal.Right - rectTotal.Left, rectTotal.Top - rectTotal.Bottom);
-                        canvas.Clip();
-                        canvas.NewPath();
-                    }
-                    else if (esFirmaIntegrada)
-                    {
                         canvas.Rectangle(rectTotal.Left, rectTotal.Bottom, rectTotal.Right - rectTotal.Left, rectTotal.Top - rectTotal.Bottom);
                         canvas.Clip();
                         canvas.NewPath();
@@ -328,18 +322,18 @@ namespace CapaNegocio.Services
 
                     var baseNormal = BaseFont.CreateFont(BaseFont.COURIER, BaseFont.CP1252, BaseFont.NOT_EMBEDDED);
                     var baseBold = BaseFont.CreateFont(BaseFont.COURIER_BOLD, BaseFont.CP1252, BaseFont.NOT_EMBEDDED);
-                    if (esInformeTecnico)
+                    if (esInformeTecnico || esAocr)
                     {
                         baseNormal = BaseFont.CreateFont(BaseFont.HELVETICA, BaseFont.CP1252, BaseFont.NOT_EMBEDDED);
                         baseBold = BaseFont.CreateFont(BaseFont.HELVETICA_BOLD, BaseFont.CP1252, BaseFont.NOT_EMBEDDED);
                     }
 
-                    var tituloFont = new Font(baseNormal, esAocr ? 6.5f : (esInformeTecnico ? 5.2f : 9f), Font.NORMAL, BaseColor.BLACK);
-                    var nombreFont = new Font(baseBold, esAocr ? 7.1f : (esInformeTecnico ? 8.8f : 16f), Font.BOLD, BaseColor.BLACK);
-                    var detalleFont = new Font(baseNormal, esAocr ? 5.1f : (esInformeTecnico ? 4.8f : 8.5f), Font.NORMAL, BaseColor.BLACK);
+                    var tituloFont = new Font(baseNormal, esAocr ? 5.4f : (esInformeTecnico ? 5.2f : 9f), Font.NORMAL, BaseColor.BLACK);
+                    var nombreFont = new Font(baseBold, esAocr ? 7.0f : (esInformeTecnico ? 8.8f : 16f), Font.BOLD, BaseColor.BLACK);
+                    var detalleFont = new Font(baseNormal, esAocr ? 5.2f : (esInformeTecnico ? 4.8f : 8.5f), Font.NORMAL, BaseColor.BLACK);
 
                     var ct = new ColumnText(canvas);
-                    ct.SetSimpleColumn(rectTexto.Left, rectTexto.Bottom, rectTexto.Right, rectTexto.Top, esAocr ? 5.7f : (esInformeTecnico ? 6.3f : 12f), Element.ALIGN_LEFT);
+                    ct.SetSimpleColumn(rectTexto.Left, rectTexto.Bottom, rectTexto.Right, rectTexto.Top, esAocr ? 5.8f : (esInformeTecnico ? 6.3f : 12f), Element.ALIGN_LEFT);
                     var tituloBloque = ObtenerTituloBloqueFirma(rolFirmante);
                     if (!string.IsNullOrWhiteSpace(tituloBloque))
                     {
@@ -469,6 +463,101 @@ namespace CapaNegocio.Services
             }
 
             return sujetoCertificado.Trim();
+        }
+
+        private static int ObtenerNumeroPaginaFirma(PdfReader reader, PosicionFirmaVisualPdf posicionFirmaVisual)
+        {
+            if (reader == null)
+            {
+                return 1;
+            }
+
+            if (posicionFirmaVisual != null && posicionFirmaVisual.EsValida)
+            {
+                return Math.Max(1, Math.Min(reader.NumberOfPages, posicionFirmaVisual.NumeroPagina));
+            }
+
+            return reader.NumberOfPages;
+        }
+
+        private static Rectangle ObtenerRectanguloFirmaPersonalizado(PdfReader reader, int numeroPagina, string rolFirmante, PosicionFirmaVisualPdf posicionFirmaVisual)
+        {
+            if (reader != null && posicionFirmaVisual != null && posicionFirmaVisual.EsValida)
+            {
+                var rol = (rolFirmante ?? string.Empty).Trim().ToUpperInvariant();
+                if (rol == "AOCR_FIRMANTE")
+                {
+                    var baseRect = ObtenerRectanguloFirma(rolFirmante);
+                    var baseWidth = Math.Max(1f, baseRect.Right - baseRect.Left);
+                    var baseHeight = Math.Max(1f, baseRect.Top - baseRect.Bottom);
+                    var width = Limitar(baseWidth * posicionFirmaVisual.AnchoRatio, 72f, baseWidth);
+                    var height = Limitar(baseHeight * posicionFirmaVisual.AltoRatio, 36f, baseHeight);
+                    var left = baseRect.Left + Limitar((baseWidth - width) * posicionFirmaVisual.PosicionXRatio, 0f, baseWidth - width);
+                    var top = baseRect.Top - Limitar((baseHeight - height) * posicionFirmaVisual.PosicionYRatio, 0f, baseHeight - height);
+                    var bottom = top - height;
+                    return new Rectangle(left, bottom, left + width, top);
+                }
+
+                var pageSize = reader.GetPageSize(numeroPagina);
+                var areaUtil = ObtenerAreaUtilFirma(pageSize, rolFirmante);
+                var areaWidth = Math.Max(1f, areaUtil.Right - areaUtil.Left);
+                var areaHeight = Math.Max(1f, areaUtil.Top - areaUtil.Bottom);
+                var rectWidth = Limitar(areaWidth * posicionFirmaVisual.AnchoRatio, 72f, areaWidth * 0.45f);
+                var rectHeight = Limitar(areaHeight * posicionFirmaVisual.AltoRatio, 36f, areaHeight * 0.22f);
+                var rectLeft = Limitar(areaUtil.Left + (areaWidth * posicionFirmaVisual.PosicionXRatio), areaUtil.Left, areaUtil.Right - rectWidth);
+                var rectTop = Limitar(areaUtil.Top - (areaHeight * posicionFirmaVisual.PosicionYRatio), areaUtil.Bottom + rectHeight, areaUtil.Top);
+                var rectBottom = rectTop - rectHeight;
+                return new Rectangle(rectLeft, rectBottom, rectLeft + rectWidth, rectTop);
+            }
+
+            return ObtenerRectanguloFirma(rolFirmante);
+        }
+
+        private static Rectangle ObtenerAreaUtilFirma(Rectangle pageSize, string rolFirmante)
+        {
+            var safePage = pageSize ?? PageSize.A4;
+            var role = (rolFirmante ?? string.Empty).Trim().ToUpperInvariant();
+            if (role != "AOCR_FIRMANTE")
+            {
+                return new Rectangle(0f, 0f, Math.Max(1f, safePage.Width), Math.Max(1f, safePage.Height));
+            }
+
+            var left = MmToPoints(8f);
+            var right = Math.Max(left + 1f, safePage.Width - MmToPoints(8f));
+            var bottom = MmToPoints(26f);
+            var top = Math.Max(bottom + 1f, safePage.Height - MmToPoints(30f));
+            return new Rectangle(left, bottom, right, top);
+        }
+
+        private static float MmToPoints(float millimeters)
+        {
+            return millimeters * 72f / 25.4f;
+        }
+
+        private static float Limitar(float valor, float minimo, float maximo)
+        {
+            return Math.Max(minimo, Math.Min(maximo, valor));
+        }
+    }
+
+    public class PosicionFirmaVisualPdf
+    {
+        public int NumeroPagina { get; set; }
+        public float PosicionXRatio { get; set; }
+        public float PosicionYRatio { get; set; }
+        public float AnchoRatio { get; set; }
+        public float AltoRatio { get; set; }
+
+        public bool EsValida
+        {
+            get
+            {
+                return NumeroPagina > 0
+                    && PosicionXRatio >= 0f && PosicionXRatio < 1f
+                    && PosicionYRatio >= 0f && PosicionYRatio < 1f
+                    && AnchoRatio > 0f && AnchoRatio < 1f
+                    && AltoRatio > 0f && AltoRatio < 1f;
+            }
         }
     }
 

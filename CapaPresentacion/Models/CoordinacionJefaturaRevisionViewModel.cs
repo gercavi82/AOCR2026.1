@@ -108,8 +108,27 @@ namespace CapaPresentacion.Models
         public string RevisadoPor { get; set; }
         public string FirmanteNombre { get; set; }
         public string FirmanteCargo { get; set; }
+        public bool UsaPosicionFirmaPersonalizada { get; set; }
+        public int NumeroPaginaFirma { get; set; } = 1;
+        public string PosicionFirmaX { get; set; }
+        public string PosicionFirmaY { get; set; }
+        public string AnchoFirma { get; set; }
+        public string AltoFirma { get; set; }
 
         public List<AocrCondicionAeronaveFilaViewModel> AeronavesCondiciones { get; set; } = new List<AocrCondicionAeronaveFilaViewModel>();
+    }
+
+    public class AocrFirmaPosicionEdicionViewModel
+    {
+        public int SolicitudId { get; set; }
+        public int? InspeccionId { get; set; }
+        public string TipoDocumento { get; set; }
+        public string RolFirmante { get; set; }
+        public int NumeroPaginaFirma { get; set; }
+        public string PosicionFirmaX { get; set; }
+        public string PosicionFirmaY { get; set; }
+        public string AnchoFirma { get; set; }
+        public string AltoFirma { get; set; }
     }
 
     public class AocrCondicionAeronaveFilaViewModel

@@ -45,6 +45,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="AocrFirmaDocumento.cs" />
+    <Compile Include="AocrFirmaPosicionDocumento.cs" />
     <Compile Include="Auditoria.cs" />
     <Compile Include="Certificado.cs" />
     <Compile Include="Aeronave.cs" />
