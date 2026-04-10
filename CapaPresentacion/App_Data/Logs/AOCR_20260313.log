@@ -1,0 +1,225 @@
+﻿2026-03-13 08:22:26.324 | INFO  | CID:N/A | Iniciando procesador de cola de correos
+2026-03-13 08:22:55.107 | INFO  | CID:712c58710e4f | Account/Login | Iniciando acción: Account/Login
+2026-03-13 08:22:55.822 | INFO  | CID:712c58710e4f | Account/Login | Acción completada: Account/Login
+2026-03-13 08:23:06.716 | INFO  | CID:c8acc5c3d6d6 | Account/Login | Iniciando acción: Account/Login
+2026-03-13 08:23:07.390 | INFO  | CID:c8acc5c3d6d6 | Account/Login | Acción completada: Account/Login
+2026-03-13 08:41:19.276 | INFO  | CID:N/A | [InspeccionesController] Inicio pantalla gestion inspecciones. Usuario=USU_ADMIN, Rol=Administrador,Inspector,JefaturaTecnica,Direccion,CoordinacionLegal
+2026-03-13 08:41:19.279 | INFO  | CID:N/A | [InspeccionesController] Inspecciones recibidas=8
+2026-03-13 08:41:24.283 | INFO  | CID:N/A | [GestionInspeccion] Inicio Detalle. InspeccionId=8, Usuario=USU_ADMIN, Rol=Administrador,Inspector,JefaturaTecnica,Direccion,CoordinacionLegal
+2026-03-13 08:41:24.293 | INFO  | CID:N/A | [GestionInspeccion] InspeccionId=8, SolicitudId=123, EstadoActual=VERIFICACION_SOLICITUD, InspectorAsignado=1707980049
+2026-03-13 08:41:24.293 | INFO  | CID:N/A | [GestionInspeccion] PuedeGestionar=True para detalle. InspeccionId=8
+2026-03-13 08:41:25.211 | INFO  | CID:N/A | [InspectoresDAO-DB2] Query obtener por cedula: SELECT TRIM(OPICED) AS OPICED, TRIM(OPINO2) AS OPINO2, TRIM(OPIES1) AS OPIES1, TRIM(OPITIP) AS OPITIP FROM DGACDAT.OPIAR2 WHERE OPICED = ? AND UPPER(TRIM(COALESCE(OPIES1, ''))) = ? FETCH FIRST 1 ROW ONLY
+2026-03-13 08:41:25.211 | INFO  | CID:N/A | [InspectoresDAO-DB2] Parametros => cedula=1707980049, soloActivos=True, tipos=TODOS
+2026-03-13 08:41:25.311 | INFO  | CID:N/A | [GestionInspeccion] Detalle inspectores enriquecidos. InspeccionId=8, PrincipalCedula=1707980049, PrincipalNombre=MOLINA VILLAFUERTE CESAR IVAN, PrincipalTipo=OPS, ApoyoCedula=, ApoyoNombre=, ApoyoTipo=
+2026-03-13 09:00:47.882 | INFO  | CID:N/A | [InspeccionesController] Inicio pantalla gestion inspecciones. Usuario=USU_ADMIN, Rol=Administrador,Inspector,JefaturaTecnica,Direccion,CoordinacionLegal
+2026-03-13 09:00:47.887 | INFO  | CID:N/A | [InspeccionesController] Inspecciones recibidas=8
+2026-03-13 09:01:34.215 | INFO  | CID:N/A | [GestionInspeccion] Inicio Detalle. InspeccionId=8, Usuario=USU_ADMIN, Rol=Administrador,Inspector,JefaturaTecnica,Direccion,CoordinacionLegal
+2026-03-13 09:01:34.232 | INFO  | CID:N/A | [GestionInspeccion] InspeccionId=8, SolicitudId=123, EstadoActual=VERIFICACION_SOLICITUD, InspectorAsignado=1707980049
+2026-03-13 09:01:34.237 | INFO  | CID:N/A | [GestionInspeccion] PuedeGestionar=True para detalle. InspeccionId=8
+2026-03-13 09:01:34.450 | INFO  | CID:N/A | [InspectoresDAO-DB2] Query obtener por cedula: SELECT TRIM(OPICED) AS OPICED, TRIM(OPINO2) AS OPINO2, TRIM(OPIES1) AS OPIES1, TRIM(OPITIP) AS OPITIP FROM DGACDAT.OPIAR2 WHERE OPICED = ? AND UPPER(TRIM(COALESCE(OPIES1, ''))) = ? FETCH FIRST 1 ROW ONLY
+2026-03-13 09:01:34.450 | INFO  | CID:N/A | [InspectoresDAO-DB2] Parametros => cedula=1707980049, soloActivos=True, tipos=TODOS
+2026-03-13 09:01:34.472 | INFO  | CID:N/A | [GestionInspeccion] Detalle inspectores enriquecidos. InspeccionId=8, PrincipalCedula=1707980049, PrincipalNombre=MOLINA VILLAFUERTE CESAR IVAN, PrincipalTipo=OPS, ApoyoCedula=, ApoyoNombre=, ApoyoTipo=
+2026-03-13 09:05:22.436 | INFO  | CID:N/A | Iniciando procesador de cola de correos
+2026-03-13 09:05:43.836 | INFO  | CID:76c0f65cc6d5 | Account/Login | Iniciando acción: Account/Login
+2026-03-13 09:05:44.512 | INFO  | CID:76c0f65cc6d5 | Account/Login | Acción completada: Account/Login
+2026-03-13 09:05:56.446 | INFO  | CID:dd41a71153d3 | Account/Login | Iniciando acción: Account/Login
+2026-03-13 09:05:56.916 | INFO  | CID:dd41a71153d3 | Account/Login | Acción completada: Account/Login
+2026-03-13 09:06:38.330 | ERROR | CID:7c5da5286caa | USR:USU_ADMIN | Direccion/AprobarSolicitudes | ERR:INTERNAL_ERROR | c:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\CapaPresentacion\Views\Direccion\AprobarSolicitudes.cshtml(24): error CS1525: El término de la expresión '.' no es válido
+    Exception: HttpCompileException
+    StackTrace:    en System.Web.Compilation.AssemblyBuilder.Compile()
+   en System.Web.Compilation.BuildProvidersCompiler.PerformBuild()
+   en System.Web.Compilation.BuildManager.CompileWebFile(VirtualPath virtualPath)
+   en System.Web.Compilation.BuildManager.GetVPathBuildResultInternal(VirtualPath virtualPath, Boolean noBuild, Boolean allowCrossApp, Boolean allowBuildInPrecompile, Boolean throwIfNotFound, Boolean ensureIsUpToDate)
+   en System.Web.Compilation.BuildManager.GetVPathBuildResultWithNoAssert(HttpContext context, VirtualPath virtualPath, Boolean noBuild, Boolean allowCrossApp, Boolean allowBuildInPrecompile, Boolean throwIfNotFound, Boolean ensureIsUpToDate)
+   en System.Web.Compilation.BuildManager.GetVirtualPathObjectFactory(VirtualPath virtualPath, HttpContext context, Boolean allowCrossApp, Boolean throwIfNotFound)
+   en System.Web.Compilation.BuildManager.GetCompiledType(VirtualPath virtualPath)
+   en System.Web.Mvc.BuildManagerCompiledView.Render(ViewContext viewContext, TextWriter writer)
+   en System.Web.Mvc.ViewResultBase.ExecuteResult(ControllerContext context)
+   en System.Web.Mvc.ControllerActionInvoker.InvokeActionResultFilterRecursive(IList`1 filters, Int32 filterIndex, ResultExecutingContext preContext, ControllerContext controllerContext, ActionResult actionResult)
+   en System.Web.Mvc.ControllerActionInvoker.InvokeActionResultFilterRecursive(IList`1 filters, Int32 filterIndex, ResultExecutingContext preContext, ControllerContext controllerContext, ActionResult actionResult)
+   en System.Web.Mvc.ControllerActionInvoker.InvokeActionResultFilterRecursive(IList`1 filters, Int32 filterIndex, ResultExecutingContext preContext, ControllerContext controllerContext, ActionResult actionResult)
+   en System.Web.Mvc.ControllerActionInvoker.InvokeActionResultFilterRecursive(IList`1 filters, Int32 filterIndex, ResultExecutingContext preContext, ControllerContext controllerContext, ActionResult actionResult)
+   en System.Web.Mvc.ControllerActionInvoker.InvokeActionResultWithFilters(ControllerContext controllerContext, IList`1 filters, ActionResult actionResult)
+   en System.Web.Mvc.Async.AsyncControllerActionInvoker.<>c__DisplayClass3_1.<BeginInvokeAction>b__1(IAsyncResult asyncResult)
+2026-03-13 09:12:32.919 | INFO  | CID:N/A | [InspeccionesController] Inicio pantalla gestion inspecciones. Usuario=USU_ADMIN, Rol=Administrador,Inspector,JefaturaTecnica,Direccion,CoordinacionLegal
+2026-03-13 09:12:32.922 | INFO  | CID:N/A | [InspeccionesController] Inspecciones recibidas=8
+2026-03-13 09:33:51.541 | INFO  | CID:N/A | Iniciando procesador de cola de correos
+2026-03-13 09:34:32.383 | INFO  | CID:6b10342ec1cc | Account/Login | Iniciando acción: Account/Login
+2026-03-13 09:34:33.077 | INFO  | CID:6b10342ec1cc | Account/Login | Acción completada: Account/Login
+2026-03-13 10:04:27.789 | INFO  | CID:N/A | Iniciando procesador de cola de correos
+2026-03-13 10:04:44.769 | INFO  | CID:e4b37087d098 | Account/Login | Iniciando acción: Account/Login
+2026-03-13 10:04:45.475 | INFO  | CID:e4b37087d098 | Account/Login | Acción completada: Account/Login
+2026-03-13 10:29:30.365 | INFO  | CID:N/A | Iniciando procesador de cola de correos
+2026-03-13 10:30:28.233 | INFO  | CID:16b6f768a94f | Account/Login | Iniciando acción: Account/Login
+2026-03-13 10:30:28.883 | INFO  | CID:16b6f768a94f | Account/Login | Acción completada: Account/Login
+2026-03-13 10:57:02.251 | INFO  | CID:N/A | Iniciando procesador de cola de correos
+2026-03-13 10:58:44.971 | INFO  | CID:2b4b87af3c99 | Account/Login | Iniciando acción: Account/Login
+2026-03-13 10:58:45.649 | INFO  | CID:2b4b87af3c99 | Account/Login | Acción completada: Account/Login
+2026-03-13 11:15:07.688 | INFO  | CID:N/A | Iniciando procesador de cola de correos
+2026-03-13 11:16:43.604 | INFO  | CID:17a8f95f84f4 | Account/Login | Iniciando acción: Account/Login
+2026-03-13 11:16:44.300 | INFO  | CID:17a8f95f84f4 | Account/Login | Acción completada: Account/Login
+2026-03-13 11:17:46.180 | ERROR | CID:61c78afb3a81 | USR:USU_ADMIN | OrdenRecaudacion/Nueva | ERR:INTERNAL_ERROR | El bloque código no tiene un carácter "}" de cierre. Asegúrese de tener un carácter "}" correspondiente para todos los caracteres "{" de este bloque y de que ninguno de los caracteres "}" se interpreta como marcado.
+
+    Exception: HttpParseException
+    StackTrace:    en System.Web.WebPages.Razor.RazorBuildProvider.EnsureGeneratedCode()
+   en System.Web.WebPages.Razor.RazorBuildProvider.get_CodeCompilerType()
+   en System.Web.Compilation.BuildProvider.GetCompilerTypeFromBuildProvider(BuildProvider buildProvider)
+   en System.Web.Compilation.BuildProvidersCompiler.ProcessBuildProviders()
+   en System.Web.Compilation.BuildProvidersCompiler.PerformBuild()
+   en System.Web.Compilation.BuildManager.CompileWebFile(VirtualPath virtualPath)
+   en System.Web.Compilation.BuildManager.GetVPathBuildResultInternal(VirtualPath virtualPath, Boolean noBuild, Boolean allowCrossApp, Boolean allowBuildInPrecompile, Boolean throwIfNotFound, Boolean ensureIsUpToDate)
+   en System.Web.Compilation.BuildManager.GetVPathBuildResultWithNoAssert(HttpContext context, VirtualPath virtualPath, Boolean noBuild, Boolean allowCrossApp, Boolean allowBuildInPrecompile, Boolean throwIfNotFound, Boolean ensureIsUpToDate)
+   en System.Web.Compilation.BuildManager.GetVirtualPathObjectFactory(VirtualPath virtualPath, HttpContext context, Boolean allowCrossApp, Boolean throwIfNotFound)
+   en System.Web.Compilation.BuildManager.GetCompiledType(VirtualPath virtualPath)
+   en System.Web.Mvc.BuildManagerCompiledView.Render(ViewContext viewContext, TextWriter writer)
+   en System.Web.Mvc.ViewResultBase.ExecuteResult(ControllerContext context)
+   en System.Web.Mvc.ControllerActionInvoker.InvokeActionResultFilterRecursive(IList`1 filters, Int32 filterIndex, ResultExecutingContext preContext, ControllerContext controllerContext, ActionResult actionResult)
+   en System.Web.Mvc.ControllerActionInvoker.InvokeActionResultFilterRecursive(IList`1 filters, Int32 filterIndex, ResultExecutingContext preContext, ControllerContext controllerContext, ActionResult actionResult)
+   en System.Web.Mvc.ControllerActionInvoker.InvokeActionResultFilterRecursive(IList`1 filters, Int32 filterIndex, ResultExecutingContext preContext, ControllerContext controllerContext, ActionResult actionResult)
+   en System.Web.Mvc.ControllerActionInvoker.InvokeActionResultFilterRecursive(IList`1 filters, Int32 filterIndex, ResultExecutingContext preContext, ControllerContext controllerContext, ActionResult actionResult)
+   en System.Web.Mvc.ControllerActionInvoker.InvokeActionResultWithFilters(ControllerContext controllerContext, IList`1 filters, ActionResult actionResult)
+   en System.Web.Mvc.Async.AsyncControllerActionInvoker.<>c__DisplayClass3_1.<BeginInvokeAction>b__1(IAsyncResult asyncResult)
+2026-03-13 14:04:15.995 | INFO  | CID:b0ec7a03ab81 | Account/Login | Iniciando acción: Account/Login
+2026-03-13 14:04:16.468 | INFO  | CID:b0ec7a03ab81 | Account/Login | Acción completada: Account/Login
+2026-03-13 14:05:02.006 | INFO  | CID:N/A | [InspeccionesController] Inicio pantalla gestion (Tecnico/Index). Usuario=USU_ADMIN, Rol=Administrador,Tecnico,Inspector,JefaturaTecnica
+2026-03-13 14:05:02.023 | INFO  | CID:N/A | [InspeccionesController] DAO.ObtenerPendientesAsignacion inicio. EstadosFiltro=PENDIENTE_ASIGNACION_RT,PENDIENTE ASIGNACION RT,PENDIENTE,ACEPTACION_DOCUMENTAL,DOCUMENTACION_COMPLETA,DOCUMENTOS_COMPLETOS,PENDIENTE_ASIGNACION_TECNICA,PENDIENTE ASIGNACION TECNICA,PENDIENTE_ASIGNACION,ACEPTACION DOCUMENTAL,DOCUMENTACION COMPLETA
+2026-03-13 14:05:02.055 | INFO  | CID:N/A | [InspeccionesController] EstadoDetectado=PENDIENTE, Total=134
+2026-03-13 14:05:02.056 | INFO  | CID:N/A | [InspeccionesController] EstadoDetectado=EN INSPECCION, Total=8
+2026-03-13 14:05:02.056 | INFO  | CID:N/A | [InspeccionesController] EstadoDetectado=OBSERVADA, Total=5
+2026-03-13 14:05:02.089 | INFO  | CID:N/A | [InspeccionesController] DiagnosticoPendientes => totalSolicitudes=134, conInspeccion=0, conInspectorAsignado=0, conInspeccionSinInspector=0
+2026-03-13 14:05:02.089 | INFO  | CID:N/A | [InspeccionesController] DAO.ObtenerPendientesAsignacion resultado=30
+2026-03-13 14:05:02.089 | INFO  | CID:N/A | [InspeccionesController] PendienteEjemplo[0] SolicitudId=118, Estado=Pendiente, Numero=DGAC-GOP-2026-AOCR101
+2026-03-13 14:05:02.089 | INFO  | CID:N/A | [InspeccionesController] PendienteEjemplo[1] SolicitudId=113, Estado=Pendiente, Numero=DGAC-GOP-2026-AOCR096
+2026-03-13 14:05:02.105 | INFO  | CID:N/A | [InspeccionesController] PendienteEjemplo[2] SolicitudId=111, Estado=Pendiente, Numero=DGAC-GOP-2026-AOCR094
+2026-03-13 14:05:02.107 | INFO  | CID:N/A | [InspeccionesController] PendienteEjemplo[3] SolicitudId=92, Estado=Pendiente, Numero=DGAC-GOP-2026-AOCR075
+2026-03-13 14:05:02.107 | INFO  | CID:N/A | [InspeccionesController] PendienteEjemplo[4] SolicitudId=87, Estado=Pendiente, Numero=DGAC-GOP-2026-AOCR070
+2026-03-13 14:05:02.107 | INFO  | CID:N/A | [InspeccionesController] Pendientes para asignacion=30
+2026-03-13 14:28:33.047 | INFO  | CID:N/A | Iniciando procesador de cola de correos
+2026-03-13 14:28:34.120 | INFO  | CID:N/A | [InspeccionesController] Inicio pantalla gestion (Tecnico/Index). Usuario=USU_ADMIN, Rol=Administrador,Tecnico,Inspector,JefaturaTecnica
+2026-03-13 14:28:34.121 | INFO  | CID:N/A | [InspeccionesController] DAO.ObtenerPendientesAsignacion inicio. EstadosFiltro=PENDIENTE_ASIGNACION_RT,PENDIENTE ASIGNACION RT,PENDIENTE,ACEPTACION_DOCUMENTAL,DOCUMENTACION_COMPLETA,DOCUMENTOS_COMPLETOS,PENDIENTE_ASIGNACION_TECNICA,PENDIENTE ASIGNACION TECNICA,PENDIENTE_ASIGNACION,ACEPTACION DOCUMENTAL,DOCUMENTACION COMPLETA
+2026-03-13 14:28:34.519 | INFO  | CID:N/A | [InspeccionesController] EstadoDetectado=PENDIENTE, Total=134
+2026-03-13 14:28:34.521 | INFO  | CID:N/A | [InspeccionesController] EstadoDetectado=EN INSPECCION, Total=8
+2026-03-13 14:28:34.521 | INFO  | CID:N/A | [InspeccionesController] EstadoDetectado=OBSERVADA, Total=5
+2026-03-13 14:28:34.739 | INFO  | CID:N/A | [InspeccionesController] DiagnosticoPendientes => totalSolicitudes=134, conInspeccion=0, conInspectorAsignado=0, conInspeccionSinInspector=0
+2026-03-13 14:28:34.971 | INFO  | CID:N/A | [InspeccionesController] DAO.ObtenerPendientesAsignacion resultado=30
+2026-03-13 14:28:34.972 | INFO  | CID:N/A | [InspeccionesController] PendienteEjemplo[0] SolicitudId=118, Estado=Pendiente, Numero=DGAC-GOP-2026-AOCR101
+2026-03-13 14:28:34.972 | INFO  | CID:N/A | [InspeccionesController] PendienteEjemplo[1] SolicitudId=113, Estado=Pendiente, Numero=DGAC-GOP-2026-AOCR096
+2026-03-13 14:28:34.972 | INFO  | CID:N/A | [InspeccionesController] PendienteEjemplo[2] SolicitudId=111, Estado=Pendiente, Numero=DGAC-GOP-2026-AOCR094
+2026-03-13 14:28:34.972 | INFO  | CID:N/A | [InspeccionesController] PendienteEjemplo[3] SolicitudId=92, Estado=Pendiente, Numero=DGAC-GOP-2026-AOCR075
+2026-03-13 14:28:34.972 | INFO  | CID:N/A | [InspeccionesController] PendienteEjemplo[4] SolicitudId=87, Estado=Pendiente, Numero=DGAC-GOP-2026-AOCR070
+2026-03-13 14:28:34.972 | INFO  | CID:N/A | [InspeccionesController] Pendientes para asignacion=30
+2026-03-13 14:28:58.587 | INFO  | CID:N/A | [InspeccionesController] Inicio pantalla gestion (Tecnico/Index). Usuario=USU_ADMIN, Rol=Administrador,Tecnico,Inspector,JefaturaTecnica
+2026-03-13 14:28:58.590 | INFO  | CID:N/A | [InspeccionesController] DAO.ObtenerPendientesAsignacion inicio. EstadosFiltro=PENDIENTE_ASIGNACION_RT,PENDIENTE ASIGNACION RT,PENDIENTE,ACEPTACION_DOCUMENTAL,DOCUMENTACION_COMPLETA,DOCUMENTOS_COMPLETOS,PENDIENTE_ASIGNACION_TECNICA,PENDIENTE ASIGNACION TECNICA,PENDIENTE_ASIGNACION,ACEPTACION DOCUMENTAL,DOCUMENTACION COMPLETA
+2026-03-13 14:28:58.598 | INFO  | CID:N/A | [InspeccionesController] EstadoDetectado=PENDIENTE, Total=134
+2026-03-13 14:28:58.600 | INFO  | CID:N/A | [InspeccionesController] EstadoDetectado=EN INSPECCION, Total=8
+2026-03-13 14:28:58.602 | INFO  | CID:N/A | [InspeccionesController] EstadoDetectado=OBSERVADA, Total=5
+2026-03-13 14:28:58.610 | INFO  | CID:N/A | [InspeccionesController] DiagnosticoPendientes => totalSolicitudes=134, conInspeccion=0, conInspectorAsignado=0, conInspeccionSinInspector=0
+2026-03-13 14:28:58.900 | INFO  | CID:N/A | [InspeccionesController] DAO.ObtenerPendientesAsignacion resultado=30
+2026-03-13 14:28:58.904 | INFO  | CID:N/A | [InspeccionesController] PendienteEjemplo[0] SolicitudId=118, Estado=Pendiente, Numero=DGAC-GOP-2026-AOCR101
+2026-03-13 14:28:58.912 | INFO  | CID:N/A | [InspeccionesController] PendienteEjemplo[1] SolicitudId=113, Estado=Pendiente, Numero=DGAC-GOP-2026-AOCR096
+2026-03-13 14:28:58.916 | INFO  | CID:N/A | [InspeccionesController] PendienteEjemplo[2] SolicitudId=111, Estado=Pendiente, Numero=DGAC-GOP-2026-AOCR094
+2026-03-13 14:28:58.918 | INFO  | CID:N/A | [InspeccionesController] PendienteEjemplo[3] SolicitudId=92, Estado=Pendiente, Numero=DGAC-GOP-2026-AOCR075
+2026-03-13 14:28:58.922 | INFO  | CID:N/A | [InspeccionesController] PendienteEjemplo[4] SolicitudId=87, Estado=Pendiente, Numero=DGAC-GOP-2026-AOCR070
+2026-03-13 14:28:58.963 | INFO  | CID:N/A | [InspeccionesController] Pendientes para asignacion=30
+2026-03-13 15:36:59.694 | INFO  | CID:N/A | Iniciando procesador de cola de correos
+2026-03-13 15:38:46.556 | INFO  | CID:9fa6f74900fa | Account/Login | Iniciando acción: Account/Login
+2026-03-13 15:38:47.267 | INFO  | CID:9fa6f74900fa | Account/Login | Acción completada: Account/Login
+2026-03-13 15:39:36.233 | INFO  | CID:9fa35e0aca0e | USR:USU_ADMIN | Financiero/AprobarYEnviarAS400 | Iniciando acción: Financiero/AprobarYEnviarAS400
+2026-03-13 15:39:37.200 | INFO  | CID:9fa35e0aca0e | USR:USU_ADMIN | Financiero/AprobarYEnviarAS400 | Acción completada: Financiero/AprobarYEnviarAS400
+2026-03-13 15:44:56.318 | INFO  | CID:N/A | Iniciando procesador de cola de correos
+2026-03-13 15:45:25.359 | INFO  | CID:6b563a0df34e | Account/Login | Iniciando acción: Account/Login
+2026-03-13 15:45:26.069 | INFO  | CID:6b563a0df34e | Account/Login | Acción completada: Account/Login
+2026-03-13 15:45:54.430 | INFO  | CID:N/A | [InspeccionesController] Inicio pantalla gestion (Tecnico/Index). Usuario=USU_ADMIN, Rol=Administrador,Tecnico,Inspector,JefaturaTecnica
+2026-03-13 15:45:54.435 | INFO  | CID:N/A | [InspeccionesController] DAO.ObtenerPendientesAsignacion inicio. EstadosFiltro=PENDIENTE_ASIGNACION_RT,PENDIENTE ASIGNACION RT,PENDIENTE,ACEPTACION_DOCUMENTAL,DOCUMENTACION_COMPLETA,DOCUMENTOS_COMPLETOS,PENDIENTE_ASIGNACION_TECNICA,PENDIENTE ASIGNACION TECNICA,PENDIENTE_ASIGNACION,ACEPTACION DOCUMENTAL,DOCUMENTACION COMPLETA
+2026-03-13 15:45:54.440 | INFO  | CID:N/A | [InspeccionesController] EstadoDetectado=PENDIENTE, Total=134
+2026-03-13 15:45:54.440 | INFO  | CID:N/A | [InspeccionesController] EstadoDetectado=EN INSPECCION, Total=8
+2026-03-13 15:45:54.440 | INFO  | CID:N/A | [InspeccionesController] EstadoDetectado=OBSERVADA, Total=5
+2026-03-13 15:45:54.458 | INFO  | CID:N/A | [InspeccionesController] DiagnosticoPendientes => totalSolicitudes=134, conInspeccion=0, conInspectorAsignado=0, conInspeccionSinInspector=0
+2026-03-13 15:45:54.688 | INFO  | CID:N/A | [InspeccionesController] DAO.ObtenerPendientesAsignacion resultado=30
+2026-03-13 15:45:54.705 | INFO  | CID:N/A | [InspeccionesController] PendienteEjemplo[0] SolicitudId=118, Estado=Pendiente, Numero=DGAC-GOP-2026-AOCR101
+2026-03-13 15:45:54.708 | INFO  | CID:N/A | [InspeccionesController] PendienteEjemplo[1] SolicitudId=113, Estado=Pendiente, Numero=DGAC-GOP-2026-AOCR096
+2026-03-13 15:45:54.709 | INFO  | CID:N/A | [InspeccionesController] PendienteEjemplo[2] SolicitudId=111, Estado=Pendiente, Numero=DGAC-GOP-2026-AOCR094
+2026-03-13 15:45:54.710 | INFO  | CID:N/A | [InspeccionesController] PendienteEjemplo[3] SolicitudId=92, Estado=Pendiente, Numero=DGAC-GOP-2026-AOCR075
+2026-03-13 15:45:54.712 | INFO  | CID:N/A | [InspeccionesController] PendienteEjemplo[4] SolicitudId=87, Estado=Pendiente, Numero=DGAC-GOP-2026-AOCR070
+2026-03-13 15:45:54.713 | INFO  | CID:N/A | [InspeccionesController] Pendientes para asignacion=30
+2026-03-13 15:46:01.784 | INFO  | CID:N/A | [InspeccionesController] Inicio pantalla gestion inspecciones. Usuario=USU_ADMIN, Rol=Administrador,Inspector,JefaturaTecnica,Direccion,CoordinacionLegal
+2026-03-13 15:46:01.804 | INFO  | CID:N/A | [InspeccionesController] Inspecciones recibidas=8
+2026-03-13 15:47:10.695 | INFO  | CID:8f403ea6b8fa | USR:USU_ADMIN | Financiero/AprobarYEnviarAS400 | Iniciando acción: Financiero/AprobarYEnviarAS400
+2026-03-13 15:47:11.362 | INFO  | CID:8f403ea6b8fa | USR:USU_ADMIN | Financiero/AprobarYEnviarAS400 | Acción completada: Financiero/AprobarYEnviarAS400
+2026-03-13 15:47:16.733 | INFO  | CID:e50c970899c3 | USR:USU_ADMIN | Financiero/AprobarYEnviarAS400 | Iniciando acción: Financiero/AprobarYEnviarAS400
+2026-03-13 15:47:17.699 | INFO  | CID:e50c970899c3 | USR:USU_ADMIN | Financiero/AprobarYEnviarAS400 | Acción completada: Financiero/AprobarYEnviarAS400
+2026-03-13 15:47:19.613 | INFO  | CID:8b4e5497fc1b | USR:USU_ADMIN | Financiero/AprobarYEnviarAS400 | Iniciando acción: Financiero/AprobarYEnviarAS400
+2026-03-13 15:47:20.062 | INFO  | CID:8b4e5497fc1b | USR:USU_ADMIN | Financiero/AprobarYEnviarAS400 | Acción completada: Financiero/AprobarYEnviarAS400
+2026-03-13 15:50:01.417 | INFO  | CID:f87738ad6f75 | USR:USU_ADMIN | Financiero/AprobarYEnviarAS400 | Iniciando acción: Financiero/AprobarYEnviarAS400
+2026-03-13 15:50:01.862 | INFO  | CID:f87738ad6f75 | USR:USU_ADMIN | Financiero/AprobarYEnviarAS400 | Acción completada: Financiero/AprobarYEnviarAS400
+2026-03-13 15:50:02.924 | INFO  | CID:dcc74477fae2 | USR:USU_ADMIN | Financiero/AprobarYEnviarAS400 | Iniciando acción: Financiero/AprobarYEnviarAS400
+2026-03-13 15:50:04.023 | INFO  | CID:dcc74477fae2 | USR:USU_ADMIN | Financiero/AprobarYEnviarAS400 | Acción completada: Financiero/AprobarYEnviarAS400
+2026-03-13 15:50:19.250 | INFO  | CID:f0fa0fb6d987 | USR:USU_ADMIN | Financiero/AprobarYEnviarAS400 | Iniciando acción: Financiero/AprobarYEnviarAS400
+2026-03-13 15:50:19.707 | INFO  | CID:f0fa0fb6d987 | USR:USU_ADMIN | Financiero/AprobarYEnviarAS400 | Acción completada: Financiero/AprobarYEnviarAS400
+2026-03-13 16:02:53.117 | INFO  | CID:ab62cd11db77 | USR:USU_ADMIN | Financiero/AprobarYEnviarAS400 | Iniciando acción: Financiero/AprobarYEnviarAS400
+2026-03-13 16:02:54.119 | INFO  | CID:ab62cd11db77 | USR:USU_ADMIN | Financiero/AprobarYEnviarAS400 | Acción completada: Financiero/AprobarYEnviarAS400
+2026-03-13 16:02:57.624 | INFO  | CID:26dea9a8d38f | USR:USU_ADMIN | Financiero/AprobarYEnviarAS400 | Iniciando acción: Financiero/AprobarYEnviarAS400
+2026-03-13 16:02:58.068 | INFO  | CID:26dea9a8d38f | USR:USU_ADMIN | Financiero/AprobarYEnviarAS400 | Acción completada: Financiero/AprobarYEnviarAS400
+2026-03-13 16:02:59.555 | INFO  | CID:7906e85df9f3 | USR:USU_ADMIN | Financiero/AprobarYEnviarAS400 | Iniciando acción: Financiero/AprobarYEnviarAS400
+2026-03-13 16:03:00.017 | INFO  | CID:7906e85df9f3 | USR:USU_ADMIN | Financiero/AprobarYEnviarAS400 | Acción completada: Financiero/AprobarYEnviarAS400
+2026-03-13 16:03:48.206 | INFO  | CID:N/A | Iniciando procesador de cola de correos
+2026-03-13 16:04:08.760 | INFO  | CID:941e0210ee5b | Account/Login | Iniciando acción: Account/Login
+2026-03-13 16:04:09.695 | INFO  | CID:941e0210ee5b | Account/Login | Acción completada: Account/Login
+2026-03-13 16:04:23.316 | INFO  | CID:N/A | [InspeccionesController] Inicio pantalla gestion inspecciones. Usuario=USU_ADMIN, Rol=Administrador,Inspector,JefaturaTecnica,Direccion,CoordinacionLegal
+2026-03-13 16:04:23.336 | INFO  | CID:N/A | [InspeccionesController] Inspecciones recibidas=8
+2026-03-13 16:05:13.748 | INFO  | CID:77842ef96c6b | USR:USU_ADMIN | Financiero/AprobarYEnviarAS400 | Iniciando acción: Financiero/AprobarYEnviarAS400
+2026-03-13 16:05:14.485 | INFO  | CID:77842ef96c6b | USR:USU_ADMIN | Financiero/AprobarYEnviarAS400 | Acción completada: Financiero/AprobarYEnviarAS400
+2026-03-13 16:05:19.337 | INFO  | CID:f1e7f0be03e8 | USR:USU_ADMIN | Financiero/AprobarYEnviarAS400 | Iniciando acción: Financiero/AprobarYEnviarAS400
+2026-03-13 16:05:19.784 | INFO  | CID:f1e7f0be03e8 | USR:USU_ADMIN | Financiero/AprobarYEnviarAS400 | Acción completada: Financiero/AprobarYEnviarAS400
+2026-03-13 16:05:22.333 | INFO  | CID:c2125111fff1 | USR:USU_ADMIN | Financiero/AprobarYEnviarAS400 | Iniciando acción: Financiero/AprobarYEnviarAS400
+2026-03-13 16:05:22.865 | INFO  | CID:c2125111fff1 | USR:USU_ADMIN | Financiero/AprobarYEnviarAS400 | Acción completada: Financiero/AprobarYEnviarAS400
+2026-03-13 16:05:23.650 | INFO  | CID:250526b63d58 | USR:USU_ADMIN | Financiero/AprobarYEnviarAS400 | Iniciando acción: Financiero/AprobarYEnviarAS400
+2026-03-13 16:05:24.117 | INFO  | CID:250526b63d58 | USR:USU_ADMIN | Financiero/AprobarYEnviarAS400 | Acción completada: Financiero/AprobarYEnviarAS400
+2026-03-13 16:18:18.633 | INFO  | CID:N/A | Iniciando procesador de cola de correos
+2026-03-13 16:20:14.708 | INFO  | CID:8b4c169144ff | Account/Login | Iniciando acción: Account/Login
+2026-03-13 16:20:15.396 | INFO  | CID:8b4c169144ff | Account/Login | Acción completada: Account/Login
+2026-03-13 16:20:43.908 | INFO  | CID:14fb0177a01f | USR:USU_ADMIN | Financiero/AprobarYEnviarAS400 | Iniciando acción: Financiero/AprobarYEnviarAS400
+2026-03-13 16:20:44.076 | INFO  | CID:14fb0177a01f | USR:USU_ADMIN | Financiero/AprobarYEnviarAS400 | Acción completada: Financiero/AprobarYEnviarAS400
+2026-03-13 16:20:47.491 | INFO  | CID:bd5936afe4ae | USR:USU_ADMIN | Financiero/AprobarYEnviarAS400 | Iniciando acción: Financiero/AprobarYEnviarAS400
+2026-03-13 16:20:47.958 | INFO  | CID:bd5936afe4ae | USR:USU_ADMIN | Financiero/AprobarYEnviarAS400 | Acción completada: Financiero/AprobarYEnviarAS400
+2026-03-13 16:20:49.510 | INFO  | CID:4d8c32773d89 | USR:USU_ADMIN | Financiero/AprobarYEnviarAS400 | Iniciando acción: Financiero/AprobarYEnviarAS400
+2026-03-13 16:20:50.023 | INFO  | CID:4d8c32773d89 | USR:USU_ADMIN | Financiero/AprobarYEnviarAS400 | Acción completada: Financiero/AprobarYEnviarAS400
+2026-03-13 16:22:12.805 | INFO  | CID:N/A | Deteniendo procesador de cola de correos
+2026-03-13 16:22:12.865 | INFO  | CID:N/A | Deteniendo procesador de cola de correos
+2026-03-13 16:23:54.013 | INFO  | CID:N/A | Iniciando procesador de cola de correos
+2026-03-13 16:25:46.589 | INFO  | CID:4b6f9b5c70ff | USR:USU_ADMIN | Financiero/AprobarYEnviarAS400 | Iniciando acción: Financiero/AprobarYEnviarAS400
+2026-03-13 16:25:47.387 | INFO  | CID:4b6f9b5c70ff | USR:USU_ADMIN | Financiero/AprobarYEnviarAS400 | Acción completada: Financiero/AprobarYEnviarAS400
+2026-03-13 16:25:49.206 | INFO  | CID:7c692804748b | USR:USU_ADMIN | Financiero/AprobarYEnviarAS400 | Iniciando acción: Financiero/AprobarYEnviarAS400
+2026-03-13 16:25:49.687 | INFO  | CID:7c692804748b | USR:USU_ADMIN | Financiero/AprobarYEnviarAS400 | Acción completada: Financiero/AprobarYEnviarAS400
+2026-03-13 16:25:51.087 | INFO  | CID:ba220dbc12aa | USR:USU_ADMIN | Financiero/AprobarYEnviarAS400 | Iniciando acción: Financiero/AprobarYEnviarAS400
+2026-03-13 16:25:51.573 | INFO  | CID:ba220dbc12aa | USR:USU_ADMIN | Financiero/AprobarYEnviarAS400 | Acción completada: Financiero/AprobarYEnviarAS400
+2026-03-13 16:25:52.390 | INFO  | CID:3b5cfc2e19bf | USR:USU_ADMIN | Financiero/AprobarYEnviarAS400 | Iniciando acción: Financiero/AprobarYEnviarAS400
+2026-03-13 16:25:52.854 | INFO  | CID:3b5cfc2e19bf | USR:USU_ADMIN | Financiero/AprobarYEnviarAS400 | Acción completada: Financiero/AprobarYEnviarAS400
+2026-03-13 16:31:31.824 | INFO  | CID:N/A | Iniciando procesador de cola de correos
+2026-03-13 16:31:59.410 | INFO  | CID:7d3f01922c50 | Account/Login | Iniciando acción: Account/Login
+2026-03-13 16:32:00.142 | INFO  | CID:7d3f01922c50 | Account/Login | Acción completada: Account/Login
+2026-03-13 16:32:37.206 | INFO  | CID:8994b03a020e | USR:USU_ADMIN | Financiero/AprobarYEnviarAS400 | Iniciando acción: Financiero/AprobarYEnviarAS400
+2026-03-13 16:32:37.972 | INFO  | CID:8994b03a020e | USR:USU_ADMIN | Financiero/AprobarYEnviarAS400 | Acción completada: Financiero/AprobarYEnviarAS400
+2026-03-13 16:32:39.256 | INFO  | CID:3e2fdce2a96a | USR:USU_ADMIN | Financiero/AprobarYEnviarAS400 | Iniciando acción: Financiero/AprobarYEnviarAS400
+2026-03-13 16:32:39.788 | INFO  | CID:3e2fdce2a96a | USR:USU_ADMIN | Financiero/AprobarYEnviarAS400 | Acción completada: Financiero/AprobarYEnviarAS400
+2026-03-13 16:32:40.861 | INFO  | CID:705b9cb996ae | USR:USU_ADMIN | Financiero/AprobarYEnviarAS400 | Iniciando acción: Financiero/AprobarYEnviarAS400
+2026-03-13 16:32:41.588 | INFO  | CID:705b9cb996ae | USR:USU_ADMIN | Financiero/AprobarYEnviarAS400 | Acción completada: Financiero/AprobarYEnviarAS400
+2026-03-13 16:32:43.253 | INFO  | CID:96e413f7fb9d | USR:USU_ADMIN | Financiero/AprobarYEnviarAS400 | Iniciando acción: Financiero/AprobarYEnviarAS400
+2026-03-13 16:32:43.756 | INFO  | CID:96e413f7fb9d | USR:USU_ADMIN | Financiero/AprobarYEnviarAS400 | Acción completada: Financiero/AprobarYEnviarAS400
+2026-03-13 16:32:44.684 | INFO  | CID:0955bc28acc2 | USR:USU_ADMIN | Financiero/AprobarYEnviarAS400 | Iniciando acción: Financiero/AprobarYEnviarAS400
+2026-03-13 16:32:45.154 | INFO  | CID:0955bc28acc2 | USR:USU_ADMIN | Financiero/AprobarYEnviarAS400 | Acción completada: Financiero/AprobarYEnviarAS400
+2026-03-13 16:32:45.989 | INFO  | CID:98639105529f | USR:USU_ADMIN | Financiero/AprobarYEnviarAS400 | Iniciando acción: Financiero/AprobarYEnviarAS400
+2026-03-13 16:32:46.455 | INFO  | CID:98639105529f | USR:USU_ADMIN | Financiero/AprobarYEnviarAS400 | Acción completada: Financiero/AprobarYEnviarAS400
+2026-03-13 16:32:46.981 | INFO  | CID:bee66704c684 | USR:USU_ADMIN | Financiero/AprobarYEnviarAS400 | Iniciando acción: Financiero/AprobarYEnviarAS400
+2026-03-13 16:32:47.421 | INFO  | CID:bee66704c684 | USR:USU_ADMIN | Financiero/AprobarYEnviarAS400 | Acción completada: Financiero/AprobarYEnviarAS400
+2026-03-13 16:32:47.980 | INFO  | CID:38ce8ec741bf | USR:USU_ADMIN | Financiero/AprobarYEnviarAS400 | Iniciando acción: Financiero/AprobarYEnviarAS400
+2026-03-13 16:32:48.537 | INFO  | CID:38ce8ec741bf | USR:USU_ADMIN | Financiero/AprobarYEnviarAS400 | Acción completada: Financiero/AprobarYEnviarAS400
+2026-03-13 16:34:53.592 | INFO  | CID:N/A | Deteniendo procesador de cola de correos
+2026-03-13 16:34:53.658 | INFO  | CID:N/A | Deteniendo procesador de cola de correos
+2026-03-13 16:37:17.372 | INFO  | CID:N/A | Iniciando procesador de cola de correos
+2026-03-13 16:37:37.788 | INFO  | CID:262323aefaee | Account/Login | Iniciando acción: Account/Login
+2026-03-13 16:37:38.729 | INFO  | CID:262323aefaee | Account/Login | Acción completada: Account/Login
+2026-03-13 16:38:13.834 | INFO  | CID:c53e9183aeb4 | USR:USU_ADMIN | Financiero/AprobarYEnviarAS400 | Iniciando acción: Financiero/AprobarYEnviarAS400
+2026-03-13 16:38:14.233 | INFO  | CID:c53e9183aeb4 | USR:USU_ADMIN | Financiero/AprobarYEnviarAS400 | Acción completada: Financiero/AprobarYEnviarAS400
+2026-03-13 16:38:17.401 | INFO  | CID:97709ea2524a | USR:USU_ADMIN | Financiero/AprobarYEnviarAS400 | Iniciando acción: Financiero/AprobarYEnviarAS400
+2026-03-13 16:38:18.632 | INFO  | CID:97709ea2524a | USR:USU_ADMIN | Financiero/AprobarYEnviarAS400 | Acción completada: Financiero/AprobarYEnviarAS400

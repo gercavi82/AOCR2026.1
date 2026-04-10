@@ -1,0 +1,1081 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Data;
+using System.Threading.Tasks;
+using Npgsql;
+using CapaDatos.Entidades;
+using CapaDatos.Infrastructure;
+
+namespace CapaDatos.DAOs
+{
+    /// <summary>
+    /// Data Access Object para Control FR3 (vuelos charter/especiales)
+    /// Migrado desde CD_ControlFR3 (DB2/AS400) a PostgreSQL
+    /// </summary>
+    public class ControlFR3DAO
+    {
+        private readonly string _connectionString;
+        private readonly ILoggerService _logger;
+
+        public ControlFR3DAO()
+        {
+            _connectionString = System.Configuration.ConfigurationManager.ConnectionStrings["DefaultConnection"]?.ConnectionString
+                ?? System.Configuration.ConfigurationManager.ConnectionStrings["AOCRConnection"]?.ConnectionString
+                ?? "";
+            _logger = new NLogLoggerService("ControlFR3DAO");
+        }
+
+        public ControlFR3DAO(string connectionString)
+        {
+            _connectionString = connectionString;
+            _logger = new NLogLoggerService("ControlFR3DAO");
+        }
+
+        #region Lectura
+
+        /// <summary>
+        /// Obtiene un control FR3 por secuencial, aeropuerto y año
+        /// (equivalente a ObtienerControlFr3 en CD_ControlFR3)
+        /// </summary>
+        public ControlFR3 ObtenerPorSecuencial(decimal secuencial, string aeropuerto, string anio)
+        {
+            ControlFR3 control = null;
+
+            try
+            {
+                using (var conn = new NpgsqlConnection(_connectionString))
+                {
+                    conn.Open();
+                    var sql = @"SELECT * FROM aocr_control_fr3 
+                                WHERE secuencial = @secuencial 
+                                  AND aeropuerto = @aeropuerto 
+                                  AND anio = @anio 
+                                  AND activo = TRUE
+                                LIMIT 1";
+
+                    using (var cmd = new NpgsqlCommand(sql, conn))
+                    {
+                        cmd.Parameters.AddWithValue("@secuencial", secuencial);
+                        cmd.Parameters.AddWithValue("@aeropuerto", aeropuerto ?? "");
+                        cmd.Parameters.AddWithValue("@anio", anio ?? "");
+
+                        using (var reader = cmd.ExecuteReader())
+                        {
+                            if (reader.Read())
+                            {
+                                control = MapearControlFR3(reader);
+                            }
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error en ObtenerPorSecuencial");
+                throw;
+            }
+
+            return control;
+        }
+
+        /// <summary>
+        /// Obtiene un control FR3 por su ID de PostgreSQL
+        /// </summary>
+        public ControlFR3 ObtenerPorId(int id)
+        {
+            ControlFR3 control = null;
+
+            try
+            {
+                using (var conn = new NpgsqlConnection(_connectionString))
+                {
+                    conn.Open();
+                    var sql = "SELECT * FROM aocr_control_fr3 WHERE id = @id AND activo = TRUE";
+
+                    using (var cmd = new NpgsqlCommand(sql, conn))
+                    {
+                        cmd.Parameters.AddWithValue("@id", id);
+
+                        using (var reader = cmd.ExecuteReader())
+                        {
+                            if (reader.Read())
+                            {
+                                control = MapearControlFR3(reader);
+                            }
+                        }
+                    }
+
+                    // Cargar detalle si existe
+                    if (control != null)
+                    {
+                        control.Detalle = ObtenerDetallePorControlId(control.Id, conn);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error en ObtenerPorId");
+                throw;
+            }
+
+            return control;
+        }
+
+        /// <summary>
+        /// Obtiene un control FR3 por su ID de PostgreSQL (async)
+        /// </summary>
+        public Task<ControlFR3> ObtenerPorIdAsync(int id)
+        {
+            return Task.FromResult(ObtenerPorId(id));
+        }
+
+        /// <summary>
+        /// Lista todos los controles FR3 activos, opcionalmente filtrados
+        /// </summary>
+        public List<ControlFR3> Listar(string aeropuerto = null, string anio = null, string estado = null)
+        {
+            var lista = new List<ControlFR3>();
+
+            try
+            {
+                using (var conn = new NpgsqlConnection(_connectionString))
+                {
+                    conn.Open();
+                    var sql = "SELECT * FROM aocr_control_fr3 WHERE activo = TRUE";
+                    var filtros = new List<string>();
+
+                    if (!string.IsNullOrWhiteSpace(aeropuerto))
+                        filtros.Add(" AND aeropuerto = @aeropuerto");
+                    if (!string.IsNullOrWhiteSpace(anio))
+                        filtros.Add(" AND anio = @anio");
+                    if (!string.IsNullOrWhiteSpace(estado))
+                        filtros.Add(" AND estado = @estado");
+
+                    sql += string.Join("", filtros) + " ORDER BY fecha_creacion DESC";
+
+                    using (var cmd = new NpgsqlCommand(sql, conn))
+                    {
+                        if (!string.IsNullOrWhiteSpace(aeropuerto))
+                            cmd.Parameters.AddWithValue("@aeropuerto", aeropuerto);
+                        if (!string.IsNullOrWhiteSpace(anio))
+                            cmd.Parameters.AddWithValue("@anio", anio);
+                        if (!string.IsNullOrWhiteSpace(estado))
+                            cmd.Parameters.AddWithValue("@estado", estado);
+
+                        using (var reader = cmd.ExecuteReader())
+                        {
+                            while (reader.Read())
+                            {
+                                lista.Add(MapearControlFR3(reader));
+                            }
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error en Listar");
+                throw;
+            }
+
+            return lista;
+        }
+
+        /// <summary>
+        /// Lista todos los controles FR3 por matrícula
+        /// </summary>
+        public List<ControlFR3> ListarPorMatricula(string matricula)
+        {
+            var lista = new List<ControlFR3>();
+
+            try
+            {
+                using (var conn = new NpgsqlConnection(_connectionString))
+                {
+                    conn.Open();
+                    var sql = @"SELECT * FROM aocr_control_fr3 
+                                WHERE matricula = @matricula AND activo = TRUE
+                                ORDER BY fecha_creacion DESC";
+
+                    using (var cmd = new NpgsqlCommand(sql, conn))
+                    {
+                        cmd.Parameters.AddWithValue("@matricula", matricula ?? "");
+
+                        using (var reader = cmd.ExecuteReader())
+                        {
+                            while (reader.Read())
+                            {
+                                lista.Add(MapearControlFR3(reader));
+                            }
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error en ListarPorMatricula");
+                throw;
+            }
+
+            return lista;
+        }
+
+        /// <summary>
+        /// Obtiene estadísticas de FR3 por estado
+        /// </summary>
+        public Dictionary<string, int> ObtenerEstadisticas(string aeropuerto = null)
+        {
+            var stats = new Dictionary<string, int>();
+
+            try
+            {
+                using (var conn = new NpgsqlConnection(_connectionString))
+                {
+                    conn.Open();
+                    var sql = @"SELECT COALESCE(estado, 'SIN_ESTADO') as estado, COUNT(*) as cantidad 
+                                FROM aocr_control_fr3 WHERE activo = TRUE";
+
+                    if (!string.IsNullOrWhiteSpace(aeropuerto))
+                        sql += " AND aeropuerto = @aeropuerto";
+
+                    sql += " GROUP BY estado";
+
+                    using (var cmd = new NpgsqlCommand(sql, conn))
+                    {
+                        if (!string.IsNullOrWhiteSpace(aeropuerto))
+                            cmd.Parameters.AddWithValue("@aeropuerto", aeropuerto);
+
+                        using (var reader = cmd.ExecuteReader())
+                        {
+                            while (reader.Read())
+                            {
+                                stats[reader.GetString(0)] = reader.GetInt32(1);
+                            }
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error en ObtenerEstadisticas");
+            }
+
+            return stats;
+        }
+
+        #endregion
+
+        #region Secuenciales
+
+        /// <summary>
+        /// Obtiene el próximo número secuencial para un aeropuerto
+        /// (equivalente a secuencialFR3 en CD_ControlFR3)
+        /// </summary>
+        public decimal ObtenerSiguienteSecuencial(string aeropuerto)
+        {
+            decimal secuencial = 1;
+
+            try
+            {
+                using (var conn = new NpgsqlConnection(_connectionString))
+                {
+                    conn.Open();
+                    var sql = @"SELECT COALESCE(MAX(secuencial), 0) + 1 
+                                FROM aocr_control_fr3 
+                                WHERE aeropuerto = @aeropuerto AND activo = TRUE";
+
+                    using (var cmd = new NpgsqlCommand(sql, conn))
+                    {
+                        cmd.Parameters.AddWithValue("@aeropuerto", aeropuerto ?? "");
+                        var result = cmd.ExecuteScalar();
+                        if (result != null && result != DBNull.Value)
+                        {
+                            secuencial = Convert.ToDecimal(result);
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error en ObtenerSiguienteSecuencial");
+                throw;
+            }
+
+            return secuencial;
+        }
+
+        /// <summary>
+        /// Obtiene el próximo secuencial de detalle para un control FR3
+        /// (equivalente a secuencialFR3Detalle en CD_ControlFR3)
+        /// </summary>
+        public decimal ObtenerSiguienteSecuencialDetalle(int controlFR3Id)
+        {
+            decimal secuencial = 1;
+
+            try
+            {
+                using (var conn = new NpgsqlConnection(_connectionString))
+                {
+                    conn.Open();
+                    var sql = @"SELECT COALESCE(MAX(secuencial_detalle), 0) + 1 
+                                FROM aocr_control_fr3_detalle 
+                                WHERE control_fr3_id = @controlId AND activo = TRUE";
+
+                    using (var cmd = new NpgsqlCommand(sql, conn))
+                    {
+                        cmd.Parameters.AddWithValue("@controlId", controlFR3Id);
+                        var result = cmd.ExecuteScalar();
+                        if (result != null && result != DBNull.Value)
+                        {
+                            secuencial = Convert.ToDecimal(result);
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error en ObtenerSiguienteSecuencialDetalle");
+                throw;
+            }
+
+            return secuencial;
+        }
+
+        /// <summary>
+        /// Actualiza el secuencial en la tabla de secuenciales
+        /// (equivalente a ActualizaSecuencialFR3 en CD_ControlFR3)
+        /// </summary>
+        public bool ActualizarSecuencial(string aeropuerto, decimal secuencial)
+        {
+            try
+            {
+                if (string.IsNullOrWhiteSpace(aeropuerto))
+                {
+                    _logger.LogWarning("No se puede actualizar secuencial: aeropuerto vacío");
+                    return false;
+                }
+
+                using (var conn = new NpgsqlConnection(_connectionString))
+                {
+                    conn.Open();
+                    ActualizarSecuencialInterno(conn, null, aeropuerto, secuencial);
+                    return true;
+                }
+            }
+            catch (Npgsql.PostgresException pgEx)
+            {
+                _logger.LogError(pgEx, "Error PostgreSQL en ActualizarSecuencial. SqlState={0}", pgEx.SqlState);
+                return false;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error en ActualizarSecuencial");
+                return false;
+            }
+        }
+
+        #endregion
+
+        #region Escritura
+
+        /// <summary>
+        /// Inserta un nuevo control FR3 con su detalle automáticamente
+        /// (equivalente a NuevoControlFR3 en CD_ControlFR3)
+        /// </summary>
+        public int Insertar(ControlFR3 control)
+        {
+            int idInsertado = 0;
+
+            try
+            {
+                // Asignar secuencial automático
+                control.Secuencial = ObtenerSiguienteSecuencial(control.Aeropuerto);
+                control.FechaCreacion = DateTime.Now;
+                control.FechaCr = DateTime.Now.ToString("yyyyMMdd");
+                control.HoraCr = DateTime.Now.ToString("HHmmss");
+
+                using (var conn = new NpgsqlConnection(_connectionString))
+                {
+                    conn.Open();
+                    using (var tran = conn.BeginTransaction())
+                    {
+                        try
+                        {
+                            // Insertar cabecera
+                            var sql = @"INSERT INTO aocr_control_fr3 (
+                                secuencial, aeropuerto, anio, fecha_control_vuelo, tipo_operacion, 
+                                ruta_total_plan_vlo, num_aterriza_pais, subtotal, valor_charter, total, 
+                                gran_total, gran_total_letras, autorizacion, observacion, oid_cia_aviacion, 
+                                origen, destino, retorno, callsign, estado, ruc, email, nac_inter, 
+                                usuario_cr, fecha_cr, hora_cr, id_aeropuerto, telefono, nombre_cliente, 
+                                direccion, oid_ubicacion_cliente, forma_pago, nombre_cia, modelo, 
+                                peso_matricula, codigo_oaci_cia, nombre_aeropuerto, email_usuario_dgac, 
+                                matricula, procesado, oid_ubicacion, valor_total_millas, tipo_tramite,
+                                fecha_creacion, activo
+                            ) VALUES (
+                                @secuencial, @aeropuerto, @anio, @fechaControlVuelo, @tipoOperacion,
+                                @rutaTotalPlanVlo, @numAterrizaPais, @subtotal, @valorCharter, @total,
+                                @granTotal, @granTotalLetras, @autorizacion, @observacion, @oidCiaAviacion,
+                                @origen, @destino, @retorno, @callsign, @estado, @ruc, @email, @nacInter,
+                                @usuarioCr, @fechaCr, @horaCr, @idAeropuerto, @telefono, @nombreCliente,
+                                @direccion, @oidUbicacionCliente, @formaPago, @nombreCia, @modelo,
+                                @pesoMatricula, @codigoOACICia, @nombreAeropuerto, @emailUsuarioDGAC,
+                                @matricula, @procesado, @oidUbicacion, @valorTotalMillas, @tipoTramite,
+                                @fechaCreacion, TRUE
+                            ) RETURNING id";
+
+                            using (var cmd = new NpgsqlCommand(sql, conn, tran))
+                            {
+                                cmd.Parameters.AddWithValue("@secuencial", control.Secuencial);
+                                cmd.Parameters.AddWithValue("@aeropuerto", control.Aeropuerto ?? "");
+                                cmd.Parameters.AddWithValue("@anio", control.Anio ?? DateTime.Now.Year.ToString());
+                                cmd.Parameters.AddWithValue("@fechaControlVuelo", control.FechaControlVuelo ?? "");
+                                cmd.Parameters.AddWithValue("@tipoOperacion", control.TipoOperacion ?? "");
+                                cmd.Parameters.AddWithValue("@rutaTotalPlanVlo", control.RutaTotalPlanVlo ?? "");
+                                cmd.Parameters.AddWithValue("@numAterrizaPais", control.NumAterrizaPais);
+                                cmd.Parameters.AddWithValue("@subtotal", control.SubTotal);
+                                cmd.Parameters.AddWithValue("@valorCharter", control.ValorCharter);
+                                cmd.Parameters.AddWithValue("@total", control.Total);
+                                cmd.Parameters.AddWithValue("@granTotal", control.GranTotal);
+                                cmd.Parameters.AddWithValue("@granTotalLetras", control.GranTotalLetras ?? "");
+                                cmd.Parameters.AddWithValue("@autorizacion", control.Autorizacion ?? "");
+                                cmd.Parameters.AddWithValue("@observacion", control.Observacion ?? "");
+                                cmd.Parameters.AddWithValue("@oidCiaAviacion", control.OidCiaAviacion);
+                                cmd.Parameters.AddWithValue("@origen", control.Origen ?? "");
+                                cmd.Parameters.AddWithValue("@destino", control.Destino ?? "");
+                                cmd.Parameters.AddWithValue("@retorno", control.Retorno ?? "");
+                                cmd.Parameters.AddWithValue("@callsign", control.Callsign ?? "");
+                                cmd.Parameters.AddWithValue("@estado", control.Estado ?? "E");
+                                cmd.Parameters.AddWithValue("@ruc", control.Ruc ?? "");
+                                cmd.Parameters.AddWithValue("@email", control.Email ?? "");
+                                cmd.Parameters.AddWithValue("@nacInter", control.NacInter ?? "");
+                                cmd.Parameters.AddWithValue("@usuarioCr", control.UsuarioCr ?? "");
+                                cmd.Parameters.AddWithValue("@fechaCr", control.FechaCr ?? "");
+                                cmd.Parameters.AddWithValue("@horaCr", control.HoraCr ?? "");
+                                cmd.Parameters.AddWithValue("@idAeropuerto", control.IdAeropuerto);
+                                cmd.Parameters.AddWithValue("@telefono", control.Telefono ?? "");
+                                cmd.Parameters.AddWithValue("@nombreCliente", control.NombreCliente ?? "");
+                                cmd.Parameters.AddWithValue("@direccion", control.Direccion ?? "");
+                                cmd.Parameters.AddWithValue("@oidUbicacionCliente", control.OidUbicacionCliente);
+                                cmd.Parameters.AddWithValue("@formaPago", control.FormaPago ?? "");
+                                cmd.Parameters.AddWithValue("@nombreCia", control.NombreCia ?? "");
+                                cmd.Parameters.AddWithValue("@modelo", control.Modelo ?? "");
+                                cmd.Parameters.AddWithValue("@pesoMatricula", control.PesoMatricula);
+                                cmd.Parameters.AddWithValue("@codigoOACICia", control.CodigoOACICia ?? "");
+                                cmd.Parameters.AddWithValue("@nombreAeropuerto", control.NombreAeropuerto ?? "");
+                                cmd.Parameters.AddWithValue("@emailUsuarioDGAC", control.EmailUsuarioDGAC ?? "");
+                                cmd.Parameters.AddWithValue("@matricula", control.Matricula ?? "");
+                                cmd.Parameters.AddWithValue("@procesado", control.Procesado ?? "E");
+                                cmd.Parameters.AddWithValue("@oidUbicacion", control.OidUbicacion);
+                                cmd.Parameters.AddWithValue("@valorTotalMillas", control.GranTotal); // mismo valor que GranTotal
+                                cmd.Parameters.AddWithValue("@tipoTramite", control.TipoTramite ?? "");
+                                cmd.Parameters.AddWithValue("@fechaCreacion", control.FechaCreacion);
+
+                                var result = cmd.ExecuteScalar();
+                                idInsertado = Convert.ToInt32(result);
+                            }
+
+                            // Actualizar tabla de secuenciales
+                            ActualizarSecuencialInterno(conn, tran, control.Aeropuerto, control.Secuencial);
+
+                            // Insertar detalle automático si existe
+                            if (control.Detalle != null)
+                            {
+                                control.Detalle.ControlFR3Id = idInsertado;
+                                control.Detalle.Secuencial = control.Secuencial;
+                                control.Detalle.Aeropuerto = control.Aeropuerto;
+                                control.Detalle.Anio = control.Anio;
+                                control.Detalle.SecuencialDetalle = 1;
+                                InsertarDetalleInterno(conn, tran, control.Detalle);
+                            }
+                            else
+                            {
+                                // Crear detalle automático (como en CD_ControlFR3 original)
+                                var detalle = CrearDetalleAutomatico(control, idInsertado);
+                                InsertarDetalleInterno(conn, tran, detalle);
+                            }
+
+                            tran.Commit();
+                            _logger.LogInfo("Control FR3 insertado con ID={0}, Secuencial={1}, Aeropuerto={2}", 
+                                idInsertado, control.Secuencial, control.Aeropuerto);
+                        }
+                        catch
+                        {
+                            tran.Rollback();
+                            throw;
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error en Insertar ControlFR3");
+                throw;
+            }
+
+            return idInsertado;
+        }
+
+        /// <summary>
+        /// Inserta un nuevo control FR3 (async)
+        /// </summary>
+        public Task<int> InsertarAsync(ControlFR3 control)
+        {
+            return Task.FromResult(Insertar(control));
+        }
+
+        /// <summary>
+        /// Inserta un detalle para un control FR3 existente
+        /// </summary>
+        public int InsertarDetalle(ControlFR3Detalle detalle)
+        {
+            int idInsertado = 0;
+
+            try
+            {
+                using (var conn = new NpgsqlConnection(_connectionString))
+                {
+                    conn.Open();
+                    idInsertado = InsertarDetalleInterno(conn, null, detalle);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error en InsertarDetalle");
+                throw;
+            }
+
+            return idInsertado;
+        }
+
+        /// <summary>
+        /// Actualiza un control FR3 existente
+        /// </summary>
+        public bool Actualizar(ControlFR3 control)
+        {
+            try
+            {
+                using (var conn = new NpgsqlConnection(_connectionString))
+                {
+                    conn.Open();
+                    var sql = @"UPDATE aocr_control_fr3 SET
+                        fecha_control_vuelo = @fechaControlVuelo,
+                        tipo_operacion = @tipoOperacion,
+                        ruta_total_plan_vlo = @rutaTotalPlanVlo,
+                        num_aterriza_pais = @numAterrizaPais,
+                        subtotal = @subtotal,
+                        valor_charter = @valorCharter,
+                        total = @total,
+                        gran_total = @granTotal,
+                        gran_total_letras = @granTotalLetras,
+                        autorizacion = @autorizacion,
+                        observacion = @observacion,
+                        origen = @origen,
+                        destino = @destino,
+                        retorno = @retorno,
+                        callsign = @callsign,
+                        estado = @estado,
+                        forma_pago = @formaPago,
+                        codigo_banco = @codigoBanco,
+                        deposito = @deposito,
+                        numero_factura = @numeroFactura,
+                        fecha_recepcion = @fechaRecepcion,
+                        fecha_actualizacion = NOW()
+                    WHERE id = @id AND activo = TRUE";
+
+                    using (var cmd = new NpgsqlCommand(sql, conn))
+                    {
+                        cmd.Parameters.AddWithValue("@id", control.Id);
+                        cmd.Parameters.AddWithValue("@fechaControlVuelo", control.FechaControlVuelo ?? "");
+                        cmd.Parameters.AddWithValue("@tipoOperacion", control.TipoOperacion ?? "");
+                        cmd.Parameters.AddWithValue("@rutaTotalPlanVlo", control.RutaTotalPlanVlo ?? "");
+                        cmd.Parameters.AddWithValue("@numAterrizaPais", control.NumAterrizaPais);
+                        cmd.Parameters.AddWithValue("@subtotal", control.SubTotal);
+                        cmd.Parameters.AddWithValue("@valorCharter", control.ValorCharter);
+                        cmd.Parameters.AddWithValue("@total", control.Total);
+                        cmd.Parameters.AddWithValue("@granTotal", control.GranTotal);
+                        cmd.Parameters.AddWithValue("@granTotalLetras", control.GranTotalLetras ?? "");
+                        cmd.Parameters.AddWithValue("@autorizacion", control.Autorizacion ?? "");
+                        cmd.Parameters.AddWithValue("@observacion", control.Observacion ?? "");
+                        cmd.Parameters.AddWithValue("@origen", control.Origen ?? "");
+                        cmd.Parameters.AddWithValue("@destino", control.Destino ?? "");
+                        cmd.Parameters.AddWithValue("@retorno", control.Retorno ?? "");
+                        cmd.Parameters.AddWithValue("@callsign", control.Callsign ?? "");
+                        cmd.Parameters.AddWithValue("@estado", control.Estado ?? "E");
+                        cmd.Parameters.AddWithValue("@formaPago", control.FormaPago ?? "");
+                        cmd.Parameters.AddWithValue("@codigoBanco", control.CodigoBanco ?? "");
+                        cmd.Parameters.AddWithValue("@deposito", control.Deposito ?? "");
+                        cmd.Parameters.AddWithValue("@numeroFactura", control.NumeroFactura ?? "");
+                        cmd.Parameters.AddWithValue("@fechaRecepcion", control.FechaRecepcion ?? "");
+
+                        return cmd.ExecuteNonQuery() > 0;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error en Actualizar ControlFR3");
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// Actualiza un control FR3 (async)
+        /// </summary>
+        public Task<bool> ActualizarAsync(ControlFR3 control)
+        {
+            return Task.FromResult(Actualizar(control));
+        }
+
+        /// <summary>
+        /// Cambia el estado de un control FR3
+        /// </summary>
+        public bool CambiarEstado(int id, string nuevoEstado)
+        {
+            try
+            {
+                using (var conn = new NpgsqlConnection(_connectionString))
+                {
+                    conn.Open();
+                    var sql = @"UPDATE aocr_control_fr3 
+                                SET estado = @estado, fecha_actualizacion = NOW() 
+                                WHERE id = @id AND activo = TRUE";
+
+                    using (var cmd = new NpgsqlCommand(sql, conn))
+                    {
+                        cmd.Parameters.AddWithValue("@id", id);
+                        cmd.Parameters.AddWithValue("@estado", nuevoEstado ?? "E");
+                        return cmd.ExecuteNonQuery() > 0;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error en CambiarEstado");
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// Elimina lógicamente un control FR3
+        /// </summary>
+        public bool Eliminar(int id)
+        {
+            try
+            {
+                using (var conn = new NpgsqlConnection(_connectionString))
+                {
+                    conn.Open();
+                    var sql = @"UPDATE aocr_control_fr3 
+                                SET activo = FALSE, fecha_actualizacion = NOW() 
+                                WHERE id = @id";
+
+                    using (var cmd = new NpgsqlCommand(sql, conn))
+                    {
+                        cmd.Parameters.AddWithValue("@id", id);
+                        return cmd.ExecuteNonQuery() > 0;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error en Eliminar");
+                return false;
+            }
+        }
+
+        #endregion
+
+        #region Métodos internos
+
+        private ControlFR3Detalle ObtenerDetallePorControlId(int controlFR3Id, NpgsqlConnection conn)
+        {
+            ControlFR3Detalle detalle = null;
+
+            var sql = @"SELECT * FROM aocr_control_fr3_detalle 
+                        WHERE control_fr3_id = @controlId AND activo = TRUE
+                        ORDER BY secuencial_detalle ASC LIMIT 1";
+
+            using (var cmd = new NpgsqlCommand(sql, conn))
+            {
+                cmd.Parameters.AddWithValue("@controlId", controlFR3Id);
+
+                using (var reader = cmd.ExecuteReader())
+                {
+                    if (reader.Read())
+                    {
+                        detalle = MapearDetalle(reader);
+                    }
+                }
+            }
+
+            return detalle;
+        }
+
+        /// <summary>
+        /// Obtiene todos los detalles de un control FR3
+        /// </summary>
+        public List<ControlFR3Detalle> ObtenerDetallesPorControlId(int controlFR3Id)
+        {
+            var detalles = new List<ControlFR3Detalle>();
+
+            try
+            {
+                using (var conn = new NpgsqlConnection(_connectionString))
+                {
+                    conn.Open();
+                    var sql = @"SELECT * FROM aocr_control_fr3_detalle 
+                                WHERE control_fr3_id = @controlId AND activo = TRUE
+                                ORDER BY secuencial_detalle ASC";
+
+                    using (var cmd = new NpgsqlCommand(sql, conn))
+                    {
+                        cmd.Parameters.AddWithValue("@controlId", controlFR3Id);
+
+                        using (var reader = cmd.ExecuteReader())
+                        {
+                            while (reader.Read())
+                            {
+                                detalles.Add(MapearDetalle(reader));
+                            }
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error en ObtenerDetallesPorControlId");
+                throw;
+            }
+
+            return detalles;
+        }
+
+        private int InsertarDetalleInterno(NpgsqlConnection conn, NpgsqlTransaction tran, ControlFR3Detalle detalle)
+        {
+            var sql = @"INSERT INTO aocr_control_fr3_detalle (
+                control_fr3_id, secuencial, aeropuerto, anio, secuencial_detalle,
+                tipo_cobro, oid_formulario, codigo_contable, descripcion, cantidad, 
+                valor, hacer_descuento, cobrar_impuesto, ingresar_cantidad, 
+                descripcion_cuenta, codigo, total, fecha_creacion, activo
+            ) VALUES (
+                @controlId, @secuencial, @aeropuerto, @anio, @secuencialDetalle,
+                @tipoCobro, @oidFormulario, @codigoContable, @descripcion, @cantidad,
+                @valor, @hacerDescuento, @cobrarImpuesto, @ingresarCantidad,
+                @descripcionCuenta, @codigo, @total, NOW(), TRUE
+            ) RETURNING id";
+
+            using (var cmd = tran != null ? new NpgsqlCommand(sql, conn, tran) : new NpgsqlCommand(sql, conn))
+            {
+                cmd.Parameters.AddWithValue("@controlId", detalle.ControlFR3Id);
+                cmd.Parameters.AddWithValue("@secuencial", detalle.Secuencial);
+                cmd.Parameters.AddWithValue("@aeropuerto", detalle.Aeropuerto ?? "");
+                cmd.Parameters.AddWithValue("@anio", detalle.Anio ?? "");
+                cmd.Parameters.AddWithValue("@secuencialDetalle", detalle.SecuencialDetalle);
+                cmd.Parameters.AddWithValue("@tipoCobro", detalle.TipoCobro ?? "");
+                cmd.Parameters.AddWithValue("@oidFormulario", detalle.OidFormulario);
+                cmd.Parameters.AddWithValue("@codigoContable", detalle.CodigoContable ?? "");
+                cmd.Parameters.AddWithValue("@descripcion", detalle.Descripcion ?? "");
+                cmd.Parameters.AddWithValue("@cantidad", detalle.Cantidad);
+                cmd.Parameters.AddWithValue("@valor", detalle.Valor);
+                cmd.Parameters.AddWithValue("@hacerDescuento", detalle.HacerDescuento ?? "N");
+                cmd.Parameters.AddWithValue("@cobrarImpuesto", detalle.CobrarImpuesto ?? "N");
+                cmd.Parameters.AddWithValue("@ingresarCantidad", detalle.IngresarCantidad ?? "S");
+                cmd.Parameters.AddWithValue("@descripcionCuenta", detalle.DescripcionCuenta ?? "");
+                cmd.Parameters.AddWithValue("@codigo", detalle.Codigo ?? "");
+                cmd.Parameters.AddWithValue("@total", detalle.Total);
+
+                var result = cmd.ExecuteScalar();
+                return Convert.ToInt32(result);
+            }
+        }
+
+        private void ActualizarSecuencialInterno(NpgsqlConnection conn, NpgsqlTransaction tran, string aeropuerto, decimal secuencial)
+        {
+            try
+            {
+                // Normalizar aeropuerto (trim + uppercase para consistencia)
+                string aeropuertoNormalizado = (aeropuerto ?? "").Trim().ToUpper();
+                
+                if (string.IsNullOrWhiteSpace(aeropuertoNormalizado))
+                {
+                    _logger.LogWarning("No se puede actualizar secuencial: aeropuerto vacío");
+                    return;
+                }
+
+                var sql = @"INSERT INTO aocr_fr3_secuencial (aeropuerto, secuencial, fecha_actualizacion) 
+                            VALUES (@aeropuerto, @secuencial, NOW())
+                            ON CONFLICT (aeropuerto) 
+                            DO UPDATE SET 
+                                secuencial = EXCLUDED.secuencial,
+                                fecha_actualizacion = NOW()
+                            WHERE aocr_fr3_secuencial.aeropuerto = EXCLUDED.aeropuerto";
+
+                using (var cmd = tran != null ? new NpgsqlCommand(sql, conn, tran) : new NpgsqlCommand(sql, conn))
+                {
+                    cmd.Parameters.AddWithValue("@aeropuerto", aeropuertoNormalizado);
+                    cmd.Parameters.AddWithValue("@secuencial", secuencial);
+                    
+                    int filasAfectadas = cmd.ExecuteNonQuery();
+                    
+                    if (filasAfectadas > 0)
+                    {
+                        _logger.LogInfo("Secuencial actualizado: Aeropuerto={0}, Secuencial={1}", aeropuertoNormalizado, secuencial);
+                    }
+                }
+            }
+            catch (Npgsql.PostgresException pgEx) when (pgEx.SqlState == "42P10") // Missing constraint
+            {
+                _logger.LogError(pgEx, "❌ ERROR DE BD: La tabla aocr_fr3_secuencial no tiene constraint UNIQUE en columna 'aeropuerto'. Ejecute: ALTER TABLE aocr_fr3_secuencial ADD CONSTRAINT uq_aeropuerto UNIQUE (aeropuerto);");
+                throw new InvalidOperationException(
+                    "Configuración de base de datos incompleta. Contacte al administrador del sistema.", 
+                    pgEx
+                );
+            }
+            catch (Npgsql.PostgresException pgEx) when (pgEx.SqlState == "42703") // Column not found
+            {
+                _logger.LogError(pgEx, "❌ ERROR DE BD: Falta columna 'fecha_actualizacion' en aocr_fr3_secuencial");
+                // Intentar sin fecha_actualizacion (fallback)
+                ActualizarSecuencialInternoFallback(conn, tran, aeropuerto, secuencial);
+            }
+            catch (Npgsql.PostgresException pgEx)
+            {
+                _logger.LogError(pgEx, "Error PostgreSQL actualizando secuencial FR3. SqlState={0}, Message={1}", pgEx.SqlState, pgEx.Message);
+                throw new Exception($"Error de base de datos: {pgEx.Message} (Código: {pgEx.SqlState})", pgEx);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error inesperado actualizando secuencial FR3 para aeropuerto {0}", aeropuerto);
+                throw;
+            }
+        }
+
+        /// <summary>
+        /// Fallback para actualizar secuencial sin columna fecha_actualizacion
+        /// </summary>
+        private void ActualizarSecuencialInternoFallback(NpgsqlConnection conn, NpgsqlTransaction tran, string aeropuerto, decimal secuencial)
+        {
+            try
+            {
+                string aeropuertoNormalizado = (aeropuerto ?? "").Trim().ToUpper();
+                
+                var sql = @"INSERT INTO aocr_fr3_secuencial (aeropuerto, secuencial) 
+                            VALUES (@aeropuerto, @secuencial)
+                            ON CONFLICT (aeropuerto) 
+                            DO UPDATE SET secuencial = EXCLUDED.secuencial
+                            WHERE aocr_fr3_secuencial.aeropuerto = EXCLUDED.aeropuerto";
+
+                using (var cmd = tran != null ? new NpgsqlCommand(sql, conn, tran) : new NpgsqlCommand(sql, conn))
+                {
+                    cmd.Parameters.AddWithValue("@aeropuerto", aeropuertoNormalizado);
+                    cmd.Parameters.AddWithValue("@secuencial", secuencial);
+                    cmd.ExecuteNonQuery();
+                    
+                    _logger.LogInfo("Secuencial actualizado (fallback): Aeropuerto={0}, Secuencial={1}", aeropuertoNormalizado, secuencial);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error en fallback de actualización de secuencial");
+                throw;
+            }
+        }
+
+        /// <summary>
+        /// Crea un detalle automático estándar para charter (igual que CD_ControlFR3 original)
+        /// </summary>
+        private ControlFR3Detalle CrearDetalleAutomatico(ControlFR3 control, int controlFR3Id)
+        {
+            var descripcion = control.NacInter == "N"
+                ? string.Format("VUELOS CHARTER O ESPECIALES PARA SERVICIO NACIONAL, NO.COMPROBANTE. {0}, RUTA {1}", control.Secuencial, control.RutaTotalPlanVlo)
+                : string.Format("VUELOS CHARTER O ESPECIALES PARA SERVICIO INTERNACIONAL, NO.COMPROBANTE. {0}, RUTA {1}", control.Secuencial, control.RutaTotalPlanVlo);
+
+            return new ControlFR3Detalle
+            {
+                ControlFR3Id = controlFR3Id,
+                Secuencial = control.Secuencial,
+                Aeropuerto = control.Aeropuerto,
+                Anio = control.Anio,
+                SecuencialDetalle = 1,
+                OidFormulario = 14134812,
+                CodigoContable = "623.01.11.02",
+                Descripcion = descripcion,
+                Cantidad = 1,
+                Valor = control.GranTotal,
+                Total = control.GranTotal,
+                HacerDescuento = "N",
+                CobrarImpuesto = "N",
+                IngresarCantidad = "S",
+                Codigo = "FITEM"
+            };
+        }
+
+        #endregion
+
+        #region Mapeo
+
+        private ControlFR3 MapearControlFR3(IDataReader reader)
+        {
+            return new ControlFR3
+            {
+                Id = GetSafeInt32(reader, "id"),
+                Secuencial = GetSafeDecimal(reader, "secuencial"),
+                Aeropuerto = GetSafeString(reader, "aeropuerto"),
+                Anio = GetSafeString(reader, "anio"),
+                FechaControlVuelo = GetSafeString(reader, "fecha_control_vuelo"),
+                TipoOperacion = GetSafeString(reader, "tipo_operacion"),
+                RutaTotalPlanVlo = GetSafeString(reader, "ruta_total_plan_vlo"),
+                NumAterrizaPais = GetSafeInt32(reader, "num_aterriza_pais"),
+                SubTotal = GetSafeDecimal(reader, "subtotal"),
+                ValorCharter = GetSafeDecimal(reader, "valor_charter"),
+                Total = GetSafeDecimal(reader, "total"),
+                GranTotal = GetSafeDecimal(reader, "gran_total"),
+                GranTotalLetras = GetSafeString(reader, "gran_total_letras"),
+                Autorizacion = GetSafeString(reader, "autorizacion"),
+                Observacion = GetSafeString(reader, "observacion"),
+                OidCiaAviacion = GetSafeDecimal(reader, "oid_cia_aviacion"),
+                OidUbicacion = GetSafeDecimal(reader, "oid_ubicacion"),
+                Origen = GetSafeString(reader, "origen"),
+                Destino = GetSafeString(reader, "destino"),
+                Retorno = GetSafeString(reader, "retorno"),
+                Callsign = GetSafeString(reader, "callsign"),
+                Estado = GetSafeString(reader, "estado"),
+                Ruc = GetSafeString(reader, "ruc"),
+                Email = GetSafeString(reader, "email"),
+                NacInter = GetSafeString(reader, "nac_inter"),
+                UsuarioCr = GetSafeString(reader, "usuario_cr"),
+                FechaCr = GetSafeString(reader, "fecha_cr"),
+                HoraCr = GetSafeString(reader, "hora_cr"),
+                IdAeropuerto = GetSafeDecimal(reader, "id_aeropuerto"),
+                Telefono = GetSafeString(reader, "telefono"),
+                NombreCliente = GetSafeString(reader, "nombre_cliente"),
+                Direccion = GetSafeString(reader, "direccion"),
+                OidUbicacionCliente = GetSafeDecimal(reader, "oid_ubicacion_cliente"),
+                FormaPago = GetSafeString(reader, "forma_pago"),
+                NombreCia = GetSafeString(reader, "nombre_cia"),
+                Modelo = GetSafeString(reader, "modelo"),
+                PesoMatricula = GetSafeDecimal(reader, "peso_matricula"),
+                CodigoOACICia = GetSafeString(reader, "codigo_oaci_cia"),
+                NombreAeropuerto = GetSafeString(reader, "nombre_aeropuerto"),
+                EmailUsuarioDGAC = GetSafeString(reader, "email_usuario_dgac"),
+                Matricula = GetSafeString(reader, "matricula"),
+                Procesado = GetSafeString(reader, "procesado"),
+                ValorTotalMillas = GetSafeDecimal(reader, "valor_total_millas"),
+                FechaRecepcion = GetSafeString(reader, "fecha_recepcion"),
+                CodigoBanco = GetSafeString(reader, "codigo_banco"),
+                Deposito = GetSafeString(reader, "deposito"),
+                NumeroFactura = GetSafeString(reader, "numero_factura"),
+                TipoTramite = GetSafeString(reader, "tipo_tramite"),
+                NombreArchivoFactura = GetSafeString(reader, "nombre_archivo_factura"),
+                FechaCreacion = GetSafeDateTime(reader, "fecha_creacion"),
+                Activo = GetSafeBoolean(reader, "activo")
+            };
+        }
+
+        private ControlFR3Detalle MapearDetalle(IDataReader reader)
+        {
+            return new ControlFR3Detalle
+            {
+                Id = GetSafeInt32(reader, "id"),
+                ControlFR3Id = GetSafeInt32(reader, "control_fr3_id"),
+                Secuencial = GetSafeDecimal(reader, "secuencial"),
+                Aeropuerto = GetSafeString(reader, "aeropuerto"),
+                Anio = GetSafeString(reader, "anio"),
+                SecuencialDetalle = GetSafeDecimal(reader, "secuencial_detalle"),
+                TipoCobro = GetSafeString(reader, "tipo_cobro"),
+                OidFormulario = GetSafeDecimal(reader, "oid_formulario"),
+                CodigoContable = GetSafeString(reader, "codigo_contable"),
+                Descripcion = GetSafeString(reader, "descripcion"),
+                Cantidad = GetSafeDecimal(reader, "cantidad"),
+                Valor = GetSafeDecimal(reader, "valor"),
+                HacerDescuento = GetSafeString(reader, "hacer_descuento"),
+                CobrarImpuesto = GetSafeString(reader, "cobrar_impuesto"),
+                IngresarCantidad = GetSafeString(reader, "ingresar_cantidad"),
+                DescripcionCuenta = GetSafeString(reader, "descripcion_cuenta"),
+                Codigo = GetSafeString(reader, "codigo"),
+                Total = GetSafeDecimal(reader, "total"),
+                FechaCreacion = GetSafeDateTime(reader, "fecha_creacion"),
+                Activo = GetSafeBoolean(reader, "activo")
+            };
+        }
+
+        #endregion
+
+        #region Helpers
+
+        private static string GetSafeString(IDataReader reader, string columnName)
+        {
+            try
+            {
+                var ordinal = reader.GetOrdinal(columnName);
+                return reader.IsDBNull(ordinal) ? "" : reader.GetString(ordinal).Trim();
+            }
+            catch { return ""; }
+        }
+
+        private static int GetSafeInt32(IDataReader reader, string columnName)
+        {
+            try
+            {
+                var ordinal = reader.GetOrdinal(columnName);
+                return reader.IsDBNull(ordinal) ? 0 : reader.GetInt32(ordinal);
+            }
+            catch { return 0; }
+        }
+
+        private static decimal GetSafeDecimal(IDataReader reader, string columnName)
+        {
+            try
+            {
+                var ordinal = reader.GetOrdinal(columnName);
+                return reader.IsDBNull(ordinal) ? 0m : reader.GetDecimal(ordinal);
+            }
+            catch { return 0m; }
+        }
+
+        private static DateTime GetSafeDateTime(IDataReader reader, string columnName)
+        {
+            try
+            {
+                var ordinal = reader.GetOrdinal(columnName);
+                return reader.IsDBNull(ordinal) ? DateTime.Now : reader.GetDateTime(ordinal);
+            }
+            catch { return DateTime.Now; }
+        }
+
+        private static bool GetSafeBoolean(IDataReader reader, string columnName)
+        {
+            try
+            {
+                var ordinal = reader.GetOrdinal(columnName);
+                return !reader.IsDBNull(ordinal) && reader.GetBoolean(ordinal);
+            }
+            catch { return true; }
+        }
+
+        /// <summary>
+        /// Verifica la conexión a base de datos
+        /// </summary>
+        public bool Ping()
+        {
+            try
+            {
+                using (var conn = new NpgsqlConnection(_connectionString))
+                {
+                    conn.Open();
+                    using (var cmd = new NpgsqlCommand("SELECT 1", conn))
+                    {
+                        cmd.ExecuteScalar();
+                    }
+                    return true;
+                }
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        #endregion
+    }
+}

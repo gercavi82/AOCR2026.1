@@ -1,0 +1,631 @@
+﻿2026-03-19 08:19:43.140 | INFO  | CID:N/A | Iniciando procesador de cola de correos
+2026-03-19 08:20:08.002 | INFO  | CID:ed205dcbcaeb | Account/Login | Iniciando acción: Account/Login
+2026-03-19 08:20:08.892 | INFO  | CID:ed205dcbcaeb | Account/Login | Acción completada: Account/Login
+2026-03-19 08:34:04.571 | INFO  | CID:N/A | Iniciando procesador de cola de correos
+2026-03-19 08:34:25.481 | INFO  | CID:74999fd6359a | Account/Login | Iniciando acción: Account/Login
+2026-03-19 08:34:26.149 | INFO  | CID:74999fd6359a | Account/Login | Acción completada: Account/Login
+2026-03-19 08:54:59.729 | INFO  | CID:N/A | Iniciando procesador de cola de correos
+2026-03-19 08:57:01.490 | INFO  | CID:e4c8d35b5914 | Account/Login | Iniciando acción: Account/Login
+2026-03-19 08:57:02.178 | INFO  | CID:e4c8d35b5914 | Account/Login | Acción completada: Account/Login
+2026-03-19 08:57:38.262 | INFO  | CID:a5aeacc706b2 | Account/Login | Iniciando acción: Account/Login
+2026-03-19 08:57:38.685 | INFO  | CID:a5aeacc706b2 | Account/Login | Acción completada: Account/Login
+2026-03-19 08:57:53.073 | INFO  | CID:2681ed96cd10 | Account/Login | Iniciando acción: Account/Login
+2026-03-19 08:57:55.110 | INFO  | CID:2681ed96cd10 | Account/Login | Acción completada: Account/Login
+2026-03-19 08:57:59.424 | INFO  | CID:54ea3d383e2a | USR:GACAJAS | Account/SeleccionarCompania | Iniciando acción: Account/SeleccionarCompania
+2026-03-19 08:58:01.215 | INFO  | CID:54ea3d383e2a | USR:GACAJAS | Account/SeleccionarCompania | Acción completada: Account/SeleccionarCompania
+2026-03-19 09:00:18.354 | INFO  | CID:eec8d508f55a | USR:GACAJAS | OrdenRecaudacion/Nueva | Iniciando acción: OrdenRecaudacion/Nueva
+2026-03-19 09:00:20.080 | INFO  | CID:eec8d508f55a | USR:GACAJAS | OrdenRecaudacion/Nueva | Acción completada: OrdenRecaudacion/Nueva
+2026-03-19 09:00:32.223 | INFO  | CID:9f53d4b22741 | USR:GACAJAS | OrdenRecaudacion/Generar | Iniciando acción: OrdenRecaudacion/Generar
+2026-03-19 09:00:39.123 | INFO  | CID:d29c048e5218 | Correo con adjunto enviado exitosamente a german.cajas@aviacioncivil.gob.ec
+2026-03-19 09:00:39.790 | INFO  | CID:32c98a6e3c34 | Enviando correo a german.cajas@aviacioncivil.gob.ec, Asunto: Nuevo trámite registrado - AOCR
+2026-03-19 09:00:40.462 | INFO  | CID:32c98a6e3c34 | Correo enviado exitosamente a german.cajas@aviacioncivil.gob.ec
+2026-03-19 09:00:40.477 | INFO  | CID:9f53d4b22741 | USR:GACAJAS | OrdenRecaudacion/Generar | Acción completada: OrdenRecaudacion/Generar
+2026-03-19 09:01:09.424 | INFO  | CID:0251c1d2dd05 | USR:GACAJAS | OrdenRecaudacion/RegistrarPago | Iniciando acción: OrdenRecaudacion/RegistrarPago
+2026-03-19 09:01:10.224 | INFO  | CID:0251c1d2dd05 | USR:GACAJAS | OrdenRecaudacion/RegistrarPago | Acción completada: OrdenRecaudacion/RegistrarPago
+2026-03-19 09:02:06.752 | INFO  | CID:bb00f035167b | USR:GACAJAS | OrdenRecaudacion/RegistrarPago | Iniciando acción: OrdenRecaudacion/RegistrarPago
+2026-03-19 09:02:06.903 | INFO  | CID:bb00f035167b | USR:GACAJAS | OrdenRecaudacion/RegistrarPago | Acción completada: OrdenRecaudacion/RegistrarPago
+2026-03-19 09:04:13.948 | INFO  | CID:50df9e3ebfe2 | Account/Login | Iniciando acción: Account/Login
+2026-03-19 09:04:14.396 | INFO  | CID:50df9e3ebfe2 | Account/Login | Acción completada: Account/Login
+2026-03-19 09:05:02.752 | INFO  | CID:bf4cd50e7da2 | USR:USU_ADMIN | Financiero/AprobarYEnviarAS400 | Iniciando acción: Financiero/AprobarYEnviarAS400
+2026-03-19 09:05:03.194 | ERROR | CID:N/A | ERR:EMAIL_ERROR | Error al enviar correo.
+    Exception: SmtpException
+    StackTrace:    en System.Net.Mail.SmtpClient.SendAsync(MailMessage message, Object userToken)
+   en System.Net.Mail.SmtpClient.SendMailAsync(MailMessage message)
+   en CapaDatos.Services.EmailService.<EnviarAsync>d__4.MoveNext() en C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\CapaDatos\Services\EmailService.cs:línea 76
+2026-03-19 09:05:03.403 | INFO  | CID:4d4268b54ba7 | Correo con adjunto enviado exitosamente a german.cajas@aviacioncivil.gob.ec
+2026-03-19 09:05:03.403 | WARN  | CID:N/A | ERR:EMAIL_FALLBACK_OK | Correo enviado por fallback EnviarCorreo.
+2026-03-19 09:05:03.403 | INFO  | CID:N/A | ORD:OR-20260319090019033-1 | ERR:EMAIL_FACTURA_OK | Notificacion de factura enviada correctamente
+2026-03-19 09:05:03.572 | INFO  | CID:N/A | SyncLogService: Tabla aocr_sync_log verificada/creada.
+2026-03-19 09:05:03.581 | INFO  | CID:N/A | IdempotencyService: Tabla aocr_idempotency_key verificada/creada.
+2026-03-19 09:05:03.631 | INFO  | CID:N/A | AuditTrailService: Tabla aocr_audit_trail verificada/creada.
+2026-03-19 09:05:04.482 | INFO  | CID:N/A | FR3 DB2 inicio: OrdenId=99, Factura=3424323, Aeropuerto=SEQU, Anio=2026
+2026-03-19 09:05:04.515 | INFO  | CID:N/A | GetColumnas: 80 columnas encontradas en DGACDAT.OPCAR5
+2026-03-19 09:05:04.531 | INFO  | CID:N/A | GetColumnas: 25 columnas encontradas en DGACDAT.OPCAR6
+2026-03-19 09:05:04.588 | INFO  | CID:N/A | GetColumnas: 6 columnas encontradas en DGACDAT.OPSARC
+2026-03-19 09:05:04.615 | WARN  | CID:N/A | FR3 truncamiento preventivo en DGACDAT.OPCAR5.OPCOBS: len=73, max=60.
+2026-03-19 09:05:04.681 | WARN  | CID:N/A | FR3 detectó SQL7008 en modo transaccional; se reintenta sin transacción para compatibilidad.
+2026-03-19 09:05:04.681 | INFO  | CID:N/A | FR3 DB2 inicio: OrdenId=99, Factura=3424323, Aeropuerto=SEQU, Anio=2026
+2026-03-19 09:05:04.698 | INFO  | CID:N/A | GetColumnas: 80 columnas encontradas en DGACDAT.OPCAR5
+2026-03-19 09:05:04.700 | INFO  | CID:N/A | GetColumnas: 25 columnas encontradas en DGACDAT.OPCAR6
+2026-03-19 09:05:04.700 | INFO  | CID:N/A | GetColumnas: 6 columnas encontradas en DGACDAT.OPSARC
+2026-03-19 09:05:04.715 | WARN  | CID:N/A | FR3 truncamiento preventivo en DGACDAT.OPCAR5.OPCOBS: len=73, max=60.
+2026-03-19 09:05:04.715 | INFO  | CID:N/A | FR3 cabecera insertada: Factura=3424323, Sec=25
+2026-03-19 09:05:04.732 | INFO  | CID:N/A | GetColumnas: 6 columnas encontradas en DGACDAT.OPSARC
+2026-03-19 09:05:04.732 | INFO  | CID:N/A | FR3 secuencial actualizado: Aeropuerto=SEQU, Anio=2026, Sec=25
+2026-03-19 09:05:04.747 | INFO  | CID:N/A | FR3 DB2 OK: OrdenId=99, Factura=3424323, FR3=25-SEQU-2026
+2026-03-19 09:05:05.215 | INFO  | CID:bf4cd50e7da2 | USR:USU_ADMIN | Financiero/AprobarYEnviarAS400 | Acción completada: Financiero/AprobarYEnviarAS400
+2026-03-19 09:05:12.612 | INFO  | CID:N/A | Procesando email 62 para german.cajas@aviacioncivil.gob.ec
+2026-03-19 09:05:12.890 | INFO  | CID:N/A | Email 62 enviado exitosamente
+2026-03-19 09:05:12.890 | INFO  | CID:N/A | Email 62 enviado exitosamente
+2026-03-19 09:05:12.914 | INFO  | CID:N/A | Procesando email 63 para admin1@dgac.gob.ec
+2026-03-19 09:05:13.258 | INFO  | CID:N/A | Email 63 enviado exitosamente
+2026-03-19 09:05:13.260 | INFO  | CID:N/A | Email 63 enviado exitosamente
+2026-03-19 09:05:13.293 | INFO  | CID:N/A | Procesando email 64 para admin2@dgac.gob.ec
+2026-03-19 09:05:13.609 | INFO  | CID:N/A | Email 64 enviado exitosamente
+2026-03-19 09:05:13.610 | INFO  | CID:N/A | Email 64 enviado exitosamente
+2026-03-19 09:17:07.251 | INFO  | CID:N/A | [InspeccionesController] Inicio pantalla gestion (Tecnico/Index). Usuario=USU_ADMIN, Rol=Administrador,Direccion,JefaturaTecnica
+2026-03-19 09:17:07.258 | INFO  | CID:N/A | [InspeccionesController] DAO.ObtenerPendientesAsignacion inicio. EstadosFiltro=PENDIENTE_ASIGNACION_RT,PENDIENTE ASIGNACION RT,PENDIENTE,ACEPTACION_DOCUMENTAL,DOCUMENTACION_COMPLETA,DOCUMENTOS_COMPLETOS,PENDIENTE_ASIGNACION_TECNICA,PENDIENTE ASIGNACION TECNICA,PENDIENTE_ASIGNACION,ACEPTACION DOCUMENTAL,DOCUMENTACION COMPLETA
+2026-03-19 09:17:07.279 | INFO  | CID:N/A | [InspeccionesController] EstadoDetectado=PENDIENTE, Total=135
+2026-03-19 09:17:07.279 | INFO  | CID:N/A | [InspeccionesController] EstadoDetectado=EN INSPECCION, Total=10
+2026-03-19 09:17:07.279 | INFO  | CID:N/A | [InspeccionesController] EstadoDetectado=OBSERVADA, Total=6
+2026-03-19 09:17:07.298 | INFO  | CID:N/A | [InspeccionesController] DiagnosticoPendientes => totalSolicitudes=135, conInspeccion=0, conInspectorAsignado=0, conInspeccionSinInspector=0
+2026-03-19 09:17:07.306 | INFO  | CID:N/A | [InspeccionesController] DAO.ObtenerPendientesAsignacion resultado=34
+2026-03-19 09:17:07.307 | INFO  | CID:N/A | [InspeccionesController] PendienteEjemplo[0] SolicitudId=168, Estado=Pendiente, Numero=DGAC-GOP-2026-AOCR151
+2026-03-19 09:17:07.307 | INFO  | CID:N/A | [InspeccionesController] PendienteEjemplo[1] SolicitudId=113, Estado=Pendiente, Numero=DGAC-GOP-2026-AOCR096
+2026-03-19 09:17:07.307 | INFO  | CID:N/A | [InspeccionesController] PendienteEjemplo[2] SolicitudId=111, Estado=Pendiente, Numero=DGAC-GOP-2026-AOCR094
+2026-03-19 09:17:07.308 | INFO  | CID:N/A | [InspeccionesController] PendienteEjemplo[3] SolicitudId=92, Estado=Pendiente, Numero=DGAC-GOP-2026-AOCR075
+2026-03-19 09:17:07.308 | INFO  | CID:N/A | [InspeccionesController] PendienteEjemplo[4] SolicitudId=87, Estado=Pendiente, Numero=DGAC-GOP-2026-AOCR070
+2026-03-19 09:17:07.308 | INFO  | CID:N/A | [InspeccionesController] Pendientes para asignacion=34
+2026-03-19 09:17:18.918 | INFO  | CID:N/A | [InspeccionesController] Inicio pantalla gestion de asignacion. Usuario=USU_ADMIN, Rol=Administrador,Direccion,JefaturaTecnica, SolicitudId=168
+2026-03-19 09:17:18.921 | INFO  | CID:N/A | [InspeccionesController] SolicitudId=168, EstadoActual=Pendiente, NumeroSolicitud=DGAC-GOP-2026-AOCR151
+2026-03-19 09:17:18.925 | INFO  | CID:N/A | [InspectoresDAO-DB2] Inicio consulta inspectores
+2026-03-19 09:17:18.926 | INFO  | CID:N/A | [InspectoresDAO-DB2] Origen=DB2, Tabla=DGACDAT.OPIAR2
+2026-03-19 09:17:18.928 | INFO  | CID:N/A | [InspectoresDAO-DB2] ConnectionString(sanitizada)=Driver={iSeries Access ODBC Driver};system=190.152.8.185;database=DGACDAT;defaultcollection=DGACDAT;uid=****;pwd=****;connection timeout=30;query timeout=60
+2026-03-19 09:17:18.929 | INFO  | CID:N/A | [InspectoresDAO-DB2] Parametros => estado=AC (fallback: sin estado), tipo=OPS
+2026-03-19 09:17:19.084 | INFO  | CID:N/A | [InspectoresDAO-DB2] Conexion DB2 abierta OK
+2026-03-19 09:17:19.095 | INFO  | CID:N/A | [InspectoresDAO-DB2] Query ejecutada: SELECT TRIM(OPICED) AS OPICED, TRIM(OPINO2) AS OPINO2, TRIM(OPIES1) AS OPIES1, TRIM(OPITIP) AS OPITIP FROM DGACDAT.OPIAR2 WHERE 1 = 1 AND UPPER(TRIM(COALESCE(OPIES1, ''))) = ? AND OPITIP IN (?) ORDER BY OPINO2
+2026-03-19 09:17:19.096 | INFO  | CID:N/A | [InspectoresDAO-DB2] Filtros aplicados => soloActivos=True, tipos=OPS
+2026-03-19 09:17:19.096 | INFO  | CID:N/A | [InspectoresDAO-DB2] Registros obtenidos desde DB2: 19
+2026-03-19 09:17:19.110 | INFO  | CID:N/A | [InspectoresDAO-DB2] Ejemplo[0] => Cedula=0201377850, Nombre=ALEGRIA CHICO SANTIAGO REMIGIO, Estado=AC, Tipo=OPS
+2026-03-19 09:17:19.110 | INFO  | CID:N/A | [InspectoresDAO-DB2] Ejemplo[1] => Cedula=1709061814, Nombre=AVILA ZARATE EDISON JAVIER, Estado=AC, Tipo=OPS
+2026-03-19 09:17:19.111 | INFO  | CID:N/A | [InspectoresDAO-DB2] Ejemplo[2] => Cedula=1703863520, Nombre=BARRERA BARRENO LUIS GONZALO, Estado=AC, Tipo=OPS
+2026-03-19 09:17:19.112 | INFO  | CID:N/A | [InspectoresDAO-DB2] Ejemplo[3] => Cedula=1709565459, Nombre=CATOTA TORRES LUIS WILKIR, Estado=AC, Tipo=OPS
+2026-03-19 09:17:19.112 | INFO  | CID:N/A | [InspectoresDAO-DB2] Ejemplo[4] => Cedula=1720253846, Nombre=CHUSIN VILLALBA CARLOS ARTURO, Estado=AC, Tipo=OPS
+2026-03-19 09:17:19.118 | INFO  | CID:N/A | [InspectoresDAO-PG] Inicio consulta espejo inspectores
+2026-03-19 09:17:19.119 | INFO  | CID:N/A | [InspectoresDAO-PG] Tabla espejo: public.aocr_tbinspectores
+2026-03-19 09:17:19.127 | WARN  | CID:N/A | [InspectoresDAO-PG] No existe la tabla espejo aocr_tbinspectores.
+2026-03-19 09:17:19.128 | WARN  | CID:N/A | [InspectoresDAO-PG] Espejo no disponible (tabla inexistente). Flujo usa DB2 directo.
+2026-03-19 09:17:19.128 | INFO  | CID:N/A | [InspeccionesController] Origen inspectores=DB2, TipoFiltro=OPS, InspectoresRecibidos=19
+2026-03-19 09:17:19.619 | INFO  | CID:N/A | [InspeccionesController] ViewModel cargado correctamente. SolicitudId=168, ViewBagInspectores=19
+2026-03-19 09:17:21.274 | INFO  | CID:N/A | [InspeccionesController] Inicio endpoint AJAX inspectores. Usuario=USU_ADMIN, Rol=Administrador,Direccion,JefaturaTecnica, TipoInspector=OPS
+2026-03-19 09:17:21.275 | INFO  | CID:N/A | [InspectoresDAO-DB2] Inicio consulta inspectores
+2026-03-19 09:17:21.275 | INFO  | CID:N/A | [InspectoresDAO-DB2] Origen=DB2, Tabla=DGACDAT.OPIAR2
+2026-03-19 09:17:21.276 | INFO  | CID:N/A | [InspectoresDAO-DB2] ConnectionString(sanitizada)=Driver={iSeries Access ODBC Driver};system=190.152.8.185;database=DGACDAT;defaultcollection=DGACDAT;uid=****;pwd=****;connection timeout=30;query timeout=60
+2026-03-19 09:17:21.277 | INFO  | CID:N/A | [InspectoresDAO-DB2] Parametros => estado=AC (fallback: sin estado), tipo=OPS
+2026-03-19 09:17:21.277 | INFO  | CID:N/A | [InspectoresDAO-DB2] Conexion DB2 abierta OK
+2026-03-19 09:17:21.278 | INFO  | CID:N/A | [InspectoresDAO-DB2] Query ejecutada: SELECT TRIM(OPICED) AS OPICED, TRIM(OPINO2) AS OPINO2, TRIM(OPIES1) AS OPIES1, TRIM(OPITIP) AS OPITIP FROM DGACDAT.OPIAR2 WHERE 1 = 1 AND UPPER(TRIM(COALESCE(OPIES1, ''))) = ? AND OPITIP IN (?) ORDER BY OPINO2
+2026-03-19 09:17:21.278 | INFO  | CID:N/A | [InspectoresDAO-DB2] Filtros aplicados => soloActivos=True, tipos=OPS
+2026-03-19 09:17:21.283 | INFO  | CID:N/A | [InspectoresDAO-DB2] Registros obtenidos desde DB2: 19
+2026-03-19 09:17:21.283 | INFO  | CID:N/A | [InspectoresDAO-DB2] Ejemplo[0] => Cedula=0201377850, Nombre=ALEGRIA CHICO SANTIAGO REMIGIO, Estado=AC, Tipo=OPS
+2026-03-19 09:17:21.284 | INFO  | CID:N/A | [InspectoresDAO-DB2] Ejemplo[1] => Cedula=1709061814, Nombre=AVILA ZARATE EDISON JAVIER, Estado=AC, Tipo=OPS
+2026-03-19 09:17:21.284 | INFO  | CID:N/A | [InspectoresDAO-DB2] Ejemplo[2] => Cedula=1703863520, Nombre=BARRERA BARRENO LUIS GONZALO, Estado=AC, Tipo=OPS
+2026-03-19 09:17:21.285 | INFO  | CID:N/A | [InspectoresDAO-DB2] Ejemplo[3] => Cedula=1709565459, Nombre=CATOTA TORRES LUIS WILKIR, Estado=AC, Tipo=OPS
+2026-03-19 09:17:21.285 | INFO  | CID:N/A | [InspectoresDAO-DB2] Ejemplo[4] => Cedula=1720253846, Nombre=CHUSIN VILLALBA CARLOS ARTURO, Estado=AC, Tipo=OPS
+2026-03-19 09:17:21.286 | INFO  | CID:N/A | [InspeccionesController] Endpoint AJAX inspectores OK. Origen=DB2, Tipo=OPS, Cantidad=19
+2026-03-19 09:40:52.628 | INFO  | CID:N/A | Iniciando procesador de cola de correos
+2026-03-19 09:41:37.438 | INFO  | CID:8bdc32252681 | Account/Login | Iniciando acción: Account/Login
+2026-03-19 09:41:38.109 | INFO  | CID:8bdc32252681 | Account/Login | Acción completada: Account/Login
+2026-03-19 09:42:11.818 | INFO  | CID:f56584344c39 | USR:USU_ADMIN | Financiero/AprobarYEnviarAS400 | Iniciando acción: Financiero/AprobarYEnviarAS400
+2026-03-19 09:42:12.200 | ERROR | CID:N/A | ERR:EMAIL_ERROR | Error al enviar correo.
+    Exception: SmtpException
+    StackTrace:    en System.Net.Mail.SmtpClient.SendAsync(MailMessage message, Object userToken)
+   en System.Net.Mail.SmtpClient.SendMailAsync(MailMessage message)
+   en CapaDatos.Services.EmailService.<EnviarAsync>d__4.MoveNext() en C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\CapaDatos\Services\EmailService.cs:línea 76
+2026-03-19 09:42:12.556 | INFO  | CID:207a8e52c110 | Correo con adjunto enviado exitosamente a german.cajas@aviacioncivil.gob.ec
+2026-03-19 09:42:12.556 | WARN  | CID:N/A | ERR:EMAIL_FALLBACK_OK | Correo enviado por fallback EnviarCorreo.
+2026-03-19 09:42:12.556 | INFO  | CID:N/A | ORD:OR-20260210093031451-7 | ERR:EMAIL_FACTURA_OK | Notificacion de factura enviada correctamente
+2026-03-19 09:42:12.785 | INFO  | CID:N/A | SyncLogService: Tabla aocr_sync_log verificada/creada.
+2026-03-19 09:42:12.802 | INFO  | CID:N/A | IdempotencyService: Tabla aocr_idempotency_key verificada/creada.
+2026-03-19 09:42:13.022 | INFO  | CID:N/A | AuditTrailService: Tabla aocr_audit_trail verificada/creada.
+2026-03-19 09:42:13.055 | WARN  | CID:N/A | FR3 normalizacion numero_factura: 'OR-20260210093031451-7' => '0930314517' (orden 40).
+2026-03-19 09:42:13.600 | WARN  | CID:N/A | FR3 normalizacion deposito: 'OR-20260210093031451-7' => '602100930314517' (orden 40).
+2026-03-19 09:42:14.054 | INFO  | CID:N/A | FR3 DB2 inicio: OrdenId=40, Factura=0930314517, Aeropuerto=SEQU, Anio=2026
+2026-03-19 09:42:14.133 | INFO  | CID:N/A | GetColumnas: 80 columnas encontradas en DGACDAT.OPCAR5
+2026-03-19 09:42:14.133 | INFO  | CID:N/A | GetColumnas: 25 columnas encontradas en DGACDAT.OPCAR6
+2026-03-19 09:42:14.200 | INFO  | CID:N/A | GetColumnas: 6 columnas encontradas en DGACDAT.OPSARC
+2026-03-19 09:42:14.233 | WARN  | CID:N/A | FR3 truncamiento preventivo en DGACDAT.OPCAR5.OPCOBS: len=90, max=60.
+2026-03-19 09:42:14.300 | WARN  | CID:N/A | FR3 detectó SQL7008 en modo transaccional; se reintenta sin transacción para compatibilidad.
+2026-03-19 09:42:14.300 | INFO  | CID:N/A | FR3 DB2 inicio: OrdenId=40, Factura=0930314517, Aeropuerto=SEQU, Anio=2026
+2026-03-19 09:42:14.321 | INFO  | CID:N/A | GetColumnas: 80 columnas encontradas en DGACDAT.OPCAR5
+2026-03-19 09:42:14.334 | INFO  | CID:N/A | GetColumnas: 25 columnas encontradas en DGACDAT.OPCAR6
+2026-03-19 09:42:14.367 | INFO  | CID:N/A | GetColumnas: 6 columnas encontradas en DGACDAT.OPSARC
+2026-03-19 09:42:14.387 | WARN  | CID:N/A | FR3 truncamiento preventivo en DGACDAT.OPCAR5.OPCOBS: len=90, max=60.
+2026-03-19 09:42:14.387 | INFO  | CID:N/A | FR3 cabecera insertada: Factura=0930314517, Sec=26
+2026-03-19 09:42:14.417 | INFO  | CID:N/A | GetColumnas: 6 columnas encontradas en DGACDAT.OPSARC
+2026-03-19 09:42:14.421 | INFO  | CID:N/A | FR3 secuencial actualizado: Aeropuerto=SEQU, Anio=2026, Sec=26
+2026-03-19 09:42:14.421 | INFO  | CID:N/A | FR3 DB2 OK: OrdenId=40, Factura=0930314517, FR3=26-SEQU-2026
+2026-03-19 09:42:14.950 | INFO  | CID:81c90a9dc6a3 | Enviando correo a german.cajas@aviacioncivil.gob.ec, Asunto: Pago aprobado - listo para asignacion de inspector...
+2026-03-19 09:42:15.134 | INFO  | CID:81c90a9dc6a3 | Correo enviado exitosamente a german.cajas@aviacioncivil.gob.ec
+2026-03-19 09:42:15.149 | INFO  | CID:f56584344c39 | USR:USU_ADMIN | Financiero/AprobarYEnviarAS400 | Acción completada: Financiero/AprobarYEnviarAS400
+2026-03-19 09:42:24.481 | INFO  | CID:N/A | Procesando email 65 para german.cajas@aviacioncivil.gob.ec
+2026-03-19 09:42:25.055 | INFO  | CID:N/A | Email 65 enviado exitosamente
+2026-03-19 09:42:25.055 | INFO  | CID:N/A | Email 65 enviado exitosamente
+2026-03-19 09:42:25.580 | INFO  | CID:N/A | Procesando email 66 para admin1@dgac.gob.ec
+2026-03-19 09:42:25.799 | INFO  | CID:N/A | Email 66 enviado exitosamente
+2026-03-19 09:42:25.799 | INFO  | CID:N/A | Email 66 enviado exitosamente
+2026-03-19 09:42:25.831 | INFO  | CID:N/A | Procesando email 67 para admin2@dgac.gob.ec
+2026-03-19 09:42:26.049 | INFO  | CID:N/A | Email 67 enviado exitosamente
+2026-03-19 09:42:26.049 | INFO  | CID:N/A | Email 67 enviado exitosamente
+2026-03-19 09:44:59.904 | INFO  | CID:d6eeaa619ce5 | USR:USU_ADMIN | Financiero/AprobarYEnviarAS400 | Iniciando acción: Financiero/AprobarYEnviarAS400
+2026-03-19 09:45:00.313 | ERROR | CID:N/A | ERR:EMAIL_ERROR | Error al enviar correo.
+    Exception: SmtpException
+    StackTrace:    en System.Net.Mail.SmtpClient.SendAsync(MailMessage message, Object userToken)
+   en System.Net.Mail.SmtpClient.SendMailAsync(MailMessage message)
+   en CapaDatos.Services.EmailService.<EnviarAsync>d__4.MoveNext() en C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\CapaDatos\Services\EmailService.cs:línea 76
+2026-03-19 09:45:00.563 | INFO  | CID:3f31837b165c | Correo con adjunto enviado exitosamente a german.cajas@aviacioncivil.gob.ec
+2026-03-19 09:45:00.563 | WARN  | CID:N/A | ERR:EMAIL_FALLBACK_OK | Correo enviado por fallback EnviarCorreo.
+2026-03-19 09:45:00.563 | INFO  | CID:N/A | ORD:OR-20260210091909113-6 | ERR:EMAIL_FACTURA_OK | Notificacion de factura enviada correctamente
+2026-03-19 09:45:00.580 | WARN  | CID:N/A | FR3 normalizacion numero_factura: 'OR-20260210091909113-6' => '0919091136' (orden 39).
+2026-03-19 09:45:01.263 | WARN  | CID:N/A | FR3 normalizacion deposito: 'OR-20260210091909113-6' => '602100919091136' (orden 39).
+2026-03-19 09:45:01.529 | INFO  | CID:N/A | FR3 DB2 inicio: OrdenId=39, Factura=0919091136, Aeropuerto=SEQU, Anio=2026
+2026-03-19 09:45:01.563 | INFO  | CID:N/A | GetColumnas: 80 columnas encontradas en DGACDAT.OPCAR5
+2026-03-19 09:45:01.563 | INFO  | CID:N/A | GetColumnas: 25 columnas encontradas en DGACDAT.OPCAR6
+2026-03-19 09:45:01.614 | INFO  | CID:N/A | GetColumnas: 6 columnas encontradas en DGACDAT.OPSARC
+2026-03-19 09:45:01.629 | WARN  | CID:N/A | FR3 truncamiento preventivo en DGACDAT.OPCAR5.OPCOBS: len=90, max=60.
+2026-03-19 09:45:01.667 | WARN  | CID:N/A | FR3 detectó SQL7008 en modo transaccional; se reintenta sin transacción para compatibilidad.
+2026-03-19 09:45:01.667 | INFO  | CID:N/A | FR3 DB2 inicio: OrdenId=39, Factura=0919091136, Aeropuerto=SEQU, Anio=2026
+2026-03-19 09:45:01.680 | INFO  | CID:N/A | GetColumnas: 80 columnas encontradas en DGACDAT.OPCAR5
+2026-03-19 09:45:01.680 | INFO  | CID:N/A | GetColumnas: 25 columnas encontradas en DGACDAT.OPCAR6
+2026-03-19 09:45:01.713 | INFO  | CID:N/A | GetColumnas: 6 columnas encontradas en DGACDAT.OPSARC
+2026-03-19 09:45:01.730 | WARN  | CID:N/A | FR3 truncamiento preventivo en DGACDAT.OPCAR5.OPCOBS: len=90, max=60.
+2026-03-19 09:45:01.730 | INFO  | CID:N/A | FR3 cabecera insertada: Factura=0919091136, Sec=27
+2026-03-19 09:45:01.764 | INFO  | CID:N/A | GetColumnas: 6 columnas encontradas en DGACDAT.OPSARC
+2026-03-19 09:45:01.764 | INFO  | CID:N/A | FR3 secuencial actualizado: Aeropuerto=SEQU, Anio=2026, Sec=27
+2026-03-19 09:45:01.764 | INFO  | CID:N/A | FR3 DB2 OK: OrdenId=39, Factura=0919091136, FR3=27-SEQU-2026
+2026-03-19 09:45:02.496 | INFO  | CID:f0461bf71d94 | Enviando correo a german.cajas@aviacioncivil.gob.ec, Asunto: Pago aprobado - listo para asignacion de inspector...
+2026-03-19 09:45:02.730 | INFO  | CID:f0461bf71d94 | Correo enviado exitosamente a german.cajas@aviacioncivil.gob.ec
+2026-03-19 09:45:02.730 | INFO  | CID:d6eeaa619ce5 | USR:USU_ADMIN | Financiero/AprobarYEnviarAS400 | Acción completada: Financiero/AprobarYEnviarAS400
+2026-03-19 09:45:06.945 | INFO  | CID:N/A | Procesando email 68 para german.cajas@aviacioncivil.gob.ec
+2026-03-19 09:45:07.319 | INFO  | CID:N/A | Email 68 enviado exitosamente
+2026-03-19 09:45:07.320 | INFO  | CID:N/A | Email 68 enviado exitosamente
+2026-03-19 09:45:07.345 | INFO  | CID:N/A | Procesando email 69 para admin1@dgac.gob.ec
+2026-03-19 09:45:07.564 | INFO  | CID:N/A | Email 69 enviado exitosamente
+2026-03-19 09:45:07.580 | INFO  | CID:N/A | Email 69 enviado exitosamente
+2026-03-19 09:45:07.630 | INFO  | CID:N/A | Procesando email 70 para admin2@dgac.gob.ec
+2026-03-19 09:45:08.124 | INFO  | CID:N/A | Email 70 enviado exitosamente
+2026-03-19 09:45:08.126 | INFO  | CID:N/A | Email 70 enviado exitosamente
+2026-03-19 09:49:22.642 | INFO  | CID:N/A | Deteniendo procesador de cola de correos
+2026-03-19 09:49:22.671 | INFO  | CID:N/A | Deteniendo procesador de cola de correos
+2026-03-19 09:49:55.797 | INFO  | CID:N/A | Iniciando procesador de cola de correos
+2026-03-19 09:50:06.244 | INFO  | CID:ccb8ad33afb1 | USR:USU_ADMIN | Financiero/AprobarYEnviarAS400 | Iniciando acción: Financiero/AprobarYEnviarAS400
+2026-03-19 09:50:07.094 | ERROR | CID:N/A | ERR:EMAIL_ERROR | Error al enviar correo.
+    Exception: SmtpException
+    StackTrace:    en System.Net.Mail.SmtpClient.SendAsync(MailMessage message, Object userToken)
+   en System.Net.Mail.SmtpClient.SendMailAsync(MailMessage message)
+   en CapaDatos.Services.EmailService.<EnviarAsync>d__4.MoveNext() en C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\CapaDatos\Services\EmailService.cs:línea 76
+2026-03-19 09:50:07.460 | INFO  | CID:507e5b5a1c40 | Correo con adjunto enviado exitosamente a german.cajas@aviacioncivil.gob.ec
+2026-03-19 09:50:07.474 | WARN  | CID:N/A | ERR:EMAIL_FALLBACK_OK | Correo enviado por fallback EnviarCorreo.
+2026-03-19 09:50:07.485 | INFO  | CID:N/A | ORD:OR-20260210091222563-5 | ERR:EMAIL_FACTURA_OK | Notificacion de factura enviada correctamente
+2026-03-19 09:50:07.578 | INFO  | CID:N/A | SyncLogService: Tabla aocr_sync_log verificada/creada.
+2026-03-19 09:50:07.643 | INFO  | CID:N/A | IdempotencyService: Tabla aocr_idempotency_key verificada/creada.
+2026-03-19 09:50:07.877 | INFO  | CID:N/A | AuditTrailService: Tabla aocr_audit_trail verificada/creada.
+2026-03-19 09:50:07.894 | WARN  | CID:N/A | FR3 normalizacion numero_factura: 'OR-20260210091222563-5' => '0912225635' (orden 38).
+2026-03-19 09:50:08.529 | WARN  | CID:N/A | FR3 normalizacion deposito: 'OR-20260210091222563-5' => '602100912225635' (orden 38).
+2026-03-19 09:50:09.077 | INFO  | CID:N/A | FR3 DB2 inicio: OrdenId=38, Factura=0912225635, Aeropuerto=SEQU, Anio=2026
+2026-03-19 09:50:09.127 | INFO  | CID:N/A | GetColumnas: 80 columnas encontradas en DGACDAT.OPCAR5
+2026-03-19 09:50:09.141 | INFO  | CID:N/A | GetColumnas: 25 columnas encontradas en DGACDAT.OPCAR6
+2026-03-19 09:50:09.177 | INFO  | CID:N/A | GetColumnas: 6 columnas encontradas en DGACDAT.OPSARC
+2026-03-19 09:50:09.210 | WARN  | CID:N/A | FR3 truncamiento preventivo en DGACDAT.OPCAR5.OPCOBS: len=90, max=60.
+2026-03-19 09:50:09.311 | WARN  | CID:N/A | FR3 detectó SQL7008 en modo transaccional; se reintenta sin transacción para compatibilidad.
+2026-03-19 09:50:09.311 | INFO  | CID:N/A | FR3 DB2 inicio: OrdenId=38, Factura=0912225635, Aeropuerto=SEQU, Anio=2026
+2026-03-19 09:50:09.327 | INFO  | CID:N/A | GetColumnas: 80 columnas encontradas en DGACDAT.OPCAR5
+2026-03-19 09:50:09.344 | INFO  | CID:N/A | GetColumnas: 25 columnas encontradas en DGACDAT.OPCAR6
+2026-03-19 09:50:09.361 | INFO  | CID:N/A | GetColumnas: 6 columnas encontradas en DGACDAT.OPSARC
+2026-03-19 09:50:09.382 | WARN  | CID:N/A | FR3 truncamiento preventivo en DGACDAT.OPCAR5.OPCOBS: len=90, max=60.
+2026-03-19 09:50:09.394 | INFO  | CID:N/A | FR3 cabecera insertada: Factura=0912225635, Sec=28
+2026-03-19 09:50:09.427 | INFO  | CID:N/A | GetColumnas: 6 columnas encontradas en DGACDAT.OPSARC
+2026-03-19 09:50:09.434 | INFO  | CID:N/A | FR3 secuencial actualizado: Aeropuerto=SEQU, Anio=2026, Sec=28
+2026-03-19 09:50:09.444 | INFO  | CID:N/A | FR3 DB2 OK: OrdenId=38, Factura=0912225635, FR3=28-SEQU-2026
+2026-03-19 09:50:09.838 | INFO  | CID:f63663bcd036 | Enviando correo a german.cajas@aviacioncivil.gob.ec, Asunto: Pago aprobado - listo para asignacion de inspector...
+2026-03-19 09:50:10.077 | INFO  | CID:f63663bcd036 | Correo enviado exitosamente a german.cajas@aviacioncivil.gob.ec
+2026-03-19 09:50:10.086 | INFO  | CID:ccb8ad33afb1 | USR:USU_ADMIN | Financiero/AprobarYEnviarAS400 | Acción completada: Financiero/AprobarYEnviarAS400
+2026-03-19 09:50:17.728 | INFO  | CID:N/A | Procesando email 71 para german.cajas@aviacioncivil.gob.ec
+2026-03-19 09:50:18.100 | INFO  | CID:N/A | Email 71 enviado exitosamente
+2026-03-19 09:50:18.102 | INFO  | CID:N/A | Email 71 enviado exitosamente
+2026-03-19 09:50:18.141 | INFO  | CID:N/A | Procesando email 72 para admin1@dgac.gob.ec
+2026-03-19 09:50:18.661 | INFO  | CID:N/A | Email 72 enviado exitosamente
+2026-03-19 09:50:18.665 | INFO  | CID:N/A | Email 72 enviado exitosamente
+2026-03-19 09:50:18.923 | INFO  | CID:N/A | Procesando email 73 para admin2@dgac.gob.ec
+2026-03-19 09:50:19.166 | INFO  | CID:N/A | Email 73 enviado exitosamente
+2026-03-19 09:50:19.169 | INFO  | CID:N/A | Email 73 enviado exitosamente
+2026-03-19 09:57:11.109 | INFO  | CID:N/A | Iniciando procesador de cola de correos
+2026-03-19 09:57:37.158 | INFO  | CID:add490465591 | Account/Login | Iniciando acción: Account/Login
+2026-03-19 09:57:37.850 | INFO  | CID:add490465591 | Account/Login | Acción completada: Account/Login
+2026-03-19 09:58:17.403 | INFO  | CID:a201dfdef9c6 | USR:USU_ADMIN | Financiero/AprobarYEnviarAS400 | Iniciando acción: Financiero/AprobarYEnviarAS400
+2026-03-19 09:58:17.765 | ERROR | CID:N/A | ERR:EMAIL_ERROR | Error al enviar correo.
+    Exception: SmtpException
+    StackTrace:    en System.Net.Mail.SmtpClient.SendAsync(MailMessage message, Object userToken)
+   en System.Net.Mail.SmtpClient.SendMailAsync(MailMessage message)
+   en CapaDatos.Services.EmailService.<EnviarAsync>d__4.MoveNext() en C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\CapaDatos\Services\EmailService.cs:línea 76
+2026-03-19 09:58:18.119 | INFO  | CID:4203db77e6a2 | Correo con adjunto enviado exitosamente a german.cajas@aviacioncivil.gob.ec
+2026-03-19 09:58:18.119 | WARN  | CID:N/A | ERR:EMAIL_FALLBACK_OK | Correo enviado por fallback EnviarCorreo.
+2026-03-19 09:58:18.119 | INFO  | CID:N/A | ORD:OR-20260210091008709-4 | ERR:EMAIL_FACTURA_OK | Notificacion de factura enviada correctamente
+2026-03-19 09:58:18.153 | INFO  | CID:N/A | SyncLogService: Tabla aocr_sync_log verificada/creada.
+2026-03-19 09:58:18.373 | INFO  | CID:N/A | IdempotencyService: Tabla aocr_idempotency_key verificada/creada.
+2026-03-19 09:58:18.377 | INFO  | CID:N/A | AuditTrailService: Tabla aocr_audit_trail verificada/creada.
+2026-03-19 09:58:19.436 | INFO  | CID:N/A | FR3 DB2 inicio: OrdenId=37, Factura=145421, Aeropuerto=SEQU, Anio=2026
+2026-03-19 09:58:19.526 | INFO  | CID:N/A | GetColumnas: 80 columnas encontradas en DGACDAT.OPCAR5
+2026-03-19 09:58:19.529 | INFO  | CID:N/A | GetColumnas: 25 columnas encontradas en DGACDAT.OPCAR6
+2026-03-19 09:58:19.667 | INFO  | CID:N/A | GetColumnas: 6 columnas encontradas en DGACDAT.OPSARC
+2026-03-19 09:58:19.695 | WARN  | CID:N/A | FR3 truncamiento preventivo en DGACDAT.OPCAR5.OPCOBS: len=70, max=60.
+2026-03-19 09:58:19.763 | WARN  | CID:N/A | FR3 detectó SQL7008 en modo transaccional; se reintenta sin transacción para compatibilidad.
+2026-03-19 09:58:19.763 | INFO  | CID:N/A | FR3 DB2 inicio: OrdenId=37, Factura=145421, Aeropuerto=SEQU, Anio=2026
+2026-03-19 09:58:19.769 | INFO  | CID:N/A | GetColumnas: 80 columnas encontradas en DGACDAT.OPCAR5
+2026-03-19 09:58:19.769 | INFO  | CID:N/A | GetColumnas: 25 columnas encontradas en DGACDAT.OPCAR6
+2026-03-19 09:58:19.791 | INFO  | CID:N/A | GetColumnas: 6 columnas encontradas en DGACDAT.OPSARC
+2026-03-19 09:58:19.791 | WARN  | CID:N/A | FR3 truncamiento preventivo en DGACDAT.OPCAR5.OPCOBS: len=70, max=60.
+2026-03-19 09:58:19.802 | INFO  | CID:N/A | FR3 cabecera insertada: Factura=145421, Sec=29
+2026-03-19 09:58:19.819 | INFO  | CID:N/A | GetColumnas: 6 columnas encontradas en DGACDAT.OPSARC
+2026-03-19 09:58:19.819 | INFO  | CID:N/A | FR3 secuencial actualizado: Aeropuerto=SEQU, Anio=2026, Sec=29
+2026-03-19 09:58:19.835 | INFO  | CID:N/A | FR3 DB2 OK: OrdenId=37, Factura=145421, FR3=29-SEQU-2026
+2026-03-19 09:58:20.319 | INFO  | CID:d7229840485e | Enviando correo a german.cajas@aviacioncivil.gob.ec, Asunto: Pago aprobado - listo para asignacion de inspector...
+2026-03-19 09:58:20.543 | INFO  | CID:d7229840485e | Correo enviado exitosamente a german.cajas@aviacioncivil.gob.ec
+2026-03-19 09:58:20.543 | INFO  | CID:a201dfdef9c6 | USR:USU_ADMIN | Financiero/AprobarYEnviarAS400 | Acción completada: Financiero/AprobarYEnviarAS400
+2026-03-19 09:58:22.918 | INFO  | CID:N/A | Procesando email 74 para german.cajas@aviacioncivil.gob.ec
+2026-03-19 09:58:23.108 | INFO  | CID:N/A | Email 74 enviado exitosamente
+2026-03-19 09:58:23.109 | INFO  | CID:N/A | Email 74 enviado exitosamente
+2026-03-19 09:58:23.135 | INFO  | CID:N/A | Procesando email 75 para admin1@dgac.gob.ec
+2026-03-19 09:58:23.290 | INFO  | CID:N/A | Email 75 enviado exitosamente
+2026-03-19 09:58:23.291 | INFO  | CID:N/A | Email 75 enviado exitosamente
+2026-03-19 09:58:23.335 | INFO  | CID:N/A | Procesando email 76 para admin2@dgac.gob.ec
+2026-03-19 09:58:23.517 | INFO  | CID:N/A | Email 76 enviado exitosamente
+2026-03-19 09:58:23.518 | INFO  | CID:N/A | Email 76 enviado exitosamente
+2026-03-19 09:59:26.578 | INFO  | CID:12e2edeafc25 | USR:USU_ADMIN | Financiero/AprobarYEnviarAS400 | Iniciando acción: Financiero/AprobarYEnviarAS400
+2026-03-19 09:59:26.944 | ERROR | CID:N/A | ERR:EMAIL_ERROR | Error al enviar correo.
+    Exception: SmtpException
+    StackTrace:    en System.Net.Mail.SmtpClient.SendAsync(MailMessage message, Object userToken)
+   en System.Net.Mail.SmtpClient.SendMailAsync(MailMessage message)
+   en CapaDatos.Services.EmailService.<EnviarAsync>d__4.MoveNext() en C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\CapaDatos\Services\EmailService.cs:línea 76
+2026-03-19 09:59:27.308 | INFO  | CID:ab45b114c0a2 | Correo con adjunto enviado exitosamente a german.cajas@aviacioncivil.gob.ec
+2026-03-19 09:59:27.308 | WARN  | CID:N/A | ERR:EMAIL_FALLBACK_OK | Correo enviado por fallback EnviarCorreo.
+2026-03-19 09:59:27.308 | INFO  | CID:N/A | ORD:OR-20260210090454538-3 | ERR:EMAIL_FACTURA_OK | Notificacion de factura enviada correctamente
+2026-03-19 09:59:28.328 | INFO  | CID:N/A | FR3 DB2 inicio: OrdenId=36, Factura=434, Aeropuerto=SEQU, Anio=2026
+2026-03-19 09:59:28.361 | INFO  | CID:N/A | GetColumnas: 80 columnas encontradas en DGACDAT.OPCAR5
+2026-03-19 09:59:28.378 | INFO  | CID:N/A | GetColumnas: 25 columnas encontradas en DGACDAT.OPCAR6
+2026-03-19 09:59:28.544 | WARN  | CID:N/A | FR3 detalle error AS400: OrdenId=36, Factura=434, Aeropuerto=SEQU, Anio=2026, Subtotal=500.00, Iva=0, Total=500.00, ObsLen=64, AutLen=0, Deposito=434
+2026-03-19 09:59:28.544 | ERROR | CID:N/A | ERR:FR3_DB2_ERROR | Error al consultar el sistema AS400. Contacte al administrador.
+    Exception: DataAccessException
+    StackTrace:    en CapaDatos.Infrastructure.AS400BaseDAO.<>c__DisplayClass13_0.<ExecuteWithConnection>b__0() en C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\CapaDatos\Infrastructure\AS400BaseDAO.cs:línea 196
+   en CapaDatos.Infrastructure.CircuitBreaker.Execute[T](Func`1 action) en C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\CapaDatos\Infrastructure\CircuitBreaker.cs:línea 132
+   en CapaDatos.DAOs.FacturacionAS400DAO.RegistrarFactura(FacturaAs400Record record, FacturacionAS400Result& result, String& error) en C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\CapaDatos\DAOs\FacturacionAS400DAO.cs:línea 125
+2026-03-19 09:59:29.228 | INFO  | CID:12e2edeafc25 | USR:USU_ADMIN | Financiero/AprobarYEnviarAS400 | Acción completada: Financiero/AprobarYEnviarAS400
+2026-03-19 09:59:33.616 | INFO  | CID:N/A | Procesando email 77 para german.cajas@aviacioncivil.gob.ec
+2026-03-19 09:59:33.762 | INFO  | CID:N/A | Email 77 enviado exitosamente
+2026-03-19 09:59:33.764 | INFO  | CID:N/A | Email 77 enviado exitosamente
+2026-03-19 09:59:33.805 | INFO  | CID:N/A | Procesando email 78 para admin1@dgac.gob.ec
+2026-03-19 09:59:33.952 | INFO  | CID:N/A | Email 78 enviado exitosamente
+2026-03-19 09:59:33.952 | INFO  | CID:N/A | Email 78 enviado exitosamente
+2026-03-19 09:59:33.984 | INFO  | CID:N/A | Procesando email 79 para admin2@dgac.gob.ec
+2026-03-19 09:59:34.144 | INFO  | CID:N/A | Email 79 enviado exitosamente
+2026-03-19 09:59:34.144 | INFO  | CID:N/A | Email 79 enviado exitosamente
+2026-03-19 09:59:42.343 | INFO  | CID:442032eabf4b | USR:USU_ADMIN | Financiero/AprobarYEnviarAS400 | Iniciando acción: Financiero/AprobarYEnviarAS400
+2026-03-19 09:59:43.207 | INFO  | CID:N/A | FR3 DB2 inicio: OrdenId=36, Factura=434, Aeropuerto=SEQU, Anio=2026
+2026-03-19 09:59:43.242 | INFO  | CID:N/A | GetColumnas: 80 columnas encontradas en DGACDAT.OPCAR5
+2026-03-19 09:59:43.259 | INFO  | CID:N/A | GetColumnas: 25 columnas encontradas en DGACDAT.OPCAR6
+2026-03-19 09:59:43.326 | INFO  | CID:N/A | GetColumnas: 6 columnas encontradas en DGACDAT.OPSARC
+2026-03-19 09:59:43.342 | WARN  | CID:N/A | FR3 truncamiento preventivo en DGACDAT.OPCAR5.OPCOBS: len=64, max=60.
+2026-03-19 09:59:43.395 | WARN  | CID:N/A | FR3 detectó SQL7008 en modo transaccional; se reintenta sin transacción para compatibilidad.
+2026-03-19 09:59:43.395 | INFO  | CID:N/A | FR3 DB2 inicio: OrdenId=36, Factura=434, Aeropuerto=SEQU, Anio=2026
+2026-03-19 09:59:43.411 | INFO  | CID:N/A | GetColumnas: 80 columnas encontradas en DGACDAT.OPCAR5
+2026-03-19 09:59:43.411 | INFO  | CID:N/A | GetColumnas: 25 columnas encontradas en DGACDAT.OPCAR6
+2026-03-19 09:59:43.427 | INFO  | CID:N/A | GetColumnas: 6 columnas encontradas en DGACDAT.OPSARC
+2026-03-19 09:59:43.452 | WARN  | CID:N/A | FR3 truncamiento preventivo en DGACDAT.OPCAR5.OPCOBS: len=64, max=60.
+2026-03-19 09:59:43.457 | INFO  | CID:N/A | FR3 cabecera insertada: Factura=434, Sec=30
+2026-03-19 09:59:43.475 | INFO  | CID:N/A | GetColumnas: 6 columnas encontradas en DGACDAT.OPSARC
+2026-03-19 09:59:43.476 | INFO  | CID:N/A | FR3 secuencial actualizado: Aeropuerto=SEQU, Anio=2026, Sec=30
+2026-03-19 09:59:43.476 | INFO  | CID:N/A | FR3 DB2 OK: OrdenId=36, Factura=434, FR3=30-SEQU-2026
+2026-03-19 09:59:43.933 | INFO  | CID:442032eabf4b | USR:USU_ADMIN | Financiero/AprobarYEnviarAS400 | Acción completada: Financiero/AprobarYEnviarAS400
+2026-03-19 09:59:44.175 | INFO  | CID:N/A | Procesando email 80 para german.cajas@aviacioncivil.gob.ec
+2026-03-19 09:59:44.313 | INFO  | CID:N/A | Email 80 enviado exitosamente
+2026-03-19 09:59:44.313 | INFO  | CID:N/A | Email 80 enviado exitosamente
+2026-03-19 09:59:44.342 | INFO  | CID:N/A | Procesando email 81 para admin1@dgac.gob.ec
+2026-03-19 09:59:44.480 | INFO  | CID:N/A | Email 81 enviado exitosamente
+2026-03-19 09:59:44.481 | INFO  | CID:N/A | Email 81 enviado exitosamente
+2026-03-19 09:59:44.514 | INFO  | CID:N/A | Procesando email 82 para admin2@dgac.gob.ec
+2026-03-19 09:59:44.676 | INFO  | CID:N/A | Email 82 enviado exitosamente
+2026-03-19 09:59:44.676 | INFO  | CID:N/A | Email 82 enviado exitosamente
+2026-03-19 10:19:07.730 | INFO  | CID:N/A | Iniciando procesador de cola de correos
+2026-03-19 10:19:30.669 | INFO  | CID:a711c405193e | Account/Login | Iniciando acción: Account/Login
+2026-03-19 10:19:31.367 | INFO  | CID:a711c405193e | Account/Login | Acción completada: Account/Login
+2026-03-19 10:20:07.114 | INFO  | CID:N/A | [InspectoresDAO-Buscar] Valor buscado: CATOTA
+2026-03-19 10:20:07.114 | INFO  | CID:N/A | [InspectoresDAO-Buscar] Tipo de busqueda: nombre
+2026-03-19 10:20:07.397 | INFO  | CID:N/A | [InspectoresDAO-Buscar] Query: SELECT TRIM(OPICED) AS OPICED, TRIM(OPINO2) AS OPINO2, TRIM(OPIES1) AS OPIES1, TRIM(OPITIP) AS OPITIP FROM DGACDAT.OPIAR2 WHERE UPPER(TRIM(COALESCE(OPIES1, ''))) = ? AND UPPER(OPINO2) LIKE ? ORDER BY OPINO2 FETCH FIRST 20 ROWS ONLY
+2026-03-19 10:20:07.462 | INFO  | CID:N/A | [InspectoresDAO-Buscar] Resultados: 1
+2026-03-19 10:32:04.080 | INFO  | CID:N/A | Deteniendo procesador de cola de correos
+2026-03-19 10:32:04.467 | INFO  | CID:N/A | Deteniendo procesador de cola de correos
+2026-03-19 10:48:38.977 | INFO  | CID:N/A | Iniciando procesador de cola de correos
+2026-03-19 10:48:59.876 | INFO  | CID:f1e966389f2a | Account/Login | Iniciando acción: Account/Login
+2026-03-19 10:49:00.974 | INFO  | CID:f1e966389f2a | Account/Login | Acción completada: Account/Login
+2026-03-19 10:49:41.237 | INFO  | CID:576ddad10ad7 | USR:USU_ADMIN | AdminUsuarios/CrearUsuarioInternoRT | Iniciando acción: AdminUsuarios/CrearUsuarioInternoRT
+2026-03-19 10:49:41.237 | INFO  | CID:576ddad10ad7 | USR:USU_ADMIN | AdminUsuarios/CrearUsuarioInternoRT | Acción completada: AdminUsuarios/CrearUsuarioInternoRT
+2026-03-19 10:49:50.011 | INFO  | CID:N/A | [InspectoresDAO-Buscar] Valor buscado: CATOTA
+2026-03-19 10:49:50.011 | INFO  | CID:N/A | [InspectoresDAO-Buscar] Tipo de busqueda: nombre
+2026-03-19 10:49:50.286 | INFO  | CID:N/A | [InspectoresDAO-Buscar] Query: SELECT TRIM(OPICED) AS OPICED, TRIM(OPINO2) AS OPINO2, TRIM(OPIES1) AS OPIES1, TRIM(OPITIP) AS OPITIP FROM DGACDAT.OPIAR2 WHERE UPPER(TRIM(COALESCE(OPIES1, ''))) = ? AND UPPER(OPINO2) LIKE ? ORDER BY OPINO2 FETCH FIRST 20 ROWS ONLY
+2026-03-19 10:49:50.351 | INFO  | CID:N/A | [InspectoresDAO-Buscar] Resultados: 1
+2026-03-19 11:03:01.365 | INFO  | CID:635c55f13a57 | USR:USU_ADMIN | AdminUsuarios/CrearUsuarioInternoRT | Iniciando acción: AdminUsuarios/CrearUsuarioInternoRT
+2026-03-19 11:03:01.509 | INFO  | CID:N/A | [InspectoresDAO-DB2] Query obtener por cedula: SELECT TRIM(OPICED) AS OPICED, TRIM(OPINO2) AS OPINO2, TRIM(OPIES1) AS OPIES1, TRIM(OPITIP) AS OPITIP FROM DGACDAT.OPIAR2 WHERE OPICED = ? AND UPPER(TRIM(COALESCE(OPIES1, ''))) = ? FETCH FIRST 1 ROW ONLY
+2026-03-19 11:03:01.509 | INFO  | CID:N/A | [InspectoresDAO-DB2] Parametros => cedula=1709565459, soloActivos=True, tipos=TODOS
+2026-03-19 11:03:01.650 | INFO  | CID:635c55f13a57 | USR:USU_ADMIN | AdminUsuarios/CrearUsuarioInternoRT | Acción completada: AdminUsuarios/CrearUsuarioInternoRT
+2026-03-19 11:08:29.582 | INFO  | CID:N/A | Iniciando procesador de cola de correos
+2026-03-19 11:08:50.601 | INFO  | CID:97a5eb1ac1d0 | Account/Login | Iniciando acción: Account/Login
+2026-03-19 11:08:51.274 | INFO  | CID:97a5eb1ac1d0 | Account/Login | Acción completada: Account/Login
+2026-03-19 11:09:22.388 | INFO  | CID:851541f3c07e | USR:USU_ADMIN | AdminUsuarios/CrearUsuarioInternoRT | Iniciando acción: AdminUsuarios/CrearUsuarioInternoRT
+2026-03-19 11:09:22.396 | INFO  | CID:851541f3c07e | USR:USU_ADMIN | AdminUsuarios/CrearUsuarioInternoRT | Acción completada: AdminUsuarios/CrearUsuarioInternoRT
+2026-03-19 11:09:27.480 | INFO  | CID:N/A | [InspectoresDAO-Buscar] Valor buscado: CATOTA
+2026-03-19 11:09:27.480 | INFO  | CID:N/A | [InspectoresDAO-Buscar] Tipo de busqueda: nombre
+2026-03-19 11:09:27.772 | INFO  | CID:N/A | [InspectoresDAO-Buscar] Query: SELECT TRIM(OPICED) AS OPICED, TRIM(OPINO2) AS OPINO2, TRIM(OPIES1) AS OPIES1, TRIM(OPITIP) AS OPITIP FROM DGACDAT.OPIAR2 WHERE UPPER(TRIM(COALESCE(OPIES1, ''))) = ? AND UPPER(OPINO2) LIKE ? ORDER BY OPINO2 FETCH FIRST 20 ROWS ONLY
+2026-03-19 11:09:27.826 | INFO  | CID:N/A | [InspectoresDAO-Buscar] Resultados: 1
+2026-03-19 11:10:06.442 | INFO  | CID:25e538d08da9 | USR:USU_ADMIN | AdminUsuarios/CrearUsuarioInternoRT | Iniciando acción: AdminUsuarios/CrearUsuarioInternoRT
+2026-03-19 11:10:06.591 | INFO  | CID:N/A | [InspectoresDAO-DB2] Query obtener por cedula: SELECT TRIM(OPICED) AS OPICED, TRIM(OPINO2) AS OPINO2, TRIM(OPIES1) AS OPIES1, TRIM(OPITIP) AS OPITIP FROM DGACDAT.OPIAR2 WHERE OPICED = ? AND UPPER(TRIM(COALESCE(OPIES1, ''))) = ? FETCH FIRST 1 ROW ONLY
+2026-03-19 11:10:06.592 | INFO  | CID:N/A | [InspectoresDAO-DB2] Parametros => cedula=1709565459, soloActivos=True, tipos=TODOS
+2026-03-19 11:10:07.053 | INFO  | CID:25e538d08da9 | USR:USU_ADMIN | AdminUsuarios/CrearUsuarioInternoRT | Acción completada: AdminUsuarios/CrearUsuarioInternoRT
+2026-03-19 14:41:38.490 | INFO  | CID:N/A | Iniciando procesador de cola de correos
+2026-03-19 14:42:08.999 | INFO  | CID:717404862785 | Account/Login | Iniciando acción: Account/Login
+2026-03-19 14:42:09.713 | INFO  | CID:717404862785 | Account/Login | Acción completada: Account/Login
+2026-03-19 14:43:13.759 | INFO  | CID:3de856d77a8b | USR:USU_ADMIN | Financiero/AprobarYEnviarAS400 | Iniciando acción: Financiero/AprobarYEnviarAS400
+2026-03-19 14:43:14.290 | ERROR | CID:N/A | ERR:EMAIL_ERROR | Error al enviar correo.
+    Exception: SmtpException
+    StackTrace:    en System.Net.Mail.SmtpClient.SendAsync(MailMessage message, Object userToken)
+   en System.Net.Mail.SmtpClient.SendMailAsync(MailMessage message)
+   en CapaDatos.Services.EmailService.<EnviarAsync>d__4.MoveNext() en C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\CapaDatos\Services\EmailService.cs:línea 76
+2026-03-19 14:43:15.042 | INFO  | CID:decdf0a9c3f3 | Correo con adjunto enviado exitosamente a german.cajas@aviacioncivil.gob.ec
+2026-03-19 14:43:15.042 | WARN  | CID:N/A | ERR:EMAIL_FALLBACK_OK | Correo enviado por fallback EnviarCorreo.
+2026-03-19 14:43:15.042 | INFO  | CID:N/A | ORD:OR-20260210084355621-1 | ERR:EMAIL_FACTURA_OK | Notificacion de factura enviada correctamente
+2026-03-19 14:43:15.082 | INFO  | CID:N/A | SyncLogService: Tabla aocr_sync_log verificada/creada.
+2026-03-19 14:43:15.307 | INFO  | CID:N/A | IdempotencyService: Tabla aocr_idempotency_key verificada/creada.
+2026-03-19 14:43:15.313 | INFO  | CID:N/A | AuditTrailService: Tabla aocr_audit_trail verificada/creada.
+2026-03-19 14:43:15.313 | WARN  | CID:N/A | FR3 normalizacion numero_factura: 'OR-20260210084355621-1' => '0843556211' (orden 34).
+2026-03-19 14:43:15.858 | WARN  | CID:N/A | FR3 normalizacion deposito: 'OR-20260210084355621-1' => '602100843556211' (orden 34).
+2026-03-19 14:43:16.324 | INFO  | CID:N/A | FR3 DB2 inicio: OrdenId=34, Factura=0843556211, Aeropuerto=SEQU, Anio=2026
+2026-03-19 14:43:16.424 | INFO  | CID:N/A | GetColumnas: 80 columnas encontradas en DGACDAT.OPCAR5
+2026-03-19 14:43:16.424 | INFO  | CID:N/A | GetColumnas: 25 columnas encontradas en DGACDAT.OPCAR6
+2026-03-19 14:43:16.479 | INFO  | CID:N/A | GetColumnas: 6 columnas encontradas en DGACDAT.OPSARC
+2026-03-19 14:43:16.524 | WARN  | CID:N/A | FR3 truncamiento preventivo en DGACDAT.OPCAR5.OPCOBS: len=90, max=60.
+2026-03-19 14:43:16.591 | WARN  | CID:N/A | FR3 detectó SQL7008 en modo transaccional; se reintenta sin transacción para compatibilidad.
+2026-03-19 14:43:16.591 | INFO  | CID:N/A | FR3 DB2 inicio: OrdenId=34, Factura=0843556211, Aeropuerto=SEQU, Anio=2026
+2026-03-19 14:43:16.603 | INFO  | CID:N/A | GetColumnas: 80 columnas encontradas en DGACDAT.OPCAR5
+2026-03-19 14:43:16.605 | INFO  | CID:N/A | GetColumnas: 25 columnas encontradas en DGACDAT.OPCAR6
+2026-03-19 14:43:16.608 | INFO  | CID:N/A | GetColumnas: 6 columnas encontradas en DGACDAT.OPSARC
+2026-03-19 14:43:16.624 | WARN  | CID:N/A | FR3 truncamiento preventivo en DGACDAT.OPCAR5.OPCOBS: len=90, max=60.
+2026-03-19 14:43:16.624 | INFO  | CID:N/A | FR3 cabecera insertada: Factura=0843556211, Sec=31
+2026-03-19 14:43:16.791 | WARN  | CID:N/A | FR3 detalle error AS400: OrdenId=34, Factura=0843556211, Aeropuerto=SEQU, Anio=2026, Subtotal=1600.00, Iva=0, Total=1600.00, ObsLen=90, AutLen=0, Deposito=602100843556211
+2026-03-19 14:43:16.791 | ERROR | CID:N/A | ERR:FR3_DB2_ERROR | Error al consultar el sistema AS400. Contacte al administrador.
+    Exception: DataAccessException
+    StackTrace:    en CapaDatos.Infrastructure.AS400BaseDAO.<>c__DisplayClass13_0.<ExecuteWithConnection>b__0() en C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\CapaDatos\Infrastructure\AS400BaseDAO.cs:línea 196
+   en CapaDatos.Infrastructure.CircuitBreaker.Execute[T](Func`1 action) en C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\CapaDatos\Infrastructure\CircuitBreaker.cs:línea 132
+   en CapaDatos.DAOs.FacturacionAS400DAO.RegistrarFactura(FacturaAs400Record record, FacturacionAS400Result& result, String& error) en C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\CapaDatos\DAOs\FacturacionAS400DAO.cs:línea 125
+2026-03-19 14:43:17.441 | INFO  | CID:3de856d77a8b | USR:USU_ADMIN | Financiero/AprobarYEnviarAS400 | Acción completada: Financiero/AprobarYEnviarAS400
+2026-03-19 14:43:22.121 | INFO  | CID:N/A | Procesando email 83 para german.cajas@aviacioncivil.gob.ec
+2026-03-19 14:43:22.613 | INFO  | CID:N/A | Email 83 enviado exitosamente
+2026-03-19 14:43:22.613 | INFO  | CID:N/A | Email 83 enviado exitosamente
+2026-03-19 14:43:22.651 | INFO  | CID:N/A | Procesando email 84 para admin1@dgac.gob.ec
+2026-03-19 14:43:22.819 | INFO  | CID:N/A | Email 84 enviado exitosamente
+2026-03-19 14:43:22.819 | INFO  | CID:N/A | Email 84 enviado exitosamente
+2026-03-19 14:43:22.867 | INFO  | CID:N/A | Procesando email 85 para admin2@dgac.gob.ec
+2026-03-19 14:43:23.088 | INFO  | CID:N/A | Email 85 enviado exitosamente
+2026-03-19 14:43:23.088 | INFO  | CID:N/A | Email 85 enviado exitosamente
+2026-03-19 14:43:37.285 | INFO  | CID:a7a33c71d341 | USR:USU_ADMIN | Financiero/AprobarYEnviarAS400 | Iniciando acción: Financiero/AprobarYEnviarAS400
+2026-03-19 14:43:37.562 | WARN  | CID:N/A | FR3 normalizacion numero_factura: 'OR-20260210084355621-1' => '0843556211' (orden 34).
+2026-03-19 14:43:38.067 | WARN  | CID:N/A | FR3 normalizacion deposito: 'OR-20260210084355621-1' => '602100843556211' (orden 34).
+2026-03-19 14:43:38.478 | INFO  | CID:N/A | FR3 DB2 inicio: OrdenId=34, Factura=0843556211, Aeropuerto=SEQU, Anio=2026
+2026-03-19 14:43:38.524 | INFO  | CID:N/A | GetColumnas: 80 columnas encontradas en DGACDAT.OPCAR5
+2026-03-19 14:43:38.569 | INFO  | CID:N/A | GetColumnas: 25 columnas encontradas en DGACDAT.OPCAR6
+2026-03-19 14:43:39.188 | WARN  | CID:N/A | FR3 detalle error AS400: OrdenId=34, Factura=0843556211, Aeropuerto=SEQU, Anio=2026, Subtotal=1600.00, Iva=0, Total=1600.00, ObsLen=90, AutLen=0, Deposito=602100843556211
+2026-03-19 14:43:39.191 | ERROR | CID:N/A | ERR:FR3_DB2_ERROR | Error al consultar el sistema AS400. Contacte al administrador.
+    Exception: DataAccessException
+    StackTrace:    en CapaDatos.Infrastructure.AS400BaseDAO.<>c__DisplayClass13_0.<ExecuteWithConnection>b__0() en C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\CapaDatos\Infrastructure\AS400BaseDAO.cs:línea 196
+   en CapaDatos.Infrastructure.CircuitBreaker.Execute[T](Func`1 action) en C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\CapaDatos\Infrastructure\CircuitBreaker.cs:línea 132
+   en CapaDatos.DAOs.FacturacionAS400DAO.RegistrarFactura(FacturaAs400Record record, FacturacionAS400Result& result, String& error) en C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\CapaDatos\DAOs\FacturacionAS400DAO.cs:línea 125
+2026-03-19 14:43:39.609 | INFO  | CID:a7a33c71d341 | USR:USU_ADMIN | Financiero/AprobarYEnviarAS400 | Acción completada: Financiero/AprobarYEnviarAS400
+2026-03-19 14:43:42.419 | INFO  | CID:e428e50d1c29 | USR:USU_ADMIN | Financiero/AprobarYEnviarAS400 | Iniciando acción: Financiero/AprobarYEnviarAS400
+2026-03-19 14:43:42.676 | WARN  | CID:N/A | FR3 normalizacion numero_factura: 'OR-20260210084355621-1' => '0843556211' (orden 34).
+2026-03-19 14:43:43.107 | WARN  | CID:N/A | FR3 normalizacion deposito: 'OR-20260210084355621-1' => '602100843556211' (orden 34).
+2026-03-19 14:43:43.756 | INFO  | CID:N/A | FR3 DB2 inicio: OrdenId=34, Factura=0843556211, Aeropuerto=SEQU, Anio=2026
+2026-03-19 14:43:43.787 | INFO  | CID:N/A | GetColumnas: 80 columnas encontradas en DGACDAT.OPCAR5
+2026-03-19 14:43:43.800 | INFO  | CID:N/A | GetColumnas: 25 columnas encontradas en DGACDAT.OPCAR6
+2026-03-19 14:43:44.052 | WARN  | CID:N/A | FR3 detalle error AS400: OrdenId=34, Factura=0843556211, Aeropuerto=SEQU, Anio=2026, Subtotal=1600.00, Iva=0, Total=1600.00, ObsLen=90, AutLen=0, Deposito=602100843556211
+2026-03-19 14:43:44.053 | ERROR | CID:N/A | ERR:FR3_DB2_ERROR | Error al consultar el sistema AS400. Contacte al administrador.
+    Exception: DataAccessException
+    StackTrace:    en CapaDatos.Infrastructure.AS400BaseDAO.<>c__DisplayClass13_0.<ExecuteWithConnection>b__0() en C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\CapaDatos\Infrastructure\AS400BaseDAO.cs:línea 196
+   en CapaDatos.Infrastructure.CircuitBreaker.Execute[T](Func`1 action) en C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\CapaDatos\Infrastructure\CircuitBreaker.cs:línea 132
+   en CapaDatos.DAOs.FacturacionAS400DAO.RegistrarFactura(FacturaAs400Record record, FacturacionAS400Result& result, String& error) en C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\CapaDatos\DAOs\FacturacionAS400DAO.cs:línea 125
+2026-03-19 14:43:47.375 | INFO  | CID:e428e50d1c29 | USR:USU_ADMIN | Financiero/AprobarYEnviarAS400 | Acción completada: Financiero/AprobarYEnviarAS400
+2026-03-19 14:45:34.812 | INFO  | CID:N/A | Deteniendo procesador de cola de correos
+2026-03-19 14:45:34.855 | INFO  | CID:N/A | Deteniendo procesador de cola de correos
+2026-03-19 14:45:57.268 | INFO  | CID:N/A | Iniciando procesador de cola de correos
+2026-03-19 14:54:33.934 | INFO  | CID:N/A | Deteniendo procesador de cola de correos
+2026-03-19 14:54:34.005 | INFO  | CID:N/A | Deteniendo procesador de cola de correos
+2026-03-19 14:54:57.493 | INFO  | CID:N/A | Iniciando procesador de cola de correos
+2026-03-19 14:58:17.162 | INFO  | CID:N/A | Iniciando procesador de cola de correos
+2026-03-19 14:58:36.682 | INFO  | CID:3a4fecc08906 | Account/Login | Iniciando acción: Account/Login
+2026-03-19 14:58:37.347 | INFO  | CID:3a4fecc08906 | Account/Login | Acción completada: Account/Login
+2026-03-19 14:59:24.794 | INFO  | CID:e689d4062a89 | USR:USU_ADMIN | AdminUsuarios/TransferirEliminar | Iniciando acción: AdminUsuarios/TransferirEliminar
+2026-03-19 14:59:29.220 | INFO  | CID:e689d4062a89 | USR:USU_ADMIN | AdminUsuarios/TransferirEliminar | Acción completada: AdminUsuarios/TransferirEliminar
+2026-03-19 14:59:48.500 | INFO  | CID:d82afaed927b | USR:USU_ADMIN | AdminUsuarios/TransferirEliminar | Iniciando acción: AdminUsuarios/TransferirEliminar
+2026-03-19 14:59:52.793 | INFO  | CID:d82afaed927b | USR:USU_ADMIN | AdminUsuarios/TransferirEliminar | Acción completada: AdminUsuarios/TransferirEliminar
+2026-03-19 14:59:59.643 | INFO  | CID:d3ca1da3e756 | USR:USU_ADMIN | AdminUsuarios/TransferirEliminar | Iniciando acción: AdminUsuarios/TransferirEliminar
+2026-03-19 15:00:04.771 | INFO  | CID:d3ca1da3e756 | USR:USU_ADMIN | AdminUsuarios/TransferirEliminar | Acción completada: AdminUsuarios/TransferirEliminar
+2026-03-19 15:01:42.443 | ERROR | CID:99ab0b86a81d | USR:USU_ADMIN | Direccion/ConfiguracionSistema | ERR:INTERNAL_ERROR | La cadena de entrada no tiene el formato correcto.
+    Exception: FormatException
+    StackTrace:    en System.Number.StringToNumber(String str, NumberStyles options, NumberBuffer& number, NumberFormatInfo info, Boolean parseDecimal)
+   en System.Number.ParseInt32(String s, NumberStyles style, NumberFormatInfo info)
+   en System.String.System.IConvertible.ToInt32(IFormatProvider provider)
+   en CapaDatos.DAOs.ParametroDAO.MapParametro(IDataRecord r) en C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\CapaDatos\DAOs\ParametroDAO.cs:línea 34
+   en CapaDatos.DAOs.ParametroDAO.ListarTodos() en C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\CapaDatos\DAOs\ParametroDAO.cs:línea 71
+   en CapaPresentacion.Controllers.DireccionController.ConfiguracionSistema() en C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\CapaPresentacion\Controllers\5_DireccionController.cs:línea 200
+   en lambda_method(Closure , ControllerBase , Object[] )
+   en System.Web.Mvc.ControllerActionInvoker.InvokeActionMethod(ControllerContext controllerContext, ActionDescriptor actionDescriptor, IDictionary`2 parameters)
+   en System.Web.Mvc.Async.AsyncControllerActionInvoker.<>c.<BeginInvokeSynchronousActionMethod>b__9_0(IAsyncResult asyncResult, ActionInvocation innerInvokeState)
+   en System.Web.Mvc.Async.AsyncResultWrapper.WrappedAsyncResult`2.CallEndDelegate(IAsyncResult asyncResult)
+   en System.Web.Mvc.Async.AsyncControllerActionInvoker.EndInvokeActionMethod(IAsyncResult asyncResult)
+   en System.Web.Mvc.Async.AsyncControllerActionInvoker.AsyncInvocationWithFilters.<>c__DisplayClass11_0.<InvokeActionMethodFilterAsynchronouslyRecursive>b__0()
+   en System.Web.Mvc.Async.AsyncControllerActionInvoker.AsyncInvocationWithFilters.<>c__DisplayClass11_2.<InvokeActionMethodFilterAsynchronouslyRecursive>b__2()
+   en System.Web.Mvc.Async.AsyncControllerActionInvoker.AsyncInvocationWithFilters.<>c__DisplayClass11_2.<InvokeActionMethodFilterAsynchronouslyRecursive>b__2()
+   en System.Web.Mvc.Async.AsyncControllerActionInvoker.AsyncInvocationWithFilters.<>c__DisplayClass11_2.<InvokeActionMethodFilterAsynchronouslyRecursive>b__2()
+   en System.Web.Mvc.Async.AsyncControllerActionInvoker.EndInvokeActionMethodWithFilters(IAsyncResult asyncResult)
+   en System.Web.Mvc.Async.AsyncControllerActionInvoker.<>c__DisplayClass3_6.<BeginInvokeAction>b__4()
+   en System.Web.Mvc.Async.AsyncControllerActionInvoker.<>c__DisplayClass3_1.<BeginInvokeAction>b__1(IAsyncResult asyncResult)
+2026-03-19 15:02:02.220 | INFO  | CID:0c34a0e3ea21 | USR:USU_ADMIN | Usuario/EliminarUsuarioRT | Iniciando acción: Usuario/EliminarUsuarioRT
+2026-03-19 15:02:02.587 | INFO  | CID:0c34a0e3ea21 | USR:USU_ADMIN | Usuario/EliminarUsuarioRT | Acción completada: Usuario/EliminarUsuarioRT
+2026-03-19 15:02:40.380 | INFO  | CID:e569e745ee45 | Usuario/ValidarCorreo | Iniciando acción: Usuario/ValidarCorreo
+2026-03-19 15:02:40.388 | INFO  | CID:e569e745ee45 | Usuario/ValidarCorreo | Acción completada: Usuario/ValidarCorreo
+2026-03-19 15:02:44.949 | INFO  | CID:efac502e214c | Usuario/ValidarIdentificacion | Iniciando acción: Usuario/ValidarIdentificacion
+2026-03-19 15:02:44.954 | INFO  | CID:efac502e214c | Usuario/ValidarIdentificacion | Acción completada: Usuario/ValidarIdentificacion
+2026-03-19 15:03:20.109 | INFO  | CID:1af456f1a437 | Usuario/RegistrarDeclaracionTemporal | Iniciando acción: Usuario/RegistrarDeclaracionTemporal
+2026-03-19 15:03:20.334 | INFO  | CID:1af456f1a437 | Usuario/RegistrarDeclaracionTemporal | Acción completada: Usuario/RegistrarDeclaracionTemporal
+2026-03-19 15:03:24.949 | INFO  | CID:33bf2d076869 | Usuario/Crear | Iniciando acción: Usuario/Crear
+2026-03-19 15:03:27.397 | INFO  | CID:40f6086e6e7c | Enviando correo a mancho2002@hotmail.com, Asunto: Cuenta creada - Sistema AOCR (pendiente de aprobac...
+2026-03-19 15:03:27.747 | INFO  | CID:40f6086e6e7c | Correo enviado exitosamente a mancho2002@hotmail.com
+2026-03-19 15:03:27.747 | INFO  | CID:33bf2d076869 | Usuario/Crear | Acción completada: Usuario/Crear
+2026-03-19 15:03:41.879 | INFO  | CID:1e57b59e2e0b | Account/Login | Iniciando acción: Account/Login
+2026-03-19 15:03:42.279 | INFO  | CID:1e57b59e2e0b | Account/Login | Acción completada: Account/Login
+2026-03-19 15:04:05.630 | INFO  | CID:e31baaf4e598 | USR:USU_ADMIN | Usuario/AceptarDesignacion | Iniciando acción: Usuario/AceptarDesignacion
+2026-03-19 15:04:06.725 | INFO  | CID:3d39bfc558b7 | Enviando correo a mancho2002@hotmail.com, Asunto: Designación RT aprobada - Sus credenciales de acce...
+2026-03-19 15:04:06.904 | INFO  | CID:3d39bfc558b7 | Correo enviado exitosamente a mancho2002@hotmail.com
+2026-03-19 15:04:06.904 | INFO  | CID:e31baaf4e598 | USR:USU_ADMIN | Usuario/AceptarDesignacion | Acción completada: Usuario/AceptarDesignacion
+2026-03-19 15:05:51.227 | INFO  | CID:e301986ba382 | Account/Login | Iniciando acción: Account/Login
+2026-03-19 15:05:51.667 | INFO  | CID:e301986ba382 | Account/Login | Acción completada: Account/Login
+2026-03-19 15:06:08.261 | INFO  | CID:b7606186eae3 | USR:AGVITERI | Account/CambiarContrasena | Iniciando acción: Account/CambiarContrasena
+2026-03-19 15:06:10.357 | INFO  | CID:b7606186eae3 | USR:AGVITERI | Account/CambiarContrasena | Acción completada: Account/CambiarContrasena
+2026-03-19 15:06:15.223 | INFO  | CID:e3b2a5626f79 | USR:AGVITERI | Account/SeleccionarCompania | Iniciando acción: Account/SeleccionarCompania
+2026-03-19 15:06:16.799 | INFO  | CID:e3b2a5626f79 | USR:AGVITERI | Account/SeleccionarCompania | Acción completada: Account/SeleccionarCompania
+2026-03-19 15:08:33.914 | INFO  | CID:b4ec9a92d838 | USR:AGVITERI | OrdenRecaudacion/Nueva | Iniciando acción: OrdenRecaudacion/Nueva
+2026-03-19 15:08:36.702 | INFO  | CID:b4ec9a92d838 | USR:AGVITERI | OrdenRecaudacion/Nueva | Acción completada: OrdenRecaudacion/Nueva
+2026-03-19 15:09:17.974 | INFO  | CID:ef709ce9c5ac | USR:AGVITERI | OrdenRecaudacion/Nueva | Iniciando acción: OrdenRecaudacion/Nueva
+2026-03-19 15:09:19.323 | INFO  | CID:ef709ce9c5ac | USR:AGVITERI | OrdenRecaudacion/Nueva | Acción completada: OrdenRecaudacion/Nueva
+2026-03-19 15:10:11.624 | INFO  | CID:b2de5845eb50 | USR:AGVITERI | OrdenRecaudacion/Generar | Iniciando acción: OrdenRecaudacion/Generar
+2026-03-19 15:10:20.561 | INFO  | CID:32980fbe0567 | Correo con adjunto enviado exitosamente a mancho2002@hotmail.com
+2026-03-19 15:10:20.563 | INFO  | CID:b2de5845eb50 | USR:AGVITERI | OrdenRecaudacion/Generar | Acción completada: OrdenRecaudacion/Generar
+2026-03-19 15:14:19.153 | INFO  | CID:N/A | Iniciando procesador de cola de correos
+2026-03-19 15:14:59.416 | INFO  | CID:7bfb45eee65b | Account/Login | Iniciando acción: Account/Login
+2026-03-19 15:15:01.478 | INFO  | CID:7bfb45eee65b | Account/Login | Acción completada: Account/Login
+2026-03-19 15:15:06.898 | INFO  | CID:49e8604ac1d7 | USR:AGVITERI | Account/SeleccionarCompania | Iniciando acción: Account/SeleccionarCompania
+2026-03-19 15:15:08.558 | INFO  | CID:49e8604ac1d7 | USR:AGVITERI | Account/SeleccionarCompania | Acción completada: Account/SeleccionarCompania
+2026-03-19 15:16:17.491 | INFO  | CID:e421a0773b20 | USR:AGVITERI | OrdenRecaudacion/RegistrarPago | Iniciando acción: OrdenRecaudacion/RegistrarPago
+2026-03-19 15:16:17.574 | INFO  | CID:e421a0773b20 | USR:AGVITERI | OrdenRecaudacion/RegistrarPago | Acción completada: OrdenRecaudacion/RegistrarPago
+2026-03-19 15:17:38.627 | INFO  | CID:c48e8658068e | Account/Login | Iniciando acción: Account/Login
+2026-03-19 15:17:39.030 | INFO  | CID:c48e8658068e | Account/Login | Acción completada: Account/Login
+2026-03-19 15:18:22.725 | INFO  | CID:765a67b8bf9d | USR:USU_ADMIN | Financiero/AprobarYEnviarAS400 | Iniciando acción: Financiero/AprobarYEnviarAS400
+2026-03-19 15:18:23.207 | ERROR | CID:N/A | ERR:EMAIL_ERROR | Error al enviar correo.
+    Exception: SmtpException
+    StackTrace:    en System.Net.Mail.SmtpClient.SendAsync(MailMessage message, Object userToken)
+   en System.Net.Mail.SmtpClient.SendMailAsync(MailMessage message)
+   en CapaDatos.Services.EmailService.<EnviarAsync>d__4.MoveNext() en C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\CapaDatos\Services\EmailService.cs:línea 76
+2026-03-19 15:18:23.624 | INFO  | CID:6c49bf3fb0cc | Correo con adjunto enviado exitosamente a mancho2002@hotmail.com
+2026-03-19 15:18:23.624 | WARN  | CID:N/A | ERR:EMAIL_FALLBACK_OK | Correo enviado por fallback EnviarCorreo.
+2026-03-19 15:18:23.624 | INFO  | CID:N/A | ORD:OR-20260319150918877-2 | ERR:EMAIL_FACTURA_OK | Notificacion de factura enviada correctamente
+2026-03-19 15:18:23.852 | INFO  | CID:N/A | SyncLogService: Tabla aocr_sync_log verificada/creada.
+2026-03-19 15:18:23.857 | INFO  | CID:N/A | IdempotencyService: Tabla aocr_idempotency_key verificada/creada.
+2026-03-19 15:18:24.074 | INFO  | CID:N/A | AuditTrailService: Tabla aocr_audit_trail verificada/creada.
+2026-03-19 15:18:25.124 | INFO  | CID:N/A | FR3 DB2 inicio: OrdenId=100, Factura=6456456546, Aeropuerto=SEQU, Anio=2026
+2026-03-19 15:18:25.175 | INFO  | CID:N/A | GetColumnas: 80 columnas encontradas en DGACDAT.OPCAR5
+2026-03-19 15:18:25.175 | INFO  | CID:N/A | GetColumnas: 25 columnas encontradas en DGACDAT.OPCAR6
+2026-03-19 15:18:25.241 | INFO  | CID:N/A | GetColumnas: 6 columnas encontradas en DGACDAT.OPSARC
+2026-03-19 15:18:25.258 | WARN  | CID:N/A | FR3 truncamiento preventivo en DGACDAT.OPCAR5.OPCOBS: len=79, max=60.
+2026-03-19 15:18:25.324 | WARN  | CID:N/A | FR3 detectó SQL7008 en modo transaccional; se reintenta sin transacción para compatibilidad.
+2026-03-19 15:18:25.324 | INFO  | CID:N/A | FR3 DB2 inicio: OrdenId=100, Factura=6456456546, Aeropuerto=SEQU, Anio=2026
+2026-03-19 15:18:25.341 | INFO  | CID:N/A | GetColumnas: 80 columnas encontradas en DGACDAT.OPCAR5
+2026-03-19 15:18:25.357 | INFO  | CID:N/A | GetColumnas: 25 columnas encontradas en DGACDAT.OPCAR6
+2026-03-19 15:18:25.358 | INFO  | CID:N/A | GetColumnas: 6 columnas encontradas en DGACDAT.OPSARC
+2026-03-19 15:18:25.375 | WARN  | CID:N/A | FR3 truncamiento preventivo en DGACDAT.OPCAR5.OPCOBS: len=79, max=60.
+2026-03-19 15:18:25.389 | INFO  | CID:N/A | FR3 cabecera insertada: Factura=6456456546, Sec=32
+2026-03-19 15:18:25.417 | INFO  | CID:N/A | GetColumnas: 6 columnas encontradas en DGACDAT.OPSARC
+2026-03-19 15:18:25.425 | INFO  | CID:N/A | FR3 secuencial actualizado: Aeropuerto=SEQU, Anio=2026, Sec=32
+2026-03-19 15:18:25.426 | INFO  | CID:N/A | FR3 DB2 OK: OrdenId=100, Factura=6456456546, FR3=32-SEQU-2026
+2026-03-19 15:18:25.974 | INFO  | CID:765a67b8bf9d | USR:USU_ADMIN | Financiero/AprobarYEnviarAS400 | Acción completada: Financiero/AprobarYEnviarAS400
+2026-03-19 15:18:32.504 | INFO  | CID:N/A | Procesando email 86 para mancho2002@hotmail.com
+2026-03-19 15:18:32.756 | INFO  | CID:N/A | Email 86 enviado exitosamente
+2026-03-19 15:18:32.756 | INFO  | CID:N/A | Email 86 enviado exitosamente
+2026-03-19 15:18:32.773 | INFO  | CID:N/A | Procesando email 87 para admin1@dgac.gob.ec
+2026-03-19 15:18:33.006 | INFO  | CID:N/A | Email 87 enviado exitosamente
+2026-03-19 15:18:33.006 | INFO  | CID:N/A | Email 87 enviado exitosamente
+2026-03-19 15:18:33.039 | INFO  | CID:N/A | Procesando email 88 para admin2@dgac.gob.ec
+2026-03-19 15:18:33.282 | INFO  | CID:N/A | Email 88 enviado exitosamente
+2026-03-19 15:18:33.282 | INFO  | CID:N/A | Email 88 enviado exitosamente
+2026-03-19 15:20:13.324 | INFO  | CID:N/A | [InspeccionesController] Inicio pantalla gestion (Tecnico/Index). Usuario=USU_ADMIN, Rol=Administrador,Direccion,JefaturaTecnica
+2026-03-19 15:20:13.330 | INFO  | CID:N/A | [InspeccionesController] DAO.ObtenerPendientesAsignacion inicio. EstadosFiltro=PENDIENTE_ASIGNACION_RT,PENDIENTE ASIGNACION RT,PENDIENTE,ACEPTACION_DOCUMENTAL,DOCUMENTACION_COMPLETA,DOCUMENTOS_COMPLETOS,PENDIENTE_ASIGNACION_TECNICA,PENDIENTE ASIGNACION TECNICA,PENDIENTE_ASIGNACION,ACEPTACION DOCUMENTAL,DOCUMENTACION COMPLETA
+2026-03-19 15:20:13.330 | INFO  | CID:N/A | [InspeccionesController] EstadoDetectado=PENDIENTE, Total=136
+2026-03-19 15:20:13.330 | INFO  | CID:N/A | [InspeccionesController] EstadoDetectado=EN INSPECCION, Total=10
+2026-03-19 15:20:13.330 | INFO  | CID:N/A | [InspeccionesController] EstadoDetectado=OBSERVADA, Total=6
+2026-03-19 15:20:13.346 | INFO  | CID:N/A | [InspeccionesController] DiagnosticoPendientes => totalSolicitudes=136, conInspeccion=0, conInspectorAsignado=0, conInspeccionSinInspector=0
+2026-03-19 15:20:13.346 | INFO  | CID:N/A | [InspeccionesController] DAO.ObtenerPendientesAsignacion resultado=41
+2026-03-19 15:20:13.346 | INFO  | CID:N/A | [InspeccionesController] PendienteEjemplo[0] SolicitudId=169, Estado=Pendiente, Numero=DGAC-GOP-2026-AOCR152
+2026-03-19 15:20:13.346 | INFO  | CID:N/A | [InspeccionesController] PendienteEjemplo[1] SolicitudId=168, Estado=Pendiente, Numero=DGAC-GOP-2026-AOCR151
+2026-03-19 15:20:13.346 | INFO  | CID:N/A | [InspeccionesController] PendienteEjemplo[2] SolicitudId=113, Estado=Pendiente, Numero=DGAC-GOP-2026-AOCR096
+2026-03-19 15:20:13.346 | INFO  | CID:N/A | [InspeccionesController] PendienteEjemplo[3] SolicitudId=111, Estado=Pendiente, Numero=DGAC-GOP-2026-AOCR094
+2026-03-19 15:20:13.346 | INFO  | CID:N/A | [InspeccionesController] PendienteEjemplo[4] SolicitudId=92, Estado=Pendiente, Numero=DGAC-GOP-2026-AOCR075
+2026-03-19 15:20:13.360 | INFO  | CID:N/A | [InspeccionesController] Pendientes para asignacion=41
+2026-03-19 15:20:17.528 | INFO  | CID:N/A | [InspeccionesController] Inicio pantalla gestion de asignacion. Usuario=USU_ADMIN, Rol=Administrador,Direccion,JefaturaTecnica, SolicitudId=169
+2026-03-19 15:20:17.533 | INFO  | CID:N/A | [InspeccionesController] SolicitudId=169, EstadoActual=Pendiente, NumeroSolicitud=DGAC-GOP-2026-AOCR152
+2026-03-19 15:20:17.536 | INFO  | CID:N/A | [InspectoresDAO-DB2] Inicio consulta inspectores
+2026-03-19 15:20:17.536 | INFO  | CID:N/A | [InspectoresDAO-DB2] Origen=DB2, Tabla=DGACDAT.OPIAR2
+2026-03-19 15:20:17.540 | INFO  | CID:N/A | [InspectoresDAO-DB2] ConnectionString(sanitizada)=Driver={iSeries Access ODBC Driver};system=190.152.8.185;database=DGACDAT;defaultcollection=DGACDAT;uid=****;pwd=****;connection timeout=30;query timeout=60
+2026-03-19 15:20:17.540 | INFO  | CID:N/A | [InspectoresDAO-DB2] Parametros => estado=AC (fallback: sin estado), tipo=OPS
+2026-03-19 15:20:17.695 | INFO  | CID:N/A | [InspectoresDAO-DB2] Conexion DB2 abierta OK
+2026-03-19 15:20:17.709 | INFO  | CID:N/A | [InspectoresDAO-DB2] Query ejecutada: SELECT TRIM(OPICED) AS OPICED, TRIM(OPINO2) AS OPINO2, TRIM(OPIES1) AS OPIES1, TRIM(OPITIP) AS OPITIP FROM DGACDAT.OPIAR2 WHERE 1 = 1 AND UPPER(TRIM(COALESCE(OPIES1, ''))) = ? AND OPITIP IN (?) ORDER BY OPINO2
+2026-03-19 15:20:17.711 | INFO  | CID:N/A | [InspectoresDAO-DB2] Filtros aplicados => soloActivos=True, tipos=OPS
+2026-03-19 15:20:17.728 | INFO  | CID:N/A | [InspectoresDAO-DB2] Registros obtenidos desde DB2: 19
+2026-03-19 15:20:17.728 | INFO  | CID:N/A | [InspectoresDAO-DB2] Ejemplo[0] => Cedula=0201377850, Nombre=ALEGRIA CHICO SANTIAGO REMIGIO, Estado=AC, Tipo=OPS
+2026-03-19 15:20:17.728 | INFO  | CID:N/A | [InspectoresDAO-DB2] Ejemplo[1] => Cedula=1709061814, Nombre=AVILA ZARATE EDISON JAVIER, Estado=AC, Tipo=OPS
+2026-03-19 15:20:17.728 | INFO  | CID:N/A | [InspectoresDAO-DB2] Ejemplo[2] => Cedula=1703863520, Nombre=BARRERA BARRENO LUIS GONZALO, Estado=AC, Tipo=OPS
+2026-03-19 15:20:17.728 | INFO  | CID:N/A | [InspectoresDAO-DB2] Ejemplo[3] => Cedula=1709565459, Nombre=CATOTA TORRES LUIS WILKIR, Estado=AC, Tipo=OPS
+2026-03-19 15:20:17.728 | INFO  | CID:N/A | [InspectoresDAO-DB2] Ejemplo[4] => Cedula=1720253846, Nombre=CHUSIN VILLALBA CARLOS ARTURO, Estado=AC, Tipo=OPS
+2026-03-19 15:20:17.728 | INFO  | CID:N/A | [InspectoresDAO-PG] Inicio consulta espejo inspectores
+2026-03-19 15:20:17.728 | INFO  | CID:N/A | [InspectoresDAO-PG] Tabla espejo: public.aocr_tbinspectores
+2026-03-19 15:20:17.743 | WARN  | CID:N/A | [InspectoresDAO-PG] No existe la tabla espejo aocr_tbinspectores.
+2026-03-19 15:20:17.743 | WARN  | CID:N/A | [InspectoresDAO-PG] Espejo no disponible (tabla inexistente). Flujo usa DB2 directo.
+2026-03-19 15:20:17.743 | INFO  | CID:N/A | [InspeccionesController] Origen inspectores=DB2, TipoFiltro=OPS, InspectoresRecibidos=19
+2026-03-19 15:20:18.250 | INFO  | CID:N/A | [InspeccionesController] ViewModel cargado correctamente. SolicitudId=169, ViewBagInspectores=19
+2026-03-19 15:20:20.052 | INFO  | CID:N/A | [InspeccionesController] Inicio endpoint AJAX inspectores. Usuario=USU_ADMIN, Rol=Administrador,Direccion,JefaturaTecnica, TipoInspector=OPS
+2026-03-19 15:20:20.052 | INFO  | CID:N/A | [InspectoresDAO-DB2] Inicio consulta inspectores
+2026-03-19 15:20:20.053 | INFO  | CID:N/A | [InspectoresDAO-DB2] Origen=DB2, Tabla=DGACDAT.OPIAR2
+2026-03-19 15:20:20.053 | INFO  | CID:N/A | [InspectoresDAO-DB2] ConnectionString(sanitizada)=Driver={iSeries Access ODBC Driver};system=190.152.8.185;database=DGACDAT;defaultcollection=DGACDAT;uid=****;pwd=****;connection timeout=30;query timeout=60
+2026-03-19 15:20:20.053 | INFO  | CID:N/A | [InspectoresDAO-DB2] Parametros => estado=AC (fallback: sin estado), tipo=OPS
+2026-03-19 15:20:20.054 | INFO  | CID:N/A | [InspectoresDAO-DB2] Conexion DB2 abierta OK
+2026-03-19 15:20:20.054 | INFO  | CID:N/A | [InspectoresDAO-DB2] Query ejecutada: SELECT TRIM(OPICED) AS OPICED, TRIM(OPINO2) AS OPINO2, TRIM(OPIES1) AS OPIES1, TRIM(OPITIP) AS OPITIP FROM DGACDAT.OPIAR2 WHERE 1 = 1 AND UPPER(TRIM(COALESCE(OPIES1, ''))) = ? AND OPITIP IN (?) ORDER BY OPINO2
+2026-03-19 15:20:20.055 | INFO  | CID:N/A | [InspectoresDAO-DB2] Filtros aplicados => soloActivos=True, tipos=OPS
+2026-03-19 15:20:20.059 | INFO  | CID:N/A | [InspectoresDAO-DB2] Registros obtenidos desde DB2: 19
+2026-03-19 15:20:20.059 | INFO  | CID:N/A | [InspectoresDAO-DB2] Ejemplo[0] => Cedula=0201377850, Nombre=ALEGRIA CHICO SANTIAGO REMIGIO, Estado=AC, Tipo=OPS
+2026-03-19 15:20:20.059 | INFO  | CID:N/A | [InspectoresDAO-DB2] Ejemplo[1] => Cedula=1709061814, Nombre=AVILA ZARATE EDISON JAVIER, Estado=AC, Tipo=OPS
+2026-03-19 15:20:20.060 | INFO  | CID:N/A | [InspectoresDAO-DB2] Ejemplo[2] => Cedula=1703863520, Nombre=BARRERA BARRENO LUIS GONZALO, Estado=AC, Tipo=OPS
+2026-03-19 15:20:20.060 | INFO  | CID:N/A | [InspectoresDAO-DB2] Ejemplo[3] => Cedula=1709565459, Nombre=CATOTA TORRES LUIS WILKIR, Estado=AC, Tipo=OPS
+2026-03-19 15:20:20.060 | INFO  | CID:N/A | [InspectoresDAO-DB2] Ejemplo[4] => Cedula=1720253846, Nombre=CHUSIN VILLALBA CARLOS ARTURO, Estado=AC, Tipo=OPS
+2026-03-19 15:20:20.062 | INFO  | CID:N/A | [InspeccionesController] Endpoint AJAX inspectores OK. Origen=DB2, Tipo=OPS, Cantidad=19
+2026-03-19 15:21:35.065 | INFO  | CID:N/A | [InspectoresDAO-Buscar] Valor buscado: CATOTA
+2026-03-19 15:21:35.066 | INFO  | CID:N/A | [InspectoresDAO-Buscar] Tipo de busqueda: nombre
+2026-03-19 15:21:35.214 | INFO  | CID:N/A | [InspectoresDAO-Buscar] Query: SELECT TRIM(OPICED) AS OPICED, TRIM(OPINO2) AS OPINO2, TRIM(OPIES1) AS OPIES1, TRIM(OPITIP) AS OPITIP FROM DGACDAT.OPIAR2 WHERE UPPER(TRIM(COALESCE(OPIES1, ''))) = ? AND UPPER(OPINO2) LIKE ? ORDER BY OPINO2 FETCH FIRST 20 ROWS ONLY
+2026-03-19 15:21:35.219 | INFO  | CID:N/A | [InspectoresDAO-Buscar] Resultados: 1
+2026-03-19 15:40:21.123 | INFO  | CID:N/A | Iniciando procesador de cola de correos
+2026-03-19 15:40:46.388 | INFO  | CID:857d00e0f745 | Account/Login | Iniciando acción: Account/Login
+2026-03-19 15:40:47.125 | INFO  | CID:857d00e0f745 | Account/Login | Acción completada: Account/Login
+2026-03-19 15:41:03.108 | INFO  | CID:30d0b1d3411b | Account/Login | Iniciando acción: Account/Login
+2026-03-19 15:41:04.831 | INFO  | CID:30d0b1d3411b | Account/Login | Acción completada: Account/Login
+2026-03-19 15:41:09.579 | INFO  | CID:81af43b36913 | USR:AGVITERI | Account/SeleccionarCompania | Iniciando acción: Account/SeleccionarCompania
+2026-03-19 15:41:10.914 | INFO  | CID:81af43b36913 | USR:AGVITERI | Account/SeleccionarCompania | Acción completada: Account/SeleccionarCompania
+2026-03-19 15:42:13.718 | INFO  | CID:c205a31f020e | Account/Login | Iniciando acción: Account/Login
+2026-03-19 15:42:14.137 | INFO  | CID:c205a31f020e | Account/Login | Acción completada: Account/Login
+2026-03-19 15:42:37.016 | INFO  | CID:a33c9fe6a343 | USR:USU_ADMIN | AdminUsuarios/CrearUsuarioInternoRT | Iniciando acción: AdminUsuarios/CrearUsuarioInternoRT
+2026-03-19 15:42:37.022 | INFO  | CID:a33c9fe6a343 | USR:USU_ADMIN | AdminUsuarios/CrearUsuarioInternoRT | Acción completada: AdminUsuarios/CrearUsuarioInternoRT
+2026-03-19 15:53:16.430 | INFO  | CID:N/A | Iniciando procesador de cola de correos
+2026-03-19 15:53:36.324 | INFO  | CID:d5709f14767d | Account/Login | Iniciando acción: Account/Login
+2026-03-19 15:53:37.006 | INFO  | CID:d5709f14767d | Account/Login | Acción completada: Account/Login
+2026-03-19 15:54:12.637 | INFO  | CID:N/A | [InspectoresDAO-Buscar] Valor buscado: CATOTA
+2026-03-19 15:54:12.637 | INFO  | CID:N/A | [InspectoresDAO-Buscar] Tipo de busqueda: nombre
+2026-03-19 15:54:12.942 | INFO  | CID:N/A | [InspectoresDAO-Buscar] Query: SELECT TRIM(OPICED) AS OPICED, TRIM(OPINO2) AS OPINO2, TRIM(OPIES1) AS OPIES1, TRIM(OPITIP) AS OPITIP FROM DGACDAT.OPIAR2 WHERE UPPER(TRIM(COALESCE(OPIES1, ''))) = ? AND UPPER(OPINO2) LIKE ? ORDER BY OPINO2 FETCH FIRST 20 ROWS ONLY
+2026-03-19 15:54:13.002 | INFO  | CID:N/A | [InspectoresDAO-Buscar] Resultados: 1
+2026-03-19 15:54:49.698 | INFO  | CID:812c4d6e50ee | USR:USU_ADMIN | Account/CambiarCompaniaActiva | Iniciando acción: Account/CambiarCompaniaActiva
+2026-03-19 15:54:50.262 | INFO  | CID:812c4d6e50ee | USR:USU_ADMIN | Account/CambiarCompaniaActiva | Acción completada: Account/CambiarCompaniaActiva
+2026-03-19 16:16:13.484 | INFO  | CID:5829fbc5ea16 | USR:USU_ADMIN | Account/ExtenderSesion | Iniciando acción: Account/ExtenderSesion
+2026-03-19 16:16:13.484 | INFO  | CID:5829fbc5ea16 | USR:USU_ADMIN | Account/ExtenderSesion | Acción completada: Account/ExtenderSesion
+2026-03-19 16:28:47.689 | INFO  | CID:ed2fe09089d7 | USR:USU_ADMIN | Account/CambiarCompaniaActiva | Iniciando acción: Account/CambiarCompaniaActiva
+2026-03-19 16:28:48.250 | INFO  | CID:ed2fe09089d7 | USR:USU_ADMIN | Account/CambiarCompaniaActiva | Acción completada: Account/CambiarCompaniaActiva

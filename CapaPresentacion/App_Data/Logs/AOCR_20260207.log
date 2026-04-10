@@ -1,0 +1,85 @@
+﻿2026-02-07 16:14:38.783 | INFO  | CID:N/A | Iniciando procesador de cola de correos
+2026-02-07 16:14:49.157 | INFO  | CID:d9bbafa520d3 | Account/Login | Iniciando acción: Account/Login
+2026-02-07 16:14:49.512 | INFO  | CID:d9bbafa520d3 | Account/Login | Acción completada: Account/Login
+2026-02-07 16:34:20.665 | INFO  | CID:N/A | Iniciando procesador de cola de correos
+2026-02-07 16:34:29.822 | INFO  | CID:ff1b212a9b91 | Account/Login | Iniciando acción: Account/Login
+2026-02-07 16:34:30.221 | INFO  | CID:ff1b212a9b91 | Account/Login | Acción completada: Account/Login
+2026-02-07 16:40:11.288 | INFO  | CID:N/A | Iniciando procesador de cola de correos
+2026-02-07 16:40:18.214 | INFO  | CID:5f09ab17ba63 | Account/Login | Iniciando acción: Account/Login
+2026-02-07 16:40:18.584 | INFO  | CID:5f09ab17ba63 | Account/Login | Acción completada: Account/Login
+2026-02-07 16:42:16.125 | INFO  | CID:N/A | Deteniendo procesador de cola de correos
+2026-02-07 16:42:16.155 | INFO  | CID:N/A | Deteniendo procesador de cola de correos
+2026-02-07 17:01:59.290 | INFO  | CID:N/A | Iniciando procesador de cola de correos
+2026-02-07 17:02:06.643 | INFO  | CID:770d17085fb1 | Account/Login | Iniciando acción: Account/Login
+2026-02-07 17:02:07.004 | INFO  | CID:770d17085fb1 | Account/Login | Acción completada: Account/Login
+2026-02-07 17:06:28.520 | INFO  | CID:N/A | Iniciando procesador de cola de correos
+2026-02-07 17:06:35.435 | INFO  | CID:3b4992c96e38 | Account/Login | Iniciando acción: Account/Login
+2026-02-07 17:06:35.782 | INFO  | CID:3b4992c96e38 | Account/Login | Acción completada: Account/Login
+2026-02-07 17:08:27.817 | INFO  | CID:N/A | Iniciando procesador de cola de correos
+2026-02-07 17:08:45.732 | INFO  | CID:fab9de165344 | Account/Login | Iniciando acción: Account/Login
+2026-02-07 17:08:46.068 | INFO  | CID:fab9de165344 | Account/Login | Acción completada: Account/Login
+2026-02-07 17:09:59.863 | INFO  | CID:N/A | Deteniendo procesador de cola de correos
+2026-02-07 17:09:59.899 | INFO  | CID:N/A | Deteniendo procesador de cola de correos
+2026-02-07 17:13:06.787 | INFO  | CID:N/A | Iniciando procesador de cola de correos
+2026-02-07 17:13:14.035 | INFO  | CID:6e47418546c7 | Account/Login | Iniciando acción: Account/Login
+2026-02-07 17:13:14.359 | INFO  | CID:6e47418546c7 | Account/Login | Acción completada: Account/Login
+2026-02-07 17:15:54.112 | INFO  | CID:N/A | Iniciando procesador de cola de correos
+2026-02-07 17:15:59.949 | INFO  | CID:bb7e42dee3ec | Account/Login | Iniciando acción: Account/Login
+2026-02-07 17:16:00.592 | INFO  | CID:bb7e42dee3ec | Account/Login | Acción completada: Account/Login
+2026-02-07 17:16:51.116 | ERROR | CID:37c01897792a46cfb054dacb907116be | USR:USU_ADMIN | Account/Login | ERR:INTERNAL_ERROR | El token antifalsificación proporcionado se diseñó para el usuario "" pero el usuario actual es "USU_ADMIN".
+    Exception: HttpAntiForgeryException
+    StackTrace:    en System.Web.Helpers.AntiXsrf.TokenValidator.ValidateTokens(HttpContextBase httpContext, IIdentity identity, AntiForgeryToken sessionToken, AntiForgeryToken fieldToken)
+   en System.Web.Helpers.AntiXsrf.AntiForgeryWorker.Validate(HttpContextBase httpContext)
+   en System.Web.Mvc.ControllerActionInvoker.InvokeAuthorizationFilters(ControllerContext controllerContext, IList`1 filters, ActionDescriptor actionDescriptor)
+   en System.Web.Mvc.Async.AsyncControllerActionInvoker.<>c__DisplayClass3_1.<BeginInvokeAction>b__0(AsyncCallback asyncCallback, Object asyncState)
+2026-02-07 17:16:55.344 | ERROR | CID:8007de11052b45609dce1123e943c0a4 | USR:USU_ADMIN | Account/Login | ERR:INTERNAL_ERROR | c:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\CapaPresentacion\Views\Shared\Error.cshtml(23): error CS1525: El término de la expresión '.' no es válido
+    Exception: HttpCompileException
+    StackTrace:    en System.Web.Compilation.AssemblyBuilder.Compile()
+   en System.Web.Compilation.BuildProvidersCompiler.PerformBuild()
+   en System.Web.Compilation.BuildManager.CompileWebFile(VirtualPath virtualPath)
+   en System.Web.Compilation.BuildManager.GetVPathBuildResultInternal(VirtualPath virtualPath, Boolean noBuild, Boolean allowCrossApp, Boolean allowBuildInPrecompile, Boolean throwIfNotFound, Boolean ensureIsUpToDate)
+   en System.Web.Compilation.BuildManager.GetVPathBuildResultWithNoAssert(HttpContext context, VirtualPath virtualPath, Boolean noBuild, Boolean allowCrossApp, Boolean allowBuildInPrecompile, Boolean throwIfNotFound, Boolean ensureIsUpToDate)
+   en System.Web.Compilation.BuildManager.GetVirtualPathObjectFactory(VirtualPath virtualPath, HttpContext context, Boolean allowCrossApp, Boolean throwIfNotFound)
+   en System.Web.Compilation.BuildManager.GetCompiledType(VirtualPath virtualPath)
+   en System.Web.Mvc.BuildManagerCompiledView.Render(ViewContext viewContext, TextWriter writer)
+   en System.Web.Mvc.ViewResultBase.ExecuteResult(ControllerContext context)
+   en System.Web.Mvc.Async.AsyncControllerActionInvoker.<>c__DisplayClass3_1.<BeginInvokeAction>b__1(IAsyncResult asyncResult)
+2026-02-07 17:17:28.150 | ERROR | CID:4583269fa10b45b0953c67447a8e508f | USR:USU_ADMIN | Account/Login | ERR:INTERNAL_ERROR | El token antifalsificación proporcionado se diseñó para el usuario "" pero el usuario actual es "USU_ADMIN".
+    Exception: HttpAntiForgeryException
+    StackTrace:    en System.Web.Helpers.AntiXsrf.TokenValidator.ValidateTokens(HttpContextBase httpContext, IIdentity identity, AntiForgeryToken sessionToken, AntiForgeryToken fieldToken)
+   en System.Web.Helpers.AntiXsrf.AntiForgeryWorker.Validate(HttpContextBase httpContext)
+   en System.Web.Mvc.ControllerActionInvoker.InvokeAuthorizationFilters(ControllerContext controllerContext, IList`1 filters, ActionDescriptor actionDescriptor)
+   en System.Web.Mvc.Async.AsyncControllerActionInvoker.<>c__DisplayClass3_1.<BeginInvokeAction>b__0(AsyncCallback asyncCallback, Object asyncState)
+2026-02-07 17:17:29.000 | ERROR | CID:c08f3002ebcf46a0b6ccc9aceae4fad3 | USR:USU_ADMIN | Account/Login | ERR:INTERNAL_ERROR | c:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\CapaPresentacion\Views\Shared\Error.cshtml(23): error CS1525: El término de la expresión '.' no es válido
+    Exception: HttpCompileException
+    StackTrace:    en System.Web.Compilation.AssemblyBuilder.Compile()
+   en System.Web.Compilation.BuildProvidersCompiler.PerformBuild()
+   en System.Web.Compilation.BuildManager.CompileWebFile(VirtualPath virtualPath)
+   en System.Web.Compilation.BuildManager.GetVPathBuildResultInternal(VirtualPath virtualPath, Boolean noBuild, Boolean allowCrossApp, Boolean allowBuildInPrecompile, Boolean throwIfNotFound, Boolean ensureIsUpToDate)
+   en System.Web.Compilation.BuildManager.GetVPathBuildResultWithNoAssert(HttpContext context, VirtualPath virtualPath, Boolean noBuild, Boolean allowCrossApp, Boolean allowBuildInPrecompile, Boolean throwIfNotFound, Boolean ensureIsUpToDate)
+   en System.Web.Compilation.BuildManager.GetVirtualPathObjectFactory(VirtualPath virtualPath, HttpContext context, Boolean allowCrossApp, Boolean throwIfNotFound)
+   en System.Web.Compilation.BuildManager.GetCompiledType(VirtualPath virtualPath)
+   en System.Web.Mvc.BuildManagerCompiledView.Render(ViewContext viewContext, TextWriter writer)
+   en System.Web.Mvc.ViewResultBase.ExecuteResult(ControllerContext context)
+   en System.Web.Mvc.Async.AsyncControllerActionInvoker.<>c__DisplayClass3_1.<BeginInvokeAction>b__1(IAsyncResult asyncResult)
+2026-02-07 17:19:16.074 | INFO  | CID:N/A | Deteniendo procesador de cola de correos
+2026-02-07 17:19:16.110 | INFO  | CID:N/A | Deteniendo procesador de cola de correos
+2026-02-07 17:19:56.689 | INFO  | CID:N/A | Iniciando procesador de cola de correos
+2026-02-07 17:20:08.710 | ERROR | CID:c25972a8430b46b59ee31d17264b62b3 | USR:USU_ADMIN | Account/Login | ERR:INTERNAL_ERROR | El token antifalsificación proporcionado se diseñó para el usuario "" pero el usuario actual es "USU_ADMIN".
+    Exception: HttpAntiForgeryException
+    StackTrace:    en System.Web.Helpers.AntiXsrf.TokenValidator.ValidateTokens(HttpContextBase httpContext, IIdentity identity, AntiForgeryToken sessionToken, AntiForgeryToken fieldToken)
+   en System.Web.Helpers.AntiXsrf.AntiForgeryWorker.Validate(HttpContextBase httpContext)
+   en System.Web.Mvc.ControllerActionInvoker.InvokeAuthorizationFilters(ControllerContext controllerContext, IList`1 filters, ActionDescriptor actionDescriptor)
+   en System.Web.Mvc.Async.AsyncControllerActionInvoker.<>c__DisplayClass3_1.<BeginInvokeAction>b__0(AsyncCallback asyncCallback, Object asyncState)
+2026-02-07 17:20:20.700 | INFO  | CID:82cb89563e0a | USR:USU_ADMIN | Account/Login | Iniciando acción: Account/Login
+2026-02-07 17:20:20.996 | INFO  | CID:82cb89563e0a | USR:USU_ADMIN | Account/Login | Acción completada: Account/Login
+2026-02-07 17:23:45.821 | INFO  | CID:N/A | Deteniendo procesador de cola de correos
+2026-02-07 17:23:45.864 | INFO  | CID:N/A | Deteniendo procesador de cola de correos
+2026-02-07 17:25:21.070 | INFO  | CID:N/A | Iniciando procesador de cola de correos
+2026-02-07 17:25:27.252 | INFO  | CID:cc36e74d89e3 | Account/Login | Iniciando acción: Account/Login
+2026-02-07 17:25:27.555 | INFO  | CID:cc36e74d89e3 | Account/Login | Acción completada: Account/Login
+2026-02-07 17:28:38.408 | INFO  | CID:N/A | Deteniendo procesador de cola de correos
+2026-02-07 17:28:38.433 | INFO  | CID:N/A | Deteniendo procesador de cola de correos
+2026-02-07 17:30:48.787 | INFO  | CID:N/A | Iniciando procesador de cola de correos
+2026-02-07 17:30:56.643 | INFO  | CID:f887dc6ed0f9 | Account/Login | Iniciando acción: Account/Login
+2026-02-07 17:30:56.927 | INFO  | CID:f887dc6ed0f9 | Account/Login | Acción completada: Account/Login

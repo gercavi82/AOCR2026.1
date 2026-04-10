@@ -1,0 +1,195 @@
+﻿REPORTE DE ERRORES AOCR
+Generado: 2026-02-13 14:37:05
+Ventana analizada: desde 2026-02-06 14:37:05
+Carpeta logs: C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\CapaPresentacion\App_Data\Logs
+
+ARCHIVOS ANALIZADOS
+- AOCR_20260206.log | 44103 bytes | modificado 2026-02-06 15:57:36
+- AOCR_20260207.log | 9828 bytes | modificado 2026-02-07 17:30:56
+- AOCR_20260208.log | 2069 bytes | modificado 2026-02-08 15:55:26
+- AOCR_20260209.log | 32376 bytes | modificado 2026-02-09 16:24:24
+- AOCR_20260210.log | 36416 bytes | modificado 2026-02-10 16:05:21
+- AOCR_20260211.log | 5153 bytes | modificado 2026-02-11 16:37:00
+- AOCR_20260212.log | 46140 bytes | modificado 2026-02-12 16:31:05
+- AOCR_20260213.log | 143351 bytes | modificado 2026-02-13 14:34:14
+
+RESUMEN DE NIVELES
+- ERROR: 31
+- INFO: 1690
+
+ERRORES DETECTADOS (AOCR_*.log): 31
+1. [AOCR_20260206.log] 2026-02-06 15:28:41.403 | ERROR | CID:6072f0245526 | USR:USU_ADMIN | OrdenRecaudacion/Index | ERR:BAD_REQUEST | No se encuentra la vista 'Index' ni su vista maestra o no hay un motor de búsqueda que admita las ubicaciones de búsqueda. Se buscó en las siguientes ubicaciones: 
+2. [AOCR_20260206.log] 2026-02-06 15:29:43.806 | ERROR | CID:b48194f8c54a | USR:USU_ADMIN | OrdenRecaudacion/Index | ERR:BAD_REQUEST | No se encuentra la vista 'Index' ni su vista maestra o no hay un motor de búsqueda que admita las ubicaciones de búsqueda. Se buscó en las siguientes ubicaciones: 
+3. [AOCR_20260206.log] 2026-02-06 15:45:11.166 | ERROR | CID:b26031b3a9d0 | USR:USU_ADMIN | OrdenRecaudacion/Index | ERR:INTERNAL_ERROR | Se esperaba "{" pero se encontró "bool". Las instrucciones de bloque deben ir entre "{" y "}". No se pueden usar instrucciones de flujo de control simples en las páginas CSHTML. Por ejemplo, no se permite lo siguiente:
+4. [AOCR_20260207.log] 2026-02-07 17:16:51.116 | ERROR | CID:37c01897792a46cfb054dacb907116be | USR:USU_ADMIN | Account/Login | ERR:INTERNAL_ERROR | El token antifalsificación proporcionado se diseñó para el usuario "" pero el usuario actual es "USU_ADMIN".
+   Exception: HttpAntiForgeryException
+5. [AOCR_20260207.log] 2026-02-07 17:16:55.344 | ERROR | CID:8007de11052b45609dce1123e943c0a4 | USR:USU_ADMIN | Account/Login | ERR:INTERNAL_ERROR | c:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\CapaPresentacion\Views\Shared\Error.cshtml(23): error CS1525: El término de la expresión '.' no es válido
+   Exception: HttpCompileException
+6. [AOCR_20260207.log] 2026-02-07 17:17:28.150 | ERROR | CID:4583269fa10b45b0953c67447a8e508f | USR:USU_ADMIN | Account/Login | ERR:INTERNAL_ERROR | El token antifalsificación proporcionado se diseñó para el usuario "" pero el usuario actual es "USU_ADMIN".
+   Exception: HttpAntiForgeryException
+7. [AOCR_20260207.log] 2026-02-07 17:17:29.000 | ERROR | CID:c08f3002ebcf46a0b6ccc9aceae4fad3 | USR:USU_ADMIN | Account/Login | ERR:INTERNAL_ERROR | c:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\CapaPresentacion\Views\Shared\Error.cshtml(23): error CS1525: El término de la expresión '.' no es válido
+   Exception: HttpCompileException
+8. [AOCR_20260207.log] 2026-02-07 17:20:08.710 | ERROR | CID:c25972a8430b46b59ee31d17264b62b3 | USR:USU_ADMIN | Account/Login | ERR:INTERNAL_ERROR | El token antifalsificación proporcionado se diseñó para el usuario "" pero el usuario actual es "USU_ADMIN".
+   Exception: HttpAntiForgeryException
+9. [AOCR_20260209.log] 2026-02-09 09:00:28.086 | ERROR | CID:60a28b586fa0 | USR:USU_ADMIN | Inspeccion/Index | ERR:BAD_REQUEST | El elemento de modelo pasado al diccionario es de tipo 'System.Collections.Generic.List`1[CapaModelo.Inspeccion]', pero este diccionario requiere un elemento de modelo de tipo 'CapaModelo.Inspeccion'.
+   Exception: InvalidOperationException
+10. [AOCR_20260209.log] 2026-02-09 09:01:02.727 | ERROR | CID:4049f7ac5f81 | USR:USU_ADMIN | Inspeccion/Index | ERR:BAD_REQUEST | El elemento de modelo pasado al diccionario es de tipo 'System.Collections.Generic.List`1[CapaModelo.Inspeccion]', pero este diccionario requiere un elemento de modelo de tipo 'CapaModelo.Inspeccion'.
+   Exception: InvalidOperationException
+11. [AOCR_20260209.log] 2026-02-09 09:11:34.751 | ERROR | CID:77cfdb6031f3 | USR:USU_ADMIN | Inspeccion/Crear | ERR:BAD_REQUEST | El diccionario de parámetros contiene una entrada NULL para el parámetro 'codigoSolicitud' del tipo que no acepta valores NULL 'System.Int32' del método 'System.Web.Mvc.ActionResult Crear(Int32)' en 'CapaPresentacion.Controllers.InspeccionController'. Un parámetro opcional debe ser un tipo de referencia, un tipo que acepte valores NULL o debe declararse como parámetro opcional.
+12. [AOCR_20260209.log] 2026-02-09 09:11:49.038 | ERROR | CID:df565f5bb37e | USR:USU_ADMIN | Inspeccion/Crear | ERR:BAD_REQUEST | El diccionario de parámetros contiene una entrada NULL para el parámetro 'codigoSolicitud' del tipo que no acepta valores NULL 'System.Int32' del método 'System.Web.Mvc.ActionResult Crear(Int32)' en 'CapaPresentacion.Controllers.InspeccionController'. Un parámetro opcional debe ser un tipo de referencia, un tipo que acepte valores NULL o debe declararse como parámetro opcional.
+13. [AOCR_20260209.log] 2026-02-09 09:11:56.702 | ERROR | CID:f86ded8d0de1 | USR:USU_ADMIN | Inspeccion/Crear | ERR:BAD_REQUEST | El diccionario de parámetros contiene una entrada NULL para el parámetro 'codigoSolicitud' del tipo que no acepta valores NULL 'System.Int32' del método 'System.Web.Mvc.ActionResult Crear(Int32)' en 'CapaPresentacion.Controllers.InspeccionController'. Un parámetro opcional debe ser un tipo de referencia, un tipo que acepte valores NULL o debe declararse como parámetro opcional.
+14. [AOCR_20260210.log] 2026-02-10 10:04:10.614 | ERROR | CID:45237cb044b3 | USR:1713091955 | OrdenRecaudacion/Detalles | ERR:INTERNAL_ERROR | c:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\CapaPresentacion\Views\OrdenRecaudacion\Detalles.cshtml(52): error CS0103: El nombre 'faltantes' no existe en el contexto actual
+   Exception: HttpCompileException
+15. [AOCR_20260210.log] 2026-02-10 10:04:48.349 | ERROR | CID:48d16e9b5342 | USR:1713091955 | OrdenRecaudacion/Detalles | ERR:INTERNAL_ERROR | c:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\CapaPresentacion\Views\OrdenRecaudacion\Detalles.cshtml(52): error CS0103: El nombre 'faltantes' no existe en el contexto actual
+   Exception: HttpCompileException
+16. [AOCR_20260210.log] 2026-02-10 10:13:36.558 | ERROR | CID:bc08e01d7a94 | USR:1713091955 | OrdenRecaudacion/Detalles | ERR:INTERNAL_ERROR | c:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\CapaPresentacion\Views\OrdenRecaudacion\Detalles.cshtml(31): error CS0103: El nombre 'faltantes' no existe en el contexto actual
+   Exception: HttpCompileException
+17. [AOCR_20260210.log] 2026-02-10 10:13:43.718 | ERROR | CID:44387e2c9be9 | USR:1713091955 | OrdenRecaudacion/Detalles | ERR:INTERNAL_ERROR | c:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\CapaPresentacion\Views\OrdenRecaudacion\Detalles.cshtml(31): error CS0103: El nombre 'faltantes' no existe en el contexto actual
+   Exception: HttpCompileException
+18. [AOCR_20260210.log] 2026-02-10 10:19:10.919 | ERROR | CID:0e6e088b66e6 | USR:1713091955 | OrdenRecaudacion/Detalles | ERR:INTERNAL_ERROR | c:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\CapaPresentacion\Views\OrdenRecaudacion\Detalles.cshtml(64): error CS0103: El nombre 'ordenCompleta' no existe en el contexto actual
+   Exception: HttpCompileException
+19. [AOCR_20260210.log] 2026-02-10 10:21:06.603 | ERROR | CID:acc211f574f8 | USR:1713091955 | OrdenRecaudacion/Detalles | ERR:INTERNAL_ERROR | c:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\CapaPresentacion\Views\OrdenRecaudacion\Detalles.cshtml(64): error CS0103: El nombre 'ordenCompleta' no existe en el contexto actual
+   Exception: HttpCompileException
+20. [AOCR_20260211.log] 2026-02-11 15:53:26.520 | ERROR | CID:6fffeb4d0cff4676afd66769994eba9e | Usuario/ValidarRUC | ERR:INTERNAL_ERROR | El campo de formulario antifalsificación "__RequestVerificationToken" no está presente.
+   Exception: HttpAntiForgeryException
+21. [AOCR_20260211.log] 2026-02-11 15:53:55.621 | ERROR | CID:834b2efbae764a549173de2fbfbe6521 | Usuario/ValidarCorreo | ERR:INTERNAL_ERROR | El campo de formulario antifalsificación "__RequestVerificationToken" no está presente.
+   Exception: HttpAntiForgeryException
+22. [AOCR_20260211.log] 2026-02-11 15:54:39.447 | ERROR | CID:bef628f1ece349a7b3e134960febf7bb | Usuario/ValidarCorreo | ERR:INTERNAL_ERROR | El campo de formulario antifalsificación "__RequestVerificationToken" no está presente.
+   Exception: HttpAntiForgeryException
+23. [AOCR_20260212.log] 2026-02-12 08:31:24.528 | ERROR | CID:54c981210ee743c0807fdea4dde38763 | USR:1713091955 | Account/Login | ERR:INTERNAL_ERROR | El token antifalsificación proporcionado se diseñó para el usuario "" pero el usuario actual es "1713091955".
+   Exception: HttpAntiForgeryException
+24. [AOCR_20260212.log] 2026-02-12 08:31:29.579 | ERROR | CID:4a0cab3115f04eddbd1df07c1ad8f17e | USR:1713091955 | Account/Login | ERR:INTERNAL_ERROR | El token antifalsificación proporcionado se diseñó para el usuario "" pero el usuario actual es "1713091955".
+   Exception: HttpAntiForgeryException
+25. [AOCR_20260212.log] 2026-02-12 14:06:57.464 | ERROR | CID:fc8f8d9a90dc | USR:USU_ADMIN | Usuario/RevisarDesignaciones | ERR:INTERNAL_ERROR | Palabra clave "using" inesperada después del carácter "@". Una vez dentro del código, no es necesario añadir prefijos a las construcciones, como "using" con "@".
+26. [AOCR_20260213.log] 2026-02-13 10:11:50.403 | ERROR | CID:0c6638742381 | USR:USU_ADMIN | ERR:GLOBAL_ERROR | No se encuentra el controlador de la ruta de acceso '/Content/imagenes/favicon.ico' o no implementa IController.
+   Exception: HttpException
+27. [AOCR_20260213.log] 2026-02-13 10:58:25.928 | ERROR | CID:182e22fa8970 | USR:1709565459 | ERR:GLOBAL_ERROR | La solicitud actual para la acción 'Anular' en el tipo de controlador 'OrdenRecaudacionController' es ambigua entre los métodos de acción siguientes: 
+28. [AOCR_20260213.log] 2026-02-13 11:03:12.209 | ERROR | CID:4153dd894f89 | Account/EnviarRecuperar | ERR:INTERNAL_ERROR | El campo de formulario antifalsificación "__RequestVerificationToken" no está presente.
+   Exception: HttpAntiForgeryException
+29. [AOCR_20260213.log] 2026-02-13 11:30:44.569 | ERROR | CID:6b9755fa7d59 | Account/Login | ERR:INTERNAL_ERROR | El token antifalsificación proporcionado se diseñó para el usuario "USU_ADMIN" pero el usuario actual es "".
+   Exception: HttpAntiForgeryException
+30. [AOCR_20260213.log] 2026-02-13 12:36:58.052 | ERROR | CID:03cb524ad786 | USR:USU_ADMIN | ERR:GLOBAL_ERROR | No se encuentra el controlador de la ruta de acceso '/.well-known/appspecific/com.chrome.devtools.json' o no implementa IController.
+   Exception: HttpException
+31. [AOCR_20260213.log] 2026-02-13 12:37:14.347 | ERROR | CID:aabe2ca6f62c | USR:USU_ADMIN | ERR:GLOBAL_ERROR | No se encuentra el controlador de la ruta de acceso '/.well-known/appspecific/com.chrome.devtools.json' o no implementa IController.
+   Exception: HttpException
+
+TOP CODIGOS ERR
+- BAD_REQUEST: 7
+- GLOBAL_ERROR: 4
+- INTERNAL_ERROR: 20
+
+EVENTOS EMAIL (AOCR_*.log): 77
+1. [AOCR_20260209.log] 2026-02-09 15:07:11.262 | INFO  | CID:915662f1e109 | USR:USU_ADMIN | Account/EnviarRecuperar | Iniciando acción: Account/EnviarRecuperar
+2. [AOCR_20260209.log] 2026-02-09 15:07:11.694 | INFO  | CID:915662f1e109 | USR:USU_ADMIN | Account/EnviarRecuperar | Acción completada: Account/EnviarRecuperar
+3. [AOCR_20260209.log] 2026-02-09 15:08:16.786 | INFO  | CID:0595b4df8798 | USR:USU_ADMIN | Account/EnviarRecuperar | Iniciando acción: Account/EnviarRecuperar
+4. [AOCR_20260209.log] 2026-02-09 15:08:16.790 | INFO  | CID:0595b4df8798 | USR:USU_ADMIN | Account/EnviarRecuperar | Acción completada: Account/EnviarRecuperar
+5. [AOCR_20260209.log] 2026-02-09 15:09:57.765 | INFO  | CID:3e99fe2db85d | USR:USU_ADMIN | Account/EnviarRecuperar | Iniciando acción: Account/EnviarRecuperar
+6. [AOCR_20260209.log] 2026-02-09 15:09:58.017 | INFO  | CID:7ba7e041be16 | Enviando correo a german.cajas@aviacioncivil.gob.ec, Asunto: Recuperación de contraseña - Sistema AOCR
+7. [AOCR_20260209.log] 2026-02-09 15:09:58.411 | INFO  | CID:7ba7e041be16 | Correo enviado exitosamente a german.cajas@aviacioncivil.gob.ec
+8. [AOCR_20260209.log] 2026-02-09 15:09:58.416 | INFO  | CID:3e99fe2db85d | USR:USU_ADMIN | Account/EnviarRecuperar | Acción completada: Account/EnviarRecuperar
+9. [AOCR_20260210.log] 2026-02-10 09:05:04.748 | INFO  | CID:4f61fb3682f1 | Correo con adjunto enviado exitosamente a german.cajas@aviacioncivil.gob.ec
+10. [AOCR_20260210.log] 2026-02-10 09:10:19.299 | INFO  | CID:223d21423268 | Correo con adjunto enviado exitosamente a german.cajas@aviacioncivil.gob.ec
+11. [AOCR_20260210.log] 2026-02-10 09:12:27.898 | INFO  | CID:f389a00b93b8 | Correo con adjunto enviado exitosamente a german.cajas@aviacioncivil.gob.ec
+12. [AOCR_20260210.log] 2026-02-10 09:19:16.548 | INFO  | CID:bfe1d67c6fa9 | Correo con adjunto enviado exitosamente a german.cajas@aviacioncivil.gob.ec
+13. [AOCR_20260210.log] 2026-02-10 09:30:38.699 | INFO  | CID:88c7eb21c3c7 | Correo con adjunto enviado exitosamente a german.cajas@aviacioncivil.gob.ec
+14. [AOCR_20260210.log] 2026-02-10 09:34:18.547 | INFO  | CID:ce2c32c11097 | Correo con adjunto enviado exitosamente a german.cajas@aviacioncivil.gob.ec
+15. [AOCR_20260210.log] 2026-02-10 09:40:32.109 | INFO  | CID:2453c367cb7a | Correo con adjunto enviado exitosamente a german.cajas@aviacioncivil.gob.ec
+16. [AOCR_20260210.log] 2026-02-10 09:46:39.835 | INFO  | CID:3929020360fa | Correo con adjunto enviado exitosamente a german.cajas@aviacioncivil.gob.ec
+17. [AOCR_20260210.log] 2026-02-10 09:54:43.531 | INFO  | CID:d8a1b67674df | Correo con adjunto enviado exitosamente a german.cajas@aviacioncivil.gob.ec
+18. [AOCR_20260210.log] 2026-02-10 09:59:31.954 | INFO  | CID:9604ecd513d7 | Correo con adjunto enviado exitosamente a german.cajas@aviacioncivil.gob.ec
+19. [AOCR_20260210.log] 2026-02-10 10:23:10.993 | INFO  | CID:0efe49b0bc9f | Correo con adjunto enviado exitosamente a german.cajas@aviacioncivil.gob.ec
+20. [AOCR_20260210.log] 2026-02-10 10:35:52.496 | INFO  | CID:ea37aa68a862 | Correo con adjunto enviado exitosamente a german.cajas@aviacioncivil.gob.ec
+21. [AOCR_20260210.log] 2026-02-10 10:37:36.671 | INFO  | CID:N/A | ERR:EMAIL_FACTURA | EnviarFacturaGenerada ejecutado
+22. [AOCR_20260210.log] 2026-02-10 11:00:02.902 | INFO  | CID:512f12ee5826 | Account/EnviarRecuperar | Iniciando acción: Account/EnviarRecuperar
+23. [AOCR_20260210.log] 2026-02-10 11:00:02.971 | INFO  | CID:512f12ee5826 | Account/EnviarRecuperar | Acción completada: Account/EnviarRecuperar
+24. [AOCR_20260210.log] 2026-02-10 11:00:11.942 | INFO  | CID:842a9dad4401 | Account/EnviarRecuperar | Iniciando acción: Account/EnviarRecuperar
+25. [AOCR_20260210.log] 2026-02-10 11:00:11.946 | INFO  | CID:842a9dad4401 | Account/EnviarRecuperar | Acción completada: Account/EnviarRecuperar
+26. [AOCR_20260210.log] 2026-02-10 14:33:44.446 | INFO  | CID:bf7ac4ed83ed | Enviando correo a mancho2002@hotmail.com, Asunto: Registro de usuario - Sistema AOCR
+27. [AOCR_20260210.log] 2026-02-10 14:33:44.617 | INFO  | CID:bf7ac4ed83ed | Correo enviado exitosamente a mancho2002@hotmail.com
+28. [AOCR_20260212.log] 2026-02-12 09:52:36.374 | INFO  | CID:031f2270bcbb | Enviando correo a mancho2002@hotmail.com, Asunto: Su designación RT fue aprobada - Sistema AOCR
+29. [AOCR_20260212.log] 2026-02-12 09:52:36.735 | INFO  | CID:031f2270bcbb | Correo enviado exitosamente a mancho2002@hotmail.com
+30. [AOCR_20260212.log] 2026-02-12 12:25:25.264 | INFO  | CID:0c903f9cf5aa | Enviando correo a fgdfdf@dfdf.com, Asunto: Registro de usuario - Sistema AOCR
+31. [AOCR_20260212.log] 2026-02-12 12:25:25.745 | INFO  | CID:0c903f9cf5aa | Correo enviado exitosamente a fgdfdf@dfdf.com
+32. [AOCR_20260212.log] 2026-02-12 14:14:43.039 | INFO  | CID:85e813a22ecf | Enviando correo a fgdfdf@dfdf.com, Asunto: Su designación RT fue aprobada - Sistema AOCR
+33. [AOCR_20260212.log] 2026-02-12 14:14:43.541 | INFO  | CID:85e813a22ecf | Correo enviado exitosamente a fgdfdf@dfdf.com
+34. [AOCR_20260212.log] 2026-02-12 15:03:06.368 | INFO  | CID:62afd24211eb | Enviando correo a mancho2002@hotmail.com, Asunto: Registro de usuario - Sistema AOCR
+35. [AOCR_20260212.log] 2026-02-12 15:03:06.659 | INFO  | CID:62afd24211eb | Correo enviado exitosamente a mancho2002@hotmail.com
+36. [AOCR_20260212.log] 2026-02-12 15:22:46.494 | INFO  | CID:753a8cf6ea0e | Enviando correo a mancho2002@hotmail.com, Asunto: Registro de usuario - Sistema AOCR
+37. [AOCR_20260212.log] 2026-02-12 15:22:46.782 | INFO  | CID:753a8cf6ea0e | Correo enviado exitosamente a mancho2002@hotmail.com
+38. [AOCR_20260212.log] 2026-02-12 15:30:19.665 | INFO  | CID:59dad7b8a15d | Enviando correo a mancho2002@hotmail.com, Asunto: Designación RT en proceso de validación - Sistema ...
+39. [AOCR_20260212.log] 2026-02-12 15:30:20.504 | INFO  | CID:59dad7b8a15d | Correo enviado exitosamente a mancho2002@hotmail.com
+40. [AOCR_20260212.log] 2026-02-12 15:30:29.003 | INFO  | CID:2ddf104bc6a7 | Enviando correo a mancho2002@hotmail.com, Asunto: Su designación RT fue aprobada - Sistema AOCR
+41. [AOCR_20260212.log] 2026-02-12 15:30:33.145 | INFO  | CID:2ddf104bc6a7 | Correo enviado exitosamente a mancho2002@hotmail.com
+42. [AOCR_20260212.log] 2026-02-12 15:36:59.535 | INFO  | CID:455e700759e2 | Enviando correo a mancho2002@hotmail.com, Asunto: Designación RT en proceso de validación - Sistema ...
+43. [AOCR_20260212.log] 2026-02-12 15:36:59.760 | INFO  | CID:455e700759e2 | Correo enviado exitosamente a mancho2002@hotmail.com
+44. [AOCR_20260212.log] 2026-02-12 15:37:19.073 | INFO  | CID:5b2b167fb821 | Enviando correo a mancho2002@hotmail.com, Asunto: Su designación RT fue aprobada - Sistema AOCR
+45. [AOCR_20260212.log] 2026-02-12 15:37:19.514 | INFO  | CID:5b2b167fb821 | Correo enviado exitosamente a mancho2002@hotmail.com
+46. [AOCR_20260212.log] 2026-02-12 16:26:33.625 | INFO  | CID:43b39f92aaac | Enviando correo a german.cajas@aviacioncivil.gob.ec, Asunto: Designación RT en proceso de validación - Sistema ...
+47. [AOCR_20260212.log] 2026-02-12 16:26:33.888 | INFO  | CID:43b39f92aaac | Correo enviado exitosamente a german.cajas@aviacioncivil.gob.ec
+48. [AOCR_20260212.log] 2026-02-12 16:26:45.421 | INFO  | CID:1670445d098d | Enviando correo a german.cajas@aviacioncivil.gob.ec, Asunto: Su designación RT fue aprobada - Sistema AOCR
+49. [AOCR_20260212.log] 2026-02-12 16:26:45.785 | INFO  | CID:1670445d098d | Correo enviado exitosamente a german.cajas@aviacioncivil.gob.ec
+50. [AOCR_20260212.log] 2026-02-12 16:31:05.914 | INFO  | CID:9e70a5cc824f | Correo con adjunto enviado exitosamente a german.cajas@aviacioncivil.gob.ec
+51. [AOCR_20260213.log] 2026-02-13 09:00:51.854 | INFO  | CID:c0be9d4f23da | Correo con adjunto enviado exitosamente a german.cajas@aviacioncivil.gob.ec
+52. [AOCR_20260213.log] 2026-02-13 09:11:00.261 | INFO  | CID:48e4b532890b | Correo con adjunto enviado exitosamente a german.cajas@aviacioncivil.gob.ec
+53. [AOCR_20260213.log] 2026-02-13 09:17:16.385 | INFO  | CID:16c80cc29fe2 | Correo con adjunto enviado exitosamente a german.cajas@aviacioncivil.gob.ec
+54. [AOCR_20260213.log] 2026-02-13 10:14:06.658 | INFO  | CID:e6f3d445c2ab | Enviando correo a mistercato973@gmail.com, Asunto: Designación RT en proceso de validación - Sistema ...
+55. [AOCR_20260213.log] 2026-02-13 10:14:06.895 | INFO  | CID:e6f3d445c2ab | Correo enviado exitosamente a mistercato973@gmail.com
+56. [AOCR_20260213.log] 2026-02-13 10:14:40.067 | INFO  | CID:45c58a3f691d | Enviando correo a mistercato973@gmail.com, Asunto: Su designación RT fue aprobada - Sistema AOCR
+57. [AOCR_20260213.log] 2026-02-13 10:14:40.263 | INFO  | CID:45c58a3f691d | Correo enviado exitosamente a mistercato973@gmail.com
+58. [AOCR_20260213.log] 2026-02-13 10:55:12.170 | INFO  | CID:a32dc914dda4 | Correo con adjunto enviado exitosamente a mistercato973@gmail.com
+59. [AOCR_20260213.log] 2026-02-13 11:03:12.162 | INFO  | CID:4153dd894f89 | HTTP POST /Account/EnviarRecuperar
+60. [AOCR_20260213.log] 2026-02-13 11:03:12.209 | ERROR | CID:4153dd894f89 | Account/EnviarRecuperar | ERR:INTERNAL_ERROR | El campo de formulario antifalsificación "__RequestVerificationToken" no está presente.
+61. [AOCR_20260213.log] 2026-02-13 11:03:12.213 | INFO  | CID:4153dd894f89 | HTTP END POST /Account/EnviarRecuperar => 500 (50 ms)
+62. [AOCR_20260213.log] 2026-02-13 11:03:12.216 | INFO  | CID:94f810367d89 | HTTP GET /Account/EnviarRecuperar
+63. [AOCR_20260213.log] 2026-02-13 11:03:12.219 | INFO  | CID:94f810367d89 | HTTP END GET /Account/EnviarRecuperar => 500 (2 ms)
+64. [AOCR_20260213.log] 2026-02-13 11:06:34.356 | INFO  | CID:c621cf55edb9 | HTTP POST /Account/EnviarRecuperar
+65. [AOCR_20260213.log] 2026-02-13 11:06:34.365 | INFO  | CID:c621cf55edb9 | Account/EnviarRecuperar | Iniciando acción: Account/EnviarRecuperar
+66. [AOCR_20260213.log] 2026-02-13 11:06:34.806 | INFO  | CID:91b1f6377e92 | Enviando correo a gercavi82@gmail.com, Asunto: Recuperación de contraseña - Sistema AOCR
+67. [AOCR_20260213.log] 2026-02-13 11:06:36.494 | INFO  | CID:91b1f6377e92 | Correo enviado exitosamente a gercavi82@gmail.com
+68. [AOCR_20260213.log] 2026-02-13 11:06:36.497 | INFO  | CID:c621cf55edb9 | Account/EnviarRecuperar | Acción completada: Account/EnviarRecuperar
+69. [AOCR_20260213.log] 2026-02-13 11:06:36.498 | INFO  | CID:c621cf55edb9 | HTTP END POST /Account/EnviarRecuperar => 200 (2141 ms)
+70. [AOCR_20260213.log] 2026-02-13 11:07:08.616 | INFO  | CID:fe352235e76b | HTTP POST /Account/EnviarRecuperar
+71. [AOCR_20260213.log] 2026-02-13 11:07:08.618 | INFO  | CID:fe352235e76b | Account/EnviarRecuperar | Iniciando acción: Account/EnviarRecuperar
+72. [AOCR_20260213.log] 2026-02-13 11:07:08.621 | INFO  | CID:9ef712d37bac | Enviando correo a gercavi82@gmail.com, Asunto: Recuperación de contraseña - Sistema AOCR
+73. [AOCR_20260213.log] 2026-02-13 11:07:09.766 | INFO  | CID:9ef712d37bac | Correo enviado exitosamente a gercavi82@gmail.com
+74. [AOCR_20260213.log] 2026-02-13 11:07:09.768 | INFO  | CID:fe352235e76b | Account/EnviarRecuperar | Acción completada: Account/EnviarRecuperar
+75. [AOCR_20260213.log] 2026-02-13 11:07:09.769 | INFO  | CID:fe352235e76b | HTTP END POST /Account/EnviarRecuperar => 200 (1154 ms)
+76. [AOCR_20260213.log] 2026-02-13 11:54:16.303 | INFO  | CID:N/A | ERR:EMAIL_FACTURA | EnviarFacturaGenerada ejecutado
+77. [AOCR_20260213.log] 2026-02-13 14:01:58.633 | INFO  | CID:d0d58d44fd70 | Correo con adjunto enviado exitosamente a gercavi82@gmail.com
+
+TOP PATRONES EMAIL
+- correo con adjunto enviado: 18
+- Correo enviado exitosamente: 17
+- EMAIL_FACTURA: 2
+- Enviando correo: 17
+- EnviarRecuperar: 23
+
+UNHANDLED EXCEPTIONS (Ãºltimos 7 dÃ­as): 24
+1. 2026-02-07 17:16:51.111 | Account/Login | System.Web.Mvc.HttpAntiForgeryException (0x80004005): El token antifalsificaciÃ³n proporcionado se diseÃ±Ã³ para el usuario "" pero el usuario actual es "USU_ADMIN".
+2. 2026-02-07 17:16:55.343 | Account/Login | System.Web.HttpCompileException (0x80004005): c:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\CapaPresentacion\Views\Shared\Error.cshtml(23): error CS1525: El tÃ©rmino de la expresiÃ³n '.' no es vÃ¡lido
+3. 2026-02-07 17:17:28.149 | Account/Login | System.Web.Mvc.HttpAntiForgeryException (0x80004005): El token antifalsificaciÃ³n proporcionado se diseÃ±Ã³ para el usuario "" pero el usuario actual es "USU_ADMIN".
+4. 2026-02-07 17:17:28.999 | Account/Login | System.Web.HttpCompileException (0x80004005): c:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\CapaPresentacion\Views\Shared\Error.cshtml(23): error CS1525: El tÃ©rmino de la expresiÃ³n '.' no es vÃ¡lido
+5. 2026-02-07 17:20:08.707 | Account/Login | System.Web.Mvc.HttpAntiForgeryException (0x80004005): El token antifalsificaciÃ³n proporcionado se diseÃ±Ã³ para el usuario "" pero el usuario actual es "USU_ADMIN".
+6. 2026-02-09 09:00:28.086 | Inspeccion/Index | System.InvalidOperationException: El elemento de modelo pasado al diccionario es de tipo 'System.Collections.Generic.List`1[CapaModelo.Inspeccion]', pero este diccionario requiere un elemento de modelo de tipo 'CapaModelo.Inspeccion'.
+7. 2026-02-09 09:01:02.726 | Inspeccion/Index | System.InvalidOperationException: El elemento de modelo pasado al diccionario es de tipo 'System.Collections.Generic.List`1[CapaModelo.Inspeccion]', pero este diccionario requiere un elemento de modelo de tipo 'CapaModelo.Inspeccion'.
+8. 2026-02-09 09:11:34.749 | Inspeccion/Crear | System.ArgumentException: El diccionario de parÃ¡metros contiene una entrada NULL para el parÃ¡metro 'codigoSolicitud' del tipo que no acepta valores NULL 'System.Int32' del mÃ©todo 'System.Web.Mvc.ActionResult Crear(Int32)' en 'CapaPresentacion.Controllers.InspeccionController'. Un parÃ¡metro opcional debe ser un tipo de referencia, un tipo que acepte valores NULL o debe declararse como parÃ¡metro opcional.
+9. 2026-02-09 09:11:49.038 | Inspeccion/Crear | System.ArgumentException: El diccionario de parÃ¡metros contiene una entrada NULL para el parÃ¡metro 'codigoSolicitud' del tipo que no acepta valores NULL 'System.Int32' del mÃ©todo 'System.Web.Mvc.ActionResult Crear(Int32)' en 'CapaPresentacion.Controllers.InspeccionController'. Un parÃ¡metro opcional debe ser un tipo de referencia, un tipo que acepte valores NULL o debe declararse como parÃ¡metro opcional.
+10. 2026-02-09 09:11:56.701 | Inspeccion/Crear | System.ArgumentException: El diccionario de parÃ¡metros contiene una entrada NULL para el parÃ¡metro 'codigoSolicitud' del tipo que no acepta valores NULL 'System.Int32' del mÃ©todo 'System.Web.Mvc.ActionResult Crear(Int32)' en 'CapaPresentacion.Controllers.InspeccionController'. Un parÃ¡metro opcional debe ser un tipo de referencia, un tipo que acepte valores NULL o debe declararse como parÃ¡metro opcional.
+11. 2026-02-10 10:04:10.574 | OrdenRecaudacion/Detalles | System.Web.HttpCompileException (0x80004005): c:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\CapaPresentacion\Views\OrdenRecaudacion\Detalles.cshtml(52): error CS0103: El nombre 'faltantes' no existe en el contexto actual
+12. 2026-02-10 10:04:48.348 | OrdenRecaudacion/Detalles | System.Web.HttpCompileException (0x80004005): c:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\CapaPresentacion\Views\OrdenRecaudacion\Detalles.cshtml(52): error CS0103: El nombre 'faltantes' no existe en el contexto actual
+13. 2026-02-10 10:13:36.546 | OrdenRecaudacion/Detalles | System.Web.HttpCompileException (0x80004005): c:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\CapaPresentacion\Views\OrdenRecaudacion\Detalles.cshtml(31): error CS0103: El nombre 'faltantes' no existe en el contexto actual
+14. 2026-02-10 10:13:43.717 | OrdenRecaudacion/Detalles | System.Web.HttpCompileException (0x80004005): c:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\CapaPresentacion\Views\OrdenRecaudacion\Detalles.cshtml(31): error CS0103: El nombre 'faltantes' no existe en el contexto actual
+15. 2026-02-10 10:19:10.910 | OrdenRecaudacion/Detalles | System.Web.HttpCompileException (0x80004005): c:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\CapaPresentacion\Views\OrdenRecaudacion\Detalles.cshtml(64): error CS0103: El nombre 'ordenCompleta' no existe en el contexto actual
+16. 2026-02-10 10:21:06.603 | OrdenRecaudacion/Detalles | System.Web.HttpCompileException (0x80004005): c:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\CapaPresentacion\Views\OrdenRecaudacion\Detalles.cshtml(64): error CS0103: El nombre 'ordenCompleta' no existe en el contexto actual
+17. 2026-02-11 15:53:26.516 | Usuario/ValidarRUC | System.Web.Mvc.HttpAntiForgeryException (0x80004005): El campo de formulario antifalsificaciÃ³n "__RequestVerificationToken" no estÃ¡ presente.
+18. 2026-02-11 15:53:55.621 | Usuario/ValidarCorreo | System.Web.Mvc.HttpAntiForgeryException (0x80004005): El campo de formulario antifalsificaciÃ³n "__RequestVerificationToken" no estÃ¡ presente.
+19. 2026-02-11 15:54:39.447 | Usuario/ValidarCorreo | System.Web.Mvc.HttpAntiForgeryException (0x80004005): El campo de formulario antifalsificaciÃ³n "__RequestVerificationToken" no estÃ¡ presente.
+20. 2026-02-12 08:31:24.525 | Account/Login | System.Web.Mvc.HttpAntiForgeryException (0x80004005): El token antifalsificaciÃ³n proporcionado se diseÃ±Ã³ para el usuario "" pero el usuario actual es "1713091955".
+- ... 4 entradas adicionales omitidas
+
+TOP TIPOS DE EXCEPCION (Unhandled)
+- System.ArgumentException: 3
+- System.InvalidOperationException: 2
+- System.Web.HttpCompileException: 8
+- System.Web.HttpParseException: 1
+- System.Web.Mvc.HttpAntiForgeryException: 10

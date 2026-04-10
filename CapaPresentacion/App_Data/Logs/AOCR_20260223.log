@@ -1,0 +1,39 @@
+﻿2026-02-23 08:45:12.814 | INFO  | CID:N/A | Iniciando procesador de cola de correos
+2026-02-23 08:45:24.340 | INFO  | CID:4bb0a56a254d | Account/Login | Iniciando acción: Account/Login
+2026-02-23 08:45:27.200 | INFO  | CID:4bb0a56a254d | Account/Login | Acción completada: Account/Login
+2026-02-23 08:56:01.483 | INFO  | CID:507fd15ce2a2 | USR:USU_ADMIN | OrdenRecaudacion/Nueva | Iniciando acción: OrdenRecaudacion/Nueva
+2026-02-23 08:56:01.903 | INFO  | CID:507fd15ce2a2 | USR:USU_ADMIN | OrdenRecaudacion/Nueva | Acción completada: OrdenRecaudacion/Nueva
+2026-02-23 08:56:07.517 | INFO  | CID:5e71eeaf9fa7 | USR:USU_ADMIN | OrdenRecaudacion/Generar | Iniciando acción: OrdenRecaudacion/Generar
+2026-02-23 08:56:10.782 | INFO  | CID:6fc1f29e3336 | Correo con adjunto enviado exitosamente a gercavi82@gmail.com
+2026-02-23 08:56:10.782 | INFO  | CID:5e71eeaf9fa7 | USR:USU_ADMIN | OrdenRecaudacion/Generar | Acción completada: OrdenRecaudacion/Generar
+2026-02-23 08:56:40.059 | INFO  | CID:b58e75d5ba62 | USR:USU_ADMIN | OrdenRecaudacion/RegistrarPago | Iniciando acción: OrdenRecaudacion/RegistrarPago
+2026-02-23 08:56:40.530 | INFO  | CID:b58e75d5ba62 | USR:USU_ADMIN | OrdenRecaudacion/RegistrarPago | Acción completada: OrdenRecaudacion/RegistrarPago
+2026-02-23 08:57:21.191 | INFO  | CID:e6e7f24b4eb5 | USR:USU_ADMIN | Financiero/AprobarOrden | Iniciando acción: Financiero/AprobarOrden
+2026-02-23 08:57:21.417 | ERROR | CID:N/A | ERR:EMAIL_ERROR | Error al enviar correo.
+    Exception: SmtpException
+    StackTrace:    en System.Net.Mail.SmtpClient.SendAsync(MailMessage message, Object userToken)
+   en System.Net.Mail.SmtpClient.SendMailAsync(MailMessage message)
+   en CapaDatos.Services.EmailService.<EnviarAsync>d__4.MoveNext() en C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\CapaDatos\Services\EmailService.cs:línea 76
+2026-02-23 08:57:21.676 | INFO  | CID:2951039e6189 | Correo con adjunto enviado exitosamente a gercavi82@gmail.com
+2026-02-23 08:57:21.676 | WARN  | CID:N/A | ERR:EMAIL_FALLBACK_OK | Correo enviado por fallback EnviarCorreo.
+2026-02-23 08:57:21.676 | INFO  | CID:N/A | ORD:OR-20260223085601500-1 | ERR:EMAIL_FACTURA_OK | Notificacion de factura enviada correctamente
+2026-02-23 08:57:21.689 | INFO  | CID:e6e7f24b4eb5 | USR:USU_ADMIN | Financiero/AprobarOrden | Acción completada: Financiero/AprobarOrden
+2026-02-23 09:04:37.760 | INFO  | CID:N/A | Iniciando procesador de cola de correos
+2026-02-23 09:04:46.340 | INFO  | CID:7599d9d9c7b6 | Account/Login | Iniciando acción: Account/Login
+2026-02-23 09:04:47.305 | INFO  | CID:7599d9d9c7b6 | Account/Login | Acción completada: Account/Login
+2026-02-23 09:05:07.404 | INFO  | CID:00012f634199 | USR:USU_ADMIN | OrdenRecaudacion/Nueva | Iniciando acción: OrdenRecaudacion/Nueva
+2026-02-23 09:05:07.652 | INFO  | CID:00012f634199 | USR:USU_ADMIN | OrdenRecaudacion/Nueva | Acción completada: OrdenRecaudacion/Nueva
+2026-02-23 09:05:12.319 | INFO  | CID:50921fa3e896 | USR:USU_ADMIN | OrdenRecaudacion/Generar | Iniciando acción: OrdenRecaudacion/Generar
+2026-02-23 09:05:15.703 | INFO  | CID:e4dce8e80618 | Correo con adjunto enviado exitosamente a gercavi82@gmail.com
+2026-02-23 09:05:15.703 | INFO  | CID:50921fa3e896 | USR:USU_ADMIN | OrdenRecaudacion/Generar | Acción completada: OrdenRecaudacion/Generar
+2026-02-23 10:27:27.659 | INFO  | CID:b36e557163ec | Account/Login | Iniciando acción: Account/Login
+2026-02-23 10:27:28.251 | INFO  | CID:b36e557163ec | Account/Login | Acción completada: Account/Login
+2026-02-23 10:56:57.069 | INFO  | CID:N/A | Iniciando procesador de cola de correos
+2026-02-23 10:59:59.695 | INFO  | CID:N/A | Iniciando procesador de cola de correos
+2026-02-23 11:00:10.796 | INFO  | CID:1d5b96b7e512 | Account/Login | Iniciando acción: Account/Login
+2026-02-23 11:00:11.629 | INFO  | CID:1d5b96b7e512 | Account/Login | Acción completada: Account/Login
+2026-02-23 11:00:34.916 | INFO  | CID:970e1990b4e1 | USR:USU_ADMIN | OrdenRecaudacion/Nueva | Iniciando acción: OrdenRecaudacion/Nueva
+2026-02-23 11:00:35.291 | INFO  | CID:970e1990b4e1 | USR:USU_ADMIN | OrdenRecaudacion/Nueva | Acción completada: OrdenRecaudacion/Nueva
+2026-02-23 11:00:42.191 | INFO  | CID:a0f12d85e11f | USR:USU_ADMIN | OrdenRecaudacion/Generar | Iniciando acción: OrdenRecaudacion/Generar
+2026-02-23 11:00:45.507 | INFO  | CID:fac9eb80e575 | Correo con adjunto enviado exitosamente a gercavi82@gmail.com
+2026-02-23 11:00:45.511 | INFO  | CID:a0f12d85e11f | USR:USU_ADMIN | OrdenRecaudacion/Generar | Acción completada: OrdenRecaudacion/Generar

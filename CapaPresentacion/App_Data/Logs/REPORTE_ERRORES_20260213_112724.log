@@ -1,0 +1,36 @@
+﻿REPORTE DE ERRORES AOCR
+Generado: 2026-02-13 11:27:24
+Ventana analizada: desde 2026-02-12 11:27:24
+Carpeta logs: C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\CapaPresentacion\App_Data\Logs
+
+ARCHIVOS ANALIZADOS
+- AOCR_20260212.log | 46140 bytes | modificado 2026-02-12 16:31:05
+- AOCR_20260213.log | 66612 bytes | modificado 2026-02-13 11:23:18
+
+RESUMEN DE NIVELES
+- ERROR: 6
+- INFO: 742
+
+ERRORES DETECTADOS (AOCR_*.log): 6
+1. [AOCR_20260212.log] 2026-02-12 08:31:24.528 | ERROR | CID:54c981210ee743c0807fdea4dde38763 | USR:1713091955 | Account/Login | ERR:INTERNAL_ERROR | El token antifalsificación proporcionado se diseñó para el usuario "" pero el usuario actual es "1713091955".
+   Exception: HttpAntiForgeryException
+2. [AOCR_20260212.log] 2026-02-12 08:31:29.579 | ERROR | CID:4a0cab3115f04eddbd1df07c1ad8f17e | USR:1713091955 | Account/Login | ERR:INTERNAL_ERROR | El token antifalsificación proporcionado se diseñó para el usuario "" pero el usuario actual es "1713091955".
+   Exception: HttpAntiForgeryException
+3. [AOCR_20260212.log] 2026-02-12 14:06:57.464 | ERROR | CID:fc8f8d9a90dc | USR:USU_ADMIN | Usuario/RevisarDesignaciones | ERR:INTERNAL_ERROR | Palabra clave "using" inesperada después del carácter "@". Una vez dentro del código, no es necesario añadir prefijos a las construcciones, como "using" con "@".
+4. [AOCR_20260213.log] 2026-02-13 10:11:50.403 | ERROR | CID:0c6638742381 | USR:USU_ADMIN | ERR:GLOBAL_ERROR | No se encuentra el controlador de la ruta de acceso '/Content/imagenes/favicon.ico' o no implementa IController.
+   Exception: HttpException
+5. [AOCR_20260213.log] 2026-02-13 10:58:25.928 | ERROR | CID:182e22fa8970 | USR:1709565459 | ERR:GLOBAL_ERROR | La solicitud actual para la acción 'Anular' en el tipo de controlador 'OrdenRecaudacionController' es ambigua entre los métodos de acción siguientes: 
+6. [AOCR_20260213.log] 2026-02-13 11:03:12.209 | ERROR | CID:4153dd894f89 | Account/EnviarRecuperar | ERR:INTERNAL_ERROR | El campo de formulario antifalsificación "__RequestVerificationToken" no está presente.
+   Exception: HttpAntiForgeryException
+
+TOP CODIGOS ERR
+- GLOBAL_ERROR: 2
+- INTERNAL_ERROR: 4
+
+UNHANDLED EXCEPTIONS (Ãºltimos 1 dÃ­as): 2
+1. 2026-02-12 14:06:57.452 | Usuario/RevisarDesignaciones | System.Web.HttpParseException (0x80004005): Palabra clave "using" inesperada despuÃ©s del carÃ¡cter "@". Una vez dentro del cÃ³digo, no es necesario aÃ±adir prefijos a las construcciones, como "using" con "@".
+2. 2026-02-13 11:03:12.205 | Account/EnviarRecuperar | System.Web.Mvc.HttpAntiForgeryException (0x80004005): El campo de formulario antifalsificaciÃ³n "__RequestVerificationToken" no estÃ¡ presente.
+
+TOP TIPOS DE EXCEPCION (Unhandled)
+- System.Web.HttpParseException: 1
+- System.Web.Mvc.HttpAntiForgeryException: 1

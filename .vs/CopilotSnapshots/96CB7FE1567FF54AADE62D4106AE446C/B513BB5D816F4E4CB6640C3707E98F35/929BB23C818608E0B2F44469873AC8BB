@@ -1,0 +1,55 @@
+﻿@model List<CapaModelo.SolicitudAOCR>
+@using CapaModelo
+@using System.Web.Mvc
+@using System.Web.Mvc.Html
+
+@{
+    ViewBag.Title = "Solicitudes Pendientes de Revisión";
+    Layout = "~/Views/Shared/_LayoutAOCR.cshtml";
+}
+
+<h3 class="mb-3">Solicitudes Pendientes de Revisión</h3>
+
+<table class="table table-bordered table-hover table-sm">
+    <thead class="thead-light">
+        <tr>
+            <th>Código</th>
+            <th>Operador</th>
+            <th>Fecha Solicitud</th>
+            <th>Estado</th>
+            <th>Acciones</th>
+        </tr>
+    </thead>
+    <tbody>
+        @if (Model != null && Model.Any())
+        {
+            foreach (var item in Model)
+            {
+                <tr>
+                    <td>@Html.Encode(item.CodigoSolicitud)</td>
+                    <td>@Html.Encode(item.NombreOperador)</td>
+                    <td>@(item.FechaSolicitud.HasValue ? item.FechaSolicitud.Value.ToString("yyyy-MM-dd") : "")</td>
+                    <td>@item.Estado</td>
+                    <td>
+                        @Html.ActionLink(
+                            "Revisar",
+                            "Detalle",
+                            "SolicitudAOCR",
+                            new { id = item.CodigoSolicitud },
+                            new { @class = "btn btn-sm btn-info" }
+                        )
+                    </td>
+                </tr>
+            }
+        }
+        else
+        {
+            <tr>
+                <td colspan="5" class="text-center">No hay solicitudes pendientes.</td>
+            </tr>
+        }
+    </tbody>
+</table>
+
+
+

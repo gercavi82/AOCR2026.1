@@ -537,6 +537,23 @@
             return (decisionActual == "DEVUELTO" || decisionActual == "OBSERVADO")
                    && string.IsNullOrWhiteSpace(observacionActual);
         });
+        var documentosSinDecision = totalDocumentosRevision - documentosRevisados;
+        var todosDocumentosAceptados = totalDocumentosRevision > 0 && documentosRevision.All(doc =>
+        {
+            Tuple<string, string> revisionActual;
+            var decisionActual = revisionesDocumentales.TryGetValue(doc.CodigoDocumento, out revisionActual) && revisionActual != null
+                ? (revisionActual.Item1 ?? string.Empty).Trim().ToUpperInvariant()
+                : ((RevisionDocumentalDisplayHelper.IsAcceptedState(doc.Estado) ? "ACEPTADO" : (RevisionDocumentalDisplayHelper.IsReturnedState(doc.Estado) ? "DEVUELTO" : string.Empty)));
+            return decisionActual == "ACEPTADO";
+        });
+        var existeObservadoODevuelto = documentosRevision.Any(doc =>
+        {
+            Tuple<string, string> revisionActual;
+            var decisionActual = revisionesDocumentales.TryGetValue(doc.CodigoDocumento, out revisionActual) && revisionActual != null
+                ? (revisionActual.Item1 ?? string.Empty).Trim().ToUpperInvariant()
+                : ((RevisionDocumentalDisplayHelper.IsAcceptedState(doc.Estado) ? "ACEPTADO" : (RevisionDocumentalDisplayHelper.IsReturnedState(doc.Estado) ? "DEVUELTO" : string.Empty)));
+            return decisionActual == "DEVUELTO" || decisionActual == "OBSERVADO";
+        });
 
         <div class="card aocr-detail-card aocr-review-card success mb-4">
             <div class="card-body p-4">
@@ -606,7 +623,7 @@
                                         </td>
                                         <td><span class="@claseBadge">@estadoVisible</span></td>
                                         <td style="min-width: 170px;">
-                                            <select name="decision" class="form-select form-select-sm js-decision-documental" required form="@formId">
+                                            <select name="decision" class="form-select form-select-sm js-decision-documental" data-codigo-documento="@doc.CodigoDocumento" required form="@formId">
                                                 <option value="">Seleccione</option>
                                                 <option value="ACEPTADO" @(decisionActual == "ACEPTADO" ? "selected" : null)>Aceptado</option>
                                                 <option value="DEVUELTO" @(decisionActual == "DEVUELTO" ? "selected" : null)>Devuelto</option>
@@ -614,7 +631,7 @@
                                             </select>
                                         </td>
                                         <td style="min-width: 280px;">
-                                            <input type="text" name="observacion" class="form-control form-control-sm js-observacion-documental" placeholder="Observacion del revisor" maxlength="500" value="@observacionActual" form="@formId" />
+                                            <input type="text" name="observacion" class="form-control form-control-sm js-observacion-documental" data-codigo-documento="@doc.CodigoDocumento" placeholder="Observacion del revisor" maxlength="500" value="@observacionActual" form="@formId" />
                                         </td>
                                         <td class="text-end">
                                             <form id="@formId" method="post" action="@Url.Action("RevisarDocumentoItem", "SolicitudAOCR")" class="d-inline js-form-revision-documental">
@@ -635,18 +652,31 @@
                     <div class="alert alert-light border mt-3 mb-0">
                         <div class="d-flex flex-column flex-lg-row justify-content-between align-items-lg-center gap-3">
                             <div>
-                                <div class="fw-semibold text-dark">Cierre de revisión documental</div>
-                                <div class="text-muted small">Antes de enviar, todos los documentos deben estar revisados y cada documento devuelto/observado debe incluir una observación.</div>
+                                <div class="fw-semibold text-dark">Acción masiva de revisión documental</div>
+                                <div class="text-muted small">Si todos están en Aceptado, puede aprobar masivamente. Si existe al menos un documento Observado/Devuelto, registre devolución/observaciones masivas.</div>
+                                <div class="small mt-1 text-secondary">Sin decisión: <strong id="lblDocsSinDecision">@documentosSinDecision</strong> · Observaciones pendientes: <strong id="lblDocsObsPendientes">@documentosConObservacionPendiente</strong></div>
                             </div>
-                            <form method="post" action="@Url.Action("FinalizarRevisionDocumental", "SolicitudAOCR")" class="m-0">
+                            <form id="frmRevisionMasiva" method="post" action="@Url.Action("AccionMasivaRevisionDocumental", "SolicitudAOCR")" class="m-0">
                                 @Html.AntiForgeryToken()
                                 <input type="hidden" name="id" value="@Model.CodigoSolicitud" />
-                                <button type="submit"
-                                        class="btn btn-success aocr-action-btn"
-                                        @(puedeFinalizarRevisionDocumental ? null : "disabled=\"disabled\" title=\"Complete todas las revisiones documentales antes de enviar.\"")>
-                                    <i class="fas fa-paper-plane"></i>
-                                    Enviar revisión documental
-                                </button>
+                                <input type="hidden" name="tipoAccion" id="tipoAccionMasiva" value="" />
+                                <input type="hidden" name="revisionesJson" id="revisionesJsonMasiva" value="" />
+                                <div class="d-flex flex-wrap gap-2 justify-content-end">
+                                    <button type="button"
+                                            id="btnAprobarTodosDocumentos"
+                                            class="btn btn-success aocr-action-btn"
+                                            @((puedeFinalizarRevisionDocumental && todosDocumentosAceptados) ? null : "disabled=\"disabled\"")>
+                                        <i class="fas fa-check-double"></i>
+                                        Aprobar todos los documentos
+                                    </button>
+                                    <button type="button"
+                                            id="btnRegistrarObsMasiva"
+                                            class="btn btn-outline-danger aocr-action-btn"
+                                            @((puedeFinalizarRevisionDocumental && existeObservadoODevuelto) ? null : "disabled=\"disabled\"")>
+                                        <i class="fas fa-comment-dots"></i>
+                                        Registrar observaciones/devolución masiva
+                                    </button>
+                                </div>
                             </form>
                         </div>
                     </div>
@@ -881,6 +911,97 @@
                 return decision === "DEVUELTO" || decision === "OBSERVADO";
             }
 
+            function obtenerFilasRevision() {
+                var decisiones = Array.prototype.slice.call(document.querySelectorAll(".js-decision-documental"));
+                return decisiones.map(function (controlDecision) {
+                    var codigo = parseInt(controlDecision.getAttribute("data-codigo-documento") || "0", 10);
+                    var observacion = document.querySelector('.js-observacion-documental[data-codigo-documento="' + codigo + '"]');
+                    var decision = (controlDecision.value || "").trim().toUpperCase();
+                    var textoObs = observacion ? (observacion.value || "").trim() : "";
+                    return {
+                        codigoDocumento: codigo,
+                        decision: decision,
+                        observacion: textoObs
+                    };
+                });
+            }
+
+            function evaluarAccionesMasivas() {
+                var filas = obtenerFilasRevision();
+                if (!filas.length) {
+                    return;
+                }
+
+                var sinDecision = filas.filter(function (f) { return !f.decision; }).length;
+                var obsPendientes = filas.filter(function (f) {
+                    return requiereObservacion(f.decision) && !f.observacion;
+                }).length;
+                var todosAceptados = filas.length > 0 && filas.every(function (f) { return f.decision === "ACEPTADO"; });
+                var existeObservadoODevuelto = filas.some(function (f) { return f.decision === "DEVUELTO" || f.decision === "OBSERVADO"; });
+
+                var btnAprobar = document.getElementById("btnAprobarTodosDocumentos");
+                var btnObs = document.getElementById("btnRegistrarObsMasiva");
+                if (btnAprobar) {
+                    btnAprobar.disabled = !(todosAceptados && sinDecision === 0 && obsPendientes === 0);
+                }
+                if (btnObs) {
+                    btnObs.disabled = !(existeObservadoODevuelto && sinDecision === 0 && obsPendientes === 0);
+                }
+
+                var lblSinDecision = document.getElementById("lblDocsSinDecision");
+                if (lblSinDecision) {
+                    lblSinDecision.textContent = sinDecision;
+                }
+                var lblObsPendientes = document.getElementById("lblDocsObsPendientes");
+                if (lblObsPendientes) {
+                    lblObsPendientes.textContent = obsPendientes;
+                }
+            }
+
+            function enviarAccionMasiva(tipoAccion) {
+                var filas = obtenerFilasRevision();
+                if (!filas.length) {
+                    alert("No existen documentos para revisión masiva.");
+                    return;
+                }
+
+                var sinDecision = filas.filter(function (f) { return !f.decision; });
+                if (sinDecision.length > 0) {
+                    alert("No se puede ejecutar la acción masiva: existen documentos sin decisión.");
+                    return;
+                }
+
+                var sinObs = filas.filter(function (f) { return requiereObservacion(f.decision) && !f.observacion; });
+                if (sinObs.length > 0) {
+                    alert("No se puede ejecutar la acción masiva: todo documento observado/devuelto requiere observación.");
+                    return;
+                }
+
+                var todosAceptados = filas.every(function (f) { return f.decision === "ACEPTADO"; });
+                var existeObservadoODevuelto = filas.some(function (f) { return f.decision === "DEVUELTO" || f.decision === "OBSERVADO"; });
+
+                if (tipoAccion === "APROBAR_TODOS" && !todosAceptados) {
+                    alert("La aprobación masiva solo está disponible cuando todos los documentos están en Aceptado.");
+                    return;
+                }
+
+                if (tipoAccion === "REGISTRAR_OBSERVACIONES" && !existeObservadoODevuelto) {
+                    alert("Para registrar devolución/observaciones masivas debe existir al menos un documento observado o devuelto.");
+                    return;
+                }
+
+                var tipoAccionInput = document.getElementById("tipoAccionMasiva");
+                var revisionesJsonInput = document.getElementById("revisionesJsonMasiva");
+                var form = document.getElementById("frmRevisionMasiva");
+                if (!tipoAccionInput || !revisionesJsonInput || !form) {
+                    return;
+                }
+
+                tipoAccionInput.value = tipoAccion;
+                revisionesJsonInput.value = JSON.stringify(filas);
+                form.submit();
+            }
+
             document.querySelectorAll(".js-form-revision-documental").forEach(function (form) {
                 form.addEventListener("submit", function (event) {
                     var decision = form.elements.namedItem("decision");
@@ -906,6 +1027,27 @@
                     }
                 });
             });
+
+            document.querySelectorAll(".js-decision-documental, .js-observacion-documental").forEach(function (control) {
+                control.addEventListener("change", evaluarAccionesMasivas);
+                control.addEventListener("input", evaluarAccionesMasivas);
+            });
+
+            var btnAprobarTodos = document.getElementById("btnAprobarTodosDocumentos");
+            if (btnAprobarTodos) {
+                btnAprobarTodos.addEventListener("click", function () {
+                    enviarAccionMasiva("APROBAR_TODOS");
+                });
+            }
+
+            var btnRegistrarObs = document.getElementById("btnRegistrarObsMasiva");
+            if (btnRegistrarObs) {
+                btnRegistrarObs.addEventListener("click", function () {
+                    enviarAccionMasiva("REGISTRAR_OBSERVACIONES");
+                });
+            }
+
+            evaluarAccionesMasivas();
         })();
     </script>
 }

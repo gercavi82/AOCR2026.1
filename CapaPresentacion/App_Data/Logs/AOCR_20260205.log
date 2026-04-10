@@ -1,0 +1,443 @@
+﻿2026-02-05 07:47:07.510 | INFO  | CID:N/A | Iniciando procesador de cola de correos
+2026-02-05 07:47:15.142 | INFO  | CID:b2104480abd8 | Account/Login | Iniciando acción: Account/Login
+2026-02-05 07:47:15.872 | INFO  | CID:b2104480abd8 | Account/Login | Acción completada: Account/Login
+2026-02-05 07:50:50.371 | INFO  | CID:N/A | Iniciando procesador de cola de correos
+2026-02-05 07:50:57.019 | INFO  | CID:aa33628efd77 | USR:USU_ADMIN | Account/Login | Iniciando acción: Account/Login
+2026-02-05 07:50:57.546 | INFO  | CID:aa33628efd77 | USR:USU_ADMIN | Account/Login | Acción completada: Account/Login
+2026-02-05 08:19:01.486 | INFO  | CID:N/A | Iniciando procesador de cola de correos
+2026-02-05 08:19:02.351 | ERROR | CID:3e4a69e4f92b | USR:USU_ADMIN | Account/Login | ERR:INTERNAL_ERROR | Se ha producido un error al crear el controlador de sección de configuración para system.web.webPages.razor/host: No se puede cargar el archivo o ensamblado 'System.Web.WebPages.Razor, Version=3.2.9.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35' ni una de sus dependencias. La definición del manifiesto del ensamblado no coincide con la referencia al ensamblado. (Excepción de HRESULT: 0x80131040) (C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\CapaPresentacion\views\web.config line 7)
+    Exception: ConfigurationErrorsException
+    StackTrace:    en System.Configuration.BaseConfigurationRecord.FindAndEnsureFactoryRecord(String configKey, Boolean& isRootDeclaredHere)
+   en System.Configuration.BaseConfigurationRecord.GetSectionRecursive(String configKey, Boolean getLkg, Boolean checkPermission, Boolean getRuntimeObject, Boolean requestIsHere, Object& result, Object& resultRuntimeObject)
+   en System.Configuration.BaseConfigurationRecord.GetSection(String configKey)
+   en System.Web.Configuration.WebConfigurationManager.GetSection(String sectionName, String path)
+   en System.Web.WebPages.Razor.WebRazorHostFactory.GetRazorSection(String virtualPath)
+   en System.Web.WebPages.Razor.WebRazorHostFactory.CreateHostFromConfig(String virtualPath, String physicalPath)
+   en System.Web.WebPages.Razor.RazorBuildProvider.GetHostFromConfig()
+   en System.Web.WebPages.Razor.RazorBuildProvider.CreateHost()
+   en System.Web.WebPages.Razor.RazorBuildProvider.EnsureGeneratedCode()
+   en System.Web.WebPages.Razor.RazorBuildProvider.get_CodeCompilerType()
+   en System.Web.Compilation.BuildProvider.GetCompilerTypeFromBuildProvider(BuildProvider buildProvider)
+   en System.Web.Compilation.BuildProvidersCompiler.ProcessBuildProviders()
+   en System.Web.Compilation.BuildProvidersCompiler.PerformBuild()
+   en System.Web.Compilation.BuildManager.CompileWebFile(VirtualPath virtualPath)
+   en System.Web.Compilation.BuildManager.GetVPathBuildResultInternal(VirtualPath virtualPath, Boolean noBuild, Boolean allowCrossApp, Boolean allowBuildInPrecompile, Boolean throwIfNotFound, Boolean ensureIsUpToDate)
+   en System.Web.Compilation.BuildManager.GetVPathBuildResultWithNoAssert(HttpContext context, VirtualPath virtualPath, Boolean noBuild, Boolean allowCrossApp, Boolean allowBuildInPrecompile, Boolean throwIfNotFound, Boolean ensureIsUpToDate)
+   en System.Web.Compilation.BuildManager.GetVirtualPathObjectFactory(VirtualPath virtualPath, HttpContext context, Boolean allowCrossApp, Boolean throwIfNotFound)
+   en System.Web.Compilation.BuildManager.GetCompiledType(VirtualPath virtualPath)
+   en System.Web.Mvc.BuildManagerCompiledView.Render(ViewContext viewContext, TextWriter writer)
+   en System.Web.Mvc.ViewResultBase.ExecuteResult(ControllerContext context)
+   en System.Web.Mvc.ControllerActionInvoker.InvokeActionResultFilterRecursive(IList`1 filters, Int32 filterIndex, ResultExecutingContext preContext, ControllerContext controllerContext, ActionResult actionResult)
+   en System.Web.Mvc.ControllerActionInvoker.InvokeActionResultFilterRecursive(IList`1 filters, Int32 filterIndex, ResultExecutingContext preContext, ControllerContext controllerContext, ActionResult actionResult)
+   en System.Web.Mvc.ControllerActionInvoker.InvokeActionResultFilterRecursive(IList`1 filters, Int32 filterIndex, ResultExecutingContext preContext, ControllerContext controllerContext, ActionResult actionResult)
+   en System.Web.Mvc.ControllerActionInvoker.InvokeActionResultFilterRecursive(IList`1 filters, Int32 filterIndex, ResultExecutingContext preContext, ControllerContext controllerContext, ActionResult actionResult)
+   en System.Web.Mvc.ControllerActionInvoker.InvokeActionResultWithFilters(ControllerContext controllerContext, IList`1 filters, ActionResult actionResult)
+   en System.Web.Mvc.Async.AsyncControllerActionInvoker.<>c__DisplayClass3_1.<BeginInvokeAction>b__1(IAsyncResult asyncResult)
+    InnerException: FileLoadException - No se puede cargar el archivo o ensamblado 'System.Web.WebPages.Razor, Version=3.2.9.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35' ni una de sus dependencias. La definición del manifiesto del ensamblado no coincide con la referencia al ensamblado. (Excepción de HRESULT: 0x80131040)
+2026-02-05 08:19:02.436 | ERROR | CID:3483f766444b | USR:USU_ADMIN | Error/Index | ERR:INTERNAL_ERROR | Se ha producido un error al crear el controlador de sección de configuración para system.web.webPages.razor/host: No se puede cargar el archivo o ensamblado 'System.Web.WebPages.Razor, Version=3.2.9.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35' ni una de sus dependencias. La definición del manifiesto del ensamblado no coincide con la referencia al ensamblado. (Excepción de HRESULT: 0x80131040) (C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\CapaPresentacion\views\web.config line 7)
+    Exception: ConfigurationErrorsException
+    StackTrace:    en System.Configuration.BaseConfigurationRecord.FindAndEnsureFactoryRecord(String configKey, Boolean& isRootDeclaredHere)
+   en System.Configuration.BaseConfigurationRecord.GetSectionRecursive(String configKey, Boolean getLkg, Boolean checkPermission, Boolean getRuntimeObject, Boolean requestIsHere, Object& result, Object& resultRuntimeObject)
+   en System.Configuration.BaseConfigurationRecord.GetSection(String configKey)
+   en System.Web.Configuration.WebConfigurationManager.GetSection(String sectionName, String path)
+   en System.Web.WebPages.Razor.WebRazorHostFactory.GetRazorSection(String virtualPath)
+   en System.Web.WebPages.Razor.WebRazorHostFactory.CreateHostFromConfig(String virtualPath, String physicalPath)
+   en System.Web.WebPages.Razor.RazorBuildProvider.GetHostFromConfig()
+   en System.Web.WebPages.Razor.RazorBuildProvider.CreateHost()
+   en System.Web.WebPages.Razor.RazorBuildProvider.EnsureGeneratedCode()
+   en System.Web.WebPages.Razor.RazorBuildProvider.get_CodeCompilerType()
+   en System.Web.Compilation.BuildProvider.GetCompilerTypeFromBuildProvider(BuildProvider buildProvider)
+   en System.Web.Compilation.BuildProvidersCompiler.ProcessBuildProviders()
+   en System.Web.Compilation.BuildProvidersCompiler.PerformBuild()
+   en System.Web.Compilation.BuildManager.CompileWebFile(VirtualPath virtualPath)
+   en System.Web.Compilation.BuildManager.GetVPathBuildResultInternal(VirtualPath virtualPath, Boolean noBuild, Boolean allowCrossApp, Boolean allowBuildInPrecompile, Boolean throwIfNotFound, Boolean ensureIsUpToDate)
+   en System.Web.Compilation.BuildManager.GetVPathBuildResultWithNoAssert(HttpContext context, VirtualPath virtualPath, Boolean noBuild, Boolean allowCrossApp, Boolean allowBuildInPrecompile, Boolean throwIfNotFound, Boolean ensureIsUpToDate)
+   en System.Web.Compilation.BuildManager.GetVirtualPathObjectFactory(VirtualPath virtualPath, HttpContext context, Boolean allowCrossApp, Boolean throwIfNotFound)
+   en System.Web.Compilation.BuildManager.GetCompiledType(VirtualPath virtualPath)
+   en System.Web.Mvc.BuildManagerCompiledView.Render(ViewContext viewContext, TextWriter writer)
+   en System.Web.Mvc.ViewResultBase.ExecuteResult(ControllerContext context)
+   en System.Web.Mvc.ControllerActionInvoker.InvokeActionResultFilterRecursive(IList`1 filters, Int32 filterIndex, ResultExecutingContext preContext, ControllerContext controllerContext, ActionResult actionResult)
+   en System.Web.Mvc.ControllerActionInvoker.InvokeActionResultFilterRecursive(IList`1 filters, Int32 filterIndex, ResultExecutingContext preContext, ControllerContext controllerContext, ActionResult actionResult)
+   en System.Web.Mvc.ControllerActionInvoker.InvokeActionResultFilterRecursive(IList`1 filters, Int32 filterIndex, ResultExecutingContext preContext, ControllerContext controllerContext, ActionResult actionResult)
+   en System.Web.Mvc.ControllerActionInvoker.InvokeActionResultFilterRecursive(IList`1 filters, Int32 filterIndex, ResultExecutingContext preContext, ControllerContext controllerContext, ActionResult actionResult)
+   en System.Web.Mvc.ControllerActionInvoker.InvokeActionResultWithFilters(ControllerContext controllerContext, IList`1 filters, ActionResult actionResult)
+   en System.Web.Mvc.Async.AsyncControllerActionInvoker.<>c__DisplayClass3_1.<BeginInvokeAction>b__1(IAsyncResult asyncResult)
+    InnerException: FileLoadException - No se puede cargar el archivo o ensamblado 'System.Web.WebPages.Razor, Version=3.2.9.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35' ni una de sus dependencias. La definición del manifiesto del ensamblado no coincide con la referencia al ensamblado. (Excepción de HRESULT: 0x80131040)
+2026-02-05 08:20:24.565 | INFO  | CID:N/A | Deteniendo procesador de cola de correos
+2026-02-05 08:20:24.617 | INFO  | CID:N/A | Deteniendo procesador de cola de correos
+2026-02-05 08:38:35.990 | INFO  | CID:N/A | Iniciando procesador de cola de correos
+2026-02-05 08:38:37.638 | ERROR | CID:a151b15807d1 | USR:USU_ADMIN | Account/Login | ERR:INTERNAL_ERROR | c:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\CapaPresentacion\Views\Account\Login.cshtml(108): error CS0012: El tipo 'System.Object' está definido en un ensamblado al que no se hace referencia. Debe agregar una referencia al ensamblado 'netstandard, Version=2.0.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51'.
+    Exception: HttpCompileException
+    StackTrace:    en System.Web.Compilation.AssemblyBuilder.Compile()
+   en System.Web.Compilation.BuildProvidersCompiler.PerformBuild()
+   en System.Web.Compilation.BuildManager.CompileWebFile(VirtualPath virtualPath)
+   en System.Web.Compilation.BuildManager.GetVPathBuildResultInternal(VirtualPath virtualPath, Boolean noBuild, Boolean allowCrossApp, Boolean allowBuildInPrecompile, Boolean throwIfNotFound, Boolean ensureIsUpToDate)
+   en System.Web.Compilation.BuildManager.GetVPathBuildResultWithNoAssert(HttpContext context, VirtualPath virtualPath, Boolean noBuild, Boolean allowCrossApp, Boolean allowBuildInPrecompile, Boolean throwIfNotFound, Boolean ensureIsUpToDate)
+   en System.Web.Compilation.BuildManager.GetVirtualPathObjectFactory(VirtualPath virtualPath, HttpContext context, Boolean allowCrossApp, Boolean throwIfNotFound)
+   en System.Web.Compilation.BuildManager.GetCompiledType(VirtualPath virtualPath)
+   en System.Web.Mvc.BuildManagerCompiledView.Render(ViewContext viewContext, TextWriter writer)
+   en System.Web.Mvc.ViewResultBase.ExecuteResult(ControllerContext context)
+   en System.Web.Mvc.ControllerActionInvoker.InvokeActionResultFilterRecursive(IList`1 filters, Int32 filterIndex, ResultExecutingContext preContext, ControllerContext controllerContext, ActionResult actionResult)
+   en System.Web.Mvc.ControllerActionInvoker.InvokeActionResultFilterRecursive(IList`1 filters, Int32 filterIndex, ResultExecutingContext preContext, ControllerContext controllerContext, ActionResult actionResult)
+   en System.Web.Mvc.ControllerActionInvoker.InvokeActionResultFilterRecursive(IList`1 filters, Int32 filterIndex, ResultExecutingContext preContext, ControllerContext controllerContext, ActionResult actionResult)
+   en System.Web.Mvc.ControllerActionInvoker.InvokeActionResultFilterRecursive(IList`1 filters, Int32 filterIndex, ResultExecutingContext preContext, ControllerContext controllerContext, ActionResult actionResult)
+   en System.Web.Mvc.ControllerActionInvoker.InvokeActionResultWithFilters(ControllerContext controllerContext, IList`1 filters, ActionResult actionResult)
+   en System.Web.Mvc.Async.AsyncControllerActionInvoker.<>c__DisplayClass3_1.<BeginInvokeAction>b__1(IAsyncResult asyncResult)
+2026-02-05 08:38:42.449 | ERROR | CID:314973d6bc92 | USR:USU_ADMIN | Account/Login | ERR:INTERNAL_ERROR | c:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\CapaPresentacion\Views\Account\Login.cshtml(108): error CS0012: El tipo 'System.Object' está definido en un ensamblado al que no se hace referencia. Debe agregar una referencia al ensamblado 'netstandard, Version=2.0.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51'.
+    Exception: HttpCompileException
+    StackTrace:    en System.Web.Compilation.BuildManager.PostProcessFoundBuildResult(BuildResult result, Boolean keyFromVPP, VirtualPath virtualPath)
+   en System.Web.Compilation.BuildManager.GetBuildResultFromCacheInternal(String cacheKey, Boolean keyFromVPP, VirtualPath virtualPath, Int64 hashCode, Boolean ensureIsUpToDate)
+   en System.Web.Compilation.BuildManager.GetVPathBuildResultFromCacheInternal(VirtualPath virtualPath, Boolean ensureIsUpToDate)
+   en System.Web.Compilation.BuildManager.GetVPathBuildResultInternal(VirtualPath virtualPath, Boolean noBuild, Boolean allowCrossApp, Boolean allowBuildInPrecompile, Boolean throwIfNotFound, Boolean ensureIsUpToDate)
+   en System.Web.Compilation.BuildManager.GetVPathBuildResultWithNoAssert(HttpContext context, VirtualPath virtualPath, Boolean noBuild, Boolean allowCrossApp, Boolean allowBuildInPrecompile, Boolean throwIfNotFound, Boolean ensureIsUpToDate)
+   en System.Web.Compilation.BuildManager.GetVirtualPathObjectFactory(VirtualPath virtualPath, HttpContext context, Boolean allowCrossApp, Boolean throwIfNotFound)
+   en System.Web.Compilation.BuildManager.GetCompiledType(VirtualPath virtualPath)
+   en System.Web.Mvc.BuildManagerCompiledView.Render(ViewContext viewContext, TextWriter writer)
+   en System.Web.Mvc.ViewResultBase.ExecuteResult(ControllerContext context)
+   en System.Web.Mvc.ControllerActionInvoker.InvokeActionResultFilterRecursive(IList`1 filters, Int32 filterIndex, ResultExecutingContext preContext, ControllerContext controllerContext, ActionResult actionResult)
+   en System.Web.Mvc.ControllerActionInvoker.InvokeActionResultFilterRecursive(IList`1 filters, Int32 filterIndex, ResultExecutingContext preContext, ControllerContext controllerContext, ActionResult actionResult)
+   en System.Web.Mvc.ControllerActionInvoker.InvokeActionResultFilterRecursive(IList`1 filters, Int32 filterIndex, ResultExecutingContext preContext, ControllerContext controllerContext, ActionResult actionResult)
+   en System.Web.Mvc.ControllerActionInvoker.InvokeActionResultFilterRecursive(IList`1 filters, Int32 filterIndex, ResultExecutingContext preContext, ControllerContext controllerContext, ActionResult actionResult)
+   en System.Web.Mvc.ControllerActionInvoker.InvokeActionResultWithFilters(ControllerContext controllerContext, IList`1 filters, ActionResult actionResult)
+   en System.Web.Mvc.Async.AsyncControllerActionInvoker.<>c__DisplayClass3_1.<BeginInvokeAction>b__1(IAsyncResult asyncResult)
+2026-02-05 08:38:44.130 | ERROR | CID:e7bf143a61d3 | USR:USU_ADMIN | Account/Login | ERR:INTERNAL_ERROR | c:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\CapaPresentacion\Views\Account\Login.cshtml(108): error CS0012: El tipo 'System.Object' está definido en un ensamblado al que no se hace referencia. Debe agregar una referencia al ensamblado 'netstandard, Version=2.0.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51'.
+    Exception: HttpCompileException
+    StackTrace:    en System.Web.Compilation.BuildManager.PostProcessFoundBuildResult(BuildResult result, Boolean keyFromVPP, VirtualPath virtualPath)
+   en System.Web.Compilation.BuildManager.GetBuildResultFromCacheInternal(String cacheKey, Boolean keyFromVPP, VirtualPath virtualPath, Int64 hashCode, Boolean ensureIsUpToDate)
+   en System.Web.Compilation.BuildManager.GetVPathBuildResultFromCacheInternal(VirtualPath virtualPath, Boolean ensureIsUpToDate)
+   en System.Web.Compilation.BuildManager.GetVPathBuildResultInternal(VirtualPath virtualPath, Boolean noBuild, Boolean allowCrossApp, Boolean allowBuildInPrecompile, Boolean throwIfNotFound, Boolean ensureIsUpToDate)
+   en System.Web.Compilation.BuildManager.GetVPathBuildResultWithNoAssert(HttpContext context, VirtualPath virtualPath, Boolean noBuild, Boolean allowCrossApp, Boolean allowBuildInPrecompile, Boolean throwIfNotFound, Boolean ensureIsUpToDate)
+   en System.Web.Compilation.BuildManager.GetVirtualPathObjectFactory(VirtualPath virtualPath, HttpContext context, Boolean allowCrossApp, Boolean throwIfNotFound)
+   en System.Web.Compilation.BuildManager.GetCompiledType(VirtualPath virtualPath)
+   en System.Web.Mvc.BuildManagerCompiledView.Render(ViewContext viewContext, TextWriter writer)
+   en System.Web.Mvc.ViewResultBase.ExecuteResult(ControllerContext context)
+   en System.Web.Mvc.ControllerActionInvoker.InvokeActionResultFilterRecursive(IList`1 filters, Int32 filterIndex, ResultExecutingContext preContext, ControllerContext controllerContext, ActionResult actionResult)
+   en System.Web.Mvc.ControllerActionInvoker.InvokeActionResultFilterRecursive(IList`1 filters, Int32 filterIndex, ResultExecutingContext preContext, ControllerContext controllerContext, ActionResult actionResult)
+   en System.Web.Mvc.ControllerActionInvoker.InvokeActionResultFilterRecursive(IList`1 filters, Int32 filterIndex, ResultExecutingContext preContext, ControllerContext controllerContext, ActionResult actionResult)
+   en System.Web.Mvc.ControllerActionInvoker.InvokeActionResultFilterRecursive(IList`1 filters, Int32 filterIndex, ResultExecutingContext preContext, ControllerContext controllerContext, ActionResult actionResult)
+   en System.Web.Mvc.ControllerActionInvoker.InvokeActionResultWithFilters(ControllerContext controllerContext, IList`1 filters, ActionResult actionResult)
+   en System.Web.Mvc.Async.AsyncControllerActionInvoker.<>c__DisplayClass3_1.<BeginInvokeAction>b__1(IAsyncResult asyncResult)
+2026-02-05 08:38:44.811 | ERROR | CID:8388ea8ffbad | USR:USU_ADMIN | Account/Login | ERR:INTERNAL_ERROR | c:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\CapaPresentacion\Views\Account\Login.cshtml(108): error CS0012: El tipo 'System.Object' está definido en un ensamblado al que no se hace referencia. Debe agregar una referencia al ensamblado 'netstandard, Version=2.0.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51'.
+    Exception: HttpCompileException
+    StackTrace:    en System.Web.Compilation.BuildManager.PostProcessFoundBuildResult(BuildResult result, Boolean keyFromVPP, VirtualPath virtualPath)
+   en System.Web.Compilation.BuildManager.GetBuildResultFromCacheInternal(String cacheKey, Boolean keyFromVPP, VirtualPath virtualPath, Int64 hashCode, Boolean ensureIsUpToDate)
+   en System.Web.Compilation.BuildManager.GetVPathBuildResultFromCacheInternal(VirtualPath virtualPath, Boolean ensureIsUpToDate)
+   en System.Web.Compilation.BuildManager.GetVPathBuildResultInternal(VirtualPath virtualPath, Boolean noBuild, Boolean allowCrossApp, Boolean allowBuildInPrecompile, Boolean throwIfNotFound, Boolean ensureIsUpToDate)
+   en System.Web.Compilation.BuildManager.GetVPathBuildResultWithNoAssert(HttpContext context, VirtualPath virtualPath, Boolean noBuild, Boolean allowCrossApp, Boolean allowBuildInPrecompile, Boolean throwIfNotFound, Boolean ensureIsUpToDate)
+   en System.Web.Compilation.BuildManager.GetVirtualPathObjectFactory(VirtualPath virtualPath, HttpContext context, Boolean allowCrossApp, Boolean throwIfNotFound)
+   en System.Web.Compilation.BuildManager.GetCompiledType(VirtualPath virtualPath)
+   en System.Web.Mvc.BuildManagerCompiledView.Render(ViewContext viewContext, TextWriter writer)
+   en System.Web.Mvc.ViewResultBase.ExecuteResult(ControllerContext context)
+   en System.Web.Mvc.ControllerActionInvoker.InvokeActionResultFilterRecursive(IList`1 filters, Int32 filterIndex, ResultExecutingContext preContext, ControllerContext controllerContext, ActionResult actionResult)
+   en System.Web.Mvc.ControllerActionInvoker.InvokeActionResultFilterRecursive(IList`1 filters, Int32 filterIndex, ResultExecutingContext preContext, ControllerContext controllerContext, ActionResult actionResult)
+   en System.Web.Mvc.ControllerActionInvoker.InvokeActionResultFilterRecursive(IList`1 filters, Int32 filterIndex, ResultExecutingContext preContext, ControllerContext controllerContext, ActionResult actionResult)
+   en System.Web.Mvc.ControllerActionInvoker.InvokeActionResultFilterRecursive(IList`1 filters, Int32 filterIndex, ResultExecutingContext preContext, ControllerContext controllerContext, ActionResult actionResult)
+   en System.Web.Mvc.ControllerActionInvoker.InvokeActionResultWithFilters(ControllerContext controllerContext, IList`1 filters, ActionResult actionResult)
+   en System.Web.Mvc.Async.AsyncControllerActionInvoker.<>c__DisplayClass3_1.<BeginInvokeAction>b__1(IAsyncResult asyncResult)
+2026-02-05 08:38:45.396 | ERROR | CID:c2553cdb856d | USR:USU_ADMIN | Account/Login | ERR:INTERNAL_ERROR | c:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\CapaPresentacion\Views\Account\Login.cshtml(108): error CS0012: El tipo 'System.Object' está definido en un ensamblado al que no se hace referencia. Debe agregar una referencia al ensamblado 'netstandard, Version=2.0.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51'.
+    Exception: HttpCompileException
+    StackTrace:    en System.Web.Compilation.BuildManager.PostProcessFoundBuildResult(BuildResult result, Boolean keyFromVPP, VirtualPath virtualPath)
+   en System.Web.Compilation.BuildManager.GetBuildResultFromCacheInternal(String cacheKey, Boolean keyFromVPP, VirtualPath virtualPath, Int64 hashCode, Boolean ensureIsUpToDate)
+   en System.Web.Compilation.BuildManager.GetVPathBuildResultFromCacheInternal(VirtualPath virtualPath, Boolean ensureIsUpToDate)
+   en System.Web.Compilation.BuildManager.GetVPathBuildResultInternal(VirtualPath virtualPath, Boolean noBuild, Boolean allowCrossApp, Boolean allowBuildInPrecompile, Boolean throwIfNotFound, Boolean ensureIsUpToDate)
+   en System.Web.Compilation.BuildManager.GetVPathBuildResultWithNoAssert(HttpContext context, VirtualPath virtualPath, Boolean noBuild, Boolean allowCrossApp, Boolean allowBuildInPrecompile, Boolean throwIfNotFound, Boolean ensureIsUpToDate)
+   en System.Web.Compilation.BuildManager.GetVirtualPathObjectFactory(VirtualPath virtualPath, HttpContext context, Boolean allowCrossApp, Boolean throwIfNotFound)
+   en System.Web.Compilation.BuildManager.GetCompiledType(VirtualPath virtualPath)
+   en System.Web.Mvc.BuildManagerCompiledView.Render(ViewContext viewContext, TextWriter writer)
+   en System.Web.Mvc.ViewResultBase.ExecuteResult(ControllerContext context)
+   en System.Web.Mvc.ControllerActionInvoker.InvokeActionResultFilterRecursive(IList`1 filters, Int32 filterIndex, ResultExecutingContext preContext, ControllerContext controllerContext, ActionResult actionResult)
+   en System.Web.Mvc.ControllerActionInvoker.InvokeActionResultFilterRecursive(IList`1 filters, Int32 filterIndex, ResultExecutingContext preContext, ControllerContext controllerContext, ActionResult actionResult)
+   en System.Web.Mvc.ControllerActionInvoker.InvokeActionResultFilterRecursive(IList`1 filters, Int32 filterIndex, ResultExecutingContext preContext, ControllerContext controllerContext, ActionResult actionResult)
+   en System.Web.Mvc.ControllerActionInvoker.InvokeActionResultFilterRecursive(IList`1 filters, Int32 filterIndex, ResultExecutingContext preContext, ControllerContext controllerContext, ActionResult actionResult)
+   en System.Web.Mvc.ControllerActionInvoker.InvokeActionResultWithFilters(ControllerContext controllerContext, IList`1 filters, ActionResult actionResult)
+   en System.Web.Mvc.Async.AsyncControllerActionInvoker.<>c__DisplayClass3_1.<BeginInvokeAction>b__1(IAsyncResult asyncResult)
+2026-02-05 08:38:45.931 | ERROR | CID:a1a434ffc924 | USR:USU_ADMIN | Account/Login | ERR:INTERNAL_ERROR | c:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\CapaPresentacion\Views\Account\Login.cshtml(108): error CS0012: El tipo 'System.Object' está definido en un ensamblado al que no se hace referencia. Debe agregar una referencia al ensamblado 'netstandard, Version=2.0.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51'.
+    Exception: HttpCompileException
+    StackTrace:    en System.Web.Compilation.BuildManager.PostProcessFoundBuildResult(BuildResult result, Boolean keyFromVPP, VirtualPath virtualPath)
+   en System.Web.Compilation.BuildManager.GetBuildResultFromCacheInternal(String cacheKey, Boolean keyFromVPP, VirtualPath virtualPath, Int64 hashCode, Boolean ensureIsUpToDate)
+   en System.Web.Compilation.BuildManager.GetVPathBuildResultFromCacheInternal(VirtualPath virtualPath, Boolean ensureIsUpToDate)
+   en System.Web.Compilation.BuildManager.GetVPathBuildResultInternal(VirtualPath virtualPath, Boolean noBuild, Boolean allowCrossApp, Boolean allowBuildInPrecompile, Boolean throwIfNotFound, Boolean ensureIsUpToDate)
+   en System.Web.Compilation.BuildManager.GetVPathBuildResultWithNoAssert(HttpContext context, VirtualPath virtualPath, Boolean noBuild, Boolean allowCrossApp, Boolean allowBuildInPrecompile, Boolean throwIfNotFound, Boolean ensureIsUpToDate)
+   en System.Web.Compilation.BuildManager.GetVirtualPathObjectFactory(VirtualPath virtualPath, HttpContext context, Boolean allowCrossApp, Boolean throwIfNotFound)
+   en System.Web.Compilation.BuildManager.GetCompiledType(VirtualPath virtualPath)
+   en System.Web.Mvc.BuildManagerCompiledView.Render(ViewContext viewContext, TextWriter writer)
+   en System.Web.Mvc.ViewResultBase.ExecuteResult(ControllerContext context)
+   en System.Web.Mvc.ControllerActionInvoker.InvokeActionResultFilterRecursive(IList`1 filters, Int32 filterIndex, ResultExecutingContext preContext, ControllerContext controllerContext, ActionResult actionResult)
+   en System.Web.Mvc.ControllerActionInvoker.InvokeActionResultFilterRecursive(IList`1 filters, Int32 filterIndex, ResultExecutingContext preContext, ControllerContext controllerContext, ActionResult actionResult)
+   en System.Web.Mvc.ControllerActionInvoker.InvokeActionResultFilterRecursive(IList`1 filters, Int32 filterIndex, ResultExecutingContext preContext, ControllerContext controllerContext, ActionResult actionResult)
+   en System.Web.Mvc.ControllerActionInvoker.InvokeActionResultFilterRecursive(IList`1 filters, Int32 filterIndex, ResultExecutingContext preContext, ControllerContext controllerContext, ActionResult actionResult)
+   en System.Web.Mvc.ControllerActionInvoker.InvokeActionResultWithFilters(ControllerContext controllerContext, IList`1 filters, ActionResult actionResult)
+   en System.Web.Mvc.Async.AsyncControllerActionInvoker.<>c__DisplayClass3_1.<BeginInvokeAction>b__1(IAsyncResult asyncResult)
+2026-02-05 08:38:46.492 | ERROR | CID:91e22e8d328c | USR:USU_ADMIN | Account/Login | ERR:INTERNAL_ERROR | c:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\CapaPresentacion\Views\Account\Login.cshtml(108): error CS0012: El tipo 'System.Object' está definido en un ensamblado al que no se hace referencia. Debe agregar una referencia al ensamblado 'netstandard, Version=2.0.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51'.
+    Exception: HttpCompileException
+    StackTrace:    en System.Web.Compilation.BuildManager.PostProcessFoundBuildResult(BuildResult result, Boolean keyFromVPP, VirtualPath virtualPath)
+   en System.Web.Compilation.BuildManager.GetBuildResultFromCacheInternal(String cacheKey, Boolean keyFromVPP, VirtualPath virtualPath, Int64 hashCode, Boolean ensureIsUpToDate)
+   en System.Web.Compilation.BuildManager.GetVPathBuildResultFromCacheInternal(VirtualPath virtualPath, Boolean ensureIsUpToDate)
+   en System.Web.Compilation.BuildManager.GetVPathBuildResultInternal(VirtualPath virtualPath, Boolean noBuild, Boolean allowCrossApp, Boolean allowBuildInPrecompile, Boolean throwIfNotFound, Boolean ensureIsUpToDate)
+   en System.Web.Compilation.BuildManager.GetVPathBuildResultWithNoAssert(HttpContext context, VirtualPath virtualPath, Boolean noBuild, Boolean allowCrossApp, Boolean allowBuildInPrecompile, Boolean throwIfNotFound, Boolean ensureIsUpToDate)
+   en System.Web.Compilation.BuildManager.GetVirtualPathObjectFactory(VirtualPath virtualPath, HttpContext context, Boolean allowCrossApp, Boolean throwIfNotFound)
+   en System.Web.Compilation.BuildManager.GetCompiledType(VirtualPath virtualPath)
+   en System.Web.Mvc.BuildManagerCompiledView.Render(ViewContext viewContext, TextWriter writer)
+   en System.Web.Mvc.ViewResultBase.ExecuteResult(ControllerContext context)
+   en System.Web.Mvc.ControllerActionInvoker.InvokeActionResultFilterRecursive(IList`1 filters, Int32 filterIndex, ResultExecutingContext preContext, ControllerContext controllerContext, ActionResult actionResult)
+   en System.Web.Mvc.ControllerActionInvoker.InvokeActionResultFilterRecursive(IList`1 filters, Int32 filterIndex, ResultExecutingContext preContext, ControllerContext controllerContext, ActionResult actionResult)
+   en System.Web.Mvc.ControllerActionInvoker.InvokeActionResultFilterRecursive(IList`1 filters, Int32 filterIndex, ResultExecutingContext preContext, ControllerContext controllerContext, ActionResult actionResult)
+   en System.Web.Mvc.ControllerActionInvoker.InvokeActionResultFilterRecursive(IList`1 filters, Int32 filterIndex, ResultExecutingContext preContext, ControllerContext controllerContext, ActionResult actionResult)
+   en System.Web.Mvc.ControllerActionInvoker.InvokeActionResultWithFilters(ControllerContext controllerContext, IList`1 filters, ActionResult actionResult)
+   en System.Web.Mvc.Async.AsyncControllerActionInvoker.<>c__DisplayClass3_1.<BeginInvokeAction>b__1(IAsyncResult asyncResult)
+2026-02-05 08:39:02.980 | ERROR | CID:03aa1fc3b055 | USR:USU_ADMIN | Account/Login | ERR:INTERNAL_ERROR | c:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\CapaPresentacion\Views\Account\Login.cshtml(108): error CS0012: El tipo 'System.Object' está definido en un ensamblado al que no se hace referencia. Debe agregar una referencia al ensamblado 'netstandard, Version=2.0.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51'.
+    Exception: HttpCompileException
+    StackTrace:    en System.Web.Compilation.AssemblyBuilder.Compile()
+   en System.Web.Compilation.BuildProvidersCompiler.PerformBuild()
+   en System.Web.Compilation.BuildManager.CompileWebFile(VirtualPath virtualPath)
+   en System.Web.Compilation.BuildManager.GetVPathBuildResultInternal(VirtualPath virtualPath, Boolean noBuild, Boolean allowCrossApp, Boolean allowBuildInPrecompile, Boolean throwIfNotFound, Boolean ensureIsUpToDate)
+   en System.Web.Compilation.BuildManager.GetVPathBuildResultWithNoAssert(HttpContext context, VirtualPath virtualPath, Boolean noBuild, Boolean allowCrossApp, Boolean allowBuildInPrecompile, Boolean throwIfNotFound, Boolean ensureIsUpToDate)
+   en System.Web.Compilation.BuildManager.GetVirtualPathObjectFactory(VirtualPath virtualPath, HttpContext context, Boolean allowCrossApp, Boolean throwIfNotFound)
+   en System.Web.Compilation.BuildManager.GetCompiledType(VirtualPath virtualPath)
+   en System.Web.Mvc.BuildManagerCompiledView.Render(ViewContext viewContext, TextWriter writer)
+   en System.Web.Mvc.ViewResultBase.ExecuteResult(ControllerContext context)
+   en System.Web.Mvc.ControllerActionInvoker.InvokeActionResultFilterRecursive(IList`1 filters, Int32 filterIndex, ResultExecutingContext preContext, ControllerContext controllerContext, ActionResult actionResult)
+   en System.Web.Mvc.ControllerActionInvoker.InvokeActionResultFilterRecursive(IList`1 filters, Int32 filterIndex, ResultExecutingContext preContext, ControllerContext controllerContext, ActionResult actionResult)
+   en System.Web.Mvc.ControllerActionInvoker.InvokeActionResultFilterRecursive(IList`1 filters, Int32 filterIndex, ResultExecutingContext preContext, ControllerContext controllerContext, ActionResult actionResult)
+   en System.Web.Mvc.ControllerActionInvoker.InvokeActionResultFilterRecursive(IList`1 filters, Int32 filterIndex, ResultExecutingContext preContext, ControllerContext controllerContext, ActionResult actionResult)
+   en System.Web.Mvc.ControllerActionInvoker.InvokeActionResultWithFilters(ControllerContext controllerContext, IList`1 filters, ActionResult actionResult)
+   en System.Web.Mvc.Async.AsyncControllerActionInvoker.<>c__DisplayClass3_1.<BeginInvokeAction>b__1(IAsyncResult asyncResult)
+2026-02-05 08:40:19.249 | INFO  | CID:N/A | Deteniendo procesador de cola de correos
+2026-02-05 08:40:19.291 | INFO  | CID:N/A | Deteniendo procesador de cola de correos
+2026-02-05 08:40:53.156 | INFO  | CID:N/A | Iniciando procesador de cola de correos
+2026-02-05 08:41:00.591 | INFO  | CID:7bf4f01cf34c | USR:USU_ADMIN | Account/Login | Iniciando acción: Account/Login
+2026-02-05 08:41:00.958 | INFO  | CID:7bf4f01cf34c | USR:USU_ADMIN | Account/Login | Acción completada: Account/Login
+2026-02-05 09:17:22.046 | INFO  | CID:N/A | Iniciando procesador de cola de correos
+2026-02-05 09:17:23.829 | ERROR | CID:a7a800d574e9 | USR:USU_ADMIN | Account/Login | ERR:INTERNAL_ERROR | c:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\CapaPresentacion\Views\Account\Login.cshtml(108): error CS0012: El tipo 'System.Object' está definido en un ensamblado al que no se hace referencia. Debe agregar una referencia al ensamblado 'netstandard, Version=2.0.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51'.
+    Exception: HttpCompileException
+    StackTrace:    en System.Web.Compilation.AssemblyBuilder.Compile()
+   en System.Web.Compilation.BuildProvidersCompiler.PerformBuild()
+   en System.Web.Compilation.BuildManager.CompileWebFile(VirtualPath virtualPath)
+   en System.Web.Compilation.BuildManager.GetVPathBuildResultInternal(VirtualPath virtualPath, Boolean noBuild, Boolean allowCrossApp, Boolean allowBuildInPrecompile, Boolean throwIfNotFound, Boolean ensureIsUpToDate)
+   en System.Web.Compilation.BuildManager.GetVPathBuildResultWithNoAssert(HttpContext context, VirtualPath virtualPath, Boolean noBuild, Boolean allowCrossApp, Boolean allowBuildInPrecompile, Boolean throwIfNotFound, Boolean ensureIsUpToDate)
+   en System.Web.Compilation.BuildManager.GetVirtualPathObjectFactory(VirtualPath virtualPath, HttpContext context, Boolean allowCrossApp, Boolean throwIfNotFound)
+   en System.Web.Compilation.BuildManager.GetCompiledType(VirtualPath virtualPath)
+   en System.Web.Mvc.BuildManagerCompiledView.Render(ViewContext viewContext, TextWriter writer)
+   en System.Web.Mvc.ViewResultBase.ExecuteResult(ControllerContext context)
+   en System.Web.Mvc.ControllerActionInvoker.InvokeActionResultFilterRecursive(IList`1 filters, Int32 filterIndex, ResultExecutingContext preContext, ControllerContext controllerContext, ActionResult actionResult)
+   en System.Web.Mvc.ControllerActionInvoker.InvokeActionResultFilterRecursive(IList`1 filters, Int32 filterIndex, ResultExecutingContext preContext, ControllerContext controllerContext, ActionResult actionResult)
+   en System.Web.Mvc.ControllerActionInvoker.InvokeActionResultFilterRecursive(IList`1 filters, Int32 filterIndex, ResultExecutingContext preContext, ControllerContext controllerContext, ActionResult actionResult)
+   en System.Web.Mvc.ControllerActionInvoker.InvokeActionResultFilterRecursive(IList`1 filters, Int32 filterIndex, ResultExecutingContext preContext, ControllerContext controllerContext, ActionResult actionResult)
+   en System.Web.Mvc.ControllerActionInvoker.InvokeActionResultWithFilters(ControllerContext controllerContext, IList`1 filters, ActionResult actionResult)
+   en System.Web.Mvc.Async.AsyncControllerActionInvoker.<>c__DisplayClass3_1.<BeginInvokeAction>b__1(IAsyncResult asyncResult)
+2026-02-05 09:19:05.994 | INFO  | CID:N/A | Deteniendo procesador de cola de correos
+2026-02-05 09:19:06.052 | INFO  | CID:N/A | Deteniendo procesador de cola de correos
+2026-02-05 09:20:30.777 | INFO  | CID:N/A | Iniciando procesador de cola de correos
+2026-02-05 09:20:38.387 | INFO  | CID:7b36332abbf8 | USR:USU_ADMIN | Account/Login | Iniciando acción: Account/Login
+2026-02-05 09:20:38.668 | INFO  | CID:7b36332abbf8 | USR:USU_ADMIN | Account/Login | Acción completada: Account/Login
+2026-02-05 09:35:17.666 | INFO  | CID:N/A | Iniciando procesador de cola de correos
+2026-02-05 09:35:23.958 | INFO  | CID:cbf3fa9326e6 | USR:USU_ADMIN | Account/Login | Iniciando acción: Account/Login
+2026-02-05 09:35:24.590 | INFO  | CID:cbf3fa9326e6 | USR:USU_ADMIN | Account/Login | Acción completada: Account/Login
+2026-02-05 09:47:23.005 | INFO  | CID:N/A | Iniciando procesador de cola de correos
+2026-02-05 09:47:28.222 | INFO  | CID:eaa33fab0db1 | USR:USU_ADMIN | Account/Login | Iniciando acción: Account/Login
+2026-02-05 09:47:28.557 | INFO  | CID:eaa33fab0db1 | USR:USU_ADMIN | Account/Login | Acción completada: Account/Login
+2026-02-05 09:49:11.341 | INFO  | CID:N/A | Iniciando procesador de cola de correos
+2026-02-05 09:49:16.330 | INFO  | CID:b65072a84afb | USR:USU_ADMIN | Account/Login | Iniciando acción: Account/Login
+2026-02-05 09:49:16.652 | INFO  | CID:b65072a84afb | USR:USU_ADMIN | Account/Login | Acción completada: Account/Login
+2026-02-05 09:50:49.748 | INFO  | CID:N/A | Iniciando procesador de cola de correos
+2026-02-05 09:50:55.037 | INFO  | CID:840899172116 | USR:USU_ADMIN | Account/Login | Iniciando acción: Account/Login
+2026-02-05 09:50:55.367 | INFO  | CID:840899172116 | USR:USU_ADMIN | Account/Login | Acción completada: Account/Login
+2026-02-05 09:53:12.559 | INFO  | CID:N/A | Iniciando procesador de cola de correos
+2026-02-05 09:53:18.232 | INFO  | CID:a406dea34bfe | USR:USU_ADMIN | Account/Login | Iniciando acción: Account/Login
+2026-02-05 09:53:18.841 | INFO  | CID:a406dea34bfe | USR:USU_ADMIN | Account/Login | Acción completada: Account/Login
+2026-02-05 10:03:52.538 | INFO  | CID:N/A | Iniciando procesador de cola de correos
+2026-02-05 10:03:57.224 | INFO  | CID:d1c70e030d00 | USR:USU_ADMIN | Account/Login | Iniciando acción: Account/Login
+2026-02-05 10:03:57.606 | INFO  | CID:d1c70e030d00 | USR:USU_ADMIN | Account/Login | Acción completada: Account/Login
+2026-02-05 10:06:14.306 | INFO  | CID:N/A | Iniciando procesador de cola de correos
+2026-02-05 10:06:21.860 | INFO  | CID:fafd026503f8 | USR:USU_ADMIN | Account/Login | Iniciando acción: Account/Login
+2026-02-05 10:06:22.455 | INFO  | CID:fafd026503f8 | USR:USU_ADMIN | Account/Login | Acción completada: Account/Login
+2026-02-05 10:09:25.016 | INFO  | CID:N/A | Iniciando procesador de cola de correos
+2026-02-05 10:09:32.872 | INFO  | CID:df03d52552fa | USR:USU_ADMIN | Account/Login | Iniciando acción: Account/Login
+2026-02-05 10:09:33.201 | INFO  | CID:df03d52552fa | USR:USU_ADMIN | Account/Login | Acción completada: Account/Login
+2026-02-05 10:15:44.992 | INFO  | CID:N/A | Iniciando procesador de cola de correos
+2026-02-05 10:15:51.426 | INFO  | CID:680ec20c3353 | USR:USU_ADMIN | Account/Login | Iniciando acción: Account/Login
+2026-02-05 10:15:51.933 | INFO  | CID:680ec20c3353 | USR:USU_ADMIN | Account/Login | Acción completada: Account/Login
+2026-02-05 10:19:47.497 | INFO  | CID:N/A | Iniciando procesador de cola de correos
+2026-02-05 10:19:54.497 | INFO  | CID:a55214b9a347 | USR:USU_ADMIN | Account/Login | Iniciando acción: Account/Login
+2026-02-05 10:19:54.790 | INFO  | CID:a55214b9a347 | USR:USU_ADMIN | Account/Login | Acción completada: Account/Login
+2026-02-05 10:21:33.618 | INFO  | CID:60460c772b42 | USR:USU_ADMIN | OrdenRecaudacion/Nueva | Iniciando acción: OrdenRecaudacion/Nueva
+2026-02-05 10:21:33.884 | INFO  | CID:60460c772b42 | USR:USU_ADMIN | OrdenRecaudacion/Nueva | Acción completada: OrdenRecaudacion/Nueva
+2026-02-05 10:21:59.759 | INFO  | CID:ac41afd158b9 | USR:USU_ADMIN | OrdenRecaudacion/Generar | Iniciando acción: OrdenRecaudacion/Generar
+2026-02-05 10:21:59.781 | INFO  | CID:ac41afd158b9 | USR:USU_ADMIN | OrdenRecaudacion/Generar | Acción completada: OrdenRecaudacion/Generar
+2026-02-05 10:22:32.123 | INFO  | CID:6849385b8b53 | USR:USU_ADMIN | OrdenRecaudacion/RegistrarPago | Iniciando acción: OrdenRecaudacion/RegistrarPago
+2026-02-05 10:22:32.370 | INFO  | CID:6849385b8b53 | USR:USU_ADMIN | OrdenRecaudacion/RegistrarPago | Acción completada: OrdenRecaudacion/RegistrarPago
+2026-02-05 10:22:59.748 | INFO  | CID:838a7fbdbc0e | USR:USU_ADMIN | OrdenRecaudacion/ValidarPago | Iniciando acción: OrdenRecaudacion/ValidarPago
+2026-02-05 10:22:59.857 | INFO  | CID:838a7fbdbc0e | USR:USU_ADMIN | OrdenRecaudacion/ValidarPago | Acción completada: OrdenRecaudacion/ValidarPago
+2026-02-05 10:26:53.783 | INFO  | CID:f7afeb0d80d1 | USR:USU_ADMIN | Financiero/AprobarPago | Iniciando acción: Financiero/AprobarPago
+2026-02-05 10:26:54.094 | INFO  | CID:f7afeb0d80d1 | USR:USU_ADMIN | Financiero/AprobarPago | Acción completada: Financiero/AprobarPago
+2026-02-05 10:47:13.322 | INFO  | CID:N/A | Iniciando procesador de cola de correos
+2026-02-05 10:47:20.145 | INFO  | CID:44ec2cc8d35a | USR:USU_ADMIN | Account/Login | Iniciando acción: Account/Login
+2026-02-05 10:47:20.672 | INFO  | CID:44ec2cc8d35a | USR:USU_ADMIN | Account/Login | Acción completada: Account/Login
+2026-02-05 10:52:28.405 | INFO  | CID:N/A | Iniciando procesador de cola de correos
+2026-02-05 10:52:40.434 | INFO  | CID:136bb591facf | USR:USU_ADMIN | Account/Login | Iniciando acción: Account/Login
+2026-02-05 10:52:40.911 | INFO  | CID:136bb591facf | USR:USU_ADMIN | Account/Login | Acción completada: Account/Login
+2026-02-05 10:59:05.789 | INFO  | CID:N/A | Iniciando procesador de cola de correos
+2026-02-05 10:59:13.808 | INFO  | CID:22707b919409 | USR:USU_ADMIN | Account/Login | Iniciando acción: Account/Login
+2026-02-05 10:59:14.410 | INFO  | CID:22707b919409 | USR:USU_ADMIN | Account/Login | Acción completada: Account/Login
+2026-02-05 11:00:57.330 | INFO  | CID:N/A | Iniciando procesador de cola de correos
+2026-02-05 11:01:26.313 | INFO  | CID:4911156ce6ec | USR:USU_ADMIN | Account/Login | Iniciando acción: Account/Login
+2026-02-05 11:01:26.886 | INFO  | CID:4911156ce6ec | USR:USU_ADMIN | Account/Login | Acción completada: Account/Login
+2026-02-05 11:10:10.962 | INFO  | CID:N/A | Iniciando procesador de cola de correos
+2026-02-05 11:10:16.919 | INFO  | CID:917f602c67f6 | USR:USU_ADMIN | Account/Login | Iniciando acción: Account/Login
+2026-02-05 11:10:17.471 | INFO  | CID:917f602c67f6 | USR:USU_ADMIN | Account/Login | Acción completada: Account/Login
+2026-02-05 11:21:15.639 | INFO  | CID:N/A | Deteniendo procesador de cola de correos
+2026-02-05 11:21:15.683 | INFO  | CID:N/A | Deteniendo procesador de cola de correos
+2026-02-05 11:27:03.307 | INFO  | CID:N/A | Iniciando procesador de cola de correos
+2026-02-05 11:27:09.481 | INFO  | CID:8de0e50748a2 | USR:USU_ADMIN | Account/Login | Iniciando acción: Account/Login
+2026-02-05 11:27:09.813 | INFO  | CID:8de0e50748a2 | USR:USU_ADMIN | Account/Login | Acción completada: Account/Login
+2026-02-05 11:40:05.374 | INFO  | CID:N/A | Iniciando procesador de cola de correos
+2026-02-05 11:40:12.420 | INFO  | CID:30a07dd3d0de | USR:USU_ADMIN | Account/Login | Iniciando acción: Account/Login
+2026-02-05 11:40:13.071 | INFO  | CID:30a07dd3d0de | USR:USU_ADMIN | Account/Login | Acción completada: Account/Login
+2026-02-05 11:41:20.199 | INFO  | CID:2b2e07e7d8d9 | USR:USU_ADMIN | OrdenRecaudacion/Nueva | Iniciando acción: OrdenRecaudacion/Nueva
+2026-02-05 11:41:20.304 | INFO  | CID:2b2e07e7d8d9 | USR:USU_ADMIN | OrdenRecaudacion/Nueva | Acción completada: OrdenRecaudacion/Nueva
+2026-02-05 11:41:31.098 | INFO  | CID:2ed001a599ee | USR:USU_ADMIN | OrdenRecaudacion/Generar | Iniciando acción: OrdenRecaudacion/Generar
+2026-02-05 11:41:31.120 | INFO  | CID:2ed001a599ee | USR:USU_ADMIN | OrdenRecaudacion/Generar | Acción completada: OrdenRecaudacion/Generar
+2026-02-05 11:42:12.907 | INFO  | CID:952bacb25278 | USR:USU_ADMIN | Financiero/AprobarPago | Iniciando acción: Financiero/AprobarPago
+2026-02-05 11:42:12.925 | INFO  | CID:952bacb25278 | USR:USU_ADMIN | Financiero/AprobarPago | Acción completada: Financiero/AprobarPago
+2026-02-05 11:58:21.191 | INFO  | CID:N/A | Iniciando procesador de cola de correos
+2026-02-05 11:58:28.113 | INFO  | CID:1817804e0123 | USR:USU_ADMIN | Account/Login | Iniciando acción: Account/Login
+2026-02-05 11:58:28.729 | INFO  | CID:1817804e0123 | USR:USU_ADMIN | Account/Login | Acción completada: Account/Login
+2026-02-05 12:07:19.623 | INFO  | CID:N/A | Iniciando procesador de cola de correos
+2026-02-05 12:07:24.772 | INFO  | CID:fbb3b8995d5d | USR:USU_ADMIN | Account/Login | Iniciando acción: Account/Login
+2026-02-05 12:07:25.422 | INFO  | CID:fbb3b8995d5d | USR:USU_ADMIN | Account/Login | Acción completada: Account/Login
+2026-02-05 12:23:03.131 | INFO  | CID:N/A | Iniciando procesador de cola de correos
+2026-02-05 12:23:10.124 | INFO  | CID:c5bcba94145b | USR:USU_ADMIN | Account/Login | Iniciando acción: Account/Login
+2026-02-05 12:23:10.442 | INFO  | CID:c5bcba94145b | USR:USU_ADMIN | Account/Login | Acción completada: Account/Login
+2026-02-05 12:44:54.815 | INFO  | CID:N/A | Iniciando procesador de cola de correos
+2026-02-05 12:45:20.055 | INFO  | CID:ffd8240e3cdc | USR:USU_ADMIN | Account/Login | Iniciando acción: Account/Login
+2026-02-05 12:45:20.370 | INFO  | CID:ffd8240e3cdc | USR:USU_ADMIN | Account/Login | Acción completada: Account/Login
+2026-02-05 13:33:53.186 | INFO  | CID:N/A | Iniciando procesador de cola de correos
+2026-02-05 13:34:11.100 | INFO  | CID:89363a3ae9e2 | USR:USU_ADMIN | Account/Login | Iniciando acción: Account/Login
+2026-02-05 13:34:11.686 | INFO  | CID:89363a3ae9e2 | USR:USU_ADMIN | Account/Login | Acción completada: Account/Login
+2026-02-05 13:41:02.115 | INFO  | CID:6e2f4a0ee4c2 | USR:USU_ADMIN | OrdenRecaudacion/Nueva | Iniciando acción: OrdenRecaudacion/Nueva
+2026-02-05 13:41:08.363 | INFO  | CID:6e2f4a0ee4c2 | USR:USU_ADMIN | OrdenRecaudacion/Nueva | Acción completada: OrdenRecaudacion/Nueva
+2026-02-05 13:42:36.078 | INFO  | CID:7a4ede66350b | USR:USU_ADMIN | OrdenRecaudacion/Generar | Iniciando acción: OrdenRecaudacion/Generar
+2026-02-05 13:42:36.093 | INFO  | CID:7a4ede66350b | USR:USU_ADMIN | OrdenRecaudacion/Generar | Acción completada: OrdenRecaudacion/Generar
+2026-02-05 13:42:54.310 | INFO  | CID:d562d57e220a | USR:USU_ADMIN | OrdenRecaudacion/RegistrarPago | Iniciando acción: OrdenRecaudacion/RegistrarPago
+2026-02-05 13:42:54.401 | INFO  | CID:d562d57e220a | USR:USU_ADMIN | OrdenRecaudacion/RegistrarPago | Acción completada: OrdenRecaudacion/RegistrarPago
+2026-02-05 14:02:51.446 | INFO  | CID:N/A | Iniciando procesador de cola de correos
+2026-02-05 14:02:58.094 | INFO  | CID:6e93a063c4f4 | USR:USU_ADMIN | Account/Login | Iniciando acción: Account/Login
+2026-02-05 14:02:58.641 | INFO  | CID:6e93a063c4f4 | USR:USU_ADMIN | Account/Login | Acción completada: Account/Login
+2026-02-05 14:03:40.096 | INFO  | CID:f8bf1a789e3d | USR:USU_ADMIN | Financiero/AprobarPago | Iniciando acción: Financiero/AprobarPago
+2026-02-05 14:03:40.226 | INFO  | CID:f8bf1a789e3d | USR:USU_ADMIN | Financiero/AprobarPago | Acción completada: Financiero/AprobarPago
+2026-02-05 14:08:11.792 | INFO  | CID:N/A | Iniciando procesador de cola de correos
+2026-02-05 14:08:16.228 | INFO  | CID:f2303d74669f | USR:USU_ADMIN | Account/Login | Iniciando acción: Account/Login
+2026-02-05 14:08:16.802 | INFO  | CID:f2303d74669f | USR:USU_ADMIN | Account/Login | Acción completada: Account/Login
+2026-02-05 14:14:05.909 | INFO  | CID:N/A | Iniciando procesador de cola de correos
+2026-02-05 14:14:13.202 | INFO  | CID:8faa40ccadcb | USR:USU_ADMIN | Account/Login | Iniciando acción: Account/Login
+2026-02-05 14:14:13.484 | INFO  | CID:8faa40ccadcb | USR:USU_ADMIN | Account/Login | Acción completada: Account/Login
+2026-02-05 14:20:21.502 | INFO  | CID:N/A | Iniciando procesador de cola de correos
+2026-02-05 14:20:29.461 | INFO  | CID:ac817620797b | USR:USU_ADMIN | Account/Login | Iniciando acción: Account/Login
+2026-02-05 14:20:29.945 | INFO  | CID:ac817620797b | USR:USU_ADMIN | Account/Login | Acción completada: Account/Login
+2026-02-05 14:23:39.808 | INFO  | CID:N/A | Iniciando procesador de cola de correos
+2026-02-05 14:23:45.172 | INFO  | CID:be8afadd23c5 | USR:USU_ADMIN | Account/Login | Iniciando acción: Account/Login
+2026-02-05 14:23:45.501 | INFO  | CID:be8afadd23c5 | USR:USU_ADMIN | Account/Login | Acción completada: Account/Login
+2026-02-05 14:40:07.597 | INFO  | CID:N/A | Iniciando procesador de cola de correos
+2026-02-05 14:40:31.440 | INFO  | CID:e1144035d34f | USR:USU_ADMIN | Account/Login | Iniciando acción: Account/Login
+2026-02-05 14:40:31.930 | INFO  | CID:e1144035d34f | USR:USU_ADMIN | Account/Login | Acción completada: Account/Login
+2026-02-05 14:46:20.928 | INFO  | CID:N/A | Deteniendo procesador de cola de correos
+2026-02-05 14:46:20.965 | INFO  | CID:N/A | Deteniendo procesador de cola de correos
+2026-02-05 14:48:25.388 | INFO  | CID:N/A | Iniciando procesador de cola de correos
+2026-02-05 14:48:32.426 | INFO  | CID:aba61c0b77f3 | USR:USU_ADMIN | Account/Login | Iniciando acción: Account/Login
+2026-02-05 14:48:32.946 | INFO  | CID:aba61c0b77f3 | USR:USU_ADMIN | Account/Login | Acción completada: Account/Login
+2026-02-05 14:57:27.245 | INFO  | CID:N/A | Iniciando procesador de cola de correos
+2026-02-05 14:57:49.838 | INFO  | CID:7a863ea90edd | USR:USU_ADMIN | Account/Login | Iniciando acción: Account/Login
+2026-02-05 14:57:50.414 | INFO  | CID:7a863ea90edd | USR:USU_ADMIN | Account/Login | Acción completada: Account/Login
+2026-02-05 15:01:15.747 | INFO  | CID:N/A | Iniciando procesador de cola de correos
+2026-02-05 15:01:32.155 | INFO  | CID:N/A | Iniciando procesador de cola de correos
+2026-02-05 15:02:12.561 | INFO  | CID:2a094005959d | USR:USU_ADMIN | Account/Login | Iniciando acción: Account/Login
+2026-02-05 15:02:13.184 | INFO  | CID:2a094005959d | USR:USU_ADMIN | Account/Login | Acción completada: Account/Login
+2026-02-05 15:06:15.020 | INFO  | CID:N/A | Iniciando procesador de cola de correos
+2026-02-05 15:06:27.308 | INFO  | CID:c48ae767b3aa | USR:USU_ADMIN | Account/Login | Iniciando acción: Account/Login
+2026-02-05 15:06:27.837 | INFO  | CID:c48ae767b3aa | USR:USU_ADMIN | Account/Login | Acción completada: Account/Login
+2026-02-05 15:15:22.942 | INFO  | CID:N/A | Iniciando procesador de cola de correos
+2026-02-05 15:15:29.259 | INFO  | CID:2c7cb0521fd2 | USR:USU_ADMIN | Account/Login | Iniciando acción: Account/Login
+2026-02-05 15:15:29.589 | INFO  | CID:2c7cb0521fd2 | USR:USU_ADMIN | Account/Login | Acción completada: Account/Login
+2026-02-05 15:19:04.390 | INFO  | CID:N/A | Iniciando procesador de cola de correos
+2026-02-05 15:19:16.301 | INFO  | CID:3ca84d8ea25b | USR:USU_ADMIN | Account/Login | Iniciando acción: Account/Login
+2026-02-05 15:19:16.584 | INFO  | CID:3ca84d8ea25b | USR:USU_ADMIN | Account/Login | Acción completada: Account/Login
+2026-02-05 15:29:40.277 | INFO  | CID:N/A | Iniciando procesador de cola de correos
+2026-02-05 15:29:49.730 | INFO  | CID:12c63a92bd7a | USR:USU_ADMIN | Account/Login | Iniciando acción: Account/Login
+2026-02-05 15:29:50.259 | INFO  | CID:12c63a92bd7a | USR:USU_ADMIN | Account/Login | Acción completada: Account/Login
+2026-02-05 15:33:44.964 | INFO  | CID:N/A | Iniciando procesador de cola de correos
+2026-02-05 15:34:53.857 | INFO  | CID:N/A | Iniciando procesador de cola de correos
+2026-02-05 15:35:01.595 | INFO  | CID:1f6601e670e5 | USR:USU_ADMIN | Account/Login | Iniciando acción: Account/Login
+2026-02-05 15:35:02.137 | INFO  | CID:1f6601e670e5 | USR:USU_ADMIN | Account/Login | Acción completada: Account/Login
+2026-02-05 15:37:29.344 | INFO  | CID:N/A | Iniciando procesador de cola de correos
+2026-02-05 15:37:35.363 | INFO  | CID:8fc04e2d35ec | USR:USU_ADMIN | Account/Login | Iniciando acción: Account/Login
+2026-02-05 15:37:35.872 | INFO  | CID:8fc04e2d35ec | USR:USU_ADMIN | Account/Login | Acción completada: Account/Login
+2026-02-05 15:38:45.981 | INFO  | CID:508094ab22cc | USR:USU_ADMIN | SolicitudAOCR/TestJson | Iniciando acción: SolicitudAOCR/TestJson
+2026-02-05 15:38:45.998 | INFO  | CID:508094ab22cc | USR:USU_ADMIN | SolicitudAOCR/TestJson | Acción completada: SolicitudAOCR/TestJson
+2026-02-05 15:38:47.815 | INFO  | CID:244f107cbf62 | USR:USU_ADMIN | SolicitudAOCR/FormularioCompleto | Iniciando acción: SolicitudAOCR/FormularioCompleto
+2026-02-05 15:38:47.947 | INFO  | CID:244f107cbf62 | USR:USU_ADMIN | SolicitudAOCR/FormularioCompleto | Acción completada: SolicitudAOCR/FormularioCompleto
+2026-02-05 15:38:49.947 | INFO  | CID:47ea1591e59c | USR:USU_ADMIN | SolicitudAOCR/TestSession | Iniciando acción: SolicitudAOCR/TestSession
+2026-02-05 15:38:49.964 | INFO  | CID:47ea1591e59c | USR:USU_ADMIN | SolicitudAOCR/TestSession | Acción completada: SolicitudAOCR/TestSession
+2026-02-05 15:39:09.054 | INFO  | CID:55d8a36e7831 | USR:USU_ADMIN | SolicitudAOCR/FormularioCompleto | Iniciando acción: SolicitudAOCR/FormularioCompleto
+2026-02-05 15:39:09.095 | INFO  | CID:55d8a36e7831 | USR:USU_ADMIN | SolicitudAOCR/FormularioCompleto | Acción completada: SolicitudAOCR/FormularioCompleto
+2026-02-05 16:10:39.224 | INFO  | CID:N/A | Iniciando procesador de cola de correos
+2026-02-05 16:10:44.229 | INFO  | CID:7d3a76fe78b6 | USR:USU_ADMIN | Account/Login | Iniciando acción: Account/Login
+2026-02-05 16:10:44.584 | INFO  | CID:7d3a76fe78b6 | USR:USU_ADMIN | Account/Login | Acción completada: Account/Login
+2026-02-05 16:12:05.394 | INFO  | CID:N/A | Iniciando procesador de cola de correos
+2026-02-05 16:12:10.902 | INFO  | CID:26608388c04d | USR:USU_ADMIN | Account/Login | Iniciando acción: Account/Login
+2026-02-05 16:12:11.432 | INFO  | CID:26608388c04d | USR:USU_ADMIN | Account/Login | Acción completada: Account/Login
+2026-02-05 16:18:02.411 | INFO  | CID:N/A | Iniciando procesador de cola de correos
+2026-02-05 16:18:08.176 | INFO  | CID:38fbbbe76aad | USR:USU_ADMIN | Account/Login | Iniciando acción: Account/Login
+2026-02-05 16:18:08.539 | INFO  | CID:38fbbbe76aad | USR:USU_ADMIN | Account/Login | Acción completada: Account/Login
+2026-02-05 16:18:18.793 | ERROR | CID:ec6b253c4dd1 | USR:USU_ADMIN | OrdenRecaudacion/DescargarPdf | ERR:INTERNAL_ERROR | c:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\CapaPresentacion\Views\OrdenRecaudacion\OrdenRecaudacionPDF.cshtml(146): error CS1061: 'CapaPresentacion.Models.ViewModels.OrdenRecaudacionPDFModel' no contiene una definición de 'Detalles' ni se encontró ningún método de extensión 'Detalles' que acepte un primer argumento de tipo 'CapaPresentacion.Models.ViewModels.OrdenRecaudacionPDFModel' (¿falta una directiva using o una referencia de ensamblado?)
+    Exception: HttpCompileException
+    StackTrace:    en System.Web.Compilation.AssemblyBuilder.Compile()
+   en System.Web.Compilation.BuildProvidersCompiler.PerformBuild()
+   en System.Web.Compilation.BuildManager.CompileWebFile(VirtualPath virtualPath)
+   en System.Web.Compilation.BuildManager.GetVPathBuildResultInternal(VirtualPath virtualPath, Boolean noBuild, Boolean allowCrossApp, Boolean allowBuildInPrecompile, Boolean throwIfNotFound, Boolean ensureIsUpToDate)
+   en System.Web.Compilation.BuildManager.GetVPathBuildResultWithNoAssert(HttpContext context, VirtualPath virtualPath, Boolean noBuild, Boolean allowCrossApp, Boolean allowBuildInPrecompile, Boolean throwIfNotFound, Boolean ensureIsUpToDate)
+   en System.Web.Compilation.BuildManager.GetVirtualPathObjectFactory(VirtualPath virtualPath, HttpContext context, Boolean allowCrossApp, Boolean throwIfNotFound)
+   en System.Web.Compilation.BuildManager.GetCompiledType(VirtualPath virtualPath)
+   en System.Web.Mvc.BuildManagerCompiledView.Render(ViewContext viewContext, TextWriter writer)
+   en Rotativa.Extensions.ControllerContextExtensions.GetHtmlFromView(ControllerContext context, ViewEngineResult viewResult, String viewName, Object model)
+   en Rotativa.ViewAsPdf.CallTheDriver(ControllerContext context)
+   en Rotativa.AsResultBase.BuildFile(ControllerContext context)
+   en Rotativa.AsResultBase.ExecuteResult(ControllerContext context)
+   en System.Web.Mvc.ControllerActionInvoker.InvokeActionResultFilterRecursive(IList`1 filters, Int32 filterIndex, ResultExecutingContext preContext, ControllerContext controllerContext, ActionResult actionResult)
+   en System.Web.Mvc.ControllerActionInvoker.InvokeActionResultFilterRecursive(IList`1 filters, Int32 filterIndex, ResultExecutingContext preContext, ControllerContext controllerContext, ActionResult actionResult)
+   en System.Web.Mvc.ControllerActionInvoker.InvokeActionResultFilterRecursive(IList`1 filters, Int32 filterIndex, ResultExecutingContext preContext, ControllerContext controllerContext, ActionResult actionResult)
+   en System.Web.Mvc.ControllerActionInvoker.InvokeActionResultFilterRecursive(IList`1 filters, Int32 filterIndex, ResultExecutingContext preContext, ControllerContext controllerContext, ActionResult actionResult)
+   en System.Web.Mvc.ControllerActionInvoker.InvokeActionResultWithFilters(ControllerContext controllerContext, IList`1 filters, ActionResult actionResult)
+   en System.Web.Mvc.Async.AsyncControllerActionInvoker.<>c__DisplayClass3_1.<BeginInvokeAction>b__1(IAsyncResult asyncResult)
+2026-02-05 16:18:50.361 | ERROR | CID:e1db250eed63 | USR:USU_ADMIN | OrdenRecaudacion/DescargarPdf | ERR:BAD_REQUEST | El diccionario de parámetros contiene una entrada NULL para el parámetro 'id' del tipo que no acepta valores NULL 'System.Int32' del método 'System.Web.Mvc.ActionResult DescargarPdf(Int32)' en 'CapaPresentacion.Controllers.OrdenRecaudacionController'. Un parámetro opcional debe ser un tipo de referencia, un tipo que acepte valores NULL o debe declararse como parámetro opcional.
+Nombre del parámetro: parameters
+    Exception: ArgumentException
+    StackTrace:    en System.Web.Mvc.ActionDescriptor.ExtractParameterFromDictionary(ParameterInfo parameterInfo, IDictionary`2 parameters, MethodInfo methodInfo)
+   en System.Web.Mvc.ReflectedActionDescriptor.Execute(ControllerContext controllerContext, IDictionary`2 parameters)
+   en System.Web.Mvc.ControllerActionInvoker.InvokeActionMethod(ControllerContext controllerContext, ActionDescriptor actionDescriptor, IDictionary`2 parameters)
+   en System.Web.Mvc.Async.AsyncControllerActionInvoker.<>c.<BeginInvokeSynchronousActionMethod>b__9_0(IAsyncResult asyncResult, ActionInvocation innerInvokeState)
+   en System.Web.Mvc.Async.AsyncResultWrapper.WrappedAsyncResult`2.CallEndDelegate(IAsyncResult asyncResult)
+   en System.Web.Mvc.Async.AsyncControllerActionInvoker.EndInvokeActionMethod(IAsyncResult asyncResult)
+   en System.Web.Mvc.Async.AsyncControllerActionInvoker.AsyncInvocationWithFilters.<>c__DisplayClass11_0.<InvokeActionMethodFilterAsynchronouslyRecursive>b__0()
+   en System.Web.Mvc.Async.AsyncControllerActionInvoker.AsyncInvocationWithFilters.<>c__DisplayClass11_2.<InvokeActionMethodFilterAsynchronouslyRecursive>b__2()
+   en System.Web.Mvc.Async.AsyncControllerActionInvoker.AsyncInvocationWithFilters.<>c__DisplayClass11_2.<InvokeActionMethodFilterAsynchronouslyRecursive>b__2()
+   en System.Web.Mvc.Async.AsyncControllerActionInvoker.AsyncInvocationWithFilters.<>c__DisplayClass11_2.<InvokeActionMethodFilterAsynchronouslyRecursive>b__2()
+   en System.Web.Mvc.Async.AsyncControllerActionInvoker.EndInvokeActionMethodWithFilters(IAsyncResult asyncResult)
+   en System.Web.Mvc.Async.AsyncControllerActionInvoker.<>c__DisplayClass3_6.<BeginInvokeAction>b__4()
+   en System.Web.Mvc.Async.AsyncControllerActionInvoker.<>c__DisplayClass3_1.<BeginInvokeAction>b__1(IAsyncResult asyncResult)
+2026-02-05 16:19:28.461 | INFO  | CID:N/A | Iniciando procesador de cola de correos
+2026-02-05 16:19:41.783 | INFO  | CID:f03324329bd5 | USR:USU_ADMIN | Account/Login | Iniciando acción: Account/Login
+2026-02-05 16:19:42.317 | INFO  | CID:f03324329bd5 | USR:USU_ADMIN | Account/Login | Acción completada: Account/Login
+2026-02-05 16:21:24.330 | INFO  | CID:5c319a30e731 | USR:USU_ADMIN | Account/Login | Iniciando acción: Account/Login
+2026-02-05 16:21:24.371 | INFO  | CID:5c319a30e731 | USR:USU_ADMIN | Account/Login | Acción completada: Account/Login
+2026-02-05 16:22:03.029 | INFO  | CID:N/A | Iniciando procesador de cola de correos
+2026-02-05 16:22:12.699 | INFO  | CID:eabb91b7d239 | USR:USU_ADMIN | Account/Login | Iniciando acción: Account/Login
+2026-02-05 16:22:12.984 | INFO  | CID:eabb91b7d239 | USR:USU_ADMIN | Account/Login | Acción completada: Account/Login
+2026-02-05 16:25:03.996 | INFO  | CID:N/A | Iniciando procesador de cola de correos
+2026-02-05 16:25:12.107 | INFO  | CID:c486f181546e | USR:USU_ADMIN | Account/Login | Iniciando acción: Account/Login
+2026-02-05 16:25:12.388 | INFO  | CID:c486f181546e | USR:USU_ADMIN | Account/Login | Acción completada: Account/Login
+2026-02-05 16:29:18.762 | INFO  | CID:N/A | Iniciando procesador de cola de correos
+2026-02-05 16:29:30.547 | INFO  | CID:e916fbb1673d | USR:USU_ADMIN | Account/Login | Iniciando acción: Account/Login
+2026-02-05 16:29:30.850 | INFO  | CID:e916fbb1673d | USR:USU_ADMIN | Account/Login | Acción completada: Account/Login
+2026-02-05 16:32:20.115 | INFO  | CID:N/A | Iniciando procesador de cola de correos
+2026-02-05 16:32:26.523 | INFO  | CID:9f4af6dfbe56 | USR:USU_ADMIN | Account/Login | Iniciando acción: Account/Login
+2026-02-05 16:32:27.010 | INFO  | CID:9f4af6dfbe56 | USR:USU_ADMIN | Account/Login | Acción completada: Account/Login

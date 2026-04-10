@@ -1,0 +1,1135 @@
+@model CapaPresentacion.Models.DashboardInspeccionViewModel
+@using System
+@using System.Linq
+@using System.Web
+@using CapaPresentacion.Helpers
+@{
+    Layout = "~/Views/Shared/_LayoutAOCR.cshtml";
+    ViewBag.Title = "Gestión Integral AOCR";
+
+    var model = Model ?? new CapaPresentacion.Models.DashboardInspeccionViewModel();
+    var gestionIntegral = model.GestionIntegralAocr ?? new System.Collections.Generic.List<CapaPresentacion.Models.DashboardGestionIntegralItemViewModel>();
+    var firmas = model.PendientesFirma ?? new System.Collections.Generic.List<CapaPresentacion.Models.DashboardInspeccionFirmaItemViewModel>();
+    var ncs = model.ObservacionesNc ?? new System.Collections.Generic.List<CapaPresentacion.Models.DashboardInspeccionNcItemViewModel>();
+    var quickFilter = string.IsNullOrWhiteSpace(model.QuickFilter) ? "TODOS" : model.QuickFilter;
+    var tablero = model.TableroAocr ?? new CapaPresentacion.Models.TableroAocrViewModel();
+    const int kanbanPreviewLimit = 5;
+    var puedeGestionarAsignacion = User.IsInRole("Administrador") || User.IsInRole("Direccion") || User.IsInRole("JefaturaTecnica");
+    var puedeVerPendientesDirdac = User.IsInRole("Administrador") || User.IsInRole("Direccion") || User.IsInRole("Director") || User.IsInRole("JefaturaTecnica") || User.IsInRole("Jefe");
+
+    var toolbarLinks = new System.Collections.Generic.List<string>();
+    if (puedeVerPendientesDirdac)
+    {
+        toolbarLinks.Add("<a href=\"" + Url.Action("PendientesFirmaDirdac", "Inspeccion") + "\" class=\"btn btn-aocr-secondary\"><i class=\"fas fa-signature\"></i><span>Pendientes DIRDAC</span></a>");
+    }
+
+    if (User.IsInRole("Administrador") || User.IsInRole("JefaturaTecnica"))
+    {
+        toolbarLinks.Add("<a href=\"" + Url.Action("ValidarAocr", "CoordinacionJefatura") + "\" class=\"btn btn-aocr-primary\"><i class=\"fas fa-stamp\"></i><span>Validar AOCR</span></a>");
+    }
+
+    if (puedeGestionarAsignacion)
+    {
+        toolbarLinks.Add("<a href=\"" + Url.Action("Index", "Tecnico") + "\" class=\"btn btn-aocr-secondary\"><i class=\"fas fa-user-check\"></i><span>Asignar inspector</span></a>");
+    }
+
+    var pageHeaderData = new ViewDataDictionary
+    {
+        { "Kicker", "Coordinación y Jefatura" },
+        { "Title", "Gestión Integral AOCR" },
+        { "Subtitle", "Tablero operativo con vista kanban y tabla unificada de respaldo" },
+        { "Breadcrumbs", new[]
+            {
+                new { Text = "Coordinación y Jefatura", Url = string.Empty },
+                new { Text = "Gestión Integral AOCR", Url = string.Empty }
+            }
+        }
+    };
+
+    var heroData = new ViewDataDictionary
+    {
+        { "Kicker", "Control operativo AOCR" },
+        { "Title", "Visión completa del trámite" },
+        { "Subtitle", "Semáforo operativo por columna, acciones rápidas y detalle sin salir de la bandeja" },
+        { "Description", "El tablero reorganiza la gestión en pendientes, revisión, inspección, observados, firmas y finalizados para detectar bloqueos y decidir más rápido sin romper la lógica actual." },
+        { "MetricTitle", "Trámites visibles" },
+        { "MetricValue", gestionIntegral.Count },
+        { "MetricSubtitle", "Filtrados según los criterios activos" }
+    };
+
+    var toolbarData = new ViewDataDictionary
+    {
+        { "VolverUrl", Url.Action("RevisionVerificacion", "CoordinacionJefatura") },
+        { "VolverTexto", "Ir a Revisión / Verificación" },
+        { "CustomActionsHtml", new HtmlString(string.Join(string.Empty, toolbarLinks)) }
+    };
+
+    Func<string, string, string> quickFilterUrl = (value, label) => Url.Action("DashboardInspeccion", "CoordinacionJefatura", new
+    {
+        compania = model.CompaniaFiltro,
+        inspector = model.InspectorFiltro,
+        estado = model.EstadoFiltro,
+        quickFilter = value
+    });
+}
+
+@helper RenderKanbanColumn(string columnKey, string title, string subtitle, string icon, string accentClass, System.Collections.Generic.IEnumerable<CapaPresentacion.Models.DashboardGestionIntegralItemViewModel> items, int previewLimit)
+{
+    var itemList = (items ?? Enumerable.Empty<CapaPresentacion.Models.DashboardGestionIntegralItemViewModel>()).ToList();
+    var total = itemList.Count;
+    var visibleInitial = Math.Min(previewLimit, total);
+
+    <div class="dash-kanban-column @accentClass" data-column="@columnKey" data-expanded="false" data-preview-limit="@previewLimit">
+        <div class="dash-kanban-column__head">
+            <div>
+                <div class="dash-kanban-column__title"><i class="@icon"></i> @title</div>
+                <div class="dash-kanban-column__subtitle">@subtitle</div>
+            </div>
+            <span class="dash-kanban-column__count">@total</span>
+        </div>
+
+        <div class="dash-kanban-column__body">
+            @if (!itemList.Any())
+            {
+                <div class="dash-kanban-empty">
+                    <i class="fas fa-inbox"></i>
+                    <span>Sin registros</span>
+                </div>
+            }
+            else
+            {
+                foreach (var item in itemList)
+                {
+                    var badgeGeneral = DashboardInspeccionBadgeHelper.GetBadgeEstado(item.EstadoGeneral, "GENERAL");
+                    var badgeDocumental = DashboardInspeccionBadgeHelper.GetBadgeEstado(item.EstadoDocumental, "DOCUMENTO");
+                    var badgeInspeccion = DashboardInspeccionBadgeHelper.GetBadgeEstado(item.EstadoInspeccion, "INSPECCION");
+                    var mostrarAccionPrincipal = !string.IsNullOrWhiteSpace(item.UrlAccionPrincipal)
+                        && !string.Equals(item.UrlAccionPrincipal, item.UrlDetalle, StringComparison.OrdinalIgnoreCase)
+                        && !string.Equals(item.TextoAccionPrincipal, "Ver", StringComparison.OrdinalIgnoreCase);
+                    var searchIndex = string.Join(" ", new[]
+                    {
+                        item.NumeroSolicitud,
+                        item.Compania,
+                        item.Tipo,
+                        item.EstadoGeneral,
+                        item.EstadoDocumental,
+                        item.EstadoInspeccion,
+                        item.Inspector,
+                        item.EtapaActual,
+                        item.ResumenKanban
+                    }.Where(x => !string.IsNullOrWhiteSpace(x)));
+
+                    <article class="dash-kanban-card dash-kanban-card--@item.ColorKanban @(item.EsUrgente ? "dash-kanban-card--urgent" : null)"
+                             data-search="@searchIndex.ToLowerInvariant()"
+                             title="@item.ResumenKanban">
+                        <div class="dash-kanban-card__top">
+                            <div>
+                                <button type="button" class="dash-kanban-card__title js-open-detail-modal" data-url="@item.UrlDetalle" data-title="@item.NumeroSolicitud - @item.Compania">
+                                    @item.NumeroSolicitud
+                                </button>
+                                <div class="dash-kanban-card__company">@item.Compania</div>
+                            </div>
+                            <span class="dash-chip">@item.Tipo</span>
+                        </div>
+
+                        <div class="dash-kanban-card__badges">
+                            <span class="@badgeGeneral.CssClass">@badgeGeneral.Text</span>
+                            <span class="@badgeDocumental.CssClass">@badgeDocumental.Text</span>
+                            <span class="@badgeInspeccion.CssClass">@badgeInspeccion.Text</span>
+                        </div>
+
+                        <div class="dash-kanban-meta">
+                            <span><i class="fas fa-user-check"></i> @item.Inspector</span>
+                            <span><i class="fas fa-diagram-project"></i> @item.EtapaActual</span>
+                            <span><i class="fas fa-calendar-days"></i> @(item.Fecha.HasValue ? item.Fecha.Value.ToString("dd/MM/yyyy") : "Sin fecha")</span>
+                        </div>
+
+                        <div class="dash-kanban-signatures">
+                            <span class="dash-signature-line"><span class="dash-signature-dot @(item.FirmaInspector ? "dash-signature-dot-ok" : "dash-signature-dot-ko")"></span> Inspector</span>
+                            <span class="dash-signature-line"><span class="dash-signature-dot @(item.FirmaDirdac ? "dash-signature-dot-ok" : "dash-signature-dot-ko")"></span> DIRDAC</span>
+                        </div>
+
+                        <div class="dash-kanban-summary">@item.ResumenKanban</div>
+
+                        <div class="dash-kanban-actions">
+                            <button type="button" class="btn btn-sm btn-outline-primary js-open-detail-modal" data-url="@item.UrlDetalle" data-title="@item.NumeroSolicitud - @item.Compania">
+                                <i class="fas fa-eye"></i> Ver detalle
+                            </button>
+                            @if (mostrarAccionPrincipal)
+                            {
+                                <a class="btn btn-sm btn-outline-success" href="@item.UrlAccionPrincipal"><i class="fas fa-bolt"></i> @item.TextoAccionPrincipal</a>
+                            }
+                        </div>
+                    </article>
+                }
+            }
+        </div>
+
+        <div class="dash-kanban-column__footer @(total > previewLimit ? null : "d-none")">
+            <span class="dash-kanban-column__summary">Mostrando <strong class="js-kanban-visible">@visibleInitial</strong> de <strong>@total</strong></span>
+            <button type="button" class="btn btn-sm btn-outline-secondary js-kanban-toggle" data-column="@columnKey">Ver más</button>
+        </div>
+    </div>
+}
+
+<style>
+    .dash-shell {
+        --dash-blue: #155c8a;
+        --dash-blue-soft: #e6f1f8;
+        --dash-orange: #c66a17;
+        --dash-orange-soft: #fff1e1;
+        --dash-green: #1d7b4f;
+        --dash-green-soft: #e9f6ef;
+        --dash-red: #b53939;
+        --dash-red-soft: #fdecec;
+        --dash-yellow: #b78312;
+        --dash-yellow-soft: #fff7dc;
+        --dash-gray: #5f6f7c;
+        --dash-gray-soft: #eef2f5;
+        --dash-ink: #183246;
+        --dash-muted: #6d7f8b;
+        --dash-border: rgba(24, 50, 70, 0.1);
+    }
+
+    .dash-filter-card,
+    .dash-panel {
+        background: #fff;
+        border: 1px solid var(--dash-border);
+        border-radius: 20px;
+        box-shadow: 0 16px 32px rgba(17, 52, 73, 0.08);
+    }
+
+    .dash-filter-card {
+        padding: 20px;
+        margin-bottom: 22px;
+    }
+
+    .dash-filter-card .form-label {
+        font-size: 0.82rem;
+        font-weight: 700;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+        color: var(--dash-muted);
+    }
+
+    .dash-quick-filters {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        margin-top: 14px;
+    }
+
+    .dash-quick-filter {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 10px 14px;
+        border-radius: 999px;
+        border: 1px solid var(--dash-border);
+        background: #fff;
+        color: var(--dash-ink);
+        font-weight: 700;
+        text-decoration: none;
+    }
+
+    .dash-quick-filter.active {
+        background: linear-gradient(135deg, #0f5e91 0%, #2f86bd 100%);
+        color: #fff;
+        border-color: transparent;
+        box-shadow: 0 14px 26px rgba(17, 52, 73, 0.18);
+    }
+
+    .dash-panel {
+        padding: 22px;
+    }
+
+    .dash-panel-head {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        gap: 16px;
+        margin-bottom: 18px;
+    }
+
+    .dash-panel-title {
+        margin: 0;
+        font-size: 1.25rem;
+        font-weight: 800;
+        color: var(--dash-ink);
+    }
+
+    .dash-panel-subtitle {
+        margin: 4px 0 0;
+        color: var(--dash-muted);
+    }
+
+    .dash-table th {
+        font-size: 0.82rem;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        color: var(--dash-muted);
+        border-top: 0;
+        white-space: nowrap;
+    }
+
+    .dash-table td {
+        vertical-align: middle;
+    }
+
+    .dash-table .btn {
+        white-space: nowrap;
+    }
+
+    .dash-stack {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+    }
+
+    .dash-signatures {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+    }
+
+    .dash-signature-line {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+    }
+
+    .dash-signature-dot {
+        width: 10px;
+        height: 10px;
+        border-radius: 999px;
+        display: inline-block;
+    }
+
+    .dash-signature-dot-ok { background: #1d7b4f; }
+    .dash-signature-dot-ko { background: #9aa7b0; }
+
+    .dash-chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 6px 10px;
+        border-radius: 999px;
+        border: 1px solid var(--dash-border);
+        background: #f7fafc;
+        color: var(--dash-ink);
+        font-size: 0.8rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+    }
+
+    .dash-primary {
+        font-weight: 700;
+        color: var(--dash-ink);
+    }
+
+    .dash-secondary {
+        color: var(--dash-muted);
+        font-size: 0.9rem;
+    }
+
+    .dash-badge {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 999px;
+        padding: 6px 12px;
+        font-size: 0.78rem;
+        font-weight: 800;
+        letter-spacing: 0.03em;
+        text-transform: uppercase;
+    }
+
+    .dash-badge-blue { background: var(--dash-blue-soft); color: var(--dash-blue); }
+    .dash-badge-orange { background: var(--dash-orange-soft); color: var(--dash-orange); }
+    .dash-badge-green { background: var(--dash-green); color: #fff; }
+    .dash-badge-green-soft { background: var(--dash-green-soft); color: var(--dash-green); }
+    .dash-badge-red { background: var(--dash-red-soft); color: var(--dash-red); }
+    .dash-badge-yellow { background: var(--dash-yellow-soft); color: var(--dash-yellow); }
+    .dash-badge-gray { background: var(--dash-gray-soft); color: var(--dash-gray); }
+    .dash-badge-neutral { background: #f4f6f8; color: var(--dash-muted); }
+
+    .aocr-metric-card.metric-secondary {
+        border-color: rgba(95, 111, 124, 0.18);
+        background: linear-gradient(180deg, #f7f9fb 0%, #eef2f5 100%);
+    }
+
+    .dash-search-box {
+        position: relative;
+    }
+
+    .dash-search-box i {
+        position: absolute;
+        top: 50%;
+        left: 14px;
+        transform: translateY(-50%);
+        color: var(--dash-muted);
+    }
+
+    .dash-search-box input {
+        padding-left: 40px;
+    }
+
+    .dash-board-shell {
+        display: grid;
+        gap: 18px;
+    }
+
+    .dash-board-toolbar {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 12px;
+        flex-wrap: wrap;
+    }
+
+    .dash-board-caption {
+        color: var(--dash-muted);
+        margin: 0;
+    }
+
+    .dash-kanban-strip {
+        display: grid;
+        grid-auto-flow: column;
+        grid-auto-columns: minmax(285px, 1fr);
+        gap: 18px;
+        overflow-x: auto;
+        padding-bottom: 8px;
+    }
+
+    .dash-kanban-column {
+        background: linear-gradient(180deg, rgba(255,255,255,0.98) 0%, rgba(246,249,251,0.98) 100%);
+        border: 1px solid var(--dash-border);
+        border-radius: 22px;
+        box-shadow: 0 18px 34px rgba(17, 52, 73, 0.08);
+        min-height: 520px;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .dash-kanban-column__head {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        gap: 12px;
+        padding: 16px 16px 12px;
+        border-bottom: 1px solid rgba(24, 50, 70, 0.08);
+    }
+
+    .dash-kanban-column__title {
+        font-weight: 800;
+        color: var(--dash-ink);
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .dash-kanban-column__subtitle {
+        margin-top: 4px;
+        color: var(--dash-muted);
+        font-size: 0.9rem;
+    }
+
+    .dash-kanban-column__count {
+        min-width: 36px;
+        height: 36px;
+        padding: 0 10px;
+        border-radius: 999px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 800;
+        background: rgba(255,255,255,0.85);
+        border: 1px solid rgba(24, 50, 70, 0.08);
+        color: var(--dash-ink);
+    }
+
+    .dash-kanban-column__body {
+        padding: 14px;
+        display: grid;
+        gap: 12px;
+        align-content: start;
+        flex: 1;
+    }
+
+    .dash-kanban-column__footer {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 10px;
+        padding: 0 14px 14px;
+    }
+
+    .dash-kanban-column__summary {
+        color: var(--dash-muted);
+        font-size: 0.9rem;
+    }
+
+    .dash-column-gray .dash-kanban-column__head { background: linear-gradient(180deg, #f7f9fb 0%, #eef2f5 100%); border-radius: 22px 22px 0 0; }
+    .dash-column-blue .dash-kanban-column__head { background: linear-gradient(180deg, #e9f4fb 0%, #dcebfa 100%); border-radius: 22px 22px 0 0; }
+    .dash-column-yellow .dash-kanban-column__head { background: linear-gradient(180deg, #fff8e1 0%, #fff0c4 100%); border-radius: 22px 22px 0 0; }
+    .dash-column-red .dash-kanban-column__head { background: linear-gradient(180deg, #fdecec 0%, #fbdede 100%); border-radius: 22px 22px 0 0; }
+    .dash-column-green .dash-kanban-column__head { background: linear-gradient(180deg, #e9f6ef 0%, #dbf0e4 100%); border-radius: 22px 22px 0 0; }
+
+    .dash-kanban-empty {
+        min-height: 140px;
+        border: 1px dashed rgba(24, 50, 70, 0.16);
+        border-radius: 18px;
+        display: grid;
+        place-items: center;
+        gap: 8px;
+        color: var(--dash-muted);
+        text-align: center;
+        padding: 18px;
+    }
+
+    .dash-kanban-card {
+        border-radius: 18px;
+        border: 1px solid rgba(24, 50, 70, 0.08);
+        background: #fff;
+        padding: 14px;
+        box-shadow: 0 12px 24px rgba(17, 52, 73, 0.06);
+        display: grid;
+        gap: 10px;
+        transition: transform 0.18s ease, box-shadow 0.18s ease;
+    }
+
+    .dash-kanban-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 18px 28px rgba(17, 52, 73, 0.12);
+    }
+
+    .dash-kanban-card--secondary { border-top: 4px solid #7a8791; }
+    .dash-kanban-card--info { border-top: 4px solid #2f86bd; }
+    .dash-kanban-card--warning { border-top: 4px solid #d59b1b; }
+    .dash-kanban-card--danger { border-top: 4px solid #d95c5c; }
+    .dash-kanban-card--success { border-top: 4px solid #41a06e; }
+    .dash-kanban-card--urgent { box-shadow: 0 0 0 2px rgba(217, 92, 92, 0.18), 0 18px 28px rgba(17, 52, 73, 0.12); }
+
+    .dash-kanban-card__top {
+        display: flex;
+        justify-content: space-between;
+        gap: 10px;
+        align-items: flex-start;
+    }
+
+    .dash-kanban-card__title {
+        border: 0;
+        background: transparent;
+        padding: 0;
+        font-weight: 800;
+        color: var(--dash-blue);
+        text-align: left;
+    }
+
+    .dash-kanban-card__company {
+        color: var(--dash-ink);
+        font-weight: 600;
+        margin-top: 2px;
+        font-size: 0.95rem;
+    }
+
+    .dash-kanban-card__badges {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+    }
+
+    .dash-kanban-meta {
+        display: grid;
+        gap: 6px;
+        color: var(--dash-muted);
+        font-size: 0.9rem;
+    }
+
+    .dash-kanban-meta span,
+    .dash-kanban-signatures {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+        flex-wrap: wrap;
+    }
+
+    .dash-kanban-summary {
+        font-size: 0.9rem;
+        color: var(--dash-ink);
+        background: #f8fbfd;
+        border-radius: 14px;
+        padding: 10px 12px;
+    }
+
+    .dash-kanban-actions {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+    }
+
+    .dash-modal .modal-dialog {
+        max-width: 1180px;
+    }
+
+    .dash-modal .modal-content {
+        border-radius: 20px;
+        overflow: hidden;
+    }
+
+    .dash-modal__frame {
+        width: 100%;
+        min-height: 70vh;
+        border: 0;
+        background: #fff;
+    }
+
+    .dash-section-card {
+        background: #fff;
+        border: 1px solid var(--dash-border);
+        border-radius: 20px;
+        box-shadow: 0 16px 32px rgba(17, 52, 73, 0.08);
+    }
+
+    .dash-section-title {
+        margin: 0;
+        font-size: 1.2rem;
+        font-weight: 800;
+        color: var(--dash-ink);
+    }
+
+    .dash-section-note {
+        margin: 4px 0 0;
+        color: var(--dash-muted);
+    }
+
+    .dash-subtable-wrap {
+        background: linear-gradient(180deg, rgba(230, 241, 248, 0.45) 0%, rgba(255, 255, 255, 0.95) 100%);
+        border-radius: 18px;
+        padding: 12px;
+    }
+
+    .dash-tab-pane .alert-info {
+        margin-bottom: 0;
+        border-radius: 16px;
+    }
+
+    @@media (max-width: 991.98px) {
+        .dash-panel {
+            padding: 18px;
+        }
+
+        .dash-panel-head {
+            flex-direction: column;
+        }
+
+        .dash-kanban-strip {
+            grid-auto-columns: minmax(88vw, 1fr);
+        }
+    }
+</style>
+
+<div class="aocr-view dash-shell">
+    @Html.Partial("_PageHeader", null, pageHeaderData)
+    @Html.Partial("_HeroPanel", null, heroData)
+
+    @if (TempData["Success"] != null)
+    {
+        <div class="alert alert-success" role="alert">@TempData["Success"]</div>
+    }
+    @if (TempData["Warning"] != null)
+    {
+        <div class="alert alert-warning" role="alert">@TempData["Warning"]</div>
+    }
+    @if (TempData["Info"] != null)
+    {
+        <div class="alert alert-info" role="alert">@TempData["Info"]</div>
+    }
+    @if (TempData["Error"] != null)
+    {
+        <div class="alert alert-danger" role="alert">@TempData["Error"]</div>
+    }
+
+    <div class="row g-3 mb-4">
+        <div class="col-12 col-md-6 col-xl">
+            @Html.Partial("_MetricCard", null, new ViewDataDictionary { { "Label", "Total trámites" }, { "Value", model.TotalTramites }, { "Modifier", "info" }, { "Icon", "fas fa-table-list" }, { "Caption", "Registros en la tabla maestra" } })
+        </div>
+        <div class="col-12 col-md-6 col-xl">
+            @Html.Partial("_MetricCard", null, new ViewDataDictionary { { "Label", "Pendientes" }, { "Value", model.TotalPendientes }, { "Modifier", "warning" }, { "Icon", "fas fa-hourglass-half" }, { "Caption", "Procesos aún no finalizados" } })
+        </div>
+        <div class="col-12 col-md-6 col-xl">
+            @Html.Partial("_MetricCard", null, new ViewDataDictionary { { "Label", "En proceso" }, { "Value", model.TotalEnProceso }, { "Modifier", "warning" }, { "Icon", "fas fa-spinner" }, { "Caption", "En verificación o ejecución" } })
+        </div>
+        <div class="col-12 col-md-6 col-xl">
+            @Html.Partial("_MetricCard", null, new ViewDataDictionary { { "Label", "Observadas" }, { "Value", model.TotalObservadas }, { "Modifier", "danger" }, { "Icon", "fas fa-triangle-exclamation" }, { "Caption", "Requieren atención o subsanación" } })
+        </div>
+        <div class="col-12 col-md-6 col-xl">
+            @Html.Partial("_MetricCard", null, new ViewDataDictionary { { "Label", "Listos para firma" }, { "Value", model.TotalListosFirma }, { "Modifier", "success" }, { "Icon", "fas fa-signature" }, { "Caption", "Pendientes del circuito final de firmas" } })
+        </div>
+        <div class="col-12 col-md-6 col-xl">
+            @Html.Partial("_MetricCard", null, new ViewDataDictionary { { "Label", "Finalizadas" }, { "Value", model.TotalFinalizadas }, { "Modifier", "success" }, { "Icon", "fas fa-circle-check" }, { "Caption", "Etapas técnicas concluidas" } })
+        </div>
+    </div>
+
+    @Html.Partial("_ActionToolbar", null, toolbarData)
+
+    <div class="dash-filter-card">
+        @using (Html.BeginForm("DashboardInspeccion", "CoordinacionJefatura", FormMethod.Get, new { @class = "row g-3 align-items-end" }))
+        {
+            <input type="hidden" name="quickFilter" value="@quickFilter" />
+            <div class="col-12 col-md-4">
+                <label class="form-label" for="compania">Compañía</label>
+                <select id="compania" name="compania" class="form-select">
+                    <option value="">Todas las compañías</option>
+                    @foreach (var item in model.CompaniasDisponibles)
+                    {
+                        <option value="@item" @(string.Equals(item, model.CompaniaFiltro, StringComparison.OrdinalIgnoreCase) ? "selected" : null)>@item</option>
+                    }
+                </select>
+            </div>
+            <div class="col-12 col-md-4">
+                <label class="form-label" for="inspector">Inspector</label>
+                <select id="inspector" name="inspector" class="form-select">
+                    <option value="">Todos los inspectores</option>
+                    @foreach (var item in model.InspectoresDisponibles)
+                    {
+                        <option value="@item" @(string.Equals(item, model.InspectorFiltro, StringComparison.OrdinalIgnoreCase) ? "selected" : null)>@item</option>
+                    }
+                </select>
+            </div>
+            <div class="col-12 col-md-2">
+                <label class="form-label" for="estado">Estado</label>
+                <select id="estado" name="estado" class="form-select">
+                    <option value="">Todos los estados</option>
+                    @foreach (var item in model.EstadosDisponibles)
+                    {
+                        <option value="@item" @(string.Equals(item, model.EstadoFiltro, StringComparison.OrdinalIgnoreCase) ? "selected" : null)>@item.Replace("_", " ")</option>
+                    }
+                </select>
+            </div>
+            <div class="col-12 col-md-2 d-flex gap-2">
+                <button type="submit" class="btn btn-aocr-primary flex-fill"><i class="fas fa-filter"></i> Filtrar</button>
+                <a href="@Url.Action("DashboardInspeccion", "CoordinacionJefatura")" class="btn btn-aocr-secondary flex-fill"><i class="fas fa-rotate-left"></i> Limpiar</a>
+            </div>
+        }
+
+        <div class="dash-quick-filters">
+            <a class="dash-quick-filter @(quickFilter == "TODOS" ? "active" : null)" href="@quickFilterUrl("TODOS", "Todos")"><i class="fas fa-border-all"></i> Todos</a>
+            <a class="dash-quick-filter @(quickFilter == "PENDIENTES" ? "active" : null)" href="@quickFilterUrl("PENDIENTES", "Pendientes")"><i class="fas fa-hourglass-half"></i> Pendientes</a>
+            <a class="dash-quick-filter @(quickFilter == "EN_PROCESO" ? "active" : null)" href="@quickFilterUrl("EN_PROCESO", "En proceso")"><i class="fas fa-spinner"></i> En proceso</a>
+            <a class="dash-quick-filter @(quickFilter == "OBSERVADOS" ? "active" : null)" href="@quickFilterUrl("OBSERVADOS", "Observados")"><i class="fas fa-triangle-exclamation"></i> Observados</a>
+            <a class="dash-quick-filter @(quickFilter == "LISTOS_FIRMA" ? "active" : null)" href="@quickFilterUrl("LISTOS_FIRMA", "Listos para firma")"><i class="fas fa-signature"></i> Listos para firma</a>
+        </div>
+
+        <div class="row g-3 mt-1 align-items-end">
+            <div class="col-12 col-xl-5">
+                <label class="form-label" for="kanbanSearch">Búsqueda rápida en tablero</label>
+                <div class="dash-search-box">
+                    <i class="fas fa-search"></i>
+                    <input type="text" id="kanbanSearch" class="form-control" placeholder="Buscar por solicitud, compañía, inspector o estado" autocomplete="off" />
+                </div>
+            </div>
+            <div class="col-12 col-xl-7">
+                <p class="dash-board-caption mb-0">El tablero muestra primero hasta @kanbanPreviewLimit tarjetas por columna. Usa “Ver más” para expandir cada estado y “Ver detalle” para abrir el caso sin salir de la bandeja.</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-4">
+        <div class="col-12">
+            <div class="card aocr-content-card aocr-table-card dash-section-card">
+                <div class="card-body">
+                    <div class="dash-board-shell">
+                        <div class="dash-board-toolbar">
+                            <div>
+                                <h3 class="dash-section-title"><i class="fas fa-grip"></i> Tablero Operativo AOCR</h3>
+                                <p class="dash-section-note">Los trámites se distribuyen automáticamente por estado operativo para reducir scroll y visibilizar cuellos de botella.</p>
+                            </div>
+                            @Html.Partial("_StatusBadge", null, new ViewDataDictionary { { "Estado", gestionIntegral.Any() ? "En bandeja" : "Completado" } })
+                        </div>
+
+                        @if (!gestionIntegral.Any())
+                        {
+                            @Html.Partial("_EmptyState", null, new ViewDataDictionary {
+                                { "Icon", "fas fa-grip" },
+                                { "Title", "Sin trámites para el tablero" },
+                                { "Description", "No existen casos visibles para construir el tablero operativo con los filtros actuales." }
+                            })
+                        }
+                        else
+                        {
+                            <div class="dash-kanban-strip" id="aocrKanbanBoard">
+                                @RenderKanbanColumn("PENDIENTES", "Pendientes", "Recepción o asignación inicial", "fas fa-hourglass-half", "dash-column-gray", tablero.Pendientes, kanbanPreviewLimit)
+                                @RenderKanbanColumn("EN_REVISION", "En revisión", "Control y validación documental", "fas fa-magnifying-glass", "dash-column-blue", tablero.EnRevision, kanbanPreviewLimit)
+                                @RenderKanbanColumn("EN_INSPECCION", "En inspección", "Ejecución técnica en curso", "fas fa-user-check", "dash-column-yellow", tablero.EnInspeccion, kanbanPreviewLimit)
+                                @RenderKanbanColumn("OBSERVADOS", "Observados", "Casos bloqueados o por subsanar", "fas fa-triangle-exclamation", "dash-column-red", tablero.Observados, kanbanPreviewLimit)
+                                @RenderKanbanColumn("LISTOS_FIRMA", "Listos para firma", "Pendientes del cierre documental", "fas fa-signature", "dash-column-green", tablero.ListosFirma, kanbanPreviewLimit)
+                                @RenderKanbanColumn("FINALIZADOS", "Finalizados", "Trámites cerrados para consulta", "fas fa-circle-check", "dash-column-green", tablero.Finalizados, kanbanPreviewLimit)
+                            </div>
+                        }
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-12">
+            <div class="card aocr-content-card aocr-table-card dash-section-card">
+                <div class="card-body">
+                    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+                        <div>
+                            <h3 class="dash-section-title"><i class="fas fa-table-columns"></i> Tabla Unificada de Respaldo</h3>
+                            <p class="dash-section-note">Búsqueda avanzada, auditoría y exportación sobre la misma información consolidada del tablero.</p>
+                        </div>
+                        @Html.Partial("_StatusBadge", null, new ViewDataDictionary { { "Estado", gestionIntegral.Any() ? "En bandeja" : "Completado" } })
+                    </div>
+
+                    @if (!gestionIntegral.Any())
+                    {
+                        @Html.Partial("_EmptyState", null, new ViewDataDictionary {
+                            { "Icon", "fas fa-table-columns" },
+                            { "Title", "Sin trámites en la tabla de respaldo" },
+                            { "Description", "No existen casos visibles para la tabla unificada con los filtros actuales." }
+                        })
+                    }
+                    else
+                    {
+                        <div class="table-responsive aocr-table-wrap">
+                            <table class="table aocr-table dash-table align-middle mb-0 js-dashboard-table" id="tablaGestionIntegralAocr">
+                                <thead>
+                                    <tr>
+                                        <th>N° Solicitud</th>
+                                        <th>Compañía</th>
+                                        <th>Tipo</th>
+                                        <th>Estado general</th>
+                                        <th>Estado documental</th>
+                                        <th>Estado inspección</th>
+                                        <th>Inspector</th>
+                                        <th>Etapa actual</th>
+                                        <th>Firmas</th>
+                                        <th>Fecha</th>
+                                        <th class="text-end">Acciones</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var item in gestionIntegral)
+                                    {
+                                        var badgeGeneral = DashboardInspeccionBadgeHelper.GetBadgeEstado(item.EstadoGeneral, "GENERAL");
+                                        var badgeDocumental = DashboardInspeccionBadgeHelper.GetBadgeEstado(item.EstadoDocumental, "DOCUMENTO");
+                                        var badgeInspeccion = DashboardInspeccionBadgeHelper.GetBadgeEstado(item.EstadoInspeccion, "INSPECCION");
+                                        var mostrarAccionPrincipal = !string.IsNullOrWhiteSpace(item.UrlAccionPrincipal)
+                                            && !string.Equals(item.UrlAccionPrincipal, item.UrlDetalle, StringComparison.OrdinalIgnoreCase)
+                                            && !string.Equals(item.TextoAccionPrincipal, "Ver", StringComparison.OrdinalIgnoreCase);
+                                        <tr>
+                                            <td>
+                                                <div class="fw-semibold text-primary">
+                                                    <a href="@item.UrlDetalle">@item.NumeroSolicitud</a>
+                                                </div>
+                                                <small class="text-muted">@(item.CodigoInspeccion.HasValue ? "Inspección " + item.CodigoInspeccion.Value : "Solicitud AOCR")</small>
+                                            </td>
+                                            <td>@item.Compania</td>
+                                            <td><span class="dash-chip">@item.Tipo</span></td>
+                                            <td><span class="@badgeGeneral.CssClass">@badgeGeneral.Text</span></td>
+                                            <td><span class="@badgeDocumental.CssClass">@badgeDocumental.Text</span></td>
+                                            <td><span class="@badgeInspeccion.CssClass">@badgeInspeccion.Text</span></td>
+                                            <td>@item.Inspector</td>
+                                            <td>
+                                                @Html.Partial("_StatusBadge", null, new ViewDataDictionary { { "Estado", item.EtapaActual } })
+                                            </td>
+                                            <td>
+                                                <div class="dash-signatures">
+                                                    <span class="dash-signature-line"><span class="dash-signature-dot @(item.FirmaInspector ? "dash-signature-dot-ok" : "dash-signature-dot-ko")"></span> Inspector @(item.FirmaInspector ? "✔" : "✖")</span>
+                                                    <span class="dash-signature-line"><span class="dash-signature-dot @(item.FirmaDirdac ? "dash-signature-dot-ok" : "dash-signature-dot-ko")"></span> DIRDAC @(item.FirmaDirdac ? "✔" : "✖")</span>
+                                                </div>
+                                            </td>
+                                            <td>@(item.Fecha.HasValue ? item.Fecha.Value.ToString("dd/MM/yyyy") : "No registrada")</td>
+                                            <td class="text-end">
+                                                <div class="d-flex flex-wrap justify-content-end gap-2">
+                                                    @if (mostrarAccionPrincipal)
+                                                    {
+                                                        <a class="btn btn-sm btn-outline-success" href="@item.UrlAccionPrincipal"><i class="fas fa-bolt"></i> @item.TextoAccionPrincipal</a>
+                                                    }
+                                                    @if (!string.IsNullOrWhiteSpace(item.UrlVerDocumento) && !string.Equals(item.UrlVerDocumento, item.UrlAccionPrincipal, StringComparison.OrdinalIgnoreCase))
+                                                    {
+                                                        <a class="btn btn-sm btn-outline-secondary" href="@item.UrlVerDocumento" target="_blank" rel="noopener"><i class="fas fa-file-pdf"></i> Ver AOCR</a>
+                                                    }
+                                                    @if (!string.IsNullOrWhiteSpace(item.UrlDescargarPdf))
+                                                    {
+                                                        <a class="btn btn-sm btn-outline-secondary" href="@item.UrlDescargarPdf"><i class="fas fa-download"></i> Descargar</a>
+                                                    }
+                                                    <button type="button" class="btn btn-sm btn-outline-primary js-open-detail-modal" data-url="@item.UrlDetalle" data-title="@item.NumeroSolicitud - @item.Compania"><i class="fas fa-eye"></i> Detalle</button>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+
+        <div class="col-12 col-xl-6">
+            <div class="card aocr-content-card aocr-table-card dash-section-card h-100">
+                <div class="card-body">
+                    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+                        <div>
+                            <h3 class="dash-section-title"><i class="fas fa-signature"></i> Pendientes de firma</h3>
+                            <p class="dash-section-note">Panel auxiliar para documentos pendientes por inspector o DIRDAC.</p>
+                        </div>
+                        @Html.Partial("_StatusBadge", null, new ViewDataDictionary { { "Estado", firmas.Any() ? "En seguimiento" : "Completado" } })
+                    </div>
+
+                    @if (!firmas.Any())
+                    {
+                        @Html.Partial("_EmptyState", null, new ViewDataDictionary {
+                            { "Icon", "fas fa-signature" },
+                            { "Title", "Sin pendientes de firma" },
+                            { "Description", "No existen documentos pendientes de firma para los filtros actuales." }
+                        })
+                    }
+                    else
+                    {
+                        <div class="table-responsive aocr-table-wrap dash-subtable-wrap">
+                            <table class="table aocr-table dash-table align-middle mb-0 js-dashboard-table" id="tablaDashboardFirmas">
+                                <thead>
+                                    <tr>
+                                        <th>N° Solicitud</th>
+                                        <th>Documento</th>
+                                        <th>Firmante</th>
+                                        <th>Estado</th>
+                                        <th class="text-end">Acción</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var item in firmas)
+                                    {
+                                        var badge = DashboardInspeccionBadgeHelper.GetBadgeEstado(item.Estado, "FIRMA");
+                                        <tr>
+                                            <td>
+                                                <div class="fw-semibold text-primary">@item.NumeroSolicitud</div>
+                                                <small class="text-muted">@item.Compania</small>
+                                            </td>
+                                            <td>@item.Documento</td>
+                                            <td>@item.FirmanteRequerido</td>
+                                            <td><span class="@badge.CssClass">@badge.Text</span></td>
+                                            <td class="text-end">
+                                                <a class="btn btn-sm btn-outline-success" href="@item.UrlAccion"><i class="fas fa-arrow-right"></i> @item.TextoAccion</a>
+                                            </td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+
+        <div class="col-12 col-xl-6">
+            <div class="card aocr-content-card aocr-table-card dash-section-card h-100">
+                <div class="card-body">
+                    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+                        <div>
+                            <h3 class="dash-section-title"><i class="fas fa-triangle-exclamation"></i> Observaciones / NC</h3>
+                            <p class="dash-section-note">Panel auxiliar con hallazgos y no conformidades asociadas a la gestión.</p>
+                        </div>
+                        @Html.Partial("_StatusBadge", null, new ViewDataDictionary { { "Estado", ncs.Any() ? "En seguimiento" : "Completado" } })
+                    </div>
+
+                    @if (!ncs.Any())
+                    {
+                        @Html.Partial("_EmptyState", null, new ViewDataDictionary {
+                            { "Icon", "fas fa-triangle-exclamation" },
+                            { "Title", "Sin observaciones activas" },
+                            { "Description", "No existen observaciones o no conformidades visibles con los filtros actuales." }
+                        })
+                    }
+                    else
+                    {
+                        <div class="table-responsive aocr-table-wrap dash-subtable-wrap">
+                            <table class="table aocr-table dash-table align-middle mb-0 js-dashboard-table" id="tablaDashboardNc">
+                                <thead>
+                                    <tr>
+                                        <th>N° Solicitud</th>
+                                        <th>Tipo</th>
+                                        <th>Estado</th>
+                                        <th>Responsable</th>
+                                        <th class="text-end">Acción</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var item in ncs)
+                                    {
+                                        var badge = DashboardInspeccionBadgeHelper.GetBadgeEstado(item.Estado, "NC");
+                                        <tr>
+                                            <td>
+                                                <div class="fw-semibold text-primary">@item.NumeroSolicitud</div>
+                                                <small class="text-muted">@item.Compania</small>
+                                            </td>
+                                            <td>@item.TipoNc</td>
+                                            <td><span class="@badge.CssClass">@badge.Text</span></td>
+                                            <td>@item.Responsable</td>
+                                            <td class="text-end">
+                                                <a class="btn btn-sm btn-outline-primary" href="@item.UrlAccion"><i class="fas fa-eye"></i> Ver detalle</a>
+                                            </td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade dash-modal" id="modalDetalleAocr" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="modalDetalleAocrTitulo">Detalle del trámite</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" data-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body p-0">
+                    <iframe id="modalDetalleAocrFrame" class="dash-modal__frame" loading="lazy" title="Detalle AOCR"></iframe>
+                </div>
+                <div class="modal-footer">
+                    <a id="modalDetalleAocrLink" href="#" target="_blank" rel="noopener" class="btn btn-aocr-secondary"><i class="fas fa-arrow-up-right-from-square"></i> Abrir completa</a>
+                    <button type="button" class="btn btn-aocr-primary" data-bs-dismiss="modal" data-dismiss="modal">Cerrar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    (function ($) {
+        function buildLanguageConfig() {
+            return {
+                search: 'Buscar:',
+                lengthMenu: 'Mostrar _MENU_ registros',
+                info: 'Mostrando _START_ a _END_ de _TOTAL_ registros',
+                infoEmpty: 'Mostrando 0 a 0 de 0 registros',
+                zeroRecords: 'No existen registros en esta etapa',
+                emptyTable: 'No existen registros en esta etapa',
+                infoFiltered: '(filtrado de _MAX_ registros)',
+                paginate: {
+                    first: 'Primero',
+                    last: 'Último',
+                    next: 'Siguiente',
+                    previous: 'Anterior'
+                }
+            };
+        }
+
+        function initializeTable(table) {
+            if (!$.fn.DataTable || !table.length) {
+                return;
+            }
+
+            if ($.fn.DataTable.isDataTable(table)) {
+                table.DataTable().destroy();
+            }
+
+            table.DataTable({
+                pageLength: 10,
+                order: [],
+                autoWidth: false,
+                language: buildLanguageConfig()
+            });
+        }
+
+        function applyKanbanVisibility($column, forceExpand) {
+            var previewLimit = parseInt($column.attr('data-preview-limit'), 10) || 5;
+            var expanded = typeof forceExpand === 'boolean' ? forceExpand : $column.attr('data-expanded') === 'true';
+            var $cards = $column.find('.dash-kanban-card').filter(function () {
+                return $(this).attr('data-match') !== 'false';
+            });
+
+            $column.find('.dash-kanban-card').addClass('d-none');
+
+            if (expanded) {
+                $cards.removeClass('d-none');
+            } else {
+                $cards.slice(0, previewLimit).removeClass('d-none');
+            }
+
+            $column.attr('data-expanded', expanded ? 'true' : 'false');
+            $column.find('.js-kanban-visible').text($cards.length > previewLimit && !expanded ? previewLimit : $cards.length);
+
+            var $footer = $column.find('.dash-kanban-column__footer');
+            if ($cards.length > previewLimit) {
+                $footer.removeClass('d-none');
+                $footer.find('.js-kanban-toggle').text(expanded ? 'Ver menos' : 'Ver más');
+            } else {
+                $footer.addClass('d-none');
+            }
+        }
+
+        function filterKanbanBoard(searchText) {
+            var normalized = (searchText || '').toLowerCase().trim();
+
+            $('.dash-kanban-column').each(function () {
+                var $column = $(this);
+                $column.find('.dash-kanban-card').each(function () {
+                    var $card = $(this);
+                    var hayMatch = !normalized || ($card.attr('data-search') || '').indexOf(normalized) >= 0;
+                    $card.attr('data-match', hayMatch ? 'true' : 'false');
+                });
+
+                applyKanbanVisibility($column);
+            });
+        }
+
+        function openDetailModal(url, title) {
+            if (!url) {
+                return;
+            }
+
+            var $modal = $('#modalDetalleAocr');
+            $('#modalDetalleAocrTitulo').text(title || 'Detalle del trámite');
+            $('#modalDetalleAocrFrame').attr('src', url);
+            $('#modalDetalleAocrLink').attr('href', url);
+
+            if (window.bootstrap && window.bootstrap.Modal) {
+                window.bootstrap.Modal.getOrCreateInstance($modal[0]).show();
+                return;
+            }
+
+            if (typeof $modal.modal === 'function') {
+                $modal.modal('show');
+            }
+        }
+
+        $(function () {
+            $('.js-dashboard-table').each(function () {
+                initializeTable($(this));
+            });
+
+            $('.dash-kanban-column').each(function () {
+                $(this).find('.dash-kanban-card').attr('data-match', 'true');
+                applyKanbanVisibility($(this), false);
+            });
+
+            $(document).on('click', '.js-kanban-toggle', function () {
+                var columnKey = $(this).attr('data-column');
+                var $column = $('.dash-kanban-column[data-column="' + columnKey + '"]');
+                applyKanbanVisibility($column, $column.attr('data-expanded') !== 'true');
+            });
+
+            $('#kanbanSearch').on('input', function () {
+                filterKanbanBoard($(this).val());
+            });
+
+            $(document).on('click', '.js-open-detail-modal', function () {
+                openDetailModal($(this).attr('data-url'), $(this).attr('data-title'));
+            });
+
+            $('#modalDetalleAocr').on('hidden.bs.modal hidden', function () {
+                $('#modalDetalleAocrFrame').attr('src', 'about:blank');
+            });
+        });
+    })(jQuery);
+</script>

@@ -1,0 +1,36 @@
+using System;
+
+namespace CapaModelo
+{
+    public class InspeccionInformeTecnico
+    {
+        public int CodigoInforme { get; set; }
+        public int CodigoInspeccion { get; set; }
+        public int Version { get; set; }
+        public string Titulo { get; set; }
+        public string Resumen { get; set; }
+        public string Resultado { get; set; }
+        public string Observaciones { get; set; }
+        public string Conclusiones { get; set; }
+        public string Recomendaciones { get; set; }
+        public string RutaPdf { get; set; }
+        public string EstadoInforme { get; set; }
+        public bool FirmadoInspector { get; set; }
+        public bool FirmadoDirdac { get; set; }
+        public string RutaDocumentoFirmado { get; set; }
+        public string HashDocumento { get; set; }
+        public DateTime? FechaFirma1 { get; set; }
+        public DateTime? FechaFirma2 { get; set; }
+        public string UsuarioFirma1 { get; set; }
+        public string UsuarioFirma2 { get; set; }
+        public DateTime? FechaEnvioDirdac { get; set; }
+        public string UsuarioEnvioDirdac { get; set; }
+        public bool Finalizado { get; set; }
+        public bool CorreoEnviado { get; set; }
+        public DateTime? FechaFinalizacion { get; set; }
+        public DateTime? CreatedAt { get; set; }
+        public int? CreatedBy { get; set; }
+        public DateTime? UpdatedAt { get; set; }
+        public int? UpdatedBy { get; set; }
+    }
+}

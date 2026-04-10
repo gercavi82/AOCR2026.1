@@ -1,0 +1,187 @@
+﻿2026-02-27 08:52:12.273 | INFO  | CID:N/A | Iniciando procesador de cola de correos
+2026-02-27 08:52:54.802 | INFO  | CID:dbf537202e15 | Usuario/ValidarCorreo | Iniciando acción: Usuario/ValidarCorreo
+2026-02-27 08:52:55.063 | INFO  | CID:dbf537202e15 | Usuario/ValidarCorreo | Acción completada: Usuario/ValidarCorreo
+2026-02-27 08:53:04.522 | INFO  | CID:5f0e86473dd2 | Account/Login | Iniciando acción: Account/Login
+2026-02-27 08:53:05.561 | INFO  | CID:5f0e86473dd2 | Account/Login | Acción completada: Account/Login
+2026-02-27 08:53:23.159 | INFO  | CID:449f5a87297e | USR:USU_ADMIN | Usuario/EliminarUsuarioRT | Iniciando acción: Usuario/EliminarUsuarioRT
+2026-02-27 08:53:23.484 | INFO  | CID:449f5a87297e | USR:USU_ADMIN | Usuario/EliminarUsuarioRT | Acción completada: Usuario/EliminarUsuarioRT
+2026-02-27 08:54:19.384 | INFO  | CID:36ad8a083f8f | Usuario/ValidarCorreo | Iniciando acción: Usuario/ValidarCorreo
+2026-02-27 08:54:19.388 | INFO  | CID:36ad8a083f8f | Usuario/ValidarCorreo | Acción completada: Usuario/ValidarCorreo
+2026-02-27 08:54:30.023 | INFO  | CID:2f22b423f33e | Usuario/ValidarIdentificacion | Iniciando acción: Usuario/ValidarIdentificacion
+2026-02-27 08:54:30.027 | INFO  | CID:2f22b423f33e | Usuario/ValidarIdentificacion | Acción completada: Usuario/ValidarIdentificacion
+2026-02-27 08:56:41.155 | INFO  | CID:936afe6c7236 | Usuario/RegistrarDeclaracionTemporal | Iniciando acción: Usuario/RegistrarDeclaracionTemporal
+2026-02-27 08:56:41.173 | INFO  | CID:936afe6c7236 | Usuario/RegistrarDeclaracionTemporal | Acción completada: Usuario/RegistrarDeclaracionTemporal
+2026-02-27 08:59:26.913 | INFO  | CID:N/A | Iniciando procesador de cola de correos
+2026-02-27 09:00:18.767 | INFO  | CID:2c18e5955ed3 | Usuario/ValidarCorreo | Iniciando acción: Usuario/ValidarCorreo
+2026-02-27 09:00:19.000 | INFO  | CID:2c18e5955ed3 | Usuario/ValidarCorreo | Acción completada: Usuario/ValidarCorreo
+2026-02-27 09:00:29.305 | INFO  | CID:2046154d3a71 | Usuario/ValidarIdentificacion | Iniciando acción: Usuario/ValidarIdentificacion
+2026-02-27 09:00:29.312 | INFO  | CID:2046154d3a71 | Usuario/ValidarIdentificacion | Acción completada: Usuario/ValidarIdentificacion
+2026-02-27 09:01:35.219 | INFO  | CID:4b05e5da0e95 | Usuario/RegistrarDeclaracionTemporal | Iniciando acción: Usuario/RegistrarDeclaracionTemporal
+2026-02-27 09:01:35.240 | INFO  | CID:4b05e5da0e95 | Usuario/RegistrarDeclaracionTemporal | Acción completada: Usuario/RegistrarDeclaracionTemporal
+2026-02-27 09:01:42.694 | INFO  | CID:566186f39827 | Usuario/Crear | Iniciando acción: Usuario/Crear
+2026-02-27 09:01:43.323 | INFO  | CID:20136be0316d | Enviando correo a german.cajas@aviacioncivil.gob.ec, Asunto: Registro de usuario - Sistema AOCR
+2026-02-27 09:01:43.790 | INFO  | CID:20136be0316d | Correo enviado exitosamente a german.cajas@aviacioncivil.gob.ec
+2026-02-27 09:01:43.790 | INFO  | CID:566186f39827 | Usuario/Crear | Acción completada: Usuario/Crear
+2026-02-27 09:02:56.734 | INFO  | CID:4dae0cbc30a7 | Account/Login | Iniciando acción: Account/Login
+2026-02-27 09:02:57.328 | INFO  | CID:4dae0cbc30a7 | Account/Login | Acción completada: Account/Login
+2026-02-27 09:03:20.712 | INFO  | CID:ea974baa5c78 | USR:1713091955 | Account/CambiarContrasena | Iniciando acción: Account/CambiarContrasena
+2026-02-27 09:03:23.276 | INFO  | CID:ea974baa5c78 | USR:1713091955 | Account/CambiarContrasena | Acción completada: Account/CambiarContrasena
+2026-02-27 09:12:39.232 | INFO  | CID:9395ede5c4b1 | Account/Login | Iniciando acción: Account/Login
+2026-02-27 09:12:39.800 | INFO  | CID:9395ede5c4b1 | Account/Login | Acción completada: Account/Login
+2026-02-27 09:12:47.392 | INFO  | CID:3978f75968cf | USR:USU_ADMIN | Usuario/EliminarUsuarioRT | Iniciando acción: Usuario/EliminarUsuarioRT
+2026-02-27 09:12:47.720 | INFO  | CID:3978f75968cf | USR:USU_ADMIN | Usuario/EliminarUsuarioRT | Acción completada: Usuario/EliminarUsuarioRT
+2026-02-27 09:13:09.184 | INFO  | CID:da2bb7e90e50 | Usuario/ValidarCorreo | Iniciando acción: Usuario/ValidarCorreo
+2026-02-27 09:13:09.187 | INFO  | CID:da2bb7e90e50 | Usuario/ValidarCorreo | Acción completada: Usuario/ValidarCorreo
+2026-02-27 09:13:13.553 | INFO  | CID:5fe23fb49b6b | Usuario/ValidarIdentificacion | Iniciando acción: Usuario/ValidarIdentificacion
+2026-02-27 09:13:13.556 | INFO  | CID:5fe23fb49b6b | Usuario/ValidarIdentificacion | Acción completada: Usuario/ValidarIdentificacion
+2026-02-27 09:13:47.979 | INFO  | CID:637d7c97e7bb | Usuario/RegistrarDeclaracionTemporal | Iniciando acción: Usuario/RegistrarDeclaracionTemporal
+2026-02-27 09:13:47.994 | INFO  | CID:637d7c97e7bb | Usuario/RegistrarDeclaracionTemporal | Acción completada: Usuario/RegistrarDeclaracionTemporal
+2026-02-27 09:13:53.141 | INFO  | CID:60b01c043024 | Usuario/Crear | Iniciando acción: Usuario/Crear
+2026-02-27 09:13:53.658 | INFO  | CID:1118ba1d2648 | Enviando correo a german.cajas@aviacioncivil.gob.ec, Asunto: Registro de usuario - Sistema AOCR
+2026-02-27 09:13:53.923 | INFO  | CID:1118ba1d2648 | Correo enviado exitosamente a german.cajas@aviacioncivil.gob.ec
+2026-02-27 09:13:53.923 | INFO  | CID:60b01c043024 | Usuario/Crear | Acción completada: Usuario/Crear
+2026-02-27 09:25:19.122 | INFO  | CID:N/A | Iniciando procesador de cola de correos
+2026-02-27 09:26:37.891 | INFO  | CID:bd21026be611 | Usuario/ValidarCorreo | Iniciando acción: Usuario/ValidarCorreo
+2026-02-27 09:26:38.173 | INFO  | CID:bd21026be611 | Usuario/ValidarCorreo | Acción completada: Usuario/ValidarCorreo
+2026-02-27 09:26:52.872 | INFO  | CID:1934b642b69b | Usuario/ValidarCorreo | Iniciando acción: Usuario/ValidarCorreo
+2026-02-27 09:26:52.876 | INFO  | CID:1934b642b69b | Usuario/ValidarCorreo | Acción completada: Usuario/ValidarCorreo
+2026-02-27 09:27:01.656 | INFO  | CID:8741bbe85686 | Usuario/ValidarRUC | Iniciando acción: Usuario/ValidarRUC
+2026-02-27 09:27:01.659 | INFO  | CID:8741bbe85686 | Usuario/ValidarRUC | Acción completada: Usuario/ValidarRUC
+2026-02-27 09:27:09.511 | INFO  | CID:5f3cb144b2c2 | Usuario/ValidarRUC | Iniciando acción: Usuario/ValidarRUC
+2026-02-27 09:27:09.580 | INFO  | CID:5f3cb144b2c2 | Usuario/ValidarRUC | Acción completada: Usuario/ValidarRUC
+2026-02-27 09:27:32.199 | INFO  | CID:5880da88eb0e | Usuario/RegistrarDeclaracionTemporal | Iniciando acción: Usuario/RegistrarDeclaracionTemporal
+2026-02-27 09:27:32.229 | INFO  | CID:5880da88eb0e | Usuario/RegistrarDeclaracionTemporal | Acción completada: Usuario/RegistrarDeclaracionTemporal
+2026-02-27 09:27:34.931 | INFO  | CID:4a30f84ac772 | Usuario/Crear | Iniciando acción: Usuario/Crear
+2026-02-27 09:27:36.017 | INFO  | CID:4a30f84ac772 | Usuario/Crear | Acción completada: Usuario/Crear
+2026-02-27 09:27:57.474 | INFO  | CID:6a0cfae20852 | Usuario/Crear | Iniciando acción: Usuario/Crear
+2026-02-27 09:27:58.023 | INFO  | CID:6a0cfae20852 | Usuario/Crear | Acción completada: Usuario/Crear
+2026-02-27 09:31:00.776 | INFO  | CID:6cc8e280ebff | Usuario/Crear | Iniciando acción: Usuario/Crear
+2026-02-27 09:31:01.657 | INFO  | CID:6cc8e280ebff | Usuario/Crear | Acción completada: Usuario/Crear
+2026-02-27 09:31:24.992 | INFO  | CID:N/A | Iniciando procesador de cola de correos
+2026-02-27 09:31:44.582 | INFO  | CID:b58ff8d292d8 | Usuario/ValidarCorreo | Iniciando acción: Usuario/ValidarCorreo
+2026-02-27 09:31:44.815 | INFO  | CID:b58ff8d292d8 | Usuario/ValidarCorreo | Acción completada: Usuario/ValidarCorreo
+2026-02-27 09:31:51.404 | INFO  | CID:e3378b255c49 | Usuario/ValidarRUC | Iniciando acción: Usuario/ValidarRUC
+2026-02-27 09:31:51.448 | INFO  | CID:e3378b255c49 | Usuario/ValidarRUC | Acción completada: Usuario/ValidarRUC
+2026-02-27 09:32:56.729 | INFO  | CID:6098bd247187 | Usuario/RegistrarDeclaracionTemporal | Iniciando acción: Usuario/RegistrarDeclaracionTemporal
+2026-02-27 09:32:56.747 | INFO  | CID:6098bd247187 | Usuario/RegistrarDeclaracionTemporal | Acción completada: Usuario/RegistrarDeclaracionTemporal
+2026-02-27 09:33:07.971 | INFO  | CID:fa4112282faf | Usuario/Crear | Iniciando acción: Usuario/Crear
+2026-02-27 09:33:09.274 | INFO  | CID:267bd797ff40 | Enviando correo a mancho2002@hotmail.com, Asunto: Registro de usuario - Sistema AOCR
+2026-02-27 09:33:10.088 | INFO  | CID:267bd797ff40 | Correo enviado exitosamente a mancho2002@hotmail.com
+2026-02-27 09:33:10.088 | INFO  | CID:fa4112282faf | Usuario/Crear | Acción completada: Usuario/Crear
+2026-02-27 09:39:44.611 | INFO  | CID:ef99da67a2aa | Account/Login | Iniciando acción: Account/Login
+2026-02-27 09:39:45.283 | INFO  | CID:ef99da67a2aa | Account/Login | Acción completada: Account/Login
+2026-02-27 09:40:08.534 | INFO  | CID:2880cc8a6d60 | USR:USU_ADMIN | Usuario/EliminarUsuarioRT | Iniciando acción: Usuario/EliminarUsuarioRT
+2026-02-27 09:40:08.859 | INFO  | CID:2880cc8a6d60 | USR:USU_ADMIN | Usuario/EliminarUsuarioRT | Acción completada: Usuario/EliminarUsuarioRT
+2026-02-27 09:53:26.903 | INFO  | CID:N/A | Iniciando procesador de cola de correos
+2026-02-27 09:54:32.058 | INFO  | CID:a4b53d540516 | Usuario/ValidarCorreo | Iniciando acción: Usuario/ValidarCorreo
+2026-02-27 09:54:32.309 | INFO  | CID:a4b53d540516 | Usuario/ValidarCorreo | Acción completada: Usuario/ValidarCorreo
+2026-02-27 09:54:44.709 | INFO  | CID:a7d2769c73c4 | Usuario/ValidarCorreo | Iniciando acción: Usuario/ValidarCorreo
+2026-02-27 09:54:44.713 | INFO  | CID:a7d2769c73c4 | Usuario/ValidarCorreo | Acción completada: Usuario/ValidarCorreo
+2026-02-27 09:54:55.459 | INFO  | CID:2446bf272559 | Usuario/ValidarCorreo | Iniciando acción: Usuario/ValidarCorreo
+2026-02-27 09:54:55.461 | INFO  | CID:2446bf272559 | Usuario/ValidarCorreo | Acción completada: Usuario/ValidarCorreo
+2026-02-27 09:55:05.965 | INFO  | CID:02e1bd6eaeba | Usuario/ValidarRUC | Iniciando acción: Usuario/ValidarRUC
+2026-02-27 09:55:06.032 | INFO  | CID:02e1bd6eaeba | Usuario/ValidarRUC | Acción completada: Usuario/ValidarRUC
+2026-02-27 09:55:27.961 | INFO  | CID:092d63774ebe | Usuario/RegistrarDeclaracionTemporal | Iniciando acción: Usuario/RegistrarDeclaracionTemporal
+2026-02-27 09:55:27.980 | INFO  | CID:092d63774ebe | Usuario/RegistrarDeclaracionTemporal | Acción completada: Usuario/RegistrarDeclaracionTemporal
+2026-02-27 09:55:29.766 | INFO  | CID:07cebcc3caa9 | Usuario/Crear | Iniciando acción: Usuario/Crear
+2026-02-27 09:55:30.751 | INFO  | CID:a61e4ade86e3 | Enviando correo a mancho2002@hotmail.com, Asunto: Registro de usuario - Sistema AOCR
+2026-02-27 09:55:31.046 | INFO  | CID:a61e4ade86e3 | Correo enviado exitosamente a mancho2002@hotmail.com
+2026-02-27 09:55:31.051 | INFO  | CID:07cebcc3caa9 | Usuario/Crear | Acción completada: Usuario/Crear
+2026-02-27 10:02:48.166 | INFO  | CID:N/A | Iniciando procesador de cola de correos
+2026-02-27 10:03:03.715 | INFO  | CID:ef6d9419fbb3 | Account/Login | Iniciando acción: Account/Login
+2026-02-27 10:03:04.535 | INFO  | CID:ef6d9419fbb3 | Account/Login | Acción completada: Account/Login
+2026-02-27 10:03:19.548 | INFO  | CID:083ee471e82a | USR:USU_ADMIN | Usuario/EliminarUsuarioRT | Iniciando acción: Usuario/EliminarUsuarioRT
+2026-02-27 10:03:19.877 | INFO  | CID:083ee471e82a | USR:USU_ADMIN | Usuario/EliminarUsuarioRT | Acción completada: Usuario/EliminarUsuarioRT
+2026-02-27 10:03:24.795 | INFO  | CID:cca8789beb61 | USR:USU_ADMIN | Usuario/EliminarUsuarioRT | Iniciando acción: Usuario/EliminarUsuarioRT
+2026-02-27 10:03:25.067 | INFO  | CID:cca8789beb61 | USR:USU_ADMIN | Usuario/EliminarUsuarioRT | Acción completada: Usuario/EliminarUsuarioRT
+2026-02-27 10:03:35.107 | INFO  | CID:N/A | Iniciando procesador de cola de correos
+2026-02-27 10:04:02.574 | INFO  | CID:072897287557 | Usuario/ValidarCorreo | Iniciando acción: Usuario/ValidarCorreo
+2026-02-27 10:04:02.791 | INFO  | CID:072897287557 | Usuario/ValidarCorreo | Acción completada: Usuario/ValidarCorreo
+2026-02-27 10:04:08.689 | INFO  | CID:5653a80dd5fa | Usuario/ValidarRUC | Iniciando acción: Usuario/ValidarRUC
+2026-02-27 10:04:08.692 | INFO  | CID:5653a80dd5fa | Usuario/ValidarRUC | Acción completada: Usuario/ValidarRUC
+2026-02-27 10:04:12.191 | INFO  | CID:06c72fbf5d8a | Usuario/ValidarRUC | Iniciando acción: Usuario/ValidarRUC
+2026-02-27 10:04:12.241 | INFO  | CID:06c72fbf5d8a | Usuario/ValidarRUC | Acción completada: Usuario/ValidarRUC
+2026-02-27 10:04:40.660 | INFO  | CID:6e9ee207b8b0 | Usuario/RegistrarDeclaracionTemporal | Iniciando acción: Usuario/RegistrarDeclaracionTemporal
+2026-02-27 10:04:40.676 | INFO  | CID:6e9ee207b8b0 | Usuario/RegistrarDeclaracionTemporal | Acción completada: Usuario/RegistrarDeclaracionTemporal
+2026-02-27 10:04:42.371 | INFO  | CID:6d1854a132c9 | Usuario/Crear | Iniciando acción: Usuario/Crear
+2026-02-27 10:04:44.025 | INFO  | CID:c2a407985c05 | Enviando correo a german.cajas@aviacioncivil.gob.ec, Asunto: Registro de usuario - Sistema AOCR
+2026-02-27 10:04:44.516 | INFO  | CID:c2a407985c05 | Correo enviado exitosamente a german.cajas@aviacioncivil.gob.ec
+2026-02-27 10:04:44.520 | INFO  | CID:6d1854a132c9 | Usuario/Crear | Acción completada: Usuario/Crear
+2026-02-27 10:12:29.900 | INFO  | CID:N/A | Iniciando procesador de cola de correos
+2026-02-27 10:13:00.230 | INFO  | CID:6b8a0789f5e9 | Account/Login | Iniciando acción: Account/Login
+2026-02-27 10:13:01.062 | INFO  | CID:6b8a0789f5e9 | Account/Login | Acción completada: Account/Login
+2026-02-27 10:23:38.631 | INFO  | CID:dda33096a465 | USR:USU_ADMIN | Usuario/EliminarUsuarioRT | Iniciando acción: Usuario/EliminarUsuarioRT
+2026-02-27 10:23:38.871 | INFO  | CID:dda33096a465 | USR:USU_ADMIN | Usuario/EliminarUsuarioRT | Acción completada: Usuario/EliminarUsuarioRT
+2026-02-27 10:25:27.636 | INFO  | CID:N/A | Iniciando procesador de cola de correos
+2026-02-27 10:26:03.519 | INFO  | CID:36d4ae92d3b9 | Usuario/ValidarCorreo | Iniciando acción: Usuario/ValidarCorreo
+2026-02-27 10:26:03.738 | INFO  | CID:36d4ae92d3b9 | Usuario/ValidarCorreo | Acción completada: Usuario/ValidarCorreo
+2026-02-27 10:26:11.476 | INFO  | CID:919ce223a827 | Usuario/ValidarRUC | Iniciando acción: Usuario/ValidarRUC
+2026-02-27 10:26:11.538 | INFO  | CID:919ce223a827 | Usuario/ValidarRUC | Acción completada: Usuario/ValidarRUC
+2026-02-27 10:26:39.736 | INFO  | CID:6e44af14865e | Usuario/RegistrarDeclaracionTemporal | Iniciando acción: Usuario/RegistrarDeclaracionTemporal
+2026-02-27 10:26:39.752 | INFO  | CID:6e44af14865e | Usuario/RegistrarDeclaracionTemporal | Acción completada: Usuario/RegistrarDeclaracionTemporal
+2026-02-27 10:26:41.121 | INFO  | CID:a230f29e70c8 | Usuario/Crear | Iniciando acción: Usuario/Crear
+2026-02-27 10:26:42.169 | INFO  | CID:11c4443c13b5 | Enviando correo a german.cajas@aviacioncivil.gob.ec, Asunto: Cuenta creada - Sistema AOCR (pendiente de aprobac...
+2026-02-27 10:26:42.501 | INFO  | CID:11c4443c13b5 | Correo enviado exitosamente a german.cajas@aviacioncivil.gob.ec
+2026-02-27 10:26:42.521 | INFO  | CID:a230f29e70c8 | Usuario/Crear | Acción completada: Usuario/Crear
+2026-02-27 10:27:26.680 | INFO  | CID:4b1db6ebec1b | Account/Login | Iniciando acción: Account/Login
+2026-02-27 10:27:27.262 | INFO  | CID:4b1db6ebec1b | Account/Login | Acción completada: Account/Login
+2026-02-27 10:27:40.144 | INFO  | CID:90c2197cc952 | USR:USU_ADMIN | Usuario/AceptarDesignacion | Iniciando acción: Usuario/AceptarDesignacion
+2026-02-27 10:27:40.678 | INFO  | CID:5b7cab900ed9 | Enviando correo a german.cajas@aviacioncivil.gob.ec, Asunto: Designación RT aprobada - Sus credenciales de acce...
+2026-02-27 10:27:40.901 | INFO  | CID:5b7cab900ed9 | Correo enviado exitosamente a german.cajas@aviacioncivil.gob.ec
+2026-02-27 10:27:40.908 | INFO  | CID:90c2197cc952 | USR:USU_ADMIN | Usuario/AceptarDesignacion | Acción completada: Usuario/AceptarDesignacion
+2026-02-27 10:32:18.103 | INFO  | CID:c0a71ada926c | Usuario/ValidarCorreo | Iniciando acción: Usuario/ValidarCorreo
+2026-02-27 10:32:18.163 | INFO  | CID:c0a71ada926c | Usuario/ValidarCorreo | Acción completada: Usuario/ValidarCorreo
+2026-02-27 10:32:23.781 | INFO  | CID:bd88d9e349b2 | Usuario/ValidarIdentificacion | Iniciando acción: Usuario/ValidarIdentificacion
+2026-02-27 10:32:23.786 | INFO  | CID:bd88d9e349b2 | Usuario/ValidarIdentificacion | Acción completada: Usuario/ValidarIdentificacion
+2026-02-27 10:32:52.679 | INFO  | CID:320101a7c8a9 | Usuario/RegistrarDeclaracionTemporal | Iniciando acción: Usuario/RegistrarDeclaracionTemporal
+2026-02-27 10:32:52.683 | INFO  | CID:320101a7c8a9 | Usuario/RegistrarDeclaracionTemporal | Acción completada: Usuario/RegistrarDeclaracionTemporal
+2026-02-27 10:32:54.041 | INFO  | CID:debce96fe9e1 | Usuario/Crear | Iniciando acción: Usuario/Crear
+2026-02-27 10:32:54.777 | INFO  | CID:eae083430734 | Enviando correo a mancho2002@hotmail.com, Asunto: Cuenta creada - Sistema AOCR (pendiente de aprobac...
+2026-02-27 10:32:54.908 | INFO  | CID:eae083430734 | Correo enviado exitosamente a mancho2002@hotmail.com
+2026-02-27 10:32:54.924 | INFO  | CID:debce96fe9e1 | Usuario/Crear | Acción completada: Usuario/Crear
+2026-02-27 10:35:08.788 | INFO  | CID:34177c15a743 | Account/Login | Iniciando acción: Account/Login
+2026-02-27 10:35:09.316 | INFO  | CID:34177c15a743 | Account/Login | Acción completada: Account/Login
+2026-02-27 10:35:20.013 | INFO  | CID:a3ce9900c9e2 | USR:USU_ADMIN | Usuario/AceptarDesignacion | Iniciando acción: Usuario/AceptarDesignacion
+2026-02-27 10:35:20.574 | INFO  | CID:d0277c471b7c | Enviando correo a mancho2002@hotmail.com, Asunto: Designación RT aprobada - Sus credenciales de acce...
+2026-02-27 10:35:20.897 | INFO  | CID:d0277c471b7c | Correo enviado exitosamente a mancho2002@hotmail.com
+2026-02-27 10:35:20.899 | INFO  | CID:a3ce9900c9e2 | USR:USU_ADMIN | Usuario/AceptarDesignacion | Acción completada: Usuario/AceptarDesignacion
+2026-02-27 10:36:07.454 | INFO  | CID:ab6c205f1abd | Account/Login | Iniciando acción: Account/Login
+2026-02-27 10:36:07.953 | INFO  | CID:ab6c205f1abd | Account/Login | Acción completada: Account/Login
+2026-02-27 10:36:45.170 | INFO  | CID:e854499e7a4c | Account/Login | Iniciando acción: Account/Login
+2026-02-27 10:36:45.682 | INFO  | CID:e854499e7a4c | Account/Login | Acción completada: Account/Login
+2026-02-27 10:37:01.851 | INFO  | CID:544860580c77 | USR:GACAJAS | Account/CambiarContrasena | Iniciando acción: Account/CambiarContrasena
+2026-02-27 10:37:02.896 | INFO  | CID:544860580c77 | USR:GACAJAS | Account/CambiarContrasena | Acción completada: Account/CambiarContrasena
+2026-02-27 10:44:05.603 | INFO  | CID:N/A | Iniciando procesador de cola de correos
+2026-02-27 10:44:23.197 | INFO  | CID:e9dc600fd7b4 | Account/Login | Iniciando acción: Account/Login
+2026-02-27 10:44:24.010 | INFO  | CID:e9dc600fd7b4 | Account/Login | Acción completada: Account/Login
+2026-02-27 10:44:40.015 | INFO  | CID:7aabb8207afd | Account/Login | Iniciando acción: Account/Login
+2026-02-27 10:44:40.559 | INFO  | CID:7aabb8207afd | Account/Login | Acción completada: Account/Login
+2026-02-27 10:55:52.320 | INFO  | CID:525b02079362 | Account/Login | Iniciando acción: Account/Login
+2026-02-27 10:55:52.844 | INFO  | CID:525b02079362 | Account/Login | Acción completada: Account/Login
+2026-02-27 11:01:51.715 | INFO  | CID:N/A | Iniciando procesador de cola de correos
+2026-02-27 11:02:03.756 | INFO  | CID:98721cbb05bd | Account/Login | Iniciando acción: Account/Login
+2026-02-27 11:02:04.671 | INFO  | CID:98721cbb05bd | Account/Login | Acción completada: Account/Login
+2026-02-27 11:02:37.869 | INFO  | CID:58a437bbd026 | USR:GACAJAS | OrdenRecaudacion/Nueva | Iniciando acción: OrdenRecaudacion/Nueva
+2026-02-27 11:02:37.993 | INFO  | CID:58a437bbd026 | USR:GACAJAS | OrdenRecaudacion/Nueva | Acción completada: OrdenRecaudacion/Nueva
+2026-02-27 11:02:43.871 | INFO  | CID:30e9d5674dd6 | USR:GACAJAS | OrdenRecaudacion/Generar | Iniciando acción: OrdenRecaudacion/Generar
+2026-02-27 11:02:51.756 | INFO  | CID:fef12419aaf6 | Correo con adjunto enviado exitosamente a german.cajas@aviacioncivil.gob.ec
+2026-02-27 11:02:51.758 | INFO  | CID:30e9d5674dd6 | USR:GACAJAS | OrdenRecaudacion/Generar | Acción completada: OrdenRecaudacion/Generar
+2026-02-27 11:04:09.134 | INFO  | CID:ce604f45c476 | USR:GACAJAS | OrdenRecaudacion/RegistrarPago | Iniciando acción: OrdenRecaudacion/RegistrarPago
+2026-02-27 11:04:09.225 | INFO  | CID:ce604f45c476 | USR:GACAJAS | OrdenRecaudacion/RegistrarPago | Acción completada: OrdenRecaudacion/RegistrarPago
+2026-02-27 11:04:36.665 | INFO  | CID:632b64c96856 | Account/Login | Iniciando acción: Account/Login
+2026-02-27 11:04:37.178 | INFO  | CID:632b64c96856 | Account/Login | Acción completada: Account/Login
+2026-02-27 11:32:06.719 | INFO  | CID:N/A | Iniciando procesador de cola de correos
+2026-02-27 11:32:22.197 | INFO  | CID:d6ef6d047814 | Account/Login | Iniciando acción: Account/Login
+2026-02-27 11:32:23.079 | INFO  | CID:d6ef6d047814 | Account/Login | Acción completada: Account/Login
+2026-02-27 11:33:04.744 | INFO  | CID:b5598c95bc83 | Account/Login | Iniciando acción: Account/Login
+2026-02-27 11:33:05.256 | INFO  | CID:b5598c95bc83 | Account/Login | Acción completada: Account/Login
+2026-02-27 11:50:18.335 | INFO  | CID:N/A | Iniciando procesador de cola de correos
+2026-02-27 11:50:30.537 | INFO  | CID:1200f78df3f7 | Account/Login | Iniciando acción: Account/Login
+2026-02-27 11:50:31.654 | INFO  | CID:1200f78df3f7 | Account/Login | Acción completada: Account/Login
+2026-02-27 11:55:57.801 | INFO  | CID:0180c3534d9b | USR:USU_ADMIN | OrdenRecaudacion/Nueva | Iniciando acción: OrdenRecaudacion/Nueva
+2026-02-27 11:55:57.902 | INFO  | CID:0180c3534d9b | USR:USU_ADMIN | OrdenRecaudacion/Nueva | Acción completada: OrdenRecaudacion/Nueva
+2026-02-27 11:56:04.472 | INFO  | CID:1a41c1ad5df5 | USR:USU_ADMIN | OrdenRecaudacion/Generar | Iniciando acción: OrdenRecaudacion/Generar
+2026-02-27 11:56:10.551 | INFO  | CID:ec1d48e5cbf0 | Correo con adjunto enviado exitosamente a gercavi82@gmail.com
+2026-02-27 11:56:10.551 | INFO  | CID:1a41c1ad5df5 | USR:USU_ADMIN | OrdenRecaudacion/Generar | Acción completada: OrdenRecaudacion/Generar
+2026-02-27 11:56:25.268 | INFO  | CID:92a1bd6a1e57 | USR:USU_ADMIN | OrdenRecaudacion/RegistrarPago | Iniciando acción: OrdenRecaudacion/RegistrarPago
+2026-02-27 11:56:25.313 | INFO  | CID:92a1bd6a1e57 | USR:USU_ADMIN | OrdenRecaudacion/RegistrarPago | Acción completada: OrdenRecaudacion/RegistrarPago

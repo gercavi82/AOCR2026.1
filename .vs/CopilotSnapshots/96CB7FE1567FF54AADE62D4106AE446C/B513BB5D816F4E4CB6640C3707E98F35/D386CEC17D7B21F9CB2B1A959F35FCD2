@@ -1,0 +1,79 @@
+﻿@inherits System.Web.Mvc.WebViewPage<List<CapaPresentacion.Models.ViewModels.OrdenRecaudacionViewModel>>
+@using CapaModelo
+@using System.Web.Mvc
+@using System.Web.Mvc.Html
+@using System.Net
+@{
+    Layout = "~/Views/Shared/_LayoutAOCR.cshtml";
+}
+
+<div class="aocr-module-header mb-3">
+    <div class="aocr-module-header-left">
+        <h2 class="aocr-module-header-title">@(ViewBag.Mensaje ?? "Mis Órdenes de Recaudación")</h2>
+        <p class="aocr-module-header-subtitle">Historial de órdenes generadas</p>
+    </div>
+    <nav>
+        <ol class="aocr-breadcrumb breadcrumb mb-0">
+            <li class="breadcrumb-item"><a href="@Url.Action("Index", "Home")"><i class="fas fa-home"></i></a></li>
+            <li class="breadcrumb-item active">Mis Órdenes</li>
+        </ol>
+    </nav>
+</div>
+
+<div class="card aocr-table-card">
+    <div class="card-body p-0">
+        @if (Model != null && Model.Any())
+        {
+            <div class="aocr-table-wrap">
+                <table class="table table-dgac mb-0">
+                    <thead>
+                        <tr>
+                            <th>Número de Orden</th>
+                            <th>Fecha de Creación</th>
+                            <th>Estado</th>
+                            <th class="text-end">Subtotal</th>
+                            <th class="text-end">Administración</th>
+                            <th class="text-end">Total</th>
+                            <th class="text-center">Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                                    @foreach (var orden in Model)
+                                    {
+                                        <tr>
+                                            <td>@orden.NumeroOrden</td>
+                                            <td>@orden.FechaCreacion.ToString("dd/MM/yyyy")</td>
+                                            <td>
+                                                @if (WebUtility.HtmlDecode(orden.Estado) == "Orden de Recaudación Requerida")
+                                                {
+                                                    <span class="badge badge-warning">Requerida</span>
+                                                }
+                                                else
+                                                {
+                                                    @Html.Encode(WebUtility.HtmlDecode(orden.Estado))
+                                                }
+                                            </td>
+                                            <td>@orden.Subtotal.ToString("N2") USD</td>
+                                            <td>@orden.Admin.ToString("N2") USD</td>
+                                            <td>@orden.Total.ToString("N2") USD</td>
+                                            <td>
+                                                <a href="@Url.Action("Detalle", "Orden", new { id = orden.Id })" class="btn btn-sm btn-primary">Ver Detalle</a>
+                                            </td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="alert alert-info">
+                            No tiene Órdenes de recaudación registradas.
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+

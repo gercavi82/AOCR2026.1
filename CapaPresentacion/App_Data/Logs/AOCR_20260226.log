@@ -1,0 +1,260 @@
+﻿2026-02-26 08:17:18.494 | INFO  | CID:N/A | Iniciando procesador de cola de correos
+2026-02-26 08:17:28.780 | INFO  | CID:13291bbd7cad | Account/Login | Iniciando acción: Account/Login
+2026-02-26 08:17:29.626 | INFO  | CID:13291bbd7cad | Account/Login | Acción completada: Account/Login
+2026-02-26 10:04:49.154 | INFO  | CID:cdc5e2fc6b44 | Account/Login | Iniciando acción: Account/Login
+2026-02-26 10:04:49.743 | INFO  | CID:cdc5e2fc6b44 | Account/Login | Acción completada: Account/Login
+2026-02-26 10:06:15.482 | INFO  | CID:28585b15851a | Account/Login | Iniciando acción: Account/Login
+2026-02-26 10:06:16.005 | INFO  | CID:28585b15851a | Account/Login | Acción completada: Account/Login
+2026-02-26 10:06:33.038 | INFO  | CID:ab71b18bd943 | USR:USU_ADMIN | Usuario/EliminarUsuarioRT | Iniciando acción: Usuario/EliminarUsuarioRT
+2026-02-26 10:06:33.286 | INFO  | CID:ab71b18bd943 | USR:USU_ADMIN | Usuario/EliminarUsuarioRT | Acción completada: Usuario/EliminarUsuarioRT
+2026-02-26 10:06:50.456 | INFO  | CID:5bb3023ce440 | USR:USU_ADMIN | Usuario/EliminarUsuarioRT | Iniciando acción: Usuario/EliminarUsuarioRT
+2026-02-26 10:06:50.568 | INFO  | CID:5bb3023ce440 | USR:USU_ADMIN | Usuario/EliminarUsuarioRT | Acción completada: Usuario/EliminarUsuarioRT
+2026-02-26 10:07:36.522 | INFO  | CID:6a607c1678b7 | Account/Login | Iniciando acción: Account/Login
+2026-02-26 10:07:37.015 | INFO  | CID:6a607c1678b7 | Account/Login | Acción completada: Account/Login
+2026-02-26 10:07:48.361 | INFO  | CID:0eab691a7f71 | Account/Login | Iniciando acción: Account/Login
+2026-02-26 10:07:48.857 | INFO  | CID:0eab691a7f71 | Account/Login | Acción completada: Account/Login
+2026-02-26 10:08:29.179 | INFO  | CID:196285930be6 | Account/Login | Iniciando acción: Account/Login
+2026-02-26 10:08:29.703 | INFO  | CID:196285930be6 | Account/Login | Acción completada: Account/Login
+2026-02-26 10:26:55.331 | INFO  | CID:N/A | Deteniendo procesador de cola de correos
+2026-02-26 10:26:55.370 | INFO  | CID:N/A | Deteniendo procesador de cola de correos
+2026-02-26 10:29:09.780 | INFO  | CID:N/A | Iniciando procesador de cola de correos
+2026-02-26 10:29:19.846 | INFO  | CID:c157e5e3a476 | Account/Login | Iniciando acción: Account/Login
+2026-02-26 10:29:20.661 | INFO  | CID:c157e5e3a476 | Account/Login | Acción completada: Account/Login
+2026-02-26 10:29:49.233 | INFO  | CID:116280341b6e | USR:USU_ADMIN | Usuario/EliminarUsuarioRT | Iniciando acción: Usuario/EliminarUsuarioRT
+2026-02-26 10:29:49.510 | INFO  | CID:116280341b6e | USR:USU_ADMIN | Usuario/EliminarUsuarioRT | Acción completada: Usuario/EliminarUsuarioRT
+2026-02-26 10:30:53.052 | INFO  | CID:ed38deb77cf7 | USR:USU_ADMIN | AdminUsuarios/CambiarEstado | Iniciando acción: AdminUsuarios/CambiarEstado
+2026-02-26 10:30:53.080 | INFO  | CID:ed38deb77cf7 | USR:USU_ADMIN | AdminUsuarios/CambiarEstado | Acción completada: AdminUsuarios/CambiarEstado
+2026-02-26 10:30:59.553 | INFO  | CID:8f4cde8e6519 | USR:USU_ADMIN | AdminUsuarios/CambiarEstado | Iniciando acción: AdminUsuarios/CambiarEstado
+2026-02-26 10:30:59.570 | INFO  | CID:8f4cde8e6519 | USR:USU_ADMIN | AdminUsuarios/CambiarEstado | Acción completada: AdminUsuarios/CambiarEstado
+2026-02-26 10:31:03.184 | INFO  | CID:41dc48180258 | USR:USU_ADMIN | AdminUsuarios/ResetPassword | Iniciando acción: AdminUsuarios/ResetPassword
+2026-02-26 10:31:03.752 | INFO  | CID:8812c4c54df3 | Correo encolado: ID=8, Para=german.cajas@aviacioncivil.gob.ec
+2026-02-26 10:31:03.754 | INFO  | CID:41dc48180258 | USR:USU_ADMIN | AdminUsuarios/ResetPassword | Acción completada: AdminUsuarios/ResetPassword
+2026-02-26 10:31:10.721 | INFO  | CID:N/A | Procesando email 8 para german.cajas@aviacioncivil.gob.ec
+2026-02-26 10:31:11.016 | INFO  | CID:N/A | Email 8 enviado exitosamente
+2026-02-26 10:31:11.017 | INFO  | CID:N/A | Email 8 enviado exitosamente
+2026-02-26 10:31:49.413 | INFO  | CID:2a1d4a09b846 | Account/Login | Iniciando acción: Account/Login
+2026-02-26 10:31:49.924 | INFO  | CID:2a1d4a09b846 | Account/Login | Acción completada: Account/Login
+2026-02-26 10:32:08.337 | INFO  | CID:69b37faef73f | USR:1713091955 | Account/CambiarContrasena | Iniciando acción: Account/CambiarContrasena
+2026-02-26 10:32:08.825 | INFO  | CID:69b37faef73f | USR:1713091955 | Account/CambiarContrasena | Acción completada: Account/CambiarContrasena
+2026-02-26 10:32:32.559 | INFO  | CID:6026190cff84 | USR:1713091955 | Account/CambiarContrasena | Iniciando acción: Account/CambiarContrasena
+2026-02-26 10:32:33.545 | INFO  | CID:6026190cff84 | USR:1713091955 | Account/CambiarContrasena | Acción completada: Account/CambiarContrasena
+2026-02-26 10:33:34.853 | INFO  | CID:310922ee1ce6 | Account/Login | Iniciando acción: Account/Login
+2026-02-26 10:33:35.355 | INFO  | CID:310922ee1ce6 | Account/Login | Acción completada: Account/Login
+2026-02-26 10:34:21.213 | INFO  | CID:e8bac7a79180 | USR:USU_ADMIN | Financiero/RechazarOrden | Iniciando acción: Financiero/RechazarOrden
+2026-02-26 10:34:21.584 | ERROR | CID:N/A | ERR:EMAIL_ERROR | Error al enviar correo.
+    Exception: SmtpException
+    StackTrace:    en System.Net.Mail.SmtpClient.SendAsync(MailMessage message, Object userToken)
+   en System.Net.Mail.SmtpClient.SendMailAsync(MailMessage message)
+   en CapaDatos.Services.EmailService.<EnviarAsync>d__4.MoveNext() en C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\CapaDatos\Services\EmailService.cs:línea 76
+2026-02-26 10:34:21.645 | INFO  | CID:4966bed7e97f | Enviando correo a mancho2002@hotmail.com, Asunto: Notificacion de rechazo - Orden OR-202602251349597...
+2026-02-26 10:34:22.165 | INFO  | CID:4966bed7e97f | Correo enviado exitosamente a mancho2002@hotmail.com
+2026-02-26 10:34:22.170 | WARN  | CID:N/A | ERR:EMAIL_FALLBACK_OK | Correo enviado por fallback EnviarCorreo.
+2026-02-26 10:34:22.171 | INFO  | CID:N/A | ORD:OR-20260225134959784-3 | ERR:EMAIL_RECHAZO_OK | Notificacion de rechazo enviada correctamente
+2026-02-26 10:34:22.172 | INFO  | CID:e8bac7a79180 | USR:USU_ADMIN | Financiero/RechazarOrden | Acción completada: Financiero/RechazarOrden
+2026-02-26 10:34:39.997 | INFO  | CID:82cc11842606 | USR:USU_ADMIN | Financiero/RechazarOrden | Iniciando acción: Financiero/RechazarOrden
+2026-02-26 10:34:40.322 | ERROR | CID:N/A | ERR:EMAIL_ERROR | Error al enviar correo.
+    Exception: SmtpException
+    StackTrace:    en System.Net.Mail.SmtpClient.SendAsync(MailMessage message, Object userToken)
+   en System.Net.Mail.SmtpClient.SendMailAsync(MailMessage message)
+   en CapaDatos.Services.EmailService.<EnviarAsync>d__4.MoveNext() en C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\CapaDatos\Services\EmailService.cs:línea 76
+2026-02-26 10:34:40.324 | INFO  | CID:fecfaa3911e1 | Enviando correo a gercavi82@gmail.com, Asunto: Notificacion de rechazo - Orden OR-202602251437428...
+2026-02-26 10:34:40.541 | INFO  | CID:fecfaa3911e1 | Correo enviado exitosamente a gercavi82@gmail.com
+2026-02-26 10:34:40.541 | WARN  | CID:N/A | ERR:EMAIL_FALLBACK_OK | Correo enviado por fallback EnviarCorreo.
+2026-02-26 10:34:40.541 | INFO  | CID:N/A | ORD:OR-20260225143742821-4 | ERR:EMAIL_RECHAZO_OK | Notificacion de rechazo enviada correctamente
+2026-02-26 10:34:40.541 | INFO  | CID:82cc11842606 | USR:USU_ADMIN | Financiero/RechazarOrden | Acción completada: Financiero/RechazarOrden
+2026-02-26 10:34:56.379 | INFO  | CID:fa41a7619f52 | USR:USU_ADMIN | Financiero/RechazarOrden | Iniciando acción: Financiero/RechazarOrden
+2026-02-26 10:34:56.456 | ERROR | CID:N/A | ERR:EMAIL_ERROR | Error al enviar correo.
+    Exception: SmtpException
+    StackTrace:    en System.Net.Mail.SmtpClient.SendAsync(MailMessage message, Object userToken)
+   en System.Net.Mail.SmtpClient.SendMailAsync(MailMessage message)
+   en CapaDatos.Services.EmailService.<EnviarAsync>d__4.MoveNext() en C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\CapaDatos\Services\EmailService.cs:línea 76
+2026-02-26 10:34:56.456 | INFO  | CID:133b5e035b0a | Enviando correo a gercavi82@gmail.com, Asunto: Notificacion de rechazo - Orden OR-202602251548135...
+2026-02-26 10:34:56.621 | INFO  | CID:133b5e035b0a | Correo enviado exitosamente a gercavi82@gmail.com
+2026-02-26 10:34:56.626 | WARN  | CID:N/A | ERR:EMAIL_FALLBACK_OK | Correo enviado por fallback EnviarCorreo.
+2026-02-26 10:34:56.626 | INFO  | CID:N/A | ORD:OR-20260225154813548-5 | ERR:EMAIL_RECHAZO_OK | Notificacion de rechazo enviada correctamente
+2026-02-26 10:34:56.626 | INFO  | CID:fa41a7619f52 | USR:USU_ADMIN | Financiero/RechazarOrden | Acción completada: Financiero/RechazarOrden
+2026-02-26 10:35:24.460 | INFO  | CID:c8336492c77e | USR:USU_ADMIN | Financiero/RechazarOrden | Iniciando acción: Financiero/RechazarOrden
+2026-02-26 10:35:24.770 | ERROR | CID:N/A | ERR:EMAIL_ERROR | Error al enviar correo.
+    Exception: SmtpException
+    StackTrace:    en System.Net.Mail.SmtpClient.SendAsync(MailMessage message, Object userToken)
+   en System.Net.Mail.SmtpClient.SendMailAsync(MailMessage message)
+   en CapaDatos.Services.EmailService.<EnviarAsync>d__4.MoveNext() en C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\CapaDatos\Services\EmailService.cs:línea 76
+2026-02-26 10:35:24.771 | INFO  | CID:96d591d5522f | Enviando correo a gercavi82@gmail.com, Asunto: Notificacion de rechazo - Orden OR-202602251141581...
+2026-02-26 10:35:25.242 | INFO  | CID:96d591d5522f | Correo enviado exitosamente a gercavi82@gmail.com
+2026-02-26 10:35:25.244 | WARN  | CID:N/A | ERR:EMAIL_FALLBACK_OK | Correo enviado por fallback EnviarCorreo.
+2026-02-26 10:35:25.245 | INFO  | CID:N/A | ORD:OR-20260225114158159-2 | ERR:EMAIL_RECHAZO_OK | Notificacion de rechazo enviada correctamente
+2026-02-26 10:35:25.246 | INFO  | CID:c8336492c77e | USR:USU_ADMIN | Financiero/RechazarOrden | Acción completada: Financiero/RechazarOrden
+2026-02-26 10:35:43.006 | INFO  | CID:378a2c4df2e7 | USR:USU_ADMIN | Financiero/RechazarOrden | Iniciando acción: Financiero/RechazarOrden
+2026-02-26 10:35:43.389 | ERROR | CID:N/A | ERR:EMAIL_ERROR | Error al enviar correo.
+    Exception: SmtpException
+    StackTrace:    en System.Net.Mail.SmtpClient.SendAsync(MailMessage message, Object userToken)
+   en System.Net.Mail.SmtpClient.SendMailAsync(MailMessage message)
+   en CapaDatos.Services.EmailService.<EnviarAsync>d__4.MoveNext() en C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\CapaDatos\Services\EmailService.cs:línea 76
+2026-02-26 10:35:43.391 | INFO  | CID:893862050011 | Enviando correo a gercavi82@gmail.com, Asunto: Notificacion de rechazo - Orden OR-202602251116282...
+2026-02-26 10:35:43.668 | INFO  | CID:893862050011 | Correo enviado exitosamente a gercavi82@gmail.com
+2026-02-26 10:35:43.670 | WARN  | CID:N/A | ERR:EMAIL_FALLBACK_OK | Correo enviado por fallback EnviarCorreo.
+2026-02-26 10:35:43.671 | INFO  | CID:N/A | ORD:OR-20260225111628282-1 | ERR:EMAIL_RECHAZO_OK | Notificacion de rechazo enviada correctamente
+2026-02-26 10:35:43.673 | INFO  | CID:378a2c4df2e7 | USR:USU_ADMIN | Financiero/RechazarOrden | Acción completada: Financiero/RechazarOrden
+2026-02-26 10:36:01.537 | INFO  | CID:07d2b68c4e3d | USR:USU_ADMIN | Financiero/RechazarOrden | Iniciando acción: Financiero/RechazarOrden
+2026-02-26 10:36:01.813 | ERROR | CID:N/A | ERR:EMAIL_ERROR | Error al enviar correo.
+    Exception: SmtpException
+    StackTrace:    en System.Net.Mail.SmtpClient.SendAsync(MailMessage message, Object userToken)
+   en System.Net.Mail.SmtpClient.SendMailAsync(MailMessage message)
+   en CapaDatos.Services.EmailService.<EnviarAsync>d__4.MoveNext() en C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\CapaDatos\Services\EmailService.cs:línea 76
+2026-02-26 10:36:01.815 | INFO  | CID:6a95b7ca8bbb | Enviando correo a gercavi82@gmail.com, Asunto: Notificacion de rechazo - Orden OR-202602241525012...
+2026-02-26 10:36:01.948 | INFO  | CID:6a95b7ca8bbb | Correo enviado exitosamente a gercavi82@gmail.com
+2026-02-26 10:36:01.948 | WARN  | CID:N/A | ERR:EMAIL_FALLBACK_OK | Correo enviado por fallback EnviarCorreo.
+2026-02-26 10:36:01.948 | INFO  | CID:N/A | ORD:OR-20260224152501205-2 | ERR:EMAIL_RECHAZO_OK | Notificacion de rechazo enviada correctamente
+2026-02-26 10:36:01.963 | INFO  | CID:07d2b68c4e3d | USR:USU_ADMIN | Financiero/RechazarOrden | Acción completada: Financiero/RechazarOrden
+2026-02-26 10:36:40.820 | INFO  | CID:3eb6ffd600b6 | USR:USU_ADMIN | Financiero/RechazarOrden | Iniciando acción: Financiero/RechazarOrden
+2026-02-26 10:36:41.345 | ERROR | CID:N/A | ERR:EMAIL_ERROR | Error al enviar correo.
+    Exception: SmtpException
+    StackTrace:    en System.Net.Mail.SmtpClient.SendAsync(MailMessage message, Object userToken)
+   en System.Net.Mail.SmtpClient.SendMailAsync(MailMessage message)
+   en CapaDatos.Services.EmailService.<EnviarAsync>d__4.MoveNext() en C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\CapaDatos\Services\EmailService.cs:línea 76
+2026-02-26 10:36:41.349 | INFO  | CID:d94a8088cf1a | Enviando correo a gercavi82@gmail.com, Asunto: Notificacion de rechazo - Orden OR-202602231100349...
+2026-02-26 10:36:41.519 | INFO  | CID:d94a8088cf1a | Correo enviado exitosamente a gercavi82@gmail.com
+2026-02-26 10:36:41.521 | WARN  | CID:N/A | ERR:EMAIL_FALLBACK_OK | Correo enviado por fallback EnviarCorreo.
+2026-02-26 10:36:41.523 | INFO  | CID:N/A | ORD:OR-20260223110034942-3 | ERR:EMAIL_RECHAZO_OK | Notificacion de rechazo enviada correctamente
+2026-02-26 10:36:41.524 | INFO  | CID:3eb6ffd600b6 | USR:USU_ADMIN | Financiero/RechazarOrden | Acción completada: Financiero/RechazarOrden
+2026-02-26 10:37:02.526 | INFO  | CID:e2515453ae39 | USR:USU_ADMIN | Financiero/RechazarOrden | Iniciando acción: Financiero/RechazarOrden
+2026-02-26 10:37:02.592 | ERROR | CID:N/A | ERR:EMAIL_ERROR | Error al enviar correo.
+    Exception: SmtpException
+    StackTrace:    en System.Net.Mail.SmtpClient.SendAsync(MailMessage message, Object userToken)
+   en System.Net.Mail.SmtpClient.SendMailAsync(MailMessage message)
+   en CapaDatos.Services.EmailService.<EnviarAsync>d__4.MoveNext() en C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\CapaDatos\Services\EmailService.cs:línea 76
+2026-02-26 10:37:02.608 | INFO  | CID:e64989fe22c7 | Enviando correo a gercavi82@gmail.com, Asunto: Notificacion de rechazo - Orden OR-202602230905074...
+2026-02-26 10:37:02.837 | INFO  | CID:e64989fe22c7 | Correo enviado exitosamente a gercavi82@gmail.com
+2026-02-26 10:37:02.839 | WARN  | CID:N/A | ERR:EMAIL_FALLBACK_OK | Correo enviado por fallback EnviarCorreo.
+2026-02-26 10:37:02.841 | INFO  | CID:N/A | ORD:OR-20260223090507422-2 | ERR:EMAIL_RECHAZO_OK | Notificacion de rechazo enviada correctamente
+2026-02-26 10:37:02.842 | INFO  | CID:e2515453ae39 | USR:USU_ADMIN | Financiero/RechazarOrden | Acción completada: Financiero/RechazarOrden
+2026-02-26 10:37:22.910 | INFO  | CID:607701c1366a | USR:USU_ADMIN | Financiero/RechazarOrden | Iniciando acción: Financiero/RechazarOrden
+2026-02-26 10:37:23.173 | ERROR | CID:N/A | ERR:EMAIL_ERROR | Error al enviar correo.
+    Exception: SmtpException
+    StackTrace:    en System.Net.Mail.SmtpClient.SendAsync(MailMessage message, Object userToken)
+   en System.Net.Mail.SmtpClient.SendMailAsync(MailMessage message)
+   en CapaDatos.Services.EmailService.<EnviarAsync>d__4.MoveNext() en C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\CapaDatos\Services\EmailService.cs:línea 76
+2026-02-26 10:37:23.173 | INFO  | CID:aa7cf021c28b | Enviando correo a gercavi82@gmail.com, Asunto: Notificacion de rechazo - Orden OR-202602191024083...
+2026-02-26 10:37:23.307 | INFO  | CID:aa7cf021c28b | Correo enviado exitosamente a gercavi82@gmail.com
+2026-02-26 10:37:23.307 | WARN  | CID:N/A | ERR:EMAIL_FALLBACK_OK | Correo enviado por fallback EnviarCorreo.
+2026-02-26 10:37:23.307 | INFO  | CID:N/A | ORD:OR-20260219102408369-4 | ERR:EMAIL_RECHAZO_OK | Notificacion de rechazo enviada correctamente
+2026-02-26 10:37:23.307 | INFO  | CID:607701c1366a | USR:USU_ADMIN | Financiero/RechazarOrden | Acción completada: Financiero/RechazarOrden
+2026-02-26 10:37:47.208 | INFO  | CID:ecf61e81b1d9 | USR:USU_ADMIN | Financiero/RechazarOrden | Iniciando acción: Financiero/RechazarOrden
+2026-02-26 10:37:47.539 | ERROR | CID:N/A | ERR:EMAIL_ERROR | Error al enviar correo.
+    Exception: SmtpException
+    StackTrace:    en System.Net.Mail.SmtpClient.SendAsync(MailMessage message, Object userToken)
+   en System.Net.Mail.SmtpClient.SendMailAsync(MailMessage message)
+   en CapaDatos.Services.EmailService.<EnviarAsync>d__4.MoveNext() en C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\CapaDatos\Services\EmailService.cs:línea 76
+2026-02-26 10:37:47.541 | INFO  | CID:bf1a63aab85b | Enviando correo a german.cajas@aviacioncivil.gob.ec, Asunto: Notificacion de rechazo - Orden OR-202602130945067...
+2026-02-26 10:37:47.691 | INFO  | CID:bf1a63aab85b | Correo enviado exitosamente a german.cajas@aviacioncivil.gob.ec
+2026-02-26 10:37:47.692 | WARN  | CID:N/A | ERR:EMAIL_FALLBACK_OK | Correo enviado por fallback EnviarCorreo.
+2026-02-26 10:37:47.693 | INFO  | CID:N/A | ORD:OR-20260213094506758-4 | ERR:EMAIL_RECHAZO_OK | Notificacion de rechazo enviada correctamente
+2026-02-26 10:37:47.694 | INFO  | CID:ecf61e81b1d9 | USR:USU_ADMIN | Financiero/RechazarOrden | Acción completada: Financiero/RechazarOrden
+2026-02-26 10:38:46.471 | INFO  | CID:7b1f1bdedf77 | USR:USU_ADMIN | Financiero/RechazarOrden | Iniciando acción: Financiero/RechazarOrden
+2026-02-26 10:38:46.704 | WARN  | CID:N/A | ERR:EMAIL_RECHAZO_SIN_DESTINO | No se envió correo de rechazo: la orden no tiene correo de destinatario.
+2026-02-26 10:38:46.705 | INFO  | CID:7b1f1bdedf77 | USR:USU_ADMIN | Financiero/RechazarOrden | Acción completada: Financiero/RechazarOrden
+2026-02-26 10:39:31.579 | INFO  | CID:39f04b9dd4a1 | USR:USU_ADMIN | Financiero/RechazarOrden | Iniciando acción: Financiero/RechazarOrden
+2026-02-26 10:39:31.868 | ERROR | CID:N/A | ERR:EMAIL_ERROR | Error al enviar correo.
+    Exception: SmtpException
+    StackTrace:    en System.Net.Mail.SmtpClient.SendAsync(MailMessage message, Object userToken)
+   en System.Net.Mail.SmtpClient.SendMailAsync(MailMessage message)
+   en CapaDatos.Services.EmailService.<EnviarAsync>d__4.MoveNext() en C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\CapaDatos\Services\EmailService.cs:línea 76
+2026-02-26 10:39:31.870 | INFO  | CID:bf3eb8e23681 | Enviando correo a german.cajas@aviacioncivil.gob.ec, Asunto: Notificacion de rechazo - Orden OR-202602130917052...
+2026-02-26 10:39:32.010 | INFO  | CID:bf3eb8e23681 | Correo enviado exitosamente a german.cajas@aviacioncivil.gob.ec
+2026-02-26 10:39:32.013 | WARN  | CID:N/A | ERR:EMAIL_FALLBACK_OK | Correo enviado por fallback EnviarCorreo.
+2026-02-26 10:39:32.014 | INFO  | CID:N/A | ORD:OR-20260213091705265-3 | ERR:EMAIL_RECHAZO_OK | Notificacion de rechazo enviada correctamente
+2026-02-26 10:39:32.015 | INFO  | CID:39f04b9dd4a1 | USR:USU_ADMIN | Financiero/RechazarOrden | Acción completada: Financiero/RechazarOrden
+2026-02-26 10:39:53.233 | INFO  | CID:32e129a11f1c | USR:USU_ADMIN | Financiero/RechazarOrden | Iniciando acción: Financiero/RechazarOrden
+2026-02-26 10:39:53.519 | ERROR | CID:N/A | ERR:EMAIL_ERROR | Error al enviar correo.
+    Exception: SmtpException
+    StackTrace:    en System.Net.Mail.SmtpClient.SendAsync(MailMessage message, Object userToken)
+   en System.Net.Mail.SmtpClient.SendMailAsync(MailMessage message)
+   en CapaDatos.Services.EmailService.<EnviarAsync>d__4.MoveNext() en C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\CapaDatos\Services\EmailService.cs:línea 76
+2026-02-26 10:39:53.521 | INFO  | CID:7af363902c40 | Enviando correo a gercavi82@gmail.com, Asunto: Notificacion de rechazo - Orden OR-202602190939526...
+2026-02-26 10:39:53.705 | INFO  | CID:7af363902c40 | Correo enviado exitosamente a gercavi82@gmail.com
+2026-02-26 10:39:53.705 | WARN  | CID:N/A | ERR:EMAIL_FALLBACK_OK | Correo enviado por fallback EnviarCorreo.
+2026-02-26 10:39:53.721 | INFO  | CID:N/A | ORD:OR-20260219093952647-2 | ERR:EMAIL_RECHAZO_OK | Notificacion de rechazo enviada correctamente
+2026-02-26 10:39:53.724 | INFO  | CID:32e129a11f1c | USR:USU_ADMIN | Financiero/RechazarOrden | Acción completada: Financiero/RechazarOrden
+2026-02-26 10:40:54.933 | INFO  | CID:e721ebb4f45e | Account/Login | Iniciando acción: Account/Login
+2026-02-26 10:40:55.797 | INFO  | CID:e721ebb4f45e | Account/Login | Acción completada: Account/Login
+2026-02-26 10:45:34.077 | INFO  | CID:N/A | Deteniendo procesador de cola de correos
+2026-02-26 10:45:34.150 | INFO  | CID:N/A | Deteniendo procesador de cola de correos
+2026-02-26 10:47:27.476 | INFO  | CID:N/A | Iniciando procesador de cola de correos
+2026-02-26 10:47:51.369 | INFO  | CID:bf3c7bea3e93 | Account/Login | Iniciando acción: Account/Login
+2026-02-26 10:47:52.211 | INFO  | CID:bf3c7bea3e93 | Account/Login | Acción completada: Account/Login
+2026-02-26 10:48:41.127 | INFO  | CID:130d395e3f62 | Account/Login | Iniciando acción: Account/Login
+2026-02-26 10:48:41.626 | INFO  | CID:130d395e3f62 | Account/Login | Acción completada: Account/Login
+2026-02-26 10:49:40.274 | INFO  | CID:e079544139d4 | USR:USU_ADMIN | Financiero/RechazarOrden | Iniciando acción: Financiero/RechazarOrden
+2026-02-26 10:49:40.435 | ERROR | CID:N/A | ERR:EMAIL_ERROR | Error al enviar correo.
+    Exception: SmtpException
+    StackTrace:    en System.Net.Mail.SmtpClient.SendAsync(MailMessage message, Object userToken)
+   en System.Net.Mail.SmtpClient.SendMailAsync(MailMessage message)
+   en CapaDatos.Services.EmailService.<EnviarAsync>d__4.MoveNext() en C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\CapaDatos\Services\EmailService.cs:línea 76
+2026-02-26 10:49:40.498 | INFO  | CID:b0023cccfdb6 | Enviando correo a german.cajas@aviacioncivil.gob.ec, Asunto: Notificacion de rechazo - Orden OR-202602130900413...
+2026-02-26 10:49:40.770 | INFO  | CID:b0023cccfdb6 | Correo enviado exitosamente a german.cajas@aviacioncivil.gob.ec
+2026-02-26 10:49:40.772 | WARN  | CID:N/A | ERR:EMAIL_FALLBACK_OK | Correo enviado por fallback EnviarCorreo.
+2026-02-26 10:49:40.774 | INFO  | CID:N/A | ORD:OR-20260213090041324-1 | ERR:EMAIL_RECHAZO_OK | Notificacion de rechazo enviada correctamente
+2026-02-26 10:49:40.775 | INFO  | CID:e079544139d4 | USR:USU_ADMIN | Financiero/RechazarOrden | Acción completada: Financiero/RechazarOrden
+2026-02-26 10:49:59.778 | INFO  | CID:0075d715da7f | USR:USU_ADMIN | Financiero/RechazarOrden | Iniciando acción: Financiero/RechazarOrden
+2026-02-26 10:50:00.045 | ERROR | CID:N/A | ERR:EMAIL_ERROR | Error al enviar correo.
+    Exception: SmtpException
+    StackTrace:    en System.Net.Mail.SmtpClient.SendAsync(MailMessage message, Object userToken)
+   en System.Net.Mail.SmtpClient.SendMailAsync(MailMessage message)
+   en CapaDatos.Services.EmailService.<EnviarAsync>d__4.MoveNext() en C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\CapaDatos\Services\EmailService.cs:línea 76
+2026-02-26 10:50:00.047 | INFO  | CID:e3ee0e692a69 | Enviando correo a german.cajas@aviacioncivil.gob.ec, Asunto: Notificacion de rechazo - Orden OR-202602121630487...
+2026-02-26 10:50:00.259 | INFO  | CID:e3ee0e692a69 | Correo enviado exitosamente a german.cajas@aviacioncivil.gob.ec
+2026-02-26 10:50:00.263 | WARN  | CID:N/A | ERR:EMAIL_FALLBACK_OK | Correo enviado por fallback EnviarCorreo.
+2026-02-26 10:50:00.266 | INFO  | CID:N/A | ORD:OR-20260212163048723-1 | ERR:EMAIL_RECHAZO_OK | Notificacion de rechazo enviada correctamente
+2026-02-26 10:50:00.270 | INFO  | CID:0075d715da7f | USR:USU_ADMIN | Financiero/RechazarOrden | Acción completada: Financiero/RechazarOrden
+2026-02-26 10:57:53.103 | INFO  | CID:N/A | Iniciando procesador de cola de correos
+2026-02-26 10:58:00.547 | INFO  | CID:b07f0cba296d | Account/Login | Iniciando acción: Account/Login
+2026-02-26 10:58:02.511 | INFO  | CID:b07f0cba296d | Account/Login | Acción completada: Account/Login
+2026-02-26 11:04:31.404 | INFO  | CID:N/A | Iniciando procesador de cola de correos
+2026-02-26 11:04:40.534 | INFO  | CID:438035461a06 | Account/Login | Iniciando acción: Account/Login
+2026-02-26 11:04:41.339 | INFO  | CID:438035461a06 | Account/Login | Acción completada: Account/Login
+2026-02-26 11:10:34.125 | INFO  | CID:N/A | Iniciando procesador de cola de correos
+2026-02-26 11:10:40.529 | INFO  | CID:0f591352d2f5 | Account/Login | Iniciando acción: Account/Login
+2026-02-26 11:10:41.349 | INFO  | CID:0f591352d2f5 | Account/Login | Acción completada: Account/Login
+2026-02-26 11:10:56.224 | INFO  | CID:a577636a82ec | USR:USU_ADMIN | Usuario/InactivarUsuarioRT | Iniciando acción: Usuario/InactivarUsuarioRT
+2026-02-26 11:10:56.225 | INFO  | CID:a577636a82ec | USR:USU_ADMIN | Usuario/InactivarUsuarioRT | Acción completada: Usuario/InactivarUsuarioRT
+2026-02-26 11:24:29.425 | INFO  | CID:N/A | Iniciando procesador de cola de correos
+2026-02-26 11:24:37.380 | INFO  | CID:82a14da7e562 | Account/Login | Iniciando acción: Account/Login
+2026-02-26 11:24:38.684 | INFO  | CID:82a14da7e562 | Account/Login | Acción completada: Account/Login
+2026-02-26 11:29:51.183 | INFO  | CID:N/A | Iniciando procesador de cola de correos
+2026-02-26 11:30:10.224 | INFO  | CID:02d9c9d10f2e | Account/Login | Iniciando acción: Account/Login
+2026-02-26 11:30:11.061 | INFO  | CID:02d9c9d10f2e | Account/Login | Acción completada: Account/Login
+2026-02-26 11:36:52.134 | INFO  | CID:eb39cea36de3 | USR:USU_ADMIN | AdminUsuarios/CambiarEstado | Iniciando acción: AdminUsuarios/CambiarEstado
+2026-02-26 11:36:52.248 | INFO  | CID:eb39cea36de3 | USR:USU_ADMIN | AdminUsuarios/CambiarEstado | Acción completada: AdminUsuarios/CambiarEstado
+2026-02-26 14:21:08.030 | INFO  | CID:N/A | Iniciando procesador de cola de correos
+2026-02-26 14:24:43.662 | INFO  | CID:c1c50efd6546 | Account/Login | Iniciando acción: Account/Login
+2026-02-26 14:24:44.515 | INFO  | CID:c1c50efd6546 | Account/Login | Acción completada: Account/Login
+2026-02-26 14:38:50.574 | INFO  | CID:27c11c47910b | Usuario/ValidarCorreo | Iniciando acción: Usuario/ValidarCorreo
+2026-02-26 14:38:50.583 | INFO  | CID:27c11c47910b | Usuario/ValidarCorreo | Acción completada: Usuario/ValidarCorreo
+2026-02-26 14:45:59.787 | INFO  | CID:3b16c1f4265d | Account/Login | Iniciando acción: Account/Login
+2026-02-26 14:46:00.349 | INFO  | CID:3b16c1f4265d | Account/Login | Acción completada: Account/Login
+2026-02-26 15:12:34.207 | INFO  | CID:N/A | Iniciando procesador de cola de correos
+2026-02-26 15:13:00.965 | INFO  | CID:da0bd2404eb9 | Usuario/ValidarCorreo | Iniciando acción: Usuario/ValidarCorreo
+2026-02-26 15:13:01.187 | INFO  | CID:da0bd2404eb9 | Usuario/ValidarCorreo | Acción completada: Usuario/ValidarCorreo
+2026-02-26 15:13:43.216 | INFO  | CID:2612d00fdb13 | Usuario/ValidarIdentificacion | Iniciando acción: Usuario/ValidarIdentificacion
+2026-02-26 15:13:43.222 | INFO  | CID:2612d00fdb13 | Usuario/ValidarIdentificacion | Acción completada: Usuario/ValidarIdentificacion
+2026-02-26 15:15:27.935 | INFO  | CID:b251bc82a700 | Usuario/RegistrarDeclaracionTemporal | Iniciando acción: Usuario/RegistrarDeclaracionTemporal
+2026-02-26 15:15:27.955 | INFO  | CID:b251bc82a700 | Usuario/RegistrarDeclaracionTemporal | Acción completada: Usuario/RegistrarDeclaracionTemporal
+2026-02-26 15:15:31.509 | INFO  | CID:f0d40c25af9a | Usuario/Crear | Iniciando acción: Usuario/Crear
+2026-02-26 15:15:32.528 | INFO  | CID:3f2803fd4997 | Enviando correo a german.cajas@aviancioncivil.gob.ec, Asunto: Registro de usuario - Sistema AOCR
+2026-02-26 15:15:33.046 | INFO  | CID:3f2803fd4997 | Correo enviado exitosamente a german.cajas@aviancioncivil.gob.ec
+2026-02-26 15:15:33.047 | INFO  | CID:f0d40c25af9a | Usuario/Crear | Acción completada: Usuario/Crear
+2026-02-26 15:21:12.832 | INFO  | CID:32ea7486d8ac | Account/Login | Iniciando acción: Account/Login
+2026-02-26 15:21:13.434 | INFO  | CID:32ea7486d8ac | Account/Login | Acción completada: Account/Login
+2026-02-26 15:21:37.960 | INFO  | CID:e4b916d8db0d | USR:USU_ADMIN | Usuario/EliminarUsuarioRT | Iniciando acción: Usuario/EliminarUsuarioRT
+2026-02-26 15:21:38.279 | INFO  | CID:e4b916d8db0d | USR:USU_ADMIN | Usuario/EliminarUsuarioRT | Acción completada: Usuario/EliminarUsuarioRT
+2026-02-26 15:23:29.703 | INFO  | CID:d50fbdf3fc49 | Usuario/ValidarCorreo | Iniciando acción: Usuario/ValidarCorreo
+2026-02-26 15:23:29.706 | INFO  | CID:d50fbdf3fc49 | Usuario/ValidarCorreo | Acción completada: Usuario/ValidarCorreo
+2026-02-26 15:23:34.329 | INFO  | CID:96fb381b4325 | Usuario/ValidarIdentificacion | Iniciando acción: Usuario/ValidarIdentificacion
+2026-02-26 15:23:34.331 | INFO  | CID:96fb381b4325 | Usuario/ValidarIdentificacion | Acción completada: Usuario/ValidarIdentificacion
+2026-02-26 15:24:03.058 | INFO  | CID:1f8a37a41bad | Usuario/RegistrarDeclaracionTemporal | Iniciando acción: Usuario/RegistrarDeclaracionTemporal
+2026-02-26 15:24:03.062 | INFO  | CID:1f8a37a41bad | Usuario/RegistrarDeclaracionTemporal | Acción completada: Usuario/RegistrarDeclaracionTemporal
+2026-02-26 15:24:04.773 | INFO  | CID:6d9326fb4950 | Usuario/Crear | Iniciando acción: Usuario/Crear
+2026-02-26 15:24:05.297 | INFO  | CID:3bf4ec3a529e | Enviando correo a german.cajas@aviacioncivil.gob.ec, Asunto: Registro de usuario - Sistema AOCR
+2026-02-26 15:24:05.620 | INFO  | CID:3bf4ec3a529e | Correo enviado exitosamente a german.cajas@aviacioncivil.gob.ec
+2026-02-26 15:24:05.620 | INFO  | CID:6d9326fb4950 | Usuario/Crear | Acción completada: Usuario/Crear
+2026-02-26 16:31:56.892 | INFO  | CID:N/A | Iniciando procesador de cola de correos

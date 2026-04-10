@@ -1,0 +1,437 @@
+﻿2026-03-27 08:17:10.330 | INFO  | CID:N/A | Iniciando procesador de cola de correos
+2026-03-27 08:17:33.346 | INFO  | CID:81382596f9bc | Account/Login | Iniciando acción: Account/Login
+2026-03-27 08:17:34.124 | INFO  | CID:81382596f9bc | Account/Login | Acción completada: Account/Login
+2026-03-27 08:17:42.444 | INFO  | CID:N/A | USR:USU_ADMIN | Inspeccion/Index | AuditTrailService: Tabla aocr_audit_trail verificada/creada.
+2026-03-27 08:17:42.459 | INFO  | CID:0bcf0e6c4bec | USR:USU_ADMIN | Inspeccion/Index | [InspeccionesController] Inicio pantalla gestion inspecciones. Usuario=USU_ADMIN, Rol=Administrador,Inspector,JefaturaTecnica,Direccion,CoordinacionLegal
+2026-03-27 08:17:42.494 | INFO  | CID:0bcf0e6c4bec | USR:USU_ADMIN | Inspeccion/Index | [InspeccionesController] Inspecciones recibidas=17
+2026-03-27 08:18:02.985 | INFO  | CID:efd38c8efcbf | USR:USU_ADMIN | Inspeccion/Detalle | [GestionInspeccion] Inicio Detalle. InspeccionId=17, Usuario=USU_ADMIN, Rol=Administrador,Inspector,JefaturaTecnica,Direccion,CoordinacionLegal
+2026-03-27 08:18:02.998 | INFO  | CID:efd38c8efcbf | USR:USU_ADMIN | Inspeccion/Detalle | [GestionInspeccion] InspeccionId=17, SolicitudId=87, EstadoActual=VERIFICACION_SOLICITUD, InspectorAsignado=17
+2026-03-27 08:18:02.999 | INFO  | CID:efd38c8efcbf | USR:USU_ADMIN | Inspeccion/Detalle | [GestionInspeccion] PuedeGestionar=True para detalle. InspeccionId=17
+2026-03-27 08:18:04.548 | INFO  | CID:efd38c8efcbf | USR:USU_ADMIN | Inspeccion/Detalle | [InspectoresDAO-DB2] Query obtener por cedula: SELECT TRIM(OPICED) AS OPICED, TRIM(OPINO2) AS OPINO2, TRIM(OPIES1) AS OPIES1, TRIM(OPITIP) AS OPITIP FROM DGACDAT.OPIAR2 WHERE OPICED = ? AND UPPER(TRIM(COALESCE(OPIES1, ''))) = ? FETCH FIRST 1 ROW ONLY
+2026-03-27 08:18:04.548 | INFO  | CID:efd38c8efcbf | USR:USU_ADMIN | Inspeccion/Detalle | [InspectoresDAO-DB2] Parametros => cedula=17, soloActivos=True, tipos=TODOS
+2026-03-27 08:18:04.604 | WARN  | CID:efd38c8efcbf | USR:USU_ADMIN | Inspeccion/Detalle | [InspectoresDAO-DB2] Inspector no encontrado para cedula=17, soloActivos=True
+2026-03-27 08:18:04.610 | INFO  | CID:efd38c8efcbf | USR:USU_ADMIN | Inspeccion/Detalle | [InspectoresDAO-DB2] Query obtener por cedula: SELECT TRIM(OPICED) AS OPICED, TRIM(OPINO2) AS OPINO2, TRIM(OPIES1) AS OPIES1, TRIM(OPITIP) AS OPITIP FROM DGACDAT.OPIAR2 WHERE OPICED = ? AND UPPER(TRIM(COALESCE(OPIES1, ''))) = ? FETCH FIRST 1 ROW ONLY
+2026-03-27 08:18:04.611 | INFO  | CID:efd38c8efcbf | USR:USU_ADMIN | Inspeccion/Detalle | [InspectoresDAO-DB2] Parametros => cedula=0000000017, soloActivos=True, tipos=TODOS
+2026-03-27 08:18:04.614 | WARN  | CID:efd38c8efcbf | USR:USU_ADMIN | Inspeccion/Detalle | [InspectoresDAO-DB2] Inspector no encontrado para cedula=0000000017, soloActivos=True
+2026-03-27 08:18:04.614 | INFO  | CID:efd38c8efcbf | USR:USU_ADMIN | Inspeccion/Detalle | [InspectoresDAO-DB2] Query obtener por cedula: SELECT TRIM(OPICED) AS OPICED, TRIM(OPINO2) AS OPINO2, TRIM(OPIES1) AS OPIES1, TRIM(OPITIP) AS OPITIP FROM DGACDAT.OPIAR2 WHERE OPICED = ? FETCH FIRST 1 ROW ONLY
+2026-03-27 08:18:04.614 | INFO  | CID:efd38c8efcbf | USR:USU_ADMIN | Inspeccion/Detalle | [InspectoresDAO-DB2] Parametros => cedula=17, soloActivos=False, tipos=TODOS
+2026-03-27 08:18:04.617 | WARN  | CID:efd38c8efcbf | USR:USU_ADMIN | Inspeccion/Detalle | [InspectoresDAO-DB2] Inspector no encontrado para cedula=17, soloActivos=False
+2026-03-27 08:18:04.618 | INFO  | CID:efd38c8efcbf | USR:USU_ADMIN | Inspeccion/Detalle | [InspectoresDAO-DB2] Query obtener por cedula: SELECT TRIM(OPICED) AS OPICED, TRIM(OPINO2) AS OPINO2, TRIM(OPIES1) AS OPIES1, TRIM(OPITIP) AS OPITIP FROM DGACDAT.OPIAR2 WHERE OPICED = ? FETCH FIRST 1 ROW ONLY
+2026-03-27 08:18:04.618 | INFO  | CID:efd38c8efcbf | USR:USU_ADMIN | Inspeccion/Detalle | [InspectoresDAO-DB2] Parametros => cedula=0000000017, soloActivos=False, tipos=TODOS
+2026-03-27 08:18:04.621 | WARN  | CID:efd38c8efcbf | USR:USU_ADMIN | Inspeccion/Detalle | [InspectoresDAO-DB2] Inspector no encontrado para cedula=0000000017, soloActivos=False
+2026-03-27 08:18:04.622 | INFO  | CID:efd38c8efcbf | USR:USU_ADMIN | Inspeccion/Detalle | [InspectoresDAO-DB2] Query obtener por cedula: SELECT TRIM(OPICED) AS OPICED, TRIM(OPINO2) AS OPINO2, TRIM(OPIES1) AS OPIES1, TRIM(OPITIP) AS OPITIP FROM DGACDAT.OPIAR2 WHERE OPICED = ? AND UPPER(TRIM(COALESCE(OPIES1, ''))) = ? FETCH FIRST 1 ROW ONLY
+2026-03-27 08:18:04.622 | INFO  | CID:efd38c8efcbf | USR:USU_ADMIN | Inspeccion/Detalle | [InspectoresDAO-DB2] Parametros => cedula=17, soloActivos=True, tipos=TODOS
+2026-03-27 08:18:04.624 | WARN  | CID:efd38c8efcbf | USR:USU_ADMIN | Inspeccion/Detalle | [InspectoresDAO-DB2] Inspector no encontrado para cedula=17, soloActivos=True
+2026-03-27 08:18:04.624 | INFO  | CID:efd38c8efcbf | USR:USU_ADMIN | Inspeccion/Detalle | [InspectoresDAO-DB2] Query obtener por cedula: SELECT TRIM(OPICED) AS OPICED, TRIM(OPINO2) AS OPINO2, TRIM(OPIES1) AS OPIES1, TRIM(OPITIP) AS OPITIP FROM DGACDAT.OPIAR2 WHERE OPICED = ? AND UPPER(TRIM(COALESCE(OPIES1, ''))) = ? FETCH FIRST 1 ROW ONLY
+2026-03-27 08:18:04.624 | INFO  | CID:efd38c8efcbf | USR:USU_ADMIN | Inspeccion/Detalle | [InspectoresDAO-DB2] Parametros => cedula=0000000017, soloActivos=True, tipos=TODOS
+2026-03-27 08:18:04.624 | WARN  | CID:efd38c8efcbf | USR:USU_ADMIN | Inspeccion/Detalle | [InspectoresDAO-DB2] Inspector no encontrado para cedula=0000000017, soloActivos=True
+2026-03-27 08:18:04.624 | INFO  | CID:efd38c8efcbf | USR:USU_ADMIN | Inspeccion/Detalle | [InspectoresDAO-DB2] Query obtener por cedula: SELECT TRIM(OPICED) AS OPICED, TRIM(OPINO2) AS OPINO2, TRIM(OPIES1) AS OPIES1, TRIM(OPITIP) AS OPITIP FROM DGACDAT.OPIAR2 WHERE OPICED = ? FETCH FIRST 1 ROW ONLY
+2026-03-27 08:18:04.624 | INFO  | CID:efd38c8efcbf | USR:USU_ADMIN | Inspeccion/Detalle | [InspectoresDAO-DB2] Parametros => cedula=17, soloActivos=False, tipos=TODOS
+2026-03-27 08:18:04.624 | WARN  | CID:efd38c8efcbf | USR:USU_ADMIN | Inspeccion/Detalle | [InspectoresDAO-DB2] Inspector no encontrado para cedula=17, soloActivos=False
+2026-03-27 08:18:04.624 | INFO  | CID:efd38c8efcbf | USR:USU_ADMIN | Inspeccion/Detalle | [InspectoresDAO-DB2] Query obtener por cedula: SELECT TRIM(OPICED) AS OPICED, TRIM(OPINO2) AS OPINO2, TRIM(OPIES1) AS OPIES1, TRIM(OPITIP) AS OPITIP FROM DGACDAT.OPIAR2 WHERE OPICED = ? FETCH FIRST 1 ROW ONLY
+2026-03-27 08:18:04.624 | INFO  | CID:efd38c8efcbf | USR:USU_ADMIN | Inspeccion/Detalle | [InspectoresDAO-DB2] Parametros => cedula=0000000017, soloActivos=False, tipos=TODOS
+2026-03-27 08:18:04.624 | WARN  | CID:efd38c8efcbf | USR:USU_ADMIN | Inspeccion/Detalle | [InspectoresDAO-DB2] Inspector no encontrado para cedula=0000000017, soloActivos=False
+2026-03-27 08:18:04.624 | INFO  | CID:efd38c8efcbf | USR:USU_ADMIN | Inspeccion/Detalle | [GestionInspeccion] Detalle inspectores enriquecidos. InspeccionId=17, PrincipalCedula=17, PrincipalNombre=17, PrincipalTipo=, ApoyoCedula=, ApoyoNombre=, ApoyoTipo=
+2026-03-27 08:18:35.952 | INFO  | CID:9b0947ef4cbd | USR:USU_ADMIN | Inspeccion/Detalle | [GestionInspeccion] Inicio Detalle. InspeccionId=17, Usuario=USU_ADMIN, Rol=Administrador,Inspector,JefaturaTecnica,Direccion,CoordinacionLegal
+2026-03-27 08:18:35.963 | INFO  | CID:9b0947ef4cbd | USR:USU_ADMIN | Inspeccion/Detalle | [GestionInspeccion] InspeccionId=17, SolicitudId=87, EstadoActual=VERIFICACION_SOLICITUD, InspectorAsignado=17
+2026-03-27 08:18:35.963 | INFO  | CID:9b0947ef4cbd | USR:USU_ADMIN | Inspeccion/Detalle | [GestionInspeccion] PuedeGestionar=True para detalle. InspeccionId=17
+2026-03-27 08:18:36.240 | INFO  | CID:9b0947ef4cbd | USR:USU_ADMIN | Inspeccion/Detalle | [InspectoresDAO-DB2] Query obtener por cedula: SELECT TRIM(OPICED) AS OPICED, TRIM(OPINO2) AS OPINO2, TRIM(OPIES1) AS OPIES1, TRIM(OPITIP) AS OPITIP FROM DGACDAT.OPIAR2 WHERE OPICED = ? AND UPPER(TRIM(COALESCE(OPIES1, ''))) = ? FETCH FIRST 1 ROW ONLY
+2026-03-27 08:18:36.240 | INFO  | CID:9b0947ef4cbd | USR:USU_ADMIN | Inspeccion/Detalle | [InspectoresDAO-DB2] Parametros => cedula=17, soloActivos=True, tipos=TODOS
+2026-03-27 08:18:36.244 | WARN  | CID:9b0947ef4cbd | USR:USU_ADMIN | Inspeccion/Detalle | [InspectoresDAO-DB2] Inspector no encontrado para cedula=17, soloActivos=True
+2026-03-27 08:18:36.244 | INFO  | CID:9b0947ef4cbd | USR:USU_ADMIN | Inspeccion/Detalle | [InspectoresDAO-DB2] Query obtener por cedula: SELECT TRIM(OPICED) AS OPICED, TRIM(OPINO2) AS OPINO2, TRIM(OPIES1) AS OPIES1, TRIM(OPITIP) AS OPITIP FROM DGACDAT.OPIAR2 WHERE OPICED = ? AND UPPER(TRIM(COALESCE(OPIES1, ''))) = ? FETCH FIRST 1 ROW ONLY
+2026-03-27 08:18:36.244 | INFO  | CID:9b0947ef4cbd | USR:USU_ADMIN | Inspeccion/Detalle | [InspectoresDAO-DB2] Parametros => cedula=0000000017, soloActivos=True, tipos=TODOS
+2026-03-27 08:18:36.246 | WARN  | CID:9b0947ef4cbd | USR:USU_ADMIN | Inspeccion/Detalle | [InspectoresDAO-DB2] Inspector no encontrado para cedula=0000000017, soloActivos=True
+2026-03-27 08:18:36.247 | INFO  | CID:9b0947ef4cbd | USR:USU_ADMIN | Inspeccion/Detalle | [InspectoresDAO-DB2] Query obtener por cedula: SELECT TRIM(OPICED) AS OPICED, TRIM(OPINO2) AS OPINO2, TRIM(OPIES1) AS OPIES1, TRIM(OPITIP) AS OPITIP FROM DGACDAT.OPIAR2 WHERE OPICED = ? FETCH FIRST 1 ROW ONLY
+2026-03-27 08:18:36.247 | INFO  | CID:9b0947ef4cbd | USR:USU_ADMIN | Inspeccion/Detalle | [InspectoresDAO-DB2] Parametros => cedula=17, soloActivos=False, tipos=TODOS
+2026-03-27 08:18:36.249 | WARN  | CID:9b0947ef4cbd | USR:USU_ADMIN | Inspeccion/Detalle | [InspectoresDAO-DB2] Inspector no encontrado para cedula=17, soloActivos=False
+2026-03-27 08:18:36.249 | INFO  | CID:9b0947ef4cbd | USR:USU_ADMIN | Inspeccion/Detalle | [InspectoresDAO-DB2] Query obtener por cedula: SELECT TRIM(OPICED) AS OPICED, TRIM(OPINO2) AS OPINO2, TRIM(OPIES1) AS OPIES1, TRIM(OPITIP) AS OPITIP FROM DGACDAT.OPIAR2 WHERE OPICED = ? FETCH FIRST 1 ROW ONLY
+2026-03-27 08:18:36.249 | INFO  | CID:9b0947ef4cbd | USR:USU_ADMIN | Inspeccion/Detalle | [InspectoresDAO-DB2] Parametros => cedula=0000000017, soloActivos=False, tipos=TODOS
+2026-03-27 08:18:36.251 | WARN  | CID:9b0947ef4cbd | USR:USU_ADMIN | Inspeccion/Detalle | [InspectoresDAO-DB2] Inspector no encontrado para cedula=0000000017, soloActivos=False
+2026-03-27 08:18:36.252 | INFO  | CID:9b0947ef4cbd | USR:USU_ADMIN | Inspeccion/Detalle | [InspectoresDAO-DB2] Query obtener por cedula: SELECT TRIM(OPICED) AS OPICED, TRIM(OPINO2) AS OPINO2, TRIM(OPIES1) AS OPIES1, TRIM(OPITIP) AS OPITIP FROM DGACDAT.OPIAR2 WHERE OPICED = ? AND UPPER(TRIM(COALESCE(OPIES1, ''))) = ? FETCH FIRST 1 ROW ONLY
+2026-03-27 08:18:36.252 | INFO  | CID:9b0947ef4cbd | USR:USU_ADMIN | Inspeccion/Detalle | [InspectoresDAO-DB2] Parametros => cedula=17, soloActivos=True, tipos=TODOS
+2026-03-27 08:18:36.254 | WARN  | CID:9b0947ef4cbd | USR:USU_ADMIN | Inspeccion/Detalle | [InspectoresDAO-DB2] Inspector no encontrado para cedula=17, soloActivos=True
+2026-03-27 08:18:36.254 | INFO  | CID:9b0947ef4cbd | USR:USU_ADMIN | Inspeccion/Detalle | [InspectoresDAO-DB2] Query obtener por cedula: SELECT TRIM(OPICED) AS OPICED, TRIM(OPINO2) AS OPINO2, TRIM(OPIES1) AS OPIES1, TRIM(OPITIP) AS OPITIP FROM DGACDAT.OPIAR2 WHERE OPICED = ? AND UPPER(TRIM(COALESCE(OPIES1, ''))) = ? FETCH FIRST 1 ROW ONLY
+2026-03-27 08:18:36.254 | INFO  | CID:9b0947ef4cbd | USR:USU_ADMIN | Inspeccion/Detalle | [InspectoresDAO-DB2] Parametros => cedula=0000000017, soloActivos=True, tipos=TODOS
+2026-03-27 08:18:36.255 | WARN  | CID:9b0947ef4cbd | USR:USU_ADMIN | Inspeccion/Detalle | [InspectoresDAO-DB2] Inspector no encontrado para cedula=0000000017, soloActivos=True
+2026-03-27 08:18:36.255 | INFO  | CID:9b0947ef4cbd | USR:USU_ADMIN | Inspeccion/Detalle | [InspectoresDAO-DB2] Query obtener por cedula: SELECT TRIM(OPICED) AS OPICED, TRIM(OPINO2) AS OPINO2, TRIM(OPIES1) AS OPIES1, TRIM(OPITIP) AS OPITIP FROM DGACDAT.OPIAR2 WHERE OPICED = ? FETCH FIRST 1 ROW ONLY
+2026-03-27 08:18:36.255 | INFO  | CID:9b0947ef4cbd | USR:USU_ADMIN | Inspeccion/Detalle | [InspectoresDAO-DB2] Parametros => cedula=17, soloActivos=False, tipos=TODOS
+2026-03-27 08:18:36.255 | WARN  | CID:9b0947ef4cbd | USR:USU_ADMIN | Inspeccion/Detalle | [InspectoresDAO-DB2] Inspector no encontrado para cedula=17, soloActivos=False
+2026-03-27 08:18:36.255 | INFO  | CID:9b0947ef4cbd | USR:USU_ADMIN | Inspeccion/Detalle | [InspectoresDAO-DB2] Query obtener por cedula: SELECT TRIM(OPICED) AS OPICED, TRIM(OPINO2) AS OPINO2, TRIM(OPIES1) AS OPIES1, TRIM(OPITIP) AS OPITIP FROM DGACDAT.OPIAR2 WHERE OPICED = ? FETCH FIRST 1 ROW ONLY
+2026-03-27 08:18:36.255 | INFO  | CID:9b0947ef4cbd | USR:USU_ADMIN | Inspeccion/Detalle | [InspectoresDAO-DB2] Parametros => cedula=0000000017, soloActivos=False, tipos=TODOS
+2026-03-27 08:18:36.255 | WARN  | CID:9b0947ef4cbd | USR:USU_ADMIN | Inspeccion/Detalle | [InspectoresDAO-DB2] Inspector no encontrado para cedula=0000000017, soloActivos=False
+2026-03-27 08:18:36.255 | INFO  | CID:9b0947ef4cbd | USR:USU_ADMIN | Inspeccion/Detalle | [GestionInspeccion] Detalle inspectores enriquecidos. InspeccionId=17, PrincipalCedula=17, PrincipalNombre=17, PrincipalTipo=, ApoyoCedula=, ApoyoNombre=, ApoyoTipo=
+2026-03-27 08:18:56.121 | INFO  | CID:c1f162788fad | USR:USU_ADMIN | Inspeccion/FirmarInformeDirdac | Iniciando acción: Inspeccion/FirmarInformeDirdac
+2026-03-27 08:18:56.155 | INFO  | CID:c1f162788fad | USR:USU_ADMIN | Inspeccion/FirmarInformeDirdac | [GestionInspeccion] Inicio firma digital. InspeccionId=17, RolFirma=DIRDAC, InformeId=7, VersionInforme=1, RutaFuente=C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\CapaPresentacion\App_Data\Uploads\Inspecciones\InformesTecnicos\Firmados\InformeTecnico_17_v1_inspector_20260326155503.pdf, PdfBytes=39802, CertificadoBytes=8787, Usuario=USU_ADMIN
+2026-03-27 08:18:57.168 | INFO  | CID:c1f162788fad | USR:USU_ADMIN | Inspeccion/FirmarInformeDirdac | [GestionInspeccion] Firma digital generada. InspeccionId=17, RolFirma=DIRDAC, InformeId=7, Hash=44E28CA99C0EB6EBA8C10FEFFF79BCCC297C1A79FD19704207AAE7C3DA28BAF5, PdfFirmadoBytes=58719
+2026-03-27 08:18:57.168 | INFO  | CID:c1f162788fad | USR:USU_ADMIN | Inspeccion/FirmarInformeDirdac | [GestionInspeccion] Persistiendo firma digital. InspeccionId=17, RolFirma=DIRDAC, InformeId=7, RutaFirmada=/App_Data/Uploads/Inspecciones/InformesTecnicos/Firmados/InformeTecnico_17_v1_dirdac_20260327081857.pdf, EstadoAnterior=ENVIADO_A_DIRDAC, EstadoFinal=FIRMADO_FINAL, UsuarioId=0
+2026-03-27 08:18:57.185 | INFO  | CID:c1f162788fad | USR:USU_ADMIN | Inspeccion/FirmarInformeDirdac | [GestionInspeccion] Firma digital persistida. InspeccionId=17, RolFirma=DIRDAC, InformeId=7, RutaFirmada=/App_Data/Uploads/Inspecciones/InformesTecnicos/Firmados/InformeTecnico_17_v1_dirdac_20260327081857.pdf
+2026-03-27 08:18:58.385 | INFO  | CID:98a1fad42264 | USR:USU_ADMIN | Inspeccion/FirmarInformeDirdac | Correo con adjunto enviado exitosamente a gercavi82@gmail.com
+2026-03-27 08:18:58.852 | INFO  | CID:533cc0688bb6 | USR:USU_ADMIN | Inspeccion/FirmarInformeDirdac | Correo con adjunto enviado exitosamente a mistercato973@gmail.com
+2026-03-27 08:18:58.852 | INFO  | CID:c1f162788fad | USR:USU_ADMIN | Inspeccion/FirmarInformeDirdac | Acción completada: Inspeccion/FirmarInformeDirdac
+2026-03-27 08:18:58.852 | INFO  | CID:16db2a00be44 | USR:USU_ADMIN | Inspeccion/Detalle | [GestionInspeccion] Inicio Detalle. InspeccionId=17, Usuario=USU_ADMIN, Rol=Administrador,Inspector,JefaturaTecnica,Direccion,CoordinacionLegal
+2026-03-27 08:18:58.869 | INFO  | CID:16db2a00be44 | USR:USU_ADMIN | Inspeccion/Detalle | [GestionInspeccion] InspeccionId=17, SolicitudId=87, EstadoActual=VERIFICACION_SOLICITUD, InspectorAsignado=17
+2026-03-27 08:18:58.870 | INFO  | CID:16db2a00be44 | USR:USU_ADMIN | Inspeccion/Detalle | [GestionInspeccion] PuedeGestionar=True para detalle. InspeccionId=17
+2026-03-27 08:18:59.367 | INFO  | CID:16db2a00be44 | USR:USU_ADMIN | Inspeccion/Detalle | [InspectoresDAO-DB2] Query obtener por cedula: SELECT TRIM(OPICED) AS OPICED, TRIM(OPINO2) AS OPINO2, TRIM(OPIES1) AS OPIES1, TRIM(OPITIP) AS OPITIP FROM DGACDAT.OPIAR2 WHERE OPICED = ? AND UPPER(TRIM(COALESCE(OPIES1, ''))) = ? FETCH FIRST 1 ROW ONLY
+2026-03-27 08:18:59.367 | INFO  | CID:16db2a00be44 | USR:USU_ADMIN | Inspeccion/Detalle | [InspectoresDAO-DB2] Parametros => cedula=17, soloActivos=True, tipos=TODOS
+2026-03-27 08:18:59.367 | WARN  | CID:16db2a00be44 | USR:USU_ADMIN | Inspeccion/Detalle | [InspectoresDAO-DB2] Inspector no encontrado para cedula=17, soloActivos=True
+2026-03-27 08:18:59.367 | INFO  | CID:16db2a00be44 | USR:USU_ADMIN | Inspeccion/Detalle | [InspectoresDAO-DB2] Query obtener por cedula: SELECT TRIM(OPICED) AS OPICED, TRIM(OPINO2) AS OPINO2, TRIM(OPIES1) AS OPIES1, TRIM(OPITIP) AS OPITIP FROM DGACDAT.OPIAR2 WHERE OPICED = ? AND UPPER(TRIM(COALESCE(OPIES1, ''))) = ? FETCH FIRST 1 ROW ONLY
+2026-03-27 08:18:59.367 | INFO  | CID:16db2a00be44 | USR:USU_ADMIN | Inspeccion/Detalle | [InspectoresDAO-DB2] Parametros => cedula=0000000017, soloActivos=True, tipos=TODOS
+2026-03-27 08:18:59.367 | WARN  | CID:16db2a00be44 | USR:USU_ADMIN | Inspeccion/Detalle | [InspectoresDAO-DB2] Inspector no encontrado para cedula=0000000017, soloActivos=True
+2026-03-27 08:18:59.367 | INFO  | CID:16db2a00be44 | USR:USU_ADMIN | Inspeccion/Detalle | [InspectoresDAO-DB2] Query obtener por cedula: SELECT TRIM(OPICED) AS OPICED, TRIM(OPINO2) AS OPINO2, TRIM(OPIES1) AS OPIES1, TRIM(OPITIP) AS OPITIP FROM DGACDAT.OPIAR2 WHERE OPICED = ? FETCH FIRST 1 ROW ONLY
+2026-03-27 08:18:59.367 | INFO  | CID:16db2a00be44 | USR:USU_ADMIN | Inspeccion/Detalle | [InspectoresDAO-DB2] Parametros => cedula=17, soloActivos=False, tipos=TODOS
+2026-03-27 08:18:59.367 | WARN  | CID:16db2a00be44 | USR:USU_ADMIN | Inspeccion/Detalle | [InspectoresDAO-DB2] Inspector no encontrado para cedula=17, soloActivos=False
+2026-03-27 08:18:59.367 | INFO  | CID:16db2a00be44 | USR:USU_ADMIN | Inspeccion/Detalle | [InspectoresDAO-DB2] Query obtener por cedula: SELECT TRIM(OPICED) AS OPICED, TRIM(OPINO2) AS OPINO2, TRIM(OPIES1) AS OPIES1, TRIM(OPITIP) AS OPITIP FROM DGACDAT.OPIAR2 WHERE OPICED = ? FETCH FIRST 1 ROW ONLY
+2026-03-27 08:18:59.367 | INFO  | CID:16db2a00be44 | USR:USU_ADMIN | Inspeccion/Detalle | [InspectoresDAO-DB2] Parametros => cedula=0000000017, soloActivos=False, tipos=TODOS
+2026-03-27 08:18:59.367 | WARN  | CID:16db2a00be44 | USR:USU_ADMIN | Inspeccion/Detalle | [InspectoresDAO-DB2] Inspector no encontrado para cedula=0000000017, soloActivos=False
+2026-03-27 08:18:59.367 | INFO  | CID:16db2a00be44 | USR:USU_ADMIN | Inspeccion/Detalle | [InspectoresDAO-DB2] Query obtener por cedula: SELECT TRIM(OPICED) AS OPICED, TRIM(OPINO2) AS OPINO2, TRIM(OPIES1) AS OPIES1, TRIM(OPITIP) AS OPITIP FROM DGACDAT.OPIAR2 WHERE OPICED = ? AND UPPER(TRIM(COALESCE(OPIES1, ''))) = ? FETCH FIRST 1 ROW ONLY
+2026-03-27 08:18:59.367 | INFO  | CID:16db2a00be44 | USR:USU_ADMIN | Inspeccion/Detalle | [InspectoresDAO-DB2] Parametros => cedula=17, soloActivos=True, tipos=TODOS
+2026-03-27 08:18:59.367 | WARN  | CID:16db2a00be44 | USR:USU_ADMIN | Inspeccion/Detalle | [InspectoresDAO-DB2] Inspector no encontrado para cedula=17, soloActivos=True
+2026-03-27 08:18:59.367 | INFO  | CID:16db2a00be44 | USR:USU_ADMIN | Inspeccion/Detalle | [InspectoresDAO-DB2] Query obtener por cedula: SELECT TRIM(OPICED) AS OPICED, TRIM(OPINO2) AS OPINO2, TRIM(OPIES1) AS OPIES1, TRIM(OPITIP) AS OPITIP FROM DGACDAT.OPIAR2 WHERE OPICED = ? AND UPPER(TRIM(COALESCE(OPIES1, ''))) = ? FETCH FIRST 1 ROW ONLY
+2026-03-27 08:18:59.367 | INFO  | CID:16db2a00be44 | USR:USU_ADMIN | Inspeccion/Detalle | [InspectoresDAO-DB2] Parametros => cedula=0000000017, soloActivos=True, tipos=TODOS
+2026-03-27 08:18:59.383 | WARN  | CID:16db2a00be44 | USR:USU_ADMIN | Inspeccion/Detalle | [InspectoresDAO-DB2] Inspector no encontrado para cedula=0000000017, soloActivos=True
+2026-03-27 08:18:59.383 | INFO  | CID:16db2a00be44 | USR:USU_ADMIN | Inspeccion/Detalle | [InspectoresDAO-DB2] Query obtener por cedula: SELECT TRIM(OPICED) AS OPICED, TRIM(OPINO2) AS OPINO2, TRIM(OPIES1) AS OPIES1, TRIM(OPITIP) AS OPITIP FROM DGACDAT.OPIAR2 WHERE OPICED = ? FETCH FIRST 1 ROW ONLY
+2026-03-27 08:18:59.383 | INFO  | CID:16db2a00be44 | USR:USU_ADMIN | Inspeccion/Detalle | [InspectoresDAO-DB2] Parametros => cedula=17, soloActivos=False, tipos=TODOS
+2026-03-27 08:18:59.385 | WARN  | CID:16db2a00be44 | USR:USU_ADMIN | Inspeccion/Detalle | [InspectoresDAO-DB2] Inspector no encontrado para cedula=17, soloActivos=False
+2026-03-27 08:18:59.385 | INFO  | CID:16db2a00be44 | USR:USU_ADMIN | Inspeccion/Detalle | [InspectoresDAO-DB2] Query obtener por cedula: SELECT TRIM(OPICED) AS OPICED, TRIM(OPINO2) AS OPINO2, TRIM(OPIES1) AS OPIES1, TRIM(OPITIP) AS OPITIP FROM DGACDAT.OPIAR2 WHERE OPICED = ? FETCH FIRST 1 ROW ONLY
+2026-03-27 08:18:59.385 | INFO  | CID:16db2a00be44 | USR:USU_ADMIN | Inspeccion/Detalle | [InspectoresDAO-DB2] Parametros => cedula=0000000017, soloActivos=False, tipos=TODOS
+2026-03-27 08:18:59.385 | WARN  | CID:16db2a00be44 | USR:USU_ADMIN | Inspeccion/Detalle | [InspectoresDAO-DB2] Inspector no encontrado para cedula=0000000017, soloActivos=False
+2026-03-27 08:18:59.385 | INFO  | CID:16db2a00be44 | USR:USU_ADMIN | Inspeccion/Detalle | [GestionInspeccion] Detalle inspectores enriquecidos. InspeccionId=17, PrincipalCedula=17, PrincipalNombre=17, PrincipalTipo=, ApoyoCedula=, ApoyoNombre=, ApoyoTipo=
+2026-03-27 08:53:59.284 | INFO  | CID:N/A | Iniciando procesador de cola de correos
+2026-03-27 08:54:47.231 | INFO  | CID:70c04613598f | Account/Login | Iniciando acción: Account/Login
+2026-03-27 08:54:47.992 | INFO  | CID:70c04613598f | Account/Login | Acción completada: Account/Login
+2026-03-27 09:10:35.116 | INFO  | CID:N/A | Iniciando procesador de cola de correos
+2026-03-27 09:10:57.048 | INFO  | CID:17863f83c292 | Account/Login | Iniciando acción: Account/Login
+2026-03-27 09:10:57.760 | INFO  | CID:17863f83c292 | Account/Login | Acción completada: Account/Login
+2026-03-27 09:11:09.563 | INFO  | CID:60f39ee468b9 | Account/Login | Iniciando acción: Account/Login
+2026-03-27 09:11:10.005 | INFO  | CID:60f39ee468b9 | Account/Login | Acción completada: Account/Login
+2026-03-27 09:16:27.033 | INFO  | CID:N/A | Iniciando procesador de cola de correos
+2026-03-27 09:17:33.634 | INFO  | CID:a4635f88b78c | Account/Login | Iniciando acción: Account/Login
+2026-03-27 09:17:34.516 | INFO  | CID:a4635f88b78c | Account/Login | Acción completada: Account/Login
+2026-03-27 09:28:11.758 | INFO  | CID:N/A | Iniciando procesador de cola de correos
+2026-03-27 09:28:44.255 | INFO  | CID:2afe04e283ec | Account/Login | Iniciando acción: Account/Login
+2026-03-27 09:28:44.954 | INFO  | CID:2afe04e283ec | Account/Login | Acción completada: Account/Login
+2026-03-27 09:35:45.014 | INFO  | CID:N/A | Iniciando procesador de cola de correos
+2026-03-27 09:36:01.401 | INFO  | CID:cf16279aedd9 | Account/Login | Iniciando acción: Account/Login
+2026-03-27 09:36:02.052 | INFO  | CID:cf16279aedd9 | Account/Login | Acción completada: Account/Login
+2026-03-27 09:40:55.047 | INFO  | CID:N/A | Iniciando procesador de cola de correos
+2026-03-27 09:41:25.065 | INFO  | CID:d170a8540ea7 | Account/Login | Iniciando acción: Account/Login
+2026-03-27 09:41:25.754 | INFO  | CID:d170a8540ea7 | Account/Login | Acción completada: Account/Login
+2026-03-27 10:25:07.770 | INFO  | CID:N/A | Iniciando procesador de cola de correos
+2026-03-27 10:29:59.852 | INFO  | CID:16655494e9a8 | Account/Login | Iniciando acción: Account/Login
+2026-03-27 10:30:00.554 | INFO  | CID:16655494e9a8 | Account/Login | Acción completada: Account/Login
+2026-03-27 10:45:47.084 | INFO  | CID:N/A | Iniciando procesador de cola de correos
+2026-03-27 10:46:09.586 | INFO  | CID:d12078031772 | Account/Login | Iniciando acción: Account/Login
+2026-03-27 10:46:10.282 | INFO  | CID:d12078031772 | Account/Login | Acción completada: Account/Login
+2026-03-27 10:46:57.969 | INFO  | CID:9898e1eeb52f | USR:USU_ADMIN | CoordinacionJefatura/GenerarDocumentoValidacionAocr | Iniciando acción: CoordinacionJefatura/GenerarDocumentoValidacionAocr
+2026-03-27 10:47:05.662 | INFO  | CID:9898e1eeb52f | USR:USU_ADMIN | CoordinacionJefatura/GenerarDocumentoValidacionAocr | Acción completada: CoordinacionJefatura/GenerarDocumentoValidacionAocr
+2026-03-27 10:47:37.934 | INFO  | CID:7258fe662119 | USR:USU_ADMIN | CoordinacionJefatura/GenerarDocumentoValidacionAocr | Iniciando acción: CoordinacionJefatura/GenerarDocumentoValidacionAocr
+2026-03-27 10:47:39.926 | INFO  | CID:7258fe662119 | USR:USU_ADMIN | CoordinacionJefatura/GenerarDocumentoValidacionAocr | Acción completada: CoordinacionJefatura/GenerarDocumentoValidacionAocr
+2026-03-27 10:56:18.729 | INFO  | CID:N/A | Iniciando procesador de cola de correos
+2026-03-27 10:56:41.778 | INFO  | CID:276b809f53f3 | Account/Login | Iniciando acción: Account/Login
+2026-03-27 10:56:42.492 | INFO  | CID:276b809f53f3 | Account/Login | Acción completada: Account/Login
+2026-03-27 10:58:35.014 | INFO  | CID:adbd2433d4d6 | USR:USU_ADMIN | CoordinacionJefatura/CargarDatosFirmaDigitalAocr | Iniciando acción: CoordinacionJefatura/CargarDatosFirmaDigitalAocr
+2026-03-27 10:58:35.370 | INFO  | CID:adbd2433d4d6 | USR:USU_ADMIN | CoordinacionJefatura/CargarDatosFirmaDigitalAocr | Acción completada: CoordinacionJefatura/CargarDatosFirmaDigitalAocr
+2026-03-27 10:58:56.336 | INFO  | CID:7d1735ea6566 | USR:USU_ADMIN | CoordinacionJefatura/GenerarDocumentoValidacionAocr | Iniciando acción: CoordinacionJefatura/GenerarDocumentoValidacionAocr
+2026-03-27 10:59:03.892 | INFO  | CID:7d1735ea6566 | USR:USU_ADMIN | CoordinacionJefatura/GenerarDocumentoValidacionAocr | Acción completada: CoordinacionJefatura/GenerarDocumentoValidacionAocr
+2026-03-27 11:00:07.221 | ERROR | CID:4c9e8b6d6b5a | USR:USU_ADMIN | CoordinacionJefatura/EditarDocumentoValidacionAocr | ERR:INTERNAL_ERROR | c:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\CapaPresentacion\Views\CoordinacionJefatura\EditarCondicionesLimitacionesAocr.cshtml(103): error CS0411: Los argumentos de tipo para el método 'System.Web.Mvc.Html.InputExtensions.HiddenFor<TModel,TProperty>(System.Web.Mvc.HtmlHelper<TModel>, System.Linq.Expressions.Expression<System.Func<TModel,TProperty>>)' no se pueden inferir a partir del uso. Intente especificar los argumentos de tipo explícitamente.
+    Exception: HttpCompileException
+    StackTrace:    en System.Web.Compilation.AssemblyBuilder.Compile()
+   en System.Web.Compilation.BuildProvidersCompiler.PerformBuild()
+   en System.Web.Compilation.BuildManager.CompileWebFile(VirtualPath virtualPath)
+   en System.Web.Compilation.BuildManager.GetVPathBuildResultInternal(VirtualPath virtualPath, Boolean noBuild, Boolean allowCrossApp, Boolean allowBuildInPrecompile, Boolean throwIfNotFound, Boolean ensureIsUpToDate)
+   en System.Web.Compilation.BuildManager.GetVPathBuildResultWithNoAssert(HttpContext context, VirtualPath virtualPath, Boolean noBuild, Boolean allowCrossApp, Boolean allowBuildInPrecompile, Boolean throwIfNotFound, Boolean ensureIsUpToDate)
+   en System.Web.Compilation.BuildManager.GetVirtualPathObjectFactory(VirtualPath virtualPath, HttpContext context, Boolean allowCrossApp, Boolean throwIfNotFound)
+   en System.Web.Compilation.BuildManager.GetCompiledType(VirtualPath virtualPath)
+   en System.Web.Mvc.BuildManagerCompiledView.Render(ViewContext viewContext, TextWriter writer)
+   en System.Web.Mvc.ViewResultBase.ExecuteResult(ControllerContext context)
+   en System.Web.Mvc.ControllerActionInvoker.InvokeActionResultFilterRecursive(IList`1 filters, Int32 filterIndex, ResultExecutingContext preContext, ControllerContext controllerContext, ActionResult actionResult)
+   en System.Web.Mvc.ControllerActionInvoker.InvokeActionResultFilterRecursive(IList`1 filters, Int32 filterIndex, ResultExecutingContext preContext, ControllerContext controllerContext, ActionResult actionResult)
+   en System.Web.Mvc.ControllerActionInvoker.InvokeActionResultFilterRecursive(IList`1 filters, Int32 filterIndex, ResultExecutingContext preContext, ControllerContext controllerContext, ActionResult actionResult)
+   en System.Web.Mvc.ControllerActionInvoker.InvokeActionResultFilterRecursive(IList`1 filters, Int32 filterIndex, ResultExecutingContext preContext, ControllerContext controllerContext, ActionResult actionResult)
+   en System.Web.Mvc.ControllerActionInvoker.InvokeActionResultWithFilters(ControllerContext controllerContext, IList`1 filters, ActionResult actionResult)
+   en System.Web.Mvc.Async.AsyncControllerActionInvoker.<>c__DisplayClass3_1.<BeginInvokeAction>b__1(IAsyncResult asyncResult)
+2026-03-27 11:03:28.712 | INFO  | CID:N/A | Iniciando procesador de cola de correos
+2026-03-27 11:03:50.562 | INFO  | CID:a8d052d27729 | Account/Login | Iniciando acción: Account/Login
+2026-03-27 11:03:51.690 | INFO  | CID:a8d052d27729 | Account/Login | Acción completada: Account/Login
+2026-03-27 11:19:34.661 | INFO  | CID:N/A | Iniciando procesador de cola de correos
+2026-03-27 11:19:55.862 | INFO  | CID:b3c0e2f4f59b | Account/Login | Iniciando acción: Account/Login
+2026-03-27 11:19:56.544 | INFO  | CID:b3c0e2f4f59b | Account/Login | Acción completada: Account/Login
+2026-03-27 11:20:54.539 | INFO  | CID:f2854f0a226d | USR:USU_ADMIN | CoordinacionJefatura/CargarDatosFirmaDigitalAocr | Iniciando acción: CoordinacionJefatura/CargarDatosFirmaDigitalAocr
+2026-03-27 11:20:54.913 | INFO  | CID:f2854f0a226d | USR:USU_ADMIN | CoordinacionJefatura/CargarDatosFirmaDigitalAocr | Acción completada: CoordinacionJefatura/CargarDatosFirmaDigitalAocr
+2026-03-27 11:21:25.719 | INFO  | CID:3db75ad154df | USR:USU_ADMIN | CoordinacionJefatura/GenerarDocumentoValidacionAocr | Iniciando acción: CoordinacionJefatura/GenerarDocumentoValidacionAocr
+2026-03-27 11:21:32.155 | INFO  | CID:3db75ad154df | USR:USU_ADMIN | CoordinacionJefatura/GenerarDocumentoValidacionAocr | Acción completada: CoordinacionJefatura/GenerarDocumentoValidacionAocr
+2026-03-27 11:22:25.519 | INFO  | CID:954e464cd65f | USR:USU_ADMIN | CoordinacionJefatura/GenerarDocumentoValidacionAocr | Iniciando acción: CoordinacionJefatura/GenerarDocumentoValidacionAocr
+2026-03-27 11:22:27.780 | INFO  | CID:954e464cd65f | USR:USU_ADMIN | CoordinacionJefatura/GenerarDocumentoValidacionAocr | Acción completada: CoordinacionJefatura/GenerarDocumentoValidacionAocr
+2026-03-27 11:22:29.008 | INFO  | CID:21fdcb3d99e3 | USR:USU_ADMIN | CoordinacionJefatura/CargarDatosFirmaDigitalAocr | Iniciando acción: CoordinacionJefatura/CargarDatosFirmaDigitalAocr
+2026-03-27 11:22:29.156 | INFO  | CID:21fdcb3d99e3 | USR:USU_ADMIN | CoordinacionJefatura/CargarDatosFirmaDigitalAocr | Acción completada: CoordinacionJefatura/CargarDatosFirmaDigitalAocr
+2026-03-27 11:22:36.631 | INFO  | CID:a72066ec60d6 | USR:USU_ADMIN | CoordinacionJefatura/GenerarDocumentoValidacionAocr | Iniciando acción: CoordinacionJefatura/GenerarDocumentoValidacionAocr
+2026-03-27 11:22:38.673 | INFO  | CID:a72066ec60d6 | USR:USU_ADMIN | CoordinacionJefatura/GenerarDocumentoValidacionAocr | Acción completada: CoordinacionJefatura/GenerarDocumentoValidacionAocr
+2026-03-27 11:29:00.645 | INFO  | CID:458cc5c055a0 | USR:USU_ADMIN | CoordinacionJefatura/GenerarDocumentoValidacionAocr | Iniciando acción: CoordinacionJefatura/GenerarDocumentoValidacionAocr
+2026-03-27 11:29:07.642 | INFO  | CID:458cc5c055a0 | USR:USU_ADMIN | CoordinacionJefatura/GenerarDocumentoValidacionAocr | Acción completada: CoordinacionJefatura/GenerarDocumentoValidacionAocr
+2026-03-27 11:32:12.537 | INFO  | CID:N/A | Deteniendo procesador de cola de correos
+2026-03-27 11:32:12.561 | INFO  | CID:N/A | Deteniendo procesador de cola de correos
+2026-03-27 11:32:45.335 | INFO  | CID:N/A | Iniciando procesador de cola de correos
+2026-03-27 11:35:51.965 | INFO  | CID:15979536b236 | USR:USU_ADMIN | CoordinacionJefatura/GenerarDocumentoValidacionAocr | Iniciando acción: CoordinacionJefatura/GenerarDocumentoValidacionAocr
+2026-03-27 11:36:03.574 | INFO  | CID:15979536b236 | USR:USU_ADMIN | CoordinacionJefatura/GenerarDocumentoValidacionAocr | Acción completada: CoordinacionJefatura/GenerarDocumentoValidacionAocr
+2026-03-27 11:41:12.827 | INFO  | CID:N/A | Deteniendo procesador de cola de correos
+2026-03-27 11:41:12.880 | INFO  | CID:N/A | Deteniendo procesador de cola de correos
+2026-03-27 11:41:44.592 | INFO  | CID:N/A | Iniciando procesador de cola de correos
+2026-03-27 11:42:35.500 | INFO  | CID:N/A | Iniciando procesador de cola de correos
+2026-03-27 11:43:07.414 | INFO  | CID:78c557393b22 | Account/Login | Iniciando acción: Account/Login
+2026-03-27 11:43:08.129 | INFO  | CID:78c557393b22 | Account/Login | Acción completada: Account/Login
+2026-03-27 11:44:24.349 | INFO  | CID:a4e1e3407b36 | USR:USU_ADMIN | CoordinacionJefatura/GenerarDocumentoValidacionAocr | Iniciando acción: CoordinacionJefatura/GenerarDocumentoValidacionAocr
+2026-03-27 11:44:31.464 | INFO  | CID:a4e1e3407b36 | USR:USU_ADMIN | CoordinacionJefatura/GenerarDocumentoValidacionAocr | Acción completada: CoordinacionJefatura/GenerarDocumentoValidacionAocr
+2026-03-27 11:47:18.855 | INFO  | CID:N/A | Deteniendo procesador de cola de correos
+2026-03-27 11:47:18.893 | INFO  | CID:N/A | Deteniendo procesador de cola de correos
+2026-03-27 11:47:45.042 | INFO  | CID:N/A | Iniciando procesador de cola de correos
+2026-03-27 11:48:50.138 | INFO  | CID:N/A | Iniciando procesador de cola de correos
+2026-03-27 11:49:20.519 | INFO  | CID:eb5752d6ed0b | Account/Login | Iniciando acción: Account/Login
+2026-03-27 11:49:21.168 | INFO  | CID:eb5752d6ed0b | Account/Login | Acción completada: Account/Login
+2026-03-27 11:49:50.214 | INFO  | CID:c506d390a334 | Account/Login | Iniciando acción: Account/Login
+2026-03-27 11:49:51.396 | INFO  | CID:c506d390a334 | Account/Login | Acción completada: Account/Login
+2026-03-27 11:51:04.690 | INFO  | CID:88c54c6069f7 | USR:USU_ADMIN | CoordinacionJefatura/CargarDatosFirmaDigitalAocr | Iniciando acción: CoordinacionJefatura/CargarDatosFirmaDigitalAocr
+2026-03-27 11:51:04.981 | INFO  | CID:88c54c6069f7 | USR:USU_ADMIN | CoordinacionJefatura/CargarDatosFirmaDigitalAocr | Acción completada: CoordinacionJefatura/CargarDatosFirmaDigitalAocr
+2026-03-27 11:51:10.443 | INFO  | CID:ff368f2eb176 | USR:USU_ADMIN | CoordinacionJefatura/GenerarDocumentoValidacionAocr | Iniciando acción: CoordinacionJefatura/GenerarDocumentoValidacionAocr
+2026-03-27 11:51:14.709 | INFO  | CID:ff368f2eb176 | USR:USU_ADMIN | CoordinacionJefatura/GenerarDocumentoValidacionAocr | Acción completada: CoordinacionJefatura/GenerarDocumentoValidacionAocr
+2026-03-27 11:51:54.818 | INFO  | CID:4df1c7c8929e | USR:USU_ADMIN | CoordinacionJefatura/GenerarDocumentoValidacionAocr | Iniciando acción: CoordinacionJefatura/GenerarDocumentoValidacionAocr
+2026-03-27 11:51:56.801 | INFO  | CID:4df1c7c8929e | USR:USU_ADMIN | CoordinacionJefatura/GenerarDocumentoValidacionAocr | Acción completada: CoordinacionJefatura/GenerarDocumentoValidacionAocr
+2026-03-27 11:52:30.035 | INFO  | CID:43bb6537fb98 | USR:USU_ADMIN | CoordinacionJefatura/GenerarDocumentoValidacionAocr | Iniciando acción: CoordinacionJefatura/GenerarDocumentoValidacionAocr
+2026-03-27 11:52:33.263 | INFO  | CID:43bb6537fb98 | USR:USU_ADMIN | CoordinacionJefatura/GenerarDocumentoValidacionAocr | Acción completada: CoordinacionJefatura/GenerarDocumentoValidacionAocr
+2026-03-27 11:52:53.451 | INFO  | CID:4748b52dc984 | USR:USU_ADMIN | CoordinacionJefatura/GenerarDocumentoValidacionAocr | Iniciando acción: CoordinacionJefatura/GenerarDocumentoValidacionAocr
+2026-03-27 11:52:55.976 | INFO  | CID:4748b52dc984 | USR:USU_ADMIN | CoordinacionJefatura/GenerarDocumentoValidacionAocr | Acción completada: CoordinacionJefatura/GenerarDocumentoValidacionAocr
+2026-03-27 11:56:45.700 | INFO  | CID:N/A | Deteniendo procesador de cola de correos
+2026-03-27 11:56:45.738 | INFO  | CID:N/A | Deteniendo procesador de cola de correos
+2026-03-27 11:58:11.913 | INFO  | CID:N/A | Iniciando procesador de cola de correos
+2026-03-27 11:58:33.404 | INFO  | CID:6036361ec7ca | Account/Login | Iniciando acción: Account/Login
+2026-03-27 11:58:34.158 | INFO  | CID:6036361ec7ca | Account/Login | Acción completada: Account/Login
+2026-03-27 11:59:27.431 | INFO  | CID:41422bb37214 | USR:USU_ADMIN | CoordinacionJefatura/CargarDatosFirmaDigitalAocr | Iniciando acción: CoordinacionJefatura/CargarDatosFirmaDigitalAocr
+2026-03-27 11:59:27.755 | INFO  | CID:41422bb37214 | USR:USU_ADMIN | CoordinacionJefatura/CargarDatosFirmaDigitalAocr | Acción completada: CoordinacionJefatura/CargarDatosFirmaDigitalAocr
+2026-03-27 11:59:35.894 | INFO  | CID:86400b2dc8b5 | USR:USU_ADMIN | CoordinacionJefatura/GenerarDocumentoValidacionAocr | Iniciando acción: CoordinacionJefatura/GenerarDocumentoValidacionAocr
+2026-03-27 11:59:43.002 | INFO  | CID:86400b2dc8b5 | USR:USU_ADMIN | CoordinacionJefatura/GenerarDocumentoValidacionAocr | Acción completada: CoordinacionJefatura/GenerarDocumentoValidacionAocr
+2026-03-27 12:01:34.277 | INFO  | CID:N/A | Iniciando procesador de cola de correos
+2026-03-27 12:01:52.049 | INFO  | CID:b22bc1ff1ee6 | Account/Login | Iniciando acción: Account/Login
+2026-03-27 12:01:52.776 | INFO  | CID:b22bc1ff1ee6 | Account/Login | Acción completada: Account/Login
+2026-03-27 12:02:44.910 | INFO  | CID:4f9ccb30188d | USR:USU_ADMIN | CoordinacionJefatura/CargarDatosFirmaDigitalAocr | Iniciando acción: CoordinacionJefatura/CargarDatosFirmaDigitalAocr
+2026-03-27 12:02:45.656 | INFO  | CID:4f9ccb30188d | USR:USU_ADMIN | CoordinacionJefatura/CargarDatosFirmaDigitalAocr | Acción completada: CoordinacionJefatura/CargarDatosFirmaDigitalAocr
+2026-03-27 12:02:48.516 | INFO  | CID:3a35decf9a06 | USR:USU_ADMIN | CoordinacionJefatura/GenerarDocumentoValidacionAocr | Iniciando acción: CoordinacionJefatura/GenerarDocumentoValidacionAocr
+2026-03-27 12:02:57.553 | INFO  | CID:3a35decf9a06 | USR:USU_ADMIN | CoordinacionJefatura/GenerarDocumentoValidacionAocr | Acción completada: CoordinacionJefatura/GenerarDocumentoValidacionAocr
+2026-03-27 12:09:15.391 | INFO  | CID:N/A | Iniciando procesador de cola de correos
+2026-03-27 12:09:48.190 | INFO  | CID:b718e5f44a89 | Account/Login | Iniciando acción: Account/Login
+2026-03-27 12:09:48.908 | INFO  | CID:b718e5f44a89 | Account/Login | Acción completada: Account/Login
+2026-03-27 12:10:57.065 | INFO  | CID:9dea0eab5f23 | USR:USU_ADMIN | CoordinacionJefatura/CargarDatosFirmaDigitalAocr | Iniciando acción: CoordinacionJefatura/CargarDatosFirmaDigitalAocr
+2026-03-27 12:10:57.466 | INFO  | CID:9dea0eab5f23 | USR:USU_ADMIN | CoordinacionJefatura/CargarDatosFirmaDigitalAocr | Acción completada: CoordinacionJefatura/CargarDatosFirmaDigitalAocr
+2026-03-27 12:11:11.700 | INFO  | CID:74977ac376d9 | USR:USU_ADMIN | CoordinacionJefatura/GenerarDocumentoValidacionAocr | Iniciando acción: CoordinacionJefatura/GenerarDocumentoValidacionAocr
+2026-03-27 12:11:19.148 | INFO  | CID:74977ac376d9 | USR:USU_ADMIN | CoordinacionJefatura/GenerarDocumentoValidacionAocr | Acción completada: CoordinacionJefatura/GenerarDocumentoValidacionAocr
+2026-03-27 12:23:17.708 | INFO  | CID:N/A | Iniciando procesador de cola de correos
+2026-03-27 12:23:38.991 | INFO  | CID:0ab9231301aa | Account/Login | Iniciando acción: Account/Login
+2026-03-27 12:23:39.705 | INFO  | CID:0ab9231301aa | Account/Login | Acción completada: Account/Login
+2026-03-27 12:24:46.637 | INFO  | CID:e38c1f53b9f9 | USR:USU_ADMIN | CoordinacionJefatura/CargarDatosFirmaDigitalAocr | Iniciando acción: CoordinacionJefatura/CargarDatosFirmaDigitalAocr
+2026-03-27 12:24:46.985 | INFO  | CID:e38c1f53b9f9 | USR:USU_ADMIN | CoordinacionJefatura/CargarDatosFirmaDigitalAocr | Acción completada: CoordinacionJefatura/CargarDatosFirmaDigitalAocr
+2026-03-27 12:24:52.637 | INFO  | CID:2f1955d3ea42 | USR:USU_ADMIN | CoordinacionJefatura/GenerarDocumentoValidacionAocr | Iniciando acción: CoordinacionJefatura/GenerarDocumentoValidacionAocr
+2026-03-27 12:25:00.918 | INFO  | CID:2f1955d3ea42 | USR:USU_ADMIN | CoordinacionJefatura/GenerarDocumentoValidacionAocr | Acción completada: CoordinacionJefatura/GenerarDocumentoValidacionAocr
+2026-03-27 14:02:54.452 | INFO  | CID:N/A | Iniciando procesador de cola de correos
+2026-03-27 14:03:15.695 | INFO  | CID:ae2de57dd95d | Account/Login | Iniciando acción: Account/Login
+2026-03-27 14:03:16.425 | INFO  | CID:ae2de57dd95d | Account/Login | Acción completada: Account/Login
+2026-03-27 14:04:08.342 | INFO  | CID:214b5371758d | USR:USU_ADMIN | CoordinacionJefatura/CargarDatosFirmaDigitalAocr | Iniciando acción: CoordinacionJefatura/CargarDatosFirmaDigitalAocr
+2026-03-27 14:04:08.655 | INFO  | CID:214b5371758d | USR:USU_ADMIN | CoordinacionJefatura/CargarDatosFirmaDigitalAocr | Acción completada: CoordinacionJefatura/CargarDatosFirmaDigitalAocr
+2026-03-27 14:04:10.850 | INFO  | CID:0514cbc08367 | USR:USU_ADMIN | CoordinacionJefatura/GenerarDocumentoValidacionAocr | Iniciando acción: CoordinacionJefatura/GenerarDocumentoValidacionAocr
+2026-03-27 14:04:19.839 | INFO  | CID:0514cbc08367 | USR:USU_ADMIN | CoordinacionJefatura/GenerarDocumentoValidacionAocr | Acción completada: CoordinacionJefatura/GenerarDocumentoValidacionAocr
+2026-03-27 14:10:49.096 | INFO  | CID:N/A | Iniciando procesador de cola de correos
+2026-03-27 14:11:26.581 | INFO  | CID:ac5608bf9c3d | Account/Login | Iniciando acción: Account/Login
+2026-03-27 14:11:27.559 | INFO  | CID:ac5608bf9c3d | Account/Login | Acción completada: Account/Login
+2026-03-27 14:12:13.703 | INFO  | CID:3f106b651262 | USR:USU_ADMIN | CoordinacionJefatura/GenerarDocumentoValidacionAocr | Iniciando acción: CoordinacionJefatura/GenerarDocumentoValidacionAocr
+2026-03-27 14:12:21.579 | INFO  | CID:3f106b651262 | USR:USU_ADMIN | CoordinacionJefatura/GenerarDocumentoValidacionAocr | Acción completada: CoordinacionJefatura/GenerarDocumentoValidacionAocr
+2026-03-27 14:13:34.045 | INFO  | CID:N/A | Iniciando procesador de cola de correos
+2026-03-27 14:13:53.140 | INFO  | CID:9a7559080c81 | Account/Login | Iniciando acción: Account/Login
+2026-03-27 14:13:53.813 | INFO  | CID:9a7559080c81 | Account/Login | Acción completada: Account/Login
+2026-03-27 14:14:11.797 | INFO  | CID:7496657bd897 | USR:USU_ADMIN | CoordinacionJefatura/GenerarDocumentoValidacionAocr | Iniciando acción: CoordinacionJefatura/GenerarDocumentoValidacionAocr
+2026-03-27 14:14:14.255 | INFO  | CID:7496657bd897 | USR:USU_ADMIN | CoordinacionJefatura/GenerarDocumentoValidacionAocr | Acción completada: CoordinacionJefatura/GenerarDocumentoValidacionAocr
+2026-03-27 14:37:58.159 | INFO  | CID:N/A | Iniciando procesador de cola de correos
+2026-03-27 14:38:19.170 | INFO  | CID:1602be409987 | Account/Login | Iniciando acción: Account/Login
+2026-03-27 14:38:19.996 | INFO  | CID:1602be409987 | Account/Login | Acción completada: Account/Login
+2026-03-27 14:39:14.356 | INFO  | CID:05c61a4828fe | USR:USU_ADMIN | CoordinacionJefatura/CargarDatosFirmaDigitalAocr | Iniciando acción: CoordinacionJefatura/CargarDatosFirmaDigitalAocr
+2026-03-27 14:39:14.525 | INFO  | CID:05c61a4828fe | USR:USU_ADMIN | CoordinacionJefatura/CargarDatosFirmaDigitalAocr | Acción completada: CoordinacionJefatura/CargarDatosFirmaDigitalAocr
+2026-03-27 14:39:30.011 | INFO  | CID:5bae133710d0 | USR:USU_ADMIN | CoordinacionJefatura/CargarDatosFirmaDigitalAocr | Iniciando acción: CoordinacionJefatura/CargarDatosFirmaDigitalAocr
+2026-03-27 14:39:30.266 | INFO  | CID:5bae133710d0 | USR:USU_ADMIN | CoordinacionJefatura/CargarDatosFirmaDigitalAocr | Acción completada: CoordinacionJefatura/CargarDatosFirmaDigitalAocr
+2026-03-27 14:39:33.297 | INFO  | CID:037cd895639c | USR:USU_ADMIN | CoordinacionJefatura/GenerarDocumentoValidacionAocr | Iniciando acción: CoordinacionJefatura/GenerarDocumentoValidacionAocr
+2026-03-27 14:39:44.420 | INFO  | CID:037cd895639c | USR:USU_ADMIN | CoordinacionJefatura/GenerarDocumentoValidacionAocr | Acción completada: CoordinacionJefatura/GenerarDocumentoValidacionAocr
+2026-03-27 14:45:03.600 | INFO  | CID:N/A | Iniciando procesador de cola de correos
+2026-03-27 14:45:26.066 | INFO  | CID:2bcec31b8022 | Account/Login | Iniciando acción: Account/Login
+2026-03-27 14:45:26.764 | INFO  | CID:2bcec31b8022 | Account/Login | Acción completada: Account/Login
+2026-03-27 14:45:52.541 | INFO  | CID:6395bbec4cc0 | USR:USU_ADMIN | CoordinacionJefatura/GenerarDocumentoValidacionAocr | Iniciando acción: CoordinacionJefatura/GenerarDocumentoValidacionAocr
+2026-03-27 14:46:01.085 | INFO  | CID:6395bbec4cc0 | USR:USU_ADMIN | CoordinacionJefatura/GenerarDocumentoValidacionAocr | Acción completada: CoordinacionJefatura/GenerarDocumentoValidacionAocr
+2026-03-27 15:11:12.420 | INFO  | CID:N/A | Iniciando procesador de cola de correos
+2026-03-27 15:11:34.994 | INFO  | CID:3154f0cafb13 | Account/Login | Iniciando acción: Account/Login
+2026-03-27 15:11:35.698 | INFO  | CID:3154f0cafb13 | Account/Login | Acción completada: Account/Login
+2026-03-27 15:11:59.319 | INFO  | CID:0f8eadcfa52a | USR:USU_ADMIN | CoordinacionJefatura/GenerarDocumentoValidacionAocr | Iniciando acción: CoordinacionJefatura/GenerarDocumentoValidacionAocr
+2026-03-27 15:12:05.470 | INFO  | CID:0f8eadcfa52a | USR:USU_ADMIN | CoordinacionJefatura/GenerarDocumentoValidacionAocr | Acción completada: CoordinacionJefatura/GenerarDocumentoValidacionAocr
+2026-03-27 15:16:00.690 | INFO  | CID:N/A | Iniciando procesador de cola de correos
+2026-03-27 15:16:22.412 | INFO  | CID:7cc9fd594c2d | Account/Login | Iniciando acción: Account/Login
+2026-03-27 15:16:23.159 | INFO  | CID:7cc9fd594c2d | Account/Login | Acción completada: Account/Login
+2026-03-27 15:16:44.877 | INFO  | CID:c28696955acf | USR:USU_ADMIN | CoordinacionJefatura/GenerarDocumentoValidacionAocr | Iniciando acción: CoordinacionJefatura/GenerarDocumentoValidacionAocr
+2026-03-27 15:16:50.477 | INFO  | CID:c28696955acf | USR:USU_ADMIN | CoordinacionJefatura/GenerarDocumentoValidacionAocr | Acción completada: CoordinacionJefatura/GenerarDocumentoValidacionAocr
+2026-03-27 15:24:28.546 | INFO  | CID:N/A | Iniciando procesador de cola de correos
+2026-03-27 15:24:51.584 | INFO  | CID:7394b723cd67 | Account/Login | Iniciando acción: Account/Login
+2026-03-27 15:24:52.460 | INFO  | CID:7394b723cd67 | Account/Login | Acción completada: Account/Login
+2026-03-27 15:25:13.018 | INFO  | CID:6a5c79588539 | USR:USU_ADMIN | CoordinacionJefatura/GenerarDocumentoValidacionAocr | Iniciando acción: CoordinacionJefatura/GenerarDocumentoValidacionAocr
+2026-03-27 15:25:19.410 | INFO  | CID:6a5c79588539 | USR:USU_ADMIN | CoordinacionJefatura/GenerarDocumentoValidacionAocr | Acción completada: CoordinacionJefatura/GenerarDocumentoValidacionAocr
+2026-03-27 15:28:03.711 | INFO  | CID:N/A | Deteniendo procesador de cola de correos
+2026-03-27 15:28:03.761 | INFO  | CID:N/A | Deteniendo procesador de cola de correos
+2026-03-27 15:28:22.381 | INFO  | CID:N/A | Iniciando procesador de cola de correos
+2026-03-27 15:28:45.706 | INFO  | CID:ec3121767ea8 | USR:USU_ADMIN | CoordinacionJefatura/GenerarDocumentoValidacionAocr | Iniciando acción: CoordinacionJefatura/GenerarDocumentoValidacionAocr
+2026-03-27 15:28:58.376 | INFO  | CID:ec3121767ea8 | USR:USU_ADMIN | CoordinacionJefatura/GenerarDocumentoValidacionAocr | Acción completada: CoordinacionJefatura/GenerarDocumentoValidacionAocr
+2026-03-27 15:31:00.192 | INFO  | CID:N/A | Deteniendo procesador de cola de correos
+2026-03-27 15:31:00.240 | INFO  | CID:N/A | Deteniendo procesador de cola de correos
+2026-03-27 15:31:43.900 | INFO  | CID:N/A | Iniciando procesador de cola de correos
+2026-03-27 15:32:09.545 | INFO  | CID:95bdded56904 | Account/Login | Iniciando acción: Account/Login
+2026-03-27 15:32:10.323 | INFO  | CID:95bdded56904 | Account/Login | Acción completada: Account/Login
+2026-03-27 15:32:31.635 | INFO  | CID:0b547e32a23b | USR:USU_ADMIN | CoordinacionJefatura/GenerarDocumentoValidacionAocr | Iniciando acción: CoordinacionJefatura/GenerarDocumentoValidacionAocr
+2026-03-27 15:32:37.930 | INFO  | CID:0b547e32a23b | USR:USU_ADMIN | CoordinacionJefatura/GenerarDocumentoValidacionAocr | Acción completada: CoordinacionJefatura/GenerarDocumentoValidacionAocr
+2026-03-27 15:34:31.040 | INFO  | CID:6a9867b34acd | USR:USU_ADMIN | CoordinacionJefatura/GenerarDocumentoValidacionAocr | Iniciando acción: CoordinacionJefatura/GenerarDocumentoValidacionAocr
+2026-03-27 15:34:33.330 | INFO  | CID:6a9867b34acd | USR:USU_ADMIN | CoordinacionJefatura/GenerarDocumentoValidacionAocr | Acción completada: CoordinacionJefatura/GenerarDocumentoValidacionAocr
+2026-03-27 15:36:47.522 | INFO  | CID:25634a19ea1a | USR:USU_ADMIN | CoordinacionJefatura/GenerarDocumentoValidacionAocr | Iniciando acción: CoordinacionJefatura/GenerarDocumentoValidacionAocr
+2026-03-27 15:36:52.593 | INFO  | CID:25634a19ea1a | USR:USU_ADMIN | CoordinacionJefatura/GenerarDocumentoValidacionAocr | Acción completada: CoordinacionJefatura/GenerarDocumentoValidacionAocr
+2026-03-27 15:37:25.517 | INFO  | CID:N/A | Iniciando procesador de cola de correos
+2026-03-27 15:37:46.142 | INFO  | CID:ce1ce2f487bc | Account/Login | Iniciando acción: Account/Login
+2026-03-27 15:37:46.888 | INFO  | CID:ce1ce2f487bc | Account/Login | Acción completada: Account/Login
+2026-03-27 15:38:08.741 | INFO  | CID:1aaacf7ab2c8 | USR:USU_ADMIN | CoordinacionJefatura/GenerarDocumentoValidacionAocr | Iniciando acción: CoordinacionJefatura/GenerarDocumentoValidacionAocr
+2026-03-27 15:38:10.871 | INFO  | CID:1aaacf7ab2c8 | USR:USU_ADMIN | CoordinacionJefatura/GenerarDocumentoValidacionAocr | Acción completada: CoordinacionJefatura/GenerarDocumentoValidacionAocr
+2026-03-27 15:44:08.792 | INFO  | CID:N/A | Iniciando procesador de cola de correos
+2026-03-27 15:44:45.248 | INFO  | CID:a12a472018d7 | Account/Login | Iniciando acción: Account/Login
+2026-03-27 15:44:46.252 | INFO  | CID:a12a472018d7 | Account/Login | Acción completada: Account/Login
+2026-03-27 15:45:08.127 | INFO  | CID:753df2672df8 | USR:USU_ADMIN | CoordinacionJefatura/GenerarDocumentoValidacionAocr | Iniciando acción: CoordinacionJefatura/GenerarDocumentoValidacionAocr
+2026-03-27 15:45:15.535 | INFO  | CID:753df2672df8 | USR:USU_ADMIN | CoordinacionJefatura/GenerarDocumentoValidacionAocr | Acción completada: CoordinacionJefatura/GenerarDocumentoValidacionAocr
+2026-03-27 15:51:05.174 | INFO  | CID:0bdd4272e01c | USR:USU_ADMIN | CoordinacionJefatura/GenerarDocumentoValidacionAocr | Iniciando acción: CoordinacionJefatura/GenerarDocumentoValidacionAocr
+2026-03-27 15:51:13.837 | INFO  | CID:0bdd4272e01c | USR:USU_ADMIN | CoordinacionJefatura/GenerarDocumentoValidacionAocr | Acción completada: CoordinacionJefatura/GenerarDocumentoValidacionAocr
+2026-03-27 15:52:11.354 | INFO  | CID:N/A | USR:USU_ADMIN | Inspeccion/Index | AuditTrailService: Tabla aocr_audit_trail verificada/creada.
+2026-03-27 15:52:11.365 | INFO  | CID:1af1fa64a2d1 | USR:USU_ADMIN | Inspeccion/Index | [InspeccionesController] Inicio pantalla gestion inspecciones. Usuario=USU_ADMIN, Rol=Administrador,Inspector,JefaturaTecnica,Direccion,CoordinacionLegal
+2026-03-27 15:52:11.637 | INFO  | CID:1af1fa64a2d1 | USR:USU_ADMIN | Inspeccion/Index | [InspeccionesController] Inspecciones recibidas=17
+2026-03-27 15:52:18.357 | INFO  | CID:78216e456262 | USR:USU_ADMIN | Inspeccion/Detalle | [GestionInspeccion] Inicio Detalle. InspeccionId=17, Usuario=USU_ADMIN, Rol=Administrador,Inspector,JefaturaTecnica,Direccion,CoordinacionLegal
+2026-03-27 15:52:18.378 | INFO  | CID:78216e456262 | USR:USU_ADMIN | Inspeccion/Detalle | [GestionInspeccion] InspeccionId=17, SolicitudId=87, EstadoActual=VERIFICACION_SOLICITUD, InspectorAsignado=17
+2026-03-27 15:52:18.378 | INFO  | CID:78216e456262 | USR:USU_ADMIN | Inspeccion/Detalle | [GestionInspeccion] PuedeGestionar=True para detalle. InspeccionId=17
+2026-03-27 15:52:19.910 | INFO  | CID:78216e456262 | USR:USU_ADMIN | Inspeccion/Detalle | [InspectoresDAO-DB2] Query obtener por cedula: SELECT TRIM(OPICED) AS OPICED, TRIM(OPINO2) AS OPINO2, TRIM(OPIES1) AS OPIES1, TRIM(OPITIP) AS OPITIP FROM DGACDAT.OPIAR2 WHERE OPICED = ? AND UPPER(TRIM(COALESCE(OPIES1, ''))) = ? FETCH FIRST 1 ROW ONLY
+2026-03-27 15:52:19.911 | INFO  | CID:78216e456262 | USR:USU_ADMIN | Inspeccion/Detalle | [InspectoresDAO-DB2] Parametros => cedula=17, soloActivos=True, tipos=TODOS
+2026-03-27 15:52:19.996 | WARN  | CID:78216e456262 | USR:USU_ADMIN | Inspeccion/Detalle | [InspectoresDAO-DB2] Inspector no encontrado para cedula=17, soloActivos=True
+2026-03-27 15:52:20.003 | INFO  | CID:78216e456262 | USR:USU_ADMIN | Inspeccion/Detalle | [InspectoresDAO-DB2] Query obtener por cedula: SELECT TRIM(OPICED) AS OPICED, TRIM(OPINO2) AS OPINO2, TRIM(OPIES1) AS OPIES1, TRIM(OPITIP) AS OPITIP FROM DGACDAT.OPIAR2 WHERE OPICED = ? AND UPPER(TRIM(COALESCE(OPIES1, ''))) = ? FETCH FIRST 1 ROW ONLY
+2026-03-27 15:52:20.003 | INFO  | CID:78216e456262 | USR:USU_ADMIN | Inspeccion/Detalle | [InspectoresDAO-DB2] Parametros => cedula=0000000017, soloActivos=True, tipos=TODOS
+2026-03-27 15:52:20.008 | WARN  | CID:78216e456262 | USR:USU_ADMIN | Inspeccion/Detalle | [InspectoresDAO-DB2] Inspector no encontrado para cedula=0000000017, soloActivos=True
+2026-03-27 15:52:20.009 | INFO  | CID:78216e456262 | USR:USU_ADMIN | Inspeccion/Detalle | [InspectoresDAO-DB2] Query obtener por cedula: SELECT TRIM(OPICED) AS OPICED, TRIM(OPINO2) AS OPINO2, TRIM(OPIES1) AS OPIES1, TRIM(OPITIP) AS OPITIP FROM DGACDAT.OPIAR2 WHERE OPICED = ? FETCH FIRST 1 ROW ONLY
+2026-03-27 15:52:20.010 | INFO  | CID:78216e456262 | USR:USU_ADMIN | Inspeccion/Detalle | [InspectoresDAO-DB2] Parametros => cedula=17, soloActivos=False, tipos=TODOS
+2026-03-27 15:52:20.010 | WARN  | CID:78216e456262 | USR:USU_ADMIN | Inspeccion/Detalle | [InspectoresDAO-DB2] Inspector no encontrado para cedula=17, soloActivos=False
+2026-03-27 15:52:20.010 | INFO  | CID:78216e456262 | USR:USU_ADMIN | Inspeccion/Detalle | [InspectoresDAO-DB2] Query obtener por cedula: SELECT TRIM(OPICED) AS OPICED, TRIM(OPINO2) AS OPINO2, TRIM(OPIES1) AS OPIES1, TRIM(OPITIP) AS OPITIP FROM DGACDAT.OPIAR2 WHERE OPICED = ? FETCH FIRST 1 ROW ONLY
+2026-03-27 15:52:20.010 | INFO  | CID:78216e456262 | USR:USU_ADMIN | Inspeccion/Detalle | [InspectoresDAO-DB2] Parametros => cedula=0000000017, soloActivos=False, tipos=TODOS
+2026-03-27 15:52:20.010 | WARN  | CID:78216e456262 | USR:USU_ADMIN | Inspeccion/Detalle | [InspectoresDAO-DB2] Inspector no encontrado para cedula=0000000017, soloActivos=False
+2026-03-27 15:52:20.021 | INFO  | CID:78216e456262 | USR:USU_ADMIN | Inspeccion/Detalle | [InspectoresDAO-DB2] Query obtener por cedula: SELECT TRIM(OPICED) AS OPICED, TRIM(OPINO2) AS OPINO2, TRIM(OPIES1) AS OPIES1, TRIM(OPITIP) AS OPITIP FROM DGACDAT.OPIAR2 WHERE OPICED = ? AND UPPER(TRIM(COALESCE(OPIES1, ''))) = ? FETCH FIRST 1 ROW ONLY
+2026-03-27 15:52:20.021 | INFO  | CID:78216e456262 | USR:USU_ADMIN | Inspeccion/Detalle | [InspectoresDAO-DB2] Parametros => cedula=17, soloActivos=True, tipos=TODOS
+2026-03-27 15:52:20.021 | WARN  | CID:78216e456262 | USR:USU_ADMIN | Inspeccion/Detalle | [InspectoresDAO-DB2] Inspector no encontrado para cedula=17, soloActivos=True
+2026-03-27 15:52:20.021 | INFO  | CID:78216e456262 | USR:USU_ADMIN | Inspeccion/Detalle | [InspectoresDAO-DB2] Query obtener por cedula: SELECT TRIM(OPICED) AS OPICED, TRIM(OPINO2) AS OPINO2, TRIM(OPIES1) AS OPIES1, TRIM(OPITIP) AS OPITIP FROM DGACDAT.OPIAR2 WHERE OPICED = ? AND UPPER(TRIM(COALESCE(OPIES1, ''))) = ? FETCH FIRST 1 ROW ONLY
+2026-03-27 15:52:20.021 | INFO  | CID:78216e456262 | USR:USU_ADMIN | Inspeccion/Detalle | [InspectoresDAO-DB2] Parametros => cedula=0000000017, soloActivos=True, tipos=TODOS
+2026-03-27 15:52:20.021 | WARN  | CID:78216e456262 | USR:USU_ADMIN | Inspeccion/Detalle | [InspectoresDAO-DB2] Inspector no encontrado para cedula=0000000017, soloActivos=True
+2026-03-27 15:52:20.027 | INFO  | CID:78216e456262 | USR:USU_ADMIN | Inspeccion/Detalle | [InspectoresDAO-DB2] Query obtener por cedula: SELECT TRIM(OPICED) AS OPICED, TRIM(OPINO2) AS OPINO2, TRIM(OPIES1) AS OPIES1, TRIM(OPITIP) AS OPITIP FROM DGACDAT.OPIAR2 WHERE OPICED = ? FETCH FIRST 1 ROW ONLY
+2026-03-27 15:52:20.027 | INFO  | CID:78216e456262 | USR:USU_ADMIN | Inspeccion/Detalle | [InspectoresDAO-DB2] Parametros => cedula=17, soloActivos=False, tipos=TODOS
+2026-03-27 15:52:20.027 | WARN  | CID:78216e456262 | USR:USU_ADMIN | Inspeccion/Detalle | [InspectoresDAO-DB2] Inspector no encontrado para cedula=17, soloActivos=False
+2026-03-27 15:52:20.027 | INFO  | CID:78216e456262 | USR:USU_ADMIN | Inspeccion/Detalle | [InspectoresDAO-DB2] Query obtener por cedula: SELECT TRIM(OPICED) AS OPICED, TRIM(OPINO2) AS OPINO2, TRIM(OPIES1) AS OPIES1, TRIM(OPITIP) AS OPITIP FROM DGACDAT.OPIAR2 WHERE OPICED = ? FETCH FIRST 1 ROW ONLY
+2026-03-27 15:52:20.027 | INFO  | CID:78216e456262 | USR:USU_ADMIN | Inspeccion/Detalle | [InspectoresDAO-DB2] Parametros => cedula=0000000017, soloActivos=False, tipos=TODOS
+2026-03-27 15:52:20.033 | WARN  | CID:78216e456262 | USR:USU_ADMIN | Inspeccion/Detalle | [InspectoresDAO-DB2] Inspector no encontrado para cedula=0000000017, soloActivos=False
+2026-03-27 15:52:20.033 | INFO  | CID:78216e456262 | USR:USU_ADMIN | Inspeccion/Detalle | [GestionInspeccion] Detalle inspectores enriquecidos. InspeccionId=17, PrincipalCedula=17, PrincipalNombre=17, PrincipalTipo=, ApoyoCedula=, ApoyoNombre=, ApoyoTipo=
+2026-03-27 16:07:33.878 | INFO  | CID:N/A | Iniciando procesador de cola de correos
+2026-03-27 16:08:00.612 | INFO  | CID:7b999efa5932 | Account/Login | Iniciando acción: Account/Login
+2026-03-27 16:08:01.718 | INFO  | CID:7b999efa5932 | Account/Login | Acción completada: Account/Login
+2026-03-27 16:08:14.848 | INFO  | CID:N/A | USR:USU_ADMIN | Inspeccion/Index | AuditTrailService: Tabla aocr_audit_trail verificada/creada.
+2026-03-27 16:08:14.873 | INFO  | CID:6eb982a3b34a | USR:USU_ADMIN | Inspeccion/Index | [InspeccionesController] Inicio pantalla gestion inspecciones. Usuario=USU_ADMIN, Rol=Administrador,Inspector,JefaturaTecnica,Direccion,CoordinacionLegal
+2026-03-27 16:08:15.162 | INFO  | CID:6eb982a3b34a | USR:USU_ADMIN | Inspeccion/Index | [InspeccionesController] Inspecciones recibidas=17
+2026-03-27 16:08:22.785 | INFO  | CID:ba35288e816b | USR:USU_ADMIN | Inspeccion/Detalle | [GestionInspeccion] Inicio Detalle. InspeccionId=17, Usuario=USU_ADMIN, Rol=Administrador,Inspector,JefaturaTecnica,Direccion,CoordinacionLegal
+2026-03-27 16:08:22.804 | INFO  | CID:ba35288e816b | USR:USU_ADMIN | Inspeccion/Detalle | [GestionInspeccion] InspeccionId=17, SolicitudId=87, EstadoActual=VERIFICACION_SOLICITUD, InspectorAsignado=17
+2026-03-27 16:08:22.806 | INFO  | CID:ba35288e816b | USR:USU_ADMIN | Inspeccion/Detalle | [GestionInspeccion] PuedeGestionar=True para detalle. InspeccionId=17
+2026-03-27 16:08:24.533 | INFO  | CID:ba35288e816b | USR:USU_ADMIN | Inspeccion/Detalle | [InspectoresDAO-DB2] Query obtener por cedula: SELECT TRIM(OPICED) AS OPICED, TRIM(OPINO2) AS OPINO2, TRIM(OPIES1) AS OPIES1, TRIM(OPITIP) AS OPITIP FROM DGACDAT.OPIAR2 WHERE OPICED = ? AND UPPER(TRIM(COALESCE(OPIES1, ''))) = ? FETCH FIRST 1 ROW ONLY
+2026-03-27 16:08:24.533 | INFO  | CID:ba35288e816b | USR:USU_ADMIN | Inspeccion/Detalle | [InspectoresDAO-DB2] Parametros => cedula=17, soloActivos=True, tipos=TODOS
+2026-03-27 16:08:24.572 | WARN  | CID:ba35288e816b | USR:USU_ADMIN | Inspeccion/Detalle | [InspectoresDAO-DB2] Inspector no encontrado para cedula=17, soloActivos=True
+2026-03-27 16:08:24.588 | INFO  | CID:ba35288e816b | USR:USU_ADMIN | Inspeccion/Detalle | [InspectoresDAO-DB2] Query obtener por cedula: SELECT TRIM(OPICED) AS OPICED, TRIM(OPINO2) AS OPINO2, TRIM(OPIES1) AS OPIES1, TRIM(OPITIP) AS OPITIP FROM DGACDAT.OPIAR2 WHERE OPICED = ? AND UPPER(TRIM(COALESCE(OPIES1, ''))) = ? FETCH FIRST 1 ROW ONLY
+2026-03-27 16:08:24.588 | INFO  | CID:ba35288e816b | USR:USU_ADMIN | Inspeccion/Detalle | [InspectoresDAO-DB2] Parametros => cedula=0000000017, soloActivos=True, tipos=TODOS
+2026-03-27 16:08:24.592 | WARN  | CID:ba35288e816b | USR:USU_ADMIN | Inspeccion/Detalle | [InspectoresDAO-DB2] Inspector no encontrado para cedula=0000000017, soloActivos=True
+2026-03-27 16:08:24.593 | INFO  | CID:ba35288e816b | USR:USU_ADMIN | Inspeccion/Detalle | [InspectoresDAO-DB2] Query obtener por cedula: SELECT TRIM(OPICED) AS OPICED, TRIM(OPINO2) AS OPINO2, TRIM(OPIES1) AS OPIES1, TRIM(OPITIP) AS OPITIP FROM DGACDAT.OPIAR2 WHERE OPICED = ? FETCH FIRST 1 ROW ONLY
+2026-03-27 16:08:24.593 | INFO  | CID:ba35288e816b | USR:USU_ADMIN | Inspeccion/Detalle | [InspectoresDAO-DB2] Parametros => cedula=17, soloActivos=False, tipos=TODOS
+2026-03-27 16:08:24.596 | WARN  | CID:ba35288e816b | USR:USU_ADMIN | Inspeccion/Detalle | [InspectoresDAO-DB2] Inspector no encontrado para cedula=17, soloActivos=False
+2026-03-27 16:08:24.597 | INFO  | CID:ba35288e816b | USR:USU_ADMIN | Inspeccion/Detalle | [InspectoresDAO-DB2] Query obtener por cedula: SELECT TRIM(OPICED) AS OPICED, TRIM(OPINO2) AS OPINO2, TRIM(OPIES1) AS OPIES1, TRIM(OPITIP) AS OPITIP FROM DGACDAT.OPIAR2 WHERE OPICED = ? FETCH FIRST 1 ROW ONLY
+2026-03-27 16:08:24.597 | INFO  | CID:ba35288e816b | USR:USU_ADMIN | Inspeccion/Detalle | [InspectoresDAO-DB2] Parametros => cedula=0000000017, soloActivos=False, tipos=TODOS
+2026-03-27 16:08:24.600 | WARN  | CID:ba35288e816b | USR:USU_ADMIN | Inspeccion/Detalle | [InspectoresDAO-DB2] Inspector no encontrado para cedula=0000000017, soloActivos=False
+2026-03-27 16:08:24.601 | INFO  | CID:ba35288e816b | USR:USU_ADMIN | Inspeccion/Detalle | [InspectoresDAO-DB2] Query obtener por cedula: SELECT TRIM(OPICED) AS OPICED, TRIM(OPINO2) AS OPINO2, TRIM(OPIES1) AS OPIES1, TRIM(OPITIP) AS OPITIP FROM DGACDAT.OPIAR2 WHERE OPICED = ? AND UPPER(TRIM(COALESCE(OPIES1, ''))) = ? FETCH FIRST 1 ROW ONLY
+2026-03-27 16:08:24.601 | INFO  | CID:ba35288e816b | USR:USU_ADMIN | Inspeccion/Detalle | [InspectoresDAO-DB2] Parametros => cedula=17, soloActivos=True, tipos=TODOS
+2026-03-27 16:08:24.603 | WARN  | CID:ba35288e816b | USR:USU_ADMIN | Inspeccion/Detalle | [InspectoresDAO-DB2] Inspector no encontrado para cedula=17, soloActivos=True
+2026-03-27 16:08:24.604 | INFO  | CID:ba35288e816b | USR:USU_ADMIN | Inspeccion/Detalle | [InspectoresDAO-DB2] Query obtener por cedula: SELECT TRIM(OPICED) AS OPICED, TRIM(OPINO2) AS OPINO2, TRIM(OPIES1) AS OPIES1, TRIM(OPITIP) AS OPITIP FROM DGACDAT.OPIAR2 WHERE OPICED = ? AND UPPER(TRIM(COALESCE(OPIES1, ''))) = ? FETCH FIRST 1 ROW ONLY
+2026-03-27 16:08:24.604 | INFO  | CID:ba35288e816b | USR:USU_ADMIN | Inspeccion/Detalle | [InspectoresDAO-DB2] Parametros => cedula=0000000017, soloActivos=True, tipos=TODOS
+2026-03-27 16:08:24.606 | WARN  | CID:ba35288e816b | USR:USU_ADMIN | Inspeccion/Detalle | [InspectoresDAO-DB2] Inspector no encontrado para cedula=0000000017, soloActivos=True
+2026-03-27 16:08:24.606 | INFO  | CID:ba35288e816b | USR:USU_ADMIN | Inspeccion/Detalle | [InspectoresDAO-DB2] Query obtener por cedula: SELECT TRIM(OPICED) AS OPICED, TRIM(OPINO2) AS OPINO2, TRIM(OPIES1) AS OPIES1, TRIM(OPITIP) AS OPITIP FROM DGACDAT.OPIAR2 WHERE OPICED = ? FETCH FIRST 1 ROW ONLY
+2026-03-27 16:08:24.606 | INFO  | CID:ba35288e816b | USR:USU_ADMIN | Inspeccion/Detalle | [InspectoresDAO-DB2] Parametros => cedula=17, soloActivos=False, tipos=TODOS
+2026-03-27 16:08:24.608 | WARN  | CID:ba35288e816b | USR:USU_ADMIN | Inspeccion/Detalle | [InspectoresDAO-DB2] Inspector no encontrado para cedula=17, soloActivos=False
+2026-03-27 16:08:24.609 | INFO  | CID:ba35288e816b | USR:USU_ADMIN | Inspeccion/Detalle | [InspectoresDAO-DB2] Query obtener por cedula: SELECT TRIM(OPICED) AS OPICED, TRIM(OPINO2) AS OPINO2, TRIM(OPIES1) AS OPIES1, TRIM(OPITIP) AS OPITIP FROM DGACDAT.OPIAR2 WHERE OPICED = ? FETCH FIRST 1 ROW ONLY
+2026-03-27 16:08:24.609 | INFO  | CID:ba35288e816b | USR:USU_ADMIN | Inspeccion/Detalle | [InspectoresDAO-DB2] Parametros => cedula=0000000017, soloActivos=False, tipos=TODOS
+2026-03-27 16:08:24.611 | WARN  | CID:ba35288e816b | USR:USU_ADMIN | Inspeccion/Detalle | [InspectoresDAO-DB2] Inspector no encontrado para cedula=0000000017, soloActivos=False
+2026-03-27 16:08:24.611 | INFO  | CID:ba35288e816b | USR:USU_ADMIN | Inspeccion/Detalle | [GestionInspeccion] Detalle inspectores enriquecidos. InspeccionId=17, PrincipalCedula=17, PrincipalNombre=17, PrincipalTipo=, ApoyoCedula=, ApoyoNombre=, ApoyoTipo=
+2026-03-27 16:35:27.310 | INFO  | CID:N/A | Iniciando procesador de cola de correos
+2026-03-27 16:35:50.494 | INFO  | CID:d226f978d306 | Account/Login | Iniciando acción: Account/Login
+2026-03-27 16:35:51.294 | INFO  | CID:d226f978d306 | Account/Login | Acción completada: Account/Login
+2026-03-27 16:35:57.810 | INFO  | CID:N/A | USR:USU_ADMIN | Inspeccion/Index | AuditTrailService: Tabla aocr_audit_trail verificada/creada.
+2026-03-27 16:35:57.827 | INFO  | CID:8fd028d1937a | USR:USU_ADMIN | Inspeccion/Index | [InspeccionesController] Inicio pantalla gestion inspecciones. Usuario=USU_ADMIN, Rol=Administrador,Inspector,JefaturaTecnica,Direccion,CoordinacionLegal
+2026-03-27 16:35:58.089 | INFO  | CID:8fd028d1937a | USR:USU_ADMIN | Inspeccion/Index | [InspeccionesController] Inspecciones recibidas=17
+2026-03-27 16:36:05.087 | INFO  | CID:14fb8347c533 | USR:USU_ADMIN | Inspeccion/Detalle | [GestionInspeccion] Inicio Detalle. InspeccionId=16, Usuario=USU_ADMIN, Rol=Administrador,Inspector,JefaturaTecnica,Direccion,CoordinacionLegal
+2026-03-27 16:36:05.092 | INFO  | CID:14fb8347c533 | USR:USU_ADMIN | Inspeccion/Detalle | [GestionInspeccion] InspeccionId=16, SolicitudId=92, EstadoActual=VERIFICACION_SOLICITUD, InspectorAsignado=17
+2026-03-27 16:36:05.092 | INFO  | CID:14fb8347c533 | USR:USU_ADMIN | Inspeccion/Detalle | [GestionInspeccion] PuedeGestionar=True para detalle. InspeccionId=16
+2026-03-27 16:36:06.832 | INFO  | CID:14fb8347c533 | USR:USU_ADMIN | Inspeccion/Detalle | [InspectoresDAO-DB2] Query obtener por cedula: SELECT TRIM(OPICED) AS OPICED, TRIM(OPINO2) AS OPINO2, TRIM(OPIES1) AS OPIES1, TRIM(OPITIP) AS OPITIP FROM DGACDAT.OPIAR2 WHERE OPICED = ? AND UPPER(TRIM(COALESCE(OPIES1, ''))) = ? FETCH FIRST 1 ROW ONLY
+2026-03-27 16:36:06.833 | INFO  | CID:14fb8347c533 | USR:USU_ADMIN | Inspeccion/Detalle | [InspectoresDAO-DB2] Parametros => cedula=17, soloActivos=True, tipos=TODOS
+2026-03-27 16:36:06.895 | WARN  | CID:14fb8347c533 | USR:USU_ADMIN | Inspeccion/Detalle | [InspectoresDAO-DB2] Inspector no encontrado para cedula=17, soloActivos=True
+2026-03-27 16:36:06.902 | INFO  | CID:14fb8347c533 | USR:USU_ADMIN | Inspeccion/Detalle | [InspectoresDAO-DB2] Query obtener por cedula: SELECT TRIM(OPICED) AS OPICED, TRIM(OPINO2) AS OPINO2, TRIM(OPIES1) AS OPIES1, TRIM(OPITIP) AS OPITIP FROM DGACDAT.OPIAR2 WHERE OPICED = ? AND UPPER(TRIM(COALESCE(OPIES1, ''))) = ? FETCH FIRST 1 ROW ONLY
+2026-03-27 16:36:06.903 | INFO  | CID:14fb8347c533 | USR:USU_ADMIN | Inspeccion/Detalle | [InspectoresDAO-DB2] Parametros => cedula=0000000017, soloActivos=True, tipos=TODOS
+2026-03-27 16:36:06.907 | WARN  | CID:14fb8347c533 | USR:USU_ADMIN | Inspeccion/Detalle | [InspectoresDAO-DB2] Inspector no encontrado para cedula=0000000017, soloActivos=True
+2026-03-27 16:36:06.908 | INFO  | CID:14fb8347c533 | USR:USU_ADMIN | Inspeccion/Detalle | [InspectoresDAO-DB2] Query obtener por cedula: SELECT TRIM(OPICED) AS OPICED, TRIM(OPINO2) AS OPINO2, TRIM(OPIES1) AS OPIES1, TRIM(OPITIP) AS OPITIP FROM DGACDAT.OPIAR2 WHERE OPICED = ? FETCH FIRST 1 ROW ONLY
+2026-03-27 16:36:06.909 | INFO  | CID:14fb8347c533 | USR:USU_ADMIN | Inspeccion/Detalle | [InspectoresDAO-DB2] Parametros => cedula=17, soloActivos=False, tipos=TODOS
+2026-03-27 16:36:06.913 | WARN  | CID:14fb8347c533 | USR:USU_ADMIN | Inspeccion/Detalle | [InspectoresDAO-DB2] Inspector no encontrado para cedula=17, soloActivos=False
+2026-03-27 16:36:06.914 | INFO  | CID:14fb8347c533 | USR:USU_ADMIN | Inspeccion/Detalle | [InspectoresDAO-DB2] Query obtener por cedula: SELECT TRIM(OPICED) AS OPICED, TRIM(OPINO2) AS OPINO2, TRIM(OPIES1) AS OPIES1, TRIM(OPITIP) AS OPITIP FROM DGACDAT.OPIAR2 WHERE OPICED = ? FETCH FIRST 1 ROW ONLY
+2026-03-27 16:36:06.914 | INFO  | CID:14fb8347c533 | USR:USU_ADMIN | Inspeccion/Detalle | [InspectoresDAO-DB2] Parametros => cedula=0000000017, soloActivos=False, tipos=TODOS
+2026-03-27 16:36:06.917 | WARN  | CID:14fb8347c533 | USR:USU_ADMIN | Inspeccion/Detalle | [InspectoresDAO-DB2] Inspector no encontrado para cedula=0000000017, soloActivos=False
+2026-03-27 16:36:06.919 | INFO  | CID:14fb8347c533 | USR:USU_ADMIN | Inspeccion/Detalle | [InspectoresDAO-DB2] Query obtener por cedula: SELECT TRIM(OPICED) AS OPICED, TRIM(OPINO2) AS OPINO2, TRIM(OPIES1) AS OPIES1, TRIM(OPITIP) AS OPITIP FROM DGACDAT.OPIAR2 WHERE OPICED = ? AND UPPER(TRIM(COALESCE(OPIES1, ''))) = ? FETCH FIRST 1 ROW ONLY
+2026-03-27 16:36:06.920 | INFO  | CID:14fb8347c533 | USR:USU_ADMIN | Inspeccion/Detalle | [InspectoresDAO-DB2] Parametros => cedula=17, soloActivos=True, tipos=TODOS
+2026-03-27 16:36:06.922 | WARN  | CID:14fb8347c533 | USR:USU_ADMIN | Inspeccion/Detalle | [InspectoresDAO-DB2] Inspector no encontrado para cedula=17, soloActivos=True
+2026-03-27 16:36:06.922 | INFO  | CID:14fb8347c533 | USR:USU_ADMIN | Inspeccion/Detalle | [InspectoresDAO-DB2] Query obtener por cedula: SELECT TRIM(OPICED) AS OPICED, TRIM(OPINO2) AS OPINO2, TRIM(OPIES1) AS OPIES1, TRIM(OPITIP) AS OPITIP FROM DGACDAT.OPIAR2 WHERE OPICED = ? AND UPPER(TRIM(COALESCE(OPIES1, ''))) = ? FETCH FIRST 1 ROW ONLY
+2026-03-27 16:36:06.922 | INFO  | CID:14fb8347c533 | USR:USU_ADMIN | Inspeccion/Detalle | [InspectoresDAO-DB2] Parametros => cedula=0000000017, soloActivos=True, tipos=TODOS
+2026-03-27 16:36:06.924 | WARN  | CID:14fb8347c533 | USR:USU_ADMIN | Inspeccion/Detalle | [InspectoresDAO-DB2] Inspector no encontrado para cedula=0000000017, soloActivos=True
+2026-03-27 16:36:06.924 | INFO  | CID:14fb8347c533 | USR:USU_ADMIN | Inspeccion/Detalle | [InspectoresDAO-DB2] Query obtener por cedula: SELECT TRIM(OPICED) AS OPICED, TRIM(OPINO2) AS OPINO2, TRIM(OPIES1) AS OPIES1, TRIM(OPITIP) AS OPITIP FROM DGACDAT.OPIAR2 WHERE OPICED = ? FETCH FIRST 1 ROW ONLY
+2026-03-27 16:36:06.924 | INFO  | CID:14fb8347c533 | USR:USU_ADMIN | Inspeccion/Detalle | [InspectoresDAO-DB2] Parametros => cedula=17, soloActivos=False, tipos=TODOS
+2026-03-27 16:36:06.924 | WARN  | CID:14fb8347c533 | USR:USU_ADMIN | Inspeccion/Detalle | [InspectoresDAO-DB2] Inspector no encontrado para cedula=17, soloActivos=False
+2026-03-27 16:36:06.924 | INFO  | CID:14fb8347c533 | USR:USU_ADMIN | Inspeccion/Detalle | [InspectoresDAO-DB2] Query obtener por cedula: SELECT TRIM(OPICED) AS OPICED, TRIM(OPINO2) AS OPINO2, TRIM(OPIES1) AS OPIES1, TRIM(OPITIP) AS OPITIP FROM DGACDAT.OPIAR2 WHERE OPICED = ? FETCH FIRST 1 ROW ONLY
+2026-03-27 16:36:06.924 | INFO  | CID:14fb8347c533 | USR:USU_ADMIN | Inspeccion/Detalle | [InspectoresDAO-DB2] Parametros => cedula=0000000017, soloActivos=False, tipos=TODOS
+2026-03-27 16:36:06.939 | WARN  | CID:14fb8347c533 | USR:USU_ADMIN | Inspeccion/Detalle | [InspectoresDAO-DB2] Inspector no encontrado para cedula=0000000017, soloActivos=False
+2026-03-27 16:36:06.939 | INFO  | CID:14fb8347c533 | USR:USU_ADMIN | Inspeccion/Detalle | [GestionInspeccion] Detalle inspectores enriquecidos. InspeccionId=16, PrincipalCedula=17, PrincipalNombre=17, PrincipalTipo=, ApoyoCedula=, ApoyoNombre=, ApoyoTipo=
+2026-03-27 16:37:30.820 | INFO  | CID:7d46a4319e92 | USR:USU_ADMIN | Inspeccion/GuardarInformeTecnico | Iniciando acción: Inspeccion/GuardarInformeTecnico
+2026-03-27 16:37:37.349 | INFO  | CID:7d46a4319e92 | USR:USU_ADMIN | Inspeccion/GuardarInformeTecnico | Acción completada: Inspeccion/GuardarInformeTecnico
+2026-03-27 16:37:37.356 | INFO  | CID:47691bc1521d | USR:USU_ADMIN | Inspeccion/Detalle | [GestionInspeccion] Inicio Detalle. InspeccionId=16, Usuario=USU_ADMIN, Rol=Administrador,Inspector,JefaturaTecnica,Direccion,CoordinacionLegal
+2026-03-27 16:37:37.363 | INFO  | CID:47691bc1521d | USR:USU_ADMIN | Inspeccion/Detalle | [GestionInspeccion] InspeccionId=16, SolicitudId=92, EstadoActual=VERIFICACION_SOLICITUD, InspectorAsignado=17
+2026-03-27 16:37:37.363 | INFO  | CID:47691bc1521d | USR:USU_ADMIN | Inspeccion/Detalle | [GestionInspeccion] PuedeGestionar=True para detalle. InspeccionId=16
+2026-03-27 16:37:38.257 | INFO  | CID:47691bc1521d | USR:USU_ADMIN | Inspeccion/Detalle | [InspectoresDAO-DB2] Query obtener por cedula: SELECT TRIM(OPICED) AS OPICED, TRIM(OPINO2) AS OPINO2, TRIM(OPIES1) AS OPIES1, TRIM(OPITIP) AS OPITIP FROM DGACDAT.OPIAR2 WHERE OPICED = ? AND UPPER(TRIM(COALESCE(OPIES1, ''))) = ? FETCH FIRST 1 ROW ONLY
+2026-03-27 16:37:38.259 | INFO  | CID:47691bc1521d | USR:USU_ADMIN | Inspeccion/Detalle | [InspectoresDAO-DB2] Parametros => cedula=17, soloActivos=True, tipos=TODOS
+2026-03-27 16:37:38.269 | WARN  | CID:47691bc1521d | USR:USU_ADMIN | Inspeccion/Detalle | [InspectoresDAO-DB2] Inspector no encontrado para cedula=17, soloActivos=True
+2026-03-27 16:37:38.270 | INFO  | CID:47691bc1521d | USR:USU_ADMIN | Inspeccion/Detalle | [InspectoresDAO-DB2] Query obtener por cedula: SELECT TRIM(OPICED) AS OPICED, TRIM(OPINO2) AS OPINO2, TRIM(OPIES1) AS OPIES1, TRIM(OPITIP) AS OPITIP FROM DGACDAT.OPIAR2 WHERE OPICED = ? AND UPPER(TRIM(COALESCE(OPIES1, ''))) = ? FETCH FIRST 1 ROW ONLY
+2026-03-27 16:37:38.271 | INFO  | CID:47691bc1521d | USR:USU_ADMIN | Inspeccion/Detalle | [InspectoresDAO-DB2] Parametros => cedula=0000000017, soloActivos=True, tipos=TODOS
+2026-03-27 16:37:38.275 | WARN  | CID:47691bc1521d | USR:USU_ADMIN | Inspeccion/Detalle | [InspectoresDAO-DB2] Inspector no encontrado para cedula=0000000017, soloActivos=True
+2026-03-27 16:37:38.276 | INFO  | CID:47691bc1521d | USR:USU_ADMIN | Inspeccion/Detalle | [InspectoresDAO-DB2] Query obtener por cedula: SELECT TRIM(OPICED) AS OPICED, TRIM(OPINO2) AS OPINO2, TRIM(OPIES1) AS OPIES1, TRIM(OPITIP) AS OPITIP FROM DGACDAT.OPIAR2 WHERE OPICED = ? FETCH FIRST 1 ROW ONLY
+2026-03-27 16:37:38.277 | INFO  | CID:47691bc1521d | USR:USU_ADMIN | Inspeccion/Detalle | [InspectoresDAO-DB2] Parametros => cedula=17, soloActivos=False, tipos=TODOS
+2026-03-27 16:37:38.281 | WARN  | CID:47691bc1521d | USR:USU_ADMIN | Inspeccion/Detalle | [InspectoresDAO-DB2] Inspector no encontrado para cedula=17, soloActivos=False
+2026-03-27 16:37:38.282 | INFO  | CID:47691bc1521d | USR:USU_ADMIN | Inspeccion/Detalle | [InspectoresDAO-DB2] Query obtener por cedula: SELECT TRIM(OPICED) AS OPICED, TRIM(OPINO2) AS OPINO2, TRIM(OPIES1) AS OPIES1, TRIM(OPITIP) AS OPITIP FROM DGACDAT.OPIAR2 WHERE OPICED = ? FETCH FIRST 1 ROW ONLY
+2026-03-27 16:37:38.283 | INFO  | CID:47691bc1521d | USR:USU_ADMIN | Inspeccion/Detalle | [InspectoresDAO-DB2] Parametros => cedula=0000000017, soloActivos=False, tipos=TODOS
+2026-03-27 16:37:38.286 | WARN  | CID:47691bc1521d | USR:USU_ADMIN | Inspeccion/Detalle | [InspectoresDAO-DB2] Inspector no encontrado para cedula=0000000017, soloActivos=False
+2026-03-27 16:37:38.287 | INFO  | CID:47691bc1521d | USR:USU_ADMIN | Inspeccion/Detalle | [InspectoresDAO-DB2] Query obtener por cedula: SELECT TRIM(OPICED) AS OPICED, TRIM(OPINO2) AS OPINO2, TRIM(OPIES1) AS OPIES1, TRIM(OPITIP) AS OPITIP FROM DGACDAT.OPIAR2 WHERE OPICED = ? AND UPPER(TRIM(COALESCE(OPIES1, ''))) = ? FETCH FIRST 1 ROW ONLY
+2026-03-27 16:37:38.288 | INFO  | CID:47691bc1521d | USR:USU_ADMIN | Inspeccion/Detalle | [InspectoresDAO-DB2] Parametros => cedula=17, soloActivos=True, tipos=TODOS
+2026-03-27 16:37:38.290 | WARN  | CID:47691bc1521d | USR:USU_ADMIN | Inspeccion/Detalle | [InspectoresDAO-DB2] Inspector no encontrado para cedula=17, soloActivos=True
+2026-03-27 16:37:38.291 | INFO  | CID:47691bc1521d | USR:USU_ADMIN | Inspeccion/Detalle | [InspectoresDAO-DB2] Query obtener por cedula: SELECT TRIM(OPICED) AS OPICED, TRIM(OPINO2) AS OPINO2, TRIM(OPIES1) AS OPIES1, TRIM(OPITIP) AS OPITIP FROM DGACDAT.OPIAR2 WHERE OPICED = ? AND UPPER(TRIM(COALESCE(OPIES1, ''))) = ? FETCH FIRST 1 ROW ONLY
+2026-03-27 16:37:38.291 | INFO  | CID:47691bc1521d | USR:USU_ADMIN | Inspeccion/Detalle | [InspectoresDAO-DB2] Parametros => cedula=0000000017, soloActivos=True, tipos=TODOS
+2026-03-27 16:37:38.293 | WARN  | CID:47691bc1521d | USR:USU_ADMIN | Inspeccion/Detalle | [InspectoresDAO-DB2] Inspector no encontrado para cedula=0000000017, soloActivos=True
+2026-03-27 16:37:38.294 | INFO  | CID:47691bc1521d | USR:USU_ADMIN | Inspeccion/Detalle | [InspectoresDAO-DB2] Query obtener por cedula: SELECT TRIM(OPICED) AS OPICED, TRIM(OPINO2) AS OPINO2, TRIM(OPIES1) AS OPIES1, TRIM(OPITIP) AS OPITIP FROM DGACDAT.OPIAR2 WHERE OPICED = ? FETCH FIRST 1 ROW ONLY
+2026-03-27 16:37:38.295 | INFO  | CID:47691bc1521d | USR:USU_ADMIN | Inspeccion/Detalle | [InspectoresDAO-DB2] Parametros => cedula=17, soloActivos=False, tipos=TODOS
+2026-03-27 16:37:38.297 | WARN  | CID:47691bc1521d | USR:USU_ADMIN | Inspeccion/Detalle | [InspectoresDAO-DB2] Inspector no encontrado para cedula=17, soloActivos=False
+2026-03-27 16:37:38.299 | INFO  | CID:47691bc1521d | USR:USU_ADMIN | Inspeccion/Detalle | [InspectoresDAO-DB2] Query obtener por cedula: SELECT TRIM(OPICED) AS OPICED, TRIM(OPINO2) AS OPINO2, TRIM(OPIES1) AS OPIES1, TRIM(OPITIP) AS OPITIP FROM DGACDAT.OPIAR2 WHERE OPICED = ? FETCH FIRST 1 ROW ONLY
+2026-03-27 16:37:38.299 | INFO  | CID:47691bc1521d | USR:USU_ADMIN | Inspeccion/Detalle | [InspectoresDAO-DB2] Parametros => cedula=0000000017, soloActivos=False, tipos=TODOS
+2026-03-27 16:37:38.301 | WARN  | CID:47691bc1521d | USR:USU_ADMIN | Inspeccion/Detalle | [InspectoresDAO-DB2] Inspector no encontrado para cedula=0000000017, soloActivos=False
+2026-03-27 16:37:38.302 | INFO  | CID:47691bc1521d | USR:USU_ADMIN | Inspeccion/Detalle | [GestionInspeccion] Detalle inspectores enriquecidos. InspeccionId=16, PrincipalCedula=17, PrincipalNombre=17, PrincipalTipo=, ApoyoCedula=, ApoyoNombre=, ApoyoTipo=
+2026-03-27 16:55:43.179 | INFO  | CID:N/A | Deteniendo procesador de cola de correos
+2026-03-27 16:55:43.281 | INFO  | CID:N/A | Deteniendo procesador de cola de correos
+2026-03-27 16:56:01.358 | INFO  | CID:N/A | Iniciando procesador de cola de correos

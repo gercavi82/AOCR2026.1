@@ -1,0 +1,46 @@
+﻿2026-02-11 10:01:04.162 | INFO  | CID:N/A | Iniciando procesador de cola de correos
+2026-02-11 10:01:18.586 | INFO  | CID:536d2136fdc7 | Account/Login | Iniciando acción: Account/Login
+2026-02-11 10:01:18.962 | INFO  | CID:536d2136fdc7 | Account/Login | Acción completada: Account/Login
+2026-02-11 10:02:12.547 | INFO  | CID:N/A | Iniciando procesador de cola de correos
+2026-02-11 11:58:56.552 | INFO  | CID:N/A | Iniciando procesador de cola de correos
+2026-02-11 12:22:55.951 | INFO  | CID:N/A | Iniciando procesador de cola de correos
+2026-02-11 14:50:39.890 | INFO  | CID:N/A | Iniciando procesador de cola de correos
+2026-02-11 14:52:03.432 | INFO  | CID:N/A | Iniciando procesador de cola de correos
+2026-02-11 14:55:17.209 | INFO  | CID:N/A | Iniciando procesador de cola de correos
+2026-02-11 14:57:11.562 | INFO  | CID:N/A | Iniciando procesador de cola de correos
+2026-02-11 15:32:59.225 | INFO  | CID:N/A | Iniciando procesador de cola de correos
+2026-02-11 15:52:37.740 | INFO  | CID:N/A | Iniciando procesador de cola de correos
+2026-02-11 15:53:26.520 | ERROR | CID:6fffeb4d0cff4676afd66769994eba9e | Usuario/ValidarRUC | ERR:INTERNAL_ERROR | El campo de formulario antifalsificación "__RequestVerificationToken" no está presente.
+    Exception: HttpAntiForgeryException
+    StackTrace:    en System.Web.Helpers.AntiXsrf.TokenValidator.ValidateTokens(HttpContextBase httpContext, IIdentity identity, AntiForgeryToken sessionToken, AntiForgeryToken fieldToken)
+   en System.Web.Helpers.AntiXsrf.AntiForgeryWorker.Validate(HttpContextBase httpContext)
+   en System.Web.Mvc.ControllerActionInvoker.InvokeAuthorizationFilters(ControllerContext controllerContext, IList`1 filters, ActionDescriptor actionDescriptor)
+   en System.Web.Mvc.Async.AsyncControllerActionInvoker.<>c__DisplayClass3_1.<BeginInvokeAction>b__0(AsyncCallback asyncCallback, Object asyncState)
+2026-02-11 15:53:55.621 | ERROR | CID:834b2efbae764a549173de2fbfbe6521 | Usuario/ValidarCorreo | ERR:INTERNAL_ERROR | El campo de formulario antifalsificación "__RequestVerificationToken" no está presente.
+    Exception: HttpAntiForgeryException
+    StackTrace:    en System.Web.Helpers.AntiXsrf.TokenValidator.ValidateTokens(HttpContextBase httpContext, IIdentity identity, AntiForgeryToken sessionToken, AntiForgeryToken fieldToken)
+   en System.Web.Helpers.AntiXsrf.AntiForgeryWorker.Validate(HttpContextBase httpContext)
+   en System.Web.Mvc.ControllerActionInvoker.InvokeAuthorizationFilters(ControllerContext controllerContext, IList`1 filters, ActionDescriptor actionDescriptor)
+   en System.Web.Mvc.Async.AsyncControllerActionInvoker.<>c__DisplayClass3_1.<BeginInvokeAction>b__0(AsyncCallback asyncCallback, Object asyncState)
+2026-02-11 15:54:16.107 | INFO  | CID:75ae07abadfe | Usuario/Crear | Iniciando acción: Usuario/Crear
+2026-02-11 15:54:17.066 | INFO  | CID:75ae07abadfe | Usuario/Crear | Acción completada: Usuario/Crear
+2026-02-11 15:54:39.447 | ERROR | CID:bef628f1ece349a7b3e134960febf7bb | Usuario/ValidarCorreo | ERR:INTERNAL_ERROR | El campo de formulario antifalsificación "__RequestVerificationToken" no está presente.
+    Exception: HttpAntiForgeryException
+    StackTrace:    en System.Web.Helpers.AntiXsrf.TokenValidator.ValidateTokens(HttpContextBase httpContext, IIdentity identity, AntiForgeryToken sessionToken, AntiForgeryToken fieldToken)
+   en System.Web.Helpers.AntiXsrf.AntiForgeryWorker.Validate(HttpContextBase httpContext)
+   en System.Web.Mvc.ControllerActionInvoker.InvokeAuthorizationFilters(ControllerContext controllerContext, IList`1 filters, ActionDescriptor actionDescriptor)
+   en System.Web.Mvc.Async.AsyncControllerActionInvoker.<>c__DisplayClass3_1.<BeginInvokeAction>b__0(AsyncCallback asyncCallback, Object asyncState)
+2026-02-11 16:00:05.468 | INFO  | CID:N/A | Iniciando procesador de cola de correos
+2026-02-11 16:04:14.582 | INFO  | CID:N/A | Iniciando procesador de cola de correos
+2026-02-11 16:06:12.386 | INFO  | CID:N/A | Iniciando procesador de cola de correos
+2026-02-11 16:09:47.266 | INFO  | CID:N/A | Iniciando procesador de cola de correos
+2026-02-11 16:15:02.816 | INFO  | CID:N/A | Iniciando procesador de cola de correos
+2026-02-11 16:20:52.489 | INFO  | CID:N/A | Iniciando procesador de cola de correos
+2026-02-11 16:21:56.160 | INFO  | CID:N/A | Iniciando procesador de cola de correos
+2026-02-11 16:25:51.989 | INFO  | CID:N/A | Iniciando procesador de cola de correos
+2026-02-11 16:30:30.256 | INFO  | CID:N/A | Iniciando procesador de cola de correos
+2026-02-11 16:31:25.142 | INFO  | CID:4dfcbfb3b402 | Usuario/ValidarIdentificacion | Iniciando acción: Usuario/ValidarIdentificacion
+2026-02-11 16:31:25.582 | INFO  | CID:4dfcbfb3b402 | Usuario/ValidarIdentificacion | Acción completada: Usuario/ValidarIdentificacion
+2026-02-11 16:31:39.234 | INFO  | CID:b792da855a59 | Usuario/ValidarCorreo | Iniciando acción: Usuario/ValidarCorreo
+2026-02-11 16:31:39.240 | INFO  | CID:b792da855a59 | Usuario/ValidarCorreo | Acción completada: Usuario/ValidarCorreo
+2026-02-11 16:37:00.850 | INFO  | CID:N/A | Iniciando procesador de cola de correos

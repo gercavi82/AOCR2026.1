@@ -1,0 +1,74 @@
+@model CapaPresentacion.Models.AocrDocumentoPdfViewModel
+@using System.Globalization
+
+@{
+    Layout = "~/Views/Shared/_PdfLayoutDGAC.cshtml";
+    var solicitud = Model != null ? Model.Solicitud : null;
+    var fechaDoc = Model != null ? Model.FechaEmisionDocumento : DateTime.Now;
+    var cultura = new CultureInfo("es-EC");
+}
+
+@section PdfHead {
+    <style>
+        body { font-family: Arial, Helvetica, sans-serif; font-size: 10pt; color: #111; }
+        .sheet { border: 2px solid #222; padding: 18px; }
+        .head-table, .grid, .footer-table { width: 100%; border-collapse: collapse; }
+        .head-table td, .grid td, .grid th, .footer-table td { border: 1px solid #222; padding: 6px; vertical-align: top; }
+        .title { text-align: center; font-weight: bold; font-size: 13pt; }
+        .subtitle { text-align: center; font-size: 10pt; }
+        .small { font-size: 8pt; color: #444; }
+        .center { text-align: center; }
+        .label { font-weight: bold; }
+        .spacer { height: 14px; }
+    </style>
+}
+
+<div class="sheet">
+    <table class="head-table">
+        <tr>
+            <td colspan="3" class="title">RECONOCIMIENTO DE CERTIFICADO DE EXPLOTADOR DE SERVICIOS AEREOS</td>
+        </tr>
+        <tr>
+            <td colspan="3" class="subtitle">AIR OPERATOR CERTIFICATE RECOGNIZED</td>
+        </tr>
+        <tr>
+            <td class="center" style="width:33%;"><strong>REPUBLICA DEL ECUADOR</strong><br /><span class="small">REPUBLIC OF ECUADOR</span></td>
+            <td class="center" style="width:34%;"><strong>DIRECCION GENERAL DE AVIACION CIVIL</strong><br /><span class="small">CIVIL AVIATION GENERAL DIRECTORATE</span></td>
+            <td class="center" style="width:33%;"><strong>PERMISO OPERACION CNAC</strong><br /><span class="small">CNAC OPERATION PERMIT</span></td>
+        </tr>
+    </table>
+
+    <div class="spacer"></div>
+
+    <table class="grid">
+        <tr>
+            <td style="width:33%;"><span class="label">AOCR #:</span> @(Model != null ? Model.NumeroAocr : "-")</td>
+            <td style="width:34%;"><span class="label">Nombre del explotador:</span><br />@(solicitud != null ? (solicitud.RazonSocial ?? solicitud.NombreOperador ?? solicitud.NombreComercial ?? "-") : "-")</td>
+            <td style="width:33%;"><span class="label">Punto de contacto Ecuador:</span><br />@(solicitud != null ? (solicitud.RepresentanteLegal ?? "-") : "-")</td>
+        </tr>
+        <tr>
+            <td><span class="label">Fecha de emision:</span><br />@fechaDoc.ToString("dd/MM/yyyy", cultura)</td>
+            <td><span class="label">Estado del explotador:</span><br />@(solicitud != null ? (solicitud.Estado ?? "-") : "-")</td>
+            <td><span class="label">Correo / Telefono:</span><br />@(solicitud != null ? ((solicitud.Email ?? "-") + " / " + (solicitud.Telefono ?? "-")) : "-")</td>
+        </tr>
+        <tr>
+            <td><span class="label">Direccion operacional:</span><br />@(solicitud != null ? (solicitud.Direccion ?? "-") : "-")</td>
+            <td><span class="label">Tipo de operacion:</span><br />@(solicitud != null ? (solicitud.TipoOperacion ?? "-") : "-")</td>
+            <td><span class="label">Representante tecnico:</span><br />@(solicitud != null ? (solicitud.TecnicoResponsableNombre ?? solicitud.RepresentanteLegal ?? "-") : "-")</td>
+        </tr>
+    </table>
+
+    <div class="spacer"></div>
+
+    <p>
+        Este reconocimiento se encuentra disponible para validacion institucional una vez completada la firma del informe tecnico AOCR.
+        La documentacion fue revisada con base en el informe firmado y la informacion operativa registrada para la solicitud.
+    </p>
+
+    <table class="footer-table" style="margin-top:24px;">
+        <tr>
+            <td style="width:50%;"><span class="label">Fecha de expedicion:</span><br />@fechaDoc.ToString("dd/MM/yyyy", cultura)</td>
+            <td style="width:50%;"><span class="label">Nombre y firma:</span><br />@(Model != null ? (Model.FirmanteFinal ?? "Director General de Aviacion Civil") : "Director General de Aviacion Civil")<br /><span class="small">@(Model != null ? (Model.CargoFirmante ?? "Direccion General de Aviacion Civil") : "Direccion General de Aviacion Civil")</span></td>
+        </tr>
+    </table>
+</div>

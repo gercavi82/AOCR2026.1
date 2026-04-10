@@ -1,0 +1,12 @@
+{
+  "version": 2,
+  "dgSpecHash": "lPGXr61TM/k=",
+  "success": true,
+  "projectFilePath": "C:\\AOCR\\AOCR\\AOCR05-01-2026\\AOCR1\\AOCR\\.tmp\\rucdiag\\rucdiag.csproj",
+  "expectedPackageFiles": [
+    "C:\\Users\\german.cajas\\.nuget\\packages\\microsoft.extensions.dependencyinjection.abstractions\\8.0.0\\microsoft.extensions.dependencyinjection.abstractions.8.0.0.nupkg.sha512",
+    "C:\\Users\\german.cajas\\.nuget\\packages\\microsoft.extensions.logging.abstractions\\8.0.0\\microsoft.extensions.logging.abstractions.8.0.0.nupkg.sha512",
+    "C:\\Users\\german.cajas\\.nuget\\packages\\npgsql\\8.0.3\\npgsql.8.0.3.nupkg.sha512"
+  ],
+  "logs": []
+}

@@ -1,0 +1,451 @@
+﻿using System;
+using System.Data;
+using System.Collections.Generic;
+using Npgsql;
+using CapaModelo;
+using CapaDatos.DAOs;
+
+namespace CapaDatos
+{
+    public class ViaticoDAO
+    {
+        #region CRUD Básico
+
+        public static bool Insertar(Viatico viatico)
+        {
+            NpgsqlConnection conexion = null;
+            try
+            {
+                conexion = ConexionDAO.ObtenerConexion();
+                string query = @"INSERT INTO aocr_tbviatico 
+                    (codigo_inspeccion, codigo_tecnico, concepto, monto, 
+                     fecha, tipo, comprobante, observaciones)
+                    VALUES (@p1, @p2, @p3, @p4, @p5, @p6, @p7, @p8)
+                    RETURNING codigo_viatico";
+
+                using (NpgsqlCommand cmd = new NpgsqlCommand(query, conexion))
+                {
+                    cmd.Parameters.AddWithValue("@p1", (object)viatico.CodigoInspeccion ?? DBNull.Value);
+                    cmd.Parameters.AddWithValue("@p2", (object)viatico.CodigoTecnico ?? DBNull.Value);
+                    cmd.Parameters.AddWithValue("@p3", viatico.Concepto ?? (object)DBNull.Value);
+                    cmd.Parameters.AddWithValue("@p4", (object)viatico.Monto ?? DBNull.Value);
+                    cmd.Parameters.AddWithValue("@p5", viatico.Fecha ?? DateTime.Now);
+                    cmd.Parameters.AddWithValue("@p6", viatico.Tipo ?? (object)DBNull.Value);
+                    cmd.Parameters.AddWithValue("@p7", viatico.Comprobante ?? (object)DBNull.Value);
+                    cmd.Parameters.AddWithValue("@p8", viatico.Observaciones ?? (object)DBNull.Value);
+
+                    var result = cmd.ExecuteScalar();
+                    viatico.CodigoViatico = Convert.ToInt32(result);
+                    return true;
+                }
+            }
+            catch (Exception ex)
+            {
+                throw new Exception("Error al insertar viático: " + ex.Message, ex);
+            }
+            finally
+            {
+                ConexionDAO.CerrarConexion(conexion);
+            }
+        }
+
+        public static bool Actualizar(Viatico viatico)
+        {
+            NpgsqlConnection conexion = null;
+            try
+            {
+                conexion = ConexionDAO.ObtenerConexion();
+                string query = @"UPDATE aocr_tbviatico SET 
+                    concepto = @p1, monto = @p2, fecha = @p3, tipo = @p4,
+                    comprobante = @p5, observaciones = @p6
+                    WHERE codigo_viatico = @p7";
+
+                using (NpgsqlCommand cmd = new NpgsqlCommand(query, conexion))
+                {
+                    cmd.Parameters.AddWithValue("@p1", viatico.Concepto ?? (object)DBNull.Value);
+                    cmd.Parameters.AddWithValue("@p2", (object)viatico.Monto ?? DBNull.Value);
+                    cmd.Parameters.AddWithValue("@p3", viatico.Fecha ?? DateTime.Now);
+                    cmd.Parameters.AddWithValue("@p4", viatico.Tipo ?? (object)DBNull.Value);
+                    cmd.Parameters.AddWithValue("@p5", viatico.Comprobante ?? (object)DBNull.Value);
+                    cmd.Parameters.AddWithValue("@p6", viatico.Observaciones ?? (object)DBNull.Value);
+                    cmd.Parameters.AddWithValue("@p7", viatico.CodigoViatico);
+
+                    return cmd.ExecuteNonQuery() > 0;
+                }
+            }
+            catch (Exception ex)
+            {
+                throw new Exception("Error al actualizar viático: " + ex.Message, ex);
+            }
+            finally
+            {
+                ConexionDAO.CerrarConexion(conexion);
+            }
+        }
+
+        public static bool Eliminar(int codigoViatico)
+        {
+            NpgsqlConnection conexion = null;
+            try
+            {
+                conexion = ConexionDAO.ObtenerConexion();
+                string query = "DELETE FROM aocr_tbviatico WHERE codigo_viatico = @id";
+
+                using (NpgsqlCommand cmd = new NpgsqlCommand(query, conexion))
+                {
+                    cmd.Parameters.AddWithValue("@id", codigoViatico);
+                    return cmd.ExecuteNonQuery() > 0;
+                }
+            }
+            catch (Exception ex)
+            {
+                throw new Exception("Error al eliminar viático: " + ex.Message, ex);
+            }
+            finally
+            {
+                ConexionDAO.CerrarConexion(conexion);
+            }
+        }
+
+        public static Viatico ObtenerPorId(int codigoViatico)
+        {
+            NpgsqlConnection conexion = null;
+            try
+            {
+                conexion = ConexionDAO.ObtenerConexion();
+                string query = @"SELECT v.*, t.nombretecnico, t.apellidotecnico
+                    FROM aocr_tbviatico v
+                    LEFT JOIN tecnico t ON v.codigo_tecnico = t.codigotecnico
+                    WHERE v.codigo_viatico = @id";
+
+                using (NpgsqlCommand cmd = new NpgsqlCommand(query, conexion))
+                {
+                    cmd.Parameters.AddWithValue("@id", codigoViatico);
+
+                    using (NpgsqlDataReader reader = cmd.ExecuteReader())
+                    {
+                        if (reader.Read())
+                        {
+                            return MapearViatico(reader);
+                        }
+                        return null;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                throw new Exception("Error al obtener viático: " + ex.Message, ex);
+            }
+            finally
+            {
+                ConexionDAO.CerrarConexion(conexion);
+            }
+        }
+
+        // ============================================================
+        // MÉTODO FALTANTE: OBTENER TODOS ✅
+        // ============================================================
+        public static List<Viatico> ObtenerTodos()
+        {
+            NpgsqlConnection conexion = null;
+            List<Viatico> lista = new List<Viatico>();
+
+            try
+            {
+                conexion = ConexionDAO.ObtenerConexion();
+                string query = @"SELECT v.*, t.nombretecnico, t.apellidotecnico
+                    FROM aocr_tbviatico v
+                    LEFT JOIN tecnico t ON v.codigo_tecnico = t.codigotecnico
+                    ORDER BY v.fecha DESC";
+
+                using (NpgsqlCommand cmd = new NpgsqlCommand(query, conexion))
+                {
+                    using (NpgsqlDataReader reader = cmd.ExecuteReader())
+                    {
+                        while (reader.Read())
+                        {
+                            lista.Add(MapearViatico(reader));
+                        }
+                    }
+                }
+                return lista;
+            }
+            catch (Exception ex)
+            {
+                throw new Exception("Error al obtener todos los viáticos: " + ex.Message, ex);
+            }
+            finally
+            {
+                ConexionDAO.CerrarConexion(conexion);
+            }
+        }
+
+        // ============================================================
+        // MÉTODO FALTANTE: OBTENER POR ESTADO ✅
+        // ============================================================
+        public static List<Viatico> ObtenerPorEstado(string estado)
+        {
+            NpgsqlConnection conexion = null;
+            List<Viatico> lista = new List<Viatico>();
+
+            try
+            {
+                conexion = ConexionDAO.ObtenerConexion();
+
+                // Si tu tabla tiene un campo 'estado', usa esta query:
+                string query = @"SELECT v.*, t.nombretecnico, t.apellidotecnico
+                    FROM aocr_tbviatico v
+                    LEFT JOIN tecnico t ON v.codigo_tecnico = t.codigotecnico
+                    WHERE v.estado = @estado
+                    ORDER BY v.fecha DESC";
+
+                using (NpgsqlCommand cmd = new NpgsqlCommand(query, conexion))
+                {
+                    cmd.Parameters.AddWithValue("@estado", estado);
+
+                    using (NpgsqlDataReader reader = cmd.ExecuteReader())
+                    {
+                        while (reader.Read())
+                        {
+                            lista.Add(MapearViatico(reader));
+                        }
+                    }
+                }
+                return lista;
+            }
+            catch (Exception ex)
+            {
+                throw new Exception("Error al obtener viáticos por estado: " + ex.Message, ex);
+            }
+            finally
+            {
+                ConexionDAO.CerrarConexion(conexion);
+            }
+        }
+
+        #endregion
+
+        #region Consultas
+
+        public static List<Viatico> ObtenerPorInspeccion(int codigoInspeccion)
+        {
+            NpgsqlConnection conexion = null;
+            List<Viatico> lista = new List<Viatico>();
+
+            try
+            {
+                conexion = ConexionDAO.ObtenerConexion();
+                string query = @"SELECT v.*, t.nombretecnico, t.apellidotecnico
+                    FROM aocr_tbviatico v
+                    LEFT JOIN tecnico t ON v.codigo_tecnico = t.codigotecnico
+                    WHERE v.codigo_inspeccion = @id 
+                    ORDER BY v.fecha DESC";
+
+                using (NpgsqlCommand cmd = new NpgsqlCommand(query, conexion))
+                {
+                    cmd.Parameters.AddWithValue("@id", codigoInspeccion);
+
+                    using (NpgsqlDataReader reader = cmd.ExecuteReader())
+                    {
+                        while (reader.Read())
+                        {
+                            lista.Add(MapearViatico(reader));
+                        }
+                    }
+                }
+                return lista;
+            }
+            catch (Exception ex)
+            {
+                throw new Exception("Error al obtener viáticos por inspección: " + ex.Message, ex);
+            }
+            finally
+            {
+                ConexionDAO.CerrarConexion(conexion);
+            }
+        }
+
+        public static List<Viatico> ObtenerPorTecnico(int codigoTecnico)
+        {
+            NpgsqlConnection conexion = null;
+            List<Viatico> lista = new List<Viatico>();
+
+            try
+            {
+                conexion = ConexionDAO.ObtenerConexion();
+                string query = @"SELECT v.*, t.nombretecnico, t.apellidotecnico
+                    FROM aocr_tbviatico v
+                    LEFT JOIN tecnico t ON v.codigo_tecnico = t.codigotecnico
+                    WHERE v.codigo_tecnico = @id 
+                    ORDER BY v.fecha DESC";
+
+                using (NpgsqlCommand cmd = new NpgsqlCommand(query, conexion))
+                {
+                    cmd.Parameters.AddWithValue("@id", codigoTecnico);
+
+                    using (NpgsqlDataReader reader = cmd.ExecuteReader())
+                    {
+                        while (reader.Read())
+                        {
+                            lista.Add(MapearViatico(reader));
+                        }
+                    }
+                }
+                return lista;
+            }
+            catch (Exception ex)
+            {
+                throw new Exception("Error al obtener viáticos por técnico: " + ex.Message, ex);
+            }
+            finally
+            {
+                ConexionDAO.CerrarConexion(conexion);
+            }
+        }
+
+        public static List<Viatico> ObtenerPorFecha(DateTime fechaInicio, DateTime fechaFin)
+        {
+            NpgsqlConnection conexion = null;
+            List<Viatico> lista = new List<Viatico>();
+
+            try
+            {
+                conexion = ConexionDAO.ObtenerConexion();
+                string query = @"SELECT v.*, t.nombretecnico, t.apellidotecnico
+                    FROM aocr_tbviatico v
+                    LEFT JOIN tecnico t ON v.codigo_tecnico = t.codigotecnico
+                    WHERE v.fecha BETWEEN @inicio AND @fin 
+                    ORDER BY v.fecha DESC";
+
+                using (NpgsqlCommand cmd = new NpgsqlCommand(query, conexion))
+                {
+                    cmd.Parameters.AddWithValue("@inicio", fechaInicio);
+                    cmd.Parameters.AddWithValue("@fin", fechaFin);
+
+                    using (NpgsqlDataReader reader = cmd.ExecuteReader())
+                    {
+                        while (reader.Read())
+                        {
+                            lista.Add(MapearViatico(reader));
+                        }
+                    }
+                }
+                return lista;
+            }
+            catch (Exception ex)
+            {
+                throw new Exception("Error al obtener viáticos por fecha: " + ex.Message, ex);
+            }
+            finally
+            {
+                ConexionDAO.CerrarConexion(conexion);
+            }
+        }
+
+        public static decimal ObtenerTotalPorInspeccion(int codigoInspeccion)
+        {
+            NpgsqlConnection conexion = null;
+            try
+            {
+                conexion = ConexionDAO.ObtenerConexion();
+                string query = @"SELECT COALESCE(SUM(monto), 0) 
+                    FROM aocr_tbviatico 
+                    WHERE codigo_inspeccion = @id";
+
+                using (NpgsqlCommand cmd = new NpgsqlCommand(query, conexion))
+                {
+                    cmd.Parameters.AddWithValue("@id", codigoInspeccion);
+                    return Convert.ToDecimal(cmd.ExecuteScalar());
+                }
+            }
+            catch (Exception ex)
+            {
+                throw new Exception("Error al obtener total de viáticos: " + ex.Message, ex);
+            }
+            finally
+            {
+                ConexionDAO.CerrarConexion(conexion);
+            }
+        }
+
+        public static Dictionary<string, decimal> ObtenerTotalesPorTipo(int codigoInspeccion)
+        {
+            NpgsqlConnection conexion = null;
+            Dictionary<string, decimal> totales = new Dictionary<string, decimal>();
+
+            try
+            {
+                conexion = ConexionDAO.ObtenerConexion();
+                string query = @"SELECT tipo, SUM(monto) as total
+                    FROM aocr_tbviatico 
+                    WHERE codigo_inspeccion = @id
+                    GROUP BY tipo
+                    ORDER BY tipo";
+
+                using (NpgsqlCommand cmd = new NpgsqlCommand(query, conexion))
+                {
+                    cmd.Parameters.AddWithValue("@id", codigoInspeccion);
+
+                    using (NpgsqlDataReader reader = cmd.ExecuteReader())
+                    {
+                        // Resolver ordinales una sola vez fuera del bucle
+                        int ordTipo  = reader.GetOrdinal("tipo");
+                        int ordTotal = reader.GetOrdinal("total");
+                        while (reader.Read())
+                        {
+                            string tipo = reader.IsDBNull(ordTipo) ? "Sin Tipo" : reader.GetString(ordTipo);
+                            decimal total = reader.GetDecimal(ordTotal);
+                            totales[tipo] = total;
+                        }
+                    }
+                }
+                return totales;
+            }
+            catch (Exception ex)
+            {
+                throw new Exception("Error al obtener totales por tipo: " + ex.Message, ex);
+            }
+            finally
+            {
+                ConexionDAO.CerrarConexion(conexion);
+            }
+        }
+
+        #endregion
+
+        #region Mapeo
+
+        private static Viatico MapearViatico(NpgsqlDataReader reader)
+        {
+            // Resolver todos los ordinales una sola vez para evitar búsquedas repetidas por nombre
+            int ordCodViatico  = reader.GetOrdinal("codigo_viatico");
+            int ordCodInsp     = reader.GetOrdinal("codigo_inspeccion");
+            int ordCodTec      = reader.GetOrdinal("codigo_tecnico");
+            int ordConcepto    = reader.GetOrdinal("concepto");
+            int ordMonto       = reader.GetOrdinal("monto");
+            int ordFecha       = reader.GetOrdinal("fecha");
+            int ordTipo        = reader.GetOrdinal("tipo");
+            int ordComprobante = reader.GetOrdinal("comprobante");
+            int ordObs         = reader.GetOrdinal("observaciones");
+            int ordNombre      = reader.GetOrdinal("nombretecnico");
+            int ordApellido    = reader.GetOrdinal("apellidotecnico");
+
+            return new Viatico
+            {
+                CodigoViatico    = Convert.ToInt32(reader.GetValue(ordCodViatico)),
+                CodigoInspeccion = reader.IsDBNull(ordCodInsp)     ? (int?)null      : Convert.ToInt32(reader.GetValue(ordCodInsp)),
+                CodigoTecnico    = reader.IsDBNull(ordCodTec)      ? (int?)null      : Convert.ToInt32(reader.GetValue(ordCodTec)),
+                Concepto         = reader.IsDBNull(ordConcepto)    ? null            : reader.GetString(ordConcepto),
+                Monto            = reader.IsDBNull(ordMonto)       ? (decimal?)null  : reader.GetDecimal(ordMonto),
+                Fecha            = reader.IsDBNull(ordFecha)       ? (DateTime?)null : reader.GetDateTime(ordFecha),
+                Tipo             = reader.IsDBNull(ordTipo)        ? null            : reader.GetString(ordTipo),
+                Comprobante      = reader.IsDBNull(ordComprobante) ? null            : reader.GetString(ordComprobante),
+                Observaciones    = reader.IsDBNull(ordObs)         ? null            : reader.GetString(ordObs),
+                NombreTecnico    = reader.IsDBNull(ordNombre)      ? null
+                    : reader.GetString(ordNombre) + " " + (reader.IsDBNull(ordApellido) ? string.Empty : reader.GetString(ordApellido))
+            };
+        }
+
+        #endregion
+    }
+}

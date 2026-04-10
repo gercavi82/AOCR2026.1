@@ -1,0 +1,92 @@
+﻿@inherits System.Web.Mvc.WebViewPage<CapaPresentacion.Models.DashboardViewModel>
+@using CapaModelo
+@using System.Web.Mvc
+@using System.Web.Mvc.Html
+
+@{
+    ViewBag.Title = "Inicio - Sistema AOCR";
+    Layout = "~/Views/Shared/_LayoutAOCR.cshtml";
+}
+
+@section Styles {
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+}
+
+<div class="container-fluid py-4">
+
+    <!-- HERO -->
+    <div class="hero-banner aocr-hero-banner mb-4">
+        <div class="d-flex align-items-center gap-3">
+            <img src="@Url.Content("~/Content/imganes/logo1.png")"
+                 class="hero-logo"
+                 alt="Logo DGAC" />
+            <div>
+                <p class="aocr-hero-kicker mb-1"><i class="fas fa-landmark me-1"></i> Sistema Institucional DGAC</p>
+                <h2 class="mb-1 fw-bold">Bienvenido, @Html.Encode(Model.NombreUsuario)</h2>
+                <p class="mb-0" style="color:#d0e8f4;">
+                    <i class="fas fa-user-shield me-2"></i>
+                    Perfil: <strong>@Html.Encode(Model.RolUsuario)</strong>
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <!-- KPIS -->
+    <div class="aocr-summary-strip mb-4">
+        <div class="kpi-card aocr-kpi-card">
+            <p class="kpi-title aocr-kpi-title">Pendientes</p>
+            <h3 class="kpi-value aocr-kpi-value">@Model.SolicitudesPendientes</h3>
+        </div>
+        <div class="kpi-card aocr-kpi-card" style="border-left-color:var(--aocr-accent);">
+            <p class="kpi-title aocr-kpi-title">En proceso</p>
+            <h3 class="kpi-value aocr-kpi-value">@Model.TramitesEnCurso</h3>
+        </div>
+        <div class="kpi-card aocr-kpi-card" style="border-left-color:#198754;">
+            <p class="kpi-title aocr-kpi-title">Avisos</p>
+            <h3 class="kpi-value aocr-kpi-value">@Model.NotificacionesNuevas</h3>
+        </div>
+        <div class="kpi-card aocr-kpi-card" style="border-left-color:var(--aocr-muted);">
+            <p class="kpi-title aocr-kpi-title">Fecha</p>
+            <h3 class="kpi-value aocr-kpi-value" style="font-size:1.1rem;">@DateTime.Now.ToString("dd MMM yyyy")</h3>
+        </div>
+    </div>
+
+    <!-- ACCIONES -->
+    <div class="card aocr-card">
+        <div class="card-body">
+            <h5 class="aocr-section-title"><i class="fas fa-bolt me-2"></i> Acciones rápidas</h5>
+            <div class="row g-3">
+                @if (Model.MostrarModuloOperador)
+                {
+                    <div class="col-md-3 col-sm-6">
+                        <button class="aocr-quick-action w-100 border-0 text-start"
+                                onclick="cargarFormulario(0)">
+                            <div class="aocr-quick-action-icon" style="background:#e8f5ee; color:#1f6a3a;">
+                                <i class="fas fa-plus-circle"></i>
+                            </div>
+                            <div>
+                                <div class="aocr-quick-action-label">Crear Solicitud</div>
+                                <div class="aocr-quick-action-desc">Nueva solicitud AOCR</div>
+                            </div>
+                        </button>
+                    </div>
+                }
+                <div class="col-md-3 col-sm-6">
+                    <a class="aocr-quick-action w-100"
+                       href="@Url.Action("Index", "SolicitudAOCR")">
+                        <div class="aocr-quick-action-icon" style="background:#e8f0fb; color:#194c93;">
+                            <i class="fas fa-file-alt"></i>
+                        </div>
+                        <div>
+                            <div class="aocr-quick-action-label">Mis Solicitudes</div>
+                            <div class="aocr-quick-action-desc">Gestionar mis trámites</div>
+                        </div>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+

@@ -1,0 +1,63 @@
+﻿@* _PageHeader.cshtml - Encabezado institucional reutilizable
+   Uso: @Html.Partial("_PageHeader", new ViewDataDictionary {
+       { "Title", "Titulo" }, { "Subtitle", "Subtitulo" }
+   })
+*@
+@{
+    var titulo    = ViewData["Title"]    as string ?? ViewBag.PageHeaderTitle as string ?? ViewBag.Title as string ?? string.Empty;
+    var subtitulo = ViewData["Subtitle"] as string ?? ViewBag.PageHeaderSubtitle as string ?? ViewBag.PageSubtitle as string ?? string.Empty;
+    var controllerName = ViewContext.RouteData.Values["controller"] as string ?? string.Empty;
+    var controllerLabel = controllerName;
+    if (string.Equals(controllerName, "CoordinacionJefatura", StringComparison.OrdinalIgnoreCase)) controllerLabel = "Coordinacion y Jefatura";
+    else if (string.Equals(controllerName, "SolicitudAOCR", StringComparison.OrdinalIgnoreCase)) controllerLabel = "Solicitudes AOCR";
+    else if (string.Equals(controllerName, "Direccion", StringComparison.OrdinalIgnoreCase)) controllerLabel = "Direccion";
+    else if (string.Equals(controllerName, "OrdenRecaudacion", StringComparison.OrdinalIgnoreCase)) controllerLabel = "Ordenes de Recaudacion";
+    else if (string.Equals(controllerName, "Financiero", StringComparison.OrdinalIgnoreCase)) controllerLabel = "Financiero";
+    else if (string.Equals(controllerName, "Documento", StringComparison.OrdinalIgnoreCase)) controllerLabel = "Documentos";
+    else if (string.Equals(controllerName, "Inspeccion", StringComparison.OrdinalIgnoreCase)) controllerLabel = "Inspecciones";
+    else if (string.Equals(controllerName, "Tecnico", StringComparison.OrdinalIgnoreCase)) controllerLabel = "Gestion Tecnica";
+    else if (string.Equals(controllerName, "Orden", StringComparison.OrdinalIgnoreCase)) controllerLabel = "Ordenes";
+    var breadcrumbs = ViewData["Breadcrumbs"] as IEnumerable<dynamic> ?? ViewBag.PageHeaderBreadcrumbs as IEnumerable<dynamic>;
+}
+<div class="aocr-module-header mb-3">
+    <div class="aocr-module-header-left">
+        @if (!string.IsNullOrWhiteSpace(titulo))
+        {
+            <h2 class="aocr-module-header-title">@titulo</h2>
+        }
+        @if (!string.IsNullOrWhiteSpace(subtitulo))
+        {
+            <p class="aocr-module-header-subtitle">@subtitulo</p>
+        }
+    </div>
+    <nav aria-label="Ruta de navegacion">
+        <ol class="aocr-breadcrumb breadcrumb mb-0">
+            <li class="breadcrumb-item"><a href="@Url.Action("Index", "Home")"><i class="fas fa-home"></i></a></li>
+            @if (breadcrumbs != null)
+            {
+                foreach (var bc in breadcrumbs)
+                {
+                    if (!string.IsNullOrWhiteSpace((string)bc.Url))
+                    {
+                        <li class="breadcrumb-item"><a href="@bc.Url">@bc.Text</a></li>
+                    }
+                    else
+                    {
+                        <li class="breadcrumb-item active" aria-current="page">@bc.Text</li>
+                    }
+                }
+            }
+            else
+            {
+                if (!string.IsNullOrWhiteSpace(controllerLabel) && !string.Equals(controllerName, "Home", StringComparison.OrdinalIgnoreCase))
+                {
+                    <li class="breadcrumb-item">@controllerLabel</li>
+                }
+                if (!string.IsNullOrWhiteSpace(titulo))
+                {
+                    <li class="breadcrumb-item active" aria-current="page">@titulo</li>
+                }
+            }
+        </ol>
+    </nav>
+</div>

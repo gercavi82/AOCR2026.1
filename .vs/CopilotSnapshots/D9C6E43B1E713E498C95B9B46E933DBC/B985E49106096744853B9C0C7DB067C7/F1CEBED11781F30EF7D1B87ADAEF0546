@@ -1,0 +1,1096 @@
+﻿using System;
+using System;
+using System.Collections.Generic;
+using System.Data;
+using BenchmarkDotNet.Attributes;
+using Microsoft.VSDiagnostics;
+
+namespace CapaDatos.Benchmarks
+{
+    // Tipos locales que replican las entidades de CapaDatos (net9.0 no puede referenciar net4.7.2)
+    internal static class EstadoOrden
+    {
+        public const string Borrador = "BORRADOR";
+    }
+
+    public class OrdenRecaudacion
+    {
+        public int Id { get; set; }
+        public int? CodigoUsuario { get; set; }
+        public int? CodigoSolicitud { get; set; }
+        public string NumeroOrden { get; set; }
+        public DateTime FechaCreacion { get; set; }
+        public string Estado { get; set; }
+        public string Observacion { get; set; }
+        public decimal? Subtotal { get; set; }
+        public decimal? Admin { get; set; }
+        public decimal? Total { get; set; }
+        public string LugarEmision { get; set; }
+        public string Compania { get; set; }
+        public string RucCedula { get; set; }
+        public string Correo { get; set; }
+        public string Telefono { get; set; }
+        public int? ConceptoId { get; set; }
+        public string ConceptoNombre { get; set; }
+    }
+
+    // Entidad local que replica DetalleOrden de CapaDatos
+    public class DetalleOrden
+    {
+        public int Id { get; set; }
+        public int OrdenId { get; set; }
+        public int? ConceptoId { get; set; }
+        public string ConceptoCodigo { get; set; }
+        public string ConceptoNombre { get; set; }
+        public string Descripcion { get; set; }
+        public int Cantidad { get; set; }
+        public decimal ValorUnitario { get; set; }
+        public decimal PorcentajeAdmin { get; set; }
+        public decimal Subtotal { get; set; }
+        public decimal Admin { get; set; }
+        public decimal TotalLinea { get; set; }
+    }
+
+    public class PagoModel
+    {
+        public int CodigoPago { get; set; }
+        public int CodigoSolicitud { get; set; }
+        public string NumeroFactura { get; set; }
+        public decimal Monto { get; set; }
+        public string Moneda { get; set; }
+        public string Concepto { get; set; }
+        public string MetodoPago { get; set; }
+        public string Banco { get; set; }
+        public string Estado { get; set; }
+        public DateTime? FechaPago { get; set; }
+        public DateTime? FechaValidacion { get; set; }
+        public string ValidadoPor { get; set; }
+        public string Observaciones { get; set; }
+        public string ComprobanteRuta { get; set; }
+    }
+
+    public class Pago
+    {
+        public int Id { get; set; }
+        public int CodigoSolicitud { get; set; }
+        public string NumeroComprobante { get; set; }
+        public decimal MontoPagado { get; set; }
+        public string MetodoPago { get; set; }
+        public string BancoOrigen { get; set; }
+        public string Estado { get; set; }
+        public DateTime FechaPago { get; set; }
+        public string Observaciones { get; set; }
+        public string RutaComprobante { get; set; }
+        public DateTime? FechaValidacion { get; set; }
+        public string UsuarioValidacion { get; set; }
+    }
+
+    // Resultado de lectura inline de los tres métodos transaccionales
+    public class OrdenTxResult
+    {
+        public string NumeroOrden { get; set; }
+        public string Estado { get; set; }
+        public string Correo { get; set; }
+        public string Compania { get; set; }
+        public string Observacion { get; set; }
+        public int CodigoSolicitud { get; set; }
+        public decimal Total { get; set; }
+        // campos extra para OrdenMeta (RegistrarResultadoFr3)
+        public string NumeroOrdenMeta { get; set; }
+        public string CorreoMeta { get; set; }
+        public string CompaniaMeta { get; set; }
+        // campos extra para Fr3Placeholder (TryCrearRegistroFacturaPlaceholderParaFr3)
+        public decimal Subtotal { get; set; }
+        public decimal Iva { get; set; }
+    }
+
+    [CPUUsageDiagnoser]
+    public class MapearOrdenBenchmark
+    {
+        private FakeDataReader _reader;
+        private FakeDetalleDataReader _detalleReader;
+        private FakePagoDataReader _pagoReader;
+        private FakeOrdenTxDataReader _ordenTxReader;
+        private FakeOrdenMetaDataReader _ordenMetaReader;
+        private FakeOrdenFr3DataReader _ordenFr3Reader;
+        private const int Iterations = 500;
+
+        [GlobalSetup]
+        public void Setup()
+        {
+            _reader = new FakeDataReader();
+            _detalleReader = new FakeDetalleDataReader();
+            _pagoReader = new FakePagoDataReader();
+            _ordenTxReader = new FakeOrdenTxDataReader();
+            _ordenMetaReader = new FakeOrdenMetaDataReader();
+            _ordenFr3Reader = new FakeOrdenFr3DataReader();
+        }
+
+        // --- Implementación ACTUAL: GetOrdinal llamado 2 veces por columna ---
+        [Benchmark(Baseline = true)]
+        public List<OrdenRecaudacion> MapearOrden_Actual()
+        {
+            var result = new List<OrdenRecaudacion>(Iterations);
+            for (int i = 0; i < Iterations; i++)
+            {
+                result.Add(MapearOrdenActual(_reader));
+            }
+
+            return result;
+        }
+
+        // --- Implementación OPTIMIZADA: GetOrdinal una sola vez, almacenado en variable local ---
+        [Benchmark]
+        public List<OrdenRecaudacion> MapearOrden_Optimizado()
+        {
+            var result = new List<OrdenRecaudacion>(Iterations);
+            for (int i = 0; i < Iterations; i++)
+            {
+                result.Add(MapearOrdenOptimizado(_reader));
+            }
+
+            return result;
+        }
+
+        // -----------------------------------------------------------------------
+        // Benchmarks de MapearDetalle
+        // -----------------------------------------------------------------------
+
+        [Benchmark]
+        public List<DetalleOrden> MapearDetalle_Actual()
+        {
+            var result = new List<DetalleOrden>(Iterations);
+            for (int i = 0; i < Iterations; i++)
+            {
+                result.Add(MapearDetalleActual(_detalleReader));
+            }
+            return result;
+        }
+
+        [Benchmark]
+        public List<DetalleOrden> MapearDetalle_Optimizado()
+        {
+            var result = new List<DetalleOrden>(Iterations);
+            for (int i = 0; i < Iterations; i++)
+            {
+                result.Add(MapearDetalleOptimizado(_detalleReader));
+            }
+            return result;
+        }
+
+        [Benchmark]
+        public List<PagoModel> MapearPagoModel_Actual()
+        {
+            var result = new List<PagoModel>(Iterations);
+            for (int i = 0; i < Iterations; i++)
+                result.Add(MapearPagoModelActual(_pagoReader));
+            return result;
+        }
+
+        [Benchmark]
+        public List<PagoModel> MapearPagoModel_Optimizado()
+        {
+            var result = new List<PagoModel>(Iterations);
+            for (int i = 0; i < Iterations; i++)
+                result.Add(MapearPagoModelOptimizado(_pagoReader));
+            return result;
+        }
+
+        [Benchmark]
+        public List<Pago> MapearPagoEntidad_Actual()
+        {
+            var result = new List<Pago>(Iterations);
+            for (int i = 0; i < Iterations; i++)
+                result.Add(MapearPagoEntidadActual(_pagoReader));
+            return result;
+        }
+
+        [Benchmark]
+        public List<Pago> MapearPagoEntidad_Optimizado()
+        {
+            var result = new List<Pago>(Iterations);
+            for (int i = 0; i < Iterations; i++)
+                result.Add(MapearPagoEntidadOptimizado(_pagoReader));
+            return result;
+        }
+
+        // Bloque inline AprobarPagoConFacturaTransaccional (8 columnas, 1 fila)
+        [Benchmark]
+        public List<OrdenTxResult> LeerOrdenTx_Actual()
+        {
+            var result = new List<OrdenTxResult>(Iterations);
+            for (int i = 0; i < Iterations; i++)
+                result.Add(LeerOrdenTxActual(_ordenTxReader));
+            return result;
+        }
+
+        [Benchmark]
+        public List<OrdenTxResult> LeerOrdenTx_Optimizado()
+        {
+            var result = new List<OrdenTxResult>(Iterations);
+            for (int i = 0; i < Iterations; i++)
+                result.Add(LeerOrdenTxOptimizado(_ordenTxReader));
+            return result;
+        }
+
+        // Bloque inline RegistrarResultadoFr3 (4 columnas, 1 fila)
+        [Benchmark]
+        public List<OrdenTxResult> LeerOrdenMeta_Actual()
+        {
+            var result = new List<OrdenTxResult>(Iterations);
+            for (int i = 0; i < Iterations; i++)
+                result.Add(LeerOrdenMetaActual(_ordenMetaReader));
+            return result;
+        }
+
+        [Benchmark]
+        public List<OrdenTxResult> LeerOrdenMeta_Optimizado()
+        {
+            var result = new List<OrdenTxResult>(Iterations);
+            for (int i = 0; i < Iterations; i++)
+                result.Add(LeerOrdenMetaOptimizado(_ordenMetaReader));
+            return result;
+        }
+
+        // Bloque inline TryCrearRegistroFacturaPlaceholderParaFr3 (4 columnas, 1 fila)
+        [Benchmark]
+        public List<OrdenTxResult> LeerOrdenFr3_Actual()
+        {
+            var result = new List<OrdenTxResult>(Iterations);
+            for (int i = 0; i < Iterations; i++)
+                result.Add(LeerOrdenFr3Actual(_ordenFr3Reader));
+            return result;
+        }
+
+        [Benchmark]
+        public List<OrdenTxResult> LeerOrdenFr3_Optimizado()
+        {
+            var result = new List<OrdenTxResult>(Iterations);
+            for (int i = 0; i < Iterations; i++)
+                result.Add(LeerOrdenFr3Optimizado(_ordenFr3Reader));
+            return result;
+        }
+
+        // -----------------------------------------------------------------------
+        // Copia de la lógica actual de OrdenRecaudacionDAO.MapearOrden
+        // -----------------------------------------------------------------------
+        private static OrdenRecaudacion MapearOrdenActual(IDataReader reader)
+        {
+            var numeroOrden = reader.IsDBNull(reader.GetOrdinal("numero_orden")) ? null : reader.GetString(reader.GetOrdinal("numero_orden"));
+            var orden = new OrdenRecaudacion
+            {
+                Id = GetSafeInt32Actual(reader, "id"),
+                CodigoUsuario = GetSafeNullableIntActual(reader, "codigo_usuario"),
+                CodigoSolicitud = GetSafeNullableIntActual(reader, "codigo_solicitud"),
+                NumeroOrden = numeroOrden,
+                FechaCreacion = reader.IsDBNull(reader.GetOrdinal("fecha_creacion")) ? DateTime.Now : reader.GetDateTime(reader.GetOrdinal("fecha_creacion")),
+                Estado = reader.IsDBNull(reader.GetOrdinal("estado")) ? EstadoOrden.Borrador : reader.GetString(reader.GetOrdinal("estado")),
+                Observacion = reader.IsDBNull(reader.GetOrdinal("observacion")) ? null : reader.GetString(reader.GetOrdinal("observacion")),
+                Subtotal = reader.IsDBNull(reader.GetOrdinal("subtotal")) ? 0m : reader.GetDecimal(reader.GetOrdinal("subtotal")),
+                Admin = reader.IsDBNull(reader.GetOrdinal("admin")) ? 0m : reader.GetDecimal(reader.GetOrdinal("admin")),
+                Total = reader.IsDBNull(reader.GetOrdinal("total")) ? 0m : reader.GetDecimal(reader.GetOrdinal("total")),
+                LugarEmision = reader.IsDBNull(reader.GetOrdinal("lugar_emision")) ? null : reader.GetString(reader.GetOrdinal("lugar_emision")),
+                Compania = reader.IsDBNull(reader.GetOrdinal("compania")) ? null : reader.GetString(reader.GetOrdinal("compania")),
+                RucCedula = reader.IsDBNull(reader.GetOrdinal("ruc_cedula")) ? null : reader.GetString(reader.GetOrdinal("ruc_cedula")),
+                Correo = reader.IsDBNull(reader.GetOrdinal("correo")) ? null : reader.GetString(reader.GetOrdinal("correo")),
+                Telefono = reader.IsDBNull(reader.GetOrdinal("telefono")) ? null : reader.GetString(reader.GetOrdinal("telefono")),
+                ConceptoId = GetSafeNullableIntActual(reader, "concepto_id")
+            };
+            try
+            {
+                var ord = reader.GetOrdinal("concepto_nombre");
+                if (!reader.IsDBNull(ord))
+                    orden.ConceptoNombre = reader.GetString(ord);
+            }
+            catch
+            {
+            }
+
+            return orden;
+        }
+
+        // -----------------------------------------------------------------------
+        // Versión optimizada: un solo GetOrdinal por columna
+        // -----------------------------------------------------------------------
+        private static OrdenRecaudacion MapearOrdenOptimizado(IDataReader reader)
+        {
+            // Resolver todos los ordinales una sola vez
+            int ordId = reader.GetOrdinal("id");
+            int ordCodUsr = reader.GetOrdinal("codigo_usuario");
+            int ordCodSol = reader.GetOrdinal("codigo_solicitud");
+            int ordNumOrden = reader.GetOrdinal("numero_orden");
+            int ordFecha = reader.GetOrdinal("fecha_creacion");
+            int ordEstado = reader.GetOrdinal("estado");
+            int ordObservacion = reader.GetOrdinal("observacion");
+            int ordSubtotal = reader.GetOrdinal("subtotal");
+            int ordAdmin = reader.GetOrdinal("admin");
+            int ordTotal = reader.GetOrdinal("total");
+            int ordLugarEmision = reader.GetOrdinal("lugar_emision");
+            int ordCompania = reader.GetOrdinal("compania");
+            int ordRucCedula = reader.GetOrdinal("ruc_cedula");
+            int ordCorreo = reader.GetOrdinal("correo");
+            int ordTelefono = reader.GetOrdinal("telefono");
+            int ordConceptoId = reader.GetOrdinal("concepto_id");
+            int ordConceptoNombre = reader.GetOrdinal("concepto_nombre");
+            var orden = new OrdenRecaudacion
+            {
+                Id = reader.IsDBNull(ordId) ? 0 : reader.GetInt32(ordId),
+                CodigoUsuario = reader.IsDBNull(ordCodUsr) ? (int? )null : reader.GetInt32(ordCodUsr),
+                CodigoSolicitud = reader.IsDBNull(ordCodSol) ? (int? )null : reader.GetInt32(ordCodSol),
+                NumeroOrden = reader.IsDBNull(ordNumOrden) ? null : reader.GetString(ordNumOrden),
+                FechaCreacion = reader.IsDBNull(ordFecha) ? DateTime.Now : reader.GetDateTime(ordFecha),
+                Estado = reader.IsDBNull(ordEstado) ? EstadoOrden.Borrador : reader.GetString(ordEstado),
+                Observacion = reader.IsDBNull(ordObservacion) ? null : reader.GetString(ordObservacion),
+                Subtotal = reader.IsDBNull(ordSubtotal) ? 0m : reader.GetDecimal(ordSubtotal),
+                Admin = reader.IsDBNull(ordAdmin) ? 0m : reader.GetDecimal(ordAdmin),
+                Total = reader.IsDBNull(ordTotal) ? 0m : reader.GetDecimal(ordTotal),
+                LugarEmision = reader.IsDBNull(ordLugarEmision) ? null : reader.GetString(ordLugarEmision),
+                Compania = reader.IsDBNull(ordCompania) ? null : reader.GetString(ordCompania),
+                RucCedula = reader.IsDBNull(ordRucCedula) ? null : reader.GetString(ordRucCedula),
+                Correo = reader.IsDBNull(ordCorreo) ? null : reader.GetString(ordCorreo),
+                Telefono = reader.IsDBNull(ordTelefono) ? null : reader.GetString(ordTelefono),
+                ConceptoId = reader.IsDBNull(ordConceptoId) ? (int? )null : reader.GetInt32(ordConceptoId),
+                ConceptoNombre = reader.IsDBNull(ordConceptoNombre) ? null : reader.GetString(ordConceptoNombre)
+            };
+            return orden;
+        }
+
+        // Helpers copiados del DAO actual
+        private static int GetSafeInt32Actual(IDataReader reader, string columnName)
+        {
+            var ordinal = reader.GetOrdinal(columnName);
+            if (reader.IsDBNull(ordinal))
+                return 0;
+            var ft = reader.GetFieldType(ordinal);
+            if (ft == typeof(int))
+                return reader.GetInt32(ordinal);
+            if (ft == typeof(string))
+            {
+                int r;
+                return int.TryParse(reader.GetString(ordinal), out r) ? r : 0;
+            }
+
+            return Convert.ToInt32(reader.GetValue(ordinal));
+        }
+
+        private static int? GetSafeNullableIntActual(IDataReader reader, string columnName)
+        {
+            var ordinal = reader.GetOrdinal(columnName);
+            if (reader.IsDBNull(ordinal))
+                return null;
+            var ft = reader.GetFieldType(ordinal);
+            if (ft == typeof(int))
+                return reader.GetInt32(ordinal);
+            if (ft == typeof(string))
+            {
+                int r;
+                return int.TryParse(reader.GetString(ordinal), out r) ? (int? )r : null;
+            }
+
+            return Convert.ToInt32(reader.GetValue(ordinal));
+        }
+
+        // -----------------------------------------------------------------------
+        // MapearDetalle – implementación ACTUAL (GetOrdinal x2 por columna)
+        // -----------------------------------------------------------------------
+        private static DetalleOrden MapearDetalleActual(IDataReader reader)
+        {
+            return new DetalleOrden
+            {
+                Id             = reader.GetInt32(reader.GetOrdinal("id")),
+                OrdenId        = reader.GetInt32(reader.GetOrdinal("orden_id")),
+                ConceptoId     = reader.IsDBNull(reader.GetOrdinal("concepto_id"))     ? (int?)null : reader.GetInt32(reader.GetOrdinal("concepto_id")),
+                ConceptoCodigo = reader.IsDBNull(reader.GetOrdinal("concepto_codigo")) ? null       : reader.GetString(reader.GetOrdinal("concepto_codigo")),
+                ConceptoNombre = reader.IsDBNull(reader.GetOrdinal("concepto_nombre")) ? null       : reader.GetString(reader.GetOrdinal("concepto_nombre")),
+                Descripcion    = reader.IsDBNull(reader.GetOrdinal("descripcion"))     ? null       : reader.GetString(reader.GetOrdinal("descripcion")),
+                Cantidad       = reader.GetInt32(reader.GetOrdinal("cantidad")),
+                ValorUnitario  = reader.GetDecimal(reader.GetOrdinal("valor_unitario")),
+                PorcentajeAdmin = reader.IsDBNull(reader.GetOrdinal("porcentaje_admin")) ? 0m       : reader.GetDecimal(reader.GetOrdinal("porcentaje_admin")),
+                Subtotal       = reader.GetDecimal(reader.GetOrdinal("subtotal")),
+                Admin          = reader.IsDBNull(reader.GetOrdinal("admin"))           ? 0m         : reader.GetDecimal(reader.GetOrdinal("admin")),
+                TotalLinea     = reader.GetDecimal(reader.GetOrdinal("total_linea"))
+            };
+        }
+
+        // -----------------------------------------------------------------------
+        // MapearDetalle – implementación OPTIMIZADA (GetOrdinal x1 por columna)
+        // -----------------------------------------------------------------------
+        private static DetalleOrden MapearDetalleOptimizado(IDataReader reader)
+        {
+            int ordId             = reader.GetOrdinal("id");
+            int ordOrdenId        = reader.GetOrdinal("orden_id");
+            int ordConceptoId     = reader.GetOrdinal("concepto_id");
+            int ordConceptoCodigo = reader.GetOrdinal("concepto_codigo");
+            int ordConceptoNombre = reader.GetOrdinal("concepto_nombre");
+            int ordDescripcion    = reader.GetOrdinal("descripcion");
+            int ordCantidad       = reader.GetOrdinal("cantidad");
+            int ordValorUnitario  = reader.GetOrdinal("valor_unitario");
+            int ordPctAdmin       = reader.GetOrdinal("porcentaje_admin");
+            int ordSubtotal       = reader.GetOrdinal("subtotal");
+            int ordAdmin          = reader.GetOrdinal("admin");
+            int ordTotalLinea     = reader.GetOrdinal("total_linea");
+
+            return new DetalleOrden
+            {
+                Id              = reader.GetInt32(ordId),
+                OrdenId         = reader.GetInt32(ordOrdenId),
+                ConceptoId      = reader.IsDBNull(ordConceptoId)     ? (int?)null : reader.GetInt32(ordConceptoId),
+                ConceptoCodigo  = reader.IsDBNull(ordConceptoCodigo) ? null       : reader.GetString(ordConceptoCodigo),
+                ConceptoNombre  = reader.IsDBNull(ordConceptoNombre) ? null       : reader.GetString(ordConceptoNombre),
+                Descripcion     = reader.IsDBNull(ordDescripcion)    ? null       : reader.GetString(ordDescripcion),
+                Cantidad        = reader.GetInt32(ordCantidad),
+                ValorUnitario   = reader.GetDecimal(ordValorUnitario),
+                PorcentajeAdmin = reader.IsDBNull(ordPctAdmin)       ? 0m         : reader.GetDecimal(ordPctAdmin),
+                Subtotal        = reader.GetDecimal(ordSubtotal),
+                Admin           = reader.IsDBNull(ordAdmin)          ? 0m         : reader.GetDecimal(ordAdmin),
+                TotalLinea      = reader.GetDecimal(ordTotalLinea)
+            };
+        }
+
+        // -----------------------------------------------------------------------
+        // Fake IDataReader para aocr_or_orden_detalle
+        // -----------------------------------------------------------------------
+        private class FakeDetalleDataReader : IDataReader
+        {
+            private static readonly string[] _columns =
+            {
+                "id", "orden_id", "concepto_id", "concepto_codigo", "concepto_nombre",
+                "descripcion", "cantidad", "valor_unitario", "porcentaje_admin",
+                "subtotal", "admin", "total_linea"
+            };
+            private static readonly object[] _values =
+            {
+                101,           // id
+                42,            // orden_id
+                3,             // concepto_id
+                "EMI",         // concepto_codigo
+                "Emisión AOCR",// concepto_nombre
+                "Descripción", // descripcion
+                1,             // cantidad
+                1000.00m,      // valor_unitario
+                8.00m,         // porcentaje_admin
+                1000.00m,      // subtotal
+                80.00m,        // admin
+                1080.00m       // total_linea
+            };
+
+            public int GetOrdinal(string name)
+            {
+                for (int i = 0; i < _columns.Length; i++)
+                    if (_columns[i] == name) return i;
+                throw new IndexOutOfRangeException(name);
+            }
+
+            public bool IsDBNull(int i)    => _values[i] == null;
+            public int GetInt32(int i)     => Convert.ToInt32(_values[i]);
+            public string GetString(int i) => _values[i]?.ToString();
+            public decimal GetDecimal(int i) => Convert.ToDecimal(_values[i]);
+            public DateTime GetDateTime(int i) => (DateTime)_values[i];
+            public Type GetFieldType(int i) => _values[i]?.GetType() ?? typeof(object);
+            public object GetValue(int i)  => _values[i];
+
+            public object this[int i]       => _values[i];
+            public object this[string name] => _values[GetOrdinal(name)];
+            public int FieldCount           => _columns.Length;
+            public bool Read()              => true;
+            public bool NextResult()        => false;
+            public void Close()             { }
+            public bool IsClosed            => false;
+            public int Depth                => 0;
+            public int RecordsAffected      => -1;
+            public DataTable GetSchemaTable() => null;
+            public bool GetBoolean(int i)   => (bool)_values[i];
+            public byte GetByte(int i)      => (byte)_values[i];
+            public long GetBytes(int i, long fo, byte[] buf, int bo, int len) => 0;
+            public char GetChar(int i)      => (char)_values[i];
+            public long GetChars(int i, long fo, char[] buf, int bo, int len) => 0;
+            public IDataReader GetData(int i) => null;
+            public string GetDataTypeName(int i) => _values[i]?.GetType().Name;
+            public double GetDouble(int i)  => (double)_values[i];
+            public float GetFloat(int i)    => (float)_values[i];
+            public Guid GetGuid(int i)      => (Guid)_values[i];
+            public short GetInt16(int i)    => (short)_values[i];
+            public long GetInt64(int i)     => (long)_values[i];
+            public string GetName(int i)    => _columns[i];
+            public int GetValues(object[] values)
+            {
+                Array.Copy(_values, values, _values.Length);
+                return _values.Length;
+            }
+            public void Dispose() { }
+        }
+
+        // -----------------------------------------------------------------------
+        // MapearPagoModel – implementación ACTUAL (indexador reader["nombre"] por columna)
+        // -----------------------------------------------------------------------
+        private static PagoModel MapearPagoModelActual(IDataReader reader)
+        {
+            return new PagoModel
+            {
+                CodigoPago      = reader["codigo_pago"]      != DBNull.Value ? Convert.ToInt32(reader["codigo_pago"])           : 0,
+                CodigoSolicitud = reader["codigo_solicitud"] != DBNull.Value ? Convert.ToInt32(reader["codigo_solicitud"])       : 0,
+                NumeroFactura   = reader["numero_factura"]   != DBNull.Value ? reader["numero_factura"].ToString()              : null,
+                Monto           = reader["monto"]            != DBNull.Value ? Convert.ToDecimal(reader["monto"])               : 0m,
+                Moneda          = reader["moneda"]           != DBNull.Value ? reader["moneda"].ToString()                      : null,
+                Concepto        = reader["concepto"]         != DBNull.Value ? reader["concepto"].ToString()                    : null,
+                MetodoPago      = reader["metodo_pago"]      != DBNull.Value ? reader["metodo_pago"].ToString()                 : null,
+                Banco           = GetSafeBancoActual(reader),
+                Estado          = reader["estado"]           != DBNull.Value ? reader["estado"].ToString()                     : null,
+                FechaPago       = reader["fecha_pago"]       != DBNull.Value ? (DateTime?)Convert.ToDateTime(reader["fecha_pago"]) : null,
+                FechaValidacion = reader["fecha_validacion"] != DBNull.Value ? (DateTime?)Convert.ToDateTime(reader["fecha_validacion"]) : null,
+                ValidadoPor     = reader["validado_por"]     != DBNull.Value ? reader["validado_por"].ToString()                : null,
+                Observaciones   = reader["observaciones"]    != DBNull.Value ? reader["observaciones"].ToString()               : null,
+                ComprobanteRuta = reader["comprobante_ruta"] != DBNull.Value ? reader["comprobante_ruta"].ToString()            : null
+            };
+        }
+
+        // -----------------------------------------------------------------------
+        // MapearPagoModel – implementación OPTIMIZADA (GetOrdinal x1 por columna)
+        // -----------------------------------------------------------------------
+        private static PagoModel MapearPagoModelOptimizado(IDataReader reader)
+        {
+            int ordCodigoPago      = reader.GetOrdinal("codigo_pago");
+            int ordCodSolicitud    = reader.GetOrdinal("codigo_solicitud");
+            int ordNumFactura      = reader.GetOrdinal("numero_factura");
+            int ordMonto           = reader.GetOrdinal("monto");
+            int ordMoneda          = reader.GetOrdinal("moneda");
+            int ordConcepto        = reader.GetOrdinal("concepto");
+            int ordMetodoPago      = reader.GetOrdinal("metodo_pago");
+            int ordBanco           = reader.GetOrdinal("banco");
+            int ordEstado          = reader.GetOrdinal("estado");
+            int ordFechaPago       = reader.GetOrdinal("fecha_pago");
+            int ordFechaVal        = reader.GetOrdinal("fecha_validacion");
+            int ordValidadoPor     = reader.GetOrdinal("validado_por");
+            int ordObservaciones   = reader.GetOrdinal("observaciones");
+            int ordComprobanteRuta = reader.GetOrdinal("comprobante_ruta");
+
+            return new PagoModel
+            {
+                CodigoPago      = reader.IsDBNull(ordCodigoPago)      ? 0    : Convert.ToInt32(reader.GetValue(ordCodigoPago)),
+                CodigoSolicitud = reader.IsDBNull(ordCodSolicitud)    ? 0    : Convert.ToInt32(reader.GetValue(ordCodSolicitud)),
+                NumeroFactura   = reader.IsDBNull(ordNumFactura)      ? null : reader.GetString(ordNumFactura),
+                Monto           = reader.IsDBNull(ordMonto)           ? 0m   : reader.GetDecimal(ordMonto),
+                Moneda          = reader.IsDBNull(ordMoneda)          ? null : reader.GetString(ordMoneda),
+                Concepto        = reader.IsDBNull(ordConcepto)        ? null : reader.GetString(ordConcepto),
+                MetodoPago      = reader.IsDBNull(ordMetodoPago)      ? null : reader.GetString(ordMetodoPago),
+                Banco           = reader.IsDBNull(ordBanco)           ? null : reader.GetString(ordBanco),
+                Estado          = reader.IsDBNull(ordEstado)          ? null : reader.GetString(ordEstado),
+                FechaPago       = reader.IsDBNull(ordFechaPago)       ? (DateTime?)null : reader.GetDateTime(ordFechaPago),
+                FechaValidacion = reader.IsDBNull(ordFechaVal)        ? (DateTime?)null : reader.GetDateTime(ordFechaVal),
+                ValidadoPor     = reader.IsDBNull(ordValidadoPor)     ? null : reader.GetString(ordValidadoPor),
+                Observaciones   = reader.IsDBNull(ordObservaciones)   ? null : reader.GetString(ordObservaciones),
+                ComprobanteRuta = reader.IsDBNull(ordComprobanteRuta) ? null : reader.GetString(ordComprobanteRuta)
+            };
+        }
+
+        // -----------------------------------------------------------------------
+        // MapearPagoEntidad – implementación ACTUAL (indexador reader["nombre"] por columna)
+        // -----------------------------------------------------------------------
+        private static Pago MapearPagoEntidadActual(IDataReader reader)
+        {
+            return new Pago
+            {
+                Id                = reader["codigo_pago"]      != DBNull.Value ? Convert.ToInt32(reader["codigo_pago"])           : 0,
+                CodigoSolicitud   = reader["codigo_solicitud"] != DBNull.Value ? Convert.ToInt32(reader["codigo_solicitud"])       : 0,
+                NumeroComprobante = reader["numero_factura"]   != DBNull.Value ? reader["numero_factura"].ToString()              : null,
+                MontoPagado       = reader["monto"]            != DBNull.Value ? Convert.ToDecimal(reader["monto"])               : 0m,
+                MetodoPago        = reader["metodo_pago"]      != DBNull.Value ? reader["metodo_pago"].ToString()                 : null,
+                BancoOrigen       = GetSafeBancoActual(reader),
+                Estado            = reader["estado"]           != DBNull.Value ? reader["estado"].ToString()                     : null,
+                FechaPago         = reader["fecha_pago"]       != DBNull.Value ? Convert.ToDateTime(reader["fecha_pago"])         : DateTime.MinValue,
+                Observaciones     = reader["observaciones"]    != DBNull.Value ? reader["observaciones"].ToString()               : null,
+                RutaComprobante   = reader["comprobante_ruta"] != DBNull.Value ? reader["comprobante_ruta"].ToString()            : null,
+                FechaValidacion   = reader["fecha_validacion"] != DBNull.Value ? (DateTime?)Convert.ToDateTime(reader["fecha_validacion"]) : null,
+                UsuarioValidacion = reader["validado_por"]     != DBNull.Value ? reader["validado_por"].ToString()                : null
+            };
+        }
+
+        // -----------------------------------------------------------------------
+        // MapearPagoEntidad – implementación OPTIMIZADA (GetOrdinal x1 por columna)
+        // -----------------------------------------------------------------------
+        private static Pago MapearPagoEntidadOptimizado(IDataReader reader)
+        {
+            int ordCodigoPago      = reader.GetOrdinal("codigo_pago");
+            int ordCodSolicitud    = reader.GetOrdinal("codigo_solicitud");
+            int ordNumFactura      = reader.GetOrdinal("numero_factura");
+            int ordMonto           = reader.GetOrdinal("monto");
+            int ordMetodoPago      = reader.GetOrdinal("metodo_pago");
+            int ordBanco           = reader.GetOrdinal("banco");
+            int ordEstado          = reader.GetOrdinal("estado");
+            int ordFechaPago       = reader.GetOrdinal("fecha_pago");
+            int ordObservaciones   = reader.GetOrdinal("observaciones");
+            int ordComprobanteRuta = reader.GetOrdinal("comprobante_ruta");
+            int ordFechaVal        = reader.GetOrdinal("fecha_validacion");
+            int ordValidadoPor     = reader.GetOrdinal("validado_por");
+
+            return new Pago
+            {
+                Id                = reader.IsDBNull(ordCodigoPago)      ? 0                : Convert.ToInt32(reader.GetValue(ordCodigoPago)),
+                CodigoSolicitud   = reader.IsDBNull(ordCodSolicitud)    ? 0                : Convert.ToInt32(reader.GetValue(ordCodSolicitud)),
+                NumeroComprobante = reader.IsDBNull(ordNumFactura)      ? null             : reader.GetString(ordNumFactura),
+                MontoPagado       = reader.IsDBNull(ordMonto)           ? 0m               : reader.GetDecimal(ordMonto),
+                MetodoPago        = reader.IsDBNull(ordMetodoPago)      ? null             : reader.GetString(ordMetodoPago),
+                BancoOrigen       = reader.IsDBNull(ordBanco)           ? null             : reader.GetString(ordBanco),
+                Estado            = reader.IsDBNull(ordEstado)          ? null             : reader.GetString(ordEstado),
+                FechaPago         = reader.IsDBNull(ordFechaPago)       ? DateTime.MinValue : reader.GetDateTime(ordFechaPago),
+                Observaciones     = reader.IsDBNull(ordObservaciones)   ? null             : reader.GetString(ordObservaciones),
+                RutaComprobante   = reader.IsDBNull(ordComprobanteRuta) ? null             : reader.GetString(ordComprobanteRuta),
+                FechaValidacion   = reader.IsDBNull(ordFechaVal)        ? (DateTime?)null  : reader.GetDateTime(ordFechaVal),
+                UsuarioValidacion = reader.IsDBNull(ordValidadoPor)     ? null             : reader.GetString(ordValidadoPor)
+            };
+        }
+
+        // Helper que replica GetSafeBanco usando el indexador (versión actual)
+        private static string GetSafeBancoActual(IDataReader reader)
+        {
+            try
+            {
+                var ord = reader.GetOrdinal("banco");
+                return reader.IsDBNull(ord) ? null : reader.GetString(ord);
+            }
+            catch (IndexOutOfRangeException)
+            {
+                return null;
+            }
+        }
+
+        // -----------------------------------------------------------------------
+        // Fake IDataReader para aocr_or_pago
+        // -----------------------------------------------------------------------
+        private class FakePagoDataReader : IDataReader
+        {
+            private static readonly string[] _columns =
+            {
+                "codigo_pago", "codigo_solicitud", "numero_factura", "monto",
+                "moneda", "concepto", "metodo_pago", "banco", "estado",
+                "fecha_pago", "fecha_validacion", "validado_por",
+                "observaciones", "comprobante_ruta"
+            };
+            private static readonly object[] _values =
+            {
+                99,                           // codigo_pago
+                42,                           // codigo_solicitud
+                "FACT-2025-0099",             // numero_factura
+                1080.00m,                     // monto
+                "USD",                        // moneda
+                "Emisión AOCR",               // concepto
+                "TRANSFERENCIA",              // metodo_pago
+                "BANCO_PICHINCHA",            // banco
+                "VALIDADO",                   // estado
+                new DateTime(2025, 3, 16),    // fecha_pago
+                new DateTime(2025, 3, 17),    // fecha_validacion
+                "jperez",                     // validado_por
+                "Pago verificado",            // observaciones
+                "/comprobantes/pago99.pdf"    // comprobante_ruta
+            };
+
+            public int GetOrdinal(string name)
+            {
+                for (int i = 0; i < _columns.Length; i++)
+                    if (_columns[i] == name) return i;
+                throw new IndexOutOfRangeException(name);
+            }
+
+            public bool IsDBNull(int i)       => _values[i] == null;
+            public int GetInt32(int i)        => Convert.ToInt32(_values[i]);
+            public string GetString(int i)    => _values[i]?.ToString();
+            public decimal GetDecimal(int i)  => Convert.ToDecimal(_values[i]);
+            public DateTime GetDateTime(int i)=> (DateTime)_values[i];
+            public Type GetFieldType(int i)   => _values[i]?.GetType() ?? typeof(object);
+            public object GetValue(int i)     => _values[i];
+
+            // Indexador por nombre — simula el patrón reader["columna"] del código actual
+            public object this[string name]   => _values[GetOrdinal(name)];
+            public object this[int i]         => _values[i];
+            public int FieldCount             => _columns.Length;
+            public bool Read()                => true;
+            public bool NextResult()          => false;
+            public void Close()               { }
+            public bool IsClosed              => false;
+            public int Depth                  => 0;
+            public int RecordsAffected        => -1;
+            public DataTable GetSchemaTable() => null;
+            public bool GetBoolean(int i)     => (bool)_values[i];
+            public byte GetByte(int i)        => (byte)_values[i];
+            public long GetBytes(int i, long fo, byte[] buf, int bo, int len) => 0;
+            public char GetChar(int i)        => (char)_values[i];
+            public long GetChars(int i, long fo, char[] buf, int bo, int len) => 0;
+            public IDataReader GetData(int i) => null;
+            public string GetDataTypeName(int i) => _values[i]?.GetType().Name;
+            public double GetDouble(int i)    => (double)_values[i];
+            public float GetFloat(int i)      => (float)_values[i];
+            public Guid GetGuid(int i)        => (Guid)_values[i];
+            public short GetInt16(int i)      => (short)_values[i];
+            public long GetInt64(int i)       => (long)_values[i];
+            public string GetName(int i)      => _columns[i];
+            public int GetValues(object[] values)
+            {
+                Array.Copy(_values, values, _values.Length);
+                return _values.Length;
+            }
+            public void Dispose() { }
+        }
+
+        // -----------------------------------------------------------------------
+        // LeerOrdenTx – ACTUAL: reader["nombre"] x2 por columna (AprobarPagoConFacturaTransaccional)
+        // -----------------------------------------------------------------------
+        private static OrdenTxResult LeerOrdenTxActual(IDataReader reader)
+        {
+            var r = new OrdenTxResult();
+            r.NumeroOrden  = reader["numero_orden"]     != DBNull.Value ? reader["numero_orden"].ToString()              : null;
+            r.Estado       = reader["estado"]           != DBNull.Value ? reader["estado"].ToString()                    : null;
+            r.Correo       = reader["correo"]           != DBNull.Value ? reader["correo"].ToString()                    : null;
+            r.Compania     = reader["compania"]         != DBNull.Value ? reader["compania"].ToString()                  : null;
+            r.Observacion  = reader["observacion"]      != DBNull.Value ? reader["observacion"].ToString()               : null;
+            r.CodigoSolicitud = reader["codigo_solicitud"] != DBNull.Value
+                ? int.TryParse(reader["codigo_solicitud"].ToString(), out var cs) ? cs : 0 : 0;
+            r.Total        = reader["total"]            != DBNull.Value ? Convert.ToDecimal(reader["total"])             : 0m;
+            return r;
+        }
+
+        // -----------------------------------------------------------------------
+        // LeerOrdenTx – OPTIMIZADO: GetOrdinal x1 por columna
+        // -----------------------------------------------------------------------
+        private static OrdenTxResult LeerOrdenTxOptimizado(IDataReader reader)
+        {
+            int ordNumOrden   = reader.GetOrdinal("numero_orden");
+            int ordEstado     = reader.GetOrdinal("estado");
+            int ordCorreo     = reader.GetOrdinal("correo");
+            int ordCompania   = reader.GetOrdinal("compania");
+            int ordObs        = reader.GetOrdinal("observacion");
+            int ordCodSol     = reader.GetOrdinal("codigo_solicitud");
+            int ordTotal      = reader.GetOrdinal("total");
+
+            var r = new OrdenTxResult();
+            r.NumeroOrden     = reader.IsDBNull(ordNumOrden) ? null : reader.GetString(ordNumOrden);
+            r.Estado          = reader.IsDBNull(ordEstado)   ? null : reader.GetString(ordEstado);
+            r.Correo          = reader.IsDBNull(ordCorreo)   ? null : reader.GetString(ordCorreo);
+            r.Compania        = reader.IsDBNull(ordCompania) ? null : reader.GetString(ordCompania);
+            r.Observacion     = reader.IsDBNull(ordObs)      ? null : reader.GetString(ordObs);
+            r.CodigoSolicitud = reader.IsDBNull(ordCodSol)   ? 0    : Convert.ToInt32(reader.GetValue(ordCodSol));
+            r.Total           = reader.IsDBNull(ordTotal)    ? 0m   : reader.GetDecimal(ordTotal);
+            return r;
+        }
+
+        // -----------------------------------------------------------------------
+        // LeerOrdenMeta – ACTUAL: reader["nombre"] x2 por columna (RegistrarResultadoFr3)
+        // -----------------------------------------------------------------------
+        private static OrdenTxResult LeerOrdenMetaActual(IDataReader reader)
+        {
+            var r = new OrdenTxResult();
+            r.CodigoSolicitud = reader["codigo_solicitud"] != DBNull.Value
+                ? Convert.ToInt32(reader["codigo_solicitud"]) : 0;
+            r.NumeroOrdenMeta = reader["numero_orden"] != DBNull.Value
+                ? reader["numero_orden"].ToString() : string.Empty;
+            r.CorreoMeta      = reader["correo"]       != DBNull.Value
+                ? reader["correo"].ToString()       : string.Empty;
+            r.CompaniaMeta    = reader["compania"]     != DBNull.Value
+                ? reader["compania"].ToString()     : string.Empty;
+            return r;
+        }
+
+        // -----------------------------------------------------------------------
+        // LeerOrdenMeta – OPTIMIZADO: GetOrdinal x1 por columna
+        // -----------------------------------------------------------------------
+        private static OrdenTxResult LeerOrdenMetaOptimizado(IDataReader reader)
+        {
+            int ordCodSol   = reader.GetOrdinal("codigo_solicitud");
+            int ordNumOrden = reader.GetOrdinal("numero_orden");
+            int ordCorreo   = reader.GetOrdinal("correo");
+            int ordCompania = reader.GetOrdinal("compania");
+
+            var r = new OrdenTxResult();
+            r.CodigoSolicitud = reader.IsDBNull(ordCodSol)   ? 0              : Convert.ToInt32(reader.GetValue(ordCodSol));
+            r.NumeroOrdenMeta = reader.IsDBNull(ordNumOrden) ? string.Empty   : reader.GetString(ordNumOrden);
+            r.CorreoMeta      = reader.IsDBNull(ordCorreo)   ? string.Empty   : reader.GetString(ordCorreo);
+            r.CompaniaMeta    = reader.IsDBNull(ordCompania) ? string.Empty   : reader.GetString(ordCompania);
+            return r;
+        }
+
+        // -----------------------------------------------------------------------
+        // LeerOrdenFr3 – ACTUAL: reader["nombre"] x2 por columna (TryCrearRegistroFacturaPlaceholderParaFr3)
+        // -----------------------------------------------------------------------
+        private static OrdenTxResult LeerOrdenFr3Actual(IDataReader reader)
+        {
+            var r = new OrdenTxResult();
+            r.NumeroOrden = reader["numero_orden"] != DBNull.Value
+                ? reader["numero_orden"].ToString() : null;
+            r.Subtotal    = reader["subtotal"]     != DBNull.Value
+                ? Convert.ToDecimal(reader["subtotal"]) : 0m;
+            r.Iva         = reader["iva"]          != DBNull.Value
+                ? Convert.ToDecimal(reader["iva"])     : 0m;
+            r.Total       = reader["total"]        != DBNull.Value
+                ? Convert.ToDecimal(reader["total"])   : 0m;
+            return r;
+        }
+
+        // -----------------------------------------------------------------------
+        // LeerOrdenFr3 – OPTIMIZADO: GetOrdinal x1 por columna
+        // -----------------------------------------------------------------------
+        private static OrdenTxResult LeerOrdenFr3Optimizado(IDataReader reader)
+        {
+            int ordNumOrden = reader.GetOrdinal("numero_orden");
+            int ordSubtotal = reader.GetOrdinal("subtotal");
+            int ordIva      = reader.GetOrdinal("iva");
+            int ordTotal    = reader.GetOrdinal("total");
+
+            var r = new OrdenTxResult();
+            r.NumeroOrden = reader.IsDBNull(ordNumOrden) ? null : reader.GetString(ordNumOrden);
+            r.Subtotal    = reader.IsDBNull(ordSubtotal) ? 0m   : reader.GetDecimal(ordSubtotal);
+            r.Iva         = reader.IsDBNull(ordIva)      ? 0m   : reader.GetDecimal(ordIva);
+            r.Total       = reader.IsDBNull(ordTotal)    ? 0m   : reader.GetDecimal(ordTotal);
+            return r;
+        }
+
+        // -----------------------------------------------------------------------
+        // Fake IDataReader para el bloque inline de AprobarPagoConFacturaTransaccional
+        // columnas: id, numero_orden, estado, codigo_solicitud, correo, compania, observacion, total
+        // -----------------------------------------------------------------------
+        private class FakeOrdenTxDataReader : IDataReader
+        {
+            private static readonly string[] _columns =
+                { "id", "numero_orden", "estado", "codigo_solicitud", "correo", "compania", "observacion", "total" };
+            private static readonly object[] _values =
+                { 42, "ORD-2025-001", "PENDIENTE", 15, "test@empresa.com", "Empresa S.A.", "Sin novedad", 1080.00m };
+
+            public int GetOrdinal(string name)
+            {
+                for (int i = 0; i < _columns.Length; i++)
+                    if (_columns[i] == name) return i;
+                throw new IndexOutOfRangeException(name);
+            }
+            public bool IsDBNull(int i)       => _values[i] == null;
+            public int GetInt32(int i)        => Convert.ToInt32(_values[i]);
+            public string GetString(int i)    => _values[i]?.ToString();
+            public decimal GetDecimal(int i)  => Convert.ToDecimal(_values[i]);
+            public DateTime GetDateTime(int i)=> (DateTime)_values[i];
+            public Type GetFieldType(int i)   => _values[i]?.GetType() ?? typeof(object);
+            public object GetValue(int i)     => _values[i];
+            public object this[string name]   => _values[GetOrdinal(name)];
+            public object this[int i]         => _values[i];
+            public int FieldCount             => _columns.Length;
+            public bool Read()                => true;
+            public bool NextResult()          => false;
+            public void Close()               { }
+            public bool IsClosed              => false;
+            public int Depth                  => 0;
+            public int RecordsAffected        => -1;
+            public DataTable GetSchemaTable() => null;
+            public bool GetBoolean(int i)     => (bool)_values[i];
+            public byte GetByte(int i)        => (byte)_values[i];
+            public long GetBytes(int i, long fo, byte[] buf, int bo, int len) => 0;
+            public char GetChar(int i)        => (char)_values[i];
+            public long GetChars(int i, long fo, char[] buf, int bo, int len) => 0;
+            public IDataReader GetData(int i) => null;
+            public string GetDataTypeName(int i) => _values[i]?.GetType().Name;
+            public double GetDouble(int i)    => (double)_values[i];
+            public float GetFloat(int i)      => (float)_values[i];
+            public Guid GetGuid(int i)        => (Guid)_values[i];
+            public short GetInt16(int i)      => (short)_values[i];
+            public long GetInt64(int i)       => (long)_values[i];
+            public string GetName(int i)      => _columns[i];
+            public int GetValues(object[] values) { Array.Copy(_values, values, _values.Length); return _values.Length; }
+            public void Dispose() { }
+        }
+
+        // -----------------------------------------------------------------------
+        // Fake IDataReader para el bloque inline de RegistrarResultadoFr3
+        // columnas: codigo_solicitud, numero_orden, correo, compania
+        // -----------------------------------------------------------------------
+        private class FakeOrdenMetaDataReader : IDataReader
+        {
+            private static readonly string[] _columns =
+                { "codigo_solicitud", "numero_orden", "correo", "compania" };
+            private static readonly object[] _values =
+                { 15, "ORD-2025-001", "test@empresa.com", "Empresa S.A." };
+
+            public int GetOrdinal(string name)
+            {
+                for (int i = 0; i < _columns.Length; i++)
+                    if (_columns[i] == name) return i;
+                throw new IndexOutOfRangeException(name);
+            }
+            public bool IsDBNull(int i)       => _values[i] == null;
+            public int GetInt32(int i)        => Convert.ToInt32(_values[i]);
+            public string GetString(int i)    => _values[i]?.ToString();
+            public decimal GetDecimal(int i)  => Convert.ToDecimal(_values[i]);
+            public DateTime GetDateTime(int i)=> (DateTime)_values[i];
+            public Type GetFieldType(int i)   => _values[i]?.GetType() ?? typeof(object);
+            public object GetValue(int i)     => _values[i];
+            public object this[string name]   => _values[GetOrdinal(name)];
+            public object this[int i]         => _values[i];
+            public int FieldCount             => _columns.Length;
+            public bool Read()                => true;
+            public bool NextResult()          => false;
+            public void Close()               { }
+            public bool IsClosed              => false;
+            public int Depth                  => 0;
+            public int RecordsAffected        => -1;
+            public DataTable GetSchemaTable() => null;
+            public bool GetBoolean(int i)     => (bool)_values[i];
+            public byte GetByte(int i)        => (byte)_values[i];
+            public long GetBytes(int i, long fo, byte[] buf, int bo, int len) => 0;
+            public char GetChar(int i)        => (char)_values[i];
+            public long GetChars(int i, long fo, char[] buf, int bo, int len) => 0;
+            public IDataReader GetData(int i) => null;
+            public string GetDataTypeName(int i) => _values[i]?.GetType().Name;
+            public double GetDouble(int i)    => (double)_values[i];
+            public float GetFloat(int i)      => (float)_values[i];
+            public Guid GetGuid(int i)        => (Guid)_values[i];
+            public short GetInt16(int i)      => (short)_values[i];
+            public long GetInt64(int i)       => (long)_values[i];
+            public string GetName(int i)      => _columns[i];
+            public int GetValues(object[] values) { Array.Copy(_values, values, _values.Length); return _values.Length; }
+            public void Dispose() { }
+        }
+
+        // -----------------------------------------------------------------------
+        // Fake IDataReader para el bloque inline de TryCrearRegistroFacturaPlaceholderParaFr3
+        // columnas: numero_orden, subtotal, iva, total
+        // -----------------------------------------------------------------------
+        private class FakeOrdenFr3DataReader : IDataReader
+        {
+            private static readonly string[] _columns =
+                { "numero_orden", "subtotal", "iva", "total" };
+            private static readonly object[] _values =
+                { "ORD-2025-001", 1000.00m, 0m, 1080.00m };
+
+            public int GetOrdinal(string name)
+            {
+                for (int i = 0; i < _columns.Length; i++)
+                    if (_columns[i] == name) return i;
+                throw new IndexOutOfRangeException(name);
+            }
+            public bool IsDBNull(int i)       => _values[i] == null;
+            public int GetInt32(int i)        => Convert.ToInt32(_values[i]);
+            public string GetString(int i)    => _values[i]?.ToString();
+            public decimal GetDecimal(int i)  => Convert.ToDecimal(_values[i]);
+            public DateTime GetDateTime(int i)=> (DateTime)_values[i];
+            public Type GetFieldType(int i)   => _values[i]?.GetType() ?? typeof(object);
+            public object GetValue(int i)     => _values[i];
+            public object this[string name]   => _values[GetOrdinal(name)];
+            public object this[int i]         => _values[i];
+            public int FieldCount             => _columns.Length;
+            public bool Read()                => true;
+            public bool NextResult()          => false;
+            public void Close()               { }
+            public bool IsClosed              => false;
+            public int Depth                  => 0;
+            public int RecordsAffected        => -1;
+            public DataTable GetSchemaTable() => null;
+            public bool GetBoolean(int i)     => (bool)_values[i];
+            public byte GetByte(int i)        => (byte)_values[i];
+            public long GetBytes(int i, long fo, byte[] buf, int bo, int len) => 0;
+            public char GetChar(int i)        => (char)_values[i];
+            public long GetChars(int i, long fo, char[] buf, int bo, int len) => 0;
+            public IDataReader GetData(int i) => null;
+            public string GetDataTypeName(int i) => _values[i]?.GetType().Name;
+            public double GetDouble(int i)    => (double)_values[i];
+            public float GetFloat(int i)      => (float)_values[i];
+            public Guid GetGuid(int i)        => (Guid)_values[i];
+            public short GetInt16(int i)      => (short)_values[i];
+            public long GetInt64(int i)       => (long)_values[i];
+            public string GetName(int i)      => _columns[i];
+            public int GetValues(object[] values) { Array.Copy(_values, values, _values.Length); return _values.Length; }
+            public void Dispose() { }
+        }
+
+        // -----------------------------------------------------------------------
+        private class FakeDataReader : IDataReader
+        {
+            private static readonly string[] _columns =
+            {
+                "id",
+                "codigo_usuario",
+                "codigo_solicitud",
+                "numero_orden",
+                "fecha_creacion",
+                "estado",
+                "observacion",
+                "subtotal",
+                "admin",
+                "total",
+                "lugar_emision",
+                "compania",
+                "ruc_cedula",
+                "correo",
+                "telefono",
+                "concepto_id",
+                "concepto_nombre"
+            };
+            private static readonly object[] _values =
+            {
+                42, // id
+                7, // codigo_usuario
+                15, // codigo_solicitud
+                "ORD-2025-001", // numero_orden
+                new DateTime(2025, 3, 15), // fecha_creacion
+                "GENERADA", // estado
+                "Observacion de prueba", // observacion
+                1000.00m, // subtotal
+                80.00m, // admin
+                1080.00m, // total
+                "QUITO", // lugar_emision
+                "Empresa de Prueba S.A.", // compania
+                "1792345678001", // ruc_cedula
+                "test@empresa.com", // correo
+                "0998765432", // telefono
+                3, // concepto_id
+                "Emisión AOCR" // concepto_nombre
+            };
+            public int GetOrdinal(string name)
+            {
+                for (int i = 0; i < _columns.Length; i++)
+                    if (_columns[i] == name)
+                        return i;
+                throw new IndexOutOfRangeException(name);
+            }
+
+            public bool IsDBNull(int i) => _values[i] == null;
+            public int GetInt32(int i) => Convert.ToInt32(_values[i]);
+            public string GetString(int i) => _values[i]?.ToString();
+            public decimal GetDecimal(int i) => Convert.ToDecimal(_values[i]);
+            public DateTime GetDateTime(int i) => (DateTime)_values[i];
+            public Type GetFieldType(int i) => _values[i]?.GetType() ?? typeof(object);
+            public object GetValue(int i) => _values[i];
+            // IDataReader / IDataRecord members no usados
+            public object this[int i] => _values[i];
+            public object this[string name] => _values[GetOrdinal(name)];
+            public int FieldCount => _columns.Length;
+
+            public bool Read() => true;
+            public bool NextResult() => false;
+            public void Close()
+            {
+            }
+
+            public bool IsClosed => false;
+            public int Depth => 0;
+            public int RecordsAffected => -1;
+
+            public DataTable GetSchemaTable() => null;
+            public bool GetBoolean(int i) => (bool)_values[i];
+            public byte GetByte(int i) => (byte)_values[i];
+            public long GetBytes(int i, long fo, byte[] buf, int bo, int len) => 0;
+            public char GetChar(int i) => (char)_values[i];
+            public long GetChars(int i, long fo, char[] buf, int bo, int len) => 0;
+            public IDataReader GetData(int i) => null;
+            public string GetDataTypeName(int i) => _values[i]?.GetType().Name;
+            public double GetDouble(int i) => (double)_values[i];
+            public float GetFloat(int i) => (float)_values[i];
+            public Guid GetGuid(int i) => (Guid)_values[i];
+            public short GetInt16(int i) => (short)_values[i];
+            public long GetInt64(int i) => (long)_values[i];
+            public string GetName(int i) => _columns[i];
+            public int GetValues(object[] values)
+            {
+                Array.Copy(_values, values, _values.Length);
+                return _values.Length;
+            }
+
+            public void Dispose()
+            {
+            }
+        }
+    }
+}

@@ -1,0 +1,262 @@
+﻿2026-03-25 10:06:45.154 | INFO  | CID:dbe3c491aca4 | Account/Login | Iniciando acción: Account/Login
+2026-03-25 10:06:45.818 | INFO  | CID:dbe3c491aca4 | Account/Login | Acción completada: Account/Login
+2026-03-25 10:29:54.246 | INFO  | CID:N/A | Deteniendo procesador de cola de correos
+2026-03-25 10:29:54.396 | INFO  | CID:N/A | Deteniendo procesador de cola de correos
+2026-03-25 10:30:19.477 | INFO  | CID:N/A | Iniciando procesador de cola de correos
+2026-03-25 10:31:40.382 | INFO  | CID:N/A | Iniciando procesador de cola de correos
+2026-03-25 10:32:04.165 | INFO  | CID:30413f0bff6e | Account/Login | Iniciando acción: Account/Login
+2026-03-25 10:32:05.014 | INFO  | CID:30413f0bff6e | Account/Login | Acción completada: Account/Login
+2026-03-25 10:32:29.378 | ERROR | CID:3a7c1940379a | USR:USU_ADMIN | Financiero/Dashboard | ERR:BAD_REQUEST | No se encuentra la vista 'Dashboard' ni su vista maestra o no hay un motor de búsqueda que admita las ubicaciones de búsqueda. Se buscó en las siguientes ubicaciones: 
+~/Views/Financiero/Dashboard.aspx
+~/Views/Financiero/Dashboard.ascx
+~/Views/Shared/Dashboard.aspx
+~/Views/Shared/Dashboard.ascx
+~/Views/Financiero/Dashboard.cshtml
+~/Views/Financiero/Dashboard.vbhtml
+~/Views/Shared/Dashboard.cshtml
+~/Views/Shared/Dashboard.vbhtml
+    Exception: InvalidOperationException
+    StackTrace:    en System.Web.Mvc.ViewResult.FindView(ControllerContext context)
+   en System.Web.Mvc.ViewResultBase.ExecuteResult(ControllerContext context)
+   en System.Web.Mvc.ControllerActionInvoker.InvokeActionResultFilterRecursive(IList`1 filters, Int32 filterIndex, ResultExecutingContext preContext, ControllerContext controllerContext, ActionResult actionResult)
+   en System.Web.Mvc.ControllerActionInvoker.InvokeActionResultFilterRecursive(IList`1 filters, Int32 filterIndex, ResultExecutingContext preContext, ControllerContext controllerContext, ActionResult actionResult)
+   en System.Web.Mvc.ControllerActionInvoker.InvokeActionResultFilterRecursive(IList`1 filters, Int32 filterIndex, ResultExecutingContext preContext, ControllerContext controllerContext, ActionResult actionResult)
+   en System.Web.Mvc.ControllerActionInvoker.InvokeActionResultFilterRecursive(IList`1 filters, Int32 filterIndex, ResultExecutingContext preContext, ControllerContext controllerContext, ActionResult actionResult)
+   en System.Web.Mvc.ControllerActionInvoker.InvokeActionResultWithFilters(ControllerContext controllerContext, IList`1 filters, ActionResult actionResult)
+   en System.Web.Mvc.Async.AsyncControllerActionInvoker.<>c__DisplayClass3_1.<BeginInvokeAction>b__1(IAsyncResult asyncResult)
+2026-03-25 10:34:56.759 | INFO  | CID:N/A | Iniciando procesador de cola de correos
+2026-03-25 10:35:22.259 | INFO  | CID:49e51252d55d | Account/Login | Iniciando acción: Account/Login
+2026-03-25 10:35:23.049 | INFO  | CID:49e51252d55d | Account/Login | Acción completada: Account/Login
+2026-03-25 10:35:42.150 | ERROR | CID:230bcf6810eb | USR:USU_ADMIN | Financiero/Dashboard | ERR:BAD_REQUEST | No se encuentra la vista 'Dashboard' ni su vista maestra o no hay un motor de búsqueda que admita las ubicaciones de búsqueda. Se buscó en las siguientes ubicaciones: 
+~/Views/Financiero/Dashboard.aspx
+~/Views/Financiero/Dashboard.ascx
+~/Views/Shared/Dashboard.aspx
+~/Views/Shared/Dashboard.ascx
+~/Views/Financiero/Dashboard.cshtml
+~/Views/Financiero/Dashboard.vbhtml
+~/Views/Shared/Dashboard.cshtml
+~/Views/Shared/Dashboard.vbhtml
+    Exception: InvalidOperationException
+    StackTrace:    en System.Web.Mvc.ViewResult.FindView(ControllerContext context)
+   en System.Web.Mvc.ViewResultBase.ExecuteResult(ControllerContext context)
+   en System.Web.Mvc.ControllerActionInvoker.InvokeActionResultFilterRecursive(IList`1 filters, Int32 filterIndex, ResultExecutingContext preContext, ControllerContext controllerContext, ActionResult actionResult)
+   en System.Web.Mvc.ControllerActionInvoker.InvokeActionResultFilterRecursive(IList`1 filters, Int32 filterIndex, ResultExecutingContext preContext, ControllerContext controllerContext, ActionResult actionResult)
+   en System.Web.Mvc.ControllerActionInvoker.InvokeActionResultFilterRecursive(IList`1 filters, Int32 filterIndex, ResultExecutingContext preContext, ControllerContext controllerContext, ActionResult actionResult)
+   en System.Web.Mvc.ControllerActionInvoker.InvokeActionResultFilterRecursive(IList`1 filters, Int32 filterIndex, ResultExecutingContext preContext, ControllerContext controllerContext, ActionResult actionResult)
+   en System.Web.Mvc.ControllerActionInvoker.InvokeActionResultWithFilters(ControllerContext controllerContext, IList`1 filters, ActionResult actionResult)
+   en System.Web.Mvc.Async.AsyncControllerActionInvoker.<>c__DisplayClass3_1.<BeginInvokeAction>b__1(IAsyncResult asyncResult)
+2026-03-25 10:35:48.487 | INFO  | CID:N/A | Deteniendo procesador de cola de correos
+2026-03-25 10:35:48.524 | INFO  | CID:N/A | Deteniendo procesador de cola de correos
+2026-03-25 10:36:05.934 | INFO  | CID:N/A | Iniciando procesador de cola de correos
+2026-03-25 10:36:27.094 | ERROR | CID:416cf4f472a5 | USR:USU_ADMIN | Financiero/Dashboard | ERR:BAD_REQUEST | No se encuentra la vista 'Dashboard' ni su vista maestra o no hay un motor de búsqueda que admita las ubicaciones de búsqueda. Se buscó en las siguientes ubicaciones: 
+~/Views/Financiero/Dashboard.aspx
+~/Views/Financiero/Dashboard.ascx
+~/Views/Shared/Dashboard.aspx
+~/Views/Shared/Dashboard.ascx
+~/Views/Financiero/Dashboard.cshtml
+~/Views/Financiero/Dashboard.vbhtml
+~/Views/Shared/Dashboard.cshtml
+~/Views/Shared/Dashboard.vbhtml
+    Exception: InvalidOperationException
+    StackTrace:    en System.Web.Mvc.ViewResult.FindView(ControllerContext context)
+   en System.Web.Mvc.ViewResultBase.ExecuteResult(ControllerContext context)
+   en System.Web.Mvc.ControllerActionInvoker.InvokeActionResultFilterRecursive(IList`1 filters, Int32 filterIndex, ResultExecutingContext preContext, ControllerContext controllerContext, ActionResult actionResult)
+   en System.Web.Mvc.ControllerActionInvoker.InvokeActionResultFilterRecursive(IList`1 filters, Int32 filterIndex, ResultExecutingContext preContext, ControllerContext controllerContext, ActionResult actionResult)
+   en System.Web.Mvc.ControllerActionInvoker.InvokeActionResultFilterRecursive(IList`1 filters, Int32 filterIndex, ResultExecutingContext preContext, ControllerContext controllerContext, ActionResult actionResult)
+   en System.Web.Mvc.ControllerActionInvoker.InvokeActionResultFilterRecursive(IList`1 filters, Int32 filterIndex, ResultExecutingContext preContext, ControllerContext controllerContext, ActionResult actionResult)
+   en System.Web.Mvc.ControllerActionInvoker.InvokeActionResultWithFilters(ControllerContext controllerContext, IList`1 filters, ActionResult actionResult)
+   en System.Web.Mvc.Async.AsyncControllerActionInvoker.<>c__DisplayClass3_1.<BeginInvokeAction>b__1(IAsyncResult asyncResult)
+2026-03-25 10:36:27.583 | ERROR | CID:2db87bf34a86 | USR:USU_ADMIN | Financiero/Dashboard | ERR:BAD_REQUEST | No se encuentra la vista 'Dashboard' ni su vista maestra o no hay un motor de búsqueda que admita las ubicaciones de búsqueda. Se buscó en las siguientes ubicaciones: 
+~/Views/Financiero/Dashboard.aspx
+~/Views/Financiero/Dashboard.ascx
+~/Views/Shared/Dashboard.aspx
+~/Views/Shared/Dashboard.ascx
+~/Views/Financiero/Dashboard.cshtml
+~/Views/Financiero/Dashboard.vbhtml
+~/Views/Shared/Dashboard.cshtml
+~/Views/Shared/Dashboard.vbhtml
+    Exception: InvalidOperationException
+    StackTrace:    en System.Web.Mvc.ViewResult.FindView(ControllerContext context)
+   en System.Web.Mvc.ViewResultBase.ExecuteResult(ControllerContext context)
+   en System.Web.Mvc.ControllerActionInvoker.InvokeActionResultFilterRecursive(IList`1 filters, Int32 filterIndex, ResultExecutingContext preContext, ControllerContext controllerContext, ActionResult actionResult)
+   en System.Web.Mvc.ControllerActionInvoker.InvokeActionResultFilterRecursive(IList`1 filters, Int32 filterIndex, ResultExecutingContext preContext, ControllerContext controllerContext, ActionResult actionResult)
+   en System.Web.Mvc.ControllerActionInvoker.InvokeActionResultFilterRecursive(IList`1 filters, Int32 filterIndex, ResultExecutingContext preContext, ControllerContext controllerContext, ActionResult actionResult)
+   en System.Web.Mvc.ControllerActionInvoker.InvokeActionResultFilterRecursive(IList`1 filters, Int32 filterIndex, ResultExecutingContext preContext, ControllerContext controllerContext, ActionResult actionResult)
+   en System.Web.Mvc.ControllerActionInvoker.InvokeActionResultWithFilters(ControllerContext controllerContext, IList`1 filters, ActionResult actionResult)
+   en System.Web.Mvc.Async.AsyncControllerActionInvoker.<>c__DisplayClass3_1.<BeginInvokeAction>b__1(IAsyncResult asyncResult)
+2026-03-25 10:37:55.095 | INFO  | CID:N/A | Deteniendo procesador de cola de correos
+2026-03-25 10:37:55.141 | INFO  | CID:N/A | Deteniendo procesador de cola de correos
+2026-03-25 10:38:23.886 | INFO  | CID:N/A | Iniciando procesador de cola de correos
+2026-03-25 10:39:14.784 | INFO  | CID:N/A | Iniciando procesador de cola de correos
+2026-03-25 10:39:35.345 | INFO  | CID:070d65822d19 | Account/Login | Iniciando acción: Account/Login
+2026-03-25 10:39:36.028 | INFO  | CID:070d65822d19 | Account/Login | Acción completada: Account/Login
+2026-03-25 10:44:14.750 | INFO  | CID:N/A | Iniciando procesador de cola de correos
+2026-03-25 10:47:32.053 | INFO  | CID:N/A | Deteniendo procesador de cola de correos
+2026-03-25 10:47:32.073 | INFO  | CID:N/A | Deteniendo procesador de cola de correos
+2026-03-25 10:48:27.699 | INFO  | CID:N/A | Iniciando procesador de cola de correos
+2026-03-25 10:48:53.854 | INFO  | CID:8226d99449d4 | Account/Login | Iniciando acción: Account/Login
+2026-03-25 10:48:54.562 | INFO  | CID:8226d99449d4 | Account/Login | Acción completada: Account/Login
+2026-03-25 10:53:30.143 | INFO  | CID:N/A | Iniciando procesador de cola de correos
+2026-03-25 10:53:50.059 | INFO  | CID:73481356da36 | Account/Login | Iniciando acción: Account/Login
+2026-03-25 10:53:50.777 | INFO  | CID:73481356da36 | Account/Login | Acción completada: Account/Login
+2026-03-25 11:03:14.843 | INFO  | CID:N/A | Iniciando procesador de cola de correos
+2026-03-25 11:03:35.910 | INFO  | CID:297c283202cd | Account/Login | Iniciando acción: Account/Login
+2026-03-25 11:03:36.923 | INFO  | CID:297c283202cd | Account/Login | Acción completada: Account/Login
+2026-03-25 11:11:26.981 | INFO  | CID:N/A | Deteniendo procesador de cola de correos
+2026-03-25 11:11:27.006 | INFO  | CID:N/A | Deteniendo procesador de cola de correos
+2026-03-25 11:11:38.615 | INFO  | CID:N/A | Iniciando procesador de cola de correos
+2026-03-25 11:11:46.615 | INFO  | CID:N/A | USR:USU_ADMIN | Inspeccion/Index | AuditTrailService: Tabla aocr_audit_trail verificada/creada.
+2026-03-25 11:11:46.615 | INFO  | CID:0e45147ba74b | USR:USU_ADMIN | Inspeccion/Index | [InspeccionesController] Inicio pantalla gestion inspecciones. Usuario=USU_ADMIN, Rol=Administrador,Inspector,JefaturaTecnica,Direccion,CoordinacionLegal
+2026-03-25 11:11:46.731 | INFO  | CID:0e45147ba74b | USR:USU_ADMIN | Inspeccion/Index | [InspeccionesController] Inspecciones recibidas=12
+2026-03-25 11:12:24.279 | INFO  | CID:N/A | Iniciando procesador de cola de correos
+2026-03-25 11:12:52.212 | INFO  | CID:747a49cfcaf7 | Account/Login | Iniciando acción: Account/Login
+2026-03-25 11:12:52.907 | INFO  | CID:747a49cfcaf7 | Account/Login | Acción completada: Account/Login
+2026-03-25 11:19:52.947 | INFO  | CID:N/A | Deteniendo procesador de cola de correos
+2026-03-25 11:19:52.975 | INFO  | CID:N/A | Deteniendo procesador de cola de correos
+2026-03-25 11:20:08.789 | INFO  | CID:N/A | Iniciando procesador de cola de correos
+2026-03-25 11:21:52.383 | INFO  | CID:N/A | Iniciando procesador de cola de correos
+2026-03-25 11:22:16.090 | INFO  | CID:3deda7100d6b | Account/Login | Iniciando acción: Account/Login
+2026-03-25 11:22:16.832 | INFO  | CID:3deda7100d6b | Account/Login | Acción completada: Account/Login
+2026-03-25 11:31:46.196 | INFO  | CID:N/A | Iniciando procesador de cola de correos
+2026-03-25 11:32:08.254 | INFO  | CID:43743f0d5f43 | Account/Login | Iniciando acción: Account/Login
+2026-03-25 11:32:09.184 | INFO  | CID:43743f0d5f43 | Account/Login | Acción completada: Account/Login
+2026-03-25 11:33:56.375 | INFO  | CID:N/A | Deteniendo procesador de cola de correos
+2026-03-25 11:33:56.423 | INFO  | CID:N/A | Deteniendo procesador de cola de correos
+2026-03-25 11:34:45.786 | INFO  | CID:N/A | Iniciando procesador de cola de correos
+2026-03-25 11:35:14.049 | INFO  | CID:b2deefbbcd06 | Account/Login | Iniciando acción: Account/Login
+2026-03-25 11:35:14.784 | INFO  | CID:b2deefbbcd06 | Account/Login | Acción completada: Account/Login
+2026-03-25 11:43:40.192 | INFO  | CID:N/A | Iniciando procesador de cola de correos
+2026-03-25 11:44:01.752 | INFO  | CID:262d5f844ff2 | Account/Login | Iniciando acción: Account/Login
+2026-03-25 11:44:02.486 | INFO  | CID:262d5f844ff2 | Account/Login | Acción completada: Account/Login
+2026-03-25 11:45:40.140 | INFO  | CID:N/A | Deteniendo procesador de cola de correos
+2026-03-25 11:45:40.156 | INFO  | CID:N/A | Deteniendo procesador de cola de correos
+2026-03-25 11:46:26.050 | INFO  | CID:N/A | Iniciando procesador de cola de correos
+2026-03-25 11:46:47.082 | INFO  | CID:1f251999cf51 | Account/Login | Iniciando acción: Account/Login
+2026-03-25 11:46:47.765 | INFO  | CID:1f251999cf51 | Account/Login | Acción completada: Account/Login
+2026-03-25 14:17:01.814 | INFO  | CID:N/A | Iniciando procesador de cola de correos
+2026-03-25 14:17:19.043 | INFO  | CID:bdf7d38c16b7 | Account/Login | Iniciando acción: Account/Login
+2026-03-25 14:17:19.821 | INFO  | CID:bdf7d38c16b7 | Account/Login | Acción completada: Account/Login
+2026-03-25 14:52:03.794 | INFO  | CID:b12f5bc7e71a | USR:USU_ADMIN | Account/ExtenderSesion | Iniciando acción: Account/ExtenderSesion
+2026-03-25 14:52:03.796 | INFO  | CID:b12f5bc7e71a | USR:USU_ADMIN | Account/ExtenderSesion | Acción completada: Account/ExtenderSesion
+2026-03-25 15:35:10.906 | INFO  | CID:N/A | Deteniendo procesador de cola de correos
+2026-03-25 15:35:10.973 | INFO  | CID:N/A | Deteniendo procesador de cola de correos
+2026-03-25 15:54:01.223 | INFO  | CID:N/A | Iniciando procesador de cola de correos
+2026-03-25 15:54:34.516 | INFO  | CID:106a0293e48d | Account/Login | Iniciando acción: Account/Login
+2026-03-25 15:54:35.215 | INFO  | CID:106a0293e48d | Account/Login | Acción completada: Account/Login
+2026-03-25 15:55:55.531 | INFO  | CID:N/A | USR:USU_ADMIN | Inspeccion/Index | AuditTrailService: Tabla aocr_audit_trail verificada/creada.
+2026-03-25 15:55:55.539 | INFO  | CID:77c4bb2b5b13 | USR:USU_ADMIN | Inspeccion/Index | [InspeccionesController] Inicio pantalla gestion inspecciones. Usuario=USU_ADMIN, Rol=Administrador,Inspector,JefaturaTecnica,Direccion,CoordinacionLegal
+2026-03-25 15:55:55.571 | INFO  | CID:77c4bb2b5b13 | USR:USU_ADMIN | Inspeccion/Index | [InspeccionesController] Inspecciones recibidas=12
+2026-03-25 15:56:05.877 | INFO  | CID:0e8ecdc65cf0 | USR:USU_ADMIN | Tecnico/ListarInspectoresActivos | [InspeccionesController] Inicio endpoint AJAX inspectores. Usuario=USU_ADMIN, Rol=Administrador,Direccion,JefaturaTecnica, TipoInspector=TODOS
+2026-03-25 15:56:05.883 | INFO  | CID:0e8ecdc65cf0 | USR:USU_ADMIN | Tecnico/ListarInspectoresActivos | [InspectoresDAO-DB2] Inicio consulta inspectores
+2026-03-25 15:56:05.883 | INFO  | CID:0e8ecdc65cf0 | USR:USU_ADMIN | Tecnico/ListarInspectoresActivos | [InspectoresDAO-DB2] Origen=DB2, Tabla=DGACDAT.OPIAR2
+2026-03-25 15:56:05.890 | INFO  | CID:0e8ecdc65cf0 | USR:USU_ADMIN | Tecnico/ListarInspectoresActivos | [InspectoresDAO-DB2] ConnectionString(sanitizada)=Driver={iSeries Access ODBC Driver};system=190.152.8.185;database=DGACDAT;defaultcollection=DGACDAT;uid=****;pwd=****;connection timeout=30;query timeout=60
+2026-03-25 15:56:05.892 | INFO  | CID:0e8ecdc65cf0 | USR:USU_ADMIN | Tecnico/ListarInspectoresActivos | [InspectoresDAO-DB2] Parametros => estado=AC (fallback: sin estado), tipo=OPS,AIR
+2026-03-25 15:56:06.409 | INFO  | CID:0e8ecdc65cf0 | USR:USU_ADMIN | Tecnico/ListarInspectoresActivos | [InspectoresDAO-DB2] Conexion DB2 abierta OK
+2026-03-25 15:56:06.413 | INFO  | CID:0e8ecdc65cf0 | USR:USU_ADMIN | Tecnico/ListarInspectoresActivos | [InspectoresDAO-DB2] Query ejecutada: SELECT TRIM(OPICED) AS OPICED, TRIM(OPINO2) AS OPINO2, TRIM(OPIES1) AS OPIES1, TRIM(OPITIP) AS OPITIP FROM DGACDAT.OPIAR2 WHERE 1 = 1 AND UPPER(TRIM(COALESCE(OPIES1, ''))) = ? AND OPITIP IN (?,?) ORDER BY OPINO2
+2026-03-25 15:56:06.414 | INFO  | CID:0e8ecdc65cf0 | USR:USU_ADMIN | Tecnico/ListarInspectoresActivos | [InspectoresDAO-DB2] Filtros aplicados => soloActivos=True, tipos=OPS,AIR
+2026-03-25 15:56:06.498 | INFO  | CID:0e8ecdc65cf0 | USR:USU_ADMIN | Tecnico/ListarInspectoresActivos | [InspectoresDAO-DB2] Registros obtenidos desde DB2: 34
+2026-03-25 15:56:06.499 | INFO  | CID:0e8ecdc65cf0 | USR:USU_ADMIN | Tecnico/ListarInspectoresActivos | [InspectoresDAO-DB2] Ejemplo[0] => Cedula=0201377850, Nombre=ALEGRIA CHICO SANTIAGO REMIGIO, Estado=AC, Tipo=OPS
+2026-03-25 15:56:06.499 | INFO  | CID:0e8ecdc65cf0 | USR:USU_ADMIN | Tecnico/ListarInspectoresActivos | [InspectoresDAO-DB2] Ejemplo[1] => Cedula=1709061814, Nombre=AVILA ZARATE EDISON JAVIER, Estado=AC, Tipo=OPS
+2026-03-25 15:56:06.500 | INFO  | CID:0e8ecdc65cf0 | USR:USU_ADMIN | Tecnico/ListarInspectoresActivos | [InspectoresDAO-DB2] Ejemplo[2] => Cedula=1703863520, Nombre=BARRERA BARRENO LUIS GONZALO, Estado=AC, Tipo=OPS
+2026-03-25 15:56:06.500 | INFO  | CID:0e8ecdc65cf0 | USR:USU_ADMIN | Tecnico/ListarInspectoresActivos | [InspectoresDAO-DB2] Ejemplo[3] => Cedula=1709565459, Nombre=CATOTA TORRES LUIS WILKIR, Estado=AC, Tipo=OPS
+2026-03-25 15:56:06.501 | INFO  | CID:0e8ecdc65cf0 | USR:USU_ADMIN | Tecnico/ListarInspectoresActivos | [InspectoresDAO-DB2] Ejemplo[4] => Cedula=1720253846, Nombre=CHUSIN VILLALBA CARLOS ARTURO, Estado=AC, Tipo=OPS
+2026-03-25 15:56:06.502 | INFO  | CID:0e8ecdc65cf0 | USR:USU_ADMIN | Tecnico/ListarInspectoresActivos | [InspeccionesController] Endpoint AJAX inspectores OK. Origen=DB2, Tipo=TODOS, Cantidad=34
+2026-03-25 15:56:53.324 | INFO  | CID:ddb9f39daa43 | USR:USU_ADMIN | Tecnico/AsignarInspector | [InspeccionesController] Inicio pantalla gestion de asignacion. Usuario=USU_ADMIN, Rol=Administrador,Direccion,JefaturaTecnica, SolicitudId=168
+2026-03-25 15:56:53.327 | INFO  | CID:ddb9f39daa43 | USR:USU_ADMIN | Tecnico/AsignarInspector | [InspeccionesController] SolicitudId=168, EstadoActual=Pendiente, NumeroSolicitud=DGAC-GOP-2026-AOCR151
+2026-03-25 15:56:53.328 | INFO  | CID:ddb9f39daa43 | USR:USU_ADMIN | Tecnico/AsignarInspector | [InspectoresDAO-DB2] Inicio consulta inspectores
+2026-03-25 15:56:53.328 | INFO  | CID:ddb9f39daa43 | USR:USU_ADMIN | Tecnico/AsignarInspector | [InspectoresDAO-DB2] Origen=DB2, Tabla=DGACDAT.OPIAR2
+2026-03-25 15:56:53.328 | INFO  | CID:ddb9f39daa43 | USR:USU_ADMIN | Tecnico/AsignarInspector | [InspectoresDAO-DB2] ConnectionString(sanitizada)=Driver={iSeries Access ODBC Driver};system=190.152.8.185;database=DGACDAT;defaultcollection=DGACDAT;uid=****;pwd=****;connection timeout=30;query timeout=60
+2026-03-25 15:56:53.329 | INFO  | CID:ddb9f39daa43 | USR:USU_ADMIN | Tecnico/AsignarInspector | [InspectoresDAO-DB2] Parametros => estado=AC (fallback: sin estado), tipo=OPS
+2026-03-25 15:56:53.330 | INFO  | CID:ddb9f39daa43 | USR:USU_ADMIN | Tecnico/AsignarInspector | [InspectoresDAO-DB2] Conexion DB2 abierta OK
+2026-03-25 15:56:53.330 | INFO  | CID:ddb9f39daa43 | USR:USU_ADMIN | Tecnico/AsignarInspector | [InspectoresDAO-DB2] Query ejecutada: SELECT TRIM(OPICED) AS OPICED, TRIM(OPINO2) AS OPINO2, TRIM(OPIES1) AS OPIES1, TRIM(OPITIP) AS OPITIP FROM DGACDAT.OPIAR2 WHERE 1 = 1 AND UPPER(TRIM(COALESCE(OPIES1, ''))) = ? AND OPITIP IN (?) ORDER BY OPINO2
+2026-03-25 15:56:53.330 | INFO  | CID:ddb9f39daa43 | USR:USU_ADMIN | Tecnico/AsignarInspector | [InspectoresDAO-DB2] Filtros aplicados => soloActivos=True, tipos=OPS
+2026-03-25 15:56:53.341 | INFO  | CID:ddb9f39daa43 | USR:USU_ADMIN | Tecnico/AsignarInspector | [InspectoresDAO-DB2] Registros obtenidos desde DB2: 19
+2026-03-25 15:56:53.342 | INFO  | CID:ddb9f39daa43 | USR:USU_ADMIN | Tecnico/AsignarInspector | [InspectoresDAO-DB2] Ejemplo[0] => Cedula=0201377850, Nombre=ALEGRIA CHICO SANTIAGO REMIGIO, Estado=AC, Tipo=OPS
+2026-03-25 15:56:53.342 | INFO  | CID:ddb9f39daa43 | USR:USU_ADMIN | Tecnico/AsignarInspector | [InspectoresDAO-DB2] Ejemplo[1] => Cedula=1709061814, Nombre=AVILA ZARATE EDISON JAVIER, Estado=AC, Tipo=OPS
+2026-03-25 15:56:53.342 | INFO  | CID:ddb9f39daa43 | USR:USU_ADMIN | Tecnico/AsignarInspector | [InspectoresDAO-DB2] Ejemplo[2] => Cedula=1703863520, Nombre=BARRERA BARRENO LUIS GONZALO, Estado=AC, Tipo=OPS
+2026-03-25 15:56:53.343 | INFO  | CID:ddb9f39daa43 | USR:USU_ADMIN | Tecnico/AsignarInspector | [InspectoresDAO-DB2] Ejemplo[3] => Cedula=1709565459, Nombre=CATOTA TORRES LUIS WILKIR, Estado=AC, Tipo=OPS
+2026-03-25 15:56:53.343 | INFO  | CID:ddb9f39daa43 | USR:USU_ADMIN | Tecnico/AsignarInspector | [InspectoresDAO-DB2] Ejemplo[4] => Cedula=1720253846, Nombre=CHUSIN VILLALBA CARLOS ARTURO, Estado=AC, Tipo=OPS
+2026-03-25 15:56:53.346 | INFO  | CID:ddb9f39daa43 | USR:USU_ADMIN | Tecnico/AsignarInspector | [InspectoresDAO-PG] Inicio consulta espejo inspectores
+2026-03-25 15:56:53.346 | INFO  | CID:ddb9f39daa43 | USR:USU_ADMIN | Tecnico/AsignarInspector | [InspectoresDAO-PG] Tabla espejo: public.aocr_tbinspectores
+2026-03-25 15:56:53.349 | WARN  | CID:ddb9f39daa43 | USR:USU_ADMIN | Tecnico/AsignarInspector | [InspectoresDAO-PG] No existe la tabla espejo aocr_tbinspectores.
+2026-03-25 15:56:53.349 | WARN  | CID:ddb9f39daa43 | USR:USU_ADMIN | Tecnico/AsignarInspector | [InspectoresDAO-PG] Espejo no disponible (tabla inexistente). Flujo usa DB2 directo.
+2026-03-25 15:56:53.350 | INFO  | CID:ddb9f39daa43 | USR:USU_ADMIN | Tecnico/AsignarInspector | [InspeccionesController] Origen inspectores=DB2, TipoFiltro=OPS, InspectoresRecibidos=19
+2026-03-25 15:56:53.810 | INFO  | CID:ddb9f39daa43 | USR:USU_ADMIN | Tecnico/AsignarInspector | [InspeccionesController] ViewModel cargado correctamente. SolicitudId=168, ViewBagInspectores=19
+2026-03-25 15:56:56.888 | INFO  | CID:6bc2bef806b0 | USR:USU_ADMIN | Tecnico/ListarInspectoresActivos | [InspeccionesController] Inicio endpoint AJAX inspectores. Usuario=USU_ADMIN, Rol=Administrador,Direccion,JefaturaTecnica, TipoInspector=OPS
+2026-03-25 15:56:56.889 | INFO  | CID:6bc2bef806b0 | USR:USU_ADMIN | Tecnico/ListarInspectoresActivos | [InspectoresDAO-DB2] Inicio consulta inspectores
+2026-03-25 15:56:56.889 | INFO  | CID:6bc2bef806b0 | USR:USU_ADMIN | Tecnico/ListarInspectoresActivos | [InspectoresDAO-DB2] Origen=DB2, Tabla=DGACDAT.OPIAR2
+2026-03-25 15:56:56.890 | INFO  | CID:6bc2bef806b0 | USR:USU_ADMIN | Tecnico/ListarInspectoresActivos | [InspectoresDAO-DB2] ConnectionString(sanitizada)=Driver={iSeries Access ODBC Driver};system=190.152.8.185;database=DGACDAT;defaultcollection=DGACDAT;uid=****;pwd=****;connection timeout=30;query timeout=60
+2026-03-25 15:56:56.890 | INFO  | CID:6bc2bef806b0 | USR:USU_ADMIN | Tecnico/ListarInspectoresActivos | [InspectoresDAO-DB2] Parametros => estado=AC (fallback: sin estado), tipo=OPS
+2026-03-25 15:56:56.891 | INFO  | CID:6bc2bef806b0 | USR:USU_ADMIN | Tecnico/ListarInspectoresActivos | [InspectoresDAO-DB2] Conexion DB2 abierta OK
+2026-03-25 15:56:56.892 | INFO  | CID:6bc2bef806b0 | USR:USU_ADMIN | Tecnico/ListarInspectoresActivos | [InspectoresDAO-DB2] Query ejecutada: SELECT TRIM(OPICED) AS OPICED, TRIM(OPINO2) AS OPINO2, TRIM(OPIES1) AS OPIES1, TRIM(OPITIP) AS OPITIP FROM DGACDAT.OPIAR2 WHERE 1 = 1 AND UPPER(TRIM(COALESCE(OPIES1, ''))) = ? AND OPITIP IN (?) ORDER BY OPINO2
+2026-03-25 15:56:56.893 | INFO  | CID:6bc2bef806b0 | USR:USU_ADMIN | Tecnico/ListarInspectoresActivos | [InspectoresDAO-DB2] Filtros aplicados => soloActivos=True, tipos=OPS
+2026-03-25 15:56:56.898 | INFO  | CID:6bc2bef806b0 | USR:USU_ADMIN | Tecnico/ListarInspectoresActivos | [InspectoresDAO-DB2] Registros obtenidos desde DB2: 19
+2026-03-25 15:56:56.898 | INFO  | CID:6bc2bef806b0 | USR:USU_ADMIN | Tecnico/ListarInspectoresActivos | [InspectoresDAO-DB2] Ejemplo[0] => Cedula=0201377850, Nombre=ALEGRIA CHICO SANTIAGO REMIGIO, Estado=AC, Tipo=OPS
+2026-03-25 15:56:56.899 | INFO  | CID:6bc2bef806b0 | USR:USU_ADMIN | Tecnico/ListarInspectoresActivos | [InspectoresDAO-DB2] Ejemplo[1] => Cedula=1709061814, Nombre=AVILA ZARATE EDISON JAVIER, Estado=AC, Tipo=OPS
+2026-03-25 15:56:56.899 | INFO  | CID:6bc2bef806b0 | USR:USU_ADMIN | Tecnico/ListarInspectoresActivos | [InspectoresDAO-DB2] Ejemplo[2] => Cedula=1703863520, Nombre=BARRERA BARRENO LUIS GONZALO, Estado=AC, Tipo=OPS
+2026-03-25 15:56:56.900 | INFO  | CID:6bc2bef806b0 | USR:USU_ADMIN | Tecnico/ListarInspectoresActivos | [InspectoresDAO-DB2] Ejemplo[3] => Cedula=1709565459, Nombre=CATOTA TORRES LUIS WILKIR, Estado=AC, Tipo=OPS
+2026-03-25 15:56:56.900 | INFO  | CID:6bc2bef806b0 | USR:USU_ADMIN | Tecnico/ListarInspectoresActivos | [InspectoresDAO-DB2] Ejemplo[4] => Cedula=1720253846, Nombre=CHUSIN VILLALBA CARLOS ARTURO, Estado=AC, Tipo=OPS
+2026-03-25 15:56:56.900 | INFO  | CID:6bc2bef806b0 | USR:USU_ADMIN | Tecnico/ListarInspectoresActivos | [InspeccionesController] Endpoint AJAX inspectores OK. Origen=DB2, Tipo=OPS, Cantidad=19
+2026-03-25 15:57:06.615 | INFO  | CID:13787c90d146 | USR:USU_ADMIN | Tecnico/AsignarInspector | Iniciando acción: Tecnico/AsignarInspector
+2026-03-25 15:57:06.615 | INFO  | CID:13787c90d146 | USR:USU_ADMIN | Tecnico/AsignarInspector | [GestionInspeccion] Inicio. SolicitudId=168, Usuario=USU_ADMIN, Rol=Administrador,Direccion,JefaturaTecnica, TipoInspector=OPS, InspectorPrincipal=1709565459, InspectorApoyo=
+2026-03-25 15:57:06.615 | INFO  | CID:13787c90d146 | USR:USU_ADMIN | Tecnico/AsignarInspector | [GestionInspeccion] EstadoActual=Pendiente
+2026-03-25 15:57:06.630 | INFO  | CID:13787c90d146 | USR:USU_ADMIN | Tecnico/AsignarInspector | [InspectoresDAO-DB2] Query obtener por cedula: SELECT TRIM(OPICED) AS OPICED, TRIM(OPINO2) AS OPINO2, TRIM(OPIES1) AS OPIES1, TRIM(OPITIP) AS OPITIP FROM DGACDAT.OPIAR2 WHERE OPICED = ? AND UPPER(TRIM(COALESCE(OPIES1, ''))) = ? AND OPITIP IN (?) FETCH FIRST 1 ROW ONLY
+2026-03-25 15:57:06.631 | INFO  | CID:13787c90d146 | USR:USU_ADMIN | Tecnico/AsignarInspector | [InspectoresDAO-DB2] Parametros => cedula=1709565459, soloActivos=True, tipos=OPS
+2026-03-25 15:57:06.632 | WARN  | CID:13787c90d146 | USR:USU_ADMIN | Tecnico/AsignarInspector | [InspectoresDAO-PG] Tabla espejo aocr_tbinspectores no existe. Se omite validacion de inspector PG.
+2026-03-25 15:57:06.632 | INFO  | CID:13787c90d146 | USR:USU_ADMIN | Tecnico/AsignarInspector | [GestionInspeccion] ExisteEnDB2=True, ExisteEnPG=False
+2026-03-25 15:57:06.651 | INFO  | CID:13787c90d146 | USR:USU_ADMIN | Tecnico/AsignarInspector | [GestionInspeccion] Inicio metodo DAO.AsignarInspectores. SolicitudId=168, TipoInspector=OPS, InspectorPrincipal=1709565459, InspectorApoyo=
+2026-03-25 15:57:06.663 | INFO  | CID:13787c90d146 | USR:USU_ADMIN | Tecnico/AsignarInspector | [InspectoresDAO-DB2] Query obtener por cedula: SELECT TRIM(OPICED) AS OPICED, TRIM(OPINO2) AS OPINO2, TRIM(OPIES1) AS OPIES1, TRIM(OPITIP) AS OPITIP FROM DGACDAT.OPIAR2 WHERE OPICED = ? AND UPPER(TRIM(COALESCE(OPIES1, ''))) = ? AND OPITIP IN (?) FETCH FIRST 1 ROW ONLY
+2026-03-25 15:57:06.664 | INFO  | CID:13787c90d146 | USR:USU_ADMIN | Tecnico/AsignarInspector | [InspectoresDAO-DB2] Parametros => cedula=1709565459, soloActivos=True, tipos=OPS
+2026-03-25 15:57:07.220 | INFO  | CID:13787c90d146 | USR:USU_ADMIN | Tecnico/AsignarInspector | [GestionInspeccion] PuedeGestionar=True. Operacion=ASIGNACION, SolicitudId=168, CodigoInspeccion=13, EstadoAnterior=Pendiente, EstadoNuevo=En Inspeccion
+2026-03-25 15:57:07.463 | WARN  | CID:13787c90d146 | USR:USU_ADMIN | Tecnico/AsignarInspector | [GestionInspeccion] No existe usuario interno activo con correo institucional para el inspector asignado. SolicitudId=168, Codigo=1709565459
+2026-03-25 15:57:07.703 | INFO  | CID:13787c90d146 | USR:USU_ADMIN | Tecnico/AsignarInspector | [GestionInspeccion] PuedeGestionar=True, Motivo=Asignación realizada con éxito. Inspección creada: 13
+2026-03-25 15:57:07.922 | INFO  | CID:2ea01432250b | USR:USU_ADMIN | Tecnico/AsignarInspector | Enviando correo a german.cajas@aviacioncivil.gob.ec, Asunto: AOCR - Técnico asignado para su proceso DGAC-GOP-2...
+2026-03-25 15:57:08.378 | INFO  | CID:2ea01432250b | USR:USU_ADMIN | Tecnico/AsignarInspector | Correo enviado exitosamente a german.cajas@aviacioncivil.gob.ec
+2026-03-25 15:57:08.379 | INFO  | CID:13787c90d146 | USR:USU_ADMIN | Tecnico/AsignarInspector | Acción completada: Tecnico/AsignarInspector
+2026-03-25 15:57:08.385 | INFO  | CID:5e8d41f9ced9 | USR:USU_ADMIN | Tecnico/Index | [InspeccionesController] Inicio pantalla gestion (Tecnico/Index). Usuario=USU_ADMIN, Rol=Administrador,Direccion,JefaturaTecnica
+2026-03-25 15:57:08.389 | INFO  | CID:5e8d41f9ced9 | USR:USU_ADMIN | Tecnico/Index | [InspeccionesController] DAO.ObtenerPendientesAsignacion inicio. EstadosFiltro=PENDIENTE_ASIGNACION_RT,PENDIENTE ASIGNACION RT,PENDIENTE,ACEPTACION_DOCUMENTAL,DOCUMENTACION_COMPLETA,DOCUMENTOS_COMPLETOS,PENDIENTE_ASIGNACION_TECNICA,PENDIENTE ASIGNACION TECNICA,PENDIENTE_ASIGNACION,ACEPTACION DOCUMENTAL,DOCUMENTACION COMPLETA
+2026-03-25 15:57:08.393 | INFO  | CID:5e8d41f9ced9 | USR:USU_ADMIN | Tecnico/Index | [InspeccionesController] EstadoDetectado=PENDIENTE, Total=133
+2026-03-25 15:57:08.394 | INFO  | CID:5e8d41f9ced9 | USR:USU_ADMIN | Tecnico/Index | [InspeccionesController] EstadoDetectado=EN INSPECCION, Total=14
+2026-03-25 15:57:08.394 | INFO  | CID:5e8d41f9ced9 | USR:USU_ADMIN | Tecnico/Index | [InspeccionesController] EstadoDetectado=OBSERVADA, Total=6
+2026-03-25 15:57:08.530 | INFO  | CID:5e8d41f9ced9 | USR:USU_ADMIN | Tecnico/Index | [InspeccionesController] DiagnosticoPendientes => totalSolicitudes=133, conInspeccion=0, conInspectorAsignado=0, conInspeccionSinInspector=0
+2026-03-25 15:57:08.530 | INFO  | CID:5e8d41f9ced9 | USR:USU_ADMIN | Tecnico/Index | [InspeccionesController] DAO.ObtenerPendientesAsignacion resultado=39
+2026-03-25 15:57:08.530 | INFO  | CID:5e8d41f9ced9 | USR:USU_ADMIN | Tecnico/Index | [InspeccionesController] PendienteEjemplo[0] SolicitudId=113, Estado=Pendiente, Numero=DGAC-GOP-2026-AOCR096
+2026-03-25 15:57:08.540 | INFO  | CID:5e8d41f9ced9 | USR:USU_ADMIN | Tecnico/Index | [InspeccionesController] PendienteEjemplo[1] SolicitudId=111, Estado=Pendiente, Numero=DGAC-GOP-2026-AOCR094
+2026-03-25 15:57:08.540 | INFO  | CID:5e8d41f9ced9 | USR:USU_ADMIN | Tecnico/Index | [InspeccionesController] PendienteEjemplo[2] SolicitudId=92, Estado=Pendiente, Numero=DGAC-GOP-2026-AOCR075
+2026-03-25 15:57:08.540 | INFO  | CID:5e8d41f9ced9 | USR:USU_ADMIN | Tecnico/Index | [InspeccionesController] PendienteEjemplo[3] SolicitudId=87, Estado=Pendiente, Numero=DGAC-GOP-2026-AOCR070
+2026-03-25 15:57:08.540 | INFO  | CID:5e8d41f9ced9 | USR:USU_ADMIN | Tecnico/Index | [InspeccionesController] PendienteEjemplo[4] SolicitudId=82, Estado=Pendiente, Numero=DGAC-GOP-2026-AOCR065
+2026-03-25 15:57:08.540 | INFO  | CID:5e8d41f9ced9 | USR:USU_ADMIN | Tecnico/Index | [InspeccionesController] Pendientes para asignacion=39
+2026-03-25 15:57:37.570 | INFO  | CID:700893acd9c2 | USR:USU_ADMIN | Inspeccion/Index | [InspeccionesController] Inicio pantalla gestion inspecciones. Usuario=USU_ADMIN, Rol=Administrador,Inspector,JefaturaTecnica,Direccion,CoordinacionLegal
+2026-03-25 15:57:37.576 | INFO  | CID:700893acd9c2 | USR:USU_ADMIN | Inspeccion/Index | [InspeccionesController] Inspecciones recibidas=13
+2026-03-25 15:57:48.622 | INFO  | CID:c9e5bf0ab25e | USR:USU_ADMIN | Tecnico/ListarInspectoresActivos | [InspeccionesController] Inicio endpoint AJAX inspectores. Usuario=USU_ADMIN, Rol=Administrador,Direccion,JefaturaTecnica, TipoInspector=TODOS
+2026-03-25 15:57:48.623 | INFO  | CID:c9e5bf0ab25e | USR:USU_ADMIN | Tecnico/ListarInspectoresActivos | [InspectoresDAO-DB2] Inicio consulta inspectores
+2026-03-25 15:57:48.624 | INFO  | CID:c9e5bf0ab25e | USR:USU_ADMIN | Tecnico/ListarInspectoresActivos | [InspectoresDAO-DB2] Origen=DB2, Tabla=DGACDAT.OPIAR2
+2026-03-25 15:57:48.625 | INFO  | CID:c9e5bf0ab25e | USR:USU_ADMIN | Tecnico/ListarInspectoresActivos | [InspectoresDAO-DB2] ConnectionString(sanitizada)=Driver={iSeries Access ODBC Driver};system=190.152.8.185;database=DGACDAT;defaultcollection=DGACDAT;uid=****;pwd=****;connection timeout=30;query timeout=60
+2026-03-25 15:57:48.625 | INFO  | CID:c9e5bf0ab25e | USR:USU_ADMIN | Tecnico/ListarInspectoresActivos | [InspectoresDAO-DB2] Parametros => estado=AC (fallback: sin estado), tipo=OPS,AIR
+2026-03-25 15:57:48.627 | INFO  | CID:c9e5bf0ab25e | USR:USU_ADMIN | Tecnico/ListarInspectoresActivos | [InspectoresDAO-DB2] Conexion DB2 abierta OK
+2026-03-25 15:57:48.628 | INFO  | CID:c9e5bf0ab25e | USR:USU_ADMIN | Tecnico/ListarInspectoresActivos | [InspectoresDAO-DB2] Query ejecutada: SELECT TRIM(OPICED) AS OPICED, TRIM(OPINO2) AS OPINO2, TRIM(OPIES1) AS OPIES1, TRIM(OPITIP) AS OPITIP FROM DGACDAT.OPIAR2 WHERE 1 = 1 AND UPPER(TRIM(COALESCE(OPIES1, ''))) = ? AND OPITIP IN (?,?) ORDER BY OPINO2
+2026-03-25 15:57:48.629 | INFO  | CID:c9e5bf0ab25e | USR:USU_ADMIN | Tecnico/ListarInspectoresActivos | [InspectoresDAO-DB2] Filtros aplicados => soloActivos=True, tipos=OPS,AIR
+2026-03-25 15:57:48.635 | INFO  | CID:c9e5bf0ab25e | USR:USU_ADMIN | Tecnico/ListarInspectoresActivos | [InspectoresDAO-DB2] Registros obtenidos desde DB2: 34
+2026-03-25 15:57:48.636 | INFO  | CID:c9e5bf0ab25e | USR:USU_ADMIN | Tecnico/ListarInspectoresActivos | [InspectoresDAO-DB2] Ejemplo[0] => Cedula=0201377850, Nombre=ALEGRIA CHICO SANTIAGO REMIGIO, Estado=AC, Tipo=OPS
+2026-03-25 15:57:48.637 | INFO  | CID:c9e5bf0ab25e | USR:USU_ADMIN | Tecnico/ListarInspectoresActivos | [InspectoresDAO-DB2] Ejemplo[1] => Cedula=1709061814, Nombre=AVILA ZARATE EDISON JAVIER, Estado=AC, Tipo=OPS
+2026-03-25 15:57:48.638 | INFO  | CID:c9e5bf0ab25e | USR:USU_ADMIN | Tecnico/ListarInspectoresActivos | [InspectoresDAO-DB2] Ejemplo[2] => Cedula=1703863520, Nombre=BARRERA BARRENO LUIS GONZALO, Estado=AC, Tipo=OPS
+2026-03-25 15:57:48.638 | INFO  | CID:c9e5bf0ab25e | USR:USU_ADMIN | Tecnico/ListarInspectoresActivos | [InspectoresDAO-DB2] Ejemplo[3] => Cedula=1709565459, Nombre=CATOTA TORRES LUIS WILKIR, Estado=AC, Tipo=OPS
+2026-03-25 15:57:48.638 | INFO  | CID:c9e5bf0ab25e | USR:USU_ADMIN | Tecnico/ListarInspectoresActivos | [InspectoresDAO-DB2] Ejemplo[4] => Cedula=1720253846, Nombre=CHUSIN VILLALBA CARLOS ARTURO, Estado=AC, Tipo=OPS
+2026-03-25 15:57:48.640 | INFO  | CID:c9e5bf0ab25e | USR:USU_ADMIN | Tecnico/ListarInspectoresActivos | [InspeccionesController] Endpoint AJAX inspectores OK. Origen=DB2, Tipo=TODOS, Cantidad=34
+2026-03-25 15:57:52.664 | INFO  | CID:082292286605 | USR:USU_ADMIN | Inspeccion/Detalle | [GestionInspeccion] Inicio Detalle. InspeccionId=13, Usuario=USU_ADMIN, Rol=Administrador,Inspector,JefaturaTecnica,Direccion,CoordinacionLegal
+2026-03-25 15:57:52.674 | INFO  | CID:082292286605 | USR:USU_ADMIN | Inspeccion/Detalle | [GestionInspeccion] InspeccionId=13, SolicitudId=168, EstadoActual=VERIFICACION_SOLICITUD, InspectorAsignado=1709565459
+2026-03-25 15:57:52.675 | INFO  | CID:082292286605 | USR:USU_ADMIN | Inspeccion/Detalle | [GestionInspeccion] PuedeGestionar=True para detalle. InspeccionId=13
+2026-03-25 15:57:53.925 | INFO  | CID:082292286605 | USR:USU_ADMIN | Inspeccion/Detalle | [InspectoresDAO-DB2] Query obtener por cedula: SELECT TRIM(OPICED) AS OPICED, TRIM(OPINO2) AS OPINO2, TRIM(OPIES1) AS OPIES1, TRIM(OPITIP) AS OPITIP FROM DGACDAT.OPIAR2 WHERE OPICED = ? AND UPPER(TRIM(COALESCE(OPIES1, ''))) = ? FETCH FIRST 1 ROW ONLY
+2026-03-25 15:57:53.925 | INFO  | CID:082292286605 | USR:USU_ADMIN | Inspeccion/Detalle | [InspectoresDAO-DB2] Parametros => cedula=1709565459, soloActivos=True, tipos=TODOS
+2026-03-25 15:57:53.942 | INFO  | CID:082292286605 | USR:USU_ADMIN | Inspeccion/Detalle | [GestionInspeccion] Detalle inspectores enriquecidos. InspeccionId=13, PrincipalCedula=1709565459, PrincipalNombre=CATOTA TORRES LUIS WILKIR, PrincipalTipo=OPS, ApoyoCedula=, ApoyoNombre=, ApoyoTipo=
+2026-03-25 15:59:20.750 | INFO  | CID:ade4f9ce1de8 | USR:USU_ADMIN | Inspeccion/CambiarEstado | Iniciando acción: Inspeccion/CambiarEstado
+2026-03-25 15:59:20.757 | INFO  | CID:ade4f9ce1de8 | USR:USU_ADMIN | Inspeccion/CambiarEstado | [GestionInspeccion] Inicio CambiarEstado. InspeccionId=13, EstadoSolicitado=ACEPTADA, Usuario=USU_ADMIN, Rol=Administrador,Inspector,JefaturaTecnica,Direccion,CoordinacionLegal
+2026-03-25 15:59:20.894 | WARN  | CID:ade4f9ce1de8 | USR:USU_ADMIN | Inspeccion/CambiarEstado | [GestionInspeccion] DesalineacionEstadoDetectada. InspeccionId=13, EstadoSolicitado=ACEPTADA, EstadoPersistido=VERIFICACION_SOLICITUD, Usuario=USU_ADMIN
+2026-03-25 15:59:20.894 | INFO  | CID:ade4f9ce1de8 | USR:USU_ADMIN | Inspeccion/CambiarEstado | [GestionInspeccion] PuedeGestionar=True, InspeccionId=13, EstadoDestino=ACEPTADA, EstadoPersistido=VERIFICACION_SOLICITUD, Usuario=USU_ADMIN
+2026-03-25 15:59:20.896 | INFO  | CID:ade4f9ce1de8 | USR:USU_ADMIN | Inspeccion/CambiarEstado | Acción completada: Inspeccion/CambiarEstado
+2026-03-25 15:59:20.902 | INFO  | CID:65d50e26a77f | USR:USU_ADMIN | Inspeccion/Detalle | [GestionInspeccion] Inicio Detalle. InspeccionId=13, Usuario=USU_ADMIN, Rol=Administrador,Inspector,JefaturaTecnica,Direccion,CoordinacionLegal
+2026-03-25 15:59:20.912 | INFO  | CID:65d50e26a77f | USR:USU_ADMIN | Inspeccion/Detalle | [GestionInspeccion] InspeccionId=13, SolicitudId=168, EstadoActual=VERIFICACION_SOLICITUD, InspectorAsignado=1709565459
+2026-03-25 15:59:20.914 | INFO  | CID:65d50e26a77f | USR:USU_ADMIN | Inspeccion/Detalle | [GestionInspeccion] PuedeGestionar=True para detalle. InspeccionId=13
+2026-03-25 15:59:21.350 | INFO  | CID:65d50e26a77f | USR:USU_ADMIN | Inspeccion/Detalle | [InspectoresDAO-DB2] Query obtener por cedula: SELECT TRIM(OPICED) AS OPICED, TRIM(OPINO2) AS OPINO2, TRIM(OPIES1) AS OPIES1, TRIM(OPITIP) AS OPITIP FROM DGACDAT.OPIAR2 WHERE OPICED = ? AND UPPER(TRIM(COALESCE(OPIES1, ''))) = ? FETCH FIRST 1 ROW ONLY
+2026-03-25 15:59:21.350 | INFO  | CID:65d50e26a77f | USR:USU_ADMIN | Inspeccion/Detalle | [InspectoresDAO-DB2] Parametros => cedula=1709565459, soloActivos=True, tipos=TODOS
+2026-03-25 15:59:21.371 | INFO  | CID:65d50e26a77f | USR:USU_ADMIN | Inspeccion/Detalle | [GestionInspeccion] Detalle inspectores enriquecidos. InspeccionId=13, PrincipalCedula=1709565459, PrincipalNombre=CATOTA TORRES LUIS WILKIR, PrincipalTipo=OPS, ApoyoCedula=, ApoyoNombre=, ApoyoTipo=

@@ -1,0 +1,409 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<configuration>
+  <configSections>
+    <sectionGroup name="system.web.webPages.razor" type="System.Web.WebPages.Razor.Configuration.RazorWebSectionGroup, System.Web.WebPages.Razor, Version=3.0.0.0, Culture=neutral, PublicKeyToken=31BF3856AD364E35">
+      <section name="host" type="System.Web.WebPages.Razor.Configuration.HostSection, System.Web.WebPages.Razor, Version=3.0.0.0, Culture=neutral, PublicKeyToken=31BF3856AD364E35" requirePermission="false" />
+      <section name="pages" type="System.Web.WebPages.Razor.Configuration.RazorPagesSection, System.Web.WebPages.Razor, Version=3.0.0.0, Culture=neutral, PublicKeyToken=31BF3856AD364E35" requirePermission="false" />
+    </sectionGroup>
+  </configSections>
+  <connectionStrings>
+    <add name="AOCRConnection" connectionString="Host=172.20.16.55;Port=5432;Database=dgac_des;Username=root;Password=control;Pooling=true;Minimum Pool Size=1;Maximum Pool Size=20;Timeout=15;CommandTimeout=60;" providerName="Npgsql" />
+    <add name="PostgreSQL" connectionString="Host=172.20.16.55;Port=5432;Database=dgac_des;Username=root;Password=control;Pooling=true;Minimum Pool Size=1;Maximum Pool Size=20;Timeout=15;CommandTimeout=60;" providerName="Npgsql" />
+    <add name="PostgresMirror" connectionString="" providerName="Npgsql" />
+    <add name="P9ConnectionString" connectionString="DataSource=172.20.16.14;UserID=DGAC;Password=DGAC2024;DefaultCollection=DGACSYS;LibraryList=DGACSYS;Pooling=true;" providerName="IBM.Data.DB2.iSeries" />
+    <add name="As400Odbc" connectionString="" providerName="System.Data.Odbc" />
+  </connectionStrings>
+  <appSettings>
+    <add key="webpages:Enabled" value="false" />
+    <add key="owin:AppStartup" value="CapaPresentacion.Startup" />
+    <add key="SmtpHost" value="172.20.16.21" />
+    <add key="SmtpPort" value="25" />
+    <add key="SmtpEnableSsl" value="false" />
+    <!-- SMTP: configurar en variables de entorno (SMTP_USERNAME / SMTP_PASSWORD)
+         o en machine.config / Web.Release.config, NUNCA hardcodeado aqui. -->
+    <add key="SmtpUsername" value="" />
+    <add key="SmtpPassword" value="" />
+    <add key="FromEmail" value="sistema@dgac.gob.ec" />
+    <add key="FromName" value="Sistema AOCR - DGAC Ecuador" />
+    <add key="AdminEmails" value="admin1@dgac.gob.ec;admin2@dgac.gob.ec" />
+    <add key="UploadPath" value="~/Uploads/" />
+    <add key="MaxUploadSize" value="10485760" />
+    <add key="SessionTimeout" value="20" />
+    <add key="RT_MaxFileSizeMb" value="10" />
+    <add key="RT_BasePathStorage" value="~/App_Data/AOCR" />
+    <add key="RT_FileStorageRoot" value="" />
+    
+    <!-- Configuración de correo (fallback si no hay variables de entorno) -->
+    <add key="SmtpServer" value="172.20.16.21" />
+    <add key="EmailFrom" value="no_reply@aviacioncivil.gob.ec" />
+    <add key="EmailFromName" value="Sistema AOCR" />
+    
+    <!-- Configuración de autenticación SMTP (si el servidor lo requiere) -->
+    <add key="Email:SmtpServer" value="172.20.16.21" />
+    
+    <!-- ============================================ -->
+    <!-- Configuración AS/400 para CIAARC (Empresas) -->
+    <!-- ============================================ -->
+    <add key="AS400:Server" value="190.152.8.185" />
+    <add key="AS400:Database" value="S10a1a05" />
+    <add key="AS400:UserId" value="DGACCONEXI" />
+    <add key="AS400:Password" value="DGACTIC20@" />
+    <add key="AS400:Library" value="DGACDAT" />
+    <add key="AS400:Dsn" value="" />
+    <add key="AS400:OdbcDriver" value="iSeries Access ODBC Driver" />
+    <add key="AS400:Usuarios:SyncOnRegister" value="true" />
+    <add key="AS400:UsuarioTable" value="USUARC" />
+    <add key="AS400:UsuarioAdicionalTable" value="USUAR1" />
+    <add key="AS400:Facturacion:Enabled" value="true" />
+    <add key="AS400:Facturacion:DefaultAeropuerto" value="SEQU" />
+    <add key="AS400:Facturacion:TipoOperacion" value="06" />
+    <add key="AS400:Facturacion:FormaPago" value="02" />
+    <add key="AS400:Facturacion:RutaDefault" value="" />
+    <add key="AS400:Facturacion:BancoDefault" value="" />
+    <add key="AS400:Facturacion:NumAterrizaDefault" value="1" />
+    <add key="AS400:Facturacion:TipoCobro" value="01" />
+    <add key="AS400:Facturacion:OidFormularioDefault" value="0" />
+    <add key="AS400:Facturacion:OidFormularioNacional" value="14134812" />
+    <add key="AS400:Facturacion:OidFormularioInternacional" value="14134842" />
+    <add key="AS400:Facturacion:CodigoContableDefault" value="623.01.11.02" />
+    <add key="AS400:Facturacion:CodigoItemDefault" value="FITEM" />
+    <add key="AS400:Facturacion:DescripcionCuentaNacional" value="VUELOS CHARTER O ESPECIALES NACIONAL" />
+    <add key="AS400:Facturacion:DescripcionCuentaInternacional" value="VUELOS CHARTER O ESPECIALES INTERNACIONAL" />
+    <add key="AS400:Facturacion:NacInterDefault" value="N" />
+    <add key="AS400:Facturacion:NombreAeropuertoDefault" value="" />
+    <add key="AS400:Facturacion:FormaPagoEfectivo" value="01" />
+    <add key="AS400:Facturacion:CallsignDefault" value="" />
+    <add key="AS400:Facturacion:MatriculaDefault" value="" />
+    <add key="AS400:Facturacion:ModeloDefault" value="" />
+    <add key="AS400:Facturacion:PesoMatriculaDefault" value="0" />
+    <add key="AS400:Facturacion:CodigoOACICiaDefault" value="" />
+    <add key="AS400:Facturacion:OrigenDefault" value="" />
+    <add key="AS400:Facturacion:DestinoDefault" value="" />
+    <add key="AS400:Facturacion:RetornoDefault" value="" />
+    <add key="AS400:Facturacion:OidCiaAviacionDefault" value="0" />
+    <add key="AS400:Facturacion:OidUbicacionDefault" value="0" />
+    <add key="AS400:Facturacion:OidUbicacionClienteDefault" value="0" />
+    <add key="AS400:Facturacion:IdAeropuertoDefault" value="0" />
+    <add key="AS400:Facturacion:OPCAR5Table" value="OPCAR5" />
+    <add key="AS400:Facturacion:OPCAR6Table" value="OPCAR6" />
+    <add key="AS400:Facturacion:OPSARCTable" value="OPSARC" />
+    <!-- AS400 mirror sync (desactivado por defecto; activar luego de desplegar scripts SQL) -->
+    <add key="Sync:Enabled" value="false" />
+    <add key="Sync:DryRun" value="false" />
+    <add key="Sync:Schedule" value="*/10 * * * *" />
+    <add key="Sync:BatchSize" value="1000" />
+    <add key="Sync:MaxRetries" value="2" />
+    <add key="Sync:RetryBackoffMs" value="1500" />
+    <add key="Sync:As400ConnectionTimeoutSeconds" value="30" />
+    <add key="Sync:As400TimeoutSeconds" value="60" />
+    <add key="Sync:PostgresTimeoutSeconds" value="60" />
+    <add key="Sync:As400OdbcDriver" value="iSeries Access ODBC Driver" />
+    <add key="Sync:Mirror:PreferReadForUsuarios" value="false" />
+    <add key="Sync:Mirror:PreferReadForEmpresas" value="false" />
+    <add key="Email:SmtpPort" value="25" />
+    <add key="Email:Username" value="" />
+    <add key="Email:Password" value="" />
+    <add key="Email:UseSsl" value="false" />
+    <add key="Email:FromAddress" value="no_reply@aviacioncivil.gob.ec" />
+    
+    <!-- Configuración AS400/P9 -->
+    <!-- Eliminado bloque duplicado de configuración AS400 para evitar confusión. -->
+  </appSettings>
+  <system.net>
+    <mailSettings>
+      <smtp from="no_reply@aviacioncivil.gob.ec">
+        <network host="172.20.16.21" port="25" enableSsl="false" />
+        <!-- Si el servidor requiere autenticación, descomentar y configurar:
+        <network host="172.20.16.21" port="25" userName="usuario" password="Control" enableSsl="false" />
+        -->
+      </smtp>
+    </mailSettings>
+  </system.net>
+  <system.web>
+    <compilation debug="true" targetFramework="4.7.2">
+      <assemblies>
+        <add assembly="System.Web.Mvc" />
+        <add assembly="System.Web.Razor" />
+        <add assembly="System.Web.WebPages" />
+        <add assembly="System.Web.WebPages.Razor" />
+        <add assembly="System.Web.Helpers" />
+        <add assembly="netstandard, Version=2.0.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51" />
+      </assemblies>
+    </compilation>
+    <httpRuntime targetFramework="4.7.2" maxRequestLength="51200" executionTimeout="300" />
+    <authentication mode="Forms">
+      <forms loginUrl="~/Account/Login" timeout="60" slidingExpiration="true" protection="All" />
+    </authentication>
+    <authorization>
+      <deny users="?" />
+    </authorization>
+    <!-- Errores personalizados -->
+    <customErrors mode="RemoteOnly" defaultRedirect="~/Error">
+        <error statusCode="404" redirect="~/Error/NotFound" />
+        <error statusCode="403" redirect="~/Error/AccessDenied" />
+        <error statusCode="500" redirect="~/Error" />
+    </customErrors>
+
+    <!-- Desactivar trace en producción -->
+    <trace enabled="false" localOnly="true" />
+
+    <globalization culture="es-EC" uiCulture="es-EC" requestEncoding="utf-8" responseEncoding="utf-8" fileEncoding="utf-8" />
+    <pages validateRequest="true" />
+    <httpModules>
+      <add name="TelemetryCorrelationHttpModule" type="Microsoft.AspNet.TelemetryCorrelation.TelemetryCorrelationHttpModule, Microsoft.AspNet.TelemetryCorrelation" />
+    </httpModules>
+  </system.web>
+  <location path="Account">
+    <system.web>
+      <authorization>
+        <allow users="*" />
+      </authorization>
+    </system.web>
+  </location>
+  <location path="Error">
+    <system.web>
+      <authorization>
+        <allow users="*" />
+      </authorization>
+    </system.web>
+  </location>
+  <location path="Content">
+    <system.web>
+      <authorization>
+        <allow users="*" />
+      </authorization>
+    </system.web>
+  </location>
+  <location path="Scripts">
+    <system.web>
+      <authorization>
+        <allow users="*" />
+      </authorization>
+    </system.web>
+  </location>
+  <location path="Empresa">
+    <system.web>
+      <authorization>
+        <allow users="*" />
+      </authorization>
+    </system.web>
+  </location>
+  <location path="Usuario">
+    <system.web>
+      <authorization>
+        <allow users="*" />
+      </authorization>
+    </system.web>
+  </location>
+  <location path="Usuario/ValidarCorreo">
+    <system.web>
+      <authorization>
+        <allow users="*" />
+      </authorization>
+    </system.web>
+  </location>
+  <location path="Usuario/ValidarIdentificacion">
+    <system.web>
+      <authorization>
+        <allow users="*" />
+      </authorization>
+    </system.web>
+  </location>
+  <location path="Usuario/ValidarRUC">
+    <system.web>
+      <authorization>
+        <allow users="*" />
+      </authorization>
+    </system.web>
+  </location>
+  <location path="Usuario/Crear">
+    <system.web>
+      <authorization>
+        <allow users="*" />
+      </authorization>
+    </system.web>
+  </location>
+  <location path="Usuario/DescargarFormularioDesignacionRT">
+    <system.web>
+      <authorization>
+        <allow users="*" />
+      </authorization>
+    </system.web>
+  </location>
+  <location path="RT">
+    <system.web>
+      <authorization>
+        <allow users="*" />
+      </authorization>
+    </system.web>
+  </location>
+  <system.webServer>
+    <modules runAllManagedModulesForAllRequests="true">
+      <remove name="TelemetryCorrelationHttpModule" />
+      <add name="TelemetryCorrelationHttpModule" type="Microsoft.AspNet.TelemetryCorrelation.TelemetryCorrelationHttpModule, Microsoft.AspNet.TelemetryCorrelation" preCondition="managedHandler" />
+    </modules>
+    <httpErrors errorMode="Custom" existingResponse="Replace">
+        <remove statusCode="404" />
+        <remove statusCode="403" />
+        <remove statusCode="500" />
+        <error statusCode="404" path="/Error/NotFound" responseMode="ExecuteURL" />
+        <error statusCode="403" path="/Error/AccessDenied" responseMode="ExecuteURL" />
+        <error statusCode="500" path="/Error" responseMode="ExecuteURL" />
+    </httpErrors>
+    <security>
+      <requestFiltering>
+        <requestLimits maxAllowedContentLength="52428800" />
+      </requestFiltering>
+    </security>
+    <validation validateIntegratedModeConfiguration="false" />
+    <httpProtocol>
+      <customHeaders>
+        <!-- Remover headers que revelan información -->
+        <remove name="X-Powered-By" />
+        <remove name="Server" />
+        
+        <!-- Headers de seguridad -->
+        <add name="X-Frame-Options" value="SAMEORIGIN" />
+        <add name="X-Content-Type-Options" value="nosniff" />
+        <add name="X-XSS-Protection" value="1; mode=block" />
+        <add name="Referrer-Policy" value="strict-origin-when-cross-origin" />
+        <add name="Permissions-Policy" value="geolocation=(), microphone=(), camera=()" />
+        
+        <!-- Content Security Policy -->
+        <add name="Content-Security-Policy" value="default-src 'self' https:; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://code.jquery.com https://cdnjs.cloudflare.com https://cdn.datatables.net; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://fonts.googleapis.com https://cdn.datatables.net; font-src 'self' data: https://fonts.gstatic.com https://cdnjs.cloudflare.com https://cdn.jsdelivr.net; img-src 'self' data: https:; connect-src 'self' https:; frame-ancestors 'self';" />
+      </customHeaders>
+    </httpProtocol>
+
+    <!-- Configurar HSTS (solo para producción con HTTPS) -->
+    <rewrite>
+      <rules>
+        <!-- Redirigir HTTP a HTTPS en producción -->
+        <rule name="HTTPS Redirect" stopProcessing="true">
+          <match url="(.*)" />
+          <conditions>
+            <add input="{HTTPS}" pattern="^OFF$" />
+            <add input="{HTTP_HOST}" pattern="localhost" negate="true" />
+          </conditions>
+          <action type="Redirect" url="https://{HTTP_HOST}/{R:1}" redirectType="Permanent" />
+        </rule>
+      </rules>
+      <outboundRules>
+        <rule name="Add HSTS Header" enabled="true">
+          <match serverVariable="RESPONSE_Strict-Transport-Security" pattern=".*" />
+          <conditions>
+            <add input="{HTTPS}" pattern="on" ignoreCase="true" />
+          </conditions>
+          <action type="Rewrite" value="max-age=31536000; includeSubDomains" />
+        </rule>
+      </outboundRules>
+    </rewrite>
+
+    <!-- ...existing code... -->
+  </system.webServer>
+  <system.web.webPages.razor>
+    <host factoryType="System.Web.Mvc.MvcWebRazorHostFactory, System.Web.Mvc" />
+    <pages pageBaseType="System.Web.Mvc.WebViewPage">
+      <namespaces>
+        <add namespace="System" />
+        <add namespace="System.Collections.Generic" />
+        <add namespace="System.Linq" />
+        <add namespace="System.Web" />
+        <add namespace="System.Web.Mvc" />
+        <add namespace="System.Web.Mvc.Ajax" />
+        <add namespace="System.Web.Mvc.Html" />
+        <add namespace="System.Web.Optimization" />
+        <add namespace="System.Web.Routing" />
+        <add namespace="CapaPresentacion" />
+      </namespaces>
+    </pages>
+  </system.web.webPages.razor>
+  <runtime>
+    <assemblyBinding xmlns="urn:schemas-microsoft-com:asm.v1">
+      <dependentAssembly>
+        <assemblyIdentity name="Newtonsoft.Json" publicKeyToken="30ad4fe6b2a6aeed" culture="neutral" />
+        <bindingRedirect oldVersion="0.0.0.0-13.0.0.0" newVersion="13.0.0.0" />
+      </dependentAssembly>
+      <dependentAssembly>
+        <assemblyIdentity name="Npgsql" publicKeyToken="5d8b90d52f46fda7" culture="neutral" />
+          <bindingRedirect oldVersion="0.0.0.0-8.0.9.0" newVersion="8.0.3.0" />
+      </dependentAssembly>
+      <dependentAssembly>
+        <assemblyIdentity name="System.Memory" publicKeyToken="cc7b13ffcd2ddd51" culture="neutral" />
+        <bindingRedirect oldVersion="0.0.0.0-4.0.1.2" newVersion="4.0.1.2" />
+      </dependentAssembly>
+      <dependentAssembly>
+        <assemblyIdentity name="System.Numerics.Vectors" publicKeyToken="b03f5f7f11d50a3a" culture="neutral" />
+        <bindingRedirect oldVersion="0.0.0.0-4.1.4.0" newVersion="4.1.4.0" />
+      </dependentAssembly>
+      <dependentAssembly>
+        <assemblyIdentity name="Microsoft.Bcl.AsyncInterfaces" publicKeyToken="cc7b13ffcd2ddd51" culture="neutral" />
+        <bindingRedirect oldVersion="0.0.0.0-8.0.0.0" newVersion="8.0.0.0" />
+      </dependentAssembly>
+      <dependentAssembly>
+        <assemblyIdentity name="Microsoft.Extensions.Logging.Abstractions" publicKeyToken="adb9793829ddae60" culture="neutral" />
+        <bindingRedirect oldVersion="0.0.0.0-8.0.0.0" newVersion="8.0.0.0" />
+      </dependentAssembly>
+      <dependentAssembly>
+        <assemblyIdentity name="System.Diagnostics.DiagnosticSource" publicKeyToken="cc7b13ffcd2ddd51" culture="neutral" />
+        <bindingRedirect oldVersion="0.0.0.0-8.0.0.0" newVersion="8.0.0.0" />
+      </dependentAssembly>
+      <dependentAssembly>
+        <assemblyIdentity name="System.IO.Pipelines" publicKeyToken="cc7b13ffcd2ddd51" culture="neutral" />
+        <bindingRedirect oldVersion="0.0.0.0-5.0.0.2" newVersion="5.0.0.2" />
+      </dependentAssembly>
+      <dependentAssembly>
+        <assemblyIdentity name="Microsoft.Extensions.DependencyInjection.Abstractions" publicKeyToken="adb9793829ddae60" culture="neutral" />
+        <bindingRedirect oldVersion="0.0.0.0-8.0.0.0" newVersion="8.0.0.0" />
+      </dependentAssembly>
+      <dependentAssembly>
+        <assemblyIdentity name="Microsoft.Extensions.Primitives" publicKeyToken="adb9793829ddae60" culture="neutral" />
+        <bindingRedirect oldVersion="0.0.0.0-5.0.0.1" newVersion="5.0.0.1" />
+      </dependentAssembly>
+      <dependentAssembly>
+        <assemblyIdentity name="System.Runtime.CompilerServices.Unsafe" publicKeyToken="b03f5f7f11d50a3a" culture="neutral" />
+        <bindingRedirect oldVersion="0.0.0.0-6.0.0.0" newVersion="6.0.0.0" />
+      </dependentAssembly>
+      <dependentAssembly>
+        <assemblyIdentity name="WebGrease" publicKeyToken="31bf3856ad364e35" culture="neutral" />
+        <bindingRedirect oldVersion="0.0.0.0-1.5.2.14234" newVersion="1.5.2.14234" />
+      </dependentAssembly>
+      <dependentAssembly>
+        <assemblyIdentity name="Antlr3.Runtime" publicKeyToken="eb42632606e9261f" culture="neutral" />
+        <bindingRedirect oldVersion="0.0.0.0-3.5.0.2" newVersion="3.5.0.2" />
+      </dependentAssembly>
+      <dependentAssembly>
+        <assemblyIdentity name="System.Buffers" publicKeyToken="cc7b13ffcd2ddd51" culture="neutral" />
+        <bindingRedirect oldVersion="0.0.0.0-4.0.3.0" newVersion="4.0.3.0" />
+      </dependentAssembly>
+      <dependentAssembly>
+        <assemblyIdentity name="System.Text.Json" publicKeyToken="cc7b13ffcd2ddd51" culture="neutral" />
+        <bindingRedirect oldVersion="0.0.0.0-8.0.0.1" newVersion="8.0.0.1" />
+      </dependentAssembly>
+      <dependentAssembly>
+        <assemblyIdentity name="Microsoft.AspNet.Scaffolding.12.0" publicKeyToken="b03f5f7f11d50a3a" culture="neutral" />
+        <bindingRedirect oldVersion="0.0.0.0-17.0.0.0" newVersion="17.0.0.0" />
+      </dependentAssembly>
+      <dependentAssembly>
+        <assemblyIdentity name="System.Web.Helpers" publicKeyToken="31bf3856ad364e35" />
+        <bindingRedirect oldVersion="1.0.0.0-3.0.0.0" newVersion="3.0.0.0" />
+      </dependentAssembly>
+      <dependentAssembly>
+        <assemblyIdentity name="System.Web.WebPages" publicKeyToken="31bf3856ad364e35" />
+        <bindingRedirect oldVersion="1.0.0.0-3.0.0.0" newVersion="3.0.0.0" />
+      </dependentAssembly>
+      <dependentAssembly>
+        <assemblyIdentity name="System.Web.Mvc" publicKeyToken="31bf3856ad364e35" />
+        <bindingRedirect oldVersion="0.0.0.0-5.2.9.0" newVersion="5.2.9.0" />
+      </dependentAssembly>
+      <dependentAssembly>
+        <assemblyIdentity name="Unity.Abstractions" publicKeyToken="489b6accfaf20ef0" culture="neutral" />
+        <bindingRedirect oldVersion="0.0.0.0-5.11.7.0" newVersion="5.11.7.0" />
+      </dependentAssembly>
+      <dependentAssembly>
+        <assemblyIdentity name="System.Threading.Tasks.Extensions" publicKeyToken="cc7b13ffcd2ddd51" culture="neutral" />
+        <bindingRedirect oldVersion="0.0.0.0-4.2.0.1" newVersion="4.2.0.1" />
+      </dependentAssembly>
+    </assemblyBinding>
+  </runtime>
+</configuration>
+

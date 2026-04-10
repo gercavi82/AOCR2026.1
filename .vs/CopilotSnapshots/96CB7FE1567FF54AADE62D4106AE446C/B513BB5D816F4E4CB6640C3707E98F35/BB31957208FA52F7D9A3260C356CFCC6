@@ -1,0 +1,79 @@
+﻿@inherits System.Web.Mvc.WebViewPage<List<CapaModelo.SolicitudAOCR>>
+@using CapaModelo
+@using System.Web.Mvc
+@using System.Web.Mvc.Html
+
+@{
+    ViewBag.Title = "Solicitudes para Validación Técnica";
+    Layout = "~/Views/Shared/_LayoutAOCR.cshtml";
+}
+
+<div class="aocr-module-header mb-3">
+    <div class="aocr-module-header-left">
+        <h2 class="aocr-module-header-title">Solicitudes para Validación Técnica</h2>
+        <p class="aocr-module-header-subtitle">Jefatura Técnica — Pendientes de validación</p>
+    </div>
+    <nav>
+        <ol class="aocr-breadcrumb breadcrumb mb-0">
+            <li class="breadcrumb-item"><a href="@Url.Action("Index", "Home")"><i class="fas fa-home"></i></a></li>
+            <li class="breadcrumb-item">Solicitudes AOCR</li>
+            <li class="breadcrumb-item active">Pendientes Jefatura</li>
+        </ol>
+    </nav>
+</div>
+
+@if (TempData["Error"] != null)
+{
+    <div class="alert alert-aocr alert-danger mb-3"><i class="fas fa-exclamation-circle me-1"></i> @TempData["Error"]</div>
+}
+
+
+@if (Model != null && Model.Count > 0)
+{
+    <div class="card aocr-table-card">
+        <div class="card-body p-0">
+            <div class="aocr-table-wrap">
+                <table class="table table-dgac mb-0">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Operador</th>
+                            <th>Tipo</th>
+                            <th>Fecha</th>
+                            <th>Estado</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var s in Model)
+                        {
+                            <tr>
+                                <td class="fw-bold text-primary">@Html.Encode(s.CodigoSolicitud)</td>
+                                <td>@Html.Encode(s.NombreOperador)</td>
+                                <td>@Html.Encode(s.TipoSolicitud)</td>
+                                <td>@Html.Encode(s.FechaSolicitud.HasValue ? s.FechaSolicitud.Value.ToString("dd/MM/yyyy") : "")</td>
+                                <td><span class="badge-pill-custom bg-tramite">@Html.Encode(s.Estado)</span></td>
+                                <td>
+                                    <a href="@Url.Action("Detalle", "SolicitudAOCR", new { id = s.CodigoSolicitud })" class="btn btn-sm btn-aocr-primary">
+                                        <i class="fas fa-eye me-1"></i> Revisar
+                                    </a>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+}
+else
+{
+    <div class="aocr-no-results">
+        <i class="fas fa-inbox"></i>
+        <p class="mb-0">No hay solicitudes pendientes para revisión técnica.</p>
+    </div>
+}
+
+
+
+

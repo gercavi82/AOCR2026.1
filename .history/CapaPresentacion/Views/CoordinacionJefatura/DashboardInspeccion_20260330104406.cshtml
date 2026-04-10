@@ -1,0 +1,616 @@
+@model CapaPresentacion.Models.DashboardInspeccionViewModel
+@using System
+@using System.Linq
+@using System.Web
+@using CapaPresentacion.Helpers
+@{
+    Layout = "~/Views/Shared/_LayoutAOCR.cshtml";
+    ViewBag.Title = "Dashboard de Inspección";
+
+    var model = Model ?? new CapaPresentacion.Models.DashboardInspeccionViewModel();
+    var inspecciones = model.InspeccionesEnSeguimiento ?? new System.Collections.Generic.List<CapaPresentacion.Models.DashboardInspeccionSeguimientoItemViewModel>();
+    var documentos = model.ControlDocumental ?? new System.Collections.Generic.List<CapaPresentacion.Models.DashboardInspeccionDocumentoItemViewModel>();
+    var firmas = model.PendientesFirma ?? new System.Collections.Generic.List<CapaPresentacion.Models.DashboardInspeccionFirmaItemViewModel>();
+    var ncs = model.ObservacionesNc ?? new System.Collections.Generic.List<CapaPresentacion.Models.DashboardInspeccionNcItemViewModel>();
+
+    var pageHeaderData = new ViewDataDictionary
+    {
+        { "Kicker", "Coordinación y Jefatura" },
+        { "Title", "Dashboard de Inspección" },
+        { "Subtitle", "Visualización institucional de seguimiento, control documental, firmas pendientes y no conformidades" },
+        { "Breadcrumbs", new[]
+            {
+                new { Text = "Coordinación y Jefatura", Url = string.Empty },
+                new { Text = "Dashboard de Inspección", Url = string.Empty }
+            }
+        }
+    };
+
+    var heroData = new ViewDataDictionary
+    {
+        { "Kicker", "Flujo operativo AOCR" },
+        { "Title", "Panel institucional de inspecciones" },
+        { "Subtitle", "Seguimiento claro por proceso, estado y acción" },
+        { "Description", "Centralice la revisión del control documental, la operación de inspecciones, las firmas pendientes y las no conformidades sin duplicar flujos ni perder trazabilidad." },
+        { "MetricTitle", "Casos activos" },
+        { "MetricValue", inspecciones.Count + documentos.Count + firmas.Count + ncs.Count },
+        { "MetricSubtitle", "Registros visibles con filtros actuales" }
+    };
+
+    var toolbarData = new ViewDataDictionary
+    {
+        { "VolverUrl", Url.Action("RevisionVerificacion", "CoordinacionJefatura") },
+        { "VolverTexto", "Ir a Revisión / Verificación" },
+        { "CustomActionsHtml", new HtmlString(
+            "<a href=\"" + Url.Action("PendientesFirmaDirdac", "Inspeccion") + "\" class=\"btn btn-aocr-secondary\"><i class=\"fas fa-signature\"></i><span>Pendientes DIRDAC</span></a>"
+            + "<a href=\"" + Url.Action("ValidarAocr", "CoordinacionJefatura") + "\" class=\"btn btn-aocr-primary\"><i class=\"fas fa-stamp\"></i><span>Validar AOCR</span></a>"
+            + "<a href=\"" + Url.Action("Index", "Tecnico") + "\" class=\"btn btn-aocr-secondary\"><i class=\"fas fa-user-check\"></i><span>Asignar inspector</span></a>") }
+    };
+}
+
+<style>
+    .dash-shell {
+        --dash-blue: #155c8a;
+        --dash-blue-soft: #e6f1f8;
+        --dash-orange: #c66a17;
+        --dash-orange-soft: #fff1e1;
+        --dash-green: #1d7b4f;
+        --dash-green-soft: #e9f6ef;
+        --dash-red: #b53939;
+        --dash-red-soft: #fdecec;
+        --dash-yellow: #b78312;
+        --dash-yellow-soft: #fff7dc;
+        --dash-gray: #5f6f7c;
+        --dash-gray-soft: #eef2f5;
+        --dash-ink: #183246;
+        --dash-muted: #6d7f8b;
+        --dash-border: rgba(24, 50, 70, 0.1);
+    }
+
+    .dash-filter-card,
+    .dash-panel {
+        background: #fff;
+        border: 1px solid var(--dash-border);
+        border-radius: 20px;
+        box-shadow: 0 16px 32px rgba(17, 52, 73, 0.08);
+    }
+
+    .dash-filter-card {
+        padding: 20px;
+        margin-bottom: 22px;
+    }
+
+    .dash-filter-card .form-label {
+        font-size: 0.82rem;
+        font-weight: 700;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+        color: var(--dash-muted);
+    }
+
+    .dash-tabs {
+        border-bottom: 0;
+        gap: 10px;
+        margin-bottom: 20px;
+    }
+
+    .dash-tabs .nav-link {
+        border: 0;
+        border-radius: 18px;
+        padding: 14px 18px;
+        color: var(--dash-ink);
+        font-weight: 700;
+        background: #fff;
+        border: 1px solid var(--dash-border);
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .dash-tabs .nav-link.active {
+        color: #fff;
+        box-shadow: 0 14px 26px rgba(17, 52, 73, 0.18);
+    }
+
+    .dash-tabs .nav-link.tab-blue.active { background: linear-gradient(135deg, #0f5e91 0%, #2f86bd 100%); }
+    .dash-tabs .nav-link.tab-orange.active { background: linear-gradient(135deg, #b85f10 0%, #df8a3b 100%); }
+    .dash-tabs .nav-link.tab-green.active { background: linear-gradient(135deg, #1f754c 0%, #41a06e 100%); }
+    .dash-tabs .nav-link.tab-red.active { background: linear-gradient(135deg, #a83636 0%, #d95c5c 100%); }
+
+    .dash-tab-badge {
+        min-width: 32px;
+        height: 32px;
+        padding: 0 10px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 999px;
+        background: rgba(255,255,255,0.16);
+        font-size: 0.82rem;
+        font-weight: 800;
+    }
+
+    .dash-panel {
+        padding: 22px;
+    }
+
+    .dash-panel-head {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        gap: 16px;
+        margin-bottom: 18px;
+    }
+
+    .dash-panel-title {
+        margin: 0;
+        font-size: 1.25rem;
+        font-weight: 800;
+        color: var(--dash-ink);
+    }
+
+    .dash-panel-subtitle {
+        margin: 4px 0 0;
+        color: var(--dash-muted);
+    }
+
+    .dash-table th {
+        font-size: 0.82rem;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        color: var(--dash-muted);
+        border-top: 0;
+        white-space: nowrap;
+    }
+
+    .dash-table td {
+        vertical-align: middle;
+    }
+
+    .dash-table .btn {
+        white-space: nowrap;
+    }
+
+    .dash-stack {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+    }
+
+    .dash-primary {
+        font-weight: 700;
+        color: var(--dash-ink);
+    }
+
+    .dash-secondary {
+        color: var(--dash-muted);
+        font-size: 0.9rem;
+    }
+
+    .dash-badge {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 999px;
+        padding: 6px 12px;
+        font-size: 0.78rem;
+        font-weight: 800;
+        letter-spacing: 0.03em;
+        text-transform: uppercase;
+    }
+
+    .dash-badge-blue { background: var(--dash-blue-soft); color: var(--dash-blue); }
+    .dash-badge-orange { background: var(--dash-orange-soft); color: var(--dash-orange); }
+    .dash-badge-green { background: var(--dash-green); color: #fff; }
+    .dash-badge-green-soft { background: var(--dash-green-soft); color: var(--dash-green); }
+    .dash-badge-red { background: var(--dash-red-soft); color: var(--dash-red); }
+    .dash-badge-yellow { background: var(--dash-yellow-soft); color: var(--dash-yellow); }
+    .dash-badge-gray { background: var(--dash-gray-soft); color: var(--dash-gray); }
+    .dash-badge-neutral { background: #f4f6f8; color: var(--dash-muted); }
+
+    .dash-tab-pane .alert-info {
+        margin-bottom: 0;
+        border-radius: 16px;
+    }
+
+    @@media (max-width: 991.98px) {
+        .dash-panel {
+            padding: 18px;
+        }
+
+        .dash-panel-head {
+            flex-direction: column;
+        }
+    }
+</style>
+
+<div class="aocr-view dash-shell">
+    @Html.Partial("_PageHeader", null, pageHeaderData)
+    @Html.Partial("_HeroPanel", null, heroData)
+
+    @if (TempData["Success"] != null)
+    {
+        <div class="alert alert-success" role="alert">@TempData["Success"]</div>
+    }
+    @if (TempData["Warning"] != null)
+    {
+        <div class="alert alert-warning" role="alert">@TempData["Warning"]</div>
+    }
+    @if (TempData["Info"] != null)
+    {
+        <div class="alert alert-info" role="alert">@TempData["Info"]</div>
+    }
+    @if (TempData["Error"] != null)
+    {
+        <div class="alert alert-danger" role="alert">@TempData["Error"]</div>
+    }
+
+    <div class="row g-3 mb-4">
+        <div class="col-12 col-md-6 col-xl-3">
+            @Html.Partial("_MetricCard", null, new ViewDataDictionary { { "Label", "Total inspecciones" }, { "Value", model.TotalInspecciones }, { "Modifier", "info" }, { "Icon", "fas fa-clipboard-list" }, { "Caption", "Casos visibles en seguimiento" } })
+        </div>
+        <div class="col-12 col-md-6 col-xl-3">
+            @Html.Partial("_MetricCard", null, new ViewDataDictionary { { "Label", "Pendientes" }, { "Value", model.TotalPendientes }, { "Modifier", "warning" }, { "Icon", "fas fa-hourglass-half" }, { "Caption", "Procesos aún no finalizados" } })
+        </div>
+        <div class="col-12 col-md-6 col-xl-3">
+            @Html.Partial("_MetricCard", null, new ViewDataDictionary { { "Label", "Observadas" }, { "Value", model.TotalObservadas }, { "Modifier", "danger" }, { "Icon", "fas fa-triangle-exclamation" }, { "Caption", "Requieren atención o subsanación" } })
+        </div>
+        <div class="col-12 col-md-6 col-xl-3">
+            @Html.Partial("_MetricCard", null, new ViewDataDictionary { { "Label", "Finalizadas" }, { "Value", model.TotalFinalizadas }, { "Modifier", "success" }, { "Icon", "fas fa-circle-check" }, { "Caption", "Etapas técnicas concluidas" } })
+        </div>
+    </div>
+
+    @Html.Partial("_ActionToolbar", null, toolbarData)
+
+    <div class="dash-filter-card">
+        @using (Html.BeginForm("DashboardInspeccion", "CoordinacionJefatura", FormMethod.Get, new { @class = "row g-3 align-items-end" }))
+        {
+            <div class="col-12 col-md-4">
+                <label class="form-label" for="compania">Compañía</label>
+                <select id="compania" name="compania" class="form-select">
+                    <option value="">Todas las compañías</option>
+                    @foreach (var item in model.CompaniasDisponibles)
+                    {
+                        <option value="@item" @(string.Equals(item, model.CompaniaFiltro, StringComparison.OrdinalIgnoreCase) ? "selected" : null)>@item</option>
+                    }
+                </select>
+            </div>
+            <div class="col-12 col-md-4">
+                <label class="form-label" for="inspector">Inspector</label>
+                <select id="inspector" name="inspector" class="form-select">
+                    <option value="">Todos los inspectores</option>
+                    @foreach (var item in model.InspectoresDisponibles)
+                    {
+                        <option value="@item" @(string.Equals(item, model.InspectorFiltro, StringComparison.OrdinalIgnoreCase) ? "selected" : null)>@item</option>
+                    }
+                </select>
+            </div>
+            <div class="col-12 col-md-2">
+                <label class="form-label" for="estado">Estado</label>
+                <select id="estado" name="estado" class="form-select">
+                    <option value="">Todos los estados</option>
+                    @foreach (var item in model.EstadosDisponibles)
+                    {
+                        <option value="@item" @(string.Equals(item, model.EstadoFiltro, StringComparison.OrdinalIgnoreCase) ? "selected" : null)>@item.Replace("_", " ")</option>
+                    }
+                </select>
+            </div>
+            <div class="col-12 col-md-2 d-flex gap-2">
+                <button type="submit" class="btn btn-aocr-primary flex-fill"><i class="fas fa-filter"></i> Filtrar</button>
+                <a href="@Url.Action("DashboardInspeccion", "CoordinacionJefatura")" class="btn btn-aocr-secondary flex-fill"><i class="fas fa-rotate-left"></i> Limpiar</a>
+            </div>
+        }
+    </div>
+
+    <ul class="nav dash-tabs" id="dashboardInspeccionTabs" role="tablist">
+        <li class="nav-item" role="presentation">
+            <button class="nav-link tab-blue active" id="tab-inspecciones" data-bs-toggle="tab" data-bs-target="#pane-inspecciones" type="button" role="tab" aria-controls="pane-inspecciones" aria-selected="true">
+                <i class="fas fa-clipboard-check"></i>
+                <span>Inspecciones en seguimiento</span>
+                <span class="dash-tab-badge">@inspecciones.Count</span>
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link tab-orange" id="tab-documentos" data-bs-toggle="tab" data-bs-target="#pane-documentos" type="button" role="tab" aria-controls="pane-documentos" aria-selected="false">
+                <i class="fas fa-folder-open"></i>
+                <span>Control documental</span>
+                <span class="dash-tab-badge">@documentos.Count</span>
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link tab-green" id="tab-firmas" data-bs-toggle="tab" data-bs-target="#pane-firmas" type="button" role="tab" aria-controls="pane-firmas" aria-selected="false">
+                <i class="fas fa-signature"></i>
+                <span>Pendientes de firma</span>
+                <span class="dash-tab-badge">@firmas.Count</span>
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link tab-red" id="tab-nc" data-bs-toggle="tab" data-bs-target="#pane-nc" type="button" role="tab" aria-controls="pane-nc" aria-selected="false">
+                <i class="fas fa-triangle-exclamation"></i>
+                <span>Observaciones / NC</span>
+                <span class="dash-tab-badge">@ncs.Count</span>
+            </button>
+        </li>
+    </ul>
+
+    <div class="tab-content">
+        <div class="tab-pane fade show active dash-tab-pane" id="pane-inspecciones" role="tabpanel" aria-labelledby="tab-inspecciones">
+            <div class="dash-panel">
+                <div class="dash-panel-head">
+                    <div>
+                        <h3 class="dash-panel-title">Inspecciones en seguimiento</h3>
+                        <p class="dash-panel-subtitle">Estado operativo, etapa actual, inspector asignado y acceso rápido para continuidad del proceso.</p>
+                    </div>
+                </div>
+
+                @if (!inspecciones.Any())
+                {
+                    <div class="alert alert-info">No existen registros en esta etapa.</div>
+                }
+                else
+                {
+                    <div class="table-responsive">
+                        <table class="table dash-table align-middle mb-0 js-dashboard-table" id="tablaDashboardInspecciones">
+                            <thead>
+                                <tr>
+                                    <th>N° Solicitud</th>
+                                    <th>Compañía</th>
+                                    <th>Inspector asignado</th>
+                                    <th>Estado inspección</th>
+                                    <th>Fecha asignación</th>
+                                    <th>Última actualización</th>
+                                    <th>Etapa actual</th>
+                                    <th class="text-end">Acción</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var item in inspecciones)
+                                {
+                                    var badge = DashboardInspeccionBadgeHelper.GetBadgeEstado(item.EstadoVisual, "INSPECCION");
+                                    <tr>
+                                        <td><div class="dash-stack"><span class="dash-primary">@item.NumeroSolicitud</span><span class="dash-secondary">Inspección @item.CodigoInspeccion</span></div></td>
+                                        <td>@item.Compania</td>
+                                        <td>@item.InspectorAsignado</td>
+                                        <td><span class="@badge.CssClass">@badge.Text</span></td>
+                                        <td>@(item.FechaAsignacion.HasValue ? item.FechaAsignacion.Value.ToString("dd/MM/yyyy HH:mm") : "No registrada")</td>
+                                        <td>@(item.UltimaActualizacion.HasValue ? item.UltimaActualizacion.Value.ToString("dd/MM/yyyy HH:mm") : "No registrada")</td>
+                                        <td><div class="dash-stack"><span class="dash-primary">@item.EtapaActual</span><span class="dash-secondary">@item.Estado</span></div></td>
+                                        <td class="text-end">
+                                            <div class="d-flex justify-content-end flex-wrap gap-2">
+                                                <a class="btn btn-sm btn-outline-primary" href="@item.UrlDetalle"><i class="fas fa-eye"></i> Ver detalle</a>
+                                                <a class="btn btn-sm btn-outline-warning" href="@item.UrlRevisar"><i class="fas fa-search"></i> Revisar inspección</a>
+                                                <a class="btn btn-sm btn-outline-success" href="@item.UrlContinuar"><i class="fas fa-arrow-right"></i> @item.TextoContinuar</a>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+            </div>
+        </div>
+
+        <div class="tab-pane fade dash-tab-pane" id="pane-documentos" role="tabpanel" aria-labelledby="tab-documentos">
+            <div class="dash-panel">
+                <div class="dash-panel-head">
+                    <div>
+                        <h3 class="dash-panel-title">Control documental</h3>
+                        <p class="dash-panel-subtitle">Expedientes e informes técnicos con estado documental, firmas y accesos rápidos de revisión.</p>
+                    </div>
+                </div>
+
+                @if (!documentos.Any())
+                {
+                    <div class="alert alert-info">No existen registros en esta etapa.</div>
+                }
+                else
+                {
+                    <div class="table-responsive">
+                        <table class="table dash-table align-middle mb-0 js-dashboard-table" id="tablaDashboardDocumentos">
+                            <thead>
+                                <tr>
+                                    <th>N° Solicitud</th>
+                                    <th>Documento</th>
+                                    <th>Tipo documento</th>
+                                    <th>Estado documento</th>
+                                    <th>Firmado Inspector</th>
+                                    <th>Firmado DIRDAC</th>
+                                    <th>Fecha última actualización</th>
+                                    <th class="text-end">Acción</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var item in documentos)
+                                {
+                                    var badge = DashboardInspeccionBadgeHelper.GetBadgeEstado(item.EstadoDocumento, "DOCUMENTO");
+                                    var firmaInspector = DashboardInspeccionBadgeHelper.GetBooleanBadge(item.FirmadoInspector);
+                                    var firmaDirdac = DashboardInspeccionBadgeHelper.GetBooleanBadge(item.FirmadoDirdac);
+                                    <tr>
+                                        <td><div class="dash-stack"><span class="dash-primary">@item.NumeroSolicitud</span><span class="dash-secondary">@item.Compania</span></div></td>
+                                        <td>@item.Documento</td>
+                                        <td>@item.TipoDocumento</td>
+                                        <td><span class="@badge.CssClass">@badge.Text</span></td>
+                                        <td><span class="@firmaInspector.CssClass">@firmaInspector.Text</span></td>
+                                        <td><span class="@firmaDirdac.CssClass">@firmaDirdac.Text</span></td>
+                                        <td>@(item.FechaUltimaActualizacion.HasValue ? item.FechaUltimaActualizacion.Value.ToString("dd/MM/yyyy HH:mm") : "No registrada")</td>
+                                        <td class="text-end">
+                                            <div class="d-flex justify-content-end flex-wrap gap-2">
+                                                @if (!string.IsNullOrWhiteSpace(item.UrlVerDocumento))
+                                                {
+                                                    <a class="btn btn-sm btn-outline-primary" href="@item.UrlVerDocumento" target="_blank" rel="noopener"><i class="fas fa-file-pdf"></i> Ver documento</a>
+                                                }
+                                                @if (!string.IsNullOrWhiteSpace(item.UrlDescargarPdf))
+                                                {
+                                                    <a class="btn btn-sm btn-outline-secondary" href="@item.UrlDescargarPdf"><i class="fas fa-download"></i> Descargar PDF</a>
+                                                }
+                                                <a class="btn btn-sm btn-outline-warning" href="@item.UrlRevisar"><i class="fas fa-search"></i> Revisar</a>
+                                                @if (!string.IsNullOrWhiteSpace(item.UrlFirmar))
+                                                {
+                                                    <a class="btn btn-sm btn-outline-success" href="@item.UrlFirmar"><i class="fas fa-signature"></i> Firmar</a>
+                                                }
+                                            </div>
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+            </div>
+        </div>
+
+        <div class="tab-pane fade dash-tab-pane" id="pane-firmas" role="tabpanel" aria-labelledby="tab-firmas">
+            <div class="dash-panel">
+                <div class="dash-panel-head">
+                    <div>
+                        <h3 class="dash-panel-title">Pendientes de firma</h3>
+                        <p class="dash-panel-subtitle">Visibilidad de documentos pendientes por inspector y por DIRDAC, con prioridad de acción inmediata.</p>
+                    </div>
+                </div>
+
+                @if (!firmas.Any())
+                {
+                    <div class="alert alert-info">No existen registros en esta etapa.</div>
+                }
+                else
+                {
+                    <div class="table-responsive">
+                        <table class="table dash-table align-middle mb-0 js-dashboard-table" id="tablaDashboardFirmas">
+                            <thead>
+                                <tr>
+                                    <th>N° Solicitud</th>
+                                    <th>Documento</th>
+                                    <th>Firmante requerido</th>
+                                    <th>Estado</th>
+                                    <th>Fecha envío</th>
+                                    <th class="text-end">Acción</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var item in firmas)
+                                {
+                                    var badge = DashboardInspeccionBadgeHelper.GetBadgeEstado(item.Estado, "FIRMA");
+                                    <tr>
+                                        <td><div class="dash-stack"><span class="dash-primary">@item.NumeroSolicitud</span><span class="dash-secondary">@item.Compania</span></div></td>
+                                        <td>@item.Documento</td>
+                                        <td>@item.FirmanteRequerido</td>
+                                        <td><span class="@badge.CssClass">@badge.Text</span></td>
+                                        <td>@(item.FechaEnvio.HasValue ? item.FechaEnvio.Value.ToString("dd/MM/yyyy HH:mm") : "No registrada")</td>
+                                        <td class="text-end">
+                                            <a class="btn btn-sm btn-outline-success" href="@item.UrlAccion"><i class="fas fa-arrow-right"></i> @item.TextoAccion</a>
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+            </div>
+        </div>
+
+        <div class="tab-pane fade dash-tab-pane" id="pane-nc" role="tabpanel" aria-labelledby="tab-nc">
+            <div class="dash-panel">
+                <div class="dash-panel-head">
+                    <div>
+                        <h3 class="dash-panel-title">Observaciones / NC</h3>
+                        <p class="dash-panel-subtitle">Hallazgos y no conformidades con responsable, fecha y acceso rápido al detalle de inspección.</p>
+                    </div>
+                </div>
+
+                @if (!ncs.Any())
+                {
+                    <div class="alert alert-info">No existen registros en esta etapa.</div>
+                }
+                else
+                {
+                    <div class="table-responsive">
+                        <table class="table dash-table align-middle mb-0 js-dashboard-table" id="tablaDashboardNc">
+                            <thead>
+                                <tr>
+                                    <th>N° Solicitud</th>
+                                    <th>Tipo NC</th>
+                                    <th>Descripción</th>
+                                    <th>Estado</th>
+                                    <th>Responsable</th>
+                                    <th>Fecha</th>
+                                    <th class="text-end">Acción</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var item in ncs)
+                                {
+                                    var badge = DashboardInspeccionBadgeHelper.GetBadgeEstado(item.Estado, "NC");
+                                    <tr>
+                                        <td><div class="dash-stack"><span class="dash-primary">@item.NumeroSolicitud</span><span class="dash-secondary">@item.Compania</span></div></td>
+                                        <td>@item.TipoNc</td>
+                                        <td>@item.Descripcion</td>
+                                        <td><span class="@badge.CssClass">@badge.Text</span></td>
+                                        <td>@item.Responsable</td>
+                                        <td>@(item.Fecha.HasValue ? item.Fecha.Value.ToString("dd/MM/yyyy HH:mm") : "No registrada")</td>
+                                        <td class="text-end">
+                                            <a class="btn btn-sm btn-outline-primary" href="@item.UrlAccion"><i class="fas fa-eye"></i> Ver detalle</a>
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    (function ($) {
+        function buildLanguageConfig() {
+            return {
+                search: 'Buscar:',
+                lengthMenu: 'Mostrar _MENU_ registros',
+                info: 'Mostrando _START_ a _END_ de _TOTAL_ registros',
+                infoEmpty: 'Mostrando 0 a 0 de 0 registros',
+                zeroRecords: 'No existen registros en esta etapa',
+                emptyTable: 'No existen registros en esta etapa',
+                infoFiltered: '(filtrado de _MAX_ registros)',
+                paginate: {
+                    first: 'Primero',
+                    last: 'Último',
+                    next: 'Siguiente',
+                    previous: 'Anterior'
+                }
+            };
+        }
+
+        function initializeTable(table) {
+            if (!$.fn.DataTable || !table.length) {
+                return;
+            }
+
+            if ($.fn.DataTable.isDataTable(table)) {
+                table.DataTable().destroy();
+            }
+
+            table.DataTable({
+                pageLength: 10,
+                order: [],
+                autoWidth: false,
+                language: buildLanguageConfig()
+            });
+        }
+
+        $(function () {
+            $('.js-dashboard-table').each(function () {
+                initializeTable($(this));
+            });
+
+            $('button[data-bs-toggle="tab"]').on('shown.bs.tab', function () {
+                $('.js-dashboard-table').each(function () {
+                    if ($.fn.DataTable && $.fn.DataTable.isDataTable(this)) {
+                        $(this).DataTable().columns.adjust();
+                    }
+                });
+            });
+        });
+    })(jQuery);
+</script>

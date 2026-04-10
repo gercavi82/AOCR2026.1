@@ -1,0 +1,240 @@
+@model CapaPresentacion.Models.ViewModels.InformeTecnicoPdfViewModel
+@{
+    Layout = null;
+    var inspeccion = Model != null ? Model.Inspeccion : null;
+    var solicitud = Model != null ? Model.Solicitud : null;
+    var informe = Model != null ? Model.Informe : null;
+}
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8" />
+    <title>Informe Técnico de Inspección</title>
+    <style>
+        body {
+            font-family: Arial, Helvetica, sans-serif;
+            color: #1f2f3a;
+            margin: 28px 34px;
+            font-size: 13px;
+            line-height: 1.5;
+        }
+
+        .header {
+            border-bottom: 3px solid #1b4f72;
+            padding-bottom: 14px;
+            margin-bottom: 18px;
+        }
+
+        .header h1 {
+            margin: 0;
+            font-size: 22px;
+            color: #1b4f72;
+        }
+
+        .header p {
+            margin: 6px 0 0;
+            color: #596b77;
+        }
+
+        .meta {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+        }
+
+        .meta td {
+            border: 1px solid #d5e1e8;
+            padding: 8px 10px;
+            vertical-align: top;
+        }
+
+        .meta strong {
+            display: block;
+            color: #1b4f72;
+            margin-bottom: 4px;
+        }
+
+        .block {
+            margin-bottom: 18px;
+        }
+
+        .block h2 {
+            margin: 0 0 8px;
+            font-size: 15px;
+            color: #163a55;
+            border-left: 4px solid #0f7b84;
+            padding-left: 8px;
+        }
+
+        .content-box {
+            border: 1px solid #d5e1e8;
+            background: #f9fbfc;
+            padding: 12px;
+            white-space: pre-line;
+        }
+
+        .footer {
+            margin-top: 26px;
+            color: #667784;
+            font-size: 11px;
+            border-top: 1px solid #d5e1e8;
+            padding-top: 8px;
+        }
+
+        .signature-reserve {
+            margin-top: 24px;
+            page-break-inside: avoid;
+        }
+
+        .signature-reserve h2 {
+            margin: 0 0 8px;
+            font-size: 15px;
+            color: #163a55;
+            border-left: 4px solid #0f7b84;
+            padding-left: 8px;
+        }
+
+        .signature-note {
+            border: 1px solid #d5e1e8;
+            background: #f9fbfc;
+            padding: 10px 12px;
+            color: #43545f;
+            margin-bottom: 12px;
+        }
+
+        .signature-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .signature-table td {
+            width: 50%;
+            vertical-align: top;
+            padding: 0 10px 0 0;
+        }
+
+        .signature-table td:last-child {
+            padding-right: 0;
+            padding-left: 10px;
+        }
+
+        .signature-slot {
+            border: 1px dashed #6b7f8c;
+            background: #fff;
+            height: 120px;
+            padding: 8px 10px;
+            box-sizing: border-box;
+        }
+
+        .signature-slot strong {
+            display: block;
+            color: #1b4f72;
+            margin-bottom: 6px;
+            text-transform: uppercase;
+            font-size: 11px;
+        }
+
+        .signature-slot span {
+            display: block;
+            color: #5a6d79;
+            font-size: 11px;
+            line-height: 1.4;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>@(string.IsNullOrWhiteSpace(informe != null ? informe.Titulo : null) ? "Informe Técnico de Inspección" : informe.Titulo)</h1>
+        <p>Dirección General de Aviación Civil - Gestión de Inspecciones AOCR</p>
+    </div>
+
+    <table class="meta">
+        <tr>
+            <td>
+                <strong>Inspección</strong>
+                @(inspeccion != null ? inspeccion.CodigoInspeccion.ToString() : "-")
+            </td>
+            <td>
+                <strong>Solicitud</strong>
+                @(inspeccion != null ? inspeccion.CodigoSolicitud.ToString() : "-")
+            </td>
+            <td>
+                <strong>Versión</strong>
+                @(informe != null ? informe.Version.ToString() : "1")
+            </td>
+        </tr>
+        <tr>
+            <td>
+                <strong>Operador</strong>
+                @(solicitud != null ? (solicitud.RazonSocial ?? solicitud.NombreOperador ?? "-") : "-")
+            </td>
+            <td>
+                <strong>Inspector principal</strong>
+                @(inspeccion != null ? (inspeccion.InspectorPrincipalNombre ?? "-") : "-")
+            </td>
+            <td>
+                <strong>Fecha</strong>
+                @(informe != null && informe.FechaFinalizacion.HasValue ? informe.FechaFinalizacion.Value.ToString("yyyy-MM-dd HH:mm") : System.DateTime.Now.ToString("yyyy-MM-dd HH:mm"))
+            </td>
+        </tr>
+        <tr>
+            <td colspan="3">
+                <strong>Resultado</strong>
+                @(string.IsNullOrWhiteSpace(informe != null ? informe.Resultado : null) ? (inspeccion != null ? inspeccion.Resultado : "-") : informe.Resultado)
+            </td>
+        </tr>
+    </table>
+
+    <div class="block">
+        <h2>Resumen Ejecutivo</h2>
+        <div class="content-box">@(informe != null ? informe.Resumen : string.Empty)</div>
+    </div>
+
+    <div class="block">
+        <h2>Observaciones</h2>
+        <div class="content-box">@(informe != null ? informe.Observaciones : string.Empty)</div>
+    </div>
+
+    <div class="block">
+        <h2>Conclusiones</h2>
+        <div class="content-box">@(informe != null ? informe.Conclusiones : string.Empty)</div>
+    </div>
+
+    <div class="block">
+        <h2>Recomendaciones</h2>
+        <div class="content-box">@(informe != null ? informe.Recomendaciones : string.Empty)</div>
+    </div>
+
+    <div class="footer">
+        Documento generado automáticamente por AOCR. Este archivo forma parte del expediente técnico de la inspección.
+    </div>
+
+    <div class="signature-reserve">
+        <h2>Firmas Digitales</h2>
+        <div class="signature-note">
+            La franja inferior queda reservada para el estampado de firmas digitales. El inspector se inserta en el bloque izquierdo y la autorización DIRDAC en el bloque derecho, ambos con QR y datos del certificado.
+        </div>
+
+        <table class="signature-table">
+            <tr>
+                <td>
+                    <div class="signature-slot">
+                        <strong>FIRMA DE AUTORIZACION</strong>
+                        <span>Espacio reservado para firma digital</span>
+                        <span>con QR y datos del firmante</span>
+                        <span>autorizado</span>
+                    </div>
+                </td>
+                <td>
+                    <div class="signature-slot">
+                        <strong>FIRMA DE AUTORIZACION</strong>
+                        <span>Espacio reservado para firma digital</span>
+                        <span>con QR y datos del firmante</span>
+                        <span>autorizado</span>
+                    </div>
+                </td>
+            </tr>
+        </table>
+    </div>
+</body>
+</html>

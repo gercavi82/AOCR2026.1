@@ -1,0 +1,307 @@
+﻿@inherits System.Web.Mvc.WebViewPage<CapaPresentacion.Models.CoordinacionJefaturaRevisionViewModel>
+@using System.Linq
+@{
+    ViewBag.Title = "Revisión / Verificación";
+    Layout = "~/Views/Shared/_LayoutAOCR.cshtml";
+}
+
+@* ── PAGE HEADER ──────────────────────────────────────────── *@
+<div class="aocr-page-header mb-3">
+    <div class="d-flex flex-wrap align-items-start justify-content-between gap-2">
+        <div>
+            <h1 class="aocr-page-title mb-0">Revisión / Verificación</h1>
+            <div class="aocr-page-subtitle mt-1">Bandeja unificada de control documental, revisión AOCR y seguimiento de inspecciones</div>
+        </div>
+        <nav aria-label="Ruta de navegación">
+            <ol class="aocr-breadcrumb breadcrumb mb-0">
+                <li class="breadcrumb-item">
+                    <a href="@Url.Action("Index", "Home")"><i class="fas fa-home"></i></a>
+                </li>
+                <li class="breadcrumb-item">Coordinación y Jefatura</li>
+                <li class="breadcrumb-item active" aria-current="page">Revisión / Verificación</li>
+            </ol>
+        </nav>
+    </div>
+</div>
+
+@* ── HERO ─────────────────────────────────────────────────── *@
+<div class="card aocr-hero aocr-hero-panel mb-4">
+    <div class="card-body">
+        <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
+            <div>
+                <p class="aocr-hero-kicker aocr-hero-overline mb-1">
+                    <i class="fas fa-landmark me-1"></i> Sistema Institucional DGAC
+                </p>
+                <h2 class="aocr-hero-title mb-1">Revisión / Verificación</h2>
+                <p class="aocr-hero-subtitle mb-0">Coordinación y Jefatura</p>
+                <p class="aocr-hero-description mb-0">
+                    Control unificado del flujo institucional AOCR: documentación, revisión técnica e inspecciones.
+                </p>
+            </div>
+            <div class="aocr-hero-metric">
+                <span class="aocr-hero-metric-value">@(Model.SolicitudesControlDocumental.Count + Model.SolicitudesAocrRevision.Count)</span>
+                <span class="aocr-hero-metric-label">En bandeja</span>
+            </div>
+        </div>
+    </div>
+</div>
+
+@* ── MÉTRICAS ─────────────────────────────────────────────── *@
+<div class="aocr-summary-strip mb-4">
+    <div class="card aocr-metric-card">
+        <div class="card-body">
+            <div class="aocr-metric-label">Control documental</div>
+            <div class="aocr-metric-value">@Model.SolicitudesControlDocumental.Count</div>
+        </div>
+    </div>
+    <div class="card aocr-metric-card metric-info">
+        <div class="card-body">
+            <div class="aocr-metric-label">AOCR en revisión</div>
+            <div class="aocr-metric-value">@Model.SolicitudesAocrRevision.Count</div>
+        </div>
+    </div>
+    <div class="card aocr-metric-card metric-warning">
+        <div class="card-body">
+            <div class="aocr-metric-label">Inspecciones en seguimiento</div>
+            <div class="aocr-metric-value">@Model.InspeccionesSeguimiento.Count</div>
+        </div>
+    </div>
+</div>
+
+@* ── SECCIÓN: CONTROL DOCUMENTAL ─────────────────────────── *@
+<div class="card aocr-table-card mb-4">
+    <div class="card-body">
+        <h6 class="aocr-section-title mb-3">
+            <i class="fas fa-folder-open me-1"></i> Solicitudes para revisión documental
+        </h6>
+
+        @if (!Model.SolicitudesControlDocumental.Any())
+        {
+            <div class="aocr-empty-state py-3 text-center">
+                <div class="aocr-empty-icon" style="width:52px;height:52px;font-size:1.3rem;">
+                    <i class="fas fa-folder-open"></i>
+                </div>
+                <p class="aocr-empty-title mt-2 mb-1">Sin pendientes en control documental</p>
+                <p class="aocr-empty-text small">No hay solicitudes pendientes de revisión documental en este momento.</p>
+            </div>
+        }
+        else
+        {
+            <div class="aocr-table-wrap">
+                <table class="table aocr-table table-sm mb-0">
+                    <thead>
+                        <tr>
+                            <th>Solicitud</th>
+                            <th>Operador</th>
+                            <th>Estado</th>
+                            <th>Fecha</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var item in Model.SolicitudesControlDocumental)
+                        {
+                            <tr>
+                                <td class="fw-semibold text-primary">@item.CodigoSolicitud</td>
+                                <td>@Html.Encode(item.NombreOperador)</td>
+                                <td>@Html.Partial("_StatusBadge", new ViewDataDictionary { { "Estado", item.Estado } })</td>
+                                <td>@(item.FechaSolicitud.HasValue ? item.FechaSolicitud.Value.ToString("dd/MM/yyyy") : "-")</td>
+                                <td>
+                                    <a class="btn btn-sm btn-outline-primary" href="@Url.Action("Detalle", "SolicitudAOCR", new { id = item.CodigoSolicitud })">
+                                        <i class="fas fa-eye me-1"></i> Detalle
+                                    </a>
+                                    <a class="btn btn-sm btn-outline-secondary ms-1" href="@Url.Action("RevisarSolicitudes", "SolicitudAOCR")">
+                                        <i class="fas fa-tasks me-1"></i> Bandeja técnica
+                                    </a>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </div>
+</div>
+
+@* ── SECCIÓN: AOCR EN REVISIÓN ────────────────────────────── *@
+<div class="card aocr-table-card mb-4">
+    <div class="card-body">
+        <h6 class="aocr-section-title mb-3">
+            <i class="fas fa-file-contract me-1"></i> AOCR para validar, legalizar o cerrar
+        </h6>
+
+        @if (!Model.SolicitudesAocrRevision.Any())
+        {
+            <div class="aocr-empty-state py-3 text-center">
+                <div class="aocr-empty-icon" style="width:52px;height:52px;font-size:1.3rem;">
+                    <i class="fas fa-file-contract"></i>
+                </div>
+                <p class="aocr-empty-title mt-2 mb-1">Sin AOCR en cola de revisión</p>
+                <p class="aocr-empty-text small">No hay documentos AOCR pendientes de validación o legalización.</p>
+            </div>
+        }
+        else
+        {
+            <div class="aocr-table-wrap">
+                <table class="table aocr-table table-sm mb-0">
+                    <thead>
+                        <tr>
+                            <th>Solicitud</th>
+                            <th>Operador</th>
+                            <th>Estado</th>
+                            <th>Fecha</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var item in Model.SolicitudesAocrRevision)
+                        {
+                            <tr>
+                                <td class="fw-semibold text-primary">@item.CodigoSolicitud</td>
+                                <td>@Html.Encode(item.NombreOperador)</td>
+                                <td>@Html.Partial("_StatusBadge", new ViewDataDictionary { { "Estado", item.Estado } })</td>
+                                <td>@(item.FechaSolicitud.HasValue ? item.FechaSolicitud.Value.ToString("dd/MM/yyyy") : "-")</td>
+                                <td>
+                                    <a class="btn btn-sm btn-outline-primary" href="@Url.Action("Detalle", "SolicitudAOCR", new { id = item.CodigoSolicitud })">
+                                        <i class="fas fa-eye me-1"></i> Detalle
+                                    </a>
+                                    @if (User.IsInRole("JefaturaTecnica") || User.IsInRole("Administrador"))
+                                    {
+                                        <a class="btn btn-sm btn-outline-warning ms-1" href="@Url.Action("ValidarAocr", "CoordinacionJefatura")">
+                                            <i class="fas fa-stamp me-1"></i> Validar AOCR
+                                        </a>
+                                    }
+                                    @if (User.IsInRole("CoordinacionLegal") || User.IsInRole("CoordinadorLegal") || User.IsInRole("DirectorGeneral") || User.IsInRole("Administrador"))
+                                    {
+                                        <a class="btn btn-sm btn-outline-success ms-1" href="@Url.Action("LegalizarAocr", "CoordinacionJefatura")">
+                                            <i class="fas fa-gavel me-1"></i> Legalizar AOCR
+                                        </a>
+                                    }
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </div>
+</div>
+
+@* ── SECCIÓN: INSPECCIONES ────────────────────────────────── *@
+<div class="card aocr-table-card mb-3">
+    <div class="card-body">
+        <h6 class="aocr-section-title mb-3">
+            <i class="fas fa-search me-1"></i> Inspecciones en seguimiento de coordinación / jefatura
+        </h6>
+
+        @if (!Model.InspeccionesSeguimiento.Any())
+        {
+            <div class="aocr-empty-state py-3 text-center">
+                <div class="aocr-empty-icon" style="width:52px;height:52px;font-size:1.3rem;">
+                    <i class="fas fa-search"></i>
+                </div>
+                <p class="aocr-empty-title mt-2 mb-1">Sin inspecciones en seguimiento</p>
+                <p class="aocr-empty-text small">No hay inspecciones en seguimiento para este bloque.</p>
+            </div>
+        }
+        else
+        {
+            <div class="aocr-table-wrap">
+                <table class="table aocr-table table-sm mb-0">
+                    <thead>
+                        <tr>
+                            <th>Inspección</th>
+                            <th>Solicitud</th>
+                            <th>Estado</th>
+                            <th>Resultado</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var item in Model.InspeccionesSeguimiento)
+                        {
+                            <tr>
+                                <td class="fw-semibold">@item.CodigoInspeccion</td>
+                                <td>@item.CodigoSolicitud</td>
+                                <td>@Html.Partial("_StatusBadge", new ViewDataDictionary { { "Estado", item.Estado } })</td>
+                                <td>@Html.Encode(item.Resultado ?? "-")</td>
+                                <td>
+                                    <a class="btn btn-sm btn-outline-primary" href="@Url.Action("Detalle", "Inspeccion", new { id = item.CodigoInspeccion })">
+                                        <i class="fas fa-eye me-1"></i> Detalle
+                                    </a>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </div>
+</div>
+
+                        {
+                            <tr>
+                                <td>@item.CodigoSolicitud</td>
+                                <td>@Html.Encode(item.NombreOperador)</td>
+                                <td>@Html.Encode(item.Estado)</td>
+                                <td>@(item.FechaSolicitud.HasValue ? item.FechaSolicitud.Value.ToString("yyyy-MM-dd") : string.Empty)</td>
+                                <td>
+                                    <a class="btn btn-sm btn-info" href="@Url.Action("Detalle", "SolicitudAOCR", new { id = item.CodigoSolicitud })">Detalle</a>
+                                    @if (User.IsInRole("JefaturaTecnica") || User.IsInRole("Administrador"))
+                                    {
+                                        <a class="btn btn-sm btn-warning" href="@Url.Action("ValidarAocr", "CoordinacionJefatura")">Validar AOCR</a>
+                                    }
+                                    @if (User.IsInRole("CoordinacionLegal") || User.IsInRole("CoordinadorLegal") || User.IsInRole("DirectorGeneral") || User.IsInRole("Administrador"))
+                                    {
+                                        <a class="btn btn-sm btn-success" href="@Url.Action("LegalizarAocr", "CoordinacionJefatura")">Legalizar AOCR</a>
+                                    }
+                                </td>
+                            </tr>
+                        }
+                        </tbody>
+                    </table>
+                </div>
+            }
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-header"><strong>Inspecciones en seguimiento de coordinación / jefatura</strong></div>
+        <div class="card-body p-0">
+            @if (!Model.InspeccionesSeguimiento.Any())
+            {
+                <div class="p-3 text-muted">No hay inspecciones en seguimiento para este bloque.</div>
+            }
+            else
+            {
+                <div class="table-responsive">
+                    <table class="table table-sm table-striped mb-0">
+                        <thead>
+                            <tr>
+                                <th>Inspección</th>
+                                <th>Solicitud</th>
+                                <th>Estado</th>
+                                <th>Resultado</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                        @foreach (var item in Model.InspeccionesSeguimiento)
+                        {
+                            <tr>
+                                <td>@item.CodigoInspeccion</td>
+                                <td>@item.CodigoSolicitud</td>
+                                <td>@Html.Encode(item.Estado)</td>
+                                <td>@Html.Encode(item.Resultado)</td>
+                                <td>
+                                    <a class="btn btn-sm btn-info" href="@Url.Action("Detalle", "Inspeccion", new { id = item.CodigoInspeccion })">Detalle</a>
+                                </td>
+                            </tr>
+                        }
+                        </tbody>
+                    </table>
+                </div>
+            }
+        </div>
+    </div>
+</div>

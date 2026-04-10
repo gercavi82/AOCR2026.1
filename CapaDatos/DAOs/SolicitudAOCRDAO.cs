@@ -1212,13 +1212,41 @@ WHERE codigo_solicitud=@id AND deleted_at IS NULL;";
                 TipoSolicitud = GetNullableInt(rd, "tipo_solicitud"),
                 Estado = GetString(rd, "estado"),
 
-                NombreOperador = GetString(rd, "nombre_operador"),
-                Ruc = GetString(rd, "ruc"),
-                RazonSocial = GetString(rd, "razon_social"),
+                NombreOperador = FirstNonEmpty(
+                    GetString(rd, "nombre_operador"),
+                    GetString(rd, "nombre_explotador"),
+                    GetString(rd, "operador"),
+                    GetString(rd, "nombre_compania"),
+                    GetString(rd, "compania_nombre")),
+                Ruc = FirstNonEmpty(
+                    GetString(rd, "ruc"),
+                    GetString(rd, "ruc_operador"),
+                    GetString(rd, "ruc_explotador"),
+                    GetString(rd, "identificacion_ruc"),
+                    GetString(rd, "numero_ruc")),
+                RazonSocial = FirstNonEmpty(
+                    GetString(rd, "razon_social"),
+                    GetString(rd, "razon_social_operador"),
+                    GetString(rd, "nombre_comercial"),
+                    GetString(rd, "nombre_compania")),
 
-                Email = GetString(rd, "email"),
-                Telefono = GetString(rd, "telefono"),
-                Direccion = GetString(rd, "direccion"),
+                Email = FirstNonEmpty(
+                    GetString(rd, "email"),
+                    GetString(rd, "correo"),
+                    GetString(rd, "correo_electronico"),
+                    GetString(rd, "email_operador"),
+                    GetString(rd, "correo_operador")),
+                Telefono = FirstNonEmpty(
+                    GetString(rd, "telefono"),
+                    GetString(rd, "telefono_operador"),
+                    GetString(rd, "telefono_contacto"),
+                    GetString(rd, "celular"),
+                    GetString(rd, "telefono_representante")),
+                Direccion = FirstNonEmpty(
+                    GetString(rd, "direccion"),
+                    GetString(rd, "direccion_operador"),
+                    GetString(rd, "direccion_principal"),
+                    GetString(rd, "domicilio")),
                 Ciudad = GetString(rd, "ciudad"),
                 CodCiudad = FirstNonEmpty(
                     GetString(rd, "cod_ciudad"),
@@ -1232,11 +1260,16 @@ WHERE codigo_solicitud=@id AND deleted_at IS NULL;";
                 Provincia = GetString(rd, "provincia"),
                 Pais = GetString(rd, "pais"),
 
-                RepresentanteLegal = GetString(rd, "representante_legal"),
+                RepresentanteLegal = FirstNonEmpty(
+                    GetString(rd, "representante_legal"),
+                    GetString(rd, "nombre_representante_legal"),
+                    GetString(rd, "representante")),
                 CedulaRepresentante = GetString(rd, "cedula_representante"),
                 CorreoRepresentanteTecnico = FirstNonEmpty(
                     GetString(rd, "correo_representante_tecnico"),
-                    GetString(rd, "email_representante_tecnico")),
+                    GetString(rd, "email_representante_tecnico"),
+                    GetString(rd, "correo_representante"),
+                    GetString(rd, "email_representante")),
                 NombreComercial = FirstNonEmpty(
                     GetString(rd, "nombre_comercial"),
                     GetString(rd, "nombre_comercial_compania")),
@@ -1257,8 +1290,11 @@ WHERE codigo_solicitud=@id AND deleted_at IS NULL;";
                 CodigoOaci = FirstNonEmpty(
                     GetString(rd, "codigo_oaci"),
                     GetString(rd, "codigo_oasi"),
+                    GetString(rd, "codigo_icao"),
+                    GetString(rd, "icao"),
                     GetString(rd, "codigo_oaci_operador"),
-                    GetString(rd, "codigo_oasi_operador")),
+                    GetString(rd, "codigo_oasi_operador"),
+                    GetString(rd, "codigo_oaci_compania")),
 
                 CodigoUsuario = GetInt(rd, "codigo_usuario"),
                 CodigoTecnico = GetNullableInt(rd, "codigo_tecnico"),

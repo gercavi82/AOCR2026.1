@@ -1,0 +1,269 @@
+﻿2026-02-10 08:43:11.311 | INFO  | CID:N/A | Iniciando procesador de cola de correos
+2026-02-10 08:43:25.309 | INFO  | CID:f0423e686796 | Account/Login | Iniciando acción: Account/Login
+2026-02-10 08:43:25.843 | INFO  | CID:f0423e686796 | Account/Login | Acción completada: Account/Login
+2026-02-10 08:43:55.591 | INFO  | CID:1483fe01a899 | USR:1713091955 | OrdenRecaudacion/Nueva | Iniciando acción: OrdenRecaudacion/Nueva
+2026-02-10 08:43:55.682 | INFO  | CID:1483fe01a899 | USR:1713091955 | OrdenRecaudacion/Nueva | Acción completada: OrdenRecaudacion/Nueva
+2026-02-10 08:46:13.216 | INFO  | CID:6d2b4a1e588d | USR:1713091955 | OrdenRecaudacion/Generar | Iniciando acción: OrdenRecaudacion/Generar
+2026-02-10 08:46:13.231 | INFO  | CID:6d2b4a1e588d | USR:1713091955 | OrdenRecaudacion/Generar | Acción completada: OrdenRecaudacion/Generar
+2026-02-10 08:49:12.383 | INFO  | CID:595b7f6201d7 | USR:1713091955 | OrdenRecaudacion/RegistrarPago | Iniciando acción: OrdenRecaudacion/RegistrarPago
+2026-02-10 08:49:12.484 | INFO  | CID:595b7f6201d7 | USR:1713091955 | OrdenRecaudacion/RegistrarPago | Acción completada: OrdenRecaudacion/RegistrarPago
+2026-02-10 08:53:30.636 | INFO  | CID:4d5a555a1d97 | USR:1713091955 | OrdenRecaudacion/Nueva | Iniciando acción: OrdenRecaudacion/Nueva
+2026-02-10 08:53:30.879 | INFO  | CID:4d5a555a1d97 | USR:1713091955 | OrdenRecaudacion/Nueva | Acción completada: OrdenRecaudacion/Nueva
+2026-02-10 08:53:35.852 | INFO  | CID:d21bf55763e8 | USR:1713091955 | OrdenRecaudacion/Generar | Iniciando acción: OrdenRecaudacion/Generar
+2026-02-10 08:53:35.861 | INFO  | CID:d21bf55763e8 | USR:1713091955 | OrdenRecaudacion/Generar | Acción completada: OrdenRecaudacion/Generar
+2026-02-10 08:54:09.292 | INFO  | CID:b9aaf9d2a181 | USR:1713091955 | OrdenRecaudacion/RegistrarPago | Iniciando acción: OrdenRecaudacion/RegistrarPago
+2026-02-10 08:54:09.624 | INFO  | CID:b9aaf9d2a181 | USR:1713091955 | OrdenRecaudacion/RegistrarPago | Acción completada: OrdenRecaudacion/RegistrarPago
+2026-02-10 09:04:15.034 | INFO  | CID:N/A | Iniciando procesador de cola de correos
+2026-02-10 09:04:26.041 | INFO  | CID:9c014b556c3c | USR:1713091955 | Account/Login | Iniciando acción: Account/Login
+2026-02-10 09:04:26.569 | INFO  | CID:9c014b556c3c | USR:1713091955 | Account/Login | Acción completada: Account/Login
+2026-02-10 09:04:54.511 | INFO  | CID:5d1b7607c223 | USR:1713091955 | OrdenRecaudacion/Nueva | Iniciando acción: OrdenRecaudacion/Nueva
+2026-02-10 09:04:54.811 | INFO  | CID:5d1b7607c223 | USR:1713091955 | OrdenRecaudacion/Nueva | Acción completada: OrdenRecaudacion/Nueva
+2026-02-10 09:05:01.080 | INFO  | CID:5f13be9da61f | USR:1713091955 | OrdenRecaudacion/Generar | Iniciando acción: OrdenRecaudacion/Generar
+2026-02-10 09:05:04.748 | INFO  | CID:4f61fb3682f1 | Correo con adjunto enviado exitosamente a german.cajas@aviacioncivil.gob.ec
+2026-02-10 09:05:04.750 | INFO  | CID:5f13be9da61f | USR:1713091955 | OrdenRecaudacion/Generar | Acción completada: OrdenRecaudacion/Generar
+2026-02-10 09:05:41.432 | INFO  | CID:98692dfe6cb0 | USR:1713091955 | OrdenRecaudacion/RegistrarPago | Iniciando acción: OrdenRecaudacion/RegistrarPago
+2026-02-10 09:05:41.471 | INFO  | CID:98692dfe6cb0 | USR:1713091955 | OrdenRecaudacion/RegistrarPago | Acción completada: OrdenRecaudacion/RegistrarPago
+2026-02-10 09:10:08.703 | INFO  | CID:e08a701d7d85 | USR:1713091955 | OrdenRecaudacion/Nueva | Iniciando acción: OrdenRecaudacion/Nueva
+2026-02-10 09:10:08.945 | INFO  | CID:e08a701d7d85 | USR:1713091955 | OrdenRecaudacion/Nueva | Acción completada: OrdenRecaudacion/Nueva
+2026-02-10 09:10:17.867 | INFO  | CID:f0e552b9c7fc | USR:1713091955 | OrdenRecaudacion/Generar | Iniciando acción: OrdenRecaudacion/Generar
+2026-02-10 09:10:19.299 | INFO  | CID:223d21423268 | Correo con adjunto enviado exitosamente a german.cajas@aviacioncivil.gob.ec
+2026-02-10 09:10:19.301 | INFO  | CID:f0e552b9c7fc | USR:1713091955 | OrdenRecaudacion/Generar | Acción completada: OrdenRecaudacion/Generar
+2026-02-10 09:12:22.557 | INFO  | CID:24e062d1f7ca | USR:1713091955 | OrdenRecaudacion/Nueva | Iniciando acción: OrdenRecaudacion/Nueva
+2026-02-10 09:12:22.802 | INFO  | CID:24e062d1f7ca | USR:1713091955 | OrdenRecaudacion/Nueva | Acción completada: OrdenRecaudacion/Nueva
+2026-02-10 09:12:26.348 | INFO  | CID:0733c3d12bdc | USR:1713091955 | OrdenRecaudacion/Generar | Iniciando acción: OrdenRecaudacion/Generar
+2026-02-10 09:12:27.898 | INFO  | CID:f389a00b93b8 | Correo con adjunto enviado exitosamente a german.cajas@aviacioncivil.gob.ec
+2026-02-10 09:12:27.900 | INFO  | CID:0733c3d12bdc | USR:1713091955 | OrdenRecaudacion/Generar | Acción completada: OrdenRecaudacion/Generar
+2026-02-10 09:16:23.065 | INFO  | CID:N/A | Iniciando procesador de cola de correos
+2026-02-10 09:17:49.983 | INFO  | CID:N/A | Iniciando procesador de cola de correos
+2026-02-10 09:18:48.652 | INFO  | CID:c556d398c766 | USR:1713091955 | Account/Login | Iniciando acción: Account/Login
+2026-02-10 09:18:49.027 | INFO  | CID:c556d398c766 | USR:1713091955 | Account/Login | Acción completada: Account/Login
+2026-02-10 09:19:09.082 | INFO  | CID:0e12c6893ef7 | USR:1713091955 | OrdenRecaudacion/Nueva | Iniciando acción: OrdenRecaudacion/Nueva
+2026-02-10 09:19:09.371 | INFO  | CID:0e12c6893ef7 | USR:1713091955 | OrdenRecaudacion/Nueva | Acción completada: OrdenRecaudacion/Nueva
+2026-02-10 09:19:13.704 | INFO  | CID:00f91f18827c | USR:1713091955 | OrdenRecaudacion/Generar | Iniciando acción: OrdenRecaudacion/Generar
+2026-02-10 09:19:16.548 | INFO  | CID:bfe1d67c6fa9 | Correo con adjunto enviado exitosamente a german.cajas@aviacioncivil.gob.ec
+2026-02-10 09:19:16.553 | INFO  | CID:00f91f18827c | USR:1713091955 | OrdenRecaudacion/Generar | Acción completada: OrdenRecaudacion/Generar
+2026-02-10 09:29:48.838 | INFO  | CID:N/A | Iniciando procesador de cola de correos
+2026-02-10 09:29:54.649 | INFO  | CID:6c78452de4b5 | USR:1713091955 | Account/Login | Iniciando acción: Account/Login
+2026-02-10 09:29:55.248 | INFO  | CID:6c78452de4b5 | USR:1713091955 | Account/Login | Acción completada: Account/Login
+2026-02-10 09:30:31.425 | INFO  | CID:99d61bc0aa44 | USR:1713091955 | OrdenRecaudacion/Nueva | Iniciando acción: OrdenRecaudacion/Nueva
+2026-02-10 09:30:31.513 | INFO  | CID:99d61bc0aa44 | USR:1713091955 | OrdenRecaudacion/Nueva | Acción completada: OrdenRecaudacion/Nueva
+2026-02-10 09:30:35.466 | INFO  | CID:17837685b081 | USR:1713091955 | OrdenRecaudacion/Generar | Iniciando acción: OrdenRecaudacion/Generar
+2026-02-10 09:30:38.699 | INFO  | CID:88c7eb21c3c7 | Correo con adjunto enviado exitosamente a german.cajas@aviacioncivil.gob.ec
+2026-02-10 09:30:38.703 | INFO  | CID:17837685b081 | USR:1713091955 | OrdenRecaudacion/Generar | Acción completada: OrdenRecaudacion/Generar
+2026-02-10 09:33:35.184 | INFO  | CID:N/A | Iniciando procesador de cola de correos
+2026-02-10 09:33:51.426 | INFO  | CID:ceb30d0e5dc4 | USR:1713091955 | Account/Login | Iniciando acción: Account/Login
+2026-02-10 09:33:51.918 | INFO  | CID:ceb30d0e5dc4 | USR:1713091955 | Account/Login | Acción completada: Account/Login
+2026-02-10 09:34:13.411 | INFO  | CID:a26bd51fcc67 | USR:1713091955 | OrdenRecaudacion/Nueva | Iniciando acción: OrdenRecaudacion/Nueva
+2026-02-10 09:34:13.518 | INFO  | CID:a26bd51fcc67 | USR:1713091955 | OrdenRecaudacion/Nueva | Acción completada: OrdenRecaudacion/Nueva
+2026-02-10 09:34:17.535 | INFO  | CID:a4923750e7f8 | USR:1713091955 | OrdenRecaudacion/Generar | Iniciando acción: OrdenRecaudacion/Generar
+2026-02-10 09:34:18.547 | INFO  | CID:ce2c32c11097 | Correo con adjunto enviado exitosamente a german.cajas@aviacioncivil.gob.ec
+2026-02-10 09:34:18.549 | INFO  | CID:a4923750e7f8 | USR:1713091955 | OrdenRecaudacion/Generar | Acción completada: OrdenRecaudacion/Generar
+2026-02-10 09:38:37.400 | INFO  | CID:N/A | Iniciando procesador de cola de correos
+2026-02-10 09:38:50.472 | INFO  | CID:0b57729216b8 | USR:1713091955 | Account/Login | Iniciando acción: Account/Login
+2026-02-10 09:38:51.017 | INFO  | CID:0b57729216b8 | USR:1713091955 | Account/Login | Acción completada: Account/Login
+2026-02-10 09:39:17.948 | INFO  | CID:40badf20ca15 | USR:1713091955 | OrdenRecaudacion/Nueva | Iniciando acción: OrdenRecaudacion/Nueva
+2026-02-10 09:39:18.242 | INFO  | CID:40badf20ca15 | USR:1713091955 | OrdenRecaudacion/Nueva | Acción completada: OrdenRecaudacion/Nueva
+2026-02-10 09:40:28.864 | INFO  | CID:612b203f3c1c | USR:1713091955 | OrdenRecaudacion/Generar | Iniciando acción: OrdenRecaudacion/Generar
+2026-02-10 09:40:32.109 | INFO  | CID:2453c367cb7a | Correo con adjunto enviado exitosamente a german.cajas@aviacioncivil.gob.ec
+2026-02-10 09:40:32.111 | INFO  | CID:612b203f3c1c | USR:1713091955 | OrdenRecaudacion/Generar | Acción completada: OrdenRecaudacion/Generar
+2026-02-10 09:41:47.925 | INFO  | CID:N/A | Iniciando procesador de cola de correos
+2026-02-10 09:41:54.328 | INFO  | CID:b9ed8c457eb7 | USR:1713091955 | Account/Login | Iniciando acción: Account/Login
+2026-02-10 09:41:54.884 | INFO  | CID:b9ed8c457eb7 | USR:1713091955 | Account/Login | Acción completada: Account/Login
+2026-02-10 09:42:11.791 | INFO  | CID:a714e5abc004 | USR:1713091955 | OrdenRecaudacion/Nueva | Iniciando acción: OrdenRecaudacion/Nueva
+2026-02-10 09:42:11.887 | INFO  | CID:a714e5abc004 | USR:1713091955 | OrdenRecaudacion/Nueva | Acción completada: OrdenRecaudacion/Nueva
+2026-02-10 09:45:23.660 | INFO  | CID:N/A | Iniciando procesador de cola de correos
+2026-02-10 09:45:29.689 | INFO  | CID:c1f59d4d7633 | USR:1713091955 | Account/Login | Iniciando acción: Account/Login
+2026-02-10 09:45:30.462 | INFO  | CID:c1f59d4d7633 | USR:1713091955 | Account/Login | Acción completada: Account/Login
+2026-02-10 09:46:14.352 | INFO  | CID:6e517e9674d3 | USR:1713091955 | OrdenRecaudacion/Editar | Iniciando acción: OrdenRecaudacion/Editar
+2026-02-10 09:46:14.373 | INFO  | CID:6e517e9674d3 | USR:1713091955 | OrdenRecaudacion/Editar | Acción completada: OrdenRecaudacion/Editar
+2026-02-10 09:46:36.784 | INFO  | CID:8baa0294b713 | USR:1713091955 | OrdenRecaudacion/Generar | Iniciando acción: OrdenRecaudacion/Generar
+2026-02-10 09:46:39.835 | INFO  | CID:3929020360fa | Correo con adjunto enviado exitosamente a german.cajas@aviacioncivil.gob.ec
+2026-02-10 09:46:39.838 | INFO  | CID:8baa0294b713 | USR:1713091955 | OrdenRecaudacion/Generar | Acción completada: OrdenRecaudacion/Generar
+2026-02-10 09:53:22.891 | INFO  | CID:N/A | Iniciando procesador de cola de correos
+2026-02-10 09:53:32.554 | INFO  | CID:b3b04540ded2 | USR:1713091955 | Account/Login | Iniciando acción: Account/Login
+2026-02-10 09:53:32.915 | INFO  | CID:b3b04540ded2 | USR:1713091955 | Account/Login | Acción completada: Account/Login
+2026-02-10 09:53:58.451 | INFO  | CID:a923c7c3c4b0 | USR:1713091955 | OrdenRecaudacion/Nueva | Iniciando acción: OrdenRecaudacion/Nueva
+2026-02-10 09:53:58.747 | INFO  | CID:a923c7c3c4b0 | USR:1713091955 | OrdenRecaudacion/Nueva | Acción completada: OrdenRecaudacion/Nueva
+2026-02-10 09:54:39.854 | INFO  | CID:71ee5b4a47d3 | USR:1713091955 | OrdenRecaudacion/Generar | Iniciando acción: OrdenRecaudacion/Generar
+2026-02-10 09:54:43.531 | INFO  | CID:d8a1b67674df | Correo con adjunto enviado exitosamente a german.cajas@aviacioncivil.gob.ec
+2026-02-10 09:54:43.534 | INFO  | CID:71ee5b4a47d3 | USR:1713091955 | OrdenRecaudacion/Generar | Acción completada: OrdenRecaudacion/Generar
+2026-02-10 09:54:43.729 | INFO  | CID:2d68bda0224d | USR:1713091955 | OrdenRecaudacion/Generar | Iniciando acción: OrdenRecaudacion/Generar
+2026-02-10 09:54:43.735 | INFO  | CID:2d68bda0224d | USR:1713091955 | OrdenRecaudacion/Generar | Acción completada: OrdenRecaudacion/Generar
+2026-02-10 09:58:39.371 | INFO  | CID:N/A | Iniciando procesador de cola de correos
+2026-02-10 09:58:46.588 | INFO  | CID:cb1f388a2bd0 | USR:1713091955 | Account/Login | Iniciando acción: Account/Login
+2026-02-10 09:58:46.971 | INFO  | CID:cb1f388a2bd0 | USR:1713091955 | Account/Login | Acción completada: Account/Login
+2026-02-10 09:59:10.432 | INFO  | CID:db9d9e304a6a | USR:1713091955 | OrdenRecaudacion/Nueva | Iniciando acción: OrdenRecaudacion/Nueva
+2026-02-10 09:59:10.521 | INFO  | CID:db9d9e304a6a | USR:1713091955 | OrdenRecaudacion/Nueva | Acción completada: OrdenRecaudacion/Nueva
+2026-02-10 09:59:29.598 | INFO  | CID:2d408181358a | USR:1713091955 | OrdenRecaudacion/Generar | Iniciando acción: OrdenRecaudacion/Generar
+2026-02-10 09:59:31.954 | INFO  | CID:9604ecd513d7 | Correo con adjunto enviado exitosamente a german.cajas@aviacioncivil.gob.ec
+2026-02-10 09:59:31.958 | INFO  | CID:2d408181358a | USR:1713091955 | OrdenRecaudacion/Generar | Acción completada: OrdenRecaudacion/Generar
+2026-02-10 10:03:38.300 | INFO  | CID:N/A | Iniciando procesador de cola de correos
+2026-02-10 10:03:43.398 | INFO  | CID:97ead59736b4 | USR:1713091955 | Account/Login | Iniciando acción: Account/Login
+2026-02-10 10:03:44.008 | INFO  | CID:97ead59736b4 | USR:1713091955 | Account/Login | Acción completada: Account/Login
+2026-02-10 10:04:08.848 | INFO  | CID:8ab2195498b9 | USR:1713091955 | OrdenRecaudacion/Nueva | Iniciando acción: OrdenRecaudacion/Nueva
+2026-02-10 10:04:08.944 | INFO  | CID:8ab2195498b9 | USR:1713091955 | OrdenRecaudacion/Nueva | Acción completada: OrdenRecaudacion/Nueva
+2026-02-10 10:04:10.614 | ERROR | CID:45237cb044b3 | USR:1713091955 | OrdenRecaudacion/Detalles | ERR:INTERNAL_ERROR | c:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\CapaPresentacion\Views\OrdenRecaudacion\Detalles.cshtml(52): error CS0103: El nombre 'faltantes' no existe en el contexto actual
+    Exception: HttpCompileException
+    StackTrace:    en System.Web.Compilation.AssemblyBuilder.Compile()
+   en System.Web.Compilation.BuildProvidersCompiler.PerformBuild()
+   en System.Web.Compilation.BuildManager.CompileWebFile(VirtualPath virtualPath)
+   en System.Web.Compilation.BuildManager.GetVPathBuildResultInternal(VirtualPath virtualPath, Boolean noBuild, Boolean allowCrossApp, Boolean allowBuildInPrecompile, Boolean throwIfNotFound, Boolean ensureIsUpToDate)
+   en System.Web.Compilation.BuildManager.GetVPathBuildResultWithNoAssert(HttpContext context, VirtualPath virtualPath, Boolean noBuild, Boolean allowCrossApp, Boolean allowBuildInPrecompile, Boolean throwIfNotFound, Boolean ensureIsUpToDate)
+   en System.Web.Compilation.BuildManager.GetVirtualPathObjectFactory(VirtualPath virtualPath, HttpContext context, Boolean allowCrossApp, Boolean throwIfNotFound)
+   en System.Web.Compilation.BuildManager.GetCompiledType(VirtualPath virtualPath)
+   en System.Web.Mvc.BuildManagerCompiledView.Render(ViewContext viewContext, TextWriter writer)
+   en System.Web.Mvc.ViewResultBase.ExecuteResult(ControllerContext context)
+   en System.Web.Mvc.ControllerActionInvoker.InvokeActionResultFilterRecursive(IList`1 filters, Int32 filterIndex, ResultExecutingContext preContext, ControllerContext controllerContext, ActionResult actionResult)
+   en System.Web.Mvc.ControllerActionInvoker.InvokeActionResultFilterRecursive(IList`1 filters, Int32 filterIndex, ResultExecutingContext preContext, ControllerContext controllerContext, ActionResult actionResult)
+   en System.Web.Mvc.ControllerActionInvoker.InvokeActionResultFilterRecursive(IList`1 filters, Int32 filterIndex, ResultExecutingContext preContext, ControllerContext controllerContext, ActionResult actionResult)
+   en System.Web.Mvc.ControllerActionInvoker.InvokeActionResultFilterRecursive(IList`1 filters, Int32 filterIndex, ResultExecutingContext preContext, ControllerContext controllerContext, ActionResult actionResult)
+   en System.Web.Mvc.ControllerActionInvoker.InvokeActionResultWithFilters(ControllerContext controllerContext, IList`1 filters, ActionResult actionResult)
+   en System.Web.Mvc.Async.AsyncControllerActionInvoker.<>c__DisplayClass3_1.<BeginInvokeAction>b__1(IAsyncResult asyncResult)
+2026-02-10 10:04:40.353 | INFO  | CID:8f921913ffd5 | USR:1713091955 | OrdenRecaudacion/Editar | Iniciando acción: OrdenRecaudacion/Editar
+2026-02-10 10:04:40.367 | INFO  | CID:8f921913ffd5 | USR:1713091955 | OrdenRecaudacion/Editar | Acción completada: OrdenRecaudacion/Editar
+2026-02-10 10:04:48.349 | ERROR | CID:48d16e9b5342 | USR:1713091955 | OrdenRecaudacion/Detalles | ERR:INTERNAL_ERROR | c:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\CapaPresentacion\Views\OrdenRecaudacion\Detalles.cshtml(52): error CS0103: El nombre 'faltantes' no existe en el contexto actual
+    Exception: HttpCompileException
+    StackTrace:    en System.Web.Compilation.AssemblyBuilder.Compile()
+   en System.Web.Compilation.BuildProvidersCompiler.PerformBuild()
+   en System.Web.Compilation.BuildManager.CompileWebFile(VirtualPath virtualPath)
+   en System.Web.Compilation.BuildManager.GetVPathBuildResultInternal(VirtualPath virtualPath, Boolean noBuild, Boolean allowCrossApp, Boolean allowBuildInPrecompile, Boolean throwIfNotFound, Boolean ensureIsUpToDate)
+   en System.Web.Compilation.BuildManager.GetVPathBuildResultWithNoAssert(HttpContext context, VirtualPath virtualPath, Boolean noBuild, Boolean allowCrossApp, Boolean allowBuildInPrecompile, Boolean throwIfNotFound, Boolean ensureIsUpToDate)
+   en System.Web.Compilation.BuildManager.GetVirtualPathObjectFactory(VirtualPath virtualPath, HttpContext context, Boolean allowCrossApp, Boolean throwIfNotFound)
+   en System.Web.Compilation.BuildManager.GetCompiledType(VirtualPath virtualPath)
+   en System.Web.Mvc.BuildManagerCompiledView.Render(ViewContext viewContext, TextWriter writer)
+   en System.Web.Mvc.ViewResultBase.ExecuteResult(ControllerContext context)
+   en System.Web.Mvc.ControllerActionInvoker.InvokeActionResultFilterRecursive(IList`1 filters, Int32 filterIndex, ResultExecutingContext preContext, ControllerContext controllerContext, ActionResult actionResult)
+   en System.Web.Mvc.ControllerActionInvoker.InvokeActionResultFilterRecursive(IList`1 filters, Int32 filterIndex, ResultExecutingContext preContext, ControllerContext controllerContext, ActionResult actionResult)
+   en System.Web.Mvc.ControllerActionInvoker.InvokeActionResultFilterRecursive(IList`1 filters, Int32 filterIndex, ResultExecutingContext preContext, ControllerContext controllerContext, ActionResult actionResult)
+   en System.Web.Mvc.ControllerActionInvoker.InvokeActionResultFilterRecursive(IList`1 filters, Int32 filterIndex, ResultExecutingContext preContext, ControllerContext controllerContext, ActionResult actionResult)
+   en System.Web.Mvc.ControllerActionInvoker.InvokeActionResultWithFilters(ControllerContext controllerContext, IList`1 filters, ActionResult actionResult)
+   en System.Web.Mvc.Async.AsyncControllerActionInvoker.<>c__DisplayClass3_1.<BeginInvokeAction>b__1(IAsyncResult asyncResult)
+2026-02-10 10:13:00.241 | INFO  | CID:N/A | Iniciando procesador de cola de correos
+2026-02-10 10:13:06.143 | INFO  | CID:6269a896d304 | USR:1713091955 | Account/Login | Iniciando acción: Account/Login
+2026-02-10 10:13:06.768 | INFO  | CID:6269a896d304 | USR:1713091955 | Account/Login | Acción completada: Account/Login
+2026-02-10 10:13:36.558 | ERROR | CID:bc08e01d7a94 | USR:1713091955 | OrdenRecaudacion/Detalles | ERR:INTERNAL_ERROR | c:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\CapaPresentacion\Views\OrdenRecaudacion\Detalles.cshtml(31): error CS0103: El nombre 'faltantes' no existe en el contexto actual
+    Exception: HttpCompileException
+    StackTrace:    en System.Web.Compilation.AssemblyBuilder.Compile()
+   en System.Web.Compilation.BuildProvidersCompiler.PerformBuild()
+   en System.Web.Compilation.BuildManager.CompileWebFile(VirtualPath virtualPath)
+   en System.Web.Compilation.BuildManager.GetVPathBuildResultInternal(VirtualPath virtualPath, Boolean noBuild, Boolean allowCrossApp, Boolean allowBuildInPrecompile, Boolean throwIfNotFound, Boolean ensureIsUpToDate)
+   en System.Web.Compilation.BuildManager.GetVPathBuildResultWithNoAssert(HttpContext context, VirtualPath virtualPath, Boolean noBuild, Boolean allowCrossApp, Boolean allowBuildInPrecompile, Boolean throwIfNotFound, Boolean ensureIsUpToDate)
+   en System.Web.Compilation.BuildManager.GetVirtualPathObjectFactory(VirtualPath virtualPath, HttpContext context, Boolean allowCrossApp, Boolean throwIfNotFound)
+   en System.Web.Compilation.BuildManager.GetCompiledType(VirtualPath virtualPath)
+   en System.Web.Mvc.BuildManagerCompiledView.Render(ViewContext viewContext, TextWriter writer)
+   en System.Web.Mvc.ViewResultBase.ExecuteResult(ControllerContext context)
+   en System.Web.Mvc.ControllerActionInvoker.InvokeActionResultFilterRecursive(IList`1 filters, Int32 filterIndex, ResultExecutingContext preContext, ControllerContext controllerContext, ActionResult actionResult)
+   en System.Web.Mvc.ControllerActionInvoker.InvokeActionResultFilterRecursive(IList`1 filters, Int32 filterIndex, ResultExecutingContext preContext, ControllerContext controllerContext, ActionResult actionResult)
+   en System.Web.Mvc.ControllerActionInvoker.InvokeActionResultFilterRecursive(IList`1 filters, Int32 filterIndex, ResultExecutingContext preContext, ControllerContext controllerContext, ActionResult actionResult)
+   en System.Web.Mvc.ControllerActionInvoker.InvokeActionResultFilterRecursive(IList`1 filters, Int32 filterIndex, ResultExecutingContext preContext, ControllerContext controllerContext, ActionResult actionResult)
+   en System.Web.Mvc.ControllerActionInvoker.InvokeActionResultWithFilters(ControllerContext controllerContext, IList`1 filters, ActionResult actionResult)
+   en System.Web.Mvc.Async.AsyncControllerActionInvoker.<>c__DisplayClass3_1.<BeginInvokeAction>b__1(IAsyncResult asyncResult)
+2026-02-10 10:13:43.718 | ERROR | CID:44387e2c9be9 | USR:1713091955 | OrdenRecaudacion/Detalles | ERR:INTERNAL_ERROR | c:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\CapaPresentacion\Views\OrdenRecaudacion\Detalles.cshtml(31): error CS0103: El nombre 'faltantes' no existe en el contexto actual
+    Exception: HttpCompileException
+    StackTrace:    en System.Web.Compilation.BuildManager.PostProcessFoundBuildResult(BuildResult result, Boolean keyFromVPP, VirtualPath virtualPath)
+   en System.Web.Compilation.BuildManager.GetBuildResultFromCacheInternal(String cacheKey, Boolean keyFromVPP, VirtualPath virtualPath, Int64 hashCode, Boolean ensureIsUpToDate)
+   en System.Web.Compilation.BuildManager.GetVPathBuildResultFromCacheInternal(VirtualPath virtualPath, Boolean ensureIsUpToDate)
+   en System.Web.Compilation.BuildManager.GetVPathBuildResultInternal(VirtualPath virtualPath, Boolean noBuild, Boolean allowCrossApp, Boolean allowBuildInPrecompile, Boolean throwIfNotFound, Boolean ensureIsUpToDate)
+   en System.Web.Compilation.BuildManager.GetVPathBuildResultWithNoAssert(HttpContext context, VirtualPath virtualPath, Boolean noBuild, Boolean allowCrossApp, Boolean allowBuildInPrecompile, Boolean throwIfNotFound, Boolean ensureIsUpToDate)
+   en System.Web.Compilation.BuildManager.GetVirtualPathObjectFactory(VirtualPath virtualPath, HttpContext context, Boolean allowCrossApp, Boolean throwIfNotFound)
+   en System.Web.Compilation.BuildManager.GetCompiledType(VirtualPath virtualPath)
+   en System.Web.Mvc.BuildManagerCompiledView.Render(ViewContext viewContext, TextWriter writer)
+   en System.Web.Mvc.ViewResultBase.ExecuteResult(ControllerContext context)
+   en System.Web.Mvc.ControllerActionInvoker.InvokeActionResultFilterRecursive(IList`1 filters, Int32 filterIndex, ResultExecutingContext preContext, ControllerContext controllerContext, ActionResult actionResult)
+   en System.Web.Mvc.ControllerActionInvoker.InvokeActionResultFilterRecursive(IList`1 filters, Int32 filterIndex, ResultExecutingContext preContext, ControllerContext controllerContext, ActionResult actionResult)
+   en System.Web.Mvc.ControllerActionInvoker.InvokeActionResultFilterRecursive(IList`1 filters, Int32 filterIndex, ResultExecutingContext preContext, ControllerContext controllerContext, ActionResult actionResult)
+   en System.Web.Mvc.ControllerActionInvoker.InvokeActionResultFilterRecursive(IList`1 filters, Int32 filterIndex, ResultExecutingContext preContext, ControllerContext controllerContext, ActionResult actionResult)
+   en System.Web.Mvc.ControllerActionInvoker.InvokeActionResultWithFilters(ControllerContext controllerContext, IList`1 filters, ActionResult actionResult)
+   en System.Web.Mvc.Async.AsyncControllerActionInvoker.<>c__DisplayClass3_1.<BeginInvokeAction>b__1(IAsyncResult asyncResult)
+2026-02-10 10:18:38.044 | INFO  | CID:N/A | Iniciando procesador de cola de correos
+2026-02-10 10:18:49.067 | INFO  | CID:ed7bba1acec3 | USR:1713091955 | Account/Login | Iniciando acción: Account/Login
+2026-02-10 10:18:49.554 | INFO  | CID:ed7bba1acec3 | USR:1713091955 | Account/Login | Acción completada: Account/Login
+2026-02-10 10:19:05.123 | INFO  | CID:706dec276334 | USR:1713091955 | OrdenRecaudacion/Editar | Iniciando acción: OrdenRecaudacion/Editar
+2026-02-10 10:19:05.146 | INFO  | CID:706dec276334 | USR:1713091955 | OrdenRecaudacion/Editar | Acción completada: OrdenRecaudacion/Editar
+2026-02-10 10:19:10.919 | ERROR | CID:0e6e088b66e6 | USR:1713091955 | OrdenRecaudacion/Detalles | ERR:INTERNAL_ERROR | c:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\CapaPresentacion\Views\OrdenRecaudacion\Detalles.cshtml(64): error CS0103: El nombre 'ordenCompleta' no existe en el contexto actual
+    Exception: HttpCompileException
+    StackTrace:    en System.Web.Compilation.AssemblyBuilder.Compile()
+   en System.Web.Compilation.BuildProvidersCompiler.PerformBuild()
+   en System.Web.Compilation.BuildManager.CompileWebFile(VirtualPath virtualPath)
+   en System.Web.Compilation.BuildManager.GetVPathBuildResultInternal(VirtualPath virtualPath, Boolean noBuild, Boolean allowCrossApp, Boolean allowBuildInPrecompile, Boolean throwIfNotFound, Boolean ensureIsUpToDate)
+   en System.Web.Compilation.BuildManager.GetVPathBuildResultWithNoAssert(HttpContext context, VirtualPath virtualPath, Boolean noBuild, Boolean allowCrossApp, Boolean allowBuildInPrecompile, Boolean throwIfNotFound, Boolean ensureIsUpToDate)
+   en System.Web.Compilation.BuildManager.GetVirtualPathObjectFactory(VirtualPath virtualPath, HttpContext context, Boolean allowCrossApp, Boolean throwIfNotFound)
+   en System.Web.Compilation.BuildManager.GetCompiledType(VirtualPath virtualPath)
+   en System.Web.Mvc.BuildManagerCompiledView.Render(ViewContext viewContext, TextWriter writer)
+   en System.Web.Mvc.ViewResultBase.ExecuteResult(ControllerContext context)
+   en System.Web.Mvc.ControllerActionInvoker.InvokeActionResultFilterRecursive(IList`1 filters, Int32 filterIndex, ResultExecutingContext preContext, ControllerContext controllerContext, ActionResult actionResult)
+   en System.Web.Mvc.ControllerActionInvoker.InvokeActionResultFilterRecursive(IList`1 filters, Int32 filterIndex, ResultExecutingContext preContext, ControllerContext controllerContext, ActionResult actionResult)
+   en System.Web.Mvc.ControllerActionInvoker.InvokeActionResultFilterRecursive(IList`1 filters, Int32 filterIndex, ResultExecutingContext preContext, ControllerContext controllerContext, ActionResult actionResult)
+   en System.Web.Mvc.ControllerActionInvoker.InvokeActionResultFilterRecursive(IList`1 filters, Int32 filterIndex, ResultExecutingContext preContext, ControllerContext controllerContext, ActionResult actionResult)
+   en System.Web.Mvc.ControllerActionInvoker.InvokeActionResultWithFilters(ControllerContext controllerContext, IList`1 filters, ActionResult actionResult)
+   en System.Web.Mvc.Async.AsyncControllerActionInvoker.<>c__DisplayClass3_1.<BeginInvokeAction>b__1(IAsyncResult asyncResult)
+2026-02-10 10:21:01.911 | INFO  | CID:f2fd44fb0878 | USR:1713091955 | OrdenRecaudacion/Editar | Iniciando acción: OrdenRecaudacion/Editar
+2026-02-10 10:21:01.919 | INFO  | CID:f2fd44fb0878 | USR:1713091955 | OrdenRecaudacion/Editar | Acción completada: OrdenRecaudacion/Editar
+2026-02-10 10:21:06.603 | ERROR | CID:acc211f574f8 | USR:1713091955 | OrdenRecaudacion/Detalles | ERR:INTERNAL_ERROR | c:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\CapaPresentacion\Views\OrdenRecaudacion\Detalles.cshtml(64): error CS0103: El nombre 'ordenCompleta' no existe en el contexto actual
+    Exception: HttpCompileException
+    StackTrace:    en System.Web.Compilation.AssemblyBuilder.Compile()
+   en System.Web.Compilation.BuildProvidersCompiler.PerformBuild()
+   en System.Web.Compilation.BuildManager.CompileWebFile(VirtualPath virtualPath)
+   en System.Web.Compilation.BuildManager.GetVPathBuildResultInternal(VirtualPath virtualPath, Boolean noBuild, Boolean allowCrossApp, Boolean allowBuildInPrecompile, Boolean throwIfNotFound, Boolean ensureIsUpToDate)
+   en System.Web.Compilation.BuildManager.GetVPathBuildResultWithNoAssert(HttpContext context, VirtualPath virtualPath, Boolean noBuild, Boolean allowCrossApp, Boolean allowBuildInPrecompile, Boolean throwIfNotFound, Boolean ensureIsUpToDate)
+   en System.Web.Compilation.BuildManager.GetVirtualPathObjectFactory(VirtualPath virtualPath, HttpContext context, Boolean allowCrossApp, Boolean throwIfNotFound)
+   en System.Web.Compilation.BuildManager.GetCompiledType(VirtualPath virtualPath)
+   en System.Web.Mvc.BuildManagerCompiledView.Render(ViewContext viewContext, TextWriter writer)
+   en System.Web.Mvc.ViewResultBase.ExecuteResult(ControllerContext context)
+   en System.Web.Mvc.ControllerActionInvoker.InvokeActionResultFilterRecursive(IList`1 filters, Int32 filterIndex, ResultExecutingContext preContext, ControllerContext controllerContext, ActionResult actionResult)
+   en System.Web.Mvc.ControllerActionInvoker.InvokeActionResultFilterRecursive(IList`1 filters, Int32 filterIndex, ResultExecutingContext preContext, ControllerContext controllerContext, ActionResult actionResult)
+   en System.Web.Mvc.ControllerActionInvoker.InvokeActionResultFilterRecursive(IList`1 filters, Int32 filterIndex, ResultExecutingContext preContext, ControllerContext controllerContext, ActionResult actionResult)
+   en System.Web.Mvc.ControllerActionInvoker.InvokeActionResultFilterRecursive(IList`1 filters, Int32 filterIndex, ResultExecutingContext preContext, ControllerContext controllerContext, ActionResult actionResult)
+   en System.Web.Mvc.ControllerActionInvoker.InvokeActionResultWithFilters(ControllerContext controllerContext, IList`1 filters, ActionResult actionResult)
+   en System.Web.Mvc.Async.AsyncControllerActionInvoker.<>c__DisplayClass3_1.<BeginInvokeAction>b__1(IAsyncResult asyncResult)
+2026-02-10 10:22:32.955 | INFO  | CID:N/A | Iniciando procesador de cola de correos
+2026-02-10 10:22:39.831 | INFO  | CID:fdd45e537ed7 | USR:1713091955 | Account/Login | Iniciando acción: Account/Login
+2026-02-10 10:22:40.405 | INFO  | CID:fdd45e537ed7 | USR:1713091955 | Account/Login | Acción completada: Account/Login
+2026-02-10 10:23:07.832 | INFO  | CID:542f45e0889f | USR:1713091955 | OrdenRecaudacion/Generar | Iniciando acción: OrdenRecaudacion/Generar
+2026-02-10 10:23:10.993 | INFO  | CID:0efe49b0bc9f | Correo con adjunto enviado exitosamente a german.cajas@aviacioncivil.gob.ec
+2026-02-10 10:23:11.006 | INFO  | CID:542f45e0889f | USR:1713091955 | OrdenRecaudacion/Generar | Acción completada: OrdenRecaudacion/Generar
+2026-02-10 10:25:35.864 | INFO  | CID:N/A | Deteniendo procesador de cola de correos
+2026-02-10 10:25:35.916 | INFO  | CID:N/A | Deteniendo procesador de cola de correos
+2026-02-10 10:26:35.427 | INFO  | CID:N/A | Iniciando procesador de cola de correos
+2026-02-10 10:30:36.804 | INFO  | CID:ecf17b29fdcd | USR:1713091955 | Account/Login | Iniciando acción: Account/Login
+2026-02-10 10:30:37.388 | INFO  | CID:ecf17b29fdcd | USR:1713091955 | Account/Login | Acción completada: Account/Login
+2026-02-10 10:35:27.187 | INFO  | CID:a7a8726f36e6 | USR:1713091955 | OrdenRecaudacion/Nueva | Iniciando acción: OrdenRecaudacion/Nueva
+2026-02-10 10:35:27.473 | INFO  | CID:a7a8726f36e6 | USR:1713091955 | OrdenRecaudacion/Nueva | Acción completada: OrdenRecaudacion/Nueva
+2026-02-10 10:35:49.220 | INFO  | CID:bd5ffac8888e | USR:1713091955 | OrdenRecaudacion/Generar | Iniciando acción: OrdenRecaudacion/Generar
+2026-02-10 10:35:52.496 | INFO  | CID:ea37aa68a862 | Correo con adjunto enviado exitosamente a german.cajas@aviacioncivil.gob.ec
+2026-02-10 10:35:52.502 | INFO  | CID:bd5ffac8888e | USR:1713091955 | OrdenRecaudacion/Generar | Acción completada: OrdenRecaudacion/Generar
+2026-02-10 10:36:55.471 | INFO  | CID:7d887ea3e693 | USR:1713091955 | OrdenRecaudacion/RegistrarPago | Iniciando acción: OrdenRecaudacion/RegistrarPago
+2026-02-10 10:36:55.557 | INFO  | CID:7d887ea3e693 | USR:1713091955 | OrdenRecaudacion/RegistrarPago | Acción completada: OrdenRecaudacion/RegistrarPago
+2026-02-10 10:37:16.009 | INFO  | CID:a56f999b33fe | Account/Login | Iniciando acción: Account/Login
+2026-02-10 10:37:16.090 | INFO  | CID:a56f999b33fe | Account/Login | Acción completada: Account/Login
+2026-02-10 10:37:36.620 | INFO  | CID:1e8645442965 | USR:USU_ADMIN | Financiero/AprobarOrden | Iniciando acción: Financiero/AprobarOrden
+2026-02-10 10:37:36.671 | INFO  | CID:N/A | ERR:EMAIL_FACTURA | EnviarFacturaGenerada ejecutado
+2026-02-10 10:37:36.673 | INFO  | CID:1e8645442965 | USR:USU_ADMIN | Financiero/AprobarOrden | Acción completada: Financiero/AprobarOrden
+2026-02-10 11:00:02.902 | INFO  | CID:512f12ee5826 | Account/EnviarRecuperar | Iniciando acción: Account/EnviarRecuperar
+2026-02-10 11:00:02.971 | INFO  | CID:512f12ee5826 | Account/EnviarRecuperar | Acción completada: Account/EnviarRecuperar
+2026-02-10 11:00:11.942 | INFO  | CID:842a9dad4401 | Account/EnviarRecuperar | Iniciando acción: Account/EnviarRecuperar
+2026-02-10 11:00:11.946 | INFO  | CID:842a9dad4401 | Account/EnviarRecuperar | Acción completada: Account/EnviarRecuperar
+2026-02-10 11:06:18.383 | INFO  | CID:4ed69c7acba9 | Account/Login | Iniciando acción: Account/Login
+2026-02-10 11:06:18.897 | INFO  | CID:4ed69c7acba9 | Account/Login | Acción completada: Account/Login
+2026-02-10 11:54:10.769 | INFO  | CID:N/A | Iniciando procesador de cola de correos
+2026-02-10 12:08:49.870 | INFO  | CID:N/A | Iniciando procesador de cola de correos
+2026-02-10 12:24:08.800 | INFO  | CID:N/A | Iniciando procesador de cola de correos
+2026-02-10 14:13:30.317 | INFO  | CID:N/A | Iniciando procesador de cola de correos
+2026-02-10 14:20:08.303 | INFO  | CID:N/A | Iniciando procesador de cola de correos
+2026-02-10 14:26:11.195 | INFO  | CID:N/A | Iniciando procesador de cola de correos
+2026-02-10 14:26:32.784 | INFO  | CID:b97ec9267bcd | Usuario/ValidarCorreo | Iniciando acción: Usuario/ValidarCorreo
+2026-02-10 14:26:32.990 | INFO  | CID:b97ec9267bcd | Usuario/ValidarCorreo | Acción completada: Usuario/ValidarCorreo
+2026-02-10 14:26:46.991 | INFO  | CID:b51afa5abaf7 | Usuario/ValidarIdentificacion | Iniciando acción: Usuario/ValidarIdentificacion
+2026-02-10 14:26:46.993 | INFO  | CID:b51afa5abaf7 | Usuario/ValidarIdentificacion | Acción completada: Usuario/ValidarIdentificacion
+2026-02-10 14:26:55.258 | INFO  | CID:d8b0ffff8828 | Usuario/ValidarRUC | Iniciando acción: Usuario/ValidarRUC
+2026-02-10 14:26:55.325 | INFO  | CID:d8b0ffff8828 | Usuario/ValidarRUC | Acción completada: Usuario/ValidarRUC
+2026-02-10 14:33:44.337 | INFO  | CID:48292fe592d8 | Usuario/Crear | Iniciando acción: Usuario/Crear
+2026-02-10 14:33:44.446 | INFO  | CID:bf7ac4ed83ed | Enviando correo a mancho2002@hotmail.com, Asunto: Registro de usuario - Sistema AOCR
+2026-02-10 14:33:44.617 | INFO  | CID:bf7ac4ed83ed | Correo enviado exitosamente a mancho2002@hotmail.com
+2026-02-10 14:33:44.625 | INFO  | CID:48292fe592d8 | Usuario/Crear | Acción completada: Usuario/Crear
+2026-02-10 14:36:42.893 | INFO  | CID:N/A | Iniciando procesador de cola de correos
+2026-02-10 15:41:56.060 | INFO  | CID:N/A | Iniciando procesador de cola de correos
+2026-02-10 15:47:12.411 | INFO  | CID:N/A | Iniciando procesador de cola de correos
+2026-02-10 15:57:12.048 | INFO  | CID:N/A | Iniciando procesador de cola de correos
+2026-02-10 15:59:24.822 | INFO  | CID:N/A | Iniciando procesador de cola de correos
+2026-02-10 16:05:21.831 | INFO  | CID:N/A | Iniciando procesador de cola de correos

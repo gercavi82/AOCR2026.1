@@ -1,0 +1,222 @@
+﻿2026-02-25 00:30:02.374 | ERROR | CID:N/A | ERR:EMAIL_QUEUE_ERROR | Error al procesar la solicitud. Contacte al administrador.
+    Exception: DataAccessException
+    StackTrace:    en CapaDatos.Infrastructure.BaseDAO.ExecuteWithConnection[T](Func`2 action) en C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\CapaDatos\Infrastructure\BaseDAO.cs:línea 68
+   en CapaDatos.Services.EmailQueueService.<ObtenerSiguienteAsync>d__8.MoveNext() en C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\CapaDatos\Services\EmailQueueService.cs:línea 308
+--- Fin del seguimiento de la pila de la ubicación anterior donde se produjo la excepción ---
+   en System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+   en System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task)
+   en System.Runtime.CompilerServices.TaskAwaiter`1.GetResult()
+   en CapaDatos.Services.EmailQueueProcessor.<ProcessQueueAsync>d__11.MoveNext() en C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\CapaDatos\Services\EmailQueueService.cs:línea 603
+2026-02-25 00:30:47.477 | ERROR | CID:N/A | ERR:EMAIL_QUEUE_ERROR | Error al procesar la solicitud. Contacte al administrador.
+    Exception: DataAccessException
+    StackTrace:    en CapaDatos.Infrastructure.BaseDAO.ExecuteWithConnection[T](Func`2 action) en C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\CapaDatos\Infrastructure\BaseDAO.cs:línea 68
+   en CapaDatos.Services.EmailQueueService.<ObtenerSiguienteAsync>d__8.MoveNext() en C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\CapaDatos\Services\EmailQueueService.cs:línea 308
+--- Fin del seguimiento de la pila de la ubicación anterior donde se produjo la excepción ---
+   en System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+   en System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task)
+   en System.Runtime.CompilerServices.TaskAwaiter`1.GetResult()
+   en CapaDatos.Services.EmailQueueProcessor.<ProcessQueueAsync>d__11.MoveNext() en C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\CapaDatos\Services\EmailQueueService.cs:línea 603
+2026-02-25 00:31:32.528 | ERROR | CID:N/A | ERR:EMAIL_QUEUE_ERROR | Error al procesar la solicitud. Contacte al administrador.
+    Exception: DataAccessException
+    StackTrace:    en CapaDatos.Infrastructure.BaseDAO.ExecuteWithConnection[T](Func`2 action) en C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\CapaDatos\Infrastructure\BaseDAO.cs:línea 68
+   en CapaDatos.Services.EmailQueueService.<ObtenerSiguienteAsync>d__8.MoveNext() en C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\CapaDatos\Services\EmailQueueService.cs:línea 308
+--- Fin del seguimiento de la pila de la ubicación anterior donde se produjo la excepción ---
+   en System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+   en System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task)
+   en System.Runtime.CompilerServices.TaskAwaiter`1.GetResult()
+   en CapaDatos.Services.EmailQueueProcessor.<ProcessQueueAsync>d__11.MoveNext() en C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\CapaDatos\Services\EmailQueueService.cs:línea 603
+2026-02-25 00:32:17.597 | ERROR | CID:N/A | ERR:EMAIL_QUEUE_ERROR | Error al procesar la solicitud. Contacte al administrador.
+    Exception: DataAccessException
+    StackTrace:    en CapaDatos.Infrastructure.BaseDAO.ExecuteWithConnection[T](Func`2 action) en C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\CapaDatos\Infrastructure\BaseDAO.cs:línea 68
+   en CapaDatos.Services.EmailQueueService.<ObtenerSiguienteAsync>d__8.MoveNext() en C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\CapaDatos\Services\EmailQueueService.cs:línea 308
+--- Fin del seguimiento de la pila de la ubicación anterior donde se produjo la excepción ---
+   en System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+   en System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task)
+   en System.Runtime.CompilerServices.TaskAwaiter`1.GetResult()
+   en CapaDatos.Services.EmailQueueProcessor.<ProcessQueueAsync>d__11.MoveNext() en C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\CapaDatos\Services\EmailQueueService.cs:línea 603
+2026-02-25 00:38:02.305 | ERROR | CID:N/A | ERR:EMAIL_QUEUE_ERROR | Error al procesar la solicitud. Contacte al administrador.
+    Exception: DataAccessException
+    StackTrace:    en CapaDatos.Infrastructure.BaseDAO.ExecuteWithConnection[T](Func`2 action) en C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\CapaDatos\Infrastructure\BaseDAO.cs:línea 68
+   en CapaDatos.Services.EmailQueueService.<ObtenerSiguienteAsync>d__8.MoveNext() en C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\CapaDatos\Services\EmailQueueService.cs:línea 308
+--- Fin del seguimiento de la pila de la ubicación anterior donde se produjo la excepción ---
+   en System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+   en System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task)
+   en System.Runtime.CompilerServices.TaskAwaiter`1.GetResult()
+   en CapaDatos.Services.EmailQueueProcessor.<ProcessQueueAsync>d__11.MoveNext() en C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\CapaDatos\Services\EmailQueueService.cs:línea 603
+2026-02-25 00:38:47.375 | ERROR | CID:N/A | ERR:EMAIL_QUEUE_ERROR | Error al procesar la solicitud. Contacte al administrador.
+    Exception: DataAccessException
+    StackTrace:    en CapaDatos.Infrastructure.BaseDAO.ExecuteWithConnection[T](Func`2 action) en C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\CapaDatos\Infrastructure\BaseDAO.cs:línea 68
+   en CapaDatos.Services.EmailQueueService.<ObtenerSiguienteAsync>d__8.MoveNext() en C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\CapaDatos\Services\EmailQueueService.cs:línea 308
+--- Fin del seguimiento de la pila de la ubicación anterior donde se produjo la excepción ---
+   en System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+   en System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task)
+   en System.Runtime.CompilerServices.TaskAwaiter`1.GetResult()
+   en CapaDatos.Services.EmailQueueProcessor.<ProcessQueueAsync>d__11.MoveNext() en C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\CapaDatos\Services\EmailQueueService.cs:línea 603
+2026-02-25 10:14:33.624 | INFO  | CID:N/A | Iniciando procesador de cola de correos
+2026-02-25 10:14:41.780 | INFO  | CID:598a6d0aa051 | Account/Login | Iniciando acción: Account/Login
+2026-02-25 10:14:42.735 | INFO  | CID:598a6d0aa051 | Account/Login | Acción completada: Account/Login
+2026-02-25 11:14:08.181 | INFO  | CID:N/A | Iniciando procesador de cola de correos
+2026-02-25 11:14:32.123 | INFO  | CID:1963c107a54e | Account/Login | Iniciando acción: Account/Login
+2026-02-25 11:14:32.996 | INFO  | CID:1963c107a54e | Account/Login | Acción completada: Account/Login
+2026-02-25 11:16:28.248 | INFO  | CID:c6e95ad16128 | USR:USU_ADMIN | OrdenRecaudacion/Nueva | Iniciando acción: OrdenRecaudacion/Nueva
+2026-02-25 11:16:28.348 | INFO  | CID:c6e95ad16128 | USR:USU_ADMIN | OrdenRecaudacion/Nueva | Acción completada: OrdenRecaudacion/Nueva
+2026-02-25 11:16:34.216 | INFO  | CID:166fcefb271f | USR:USU_ADMIN | OrdenRecaudacion/Generar | Iniciando acción: OrdenRecaudacion/Generar
+2026-02-25 11:16:43.785 | INFO  | CID:7e8729d208c2 | Correo con adjunto enviado exitosamente a gercavi82@gmail.com
+2026-02-25 11:16:43.789 | INFO  | CID:166fcefb271f | USR:USU_ADMIN | OrdenRecaudacion/Generar | Acción completada: OrdenRecaudacion/Generar
+2026-02-25 11:39:18.437 | INFO  | CID:N/A | Iniciando procesador de cola de correos
+2026-02-25 11:39:32.388 | ERROR | CID:a18ba0e0429a412f8f6219fa106b5ede | Account/Login | ERR:INTERNAL_ERROR | El token antifalsificación proporcionado se diseñó para el usuario "USU_ADMIN" pero el usuario actual es "".
+    Exception: HttpAntiForgeryException
+    StackTrace:    en System.Web.Helpers.AntiXsrf.TokenValidator.ValidateTokens(HttpContextBase httpContext, IIdentity identity, AntiForgeryToken sessionToken, AntiForgeryToken fieldToken)
+   en System.Web.Helpers.AntiXsrf.AntiForgeryWorker.Validate(HttpContextBase httpContext)
+   en System.Web.Mvc.ControllerActionInvoker.InvokeAuthorizationFilters(ControllerContext controllerContext, IList`1 filters, ActionDescriptor actionDescriptor)
+   en System.Web.Mvc.Async.AsyncControllerActionInvoker.<>c__DisplayClass3_1.<BeginInvokeAction>b__0(AsyncCallback asyncCallback, Object asyncState)
+2026-02-25 11:39:41.671 | INFO  | CID:a59aa062d9b4 | Account/Login | Iniciando acción: Account/Login
+2026-02-25 11:39:42.531 | INFO  | CID:a59aa062d9b4 | Account/Login | Acción completada: Account/Login
+2026-02-25 11:41:58.128 | INFO  | CID:42923179ec19 | USR:USU_ADMIN | OrdenRecaudacion/Nueva | Iniciando acción: OrdenRecaudacion/Nueva
+2026-02-25 11:41:58.205 | INFO  | CID:42923179ec19 | USR:USU_ADMIN | OrdenRecaudacion/Nueva | Acción completada: OrdenRecaudacion/Nueva
+2026-02-25 11:42:04.412 | INFO  | CID:7fbad24698ae | USR:USU_ADMIN | OrdenRecaudacion/Generar | Iniciando acción: OrdenRecaudacion/Generar
+2026-02-25 11:42:12.068 | INFO  | CID:dbd639277b30 | Correo con adjunto enviado exitosamente a gercavi82@gmail.com
+2026-02-25 11:42:12.070 | INFO  | CID:7fbad24698ae | USR:USU_ADMIN | OrdenRecaudacion/Generar | Acción completada: OrdenRecaudacion/Generar
+2026-02-25 11:44:57.031 | INFO  | CID:74753a6b6816 | USR:USU_ADMIN | OrdenRecaudacion/RegistrarPago | Iniciando acción: OrdenRecaudacion/RegistrarPago
+2026-02-25 11:44:57.085 | INFO  | CID:74753a6b6816 | USR:USU_ADMIN | OrdenRecaudacion/RegistrarPago | Acción completada: OrdenRecaudacion/RegistrarPago
+2026-02-25 12:06:45.377 | INFO  | CID:N/A | Iniciando procesador de cola de correos
+2026-02-25 12:06:52.820 | ERROR | CID:cfe045b1fbbc4b68b573a33070be0726 | Account/Login | ERR:INTERNAL_ERROR | El token antifalsificación proporcionado se diseñó para el usuario "USU_ADMIN" pero el usuario actual es "".
+    Exception: HttpAntiForgeryException
+    StackTrace:    en System.Web.Helpers.AntiXsrf.TokenValidator.ValidateTokens(HttpContextBase httpContext, IIdentity identity, AntiForgeryToken sessionToken, AntiForgeryToken fieldToken)
+   en System.Web.Helpers.AntiXsrf.AntiForgeryWorker.Validate(HttpContextBase httpContext)
+   en System.Web.Mvc.ControllerActionInvoker.InvokeAuthorizationFilters(ControllerContext controllerContext, IList`1 filters, ActionDescriptor actionDescriptor)
+   en System.Web.Mvc.Async.AsyncControllerActionInvoker.<>c__DisplayClass3_1.<BeginInvokeAction>b__0(AsyncCallback asyncCallback, Object asyncState)
+2026-02-25 12:07:00.199 | INFO  | CID:98743d976019 | Account/Login | Iniciando acción: Account/Login
+2026-02-25 12:07:01.064 | INFO  | CID:98743d976019 | Account/Login | Acción completada: Account/Login
+2026-02-25 12:07:25.286 | ERROR | CID:00c55420f7154cfcba1112d487b8d201 | Usuario/ValidarCorreo | ERR:INTERNAL_ERROR | El token antifalsificación proporcionado se diseñó para el usuario "USU_ADMIN" pero el usuario actual es "".
+    Exception: HttpAntiForgeryException
+    StackTrace:    en System.Web.Helpers.AntiXsrf.TokenValidator.ValidateTokens(HttpContextBase httpContext, IIdentity identity, AntiForgeryToken sessionToken, AntiForgeryToken fieldToken)
+   en System.Web.Helpers.AntiXsrf.AntiForgeryWorker.Validate(HttpContextBase httpContext)
+   en System.Web.Mvc.ControllerActionInvoker.InvokeAuthorizationFilters(ControllerContext controllerContext, IList`1 filters, ActionDescriptor actionDescriptor)
+   en System.Web.Mvc.Async.AsyncControllerActionInvoker.<>c__DisplayClass3_1.<BeginInvokeAction>b__0(AsyncCallback asyncCallback, Object asyncState)
+2026-02-25 12:07:30.890 | ERROR | CID:a467ea4fcf2c40cc87b4efa8d60aa241 | Usuario/ValidarIdentificacion | ERR:INTERNAL_ERROR | El token antifalsificación proporcionado se diseñó para el usuario "USU_ADMIN" pero el usuario actual es "".
+    Exception: HttpAntiForgeryException
+    StackTrace:    en System.Web.Helpers.AntiXsrf.TokenValidator.ValidateTokens(HttpContextBase httpContext, IIdentity identity, AntiForgeryToken sessionToken, AntiForgeryToken fieldToken)
+   en System.Web.Helpers.AntiXsrf.AntiForgeryWorker.Validate(HttpContextBase httpContext)
+   en System.Web.Mvc.ControllerActionInvoker.InvokeAuthorizationFilters(ControllerContext controllerContext, IList`1 filters, ActionDescriptor actionDescriptor)
+   en System.Web.Mvc.Async.AsyncControllerActionInvoker.<>c__DisplayClass3_1.<BeginInvokeAction>b__0(AsyncCallback asyncCallback, Object asyncState)
+2026-02-25 12:08:04.771 | ERROR | CID:f5c54e8f9cb44224866f07a9dd729078 | Usuario/RegistrarDeclaracionTemporal | ERR:INTERNAL_ERROR | El token antifalsificación proporcionado se diseñó para el usuario "USU_ADMIN" pero el usuario actual es "".
+    Exception: HttpAntiForgeryException
+    StackTrace:    en System.Web.Helpers.AntiXsrf.TokenValidator.ValidateTokens(HttpContextBase httpContext, IIdentity identity, AntiForgeryToken sessionToken, AntiForgeryToken fieldToken)
+   en System.Web.Helpers.AntiXsrf.AntiForgeryWorker.Validate(HttpContextBase httpContext)
+   en System.Web.Mvc.ControllerActionInvoker.InvokeAuthorizationFilters(ControllerContext controllerContext, IList`1 filters, ActionDescriptor actionDescriptor)
+   en System.Web.Mvc.Async.AsyncControllerActionInvoker.<>c__DisplayClass3_1.<BeginInvokeAction>b__0(AsyncCallback asyncCallback, Object asyncState)
+2026-02-25 12:08:24.771 | ERROR | CID:ba2c1a54aa2443d788dcdca91f40b1c5 | Usuario/Crear | ERR:INTERNAL_ERROR | El token antifalsificación proporcionado se diseñó para el usuario "USU_ADMIN" pero el usuario actual es "".
+    Exception: HttpAntiForgeryException
+    StackTrace:    en System.Web.Helpers.AntiXsrf.TokenValidator.ValidateTokens(HttpContextBase httpContext, IIdentity identity, AntiForgeryToken sessionToken, AntiForgeryToken fieldToken)
+   en System.Web.Helpers.AntiXsrf.AntiForgeryWorker.Validate(HttpContextBase httpContext)
+   en System.Web.Mvc.ControllerActionInvoker.InvokeAuthorizationFilters(ControllerContext controllerContext, IList`1 filters, ActionDescriptor actionDescriptor)
+   en System.Web.Mvc.Async.AsyncControllerActionInvoker.<>c__DisplayClass3_1.<BeginInvokeAction>b__0(AsyncCallback asyncCallback, Object asyncState)
+2026-02-25 12:28:29.524 | INFO  | CID:N/A | Iniciando procesador de cola de correos
+2026-02-25 12:29:00.585 | INFO  | CID:4b7c9bd60ff7 | Usuario/ValidarCorreo | Iniciando acción: Usuario/ValidarCorreo
+2026-02-25 12:29:01.076 | INFO  | CID:4b7c9bd60ff7 | Usuario/ValidarCorreo | Acción completada: Usuario/ValidarCorreo
+2026-02-25 12:29:04.987 | INFO  | CID:e9bc0d6370a5 | Usuario/ValidarIdentificacion | Iniciando acción: Usuario/ValidarIdentificacion
+2026-02-25 12:29:04.993 | INFO  | CID:e9bc0d6370a5 | Usuario/ValidarIdentificacion | Acción completada: Usuario/ValidarIdentificacion
+2026-02-25 12:29:15.801 | INFO  | CID:683e65582ad3 | Usuario/ValidarRUC | Iniciando acción: Usuario/ValidarRUC
+2026-02-25 12:29:15.861 | INFO  | CID:683e65582ad3 | Usuario/ValidarRUC | Acción completada: Usuario/ValidarRUC
+2026-02-25 13:42:21.970 | INFO  | CID:8f0b02148c8d | Usuario/RegistrarDeclaracionTemporal | Iniciando acción: Usuario/RegistrarDeclaracionTemporal
+2026-02-25 13:42:22.280 | INFO  | CID:8f0b02148c8d | Usuario/RegistrarDeclaracionTemporal | Acción completada: Usuario/RegistrarDeclaracionTemporal
+2026-02-25 13:42:23.635 | INFO  | CID:1026a4825476 | Usuario/Crear | Iniciando acción: Usuario/Crear
+2026-02-25 13:42:43.819 | INFO  | CID:fb840dd71f2e | Enviando correo a mancho2002@hotmail.com, Asunto: Registro de usuario - Sistema AOCR
+2026-02-25 13:42:44.316 | INFO  | CID:fb840dd71f2e | Correo enviado exitosamente a mancho2002@hotmail.com
+2026-02-25 13:42:44.384 | INFO  | CID:1026a4825476 | Usuario/Crear | Acción completada: Usuario/Crear
+2026-02-25 13:42:58.724 | INFO  | CID:010c892d8852 | Account/Login | Iniciando acción: Account/Login
+2026-02-25 13:42:59.320 | INFO  | CID:010c892d8852 | Account/Login | Acción completada: Account/Login
+2026-02-25 13:43:32.728 | INFO  | CID:a4398d172687 | USR:USU_ADMIN | Usuario/AceptarDesignacion | Iniciando acción: Usuario/AceptarDesignacion
+2026-02-25 13:43:33.255 | INFO  | CID:d179b7a22d2c | Enviando correo a mancho2002@hotmail.com, Asunto: Su designación RT fue aprobada - Sistema AOCR
+2026-02-25 13:43:33.404 | INFO  | CID:d179b7a22d2c | Correo enviado exitosamente a mancho2002@hotmail.com
+2026-02-25 13:43:33.410 | INFO  | CID:a4398d172687 | USR:USU_ADMIN | Usuario/AceptarDesignacion | Acción completada: Usuario/AceptarDesignacion
+2026-02-25 13:44:55.694 | INFO  | CID:cefbee7458ad | Account/Login | Iniciando acción: Account/Login
+2026-02-25 13:44:56.195 | INFO  | CID:cefbee7458ad | Account/Login | Acción completada: Account/Login
+2026-02-25 13:45:30.555 | INFO  | CID:16456a157730 | Account/Login | Iniciando acción: Account/Login
+2026-02-25 13:45:31.064 | INFO  | CID:16456a157730 | Account/Login | Acción completada: Account/Login
+2026-02-25 13:46:29.916 | INFO  | CID:fe912e6b035b | Account/Login | Iniciando acción: Account/Login
+2026-02-25 13:46:30.422 | INFO  | CID:fe912e6b035b | Account/Login | Acción completada: Account/Login
+2026-02-25 13:46:48.590 | INFO  | CID:5b94da050102 | Account/EnviarRecuperar | Iniciando acción: Account/EnviarRecuperar
+2026-02-25 13:46:49.072 | INFO  | CID:46b084cab79f | Enviando correo a mancho2002@hotmail.com, Asunto: Recuperación de contraseña - Sistema AOCR
+2026-02-25 13:46:49.238 | INFO  | CID:46b084cab79f | Correo enviado exitosamente a mancho2002@hotmail.com
+2026-02-25 13:46:49.238 | INFO  | CID:5b94da050102 | Account/EnviarRecuperar | Acción completada: Account/EnviarRecuperar
+2026-02-25 13:48:34.884 | INFO  | CID:753c501e246f | Account/Login | Iniciando acción: Account/Login
+2026-02-25 13:48:35.457 | INFO  | CID:753c501e246f | Account/Login | Acción completada: Account/Login
+2026-02-25 13:48:56.296 | INFO  | CID:a7aa107fa404 | Account/Login | Iniciando acción: Account/Login
+2026-02-25 13:48:56.787 | INFO  | CID:a7aa107fa404 | Account/Login | Acción completada: Account/Login
+2026-02-25 13:49:23.790 | INFO  | CID:6a19752510a7 | USR:1713091955001 | Account/CambiarContrasena | Iniciando acción: Account/CambiarContrasena
+2026-02-25 13:49:24.771 | INFO  | CID:6a19752510a7 | USR:1713091955001 | Account/CambiarContrasena | Acción completada: Account/CambiarContrasena
+2026-02-25 13:49:59.767 | INFO  | CID:9f708caa1590 | USR:1713091955001 | OrdenRecaudacion/Nueva | Iniciando acción: OrdenRecaudacion/Nueva
+2026-02-25 13:49:59.860 | INFO  | CID:9f708caa1590 | USR:1713091955001 | OrdenRecaudacion/Nueva | Acción completada: OrdenRecaudacion/Nueva
+2026-02-25 13:50:06.984 | INFO  | CID:175d975507da | USR:1713091955001 | OrdenRecaudacion/Generar | Iniciando acción: OrdenRecaudacion/Generar
+2026-02-25 13:50:13.202 | INFO  | CID:f4eb286b5026 | Correo con adjunto enviado exitosamente a mancho2002@hotmail.com
+2026-02-25 13:50:13.205 | INFO  | CID:175d975507da | USR:1713091955001 | OrdenRecaudacion/Generar | Acción completada: OrdenRecaudacion/Generar
+2026-02-25 13:50:39.702 | INFO  | CID:d9e93c3e3c8e | USR:1713091955001 | OrdenRecaudacion/RegistrarPago | Iniciando acción: OrdenRecaudacion/RegistrarPago
+2026-02-25 13:50:39.799 | INFO  | CID:d9e93c3e3c8e | USR:1713091955001 | OrdenRecaudacion/RegistrarPago | Acción completada: OrdenRecaudacion/RegistrarPago
+2026-02-25 13:51:22.565 | INFO  | CID:70e967c2db7b | Account/Login | Iniciando acción: Account/Login
+2026-02-25 13:51:23.083 | INFO  | CID:70e967c2db7b | Account/Login | Acción completada: Account/Login
+2026-02-25 14:36:11.504 | INFO  | CID:N/A | Iniciando procesador de cola de correos
+2026-02-25 14:36:29.130 | ERROR | CID:e18bac2f6cf14a3ea3828184095af2b6 | Account/Login | ERR:INTERNAL_ERROR | El token antifalsificación proporcionado se diseñó para el usuario "1713091955001" pero el usuario actual es "".
+    Exception: HttpAntiForgeryException
+    StackTrace:    en System.Web.Helpers.AntiXsrf.TokenValidator.ValidateTokens(HttpContextBase httpContext, IIdentity identity, AntiForgeryToken sessionToken, AntiForgeryToken fieldToken)
+   en System.Web.Helpers.AntiXsrf.AntiForgeryWorker.Validate(HttpContextBase httpContext)
+   en System.Web.Mvc.ControllerActionInvoker.InvokeAuthorizationFilters(ControllerContext controllerContext, IList`1 filters, ActionDescriptor actionDescriptor)
+   en System.Web.Mvc.Async.AsyncControllerActionInvoker.<>c__DisplayClass3_1.<BeginInvokeAction>b__0(AsyncCallback asyncCallback, Object asyncState)
+2026-02-25 14:36:46.026 | INFO  | CID:6eb0263f67b0 | Account/Login | Iniciando acción: Account/Login
+2026-02-25 14:36:48.093 | INFO  | CID:6eb0263f67b0 | Account/Login | Acción completada: Account/Login
+2026-02-25 14:37:42.787 | INFO  | CID:61a979cc4702 | USR:USU_ADMIN | OrdenRecaudacion/Nueva | Iniciando acción: OrdenRecaudacion/Nueva
+2026-02-25 14:37:42.887 | INFO  | CID:61a979cc4702 | USR:USU_ADMIN | OrdenRecaudacion/Nueva | Acción completada: OrdenRecaudacion/Nueva
+2026-02-25 14:37:47.170 | INFO  | CID:54c4dcdaf597 | USR:USU_ADMIN | OrdenRecaudacion/Generar | Iniciando acción: OrdenRecaudacion/Generar
+2026-02-25 14:37:54.357 | INFO  | CID:51b15172d30d | Correo con adjunto enviado exitosamente a gercavi82@gmail.com
+2026-02-25 14:37:54.361 | INFO  | CID:54c4dcdaf597 | USR:USU_ADMIN | OrdenRecaudacion/Generar | Acción completada: OrdenRecaudacion/Generar
+2026-02-25 14:38:10.482 | INFO  | CID:6a22a7afede4 | USR:USU_ADMIN | OrdenRecaudacion/RegistrarPago | Iniciando acción: OrdenRecaudacion/RegistrarPago
+2026-02-25 14:38:10.534 | INFO  | CID:6a22a7afede4 | USR:USU_ADMIN | OrdenRecaudacion/RegistrarPago | Acción completada: OrdenRecaudacion/RegistrarPago
+2026-02-25 15:06:58.017 | INFO  | CID:N/A | Iniciando procesador de cola de correos
+2026-02-25 15:07:22.151 | ERROR | CID:6ac1e1021c7541869cf15440c2a078b2 | Account/Login | ERR:INTERNAL_ERROR | El token antifalsificación proporcionado se diseñó para el usuario "USU_ADMIN" pero el usuario actual es "".
+    Exception: HttpAntiForgeryException
+    StackTrace:    en System.Web.Helpers.AntiXsrf.TokenValidator.ValidateTokens(HttpContextBase httpContext, IIdentity identity, AntiForgeryToken sessionToken, AntiForgeryToken fieldToken)
+   en System.Web.Helpers.AntiXsrf.AntiForgeryWorker.Validate(HttpContextBase httpContext)
+   en System.Web.Mvc.ControllerActionInvoker.InvokeAuthorizationFilters(ControllerContext controllerContext, IList`1 filters, ActionDescriptor actionDescriptor)
+   en System.Web.Mvc.Async.AsyncControllerActionInvoker.<>c__DisplayClass3_1.<BeginInvokeAction>b__0(AsyncCallback asyncCallback, Object asyncState)
+2026-02-25 15:07:29.531 | INFO  | CID:21495d5dc872 | Account/Login | Iniciando acción: Account/Login
+2026-02-25 15:07:30.330 | INFO  | CID:21495d5dc872 | Account/Login | Acción completada: Account/Login
+2026-02-25 15:33:48.101 | INFO  | CID:N/A | Iniciando procesador de cola de correos
+2026-02-25 15:33:57.464 | ERROR | CID:32b8873bcbb6471c9e9372d92dc1e0f4 | Account/Login | ERR:INTERNAL_ERROR | El token antifalsificación proporcionado se diseñó para el usuario "USU_ADMIN" pero el usuario actual es "".
+    Exception: HttpAntiForgeryException
+    StackTrace:    en System.Web.Helpers.AntiXsrf.TokenValidator.ValidateTokens(HttpContextBase httpContext, IIdentity identity, AntiForgeryToken sessionToken, AntiForgeryToken fieldToken)
+   en System.Web.Helpers.AntiXsrf.AntiForgeryWorker.Validate(HttpContextBase httpContext)
+   en System.Web.Mvc.ControllerActionInvoker.InvokeAuthorizationFilters(ControllerContext controllerContext, IList`1 filters, ActionDescriptor actionDescriptor)
+   en System.Web.Mvc.Async.AsyncControllerActionInvoker.<>c__DisplayClass3_1.<BeginInvokeAction>b__0(AsyncCallback asyncCallback, Object asyncState)
+2026-02-25 15:34:06.855 | INFO  | CID:ca595d8e958c | Account/Login | Iniciando acción: Account/Login
+2026-02-25 15:34:07.661 | INFO  | CID:ca595d8e958c | Account/Login | Acción completada: Account/Login
+2026-02-25 15:41:19.895 | INFO  | CID:N/A | Iniciando procesador de cola de correos
+2026-02-25 15:41:28.011 | ERROR | CID:8fdb039b84a94233850c5f81fef40dd3 | Account/Login | ERR:INTERNAL_ERROR | El token antifalsificación proporcionado se diseñó para el usuario "USU_ADMIN" pero el usuario actual es "".
+    Exception: HttpAntiForgeryException
+    StackTrace:    en System.Web.Helpers.AntiXsrf.TokenValidator.ValidateTokens(HttpContextBase httpContext, IIdentity identity, AntiForgeryToken sessionToken, AntiForgeryToken fieldToken)
+   en System.Web.Helpers.AntiXsrf.AntiForgeryWorker.Validate(HttpContextBase httpContext)
+   en System.Web.Mvc.ControllerActionInvoker.InvokeAuthorizationFilters(ControllerContext controllerContext, IList`1 filters, ActionDescriptor actionDescriptor)
+   en System.Web.Mvc.Async.AsyncControllerActionInvoker.<>c__DisplayClass3_1.<BeginInvokeAction>b__0(AsyncCallback asyncCallback, Object asyncState)
+2026-02-25 15:45:56.046 | INFO  | CID:N/A | Deteniendo procesador de cola de correos
+2026-02-25 15:45:56.124 | INFO  | CID:N/A | Deteniendo procesador de cola de correos
+2026-02-25 15:47:03.572 | INFO  | CID:N/A | Iniciando procesador de cola de correos
+2026-02-25 15:47:19.724 | INFO  | CID:8bed28971433 | Account/Login | Iniciando acción: Account/Login
+2026-02-25 15:47:20.554 | INFO  | CID:8bed28971433 | Account/Login | Acción completada: Account/Login
+2026-02-25 15:48:13.525 | INFO  | CID:56cddae11082 | USR:USU_ADMIN | OrdenRecaudacion/Nueva | Iniciando acción: OrdenRecaudacion/Nueva
+2026-02-25 15:48:13.802 | INFO  | CID:56cddae11082 | USR:USU_ADMIN | OrdenRecaudacion/Nueva | Acción completada: OrdenRecaudacion/Nueva
+2026-02-25 15:48:24.371 | INFO  | CID:5f5d897bb8f9 | USR:USU_ADMIN | OrdenRecaudacion/Generar | Iniciando acción: OrdenRecaudacion/Generar
+2026-02-25 15:48:29.831 | INFO  | CID:73c57c652f36 | Correo con adjunto enviado exitosamente a gercavi82@gmail.com
+2026-02-25 15:48:29.836 | INFO  | CID:5f5d897bb8f9 | USR:USU_ADMIN | OrdenRecaudacion/Generar | Acción completada: OrdenRecaudacion/Generar
+2026-02-25 15:49:13.208 | INFO  | CID:f55d0d08cd5f | USR:USU_ADMIN | OrdenRecaudacion/RegistrarPago | Iniciando acción: OrdenRecaudacion/RegistrarPago
+2026-02-25 15:49:13.325 | INFO  | CID:f55d0d08cd5f | USR:USU_ADMIN | OrdenRecaudacion/RegistrarPago | Acción completada: OrdenRecaudacion/RegistrarPago
+2026-02-25 15:57:59.341 | INFO  | CID:N/A | Iniciando procesador de cola de correos
+2026-02-25 15:58:15.199 | INFO  | CID:013c2cd14856 | Account/Login | Iniciando acción: Account/Login
+2026-02-25 15:58:15.999 | INFO  | CID:013c2cd14856 | Account/Login | Acción completada: Account/Login
+2026-02-25 16:08:48.055 | INFO  | CID:N/A | Deteniendo procesador de cola de correos
+2026-02-25 16:08:48.112 | INFO  | CID:N/A | Deteniendo procesador de cola de correos
+2026-02-25 16:10:08.360 | INFO  | CID:N/A | Iniciando procesador de cola de correos
+2026-02-25 16:10:56.991 | INFO  | CID:34099736d5c7 | Account/Login | Iniciando acción: Account/Login
+2026-02-25 16:10:57.822 | INFO  | CID:34099736d5c7 | Account/Login | Acción completada: Account/Login
+2026-02-25 16:36:36.901 | INFO  | CID:N/A | Iniciando procesador de cola de correos
+2026-02-25 16:38:28.700 | INFO  | CID:N/A | Deteniendo procesador de cola de correos
+2026-02-25 16:38:28.733 | INFO  | CID:N/A | Deteniendo procesador de cola de correos

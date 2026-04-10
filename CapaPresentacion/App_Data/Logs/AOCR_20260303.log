@@ -1,0 +1,454 @@
+﻿2026-03-03 08:37:34.511 | INFO  | CID:7c88fe23b390 | Account/Login | Iniciando acción: Account/Login
+2026-03-03 08:37:35.499 | INFO  | CID:7c88fe23b390 | Account/Login | Acción completada: Account/Login
+2026-03-03 08:41:46.063 | INFO  | CID:N/A | Iniciando procesador de cola de correos
+2026-03-03 08:48:33.352 | INFO  | CID:N/A | Iniciando procesador de cola de correos
+2026-03-03 08:49:13.355 | INFO  | CID:aed52fe436a7 | Account/Login | Iniciando acción: Account/Login
+2026-03-03 08:49:14.056 | INFO  | CID:aed52fe436a7 | Account/Login | Acción completada: Account/Login
+2026-03-03 08:49:28.949 | INFO  | CID:6da0787c10bd | Account/Login | Iniciando acción: Account/Login
+2026-03-03 08:49:29.338 | INFO  | CID:6da0787c10bd | Account/Login | Acción completada: Account/Login
+2026-03-03 08:49:40.280 | INFO  | CID:7eaf9d1f040b | Account/Login | Iniciando acción: Account/Login
+2026-03-03 08:49:40.801 | INFO  | CID:7eaf9d1f040b | Account/Login | Acción completada: Account/Login
+2026-03-03 08:57:19.261 | INFO  | CID:N/A | Iniciando procesador de cola de correos
+2026-03-03 08:58:16.129 | INFO  | CID:e7ea36c2a8ad | Account/Login | Iniciando acción: Account/Login
+2026-03-03 08:58:16.145 | INFO  | CID:e7ea36c2a8ad | Account/Login | Acción completada: Account/Login
+2026-03-03 08:58:34.541 | INFO  | CID:43ea8a08dc2b | Account/Login | Iniciando acción: Account/Login
+2026-03-03 08:58:34.743 | INFO  | CID:43ea8a08dc2b | Account/Login | Acción completada: Account/Login
+2026-03-03 08:58:50.618 | INFO  | CID:b75538fcc388 | Account/Login | Iniciando acción: Account/Login
+2026-03-03 08:58:51.150 | INFO  | CID:b75538fcc388 | Account/Login | Acción completada: Account/Login
+2026-03-03 08:59:01.256 | ERROR | CID:f2eb086a3b90 | USR:GACAJAS | OrdenRecaudacion/Editar | ERR:INTERNAL_ERROR | c:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\CapaPresentacion\Views\OrdenRecaudacion\Editar.cshtml(38): error CS1525: El término de la expresión '.' no es válido
+    Exception: HttpCompileException
+    StackTrace:    en System.Web.Compilation.AssemblyBuilder.Compile()
+   en System.Web.Compilation.BuildProvidersCompiler.PerformBuild()
+   en System.Web.Compilation.BuildManager.CompileWebFile(VirtualPath virtualPath)
+   en System.Web.Compilation.BuildManager.GetVPathBuildResultInternal(VirtualPath virtualPath, Boolean noBuild, Boolean allowCrossApp, Boolean allowBuildInPrecompile, Boolean throwIfNotFound, Boolean ensureIsUpToDate)
+   en System.Web.Compilation.BuildManager.GetVPathBuildResultWithNoAssert(HttpContext context, VirtualPath virtualPath, Boolean noBuild, Boolean allowCrossApp, Boolean allowBuildInPrecompile, Boolean throwIfNotFound, Boolean ensureIsUpToDate)
+   en System.Web.Compilation.BuildManager.GetVirtualPathObjectFactory(VirtualPath virtualPath, HttpContext context, Boolean allowCrossApp, Boolean throwIfNotFound)
+   en System.Web.Compilation.BuildManager.GetCompiledType(VirtualPath virtualPath)
+   en System.Web.Mvc.BuildManagerCompiledView.Render(ViewContext viewContext, TextWriter writer)
+   en System.Web.Mvc.ViewResultBase.ExecuteResult(ControllerContext context)
+   en System.Web.Mvc.ControllerActionInvoker.InvokeActionResultFilterRecursive(IList`1 filters, Int32 filterIndex, ResultExecutingContext preContext, ControllerContext controllerContext, ActionResult actionResult)
+   en System.Web.Mvc.ControllerActionInvoker.InvokeActionResultFilterRecursive(IList`1 filters, Int32 filterIndex, ResultExecutingContext preContext, ControllerContext controllerContext, ActionResult actionResult)
+   en System.Web.Mvc.ControllerActionInvoker.InvokeActionResultFilterRecursive(IList`1 filters, Int32 filterIndex, ResultExecutingContext preContext, ControllerContext controllerContext, ActionResult actionResult)
+   en System.Web.Mvc.ControllerActionInvoker.InvokeActionResultFilterRecursive(IList`1 filters, Int32 filterIndex, ResultExecutingContext preContext, ControllerContext controllerContext, ActionResult actionResult)
+   en System.Web.Mvc.ControllerActionInvoker.InvokeActionResultWithFilters(ControllerContext controllerContext, IList`1 filters, ActionResult actionResult)
+   en System.Web.Mvc.Async.AsyncControllerActionInvoker.<>c__DisplayClass3_1.<BeginInvokeAction>b__1(IAsyncResult asyncResult)
+2026-03-03 08:59:12.459 | ERROR | CID:1a9ab289125c | USR:GACAJAS | OrdenRecaudacion/Editar | ERR:INTERNAL_ERROR | c:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\CapaPresentacion\Views\OrdenRecaudacion\Editar.cshtml(38): error CS1525: El término de la expresión '.' no es válido
+    Exception: HttpCompileException
+    StackTrace:    en System.Web.Compilation.AssemblyBuilder.Compile()
+   en System.Web.Compilation.BuildProvidersCompiler.PerformBuild()
+   en System.Web.Compilation.BuildManager.CompileWebFile(VirtualPath virtualPath)
+   en System.Web.Compilation.BuildManager.GetVPathBuildResultInternal(VirtualPath virtualPath, Boolean noBuild, Boolean allowCrossApp, Boolean allowBuildInPrecompile, Boolean throwIfNotFound, Boolean ensureIsUpToDate)
+   en System.Web.Compilation.BuildManager.GetVPathBuildResultWithNoAssert(HttpContext context, VirtualPath virtualPath, Boolean noBuild, Boolean allowCrossApp, Boolean allowBuildInPrecompile, Boolean throwIfNotFound, Boolean ensureIsUpToDate)
+   en System.Web.Compilation.BuildManager.GetVirtualPathObjectFactory(VirtualPath virtualPath, HttpContext context, Boolean allowCrossApp, Boolean throwIfNotFound)
+   en System.Web.Compilation.BuildManager.GetCompiledType(VirtualPath virtualPath)
+   en System.Web.Mvc.BuildManagerCompiledView.Render(ViewContext viewContext, TextWriter writer)
+   en System.Web.Mvc.ViewResultBase.ExecuteResult(ControllerContext context)
+   en System.Web.Mvc.ControllerActionInvoker.InvokeActionResultFilterRecursive(IList`1 filters, Int32 filterIndex, ResultExecutingContext preContext, ControllerContext controllerContext, ActionResult actionResult)
+   en System.Web.Mvc.ControllerActionInvoker.InvokeActionResultFilterRecursive(IList`1 filters, Int32 filterIndex, ResultExecutingContext preContext, ControllerContext controllerContext, ActionResult actionResult)
+   en System.Web.Mvc.ControllerActionInvoker.InvokeActionResultFilterRecursive(IList`1 filters, Int32 filterIndex, ResultExecutingContext preContext, ControllerContext controllerContext, ActionResult actionResult)
+   en System.Web.Mvc.ControllerActionInvoker.InvokeActionResultFilterRecursive(IList`1 filters, Int32 filterIndex, ResultExecutingContext preContext, ControllerContext controllerContext, ActionResult actionResult)
+   en System.Web.Mvc.ControllerActionInvoker.InvokeActionResultWithFilters(ControllerContext controllerContext, IList`1 filters, ActionResult actionResult)
+   en System.Web.Mvc.Async.AsyncControllerActionInvoker.<>c__DisplayClass3_1.<BeginInvokeAction>b__1(IAsyncResult asyncResult)
+2026-03-03 09:02:38.956 | INFO  | CID:N/A | Deteniendo procesador de cola de correos
+2026-03-03 09:02:39.018 | INFO  | CID:N/A | Deteniendo procesador de cola de correos
+2026-03-03 09:04:18.452 | INFO  | CID:N/A | Iniciando procesador de cola de correos
+2026-03-03 09:04:36.800 | INFO  | CID:eec69548419a | Account/Login | Iniciando acción: Account/Login
+2026-03-03 09:04:37.465 | INFO  | CID:eec69548419a | Account/Login | Acción completada: Account/Login
+2026-03-03 09:17:40.204 | INFO  | CID:N/A | Iniciando procesador de cola de correos
+2026-03-03 09:17:59.922 | INFO  | CID:41aceb7c24bf | Account/Login | Iniciando acción: Account/Login
+2026-03-03 09:18:00.652 | INFO  | CID:41aceb7c24bf | Account/Login | Acción completada: Account/Login
+2026-03-03 09:18:25.135 | INFO  | CID:fd65e57e6837 | USR:GACAJAS | OrdenRecaudacion/Editar | Iniciando acción: OrdenRecaudacion/Editar
+2026-03-03 09:18:25.531 | INFO  | CID:fd65e57e6837 | USR:GACAJAS | OrdenRecaudacion/Editar | Acción completada: OrdenRecaudacion/Editar
+2026-03-03 09:28:00.567 | INFO  | CID:09f924b7e5bc | USR:GACAJAS | OrdenRecaudacion/Editar | Iniciando acción: OrdenRecaudacion/Editar
+2026-03-03 09:28:01.151 | INFO  | CID:09f924b7e5bc | USR:GACAJAS | OrdenRecaudacion/Editar | Acción completada: OrdenRecaudacion/Editar
+2026-03-03 09:28:40.511 | INFO  | CID:66fd145db84a | USR:GACAJAS | OrdenRecaudacion/Editar | Iniciando acción: OrdenRecaudacion/Editar
+2026-03-03 09:28:40.784 | INFO  | CID:66fd145db84a | USR:GACAJAS | OrdenRecaudacion/Editar | Acción completada: OrdenRecaudacion/Editar
+2026-03-03 09:35:26.742 | INFO  | CID:N/A | Iniciando procesador de cola de correos
+2026-03-03 09:35:44.811 | INFO  | CID:345c9ea68b3e | Account/Login | Iniciando acción: Account/Login
+2026-03-03 09:35:45.533 | INFO  | CID:345c9ea68b3e | Account/Login | Acción completada: Account/Login
+2026-03-03 09:36:31.087 | INFO  | CID:81637ba5c3ee | USR:GACAJAS | OrdenRecaudacion/Editar | Iniciando acción: OrdenRecaudacion/Editar
+2026-03-03 09:36:31.421 | INFO  | CID:81637ba5c3ee | USR:GACAJAS | OrdenRecaudacion/Editar | Acción completada: OrdenRecaudacion/Editar
+2026-03-03 09:37:40.514 | INFO  | CID:d946f034c374 | Account/Login | Iniciando acción: Account/Login
+2026-03-03 09:37:40.931 | INFO  | CID:d946f034c374 | Account/Login | Acción completada: Account/Login
+2026-03-03 09:47:34.793 | INFO  | CID:N/A | Iniciando procesador de cola de correos
+2026-03-03 09:48:17.420 | INFO  | CID:c6beb466b3b0 | Account/Login | Iniciando acción: Account/Login
+2026-03-03 09:48:18.024 | INFO  | CID:c6beb466b3b0 | Account/Login | Acción completada: Account/Login
+2026-03-03 09:48:29.845 | INFO  | CID:c1bc42fad489 | Account/Login | Iniciando acción: Account/Login
+2026-03-03 09:48:30.290 | INFO  | CID:c1bc42fad489 | Account/Login | Acción completada: Account/Login
+2026-03-03 09:48:53.551 | INFO  | CID:d0f926653075 | USR:GACAJAS | OrdenRecaudacion/Editar | Iniciando acción: OrdenRecaudacion/Editar
+2026-03-03 09:48:53.880 | INFO  | CID:d0f926653075 | USR:GACAJAS | OrdenRecaudacion/Editar | Acción completada: OrdenRecaudacion/Editar
+2026-03-03 09:49:21.464 | INFO  | CID:32ce1c4e3768 | USR:GACAJAS | OrdenRecaudacion/Editar | Iniciando acción: OrdenRecaudacion/Editar
+2026-03-03 09:49:21.734 | INFO  | CID:32ce1c4e3768 | USR:GACAJAS | OrdenRecaudacion/Editar | Acción completada: OrdenRecaudacion/Editar
+2026-03-03 09:54:18.592 | INFO  | CID:N/A | Deteniendo procesador de cola de correos
+2026-03-03 09:54:18.691 | INFO  | CID:N/A | Deteniendo procesador de cola de correos
+2026-03-03 11:27:29.047 | INFO  | CID:N/A | Iniciando procesador de cola de correos
+2026-03-03 11:27:53.644 | INFO  | CID:39dbffedadb2 | Account/Login | Iniciando acción: Account/Login
+2026-03-03 11:27:54.352 | INFO  | CID:39dbffedadb2 | Account/Login | Acción completada: Account/Login
+2026-03-03 11:28:18.761 | INFO  | CID:9237efcf046f | USR:GACAJAS | OrdenRecaudacion/Editar | Iniciando acción: OrdenRecaudacion/Editar
+2026-03-03 11:28:19.309 | INFO  | CID:9237efcf046f | USR:GACAJAS | OrdenRecaudacion/Editar | Acción completada: OrdenRecaudacion/Editar
+2026-03-03 11:28:46.160 | INFO  | CID:de381309bf73 | USR:GACAJAS | OrdenRecaudacion/Editar | Iniciando acción: OrdenRecaudacion/Editar
+2026-03-03 11:28:46.437 | INFO  | CID:de381309bf73 | USR:GACAJAS | OrdenRecaudacion/Editar | Acción completada: OrdenRecaudacion/Editar
+2026-03-03 11:38:03.622 | INFO  | CID:N/A | Deteniendo procesador de cola de correos
+2026-03-03 11:38:03.703 | INFO  | CID:N/A | Deteniendo procesador de cola de correos
+2026-03-03 12:01:39.867 | INFO  | CID:N/A | Iniciando procesador de cola de correos
+2026-03-03 12:02:29.517 | INFO  | CID:3eec9cbb477b | Account/Login | Iniciando acción: Account/Login
+2026-03-03 12:02:30.121 | INFO  | CID:3eec9cbb477b | Account/Login | Acción completada: Account/Login
+2026-03-03 12:02:43.126 | INFO  | CID:dde8cf2d0a94 | Account/Login | Iniciando acción: Account/Login
+2026-03-03 12:02:43.509 | INFO  | CID:dde8cf2d0a94 | Account/Login | Acción completada: Account/Login
+2026-03-03 12:02:56.110 | INFO  | CID:6e76e285a40b | Account/Login | Iniciando acción: Account/Login
+2026-03-03 12:02:56.575 | INFO  | CID:6e76e285a40b | Account/Login | Acción completada: Account/Login
+2026-03-03 12:06:23.546 | INFO  | CID:8789383a8159 | USR:USU_ADMIN | Financiero/ReintentarFr3 | Iniciando acción: Financiero/ReintentarFr3
+2026-03-03 12:06:23.561 | INFO  | CID:N/A | SyncLogService: Tabla aocr_sync_log verificada/creada.
+2026-03-03 12:06:23.782 | INFO  | CID:N/A | IdempotencyService: Tabla aocr_idempotency_key verificada/creada.
+2026-03-03 12:06:23.788 | INFO  | CID:N/A | AuditTrailService: Tabla aocr_audit_trail verificada/creada.
+2026-03-03 12:06:24.432 | INFO  | CID:N/A | FR3 DB2 inicio: OrdenId=71, Factura=23123, Aeropuerto=SEQU, Anio=2026
+2026-03-03 12:06:24.486 | INFO  | CID:N/A | GetColumnas: 80 columnas encontradas en DGACDAT.OPCAR5
+2026-03-03 12:06:24.502 | INFO  | CID:N/A | GetColumnas: 25 columnas encontradas en DGACDAT.OPCAR6
+2026-03-03 12:06:24.534 | INFO  | CID:N/A | GetColumnas: 6 columnas encontradas en DGACDAT.OPSARC
+2026-03-03 12:06:24.686 | WARN  | CID:N/A | FR3 detectó SQL7008 en modo transaccional; se reintenta sin transacción para compatibilidad.
+2026-03-03 12:06:24.699 | INFO  | CID:N/A | FR3 DB2 inicio: OrdenId=71, Factura=23123, Aeropuerto=SEQU, Anio=2026
+2026-03-03 12:06:24.708 | INFO  | CID:N/A | GetColumnas: 80 columnas encontradas en DGACDAT.OPCAR5
+2026-03-03 12:06:24.708 | INFO  | CID:N/A | GetColumnas: 25 columnas encontradas en DGACDAT.OPCAR6
+2026-03-03 12:06:24.718 | INFO  | CID:N/A | GetColumnas: 6 columnas encontradas en DGACDAT.OPSARC
+2026-03-03 12:06:24.739 | INFO  | CID:N/A | FR3 cabecera insertada: Factura=23123, Sec=4
+2026-03-03 12:06:24.752 | INFO  | CID:N/A | GetColumnas: 6 columnas encontradas en DGACDAT.OPSARC
+2026-03-03 12:06:24.767 | INFO  | CID:N/A | FR3 secuencial actualizado: Aeropuerto=SEQU, Anio=2026, Sec=4
+2026-03-03 12:06:24.767 | INFO  | CID:N/A | FR3 DB2 OK: OrdenId=71, Factura=23123, FR3=4-SEQU-2026
+2026-03-03 12:06:25.275 | INFO  | CID:8789383a8159 | USR:USU_ADMIN | Financiero/ReintentarFr3 | Acción completada: Financiero/ReintentarFr3
+2026-03-03 12:06:31.400 | INFO  | CID:N/A | Procesando email 21 para gercavi82@gmail.com
+2026-03-03 12:06:31.983 | INFO  | CID:N/A | Email 21 enviado exitosamente
+2026-03-03 12:06:31.984 | INFO  | CID:N/A | Email 21 enviado exitosamente
+2026-03-03 12:06:32.016 | INFO  | CID:N/A | Procesando email 22 para admin1@dgac.gob.ec
+2026-03-03 12:06:32.202 | INFO  | CID:N/A | Email 22 enviado exitosamente
+2026-03-03 12:06:32.202 | INFO  | CID:N/A | Email 22 enviado exitosamente
+2026-03-03 12:06:32.234 | INFO  | CID:N/A | Procesando email 23 para admin2@dgac.gob.ec
+2026-03-03 12:06:32.746 | INFO  | CID:N/A | Email 23 enviado exitosamente
+2026-03-03 12:06:32.749 | INFO  | CID:N/A | Email 23 enviado exitosamente
+2026-03-03 12:23:31.098 | INFO  | CID:b3219d85c44b | USR:USU_ADMIN | Financiero/ReintentarFr3 | Iniciando acción: Financiero/ReintentarFr3
+2026-03-03 12:23:32.047 | INFO  | CID:N/A | FR3 DB2 inicio: OrdenId=69, Factura=3545645654, Aeropuerto=SEQU, Anio=2026
+2026-03-03 12:23:32.086 | INFO  | CID:N/A | GetColumnas: 80 columnas encontradas en DGACDAT.OPCAR5
+2026-03-03 12:23:32.098 | INFO  | CID:N/A | GetColumnas: 25 columnas encontradas en DGACDAT.OPCAR6
+2026-03-03 12:23:32.122 | INFO  | CID:N/A | GetColumnas: 6 columnas encontradas en DGACDAT.OPSARC
+2026-03-03 12:23:32.204 | WARN  | CID:N/A | FR3 detectó SQL7008 en modo transaccional; se reintenta sin transacción para compatibilidad.
+2026-03-03 12:23:32.206 | INFO  | CID:N/A | FR3 DB2 inicio: OrdenId=69, Factura=3545645654, Aeropuerto=SEQU, Anio=2026
+2026-03-03 12:23:32.218 | INFO  | CID:N/A | GetColumnas: 80 columnas encontradas en DGACDAT.OPCAR5
+2026-03-03 12:23:32.223 | INFO  | CID:N/A | GetColumnas: 25 columnas encontradas en DGACDAT.OPCAR6
+2026-03-03 12:23:32.244 | INFO  | CID:N/A | GetColumnas: 6 columnas encontradas en DGACDAT.OPSARC
+2026-03-03 12:23:32.246 | INFO  | CID:N/A | FR3 cabecera insertada: Factura=3545645654, Sec=5
+2026-03-03 12:23:32.278 | INFO  | CID:N/A | GetColumnas: 6 columnas encontradas en DGACDAT.OPSARC
+2026-03-03 12:23:32.281 | INFO  | CID:N/A | FR3 secuencial actualizado: Aeropuerto=SEQU, Anio=2026, Sec=5
+2026-03-03 12:23:32.281 | INFO  | CID:N/A | FR3 DB2 OK: OrdenId=69, Factura=3545645654, FR3=5-SEQU-2026
+2026-03-03 12:23:32.934 | INFO  | CID:b3219d85c44b | USR:USU_ADMIN | Financiero/ReintentarFr3 | Acción completada: Financiero/ReintentarFr3
+2026-03-03 12:23:34.363 | INFO  | CID:N/A | Procesando email 24 para gercavi82@gmail.com
+2026-03-03 12:23:34.581 | INFO  | CID:N/A | Email 24 enviado exitosamente
+2026-03-03 12:23:34.598 | INFO  | CID:N/A | Email 24 enviado exitosamente
+2026-03-03 12:23:34.627 | INFO  | CID:N/A | Procesando email 25 para admin1@dgac.gob.ec
+2026-03-03 12:23:34.922 | INFO  | CID:N/A | Email 25 enviado exitosamente
+2026-03-03 12:23:34.922 | INFO  | CID:N/A | Email 25 enviado exitosamente
+2026-03-03 12:23:34.952 | INFO  | CID:N/A | Procesando email 26 para admin2@dgac.gob.ec
+2026-03-03 12:23:35.151 | INFO  | CID:N/A | Email 26 enviado exitosamente
+2026-03-03 12:23:35.155 | INFO  | CID:N/A | Email 26 enviado exitosamente
+2026-03-03 12:30:03.656 | INFO  | CID:N/A | Iniciando procesador de cola de correos
+2026-03-03 12:30:09.450 | INFO  | CID:218724821299 | Account/Login | Iniciando acción: Account/Login
+2026-03-03 12:30:09.467 | INFO  | CID:218724821299 | Account/Login | Acción completada: Account/Login
+2026-03-03 12:30:22.599 | INFO  | CID:c152b5789738 | Account/Login | Iniciando acción: Account/Login
+2026-03-03 12:30:23.181 | INFO  | CID:c152b5789738 | Account/Login | Acción completada: Account/Login
+2026-03-03 13:50:42.554 | INFO  | CID:041958e88ee7 | Account/Login | Iniciando acción: Account/Login
+2026-03-03 13:50:42.991 | INFO  | CID:041958e88ee7 | Account/Login | Acción completada: Account/Login
+2026-03-03 13:52:10.074 | INFO  | CID:1400c0072a99 | USR:USU_ADMIN | Financiero/AprobarYEnviarAS400 | Iniciando acción: Financiero/AprobarYEnviarAS400
+2026-03-03 13:52:10.514 | WARN  | CID:N/A | ERR:EMAIL_FACTURA_SIN_DESTINO | No se envió correo de factura: la orden no tiene correo de destinatario.
+2026-03-03 13:52:10.739 | INFO  | CID:N/A | SyncLogService: Tabla aocr_sync_log verificada/creada.
+2026-03-03 13:52:10.753 | INFO  | CID:N/A | IdempotencyService: Tabla aocr_idempotency_key verificada/creada.
+2026-03-03 13:52:10.966 | INFO  | CID:N/A | AuditTrailService: Tabla aocr_audit_trail verificada/creada.
+2026-03-03 13:52:30.789 | INFO  | CID:N/A | FR3 DB2 inicio: OrdenId=63, Factura=212|, Aeropuerto=SEQU, Anio=2026
+2026-03-03 13:52:30.889 | INFO  | CID:N/A | GetColumnas: 80 columnas encontradas en DGACDAT.OPCAR5
+2026-03-03 13:52:30.904 | INFO  | CID:N/A | GetColumnas: 25 columnas encontradas en DGACDAT.OPCAR6
+2026-03-03 13:52:31.062 | ERROR | CID:N/A | ERR:FR3_DB2_ERROR | Error al consultar el sistema AS400. Contacte al administrador.
+    Exception: DataAccessException
+    StackTrace:    en CapaDatos.Infrastructure.AS400BaseDAO.<>c__DisplayClass13_0.<ExecuteWithConnection>b__0() en C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\CapaDatos\Infrastructure\AS400BaseDAO.cs:línea 198
+   en CapaDatos.Infrastructure.CircuitBreaker.Execute[T](Func`1 action) en C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\CapaDatos\Infrastructure\CircuitBreaker.cs:línea 132
+   en CapaDatos.Infrastructure.AS400BaseDAO.ExecuteWithConnection(Action`1 action) en C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\CapaDatos\Infrastructure\AS400BaseDAO.cs:línea 187
+   en CapaDatos.DAOs.FacturacionAS400DAO.RegistrarFactura(FacturaAs400Record record, FacturacionAS400Result& result, String& error) en C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\CapaDatos\DAOs\FacturacionAS400DAO.cs:línea 91
+2026-03-03 13:52:31.356 | WARN  | CID:N/A | FR3 error registrado sin persistencia completa en PG: No existe registro de factura asociado para actualizar estado FR3.
+2026-03-03 13:52:31.412 | INFO  | CID:1400c0072a99 | USR:USU_ADMIN | Financiero/AprobarYEnviarAS400 | Acción completada: Financiero/AprobarYEnviarAS400
+2026-03-03 13:53:12.479 | INFO  | CID:e4cb82c2d4f3 | USR:USU_ADMIN | Financiero/AprobarYEnviarAS400 | Iniciando acción: Financiero/AprobarYEnviarAS400
+2026-03-03 13:53:12.491 | INFO  | CID:e4cb82c2d4f3 | USR:USU_ADMIN | Financiero/AprobarYEnviarAS400 | Acción completada: Financiero/AprobarYEnviarAS400
+2026-03-03 13:53:14.219 | INFO  | CID:139ee7d9818e | USR:USU_ADMIN | Financiero/AprobarYEnviarAS400 | Iniciando acción: Financiero/AprobarYEnviarAS400
+2026-03-03 13:53:14.508 | INFO  | CID:139ee7d9818e | USR:USU_ADMIN | Financiero/AprobarYEnviarAS400 | Acción completada: Financiero/AprobarYEnviarAS400
+2026-03-03 13:53:20.211 | INFO  | CID:eb8a9daccd6a | USR:USU_ADMIN | Financiero/AprobarYEnviarAS400 | Iniciando acción: Financiero/AprobarYEnviarAS400
+2026-03-03 13:53:20.223 | INFO  | CID:eb8a9daccd6a | USR:USU_ADMIN | Financiero/AprobarYEnviarAS400 | Acción completada: Financiero/AprobarYEnviarAS400
+2026-03-03 13:53:25.130 | INFO  | CID:b9f837b88e55 | USR:USU_ADMIN | Financiero/AprobarYEnviarAS400 | Iniciando acción: Financiero/AprobarYEnviarAS400
+2026-03-03 13:53:25.140 | INFO  | CID:b9f837b88e55 | USR:USU_ADMIN | Financiero/AprobarYEnviarAS400 | Acción completada: Financiero/AprobarYEnviarAS400
+2026-03-03 13:53:25.804 | INFO  | CID:3e735bf417b7 | USR:USU_ADMIN | Financiero/AprobarYEnviarAS400 | Iniciando acción: Financiero/AprobarYEnviarAS400
+2026-03-03 13:53:25.883 | INFO  | CID:3e735bf417b7 | USR:USU_ADMIN | Financiero/AprobarYEnviarAS400 | Acción completada: Financiero/AprobarYEnviarAS400
+2026-03-03 13:53:26.973 | INFO  | CID:27ba3fe0d5b0 | USR:USU_ADMIN | Financiero/AprobarYEnviarAS400 | Iniciando acción: Financiero/AprobarYEnviarAS400
+2026-03-03 13:53:26.983 | INFO  | CID:27ba3fe0d5b0 | USR:USU_ADMIN | Financiero/AprobarYEnviarAS400 | Acción completada: Financiero/AprobarYEnviarAS400
+2026-03-03 13:53:28.546 | INFO  | CID:6569c8dc830e | USR:USU_ADMIN | Financiero/AprobarYEnviarAS400 | Iniciando acción: Financiero/AprobarYEnviarAS400
+2026-03-03 13:53:28.556 | INFO  | CID:6569c8dc830e | USR:USU_ADMIN | Financiero/AprobarYEnviarAS400 | Acción completada: Financiero/AprobarYEnviarAS400
+2026-03-03 13:54:40.796 | INFO  | CID:cd2194972c59 | USR:USU_ADMIN | Financiero/AprobarYEnviarAS400 | Iniciando acción: Financiero/AprobarYEnviarAS400
+2026-03-03 13:54:41.396 | ERROR | CID:N/A | ERR:EMAIL_ERROR | Error al enviar correo.
+    Exception: SmtpException
+    StackTrace:    en System.Net.Mail.SmtpClient.SendAsync(MailMessage message, Object userToken)
+   en System.Net.Mail.SmtpClient.SendMailAsync(MailMessage message)
+   en CapaDatos.Services.EmailService.<EnviarAsync>d__4.MoveNext() en C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\CapaDatos\Services\EmailService.cs:línea 76
+2026-03-03 13:54:41.815 | INFO  | CID:f329723bcf88 | Correo con adjunto enviado exitosamente a german.cajas@aviacioncivil.gob.ec
+2026-03-03 13:54:41.830 | WARN  | CID:N/A | ERR:EMAIL_FALLBACK_OK | Correo enviado por fallback EnviarCorreo.
+2026-03-03 13:54:41.833 | INFO  | CID:N/A | ORD:OR-20260210085330640-2 | ERR:EMAIL_FACTURA_OK | Notificacion de factura enviada correctamente
+2026-03-03 13:54:42.235 | INFO  | CID:N/A | FR3 DB2 inicio: OrdenId=35, Factura=232432, Aeropuerto=SEQU, Anio=2026
+2026-03-03 13:54:42.267 | INFO  | CID:N/A | GetColumnas: 80 columnas encontradas en DGACDAT.OPCAR5
+2026-03-03 13:54:42.273 | INFO  | CID:N/A | GetColumnas: 25 columnas encontradas en DGACDAT.OPCAR6
+2026-03-03 13:54:42.297 | INFO  | CID:N/A | GetColumnas: 6 columnas encontradas en DGACDAT.OPSARC
+2026-03-03 13:54:42.361 | WARN  | CID:N/A | FR3 truncamiento preventivo en DGACDAT.OPCAR5.OPCOBS: len=70, max=60.
+2026-03-03 13:54:42.413 | WARN  | CID:N/A | FR3 detectó SQL7008 en modo transaccional; se reintenta sin transacción para compatibilidad.
+2026-03-03 13:54:42.413 | INFO  | CID:N/A | FR3 DB2 inicio: OrdenId=35, Factura=232432, Aeropuerto=SEQU, Anio=2026
+2026-03-03 13:54:42.431 | INFO  | CID:N/A | GetColumnas: 80 columnas encontradas en DGACDAT.OPCAR5
+2026-03-03 13:54:42.436 | INFO  | CID:N/A | GetColumnas: 25 columnas encontradas en DGACDAT.OPCAR6
+2026-03-03 13:54:42.458 | INFO  | CID:N/A | GetColumnas: 6 columnas encontradas en DGACDAT.OPSARC
+2026-03-03 13:54:42.469 | WARN  | CID:N/A | FR3 truncamiento preventivo en DGACDAT.OPCAR5.OPCOBS: len=70, max=60.
+2026-03-03 13:54:42.476 | INFO  | CID:N/A | FR3 cabecera insertada: Factura=232432, Sec=6
+2026-03-03 13:54:42.496 | INFO  | CID:N/A | GetColumnas: 6 columnas encontradas en DGACDAT.OPSARC
+2026-03-03 13:54:42.496 | INFO  | CID:N/A | FR3 secuencial actualizado: Aeropuerto=SEQU, Anio=2026, Sec=6
+2026-03-03 13:54:42.496 | INFO  | CID:N/A | FR3 DB2 OK: OrdenId=35, Factura=232432, FR3=6-SEQU-2026
+2026-03-03 13:54:42.781 | WARN  | CID:N/A | FR3 generado, pero no se pudo persistir trazabilidad en PG: No existe registro de factura asociado para actualizar estado FR3.
+2026-03-03 13:54:42.781 | INFO  | CID:cd2194972c59 | USR:USU_ADMIN | Financiero/AprobarYEnviarAS400 | Acción completada: Financiero/AprobarYEnviarAS400
+2026-03-03 14:03:02.524 | INFO  | CID:N/A | Iniciando procesador de cola de correos
+2026-03-03 14:03:24.982 | INFO  | CID:738bf58ea6c6 | Account/Login | Iniciando acción: Account/Login
+2026-03-03 14:03:25.607 | INFO  | CID:738bf58ea6c6 | Account/Login | Acción completada: Account/Login
+2026-03-03 14:03:41.707 | INFO  | CID:7ccc3fe56516 | Account/Login | Iniciando acción: Account/Login
+2026-03-03 14:03:42.186 | INFO  | CID:7ccc3fe56516 | Account/Login | Acción completada: Account/Login
+2026-03-03 14:04:10.847 | INFO  | CID:989d2f17158c | USR:USU_ADMIN | Financiero/AprobarYEnviarAS400 | Iniciando acción: Financiero/AprobarYEnviarAS400
+2026-03-03 14:04:10.929 | INFO  | CID:989d2f17158c | USR:USU_ADMIN | Financiero/AprobarYEnviarAS400 | Acción completada: Financiero/AprobarYEnviarAS400
+2026-03-03 14:04:13.616 | INFO  | CID:4a9e38d915ea | USR:USU_ADMIN | Financiero/AprobarYEnviarAS400 | Iniciando acción: Financiero/AprobarYEnviarAS400
+2026-03-03 14:04:13.628 | INFO  | CID:4a9e38d915ea | USR:USU_ADMIN | Financiero/AprobarYEnviarAS400 | Acción completada: Financiero/AprobarYEnviarAS400
+2026-03-03 14:04:14.295 | INFO  | CID:eb23711777fc | USR:USU_ADMIN | Financiero/AprobarYEnviarAS400 | Iniciando acción: Financiero/AprobarYEnviarAS400
+2026-03-03 14:04:14.296 | INFO  | CID:eb23711777fc | USR:USU_ADMIN | Financiero/AprobarYEnviarAS400 | Acción completada: Financiero/AprobarYEnviarAS400
+2026-03-03 14:04:26.979 | INFO  | CID:e676dbbb9a03 | USR:USU_ADMIN | Financiero/AprobarYEnviarAS400 | Iniciando acción: Financiero/AprobarYEnviarAS400
+2026-03-03 14:04:26.987 | INFO  | CID:e676dbbb9a03 | USR:USU_ADMIN | Financiero/AprobarYEnviarAS400 | Acción completada: Financiero/AprobarYEnviarAS400
+2026-03-03 14:04:29.193 | INFO  | CID:018cca466f65 | USR:USU_ADMIN | Financiero/AprobarYEnviarAS400 | Iniciando acción: Financiero/AprobarYEnviarAS400
+2026-03-03 14:04:29.213 | INFO  | CID:018cca466f65 | USR:USU_ADMIN | Financiero/AprobarYEnviarAS400 | Acción completada: Financiero/AprobarYEnviarAS400
+2026-03-03 14:04:29.953 | INFO  | CID:08cf362362b4 | USR:USU_ADMIN | Financiero/AprobarYEnviarAS400 | Iniciando acción: Financiero/AprobarYEnviarAS400
+2026-03-03 14:04:29.961 | INFO  | CID:08cf362362b4 | USR:USU_ADMIN | Financiero/AprobarYEnviarAS400 | Acción completada: Financiero/AprobarYEnviarAS400
+2026-03-03 14:04:37.723 | INFO  | CID:143bb1393df9 | USR:USU_ADMIN | Financiero/AprobarYEnviarAS400 | Iniciando acción: Financiero/AprobarYEnviarAS400
+2026-03-03 14:04:37.948 | INFO  | CID:143bb1393df9 | USR:USU_ADMIN | Financiero/AprobarYEnviarAS400 | Acción completada: Financiero/AprobarYEnviarAS400
+2026-03-03 14:04:38.994 | INFO  | CID:31f93801c7e2 | USR:USU_ADMIN | Financiero/AprobarYEnviarAS400 | Iniciando acción: Financiero/AprobarYEnviarAS400
+2026-03-03 14:04:39.004 | INFO  | CID:31f93801c7e2 | USR:USU_ADMIN | Financiero/AprobarYEnviarAS400 | Acción completada: Financiero/AprobarYEnviarAS400
+2026-03-03 14:04:40.398 | INFO  | CID:8addccf2501f | USR:USU_ADMIN | Financiero/AprobarYEnviarAS400 | Iniciando acción: Financiero/AprobarYEnviarAS400
+2026-03-03 14:04:40.412 | INFO  | CID:8addccf2501f | USR:USU_ADMIN | Financiero/AprobarYEnviarAS400 | Acción completada: Financiero/AprobarYEnviarAS400
+2026-03-03 14:05:05.172 | INFO  | CID:106adbc0fe5c | USR:USU_ADMIN | Financiero/AprobarYEnviarAS400 | Iniciando acción: Financiero/AprobarYEnviarAS400
+2026-03-03 14:05:05.190 | INFO  | CID:106adbc0fe5c | USR:USU_ADMIN | Financiero/AprobarYEnviarAS400 | Acción completada: Financiero/AprobarYEnviarAS400
+2026-03-03 14:05:06.874 | INFO  | CID:29cd9eda5afd | USR:USU_ADMIN | Financiero/AprobarYEnviarAS400 | Iniciando acción: Financiero/AprobarYEnviarAS400
+2026-03-03 14:05:06.883 | INFO  | CID:29cd9eda5afd | USR:USU_ADMIN | Financiero/AprobarYEnviarAS400 | Acción completada: Financiero/AprobarYEnviarAS400
+2026-03-03 14:05:07.690 | INFO  | CID:3dcd9973f4a5 | USR:USU_ADMIN | Financiero/AprobarYEnviarAS400 | Iniciando acción: Financiero/AprobarYEnviarAS400
+2026-03-03 14:05:07.701 | INFO  | CID:3dcd9973f4a5 | USR:USU_ADMIN | Financiero/AprobarYEnviarAS400 | Acción completada: Financiero/AprobarYEnviarAS400
+2026-03-03 14:05:29.047 | INFO  | CID:0b915d75a962 | USR:USU_ADMIN | Financiero/AprobarYEnviarAS400 | Iniciando acción: Financiero/AprobarYEnviarAS400
+2026-03-03 14:05:29.054 | INFO  | CID:0b915d75a962 | USR:USU_ADMIN | Financiero/AprobarYEnviarAS400 | Acción completada: Financiero/AprobarYEnviarAS400
+2026-03-03 14:14:28.350 | INFO  | CID:N/A | Deteniendo procesador de cola de correos
+2026-03-03 14:14:28.405 | INFO  | CID:N/A | Deteniendo procesador de cola de correos
+2026-03-03 14:16:43.877 | INFO  | CID:N/A | Iniciando procesador de cola de correos
+2026-03-03 14:18:10.363 | INFO  | CID:09359e5e374c | Account/Login | Iniciando acción: Account/Login
+2026-03-03 14:18:11.083 | INFO  | CID:09359e5e374c | Account/Login | Acción completada: Account/Login
+2026-03-03 14:18:30.429 | INFO  | CID:c8116cf7980a | USR:USU_ADMIN | Financiero/AprobarYEnviarAS400 | Iniciando acción: Financiero/AprobarYEnviarAS400
+2026-03-03 14:18:31.027 | INFO  | CID:c8116cf7980a | USR:USU_ADMIN | Financiero/AprobarYEnviarAS400 | Acción completada: Financiero/AprobarYEnviarAS400
+2026-03-03 14:18:38.743 | INFO  | CID:c1d8c56389da | USR:USU_ADMIN | Financiero/AprobarYEnviarAS400 | Iniciando acción: Financiero/AprobarYEnviarAS400
+2026-03-03 14:18:38.976 | INFO  | CID:c1d8c56389da | USR:USU_ADMIN | Financiero/AprobarYEnviarAS400 | Acción completada: Financiero/AprobarYEnviarAS400
+2026-03-03 14:18:47.479 | INFO  | CID:c9f7fd85cc42 | USR:USU_ADMIN | Financiero/AprobarYEnviarAS400 | Iniciando acción: Financiero/AprobarYEnviarAS400
+2026-03-03 14:18:47.724 | INFO  | CID:c9f7fd85cc42 | USR:USU_ADMIN | Financiero/AprobarYEnviarAS400 | Acción completada: Financiero/AprobarYEnviarAS400
+2026-03-03 14:19:02.807 | INFO  | CID:bdea291a745d | USR:USU_ADMIN | Financiero/ReintentarFr3 | Iniciando acción: Financiero/ReintentarFr3
+2026-03-03 14:19:02.818 | INFO  | CID:N/A | SyncLogService: Tabla aocr_sync_log verificada/creada.
+2026-03-03 14:19:03.038 | INFO  | CID:N/A | IdempotencyService: Tabla aocr_idempotency_key verificada/creada.
+2026-03-03 14:19:03.044 | INFO  | CID:N/A | AuditTrailService: Tabla aocr_audit_trail verificada/creada.
+2026-03-03 14:19:03.604 | INFO  | CID:N/A | FR3 DB2 inicio: OrdenId=68, Factura=4565464, Aeropuerto=SEQU, Anio=2026
+2026-03-03 14:19:03.672 | INFO  | CID:N/A | GetColumnas: 80 columnas encontradas en DGACDAT.OPCAR5
+2026-03-03 14:19:03.672 | INFO  | CID:N/A | GetColumnas: 25 columnas encontradas en DGACDAT.OPCAR6
+2026-03-03 14:19:03.711 | INFO  | CID:N/A | GetColumnas: 6 columnas encontradas en DGACDAT.OPSARC
+2026-03-03 14:19:03.847 | WARN  | CID:N/A | FR3 detectó SQL7008 en modo transaccional; se reintenta sin transacción para compatibilidad.
+2026-03-03 14:19:03.848 | INFO  | CID:N/A | FR3 DB2 inicio: OrdenId=68, Factura=4565464, Aeropuerto=SEQU, Anio=2026
+2026-03-03 14:19:03.856 | INFO  | CID:N/A | GetColumnas: 80 columnas encontradas en DGACDAT.OPCAR5
+2026-03-03 14:19:03.861 | INFO  | CID:N/A | GetColumnas: 25 columnas encontradas en DGACDAT.OPCAR6
+2026-03-03 14:19:03.872 | INFO  | CID:N/A | GetColumnas: 6 columnas encontradas en DGACDAT.OPSARC
+2026-03-03 14:19:03.888 | INFO  | CID:N/A | FR3 cabecera insertada: Factura=4565464, Sec=7
+2026-03-03 14:19:03.904 | INFO  | CID:N/A | GetColumnas: 6 columnas encontradas en DGACDAT.OPSARC
+2026-03-03 14:19:03.920 | INFO  | CID:N/A | FR3 secuencial actualizado: Aeropuerto=SEQU, Anio=2026, Sec=7
+2026-03-03 14:19:03.924 | INFO  | CID:N/A | FR3 DB2 OK: OrdenId=68, Factura=4565464, FR3=7-SEQU-2026
+2026-03-03 14:19:04.512 | INFO  | CID:bdea291a745d | USR:USU_ADMIN | Financiero/ReintentarFr3 | Acción completada: Financiero/ReintentarFr3
+2026-03-03 14:19:04.913 | INFO  | CID:N/A | Procesando email 27 para gercavi82@gmail.com
+2026-03-03 14:19:05.244 | INFO  | CID:N/A | Email 27 enviado exitosamente
+2026-03-03 14:19:05.244 | INFO  | CID:N/A | Email 27 enviado exitosamente
+2026-03-03 14:19:05.271 | INFO  | CID:N/A | Procesando email 28 para admin1@dgac.gob.ec
+2026-03-03 14:19:05.488 | INFO  | CID:N/A | Email 28 enviado exitosamente
+2026-03-03 14:19:05.488 | INFO  | CID:N/A | Email 28 enviado exitosamente
+2026-03-03 14:19:05.530 | INFO  | CID:N/A | Procesando email 29 para admin2@dgac.gob.ec
+2026-03-03 14:19:05.768 | INFO  | CID:N/A | Email 29 enviado exitosamente
+2026-03-03 14:19:05.775 | INFO  | CID:N/A | Email 29 enviado exitosamente
+2026-03-03 14:23:08.419 | INFO  | CID:N/A | Iniciando procesador de cola de correos
+2026-03-03 14:23:29.315 | INFO  | CID:accc727f3ce7 | Account/Login | Iniciando acción: Account/Login
+2026-03-03 14:23:29.941 | INFO  | CID:accc727f3ce7 | Account/Login | Acción completada: Account/Login
+2026-03-03 14:23:44.497 | INFO  | CID:4887dfae3253 | Account/Login | Iniciando acción: Account/Login
+2026-03-03 14:23:44.906 | INFO  | CID:4887dfae3253 | Account/Login | Acción completada: Account/Login
+2026-03-03 14:24:17.881 | INFO  | CID:7f19bf70ecb9 | USR:USU_ADMIN | Financiero/AprobarYEnviarAS400 | Iniciando acción: Financiero/AprobarYEnviarAS400
+2026-03-03 14:24:18.325 | INFO  | CID:7f19bf70ecb9 | USR:USU_ADMIN | Financiero/AprobarYEnviarAS400 | Acción completada: Financiero/AprobarYEnviarAS400
+2026-03-03 14:29:40.166 | INFO  | CID:N/A | Iniciando procesador de cola de correos
+2026-03-03 14:30:00.778 | INFO  | CID:471bd99048bc | Account/Login | Iniciando acción: Account/Login
+2026-03-03 14:30:01.480 | INFO  | CID:471bd99048bc | Account/Login | Acción completada: Account/Login
+2026-03-03 14:30:36.685 | INFO  | CID:d75f9569a67c | USR:USU_ADMIN | Financiero/AprobarYEnviarAS400 | Iniciando acción: Financiero/AprobarYEnviarAS400
+2026-03-03 14:30:37.158 | INFO  | CID:d75f9569a67c | USR:USU_ADMIN | Financiero/AprobarYEnviarAS400 | Acción completada: Financiero/AprobarYEnviarAS400
+2026-03-03 14:40:52.613 | INFO  | CID:N/A | Iniciando procesador de cola de correos
+2026-03-03 14:41:13.266 | INFO  | CID:c68bd466bbd5 | Account/Login | Iniciando acción: Account/Login
+2026-03-03 14:41:13.936 | INFO  | CID:c68bd466bbd5 | Account/Login | Acción completada: Account/Login
+2026-03-03 14:41:34.113 | INFO  | CID:f17d858ea6b7 | USR:USU_ADMIN | Financiero/AprobarYEnviarAS400 | Iniciando acción: Financiero/AprobarYEnviarAS400
+2026-03-03 14:41:34.462 | INFO  | CID:f17d858ea6b7 | USR:USU_ADMIN | Financiero/AprobarYEnviarAS400 | Acción completada: Financiero/AprobarYEnviarAS400
+2026-03-03 14:41:39.637 | INFO  | CID:dfef50ccd1a8 | USR:USU_ADMIN | Financiero/AprobarYEnviarAS400 | Iniciando acción: Financiero/AprobarYEnviarAS400
+2026-03-03 14:41:39.927 | INFO  | CID:dfef50ccd1a8 | USR:USU_ADMIN | Financiero/AprobarYEnviarAS400 | Acción completada: Financiero/AprobarYEnviarAS400
+2026-03-03 14:59:42.157 | INFO  | CID:N/A | Iniciando procesador de cola de correos
+2026-03-03 15:00:05.463 | INFO  | CID:90d8dccb4d2d | Account/Login | Iniciando acción: Account/Login
+2026-03-03 15:00:06.180 | INFO  | CID:90d8dccb4d2d | Account/Login | Acción completada: Account/Login
+2026-03-03 15:00:34.483 | INFO  | CID:f7af2796d458 | USR:USU_ADMIN | Financiero/AprobarYEnviarAS400 | Iniciando acción: Financiero/AprobarYEnviarAS400
+2026-03-03 15:00:34.811 | INFO  | CID:f7af2796d458 | USR:USU_ADMIN | Financiero/AprobarYEnviarAS400 | Acción completada: Financiero/AprobarYEnviarAS400
+2026-03-03 15:05:08.259 | INFO  | CID:N/A | Deteniendo procesador de cola de correos
+2026-03-03 15:05:08.323 | INFO  | CID:N/A | Deteniendo procesador de cola de correos
+2026-03-03 15:07:33.575 | INFO  | CID:N/A | Iniciando procesador de cola de correos
+2026-03-03 15:07:55.525 | INFO  | CID:ae545297f77f | Account/Login | Iniciando acción: Account/Login
+2026-03-03 15:07:56.168 | INFO  | CID:ae545297f77f | Account/Login | Acción completada: Account/Login
+2026-03-03 15:08:29.417 | INFO  | CID:5021917ce344 | USR:USU_ADMIN | Financiero/AprobarYEnviarAS400 | Iniciando acción: Financiero/AprobarYEnviarAS400
+2026-03-03 15:08:29.770 | INFO  | CID:5021917ce344 | USR:USU_ADMIN | Financiero/AprobarYEnviarAS400 | Acción completada: Financiero/AprobarYEnviarAS400
+2026-03-03 15:09:06.318 | INFO  | CID:162b35fec5aa | USR:USU_ADMIN | Financiero/AprobarYEnviarAS400 | Iniciando acción: Financiero/AprobarYEnviarAS400
+2026-03-03 15:09:06.567 | INFO  | CID:162b35fec5aa | USR:USU_ADMIN | Financiero/AprobarYEnviarAS400 | Acción completada: Financiero/AprobarYEnviarAS400
+2026-03-03 15:09:07.329 | INFO  | CID:40aea39cd17f | USR:USU_ADMIN | Financiero/AprobarYEnviarAS400 | Iniciando acción: Financiero/AprobarYEnviarAS400
+2026-03-03 15:09:07.581 | INFO  | CID:40aea39cd17f | USR:USU_ADMIN | Financiero/AprobarYEnviarAS400 | Acción completada: Financiero/AprobarYEnviarAS400
+2026-03-03 15:16:21.125 | INFO  | CID:N/A | Iniciando procesador de cola de correos
+2026-03-03 15:16:41.361 | INFO  | CID:69d3204619cf | Account/Login | Iniciando acción: Account/Login
+2026-03-03 15:16:42.034 | INFO  | CID:69d3204619cf | Account/Login | Acción completada: Account/Login
+2026-03-03 15:17:25.404 | INFO  | CID:95feac515c33 | USR:USU_ADMIN | Financiero/AprobarYEnviarAS400 | Iniciando acción: Financiero/AprobarYEnviarAS400
+2026-03-03 15:17:25.773 | INFO  | CID:95feac515c33 | USR:USU_ADMIN | Financiero/AprobarYEnviarAS400 | Acción completada: Financiero/AprobarYEnviarAS400
+2026-03-03 15:24:58.159 | INFO  | CID:c3ad36061781 | Account/Login | Iniciando acción: Account/Login
+2026-03-03 15:24:58.610 | INFO  | CID:c3ad36061781 | Account/Login | Acción completada: Account/Login
+2026-03-03 15:25:13.360 | INFO  | CID:faab33876dfb | USR:GACAJAS | OrdenRecaudacion/Editar | Iniciando acción: OrdenRecaudacion/Editar
+2026-03-03 15:25:13.743 | INFO  | CID:faab33876dfb | USR:GACAJAS | OrdenRecaudacion/Editar | Acción completada: OrdenRecaudacion/Editar
+2026-03-03 15:25:59.838 | INFO  | CID:204833271235 | USR:GACAJAS | OrdenRecaudacion/Editar | Iniciando acción: OrdenRecaudacion/Editar
+2026-03-03 15:26:00.150 | INFO  | CID:204833271235 | USR:GACAJAS | OrdenRecaudacion/Editar | Acción completada: OrdenRecaudacion/Editar
+2026-03-03 15:33:28.116 | INFO  | CID:N/A | Iniciando procesador de cola de correos
+2026-03-03 15:33:54.290 | INFO  | CID:96d0e796cf6f | Account/Login | Iniciando acción: Account/Login
+2026-03-03 15:33:54.909 | INFO  | CID:96d0e796cf6f | Account/Login | Acción completada: Account/Login
+2026-03-03 15:34:07.232 | INFO  | CID:eb3e86a8a3ad | Account/Login | Iniciando acción: Account/Login
+2026-03-03 15:34:07.618 | INFO  | CID:eb3e86a8a3ad | Account/Login | Acción completada: Account/Login
+2026-03-03 15:34:21.308 | INFO  | CID:0f1c7bca4fb2 | Account/Login | Iniciando acción: Account/Login
+2026-03-03 15:34:21.979 | INFO  | CID:0f1c7bca4fb2 | Account/Login | Acción completada: Account/Login
+2026-03-03 15:34:38.916 | INFO  | CID:0f52d75febdc | USR:GACAJAS | OrdenRecaudacion/Editar | Iniciando acción: OrdenRecaudacion/Editar
+2026-03-03 15:34:39.380 | INFO  | CID:0f52d75febdc | USR:GACAJAS | OrdenRecaudacion/Editar | Acción completada: OrdenRecaudacion/Editar
+2026-03-03 15:35:03.898 | INFO  | CID:81ac8c042a58 | USR:GACAJAS | OrdenRecaudacion/RegistrarPago | Iniciando acción: OrdenRecaudacion/RegistrarPago
+2026-03-03 15:35:03.931 | INFO  | CID:81ac8c042a58 | USR:GACAJAS | OrdenRecaudacion/RegistrarPago | Acción completada: OrdenRecaudacion/RegistrarPago
+2026-03-03 15:35:38.535 | INFO  | CID:090b534d8a64 | Account/Login | Iniciando acción: Account/Login
+2026-03-03 15:35:38.943 | INFO  | CID:090b534d8a64 | Account/Login | Acción completada: Account/Login
+2026-03-03 15:36:00.323 | INFO  | CID:c79d30cf925d | USR:USU_ADMIN | Financiero/AprobarYEnviarAS400 | Iniciando acción: Financiero/AprobarYEnviarAS400
+2026-03-03 15:36:00.640 | INFO  | CID:c79d30cf925d | USR:USU_ADMIN | Financiero/AprobarYEnviarAS400 | Acción completada: Financiero/AprobarYEnviarAS400
+2026-03-03 15:42:51.741 | INFO  | CID:N/A | Iniciando procesador de cola de correos
+2026-03-03 15:43:29.355 | INFO  | CID:c46473d60a6a | Account/Login | Iniciando acción: Account/Login
+2026-03-03 15:43:30.184 | INFO  | CID:c46473d60a6a | Account/Login | Acción completada: Account/Login
+2026-03-03 15:44:20.111 | INFO  | CID:175d429d8e84 | Account/Login | Iniciando acción: Account/Login
+2026-03-03 15:44:20.506 | INFO  | CID:175d429d8e84 | Account/Login | Acción completada: Account/Login
+2026-03-03 15:45:10.361 | INFO  | CID:7f4d2f2fa75d | USR:USU_ADMIN | Financiero/AprobarYEnviarAS400 | Iniciando acción: Financiero/AprobarYEnviarAS400
+2026-03-03 15:45:10.758 | INFO  | CID:7f4d2f2fa75d | USR:USU_ADMIN | Financiero/AprobarYEnviarAS400 | Acción completada: Financiero/AprobarYEnviarAS400
+2026-03-03 15:45:18.717 | INFO  | CID:08facdfe3539 | USR:USU_ADMIN | Financiero/AprobarYEnviarAS400 | Iniciando acción: Financiero/AprobarYEnviarAS400
+2026-03-03 15:45:19.024 | INFO  | CID:08facdfe3539 | USR:USU_ADMIN | Financiero/AprobarYEnviarAS400 | Acción completada: Financiero/AprobarYEnviarAS400
+2026-03-03 15:49:03.973 | INFO  | CID:N/A | Deteniendo procesador de cola de correos
+2026-03-03 15:49:04.030 | INFO  | CID:N/A | Deteniendo procesador de cola de correos
+2026-03-03 15:49:59.105 | INFO  | CID:N/A | Iniciando procesador de cola de correos
+2026-03-03 15:50:20.232 | INFO  | CID:71b09e728e40 | USR:USU_ADMIN | Financiero/AprobarYEnviarAS400 | Iniciando acción: Financiero/AprobarYEnviarAS400
+2026-03-03 15:50:20.560 | INFO  | CID:71b09e728e40 | USR:USU_ADMIN | Financiero/AprobarYEnviarAS400 | Acción completada: Financiero/AprobarYEnviarAS400
+2026-03-03 15:56:21.154 | INFO  | CID:N/A | Deteniendo procesador de cola de correos
+2026-03-03 15:56:21.200 | INFO  | CID:N/A | Deteniendo procesador de cola de correos
+2026-03-03 15:57:31.456 | INFO  | CID:N/A | Iniciando procesador de cola de correos
+2026-03-03 15:58:12.382 | INFO  | CID:885f52965b66 | USR:USU_ADMIN | Financiero/AprobarYEnviarAS400 | Iniciando acción: Financiero/AprobarYEnviarAS400
+2026-03-03 15:58:12.699 | INFO  | CID:885f52965b66 | USR:USU_ADMIN | Financiero/AprobarYEnviarAS400 | Acción completada: Financiero/AprobarYEnviarAS400
+2026-03-03 16:02:38.323 | INFO  | CID:N/A | Iniciando procesador de cola de correos
+2026-03-03 16:03:02.032 | INFO  | CID:3cdf7d82202e | Account/Login | Iniciando acción: Account/Login
+2026-03-03 16:03:02.735 | INFO  | CID:3cdf7d82202e | Account/Login | Acción completada: Account/Login
+2026-03-03 16:03:34.144 | INFO  | CID:5f0d343b1ec0 | USR:USU_ADMIN | Financiero/AprobarYEnviarAS400 | Iniciando acción: Financiero/AprobarYEnviarAS400
+2026-03-03 16:03:34.474 | INFO  | CID:5f0d343b1ec0 | USR:USU_ADMIN | Financiero/AprobarYEnviarAS400 | Acción completada: Financiero/AprobarYEnviarAS400
+2026-03-03 16:23:34.439 | INFO  | CID:N/A | Iniciando procesador de cola de correos
+2026-03-03 16:23:54.832 | INFO  | CID:08fed2fd1771 | Account/Login | Iniciando acción: Account/Login
+2026-03-03 16:23:55.462 | INFO  | CID:08fed2fd1771 | Account/Login | Acción completada: Account/Login
+2026-03-03 16:24:14.906 | INFO  | CID:883ee7ac664e | USR:USU_ADMIN | Financiero/AprobarYEnviarAS400 | Iniciando acción: Financiero/AprobarYEnviarAS400
+2026-03-03 16:24:15.246 | INFO  | CID:883ee7ac664e | USR:USU_ADMIN | Financiero/AprobarYEnviarAS400 | Acción completada: Financiero/AprobarYEnviarAS400
+2026-03-03 16:24:17.604 | INFO  | CID:964925bf3712 | USR:USU_ADMIN | Financiero/AprobarYEnviarAS400 | Iniciando acción: Financiero/AprobarYEnviarAS400
+2026-03-03 16:24:17.830 | INFO  | CID:964925bf3712 | USR:USU_ADMIN | Financiero/AprobarYEnviarAS400 | Acción completada: Financiero/AprobarYEnviarAS400
+2026-03-03 16:24:19.845 | INFO  | CID:f729ac8b7eb8 | USR:USU_ADMIN | Financiero/AprobarYEnviarAS400 | Iniciando acción: Financiero/AprobarYEnviarAS400
+2026-03-03 16:24:20.095 | INFO  | CID:f729ac8b7eb8 | USR:USU_ADMIN | Financiero/AprobarYEnviarAS400 | Acción completada: Financiero/AprobarYEnviarAS400
+2026-03-03 16:24:21.045 | INFO  | CID:30c59eb5eb3a | USR:USU_ADMIN | Financiero/AprobarYEnviarAS400 | Iniciando acción: Financiero/AprobarYEnviarAS400
+2026-03-03 16:24:21.299 | INFO  | CID:30c59eb5eb3a | USR:USU_ADMIN | Financiero/AprobarYEnviarAS400 | Acción completada: Financiero/AprobarYEnviarAS400
+2026-03-03 16:24:27.654 | INFO  | CID:6dd19141bd7b | USR:USU_ADMIN | Financiero/AprobarYEnviarAS400 | Iniciando acción: Financiero/AprobarYEnviarAS400
+2026-03-03 16:24:27.897 | INFO  | CID:6dd19141bd7b | USR:USU_ADMIN | Financiero/AprobarYEnviarAS400 | Acción completada: Financiero/AprobarYEnviarAS400
+2026-03-03 16:24:29.364 | INFO  | CID:4fe1b5c50902 | USR:USU_ADMIN | Financiero/AprobarYEnviarAS400 | Iniciando acción: Financiero/AprobarYEnviarAS400
+2026-03-03 16:24:29.609 | INFO  | CID:4fe1b5c50902 | USR:USU_ADMIN | Financiero/AprobarYEnviarAS400 | Acción completada: Financiero/AprobarYEnviarAS400
+2026-03-03 16:24:30.554 | INFO  | CID:2fe23cea5170 | USR:USU_ADMIN | Financiero/AprobarYEnviarAS400 | Iniciando acción: Financiero/AprobarYEnviarAS400
+2026-03-03 16:24:30.777 | INFO  | CID:2fe23cea5170 | USR:USU_ADMIN | Financiero/AprobarYEnviarAS400 | Acción completada: Financiero/AprobarYEnviarAS400
+2026-03-03 16:28:51.514 | INFO  | CID:N/A | Iniciando procesador de cola de correos
+2026-03-03 16:29:12.231 | INFO  | CID:6562ac037270 | Account/Login | Iniciando acción: Account/Login
+2026-03-03 16:29:12.866 | INFO  | CID:6562ac037270 | Account/Login | Acción completada: Account/Login
+2026-03-03 16:29:38.364 | INFO  | CID:cd450c45b8ae | USR:USU_ADMIN | Financiero/AprobarYEnviarAS400 | Iniciando acción: Financiero/AprobarYEnviarAS400
+2026-03-03 16:29:38.708 | INFO  | CID:cd450c45b8ae | USR:USU_ADMIN | Financiero/AprobarYEnviarAS400 | Acción completada: Financiero/AprobarYEnviarAS400
+2026-03-03 16:29:59.292 | INFO  | CID:d47a15916e2f | USR:USU_ADMIN | Financiero/AprobarYEnviarAS400 | Iniciando acción: Financiero/AprobarYEnviarAS400
+2026-03-03 16:29:59.540 | INFO  | CID:d47a15916e2f | USR:USU_ADMIN | Financiero/AprobarYEnviarAS400 | Acción completada: Financiero/AprobarYEnviarAS400
+2026-03-03 16:30:01.753 | INFO  | CID:7565b1c86973 | USR:USU_ADMIN | Financiero/AprobarYEnviarAS400 | Iniciando acción: Financiero/AprobarYEnviarAS400
+2026-03-03 16:30:01.986 | INFO  | CID:7565b1c86973 | USR:USU_ADMIN | Financiero/AprobarYEnviarAS400 | Acción completada: Financiero/AprobarYEnviarAS400
+2026-03-03 16:30:02.712 | INFO  | CID:068d0d0282e9 | USR:USU_ADMIN | Financiero/AprobarYEnviarAS400 | Iniciando acción: Financiero/AprobarYEnviarAS400
+2026-03-03 16:30:02.939 | INFO  | CID:068d0d0282e9 | USR:USU_ADMIN | Financiero/AprobarYEnviarAS400 | Acción completada: Financiero/AprobarYEnviarAS400
+2026-03-03 16:35:46.773 | INFO  | CID:N/A | Iniciando procesador de cola de correos
+2026-03-03 16:36:05.508 | INFO  | CID:34c00501faea | Account/Login | Iniciando acción: Account/Login
+2026-03-03 16:36:06.194 | INFO  | CID:34c00501faea | Account/Login | Acción completada: Account/Login
+2026-03-03 16:36:29.421 | INFO  | CID:af30ec6a4a56 | USR:USU_ADMIN | Financiero/AprobarYEnviarAS400 | Iniciando acción: Financiero/AprobarYEnviarAS400
+2026-03-03 16:36:29.743 | INFO  | CID:af30ec6a4a56 | USR:USU_ADMIN | Financiero/AprobarYEnviarAS400 | Acción completada: Financiero/AprobarYEnviarAS400
+2026-03-03 16:36:42.619 | INFO  | CID:a125bcfae205 | USR:USU_ADMIN | Financiero/AprobarYEnviarAS400 | Iniciando acción: Financiero/AprobarYEnviarAS400
+2026-03-03 16:36:42.841 | INFO  | CID:a125bcfae205 | USR:USU_ADMIN | Financiero/AprobarYEnviarAS400 | Acción completada: Financiero/AprobarYEnviarAS400
+2026-03-03 16:36:43.511 | INFO  | CID:5145d93afedc | USR:USU_ADMIN | Financiero/AprobarYEnviarAS400 | Iniciando acción: Financiero/AprobarYEnviarAS400
+2026-03-03 16:36:43.739 | INFO  | CID:5145d93afedc | USR:USU_ADMIN | Financiero/AprobarYEnviarAS400 | Acción completada: Financiero/AprobarYEnviarAS400
+2026-03-03 16:36:44.240 | INFO  | CID:81544f523eb8 | USR:USU_ADMIN | Financiero/AprobarYEnviarAS400 | Iniciando acción: Financiero/AprobarYEnviarAS400
+2026-03-03 16:36:44.955 | INFO  | CID:81544f523eb8 | USR:USU_ADMIN | Financiero/AprobarYEnviarAS400 | Acción completada: Financiero/AprobarYEnviarAS400
+2026-03-03 16:36:49.016 | INFO  | CID:7868d90253ff | USR:USU_ADMIN | Financiero/AprobarYEnviarAS400 | Iniciando acción: Financiero/AprobarYEnviarAS400
+2026-03-03 16:36:49.289 | INFO  | CID:7868d90253ff | USR:USU_ADMIN | Financiero/AprobarYEnviarAS400 | Acción completada: Financiero/AprobarYEnviarAS400
+2026-03-03 16:36:50.191 | INFO  | CID:32c63ace4bc8 | USR:USU_ADMIN | Financiero/AprobarYEnviarAS400 | Iniciando acción: Financiero/AprobarYEnviarAS400
+2026-03-03 16:36:50.434 | INFO  | CID:32c63ace4bc8 | USR:USU_ADMIN | Financiero/AprobarYEnviarAS400 | Acción completada: Financiero/AprobarYEnviarAS400
+2026-03-03 16:36:51.064 | INFO  | CID:53c6d2ebcdcc | USR:USU_ADMIN | Financiero/AprobarYEnviarAS400 | Iniciando acción: Financiero/AprobarYEnviarAS400
+2026-03-03 16:36:51.606 | INFO  | CID:53c6d2ebcdcc | USR:USU_ADMIN | Financiero/AprobarYEnviarAS400 | Acción completada: Financiero/AprobarYEnviarAS400
+2026-03-03 16:36:52.232 | INFO  | CID:141e537613a0 | USR:USU_ADMIN | Financiero/AprobarYEnviarAS400 | Iniciando acción: Financiero/AprobarYEnviarAS400
+2026-03-03 16:36:52.940 | INFO  | CID:141e537613a0 | USR:USU_ADMIN | Financiero/AprobarYEnviarAS400 | Acción completada: Financiero/AprobarYEnviarAS400
+2026-03-03 16:37:50.653 | INFO  | CID:d7668fb72ff4 | USR:USU_ADMIN | Financiero/AprobarYEnviarAS400 | Iniciando acción: Financiero/AprobarYEnviarAS400
+2026-03-03 16:37:50.884 | INFO  | CID:d7668fb72ff4 | USR:USU_ADMIN | Financiero/AprobarYEnviarAS400 | Acción completada: Financiero/AprobarYEnviarAS400
+2026-03-03 16:37:56.881 | INFO  | CID:757b682b650b | USR:USU_ADMIN | Financiero/AprobarYEnviarAS400 | Iniciando acción: Financiero/AprobarYEnviarAS400
+2026-03-03 16:37:57.110 | INFO  | CID:757b682b650b | USR:USU_ADMIN | Financiero/AprobarYEnviarAS400 | Acción completada: Financiero/AprobarYEnviarAS400
+2026-03-03 16:37:58.000 | INFO  | CID:bf200f5f27cf | USR:USU_ADMIN | Financiero/AprobarYEnviarAS400 | Iniciando acción: Financiero/AprobarYEnviarAS400
+2026-03-03 16:37:58.228 | INFO  | CID:bf200f5f27cf | USR:USU_ADMIN | Financiero/AprobarYEnviarAS400 | Acción completada: Financiero/AprobarYEnviarAS400
+2026-03-03 16:38:00.223 | INFO  | CID:e36b328867fe | USR:USU_ADMIN | Financiero/AprobarYEnviarAS400 | Iniciando acción: Financiero/AprobarYEnviarAS400
+2026-03-03 16:38:00.464 | INFO  | CID:e36b328867fe | USR:USU_ADMIN | Financiero/AprobarYEnviarAS400 | Acción completada: Financiero/AprobarYEnviarAS400
+2026-03-03 16:38:10.791 | INFO  | CID:6c17901dce8d | USR:USU_ADMIN | Financiero/AprobarYEnviarAS400 | Iniciando acción: Financiero/AprobarYEnviarAS400
+2026-03-03 16:38:11.018 | INFO  | CID:6c17901dce8d | USR:USU_ADMIN | Financiero/AprobarYEnviarAS400 | Acción completada: Financiero/AprobarYEnviarAS400
+2026-03-03 16:38:12.415 | INFO  | CID:cc97c8151718 | USR:USU_ADMIN | Financiero/AprobarYEnviarAS400 | Iniciando acción: Financiero/AprobarYEnviarAS400
+2026-03-03 16:38:12.647 | INFO  | CID:cc97c8151718 | USR:USU_ADMIN | Financiero/AprobarYEnviarAS400 | Acción completada: Financiero/AprobarYEnviarAS400
+2026-03-03 16:40:02.749 | INFO  | CID:N/A | Iniciando procesador de cola de correos
+2026-03-03 16:40:22.949 | INFO  | CID:09d62bef4124 | Account/Login | Iniciando acción: Account/Login
+2026-03-03 16:40:23.631 | INFO  | CID:09d62bef4124 | Account/Login | Acción completada: Account/Login
+2026-03-03 16:41:22.338 | INFO  | CID:bf0e581e5efb | USR:USU_ADMIN | Financiero/AprobarYEnviarAS400 | Iniciando acción: Financiero/AprobarYEnviarAS400
+2026-03-03 16:41:22.708 | INFO  | CID:bf0e581e5efb | USR:USU_ADMIN | Financiero/AprobarYEnviarAS400 | Acción completada: Financiero/AprobarYEnviarAS400
+2026-03-03 16:43:59.285 | INFO  | CID:6f33e99efda8 | USR:USU_ADMIN | Financiero/AprobarYEnviarAS400 | Iniciando acción: Financiero/AprobarYEnviarAS400
+2026-03-03 16:43:59.523 | INFO  | CID:6f33e99efda8 | USR:USU_ADMIN | Financiero/AprobarYEnviarAS400 | Acción completada: Financiero/AprobarYEnviarAS400
+2026-03-03 16:44:01.079 | INFO  | CID:5a6e40335a35 | USR:USU_ADMIN | Financiero/AprobarYEnviarAS400 | Iniciando acción: Financiero/AprobarYEnviarAS400
+2026-03-03 16:44:01.310 | INFO  | CID:5a6e40335a35 | USR:USU_ADMIN | Financiero/AprobarYEnviarAS400 | Acción completada: Financiero/AprobarYEnviarAS400
+2026-03-03 16:44:01.927 | INFO  | CID:e73c42751977 | USR:USU_ADMIN | Financiero/AprobarYEnviarAS400 | Iniciando acción: Financiero/AprobarYEnviarAS400
+2026-03-03 16:44:02.156 | INFO  | CID:e73c42751977 | USR:USU_ADMIN | Financiero/AprobarYEnviarAS400 | Acción completada: Financiero/AprobarYEnviarAS400
+2026-03-03 16:44:08.039 | INFO  | CID:fb8f8ebd5da6 | USR:USU_ADMIN | Financiero/AprobarYEnviarAS400 | Iniciando acción: Financiero/AprobarYEnviarAS400
+2026-03-03 16:44:08.353 | INFO  | CID:fb8f8ebd5da6 | USR:USU_ADMIN | Financiero/AprobarYEnviarAS400 | Acción completada: Financiero/AprobarYEnviarAS400
+2026-03-03 16:45:59.707 | INFO  | CID:N/A | Iniciando procesador de cola de correos
+2026-03-03 16:46:20.505 | INFO  | CID:907d602660d8 | Account/Login | Iniciando acción: Account/Login
+2026-03-03 16:46:21.109 | INFO  | CID:907d602660d8 | Account/Login | Acción completada: Account/Login
+2026-03-03 16:46:39.428 | INFO  | CID:87e1e56d2fcb | Account/Login | Iniciando acción: Account/Login
+2026-03-03 16:46:39.853 | INFO  | CID:87e1e56d2fcb | Account/Login | Acción completada: Account/Login
+2026-03-03 16:46:59.253 | INFO  | CID:935ceebcbaeb | USR:USU_ADMIN | Financiero/AprobarYEnviarAS400 | Iniciando acción: Financiero/AprobarYEnviarAS400
+2026-03-03 16:46:59.517 | INFO  | CID:935ceebcbaeb | USR:USU_ADMIN | Financiero/AprobarYEnviarAS400 | Acción completada: Financiero/AprobarYEnviarAS400
+2026-03-03 16:47:01.117 | INFO  | CID:b4fb88902124 | USR:USU_ADMIN | Financiero/AprobarYEnviarAS400 | Iniciando acción: Financiero/AprobarYEnviarAS400
+2026-03-03 16:47:01.351 | INFO  | CID:b4fb88902124 | USR:USU_ADMIN | Financiero/AprobarYEnviarAS400 | Acción completada: Financiero/AprobarYEnviarAS400
+2026-03-03 16:47:02.838 | INFO  | CID:6c95dcfeae47 | USR:USU_ADMIN | Financiero/AprobarYEnviarAS400 | Iniciando acción: Financiero/AprobarYEnviarAS400
+2026-03-03 16:47:03.066 | INFO  | CID:6c95dcfeae47 | USR:USU_ADMIN | Financiero/AprobarYEnviarAS400 | Acción completada: Financiero/AprobarYEnviarAS400
+2026-03-03 16:47:03.555 | INFO  | CID:6bda425670dd | USR:USU_ADMIN | Financiero/AprobarYEnviarAS400 | Iniciando acción: Financiero/AprobarYEnviarAS400
+2026-03-03 16:47:03.783 | INFO  | CID:6bda425670dd | USR:USU_ADMIN | Financiero/AprobarYEnviarAS400 | Acción completada: Financiero/AprobarYEnviarAS400
+2026-03-03 16:47:04.105 | INFO  | CID:af886716ccce | USR:USU_ADMIN | Financiero/AprobarYEnviarAS400 | Iniciando acción: Financiero/AprobarYEnviarAS400
+2026-03-03 16:47:04.317 | INFO  | CID:af886716ccce | USR:USU_ADMIN | Financiero/AprobarYEnviarAS400 | Acción completada: Financiero/AprobarYEnviarAS400

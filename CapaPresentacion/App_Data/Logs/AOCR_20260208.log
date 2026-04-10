@@ -1,0 +1,20 @@
+﻿2026-02-08 10:42:00.792 | INFO  | CID:N/A | Iniciando procesador de cola de correos
+2026-02-08 10:42:07.670 | INFO  | CID:84e51ad4cc1b | Account/Login | Iniciando acción: Account/Login
+2026-02-08 10:42:07.949 | INFO  | CID:84e51ad4cc1b | Account/Login | Acción completada: Account/Login
+2026-02-08 10:48:20.190 | INFO  | CID:N/A | Deteniendo procesador de cola de correos
+2026-02-08 10:48:20.220 | INFO  | CID:N/A | Deteniendo procesador de cola de correos
+2026-02-08 10:53:33.836 | INFO  | CID:N/A | Iniciando procesador de cola de correos
+2026-02-08 10:53:41.931 | INFO  | CID:45056ffa7d1e | USR:USU_ADMIN | Account/Login | Iniciando acción: Account/Login
+2026-02-08 10:53:42.218 | INFO  | CID:45056ffa7d1e | USR:USU_ADMIN | Account/Login | Acción completada: Account/Login
+2026-02-08 10:55:38.516 | INFO  | CID:15438c11a4e0 | USR:USU_ADMIN | SolicitudAOCR/FormularioCompleto | Iniciando acción: SolicitudAOCR/FormularioCompleto
+2026-02-08 10:55:38.634 | INFO  | CID:15438c11a4e0 | USR:USU_ADMIN | SolicitudAOCR/FormularioCompleto | Acción completada: SolicitudAOCR/FormularioCompleto
+2026-02-08 15:48:03.242 | INFO  | CID:7fef7f264d06 | Account/Login | Iniciando acción: Account/Login
+2026-02-08 15:48:03.325 | INFO  | CID:7fef7f264d06 | Account/Login | Acción completada: Account/Login
+2026-02-08 15:50:25.657 | INFO  | CID:N/A | Deteniendo procesador de cola de correos
+2026-02-08 15:50:25.686 | INFO  | CID:N/A | Deteniendo procesador de cola de correos
+2026-02-08 15:51:32.969 | INFO  | CID:N/A | Iniciando procesador de cola de correos
+2026-02-08 15:51:40.995 | INFO  | CID:105c4d337405 | Account/Login | Iniciando acción: Account/Login
+2026-02-08 15:51:41.278 | INFO  | CID:105c4d337405 | Account/Login | Acción completada: Account/Login
+2026-02-08 15:55:20.625 | INFO  | CID:N/A | Iniciando procesador de cola de correos
+2026-02-08 15:55:26.505 | INFO  | CID:e0e6cca74c00 | Account/Login | Iniciando acción: Account/Login
+2026-02-08 15:55:26.868 | INFO  | CID:e0e6cca74c00 | Account/Login | Acción completada: Account/Login

@@ -1,0 +1,874 @@
+﻿2026-04-10 08:11:22.591 | INFO  | CID:N/A | Iniciando procesador de cola de correos
+2026-04-10 08:11:58.274 | INFO  | CID:12b6da7ec09c | Account/Login | Iniciando acción: Account/Login
+2026-04-10 08:11:58.940 | INFO  | CID:12b6da7ec09c | Account/Login | Acción completada: Account/Login
+2026-04-10 08:31:33.088 | INFO  | CID:N/A | Iniciando procesador de cola de correos
+2026-04-10 08:31:55.982 | INFO  | CID:26ab819df6a5 | Account/Login | Iniciando acción: Account/Login
+2026-04-10 08:31:56.710 | INFO  | CID:26ab819df6a5 | Account/Login | Acción completada: Account/Login
+2026-04-10 10:20:28.310 | INFO  | CID:N/A | Iniciando procesador de cola de correos
+2026-04-10 10:20:48.696 | INFO  | CID:3dc105652f47 | Account/Login | Iniciando acción: Account/Login
+2026-04-10 10:20:49.389 | INFO  | CID:3dc105652f47 | Account/Login | Acción completada: Account/Login
+2026-04-10 10:21:23.637 | INFO  | CID:N/A | USR:USU_ADMIN | Inspeccion/Index | AuditTrailService: Tabla aocr_audit_trail verificada/creada.
+2026-04-10 10:21:23.637 | INFO  | CID:12de7f63bffb | USR:USU_ADMIN | Inspeccion/Index | [InspeccionesController] Inicio pantalla gestion inspecciones. Usuario=USU_ADMIN, Rol=Administrador,Inspector,JefaturaTecnica,Direccion,CoordinacionLegal
+2026-04-10 10:21:23.897 | INFO  | CID:12de7f63bffb | USR:USU_ADMIN | Inspeccion/Index | [InspeccionesController] Inspecciones recibidas=20
+2026-04-10 10:21:35.978 | INFO  | CID:31449f721fd2 | USR:USU_ADMIN | Inspeccion/Detalle | [GestionInspeccion] Inicio Detalle. InspeccionId=17, Usuario=USU_ADMIN, Rol=Administrador,Inspector,JefaturaTecnica,Direccion,CoordinacionLegal
+2026-04-10 10:21:35.993 | INFO  | CID:31449f721fd2 | USR:USU_ADMIN | Inspeccion/Detalle | [GestionInspeccion] InspeccionId=17, SolicitudId=87, EstadoActual=VERIFICACION_SOLICITUD, InspectorAsignado=17
+2026-04-10 10:21:35.994 | INFO  | CID:31449f721fd2 | USR:USU_ADMIN | Inspeccion/Detalle | [GestionInspeccion] PuedeGestionar=True para detalle. InspeccionId=17
+2026-04-10 10:21:42.636 | INFO  | CID:31449f721fd2 | USR:USU_ADMIN | Inspeccion/Detalle | [GestionInspeccion] Detalle inspectores enriquecidos. InspeccionId=17, PrincipalCedula=1709565459, PrincipalNombre=CATOTA TORRES LUIS WILKIR, PrincipalTipo=OPS, ApoyoCedula=, ApoyoNombre=, ApoyoTipo=
+2026-04-10 10:22:31.745 | INFO  | CID:a4d1ca83dfe3 | USR:USU_ADMIN | Inspeccion/FirmarInformeDirdac | Iniciando acción: Inspeccion/FirmarInformeDirdac
+2026-04-10 10:22:31.781 | INFO  | CID:a4d1ca83dfe3 | USR:USU_ADMIN | Inspeccion/FirmarInformeDirdac | [GestionInspeccion] Inicio firma digital. InspeccionId=17, RolFirma=DIRDAC, InformeId=12, VersionInforme=3, RutaFuente=C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\CapaPresentacion\App_Data\Uploads\Inspecciones\InformesTecnicos\Firmados\InformeTecnico_17_v3_inspector_20260330085827.pdf, PdfBytes=201772, CertificadoBytes=8787, Usuario=USU_ADMIN
+2026-04-10 10:22:32.710 | INFO  | CID:a4d1ca83dfe3 | USR:USU_ADMIN | Inspeccion/FirmarInformeDirdac | [GestionInspeccion] Firma digital generada. InspeccionId=17, RolFirma=DIRDAC, InformeId=12, Hash=14308FCEA0B70255565D2D8CECF7D91223522A1D7CEE1EB5B92796F2E0985746, PdfFirmadoBytes=221050
+2026-04-10 10:22:32.712 | INFO  | CID:a4d1ca83dfe3 | USR:USU_ADMIN | Inspeccion/FirmarInformeDirdac | [GestionInspeccion] Persistiendo firma digital. InspeccionId=17, RolFirma=DIRDAC, InformeId=12, RutaFirmada=/App_Data/Uploads/Inspecciones/InformesTecnicos/Firmados/InformeTecnico_17_v3_dirdac_20260410102232.pdf, EstadoAnterior=ENVIADO_A_DIRDAC, EstadoFinal=FIRMADO_FINAL, UsuarioId=0
+2026-04-10 10:22:32.793 | INFO  | CID:a4d1ca83dfe3 | USR:USU_ADMIN | Inspeccion/FirmarInformeDirdac | [GestionInspeccion] Firma digital persistida. InspeccionId=17, RolFirma=DIRDAC, InformeId=12, RutaFirmada=/App_Data/Uploads/Inspecciones/InformesTecnicos/Firmados/InformeTecnico_17_v3_dirdac_20260410102232.pdf
+2026-04-10 10:22:33.889 | INFO  | CID:9a09c1d50e6b | USR:USU_ADMIN | Inspeccion/FirmarInformeDirdac | Correo con adjunto enviado exitosamente a gercavi82@gmail.com
+2026-04-10 10:22:34.102 | INFO  | CID:1c74f34cb81f | USR:USU_ADMIN | Inspeccion/FirmarInformeDirdac | Correo con adjunto enviado exitosamente a mistercato973@gmail.com
+2026-04-10 10:22:34.103 | INFO  | CID:a4d1ca83dfe3 | USR:USU_ADMIN | Inspeccion/FirmarInformeDirdac | Acción completada: Inspeccion/FirmarInformeDirdac
+2026-04-10 10:22:34.110 | INFO  | CID:74ac94179fd1 | USR:USU_ADMIN | Inspeccion/Detalle | [GestionInspeccion] Inicio Detalle. InspeccionId=17, Usuario=USU_ADMIN, Rol=Administrador,Inspector,JefaturaTecnica,Direccion,CoordinacionLegal
+2026-04-10 10:22:34.121 | INFO  | CID:74ac94179fd1 | USR:USU_ADMIN | Inspeccion/Detalle | [GestionInspeccion] InspeccionId=17, SolicitudId=87, EstadoActual=VERIFICACION_SOLICITUD, InspectorAsignado=17
+2026-04-10 10:22:34.121 | INFO  | CID:74ac94179fd1 | USR:USU_ADMIN | Inspeccion/Detalle | [GestionInspeccion] PuedeGestionar=True para detalle. InspeccionId=17
+2026-04-10 10:22:35.710 | INFO  | CID:74ac94179fd1 | USR:USU_ADMIN | Inspeccion/Detalle | [GestionInspeccion] Detalle inspectores enriquecidos. InspeccionId=17, PrincipalCedula=1709565459, PrincipalNombre=CATOTA TORRES LUIS WILKIR, PrincipalTipo=OPS, ApoyoCedula=, ApoyoNombre=, ApoyoTipo=
+2026-04-10 10:22:54.993 | INFO  | CID:a25ebcab5d6b | USR:USU_ADMIN | Inspeccion/Detalle | [GestionInspeccion] Inicio Detalle. InspeccionId=5, Usuario=USU_ADMIN, Rol=Administrador,Inspector,JefaturaTecnica,Direccion,CoordinacionLegal
+2026-04-10 10:22:55.004 | INFO  | CID:a25ebcab5d6b | USR:USU_ADMIN | Inspeccion/Detalle | [GestionInspeccion] InspeccionId=5, SolicitudId=126, EstadoActual=VERIFICACION_SOLICITUD, InspectorAsignado=502438880
+2026-04-10 10:22:55.004 | INFO  | CID:a25ebcab5d6b | USR:USU_ADMIN | Inspeccion/Detalle | [GestionInspeccion] PuedeGestionar=True para detalle. InspeccionId=5
+2026-04-10 10:22:57.409 | INFO  | CID:a25ebcab5d6b | USR:USU_ADMIN | Inspeccion/Detalle | [InspectoresDAO-DB2] Query obtener por cedula: SELECT TRIM(OPICED) AS OPICED, TRIM(OPINO2) AS OPINO2, TRIM(OPIES1) AS OPIES1, TRIM(OPITIP) AS OPITIP FROM DGACDAT.OPIAR2 WHERE OPICED = ? AND UPPER(TRIM(COALESCE(OPIES1, ''))) = ? FETCH FIRST 1 ROW ONLY
+2026-04-10 10:22:57.409 | INFO  | CID:a25ebcab5d6b | USR:USU_ADMIN | Inspeccion/Detalle | [InspectoresDAO-DB2] Parametros => cedula=502438880, soloActivos=True, tipos=TODOS
+2026-04-10 10:22:57.492 | WARN  | CID:a25ebcab5d6b | USR:USU_ADMIN | Inspeccion/Detalle | [InspectoresDAO-DB2] Inspector no encontrado para cedula=502438880, soloActivos=True
+2026-04-10 10:22:57.498 | INFO  | CID:a25ebcab5d6b | USR:USU_ADMIN | Inspeccion/Detalle | [InspectoresDAO-DB2] Query obtener por cedula: SELECT TRIM(OPICED) AS OPICED, TRIM(OPINO2) AS OPINO2, TRIM(OPIES1) AS OPIES1, TRIM(OPITIP) AS OPITIP FROM DGACDAT.OPIAR2 WHERE OPICED = ? AND UPPER(TRIM(COALESCE(OPIES1, ''))) = ? FETCH FIRST 1 ROW ONLY
+2026-04-10 10:22:57.499 | INFO  | CID:a25ebcab5d6b | USR:USU_ADMIN | Inspeccion/Detalle | [InspectoresDAO-DB2] Parametros => cedula=0502438880, soloActivos=True, tipos=TODOS
+2026-04-10 10:22:57.509 | INFO  | CID:a25ebcab5d6b | USR:USU_ADMIN | Inspeccion/Detalle | [InspectoresDAO-DB2] Inspector encontrado por variante de cedula. Original=502438880, Variante=0502438880
+2026-04-10 10:22:57.511 | INFO  | CID:a25ebcab5d6b | USR:USU_ADMIN | Inspeccion/Detalle | [GestionInspeccion] Detalle inspectores enriquecidos. InspeccionId=5, PrincipalCedula=0502438880, PrincipalNombre=EDISON XAVIER HERRERA PILATASIG, PrincipalTipo=AIR, ApoyoCedula=, ApoyoNombre=, ApoyoTipo=
+2026-04-10 11:13:40.276 | INFO  | CID:N/A | Iniciando procesador de cola de correos
+2026-04-10 11:14:02.428 | INFO  | CID:ddcfb1fb8450 | Account/Login | Iniciando acción: Account/Login
+2026-04-10 11:14:03.105 | INFO  | CID:ddcfb1fb8450 | Account/Login | Acción completada: Account/Login
+2026-04-10 11:14:32.437 | INFO  | CID:N/A | USR:USU_ADMIN | Inspeccion/Index | AuditTrailService: Tabla aocr_audit_trail verificada/creada.
+2026-04-10 11:14:32.442 | INFO  | CID:0214346de9e2 | USR:USU_ADMIN | Inspeccion/Index | [InspeccionesController] Inicio pantalla gestion inspecciones. Usuario=USU_ADMIN, Rol=Administrador,Inspector,JefaturaTecnica,Direccion,CoordinacionLegal
+2026-04-10 11:14:32.675 | INFO  | CID:0214346de9e2 | USR:USU_ADMIN | Inspeccion/Index | [InspeccionesController] Inspecciones recibidas=20
+2026-04-10 11:14:44.078 | INFO  | CID:dabfca9f41ca | USR:USU_ADMIN | Inspeccion/Detalle | [GestionInspeccion] Inicio Detalle. InspeccionId=15, Usuario=USU_ADMIN, Rol=Administrador,Inspector,JefaturaTecnica,Direccion,CoordinacionLegal
+2026-04-10 11:14:44.095 | INFO  | CID:dabfca9f41ca | USR:USU_ADMIN | Inspeccion/Detalle | [GestionInspeccion] InspeccionId=15, SolicitudId=111, EstadoActual=VERIFICACION_SOLICITUD, InspectorAsignado=17
+2026-04-10 11:14:44.096 | INFO  | CID:dabfca9f41ca | USR:USU_ADMIN | Inspeccion/Detalle | [GestionInspeccion] PuedeGestionar=True para detalle. InspeccionId=15
+2026-04-10 11:14:53.890 | INFO  | CID:dabfca9f41ca | USR:USU_ADMIN | Inspeccion/Detalle | [GestionInspeccion] Detalle inspectores enriquecidos. InspeccionId=15, PrincipalCedula=1709565459, PrincipalNombre=CATOTA TORRES LUIS WILKIR, PrincipalTipo=OPS, ApoyoCedula=, ApoyoNombre=, ApoyoTipo=
+2026-04-10 11:14:54.312 | ERROR | CID:dabfca9f41ca | USR:USU_ADMIN | Inspeccion/Detalle | ERR:INTERNAL_ERROR | "{" inesperado tras el carácter "@". Dentro del cuerpo de un bloque de códigos (@if {}, @{}, etc.) no es necesario utilizar "@{" para cambiar al código.
+
+    Exception: HttpParseException
+    StackTrace:    en System.Web.WebPages.Razor.RazorBuildProvider.EnsureGeneratedCode()
+   en System.Web.WebPages.Razor.RazorBuildProvider.get_CodeCompilerType()
+   en System.Web.Compilation.BuildProvider.GetCompilerTypeFromBuildProvider(BuildProvider buildProvider)
+   en System.Web.Compilation.BuildProvidersCompiler.ProcessBuildProviders()
+   en System.Web.Compilation.BuildProvidersCompiler.PerformBuild()
+   en System.Web.Compilation.BuildManager.CompileWebFile(VirtualPath virtualPath)
+   en System.Web.Compilation.BuildManager.GetVPathBuildResultInternal(VirtualPath virtualPath, Boolean noBuild, Boolean allowCrossApp, Boolean allowBuildInPrecompile, Boolean throwIfNotFound, Boolean ensureIsUpToDate)
+   en System.Web.Compilation.BuildManager.GetVPathBuildResultWithNoAssert(HttpContext context, VirtualPath virtualPath, Boolean noBuild, Boolean allowCrossApp, Boolean allowBuildInPrecompile, Boolean throwIfNotFound, Boolean ensureIsUpToDate)
+   en System.Web.Compilation.BuildManager.GetVirtualPathObjectFactory(VirtualPath virtualPath, HttpContext context, Boolean allowCrossApp, Boolean throwIfNotFound)
+   en System.Web.Compilation.BuildManager.GetCompiledType(VirtualPath virtualPath)
+   en System.Web.Mvc.BuildManagerCompiledView.Render(ViewContext viewContext, TextWriter writer)
+   en System.Web.Mvc.ViewResultBase.ExecuteResult(ControllerContext context)
+   en System.Web.Mvc.ControllerActionInvoker.InvokeActionResultFilterRecursive(IList`1 filters, Int32 filterIndex, ResultExecutingContext preContext, ControllerContext controllerContext, ActionResult actionResult)
+   en System.Web.Mvc.ControllerActionInvoker.InvokeActionResultFilterRecursive(IList`1 filters, Int32 filterIndex, ResultExecutingContext preContext, ControllerContext controllerContext, ActionResult actionResult)
+   en System.Web.Mvc.ControllerActionInvoker.InvokeActionResultFilterRecursive(IList`1 filters, Int32 filterIndex, ResultExecutingContext preContext, ControllerContext controllerContext, ActionResult actionResult)
+   en System.Web.Mvc.ControllerActionInvoker.InvokeActionResultFilterRecursive(IList`1 filters, Int32 filterIndex, ResultExecutingContext preContext, ControllerContext controllerContext, ActionResult actionResult)
+   en System.Web.Mvc.ControllerActionInvoker.InvokeActionResultWithFilters(ControllerContext controllerContext, IList`1 filters, ActionResult actionResult)
+   en System.Web.Mvc.Async.AsyncControllerActionInvoker.<>c__DisplayClass3_1.<BeginInvokeAction>b__1(IAsyncResult asyncResult)
+2026-04-10 11:19:23.167 | INFO  | CID:N/A | Iniciando procesador de cola de correos
+2026-04-10 11:19:38.705 | INFO  | CID:fee3021c277e | Account/Login | Iniciando acción: Account/Login
+2026-04-10 11:19:39.357 | INFO  | CID:fee3021c277e | Account/Login | Acción completada: Account/Login
+2026-04-10 11:19:51.463 | INFO  | CID:N/A | USR:USU_ADMIN | Inspeccion/Index | AuditTrailService: Tabla aocr_audit_trail verificada/creada.
+2026-04-10 11:19:51.470 | INFO  | CID:5611d10e5a05 | USR:USU_ADMIN | Inspeccion/Index | [InspeccionesController] Inicio pantalla gestion inspecciones. Usuario=USU_ADMIN, Rol=Administrador,Inspector,JefaturaTecnica,Direccion,CoordinacionLegal
+2026-04-10 11:19:51.720 | INFO  | CID:5611d10e5a05 | USR:USU_ADMIN | Inspeccion/Index | [InspeccionesController] Inspecciones recibidas=20
+2026-04-10 11:20:00.596 | INFO  | CID:66b7f9fc8869 | USR:USU_ADMIN | Inspeccion/Detalle | [GestionInspeccion] Inicio Detalle. InspeccionId=15, Usuario=USU_ADMIN, Rol=Administrador,Inspector,JefaturaTecnica,Direccion,CoordinacionLegal
+2026-04-10 11:20:00.612 | INFO  | CID:66b7f9fc8869 | USR:USU_ADMIN | Inspeccion/Detalle | [GestionInspeccion] InspeccionId=15, SolicitudId=111, EstadoActual=VERIFICACION_SOLICITUD, InspectorAsignado=17
+2026-04-10 11:20:00.613 | INFO  | CID:66b7f9fc8869 | USR:USU_ADMIN | Inspeccion/Detalle | [GestionInspeccion] PuedeGestionar=True para detalle. InspeccionId=15
+2026-04-10 11:20:07.067 | INFO  | CID:66b7f9fc8869 | USR:USU_ADMIN | Inspeccion/Detalle | [GestionInspeccion] Detalle inspectores enriquecidos. InspeccionId=15, PrincipalCedula=1709565459, PrincipalNombre=CATOTA TORRES LUIS WILKIR, PrincipalTipo=OPS, ApoyoCedula=, ApoyoNombre=, ApoyoTipo=
+2026-04-10 11:20:17.983 | ERROR | CID:66b7f9fc8869 | USR:USU_ADMIN | Inspeccion/Detalle | ERR:INTERNAL_ERROR | c:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\CapaPresentacion\Views\Inspeccion\_DireccionJefaturaPanel.cshtml(55): error CS1002: Se esperaba ;
+    Exception: HttpCompileException
+    StackTrace:    en System.Web.Compilation.AssemblyBuilder.Compile()
+   en System.Web.Compilation.BuildProvidersCompiler.PerformBuild()
+   en System.Web.Compilation.BuildManager.CompileWebFile(VirtualPath virtualPath)
+   en System.Web.Compilation.BuildManager.GetVPathBuildResultInternal(VirtualPath virtualPath, Boolean noBuild, Boolean allowCrossApp, Boolean allowBuildInPrecompile, Boolean throwIfNotFound, Boolean ensureIsUpToDate)
+   en System.Web.Compilation.BuildManager.GetVPathBuildResultWithNoAssert(HttpContext context, VirtualPath virtualPath, Boolean noBuild, Boolean allowCrossApp, Boolean allowBuildInPrecompile, Boolean throwIfNotFound, Boolean ensureIsUpToDate)
+   en System.Web.Compilation.BuildManager.GetVirtualPathObjectFactory(VirtualPath virtualPath, HttpContext context, Boolean allowCrossApp, Boolean throwIfNotFound)
+   en System.Web.Compilation.BuildManager.GetCompiledType(VirtualPath virtualPath)
+   en System.Web.Mvc.BuildManagerCompiledView.Render(ViewContext viewContext, TextWriter writer)
+   en System.Web.Mvc.Html.PartialExtensions.Partial(HtmlHelper htmlHelper, String partialViewName, Object model, ViewDataDictionary viewData)
+   en ASP._Page_Views_Inspeccion_Detalle_cshtml.Execute() en c:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\CapaPresentacion\Views\Inspeccion\Detalle.cshtml:línea 2021
+   en System.Web.WebPages.WebPageBase.ExecutePageHierarchy()
+   en System.Web.Mvc.WebViewPage.ExecutePageHierarchy()
+   en System.Web.WebPages.StartPage.ExecutePageHierarchy()
+   en System.Web.WebPages.WebPageBase.ExecutePageHierarchy(WebPageContext pageContext, TextWriter writer, WebPageRenderingBase startPage)
+   en System.Web.Mvc.ViewResultBase.ExecuteResult(ControllerContext context)
+   en System.Web.Mvc.ControllerActionInvoker.InvokeActionResultFilterRecursive(IList`1 filters, Int32 filterIndex, ResultExecutingContext preContext, ControllerContext controllerContext, ActionResult actionResult)
+   en System.Web.Mvc.ControllerActionInvoker.InvokeActionResultFilterRecursive(IList`1 filters, Int32 filterIndex, ResultExecutingContext preContext, ControllerContext controllerContext, ActionResult actionResult)
+   en System.Web.Mvc.ControllerActionInvoker.InvokeActionResultFilterRecursive(IList`1 filters, Int32 filterIndex, ResultExecutingContext preContext, ControllerContext controllerContext, ActionResult actionResult)
+   en System.Web.Mvc.ControllerActionInvoker.InvokeActionResultFilterRecursive(IList`1 filters, Int32 filterIndex, ResultExecutingContext preContext, ControllerContext controllerContext, ActionResult actionResult)
+   en System.Web.Mvc.ControllerActionInvoker.InvokeActionResultWithFilters(ControllerContext controllerContext, IList`1 filters, ActionResult actionResult)
+   en System.Web.Mvc.Async.AsyncControllerActionInvoker.<>c__DisplayClass3_1.<BeginInvokeAction>b__1(IAsyncResult asyncResult)
+2026-04-10 11:20:26.989 | INFO  | CID:87e90ce1b7d7 | USR:USU_ADMIN | Inspeccion/Detalle | [GestionInspeccion] Inicio Detalle. InspeccionId=15, Usuario=USU_ADMIN, Rol=Administrador,Inspector,JefaturaTecnica,Direccion,CoordinacionLegal
+2026-04-10 11:20:27.001 | INFO  | CID:87e90ce1b7d7 | USR:USU_ADMIN | Inspeccion/Detalle | [GestionInspeccion] InspeccionId=15, SolicitudId=111, EstadoActual=VERIFICACION_SOLICITUD, InspectorAsignado=17
+2026-04-10 11:20:27.002 | INFO  | CID:87e90ce1b7d7 | USR:USU_ADMIN | Inspeccion/Detalle | [GestionInspeccion] PuedeGestionar=True para detalle. InspeccionId=15
+2026-04-10 11:20:28.665 | INFO  | CID:87e90ce1b7d7 | USR:USU_ADMIN | Inspeccion/Detalle | [GestionInspeccion] Detalle inspectores enriquecidos. InspeccionId=15, PrincipalCedula=1709565459, PrincipalNombre=CATOTA TORRES LUIS WILKIR, PrincipalTipo=OPS, ApoyoCedula=, ApoyoNombre=, ApoyoTipo=
+2026-04-10 11:20:30.263 | ERROR | CID:87e90ce1b7d7 | USR:USU_ADMIN | Inspeccion/Detalle | ERR:INTERNAL_ERROR | c:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\CapaPresentacion\Views\Inspeccion\_DireccionJefaturaPanel.cshtml(55): error CS1002: Se esperaba ;
+    Exception: HttpCompileException
+    StackTrace:    en System.Web.Compilation.AssemblyBuilder.Compile()
+   en System.Web.Compilation.BuildProvidersCompiler.PerformBuild()
+   en System.Web.Compilation.BuildManager.CompileWebFile(VirtualPath virtualPath)
+   en System.Web.Compilation.BuildManager.GetVPathBuildResultInternal(VirtualPath virtualPath, Boolean noBuild, Boolean allowCrossApp, Boolean allowBuildInPrecompile, Boolean throwIfNotFound, Boolean ensureIsUpToDate)
+   en System.Web.Compilation.BuildManager.GetVPathBuildResultWithNoAssert(HttpContext context, VirtualPath virtualPath, Boolean noBuild, Boolean allowCrossApp, Boolean allowBuildInPrecompile, Boolean throwIfNotFound, Boolean ensureIsUpToDate)
+   en System.Web.Compilation.BuildManager.GetVirtualPathObjectFactory(VirtualPath virtualPath, HttpContext context, Boolean allowCrossApp, Boolean throwIfNotFound)
+   en System.Web.Compilation.BuildManager.GetCompiledType(VirtualPath virtualPath)
+   en System.Web.Mvc.BuildManagerCompiledView.Render(ViewContext viewContext, TextWriter writer)
+   en System.Web.Mvc.Html.PartialExtensions.Partial(HtmlHelper htmlHelper, String partialViewName, Object model, ViewDataDictionary viewData)
+   en ASP._Page_Views_Inspeccion_Detalle_cshtml.Execute() en c:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\CapaPresentacion\Views\Inspeccion\Detalle.cshtml:línea 2021
+   en System.Web.WebPages.WebPageBase.ExecutePageHierarchy()
+   en System.Web.Mvc.WebViewPage.ExecutePageHierarchy()
+   en System.Web.WebPages.StartPage.ExecutePageHierarchy()
+   en System.Web.WebPages.WebPageBase.ExecutePageHierarchy(WebPageContext pageContext, TextWriter writer, WebPageRenderingBase startPage)
+   en System.Web.Mvc.ViewResultBase.ExecuteResult(ControllerContext context)
+   en System.Web.Mvc.ControllerActionInvoker.InvokeActionResultFilterRecursive(IList`1 filters, Int32 filterIndex, ResultExecutingContext preContext, ControllerContext controllerContext, ActionResult actionResult)
+   en System.Web.Mvc.ControllerActionInvoker.InvokeActionResultFilterRecursive(IList`1 filters, Int32 filterIndex, ResultExecutingContext preContext, ControllerContext controllerContext, ActionResult actionResult)
+   en System.Web.Mvc.ControllerActionInvoker.InvokeActionResultFilterRecursive(IList`1 filters, Int32 filterIndex, ResultExecutingContext preContext, ControllerContext controllerContext, ActionResult actionResult)
+   en System.Web.Mvc.ControllerActionInvoker.InvokeActionResultFilterRecursive(IList`1 filters, Int32 filterIndex, ResultExecutingContext preContext, ControllerContext controllerContext, ActionResult actionResult)
+   en System.Web.Mvc.ControllerActionInvoker.InvokeActionResultWithFilters(ControllerContext controllerContext, IList`1 filters, ActionResult actionResult)
+   en System.Web.Mvc.Async.AsyncControllerActionInvoker.<>c__DisplayClass3_1.<BeginInvokeAction>b__1(IAsyncResult asyncResult)
+2026-04-10 11:23:29.644 | INFO  | CID:N/A | Deteniendo procesador de cola de correos
+2026-04-10 11:23:29.677 | INFO  | CID:N/A | Deteniendo procesador de cola de correos
+2026-04-10 11:24:02.865 | INFO  | CID:N/A | Iniciando procesador de cola de correos
+2026-04-10 11:25:02.717 | INFO  | CID:N/A | USR:USU_ADMIN | Inspeccion/Detalle | AuditTrailService: Tabla aocr_audit_trail verificada/creada.
+2026-04-10 11:25:02.861 | INFO  | CID:6a835f3d047c | USR:USU_ADMIN | Inspeccion/Detalle | [GestionInspeccion] Inicio Detalle. InspeccionId=15, Usuario=USU_ADMIN, Rol=Administrador,Inspector,JefaturaTecnica,Direccion,CoordinacionLegal
+2026-04-10 11:25:03.029 | INFO  | CID:6a835f3d047c | USR:USU_ADMIN | Inspeccion/Detalle | [GestionInspeccion] InspeccionId=15, SolicitudId=111, EstadoActual=VERIFICACION_SOLICITUD, InspectorAsignado=17
+2026-04-10 11:25:03.032 | INFO  | CID:6a835f3d047c | USR:USU_ADMIN | Inspeccion/Detalle | [GestionInspeccion] PuedeGestionar=True para detalle. InspeccionId=15
+2026-04-10 11:25:18.087 | INFO  | CID:6a835f3d047c | USR:USU_ADMIN | Inspeccion/Detalle | [GestionInspeccion] Detalle inspectores enriquecidos. InspeccionId=15, PrincipalCedula=1709565459, PrincipalNombre=CATOTA TORRES LUIS WILKIR, PrincipalTipo=OPS, ApoyoCedula=, ApoyoNombre=, ApoyoTipo=
+2026-04-10 11:27:35.297 | INFO  | CID:N/A | Iniciando procesador de cola de correos
+2026-04-10 11:28:01.350 | INFO  | CID:ea878a76607b | Account/Login | Iniciando acción: Account/Login
+2026-04-10 11:28:02.029 | INFO  | CID:ea878a76607b | Account/Login | Acción completada: Account/Login
+2026-04-10 11:28:27.983 | INFO  | CID:N/A | USR:USU_ADMIN | Inspeccion/PendientesFirmaDirdac | AuditTrailService: Tabla aocr_audit_trail verificada/creada.
+2026-04-10 11:29:36.835 | INFO  | CID:e2d47e5ad46f | USR:USU_ADMIN | Inspeccion/Detalle | [GestionInspeccion] Inicio Detalle. InspeccionId=5, Usuario=USU_ADMIN, Rol=Administrador,Inspector,JefaturaTecnica,Direccion,CoordinacionLegal
+2026-04-10 11:29:36.845 | INFO  | CID:e2d47e5ad46f | USR:USU_ADMIN | Inspeccion/Detalle | [GestionInspeccion] InspeccionId=5, SolicitudId=126, EstadoActual=VERIFICACION_SOLICITUD, InspectorAsignado=502438880
+2026-04-10 11:29:36.846 | INFO  | CID:e2d47e5ad46f | USR:USU_ADMIN | Inspeccion/Detalle | [GestionInspeccion] PuedeGestionar=True para detalle. InspeccionId=5
+2026-04-10 11:29:43.265 | INFO  | CID:e2d47e5ad46f | USR:USU_ADMIN | Inspeccion/Detalle | [InspectoresDAO-DB2] Query obtener por cedula: SELECT TRIM(OPICED) AS OPICED, TRIM(OPINO2) AS OPINO2, TRIM(OPIES1) AS OPIES1, TRIM(OPITIP) AS OPITIP FROM DGACDAT.OPIAR2 WHERE OPICED = ? AND UPPER(TRIM(COALESCE(OPIES1, ''))) = ? FETCH FIRST 1 ROW ONLY
+2026-04-10 11:29:43.265 | INFO  | CID:e2d47e5ad46f | USR:USU_ADMIN | Inspeccion/Detalle | [InspectoresDAO-DB2] Parametros => cedula=502438880, soloActivos=True, tipos=TODOS
+2026-04-10 11:29:43.326 | WARN  | CID:e2d47e5ad46f | USR:USU_ADMIN | Inspeccion/Detalle | [InspectoresDAO-DB2] Inspector no encontrado para cedula=502438880, soloActivos=True
+2026-04-10 11:29:43.332 | INFO  | CID:e2d47e5ad46f | USR:USU_ADMIN | Inspeccion/Detalle | [InspectoresDAO-DB2] Query obtener por cedula: SELECT TRIM(OPICED) AS OPICED, TRIM(OPINO2) AS OPINO2, TRIM(OPIES1) AS OPIES1, TRIM(OPITIP) AS OPITIP FROM DGACDAT.OPIAR2 WHERE OPICED = ? AND UPPER(TRIM(COALESCE(OPIES1, ''))) = ? FETCH FIRST 1 ROW ONLY
+2026-04-10 11:29:43.332 | INFO  | CID:e2d47e5ad46f | USR:USU_ADMIN | Inspeccion/Detalle | [InspectoresDAO-DB2] Parametros => cedula=0502438880, soloActivos=True, tipos=TODOS
+2026-04-10 11:29:43.332 | INFO  | CID:e2d47e5ad46f | USR:USU_ADMIN | Inspeccion/Detalle | [InspectoresDAO-DB2] Inspector encontrado por variante de cedula. Original=502438880, Variante=0502438880
+2026-04-10 11:29:43.332 | INFO  | CID:e2d47e5ad46f | USR:USU_ADMIN | Inspeccion/Detalle | [GestionInspeccion] Detalle inspectores enriquecidos. InspeccionId=5, PrincipalCedula=0502438880, PrincipalNombre=EDISON XAVIER HERRERA PILATASIG, PrincipalTipo=AIR, ApoyoCedula=, ApoyoNombre=, ApoyoTipo=
+2026-04-10 11:33:09.742 | INFO  | CID:N/A | Deteniendo procesador de cola de correos
+2026-04-10 11:33:09.758 | INFO  | CID:N/A | Deteniendo procesador de cola de correos
+2026-04-10 11:34:14.425 | INFO  | CID:N/A | Iniciando procesador de cola de correos
+2026-04-10 11:35:05.413 | INFO  | CID:28b716d80ef3 | Account/Login | Iniciando acción: Account/Login
+2026-04-10 11:35:06.112 | INFO  | CID:28b716d80ef3 | Account/Login | Acción completada: Account/Login
+2026-04-10 11:35:12.702 | INFO  | CID:N/A | USR:USU_ADMIN | Inspeccion/PendientesFirmaDirdac | AuditTrailService: Tabla aocr_audit_trail verificada/creada.
+2026-04-10 11:35:19.013 | INFO  | CID:4ff9e5539969 | USR:USU_ADMIN | Inspeccion/Detalle | [GestionInspeccion] Inicio Detalle. InspeccionId=5, Usuario=USU_ADMIN, Rol=Administrador,Inspector,JefaturaTecnica,Direccion,CoordinacionLegal
+2026-04-10 11:35:19.023 | INFO  | CID:4ff9e5539969 | USR:USU_ADMIN | Inspeccion/Detalle | [GestionInspeccion] InspeccionId=5, SolicitudId=126, EstadoActual=VERIFICACION_SOLICITUD, InspectorAsignado=502438880
+2026-04-10 11:35:19.024 | INFO  | CID:4ff9e5539969 | USR:USU_ADMIN | Inspeccion/Detalle | [GestionInspeccion] PuedeGestionar=True para detalle. InspeccionId=5
+2026-04-10 11:35:25.258 | INFO  | CID:4ff9e5539969 | USR:USU_ADMIN | Inspeccion/Detalle | [InspectoresDAO-DB2] Query obtener por cedula: SELECT TRIM(OPICED) AS OPICED, TRIM(OPINO2) AS OPINO2, TRIM(OPIES1) AS OPIES1, TRIM(OPITIP) AS OPITIP FROM DGACDAT.OPIAR2 WHERE OPICED = ? AND UPPER(TRIM(COALESCE(OPIES1, ''))) = ? FETCH FIRST 1 ROW ONLY
+2026-04-10 11:35:25.258 | INFO  | CID:4ff9e5539969 | USR:USU_ADMIN | Inspeccion/Detalle | [InspectoresDAO-DB2] Parametros => cedula=502438880, soloActivos=True, tipos=TODOS
+2026-04-10 11:35:25.313 | WARN  | CID:4ff9e5539969 | USR:USU_ADMIN | Inspeccion/Detalle | [InspectoresDAO-DB2] Inspector no encontrado para cedula=502438880, soloActivos=True
+2026-04-10 11:35:25.319 | INFO  | CID:4ff9e5539969 | USR:USU_ADMIN | Inspeccion/Detalle | [InspectoresDAO-DB2] Query obtener por cedula: SELECT TRIM(OPICED) AS OPICED, TRIM(OPINO2) AS OPINO2, TRIM(OPIES1) AS OPIES1, TRIM(OPITIP) AS OPITIP FROM DGACDAT.OPIAR2 WHERE OPICED = ? AND UPPER(TRIM(COALESCE(OPIES1, ''))) = ? FETCH FIRST 1 ROW ONLY
+2026-04-10 11:35:25.320 | INFO  | CID:4ff9e5539969 | USR:USU_ADMIN | Inspeccion/Detalle | [InspectoresDAO-DB2] Parametros => cedula=0502438880, soloActivos=True, tipos=TODOS
+2026-04-10 11:35:25.331 | INFO  | CID:4ff9e5539969 | USR:USU_ADMIN | Inspeccion/Detalle | [InspectoresDAO-DB2] Inspector encontrado por variante de cedula. Original=502438880, Variante=0502438880
+2026-04-10 11:35:25.331 | INFO  | CID:4ff9e5539969 | USR:USU_ADMIN | Inspeccion/Detalle | [GestionInspeccion] Detalle inspectores enriquecidos. InspeccionId=5, PrincipalCedula=0502438880, PrincipalNombre=EDISON XAVIER HERRERA PILATASIG, PrincipalTipo=AIR, ApoyoCedula=, ApoyoNombre=, ApoyoTipo=
+2026-04-10 11:36:05.309 | INFO  | CID:66fd56036388 | USR:USU_ADMIN | Inspeccion/FirmarInformeInspector | Iniciando acción: Inspeccion/FirmarInformeInspector
+2026-04-10 11:36:06.471 | INFO  | CID:66fd56036388 | USR:USU_ADMIN | Inspeccion/FirmarInformeInspector | [GestionInspeccion] Inicio firma digital. InspeccionId=5, RolFirma=INSPECTOR, InformeId=40, VersionInforme=3, OrigenPdf=REGENERADO_LIMPIO, PdfBytes=176221, CertificadoBytes=8787, NombreCertificado=GERMAN ALBERTO CAJAS VITERI, Usuario=USU_ADMIN
+2026-04-10 11:36:07.116 | INFO  | CID:66fd56036388 | USR:USU_ADMIN | Inspeccion/FirmarInformeInspector | [GestionInspeccion] Firma digital generada. InspeccionId=5, RolFirma=INSPECTOR, InformeId=40, Hash=0519A127FFE60D4EA13719654D34D5B886070E47643B2E61EC77503413323630, PdfFirmadoBytes=195599
+2026-04-10 11:36:07.118 | INFO  | CID:66fd56036388 | USR:USU_ADMIN | Inspeccion/FirmarInformeInspector | [GestionInspeccion] Persistiendo firma digital. InspeccionId=5, RolFirma=INSPECTOR, InformeId=40, RutaFirmada=/App_Data/Uploads/Inspecciones/InformesTecnicos/Firmados/InformeTecnico_5_v3_inspector_20260410113607.pdf, EstadoAnterior=GENERADO, EstadoFinal=FIRMADO_INSPECTOR, UsuarioId=0
+2026-04-10 11:36:07.120 | INFO  | CID:66fd56036388 | USR:USU_ADMIN | Inspeccion/FirmarInformeInspector | [GestionInspeccion] Firma digital persistida. InspeccionId=5, RolFirma=INSPECTOR, InformeId=40, RutaFirmada=/App_Data/Uploads/Inspecciones/InformesTecnicos/Firmados/InformeTecnico_5_v3_inspector_20260410113607.pdf
+2026-04-10 11:36:08.975 | INFO  | CID:66fd56036388 | USR:USU_ADMIN | Inspeccion/FirmarInformeInspector | Acción completada: Inspeccion/FirmarInformeInspector
+2026-04-10 11:36:08.986 | INFO  | CID:32de102f54bd | USR:USU_ADMIN | Inspeccion/Detalle | [GestionInspeccion] Inicio Detalle. InspeccionId=5, Usuario=USU_ADMIN, Rol=Administrador,Inspector,JefaturaTecnica,Direccion,CoordinacionLegal
+2026-04-10 11:36:08.990 | INFO  | CID:32de102f54bd | USR:USU_ADMIN | Inspeccion/Detalle | [GestionInspeccion] InspeccionId=5, SolicitudId=126, EstadoActual=VERIFICACION_SOLICITUD, InspectorAsignado=502438880
+2026-04-10 11:36:08.990 | INFO  | CID:32de102f54bd | USR:USU_ADMIN | Inspeccion/Detalle | [GestionInspeccion] PuedeGestionar=True para detalle. InspeccionId=5
+2026-04-10 11:36:10.646 | INFO  | CID:32de102f54bd | USR:USU_ADMIN | Inspeccion/Detalle | [InspectoresDAO-DB2] Query obtener por cedula: SELECT TRIM(OPICED) AS OPICED, TRIM(OPINO2) AS OPINO2, TRIM(OPIES1) AS OPIES1, TRIM(OPITIP) AS OPITIP FROM DGACDAT.OPIAR2 WHERE OPICED = ? AND UPPER(TRIM(COALESCE(OPIES1, ''))) = ? FETCH FIRST 1 ROW ONLY
+2026-04-10 11:36:10.646 | INFO  | CID:32de102f54bd | USR:USU_ADMIN | Inspeccion/Detalle | [InspectoresDAO-DB2] Parametros => cedula=502438880, soloActivos=True, tipos=TODOS
+2026-04-10 11:36:10.653 | WARN  | CID:32de102f54bd | USR:USU_ADMIN | Inspeccion/Detalle | [InspectoresDAO-DB2] Inspector no encontrado para cedula=502438880, soloActivos=True
+2026-04-10 11:36:10.653 | INFO  | CID:32de102f54bd | USR:USU_ADMIN | Inspeccion/Detalle | [InspectoresDAO-DB2] Query obtener por cedula: SELECT TRIM(OPICED) AS OPICED, TRIM(OPINO2) AS OPINO2, TRIM(OPIES1) AS OPIES1, TRIM(OPITIP) AS OPITIP FROM DGACDAT.OPIAR2 WHERE OPICED = ? AND UPPER(TRIM(COALESCE(OPIES1, ''))) = ? FETCH FIRST 1 ROW ONLY
+2026-04-10 11:36:10.653 | INFO  | CID:32de102f54bd | USR:USU_ADMIN | Inspeccion/Detalle | [InspectoresDAO-DB2] Parametros => cedula=0502438880, soloActivos=True, tipos=TODOS
+2026-04-10 11:36:10.668 | INFO  | CID:32de102f54bd | USR:USU_ADMIN | Inspeccion/Detalle | [InspectoresDAO-DB2] Inspector encontrado por variante de cedula. Original=502438880, Variante=0502438880
+2026-04-10 11:36:10.668 | INFO  | CID:32de102f54bd | USR:USU_ADMIN | Inspeccion/Detalle | [GestionInspeccion] Detalle inspectores enriquecidos. InspeccionId=5, PrincipalCedula=0502438880, PrincipalNombre=EDISON XAVIER HERRERA PILATASIG, PrincipalTipo=AIR, ApoyoCedula=, ApoyoNombre=, ApoyoTipo=
+2026-04-10 11:36:16.144 | INFO  | CID:N/A | Procesando email 156 para gercavi82@gmail.com
+2026-04-10 11:36:16.512 | INFO  | CID:N/A | Email 156 enviado exitosamente
+2026-04-10 11:36:42.882 | INFO  | CID:9c2f0fc0721d | USR:USU_ADMIN | Inspeccion/FirmarInformeDirdac | Iniciando acción: Inspeccion/FirmarInformeDirdac
+2026-04-10 11:36:43.033 | INFO  | CID:9c2f0fc0721d | USR:USU_ADMIN | Inspeccion/FirmarInformeDirdac | [GestionInspeccion] Inicio firma digital. InspeccionId=5, RolFirma=DIRDAC, InformeId=40, VersionInforme=3, OrigenPdf=FIRMADO_INSPECTOR:/App_Data/Uploads/Inspecciones/InformesTecnicos/Firmados/InformeTecnico_5_v3_inspector_20260410113607.pdf, PdfBytes=195599, CertificadoBytes=8787, NombreCertificado=GERMAN ALBERTO CAJAS VITERI, Usuario=USU_ADMIN
+2026-04-10 11:36:43.249 | INFO  | CID:9c2f0fc0721d | USR:USU_ADMIN | Inspeccion/FirmarInformeDirdac | [GestionInspeccion] Firma digital generada. InspeccionId=5, RolFirma=DIRDAC, InformeId=40, Hash=7567C31E3DAD7100B74296423A861532634EF2337E1C394A058E15CFA367E8F3, PdfFirmadoBytes=214661
+2026-04-10 11:36:43.250 | INFO  | CID:9c2f0fc0721d | USR:USU_ADMIN | Inspeccion/FirmarInformeDirdac | [GestionInspeccion] Persistiendo firma digital. InspeccionId=5, RolFirma=DIRDAC, InformeId=40, RutaFirmada=/App_Data/Uploads/Inspecciones/InformesTecnicos/Firmados/InformeTecnico_5_v3_dirdac_20260410113643.pdf, EstadoAnterior=ENVIADO_A_DIRDAC, EstadoFinal=FIRMADO_FINAL, UsuarioId=0
+2026-04-10 11:36:43.250 | INFO  | CID:9c2f0fc0721d | USR:USU_ADMIN | Inspeccion/FirmarInformeDirdac | [GestionInspeccion] Firma digital persistida. InspeccionId=5, RolFirma=DIRDAC, InformeId=40, RutaFirmada=/App_Data/Uploads/Inspecciones/InformesTecnicos/Firmados/InformeTecnico_5_v3_dirdac_20260410113643.pdf
+2026-04-10 11:36:44.162 | INFO  | CID:078175993c5e | USR:USU_ADMIN | Inspeccion/FirmarInformeDirdac | Correo con adjunto enviado exitosamente a gercavi82@gmail.com
+2026-04-10 11:36:44.163 | INFO  | CID:9c2f0fc0721d | USR:USU_ADMIN | Inspeccion/FirmarInformeDirdac | Acción completada: Inspeccion/FirmarInformeDirdac
+2026-04-10 11:36:44.166 | INFO  | CID:064f29816063 | USR:USU_ADMIN | Inspeccion/Detalle | [GestionInspeccion] Inicio Detalle. InspeccionId=5, Usuario=USU_ADMIN, Rol=Administrador,Inspector,JefaturaTecnica,Direccion,CoordinacionLegal
+2026-04-10 11:36:44.176 | INFO  | CID:064f29816063 | USR:USU_ADMIN | Inspeccion/Detalle | [GestionInspeccion] InspeccionId=5, SolicitudId=126, EstadoActual=VERIFICACION_SOLICITUD, InspectorAsignado=502438880
+2026-04-10 11:36:44.176 | INFO  | CID:064f29816063 | USR:USU_ADMIN | Inspeccion/Detalle | [GestionInspeccion] PuedeGestionar=True para detalle. InspeccionId=5
+2026-04-10 11:36:45.956 | INFO  | CID:064f29816063 | USR:USU_ADMIN | Inspeccion/Detalle | [InspectoresDAO-DB2] Query obtener por cedula: SELECT TRIM(OPICED) AS OPICED, TRIM(OPINO2) AS OPINO2, TRIM(OPIES1) AS OPIES1, TRIM(OPITIP) AS OPITIP FROM DGACDAT.OPIAR2 WHERE OPICED = ? AND UPPER(TRIM(COALESCE(OPIES1, ''))) = ? FETCH FIRST 1 ROW ONLY
+2026-04-10 11:36:45.957 | INFO  | CID:064f29816063 | USR:USU_ADMIN | Inspeccion/Detalle | [InspectoresDAO-DB2] Parametros => cedula=502438880, soloActivos=True, tipos=TODOS
+2026-04-10 11:36:45.962 | WARN  | CID:064f29816063 | USR:USU_ADMIN | Inspeccion/Detalle | [InspectoresDAO-DB2] Inspector no encontrado para cedula=502438880, soloActivos=True
+2026-04-10 11:36:45.963 | INFO  | CID:064f29816063 | USR:USU_ADMIN | Inspeccion/Detalle | [InspectoresDAO-DB2] Query obtener por cedula: SELECT TRIM(OPICED) AS OPICED, TRIM(OPINO2) AS OPINO2, TRIM(OPIES1) AS OPIES1, TRIM(OPITIP) AS OPITIP FROM DGACDAT.OPIAR2 WHERE OPICED = ? AND UPPER(TRIM(COALESCE(OPIES1, ''))) = ? FETCH FIRST 1 ROW ONLY
+2026-04-10 11:36:45.963 | INFO  | CID:064f29816063 | USR:USU_ADMIN | Inspeccion/Detalle | [InspectoresDAO-DB2] Parametros => cedula=0502438880, soloActivos=True, tipos=TODOS
+2026-04-10 11:36:45.965 | INFO  | CID:064f29816063 | USR:USU_ADMIN | Inspeccion/Detalle | [InspectoresDAO-DB2] Inspector encontrado por variante de cedula. Original=502438880, Variante=0502438880
+2026-04-10 11:36:45.965 | INFO  | CID:064f29816063 | USR:USU_ADMIN | Inspeccion/Detalle | [GestionInspeccion] Detalle inspectores enriquecidos. InspeccionId=5, PrincipalCedula=0502438880, PrincipalNombre=EDISON XAVIER HERRERA PILATASIG, PrincipalTipo=AIR, ApoyoCedula=, ApoyoNombre=, ApoyoTipo=
+2026-04-10 11:39:42.247 | INFO  | CID:9692dc2b051c | USR:USU_ADMIN | SolicitudAOCR/Legalizar | Iniciando acción: SolicitudAOCR/Legalizar
+2026-04-10 11:39:42.265 | INFO  | CID:9692dc2b051c | USR:USU_ADMIN | SolicitudAOCR/Legalizar | Acción completada: SolicitudAOCR/Legalizar
+2026-04-10 11:41:13.142 | INFO  | CID:085c00453fb0 | USR:USU_ADMIN | CoordinacionJefatura/CargarDatosFirmaDigitalAocr | Iniciando acción: CoordinacionJefatura/CargarDatosFirmaDigitalAocr
+2026-04-10 11:41:13.303 | INFO  | CID:085c00453fb0 | USR:USU_ADMIN | CoordinacionJefatura/CargarDatosFirmaDigitalAocr | Acción completada: CoordinacionJefatura/CargarDatosFirmaDigitalAocr
+2026-04-10 11:41:28.612 | INFO  | CID:e8ee076c12df | USR:USU_ADMIN | CoordinacionJefatura/GuardarPosicionFirmaAocr | Iniciando acción: CoordinacionJefatura/GuardarPosicionFirmaAocr
+2026-04-10 11:41:29.547 | INFO  | CID:e8ee076c12df | USR:USU_ADMIN | CoordinacionJefatura/GuardarPosicionFirmaAocr | Acción completada: CoordinacionJefatura/GuardarPosicionFirmaAocr
+2026-04-10 11:41:34.057 | INFO  | CID:845f65607a95 | USR:USU_ADMIN | CoordinacionJefatura/GenerarDocumentoValidacionAocr | Iniciando acción: CoordinacionJefatura/GenerarDocumentoValidacionAocr
+2026-04-10 11:41:39.631 | INFO  | CID:845f65607a95 | USR:USU_ADMIN | CoordinacionJefatura/GenerarDocumentoValidacionAocr | Acción completada: CoordinacionJefatura/GenerarDocumentoValidacionAocr
+2026-04-10 11:48:03.724 | INFO  | CID:N/A | Iniciando procesador de cola de correos
+2026-04-10 11:48:23.567 | INFO  | CID:9ab5778ad189 | Account/Login | Iniciando acción: Account/Login
+2026-04-10 11:48:24.249 | INFO  | CID:9ab5778ad189 | Account/Login | Acción completada: Account/Login
+2026-04-10 11:48:30.857 | INFO  | CID:N/A | USR:USU_ADMIN | Inspeccion/PendientesFirmaDirdac | AuditTrailService: Tabla aocr_audit_trail verificada/creada.
+2026-04-10 11:52:34.988 | INFO  | CID:N/A | Iniciando procesador de cola de correos
+2026-04-10 11:52:52.901 | INFO  | CID:340c5affd0f3 | Account/Login | Iniciando acción: Account/Login
+2026-04-10 11:52:53.549 | INFO  | CID:340c5affd0f3 | Account/Login | Acción completada: Account/Login
+2026-04-10 11:58:36.043 | INFO  | CID:N/A | Iniciando procesador de cola de correos
+2026-04-10 11:58:49.992 | INFO  | CID:3d08fba531d3 | Account/Login | Iniciando acción: Account/Login
+2026-04-10 11:58:50.675 | INFO  | CID:3d08fba531d3 | Account/Login | Acción completada: Account/Login
+2026-04-10 12:23:56.130 | INFO  | CID:N/A | Iniciando procesador de cola de correos
+2026-04-10 12:24:11.605 | ERROR | CID:N/A | ERR:EMAIL_QUEUE_ERROR | Error al procesar la solicitud. Contacte al administrador.
+    Exception: DataAccessException
+    StackTrace:    en CapaDatos.Infrastructure.BaseDAO.ExecuteWithConnection[T](Func`2 action) en C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\CapaDatos\Infrastructure\BaseDAO.cs:línea 66
+   en CapaDatos.Services.EmailQueueService.<ObtenerSiguienteAsync>d__11.MoveNext() en C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\CapaDatos\Services\EmailQueueService.cs:línea 355
+--- Fin del seguimiento de la pila de la ubicación anterior donde se produjo la excepción ---
+   en System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+   en CapaDatos.Services.EmailQueueProcessor.<ProcessQueueAsync>d__11.MoveNext() en C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\CapaDatos\Services\EmailQueueService.cs:línea 650
+2026-04-10 12:24:22.762 | INFO  | CID:790bf0b5fd28 | Account/Login | Iniciando acción: Account/Login
+2026-04-10 12:24:38.410 | ERROR | CID:790bf0b5fd28 | Account/Login | Error en acción: Account/Login
+2026-04-10 12:24:38.563 | ERROR | CID:790bf0b5fd28 | Account/Login | ERR:INTERNAL_ERROR | Failed to connect to 172.20.16.55:5432
+    Exception: NpgsqlException
+    StackTrace:    en Npgsql.Internal.NpgsqlConnector.Connect(NpgsqlTimeout timeout)
+   en Npgsql.Internal.NpgsqlConnector.<RawOpen>d__215.MoveNext()
+--- Fin del seguimiento de la pila de la ubicación anterior donde se produjo la excepción ---
+   en System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+   en System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task)
+   en Npgsql.Internal.NpgsqlConnector.<<Open>g__OpenCore|211_1>d.MoveNext()
+--- Fin del seguimiento de la pila de la ubicación anterior donde se produjo la excepción ---
+   en System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+   en System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task)
+   en Npgsql.Internal.NpgsqlConnector.<Open>d__211.MoveNext()
+--- Fin del seguimiento de la pila de la ubicación anterior donde se produjo la excepción ---
+   en System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+   en Npgsql.PoolingDataSource.<OpenNewConnector>d__37.MoveNext()
+--- Fin del seguimiento de la pila de la ubicación anterior donde se produjo la excepción ---
+   en System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+   en System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task)
+   en Npgsql.PoolingDataSource.<<Get>g__RentAsync|34_0>d.MoveNext()
+--- Fin del seguimiento de la pila de la ubicación anterior donde se produjo la excepción ---
+   en System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+   en System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task)
+   en Npgsql.NpgsqlConnection.<<Open>g__OpenAsync|42_0>d.MoveNext()
+--- Fin del seguimiento de la pila de la ubicación anterior donde se produjo la excepción ---
+   en System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+   en System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task)
+   en Npgsql.NpgsqlConnection.Open()
+   en CapaDatos.DAOs.UsuarioDAO.ObtenerPorNombreUsuario(String loginInput) en C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\CapaDatos\DAOs\UsuarioDAO.cs:línea 47
+   en CapaNegocio.UsuarioBL.Autenticar(String nombreUsuario, String contrasena, Usuario& usuario, List`1& roles, String& mensaje, Boolean actualizarUltimaConexion) en C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\CapaNegocio\UsuarioBL.cs:línea 170
+   en CapaPresentacion.Controllers.AccountController.Login(LoginViewModel model, String returnUrl) en C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\CapaPresentacion\Controllers\AccountController.cs:línea 84
+   en lambda_method(Closure , ControllerBase , Object[] )
+   en System.Web.Mvc.ControllerActionInvoker.InvokeActionMethod(ControllerContext controllerContext, ActionDescriptor actionDescriptor, IDictionary`2 parameters)
+   en System.Web.Mvc.Async.AsyncControllerActionInvoker.<>c.<BeginInvokeSynchronousActionMethod>b__9_0(IAsyncResult asyncResult, ActionInvocation innerInvokeState)
+   en System.Web.Mvc.Async.AsyncResultWrapper.WrappedAsyncResult`2.CallEndDelegate(IAsyncResult asyncResult)
+   en System.Web.Mvc.Async.AsyncControllerActionInvoker.EndInvokeActionMethod(IAsyncResult asyncResult)
+   en System.Web.Mvc.Async.AsyncControllerActionInvoker.AsyncInvocationWithFilters.<>c__DisplayClass11_0.<InvokeActionMethodFilterAsynchronouslyRecursive>b__0()
+   en System.Web.Mvc.Async.AsyncControllerActionInvoker.AsyncInvocationWithFilters.<>c__DisplayClass11_2.<InvokeActionMethodFilterAsynchronouslyRecursive>b__2()
+   en System.Web.Mvc.Async.AsyncControllerActionInvoker.AsyncInvocationWithFilters.<>c__DisplayClass11_2.<InvokeActionMethodFilterAsynchronouslyRecursive>b__2()
+   en System.Web.Mvc.Async.AsyncControllerActionInvoker.AsyncInvocationWithFilters.<>c__DisplayClass11_2.<InvokeActionMethodFilterAsynchronouslyRecursive>b__2()
+   en System.Web.Mvc.Async.AsyncControllerActionInvoker.EndInvokeActionMethodWithFilters(IAsyncResult asyncResult)
+   en System.Web.Mvc.Async.AsyncControllerActionInvoker.<>c__DisplayClass3_6.<BeginInvokeAction>b__4()
+   en System.Web.Mvc.Async.AsyncControllerActionInvoker.<>c__DisplayClass3_1.<BeginInvokeAction>b__1(IAsyncResult asyncResult)
+    InnerException: TimeoutException - Timeout during connection attempt
+2026-04-10 12:24:56.930 | ERROR | CID:N/A | ERR:EMAIL_QUEUE_ERROR | Error al procesar la solicitud. Contacte al administrador.
+    Exception: DataAccessException
+    StackTrace:    en CapaDatos.Infrastructure.BaseDAO.ExecuteWithConnection[T](Func`2 action) en C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\CapaDatos\Infrastructure\BaseDAO.cs:línea 66
+   en CapaDatos.Services.EmailQueueService.<ObtenerSiguienteAsync>d__11.MoveNext() en C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\CapaDatos\Services\EmailQueueService.cs:línea 355
+--- Fin del seguimiento de la pila de la ubicación anterior donde se produjo la excepción ---
+   en System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+   en CapaDatos.Services.EmailQueueProcessor.<ProcessQueueAsync>d__11.MoveNext() en C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\CapaDatos\Services\EmailQueueService.cs:línea 650
+2026-04-10 12:25:42.225 | ERROR | CID:N/A | ERR:EMAIL_QUEUE_ERROR | Error al procesar la solicitud. Contacte al administrador.
+    Exception: DataAccessException
+    StackTrace:    en CapaDatos.Infrastructure.BaseDAO.ExecuteWithConnection[T](Func`2 action) en C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\CapaDatos\Infrastructure\BaseDAO.cs:línea 66
+   en CapaDatos.Services.EmailQueueService.<ObtenerSiguienteAsync>d__11.MoveNext() en C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\CapaDatos\Services\EmailQueueService.cs:línea 355
+--- Fin del seguimiento de la pila de la ubicación anterior donde se produjo la excepción ---
+   en System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+   en CapaDatos.Services.EmailQueueProcessor.<ProcessQueueAsync>d__11.MoveNext() en C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\CapaDatos\Services\EmailQueueService.cs:línea 650
+2026-04-10 12:26:27.496 | ERROR | CID:N/A | ERR:EMAIL_QUEUE_ERROR | Error al procesar la solicitud. Contacte al administrador.
+    Exception: DataAccessException
+    StackTrace:    en CapaDatos.Infrastructure.BaseDAO.ExecuteWithConnection[T](Func`2 action) en C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\CapaDatos\Infrastructure\BaseDAO.cs:línea 66
+   en CapaDatos.Services.EmailQueueService.<ObtenerSiguienteAsync>d__11.MoveNext() en C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\CapaDatos\Services\EmailQueueService.cs:línea 355
+--- Fin del seguimiento de la pila de la ubicación anterior donde se produjo la excepción ---
+   en System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+   en CapaDatos.Services.EmailQueueProcessor.<ProcessQueueAsync>d__11.MoveNext() en C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\CapaDatos\Services\EmailQueueService.cs:línea 650
+2026-04-10 12:29:58.970 | INFO  | CID:N/A | Iniciando procesador de cola de correos
+2026-04-10 12:30:14.911 | ERROR | CID:N/A | ERR:EMAIL_QUEUE_ERROR | Error al procesar la solicitud. Contacte al administrador.
+    Exception: DataAccessException
+    StackTrace:    en CapaDatos.Infrastructure.BaseDAO.ExecuteWithConnection[T](Func`2 action) en C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\CapaDatos\Infrastructure\BaseDAO.cs:línea 66
+   en CapaDatos.Services.EmailQueueService.<ObtenerSiguienteAsync>d__11.MoveNext() en C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\CapaDatos\Services\EmailQueueService.cs:línea 355
+--- Fin del seguimiento de la pila de la ubicación anterior donde se produjo la excepción ---
+   en System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+   en CapaDatos.Services.EmailQueueProcessor.<ProcessQueueAsync>d__11.MoveNext() en C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\CapaDatos\Services\EmailQueueService.cs:línea 650
+2026-04-10 12:30:16.101 | INFO  | CID:cc6ebfb297bc | Account/Login | Iniciando acción: Account/Login
+2026-04-10 12:30:31.713 | ERROR | CID:cc6ebfb297bc | Account/Login | Error en acción: Account/Login
+2026-04-10 12:30:31.830 | ERROR | CID:cc6ebfb297bc | Account/Login | ERR:INTERNAL_ERROR | Failed to connect to 172.20.16.55:5432
+    Exception: NpgsqlException
+    StackTrace:    en Npgsql.Internal.NpgsqlConnector.Connect(NpgsqlTimeout timeout)
+   en Npgsql.Internal.NpgsqlConnector.<RawOpen>d__215.MoveNext()
+--- Fin del seguimiento de la pila de la ubicación anterior donde se produjo la excepción ---
+   en System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+   en System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task)
+   en Npgsql.Internal.NpgsqlConnector.<<Open>g__OpenCore|211_1>d.MoveNext()
+--- Fin del seguimiento de la pila de la ubicación anterior donde se produjo la excepción ---
+   en System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+   en System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task)
+   en Npgsql.Internal.NpgsqlConnector.<Open>d__211.MoveNext()
+--- Fin del seguimiento de la pila de la ubicación anterior donde se produjo la excepción ---
+   en System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+   en Npgsql.PoolingDataSource.<OpenNewConnector>d__37.MoveNext()
+--- Fin del seguimiento de la pila de la ubicación anterior donde se produjo la excepción ---
+   en System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+   en System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task)
+   en Npgsql.PoolingDataSource.<<Get>g__RentAsync|34_0>d.MoveNext()
+--- Fin del seguimiento de la pila de la ubicación anterior donde se produjo la excepción ---
+   en System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+   en System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task)
+   en Npgsql.NpgsqlConnection.<<Open>g__OpenAsync|42_0>d.MoveNext()
+--- Fin del seguimiento de la pila de la ubicación anterior donde se produjo la excepción ---
+   en System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+   en System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task)
+   en Npgsql.NpgsqlConnection.Open()
+   en CapaDatos.DAOs.UsuarioDAO.ObtenerPorNombreUsuario(String loginInput) en C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\CapaDatos\DAOs\UsuarioDAO.cs:línea 47
+   en CapaNegocio.UsuarioBL.Autenticar(String nombreUsuario, String contrasena, Usuario& usuario, List`1& roles, String& mensaje, Boolean actualizarUltimaConexion) en C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\CapaNegocio\UsuarioBL.cs:línea 170
+   en CapaPresentacion.Controllers.AccountController.Login(LoginViewModel model, String returnUrl) en C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\CapaPresentacion\Controllers\AccountController.cs:línea 84
+   en lambda_method(Closure , ControllerBase , Object[] )
+   en System.Web.Mvc.ControllerActionInvoker.InvokeActionMethod(ControllerContext controllerContext, ActionDescriptor actionDescriptor, IDictionary`2 parameters)
+   en System.Web.Mvc.Async.AsyncControllerActionInvoker.<>c.<BeginInvokeSynchronousActionMethod>b__9_0(IAsyncResult asyncResult, ActionInvocation innerInvokeState)
+   en System.Web.Mvc.Async.AsyncResultWrapper.WrappedAsyncResult`2.CallEndDelegate(IAsyncResult asyncResult)
+   en System.Web.Mvc.Async.AsyncControllerActionInvoker.EndInvokeActionMethod(IAsyncResult asyncResult)
+   en System.Web.Mvc.Async.AsyncControllerActionInvoker.AsyncInvocationWithFilters.<>c__DisplayClass11_0.<InvokeActionMethodFilterAsynchronouslyRecursive>b__0()
+   en System.Web.Mvc.Async.AsyncControllerActionInvoker.AsyncInvocationWithFilters.<>c__DisplayClass11_2.<InvokeActionMethodFilterAsynchronouslyRecursive>b__2()
+   en System.Web.Mvc.Async.AsyncControllerActionInvoker.AsyncInvocationWithFilters.<>c__DisplayClass11_2.<InvokeActionMethodFilterAsynchronouslyRecursive>b__2()
+   en System.Web.Mvc.Async.AsyncControllerActionInvoker.AsyncInvocationWithFilters.<>c__DisplayClass11_2.<InvokeActionMethodFilterAsynchronouslyRecursive>b__2()
+   en System.Web.Mvc.Async.AsyncControllerActionInvoker.EndInvokeActionMethodWithFilters(IAsyncResult asyncResult)
+   en System.Web.Mvc.Async.AsyncControllerActionInvoker.<>c__DisplayClass3_6.<BeginInvokeAction>b__4()
+   en System.Web.Mvc.Async.AsyncControllerActionInvoker.<>c__DisplayClass3_1.<BeginInvokeAction>b__1(IAsyncResult asyncResult)
+    InnerException: TimeoutException - Timeout during connection attempt
+2026-04-10 12:30:37.423 | INFO  | CID:af6e85145a0a | Account/Login | Iniciando acción: Account/Login
+2026-04-10 12:30:53.041 | ERROR | CID:af6e85145a0a | Account/Login | Error en acción: Account/Login
+2026-04-10 12:30:53.151 | ERROR | CID:af6e85145a0a | Account/Login | ERR:INTERNAL_ERROR | Failed to connect to 172.20.16.55:5432
+    Exception: NpgsqlException
+    StackTrace:    en Npgsql.Internal.NpgsqlConnector.Connect(NpgsqlTimeout timeout)
+   en Npgsql.Internal.NpgsqlConnector.<RawOpen>d__215.MoveNext()
+--- Fin del seguimiento de la pila de la ubicación anterior donde se produjo la excepción ---
+   en System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+   en System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task)
+   en Npgsql.Internal.NpgsqlConnector.<<Open>g__OpenCore|211_1>d.MoveNext()
+--- Fin del seguimiento de la pila de la ubicación anterior donde se produjo la excepción ---
+   en System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+   en System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task)
+   en Npgsql.Internal.NpgsqlConnector.<Open>d__211.MoveNext()
+--- Fin del seguimiento de la pila de la ubicación anterior donde se produjo la excepción ---
+   en System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+   en Npgsql.PoolingDataSource.<OpenNewConnector>d__37.MoveNext()
+--- Fin del seguimiento de la pila de la ubicación anterior donde se produjo la excepción ---
+   en System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+   en System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task)
+   en Npgsql.PoolingDataSource.<<Get>g__RentAsync|34_0>d.MoveNext()
+--- Fin del seguimiento de la pila de la ubicación anterior donde se produjo la excepción ---
+   en System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+   en System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task)
+   en Npgsql.NpgsqlConnection.<<Open>g__OpenAsync|42_0>d.MoveNext()
+--- Fin del seguimiento de la pila de la ubicación anterior donde se produjo la excepción ---
+   en System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+   en System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task)
+   en Npgsql.NpgsqlConnection.Open()
+   en CapaDatos.DAOs.UsuarioDAO.ObtenerPorNombreUsuario(String loginInput) en C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\CapaDatos\DAOs\UsuarioDAO.cs:línea 47
+   en CapaNegocio.UsuarioBL.Autenticar(String nombreUsuario, String contrasena, Usuario& usuario, List`1& roles, String& mensaje, Boolean actualizarUltimaConexion) en C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\CapaNegocio\UsuarioBL.cs:línea 170
+   en CapaPresentacion.Controllers.AccountController.Login(LoginViewModel model, String returnUrl) en C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\CapaPresentacion\Controllers\AccountController.cs:línea 84
+   en lambda_method(Closure , ControllerBase , Object[] )
+   en System.Web.Mvc.ControllerActionInvoker.InvokeActionMethod(ControllerContext controllerContext, ActionDescriptor actionDescriptor, IDictionary`2 parameters)
+   en System.Web.Mvc.Async.AsyncControllerActionInvoker.<>c.<BeginInvokeSynchronousActionMethod>b__9_0(IAsyncResult asyncResult, ActionInvocation innerInvokeState)
+   en System.Web.Mvc.Async.AsyncResultWrapper.WrappedAsyncResult`2.CallEndDelegate(IAsyncResult asyncResult)
+   en System.Web.Mvc.Async.AsyncControllerActionInvoker.EndInvokeActionMethod(IAsyncResult asyncResult)
+   en System.Web.Mvc.Async.AsyncControllerActionInvoker.AsyncInvocationWithFilters.<>c__DisplayClass11_0.<InvokeActionMethodFilterAsynchronouslyRecursive>b__0()
+   en System.Web.Mvc.Async.AsyncControllerActionInvoker.AsyncInvocationWithFilters.<>c__DisplayClass11_2.<InvokeActionMethodFilterAsynchronouslyRecursive>b__2()
+   en System.Web.Mvc.Async.AsyncControllerActionInvoker.AsyncInvocationWithFilters.<>c__DisplayClass11_2.<InvokeActionMethodFilterAsynchronouslyRecursive>b__2()
+   en System.Web.Mvc.Async.AsyncControllerActionInvoker.AsyncInvocationWithFilters.<>c__DisplayClass11_2.<InvokeActionMethodFilterAsynchronouslyRecursive>b__2()
+   en System.Web.Mvc.Async.AsyncControllerActionInvoker.EndInvokeActionMethodWithFilters(IAsyncResult asyncResult)
+   en System.Web.Mvc.Async.AsyncControllerActionInvoker.<>c__DisplayClass3_6.<BeginInvokeAction>b__4()
+   en System.Web.Mvc.Async.AsyncControllerActionInvoker.<>c__DisplayClass3_1.<BeginInvokeAction>b__1(IAsyncResult asyncResult)
+    InnerException: TimeoutException - Timeout during connection attempt
+2026-04-10 12:31:00.264 | ERROR | CID:N/A | ERR:EMAIL_QUEUE_ERROR | Error al procesar la solicitud. Contacte al administrador.
+    Exception: DataAccessException
+    StackTrace:    en CapaDatos.Infrastructure.BaseDAO.ExecuteWithConnection[T](Func`2 action) en C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\CapaDatos\Infrastructure\BaseDAO.cs:línea 66
+   en CapaDatos.Services.EmailQueueService.<ObtenerSiguienteAsync>d__11.MoveNext() en C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\CapaDatos\Services\EmailQueueService.cs:línea 355
+--- Fin del seguimiento de la pila de la ubicación anterior donde se produjo la excepción ---
+   en System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+   en CapaDatos.Services.EmailQueueProcessor.<ProcessQueueAsync>d__11.MoveNext() en C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\CapaDatos\Services\EmailQueueService.cs:línea 650
+2026-04-10 12:31:26.259 | INFO  | CID:00e82b085384 | Account/Login | Iniciando acción: Account/Login
+2026-04-10 12:31:41.847 | ERROR | CID:00e82b085384 | Account/Login | Error en acción: Account/Login
+2026-04-10 12:31:41.942 | ERROR | CID:00e82b085384 | Account/Login | ERR:INTERNAL_ERROR | Failed to connect to 172.20.16.55:5432
+    Exception: NpgsqlException
+    StackTrace:    en Npgsql.Internal.NpgsqlConnector.Connect(NpgsqlTimeout timeout)
+   en Npgsql.Internal.NpgsqlConnector.<RawOpen>d__215.MoveNext()
+--- Fin del seguimiento de la pila de la ubicación anterior donde se produjo la excepción ---
+   en System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+   en System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task)
+   en Npgsql.Internal.NpgsqlConnector.<<Open>g__OpenCore|211_1>d.MoveNext()
+--- Fin del seguimiento de la pila de la ubicación anterior donde se produjo la excepción ---
+   en System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+   en System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task)
+   en Npgsql.Internal.NpgsqlConnector.<Open>d__211.MoveNext()
+--- Fin del seguimiento de la pila de la ubicación anterior donde se produjo la excepción ---
+   en System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+   en Npgsql.PoolingDataSource.<OpenNewConnector>d__37.MoveNext()
+--- Fin del seguimiento de la pila de la ubicación anterior donde se produjo la excepción ---
+   en System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+   en System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task)
+   en Npgsql.PoolingDataSource.<<Get>g__RentAsync|34_0>d.MoveNext()
+--- Fin del seguimiento de la pila de la ubicación anterior donde se produjo la excepción ---
+   en System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+   en System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task)
+   en Npgsql.NpgsqlConnection.<<Open>g__OpenAsync|42_0>d.MoveNext()
+--- Fin del seguimiento de la pila de la ubicación anterior donde se produjo la excepción ---
+   en System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+   en System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task)
+   en Npgsql.NpgsqlConnection.Open()
+   en CapaDatos.DAOs.UsuarioDAO.ObtenerPorNombreUsuario(String loginInput) en C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\CapaDatos\DAOs\UsuarioDAO.cs:línea 47
+   en CapaNegocio.UsuarioBL.Autenticar(String nombreUsuario, String contrasena, Usuario& usuario, List`1& roles, String& mensaje, Boolean actualizarUltimaConexion) en C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\CapaNegocio\UsuarioBL.cs:línea 170
+   en CapaPresentacion.Controllers.AccountController.Login(LoginViewModel model, String returnUrl) en C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\CapaPresentacion\Controllers\AccountController.cs:línea 84
+   en lambda_method(Closure , ControllerBase , Object[] )
+   en System.Web.Mvc.ControllerActionInvoker.InvokeActionMethod(ControllerContext controllerContext, ActionDescriptor actionDescriptor, IDictionary`2 parameters)
+   en System.Web.Mvc.Async.AsyncControllerActionInvoker.<>c.<BeginInvokeSynchronousActionMethod>b__9_0(IAsyncResult asyncResult, ActionInvocation innerInvokeState)
+   en System.Web.Mvc.Async.AsyncResultWrapper.WrappedAsyncResult`2.CallEndDelegate(IAsyncResult asyncResult)
+   en System.Web.Mvc.Async.AsyncControllerActionInvoker.EndInvokeActionMethod(IAsyncResult asyncResult)
+   en System.Web.Mvc.Async.AsyncControllerActionInvoker.AsyncInvocationWithFilters.<>c__DisplayClass11_0.<InvokeActionMethodFilterAsynchronouslyRecursive>b__0()
+   en System.Web.Mvc.Async.AsyncControllerActionInvoker.AsyncInvocationWithFilters.<>c__DisplayClass11_2.<InvokeActionMethodFilterAsynchronouslyRecursive>b__2()
+   en System.Web.Mvc.Async.AsyncControllerActionInvoker.AsyncInvocationWithFilters.<>c__DisplayClass11_2.<InvokeActionMethodFilterAsynchronouslyRecursive>b__2()
+   en System.Web.Mvc.Async.AsyncControllerActionInvoker.AsyncInvocationWithFilters.<>c__DisplayClass11_2.<InvokeActionMethodFilterAsynchronouslyRecursive>b__2()
+   en System.Web.Mvc.Async.AsyncControllerActionInvoker.EndInvokeActionMethodWithFilters(IAsyncResult asyncResult)
+   en System.Web.Mvc.Async.AsyncControllerActionInvoker.<>c__DisplayClass3_6.<BeginInvokeAction>b__4()
+   en System.Web.Mvc.Async.AsyncControllerActionInvoker.<>c__DisplayClass3_1.<BeginInvokeAction>b__1(IAsyncResult asyncResult)
+    InnerException: TimeoutException - Timeout during connection attempt
+2026-04-10 12:31:45.568 | ERROR | CID:N/A | ERR:EMAIL_QUEUE_ERROR | Error al procesar la solicitud. Contacte al administrador.
+    Exception: DataAccessException
+    StackTrace:    en CapaDatos.Infrastructure.BaseDAO.ExecuteWithConnection[T](Func`2 action) en C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\CapaDatos\Infrastructure\BaseDAO.cs:línea 66
+   en CapaDatos.Services.EmailQueueService.<ObtenerSiguienteAsync>d__11.MoveNext() en C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\CapaDatos\Services\EmailQueueService.cs:línea 355
+--- Fin del seguimiento de la pila de la ubicación anterior donde se produjo la excepción ---
+   en System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+   en CapaDatos.Services.EmailQueueProcessor.<ProcessQueueAsync>d__11.MoveNext() en C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\CapaDatos\Services\EmailQueueService.cs:línea 650
+2026-04-10 12:32:30.833 | ERROR | CID:N/A | ERR:EMAIL_QUEUE_ERROR | Error al procesar la solicitud. Contacte al administrador.
+    Exception: DataAccessException
+    StackTrace:    en CapaDatos.Infrastructure.BaseDAO.ExecuteWithConnection[T](Func`2 action) en C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\CapaDatos\Infrastructure\BaseDAO.cs:línea 66
+   en CapaDatos.Services.EmailQueueService.<ObtenerSiguienteAsync>d__11.MoveNext() en C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\CapaDatos\Services\EmailQueueService.cs:línea 355
+--- Fin del seguimiento de la pila de la ubicación anterior donde se produjo la excepción ---
+   en System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+   en CapaDatos.Services.EmailQueueProcessor.<ProcessQueueAsync>d__11.MoveNext() en C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\CapaDatos\Services\EmailQueueService.cs:línea 650
+2026-04-10 12:32:48.406 | INFO  | CID:N/A | Iniciando procesador de cola de correos
+2026-04-10 12:33:02.833 | INFO  | CID:1f47548b0054 | Account/Login | Iniciando acción: Account/Login
+2026-04-10 12:33:04.631 | ERROR | CID:N/A | ERR:EMAIL_QUEUE_ERROR | Error al procesar la solicitud. Contacte al administrador.
+    Exception: DataAccessException
+    StackTrace:    en CapaDatos.Infrastructure.BaseDAO.ExecuteWithConnection[T](Func`2 action) en C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\CapaDatos\Infrastructure\BaseDAO.cs:línea 66
+   en CapaDatos.Services.EmailQueueService.<ObtenerSiguienteAsync>d__11.MoveNext() en C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\CapaDatos\Services\EmailQueueService.cs:línea 355
+--- Fin del seguimiento de la pila de la ubicación anterior donde se produjo la excepción ---
+   en System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+   en CapaDatos.Services.EmailQueueProcessor.<ProcessQueueAsync>d__11.MoveNext() en C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\CapaDatos\Services\EmailQueueService.cs:línea 650
+2026-04-10 12:33:18.443 | ERROR | CID:1f47548b0054 | Account/Login | Error en acción: Account/Login
+2026-04-10 12:33:18.562 | ERROR | CID:1f47548b0054 | Account/Login | ERR:INTERNAL_ERROR | Failed to connect to 172.20.16.55:5432
+    Exception: NpgsqlException
+    StackTrace:    en Npgsql.Internal.NpgsqlConnector.Connect(NpgsqlTimeout timeout)
+   en Npgsql.Internal.NpgsqlConnector.<RawOpen>d__215.MoveNext()
+--- Fin del seguimiento de la pila de la ubicación anterior donde se produjo la excepción ---
+   en System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+   en System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task)
+   en Npgsql.Internal.NpgsqlConnector.<<Open>g__OpenCore|211_1>d.MoveNext()
+--- Fin del seguimiento de la pila de la ubicación anterior donde se produjo la excepción ---
+   en System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+   en System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task)
+   en Npgsql.Internal.NpgsqlConnector.<Open>d__211.MoveNext()
+--- Fin del seguimiento de la pila de la ubicación anterior donde se produjo la excepción ---
+   en System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+   en Npgsql.PoolingDataSource.<OpenNewConnector>d__37.MoveNext()
+--- Fin del seguimiento de la pila de la ubicación anterior donde se produjo la excepción ---
+   en System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+   en System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task)
+   en Npgsql.PoolingDataSource.<<Get>g__RentAsync|34_0>d.MoveNext()
+--- Fin del seguimiento de la pila de la ubicación anterior donde se produjo la excepción ---
+   en System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+   en System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task)
+   en Npgsql.NpgsqlConnection.<<Open>g__OpenAsync|42_0>d.MoveNext()
+--- Fin del seguimiento de la pila de la ubicación anterior donde se produjo la excepción ---
+   en System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+   en System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task)
+   en Npgsql.NpgsqlConnection.Open()
+   en CapaDatos.DAOs.UsuarioDAO.ObtenerPorNombreUsuario(String loginInput) en C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\CapaDatos\DAOs\UsuarioDAO.cs:línea 47
+   en CapaNegocio.UsuarioBL.Autenticar(String nombreUsuario, String contrasena, Usuario& usuario, List`1& roles, String& mensaje, Boolean actualizarUltimaConexion) en C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\CapaNegocio\UsuarioBL.cs:línea 170
+   en CapaPresentacion.Controllers.AccountController.Login(LoginViewModel model, String returnUrl) en C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\CapaPresentacion\Controllers\AccountController.cs:línea 84
+   en lambda_method(Closure , ControllerBase , Object[] )
+   en System.Web.Mvc.ControllerActionInvoker.InvokeActionMethod(ControllerContext controllerContext, ActionDescriptor actionDescriptor, IDictionary`2 parameters)
+   en System.Web.Mvc.Async.AsyncControllerActionInvoker.<>c.<BeginInvokeSynchronousActionMethod>b__9_0(IAsyncResult asyncResult, ActionInvocation innerInvokeState)
+   en System.Web.Mvc.Async.AsyncResultWrapper.WrappedAsyncResult`2.CallEndDelegate(IAsyncResult asyncResult)
+   en System.Web.Mvc.Async.AsyncControllerActionInvoker.EndInvokeActionMethod(IAsyncResult asyncResult)
+   en System.Web.Mvc.Async.AsyncControllerActionInvoker.AsyncInvocationWithFilters.<>c__DisplayClass11_0.<InvokeActionMethodFilterAsynchronouslyRecursive>b__0()
+   en System.Web.Mvc.Async.AsyncControllerActionInvoker.AsyncInvocationWithFilters.<>c__DisplayClass11_2.<InvokeActionMethodFilterAsynchronouslyRecursive>b__2()
+   en System.Web.Mvc.Async.AsyncControllerActionInvoker.AsyncInvocationWithFilters.<>c__DisplayClass11_2.<InvokeActionMethodFilterAsynchronouslyRecursive>b__2()
+   en System.Web.Mvc.Async.AsyncControllerActionInvoker.AsyncInvocationWithFilters.<>c__DisplayClass11_2.<InvokeActionMethodFilterAsynchronouslyRecursive>b__2()
+   en System.Web.Mvc.Async.AsyncControllerActionInvoker.EndInvokeActionMethodWithFilters(IAsyncResult asyncResult)
+   en System.Web.Mvc.Async.AsyncControllerActionInvoker.<>c__DisplayClass3_6.<BeginInvokeAction>b__4()
+   en System.Web.Mvc.Async.AsyncControllerActionInvoker.<>c__DisplayClass3_1.<BeginInvokeAction>b__1(IAsyncResult asyncResult)
+    InnerException: TimeoutException - Timeout during connection attempt
+2026-04-10 12:33:31.398 | INFO  | CID:21fc6f828bfd | Account/Login | Iniciando acción: Account/Login
+2026-04-10 12:33:43.099 | INFO  | CID:N/A | Iniciando procesador de cola de correos
+2026-04-10 12:33:56.898 | INFO  | CID:dff924f9b2e7 | Account/Login | Iniciando acción: Account/Login
+2026-04-10 12:33:59.059 | ERROR | CID:N/A | ERR:EMAIL_QUEUE_ERROR | Error al procesar la solicitud. Contacte al administrador.
+    Exception: DataAccessException
+    StackTrace:    en CapaDatos.Infrastructure.BaseDAO.ExecuteWithConnection[T](Func`2 action) en C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\CapaDatos\Infrastructure\BaseDAO.cs:línea 66
+   en CapaDatos.Services.EmailQueueService.<ObtenerSiguienteAsync>d__11.MoveNext() en C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\CapaDatos\Services\EmailQueueService.cs:línea 355
+--- Fin del seguimiento de la pila de la ubicación anterior donde se produjo la excepción ---
+   en System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+   en CapaDatos.Services.EmailQueueProcessor.<ProcessQueueAsync>d__11.MoveNext() en C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\CapaDatos\Services\EmailQueueService.cs:línea 650
+2026-04-10 12:34:12.509 | ERROR | CID:dff924f9b2e7 | Account/Login | Error en acción: Account/Login
+2026-04-10 12:34:12.639 | ERROR | CID:dff924f9b2e7 | Account/Login | ERR:INTERNAL_ERROR | Failed to connect to 172.20.16.55:5432
+    Exception: NpgsqlException
+    StackTrace:    en Npgsql.Internal.NpgsqlConnector.Connect(NpgsqlTimeout timeout)
+   en Npgsql.Internal.NpgsqlConnector.<RawOpen>d__215.MoveNext()
+--- Fin del seguimiento de la pila de la ubicación anterior donde se produjo la excepción ---
+   en System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+   en System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task)
+   en Npgsql.Internal.NpgsqlConnector.<<Open>g__OpenCore|211_1>d.MoveNext()
+--- Fin del seguimiento de la pila de la ubicación anterior donde se produjo la excepción ---
+   en System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+   en System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task)
+   en Npgsql.Internal.NpgsqlConnector.<Open>d__211.MoveNext()
+--- Fin del seguimiento de la pila de la ubicación anterior donde se produjo la excepción ---
+   en System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+   en Npgsql.PoolingDataSource.<OpenNewConnector>d__37.MoveNext()
+--- Fin del seguimiento de la pila de la ubicación anterior donde se produjo la excepción ---
+   en System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+   en System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task)
+   en Npgsql.PoolingDataSource.<<Get>g__RentAsync|34_0>d.MoveNext()
+--- Fin del seguimiento de la pila de la ubicación anterior donde se produjo la excepción ---
+   en System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+   en System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task)
+   en Npgsql.NpgsqlConnection.<<Open>g__OpenAsync|42_0>d.MoveNext()
+--- Fin del seguimiento de la pila de la ubicación anterior donde se produjo la excepción ---
+   en System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+   en System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task)
+   en Npgsql.NpgsqlConnection.Open()
+   en CapaDatos.DAOs.UsuarioDAO.ObtenerPorNombreUsuario(String loginInput) en C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\CapaDatos\DAOs\UsuarioDAO.cs:línea 47
+   en CapaNegocio.UsuarioBL.Autenticar(String nombreUsuario, String contrasena, Usuario& usuario, List`1& roles, String& mensaje, Boolean actualizarUltimaConexion) en C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\CapaNegocio\UsuarioBL.cs:línea 170
+   en CapaPresentacion.Controllers.AccountController.Login(LoginViewModel model, String returnUrl) en C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\CapaPresentacion\Controllers\AccountController.cs:línea 84
+   en lambda_method(Closure , ControllerBase , Object[] )
+   en System.Web.Mvc.ControllerActionInvoker.InvokeActionMethod(ControllerContext controllerContext, ActionDescriptor actionDescriptor, IDictionary`2 parameters)
+   en System.Web.Mvc.Async.AsyncControllerActionInvoker.<>c.<BeginInvokeSynchronousActionMethod>b__9_0(IAsyncResult asyncResult, ActionInvocation innerInvokeState)
+   en System.Web.Mvc.Async.AsyncResultWrapper.WrappedAsyncResult`2.CallEndDelegate(IAsyncResult asyncResult)
+   en System.Web.Mvc.Async.AsyncControllerActionInvoker.EndInvokeActionMethod(IAsyncResult asyncResult)
+   en System.Web.Mvc.Async.AsyncControllerActionInvoker.AsyncInvocationWithFilters.<>c__DisplayClass11_0.<InvokeActionMethodFilterAsynchronouslyRecursive>b__0()
+   en System.Web.Mvc.Async.AsyncControllerActionInvoker.AsyncInvocationWithFilters.<>c__DisplayClass11_2.<InvokeActionMethodFilterAsynchronouslyRecursive>b__2()
+   en System.Web.Mvc.Async.AsyncControllerActionInvoker.AsyncInvocationWithFilters.<>c__DisplayClass11_2.<InvokeActionMethodFilterAsynchronouslyRecursive>b__2()
+   en System.Web.Mvc.Async.AsyncControllerActionInvoker.AsyncInvocationWithFilters.<>c__DisplayClass11_2.<InvokeActionMethodFilterAsynchronouslyRecursive>b__2()
+   en System.Web.Mvc.Async.AsyncControllerActionInvoker.EndInvokeActionMethodWithFilters(IAsyncResult asyncResult)
+   en System.Web.Mvc.Async.AsyncControllerActionInvoker.<>c__DisplayClass3_6.<BeginInvokeAction>b__4()
+   en System.Web.Mvc.Async.AsyncControllerActionInvoker.<>c__DisplayClass3_1.<BeginInvokeAction>b__1(IAsyncResult asyncResult)
+    InnerException: TimeoutException - Timeout during connection attempt
+2026-04-10 12:34:44.353 | ERROR | CID:N/A | ERR:EMAIL_QUEUE_ERROR | Error al procesar la solicitud. Contacte al administrador.
+    Exception: DataAccessException
+    StackTrace:    en CapaDatos.Infrastructure.BaseDAO.ExecuteWithConnection[T](Func`2 action) en C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\CapaDatos\Infrastructure\BaseDAO.cs:línea 66
+   en CapaDatos.Services.EmailQueueService.<ObtenerSiguienteAsync>d__11.MoveNext() en C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\CapaDatos\Services\EmailQueueService.cs:línea 355
+--- Fin del seguimiento de la pila de la ubicación anterior donde se produjo la excepción ---
+   en System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+   en CapaDatos.Services.EmailQueueProcessor.<ProcessQueueAsync>d__11.MoveNext() en C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\CapaDatos\Services\EmailQueueService.cs:línea 650
+2026-04-10 12:37:45.274 | INFO  | CID:N/A | Iniciando procesador de cola de correos
+2026-04-10 12:38:00.198 | INFO  | CID:cd43a0139fe3 | Account/Login | Iniciando acción: Account/Login
+2026-04-10 12:38:01.229 | ERROR | CID:N/A | ERR:EMAIL_QUEUE_ERROR | Error al procesar la solicitud. Contacte al administrador.
+    Exception: DataAccessException
+    StackTrace:    en CapaDatos.Infrastructure.BaseDAO.ExecuteWithConnection[T](Func`2 action) en C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\CapaDatos\Infrastructure\BaseDAO.cs:línea 66
+   en CapaDatos.Services.EmailQueueService.<ObtenerSiguienteAsync>d__11.MoveNext() en C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\CapaDatos\Services\EmailQueueService.cs:línea 355
+--- Fin del seguimiento de la pila de la ubicación anterior donde se produjo la excepción ---
+   en System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+   en CapaDatos.Services.EmailQueueProcessor.<ProcessQueueAsync>d__11.MoveNext() en C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\CapaDatos\Services\EmailQueueService.cs:línea 650
+2026-04-10 12:38:15.822 | ERROR | CID:cd43a0139fe3 | Account/Login | Error en acción: Account/Login
+2026-04-10 12:38:15.939 | ERROR | CID:cd43a0139fe3 | Account/Login | ERR:INTERNAL_ERROR | Failed to connect to 172.20.16.55:5432
+    Exception: NpgsqlException
+    StackTrace:    en Npgsql.Internal.NpgsqlConnector.Connect(NpgsqlTimeout timeout)
+   en Npgsql.Internal.NpgsqlConnector.<RawOpen>d__215.MoveNext()
+--- Fin del seguimiento de la pila de la ubicación anterior donde se produjo la excepción ---
+   en System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+   en System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task)
+   en Npgsql.Internal.NpgsqlConnector.<<Open>g__OpenCore|211_1>d.MoveNext()
+--- Fin del seguimiento de la pila de la ubicación anterior donde se produjo la excepción ---
+   en System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+   en System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task)
+   en Npgsql.Internal.NpgsqlConnector.<Open>d__211.MoveNext()
+--- Fin del seguimiento de la pila de la ubicación anterior donde se produjo la excepción ---
+   en System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+   en Npgsql.PoolingDataSource.<OpenNewConnector>d__37.MoveNext()
+--- Fin del seguimiento de la pila de la ubicación anterior donde se produjo la excepción ---
+   en System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+   en System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task)
+   en Npgsql.PoolingDataSource.<<Get>g__RentAsync|34_0>d.MoveNext()
+--- Fin del seguimiento de la pila de la ubicación anterior donde se produjo la excepción ---
+   en System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+   en System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task)
+   en Npgsql.NpgsqlConnection.<<Open>g__OpenAsync|42_0>d.MoveNext()
+--- Fin del seguimiento de la pila de la ubicación anterior donde se produjo la excepción ---
+   en System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+   en System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task)
+   en Npgsql.NpgsqlConnection.Open()
+   en CapaDatos.DAOs.UsuarioDAO.ObtenerPorNombreUsuario(String loginInput) en C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\CapaDatos\DAOs\UsuarioDAO.cs:línea 47
+   en CapaNegocio.UsuarioBL.Autenticar(String nombreUsuario, String contrasena, Usuario& usuario, List`1& roles, String& mensaje, Boolean actualizarUltimaConexion) en C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\CapaNegocio\UsuarioBL.cs:línea 170
+   en CapaPresentacion.Controllers.AccountController.Login(LoginViewModel model, String returnUrl) en C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\CapaPresentacion\Controllers\AccountController.cs:línea 84
+   en lambda_method(Closure , ControllerBase , Object[] )
+   en System.Web.Mvc.ControllerActionInvoker.InvokeActionMethod(ControllerContext controllerContext, ActionDescriptor actionDescriptor, IDictionary`2 parameters)
+   en System.Web.Mvc.Async.AsyncControllerActionInvoker.<>c.<BeginInvokeSynchronousActionMethod>b__9_0(IAsyncResult asyncResult, ActionInvocation innerInvokeState)
+   en System.Web.Mvc.Async.AsyncResultWrapper.WrappedAsyncResult`2.CallEndDelegate(IAsyncResult asyncResult)
+   en System.Web.Mvc.Async.AsyncControllerActionInvoker.EndInvokeActionMethod(IAsyncResult asyncResult)
+   en System.Web.Mvc.Async.AsyncControllerActionInvoker.AsyncInvocationWithFilters.<>c__DisplayClass11_0.<InvokeActionMethodFilterAsynchronouslyRecursive>b__0()
+   en System.Web.Mvc.Async.AsyncControllerActionInvoker.AsyncInvocationWithFilters.<>c__DisplayClass11_2.<InvokeActionMethodFilterAsynchronouslyRecursive>b__2()
+   en System.Web.Mvc.Async.AsyncControllerActionInvoker.AsyncInvocationWithFilters.<>c__DisplayClass11_2.<InvokeActionMethodFilterAsynchronouslyRecursive>b__2()
+   en System.Web.Mvc.Async.AsyncControllerActionInvoker.AsyncInvocationWithFilters.<>c__DisplayClass11_2.<InvokeActionMethodFilterAsynchronouslyRecursive>b__2()
+   en System.Web.Mvc.Async.AsyncControllerActionInvoker.EndInvokeActionMethodWithFilters(IAsyncResult asyncResult)
+   en System.Web.Mvc.Async.AsyncControllerActionInvoker.<>c__DisplayClass3_6.<BeginInvokeAction>b__4()
+   en System.Web.Mvc.Async.AsyncControllerActionInvoker.<>c__DisplayClass3_1.<BeginInvokeAction>b__1(IAsyncResult asyncResult)
+    InnerException: TimeoutException - Timeout during connection attempt
+2026-04-10 12:38:29.403 | INFO  | CID:9c4df5d7d9de | Account/Login | Iniciando acción: Account/Login
+2026-04-10 12:38:44.996 | ERROR | CID:9c4df5d7d9de | Account/Login | Error en acción: Account/Login
+2026-04-10 12:38:45.108 | ERROR | CID:9c4df5d7d9de | Account/Login | ERR:INTERNAL_ERROR | Failed to connect to 172.20.16.55:5432
+    Exception: NpgsqlException
+    StackTrace:    en Npgsql.Internal.NpgsqlConnector.Connect(NpgsqlTimeout timeout)
+   en Npgsql.Internal.NpgsqlConnector.<RawOpen>d__215.MoveNext()
+--- Fin del seguimiento de la pila de la ubicación anterior donde se produjo la excepción ---
+   en System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+   en System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task)
+   en Npgsql.Internal.NpgsqlConnector.<<Open>g__OpenCore|211_1>d.MoveNext()
+--- Fin del seguimiento de la pila de la ubicación anterior donde se produjo la excepción ---
+   en System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+   en System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task)
+   en Npgsql.Internal.NpgsqlConnector.<Open>d__211.MoveNext()
+--- Fin del seguimiento de la pila de la ubicación anterior donde se produjo la excepción ---
+   en System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+   en Npgsql.PoolingDataSource.<OpenNewConnector>d__37.MoveNext()
+--- Fin del seguimiento de la pila de la ubicación anterior donde se produjo la excepción ---
+   en System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+   en System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task)
+   en Npgsql.PoolingDataSource.<<Get>g__RentAsync|34_0>d.MoveNext()
+--- Fin del seguimiento de la pila de la ubicación anterior donde se produjo la excepción ---
+   en System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+   en System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task)
+   en Npgsql.NpgsqlConnection.<<Open>g__OpenAsync|42_0>d.MoveNext()
+--- Fin del seguimiento de la pila de la ubicación anterior donde se produjo la excepción ---
+   en System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+   en System.Runtime.CompilerServices.TaskAwaiter.HandleNonSuccessAndDebuggerNotification(Task task)
+   en Npgsql.NpgsqlConnection.Open()
+   en CapaDatos.DAOs.UsuarioDAO.ObtenerPorNombreUsuario(String loginInput) en C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\CapaDatos\DAOs\UsuarioDAO.cs:línea 47
+   en CapaNegocio.UsuarioBL.Autenticar(String nombreUsuario, String contrasena, Usuario& usuario, List`1& roles, String& mensaje, Boolean actualizarUltimaConexion) en C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\CapaNegocio\UsuarioBL.cs:línea 170
+   en CapaPresentacion.Controllers.AccountController.Login(LoginViewModel model, String returnUrl) en C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\CapaPresentacion\Controllers\AccountController.cs:línea 84
+   en lambda_method(Closure , ControllerBase , Object[] )
+   en System.Web.Mvc.ControllerActionInvoker.InvokeActionMethod(ControllerContext controllerContext, ActionDescriptor actionDescriptor, IDictionary`2 parameters)
+   en System.Web.Mvc.Async.AsyncControllerActionInvoker.<>c.<BeginInvokeSynchronousActionMethod>b__9_0(IAsyncResult asyncResult, ActionInvocation innerInvokeState)
+   en System.Web.Mvc.Async.AsyncResultWrapper.WrappedAsyncResult`2.CallEndDelegate(IAsyncResult asyncResult)
+   en System.Web.Mvc.Async.AsyncControllerActionInvoker.EndInvokeActionMethod(IAsyncResult asyncResult)
+   en System.Web.Mvc.Async.AsyncControllerActionInvoker.AsyncInvocationWithFilters.<>c__DisplayClass11_0.<InvokeActionMethodFilterAsynchronouslyRecursive>b__0()
+   en System.Web.Mvc.Async.AsyncControllerActionInvoker.AsyncInvocationWithFilters.<>c__DisplayClass11_2.<InvokeActionMethodFilterAsynchronouslyRecursive>b__2()
+   en System.Web.Mvc.Async.AsyncControllerActionInvoker.AsyncInvocationWithFilters.<>c__DisplayClass11_2.<InvokeActionMethodFilterAsynchronouslyRecursive>b__2()
+   en System.Web.Mvc.Async.AsyncControllerActionInvoker.AsyncInvocationWithFilters.<>c__DisplayClass11_2.<InvokeActionMethodFilterAsynchronouslyRecursive>b__2()
+   en System.Web.Mvc.Async.AsyncControllerActionInvoker.EndInvokeActionMethodWithFilters(IAsyncResult asyncResult)
+   en System.Web.Mvc.Async.AsyncControllerActionInvoker.<>c__DisplayClass3_6.<BeginInvokeAction>b__4()
+   en System.Web.Mvc.Async.AsyncControllerActionInvoker.<>c__DisplayClass3_1.<BeginInvokeAction>b__1(IAsyncResult asyncResult)
+    InnerException: TimeoutException - Timeout during connection attempt
+2026-04-10 12:38:46.568 | ERROR | CID:N/A | ERR:EMAIL_QUEUE_ERROR | Error al procesar la solicitud. Contacte al administrador.
+    Exception: DataAccessException
+    StackTrace:    en CapaDatos.Infrastructure.BaseDAO.ExecuteWithConnection[T](Func`2 action) en C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\CapaDatos\Infrastructure\BaseDAO.cs:línea 66
+   en CapaDatos.Services.EmailQueueService.<ObtenerSiguienteAsync>d__11.MoveNext() en C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\CapaDatos\Services\EmailQueueService.cs:línea 355
+--- Fin del seguimiento de la pila de la ubicación anterior donde se produjo la excepción ---
+   en System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+   en CapaDatos.Services.EmailQueueProcessor.<ProcessQueueAsync>d__11.MoveNext() en C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\CapaDatos\Services\EmailQueueService.cs:línea 650
+2026-04-10 12:39:31.832 | ERROR | CID:N/A | ERR:EMAIL_QUEUE_ERROR | Error al procesar la solicitud. Contacte al administrador.
+    Exception: DataAccessException
+    StackTrace:    en CapaDatos.Infrastructure.BaseDAO.ExecuteWithConnection[T](Func`2 action) en C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\CapaDatos\Infrastructure\BaseDAO.cs:línea 66
+   en CapaDatos.Services.EmailQueueService.<ObtenerSiguienteAsync>d__11.MoveNext() en C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\CapaDatos\Services\EmailQueueService.cs:línea 355
+--- Fin del seguimiento de la pila de la ubicación anterior donde se produjo la excepción ---
+   en System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+   en CapaDatos.Services.EmailQueueProcessor.<ProcessQueueAsync>d__11.MoveNext() en C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\CapaDatos\Services\EmailQueueService.cs:línea 650
+2026-04-10 12:40:17.131 | ERROR | CID:N/A | ERR:EMAIL_QUEUE_ERROR | Error al procesar la solicitud. Contacte al administrador.
+    Exception: DataAccessException
+    StackTrace:    en CapaDatos.Infrastructure.BaseDAO.ExecuteWithConnection[T](Func`2 action) en C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\CapaDatos\Infrastructure\BaseDAO.cs:línea 66
+   en CapaDatos.Services.EmailQueueService.<ObtenerSiguienteAsync>d__11.MoveNext() en C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\CapaDatos\Services\EmailQueueService.cs:línea 355
+--- Fin del seguimiento de la pila de la ubicación anterior donde se produjo la excepción ---
+   en System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+   en CapaDatos.Services.EmailQueueProcessor.<ProcessQueueAsync>d__11.MoveNext() en C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\CapaDatos\Services\EmailQueueService.cs:línea 650
+2026-04-10 12:41:02.427 | ERROR | CID:N/A | ERR:EMAIL_QUEUE_ERROR | Error al procesar la solicitud. Contacte al administrador.
+    Exception: DataAccessException
+    StackTrace:    en CapaDatos.Infrastructure.BaseDAO.ExecuteWithConnection[T](Func`2 action) en C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\CapaDatos\Infrastructure\BaseDAO.cs:línea 66
+   en CapaDatos.Services.EmailQueueService.<ObtenerSiguienteAsync>d__11.MoveNext() en C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\CapaDatos\Services\EmailQueueService.cs:línea 355
+--- Fin del seguimiento de la pila de la ubicación anterior donde se produjo la excepción ---
+   en System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+   en CapaDatos.Services.EmailQueueProcessor.<ProcessQueueAsync>d__11.MoveNext() en C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\CapaDatos\Services\EmailQueueService.cs:línea 650
+2026-04-10 12:41:47.699 | ERROR | CID:N/A | ERR:EMAIL_QUEUE_ERROR | Error al procesar la solicitud. Contacte al administrador.
+    Exception: DataAccessException
+    StackTrace:    en CapaDatos.Infrastructure.BaseDAO.ExecuteWithConnection[T](Func`2 action) en C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\CapaDatos\Infrastructure\BaseDAO.cs:línea 66
+   en CapaDatos.Services.EmailQueueService.<ObtenerSiguienteAsync>d__11.MoveNext() en C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\CapaDatos\Services\EmailQueueService.cs:línea 355
+--- Fin del seguimiento de la pila de la ubicación anterior donde se produjo la excepción ---
+   en System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+   en CapaDatos.Services.EmailQueueProcessor.<ProcessQueueAsync>d__11.MoveNext() en C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\CapaDatos\Services\EmailQueueService.cs:línea 650
+2026-04-10 12:42:32.956 | ERROR | CID:N/A | ERR:EMAIL_QUEUE_ERROR | Error al procesar la solicitud. Contacte al administrador.
+    Exception: DataAccessException
+    StackTrace:    en CapaDatos.Infrastructure.BaseDAO.ExecuteWithConnection[T](Func`2 action) en C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\CapaDatos\Infrastructure\BaseDAO.cs:línea 66
+   en CapaDatos.Services.EmailQueueService.<ObtenerSiguienteAsync>d__11.MoveNext() en C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\CapaDatos\Services\EmailQueueService.cs:línea 355
+--- Fin del seguimiento de la pila de la ubicación anterior donde se produjo la excepción ---
+   en System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+   en CapaDatos.Services.EmailQueueProcessor.<ProcessQueueAsync>d__11.MoveNext() en C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\CapaDatos\Services\EmailQueueService.cs:línea 650
+2026-04-10 12:43:18.213 | ERROR | CID:N/A | ERR:EMAIL_QUEUE_ERROR | Error al procesar la solicitud. Contacte al administrador.
+    Exception: DataAccessException
+    StackTrace:    en CapaDatos.Infrastructure.BaseDAO.ExecuteWithConnection[T](Func`2 action) en C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\CapaDatos\Infrastructure\BaseDAO.cs:línea 66
+   en CapaDatos.Services.EmailQueueService.<ObtenerSiguienteAsync>d__11.MoveNext() en C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\CapaDatos\Services\EmailQueueService.cs:línea 355
+--- Fin del seguimiento de la pila de la ubicación anterior donde se produjo la excepción ---
+   en System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+   en CapaDatos.Services.EmailQueueProcessor.<ProcessQueueAsync>d__11.MoveNext() en C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\CapaDatos\Services\EmailQueueService.cs:línea 650
+2026-04-10 12:44:03.484 | ERROR | CID:N/A | ERR:EMAIL_QUEUE_ERROR | Error al procesar la solicitud. Contacte al administrador.
+    Exception: DataAccessException
+    StackTrace:    en CapaDatos.Infrastructure.BaseDAO.ExecuteWithConnection[T](Func`2 action) en C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\CapaDatos\Infrastructure\BaseDAO.cs:línea 66
+   en CapaDatos.Services.EmailQueueService.<ObtenerSiguienteAsync>d__11.MoveNext() en C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\CapaDatos\Services\EmailQueueService.cs:línea 355
+--- Fin del seguimiento de la pila de la ubicación anterior donde se produjo la excepción ---
+   en System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+   en CapaDatos.Services.EmailQueueProcessor.<ProcessQueueAsync>d__11.MoveNext() en C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\CapaDatos\Services\EmailQueueService.cs:línea 650
+2026-04-10 12:44:48.740 | ERROR | CID:N/A | ERR:EMAIL_QUEUE_ERROR | Error al procesar la solicitud. Contacte al administrador.
+    Exception: DataAccessException
+    StackTrace:    en CapaDatos.Infrastructure.BaseDAO.ExecuteWithConnection[T](Func`2 action) en C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\CapaDatos\Infrastructure\BaseDAO.cs:línea 66
+   en CapaDatos.Services.EmailQueueService.<ObtenerSiguienteAsync>d__11.MoveNext() en C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\CapaDatos\Services\EmailQueueService.cs:línea 355
+--- Fin del seguimiento de la pila de la ubicación anterior donde se produjo la excepción ---
+   en System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+   en CapaDatos.Services.EmailQueueProcessor.<ProcessQueueAsync>d__11.MoveNext() en C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\CapaDatos\Services\EmailQueueService.cs:línea 650
+2026-04-10 12:45:34.000 | ERROR | CID:N/A | ERR:EMAIL_QUEUE_ERROR | Error al procesar la solicitud. Contacte al administrador.
+    Exception: DataAccessException
+    StackTrace:    en CapaDatos.Infrastructure.BaseDAO.ExecuteWithConnection[T](Func`2 action) en C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\CapaDatos\Infrastructure\BaseDAO.cs:línea 66
+   en CapaDatos.Services.EmailQueueService.<ObtenerSiguienteAsync>d__11.MoveNext() en C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\CapaDatos\Services\EmailQueueService.cs:línea 355
+--- Fin del seguimiento de la pila de la ubicación anterior donde se produjo la excepción ---
+   en System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+   en CapaDatos.Services.EmailQueueProcessor.<ProcessQueueAsync>d__11.MoveNext() en C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\CapaDatos\Services\EmailQueueService.cs:línea 650
+2026-04-10 12:46:19.286 | ERROR | CID:N/A | ERR:EMAIL_QUEUE_ERROR | Error al procesar la solicitud. Contacte al administrador.
+    Exception: DataAccessException
+    StackTrace:    en CapaDatos.Infrastructure.BaseDAO.ExecuteWithConnection[T](Func`2 action) en C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\CapaDatos\Infrastructure\BaseDAO.cs:línea 66
+   en CapaDatos.Services.EmailQueueService.<ObtenerSiguienteAsync>d__11.MoveNext() en C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\CapaDatos\Services\EmailQueueService.cs:línea 355
+--- Fin del seguimiento de la pila de la ubicación anterior donde se produjo la excepción ---
+   en System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+   en CapaDatos.Services.EmailQueueProcessor.<ProcessQueueAsync>d__11.MoveNext() en C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\CapaDatos\Services\EmailQueueService.cs:línea 650
+2026-04-10 12:47:04.557 | ERROR | CID:N/A | ERR:EMAIL_QUEUE_ERROR | Error al procesar la solicitud. Contacte al administrador.
+    Exception: DataAccessException
+    StackTrace:    en CapaDatos.Infrastructure.BaseDAO.ExecuteWithConnection[T](Func`2 action) en C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\CapaDatos\Infrastructure\BaseDAO.cs:línea 66
+   en CapaDatos.Services.EmailQueueService.<ObtenerSiguienteAsync>d__11.MoveNext() en C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\CapaDatos\Services\EmailQueueService.cs:línea 355
+--- Fin del seguimiento de la pila de la ubicación anterior donde se produjo la excepción ---
+   en System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+   en CapaDatos.Services.EmailQueueProcessor.<ProcessQueueAsync>d__11.MoveNext() en C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\CapaDatos\Services\EmailQueueService.cs:línea 650
+2026-04-10 12:47:49.858 | ERROR | CID:N/A | ERR:EMAIL_QUEUE_ERROR | Error al procesar la solicitud. Contacte al administrador.
+    Exception: DataAccessException
+    StackTrace:    en CapaDatos.Infrastructure.BaseDAO.ExecuteWithConnection[T](Func`2 action) en C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\CapaDatos\Infrastructure\BaseDAO.cs:línea 66
+   en CapaDatos.Services.EmailQueueService.<ObtenerSiguienteAsync>d__11.MoveNext() en C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\CapaDatos\Services\EmailQueueService.cs:línea 355
+--- Fin del seguimiento de la pila de la ubicación anterior donde se produjo la excepción ---
+   en System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+   en CapaDatos.Services.EmailQueueProcessor.<ProcessQueueAsync>d__11.MoveNext() en C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\CapaDatos\Services\EmailQueueService.cs:línea 650
+2026-04-10 12:48:35.134 | ERROR | CID:N/A | ERR:EMAIL_QUEUE_ERROR | Error al procesar la solicitud. Contacte al administrador.
+    Exception: DataAccessException
+    StackTrace:    en CapaDatos.Infrastructure.BaseDAO.ExecuteWithConnection[T](Func`2 action) en C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\CapaDatos\Infrastructure\BaseDAO.cs:línea 66
+   en CapaDatos.Services.EmailQueueService.<ObtenerSiguienteAsync>d__11.MoveNext() en C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\CapaDatos\Services\EmailQueueService.cs:línea 355
+--- Fin del seguimiento de la pila de la ubicación anterior donde se produjo la excepción ---
+   en System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+   en CapaDatos.Services.EmailQueueProcessor.<ProcessQueueAsync>d__11.MoveNext() en C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\CapaDatos\Services\EmailQueueService.cs:línea 650
+2026-04-10 12:49:20.417 | ERROR | CID:N/A | ERR:EMAIL_QUEUE_ERROR | Error al procesar la solicitud. Contacte al administrador.
+    Exception: DataAccessException
+    StackTrace:    en CapaDatos.Infrastructure.BaseDAO.ExecuteWithConnection[T](Func`2 action) en C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\CapaDatos\Infrastructure\BaseDAO.cs:línea 66
+   en CapaDatos.Services.EmailQueueService.<ObtenerSiguienteAsync>d__11.MoveNext() en C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\CapaDatos\Services\EmailQueueService.cs:línea 355
+--- Fin del seguimiento de la pila de la ubicación anterior donde se produjo la excepción ---
+   en System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+   en CapaDatos.Services.EmailQueueProcessor.<ProcessQueueAsync>d__11.MoveNext() en C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\CapaDatos\Services\EmailQueueService.cs:línea 650
+2026-04-10 12:50:05.698 | ERROR | CID:N/A | ERR:EMAIL_QUEUE_ERROR | Error al procesar la solicitud. Contacte al administrador.
+    Exception: DataAccessException
+    StackTrace:    en CapaDatos.Infrastructure.BaseDAO.ExecuteWithConnection[T](Func`2 action) en C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\CapaDatos\Infrastructure\BaseDAO.cs:línea 66
+   en CapaDatos.Services.EmailQueueService.<ObtenerSiguienteAsync>d__11.MoveNext() en C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\CapaDatos\Services\EmailQueueService.cs:línea 355
+--- Fin del seguimiento de la pila de la ubicación anterior donde se produjo la excepción ---
+   en System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+   en CapaDatos.Services.EmailQueueProcessor.<ProcessQueueAsync>d__11.MoveNext() en C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\CapaDatos\Services\EmailQueueService.cs:línea 650
+2026-04-10 12:50:50.996 | ERROR | CID:N/A | ERR:EMAIL_QUEUE_ERROR | Error al procesar la solicitud. Contacte al administrador.
+    Exception: DataAccessException
+    StackTrace:    en CapaDatos.Infrastructure.BaseDAO.ExecuteWithConnection[T](Func`2 action) en C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\CapaDatos\Infrastructure\BaseDAO.cs:línea 66
+   en CapaDatos.Services.EmailQueueService.<ObtenerSiguienteAsync>d__11.MoveNext() en C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\CapaDatos\Services\EmailQueueService.cs:línea 355
+--- Fin del seguimiento de la pila de la ubicación anterior donde se produjo la excepción ---
+   en System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+   en CapaDatos.Services.EmailQueueProcessor.<ProcessQueueAsync>d__11.MoveNext() en C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\CapaDatos\Services\EmailQueueService.cs:línea 650
+2026-04-10 12:51:36.270 | ERROR | CID:N/A | ERR:EMAIL_QUEUE_ERROR | Error al procesar la solicitud. Contacte al administrador.
+    Exception: DataAccessException
+    StackTrace:    en CapaDatos.Infrastructure.BaseDAO.ExecuteWithConnection[T](Func`2 action) en C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\CapaDatos\Infrastructure\BaseDAO.cs:línea 66
+   en CapaDatos.Services.EmailQueueService.<ObtenerSiguienteAsync>d__11.MoveNext() en C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\CapaDatos\Services\EmailQueueService.cs:línea 355
+--- Fin del seguimiento de la pila de la ubicación anterior donde se produjo la excepción ---
+   en System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+   en CapaDatos.Services.EmailQueueProcessor.<ProcessQueueAsync>d__11.MoveNext() en C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\CapaDatos\Services\EmailQueueService.cs:línea 650
+2026-04-10 12:52:21.538 | ERROR | CID:N/A | ERR:EMAIL_QUEUE_ERROR | Error al procesar la solicitud. Contacte al administrador.
+    Exception: DataAccessException
+    StackTrace:    en CapaDatos.Infrastructure.BaseDAO.ExecuteWithConnection[T](Func`2 action) en C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\CapaDatos\Infrastructure\BaseDAO.cs:línea 66
+   en CapaDatos.Services.EmailQueueService.<ObtenerSiguienteAsync>d__11.MoveNext() en C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\CapaDatos\Services\EmailQueueService.cs:línea 355
+--- Fin del seguimiento de la pila de la ubicación anterior donde se produjo la excepción ---
+   en System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+   en CapaDatos.Services.EmailQueueProcessor.<ProcessQueueAsync>d__11.MoveNext() en C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\CapaDatos\Services\EmailQueueService.cs:línea 650
+2026-04-10 12:53:06.841 | ERROR | CID:N/A | ERR:EMAIL_QUEUE_ERROR | Error al procesar la solicitud. Contacte al administrador.
+    Exception: DataAccessException
+    StackTrace:    en CapaDatos.Infrastructure.BaseDAO.ExecuteWithConnection[T](Func`2 action) en C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\CapaDatos\Infrastructure\BaseDAO.cs:línea 66
+   en CapaDatos.Services.EmailQueueService.<ObtenerSiguienteAsync>d__11.MoveNext() en C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\CapaDatos\Services\EmailQueueService.cs:línea 355
+--- Fin del seguimiento de la pila de la ubicación anterior donde se produjo la excepción ---
+   en System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+   en CapaDatos.Services.EmailQueueProcessor.<ProcessQueueAsync>d__11.MoveNext() en C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\CapaDatos\Services\EmailQueueService.cs:línea 650
+2026-04-10 12:53:52.130 | ERROR | CID:N/A | ERR:EMAIL_QUEUE_ERROR | Error al procesar la solicitud. Contacte al administrador.
+    Exception: DataAccessException
+    StackTrace:    en CapaDatos.Infrastructure.BaseDAO.ExecuteWithConnection[T](Func`2 action) en C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\CapaDatos\Infrastructure\BaseDAO.cs:línea 66
+   en CapaDatos.Services.EmailQueueService.<ObtenerSiguienteAsync>d__11.MoveNext() en C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\CapaDatos\Services\EmailQueueService.cs:línea 355
+--- Fin del seguimiento de la pila de la ubicación anterior donde se produjo la excepción ---
+   en System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+   en CapaDatos.Services.EmailQueueProcessor.<ProcessQueueAsync>d__11.MoveNext() en C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\CapaDatos\Services\EmailQueueService.cs:línea 650
+2026-04-10 12:54:37.424 | ERROR | CID:N/A | ERR:EMAIL_QUEUE_ERROR | Error al procesar la solicitud. Contacte al administrador.
+    Exception: DataAccessException
+    StackTrace:    en CapaDatos.Infrastructure.BaseDAO.ExecuteWithConnection[T](Func`2 action) en C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\CapaDatos\Infrastructure\BaseDAO.cs:línea 66
+   en CapaDatos.Services.EmailQueueService.<ObtenerSiguienteAsync>d__11.MoveNext() en C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\CapaDatos\Services\EmailQueueService.cs:línea 355
+--- Fin del seguimiento de la pila de la ubicación anterior donde se produjo la excepción ---
+   en System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+   en CapaDatos.Services.EmailQueueProcessor.<ProcessQueueAsync>d__11.MoveNext() en C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\CapaDatos\Services\EmailQueueService.cs:línea 650
+2026-04-10 12:55:22.690 | ERROR | CID:N/A | ERR:EMAIL_QUEUE_ERROR | Error al procesar la solicitud. Contacte al administrador.
+    Exception: DataAccessException
+    StackTrace:    en CapaDatos.Infrastructure.BaseDAO.ExecuteWithConnection[T](Func`2 action) en C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\CapaDatos\Infrastructure\BaseDAO.cs:línea 66
+   en CapaDatos.Services.EmailQueueService.<ObtenerSiguienteAsync>d__11.MoveNext() en C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\CapaDatos\Services\EmailQueueService.cs:línea 355
+--- Fin del seguimiento de la pila de la ubicación anterior donde se produjo la excepción ---
+   en System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+   en CapaDatos.Services.EmailQueueProcessor.<ProcessQueueAsync>d__11.MoveNext() en C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\CapaDatos\Services\EmailQueueService.cs:línea 650
+2026-04-10 12:56:07.968 | ERROR | CID:N/A | ERR:EMAIL_QUEUE_ERROR | Error al procesar la solicitud. Contacte al administrador.
+    Exception: DataAccessException
+    StackTrace:    en CapaDatos.Infrastructure.BaseDAO.ExecuteWithConnection[T](Func`2 action) en C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\CapaDatos\Infrastructure\BaseDAO.cs:línea 66
+   en CapaDatos.Services.EmailQueueService.<ObtenerSiguienteAsync>d__11.MoveNext() en C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\CapaDatos\Services\EmailQueueService.cs:línea 355
+--- Fin del seguimiento de la pila de la ubicación anterior donde se produjo la excepción ---
+   en System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+   en CapaDatos.Services.EmailQueueProcessor.<ProcessQueueAsync>d__11.MoveNext() en C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\CapaDatos\Services\EmailQueueService.cs:línea 650
+2026-04-10 12:56:40.281 | ERROR | CID:N/A | ERR:EMAIL_QUEUE_ERROR | Error al procesar la solicitud. Contacte al administrador.
+    Exception: DataAccessException
+    StackTrace:    en CapaDatos.Infrastructure.BaseDAO.ExecuteWithConnection[T](Func`2 action) en C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\CapaDatos\Infrastructure\BaseDAO.cs:línea 66
+   en CapaDatos.Services.EmailQueueService.<ObtenerSiguienteAsync>d__11.MoveNext() en C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\CapaDatos\Services\EmailQueueService.cs:línea 355
+--- Fin del seguimiento de la pila de la ubicación anterior donde se produjo la excepción ---
+   en System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw()
+   en CapaDatos.Services.EmailQueueProcessor.<ProcessQueueAsync>d__11.MoveNext() en C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\CapaDatos\Services\EmailQueueService.cs:línea 650
+2026-04-10 12:58:33.771 | INFO  | CID:b44e71c92abf | Account/Login | Iniciando acción: Account/Login
+2026-04-10 12:58:35.604 | INFO  | CID:b44e71c92abf | Account/Login | Acción completada: Account/Login
+2026-04-10 13:12:47.219 | INFO  | CID:5641e724408f | USR:USU_ADMIN | CoordinacionJefatura/CargarDatosFirmaDigitalAocr | Iniciando acción: CoordinacionJefatura/CargarDatosFirmaDigitalAocr
+2026-04-10 13:12:47.609 | INFO  | CID:5641e724408f | USR:USU_ADMIN | CoordinacionJefatura/CargarDatosFirmaDigitalAocr | Acción completada: CoordinacionJefatura/CargarDatosFirmaDigitalAocr
+2026-04-10 13:12:56.067 | INFO  | CID:bf70d5a35fae | USR:USU_ADMIN | CoordinacionJefatura/GenerarDocumentoValidacionAocr | Iniciando acción: CoordinacionJefatura/GenerarDocumentoValidacionAocr
+2026-04-10 13:13:02.439 | INFO  | CID:bf70d5a35fae | USR:USU_ADMIN | CoordinacionJefatura/GenerarDocumentoValidacionAocr | Acción completada: CoordinacionJefatura/GenerarDocumentoValidacionAocr
+2026-04-10 13:13:47.270 | INFO  | CID:972424a715bd | USR:USU_ADMIN | SolicitudAOCR/Legalizar | Iniciando acción: SolicitudAOCR/Legalizar
+2026-04-10 13:13:47.284 | INFO  | CID:972424a715bd | USR:USU_ADMIN | SolicitudAOCR/Legalizar | Acción completada: SolicitudAOCR/Legalizar
+2026-04-10 13:23:29.971 | INFO  | CID:N/A | Deteniendo procesador de cola de correos
+2026-04-10 13:23:29.990 | INFO  | CID:N/A | Deteniendo procesador de cola de correos
+2026-04-10 13:23:59.700 | INFO  | CID:N/A | Iniciando procesador de cola de correos
+2026-04-10 13:25:06.563 | INFO  | CID:N/A | Iniciando procesador de cola de correos
+2026-04-10 13:25:30.059 | INFO  | CID:b39ebbaa1bcd | Account/Login | Iniciando acción: Account/Login
+2026-04-10 13:25:30.784 | INFO  | CID:b39ebbaa1bcd | Account/Login | Acción completada: Account/Login
+2026-04-10 13:33:08.806 | INFO  | CID:N/A | Iniciando procesador de cola de correos
+2026-04-10 13:33:30.054 | INFO  | CID:cac6f8bddd65 | Account/Login | Iniciando acción: Account/Login
+2026-04-10 13:33:30.750 | INFO  | CID:cac6f8bddd65 | Account/Login | Acción completada: Account/Login
+2026-04-10 13:34:12.053 | INFO  | CID:966b98e02a25 | USR:USU_ADMIN | SolicitudAOCR/Legalizar | Iniciando acción: SolicitudAOCR/Legalizar
+2026-04-10 13:34:13.881 | INFO  | CID:966b98e02a25 | USR:USU_ADMIN | SolicitudAOCR/Legalizar | Acción completada: SolicitudAOCR/Legalizar
+2026-04-10 13:34:22.010 | INFO  | CID:N/A | Procesando email 157 para gercavi82@gmail.com
+2026-04-10 13:34:22.396 | INFO  | CID:N/A | Email 157 enviado exitosamente
+2026-04-10 13:34:22.507 | INFO  | CID:N/A | Procesando email 158 para gercavi82@gmail.com
+2026-04-10 13:34:22.668 | INFO  | CID:N/A | Email 158 enviado exitosamente
+2026-04-10 13:34:30.782 | INFO  | CID:77c88502d485 | USR:USU_ADMIN | SolicitudAOCR/Legalizar | Iniciando acción: SolicitudAOCR/Legalizar
+2026-04-10 13:34:32.088 | INFO  | CID:77c88502d485 | USR:USU_ADMIN | SolicitudAOCR/Legalizar | Acción completada: SolicitudAOCR/Legalizar
+2026-04-10 13:34:32.742 | INFO  | CID:N/A | Procesando email 159 para gercavi82@gmail.com
+2026-04-10 13:34:32.896 | INFO  | CID:N/A | Email 159 enviado exitosamente
+2026-04-10 13:34:32.932 | INFO  | CID:N/A | Procesando email 160 para gercavi82@gmail.com
+2026-04-10 13:34:33.166 | INFO  | CID:N/A | Email 160 enviado exitosamente

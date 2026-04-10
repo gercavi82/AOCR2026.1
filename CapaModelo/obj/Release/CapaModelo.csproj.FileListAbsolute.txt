@@ -1,0 +1,6 @@
+C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\CapaModelo\bin\Release\CapaModelo.dll
+C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\CapaModelo\bin\Release\CapaModelo.pdb
+C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\CapaModelo\obj\Release\CapaModelo.csproj.AssemblyReference.cache
+C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\CapaModelo\obj\Release\CapaModelo.csproj.CoreCompileInputs.cache
+C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\CapaModelo\obj\Release\CapaModelo.dll
+C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\CapaModelo\obj\Release\CapaModelo.pdb

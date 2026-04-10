@@ -1,0 +1,56 @@
+﻿@inherits System.Web.Mvc.WebViewPage<List<CapaModelo.SolicitudAOCR>>
+@using CapaModelo
+@using System.Web.Mvc
+@using System.Web.Mvc.Html
+
+@{
+    ViewBag.Title = "Solicitudes para Validación Técnica";
+    Layout = "~/Views/Shared/_LayoutAOCR.cshtml";
+}
+
+<h2 class="mb-4">Solicitudes pendientes de Validación Técnica</h2>
+
+@if (TempData["Error"] != null)
+{
+    <div class="alert alert-danger">@TempData["Error"]</div>
+}
+
+@if (Model != null && Model.Count > 0)
+{
+    <table class="table table-bordered">
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Operador</th>
+                <th>Tipo</th>
+                <th>Fecha</th>
+                <th>Estado</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var s in Model)
+            {
+                <tr>
+                    <td>@Html.Encode(s.CodigoSolicitud)</td>
+                    <td>@Html.Encode(s.NombreOperador)</td>
+                    <td>@Html.Encode(s.TipoSolicitud)</td>
+                    <td>@Html.Encode(s.FechaSolicitud.HasValue ? s.FechaSolicitud.Value.ToString("yyyy-MM-dd") : "")</td>
+                    <td>@Html.Encode(s.Estado)</td>
+                    <td>
+                        <a href="@Url.Action("Detalle", "SolicitudAOCR", new { id = s.CodigoSolicitud })" class="btn btn-sm btn-info">
+                            Revisar
+                        </a>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+else
+{
+    <div class="alert alert-info">No hay solicitudes pendientes para revisión técnica.</div>
+}
+
+
+
