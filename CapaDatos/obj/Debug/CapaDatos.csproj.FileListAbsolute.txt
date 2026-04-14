@@ -10,6 +10,7 @@ C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\CapaDatos\bin\Debug\EntityFramework.dll
 C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\CapaDatos\bin\Debug\EntityFramework.SqlServer.dll
 C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\CapaDatos\bin\Debug\IBM.Data.DB2.iSeries.dll
 C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\CapaDatos\bin\Debug\itextsharp.dll
+C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\CapaDatos\bin\Debug\Microsoft.AspNet.Scaffolding.12.0.dll
 C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\CapaDatos\bin\Debug\Microsoft.Bcl.AsyncInterfaces.dll
 C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\CapaDatos\bin\Debug\Microsoft.Bcl.HashCode.dll
 C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\CapaDatos\bin\Debug\Microsoft.Extensions.DependencyInjection.Abstractions.dll
@@ -78,4 +79,3 @@ C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\CapaDatos\obj\Debug\CapaDatos.csproj.Core
 C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\CapaDatos\obj\Debug\CapaDatos.csproj.Up2Date
 C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\CapaDatos\obj\Debug\CapaDatos.dll
 C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\CapaDatos\obj\Debug\CapaDatos.pdb
-C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\CapaDatos\bin\Debug\Microsoft.AspNet.Scaffolding.12.0.dll

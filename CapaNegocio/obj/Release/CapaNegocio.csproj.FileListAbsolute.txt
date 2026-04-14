@@ -5,6 +5,8 @@ C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\CapaNegocio\bin\Release\BouncyCastle.Cryp
 C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\CapaNegocio\bin\Release\CapaDatos.dll
 C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\CapaNegocio\bin\Release\CapaModelo.dll
 C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\CapaNegocio\bin\Release\ClassLibrary1.dll
+C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\CapaNegocio\bin\Release\EntityFramework.dll
+C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\CapaNegocio\bin\Release\EntityFramework.SqlServer.dll
 C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\CapaNegocio\bin\Release\itextsharp.dll
 C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\CapaNegocio\bin\Release\Microsoft.Bcl.AsyncInterfaces.dll
 C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\CapaNegocio\bin\Release\Microsoft.Bcl.HashCode.dll
@@ -32,6 +34,8 @@ C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\CapaNegocio\bin\Release\CapaDatos.dll.con
 C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\CapaNegocio\bin\Release\CapaModelo.pdb
 C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\CapaNegocio\bin\Release\ClassLibrary1.pdb
 C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\CapaNegocio\bin\Release\BouncyCastle.Cryptography.xml
+C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\CapaNegocio\bin\Release\EntityFramework.xml
+C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\CapaNegocio\bin\Release\EntityFramework.SqlServer.xml
 C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\CapaNegocio\bin\Release\itextsharp.xml
 C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\CapaNegocio\bin\Release\Microsoft.Bcl.AsyncInterfaces.xml
 C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\CapaNegocio\bin\Release\Microsoft.Bcl.HashCode.xml

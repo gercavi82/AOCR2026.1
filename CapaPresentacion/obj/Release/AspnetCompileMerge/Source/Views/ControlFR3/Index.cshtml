@@ -1,0 +1,217 @@
+@inherits System.Web.Mvc.WebViewPage<List<CapaDatos.Entidades.ControlFR3>>
+@using System.Web.Mvc
+@using System.Web.Mvc.Html
+@{
+    ViewBag.Title = "Control FR3 - Vuelos Charter";
+    Layout = "~/Views/Shared/_LayoutAOCR.cshtml";
+
+    var stats = ViewBag.Estadisticas as System.Collections.Generic.Dictionary<string, int>;
+    int totalRegistros = ViewBag.TotalRegistros != null ? (int)ViewBag.TotalRegistros : 0;
+    int emitidos = stats != null && stats.ContainsKey("E") ? stats["E"] : 0;
+    int procesados = stats != null && stats.ContainsKey("P") ? stats["P"] : 0;
+    int pagados = stats != null && stats.ContainsKey("G") ? stats["G"] : 0;
+}
+
+<!-- Encabezado -->
+<div class="container-fluid px-4 mt-3">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <div>
+            <h3 class="fw-bold text-primary mb-0">
+                <i class="fas fa-plane-departure me-2"></i>Control FR3 - Vuelos Charter/Especiales
+            </h3>
+            <small class="text-muted">Gestión de comprobantes de cobro para vuelos charter y especiales</small>
+        </div>
+        <div>
+            @if (User.IsInRole("Administrador") || User.IsInRole("Operador"))
+            {
+                <a href="@Url.Action("Nuevo")" class="btn btn-primary">
+                    <i class="fas fa-plus me-1"></i> Nuevo FR3
+                </a>
+            }
+        </div>
+    </div>
+
+    <!-- Mensajes -->
+    @if (TempData["OK"] != null)
+    {
+        <div class="alert alert-success alert-dismissible fade show" role="alert">
+            <i class="fas fa-check-circle me-1"></i> @TempData["OK"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    }
+    @if (TempData["Error"] != null)
+    {
+        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+            <i class="fas fa-exclamation-circle me-1"></i> @TempData["Error"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    }
+
+    <!-- Estadísticas -->
+    <div class="row mb-3">
+        <div class="col-md-3">
+            <div class="card border-start border-primary border-4 shadow-sm">
+                <div class="card-body py-2">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div><small class="text-muted">Total</small><h4 class="mb-0 fw-bold">@totalRegistros</h4></div>
+                        <i class="fas fa-file-alt fa-2x text-primary opacity-50"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card border-start border-warning border-4 shadow-sm">
+                <div class="card-body py-2">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div><small class="text-muted">Emitidos</small><h4 class="mb-0 fw-bold">@emitidos</h4></div>
+                        <i class="fas fa-paper-plane fa-2x text-warning opacity-50"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card border-start border-info border-4 shadow-sm">
+                <div class="card-body py-2">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div><small class="text-muted">Procesados</small><h4 class="mb-0 fw-bold">@procesados</h4></div>
+                        <i class="fas fa-cogs fa-2x text-info opacity-50"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card border-start border-success border-4 shadow-sm">
+                <div class="card-body py-2">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div><small class="text-muted">Pagados</small><h4 class="mb-0 fw-bold">@pagados</h4></div>
+                        <i class="fas fa-check-double fa-2x text-success opacity-50"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filtros -->
+    <div class="card shadow-sm mb-3">
+        <div class="card-body py-2">
+            <form method="get" class="row g-2 align-items-end">
+                <div class="col-md-3">
+                    <label class="form-label small mb-0">Aeropuerto</label>
+                    @Html.DropDownList("aeropuerto", ViewBag.Aeropuertos as IEnumerable<SelectListItem>, new { @class = "form-select form-select-sm" })
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label small mb-0">Año</label>
+                    <input type="text" name="anio" value="@ViewBag.Anio" class="form-control form-control-sm" maxlength="4" />
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label small mb-0">Estado</label>
+                    @Html.DropDownList("estado", ViewBag.Estados as IEnumerable<SelectListItem>, new { @class = "form-select form-select-sm" })
+                </div>
+                <div class="col-md-2">
+                    <button type="submit" class="btn btn-sm btn-outline-primary w-100">
+                        <i class="fas fa-search me-1"></i> Filtrar
+                    </button>
+                </div>
+                <div class="col-md-2">
+                    <a href="@Url.Action("Index")" class="btn btn-sm btn-outline-secondary w-100">
+                        <i class="fas fa-eraser me-1"></i> Limpiar
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Tabla -->
+    <div class="card shadow-sm">
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover table-striped mb-0" id="tablaFR3">
+                    <thead class="table-dark">
+                        <tr>
+                            <th>Sec.</th>
+                            <th>Aeropuerto</th>
+                            <th>Año</th>
+                            <th>Matrícula</th>
+                            <th>Compañía</th>
+                            <th>Ruta</th>
+                            <th>Tipo</th>
+                            <th class="text-end">Gran Total</th>
+                            <th>Estado</th>
+                            <th>Fecha</th>
+                            <th class="text-center">Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @if (Model != null && Model.Count > 0)
+                        {
+                            foreach (var item in Model)
+                            {
+                                var badgeClass = item.Estado == "E" ? "bg-warning" :
+                                                 item.Estado == "P" ? "bg-info" :
+                                                 item.Estado == "G" ? "bg-success" :
+                                                 item.Estado == "A" ? "bg-danger" : "bg-secondary";
+                                var estadoTexto = item.Estado == "E" ? "Emitido" :
+                                                  item.Estado == "P" ? "Procesado" :
+                                                  item.Estado == "G" ? "Pagado" :
+                                                  item.Estado == "A" ? "Anulado" : item.Estado;
+                                <tr>
+                                    <td><strong>@item.Secuencial</strong></td>
+                                    <td>@item.Aeropuerto</td>
+                                    <td>@item.Anio</td>
+                                    <td><code>@item.Matricula</code></td>
+                                    <td>@(string.IsNullOrWhiteSpace(item.NombreCia) ? item.NombreCliente : item.NombreCia)</td>
+                                    <td>
+                                        <small>@item.Origen → @item.Destino</small>
+                                        @if (!string.IsNullOrWhiteSpace(item.Retorno))
+                                        {
+                                            <small class="text-muted"> → @item.Retorno</small>
+                                        }
+                                    </td>
+                                    <td><small>@(item.NacInter == "N" ? "Nac." : "Int.")</small></td>
+                                    <td class="text-end fw-bold">$@item.GranTotal.ToString("N2")</td>
+                                    <td><span class="badge @badgeClass">@estadoTexto</span></td>
+                                    <td><small>@item.FechaCreacion.ToString("dd/MM/yyyy")</small></td>
+                                    <td class="text-center">
+                                        <a href="@Url.Action("Detalles", new { id = item.Id })" class="btn btn-sm btn-outline-primary" title="Ver detalles">
+                                            <i class="fas fa-eye"></i>
+                                        </a>
+                                        @if (User.IsInRole("Administrador") || User.IsInRole("Operador"))
+                                        {
+                                            <a href="@Url.Action("Editar", new { id = item.Id })" class="btn btn-sm btn-outline-warning" title="Editar">
+                                                <i class="fas fa-edit"></i>
+                                            </a>
+                                        }
+                                    </td>
+                                </tr>
+                            }
+                        }
+                        else
+                        {
+                            <tr>
+                                <td colspan="11" class="text-center py-4 text-muted">
+                                    <i class="fas fa-inbox fa-3x mb-2 d-block"></i>
+                                    No se encontraron controles FR3. Utilice los filtros o cree un nuevo registro.
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section scripts {
+    <script>
+        $(document).ready(function () {
+            if ($.fn.DataTable) {
+                $('#tablaFR3').DataTable({
+                    language: { url: '//cdn.datatables.net/plug-ins/1.13.6/i18n/es-ES.json' },
+                    pageLength: 25,
+                    order: [[0, 'desc']],
+                    responsive: true
+                });
+            }
+        });
+    </script>
+}

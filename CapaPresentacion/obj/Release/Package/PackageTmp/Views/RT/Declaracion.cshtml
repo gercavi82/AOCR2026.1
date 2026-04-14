@@ -1,0 +1,68 @@
+﻿@model CapaModelo.RT.ViewModels.DeclaracionRTVM
+@{
+    Layout = "~/Views/Shared/_LayoutAOCR.cshtml";
+    ViewBag.Title = "Declaración de Responsabilidad";
+    bool bloqueado = string.Equals(Model.Estado, "ENVIADA", System.StringComparison.OrdinalIgnoreCase);
+}
+
+<div class="container mt-4">
+    <div class="card shadow-sm">
+        <div class="card-header bg-primary text-white">
+            <h4 class="mb-0">Declaración de Responsabilidad</h4>
+        </div>
+        <div class="card-body">
+            @if (TempData["Ok"] != null)
+            {
+                <div class="alert alert-success">@TempData["Ok"]</div>
+            }
+            @if (TempData["Error"] != null)
+            {
+                <div class="alert alert-danger">@TempData["Error"]</div>
+            }
+
+            @if (bloqueado)
+            {
+                <div class="alert alert-info">
+                    La solicitud ya fue enviada y está en revisión por Coordinador.
+                </div>
+            }
+
+            @using (Html.BeginForm("AceptarDeclaracion", "RT", FormMethod.Post))
+            {
+                @Html.AntiForgeryToken()
+                @Html.HiddenFor(m => m.SolicitudId)
+                @Html.HiddenFor(m => m.TextoDeclaracion)
+                @Html.HiddenFor(m => m.Estado)
+
+                <div class="mb-3">
+                    <a class="btn btn-outline-primary"
+                       href="@Url.Action("DescargarDeclaracionPdf", "RT", new { solicitudId = Model.SolicitudId })"
+                       target="_blank">
+                        Descargar declaración (PDF)
+                    </a>
+                    <small class="text-muted d-block mt-2">
+                        Descargue, firme y luego suba el PDF en el paso de Designación.
+                    </small>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">Texto de la declaración</label>
+                    <textarea class="form-control" rows="8" readonly>@Model.TextoDeclaracion</textarea>
+                </div>
+
+                <div class="form-check mb-3">
+                    @Html.CheckBoxFor(m => m.Acepto, new { @class = "form-check-input", disabled = bloqueado ? "disabled" : null })
+                    <label class="form-check-label">Acepto la declaración de responsabilidad</label>
+                    @Html.ValidationMessageFor(m => m.Acepto, "", new { @class = "text-danger" })
+                </div>
+
+                <div class="d-flex justify-content-between">
+                    <span class="badge bg-secondary">Estado: @Model.Estado</span>
+                    <button type="submit" class="btn btn-primary" @(bloqueado ? "disabled" : "")>
+                        Aceptar y continuar
+                    </button>
+                </div>
+            }
+        </div>
+    </div>
+</div>

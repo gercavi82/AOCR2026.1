@@ -32,7 +32,6 @@ C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\CapaNegocio\bin\Debug\CapaDatos.dll.confi
 C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\CapaNegocio\bin\Debug\CapaModelo.pdb
 C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\CapaNegocio\bin\Debug\ClassLibrary1.pdb
 C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\CapaNegocio\bin\Debug\BouncyCastle.Cryptography.xml
-C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\CapaNegocio\bin\Debug\EntityFramework.xml
 C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\CapaNegocio\bin\Debug\itextsharp.xml
 C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\CapaNegocio\bin\Debug\Microsoft.Bcl.AsyncInterfaces.xml
 C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\CapaNegocio\bin\Debug\Microsoft.Bcl.HashCode.xml

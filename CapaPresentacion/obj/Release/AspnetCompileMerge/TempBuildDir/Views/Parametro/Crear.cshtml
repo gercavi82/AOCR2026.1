@@ -1,0 +1,68 @@
+﻿@inherits System.Web.Mvc.WebViewPage<Parametro>
+@using CapaModelo
+@using System.Web.Mvc
+@using System.Web.Mvc.Html
+@{
+    ViewBag.Title = "Crear Parámetro";
+}
+
+<div class="container">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card shadow">
+                <div class="card-header bg-secondary text-white">
+                    <h4 class="mb-0"><i class="fas fa-plus-circle"></i> Crear Nuevo Parámetro</h4>
+                </div>
+                <div class="card-body">
+                    @using (Html.BeginForm("Crear", "Parametro", FormMethod.Post))
+                    {
+                        @Html.AntiForgeryToken()
+                        <div class="mb-3">
+                            @Html.LabelFor(m => m.Clave, new { @class = "form-label" })
+                            @Html.TextBoxFor(m => m.Clave, new { @class = "form-control", required = "required", placeholder = "Ej: MAX_INTENTOS_LOGIN", style = "text-transform: uppercase;" })
+                            <small class="form-text text-muted">Use mayúsculas y guiones bajos</small>
+                            @Html.ValidationMessageFor(m => m.Clave, "", new { @class = "text-danger" })
+                        </div>
+
+                        <div class="mb-3">
+                            @Html.LabelFor(m => m.Valor, new { @class = "form-label" })
+                            @Html.TextBoxFor(m => m.Valor, new { @class = "form-control", required = "required", placeholder = "Valor del parámetro" })
+                            @Html.ValidationMessageFor(m => m.Valor, "", new { @class = "text-danger" })
+                        </div>
+
+                        <div class="mb-3">
+                            @Html.LabelFor(m => m.Descripcion, new { @class = "form-label" })
+                            @Html.TextAreaFor(m => m.Descripcion, new { @class = "form-control", rows = 3, placeholder = "Descripción del parámetro y su uso" })
+                            @Html.ValidationMessageFor(m => m.Descripcion, "", new { @class = "text-danger" })
+                        </div>
+
+                        <div class="alert alert-info">
+                            <i class="fas fa-info-circle"></i>
+                            Los parámetros del sistema son sensibles. Asegúrese de documentar correctamente su uso.
+                        </div>
+
+                        <hr />
+
+                        <div class="d-flex justify-content-between">
+                            <a href="@Url.Action("Index", "Parametro")" class="btn btn-secondary">
+                                <i class="fas fa-arrow-left"></i> Cancelar
+                            </a>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-save"></i> Guardar Parámetro
+                            </button>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        $('input[name="Clave"]').on('input', function() {
+            $(this).val($(this).val().toUpperCase().replace(/\s+/g, '_'));
+        });
+    </script>
+}
+

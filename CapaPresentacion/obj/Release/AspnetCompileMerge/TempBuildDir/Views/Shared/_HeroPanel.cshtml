@@ -1,0 +1,49 @@
+﻿@using System.Web
+@{
+    var kicker = ViewData["Kicker"] as string ?? string.Empty;
+    var title = ViewData["Title"] as string ?? string.Empty;
+    var subtitle = ViewData["Subtitle"] as string ?? string.Empty;
+    var description = ViewData["Description"] as string ?? string.Empty;
+    var metricTitle = ViewData["MetricTitle"] as string ?? ViewData["MetricLabel"] as string ?? string.Empty;
+    var metricValue = ViewData["MetricValue"] ?? string.Empty;
+    var metricSubtitle = ViewData["MetricSubtitle"] as string ?? string.Empty;
+    var showMetric = !(metricValue == null || string.IsNullOrWhiteSpace(metricValue.ToString()));
+}
+<div class="card aocr-hero aocr-hero-panel">
+    <div class="card-body aocr-hero-panel__body">
+        <div class="aocr-hero-panel__layout">
+            <div>
+                @if (!string.IsNullOrWhiteSpace(kicker))
+                {
+                    <p class="aocr-hero-kicker aocr-hero-overline"><i class="fas fa-landmark"></i><span>@kicker</span></p>
+                }
+                @if (!string.IsNullOrWhiteSpace(title))
+                {
+                    <h2 class="aocr-hero-title">@Html.Raw(HttpUtility.HtmlEncode(title))</h2>
+                }
+                @if (!string.IsNullOrWhiteSpace(subtitle))
+                {
+                    <p class="aocr-hero-subtitle">@Html.Raw(HttpUtility.HtmlEncode(subtitle))</p>
+                }
+                @if (!string.IsNullOrWhiteSpace(description))
+                {
+                    <p class="aocr-hero-description">@Html.Raw(HttpUtility.HtmlEncode(description))</p>
+                }
+            </div>
+            @if (showMetric)
+            {
+                <div class="aocr-hero-metric aocr-hero-panel__metric">
+                    @if (!string.IsNullOrWhiteSpace(metricTitle))
+                    {
+                        <span class="aocr-hero-metric-title">@metricTitle</span>
+                    }
+                    <span class="aocr-hero-metric-value">@metricValue</span>
+                    @if (!string.IsNullOrWhiteSpace(metricSubtitle))
+                    {
+                        <span class="aocr-hero-metric-subtitle">@metricSubtitle</span>
+                    }
+                </div>
+            }
+        </div>
+    </div>
+</div>

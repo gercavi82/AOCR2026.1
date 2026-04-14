@@ -1,0 +1,146 @@
+﻿@inherits System.Web.Mvc.WebViewPage<List<CapaModelo.Documento>>
+@using CapaModelo
+@using CapaPresentacion.Helpers
+@using System.Web.Mvc
+@using System.Web.Mvc.Html
+@using System.Collections.Generic
+@using System.Linq
+
+@{
+    ViewBag.Title = "Documentos de la Solicitud AOCR";
+    Layout = "~/Views/Shared/_LayoutAOCR.cshtml";
+
+    var solicitudIdRaw = ViewData["SolicitudId"] ?? ViewBag.SolicitudId;
+    var solicitudIdTexto = solicitudIdRaw != null ? solicitudIdRaw.ToString() : string.Empty;
+
+    var stats = (ViewBag.Stats as IDictionary<string, object>)
+                ?? (ViewBag.Estadisticas as IDictionary<string, object>)
+                ?? new Dictionary<string, object>();
+
+    Func<string, int> statInt = key =>
+    {
+        object value;
+        if (!stats.TryGetValue(key, out value) || value == null)
+        {
+            return 0;
+        }
+
+        int parsed;
+        return int.TryParse(value.ToString(), out parsed) ? parsed : 0;
+    };
+
+    var totalDocs = statInt("Total");
+    var pendientesDocs = statInt("Pendientes");
+    var aprobadosDocs = statInt("Aprobados");
+    var rechazadosDocs = statInt("Rechazados");
+    var tamanioTotal = statInt("TamanioTotal");
+}
+
+@Html.Partial("_PageHeader", null, new ViewDataDictionary {
+    { "Title", string.IsNullOrWhiteSpace(solicitudIdTexto) ? "Documentos de la Solicitud" : "Documentos de la Solicitud (#" + solicitudIdTexto + ")" },
+    { "Subtitle", "Archivos cargados para esta solicitud AOCR" }
+})
+
+@if (TempData["Error"] != null)
+{
+    <div class="alert alert-aocr alert-danger mb-3"><i class="fas fa-exclamation-circle me-1"></i> @TempData["Error"]</div>
+}
+@if (TempData["Exito"] != null)
+{
+    <div class="alert alert-aocr alert-success mb-3"><i class="fas fa-check-circle me-1"></i> @TempData["Exito"]</div>
+}
+
+<div class="aocr-summary-strip mb-3">
+    @Html.Partial("_MetricCard", null, new ViewDataDictionary { { "Label", "Total" }, { "Value", totalDocs }, { "Icon", "fas fa-folder-open" } })
+    @Html.Partial("_MetricCard", null, new ViewDataDictionary { { "Label", "Pendientes" }, { "Value", pendientesDocs }, { "Modifier", "warning" }, { "Icon", "fas fa-clock" } })
+    @Html.Partial("_MetricCard", null, new ViewDataDictionary { { "Label", "Aceptados" }, { "Value", aprobadosDocs }, { "Modifier", "success" }, { "Icon", "fas fa-check" } })
+    @Html.Partial("_MetricCard", null, new ViewDataDictionary { { "Label", "Devueltos" }, { "Value", rechazadosDocs }, { "Modifier", "danger" }, { "Icon", "fas fa-times" } })
+</div>
+
+@Html.Partial("_ActionToolbar", null, new ViewDataDictionary {
+    { "VolverUrl", string.IsNullOrWhiteSpace(solicitudIdTexto) ? Url.Action("Index", "SolicitudAOCR") : Url.Action("Detalle", "SolicitudAOCR", new { id = solicitudIdTexto }) }
+})
+
+<div class="mb-3">
+    <label for="filtroTipo" class="aocr-field-label">Filtrar por tipo:</label>
+    <select id="filtroTipo" class="form-select form-select-sm w-auto d-inline-block">
+        <option value="">-- Todos --</option>
+        <option value="BORRADOR_AOCR">Borrador AOCR</option>
+        <option value="Otro">Otros</option>
+    </select>
+</div>
+
+<div class="card aocr-table-card">
+    <div class="card-body p-0">
+        <div class="aocr-table-wrap">
+            <table class="table table-dgac mb-0" id="tablaDocumentos">
+                <thead>
+                    <tr>
+                        <th>Tipo</th>
+                        <th>Archivo</th>
+                        <th>Fecha</th>
+                        <th>Estado</th>
+                        <th class="text-center">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (Model != null && Model.Any())
+                    {
+                        foreach (var doc in Model)
+                        {
+                            var estadoVisible = RevisionDocumentalDisplayHelper.GetVisibleStateLabel(doc.Estado);
+                            var badgeClass = RevisionDocumentalDisplayHelper.GetBadgeClass(doc.Estado);
+                            <tr data-tipo="@doc.TipoDocumento">
+                                <td>@Html.Encode(doc.TipoDocumento)</td>
+                                <td>@Html.Encode(doc.NombreArchivo)</td>
+                                <td>@(doc.FechaCarga.HasValue ? doc.FechaCarga.Value.ToString("dd/MM/yyyy HH:mm") : "-")</td>
+                                <td><span class="@badgeClass">@estadoVisible</span></td>
+                                <td class="text-center">
+                                    <a href="@Url.Action("Descargar", "Documento", new { id = doc.CodigoDocumento })" class="btn btn-sm btn-aocr-primary">
+                                        <i class="fas fa-download"></i> Descargar
+                                    </a>
+                                    @if (doc.TipoDocumento == "BORRADOR_AOCR" && User.IsInRole("Inspector"))
+                                    {
+                                        <a href="@Url.Action("Editar", "Documento", new { id = doc.CodigoDocumento })" class="btn btn-sm btn-aocr-secondary">
+                                            <i class="fas fa-edit"></i> Editar
+                                        </a>
+                                    }
+                                </td>
+                            </tr>
+                        }
+                    }
+                    else
+                    {
+                        <tr><td colspan="5">
+                            @Html.Partial("_EmptyState", null, new ViewDataDictionary {
+                                { "Icon", "fas fa-folder-open" },
+                                { "Title", "Sin documentos" },
+                                { "Description", "No hay documentos cargados para esta solicitud." }
+                            })
+                        </td></tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        document.getElementById("filtroTipo").addEventListener("change", function () {
+            var tipoSeleccionado = this.value;
+            var filas = document.querySelectorAll("#tablaDocumentos tbody tr");
+
+            filas.forEach(function (fila) {
+                var tipo = fila.getAttribute("data-tipo");
+                if (!tipoSeleccionado || tipo === tipoSeleccionado || (tipoSeleccionado === "Otro" && tipo !== "BORRADOR_AOCR")) {
+                    fila.style.display = "";
+                } else {
+                    fila.style.display = "none";
+                }
+            });
+        });
+    </script>
+}
+
+

@@ -1,0 +1,34 @@
+﻿@inherits System.Web.Mvc.WebViewPage
+@using CapaModelo
+@using System.Web.Mvc
+@using System.Web.Mvc.Html
+@{
+    var roles = Session["Roles"] as List<string>;
+    // Usamos el operador seguro para evitar nulos
+    var rolActual = Session["Rol"] as string;
+}
+
+@if (roles != null && roles.Count > 1)
+{
+    <div class="aocr-role-switch mt-2">
+        <label class="aocr-role-switch__label">Cambiar de Rol:</label>
+
+        <select class="form-control form-control-sm aocr-role-switch__select"
+                onchange="location.href = this.value;">
+
+            @foreach (var rol in roles)
+            {
+                // Generamos la URL para el controlador
+                var url = Url.Action("CambiarRol", "Account", new { rolSeleccionado = rol });
+
+                // Marcamos como 'selected' el rol que estás usando ahora
+                var estaSeleccionado = (rol == rolActual) ? "selected" : "";
+
+                <option value="@url" @estaSeleccionado>
+                    @rol
+                </option>
+            }
+        </select>
+    </div>
+}
+

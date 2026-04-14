@@ -1,0 +1,169 @@
+@inherits System.Web.Mvc.WebViewPage<CapaPresentacion.Models.ViewModels.ReportesFinancierosViewModel>
+@using System.Web.Mvc.Html
+@using System.Linq
+@using Newtonsoft.Json
+
+@{
+    ViewBag.Title = "Reportes Financieros";
+}
+
+@section Styles {
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.8/css/jquery.dataTables.min.css" />
+    <link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.4.2/css/buttons.dataTables.min.css" />
+    <style>
+        .kpi-card {
+            border: 0;
+            border-radius: 12px;
+            color: #fff;
+            min-height: 118px;
+        }
+
+        .kpi-label {
+            font-size: 0.88rem;
+            opacity: 0.95;
+        }
+
+        .kpi-value {
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin-top: .25rem;
+        }
+
+        .kpi-icon {
+            font-size: 1.4rem;
+            opacity: 0.9;
+        }
+
+        .kpi-blue {
+            background: linear-gradient(135deg, #1d4ed8, #1e3a8a);
+        }
+
+        .kpi-green {
+            background: linear-gradient(135deg, #16a34a, #166534);
+        }
+
+        .kpi-orange {
+            background: linear-gradient(135deg, #f59e0b, #b45309);
+        }
+
+        .kpi-red {
+            background: linear-gradient(135deg, #ef4444, #991b1b);
+        }
+
+        .kpi-dark {
+            background: linear-gradient(135deg, #334155, #0f172a);
+        }
+
+        .dashboard-card {
+            border-radius: 12px;
+        }
+    </style>
+}
+
+<div class="container-fluid">
+    <div class="d-flex flex-wrap justify-content-between align-items-center mb-3">
+        <div>
+            <h2 class="mb-1">Dashboard Financiero</h2>
+            <div class="text-muted">Vista ejecutiva de recaudacion, estados y anulaciones</div>
+        </div>
+    </div>
+
+    @Html.Partial("_Filtros", Model)
+    @Html.Partial("_ResumenDashboard", Model)
+    @Html.Partial("_Graficos", Model)
+    @Html.Partial("_TablaResultados", Model)
+</div>
+
+@section Scripts {
+    <script src="@Url.Content("~/Content/plugins/chart.js/Chart.bundle.min.js")"></script>
+    <script src="https://cdn.datatables.net/1.13.8/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/pdfmake.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/vfs_fonts.js"></script>
+    <script src="https://cdn.datatables.net/buttons/2.4.2/js/dataTables.buttons.min.js"></script>
+    <script src="https://cdn.datatables.net/buttons/2.4.2/js/buttons.html5.min.js"></script>
+    <script src="https://cdn.datatables.net/buttons/2.4.2/js/buttons.print.min.js"></script>
+
+    <script>
+        (function () {
+            var ingresos = @Html.Raw(JsonConvert.SerializeObject(
+                ((Model != null && Model.Resumen != null && Model.Resumen.IngresosPorMes != null)
+                    ? Model.Resumen.IngresosPorMes
+                    : new System.Collections.Generic.List<CapaModelo.ReportesFinancieros.SerieMensualDTO>())
+                    .Select(x => new { etiqueta = x.Etiqueta, total = x.Total })));
+
+            var estados = @Html.Raw(JsonConvert.SerializeObject(
+                ((Model != null && Model.Resumen != null && Model.Resumen.TotalesPorEstado != null)
+                    ? Model.Resumen.TotalesPorEstado
+                    : new System.Collections.Generic.List<CapaModelo.ReportesFinancieros.EstadoTotalDTO>())
+                    .Select(x => new { estado = x.Estado, cantidad = x.Cantidad })));
+
+            var ctxIngresos = document.getElementById('chartIngresos');
+            if (ctxIngresos && ingresos.length > 0) {
+                new Chart(ctxIngresos, {
+                    type: 'bar',
+                    data: {
+                        labels: ingresos.map(function (x) { return x.etiqueta; }),
+                        datasets: [{
+                            label: 'Ingresos',
+                            data: ingresos.map(function (x) { return x.total; }),
+                            backgroundColor: '#1d4ed8',
+                            borderRadius: 8
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                ticks: {
+                                    callback: function (value) {
+                                        return '$' + Number(value).toLocaleString('es-EC');
+                                    }
+                                }
+                            }
+                        },
+                        plugins: {
+                            legend: { display: false }
+                        }
+                    }
+                });
+            }
+
+            var ctxEstado = document.getElementById('chartEstados');
+            if (ctxEstado && estados.length > 0) {
+                new Chart(ctxEstado, {
+                    type: 'doughnut',
+                    data: {
+                        labels: estados.map(function (x) { return x.estado; }),
+                        datasets: [{
+                            data: estados.map(function (x) { return x.cantidad; }),
+                            backgroundColor: ['#16a34a', '#f59e0b', '#ef4444', '#1d4ed8', '#64748b', '#7c3aed']
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false
+                    }
+                });
+            }
+
+            if ($.fn.DataTable && $('#tablaReportes').length) {
+                $('#tablaReportes').DataTable({
+                    pageLength: 15,
+                    order: [[2, 'desc']],
+                    dom: 'Bfrtip',
+                    buttons: [
+                        { extend: 'excelHtml5', text: 'Excel (tabla)' },
+                        { extend: 'pdfHtml5', text: 'PDF (tabla)', orientation: 'landscape', pageSize: 'A4' },
+                        { extend: 'print', text: 'Imprimir (tabla)' }
+                    ],
+                    language: {
+                        url: '@Url.Content("~/Content/plugins/datatables/i18n/Spanish.json")'
+                    }
+                });
+            }
+        })();
+    </script>
+}

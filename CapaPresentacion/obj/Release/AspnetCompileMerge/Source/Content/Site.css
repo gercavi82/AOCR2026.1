@@ -1,0 +1,35 @@
+﻿/* Botones de acción de orden alineados y con separación */
+.botones-orden {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    justify-content: flex-end;
+    margin-top: 10px;
+}
+.botones-orden .btn {
+    min-width: 130px;
+}
+body {
+    padding-top: 50px;
+    padding-bottom: 20px;
+}
+
+/* Set padding to keep content from hitting the edges */
+.body-content {
+    padding-left: 15px;
+    padding-right: 15px;
+}
+
+/* Override the default bootstrap behavior where horizontal description lists 
+   will truncate terms that are too long to fit in the left column 
+*/
+.dl-horizontal dt {
+    white-space: normal;
+}
+
+/* Reset legacy ASP.NET MVC default max-width so Bootstrap grid controls widths */
+input,
+select,
+textarea {
+    max-width: none;
+}
