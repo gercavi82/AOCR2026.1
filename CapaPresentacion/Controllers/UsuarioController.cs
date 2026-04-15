@@ -286,6 +286,19 @@ namespace CapaPresentacion.Controllers
                     return Json(new { success = false, message = "No se pudo crear el usuario" });
                 }
 
+                // Asignar rol Solicitante automáticamente al registrarse
+                try
+                {
+                    UsuarioDAO.AsignarRol(codigoUsuarioFinal, 19, "REGISTRO");
+                }
+                catch (Exception exRol)
+                {
+                    LogBL.RegistrarError(
+                        "[Usuario/Crear] No se pudo asignar rol Solicitante.",
+                        exRol.ToString() + " | usuarioId=" + usuarioId + ", codigo=" + (codigoUsuarioFinal ?? string.Empty),
+                        "UsuarioController");
+                }
+
                 // Guardar asignaciones multi-compañía del RT y sincronizar empresa principal legacy.
                 var daoCompaniasRt = new UsuarioCompaniaRTDAO();
                 var guardadoCompanias = daoCompaniasRt.GuardarAsignaciones(
@@ -515,6 +528,38 @@ namespace CapaPresentacion.Controllers
                 catch
                 {
                     correoEnviado = false;
+                }
+
+                // 7. Notificar al Director que hay un usuario RT pendiente de aprobación
+                try
+                {
+                    const string correoDirector = "german.cajas@aviacioncivil.gob.ec";
+                    var asuntoDirector = "Usuario RT pendiente de aprobación - Sistema AOCR";
+                    var cuerpoDirector = EmailTemplateRenderer.Render(new EmailTemplateModel
+                    {
+                        Titulo = "Usuario RT pendiente de aprobación",
+                        NombreDestinatario = "Director/a",
+                        MensajePrincipal = "Se ha registrado un nuevo usuario como Responsable Técnico (RT) en el Sistema AOCR y requiere su aprobación.",
+                        Resumen = new List<EmailFieldItem>
+                        {
+                            new EmailFieldItem("Nombre", string.Format("{0} {1}", nombres, apellidos).Trim()),
+                            new EmailFieldItem("Identificación", identificacionFinal),
+                            new EmailFieldItem("Correo del solicitante", correo),
+                            new EmailFieldItem("Estado", "Pendiente de aprobación")
+                        },
+                        Observaciones = "Por favor ingrese al Sistema AOCR en la sección 'Aprobar Usuarios RT' para revisar y aprobar o rechazar esta solicitud.",
+                        TextoCierre = "Este es un correo automático del Sistema AOCR."
+                    });
+
+                    var servicioCorreoDirector = new EnviarCorreo();
+                    servicioCorreoDirector.enviaMensajeCorreo(correoDirector, asuntoDirector, cuerpoDirector);
+                }
+                catch (Exception exCorreoDirector)
+                {
+                    LogBL.RegistrarError(
+                        "[Usuario/Crear] No se pudo enviar correo de notificación al Director.",
+                        exCorreoDirector.ToString(),
+                        "UsuarioController");
                 }
 
                 var mensajeFinal = "Usuario registrado exitosamente. Recibirá sus credenciales de acceso una vez que su designación RT sea aprobada.";
@@ -1038,6 +1083,19 @@ namespace CapaPresentacion.Controllers
                         LogBL.RegistrarError(
                             "[Usuario/RegistrarUsuario] No se pudo persistir USUOID de la compañía seleccionada.",
                             exCompania.ToString() + " | usuarioId=" + resultadoId + ", empresaCodigo=" + (empresaCodigo ?? string.Empty),
+                            "UsuarioController");
+                    }
+
+                    // Asignar rol Solicitante automáticamente al registrarse
+                    try
+                    {
+                        UsuarioDAO.AsignarRol(cedula, 19, "REGISTRO");
+                    }
+                    catch (Exception exRol)
+                    {
+                        LogBL.RegistrarError(
+                            "[Usuario/RegistrarUsuario] No se pudo asignar rol Solicitante.",
+                            exRol.ToString() + " | usuarioId=" + resultadoId + ", cedula=" + (cedula ?? string.Empty),
                             "UsuarioController");
                     }
 

@@ -234,3 +234,6 @@
 2026-04-14 16:53:29.232 | INFO  | CID:N/A | Iniciando procesador de cola de correos
 2026-04-14 16:53:53.154 | INFO  | CID:f8bd60c07594 | Account/Login | Iniciando acción: Account/Login
 2026-04-14 16:53:53.767 | INFO  | CID:f8bd60c07594 | Account/Login | Acción completada: Account/Login
+2026-04-14 20:29:03.532 | INFO  | CID:N/A | Iniciando procesador de cola de correos
+2026-04-14 20:29:50.426 | INFO  | CID:acaa5370f056 | Account/Login | Iniciando acción: Account/Login
+2026-04-14 20:29:51.704 | INFO  | CID:acaa5370f056 | Account/Login | Acción completada: Account/Login

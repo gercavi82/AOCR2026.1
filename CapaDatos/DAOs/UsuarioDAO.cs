@@ -522,6 +522,32 @@ WHERE idusuario = @id;";
         }
 
         // ==========================================
+        // ✅ ASIGNAR ROL A USUARIO
+        // ==========================================
+        public static bool AsignarRol(string codigoUsuario, int codigoRol, string usuarioCreado)
+        {
+            if (string.IsNullOrWhiteSpace(codigoUsuario) || codigoRol <= 0)
+                return false;
+
+            using (var conn = new NpgsqlConnection(GetConnectionString()))
+            {
+                conn.Open();
+                const string sql = @"
+INSERT INTO usuario_rol (codigousuario, codigorol, fechaasignacion, usuariocreado, activo)
+VALUES (@codigousuario, @codigorol, NOW(), @usuariocreado, true);";
+
+                var rows = conn.Execute(sql, new
+                {
+                    codigousuario = codigoUsuario.Trim(),
+                    codigorol = codigoRol,
+                    usuariocreado = (usuarioCreado ?? "SYSTEM").Trim()
+                });
+
+                return rows > 0;
+            }
+        }
+
+        // ==========================================
         // ✅ RESTABLECER CONTRASEÑA (lo necesitaba UsuarioBL)
         // ==========================================
         public static bool RestablecerContrasena(string email, string nuevaClave, out string mensaje)
@@ -870,6 +896,11 @@ WHERE idusuario = @id;";
                         EliminarRelacionesUsuario(conn, tx, "usuariorol", idEncontrado, codigoUsuario);
                         EliminarRelacionesUsuario(conn, tx, "usuario_rol", idEncontrado, codigoUsuario);
 
+                        // Limpiar tablas con usuario_id que referencian usuario
+                        EliminarSiTablaExiste(conn, tx, "aocr_usuario_compania_rt", "usuario_id", idEncontrado);
+                        // aocr_usuario_interno_rt tiene ON DELETE SET NULL, pero limpiamos explicitamente
+                        EliminarSiTablaExiste(conn, tx, "aocr_usuario_interno_rt", "usuario_id", idEncontrado);
+
                         int rows = conn.Execute(
                             "DELETE FROM usuario WHERE idusuario = @id;",
                             new { id = idEncontrado },
@@ -945,7 +976,12 @@ WHERE idusuario = @id;";
             public int Ordenes { get; set; }
             public int DocumentosSubsanacion { get; set; }
             public int Subsanaciones { get; set; }
-            public int Total => Ordenes + DocumentosSubsanacion + Subsanaciones;
+            public int Inspecciones { get; set; }
+            public int InformesInspeccion { get; set; }
+            public int Solicitudes { get; set; }
+            public int HistorialEstado { get; set; }
+            public int Notificaciones { get; set; }
+            public int Total => Ordenes + DocumentosSubsanacion + Subsanaciones + Inspecciones + InformesInspeccion + Solicitudes + HistorialEstado + Notificaciones;
         }
 
         private sealed class PurgadoDatosUsuarioPruebas
@@ -1013,6 +1049,37 @@ WHERE idusuario = @id;";
                         tx);
                 }
             }
+
+            // Inspecciones como inspector (codigo_inspector es integer, codigousuario es varchar)
+            int codigoUsrInt = 0;
+            try
+            {
+                var codigoUsrStr = conn.ExecuteScalar<string>(
+                    "SELECT codigousuario FROM usuario WHERE idusuario = @id;",
+                    new { id = idUsuario }, tx);
+                int.TryParse(codigoUsrStr, out codigoUsrInt);
+            }
+            catch { }
+
+            if (codigoUsrInt > 0)
+            {
+                relaciones.Inspecciones = ContarSiTablaYColumnaExiste(conn, tx, "aocr_tbinspeccion", "codigo_inspector", codigoUsrInt);
+
+                // Informes vinculados a inspecciones de este inspector
+                if (ExisteTabla(conn, tx, "aocr_tbinforme_inspeccion") && ExisteTabla(conn, tx, "aocr_tbinspeccion"))
+                {
+                    try
+                    {
+                        relaciones.InformesInspeccion = conn.ExecuteScalar<int>(
+                            "SELECT COUNT(*) FROM aocr_tbinforme_inspeccion i INNER JOIN aocr_tbinspeccion ins ON i.codigo_inspeccion = ins.codigo_inspeccion WHERE ins.codigo_inspector = @cod;",
+                            new { cod = codigoUsrInt }, tx);
+                    }
+                    catch { }
+                }
+            }
+
+            relaciones.Solicitudes = ContarSiTablaYColumnaExiste(conn, tx, "aocr_tbsolicitud", "codigo_usuario", codigoUsrInt);
+            relaciones.Notificaciones = ContarSiTablaYColumnaExiste(conn, tx, "aocr_tbnotificacion", "codigousuario", codigoUsrInt);
 
             return relaciones;
         }
@@ -1103,6 +1170,75 @@ WHERE idusuario = @id;";
                 }
             }
 
+            // Limpiar tablas de usuario RT/compañía
+            EliminarSiTablaExiste(conn, tx, "aocr_usuario_compania_rt", "usuario_id", idUsuario);
+            EliminarSiTablaExiste(conn, tx, "aocr_usuario_interno_rt", "usuario_id", idUsuario);
+
+            // Limpiar relaciones de inspector (codigo_inspector es integer)
+            int codigoUsrPurgeInt = 0;
+            try
+            {
+                var codigoUsrPurgeStr = conn.ExecuteScalar<string>(
+                    "SELECT codigousuario FROM usuario WHERE idusuario = @id;",
+                    new { id = idUsuario }, tx);
+                int.TryParse(codigoUsrPurgeStr, out codigoUsrPurgeInt);
+            }
+            catch { }
+
+            if (codigoUsrPurgeInt > 0)
+            {
+                // Desasignar inspector de inspecciones (SET NULL preserva la inspección)
+                if (ExisteTabla(conn, tx, "aocr_tbinspeccion") && ExisteColumna(conn, tx, "aocr_tbinspeccion", "codigo_inspector"))
+                {
+                    conn.Execute(
+                        "UPDATE aocr_tbinspeccion SET codigo_inspector = NULL WHERE codigo_inspector = @cod;",
+                        new { cod = codigoUsrPurgeInt }, tx);
+                }
+            }
+
+            // Limpiar solicitudes y notificaciones del usuario (usan codigo_usuario integer)
+            if (codigoUsrPurgeInt > 0)
+            {
+                EliminarSiTablaExiste(conn, tx, "aocr_tbnotificacion", "codigousuario", codigoUsrPurgeInt);
+
+                // Solicitudes: limpiar documentos hijos primero, luego solicitudes
+                if (ExisteTabla(conn, tx, "aocr_tbsolicitud") && ExisteColumna(conn, tx, "aocr_tbsolicitud", "codigo_usuario"))
+                {
+                    // Documentos de inspección vinculados a solicitudes del usuario
+                    if (ExisteTabla(conn, tx, "aocr_tbdocumento_inspeccion") && ExisteColumna(conn, tx, "aocr_tbdocumento_inspeccion", "idsolicitud"))
+                    {
+                        conn.Execute(
+                            "DELETE FROM aocr_tbdocumento_inspeccion WHERE idsolicitud IN (SELECT idsolicitud FROM aocr_tbsolicitud WHERE codigo_usuario = @cod);",
+                            new { cod = codigoUsrPurgeInt }, tx);
+                    }
+                    // Checklist vinculados
+                    if (ExisteTabla(conn, tx, "aocr_tbchecklist_solicitud") && ExisteColumna(conn, tx, "aocr_tbchecklist_solicitud", "idsolicitud"))
+                    {
+                        conn.Execute(
+                            "DELETE FROM aocr_tbchecklist_solicitud WHERE idsolicitud IN (SELECT idsolicitud FROM aocr_tbsolicitud WHERE codigo_usuario = @cod);",
+                            new { cod = codigoUsrPurgeInt }, tx);
+                    }
+                    // Documentos habilitantes vinculados
+                    if (ExisteTabla(conn, tx, "aocr_tbdocumento_habilitante") && ExisteColumna(conn, tx, "aocr_tbdocumento_habilitante", "idsolicitud"))
+                    {
+                        conn.Execute(
+                            "DELETE FROM aocr_tbdocumento_habilitante WHERE idsolicitud IN (SELECT idsolicitud FROM aocr_tbsolicitud WHERE codigo_usuario = @cod);",
+                            new { cod = codigoUsrPurgeInt }, tx);
+                    }
+                    // Solicitudes RT vinculadas
+                    if (ExisteTabla(conn, tx, "aocr_solicitud_rt") && ExisteColumna(conn, tx, "aocr_solicitud_rt", "solicitud_id"))
+                    {
+                        conn.Execute(
+                            "DELETE FROM aocr_solicitud_rt WHERE solicitud_id IN (SELECT idsolicitud FROM aocr_tbsolicitud WHERE codigo_usuario = @cod);",
+                            new { cod = codigoUsrPurgeInt }, tx);
+                    }
+
+                    conn.Execute(
+                        "DELETE FROM aocr_tbsolicitud WHERE codigo_usuario = @cod;",
+                        new { cod = codigoUsrPurgeInt }, tx);
+                }
+            }
+
             return purgado;
         }
 
@@ -1119,6 +1255,17 @@ WHERE idusuario = @id;";
                 tx);
         }
 
+        private static void EliminarSiTablaExiste(NpgsqlConnection conn, NpgsqlTransaction tx, string tableName, string columnName, int idUsuario)
+        {
+            if (!ExisteTabla(conn, tx, tableName) || !ExisteColumna(conn, tx, tableName, columnName))
+                return;
+
+            conn.Execute(
+                $"DELETE FROM {tableName} WHERE {columnName} = @id;",
+                new { id = idUsuario },
+                tx);
+        }
+
         private static string ConstruirMensajeRelacionesBloqueantes(RelacionesBloqueantesUsuario relaciones)
         {
             var partes = new List<string>();
@@ -1131,6 +1278,21 @@ WHERE idusuario = @id;";
 
             if (relaciones.Subsanaciones > 0)
                 partes.Add($"{relaciones.Subsanaciones} registro(s) de subsanación");
+
+            if (relaciones.Inspecciones > 0)
+                partes.Add($"{relaciones.Inspecciones} inspección(es) asignada(s)");
+
+            if (relaciones.InformesInspeccion > 0)
+                partes.Add($"{relaciones.InformesInspeccion} informe(s) de inspección");
+
+            if (relaciones.Solicitudes > 0)
+                partes.Add($"{relaciones.Solicitudes} solicitud(es)");
+
+            if (relaciones.HistorialEstado > 0)
+                partes.Add($"{relaciones.HistorialEstado} registro(s) de historial");
+
+            if (relaciones.Notificaciones > 0)
+                partes.Add($"{relaciones.Notificaciones} notificación(es)");
 
             if (partes.Count == 0)
             {

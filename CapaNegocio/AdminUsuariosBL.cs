@@ -441,6 +441,33 @@ namespace CapaNegocio
             return ok;
         }
 
+        public static bool EliminarUsuarioPermanente(
+            int idUsuario,
+            int? actorUsuarioId,
+            string actorCodigoUsuario,
+            string ip,
+            out string mensaje)
+        {
+            mensaje = string.Empty;
+
+            if (idUsuario <= 0)
+            {
+                mensaje = "ID de usuario no valido.";
+                return false;
+            }
+
+            var usuario = _dao.ObtenerUsuarioPorId(idUsuario);
+            if (usuario == null)
+            {
+                mensaje = "Usuario no encontrado.";
+                return false;
+            }
+
+            bool ok = UsuarioDAO.EliminarUsuarioRT(idUsuario, out mensaje, true);
+
+            return ok;
+        }
+
         private static bool NotificarResetPassword(
             SeguridadUsuarioDTO usuario,
             string passwordTemporal,

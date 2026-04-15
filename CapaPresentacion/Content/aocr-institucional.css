@@ -1449,6 +1449,24 @@ body.aocr-body {
     gap: 0.3rem;
 }
 
+.aocr-sidebar .aocr-nav--nested {
+    padding-left: 0.9rem;
+    margin-top: 0.2rem;
+    border-left: 2px solid rgba(168, 201, 220, 0.15);
+}
+
+.aocr-sidebar .aocr-sidebar-subgroup__label {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.4rem 0.78rem 0.25rem;
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: rgba(168, 201, 220, 0.7);
+}
+
 .aocr-sidebar .aocr-nav li {
     margin: 0;
 }

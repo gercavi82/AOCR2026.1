@@ -26,15 +26,24 @@ namespace CapaPresentacion.Controllers
 
         [HttpGet]
         [RequirePermission("ADM_GESTION_USUARIOS")]
-        public ActionResult Index(string filtro, bool? activo)
+        public ActionResult Index(string filtro, bool? activo, string tipo)
         {
             var usuarios = AdminUsuariosBL.BuscarUsuarios(filtro, activo) ?? new List<SeguridadUsuarioDTO>();
+
+            // Filtrar por tipo de usuario (Interno / Externo / Sin rol) en memoria
+            if (!string.IsNullOrWhiteSpace(tipo))
+            {
+                var tipoNorm = tipo.Trim();
+                usuarios = usuarios.Where(u => string.Equals(u.TipoUsuario, tipoNorm, StringComparison.OrdinalIgnoreCase)).ToList();
+            }
+
             var ahora = DateTime.Now;
 
             var vm = new AdminUsuariosIndexViewModel
             {
                 Filtro = filtro,
                 Activo = activo,
+                TipoFiltro = tipo,
                 Usuarios = usuarios,
                 TotalUsuarios = usuarios.Count,
                 UsuariosActivos = usuarios.Count(u => u != null && u.Activo),
@@ -772,6 +781,58 @@ namespace CapaPresentacion.Controllers
                 out mensaje);
 
             TempData[ok ? "Success" : "Error"] = mensaje;
+            return RedirectToAction("Index");
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        [RequirePermission("ADM_GESTION_USUARIOS")]
+        public ActionResult EliminarPermanente(int id)
+        {
+            // Obtener datos del usuario para determinar tipo
+            var usuario = AdminUsuariosBL.ObtenerUsuarioPorId(id);
+            if (usuario == null)
+            {
+                TempData["Error"] = "Usuario no encontrado.";
+                return RedirectToAction("Index");
+            }
+
+            // Intentar eliminación física controlada de cualquier usuario
+            string mensaje;
+            var ok = AdminUsuariosBL.EliminarUsuarioPermanente(
+                id,
+                ObtenerActorId(),
+                ObtenerActorCodigoUsuario(),
+                Request != null ? Request.UserHostAddress : null,
+                out mensaje);
+
+            if (ok)
+            {
+                TempData["Success"] = mensaje;
+            }
+            else
+            {
+                // La eliminación falló (tiene relaciones) → desactivar como fallback
+                string msgFallback;
+                var fallbackOk = AdminUsuariosBL.CambiarEstadoUsuario(
+                    id,
+                    false,
+                    ObtenerActorId(),
+                    ObtenerActorCodigoUsuario(),
+                    Request != null ? Request.UserHostAddress : null,
+                    out msgFallback);
+
+                if (fallbackOk)
+                {
+                    TempData["Error"] = mensaje +
+                        " El usuario fue desactivado en su lugar para preservar la trazabilidad.";
+                }
+                else
+                {
+                    TempData["Error"] = mensaje;
+                }
+            }
+
             return RedirectToAction("Index");
         }
 

@@ -151,7 +151,8 @@
 
             if ($.fn.DataTable && $('#tablaReportes').length) {
                 $('#tablaReportes').DataTable({
-                    pageLength: 15,
+                    pageLength: 5,
+                    lengthMenu: [[5, 10, 25, 50, -1], [5, 10, 25, 50, 'Todos']],
                     order: [[2, 'desc']],
                     dom: 'Bfrtip',
                     buttons: [

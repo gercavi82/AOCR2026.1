@@ -49,20 +49,44 @@ namespace CapaDatos.DAOs
             return new iDB2Connection(_connectionString);
         }
 
-        public bool TestConnection()
+        /// <summary>
+        /// Cierra la conexión iDB2 de forma segura.
+        /// NO se llama Dispose() porque el driver IBM.Data.DB2.iSeries tiene un bug
+        /// que lanza NullReferenceException en iDB2Connection.Dispose().
+        /// Close() libera los recursos de red; el GC se encargará del objeto.
+        /// </summary>
+        private void SafeDisposeConnection(iDB2Connection conn)
         {
+            if (conn == null) return;
             try
             {
-                using (var conn = GetConnection())
-                {
-                    conn.Open();
-                    return conn.State == ConnectionState.Open;
-                }
+                if (conn.State != ConnectionState.Closed)
+                    conn.Close();
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"⚠️ [EmpresaAS400DAO] Error al cerrar conexión: {ex.Message}");
+            }
+            // No llamar conn.Dispose() — bug en IBM.Data.DB2.iSeries.iDB2Connection.Dispose(Boolean)
+        }
+
+        public bool TestConnection()
+        {
+            iDB2Connection conn = null;
+            try
+            {
+                conn = GetConnection();
+                conn.Open();
+                return conn.State == ConnectionState.Open;
             }
             catch (Exception ex)
             {
                 System.Diagnostics.Debug.WriteLine("Error de conexión AS400: " + ex.Message);
                 return false;
+            }
+            finally
+            {
+                SafeDisposeConnection(conn);
             }
         }
 
@@ -70,43 +94,42 @@ namespace CapaDatos.DAOs
         {
             var empresas = new List<Empresa>();
 
+            iDB2Connection conn = null;
             try
             {
                 System.Diagnostics.Debug.WriteLine("🔍 [EmpresaAS400DAO] Iniciando consulta a CIAARC...");
-                using (var conn = GetConnection())
+                conn = GetConnection();
+                System.Diagnostics.Debug.WriteLine($"🔗 [EmpresaAS400DAO] Connection String: {conn.ConnectionString.Replace("Password=", "Password=***")}");
+                conn.Open();
+                System.Diagnostics.Debug.WriteLine("✅ [EmpresaAS400DAO] Conexión abierta exitosamente");
+
+                string query = @"
+                    SELECT 
+                        CIACOD as CodigoOaci, 
+                        CIACO2 as CodigoIata, 
+                        CIACO3 as CodigoNumeroCia, 
+                        CIANOM as NombreCompaniaAviacion 
+                    FROM CIAARC
+                    WHERE CIAEST = 'AC'
+                    ORDER BY CIANOM";
+
+                System.Diagnostics.Debug.WriteLine($"📝 [EmpresaAS400DAO] Ejecutando query: {query}");
+
+                using (var cmd = new iDB2Command(query, conn))
+                using (var reader = cmd.ExecuteReader())
                 {
-                    System.Diagnostics.Debug.WriteLine($"🔗 [EmpresaAS400DAO] Connection String: {conn.ConnectionString.Replace("Password=", "Password=***")}");
-                    conn.Open();
-                    System.Diagnostics.Debug.WriteLine("✅ [EmpresaAS400DAO] Conexión abierta exitosamente");
-
-                    string query = @"
-                        SELECT 
-                            CIACOD as CodigoOaci, 
-                            CIACO2 as CodigoIata, 
-                            CIACO3 as CodigoNumeroCia, 
-                            CIANOM as NombreCompaniaAviacion 
-                        FROM CIAARC
-                        WHERE CIAEST = 'AC'
-                        ORDER BY CIANOM";
-
-                    System.Diagnostics.Debug.WriteLine($"📝 [EmpresaAS400DAO] Ejecutando query: {query}");
-
-                    using (var cmd = new iDB2Command(query, conn))
-                    using (var reader = cmd.ExecuteReader())
+                    while (reader.Read())
                     {
-                        while (reader.Read())
+                        empresas.Add(new Empresa
                         {
-                            empresas.Add(new Empresa
-                            {
-                                CodigoOaci = reader["CodigoOaci"]?.ToString()?.Trim(),
-                                CodigoIata = reader["CodigoIata"]?.ToString()?.Trim(),
-                                CodigoNumeroCia = reader["CodigoNumeroCia"]?.ToString()?.Trim(),
-                                Nombre = reader["NombreCompaniaAviacion"]?.ToString()?.Trim()
-                            });
-                        }
+                            CodigoOaci = reader["CodigoOaci"]?.ToString()?.Trim(),
+                            CodigoIata = reader["CodigoIata"]?.ToString()?.Trim(),
+                            CodigoNumeroCia = reader["CodigoNumeroCia"]?.ToString()?.Trim(),
+                            Nombre = reader["NombreCompaniaAviacion"]?.ToString()?.Trim()
+                        });
                     }
-                    System.Diagnostics.Debug.WriteLine($"✅ [EmpresaAS400DAO] {empresas.Count} empresas activas encontradas");
                 }
+                System.Diagnostics.Debug.WriteLine($"✅ [EmpresaAS400DAO] {empresas.Count} empresas activas encontradas");
             }
             catch (Exception ex)
             {
@@ -114,6 +137,10 @@ namespace CapaDatos.DAOs
                 System.Diagnostics.Debug.WriteLine($"❌ [EmpresaAS400DAO] Tipo: {ex.GetType().Name}");
                 System.Diagnostics.Debug.WriteLine($"❌ [EmpresaAS400DAO] StackTrace: {ex.StackTrace}");
                 throw new Exception("Error al consultar compañías aéreas del AS/400: " + ex.Message, ex);
+            }
+            finally
+            {
+                SafeDisposeConnection(conn);
             }
 
             return empresas;
@@ -127,38 +154,37 @@ namespace CapaDatos.DAOs
             if (string.IsNullOrWhiteSpace(codigoOaci))
                 return null;
 
+            iDB2Connection conn = null;
             try
             {
-                using (var conn = GetConnection())
+                conn = GetConnection();
+                conn.Open();
+
+                string query = @"
+                    SELECT 
+                        CIACOD as CodigoOaci, 
+                        CIACO2 as CodigoIata, 
+                        CIACO3 as CodigoNumeroCia, 
+                        CIANOM as NombreCompaniaAviacion 
+                    FROM CIAARC
+                    WHERE TRIM(CIACOD) = @codigo
+                    FETCH FIRST 1 ROW ONLY";
+
+                using (var cmd = new iDB2Command(query, conn))
                 {
-                    conn.Open();
+                    cmd.Parameters.Add("@codigo", iDB2DbType.iDB2Char).Value = codigoOaci.Trim().ToUpper();
 
-                    string query = @"
-                        SELECT 
-                            CIACOD as CodigoOaci, 
-                            CIACO2 as CodigoIata, 
-                            CIACO3 as CodigoNumeroCia, 
-                            CIANOM as NombreCompaniaAviacion 
-                        FROM CIAARC
-                        WHERE TRIM(CIACOD) = @codigo
-                        FETCH FIRST 1 ROW ONLY";
-
-                    using (var cmd = new iDB2Command(query, conn))
+                    using (var reader = cmd.ExecuteReader())
                     {
-                        cmd.Parameters.Add("@codigo", iDB2DbType.iDB2Char).Value = codigoOaci.Trim().ToUpper();
-
-                        using (var reader = cmd.ExecuteReader())
+                        if (reader != null && reader.Read())
                         {
-                            if (reader.Read())
+                            return new Empresa
                             {
-                                return new Empresa
-                                {
-                                    CodigoOaci = reader["CodigoOaci"]?.ToString()?.Trim(),
-                                    CodigoIata = reader["CodigoIata"]?.ToString()?.Trim(),
-                                    CodigoNumeroCia = reader["CodigoNumeroCia"]?.ToString()?.Trim(),
-                                    Nombre = reader["NombreCompaniaAviacion"]?.ToString()?.Trim()
-                                };
-                            }
+                                CodigoOaci = reader["CodigoOaci"]?.ToString()?.Trim(),
+                                CodigoIata = reader["CodigoIata"]?.ToString()?.Trim(),
+                                CodigoNumeroCia = reader["CodigoNumeroCia"]?.ToString()?.Trim(),
+                                Nombre = reader["NombreCompaniaAviacion"]?.ToString()?.Trim()
+                            };
                         }
                     }
                 }
@@ -166,6 +192,10 @@ namespace CapaDatos.DAOs
             catch (Exception ex)
             {
                 System.Diagnostics.Debug.WriteLine($"Error obteniendo empresa {codigoOaci} de CIAARC: {ex.Message}");
+            }
+            finally
+            {
+                SafeDisposeConnection(conn);
             }
 
             return null;

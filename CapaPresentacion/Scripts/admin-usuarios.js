@@ -154,5 +154,7 @@
                 actualizarContadorCompanias();
             });
         }
+
+        // Modal de eliminación permanente: lógica movida a Index.cshtml inline script
     });
 })();

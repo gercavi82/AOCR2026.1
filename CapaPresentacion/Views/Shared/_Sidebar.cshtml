@@ -423,51 +423,79 @@
                     {
                         <li>
                             <a class="aocr-link aocr-sidebar-item" href="@Url.Action("Index", "AdminUsuarios")">
-                                <i class="fas fa-gauge-high text-warning mr-2"></i> Dashboard Administración
-                            </a>
-                        </li>
-                        <li>
-                            <a class="aocr-link aocr-sidebar-item" href="@Url.Action("ConfiguracionSistema", "Direccion")">
-                                <i class="fas fa-cogs text-white-50 mr-2"></i> Configuración Sistema
-                            </a>
-                        </li>
-                        <li>
-                            <a class="aocr-link aocr-sidebar-item" href="@Url.Action("Index", "AdminUsuarios")">
-                                <i class="fas fa-users-cog text-white-50 mr-2"></i> Gestionar Usuarios
-                            </a>
-                        </li>
-                        <li>
-                            <a class="aocr-link aocr-sidebar-item" href="@Url.Action("PermisosRol", "AdminUsuarios")">
-                                <i class="fas fa-shield-alt text-white-50 mr-2"></i> Roles y Permisos
+                                <i class="fas fa-gauge-high text-warning mr-2"></i> Dashboard
                             </a>
                         </li>
                     }
 
-                    @if (esAdministrador)
+                    @* --- Grupo: Usuarios --- *@
+                    @if (puedeAdministracion || puedeAprobarUsuarios)
                     {
-                        <li>
-                            <a class="aocr-link aocr-sidebar-item" href="@Url.Action("CrearUsuarioInternoRT", "AdminUsuarios")">
-                                <i class="fas fa-user-plus text-white-50 mr-2"></i> Crear Usuario Interno RT
-                            </a>
-                        </li>
-                        <li>
-                            <a class="aocr-link aocr-sidebar-item" href="@Url.Action("ListarUsuariosInternosRT", "AdminUsuarios")">
-                                <i class="fas fa-users text-white-50 mr-2"></i> Ver Usuarios Internos RT
-                            </a>
-                        </li>
-                        <li>
-                            <a class="aocr-link aocr-sidebar-item" href="@Url.Action("Index", "SyncAdmin")">
-                                <i class="fas fa-sync-alt text-white-50 mr-2"></i> Sync RT DB2
-                            </a>
+                        <li class="aocr-sidebar-subgroup">
+                            <span class="aocr-sidebar-subgroup__label">
+                                <i class="fas fa-users text-white-50 mr-1"></i> Usuarios
+                            </span>
+                            <ul class="aocr-nav aocr-nav--nested">
+                                @if (puedeAdministracion)
+                                {
+                                    <li>
+                                        <a class="aocr-link aocr-sidebar-item" href="@Url.Action("Index", "AdminUsuarios")">
+                                            <i class="fas fa-users-cog text-white-50 mr-2"></i> Gestionar Usuarios
+                                        </a>
+                                    </li>
+                                }
+                                @if (esAdministrador)
+                                {
+                                    <li>
+                                        <a class="aocr-link aocr-sidebar-item" href="@Url.Action("CrearUsuarioInternoRT", "AdminUsuarios")">
+                                            <i class="fas fa-user-plus text-white-50 mr-2"></i> Crear Usuario Interno RT
+                                        </a>
+                                    </li>
+                                    <li>
+                                        <a class="aocr-link aocr-sidebar-item" href="@Url.Action("ListarUsuariosInternosRT", "AdminUsuarios")">
+                                            <i class="fas fa-id-badge text-white-50 mr-2"></i> Usuarios Internos RT
+                                        </a>
+                                    </li>
+                                }
+                                @if (puedeAprobarUsuarios)
+                                {
+                                    <li>
+                                        <a class="aocr-link aocr-sidebar-item" href="@Url.Action("RevisarDesignaciones", "Usuario")">
+                                            <i class="fas fa-clipboard-check text-white-50 mr-2"></i> Aprobar Usuarios RT
+                                        </a>
+                                    </li>
+                                }
+                            </ul>
                         </li>
                     }
 
-                    @if (puedeAprobarUsuarios)
+                    @* --- Grupo: Seguridad y configuración --- *@
+                    @if (puedeAdministracion)
                     {
-                        <li>
-                            <a class="aocr-link aocr-sidebar-item" href="@Url.Action("RevisarDesignaciones", "Usuario")">
-                                <i class="fas fa-clipboard-check text-white-50 mr-2"></i> Aprobar Usuarios RT
-                            </a>
+                        <li class="aocr-sidebar-subgroup">
+                            <span class="aocr-sidebar-subgroup__label">
+                                <i class="fas fa-shield-alt text-white-50 mr-1"></i> Seguridad
+                            </span>
+                            <ul class="aocr-nav aocr-nav--nested">
+                                <li>
+                                    <a class="aocr-link aocr-sidebar-item" href="@Url.Action("PermisosRol", "AdminUsuarios")">
+                                        <i class="fas fa-key text-white-50 mr-2"></i> Roles y Permisos
+                                    </a>
+                                </li>
+                                <li>
+                                    <a class="aocr-link aocr-sidebar-item" href="@Url.Action("ConfiguracionSistema", "Direccion")">
+                                        <i class="fas fa-cogs text-white-50 mr-2"></i> Configuración Sistema
+                                    </a>
+                                </li>
+                                @if (esAdministrador)
+                                {
+                                    <li>
+                                        <a class="aocr-link aocr-sidebar-item" href="@Url.Action("Index", "SyncAdmin")">
+                                            <i class="fas fa-sync-alt text-white-50 mr-2"></i> Sync RT DB2
+                                        </a>
+                                    </li>
+                                }
+                            </ul>
                         </li>
                     }
                 </ul>

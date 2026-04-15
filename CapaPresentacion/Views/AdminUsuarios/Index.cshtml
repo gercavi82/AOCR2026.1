@@ -785,7 +785,7 @@
         @using (Html.BeginForm("Index", "AdminUsuarios", FormMethod.Get, new { @class = "admin-filter-card" }))
         {
             <div class="row align-items-end">
-                <div class="col-md-6">
+                <div class="col-md-4">
                     <label>Busqueda</label>
                     <input type="text"
                            name="filtro"
@@ -793,7 +793,7 @@
                            value="@Model.Filtro"
                            placeholder="Usuario, correo o nombre" />
                 </div>
-                <div class="col-md-3 mt-3 mt-md-0">
+                <div class="col-md-2 mt-3 mt-md-0">
                     <label>Estado</label>
                     <select class="form-control" name="activo">
                         <option value="" @(Model.Activo.HasValue ? null : "selected")>Todos</option>
@@ -801,10 +801,24 @@
                         <option value="false" @(Model.Activo == false ? "selected" : null)>Inactivos</option>
                     </select>
                 </div>
-                <div class="col-md-3 mt-3 mt-md-0">
+                <div class="col-md-2 mt-3 mt-md-0">
+                    <label>Tipo</label>
+                    <select class="form-control" name="tipo">
+                        <option value="" @(string.IsNullOrWhiteSpace(Model.TipoFiltro) ? "selected" : null)>Todos</option>
+                        <option value="Interno" @(Model.TipoFiltro == "Interno" ? "selected" : null)>Interno</option>
+                        <option value="Externo" @(Model.TipoFiltro == "Externo" ? "selected" : null)>Externo (Solicitante/RT)</option>
+                        <option value="Sin rol" @(Model.TipoFiltro == "Sin rol" ? "selected" : null)>Sin rol asignado</option>
+                    </select>
+                </div>
+                <div class="col-md-2 mt-3 mt-md-0">
                     <button type="submit" class="btn btn-primary w-100">
                         <i class="fas fa-search mr-1"></i> Filtrar
                     </button>
+                </div>
+                <div class="col-md-2 mt-3 mt-md-0">
+                    <a href="@Url.Action("Index", "AdminUsuarios")" class="btn btn-outline-secondary w-100">
+                        <i class="fas fa-times mr-1"></i> Limpiar
+                    </a>
                 </div>
             </div>
         }
@@ -816,6 +830,7 @@
                         <th>Usuario</th>
                         <th>Nombre</th>
                         <th>Correo</th>
+                        <th>Tipo</th>
                         <th>Roles</th>
                         <th>Estado</th>
                         <th>Ultimo login</th>
@@ -827,18 +842,39 @@
                     {
                         foreach (var item in Model.Usuarios)
                         {
+                            var esExterno = item.EsEliminableFisicamente;
+                            var tipoBadge = item.TipoUsuario == "Interno"
+                                ? "bg-primary"
+                                : (item.TipoUsuario == "Externo" ? "bg-info" : "bg-secondary");
                             <tr>
                                 <td><strong>@item.CodigoUsuario</strong></td>
                                 <td>@(string.Format("{0} {1}", item.NombreUsuario, item.ApellidoUsuario).Trim())</td>
                                 <td>@item.Correo</td>
                                 <td>
+                                    <span class="badge @tipoBadge" title="@item.TipoUsuario">
+                                        @if (item.TipoUsuario == "Interno")
+                                        {
+                                            <i class="fas fa-building mr-1"></i>
+                                        }
+                                        else if (item.TipoUsuario == "Externo")
+                                        {
+                                            <i class="fas fa-globe mr-1"></i>
+                                        }
+                                        @item.TipoUsuario
+                                    </span>
+                                </td>
+                                <td>
                                     @if (!string.IsNullOrWhiteSpace(item.RolesTexto))
                                     {
-                                        @item.RolesTexto
+                                        foreach (var rol in item.RolesTexto.Split(new[] { ',' }, StringSplitOptions.RemoveEmptyEntries))
+                                        {
+                                            var rolTrim = rol.Trim();
+                                            <span class="badge bg-light text-dark mr-1 mb-1" style="font-size:0.78em;">@rolTrim</span>
+                                        }
                                     }
                                     else
                                     {
-                                        <span class="text-muted">Sin roles</span>
+                                        <span class="badge bg-warning text-dark"><i class="fas fa-exclamation-triangle mr-1"></i>Sin roles</span>
                                     }
                                 </td>
                                 <td>
@@ -861,7 +897,7 @@
                                         </a>
                                         <a class="btn btn-outline-danger"
                                            href="@Url.Action("TransferirEliminar", "AdminUsuarios", new { id = item.IdUsuario })"
-                                           title="Eliminar / Transferir usuario">
+                                           title="Transferir y desactivar">
                                             <i class="fas fa-user-times"></i>
                                         </a>
                                     </div>
@@ -895,6 +931,18 @@
                                             <i class="fas @(item.Activo ? "fa-user-slash" : "fa-user-check")"></i>
                                         </button>
                                     }
+
+                                    <button type="button"
+                                            class="btn btn-sm btn-danger"
+                                            title="Eliminar permanentemente"
+                                            data-bs-toggle="modal"
+                                            data-bs-target="#modalEliminarPermanente"
+                                            data-usuario-id="@item.IdUsuario"
+                                            data-usuario-codigo="@item.CodigoUsuario"
+                                            data-usuario-nombre="@(string.Format("{0} {1}", item.NombreUsuario, item.ApellidoUsuario).Trim())"
+                                            data-usuario-tipo="@item.TipoUsuario">
+                                        <i class="fas fa-trash-alt"></i>
+                                    </button>
                                 </td>
                             </tr>
                         }
@@ -911,6 +959,95 @@
     </section>
 </div>
 
+<!-- Modal de confirmación para eliminación permanente -->
+<div class="modal fade" id="modalEliminarPermanente" tabindex="-1" role="dialog" aria-labelledby="modalEliminarLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered" role="document">
+        <div class="modal-content border-danger">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title" id="modalEliminarLabel">
+                    <i class="fas fa-exclamation-triangle mr-2"></i> Eliminar usuario permanentemente
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+            </div>
+            <div class="modal-body">
+                <div class="alert alert-danger mb-3">
+                    <strong>ATENCION:</strong> Esta accion eliminara permanentemente al usuario y todos sus datos asociados.
+                    Si tiene solicitudes, ordenes u otro historial, el sistema lo desactivara en su lugar.
+                </div>
+                <div class="mb-2">
+                    <strong>Usuario:</strong> <span id="modalEliminarCodigo"></span>
+                </div>
+                <div class="mb-2">
+                    <strong>Nombre:</strong> <span id="modalEliminarNombre"></span>
+                </div>
+                <div class="mb-3">
+                    <strong>Tipo:</strong> <span id="modalEliminarTipo" class="badge bg-info"></span>
+                </div>
+                <div class="form-check mb-2">
+                    <input class="form-check-input" type="checkbox" id="chkConfirmarEliminar" />
+                    <label class="form-check-label text-danger font-weight-bold" for="chkConfirmarEliminar">
+                        Confirmo que deseo eliminar este usuario de forma permanente
+                    </label>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                @using (Html.BeginForm("EliminarPermanente", "AdminUsuarios", FormMethod.Post, new { id = "formEliminarPermanente" }))
+                {
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" name="id" id="modalEliminarId" value="" />
+                    <button type="submit" class="btn btn-danger" id="btnConfirmarEliminar" disabled>
+                        <i class="fas fa-trash-alt mr-1"></i> Eliminar permanentemente
+                    </button>
+                }
+            </div>
+        </div>
+    </div>
+</div>
+
 @section Scripts {
-    <script src="~/Scripts/admin-usuarios.js"></script>
+    <script src="~/Scripts/admin-usuarios.js?v=@DateTime.Now.Ticks"></script>
+    <script>
+    (function () {
+        // Poblar modal al hacer click en cualquier boton de eliminar
+        document.addEventListener("click", function (e) {
+            var btn = e.target.closest("[data-bs-target='#modalEliminarPermanente']");
+            if (!btn) return;
+
+            var elId = document.getElementById("modalEliminarId");
+            var elCodigo = document.getElementById("modalEliminarCodigo");
+            var elNombre = document.getElementById("modalEliminarNombre");
+            var elTipo = document.getElementById("modalEliminarTipo");
+            var elChk = document.getElementById("chkConfirmarEliminar");
+            var elBtn = document.getElementById("btnConfirmarEliminar");
+
+            if (elId) elId.value = btn.getAttribute("data-usuario-id") || "";
+            if (elCodigo) elCodigo.textContent = btn.getAttribute("data-usuario-codigo") || "";
+            if (elNombre) elNombre.textContent = btn.getAttribute("data-usuario-nombre") || "";
+            if (elTipo) elTipo.textContent = btn.getAttribute("data-usuario-tipo") || "";
+            if (elChk) elChk.checked = false;
+            if (elBtn) elBtn.disabled = true;
+        });
+
+        // Checkbox habilita/deshabilita boton confirmar
+        var chk = document.getElementById("chkConfirmarEliminar");
+        var btnConf = document.getElementById("btnConfirmarEliminar");
+        if (chk && btnConf) {
+            chk.addEventListener("change", function () {
+                btnConf.disabled = !chk.checked;
+            });
+        }
+
+        // Limpiar al cerrar
+        var modal = document.getElementById("modalEliminarPermanente");
+        if (modal) {
+            modal.addEventListener("hidden.bs.modal", function () {
+                if (chk) chk.checked = false;
+                if (btnConf) btnConf.disabled = true;
+                var elId = document.getElementById("modalEliminarId");
+                if (elId) elId.value = "";
+            });
+        }
+    })();
+    </script>
 }
