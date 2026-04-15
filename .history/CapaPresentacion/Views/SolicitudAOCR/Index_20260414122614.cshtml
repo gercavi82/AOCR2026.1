@@ -1,0 +1,700 @@
+﻿@inherits System.Web.Mvc.WebViewPage
+@using CapaModelo
+@using System.Web.Mvc
+@using System.Web.Mvc.Html
+@{
+    ViewBag.Title = "Operador";
+    Layout = "~/Views/Shared/_LayoutAOCR.cshtml";
+}
+
+@section Styles {
+    <link rel="stylesheet" href="@Url.Content("~/Content/css/dgac-theme.css")" />
+    <style>
+    /* ── Tablero Solicitudes — Premium DataTable ── */
+    .sol-shell {
+        --c-primary: #0f4d7a;
+        --c-primary-soft: #e8f1f8;
+        --c-ink: #14293d;
+        --c-text: #1e3a52;
+        --c-muted: #6e8799;
+        --c-border: rgba(14,46,71,.08);
+        --c-surface: #ffffff;
+        --c-surface-alt: #f8fafb;
+        --c-bg: #f3f6f9;
+        --c-success: #1a7a46;
+        --c-warning: #b78312;
+        --c-danger: #c0392b;
+        --r-sm: 10px;
+        --r-md: 14px;
+        --r-lg: 20px;
+        --shadow-card: 0 1px 3px rgba(14,46,71,.04), 0 6px 20px rgba(14,46,71,.04);
+        --transition: .2s ease;
+        font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+        -webkit-font-smoothing: antialiased;
+    }
+
+    /* Header */
+    .sol-header {
+        background: linear-gradient(135deg, #0e3a5c 0%, #145a82 55%, #0f6a7f 100%);
+        color: #fff;
+        padding: 26px 32px 22px;
+        border-radius: var(--r-lg);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 16px;
+        flex-wrap: wrap;
+        margin-bottom: 24px;
+        position: relative;
+        overflow: hidden;
+    }
+    .sol-header::after {
+        content: '';
+        position: absolute;
+        top: -60%;
+        right: -8%;
+        width: 260px;
+        height: 260px;
+        background: radial-gradient(circle, rgba(255,255,255,.06), transparent 70%);
+        pointer-events: none;
+    }
+    .sol-header__title {
+        font-size: 1.35rem;
+        font-weight: 800;
+        letter-spacing: -.02em;
+        margin: 0;
+    }
+    .sol-header__sub {
+        font-size: .84rem;
+        opacity: .6;
+        margin: 2px 0 0;
+    }
+    .sol-header .btn-aocr-primary {
+        position: relative;
+        z-index: 1;
+    }
+
+    /* Toolbar: filters + search */
+    .sol-toolbar {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 16px;
+        flex-wrap: wrap;
+        margin-bottom: 20px;
+    }
+    .sol-filters {
+        display: flex;
+        gap: 6px;
+        flex-wrap: wrap;
+    }
+    .sol-filter {
+        border: 1px solid var(--c-border);
+        border-radius: 999px;
+        background: var(--c-surface);
+        padding: 7px 18px;
+        font-size: .8rem;
+        font-weight: 700;
+        color: var(--c-muted);
+        cursor: pointer;
+        transition: all var(--transition);
+        white-space: nowrap;
+    }
+    .sol-filter:hover { background: var(--c-surface-alt); color: var(--c-ink); }
+    .sol-filter.active {
+        background: var(--c-primary);
+        color: #fff;
+        border-color: var(--c-primary);
+    }
+    .sol-filter .fa-circle { font-size: .5rem; vertical-align: middle; margin-right: 4px; }
+
+    /* Stats pills */
+    .sol-stats {
+        display: flex;
+        gap: 16px;
+        flex-wrap: wrap;
+        margin-bottom: 20px;
+    }
+    .sol-stat {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        background: var(--c-surface);
+        border: 1px solid var(--c-border);
+        border-radius: var(--r-sm);
+        padding: 10px 18px;
+        min-width: 140px;
+    }
+    .sol-stat__icon {
+        width: 36px;
+        height: 36px;
+        border-radius: 10px;
+        display: grid;
+        place-items: center;
+        font-size: .82rem;
+        color: #fff;
+        flex-shrink: 0;
+    }
+    .sol-stat__icon--all { background: linear-gradient(135deg, #0f4d7a, #0f6a7f); }
+    .sol-stat__icon--tramite { background: linear-gradient(135deg, #d4a017, #c89510); }
+    .sol-stat__icon--aprobado { background: linear-gradient(135deg, #27ae60, #1e8449); }
+    .sol-stat__icon--observado { background: linear-gradient(135deg, #c0392b, #a93226); }
+    .sol-stat__num {
+        font-size: 1.15rem;
+        font-weight: 800;
+        color: var(--c-ink);
+        line-height: 1;
+    }
+    .sol-stat__label {
+        font-size: .7rem;
+        color: var(--c-muted);
+        font-weight: 600;
+    }
+
+    /* Card wrapper */
+    .sol-card {
+        background: var(--c-surface);
+        border-radius: var(--r-lg);
+        box-shadow: var(--shadow-card);
+        overflow: hidden;
+        border: none;
+    }
+    .sol-card__body { padding: 0; }
+
+    /* DataTables overrides */
+    .sol-card .dataTables_wrapper {
+        padding: 18px 24px 14px;
+    }
+    .sol-card .dataTables_wrapper .dataTables_length,
+    .sol-card .dataTables_wrapper .dataTables_filter {
+        margin-bottom: 12px;
+    }
+    .sol-card .dataTables_wrapper .dataTables_length label {
+        font-size: .8rem;
+        color: var(--c-muted);
+        font-weight: 600;
+    }
+    .sol-card .dataTables_wrapper .dataTables_length select {
+        border-radius: 8px;
+        border: 1px solid var(--c-border);
+        padding: 4px 10px;
+        font-size: .8rem;
+        margin: 0 4px;
+    }
+    .sol-card .dataTables_wrapper .dataTables_filter input {
+        border-radius: 8px;
+        border: 1px solid var(--c-border);
+        padding: 7px 14px;
+        font-size: .82rem;
+        width: 240px;
+        transition: all var(--transition);
+    }
+    .sol-card .dataTables_wrapper .dataTables_filter input:focus {
+        border-color: var(--c-primary);
+        box-shadow: 0 0 0 3px rgba(15,77,122,.1);
+        outline: none;
+    }
+    .sol-card .dataTables_wrapper .dataTables_info {
+        font-size: .78rem;
+        color: var(--c-muted);
+        padding: 12px 0;
+    }
+    .sol-card .dataTables_wrapper .dataTables_paginate {
+        padding: 12px 0;
+    }
+    .sol-card .dataTables_wrapper .dataTables_paginate .paginate_button {
+        border-radius: 8px !important;
+        border: 1px solid var(--c-border) !important;
+        margin: 0 2px;
+        font-size: .78rem;
+        font-weight: 600;
+        padding: 5px 12px !important;
+        transition: all var(--transition);
+    }
+    .sol-card .dataTables_wrapper .dataTables_paginate .paginate_button.current {
+        background: var(--c-primary) !important;
+        color: #fff !important;
+        border-color: var(--c-primary) !important;
+    }
+    .sol-card .dataTables_wrapper .dataTables_paginate .paginate_button:hover:not(.current) {
+        background: var(--c-surface-alt) !important;
+        color: var(--c-primary) !important;
+        border-color: var(--c-primary) !important;
+    }
+
+    /* Table */
+    .sol-card table.dataTable {
+        border-collapse: separate;
+        border-spacing: 0;
+        width: 100% !important;
+    }
+    .sol-card table.dataTable thead th {
+        background: var(--c-surface-alt);
+        color: var(--c-muted);
+        font-size: .72rem;
+        font-weight: 800;
+        text-transform: uppercase;
+        letter-spacing: .06em;
+        padding: 12px 16px;
+        border-bottom: 2px solid var(--c-border);
+        border-top: none;
+        white-space: nowrap;
+    }
+    .sol-card table.dataTable thead th:first-child { border-radius: var(--r-sm) 0 0 0; }
+    .sol-card table.dataTable thead th:last-child { border-radius: 0 var(--r-sm) 0 0; }
+    .sol-card table.dataTable tbody td {
+        padding: 14px 16px;
+        font-size: .84rem;
+        color: var(--c-text);
+        border-bottom: 1px solid var(--c-border);
+        vertical-align: middle;
+    }
+    .sol-card table.dataTable tbody tr {
+        transition: background var(--transition);
+    }
+    .sol-card table.dataTable tbody tr:hover {
+        background: rgba(15,77,122,.02);
+    }
+    .sol-card table.dataTable tbody tr:last-child td {
+        border-bottom: none;
+    }
+
+    /* Cell helpers */
+    .sol-id {
+        font-weight: 800;
+        color: var(--c-primary);
+        font-size: .86rem;
+    }
+    .sol-company {
+        font-weight: 700;
+        color: var(--c-ink);
+        max-width: 220px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    .sol-inspector {
+        font-size: .82rem;
+        color: var(--c-muted);
+    }
+    .sol-date {
+        font-size: .82rem;
+        color: var(--c-text);
+        white-space: nowrap;
+    }
+    .sol-money {
+        font-family: 'Cascadia Code', 'Consolas', monospace;
+        font-weight: 700;
+        font-size: .84rem;
+        color: var(--c-ink);
+        white-space: nowrap;
+    }
+    .sol-tipo {
+        display: inline-block;
+        padding: 3px 10px;
+        border-radius: 6px;
+        font-size: .72rem;
+        font-weight: 700;
+        background: var(--c-surface-alt);
+        color: var(--c-muted);
+        border: 1px solid var(--c-border);
+    }
+
+    /* Status badges */
+    .sol-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        padding: 4px 12px;
+        border-radius: 999px;
+        font-size: .72rem;
+        font-weight: 700;
+        white-space: nowrap;
+    }
+    .sol-badge::before {
+        content: '';
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        flex-shrink: 0;
+    }
+    .sol-badge--tramite { background: #fef9ec; color: #8a6500; }
+    .sol-badge--tramite::before { background: #d4a017; }
+    .sol-badge--aprobado { background: #e8f8ef; color: #1a7a42; }
+    .sol-badge--aprobado::before { background: #27ae60; }
+    .sol-badge--observado { background: #fde8e8; color: #a93226; }
+    .sol-badge--observado::before { background: #c0392b; }
+    .sol-badge--legalizado { background: #e3f2fd; color: #1565c0; }
+    .sol-badge--legalizado::before { background: #1976d2; }
+    .sol-badge--pendiente { background: #f0f2f4; color: #5d6d7a; }
+    .sol-badge--pendiente::before { background: #8c99a4; }
+
+    /* Action button */
+    .sol-act {
+        width: 32px;
+        height: 32px;
+        border-radius: 8px;
+        border: 1px solid var(--c-border);
+        background: var(--c-surface);
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-size: .78rem;
+        color: var(--c-primary);
+        text-decoration: none;
+        transition: all var(--transition);
+    }
+    .sol-act:hover {
+        background: var(--c-primary-soft);
+        border-color: var(--c-primary);
+        color: var(--c-primary);
+    }
+
+    /* Empty state */
+    .sol-empty {
+        text-align: center;
+        padding: 60px 40px;
+        color: var(--c-muted);
+    }
+    .sol-empty i { font-size: 2.5rem; opacity: .3; margin-bottom: 12px; display: block; }
+    .sol-empty p { margin: 0; font-size: .9rem; }
+
+    @@media (max-width: 768px) {
+        .sol-header { padding: 18px 20px 16px; }
+        .sol-toolbar { flex-direction: column; align-items: stretch; }
+        .sol-stats { flex-direction: column; }
+        .sol-card .dataTables_wrapper { padding: 12px 14px 10px; }
+        .sol-card .dataTables_wrapper .dataTables_filter input { width: 100%; }
+    }
+    </style>
+}
+
+<div class="sol-shell">
+    {{-- Header --}}
+    <div class="sol-header">
+        <div>
+            <h2 class="sol-header__title"><i class="fas fa-clipboard-list" style="opacity:.5;margin-right:8px;"></i>Tablero de Control</h2>
+            <p class="sol-header__sub">Gestión de Certificados AOCR</p>
+        </div>
+        <div class="btn-group">
+            <button type="button"
+                    class="btn-aocr-primary dropdown-toggle"
+                    data-bs-toggle="dropdown"
+                    aria-expanded="false">
+                <i class="fas fa-plus"></i> Nueva Solicitud
+            </button>
+            <div class="dropdown-menu dropdown-menu-end aocr-dropdown-menu">
+                <div class="aocr-dropdown-header">Seleccione Trámite</div>
+                <a id="btnEmisionAOCR" class="dropdown-item" href="#">
+                    <i class="fas fa-file-alt text-primary me-2"></i> Emisión AOCR
+                </a>
+                <a class="dropdown-item" href="@Url.Action("Modificacion", "Operador")">
+                    <i class="fas fa-edit text-info me-2"></i> Modificación
+                </a>
+                <div class="dropdown-divider"></div>
+                <a class="dropdown-item" href="/Ambitos/Formulario_Actualizacion?oidSol=-1">
+                    <i class="fas fa-sync text-warning me-2"></i> Renovación
+                </a>
+            </div>
+        </div>
+    </div>
+
+    {{-- Stats --}}
+    <div class="sol-stats" id="solStats"></div>
+
+    {{-- Filter toolbar --}}
+    <div class="sol-toolbar">
+        <div class="sol-filters" id="filterContainer">
+            <button class="sol-filter active" data-filter="all"><i class="fas fa-border-all" style="margin-right:4px;"></i> Todos</button>
+            <button class="sol-filter" data-filter="tramite"><i class="fas fa-circle" style="color:#d4a017;"></i> En Trámite</button>
+            <button class="sol-filter" data-filter="aprobado"><i class="fas fa-circle" style="color:#27ae60;"></i> Aprobados</button>
+            <button class="sol-filter" data-filter="observado"><i class="fas fa-circle" style="color:#c0392b;"></i> Observados</button>
+        </div>
+    </div>
+
+    {{-- Table card --}}
+    <div class="sol-card">
+        <div class="sol-card__body">
+            <table id="tablaSolicitudes" class="table mb-0 w-100">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Fecha</th>
+                        <th>Tipo</th>
+                        <th>Compañía</th>
+                        <th>Inspector</th>
+                        <th>Estado</th>
+                        <th class="text-end">Viáticos</th>
+                        <th style="width:60px;">Acción</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Modal para crear/editar solicitud AOCR -->
+<div class="modal fade" id="modalFormulario" tabindex="-1" aria-labelledby="modalFormularioLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title" id="modalFormularioLabel">
+                    <i class="bi bi-clipboard-check me-2"></i> Solicitud AOCR
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-0" id="contenidoModal">
+                <div class="d-flex flex-column align-items-center justify-content-center py-5">
+                    <div class="spinner-border text-primary mb-3" role="status"></div>
+                    <p class="text-muted mb-0">Cargando formulario...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section scripts {
+    <script>
+    $(document).ready(function () {
+
+        // Abrir modal de inmediato si llega con ?abrir=nueva
+        var urlParams = new URLSearchParams(window.location.search);
+        if (urlParams.get('abrir') === 'nueva') {
+            setTimeout(function () { cargarFormulario(null); }, 150);
+        }
+
+        var datosGlobales = [];
+        var dtTable = null;
+        var filtroActivo = 'all';
+
+        // Load data
+        cargarSolicitudesDesdeDB();
+
+        function cargarSolicitudesDesdeDB() {
+            $.ajax({
+                url: '@Url.Action("ObtenerMisSolicitudes", "SolicitudAOCR")',
+                type: 'GET',
+                dataType: 'json',
+                success: function(response) {
+                    if (response.success) {
+                        datosGlobales = response.data;
+                        renderStats(datosGlobales);
+                        initDataTable(datosGlobales);
+                    } else {
+                        console.error('Error al cargar solicitudes:', response.message);
+                        $('#tablaSolicitudes tbody').html(
+                            '<tr><td colspan="8" class="sol-empty"><i class="fas fa-exclamation-triangle"></i><p>' +
+                            $('<span>').text(response.message || 'Error al cargar solicitudes').html() + '</p></td></tr>'
+                        );
+                    }
+                },
+                error: function() {
+                    $('#tablaSolicitudes tbody').html(
+                        '<tr><td colspan="8" class="sol-empty"><i class="fas fa-times-circle"></i><p>Error de conexión. Recargue la página.</p></td></tr>'
+                    );
+                }
+            });
+        }
+
+        function renderStats(data) {
+            var total = data.length;
+            var tramite = data.filter(function(d) { return d.cat === 'tramite'; }).length;
+            var aprobado = data.filter(function(d) { return d.cat === 'aprobado'; }).length;
+            var observado = data.filter(function(d) { return d.cat === 'observado'; }).length;
+            var html = '';
+            html += statPill('fas fa-layer-group', 'all', total, 'Total');
+            html += statPill('fas fa-hourglass-half', 'tramite', tramite, 'En trámite');
+            html += statPill('fas fa-check-circle', 'aprobado', aprobado, 'Aprobados');
+            html += statPill('fas fa-exclamation-circle', 'observado', observado, 'Observados');
+            $('#solStats').html(html);
+        }
+
+        function statPill(icon, type, num, label) {
+            return '<div class="sol-stat">' +
+                '<div class="sol-stat__icon sol-stat__icon--' + type + '"><i class="' + icon + '"></i></div>' +
+                '<div><div class="sol-stat__num">' + num + '</div><div class="sol-stat__label">' + $('<span>').text(label).html() + '</div></div>' +
+                '</div>';
+        }
+
+        function badgeClass(cat) {
+            switch (cat) {
+                case 'aprobado': return 'sol-badge--aprobado';
+                case 'observado': return 'sol-badge--observado';
+                case 'tramite': return 'sol-badge--tramite';
+                default: return 'sol-badge--pendiente';
+            }
+        }
+
+        function initDataTable(data) {
+            function doInit() {
+                if ($.fn.DataTable && $.fn.DataTable.isDataTable('#tablaSolicitudes')) {
+                    $('#tablaSolicitudes').DataTable().destroy();
+                }
+
+                var tableData = data.map(function(item) {
+                    return [
+                        item.id,
+                        item.fecha || '',
+                        item.tipo || '',
+                        item.comp || '',
+                        item.insp || '',
+                        item.st || '',
+                        item.viat || 0,
+                        item.cat || '',
+                        item.id
+                    ];
+                });
+
+                dtTable = $('#tablaSolicitudes').DataTable({
+                    data: tableData,
+                    columns: [
+                        {
+                            title: 'ID',
+                            className: 'text-center',
+                            render: function(data) {
+                                return '<span class="sol-id">' + Number(data) + '</span>';
+                            }
+                        },
+                        {
+                            title: 'Fecha',
+                            className: 'sol-date',
+                            render: function(data) {
+                                return $('<span>').text(data).html();
+                            }
+                        },
+                        {
+                            title: 'Tipo',
+                            render: function(data) {
+                                return '<span class="sol-tipo">' + $('<span>').text(data).html() + '</span>';
+                            }
+                        },
+                        {
+                            title: 'Compañía',
+                            render: function(data) {
+                                return '<span class="sol-company" title="' + $('<span>').text(data).html() + '">' + $('<span>').text(data).html() + '</span>';
+                            }
+                        },
+                        {
+                            title: 'Inspector',
+                            render: function(data) {
+                                return '<span class="sol-inspector">' + $('<span>').text(data).html() + '</span>';
+                            }
+                        },
+                        {
+                            title: 'Estado',
+                            className: 'text-center',
+                            render: function(data, type, row) {
+                                if (type === 'filter' || type === 'sort') return data;
+                                var cat = row[7];
+                                return '<span class="sol-badge ' + badgeClass(cat) + '">' + $('<span>').text(data).html() + '</span>';
+                            }
+                        },
+                        {
+                            title: 'Viáticos',
+                            className: 'text-end',
+                            render: function(data) {
+                                return '<span class="sol-money">$ ' + Number(data).toFixed(2) + '</span>';
+                            }
+                        },
+                        { visible: false },
+                        {
+                            title: 'Acción',
+                            className: 'text-center',
+                            orderable: false,
+                            searchable: false,
+                            render: function(data) {
+                                return '<a class="sol-act" href="' + '@Url.Action("Detalle", "SolicitudAOCR")' + '/' + Number(data) + '" title="Ver detalle"><i class="fas fa-eye"></i></a>';
+                            }
+                        }
+                    ],
+                    order: [[0, 'desc']],
+                    pageLength: 15,
+                    lengthMenu: [[10, 15, 25, 50, -1], [10, 15, 25, 50, 'Todo']],
+                    responsive: true,
+                    language: {
+                        search: '<i class="fas fa-search" style="opacity:.4;margin-right:6px;"></i>',
+                        searchPlaceholder: 'Buscar solicitud...',
+                        lengthMenu: 'Mostrar _MENU_ registros',
+                        info: 'Mostrando _START_ a _END_ de _TOTAL_ solicitudes',
+                        infoEmpty: 'Sin solicitudes',
+                        infoFiltered: '(filtrado de _MAX_ total)',
+                        zeroRecords: '<div class="sol-empty"><i class="fas fa-search"></i><p>Sin resultados para la búsqueda actual</p></div>',
+                        paginate: {
+                            first: '<i class="fas fa-angles-left"></i>',
+                            last: '<i class="fas fa-angles-right"></i>',
+                            next: '<i class="fas fa-angle-right"></i>',
+                            previous: '<i class="fas fa-angle-left"></i>'
+                        }
+                    },
+                    dom: '<"d-flex flex-wrap justify-content-between align-items-center gap-2"lf>rt<"d-flex flex-wrap justify-content-between align-items-center gap-2"ip>'
+                });
+
+                // Custom filter for category tabs
+                $.fn.dataTable.ext.search.push(function(settings, searchData, index, rowData) {
+                    if (settings.nTable.id !== 'tablaSolicitudes') return true;
+                    if (filtroActivo === 'all') return true;
+                    return rowData[7] === filtroActivo;
+                });
+            }
+
+            // Wait for DataTables lazy-load or init immediately
+            if (window.AOCR && window.AOCR.dataTablesLoaded) {
+                doInit();
+            } else if ($.fn.DataTable) {
+                doInit();
+            } else {
+                document.addEventListener('AOCR.DataTablesReady', doInit);
+            }
+        }
+
+        // Filter tabs
+        $(document).on('click', '.sol-filter', function() {
+            $('.sol-filter').removeClass('active');
+            $(this).addClass('active');
+            filtroActivo = $(this).data('filter');
+            if (dtTable) {
+                dtTable.draw();
+            }
+        });
+
+        // Modal
+        $('#btnEmisionAOCR').on('click', function(e) {
+            e.preventDefault();
+            cargarFormulario(null);
+        });
+
+        window.consultarSolicitud = function(id) {
+            cargarFormulario(id);
+        };
+
+        function cargarFormulario(idSolicitud) {
+            var modalEl = document.getElementById('modalFormulario');
+            var modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+            modal.show();
+            $('#contenidoModal').html(
+                '<div class="d-flex flex-column align-items-center justify-content-center h-100 py-5">' +
+                '<div class="spinner-border text-primary mb-3" role="status"></div>' +
+                '<h6 class="text-secondary fw-bold">Cargando formulario...</h6></div>'
+            );
+            $.ajax({
+                url: '@Url.Action("FormularioEmisionAOCR", "SolicitudAOCR")',
+                type: 'GET',
+                data: { oid: idSolicitud },
+                success: function(data) {
+                    $('#contenidoModal').hide().html(data).fadeIn(200);
+                },
+                error: function(xhr) {
+                    $('#contenidoModal').html('<div class="alert alert-danger m-3">Error de conexión</div>');
+                    console.error(xhr.responseText);
+                }
+            });
+        }
+    });
+    </script>
+}
+    });
+    </script>
+}
+
+

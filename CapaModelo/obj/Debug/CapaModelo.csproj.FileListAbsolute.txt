@@ -1,6 +1,0 @@
-C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\CapaModelo\bin\Debug\CapaModelo.dll
-C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\CapaModelo\bin\Debug\CapaModelo.pdb
-C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\CapaModelo\obj\Debug\CapaModelo.csproj.AssemblyReference.cache
-C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\CapaModelo\obj\Debug\CapaModelo.csproj.CoreCompileInputs.cache
-C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\CapaModelo\obj\Debug\CapaModelo.dll
-C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\CapaModelo\obj\Debug\CapaModelo.pdb

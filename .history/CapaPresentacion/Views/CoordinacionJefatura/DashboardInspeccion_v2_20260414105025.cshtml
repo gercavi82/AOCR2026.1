@@ -1,0 +1,693 @@
+@model CapaPresentacion.Models.DashboardInspeccionViewModel
+@using System
+@using System.Linq
+@using System.Web
+@using CapaPresentacion.Helpers
+@{
+    Layout = "~/Views/Shared/_LayoutAOCR.cshtml";
+    ViewBag.Title = "Gestión Integral AOCR";
+
+    var model = Model ?? new CapaPresentacion.Models.DashboardInspeccionViewModel();
+    var gestionIntegral = model.GestionIntegralAocr ?? new System.Collections.Generic.List<CapaPresentacion.Models.DashboardGestionIntegralItemViewModel>();
+    var firmas = model.PendientesFirma ?? new System.Collections.Generic.List<CapaPresentacion.Models.DashboardInspeccionFirmaItemViewModel>();
+    var ncs = model.ObservacionesNc ?? new System.Collections.Generic.List<CapaPresentacion.Models.DashboardInspeccionNcItemViewModel>();
+    var quickFilter = string.IsNullOrWhiteSpace(model.QuickFilter) ? "TODOS" : model.QuickFilter;
+    var tablero = model.TableroAocr ?? new CapaPresentacion.Models.TableroAocrViewModel();
+    const int kanbanPreviewLimit = 5;
+    var puedeGestionarAsignacion = User.IsInRole("Administrador") || User.IsInRole("Direccion") || User.IsInRole("JefaturaTecnica");
+    var puedeVerPendientesDirdac = User.IsInRole("Administrador") || User.IsInRole("DIRDAC") || User.IsInRole("Direccion") || User.IsInRole("Director") || User.IsInRole("JefaturaTecnica") || User.IsInRole("Jefe");
+
+    Func<string, string, string> quickFilterUrl = (value, label) => Url.Action("DashboardInspeccion", "CoordinacionJefatura", new
+    {
+        compania = model.CompaniaFiltro,
+        inspector = model.InspectorFiltro,
+        estado = model.EstadoFiltro,
+        quickFilter = value
+    });
+}
+
+@* ── Kanban column helper ── *@
+@helper RenderKanbanColumn(string columnKey, string title, string icon, string accentClass, System.Collections.Generic.IEnumerable<CapaPresentacion.Models.DashboardGestionIntegralItemViewModel> items, int previewLimit)
+{
+    var itemList = (items ?? Enumerable.Empty<CapaPresentacion.Models.DashboardGestionIntegralItemViewModel>()).ToList();
+    var total = itemList.Count;
+    var visibleInitial = Math.Min(previewLimit, total);
+
+    <div class="di-col @accentClass" data-column="@columnKey" data-expanded="false" data-preview-limit="@previewLimit">
+        <div class="di-col__head">
+            <span class="di-col__icon"><i class="@icon"></i></span>
+            <span class="di-col__title">@title</span>
+            <span class="di-col__count">@total</span>
+        </div>
+        <div class="di-col__body">
+            @if (!itemList.Any())
+            {
+                <div class="di-empty"><i class="fas fa-inbox"></i> Sin registros</div>
+            }
+            else
+            {
+                foreach (var item in itemList)
+                {
+                    var badgeGeneral = DashboardInspeccionBadgeHelper.GetBadgeEstado(item.EstadoGeneral, "GENERAL");
+                    var badgeInspeccion = DashboardInspeccionBadgeHelper.GetBadgeEstado(item.EstadoInspeccion, "INSPECCION");
+                    var mostrarAccionPrincipal = !string.IsNullOrWhiteSpace(item.UrlAccionPrincipal)
+                        && !string.Equals(item.UrlAccionPrincipal, item.UrlDetalle, StringComparison.OrdinalIgnoreCase)
+                        && !string.Equals(item.TextoAccionPrincipal, "Ver", StringComparison.OrdinalIgnoreCase);
+                    var searchIndex = string.Join(" ", new[] { item.NumeroSolicitud, item.Compania, item.Tipo, item.EstadoGeneral, item.EstadoDocumental, item.EstadoInspeccion, item.Inspector, item.EtapaActual, item.ResumenKanban }.Where(x => !string.IsNullOrWhiteSpace(x)));
+
+                    <article class="di-card di-card--@item.ColorKanban @(item.EsUrgente ? "di-card--urgent" : null)"
+                             data-search="@searchIndex.ToLowerInvariant()" title="@item.ResumenKanban">
+                        <div class="di-card__row">
+                            <button type="button" class="di-card__id js-open-detail-modal" data-url="@item.UrlDetalle" data-title="@item.NumeroSolicitud - @item.Compania">@item.NumeroSolicitud</button>
+                            <span class="di-chip-sm">@item.Tipo</span>
+                        </div>
+                        <div class="di-card__company">@item.Compania</div>
+                        <div class="di-card__badges">
+                            <span class="@badgeGeneral.CssClass">@badgeGeneral.Text</span>
+                            <span class="@badgeInspeccion.CssClass">@badgeInspeccion.Text</span>
+                        </div>
+                        <div class="di-card__meta">
+                            <span><i class="fas fa-user-check"></i> @item.Inspector</span>
+                            <span><i class="fas fa-calendar-days"></i> @(item.Fecha.HasValue ? item.Fecha.Value.ToString("dd/MM/yyyy") : "—")</span>
+                        </div>
+                        <div class="di-card__sigs">
+                            <span class="di-sig"><span class="di-dot @(item.FirmaInspector ? "di-dot--ok" : "")"></span> Insp</span>
+                            <span class="di-sig"><span class="di-dot @(item.FirmaDirdac ? "di-dot--ok" : "")"></span> DIR</span>
+                        </div>
+                        <div class="di-card__actions">
+                            <button type="button" class="btn btn-sm btn-outline-primary js-open-detail-modal" data-url="@item.UrlDetalle" data-title="@item.NumeroSolicitud - @item.Compania"><i class="fas fa-eye"></i></button>
+                            @if (mostrarAccionPrincipal)
+                            {
+                                <a class="btn btn-sm btn-outline-success" href="@item.UrlAccionPrincipal"><i class="fas fa-bolt"></i> @item.TextoAccionPrincipal</a>
+                            }
+                        </div>
+                    </article>
+                }
+            }
+        </div>
+        <div class="di-col__foot @(total > previewLimit ? "" : "d-none")">
+            <span class="di-col__summary"><strong class="js-kanban-visible">@visibleInitial</strong>/@total</span>
+            <button type="button" class="btn btn-sm btn-outline-secondary js-kanban-toggle" data-column="@columnKey">Ver más</button>
+        </div>
+    </div>
+}
+
+@* ── Embedded styles ── *@
+<style>
+/* ===== Dashboard Inspección v2 — tokens ===== */
+.di { --di-blue:#155c8a; --di-orange:#c66a17; --di-green:#1d7b4f; --di-red:#b53939; --di-yellow:#b78312; --di-ink:#183246; --di-muted:#6d7f8b; --di-border:rgba(24,50,70,.09); --di-bg:#f6f8fa; --di-card:#fff; --di-radius:14px; --di-shadow:0 4px 14px rgba(17,52,73,.06); }
+
+/* shell */
+.di { background:var(--di-bg); border-radius:var(--di-radius); padding:20px; color:var(--di-ink); display:grid; gap:18px; }
+
+/* ─── HEADER ROW ─── */
+.di-header { display:flex; justify-content:space-between; align-items:flex-start; gap:14px; flex-wrap:wrap; }
+.di-header__left h1 { font-size:1.35rem; font-weight:800; margin:0; color:var(--di-ink); }
+.di-header__left p { margin:4px 0 0; color:var(--di-muted); font-size:.88rem; }
+.di-header__crumb { display:flex; align-items:center; gap:6px; font-size:.82rem; color:var(--di-muted); margin-bottom:4px; }
+.di-header__crumb a { color:var(--di-blue); text-decoration:none; }
+.di-header__actions { display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
+.di-header__actions .btn { font-size:.82rem; padding:6px 12px; border-radius:8px; font-weight:700; }
+
+/* ─── KPI STRIP ─── */
+.di-kpis { display:grid; grid-template-columns:repeat(6,1fr); gap:10px; }
+.di-kpi { background:var(--di-card); border:1px solid var(--di-border); border-radius:var(--di-radius); padding:14px 16px; display:flex; align-items:center; gap:12px; box-shadow:var(--di-shadow); transition:transform .15s; }
+.di-kpi:hover { transform:translateY(-1px); }
+.di-kpi__icon { width:40px; height:40px; border-radius:10px; display:grid; place-items:center; font-size:1rem; color:#fff; flex-shrink:0; }
+.di-kpi__icon--info { background:linear-gradient(135deg,#1976d2,#155c8a); }
+.di-kpi__icon--warn { background:linear-gradient(135deg,#f9a825,#c66a17); }
+.di-kpi__icon--danger { background:linear-gradient(135deg,#ef5350,#b53939); }
+.di-kpi__icon--success { background:linear-gradient(135deg,#43a047,#1d7b4f); }
+.di-kpi__val { font-size:1.45rem; font-weight:800; line-height:1; color:var(--di-ink); }
+.di-kpi__label { font-size:.78rem; color:var(--di-muted); margin-top:2px; }
+
+/* ─── FILTER BAR ─── */
+.di-filter { background:var(--di-card); border:1px solid var(--di-border); border-radius:var(--di-radius); padding:14px 18px; box-shadow:var(--di-shadow); }
+.di-filter__row { display:flex; flex-wrap:wrap; gap:10px; align-items:end; }
+.di-filter__group { display:flex; flex-direction:column; gap:2px; }
+.di-filter__group label { font-size:.72rem; font-weight:700; text-transform:uppercase; letter-spacing:.05em; color:var(--di-muted); }
+.di-filter__group select, .di-filter__group input { height:36px; font-size:.88rem; border-radius:8px; border:1px solid var(--di-border); padding:0 10px; min-width:160px; }
+.di-filter__btns { display:flex; gap:6px; align-self:end; }
+.di-filter__btns .btn { height:36px; font-size:.82rem; padding:0 14px; border-radius:8px; font-weight:700; }
+
+/* quick-filter pills */
+.di-pills { display:flex; flex-wrap:wrap; gap:6px; margin-top:10px; }
+.di-pill { display:inline-flex; align-items:center; gap:6px; padding:6px 12px; border-radius:999px; border:1px solid var(--di-border); background:var(--di-card); color:var(--di-ink); font-size:.8rem; font-weight:700; text-decoration:none; transition:background .15s,color .15s; }
+.di-pill:hover { background:#e6f1f8; }
+.di-pill.active { background:var(--di-blue); color:#fff; border-color:transparent; }
+
+/* search */
+.di-search { position:relative; }
+.di-search i { position:absolute; top:50%; left:12px; transform:translateY(-50%); color:var(--di-muted); font-size:.85rem; }
+.di-search input { padding-left:36px; height:36px; font-size:.88rem; border-radius:8px; border:1px solid var(--di-border); width:100%; }
+
+/* ─── TABS ─── */
+.di-tabs { display:flex; flex-wrap:wrap; gap:6px; }
+.di-tab { display:inline-flex; align-items:center; gap:8px; padding:8px 14px; border-radius:10px; border:1px solid var(--di-border); background:var(--di-card); color:var(--di-ink); font-weight:700; font-size:.88rem; cursor:pointer; transition:background .15s; }
+.di-tab:hover { background:#e6f1f8; }
+.di-tab.active { background:var(--di-blue); color:#fff; border-color:transparent; }
+.di-tab__count { min-width:24px; height:24px; padding:0 7px; border-radius:999px; display:inline-flex; align-items:center; justify-content:center; background:rgba(24,50,70,.08); font-size:.75rem; font-weight:800; }
+.di-tab.active .di-tab__count { background:rgba(255,255,255,.2); }
+.di-pane { display:none; }
+.di-pane.active { display:block; }
+
+/* ─── TABLE SECTION ─── */
+.di-panel { background:var(--di-card); border:1px solid var(--di-border); border-radius:var(--di-radius); box-shadow:var(--di-shadow); overflow:hidden; }
+.di-panel__head { padding:14px 18px; border-bottom:1px solid var(--di-border); display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap; }
+.di-panel__title { margin:0; font-size:1.05rem; font-weight:800; color:var(--di-ink); }
+.di-panel__sub { margin:2px 0 0; color:var(--di-muted); font-size:.82rem; }
+.di-panel__body { padding:0; }
+.di-panel__body .table { margin:0; }
+.di-panel__body .table thead th { font-size:.75rem; text-transform:uppercase; letter-spacing:.05em; color:var(--di-muted); border-top:0; white-space:nowrap; padding:10px 12px; background:#f8fafb; }
+.di-panel__body .table tbody td { padding:10px 12px; vertical-align:middle; font-size:.88rem; }
+.di-panel__body .table .btn { white-space:nowrap; font-size:.78rem; }
+
+/* signatures mini */
+.di-sigs-inline { display:flex; gap:10px; }
+.di-dot { width:9px; height:9px; border-radius:50%; display:inline-block; background:#c5cdd3; }
+.di-dot--ok { background:var(--di-green); }
+.di-sig { display:inline-flex; align-items:center; gap:4px; font-size:.78rem; color:var(--di-muted); }
+
+/* empty state */
+.di-empty-lg { text-align:center; padding:48px 24px; color:var(--di-muted); }
+.di-empty-lg i { font-size:2rem; display:block; margin-bottom:10px; opacity:.5; }
+.di-empty-lg p { margin:6px 0 0; font-size:.9rem; }
+
+/* chip */
+.di-chip-sm { font-size:.68rem; padding:2px 7px; border-radius:999px; border:1px solid var(--di-border); background:#f7fafc; font-weight:700; text-transform:uppercase; letter-spacing:.03em; }
+
+/* ─── KANBAN ─── */
+.di-kanban { display:grid; grid-auto-flow:column; grid-auto-columns:minmax(260px,1fr); gap:12px; overflow-x:auto; padding-bottom:6px; }
+.di-col { background:var(--di-card); border:1px solid var(--di-border); border-radius:var(--di-radius); display:flex; flex-direction:column; min-height:380px; box-shadow:var(--di-shadow); }
+.di-col__head { display:flex; align-items:center; gap:8px; padding:10px 14px; border-bottom:1px solid var(--di-border); }
+.di-col__icon { width:28px; height:28px; border-radius:8px; display:grid; place-items:center; font-size:.75rem; color:#fff; flex-shrink:0; }
+.di-col__title { font-weight:800; font-size:.88rem; flex:1; }
+.di-col__count { min-width:26px; height:26px; padding:0 7px; border-radius:999px; display:inline-flex; align-items:center; justify-content:center; font-weight:800; font-size:.78rem; background:rgba(24,50,70,.06); }
+.di-col__body { padding:10px; display:grid; gap:8px; align-content:start; flex:1; overflow-y:auto; max-height:520px; }
+.di-col__foot { display:flex; justify-content:space-between; align-items:center; padding:8px 14px; border-top:1px solid var(--di-border); font-size:.78rem; color:var(--di-muted); }
+.di-empty { display:grid; place-items:center; gap:6px; min-height:100px; color:var(--di-muted); font-size:.85rem; border:1px dashed rgba(24,50,70,.14); border-radius:10px; padding:16px; }
+
+/* column accents */
+.di-col--gray .di-col__head { background:linear-gradient(180deg,#f3f5f7,#eaedf0); } .di-col--gray .di-col__icon { background:#7a8791; }
+.di-col--blue .di-col__head { background:linear-gradient(180deg,#e8f2fb,#d8eaf8); } .di-col--blue .di-col__icon { background:#2f86bd; }
+.di-col--yellow .di-col__head { background:linear-gradient(180deg,#fff8e3,#fff0c6); } .di-col--yellow .di-col__icon { background:#c9950f; }
+.di-col--red .di-col__head { background:linear-gradient(180deg,#fceaea,#f9dddd); } .di-col--red .di-col__icon { background:#d15151; }
+.di-col--green .di-col__head { background:linear-gradient(180deg,#e8f5ee,#dbf0e3); } .di-col--green .di-col__icon { background:#41a06e; }
+
+/* kanban card */
+.di-card { border-radius:10px; border:1px solid rgba(24,50,70,.08); background:#fff; padding:10px 12px; display:grid; gap:6px; transition:transform .12s,box-shadow .12s; }
+.di-card:hover { transform:translateY(-1px); box-shadow:0 6px 16px rgba(17,52,73,.1); }
+.di-card--secondary { border-left:3px solid #7a8791; }
+.di-card--info { border-left:3px solid #2f86bd; }
+.di-card--warning { border-left:3px solid #d59b1b; }
+.di-card--danger { border-left:3px solid #d95c5c; }
+.di-card--success { border-left:3px solid #41a06e; }
+.di-card--urgent { box-shadow:0 0 0 2px rgba(217,92,92,.2); }
+.di-card__row { display:flex; justify-content:space-between; align-items:center; gap:6px; }
+.di-card__id { border:0; background:transparent; padding:0; font-weight:800; color:var(--di-blue); font-size:.85rem; text-align:left; cursor:pointer; }
+.di-card__id:hover { text-decoration:underline; }
+.di-card__company { font-size:.82rem; font-weight:600; color:var(--di-ink); }
+.di-card__badges { display:flex; flex-wrap:wrap; gap:4px; }
+.di-card__badges .dash-badge { font-size:.68rem; padding:3px 8px; }
+.di-card__meta { display:flex; flex-wrap:wrap; gap:8px; font-size:.75rem; color:var(--di-muted); }
+.di-card__meta i { font-size:.7rem; }
+.di-card__sigs { display:flex; gap:10px; }
+.di-card__actions { display:flex; gap:4px; }
+.di-card__actions .btn { font-size:.72rem; padding:3px 8px; }
+
+/* detail modal */
+.di-modal .modal-dialog { max-width:1180px; }
+.di-modal .modal-content { border-radius:var(--di-radius); overflow:hidden; }
+.di-modal__frame { width:100%; min-height:70vh; border:0; background:#fff; }
+
+/* ─── RESPONSIVE ─── */
+@@media (max-width:1199.98px) { .di-kpis { grid-template-columns:repeat(3,1fr); } }
+@@media (max-width:991.98px) {
+    .di-kpis { grid-template-columns:repeat(2,1fr); }
+    .di-kanban { grid-auto-columns:minmax(82vw,1fr); }
+    .di-header { flex-direction:column; }
+}
+@@media (max-width:575.98px) {
+    .di-kpis { grid-template-columns:1fr; }
+    .di-filter__row { flex-direction:column; }
+    .di-filter__group select, .di-filter__group input { min-width:100%; }
+}
+</style>
+
+@* ======================================================
+   HTML — dashboard shell
+   ====================================================== *@
+<div class="di">
+
+    @* ── A. HEADER ── *@
+    <div class="di-header">
+        <div class="di-header__left">
+            <div class="di-header__crumb">
+                <a href="@Url.Action("Index", "Home")"><i class="fas fa-home"></i></a> /
+                <span>Coordinación y Jefatura</span> /
+                <strong>Gestión Integral AOCR</strong>
+            </div>
+            <h1><i class="fas fa-tachometer-alt"></i> Gestión Integral AOCR</h1>
+            <p>Tablero operativo unificado — vista kanban, bandeja y seguimiento de firmas</p>
+        </div>
+        <div class="di-header__actions">
+            <a href="@Url.Action("RevisionVerificacion", "CoordinacionJefatura")" class="btn btn-outline-secondary"><i class="fas fa-arrow-left"></i> Revisión</a>
+            @if (puedeVerPendientesDirdac)
+            {
+                <a href="@Url.Action("PendientesFirmaDirdac", "Inspeccion")" class="btn btn-outline-primary"><i class="fas fa-signature"></i> Pendientes DIRDAC</a>
+            }
+            @if (User.IsInRole("Administrador") || User.IsInRole("JefaturaTecnica"))
+            {
+                <a href="@Url.Action("ValidarAocr", "CoordinacionJefatura")" class="btn btn-primary"><i class="fas fa-stamp"></i> Validar AOCR</a>
+            }
+            @if (puedeGestionarAsignacion)
+            {
+                <a href="@Url.Action("Index", "Tecnico")" class="btn btn-outline-secondary"><i class="fas fa-user-check"></i> Asignar inspector</a>
+            }
+        </div>
+    </div>
+
+    @* ── Alerts ── *@
+    @if (TempData["Success"] != null) { <div class="alert alert-success mb-0" role="alert">@TempData["Success"]</div> }
+    @if (TempData["Warning"] != null) { <div class="alert alert-warning mb-0" role="alert">@TempData["Warning"]</div> }
+    @if (TempData["Info"] != null) { <div class="alert alert-info mb-0" role="alert">@TempData["Info"]</div> }
+    @if (TempData["Error"] != null) { <div class="alert alert-danger mb-0" role="alert">@TempData["Error"]</div> }
+
+    @* ── B. KPI STRIP ── *@
+    <div class="di-kpis">
+        <div class="di-kpi">
+            <div class="di-kpi__icon di-kpi__icon--info"><i class="fas fa-table-list"></i></div>
+            <div><div class="di-kpi__val">@model.TotalTramites</div><div class="di-kpi__label">Total trámites</div></div>
+        </div>
+        <div class="di-kpi">
+            <div class="di-kpi__icon di-kpi__icon--warn"><i class="fas fa-hourglass-half"></i></div>
+            <div><div class="di-kpi__val">@model.TotalPendientes</div><div class="di-kpi__label">Pendientes</div></div>
+        </div>
+        <div class="di-kpi">
+            <div class="di-kpi__icon di-kpi__icon--warn"><i class="fas fa-spinner"></i></div>
+            <div><div class="di-kpi__val">@model.TotalEnProceso</div><div class="di-kpi__label">En proceso</div></div>
+        </div>
+        <div class="di-kpi">
+            <div class="di-kpi__icon di-kpi__icon--danger"><i class="fas fa-triangle-exclamation"></i></div>
+            <div><div class="di-kpi__val">@model.TotalObservadas</div><div class="di-kpi__label">Observadas</div></div>
+        </div>
+        <div class="di-kpi">
+            <div class="di-kpi__icon di-kpi__icon--success"><i class="fas fa-signature"></i></div>
+            <div><div class="di-kpi__val">@model.TotalListosFirma</div><div class="di-kpi__label">Listos firma</div></div>
+        </div>
+        <div class="di-kpi">
+            <div class="di-kpi__icon di-kpi__icon--success"><i class="fas fa-circle-check"></i></div>
+            <div><div class="di-kpi__val">@model.TotalFinalizadas</div><div class="di-kpi__label">Finalizadas</div></div>
+        </div>
+    </div>
+
+    @* ── C. FILTER BAR ── *@
+    <div class="di-filter">
+        @using (Html.BeginForm("DashboardInspeccion", "CoordinacionJefatura", FormMethod.Get, new { @class = "di-filter__row" }))
+        {
+            <input type="hidden" name="quickFilter" value="@quickFilter" />
+            <div class="di-filter__group">
+                <label for="compania">Compañía</label>
+                <select id="compania" name="compania" class="form-select">
+                    <option value="">Todas</option>
+                    @foreach (var c in model.CompaniasDisponibles) { <option value="@c" @(string.Equals(c, model.CompaniaFiltro, StringComparison.OrdinalIgnoreCase) ? "selected" : null)>@c</option> }
+                </select>
+            </div>
+            <div class="di-filter__group">
+                <label for="inspector">Inspector</label>
+                <select id="inspector" name="inspector" class="form-select">
+                    <option value="">Todos</option>
+                    @foreach (var ins in model.InspectoresDisponibles) { <option value="@ins" @(string.Equals(ins, model.InspectorFiltro, StringComparison.OrdinalIgnoreCase) ? "selected" : null)>@ins</option> }
+                </select>
+            </div>
+            <div class="di-filter__group">
+                <label for="estado">Estado</label>
+                <select id="estado" name="estado" class="form-select">
+                    <option value="">Todos</option>
+                    @foreach (var e in model.EstadosDisponibles) { <option value="@e" @(string.Equals(e, model.EstadoFiltro, StringComparison.OrdinalIgnoreCase) ? "selected" : null)>@e.Replace("_", " ")</option> }
+                </select>
+            </div>
+            <div class="di-filter__btns">
+                <button type="submit" class="btn btn-primary"><i class="fas fa-filter"></i> Filtrar</button>
+                <a href="@Url.Action("DashboardInspeccion", "CoordinacionJefatura")" class="btn btn-outline-secondary"><i class="fas fa-rotate-left"></i> Limpiar</a>
+            </div>
+        }
+        <div class="di-pills">
+            <a class="di-pill @(quickFilter == "TODOS" ? "active" : null)" href="@quickFilterUrl("TODOS", "Todos")"><i class="fas fa-border-all"></i> Todos</a>
+            <a class="di-pill @(quickFilter == "PENDIENTES" ? "active" : null)" href="@quickFilterUrl("PENDIENTES", "Pendientes")"><i class="fas fa-hourglass-half"></i> Pendientes</a>
+            <a class="di-pill @(quickFilter == "EN_PROCESO" ? "active" : null)" href="@quickFilterUrl("EN_PROCESO", "En proceso")"><i class="fas fa-spinner"></i> En proceso</a>
+            <a class="di-pill @(quickFilter == "OBSERVADOS" ? "active" : null)" href="@quickFilterUrl("OBSERVADOS", "Observados")"><i class="fas fa-triangle-exclamation"></i> Observados</a>
+            <a class="di-pill @(quickFilter == "LISTOS_FIRMA" ? "active" : null)" href="@quickFilterUrl("LISTOS_FIRMA", "Listos firma")"><i class="fas fa-signature"></i> Listos firma</a>
+        </div>
+    </div>
+
+    @* ── D. TABS ── *@
+    <div class="di-tabs" id="diTabs" role="tablist">
+        <button class="di-tab active" id="tab-kanban" data-pane="pane-kanban" type="button" role="tab" aria-selected="true">
+            <i class="fas fa-grip"></i> Tablero <span class="di-tab__count">@gestionIntegral.Count</span>
+        </button>
+        <button class="di-tab" id="tab-bandeja" data-pane="pane-bandeja" type="button" role="tab" aria-selected="false">
+            <i class="fas fa-table-columns"></i> Bandeja <span class="di-tab__count">@gestionIntegral.Count</span>
+        </button>
+        <button class="di-tab" id="tab-firmas" data-pane="pane-firmas" type="button" role="tab" aria-selected="false">
+            <i class="fas fa-signature"></i> Firmas <span class="di-tab__count">@firmas.Count</span>
+        </button>
+        <button class="di-tab" id="tab-observaciones" data-pane="pane-observaciones" type="button" role="tab" aria-selected="false">
+            <i class="fas fa-triangle-exclamation"></i> Observaciones <span class="di-tab__count">@ncs.Count</span>
+        </button>
+    </div>
+
+    @* ── PANE: KANBAN ── *@
+    <div class="di-pane active" id="pane-kanban" role="tabpanel">
+        <div class="di-panel">
+            <div class="di-panel__head">
+                <div>
+                    <h3 class="di-panel__title"><i class="fas fa-grip"></i> Tablero Operativo AOCR</h3>
+                    <p class="di-panel__sub">Vista ejecutiva para detectar bloqueos y priorizar acciones rápidas</p>
+                </div>
+                <div class="di-search" style="max-width:280px;">
+                    <i class="fas fa-search"></i>
+                    <input type="text" id="kanbanSearch" placeholder="Buscar en tablero…" autocomplete="off" />
+                </div>
+            </div>
+            <div class="di-panel__body" style="padding:14px;">
+                @if (!gestionIntegral.Any())
+                {
+                    <div class="di-empty-lg"><i class="fas fa-grip"></i><p>Sin trámites para el tablero con los filtros actuales.</p></div>
+                }
+                else
+                {
+                    <div class="di-kanban" id="aocrKanbanBoard">
+                        @RenderKanbanColumn("PENDIENTES", "Pendientes", "fas fa-hourglass-half", "di-col--gray", tablero.Pendientes, kanbanPreviewLimit)
+                        @RenderKanbanColumn("EN_REVISION", "En revisión", "fas fa-magnifying-glass", "di-col--blue", tablero.EnRevision, kanbanPreviewLimit)
+                        @RenderKanbanColumn("EN_INSPECCION", "En inspección", "fas fa-user-check", "di-col--yellow", tablero.EnInspeccion, kanbanPreviewLimit)
+                        @RenderKanbanColumn("OBSERVADOS", "Observados", "fas fa-triangle-exclamation", "di-col--red", tablero.Observados, kanbanPreviewLimit)
+                        @RenderKanbanColumn("LISTOS_FIRMA", "Listos firma", "fas fa-signature", "di-col--green", tablero.ListosFirma, kanbanPreviewLimit)
+                        @RenderKanbanColumn("FINALIZADOS", "Finalizados", "fas fa-circle-check", "di-col--green", tablero.Finalizados, kanbanPreviewLimit)
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+
+    @* ── PANE: BANDEJA (TABLE) ── *@
+    <div class="di-pane" id="pane-bandeja" role="tabpanel">
+        <div class="di-panel">
+            <div class="di-panel__head">
+                <div>
+                    <h3 class="di-panel__title"><i class="fas fa-table-columns"></i> Bandeja principal AOCR</h3>
+                    <p class="di-panel__sub">Tabla unificada para auditoría, búsqueda avanzada y trazabilidad</p>
+                </div>
+            </div>
+            <div class="di-panel__body">
+                @if (!gestionIntegral.Any())
+                {
+                    <div class="di-empty-lg"><i class="fas fa-table-columns"></i><p>Sin trámites en la bandeja con los filtros actuales.</p></div>
+                }
+                else
+                {
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle mb-0 js-dashboard-table" id="tablaGestionIntegralAocr">
+                            <thead>
+                                <tr>
+                                    <th>N° Solicitud</th>
+                                    <th>Compañía</th>
+                                    <th>Tipo</th>
+                                    <th>Estado</th>
+                                    <th>Inspección</th>
+                                    <th>Inspector</th>
+                                    <th>Etapa</th>
+                                    <th>Firmas</th>
+                                    <th>Fecha</th>
+                                    <th class="text-end">Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var item in gestionIntegral)
+                                {
+                                    var badgeGeneral = DashboardInspeccionBadgeHelper.GetBadgeEstado(item.EstadoGeneral, "GENERAL");
+                                    var badgeInspeccion = DashboardInspeccionBadgeHelper.GetBadgeEstado(item.EstadoInspeccion, "INSPECCION");
+                                    var mostrarAccionPrincipal = !string.IsNullOrWhiteSpace(item.UrlAccionPrincipal)
+                                        && !string.Equals(item.UrlAccionPrincipal, item.UrlDetalle, StringComparison.OrdinalIgnoreCase)
+                                        && !string.Equals(item.TextoAccionPrincipal, "Ver", StringComparison.OrdinalIgnoreCase);
+                                    <tr>
+                                        <td>
+                                            <a href="@item.UrlDetalle" class="fw-bold text-primary text-decoration-none">@item.NumeroSolicitud</a>
+                                            <div class="text-muted" style="font-size:.75rem;">@(item.CodigoInspeccion.HasValue ? "Insp. " + item.CodigoInspeccion.Value : "Solicitud")</div>
+                                        </td>
+                                        <td>@item.Compania</td>
+                                        <td><span class="di-chip-sm">@item.Tipo</span></td>
+                                        <td><span class="@badgeGeneral.CssClass">@badgeGeneral.Text</span></td>
+                                        <td><span class="@badgeInspeccion.CssClass">@badgeInspeccion.Text</span></td>
+                                        <td>@item.Inspector</td>
+                                        <td>@Html.Partial("_StatusBadge", null, new ViewDataDictionary { { "Estado", item.EtapaActual } })</td>
+                                        <td>
+                                            <div class="di-sigs-inline">
+                                                <span class="di-sig"><span class="di-dot @(item.FirmaInspector ? "di-dot--ok" : "")"></span> Insp</span>
+                                                <span class="di-sig"><span class="di-dot @(item.FirmaDirdac ? "di-dot--ok" : "")"></span> DIR</span>
+                                            </div>
+                                        </td>
+                                        <td>@(item.Fecha.HasValue ? item.Fecha.Value.ToString("dd/MM/yyyy") : "—")</td>
+                                        <td class="text-end">
+                                            <div class="d-flex flex-nowrap justify-content-end gap-1">
+                                                <button type="button" class="btn btn-sm btn-outline-primary js-open-detail-modal" data-url="@item.UrlDetalle" data-title="@item.NumeroSolicitud - @item.Compania"><i class="fas fa-eye"></i></button>
+                                                @if (mostrarAccionPrincipal)
+                                                {
+                                                    <a class="btn btn-sm btn-outline-success" href="@item.UrlAccionPrincipal" title="@item.TextoAccionPrincipal"><i class="fas fa-bolt"></i></a>
+                                                }
+                                                @if (!string.IsNullOrWhiteSpace(item.UrlDescargarPdf))
+                                                {
+                                                    <a class="btn btn-sm btn-outline-secondary" href="@item.UrlDescargarPdf" title="Descargar PDF"><i class="fas fa-download"></i></a>
+                                                }
+                                            </div>
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+
+    @* ── PANE: FIRMAS ── *@
+    <div class="di-pane" id="pane-firmas" role="tabpanel">
+        <div class="di-panel">
+            <div class="di-panel__head">
+                <div>
+                    <h3 class="di-panel__title"><i class="fas fa-signature"></i> Pendientes de firma</h3>
+                    <p class="di-panel__sub">Documentos pendientes por inspector o DIRDAC</p>
+                </div>
+            </div>
+            <div class="di-panel__body">
+                @if (!firmas.Any())
+                {
+                    <div class="di-empty-lg"><i class="fas fa-signature"></i><p>Sin pendientes de firma.</p></div>
+                }
+                else
+                {
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle mb-0 js-dashboard-table" id="tablaDashboardFirmas">
+                            <thead>
+                                <tr>
+                                    <th>N° Solicitud</th>
+                                    <th>Documento</th>
+                                    <th>Firmante</th>
+                                    <th>Estado</th>
+                                    <th class="text-end">Acción</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var item in firmas)
+                                {
+                                    var badge = DashboardInspeccionBadgeHelper.GetBadgeEstado(item.Estado, "FIRMA");
+                                    <tr>
+                                        <td>
+                                            <div class="fw-bold text-primary">@item.NumeroSolicitud</div>
+                                            <div class="text-muted" style="font-size:.75rem;">@item.Compania</div>
+                                        </td>
+                                        <td>@item.Documento</td>
+                                        <td>@item.FirmanteRequerido</td>
+                                        <td><span class="@badge.CssClass">@badge.Text</span></td>
+                                        <td class="text-end">
+                                            <a class="btn btn-sm btn-outline-success" href="@item.UrlAccion"><i class="fas fa-arrow-right"></i> @item.TextoAccion</a>
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+
+    @* ── PANE: OBSERVACIONES ── *@
+    <div class="di-pane" id="pane-observaciones" role="tabpanel">
+        <div class="di-panel">
+            <div class="di-panel__head">
+                <div>
+                    <h3 class="di-panel__title"><i class="fas fa-triangle-exclamation"></i> Observaciones / NC</h3>
+                    <p class="di-panel__sub">Hallazgos, no conformidades y casos para subsanación</p>
+                </div>
+            </div>
+            <div class="di-panel__body">
+                @if (!ncs.Any())
+                {
+                    <div class="di-empty-lg"><i class="fas fa-triangle-exclamation"></i><p>Sin observaciones activas.</p></div>
+                }
+                else
+                {
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle mb-0 js-dashboard-table" id="tablaDashboardNc">
+                            <thead>
+                                <tr>
+                                    <th>N° Solicitud</th>
+                                    <th>Tipo</th>
+                                    <th>Estado</th>
+                                    <th>Responsable</th>
+                                    <th class="text-end">Acción</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var item in ncs)
+                                {
+                                    var badge = DashboardInspeccionBadgeHelper.GetBadgeEstado(item.Estado, "NC");
+                                    <tr>
+                                        <td>
+                                            <div class="fw-bold text-primary">@item.NumeroSolicitud</div>
+                                            <div class="text-muted" style="font-size:.75rem;">@item.Compania</div>
+                                        </td>
+                                        <td>@item.TipoNc</td>
+                                        <td><span class="@badge.CssClass">@badge.Text</span></td>
+                                        <td>@item.Responsable</td>
+                                        <td class="text-end">
+                                            <a class="btn btn-sm btn-outline-primary" href="@item.UrlAccion"><i class="fas fa-eye"></i> Ver detalle</a>
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+
+    @* ── Detail Modal ── *@
+    <div class="modal fade di-modal" id="modalDetalleAocr" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="modalDetalleAocrTitulo">Detalle del trámite</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" data-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body p-0">
+                    <iframe id="modalDetalleAocrFrame" class="di-modal__frame" loading="lazy" title="Detalle AOCR"></iframe>
+                </div>
+                <div class="modal-footer">
+                    <a id="modalDetalleAocrLink" href="#" target="_blank" rel="noopener" class="btn btn-outline-secondary"><i class="fas fa-arrow-up-right-from-square"></i> Abrir completa</a>
+                    <button type="button" class="btn btn-primary" data-bs-dismiss="modal" data-dismiss="modal">Cerrar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+(function ($) {
+    var bound = false;
+
+    function langConfig() {
+        return {
+            search: 'Buscar:', lengthMenu: 'Mostrar _MENU_ registros',
+            info: 'Mostrando _START_ a _END_ de _TOTAL_', infoEmpty: '0 registros',
+            zeroRecords: 'Sin registros', emptyTable: 'Sin registros',
+            infoFiltered: '(de _MAX_ total)',
+            paginate: { first: 'Primero', last: 'Último', next: 'Sig.', previous: 'Ant.' }
+        };
+    }
+
+    function initTable(el) {
+        if (!$.fn.DataTable || !el.length) return;
+        if ($.fn.DataTable.isDataTable(el)) el.DataTable().destroy();
+        el.DataTable({ pageLength: 15, order: [], autoWidth: false, language: langConfig(), responsive: true });
+    }
+
+    function kanbanVisibility($col, forceExpand) {
+        var limit = parseInt($col.attr('data-preview-limit'), 10) || 5;
+        var expanded = typeof forceExpand === 'boolean' ? forceExpand : $col.attr('data-expanded') === 'true';
+        var $cards = $col.find('.di-card').filter(function () { return $(this).attr('data-match') !== 'false'; });
+        $col.find('.di-card').addClass('d-none');
+        if (expanded) { $cards.removeClass('d-none'); } else { $cards.slice(0, limit).removeClass('d-none'); }
+        $col.attr('data-expanded', expanded ? 'true' : 'false');
+        $col.find('.js-kanban-visible').text($cards.length > limit && !expanded ? limit : $cards.length);
+        var $foot = $col.find('.di-col__foot');
+        if ($cards.length > limit) { $foot.removeClass('d-none'); $foot.find('.js-kanban-toggle').text(expanded ? 'Ver menos' : 'Ver más'); }
+        else { $foot.addClass('d-none'); }
+    }
+
+    function filterKanban(text) {
+        var q = (text || '').toLowerCase().trim();
+        $('.di-col').each(function () {
+            var $col = $(this);
+            $col.find('.di-card').each(function () {
+                var match = !q || ($(this).attr('data-search') || '').indexOf(q) >= 0;
+                $(this).attr('data-match', match ? 'true' : 'false');
+            });
+            kanbanVisibility($col);
+        });
+    }
+
+    function openModal(url, title) {
+        if (!url) return;
+        var $m = $('#modalDetalleAocr');
+        $('#modalDetalleAocrTitulo').text(title || 'Detalle del trámite');
+        $('#modalDetalleAocrFrame').attr('src', url);
+        $('#modalDetalleAocrLink').attr('href', url);
+        if (window.bootstrap && window.bootstrap.Modal) { window.bootstrap.Modal.getOrCreateInstance($m[0]).show(); }
+        else if (typeof $m.modal === 'function') { $m.modal('show'); }
+    }
+
+    function activateTab(paneId) {
+        if (!paneId) return;
+        $('#diTabs .di-tab').each(function () {
+            var isActive = $(this).attr('data-pane') === paneId;
+            $(this).toggleClass('active', isActive).attr('aria-selected', isActive ? 'true' : 'false');
+        });
+        $('.di-pane').each(function () { $(this).toggleClass('active', $(this).attr('id') === paneId); });
+        $('.js-dashboard-table').each(function () {
+            if ($.fn.DataTable && $.fn.DataTable.isDataTable(this)) $(this).DataTable().columns.adjust();
+        });
+    }
+
+    function bindEvents() {
+        if (bound) return;
+        bound = true;
+        $(document).on('click.di', '.js-kanban-toggle', function () {
+            var $col = $('.di-col[data-column="' + $(this).attr('data-column') + '"]');
+            kanbanVisibility($col, $col.attr('data-expanded') !== 'true');
+        });
+        $('#kanbanSearch').on('input.di', function () { filterKanban($(this).val()); });
+        $(document).on('click.di', '.js-open-detail-modal', function () { openModal($(this).attr('data-url'), $(this).attr('data-title')); });
+        $('#diTabs .di-tab').on('click.di', function () { activateTab($(this).attr('data-pane')); });
+        $('#modalDetalleAocr').on('hidden.bs.modal.di hidden.di', function () { $('#modalDetalleAocrFrame').attr('src', 'about:blank'); });
+    }
+
+    function initState() {
+        $('.js-dashboard-table').each(function () { initTable($(this)); });
+        $('.di-col').each(function () { $(this).find('.di-card').attr('data-match', 'true'); kanbanVisibility($(this), false); });
+        activateTab('pane-kanban');
+    }
+
+    $(function () {
+        bindEvents();
+        initState();
+        document.addEventListener('AOCR.DataTablesReady', function () { initState(); });
+        if (window.AOCR && window.AOCR.dataTablesLoaded) initState();
+    });
+})(jQuery);
+</script>
+}

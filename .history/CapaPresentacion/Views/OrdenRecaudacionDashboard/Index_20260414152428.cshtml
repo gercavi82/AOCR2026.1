@@ -1,0 +1,797 @@
+@model dynamic
+@using CapaModelo
+@using System.Web.Mvc
+@using System.Web.Mvc.Ajax
+@using System.Web.Mvc.Html
+@using System.Web.Optimization
+@using System.Web.Routing
+@using System.Collections.Generic
+@{
+    ViewBag.Title = "Dashboard Órdenes de Recaudación";
+    Layout = "~/Views/Shared/_LayoutAOCR.cshtml";
+}
+
+@section Styles {
+<link rel="stylesheet" href="@Url.Content("~/Content/css/dgac-theme.css")" />
+<style>
+/* ── Dashboard Órdenes — Premium DataTable ── */
+.ord-shell {
+    --c-primary: #0f4d7a;
+    --c-primary-soft: #e8f1f8;
+    --c-ink: #14293d;
+    --c-text: #1e3a52;
+    --c-muted: #6e8799;
+    --c-border: rgba(14,46,71,.08);
+    --c-surface: #ffffff;
+    --c-surface-alt: #f8fafb;
+    --c-bg: #f3f6f9;
+    --c-success: #1a7a46;
+    --c-warning: #b78312;
+    --c-danger: #c0392b;
+    --r-sm: 10px;
+    --r-md: 14px;
+    --r-lg: 20px;
+    --shadow-card: 0 1px 3px rgba(14,46,71,.04), 0 6px 20px rgba(14,46,71,.04);
+    --transition: .2s ease;
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    -webkit-font-smoothing: antialiased;
+}
+
+/* Header */
+.ord-header {
+    background: linear-gradient(135deg, #0e3a5c 0%, #145a82 55%, #0f6a7f 100%);
+    color: #fff;
+    padding: 26px 32px 22px;
+    border-radius: var(--r-lg);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 16px;
+    flex-wrap: wrap;
+    margin-bottom: 24px;
+    position: relative;
+    overflow: visible;
+}
+.ord-header::after {
+    content: '';
+    position: absolute;
+    top: -60%;
+    right: -8%;
+    width: 260px;
+    height: 260px;
+    background: radial-gradient(circle, rgba(255,255,255,.06), transparent 70%);
+    pointer-events: none;
+}
+.ord-header__title {
+    font-size: 1.35rem;
+    font-weight: 800;
+    letter-spacing: -.02em;
+    margin: 0;
+}
+.ord-header__sub {
+    font-size: .84rem;
+    opacity: .6;
+    margin: 2px 0 0;
+}
+.ord-header .btn-aocr-action {
+    position: relative;
+    z-index: 1;
+    background: rgba(255,255,255,.12);
+    border: 1px solid rgba(255,255,255,.2);
+    color: #fff;
+    padding: 8px 16px;
+    border-radius: 10px;
+    font-size: .82rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all var(--transition);
+    text-decoration: none;
+}
+.ord-header .btn-aocr-action:hover {
+    background: rgba(255,255,255,.2);
+    border-color: rgba(255,255,255,.35);
+    color: #fff;
+}
+.ord-header .btn-aocr-action i { margin-right: 5px; }
+
+/* KPI pills */
+.ord-kpis {
+    display: flex;
+    gap: 16px;
+    flex-wrap: wrap;
+    margin-bottom: 24px;
+}
+.ord-kpi {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: var(--c-surface);
+    border: 1px solid var(--c-border);
+    border-radius: var(--r-sm);
+    padding: 14px 20px;
+    min-width: 155px;
+    flex: 1;
+    box-shadow: var(--shadow-card);
+    transition: all var(--transition);
+}
+.ord-kpi:hover { transform: translateY(-1px); box-shadow: 0 4px 16px rgba(14,46,71,.08); }
+.ord-kpi__icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 10px;
+    display: grid;
+    place-items: center;
+    font-size: .88rem;
+    color: #fff;
+    flex-shrink: 0;
+}
+.ord-kpi__icon--total { background: linear-gradient(135deg, #0f4d7a, #0f6a7f); }
+.ord-kpi__icon--pending { background: linear-gradient(135deg, #d4a017, #c89510); }
+.ord-kpi__icon--done { background: linear-gradient(135deg, #27ae60, #1e8449); }
+.ord-kpi__icon--money { background: linear-gradient(135deg, #2980b9, #2471a3); }
+.ord-kpi__icon--paid { background: linear-gradient(135deg, #1abc9c, #16a085); }
+.ord-kpi__icon--debt { background: linear-gradient(135deg, #e74c3c, #c0392b); }
+.ord-kpi__num {
+    font-size: 1.15rem;
+    font-weight: 800;
+    color: var(--c-ink);
+    line-height: 1;
+}
+.ord-kpi__label {
+    font-size: .68rem;
+    color: var(--c-muted);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: .03em;
+}
+.ord-kpi__detail {
+    font-size: .68rem;
+    color: var(--c-muted);
+}
+
+/* Filter panel */
+.ord-filters-panel {
+    background: var(--c-surface);
+    border: 1px solid var(--c-border);
+    border-radius: var(--r-md);
+    padding: 20px 24px;
+    margin-bottom: 20px;
+    box-shadow: var(--shadow-card);
+}
+.ord-filters-panel label {
+    font-size: .78rem;
+    font-weight: 700;
+    color: var(--c-muted);
+    text-transform: uppercase;
+    letter-spacing: .04em;
+}
+.ord-filters-panel .form-control,
+.ord-filters-panel .form-select {
+    border-radius: 8px;
+    border: 1px solid var(--c-border);
+    font-size: .84rem;
+    padding: 8px 12px;
+}
+.ord-filters-panel .form-control:focus,
+.ord-filters-panel .form-select:focus {
+    border-color: var(--c-primary);
+    box-shadow: 0 0 0 3px rgba(15,77,122,.1);
+}
+
+/* Card wrapper */
+.ord-card {
+    background: var(--c-surface);
+    border-radius: var(--r-lg);
+    box-shadow: var(--shadow-card);
+    overflow: hidden;
+    border: none;
+}
+.ord-card__header {
+    padding: 16px 24px;
+    border-bottom: 1px solid var(--c-border);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+.ord-card__title {
+    font-size: .88rem;
+    font-weight: 800;
+    color: var(--c-ink);
+    margin: 0;
+}
+.ord-card__badge {
+    background: var(--c-primary);
+    color: #fff;
+    font-size: .7rem;
+    font-weight: 700;
+    padding: 2px 10px;
+    border-radius: 999px;
+    margin-left: 8px;
+}
+.ord-card__body { padding: 0; }
+
+/* DataTables overrides */
+.ord-card .dataTables_wrapper { padding: 18px 24px 14px; }
+.ord-card .dataTables_wrapper .dataTables_length,
+.ord-card .dataTables_wrapper .dataTables_filter { margin-bottom: 12px; }
+.ord-card .dataTables_wrapper .dataTables_length label {
+    font-size: .8rem; color: var(--c-muted); font-weight: 600;
+}
+.ord-card .dataTables_wrapper .dataTables_length select {
+    border-radius: 8px; border: 1px solid var(--c-border); padding: 4px 10px; font-size: .8rem; margin: 0 4px;
+}
+.ord-card .dataTables_wrapper .dataTables_filter input {
+    border-radius: 8px; border: 1px solid var(--c-border); padding: 7px 14px; font-size: .82rem; width: 240px; transition: all var(--transition);
+}
+.ord-card .dataTables_wrapper .dataTables_filter input:focus {
+    border-color: var(--c-primary); box-shadow: 0 0 0 3px rgba(15,77,122,.1); outline: none;
+}
+.ord-card .dataTables_wrapper .dataTables_info { font-size: .78rem; color: var(--c-muted); padding: 12px 0; }
+.ord-card .dataTables_wrapper .dataTables_paginate { padding: 12px 0; }
+.ord-card .dataTables_wrapper .dataTables_paginate .paginate_button {
+    border-radius: 8px !important; border: 1px solid var(--c-border) !important;
+    margin: 0 2px; font-size: .78rem; font-weight: 600; padding: 5px 12px !important; transition: all var(--transition);
+}
+.ord-card .dataTables_wrapper .dataTables_paginate .paginate_button.current {
+    background: var(--c-primary) !important; color: #fff !important; border-color: var(--c-primary) !important;
+}
+.ord-card .dataTables_wrapper .dataTables_paginate .paginate_button:hover:not(.current) {
+    background: var(--c-surface-alt) !important; color: var(--c-primary) !important; border-color: var(--c-primary) !important;
+}
+
+/* Table */
+.ord-card table.dataTable { border-collapse: separate; border-spacing: 0; width: 100% !important; }
+.ord-card table.dataTable thead th {
+    background: var(--c-surface-alt); color: var(--c-muted); font-size: .72rem; font-weight: 800;
+    text-transform: uppercase; letter-spacing: .06em; padding: 12px 16px;
+    border-bottom: 2px solid var(--c-border); border-top: none; white-space: nowrap;
+}
+.ord-card table.dataTable thead th:first-child { border-radius: var(--r-sm) 0 0 0; }
+.ord-card table.dataTable thead th:last-child { border-radius: 0 var(--r-sm) 0 0; }
+.ord-card table.dataTable tbody td {
+    padding: 14px 16px; font-size: .84rem; color: var(--c-text);
+    border-bottom: 1px solid var(--c-border); vertical-align: middle;
+}
+.ord-card table.dataTable tbody tr { transition: background var(--transition); }
+.ord-card table.dataTable tbody tr:hover { background: rgba(15,77,122,.02); }
+.ord-card table.dataTable tbody tr:last-child td { border-bottom: none; }
+
+/* Cell helpers */
+.ord-numero {
+    font-weight: 800; color: var(--c-primary); font-size: .78rem;
+    text-decoration: none; word-break: break-all;
+}
+.ord-numero:hover { text-decoration: underline; }
+.ord-contribuyente {
+    font-weight: 700; color: var(--c-ink); max-width: 200px;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.ord-date { font-size: .82rem; color: var(--c-text); white-space: nowrap; }
+.ord-money {
+    font-family: 'Cascadia Code', 'Consolas', monospace;
+    font-weight: 700; font-size: .84rem; color: var(--c-ink); white-space: nowrap;
+}
+
+/* Status badges */
+.ord-badge {
+    display: inline-flex; align-items: center; gap: 5px;
+    padding: 4px 12px; border-radius: 999px; font-size: .72rem; font-weight: 700; white-space: nowrap;
+}
+.ord-badge::before { content: ''; width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+.ord-badge--completada, .ord-badge--pagada { background: #e8f8ef; color: #1a7a42; }
+.ord-badge--completada::before, .ord-badge--pagada::before { background: #27ae60; }
+.ord-badge--borrador { background: #f0f2f4; color: #5d6d7a; }
+.ord-badge--borrador::before { background: #8c99a4; }
+.ord-badge--generada, .ord-badge--pendiente, .ord-badge--enviada { background: #fef9ec; color: #8a6500; }
+.ord-badge--generada::before, .ord-badge--pendiente::before, .ord-badge--enviada::before { background: #d4a017; }
+.ord-badge--facturada { background: #e3f2fd; color: #1565c0; }
+.ord-badge--facturada::before { background: #1976d2; }
+.ord-badge--anulada, .ord-badge--rechazada { background: #fde8e8; color: #a93226; }
+.ord-badge--anulada::before, .ord-badge--rechazada::before { background: #c0392b; }
+
+/* Dias badge */
+.ord-dias {
+    display: inline-flex; align-items: center; justify-content: center;
+    min-width: 36px; padding: 3px 8px; border-radius: 8px;
+    font-size: .72rem; font-weight: 700; color: #fff;
+}
+.ord-dias--ok { background: #27ae60; }
+.ord-dias--warn { background: #d4a017; }
+.ord-dias--danger { background: #c0392b; }
+
+/* Action buttons */
+.ord-act {
+    width: 30px; height: 30px; border-radius: 8px; border: 1px solid var(--c-border);
+    background: var(--c-surface); display: inline-flex; align-items: center; justify-content: center;
+    font-size: .76rem; color: var(--c-primary); text-decoration: none; transition: all var(--transition);
+    cursor: pointer;
+}
+.ord-act:hover { background: var(--c-primary-soft); border-color: var(--c-primary); color: var(--c-primary); }
+.ord-act--danger { color: var(--c-danger); }
+.ord-act--danger:hover { background: #fde8e8; border-color: var(--c-danger); color: var(--c-danger); }
+.ord-act--success { color: var(--c-success); }
+.ord-act--success:hover { background: #e8f8ef; border-color: var(--c-success); color: var(--c-success); }
+
+@@media (max-width: 768px) {
+    .ord-header { padding: 18px 20px 16px; }
+    .ord-kpis { flex-direction: column; }
+    .ord-card .dataTables_wrapper { padding: 12px 14px 10px; }
+    .ord-card .dataTables_wrapper .dataTables_filter input { width: 100%; }
+}
+</style>
+}
+
+<div class="ord-shell">
+    @* Header *@
+    <div class="ord-header">
+        <div>
+            <h2 class="ord-header__title"><i class="fas fa-tachometer-alt" style="opacity:.5;margin-right:8px;"></i>Dashboard Órdenes de Recaudación</h2>
+            <p class="ord-header__sub">Gestión integral y KPIs empresariales</p>
+        </div>
+        <div class="d-flex gap-2 flex-wrap">
+            <button type="button" class="btn-aocr-action" id="btnFiltros">
+                <i class="fas fa-filter"></i> Filtros
+            </button>
+            <button type="button" class="btn-aocr-action" id="btnExportar">
+                <i class="fas fa-download"></i> Exportar
+            </button>
+            <button type="button" class="btn-aocr-action" id="btnActualizar">
+                <i class="fas fa-sync-alt"></i> Actualizar
+            </button>
+        </div>
+    </div>
+
+    @* Filter panel (collapsible) *@
+    <div class="ord-filters-panel collapse" id="filtrosPanelCollapse">
+        <form id="filtrosForm" class="row g-3">
+            <div class="col-md-3">
+                <label class="form-label">Estado</label>
+                <select id="filtroEstado" class="form-select">
+                    <option value="">Todos los estados</option>
+                    <option value="BORRADOR">Borrador</option>
+                    <option value="GENERADA">Generada</option>
+                    <option value="PENDIENTE">Pendiente</option>
+                    <option value="PROCESADA">Procesada</option>
+                    <option value="PAGADA">Pagada</option>
+                    <option value="FACTURADA">Facturada</option>
+                    <option value="COMPLETADA">Completada</option>
+                    <option value="ANULADA">Anulada</option>
+                    <option value="RECHAZADA">Rechazada</option>
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">Desde</label>
+                <input type="date" class="form-control" id="filtroFechaDesde" />
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">Hasta</label>
+                <input type="date" class="form-control" id="filtroFechaHasta" />
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">Número Orden</label>
+                <input type="text" class="form-control" id="filtroNumeroOrden" placeholder="OR-..." />
+            </div>
+            <div class="col-12">
+                <button type="submit" class="btn btn-sm" style="background:var(--c-primary);color:#fff;border-radius:8px;font-weight:700;padding:7px 18px;">
+                    <i class="fas fa-search"></i> Aplicar
+                </button>
+                <button type="button" class="btn btn-sm btn-outline-secondary" id="btnLimpiarFiltros" style="border-radius:8px;font-weight:700;padding:7px 18px;">
+                    <i class="fas fa-times"></i> Limpiar
+                </button>
+            </div>
+        </form>
+    </div>
+
+    @* KPIs *@
+    <div class="ord-kpis" id="kpisContainer">
+        <div class="ord-kpi">
+            <div class="ord-kpi__icon ord-kpi__icon--total"><i class="fas fa-clipboard-list"></i></div>
+            <div>
+                <div class="ord-kpi__label">Total Órdenes</div>
+                <div class="ord-kpi__num" id="kpiTotalOrdenes">0</div>
+                <div class="ord-kpi__detail" id="kpiTotalOrdenesVar"></div>
+            </div>
+        </div>
+        <div class="ord-kpi">
+            <div class="ord-kpi__icon ord-kpi__icon--pending"><i class="fas fa-clock"></i></div>
+            <div>
+                <div class="ord-kpi__label">Pendientes</div>
+                <div class="ord-kpi__num" id="kpiOrdenesPendientes">0</div>
+                <div class="ord-kpi__detail" id="kpiPendientesDetalle"></div>
+            </div>
+        </div>
+        <div class="ord-kpi">
+            <div class="ord-kpi__icon ord-kpi__icon--done"><i class="fas fa-check-circle"></i></div>
+            <div>
+                <div class="ord-kpi__label">Completadas</div>
+                <div class="ord-kpi__num" id="kpiOrdenesCompletadas">0</div>
+                <div class="ord-kpi__detail" id="kpiTasaAprobacion">0% aprobación</div>
+            </div>
+        </div>
+        <div class="ord-kpi">
+            <div class="ord-kpi__icon ord-kpi__icon--money"><i class="fas fa-dollar-sign"></i></div>
+            <div>
+                <div class="ord-kpi__label">Monto Total</div>
+                <div class="ord-kpi__num" id="kpiMontoTotal">$0,00</div>
+                <div class="ord-kpi__detail" id="kpiMontoPromedio"></div>
+            </div>
+        </div>
+        <div class="ord-kpi">
+            <div class="ord-kpi__icon ord-kpi__icon--paid"><i class="fas fa-money-bill-wave"></i></div>
+            <div>
+                <div class="ord-kpi__label">Recaudado</div>
+                <div class="ord-kpi__num" id="kpiMontoPagado">$0,00</div>
+                <div class="ord-kpi__detail" id="kpiPorcentajePagado">0%</div>
+            </div>
+        </div>
+        <div class="ord-kpi">
+            <div class="ord-kpi__icon ord-kpi__icon--debt"><i class="fas fa-exclamation-triangle"></i></div>
+            <div>
+                <div class="ord-kpi__label">Saldo Pend.</div>
+                <div class="ord-kpi__num" id="kpiSaldoPendiente">$0,00</div>
+                <div class="ord-kpi__detail" id="kpiPromedioTiempoPago">0 días promedio</div>
+            </div>
+        </div>
+    </div>
+
+    @* Table card *@
+    <div class="ord-card">
+        <div class="ord-card__header">
+            <h6 class="ord-card__title">
+                <i class="fas fa-list-alt" style="opacity:.4;margin-right:6px;"></i>Órdenes Recientes
+                <span class="ord-card__badge" id="contadorFiltradas">0</span>
+            </h6>
+            <div id="loadingOrdenes" class="d-none" style="font-size:.8rem;color:var(--c-muted);">
+                <div class="spinner-border spinner-border-sm me-1" role="status"></div> Cargando...
+            </div>
+        </div>
+        <div class="ord-card__body">
+            <table id="tablaOrdenes" class="table mb-0 w-100">
+                <thead>
+                    <tr>
+                        <th>Número</th>
+                        <th>Fecha</th>
+                        <th>Estado</th>
+                        <th>Contribuyente</th>
+                        <th class="text-end">Total</th>
+                        <th class="text-center">Días</th>
+                        <th style="width:120px;" class="text-center">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<div style="display: none;">
+    @Html.AntiForgeryToken()
+</div>
+
+@section Scripts {
+    <script>
+(function() {
+    'use strict';
+
+    var filtrosActuales = {};
+    var datosActuales = null;
+
+    $(document).ready(function() {
+        inicializarEventos();
+        cargarDatosIniciales();
+
+        // Auto-refresh cada 2 minutos
+        setInterval(function() {
+            if ($('#loadingOrdenes').hasClass('d-none')) {
+                cargarDatosDashboard();
+            }
+        }, 120000);
+    });
+
+    function inicializarEventos() {
+        $('#btnFiltros').click(function() {
+            $('#filtrosPanelCollapse').collapse('toggle');
+        });
+
+        $('#filtrosForm').on('submit', function(e) {
+            e.preventDefault();
+            aplicarFiltros();
+        });
+
+        $('#btnLimpiarFiltros').click(function() {
+            limpiarFiltros();
+        });
+
+        $('#btnActualizar').click(function() {
+            cargarDatosDashboard();
+        });
+
+        $('#btnExportar').click(function() {
+            exportarDatos();
+        });
+    }
+
+    // =============================
+    // CARGA DE DATOS
+    // =============================
+    function cargarDatosIniciales() {
+        var fechaHasta = new Date();
+        var fechaDesde = new Date();
+        fechaDesde.setMonth(fechaHasta.getMonth() - 1);
+
+        $('#filtroFechaDesde').val(fechaDesde.toISOString().split('T')[0]);
+        $('#filtroFechaHasta').val(fechaHasta.toISOString().split('T')[0]);
+
+        cargarDatosDashboard();
+    }
+
+    function cargarDatosDashboard() {
+        mostrarLoading(true);
+
+        var params = {
+            estado: filtrosActuales.estado || '',
+            fechaDesde: filtrosActuales.fechaDesde || '',
+            fechaHasta: filtrosActuales.fechaHasta || '',
+            numeroOrden: filtrosActuales.numeroOrden || ''
+        };
+
+        $.ajax({
+            url: '@Url.Action("ObtenerDatos", "OrdenRecaudacionDashboard")',
+            type: 'GET',
+            data: params,
+            dataType: 'json',
+            cache: false,
+            success: function(response) {
+                if (response.success) {
+                    datosActuales = response;
+                    actualizarKPIs(response.kpis);
+                    actualizarTablaOrdenes(response.ordenesRecientes);
+                    actualizarContadorFiltros(response.filtrosAplicados);
+                } else {
+                    mostrarNotificacion('error', 'Error cargando datos: ' + response.message);
+                }
+            },
+            error: function(xhr) {
+                console.error('Error AJAX:', xhr);
+                mostrarNotificacion('error', 'Error de conexión. Intenta nuevamente.');
+            },
+            complete: function() {
+                mostrarLoading(false);
+            }
+        });
+    }
+
+    // =============================
+    // ACTUALIZACIÓN DE UI
+    // =============================
+    function actualizarKPIs(kpis) {
+        $('#kpiTotalOrdenes').text(formatearNumero(kpis.totalOrdenes));
+        $('#kpiOrdenesPendientes').text(formatearNumero(kpis.ordenesPendientes));
+        $('#kpiOrdenesCompletadas').text(formatearNumero(kpis.ordenesCompletadas));
+        $('#kpiMontoTotal').text(formatearMoneda(kpis.montoTotal));
+        $('#kpiMontoPagado').text(formatearMoneda(kpis.montoPagado));
+        $('#kpiSaldoPendiente').text(formatearMoneda(kpis.saldoPendiente));
+
+        var porcentajePagado = kpis.montoTotal > 0 ?
+            Math.round((kpis.montoPagado / kpis.montoTotal) * 100) : 0;
+        $('#kpiPorcentajePagado').text(porcentajePagado + '%');
+
+        var montoPromedio = kpis.totalOrdenes > 0 ?
+            kpis.montoTotal / kpis.totalOrdenes : 0;
+        $('#kpiMontoPromedio').text('Promedio: ' + formatearMoneda(montoPromedio));
+
+        $('#kpiTasaAprobacion').text(Math.round(kpis.tasaAprobacion) + '% aprobación');
+        $('#kpiPromedioTiempoPago').text(Math.round(kpis.promedioTiempoPago) + ' días promedio');
+        $('#kpiPendientesDetalle').text(kpis.ordenesPendientes + ' de ' + kpis.totalOrdenes);
+    }
+
+    function actualizarTablaOrdenes(ordenes) {
+        var tbody = $('#tablaOrdenes tbody');
+        tbody.empty();
+
+        if (!ordenes || ordenes.length === 0) {
+            $('#sinDatosMsg').removeClass('d-none');
+            $('#tablaOrdenes').addClass('d-none');
+            return;
+        }
+
+        $('#sinDatosMsg').addClass('d-none');
+        $('#tablaOrdenes').removeClass('d-none');
+
+        for (var i = 0; i < ordenes.length; i++) {
+            tbody.append(crearFilaOrden(ordenes[i]));
+        }
+
+        $('[data-bs-toggle="tooltip"]').tooltip();
+    }
+
+    function crearFilaOrden(orden) {
+        var fechaFormateada = formatearFecha(orden.fechaCreacion);
+        var estadoBadge = '<span class="badge bg-' + orden.estadoColor + '">' + orden.estado + '</span>';
+
+        var diasHtml = '-';
+        if (orden.diasVencimiento > 0) {
+            var colorDias = orden.diasVencimiento > 30 ? 'danger' : (orden.diasVencimiento > 15 ? 'warning' : 'info');
+            diasHtml = '<span class="badge bg-' + colorDias + '">' + orden.diasVencimiento + 'd</span>';
+        }
+
+        var detallesUrl = '@Url.Action("Detalles", "OrdenRecaudacion")' + '/' + orden.id;
+        var pdfUrl = '@Url.Action("DescargarPdf", "OrdenRecaudacion")' + '/' + orden.id;
+
+        var acciones = [];
+        acciones.push('<a href="' + detallesUrl + '" class="btn btn-sm btn-outline-info" data-bs-toggle="tooltip" title="Ver Detalles"><i class="fas fa-eye"></i></a>');
+
+        if (orden.estado === 'BORRADOR' && orden.total > 0) {
+            acciones.push('<button type="button" class="btn btn-sm btn-outline-success btnAccionGen" data-id="' + orden.id + '" data-bs-toggle="tooltip" title="Generar Orden"><i class="fas fa-play"></i></button>');
+        }
+
+        if (orden.estado !== 'FACTURADA' && orden.estado !== 'COMPLETADA' && orden.estado !== 'PAGADA' && orden.estado !== 'ANULADA') {
+            acciones.push('<button type="button" class="btn btn-sm btn-outline-danger btnAccionAnular" data-id="' + orden.id + '" data-bs-toggle="tooltip" title="Anular Orden"><i class="fas fa-times"></i></button>');
+        }
+
+        acciones.push('<a href="' + pdfUrl + '" class="btn btn-sm btn-outline-primary" data-bs-toggle="tooltip" title="Descargar PDF"><i class="fas fa-file-pdf"></i></a>');
+
+        return '<tr>' +
+            '<td><a href="' + detallesUrl + '" class="text-decoration-none fw-bold">' + orden.numeroOrden + '</a></td>' +
+            '<td>' + fechaFormateada + '</td>' +
+            '<td>' + estadoBadge + '</td>' +
+            '<td><div class="text-truncate" style="max-width: 200px;" title="' + (orden.nombreContribuyente || '') + '">' + (orden.nombreContribuyente || '') + '</div></td>' +
+            '<td class="text-end fw-bold">' + formatearMoneda(orden.total) + '</td>' +
+            '<td class="text-center">' + diasHtml + '</td>' +
+            '<td class="text-center">' + acciones.join(' ') + '</td>' +
+        '</tr>';
+    }
+
+    // =============================
+    // ACCIONES RÁPIDAS
+    // =============================
+    $(document).on('click', '.btnAccionGen', function() {
+        var ordenId = $(this).data('id');
+        Swal.fire({
+            title: '¿Generar esta orden?',
+            text: 'La orden pasará a estado GENERADA.',
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonText: 'Sí, generar',
+            cancelButtonText: 'Cancelar'
+        }).then(function(result) {
+            if (result.isConfirmed) {
+                ejecutarAccion('GENERAR', ordenId, '');
+            }
+        });
+    });
+
+    $(document).on('click', '.btnAccionAnular', function() {
+        var ordenId = $(this).data('id');
+        Swal.fire({
+            title: 'Anular Orden',
+            text: 'Ingrese el motivo de anulación:',
+            input: 'textarea',
+            inputPlaceholder: 'Motivo...',
+            inputValidator: function(value) {
+                if (!value || !value.trim()) return 'El motivo es obligatorio';
+            },
+            showCancelButton: true,
+            confirmButtonColor: '#d33',
+            confirmButtonText: 'Anular',
+            cancelButtonText: 'Cancelar'
+        }).then(function(result) {
+            if (result.isConfirmed) {
+                ejecutarAccion('ANULAR', ordenId, result.value);
+            }
+        });
+    });
+
+    function ejecutarAccion(accion, ordenId, motivo) {
+        $.ajax({
+            url: '@Url.Action("AccionRapida", "OrdenRecaudacionDashboard")',
+            type: 'POST',
+            data: {
+                accion: accion,
+                ordenId: ordenId,
+                motivo: motivo,
+                __RequestVerificationToken: $('input[name="__RequestVerificationToken"]').val()
+            },
+            success: function(response) {
+                if (response.success) {
+                    mostrarNotificacion('success', response.message);
+                    cargarDatosDashboard();
+                } else {
+                    mostrarNotificacion('error', response.message);
+                }
+            },
+            error: function() {
+                mostrarNotificacion('error', 'Error de conexión');
+            }
+        });
+    }
+
+    // =============================
+    // FILTROS
+    // =============================
+    function aplicarFiltros() {
+        filtrosActuales = {
+            estado: $('#filtroEstado').val(),
+            fechaDesde: $('#filtroFechaDesde').val(),
+            fechaHasta: $('#filtroFechaHasta').val(),
+            numeroOrden: $('#filtroNumeroOrden').val().trim()
+        };
+        cargarDatosDashboard();
+    }
+
+    function limpiarFiltros() {
+        $('#filtrosForm')[0].reset();
+        filtrosActuales = {};
+        cargarDatosIniciales();
+    }
+
+    function actualizarContadorFiltros(filtros) {
+        $('#contadorFiltradas').text(filtros.totalFiltradas);
+    }
+
+    // =============================
+    // UTILIDADES
+    // =============================
+    function mostrarLoading(mostrar) {
+        $('#loadingOrdenes').toggleClass('d-none', !mostrar);
+    }
+
+    function formatearMoneda(monto) {
+        return new Intl.NumberFormat('es-EC', { style: 'currency', currency: 'USD' }).format(monto);
+    }
+
+    function formatearNumero(numero) {
+        return new Intl.NumberFormat('es-EC').format(numero);
+    }
+
+    function formatearFecha(fecha) {
+        return new Date(fecha).toLocaleDateString('es-EC', { day: '2-digit', month: '2-digit', year: 'numeric' });
+    }
+
+    function mostrarNotificacion(tipo, mensaje) {
+        if (typeof Swal !== 'undefined') {
+            Swal.fire({
+                icon: tipo === 'error' ? 'error' : 'success',
+                title: tipo === 'error' ? 'Error' : 'Éxito',
+                text: mensaje,
+                timer: tipo === 'error' ? undefined : 2500,
+                showConfirmButton: tipo === 'error'
+            });
+        } else {
+            alert(mensaje);
+        }
+    }
+
+    function exportarDatos() {
+        if (!datosActuales || !datosActuales.ordenesRecientes) {
+            mostrarNotificacion('error', 'No hay datos para exportar');
+            return;
+        }
+
+        var csv = 'Número,Fecha,Estado,Contribuyente,Total,Días\n';
+        for (var i = 0; i < datosActuales.ordenesRecientes.length; i++) {
+            var o = datosActuales.ordenesRecientes[i];
+            csv += [
+                o.numeroOrden,
+                formatearFecha(o.fechaCreacion),
+                o.estado,
+                '"' + (o.nombreContribuyente || '') + '"',
+                o.total,
+                o.diasVencimiento
+            ].join(',') + '\n';
+        }
+
+        var blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+        var url = window.URL.createObjectURL(blob);
+        var a = document.createElement('a');
+        a.href = url;
+        a.download = 'ordenes-dashboard-' + new Date().toISOString().split('T')[0] + '.csv';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        window.URL.revokeObjectURL(url);
+    }
+
+})();
+    </script>
+}
