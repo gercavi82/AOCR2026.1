@@ -99,6 +99,11 @@ namespace CapaNegocio
             return _dao.ExisteTecnicoActivo(tecnicoId, excluirId);
         }
 
+        public static bool VincularCuentaAcceso(int idRegistro, int usuarioId, string actor, out string mensaje)
+        {
+            return _dao.VincularCuentaAcceso(idRegistro, usuarioId, actor, out mensaje);
+        }
+
         private static bool ValidarRegistro(UsuarioInternoRTRegistro registro, bool esEdicion, out string mensaje)
         {
             mensaje = string.Empty;

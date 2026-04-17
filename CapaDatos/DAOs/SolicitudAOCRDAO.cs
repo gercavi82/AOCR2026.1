@@ -446,6 +446,11 @@ namespace CapaDatos.DAOs
                     columnasInsert.Add("resumen_operaciones_eae");
                     valoresInsert.Add("@ResumenOperacionesEae");
                 }
+                if (columnas.Contains("numero_aoc"))
+                {
+                    columnasInsert.Add("numero_aoc");
+                    valoresInsert.Add("@NumeroAOC");
+                }
                 if (columnas.Contains("aprobaciones_especiales"))
                 {
                     columnasInsert.Add("aprobaciones_especiales");
@@ -509,6 +514,7 @@ namespace CapaDatos.DAOs
                     cmd.Parameters.AddWithValue("@DescripcionOperacion", (object)(solicitud.DescripcionOperacion ?? ""));
                     cmd.Parameters.AddWithValue("@Observaciones", (object)(solicitud.Observaciones ?? ""));
                     cmd.Parameters.AddWithValue("@ResumenOperacionesEae", (object)(solicitud.ResumenOperacionesEae ?? ""));
+                    cmd.Parameters.AddWithValue("@NumeroAOC", (object)(solicitud.NumeroAOC ?? ""));
                     cmd.Parameters.AddWithValue("@AprobacionesEspeciales", (object)(solicitud.AprobacionesEspeciales ?? ""));
                     cmd.Parameters.AddWithValue("@AprobacionesEspecialesOtros", (object)(solicitud.AprobacionesEspecialesOtros ?? ""));
                     cmd.Parameters.AddWithValue("@AeropuertosEcuador", (object)(solicitud.AeropuertosEcuador ?? ""));
@@ -585,6 +591,10 @@ namespace CapaDatos.DAOs
                 if (columnas.Contains("resumen_operaciones_eae"))
                 {
                     setClauses.Add("resumen_operaciones_eae=@resumen_operaciones_eae");
+                }
+                if (columnas.Contains("numero_aoc"))
+                {
+                    setClauses.Add("numero_aoc=@numero_aoc");
                 }
                 if (columnas.Contains("aprobaciones_especiales"))
                 {
@@ -670,6 +680,10 @@ WHERE codigo_solicitud=@id AND deleted_at IS NULL;";
                     if (columnas.Contains("resumen_operaciones_eae"))
                     {
                         cmd.Parameters.AddWithValue("@resumen_operaciones_eae", (object)(s.ResumenOperacionesEae ?? ""));
+                    }
+                    if (columnas.Contains("numero_aoc"))
+                    {
+                        cmd.Parameters.AddWithValue("@numero_aoc", (object)(s.NumeroAOC ?? ""));
                     }
                     if (columnas.Contains("aprobaciones_especiales"))
                     {
@@ -1279,6 +1293,7 @@ WHERE codigo_solicitud=@id AND deleted_at IS NULL;";
                 ResumenOperacionesEae = FirstNonEmpty(
                     GetString(rd, "resumen_operaciones_eae"),
                     GetString(rd, "resumen_operaciones")),
+                NumeroAOC = GetString(rd, "numero_aoc"),
                 Observaciones = GetString(rd, "observaciones"),
                 AprobacionesEspeciales = GetString(rd, "aprobaciones_especiales"),
                 AprobacionesEspecialesOtros = GetString(rd, "aprobaciones_especiales_otros"),

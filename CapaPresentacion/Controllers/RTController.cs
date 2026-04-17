@@ -11,18 +11,17 @@ using iTextSharp.text.pdf;
 
 namespace CapaPresentacion.Controllers
 {
-    // [Authorize] // Habilitar cuando el flujo esté integrado con autenticación
+    [Authorize]
     public class RTController : Controller
     {
         private readonly RTService _service = new RTService();
 
         private int ObtenerUsuarioId()
         {
-            var v = Session["UserId"] ?? Session["IdUsuario"] ?? Session["CodigoUsuario"]; // ajustar según auth
+            var v = Session["UserId"] ?? Session["IdUsuario"] ?? Session["CodigoUsuario"];
             if (v != null && int.TryParse(v.ToString(), out var id))
                 return id;
 
-            // Sin sesión activa → no se puede identificar al usuario
             return 0;
         }
 

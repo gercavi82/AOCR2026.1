@@ -27,7 +27,11 @@
     var mensajeComprobante = ViewBag.MensajeComprobante as string ?? "Debe registrar el comprobante antes de continuar.";
 
     // Calcular total pagado
-    var totalPagado = pagos.Where(p => (p.Estado ?? "").Equals("APROBADO", System.StringComparison.OrdinalIgnoreCase)).Sum(p => p.Monto);
+    // Contar pagos aprobados/validados (ambos estados son equivalentes funcionalmente)
+    var totalPagado = pagos.Where(p => {
+        var e = (p.Estado ?? "").Trim().ToUpperInvariant();
+        return e == "APROBADO" || e == "VALIDADO";
+    }).Sum(p => p.Monto);
     var saldoPendiente = orden.Total - totalPagado;
     var tieneSaldoPendiente = saldoPendiente > 0 && estado != "FACTURADA" && estado != "COMPLETADA";
     var tienePagoAprobado = orden.Total > 0 && totalPagado >= orden.Total;
@@ -337,8 +341,7 @@
                                 <button type="button"
                                         class="btn btn-success btn-sm"
                                         onclick="validarPago(@pago.CodigoPago, '@pago.NumeroFactura')"
-                                        title="Validar pago"
-                                        @(tieneComprobanteValido ? "" : "disabled")>
+                                        title="Validar pago">
                                     <i class="fas fa-check"></i>
                                 </button>
                                 <button type="button"

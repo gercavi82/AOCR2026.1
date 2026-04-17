@@ -21,6 +21,24 @@ namespace CapaPresentacion.Controllers
 {
     public class AccountController : Controller
     {
+        private static readonly HashSet<string> RolesInternosNoBloqueoDesignacion = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+        {
+            "Administrador",
+            "Direccion",
+            "JefaturaTecnica",
+            "Financiero",
+            "CoordinadorFinanciero",
+            "CoordinacionLegal",
+            "CoordinadorLegal",
+            "Inspector",
+            "Tecnico",
+            "EvaluadorTecnico",
+            "CoordinadorInspecciones",
+            "DirectorFinanciero",
+            "DirectorGeneral",
+            "Recepcion"
+        };
+
         [AllowAnonymous]
         public ActionResult Login(string returnUrl, string af = null)
         {
@@ -112,12 +130,14 @@ namespace CapaPresentacion.Controllers
                 !usuario.EstadoDesignacionRT.Equals("aceptado", StringComparison.OrdinalIgnoreCase))
             {
                 var esAdmin = false;
+                var esRolInterno = false;
                 if (roles != null)
                 {
                     esAdmin = roles.Any(r => r.Equals("Administrador", StringComparison.OrdinalIgnoreCase));
+                    esRolInterno = roles.Any(r => RolesInternosNoBloqueoDesignacion.Contains((r ?? string.Empty).Trim()));
                 }
 
-                if (!esAdmin)
+                if (!esAdmin && !esRolInterno)
                 {
                     var estado = usuario.EstadoDesignacionRT.Trim().ToLowerInvariant();
                     var msg = estado == "rechazado"

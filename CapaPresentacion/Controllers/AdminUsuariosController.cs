@@ -10,6 +10,7 @@ using CapaDatos.DAOs;
 using CapaDatos.Models;
 using CapaDatos.Services;
 using CapaModelo;
+using CapaModelo.Common;
 using CapaModelo.Seguridad;
 using CapaNegocio;
 using CapaNegocio.Helpers;
@@ -347,7 +348,8 @@ namespace CapaPresentacion.Controllers
         [Authorize(Roles = "Administrador")]
         public ActionResult ListarUsuariosInternosRT()
         {
-            var lista = UsuarioInternoRTBL.ListarUsuariosInternos(true);
+            var lista = UsuarioInternoRTBL.ListarUsuariosInternos(true) ?? new List<UsuarioInternoRTRegistro>();
+            SincronizarVinculoCuentaAccesoEnMemoria(lista);
             return View(lista);
         }
 
@@ -463,62 +465,111 @@ namespace CapaPresentacion.Controllers
         [RequirePermission("ADM_RESET_PASSWORD")]
         public ActionResult ReenviarNotificacionUsuarioInternoRT(int id)
         {
-            var registro = UsuarioInternoRTBL.ObtenerPorId(id);
-            if (registro == null)
+            string mensajeExito;
+            string mensajeWarning;
+            string mensajeError;
+            string passwordTemporalFallback;
+
+            if (!ProcesarProvisionCuentaInspectorRT(
+                id,
+                crearCuentaSiNoExiste: true,
+                resetearClaveSiExiste: true,
+                out mensajeExito,
+                out mensajeWarning,
+                out mensajeError,
+                out passwordTemporalFallback))
             {
-                TempData["Error"] = "No se encontro el usuario interno RT solicitado.";
+                TempData["Error"] = mensajeError;
                 return RedirectToAction("ListarUsuariosInternosRT");
             }
 
-            var correoDestino = (registro.CorreoInstitucional ?? string.Empty).Trim();
-            if (string.IsNullOrWhiteSpace(correoDestino))
+            TempData["Success"] = mensajeExito;
+            if (!string.IsNullOrWhiteSpace(mensajeWarning))
             {
-                TempData["Error"] = "El usuario interno RT no tiene correo institucional registrado.";
+                TempData["Warning"] = mensajeWarning;
+            }
+
+            if (!string.IsNullOrWhiteSpace(passwordTemporalFallback))
+            {
+                TempData["PasswordTemporal"] = passwordTemporalFallback;
+            }
+
+            return RedirectToAction("ListarUsuariosInternosRT");
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        [Authorize(Roles = "Administrador")]
+        [RequirePermission("ADM_GESTION_USUARIOS")]
+        public ActionResult CrearCuentaInspectorRT(int id)
+        {
+            string mensajeExito;
+            string mensajeWarning;
+            string mensajeError;
+            string passwordTemporalFallback;
+
+            if (!ProcesarProvisionCuentaInspectorRT(
+                id,
+                crearCuentaSiNoExiste: true,
+                resetearClaveSiExiste: false,
+                out mensajeExito,
+                out mensajeWarning,
+                out mensajeError,
+                out passwordTemporalFallback))
+            {
+                TempData["Error"] = mensajeError;
                 return RedirectToAction("ListarUsuariosInternosRT");
             }
 
-            var usuarioId = registro.UsuarioId;
-            if ((!usuarioId.HasValue || usuarioId.Value <= 0) && !string.IsNullOrWhiteSpace(registro.CodigoUsuario))
+            TempData["Success"] = mensajeExito;
+            if (!string.IsNullOrWhiteSpace(mensajeWarning))
             {
-                usuarioId = new UsuarioInternoRTDAO().ObtenerUsuarioIdPorCodigoUsuario(registro.CodigoUsuario);
+                TempData["Warning"] = mensajeWarning;
             }
 
-            if (usuarioId.HasValue && usuarioId.Value > 0)
+            if (!string.IsNullOrWhiteSpace(passwordTemporalFallback))
             {
-                string passwordTemporal;
-                string mensaje;
-                var ok = AdminUsuariosBL.ResetPassword(
-                    usuarioId.Value,
-                    true,
-                    null,
-                    ObtenerActorId(),
-                    ObtenerActorCodigoUsuario(),
-                    Request != null ? Request.UserHostAddress : null,
-                    correoDestino,
-                    out passwordTemporal,
-                    out mensaje);
+                TempData["PasswordTemporal"] = passwordTemporalFallback;
+            }
 
-                if (ok)
-                {
-                    TempData["Success"] = "Correo de credenciales reenviado correctamente. " + mensaje;
-                    if (!string.IsNullOrWhiteSpace(passwordTemporal))
-                    {
-                        TempData["PasswordTemporal"] = string.Format(
-                            "Nueva contrasena temporal generada: {0}",
-                            passwordTemporal);
-                    }
-                }
-                else
-                {
-                    TempData["Error"] = mensaje;
-                }
+            return RedirectToAction("ListarUsuariosInternosRT");
+        }
 
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        [Authorize(Roles = "Administrador")]
+        [RequirePermission("ADM_RESET_PASSWORD")]
+        public ActionResult ResetearClaveRT(int id)
+        {
+            string mensajeExito;
+            string mensajeWarning;
+            string mensajeError;
+            string passwordTemporalFallback;
+
+            if (!ProcesarProvisionCuentaInspectorRT(
+                id,
+                crearCuentaSiNoExiste: true,
+                resetearClaveSiExiste: true,
+                out mensajeExito,
+                out mensajeWarning,
+                out mensajeError,
+                out passwordTemporalFallback))
+            {
+                TempData["Error"] = mensajeError;
                 return RedirectToAction("ListarUsuariosInternosRT");
             }
 
-            string mensajeNotificacion;
-            var notificacionOk = EnviarNotificacionAltaUsuarioInternoRT(registro, correoDestino, out mensajeNotificacion);
-            TempData[notificacionOk ? "Success" : "Error"] = mensajeNotificacion;
+            TempData["Success"] = mensajeExito;
+            if (!string.IsNullOrWhiteSpace(mensajeWarning))
+            {
+                TempData["Warning"] = mensajeWarning;
+            }
+
+            if (!string.IsNullOrWhiteSpace(passwordTemporalFallback))
+            {
+                TempData["PasswordTemporal"] = passwordTemporalFallback;
+            }
+
             return RedirectToAction("ListarUsuariosInternosRT");
         }
 
@@ -1882,6 +1933,360 @@ namespace CapaPresentacion.Controllers
             return normalizado;
         }
 
+        private void SincronizarVinculoCuentaAccesoEnMemoria(IList<UsuarioInternoRTRegistro> registros)
+        {
+            if (registros == null || registros.Count == 0)
+            {
+                return;
+            }
+
+            var dao = new UsuarioInternoRTDAO();
+            foreach (var registro in registros)
+            {
+                if (registro == null)
+                {
+                    continue;
+                }
+
+                if (registro.UsuarioId.HasValue && registro.UsuarioId.Value > 0)
+                {
+                    continue;
+                }
+
+                var usuarioId = ResolverUsuarioIdAocrDesdeRegistro(registro, dao);
+                if (usuarioId.HasValue && usuarioId.Value > 0)
+                {
+                    registro.UsuarioId = usuarioId.Value;
+                }
+            }
+        }
+
+        private bool ProcesarProvisionCuentaInspectorRT(
+            int registroId,
+            bool crearCuentaSiNoExiste,
+            bool resetearClaveSiExiste,
+            out string mensajeExito,
+            out string mensajeWarning,
+            out string mensajeError,
+            out string passwordTemporalFallback)
+        {
+            mensajeExito = string.Empty;
+            mensajeWarning = string.Empty;
+            mensajeError = string.Empty;
+            passwordTemporalFallback = string.Empty;
+
+            var registro = UsuarioInternoRTBL.ObtenerPorId(registroId);
+            if (registro == null)
+            {
+                mensajeError = "No se encontro el inspector solicitado.";
+                return false;
+            }
+
+            if (!registro.Activo)
+            {
+                mensajeError = "El inspector se encuentra inactivo. Active el registro antes de gestionar credenciales.";
+                return false;
+            }
+
+            var correoDestino = (registro.CorreoInstitucional ?? string.Empty).Trim();
+            if (string.IsNullOrWhiteSpace(correoDestino))
+            {
+                mensajeError = "El inspector no tiene correo institucional registrado.";
+                return false;
+            }
+
+            var rolInspectorId = ObtenerCodigoRolInspector();
+            if (!rolInspectorId.HasValue || rolInspectorId.Value <= 0)
+            {
+                mensajeError = "No se encontro un rol activo de tipo Inspector en la tabla de roles.";
+                return false;
+            }
+
+            var actorId = ObtenerActorId();
+            var actorCodigo = ObtenerActorCodigoUsuario();
+            var ip = Request != null ? Request.UserHostAddress : null;
+
+            var dao = new UsuarioInternoRTDAO();
+            var usuarioId = ResolverUsuarioIdAocrDesdeRegistro(registro, dao);
+            var cuentaCreada = false;
+            var passwordTemporal = string.Empty;
+            var correoEnviado = true;
+            var detalleCorreo = string.Empty;
+            var mensajeOperacion = string.Empty;
+            var mensajeRol = string.Empty;
+
+            if (usuarioId.HasValue && usuarioId.Value > 0)
+            {
+                if (!AsegurarRolInspectorEnUsuario(usuarioId.Value, rolInspectorId.Value, out mensajeRol))
+                {
+                    mensajeError = string.IsNullOrWhiteSpace(mensajeRol)
+                        ? "No se pudo asignar el rol Inspector al usuario."
+                        : mensajeRol;
+                    return false;
+                }
+
+                if (resetearClaveSiExiste)
+                {
+                    var okReset = AdminUsuariosBL.ResetPassword(
+                        usuarioId.Value,
+                        true,
+                        null,
+                        actorId,
+                        actorCodigo,
+                        ip,
+                        correoDestino,
+                        out passwordTemporal,
+                        out correoEnviado,
+                        out detalleCorreo,
+                        out mensajeOperacion);
+
+                    if (!okReset)
+                    {
+                        mensajeError = "No se pudo regenerar la clave temporal del inspector: " + mensajeOperacion;
+                        return false;
+                    }
+                }
+                else
+                {
+                    mensajeOperacion = "La cuenta AOCR ya estaba creada y se validó el rol Inspector.";
+                }
+            }
+            else
+            {
+                if (!crearCuentaSiNoExiste)
+                {
+                    mensajeError = "El inspector no tiene cuenta AOCR asociada.";
+                    return false;
+                }
+
+                string nombres;
+                string apellidos;
+                var nombreCompleto = string.IsNullOrWhiteSpace(registro.NombreCompleto) ? registro.NombreVisual : registro.NombreCompleto;
+                SepararNombreCompleto(nombreCompleto, out nombres, out apellidos);
+
+                var codigoUsuario = ConstruirCodigoUsuarioCuentaInspector(registro);
+                if (string.IsNullOrWhiteSpace(codigoUsuario))
+                {
+                    mensajeError = "No se pudo determinar un codigo de usuario valido para crear la cuenta AOCR del inspector.";
+                    return false;
+                }
+
+                var dto = new SeguridadUsuarioDTO
+                {
+                    CodigoUsuario = codigoUsuario,
+                    NombreUsuario = string.IsNullOrWhiteSpace(nombres) ? codigoUsuario : nombres.Trim(),
+                    ApellidoUsuario = string.IsNullOrWhiteSpace(apellidos) ? string.Empty : apellidos.Trim(),
+                    Correo = correoDestino,
+                    Activo = true
+                };
+
+                int nuevoUsuarioId;
+                var okCrear = AdminUsuariosBL.CrearUsuario(
+                    dto,
+                    new[] { rolInspectorId.Value },
+                    null,
+                    true,
+                    actorId,
+                    actorCodigo,
+                    ip,
+                    out nuevoUsuarioId,
+                    out passwordTemporal,
+                    out correoEnviado,
+                    out detalleCorreo,
+                    out mensajeOperacion);
+
+                if (!okCrear)
+                {
+                    mensajeError = "No se pudo crear la cuenta AOCR del inspector: " + mensajeOperacion;
+                    return false;
+                }
+
+                usuarioId = nuevoUsuarioId;
+                cuentaCreada = true;
+            }
+
+            if (usuarioId.HasValue && usuarioId.Value > 0)
+            {
+                string mensajeVinculo;
+                if (!UsuarioInternoRTBL.VincularCuentaAcceso(registro.Id, usuarioId.Value, actorCodigo, out mensajeVinculo))
+                {
+                    _logger.LogWarning("[AdminUsuariosController] No se pudo vincular usuario interno RT con cuenta AOCR. RegistroId="
+                        + registro.Id + ", UsuarioId=" + usuarioId.Value + ", Detalle=" + mensajeVinculo);
+                    mensajeWarning = string.IsNullOrWhiteSpace(mensajeWarning)
+                        ? "No se pudo actualizar el vínculo interno con la cuenta AOCR. " + mensajeVinculo
+                        : (mensajeWarning + " " + mensajeVinculo);
+                }
+            }
+
+            if (!string.IsNullOrWhiteSpace(mensajeRol))
+            {
+                mensajeWarning = string.IsNullOrWhiteSpace(mensajeWarning)
+                    ? mensajeRol
+                    : (mensajeWarning + " " + mensajeRol);
+            }
+
+            if (!correoEnviado && !string.IsNullOrWhiteSpace(passwordTemporal))
+            {
+                var detalle = string.IsNullOrWhiteSpace(detalleCorreo) ? "Revise la configuración SMTP/cola y logs del sistema." : detalleCorreo;
+                var warningCorreo = "No se pudo enviar el correo institucional. Detalle: " + detalle
+                    + ". Se muestra la clave temporal una sola vez para entrega controlada.";
+
+                mensajeWarning = string.IsNullOrWhiteSpace(mensajeWarning)
+                    ? warningCorreo
+                    : (mensajeWarning + " " + warningCorreo);
+                passwordTemporalFallback = "Clave temporal (mostrar una sola vez): " + passwordTemporal;
+            }
+
+            if (cuentaCreada)
+            {
+                mensajeExito = correoEnviado
+                    ? "Cuenta AOCR del inspector creada y credenciales enviadas a " + correoDestino + "."
+                    : "Cuenta AOCR del inspector creada correctamente.";
+            }
+            else if (resetearClaveSiExiste)
+            {
+                mensajeExito = correoEnviado
+                    ? "Clave temporal regenerada y enviada al correo institucional " + correoDestino + "."
+                    : "Clave temporal regenerada correctamente para el inspector.";
+            }
+            else
+            {
+                mensajeExito = "La cuenta AOCR del inspector ya estaba creada y quedó validada con rol Inspector.";
+            }
+
+            if (!string.IsNullOrWhiteSpace(mensajeOperacion))
+            {
+                mensajeExito = mensajeExito + " " + mensajeOperacion;
+            }
+
+            return true;
+        }
+
+        private bool AsegurarRolInspectorEnUsuario(int usuarioId, int rolInspectorId, out string mensaje)
+        {
+            mensaje = string.Empty;
+
+            if (usuarioId <= 0 || rolInspectorId <= 0)
+            {
+                mensaje = "Datos invalidos para asignar rol Inspector.";
+                return false;
+            }
+
+            var usuario = AdminUsuariosBL.ObtenerUsuarioPorId(usuarioId);
+            if (usuario == null)
+            {
+                mensaje = "No se encontro la cuenta AOCR asociada al inspector.";
+                return false;
+            }
+
+            var roles = (usuario.RolesAsignados ?? new List<int>())
+                .Where(x => x > 0)
+                .Distinct()
+                .ToList();
+
+            if (roles.Contains(rolInspectorId))
+            {
+                return true;
+            }
+
+            roles.Add(rolInspectorId);
+
+            string mensajeRoles;
+            var okRoles = AdminUsuariosBL.ReemplazarRolesUsuario(
+                usuarioId,
+                roles,
+                ObtenerActorId(),
+                ObtenerActorCodigoUsuario(),
+                Request != null ? Request.UserHostAddress : null,
+                out mensajeRoles);
+
+            if (!okRoles)
+            {
+                mensaje = string.IsNullOrWhiteSpace(mensajeRoles)
+                    ? "No se pudo asignar el rol Inspector a la cuenta."
+                    : mensajeRoles;
+                return false;
+            }
+
+            mensaje = "Se asigno el rol Inspector a la cuenta existente.";
+            return true;
+        }
+
+        private int? ResolverUsuarioIdAocrDesdeRegistro(UsuarioInternoRTRegistro registro, UsuarioInternoRTDAO dao = null)
+        {
+            if (registro == null)
+            {
+                return null;
+            }
+
+            var usuarioId = registro.UsuarioId;
+            if (usuarioId.HasValue && usuarioId.Value > 0)
+            {
+                return usuarioId;
+            }
+
+            dao = dao ?? new UsuarioInternoRTDAO();
+
+            if (!string.IsNullOrWhiteSpace(registro.CodigoUsuario))
+            {
+                usuarioId = dao.ObtenerUsuarioIdPorCodigoUsuario(registro.CodigoUsuario);
+            }
+
+            if ((!usuarioId.HasValue || usuarioId.Value <= 0) && !string.IsNullOrWhiteSpace(registro.Identificacion))
+            {
+                usuarioId = dao.ObtenerUsuarioIdPorCodigoUsuario(registro.Identificacion);
+            }
+
+            if ((!usuarioId.HasValue || usuarioId.Value <= 0) && !string.IsNullOrWhiteSpace(registro.CorreoInstitucional))
+            {
+                usuarioId = dao.ObtenerUsuarioIdPorCorreo(registro.CorreoInstitucional);
+            }
+
+            if ((!usuarioId.HasValue || usuarioId.Value <= 0) && registro.TecnicoId.HasValue && registro.TecnicoId.Value > 0)
+            {
+                usuarioId = dao.ObtenerUsuarioIdPorTecnicoId(registro.TecnicoId.Value);
+            }
+
+            return usuarioId;
+        }
+
+        private int? ObtenerCodigoRolInspector()
+        {
+            var roles = AdminUsuariosBL.ObtenerRolesActivos() ?? new List<SeguridadRolDTO>();
+
+            var rolInspector = roles.FirstOrDefault(r =>
+                string.Equals((r.Descripcion ?? string.Empty).Trim(), "Inspector", StringComparison.OrdinalIgnoreCase))
+                ?? roles.FirstOrDefault(r =>
+                    (r.Descripcion ?? string.Empty).IndexOf("Inspector", StringComparison.OrdinalIgnoreCase) >= 0);
+
+            return rolInspector != null ? (int?)rolInspector.CodigoRol : null;
+        }
+
+        private static string ConstruirCodigoUsuarioCuentaInspector(UsuarioInternoRTRegistro registro)
+        {
+            var codigo = NormalizarCodigo(registro != null ? registro.CodigoUsuario : null);
+            if (!string.IsNullOrWhiteSpace(codigo))
+            {
+                return codigo;
+            }
+
+            codigo = NormalizarCodigo(registro != null ? registro.Identificacion : null);
+            if (!string.IsNullOrWhiteSpace(codigo))
+            {
+                return codigo;
+            }
+
+            var correo = registro != null ? (registro.CorreoInstitucional ?? string.Empty).Trim() : string.Empty;
+            if (string.IsNullOrWhiteSpace(correo))
+            {
+                return string.Empty;
+            }
+
+            var at = correo.IndexOf('@');
+            var localPart = at > 0 ? correo.Substring(0, at) : correo;
+            return NormalizarCodigo(localPart, 64);
+        }
+
         private static AdminUsuarioInternoRTViewModel MapearUsuarioInternoRTViewModel(UsuarioInternoRTRegistro registro)
         {
             return new AdminUsuarioInternoRTViewModel
@@ -1952,36 +2357,31 @@ namespace CapaPresentacion.Controllers
 
         private static string ConstruirCorreoAltaUsuarioInternoRT(UsuarioInternoRTRegistro registro)
         {
-            var nombre = HttpUtility.HtmlEncode(registro != null ? registro.NombreVisual : "Usuario");
-            var codigo = HttpUtility.HtmlEncode(registro != null ? registro.UsuarioLogin : string.Empty);
-            var rol = HttpUtility.HtmlEncode(registro != null ? (registro.RolInterno ?? string.Empty) : string.Empty);
-            var tipo = HttpUtility.HtmlEncode(registro != null ? (registro.Tipo ?? string.Empty) : string.Empty);
-            var fecha = HttpUtility.HtmlEncode(DateTime.Now.ToString("dd/MM/yyyy HH:mm"));
+            var nombre = registro != null ? registro.NombreVisual : "Usuario";
+            var codigo = registro != null ? registro.UsuarioLogin : string.Empty;
+            var rol = registro != null ? (registro.RolInterno ?? string.Empty) : string.Empty;
+            var tipo = registro != null ? (registro.Tipo ?? string.Empty) : string.Empty;
+            var fecha = DateTime.Now.ToString("dd/MM/yyyy HH:mm");
 
-            return string.Format(@"
-<!DOCTYPE html>
-<html>
-<head><meta charset='utf-8'></head>
-<body style='font-family: Arial, sans-serif; margin:0; padding:20px; background:#f4f6f8;'>
-  <div style='max-width:620px; margin:0 auto; background:#ffffff; border:1px solid #d9dee5; border-radius:8px; padding:24px;'>
-    <h2 style='margin:0 0 16px 0; color:#1f3a5f;'>Registro como Usuario RT / Inspector</h2>
-    <p style='margin:0 0 12px 0;'>Estimado/a <strong>{0}</strong>,</p>
-    <p style='margin:0 0 12px 0;'>Se confirma su registro en AOCR como usuario interno RT / inspector.</p>
-    <p style='margin:0 0 8px 0;'><strong>Usuario:</strong> {1}</p>
-    <p style='margin:0 0 8px 0;'><strong>Tipo:</strong> {2}</p>
-    <p style='margin:0 0 8px 0;'><strong>Rol interno:</strong> {3}</p>
-    <p style='margin:0 0 8px 0;'><strong>Fecha de notificacion:</strong> {4}</p>
-    <p style='margin:16px 0 12px 0;'>Si requiere credenciales de acceso o restablecimiento de contrasena, contacte al administrador del sistema.</p>
-    <hr style='margin:20px 0; border:none; border-top:1px solid #e8ecf1;' />
-    <p style='margin:0; font-size:12px; color:#6b7785;'>Mensaje automatico del sistema AOCR.</p>
-  </div>
-</body>
-</html>",
-                nombre,
-                codigo,
-                tipo,
-                rol,
-                fecha);
+            var extraHtml = "<p style='margin:0 0 8px 0; font-size:14px; color:#3a4f5e;'><strong>Usuario / Cédula:</strong> "
+                + System.Net.WebUtility.HtmlEncode(codigo) + "</p>"
+                + "<p style='margin:0 0 8px 0; font-size:14px; color:#3a4f5e;'><strong>Tipo:</strong> "
+                + System.Net.WebUtility.HtmlEncode(tipo) + "</p>"
+                + "<p style='margin:0 0 8px 0; font-size:14px; color:#3a4f5e;'><strong>Rol interno:</strong> "
+                + System.Net.WebUtility.HtmlEncode(string.IsNullOrWhiteSpace(rol) ? "Inspector" : rol) + "</p>"
+                + "<p style='margin:0 0 8px 0; font-size:13px; color:#3a4f5e;'>Fecha de notificación: " + System.Net.WebUtility.HtmlEncode(fecha) + "</p>";
+
+            var model = new EmailTemplateModel
+            {
+                Titulo = "Registro como Usuario RT / Inspector",
+                NombreDestinatario = System.Net.WebUtility.HtmlEncode(nombre),
+                MensajePrincipal = "Se confirma su registro en el sistema AOCR como usuario interno RT / inspector.",
+                ContenidoHtmlExtra = extraHtml,
+                TextoCierre = "Si requiere credenciales de acceso o restablecimiento de contraseña, contacte al administrador del sistema.",
+                Footer = "Mensaje automático del sistema AOCR."
+            };
+
+            return EmailTemplateRenderer.Render(model);
         }
 
         private static void CargarRolesUsuarioInterno(AdminUsuarioInternoRTViewModel model, string seleccionado)
@@ -1995,14 +2395,11 @@ namespace CapaPresentacion.Controllers
             var roles = new[]
             {
                 "",
-                "Tecnico",
                 "Inspector",
                 "Coordinador",
-                "Jefatura Tecnica",
-                "Direccion",
-                "Legal",
-                "Financiero",
-                "Administrador"
+                "RT",
+                "DIRDAC",
+                "Financiero"
             };
 
             model.RolesInternos = roles.Select(r => new SelectListItem

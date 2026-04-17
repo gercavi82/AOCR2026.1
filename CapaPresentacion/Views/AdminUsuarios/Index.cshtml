@@ -1,7 +1,7 @@
 @model CapaPresentacion.Models.AdminUsuarios.AdminUsuariosIndexViewModel
 
 @{
-    ViewBag.Title = "Dashboard de Administracion";
+    ViewBag.Title = "Gestión de Inspectores";
     var rolSesion = Session["Rol"] != null ? Session["Rol"].ToString() : string.Empty;
     var esAdminSesion = string.Equals(rolSesion, "Administrador", System.StringComparison.OrdinalIgnoreCase);
     var esJefaturaSesion = string.Equals(rolSesion, "JefaturaTecnica", System.StringComparison.OrdinalIgnoreCase);

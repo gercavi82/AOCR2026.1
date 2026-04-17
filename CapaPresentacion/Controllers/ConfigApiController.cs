@@ -10,6 +10,7 @@ namespace CapaPresentacion.Controllers
     /// API Controller para configuraciones del sistema
     /// Provee valores configurables para eliminar hardcoded values
     /// </summary>
+    [Authorize(Roles = "Administrador,Inspector,Coordinador,DIRDAC,Financiero,RT")]
     public class ConfigApiController : Controller
     {
         private readonly ParametroDAO _parametroDAO;

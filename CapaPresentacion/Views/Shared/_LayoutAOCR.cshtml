@@ -409,7 +409,47 @@
         })();
     </script>
 
-    <!-- 1.1 jQuery Validate (necesario para validación cliente en vistas MVC) -->
+    <!-- 1.1 DataTables + Bootstrap 5 (estático — debe estar antes que document.ready de las vistas) -->
+    <script src="https://cdn.datatables.net/1.13.4/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.4/js/dataTables.bootstrap5.min.js"></script>
+    <script src="https://cdn.datatables.net/responsive/2.4.1/js/dataTables.responsive.min.js"></script>
+    <script src="https://cdn.datatables.net/responsive/2.4.1/js/responsive.bootstrap5.min.js"></script>
+
+    <!-- 1.1b DataTables: defaults institucionales AOCR (aplicados a todas las tablas del proyecto) -->
+    <script>
+    $(function () {
+        if (!$.fn || !$.fn.dataTable) return;
+        $.extend(true, $.fn.dataTable.defaults, {
+            language: {
+                url: 'https://cdn.datatables.net/plug-ins/1.13.4/i18n/es-ES.json',
+                emptyTable:    'No hay registros disponibles',
+                zeroRecords:   'No se encontraron resultados',
+                loadingRecords:'Cargando...',
+                processing:    'Procesando...'
+            },
+            pageLength:  10,
+            lengthMenu:  [[5, 10, 25, 50, -1], [5, 10, 25, 50, 'Todos']],
+            responsive:  true,
+            autoWidth:   false,
+            processing:  true,
+            dom: '<"row align-items-center mb-2"<"col-sm-6"l><"col-sm-6 text-end"f>>' +
+                 '<"row"<"col-12"tr>>' +
+                 '<"row align-items-center mt-2"<"col-sm-5"i><"col-sm-7 d-flex justify-content-end"p>>',
+            initComplete: function () {
+                // Aplica clases Bootstrap al input de búsqueda automáticamente
+                $(this).closest('.dataTables_wrapper')
+                    .find('.dataTables_filter input')
+                    .addClass('form-control form-control-sm')
+                    .attr('placeholder', 'Buscar...');
+                $(this).closest('.dataTables_wrapper')
+                    .find('.dataTables_length select')
+                    .addClass('form-select form-select-sm');
+            }
+        });
+    });
+    </script>
+
+    <!-- 1.2 jQuery Validate (necesario para validación cliente en vistas MVC) -->
     <script src="@Url.Content("~/Scripts/jquery.validate.min.js")"></script>
     <script src="@Url.Content("~/Scripts/jquery.validate.unobtrusive.min.js")"></script>
     <script>
@@ -502,45 +542,40 @@
         })();
 
         function loadDataTables() {
-            console.log('📊 Cargando DataTables...');
-
-            // Cargar en orden secuencial
-            var dtScripts = [
-                'https://cdn.datatables.net/1.13.4/js/jquery.dataTables.min.js',
-                'https://cdn.datatables.net/1.13.4/js/dataTables.bootstrap5.min.js',
-                'https://cdn.datatables.net/responsive/2.4.1/js/dataTables.responsive.min.js'
-            ];
-
-            function loadNextScript(index) {
-                if (index >= dtScripts.length) {
-                    loadedScripts.datatables = true;
-                    console.log('✅ DataTables cargado');
-                    document.dispatchEvent(new Event('AOCR.DataTablesReady'));
-                    if (window.AOCR) {
-                        window.AOCR.dataTablesLoaded = true;
+            // DataTables ya se carga estáticamente en <head> — solo notificar que está listo
+            if (window.jQuery && $.fn.dataTable) {
+                loadedScripts.datatables = true;
+                console.log('✅ DataTables ya disponible (carga estática)');
+                document.dispatchEvent(new Event('AOCR.DataTablesReady'));
+                if (window.AOCR) { window.AOCR.dataTablesLoaded = true; }
+                loadSweetAlert();
+            } else {
+                // Fallback: cargar dinámicamente si por alguna razón no está
+                console.log('📊 DataTables no encontrado, cargando dinámicamente...');
+                var dtScripts = [
+                    'https://cdn.datatables.net/1.13.4/js/jquery.dataTables.min.js',
+                    'https://cdn.datatables.net/1.13.4/js/dataTables.bootstrap5.min.js',
+                    'https://cdn.datatables.net/responsive/2.4.1/js/dataTables.responsive.min.js',
+                    'https://cdn.datatables.net/responsive/2.4.1/js/responsive.bootstrap5.min.js'
+                ];
+                function loadNextScript(index) {
+                    if (index >= dtScripts.length) {
+                        loadedScripts.datatables = true;
+                        console.log('✅ DataTables cargado dinámicamente');
+                        document.dispatchEvent(new Event('AOCR.DataTablesReady'));
+                        if (window.AOCR) { window.AOCR.dataTablesLoaded = true; }
+                        loadSweetAlert();
+                        return;
                     }
-                    loadSweetAlert();
-                    return;
+                    var script = document.createElement('script');
+                    script.src = dtScripts[index];
+                    script.async = false;
+                    script.onload = function () { loadNextScript(index + 1); };
+                    script.onerror = function () { loadNextScript(index + 1); };
+                    document.body.appendChild(script);
                 }
-
-                var script = document.createElement('script');
-                script.src = dtScripts[index];
-                script.async = false;
-
-                script.onload = function () {
-                    console.log('✅ ' + dtScripts[index].split('/').pop());
-                    loadNextScript(index + 1);
-                };
-
-                script.onerror = function () {
-                    console.warn('⚠️ Error cargando: ' + dtScripts[index]);
-                    loadNextScript(index + 1);
-                };
-
-                document.body.appendChild(script);
+                loadNextScript(0);
             }
-
-            loadNextScript(0);
         }
 
         function loadSweetAlert() {

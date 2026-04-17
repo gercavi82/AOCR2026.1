@@ -13,6 +13,7 @@ namespace CapaNegocio
     public static class AdminUsuariosBL
     {
         private static readonly AdminUsuariosDAO _dao = new AdminUsuariosDAO();
+        private static readonly ILoggingService _logger = LoggingServiceFactory.Create();
 
         public static List<SeguridadUsuarioDTO> BuscarUsuarios(string filtro, bool? activo)
         {
@@ -61,8 +62,41 @@ namespace CapaNegocio
             out string passwordTemporal,
             out string mensaje)
         {
+            bool correoEnviado;
+            string detalleCorreo;
+            return CrearUsuario(
+                usuario,
+                roles,
+                passwordInicial,
+                generarPasswordTemporal,
+                actorUsuarioId,
+                actorCodigoUsuario,
+                ip,
+                out nuevoId,
+                out passwordTemporal,
+                out correoEnviado,
+                out detalleCorreo,
+                out mensaje);
+        }
+
+        public static bool CrearUsuario(
+            SeguridadUsuarioDTO usuario,
+            IEnumerable<int> roles,
+            string passwordInicial,
+            bool generarPasswordTemporal,
+            int? actorUsuarioId,
+            string actorCodigoUsuario,
+            string ip,
+            out int nuevoId,
+            out string passwordTemporal,
+            out bool correoEnviado,
+            out string detalleCorreo,
+            out string mensaje)
+        {
             nuevoId = 0;
             passwordTemporal = null;
+            correoEnviado = false;
+            detalleCorreo = string.Empty;
             mensaje = string.Empty;
 
             if (usuario == null)
@@ -142,8 +176,13 @@ namespace CapaNegocio
             }
 
             string mensajeCorreo;
-            var correoOk = NotificarCredencialesCreacion(usuario, passwordPlano, actorCodigoUsuario, out mensajeCorreo);
-            mensaje = correoOk
+            correoEnviado = NotificarCredencialesCreacion(
+                usuario,
+                passwordPlano,
+                actorCodigoUsuario,
+                out mensajeCorreo,
+                out detalleCorreo);
+            mensaje = correoEnviado
                 ? "Usuario creado correctamente. " + mensajeCorreo
                 : "Usuario creado correctamente, pero " + mensajeCorreo;
 
@@ -278,6 +317,8 @@ namespace CapaNegocio
             out string passwordTemporal,
             out string mensaje)
         {
+            bool correoEnviado;
+            string detalleCorreo;
             return ResetPassword(
                 idUsuario,
                 generarTemporal,
@@ -287,6 +328,8 @@ namespace CapaNegocio
                 ip,
                 null,
                 out passwordTemporal,
+                out correoEnviado,
+                out detalleCorreo,
                 out mensaje);
         }
 
@@ -299,9 +342,13 @@ namespace CapaNegocio
             string ip,
             string correoDestinoOverride,
             out string passwordTemporal,
+            out bool correoEnviado,
+            out string detalleCorreo,
             out string mensaje)
         {
             passwordTemporal = null;
+            correoEnviado = false;
+            detalleCorreo = string.Empty;
             mensaje = string.Empty;
 
             if (idUsuario <= 0)
@@ -345,12 +392,70 @@ namespace CapaNegocio
             }
 
             string mensajeCorreo;
-            var correoOk = NotificarResetPassword(usuario, passwordPlano, actorCodigoUsuario, out mensajeCorreo);
-            mensaje = correoOk
+            correoEnviado = NotificarResetPassword(
+                usuario,
+                passwordPlano,
+                actorCodigoUsuario,
+                out mensajeCorreo,
+                out detalleCorreo);
+            mensaje = correoEnviado
                 ? "Contrasena restablecida correctamente. " + mensajeCorreo
                 : "Contrasena restablecida, pero " + mensajeCorreo;
 
             return true;
+        }
+
+        public static bool ResetPassword(
+            int idUsuario,
+            bool generarTemporal,
+            string passwordNueva,
+            int? actorUsuarioId,
+            string actorCodigoUsuario,
+            string ip,
+            out string passwordTemporal,
+            out bool correoEnviado,
+            out string detalleCorreo,
+            out string mensaje)
+        {
+            return ResetPassword(
+                idUsuario,
+                generarTemporal,
+                passwordNueva,
+                actorUsuarioId,
+                actorCodigoUsuario,
+                ip,
+                null,
+                out passwordTemporal,
+                out correoEnviado,
+                out detalleCorreo,
+                out mensaje);
+        }
+
+        public static bool ResetPassword(
+            int idUsuario,
+            bool generarTemporal,
+            string passwordNueva,
+            int? actorUsuarioId,
+            string actorCodigoUsuario,
+            string ip,
+            string correoDestinoOverride,
+            out string passwordTemporal,
+            out string mensaje)
+        {
+            bool correoEnviado;
+            string detalleCorreo;
+            return ResetPassword(
+                idUsuario,
+                generarTemporal,
+                passwordNueva,
+                actorUsuarioId,
+                actorCodigoUsuario,
+                ip,
+                correoDestinoOverride,
+                out passwordTemporal,
+                out correoEnviado,
+                out detalleCorreo,
+                out mensaje);
         }
 
         public static List<SeguridadUsuarioDTO> ObtenerUsuariosActivosParaTransferencia(int excluirIdUsuario)
@@ -474,11 +579,29 @@ namespace CapaNegocio
             string actorCodigoUsuario,
             out string mensaje)
         {
+            string detalleError;
+            return NotificarResetPassword(
+                usuario,
+                passwordTemporal,
+                actorCodigoUsuario,
+                out mensaje,
+                out detalleError);
+        }
+
+        private static bool NotificarResetPassword(
+            SeguridadUsuarioDTO usuario,
+            string passwordTemporal,
+            string actorCodigoUsuario,
+            out string mensaje,
+            out string detalleError)
+        {
             mensaje = string.Empty;
+            detalleError = string.Empty;
 
             if (usuario == null || string.IsNullOrWhiteSpace(usuario.Correo))
             {
                 mensaje = "el usuario no tiene correo registrado.";
+                detalleError = "No hay correo institucional configurado para el usuario.";
                 return false;
             }
 
@@ -495,7 +618,7 @@ namespace CapaNegocio
             var asunto = "Cambio de contrasena - Sistema AOCR";
             var cuerpo = ConstruirPlantillaResetPassword(nombre, usuario.CodigoUsuario, passwordTemporal, actorCodigoUsuario);
 
-            return EnviarCorreoCredenciales(usuario.Correo, asunto, cuerpo, out mensaje);
+            return EnviarCorreoCredenciales(usuario.Correo, asunto, cuerpo, out mensaje, out detalleError);
         }
 
         private static bool NotificarCredencialesCreacion(
@@ -504,11 +627,29 @@ namespace CapaNegocio
             string actorCodigoUsuario,
             out string mensaje)
         {
+            string detalleError;
+            return NotificarCredencialesCreacion(
+                usuario,
+                passwordTemporal,
+                actorCodigoUsuario,
+                out mensaje,
+                out detalleError);
+        }
+
+        private static bool NotificarCredencialesCreacion(
+            SeguridadUsuarioDTO usuario,
+            string passwordTemporal,
+            string actorCodigoUsuario,
+            out string mensaje,
+            out string detalleError)
+        {
             mensaje = string.Empty;
+            detalleError = string.Empty;
 
             if (usuario == null || string.IsNullOrWhiteSpace(usuario.Correo))
             {
                 mensaje = "el usuario no tiene correo registrado.";
+                detalleError = "No hay correo institucional configurado para el usuario.";
                 return false;
             }
 
@@ -525,7 +666,7 @@ namespace CapaNegocio
             var asunto = "Cuenta creada - Sistema AOCR";
             var cuerpo = ConstruirPlantillaCreacionUsuario(nombre, usuario.CodigoUsuario, passwordTemporal, actorCodigoUsuario);
 
-            return EnviarCorreoCredenciales(usuario.Correo, asunto, cuerpo, out mensaje);
+            return EnviarCorreoCredenciales(usuario.Correo, asunto, cuerpo, out mensaje, out detalleError);
         }
 
         private static bool EnviarCorreoCredenciales(
@@ -534,7 +675,27 @@ namespace CapaNegocio
             string cuerpo,
             out string mensaje)
         {
+            string detalleError;
+            return EnviarCorreoCredenciales(correoDestino, asunto, cuerpo, out mensaje, out detalleError);
+        }
+
+        private static bool EnviarCorreoCredenciales(
+            string correoDestino,
+            string asunto,
+            string cuerpo,
+            out string mensaje,
+            out string detalleError)
+        {
             mensaje = string.Empty;
+            detalleError = string.Empty;
+
+            if (string.IsNullOrWhiteSpace(correoDestino))
+            {
+                mensaje = "no se pudo enviar el correo de notificacion.";
+                detalleError = "Destino de correo vacio.";
+                _logger.LogWarning("AdminUsuariosBL.EnviarCorreoCredenciales sin destinatario.");
+                return false;
+            }
 
             try
             {
@@ -555,10 +716,27 @@ namespace CapaNegocio
                 }
 
                 mensaje = "no se pudo enviar el correo de notificacion.";
+                detalleError = "La cola y el envio directo retornaron false.";
+                _logger.LogWarning(
+                    "AdminUsuariosBL.EnviarCorreoCredenciales fallo sin excepcion. Destino=" + correoDestino
+                    + ", Asunto=" + (asunto ?? string.Empty));
                 return false;
             }
-            catch
+            catch (Exception ex)
             {
+                detalleError = ex.Message;
+                _logger.LogError(
+                    ex,
+                    new LogContext
+                    {
+                        ErrorCode = "ADMIN_CREDENTIALS_EMAIL_ERROR",
+                        AdditionalData = new Dictionary<string, object>
+                        {
+                            { "Destino", correoDestino },
+                            { "Asunto", asunto ?? string.Empty }
+                        }
+                    });
+
                 try
                 {
                     var servicioCorreo = new EnviarCorreo();
@@ -568,9 +746,24 @@ namespace CapaNegocio
                         return true;
                     }
                 }
-                catch
+                catch (Exception fallbackEx)
                 {
-                    // Ignorar para devolver mensaje uniforme.
+                    if (string.IsNullOrWhiteSpace(detalleError))
+                    {
+                        detalleError = fallbackEx.Message;
+                    }
+
+                    _logger.LogError(
+                        fallbackEx,
+                        new LogContext
+                        {
+                            ErrorCode = "ADMIN_CREDENTIALS_EMAIL_FALLBACK_ERROR",
+                            AdditionalData = new Dictionary<string, object>
+                            {
+                                { "Destino", correoDestino },
+                                { "Asunto", asunto ?? string.Empty }
+                            }
+                        });
                 }
 
                 mensaje = "no se pudo enviar el correo de notificacion.";

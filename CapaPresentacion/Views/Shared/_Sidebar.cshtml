@@ -83,26 +83,35 @@
         bool esSolicitanteRol = esRol("Operador") || esRol("Solicitante");
         bool esRepresentanteRtRol = esRol("RepresentanteTecnico") || esRol("Representante Técnico") || esRol("RepresentanteLegal") || esRol("RT");
         bool esSolicitanteORT = esSolicitanteRol || esRepresentanteRtRol;
-        bool esTecnicaRol = esRol("Inspector") || esRol("Tecnico") || esRol("EvaluadorTecnico") || esRol("CoordinadorInspecciones");
-        bool esFinancieroRol = esRol("Financiero") || esRol("CoordinadorFinanciero");
-        bool esLegalRol = esRol("CoordinacionLegal") || esRol("CoordinadorLegal");
-        bool esDireccionRol = esRol("Direccion") || esRol("JefaturaTecnica") || esRol("DirectorFinanciero") || esRol("DirectorGeneral");
-        bool esCoordinacionJefaturaRol = esLegalRol || esDireccionRol;
-        bool esAprobadorUsuariosRol = esLegalRol || esRol("JefaturaTecnica");
 
-        // Solo Solicitante/Operador requieren crear su propia orden
+        // ── Roles internos delimitados: Inspector · Coordinador · RT · DIRDAC · Financiero ──
+        bool esInspectorRol   = esRol("Inspector") || esRol("Tecnico") || esRol("EvaluadorTecnico");
+        bool esCoordinadorRol = esRol("Coordinador") || esRol("CoordinadorInspecciones");
+        bool esFinancieroRol  = esRol("Financiero") || esRol("CoordinadorFinanciero");
+        bool esLegalRol       = esRol("CoordinacionLegal") || esRol("CoordinadorLegal");
+        bool esDirdacRol      = esRol("DIRDAC") || esRol("Direccion") || esRol("JefaturaTecnica") || esRol("DirectorGeneral") || esRol("DirectorFinanciero");
+        bool esDireccionRol   = esDirdacRol;  // alias compatibilidad
+        bool esTecnicaRol     = esInspectorRol || esCoordinadorRol; // alias compatibilidad
+        bool esCoordinacionJefaturaRol = esLegalRol || esDirdacRol;
+        bool esAprobadorUsuariosRol    = esLegalRol || esCoordinadorRol || esRol("JefaturaTecnica");
+
+        // Orden requerida solo para Solicitante/Operador externo
         bool requiereOrden = esSolicitanteRol;
 
-        bool puedeSolicitante = esAdministrador || esSolicitanteORT;
-        bool puedeTecnica = esAdministrador || esTecnicaRol;
-        bool puedeFinanciero = esAdministrador || esFinancieroRol;
-        bool puedeLegal = esAdministrador || esLegalRol;
-        bool puedeDireccion = esAdministrador || esDireccionRol;
+        bool puedeSolicitante      = esAdministrador || esSolicitanteRol;
+        bool puedeRt               = esAdministrador || esRepresentanteRtRol;
+        bool puedeInspector        = esAdministrador || esInspectorRol;
+        bool puedeCoordinador      = esAdministrador || esCoordinadorRol;
+        bool puedeTecnica          = puedeInspector || puedeCoordinador; // alias compatibilidad
+        bool puedeFinanciero       = esAdministrador || esFinancieroRol;
+        bool puedeLegal            = esAdministrador || esLegalRol;
+        bool puedeDirdac           = esAdministrador || esDirdacRol;
+        bool puedeDireccion        = puedeDirdac; // alias compatibilidad
         bool puedeCoordinacionJefatura = esAdministrador || esCoordinacionJefaturaRol;
-        bool puedeAprobarUsuarios = esAdministrador || esAprobadorUsuariosRol;
-        bool puedeAdministracion = esAdministrador || esRol("Direccion") || esRol("JefaturaTecnica");
+        bool puedeAprobarUsuarios  = esAdministrador || esAprobadorUsuariosRol;
+        bool puedeAdministracion   = esAdministrador || esDirdacRol;
 
-        // Módulo de órdenes visibles solo para rol solicitante
+        // Módulo de órdenes visible solo para Solicitante/Operador externo
         bool mostrarModuloOrdenes = esSolicitanteRol;
 
         var companiasRtAsignadas = new List<UsuarioCompaniaRT>();
@@ -263,49 +272,37 @@
     }
 
     <div class="menu-container aocr-sidebar-sections">
-        <div class="section-title aocr-sidebar-title">Navegación Institucional</div>
+        <div class="section-title aocr-sidebar-title">Navegación por Rol</div>
 
-        @* ===================== ORDENES DE RECAUDACIÓN ===================== *@
-        @if (mostrarModuloOrdenes)
+        @* ════════════════════════════════════════
+           BLOQUE 1: SOLICITANTE / RT
+           Visible: Solicitante, Operador, RT, RepresentanteTecnico
+           (son el mismo perfil — menú unificado)
+        ════════════════════════════════════════ *@
+        @if (puedeSolicitante || puedeRt)
         {
             <div class="nav-group aocr-sidebar-section mb-4">
                 <div class="group-title aocr-sidebar-section__title text-primary">
-                    <i class="fas fa-file-invoice-dollar mr-1"></i> Órdenes de Recaudación
+                    <i class="fas fa-user-edit mr-1"></i> Solicitante / RT
                 </div>
                 <ul class="aocr-nav">
-                    <li>
-                        <a class="aocr-link aocr-sidebar-item @(tieneOrdenBorrador ? "text-warning fw-bold" : "")" href="@(tieneOrdenBorrador ? Url.Action("Obligatoria","OrdenRecaudacion") : Url.Action("Nueva","OrdenRecaudacion"))">
-                            <i class="fas fa-plus-circle @(tieneOrdenBorrador ? "text-warning" : "text-success") mr-2"></i>
-                            @(tieneOrdenBorrador ? "Completar Orden Pendiente" : "Nueva Orden")
-                        </a>
-                    </li>
-                    <li>
-                        <a class="aocr-link aocr-sidebar-item" href="@Url.Action("MisOrdenes", "Orden")">
-                            <i class="fas fa-history text-white-50 mr-2"></i> Mis Órdenes
-                        </a>
-                    </li>
-                    @if (esAdministrador)
+                    @* Orden de recaudación: solo requerida para Solicitante/Operador externo *@
+                    @if (requiereOrden)
                     {
                         <li>
-                            <a class="aocr-link aocr-sidebar-item" href="@Url.Action("TodasOrdenes", "Financiero")">
-                                <i class="fas fa-list-alt text-white-50 mr-2"></i> Todas las Órdenes
+                            <a class="aocr-link aocr-sidebar-item @(tieneOrdenBorrador ? "text-warning fw-bold" : "")" href="@(tieneOrdenBorrador ? Url.Action("Obligatoria","OrdenRecaudacion") : Url.Action("Nueva","OrdenRecaudacion"))">
+                                <i class="fas fa-file-invoice-dollar @(tieneOrdenBorrador ? "text-warning" : "text-primary") mr-2"></i>
+                                @(tieneOrdenBorrador ? "Completar Orden Pendiente" : "Nueva Orden de Recaudación")
+                            </a>
+                        </li>
+                        <li>
+                            <a class="aocr-link aocr-sidebar-item" href="@Url.Action("MisOrdenes", "Orden")">
+                                <i class="fas fa-history text-white-50 mr-2"></i> Mis Órdenes
                             </a>
                         </li>
                     }
-                </ul>
-            </div>
-        }
-
-        @* ===================== SOLICITANTE ===================== *@
-        @if (puedeSolicitante)
-        {
-            <div class="nav-group aocr-sidebar-section mb-4">
-                <div class="group-title aocr-sidebar-section__title text-warning">
-                    <i class="fas fa-user-edit mr-1"></i> Solicitudes AOCR
-                </div>
-                <ul class="aocr-nav">
-                    @* Opciones técnicas bloqueadas hasta que exista una orden válida *@
-                    @if (tieneOrdenGenerada)
+                    @* Solicitudes: RT accede siempre; Solicitante solo con orden generada *@
+                    @if (esRepresentanteRtRol || tieneOrdenGenerada)
                     {
                         <li>
                             <a class="aocr-link aocr-sidebar-item" href="@Url.Action("Index", "SolicitudAOCR", new { abrir = "nueva" })">
@@ -313,14 +310,12 @@
                             </a>
                         </li>
                     }
-
                     <li>
                         <a class="aocr-link aocr-sidebar-item" href="@Url.Action("Index", "SolicitudAOCR")">
                             <i class="fas fa-folder-open text-white-50 mr-2"></i> Mis Solicitudes
                         </a>
                     </li>
-
-                    @if (tieneOrdenGenerada)
+                    @if (esRepresentanteRtRol || tieneOrdenGenerada)
                     {
                         <li>
                             <a class="aocr-link aocr-sidebar-item" href="@Url.Action("CargarDocumentos", "SolicitudAOCR")">
@@ -332,20 +327,20 @@
             </div>
         }
 
-        @* ===================== INSPECCIÓN / TÉCNICA (solo si la orden ya está generada) ===================== *@
-        @if (puedeTecnica)
+        @* ════════════════════════════════════════
+           BLOQUE 3: INSPECTOR
+           Visible: Inspector, Técnico, Evaluador Técnico
+        ════════════════════════════════════════ *@
+        @if (puedeInspector)
         {
             <div class="nav-group aocr-sidebar-section mb-4">
                 <div class="group-title aocr-sidebar-section__title text-info">
-                    <i class="fas fa-search mr-1"></i> Gestión Técnica
+                    <i class="fas fa-search mr-1"></i> Inspector
                 </div>
                 <ul class="aocr-nav">
-                    @{ 
-                        var usarDashboardInspector = esAdministrador || esRol("Inspector") || esRol("CoordinadorInspecciones") || esRol("JefaturaTecnica");
-                    }
                     <li>
-                        <a class="aocr-link aocr-sidebar-item" href="@Url.Action(usarDashboardInspector ? "Inspector" : "Index", "Dashboard")">
-                            <i class="fas fa-gauge-high text-warning mr-2"></i> Dashboard Técnico / Inspector
+                        <a class="aocr-link aocr-sidebar-item" href="@Url.Action("Inspector", "Dashboard")">
+                            <i class="fas fa-gauge-high text-warning mr-2"></i> Dashboard Inspector
                         </a>
                     </li>
                     <li>
@@ -362,12 +357,39 @@
             </div>
         }
 
-        @* ===================== FINANCIERO (solo si la orden ya está generada) ===================== *@
+        @* ════════════════════════════════════════
+           BLOQUE 4: COORDINADOR
+           Visible: Coordinador, CoordinadorInspecciones
+        ════════════════════════════════════════ *@
+        @if (puedeCoordinador)
+        {
+            <div class="nav-group aocr-sidebar-section mb-4">
+                <div class="group-title aocr-sidebar-section__title" style="color:#a78bfa;">
+                    <i class="fas fa-sitemap mr-1"></i> Coordinador
+                </div>
+                <ul class="aocr-nav">
+                    <li><a class="aocr-link aocr-sidebar-item" href="@Url.Action("DashboardGerencial", "CoordinacionJefatura")"><i class="fas fa-chart-line text-white-50 mr-2"></i> Dashboard Gerencial</a></li>
+                    <li><a class="aocr-link aocr-sidebar-item" href="@Url.Action("DashboardInspeccion", "CoordinacionJefatura")"><i class="fas fa-table-columns text-white-50 mr-2"></i> Dashboard Inspección</a></li>
+                    <li><a class="aocr-link aocr-sidebar-item" href="@Url.Action("RevisionVerificacion", "CoordinacionJefatura")"><i class="fas fa-search text-white-50 mr-2"></i> Revisión / Verificación</a></li>
+                    <li><a class="aocr-link aocr-sidebar-item" href="@Url.Action("Index", "Tecnico")"><i class="fas fa-user-check text-white-50 mr-2"></i> Asignar Inspector</a></li>
+                    <li><a class="aocr-link aocr-sidebar-item" href="@Url.Action("AprobarSolicitudes", "CoordinacionJefatura")"><i class="fas fa-check-double text-white-50 mr-2"></i> Aprobar Solicitudes</a></li>
+                    <li><a class="aocr-link aocr-sidebar-item" href="@Url.Action("PendientesFirmaDirdac", "Inspeccion")"><i class="fas fa-file-signature text-white-50 mr-2"></i> Pendientes Firma DIRDAC</a></li>
+                    <li><a class="aocr-link aocr-sidebar-item" href="@Url.Action("ValidarAocr", "CoordinacionJefatura")"><i class="fas fa-stamp text-white-50 mr-2"></i> Validar AOCR</a></li>
+                    <li><a class="aocr-link aocr-sidebar-item" href="@Url.Action("LegalizarAocr", "CoordinacionJefatura")"><i class="fas fa-gavel text-white-50 mr-2"></i> Legalizar AOCR</a></li>
+                    <li><a class="aocr-link aocr-sidebar-item" href="@Url.Action("GenerarCertificados", "CoordinacionJefatura")"><i class="fas fa-file-contract text-white-50 mr-2"></i> Generar Certificados</a></li>
+                </ul>
+            </div>
+        }
+
+        @* ════════════════════════════════════════
+           BLOQUE 5: FINANCIERO
+           Visible: Financiero, CoordinadorFinanciero
+        ════════════════════════════════════════ *@
         @if (puedeFinanciero)
         {
             <div class="nav-group aocr-sidebar-section mb-4">
                 <div class="group-title aocr-sidebar-section__title text-success">
-                    <i class="fas fa-money-bill-wave mr-1"></i> Área Financiera
+                    <i class="fas fa-money-bill-wave mr-1"></i> Financiero
                 </div>
                 <ul class="aocr-nav">
                     <li><a class="aocr-link aocr-sidebar-item" href="@Url.Action("Dashboard", "Financiero")"><i class="fas fa-chart-line text-white-50 mr-2"></i> Dashboard Financiero</a></li>
@@ -378,40 +400,72 @@
             </div>
         }
 
-        @* ===================== COORDINACION Y JEFATURA (bloque BPMN unificado) ===================== *@
-        @if (puedeCoordinacionJefatura)
+        @* ════════════════════════════════════════
+           BLOQUE 6: DIRDAC — DIRECCIÓN
+           Visible: DIRDAC, Direccion, JefaturaTecnica, DirectorGeneral
+        ════════════════════════════════════════ *@
+        @if (puedeDirdac)
         {
             <div class="nav-group aocr-sidebar-section mb-4">
                 <div class="group-title aocr-sidebar-section__title text-danger">
-                    <i class="fas fa-user-tie mr-1"></i> Dirección / Jefatura
+                    <i class="fas fa-user-tie mr-1"></i> DIRDAC — Dirección
                 </div>
                 <ul class="aocr-nav">
-                    @if (esAdministrador || esRol("Direccion") || esRol("JefaturaTecnica") || esRol("DirectorGeneral"))
-                    {
-                        <li><a class="aocr-link aocr-sidebar-item" href="@Url.Action("DashboardGerencial", "CoordinacionJefatura")"><i class="fas fa-chart-line text-white-50 mr-2"></i> Dashboard Gerencial</a></li>
-                    }
-                    <li><a class="aocr-link aocr-sidebar-item" href="@Url.Action("DashboardInspeccion", "CoordinacionJefatura")"><i class="fas fa-table-columns text-white-50 mr-2"></i> Dashboard Inspección</a></li>
-                    <li><a class="aocr-link aocr-sidebar-item" href="@Url.Action("RevisionVerificacion", "CoordinacionJefatura")"><i class="fas fa-search text-white-50 mr-2"></i> Revisión / Verificación</a></li>
-                    @if (esAdministrador || esRol("Direccion") || esRol("JefaturaTecnica"))
-                    {
-                        <li><a class="aocr-link aocr-sidebar-item" href="@Url.Action("Index", "Tecnico")"><i class="fas fa-user-check text-white-50 mr-2"></i> Asignar Inspector</a></li>
-                        <li><a class="aocr-link aocr-sidebar-item" href="@Url.Action("AprobarSolicitudes", "CoordinacionJefatura")"><i class="fas fa-check-double text-white-50 mr-2"></i> Aprobar Solicitudes</a></li>
-                        <li><a class="aocr-link aocr-sidebar-item" href="@Url.Action("PendientesFirmaDirdac", "Inspeccion")"><i class="fas fa-file-signature text-white-50 mr-2"></i> Pendientes Firma DIRDAC</a></li>
-                    }
-                    @if (esAdministrador || esRol("JefaturaTecnica"))
-                    {
-                        <li><a class="aocr-link aocr-sidebar-item" href="@Url.Action("ValidarAocr", "CoordinacionJefatura")"><i class="fas fa-stamp text-white-50 mr-2"></i> Validar AOCR</a></li>
-                    }
-                    @if (esAdministrador || esRol("CoordinacionLegal") || esRol("CoordinadorLegal") || esRol("DirectorGeneral"))
-                    {
-                        <li><a class="aocr-link aocr-sidebar-item" href="@Url.Action("LegalizarAocr", "CoordinacionJefatura")"><i class="fas fa-gavel text-white-50 mr-2"></i> Legalizar AOCR</a></li>
-                        <li><a class="aocr-link aocr-sidebar-item" href="@Url.Action("GenerarCertificados", "CoordinacionJefatura")"><i class="fas fa-file-contract text-white-50 mr-2"></i> Generar Certificados</a></li>
-                    }
+                    <li>
+                        <a class="aocr-link aocr-sidebar-item" href="@Url.Action("DashboardInspeccion", "CoordinacionJefatura")">
+                            <i class="fas fa-table-columns text-white-50 mr-2"></i> Dashboard Inspección
+                        </a>
+                    </li>
+                    <li>
+                        <a class="aocr-link aocr-sidebar-item" href="@Url.Action("RevisionVerificacion", "CoordinacionJefatura")">
+                            <i class="fas fa-search text-white-50 mr-2"></i> Revisión / Verificación
+                        </a>
+                    </li>
+                    <li>
+                        <a class="aocr-link aocr-sidebar-item" href="@Url.Action("RevisarSolicitudes", "SolicitudAOCR")">
+                            <i class="fas fa-tasks text-white-50 mr-2"></i> Revisar Solicitudes
+                        </a>
+                    </li>
+                    <li>
+                        <a class="aocr-link aocr-sidebar-item" href="@Url.Action("Index", "Tecnico")">
+                            <i class="fas fa-user-check text-white-50 mr-2"></i> Asignar Inspector
+                        </a>
+                    </li>
+                    <li>
+                        <a class="aocr-link aocr-sidebar-item" href="@Url.Action("AprobarSolicitudes", "CoordinacionJefatura")">
+                            <i class="fas fa-check-double text-white-50 mr-2"></i> Aprobar Solicitudes
+                        </a>
+                    </li>
+                    <li>
+                        <a class="aocr-link aocr-sidebar-item" href="@Url.Action("PendientesFirmaDirdac", "Inspeccion")">
+                            <i class="fas fa-file-signature text-white-50 mr-2"></i> Pendientes Firma DIRDAC
+                        </a>
+                    </li>
                 </ul>
             </div>
         }
 
-        @* ===================== ADMINISTRACIÓN ===================== *@
+        @* ════════════════════════════════════════
+           BLOQUE 7: LEGAL (solo si no es DIRDAC)
+           Visible: CoordinacionLegal, CoordinadorLegal
+        ════════════════════════════════════════ *@
+        @if (puedeLegal && !puedeDirdac)
+        {
+            <div class="nav-group aocr-sidebar-section mb-4">
+                <div class="group-title aocr-sidebar-section__title" style="color:#fb923c;">
+                    <i class="fas fa-gavel mr-1"></i> Legal
+                </div>
+                <ul class="aocr-nav">
+                    <li><a class="aocr-link aocr-sidebar-item" href="@Url.Action("LegalizarAocr", "CoordinacionJefatura")"><i class="fas fa-gavel text-white-50 mr-2"></i> Legalizar AOCR</a></li>
+                    <li><a class="aocr-link aocr-sidebar-item" href="@Url.Action("GenerarCertificados", "CoordinacionJefatura")"><i class="fas fa-file-contract text-white-50 mr-2"></i> Generar Certificados</a></li>
+                </ul>
+            </div>
+        }
+
+        @* ════════════════════════════════════════
+           BLOQUE 8: ADMINISTRACIÓN
+           Visible: Administrador, DIRDAC
+        ════════════════════════════════════════ *@
         @if (puedeAdministracion || puedeAprobarUsuarios)
         {
             <div class="nav-group aocr-sidebar-section mb-4">
@@ -423,17 +477,15 @@
                     {
                         <li>
                             <a class="aocr-link aocr-sidebar-item" href="@Url.Action("Index", "AdminUsuarios")">
-                                <i class="fas fa-gauge-high text-warning mr-2"></i> Dashboard
+                                <i class="fas fa-gauge-high text-warning mr-2"></i> Dashboard Admin
                             </a>
                         </li>
                     }
-
-                    @* --- Grupo: Usuarios --- *@
                     @if (puedeAdministracion || puedeAprobarUsuarios)
                     {
                         <li class="aocr-sidebar-subgroup">
                             <span class="aocr-sidebar-subgroup__label">
-                                <i class="fas fa-users text-white-50 mr-1"></i> Usuarios
+                                <i class="fas fa-users text-white-50 mr-1"></i> Inspectores
                             </span>
                             <ul class="aocr-nav aocr-nav--nested">
                                 @if (puedeAdministracion)
@@ -448,12 +500,12 @@
                                 {
                                     <li>
                                         <a class="aocr-link aocr-sidebar-item" href="@Url.Action("CrearUsuarioInternoRT", "AdminUsuarios")">
-                                            <i class="fas fa-user-plus text-white-50 mr-2"></i> Crear Usuario Interno RT
+                                            <i class="fas fa-user-plus text-white-50 mr-2"></i> Crear Inspector
                                         </a>
                                     </li>
                                     <li>
                                         <a class="aocr-link aocr-sidebar-item" href="@Url.Action("ListarUsuariosInternosRT", "AdminUsuarios")">
-                                            <i class="fas fa-id-badge text-white-50 mr-2"></i> Usuarios Internos RT
+                                            <i class="fas fa-id-badge text-white-50 mr-2"></i> Inspectores
                                         </a>
                                     </li>
                                 }
@@ -468,8 +520,6 @@
                             </ul>
                         </li>
                     }
-
-                    @* --- Grupo: Seguridad y configuración --- *@
                     @if (puedeAdministracion)
                     {
                         <li class="aocr-sidebar-subgroup">

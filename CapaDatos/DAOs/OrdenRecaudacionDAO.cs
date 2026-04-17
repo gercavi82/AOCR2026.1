@@ -1467,19 +1467,14 @@ namespace CapaDatos.DAOs
                 {
                     conn.Open();
 
+                    // UPDATE simple por codigo_pago — no depende de codigo_solicitud ni cast varchar→int
                     const string sql = @"
-                        UPDATE aocr_tbpago p
+                        UPDATE aocr_tbpago
                         SET estado = @estado,
                             fecha_validacion = @fecha_validacion,
                             validado_por = @validado_por,
-                            observaciones = COALESCE(@observaciones, p.observaciones)
-                        WHERE p.codigo_pago = @pago_id
-                          AND EXISTS (
-                              SELECT 1
-                              FROM aocr_or_orden o
-                              WHERE o.id = @orden_id
-                                AND (p.codigo_solicitud = @orden_id OR p.codigo_solicitud = COALESCE(o.codigo_solicitud::int, @orden_id))
-                          )";
+                            observaciones = COALESCE(@observaciones, observaciones)
+                        WHERE codigo_pago = @pago_id";
 
                     using (var cmd = new NpgsqlCommand(sql, conn))
                     {
@@ -1488,7 +1483,7 @@ namespace CapaDatos.DAOs
                         cmd.Parameters.AddWithValue("@validado_por", (object)usuario ?? DBNull.Value);
                         cmd.Parameters.AddWithValue("@observaciones", (object)observacion ?? DBNull.Value);
                         cmd.Parameters.AddWithValue("@pago_id", pagoId);
-                        cmd.Parameters.AddWithValue("@orden_id", ordenId);
+                        // @orden_id eliminado: ya no se usa en el SQL simplificado
 
                         return cmd.ExecuteNonQuery() > 0;
                     }

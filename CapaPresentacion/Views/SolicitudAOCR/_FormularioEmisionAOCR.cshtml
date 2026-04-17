@@ -199,11 +199,8 @@
                         <a class="list-group-item list-group-item-action wizard-step" id="list-operaciones-list" data-bs-toggle="list" href="#operaciones" role="tab" aria-controls="operaciones">
                             <i class="fas fa-globe-americas"></i> 3. Operaciones EAE
                         </a>
-                        <a class="list-group-item list-group-item-action wizard-step" id="list-comprobante-list" data-bs-toggle="list" href="#comprobante" role="tab" aria-controls="comprobante">
-                            <i class="fas fa-receipt"></i> 4. Comprobante
-                        </a>
                         <a class="list-group-item list-group-item-action wizard-step" id="list-anexos-list" data-bs-toggle="list" href="#anexos" role="tab" aria-controls="anexos">
-                            <i class="fas fa-paperclip"></i> 5. Anexos
+                            <i class="fas fa-paperclip"></i> 4. Comprobante / Anexos
                         </a>
                     </div>
                 </div>
@@ -235,7 +232,7 @@
                                         <input type="hidden" id="companiasSeleccionadasRaw" value="@HttpUtility.HtmlEncode(companiaSeleccionadaRaw)" />
 
                                         <div class="bg-light p-3 rounded mb-4 border">
-                                            <h6 class="text-primary font-weight-bold mb-3"><i class="fas fa-user-shield"></i> Representante Técnico en Ecuador</h6>
+                                            <h6 class="text-primary font-weight-bold mb-3"><i class="fas fa-user-shield"></i> Representante Técnico</h6>
 
                                             <div class="form-row">
                                                 <div class="form-group col-md-6">
@@ -298,7 +295,7 @@
                                         </div>
 
                                         <div class="bg-light p-3 rounded border">
-                                            <h6 class="text-primary font-weight-bold mb-3">Datos de la Compania Principal</h6>
+                                            <h6 class="text-primary font-weight-bold mb-3">Base Principal de Operaciones</h6>
                                             <div class="form-group">
                                                 <label for="razonSocialCompania">Razon social de la compania *</label>
                                                 <input type="text" class="form-control" id="razonSocialCompania" placeholder="Ingrese razon social de la compania" value="@HttpUtility.HtmlEncode(sol != null ? sol.RazonSocial : "")" >
@@ -331,6 +328,11 @@
                                         </div>
 
                                     </form>
+                                </div>
+                                <div class="text-right mt-3">
+                                    <button type="button" id="btnGuardarExplotador" class="btn btn-primary shadow" onclick="guardarPestana('explotador')">
+                                        <i class="fas fa-save"></i> Guardar datos del representante
+                                    </button>
                                 </div>
                             </div>
                         </div>
@@ -467,6 +469,16 @@
                                 </div>
                             </div>
 
+                            <div class="form-group row">
+                                <label for="numeroAOC" class="col-sm-4 col-form-label font-weight-bold">Número de AOC:</label>
+                                <div class="col-sm-8">
+                                    <input type="text" class="form-control" id="numeroAOC" maxlength="100"
+                                           value="@HttpUtility.HtmlEncode(sol != null ? sol.NumeroAOC : "")"
+                                           placeholder="Ingrese el número de AOC de la compañía">
+                                    <small class="form-text text-muted">Número del Certificate of Air Operator (AOC) vigente.</small>
+                                </div>
+                            </div>
+
                             <div class="card mb-3 border-info">
                                 <div class="card-header bg-white text-info font-weight-bold">
                                     <i class="fas fa-list-ul"></i> Tipos de Operacion
@@ -499,8 +511,13 @@
 
                             <div class="form-group">
                                 <label for="resumenOperaciones" class="font-weight-bold">Resumen descriptivo de operaciones en los aeropuertos del Ecuador (aprobaciones especiales y procedimientos en tierra)</label>
-                                <textarea class="form-control" id="resumenOperaciones" rows="4" maxlength="2000" placeholder="Describa brevemente..." >@HttpUtility.HtmlEncode(sol != null ? sol.ResumenOperacionesEae : "")</textarea>
-                                <small class="form-text text-muted">Maximo 2000 caracteres.</small>
+                                <textarea class="form-control" id="resumenOperaciones" rows="5" maxlength="2000"
+                                    placeholder="Indique: 1) Qué compañías de servicios de escala brindarán asistencia en tierra a sus aeronaves en los aeropuertos de Ecuador. 2) Si en su operación hacia y desde Ecuador operarán con aprobaciones especiales (RVSM, RNAV, ETOPS, etc.).">@HttpUtility.HtmlEncode(sol != null ? sol.ResumenOperacionesEae : "")</textarea>
+                                <div class="alert alert-light border-left border-info mt-2 py-2 px-3" style="font-size:0.85em;">
+                                    <i class="fas fa-info-circle text-info mr-1"></i>
+                                    <strong>Guía:</strong> Incluya: las compañías de servicios de escala (handling) que brindarán asistencia en tierra a sus aeronaves en cada aeropuerto del Ecuador; y si aplican aprobaciones especiales como <em>RVSM, RNAV, ETOPS, MNPS, CAT II/III</em>, etc.
+                                </div>
+                                <small class="form-text text-muted">Máximo 2000 caracteres.</small>
                             </div>
 
                             <hr>
@@ -535,77 +552,17 @@
                                     </div>
                                 </div>
 
-                                <div class="col-md-6">
-                                    <h6 class="font-weight-bold">Interfronterizos</h6>
-                                    <div class="card p-3 border-warning">
-                                        <div class="custom-control custom-checkbox">
-                                            <input class="custom-control-input" type="checkbox" id="activarInterfronterizos" onchange="document.getElementById('opcionesInterfronterizos').style.display = this.checked ? 'block' : 'none'">
-                                            <label class="custom-control-label text-warning font-weight-bold" for="activarInterfronterizos">Activar Operaciones Interfronterizas</label>
-                                        </div>
-                                        <div id="opcionesInterfronterizos" style="display:none; margin-top: 10px; padding-left: 10px;">
-                                            <div class="custom-control custom-checkbox">
-                                                <input class="custom-control-input" type="checkbox" id="interfronterizo1">
-                                                <label class="custom-control-label" for="interfronterizo1">Frontera Norte (Ej. Tulcan)</label>
-                                            </div>
-                                            <div class="custom-control custom-checkbox">
-                                                <input class="custom-control-input" type="checkbox" id="interfronterizo2">
-                                                <label class="custom-control-label" for="interfronterizo2">Frontera Sur (Ej. Huaquillas)</label>
-                                            </div>
-                                            <div class="custom-control custom-checkbox">
-                                                <input class="custom-control-input" type="checkbox" id="interfronterizo3">
-                                                <label class="custom-control-label" for="interfronterizo3">Frontera Este (Ej. Lago Agrio)</label>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
+                            </div>
+                            <div class="text-right mt-3">
+                                <button type="button" id="btnGuardarOperaciones" class="btn btn-primary shadow" onclick="guardarPestana('operaciones')">
+                                    <i class="fas fa-save"></i> Guardar Operaciones
+                                </button>
                             </div>
                         </div>
                     </div>
                 </div>
 
-                <div class="tab-pane fade" id="comprobante" role="tabpanel" aria-labelledby="list-comprobante-list">
-                    <div class="card card-custom">
-                        <div class="card-header-custom">
-                            <h5 class="mb-0 font-weight-bold">Comprobante Requerido</h5>
-                        </div>
-                        <div class="card-body card-body-custom">
-
-                            <div class="alert alert-info border-info shadow-sm" role="alert">
-                                <i class="fas fa-info-circle fa-lg mr-2"></i>
-                                <strong>Instrucciones:</strong> Tamano maximo <strong>2 MB</strong>. Formatos: PDF, JPG, PNG.
-                            </div>
-
-                            <div class="card p-4 border-primary">
-                                <div class="form-group text-center">
-                                    <label class="font-weight-bold h5 d-block mb-3 text-primary">Copia de comprobante de pago *</label>
-
-                                    <div class="border rounded p-4 bg-light mb-3">
-                                        <input type="file" class="form-control-file d-block mx-auto mb-2" id="archivoFacturaPago" accept=".pdf" required onchange="validarArchivo('archivoFacturaPago'); mostrarVistaPreviaArchivo('archivoFacturaPago', 'vistaPreviaFacturaPago')">
-
-                                        <div class="mt-2" id="vistaPreviaFacturaPago" style="display:none;">
-                                            <a href="#" class="btn btn-sm btn-info shadow-sm" target="_blank"><i class="fas fa-eye"></i> Visualizar archivo cargado</a>
-                                        </div>
-                                    </div>
-
-                                    <div class="custom-control custom-checkbox mb-3">
-                                        <input class="custom-control-input" type="checkbox" id="chkFacturaPago" onchange="toggleCaptura('archivoFacturaPago', 'capturaFacturaPago', this)">
-                                        <label class="custom-control-label text-danger" for="chkFacturaPago">El archivo supera el tamano permitido</label>
-                                    </div>
-
-                                    <div id="capturaFacturaPago" style="display:none;" class="mb-3 p-3 border border-danger rounded bg-white">
-                                        <label>Subir captura de pantalla (JPG/PNG)</label>
-                                        <input type="file" class="form-control-file" accept=".jpg,.jpeg,.png">
-                                    </div>
-
-                                    <label class="text-left w-100 font-weight-bold">Descripcion / Enlace:</label>
-                                    <textarea class="form-control" id="conceptoFacturaPago" rows="2" placeholder="Ingrese enlace o descripcion..." required onblur="validarConcepto('conceptoFacturaPago')"></textarea>
-                                    <div class="text-danger small mt-1 text-left" id="alertaConceptoFacturaPago" style="display:none;">! Debe ingresar un enlace o descripcion valida.</div>
-                                </div>
-                            </div>
-
-                        </div>
-                    </div>
-                </div>
+                <div class="tab-pane fade" id="comprobante" role="tabpanel" aria-labelledby="list-comprobante-list" style="display:none !important;"><!-- contenido movido a #anexos --></div>
 
                 <div class="tab-pane fade" id="anexos" role="tabpanel" aria-labelledby="list-anexos-list">
                     <div class="card card-custom">
@@ -615,6 +572,35 @@
                         <div class="card-body card-body-custom">
                             <div style="max-height: 65vh; overflow-y: auto; padding: 10px;">
                                 <form id="formAnexos">
+
+
+                                    <div class="anexo-item border border-primary rounded p-3 mb-3">
+                                        <div class="d-flex justify-content-between align-items-center mb-2">
+                                            <label class="font-weight-bold text-primary h6 mb-0">
+                                                <i class="fas fa-receipt mr-1"></i> Comprobante de Pago *
+                                            </label>
+                                            <span class="badge badge-primary">Obligatorio</span>
+                                        </div>
+                                        <div class="alert alert-info border-info py-1 px-2 mb-2" role="alert" style="font-size:0.85em;">
+                                            <i class="fas fa-info-circle mr-1"></i>
+                                            Tamano maximo <strong>2 MB</strong>. Formatos: PDF, JPG, PNG.
+                                        </div>
+                                        <input type="file" class="form-control-file mb-2" id="archivoFacturaPago" accept=".pdf" onchange="validarArchivo('archivoFacturaPago'); mostrarVistaPreviaArchivo('archivoFacturaPago', 'vistaPreviaFacturaPago')">
+                                        <div class="mt-1 mb-2" id="vistaPreviaFacturaPago" style="display:none;">
+                                            <a href="#" class="btn btn-sm btn-outline-info"><i class="fas fa-eye"></i> Visualizar archivo</a>
+                                        </div>
+                                        <div class="custom-control custom-checkbox mb-2">
+                                            <input class="custom-control-input" type="checkbox" id="chkFacturaPago" onchange="toggleCaptura('archivoFacturaPago', 'capturaFacturaPago', this)">
+                                            <label class="custom-control-label text-danger" for="chkFacturaPago"><small>El archivo supera el tamano permitido</small></label>
+                                        </div>
+                                        <div id="capturaFacturaPago" style="display:none;" class="mb-2 p-2 border border-danger rounded bg-white">
+                                            <label><small>Subir captura de pantalla (JPG/PNG)</small></label>
+                                            <input type="file" class="form-control-file" accept=".jpg,.jpeg,.png">
+                                        </div>
+                                        <label class="font-weight-bold d-block mt-1">Descripcion / Enlace:</label>
+                                        <textarea class="form-control" id="conceptoFacturaPago" rows="2" placeholder="Ingrese enlace o descripcion..." onblur="validarConcepto('conceptoFacturaPago')"></textarea>
+                                        <div class="text-danger small mt-1" id="alertaConceptoFacturaPago" style="display:none;">! Debe ingresar un enlace o descripcion valida.</div>
+                                    </div>
 
                                     <div class="anexo-item">
                                         <div class="d-flex justify-content-between">
@@ -690,7 +676,7 @@
                                             <label class="font-weight-bold text-dark"><span class="badge badge-primary mr-2">5</span> CERTIFICADO DE RUIDO DE AERONAVES, CONFORME A LAS ESPECIFICACIONES OPERACIONALES DEL E.A.E *</label>
                                             <i class="fas fa-volume-up text-secondary fa-lg"></i>
                                         </div>
-                                        <input type="file" class="form-control-file mb-2 mt-2" id="archivoCertificadoRuido" accept=".pdf,.jpg,.jpeg,.png" required onchange="validarArchivo('archivoCertificadoRuido')">
+                                        <input type="file" class="form-control-file mb-2 mt-2" id="archivoCertificadoRuido" accept=".pdf,.jpg,.jpeg,.png" multiple required onchange="validarArchivo('archivoCertificadoRuido')">                                        <small class="text-muted" id="infoArchivoCertificadoRuido"></small>
                                         <div class="custom-control custom-checkbox mb-2">
                                             <input class="custom-control-input" type="checkbox" id="chkCertificadoRuido" onchange="toggleCaptura('archivoCertificadoRuido', 'capturaCertificadoRuido', this)">
                                             <label class="custom-control-label text-muted" for="chkCertificadoRuido"><small>Supera tamano permitido</small></label>
@@ -707,7 +693,7 @@
                                             <label class="font-weight-bold text-dark"><span class="badge badge-primary mr-2">6</span> CERTIFICADO DE AERONAVEGABILIDAD *</label>
                                             <i class="fas fa-file-contract text-secondary fa-lg"></i>
                                         </div>
-                                        <input type="file" class="form-control-file mb-2 mt-2" id="archivoCertificadoAeronavegabilidad" accept=".pdf,.jpg,.jpeg,.png" required onchange="validarArchivo('archivoCertificadoAeronavegabilidad')">
+                                        <input type="file" class="form-control-file mb-2 mt-2" id="archivoCertificadoAeronavegabilidad" accept=".pdf,.jpg,.jpeg,.png" multiple required onchange="validarArchivo('archivoCertificadoAeronavegabilidad')">                                        <small class="text-muted" id="infoArchivoCertificadoAeronavegabilidad"></small>
                                         <div class="custom-control custom-checkbox mb-2">
                                             <input class="custom-control-input" type="checkbox" id="chkCertificadoAeronavegabilidad" onchange="toggleCaptura('archivoCertificadoAeronavegabilidad', 'capturaCertificadoAeronavegabilidad', this)">
                                             <label class="custom-control-label text-muted" for="chkCertificadoAeronavegabilidad"><small>Supera tamano permitido</small></label>
@@ -926,7 +912,7 @@
                             <input type="text" class="form-control" id="matricula" placeholder="Ingrese matricula">
                         </div>
                         <div class="form-group col-md-4">
-                            <label for="designadorOASI">Designador OASI *</label>
+                            <label for="designadorOASI">Designador OACI *</label>
                             <input type="text" class="form-control text-uppercase" id="designadorOASI" maxlength="6" placeholder="Ej: AB1234">
                         </div>
                     </div>
@@ -1221,38 +1207,48 @@
     function validarArchivo(idInput) {
         const input = document.getElementById(idInput);
         if (!input) return false;
-        const archivo = input.files[0];
+        const archivos = Array.from(input.files || []);
 
-        if (!archivo) return true;
+        if (archivos.length === 0) return true;
 
         const tamanoMaximo = 10 * 1024 * 1024; // 10 MB en bytes
-
-        if (archivo.size > tamanoMaximo) {
-            Swal.fire({
-                title: 'Archivo demasiado grande',
-                text: 'El archivo supera los 10MB permitidos. Por favor suba una captura (JPG/PNG) si aplica.',
-                icon: 'warning',
-                confirmButtonText: 'OK'
-            });
-            input.value = ''; // Limpiar campo
-            return false;
-        }
-
-        // Validar extensión según attribute accept
         const acceptAttr = (input.getAttribute('accept') || '').toLowerCase().split(',').map(s => s.trim()).filter(Boolean);
-        if (acceptAttr.length > 0) {
-            const ext = '.' + (archivo.name.split('.').pop() || '').toLowerCase();
-            const allowed = acceptAttr.some(a => a === ext || a === '*' || a === '*/*' || a === ext);
-            if (!allowed) {
+
+        for (var i = 0; i < archivos.length; i++) {
+            var archivo = archivos[i];
+            if (archivo.size > tamanoMaximo) {
                 Swal.fire({
-                    title: 'Formato no permitido',
-                    text: 'Formato permitido: ' + acceptAttr.join(', '),
-                    icon: 'error',
+                    title: 'Archivo demasiado grande',
+                    text: '"' + archivo.name + '" supera los 10MB permitidos.',
+                    icon: 'warning',
                     confirmButtonText: 'OK'
                 });
                 input.value = '';
+                var infoEl = document.getElementById('info' + idInput.charAt(0).toUpperCase() + idInput.slice(1));
+                if (infoEl) infoEl.textContent = '';
                 return false;
             }
+            if (acceptAttr.length > 0) {
+                const ext = '.' + (archivo.name.split('.').pop() || '').toLowerCase();
+                const allowed = acceptAttr.some(a => a === ext || a === '*' || a === '*/*');
+                if (!allowed) {
+                    Swal.fire({
+                        title: 'Formato no permitido',
+                        text: '"' + archivo.name + '": formato permitido: ' + acceptAttr.join(', '),
+                        icon: 'error',
+                        confirmButtonText: 'OK'
+                    });
+                    input.value = '';
+                    return false;
+                }
+            }
+        }
+
+        // Mostrar contador si hay múltiples archivos
+        var infoId = 'info' + idInput.charAt(0).toUpperCase() + idInput.slice(1);
+        var infoEl = document.getElementById(infoId);
+        if (infoEl) {
+            infoEl.textContent = archivos.length > 1 ? archivos.length + ' archivos seleccionados' : '';
         }
 
         return true;
@@ -1566,7 +1562,8 @@
       AeropuertosEcuador: aeropuertosEcuador.join(','),
       AeropuertosEcuadorOtros: $('#aeropuertoOtrosDetalle').val() || '',
             CompaniasSeleccionadas: $('#companiasSeleccionadasRaw').val() || '',
-            CodigoOaci: $('#codigoOaci').val() || ''
+            CodigoOaci: $('#codigoOaci').val() || '',
+            NumeroAOC: $('#numeroAOC').val() || ''
     };
   }
 
@@ -1605,6 +1602,75 @@
 </script>
 
 <script>
+  // ============================================================
+  // Guardado por pestaña — llama a GuardarProgreso (sin docs)
+  // ============================================================
+  function guardarPestana(seccion) {
+    var datosMapeados = mapearCamposVM();
+    var codigoSolicitud = parseInt($('#codigoSolicitud').val() || '0', 10) || 0;
+
+    var camposBase = {
+      CodigoSolicitud: codigoSolicitud,
+      NombreOperador:  datosMapeados.NombreOperador  || '',
+      RazonSocial:     datosMapeados.RazonSocial     || '',
+      NombreComercial: datosMapeados.NombreComercial || '',
+      CodigoOaci:      datosMapeados.CodigoOaci      || '',
+      CompaniasSeleccionadas: datosMapeados.CompaniasSeleccionadas || '',
+      Estado: 'BORRADOR',
+      TipoSolicitud: 1
+    };
+
+    if (seccion === 'explotador') {
+      camposBase.RepresentanteLegal        = datosMapeados.RepresentanteLegal        || '';
+      camposBase.CedulaRepresentante       = datosMapeados.CedulaRepresentante       || '';
+      camposBase.CorreoRepresentanteTecnico= datosMapeados.CorreoRepresentanteTecnico|| '';
+      camposBase.Direccion                 = datosMapeados.Direccion                 || '';
+      camposBase.Telefono                  = datosMapeados.Telefono                  || '';
+      camposBase.Email                     = datosMapeados.Email                     || '';
+      camposBase.Ruc                       = datosMapeados.Ruc                       || '';
+    } else if (seccion === 'operaciones') {
+      camposBase.TipoOperacion             = datosMapeados.TipoOperacion             || '';
+      camposBase.DescripcionOperacion      = datosMapeados.DescripcionOperacion      || '';
+      camposBase.ResumenOperacionesEae     = datosMapeados.ResumenOperacionesEae     || '';
+      camposBase.NumeroAOC                 = datosMapeados.NumeroAOC                 || '';
+      camposBase.AprobacionesEspeciales    = datosMapeados.AprobacionesEspeciales    || '';
+      camposBase.AprobacionesEspecialesOtros = datosMapeados.AprobacionesEspecialesOtros || '';
+      camposBase.AeropuertosEcuador        = datosMapeados.AeropuertosEcuador        || '';
+      camposBase.AeropuertosEcuadorOtros   = datosMapeados.AeropuertosEcuadorOtros   || '';
+    }
+
+    var token = $('input[name="__RequestVerificationToken"]').val() || '';
+    var btnId = seccion === 'explotador' ? '#btnGuardarExplotador' : '#btnGuardarOperaciones';
+    $(btnId).prop('disabled', true);
+    Swal.fire({ title: 'Guardando...', allowOutsideClick: false, didOpen: function(){ Swal.showLoading(); } });
+
+    $.ajax({
+      url: '@Url.Action("GuardarProgreso", "SolicitudAOCR")',
+      type: 'POST',
+      contentType: 'application/json; charset=utf-8',
+      headers: { 'RequestVerificationToken': token },
+      data: JSON.stringify({ seccion: seccion, solicitud: camposBase }),
+      success: function(r) {
+        Swal.close();
+        if (r && r.success) {
+          if (r.id && r.id > 0) {
+            $('#codigoSolicitud').val(r.id);
+          }
+          Swal.fire({ icon: 'success', title: 'Guardado', text: r.mensaje || 'Sección guardada.', timer: 2000, showConfirmButton: false });
+        } else {
+          Swal.fire({ icon: 'error', title: 'Error', text: (r && r.mensaje) ? r.mensaje : 'No se pudo guardar.' });
+        }
+      },
+      error: function(xhr) {
+        Swal.close();
+        Swal.fire({ icon: 'error', title: 'Error', text: 'Error de conexión (' + xhr.status + ').' });
+      },
+      complete: function() {
+        $(btnId).prop('disabled', false);
+      }
+    });
+  }
+
   function guardarFlota() {
     const codigoSolicitud = parseInt($('#codigoSolicitud').val() || '0', 10) || 0;
     const aeronaves = obtenerAeronavesDesdeTabla();
@@ -1744,6 +1810,7 @@
         TipoOperacion: datosMapeados.TipoOperacion || '',
         DescripcionOperacion: datosMapeados.DescripcionOperacion || '',
         ResumenOperacionesEae: datosMapeados.ResumenOperacionesEae || '',
+        NumeroAOC: datosMapeados.NumeroAOC || '',
         AprobacionesEspeciales: datosMapeados.AprobacionesEspeciales || '',
         AprobacionesEspecialesOtros: datosMapeados.AprobacionesEspecialesOtros || '',
         AeropuertosEcuador: datosMapeados.AeropuertosEcuador || '',
@@ -1830,10 +1897,17 @@
       'archivoFacturaPago',
       'archivoOtro'
     ];
+    const inputsMultiples = ['archivoCertificadoRuido', 'archivoCertificadoAeronavegabilidad'];
     inputsArchivos.forEach(function (inputId) {
       const input = document.getElementById(inputId);
       if (input && input.files && input.files.length > 0) {
-        formData.append(inputId, input.files[0]);
+        if (inputsMultiples.indexOf(inputId) !== -1) {
+          for (var f = 0; f < input.files.length; f++) {
+            formData.append(inputId, input.files[f]);
+          }
+        } else {
+          formData.append(inputId, input.files[0]);
+        }
       }
     });
 

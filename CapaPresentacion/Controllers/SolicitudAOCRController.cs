@@ -863,6 +863,97 @@ namespace CapaPresentacion.Controllers
             }
         }
 
+        /// <summary>
+        /// Guarda el progreso parcial de una sección del formulario sin requerir documentos ni aeronaves.
+        /// Acepta JSON con { seccion, solicitud: { CodigoSolicitud, ... campos de la sección } }.
+        /// </summary>
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public JsonResult GuardarProgreso()
+        {
+            try
+            {
+                int usuarioId;
+                if (!TryObtenerUsuarioActualId(out usuarioId))
+                    return Json(new { success = false, mensaje = "Sesión expirada." });
+
+                string body;
+                using (var reader = new System.IO.StreamReader(Request.InputStream))
+                    body = reader.ReadToEnd();
+
+                if (string.IsNullOrWhiteSpace(body))
+                    return Json(new { success = false, mensaje = "Sin datos." });
+
+                dynamic payload = JsonConvert.DeserializeObject<dynamic>(body);
+                if (payload == null || payload.solicitud == null)
+                    return Json(new { success = false, mensaje = "Datos inválidos." });
+
+                var sol = JsonConvert.DeserializeObject<SolicitudAOCR>(payload.solicitud.ToString());
+                if (sol == null)
+                    return Json(new { success = false, mensaje = "No se pudo interpretar los datos de la solicitud." });
+
+                string seccion = payload.seccion != null ? (string)payload.seccion : "general";
+
+                // Validaciones mínimas independientes de sección
+                var companiaActivaCodigo = ObtenerCompaniaActivaCodigo();
+                var companiaActivaNombre = ObtenerCompaniaActivaNombre();
+                var companiaFinal = ResolverCompaniaSeleccionadaUnica(
+                    companiaActivaCodigo, sol.CompaniasSeleccionadas, null);
+
+                if (string.IsNullOrWhiteSpace(companiaFinal))
+                    return Json(new { success = false, mensaje = "No hay compañía activa seleccionada." });
+
+                sol.CompaniasSeleccionadas = companiaFinal;
+
+                if (string.IsNullOrWhiteSpace(sol.NombreOperador))
+                    sol.NombreOperador = !string.IsNullOrWhiteSpace(companiaActivaNombre) ? companiaActivaNombre : companiaFinal;
+
+                if (string.IsNullOrWhiteSpace(sol.RazonSocial))
+                    sol.RazonSocial = sol.NombreOperador;
+
+                if (string.IsNullOrWhiteSpace(sol.NombreComercial))
+                    sol.NombreComercial = sol.NombreOperador;
+
+                int idFinal;
+                string msg;
+
+                if (sol.CodigoSolicitud <= 0)
+                {
+                    // Nueva solicitud
+                    sol.CodigoUsuario = usuarioId;
+                    sol.TipoSolicitud = 1;
+                    if (string.IsNullOrWhiteSpace(sol.NumeroSolicitud))
+                        sol.NumeroSolicitud = "BORRADOR-" + DateTime.Now.ToString("yyyyMMddHHmmss");
+                    sol.Estado = "BORRADOR";
+
+                    bool ok = _solicitudBL.Crear(sol, usuarioId, out msg);
+                    if (!ok) return Json(new { success = false, mensaje = msg });
+                    idFinal = sol.CodigoSolicitud;
+                }
+                else
+                {
+                    // Solicitud existente: verificar propiedad
+                    var actual = _solicitudDAO.ObtenerPorId(sol.CodigoSolicitud);
+                    if (actual == null)
+                        return Json(new { success = false, mensaje = "Solicitud no encontrada." });
+                    if (!EsAdmin() && actual.CodigoUsuario != usuarioId)
+                        return Json(new { success = false, mensaje = "Sin permisos para modificar esta solicitud." });
+
+                    sol.CodigoUsuario = actual.CodigoUsuario;
+                    bool ok = _solicitudBL.Actualizar(sol, usuarioId, out msg, EsAdmin());
+                    if (!ok) return Json(new { success = false, mensaje = msg });
+                    idFinal = sol.CodigoSolicitud;
+                }
+
+                return Json(new { success = true, mensaje = "Sección guardada correctamente.", id = idFinal, seccion = seccion });
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine("[GuardarProgreso] Error: " + ex.Message);
+                return Json(new { success = false, mensaje = "Error al guardar: " + ex.Message });
+            }
+        }
+
         private int GuardarFormularioCompletoAtomico(SolicitudAOCRViewModel vm, int usuarioId, string usuarioCorreo)
         {
             var opciones = new TransactionOptions

@@ -610,7 +610,8 @@ namespace CapaPresentacion.Controllers
             if (idUsuario <= 0) return RedirectToAction("Login", "Account");
 
             var orden = await _dao.ObtenerOrdenPorIdModelAsync(id);
-            if (orden == null || orden.CodigoUsuario != idUsuario)
+            var esAdmin = User != null && (User.IsInRole("Administrador") || User.IsInRole("Financiero"));
+            if (orden == null || (!esAdmin && orden.CodigoUsuario != idUsuario))
                 return HttpNotFound();
 
             CompletarDatosOrdenParaVista(orden);
@@ -892,7 +893,8 @@ namespace CapaPresentacion.Controllers
             if (idUsuario <= 0) return RedirectToAction("Login", "Account");
 
             var orden = _dao.ObtenerOrdenPorIdModel(id);
-            if (orden == null || orden.CodigoUsuario != idUsuario)
+            var esAdmin = User != null && (User.IsInRole("Administrador") || User.IsInRole("Financiero"));
+            if (orden == null || (!esAdmin && orden.CodigoUsuario != idUsuario))
                 return HttpNotFound();
 
             if (!string.Equals((orden.Estado ?? "").Trim(), "BORRADOR", StringComparison.OrdinalIgnoreCase))
@@ -2670,33 +2672,54 @@ En transferencias NO colocar sublínea<br>";
         {
             try
             {
-                var comprobanteService = new ComprobanteService();
-                if (!comprobanteService.ExisteComprobanteValido(ordenId, out var mensajeComprobante))
-                {
-                    TempData["Error"] = mensajeComprobante;
-                    return RedirectToAction("Detalles", new { id = ordenId });
-                }
-
                 string usuario = User.Identity.Name ?? "SISTEMA";
-                var resultado = _dao.ActualizarPagoEstadoPorId(
+
+                // Usa la transacción completa: actualiza pago → actualiza orden → actualiza solicitud
+                string err;
+                var resultado = _dao.ActualizarPagoYEstadoTransaccional(
                     ordenId,
                     pagoId,
                     CapaDatos.Constants.EstadoPago.Validado,
                     usuario,
-                    "Pago validado");
-                
+                    "Pago validado por " + usuario,
+                    CapaDatos.Constants.EstadoOrden.Facturada,
+                    out err);
+
                 if (resultado)
                 {
-                    TempData["Success"] = "Pago validado correctamente";
+                    TempData["Success"] = "Pago validado correctamente. Orden actualizada a FACTURADA.";
+
+                    // Intentar notificación por email (no bloqueante)
+                    try
+                    {
+                        var ordenActualizada = _dao.ObtenerOrdenPorId(ordenId);
+                        if (ordenActualizada != null)
+                        {
+                            var pdf = new CapaPresentacion.Services.PdfGeneratorService()
+                                          .GenerarOrdenRecaudacionPDF(ordenActualizada);
+                            new EmailSvc().EnviarFacturaGenerada(ordenActualizada, pdf);
+                        }
+                    }
+                    catch (Exception exNotif)
+                    {
+                        CapaNegocio.LogBL.RegistrarAdvertencia(
+                            $"ValidarPago: email/pdf no crítico. OrdenId={ordenId}. {exNotif.Message}",
+                            "OrdenRecaudacionController");
+                    }
                 }
                 else
                 {
-                    TempData["Error"] = "No se pudo validar el pago";
+                    TempData["Error"] = "No se pudo validar el pago." +
+                        (string.IsNullOrWhiteSpace(err) ? "" : " Detalle: " + err);
                 }
             }
             catch (Exception ex)
             {
                 TempData["Error"] = "Error al validar pago: " + ex.Message;
+                CapaNegocio.LogBL.RegistrarError(
+                    $"ValidarPago: excepcion. OrdenId={ordenId} PagoId={pagoId}",
+                    ex.ToString(),
+                    "OrdenRecaudacionController");
             }
 
             return RedirectToAction("Detalles", new { id = ordenId });

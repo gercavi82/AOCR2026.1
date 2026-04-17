@@ -437,6 +437,59 @@ namespace CapaDatos.DAOs
             }
         }
 
+        /// <summary>
+        /// Busca un inspector en el espejo PG por cédula (caso exacto, normalizado).
+        /// Devuelve null si la tabla no existe o no se encuentra el registro.
+        /// </summary>
+        public InspectorAs400Record ObtenerPorCedula(string cedula)
+        {
+            if (string.IsNullOrWhiteSpace(cedula))
+                return null;
+
+            try
+            {
+                using (var cn = new NpgsqlConnection(_connectionString))
+                {
+                    cn.Open();
+
+                    if (!ExisteTabla(cn, "aocr_tbinspectores"))
+                        return null;
+
+                    const string sql = @"
+                        SELECT TRIM(COALESCE(cedula,'')),
+                               TRIM(COALESCE(nombre_completo,'')),
+                               TRIM(COALESCE(estado,'')),
+                               TRIM(COALESCE(tipo,''))
+                        FROM public.aocr_tbinspectores
+                        WHERE LOWER(TRIM(COALESCE(cedula,''))) = LOWER(TRIM(@cedula))
+                        LIMIT 1;";
+
+                    using (var cmd = new NpgsqlCommand(sql, cn))
+                    {
+                        cmd.Parameters.AddWithValue("@cedula", cedula.Trim());
+                        using (var rd = cmd.ExecuteReader())
+                        {
+                            if (!rd.Read())
+                                return null;
+
+                            return new InspectorAs400Record
+                            {
+                                Cedula         = rd.IsDBNull(0) ? null : rd.GetString(0),
+                                NombreCompleto = rd.IsDBNull(1) ? null : rd.GetString(1),
+                                Estado         = rd.IsDBNull(2) ? null : rd.GetString(2),
+                                Tipo           = rd.IsDBNull(3) ? null : rd.GetString(3)
+                            };
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError("[InspectoresDAO-PG] Error en ObtenerPorCedula cedula=" + cedula + ": " + ex);
+                return null;
+            }
+        }
+
         private static bool ExisteColumna(NpgsqlConnection cn, string tabla, string columna)
         {
             const string sql = @"

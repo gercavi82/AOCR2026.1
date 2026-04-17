@@ -1,7 +1,7 @@
 @model IEnumerable<CapaDatos.Models.UsuarioInternoRTRegistro>
 @using CapaDatos.Models
 @{
-    ViewBag.Title = "Usuarios RT / Inspectores Registrados";
+    ViewBag.Title = "Inspectores";
     Layout = "~/Views/Shared/_LayoutAOCR.cshtml";
     var lista = Model != null ? Model.ToList() : new System.Collections.Generic.List<UsuarioInternoRTRegistro>();
 }
@@ -38,8 +38,8 @@
             <div class="d-flex flex-column flex-lg-row justify-content-between gap-3 align-items-lg-start">
                 <div>
                     <div class="rt-eyebrow"><i class="fas fa-user-shield"></i> Administracion AOCR</div>
-                    <h1 class="rt-hero-title">Usuarios RT / Inspectores</h1>
-                    <p class="rt-hero-sub">Listado de inspectores y tecnicos responsables registrados para operar en AOCR por rol interno.</p>
+                    <h1 class="rt-hero-title">Inspectores</h1>
+                    <p class="rt-hero-sub">Listado de inspectores registrados para operar en AOCR.</p>
                 </div>
                 <div class="text-lg-end flex-shrink-0">
                     <a href="@Url.Action("CrearUsuarioInternoRT", "AdminUsuarios")" class="btn btn-light fw-bold">
@@ -79,6 +79,13 @@
     {
         <div class="alert alert-danger alert-dismissible fade show" role="alert">
             <i class="fas fa-exclamation-triangle me-1"></i> @TempData["Error"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    }
+    @if (TempData["Warning"] != null)
+    {
+        <div class="alert alert-warning alert-dismissible fade show" role="alert">
+            <i class="fas fa-exclamation-circle me-1"></i> @TempData["Warning"]
             <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
         </div>
     }
@@ -130,8 +137,8 @@
                                         {
                                             @Html.AntiForgeryToken()
                                             @Html.Hidden("id", rt.Id)
-                                            <button type="submit" class="btn btn-sm btn-outline-info" title="Enviar correo de notificacion">
-                                                <i class="fas fa-envelope me-1"></i> Correo
+                                            <button type="submit" class="btn btn-sm btn-outline-info" title="Reenviar credenciales por correo institucional">
+                                                <i class="fas fa-envelope me-1"></i> Reenviar Correo
                                             </button>
                                         }
                                         <a href="@Url.Action("EditarUsuarioInternoRT", "AdminUsuarios", new { id = rt.Id })"
@@ -147,6 +154,32 @@
                                                 <i class="fas @(rt.Activo ? "fa-ban" : "fa-check") me-1"></i>
                                                 @(rt.Activo ? "Inactivar" : "Activar")
                                             </button>
+                                        }
+                                        @if (rt.UsuarioId.HasValue && rt.UsuarioId.Value > 0)
+                                        {
+                                            using (Html.BeginForm("ResetearClaveRT", "AdminUsuarios", FormMethod.Post, new { @class = "d-inline-block" }))
+                                            {
+                                                @Html.AntiForgeryToken()
+                                                @Html.Hidden("id", rt.Id)
+                                                <button type="submit" class="btn btn-sm btn-outline-warning"
+                                                        title="Generar nueva clave temporal y enviar por correo"
+                                                        onclick="return confirm('Se generara una nueva clave temporal y se enviara al correo institucional del inspector. Desea continuar?');">
+                                                    <i class="fas fa-key me-1"></i> Resetear Clave
+                                                </button>
+                                            }
+                                        }
+                                        else
+                                        {
+                                            using (Html.BeginForm("CrearCuentaInspectorRT", "AdminUsuarios", FormMethod.Post, new { @class = "d-inline-block" }))
+                                            {
+                                                @Html.AntiForgeryToken()
+                                                @Html.Hidden("id", rt.Id)
+                                                <button type="submit" class="btn btn-sm btn-outline-secondary"
+                                                        title="Crear cuenta AOCR para inspector sin credenciales"
+                                                        onclick="return confirm('Se creara la cuenta AOCR del inspector y se generara una clave temporal. Desea continuar?');">
+                                                    <i class="fas fa-user-plus me-1"></i> Crear Cuenta
+                                                </button>
+                                            }
                                         }
                                     </td>
                                 </tr>
@@ -172,12 +205,11 @@
         $(function () {
             if ($.fn.DataTable && $('#tablaRT').length) {
                 $('#tablaRT').DataTable({
-                    language: { url: 'https://cdn.datatables.net/plug-ins/1.13.4/i18n/es-ES.json' },
                     pageLength: 5,
-                    lengthMenu: [[5, 10, 25, 50, -1], [5, 10, 25, 50, 'Todos']],
                     order: [[1, 'asc']]
                 });
             }
         });
     </script>
 }
+

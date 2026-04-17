@@ -33,6 +33,7 @@ namespace CapaModelo
         public string TipoOperacion { get; set; }
         public string DescripcionOperacion { get; set; }
         public string ResumenOperacionesEae { get; set; }
+        public string NumeroAOC { get; set; }
         public string Observaciones { get; set; }
 
         public string AprobacionesEspeciales { get; set; }

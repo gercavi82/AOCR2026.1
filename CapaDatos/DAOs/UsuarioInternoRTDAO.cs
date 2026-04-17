@@ -188,6 +188,117 @@ LIMIT 1;";
                 tx);
         }
 
+        public int? ObtenerUsuarioIdPorCorreo(string correo)
+        {
+            var correoNorm = (correo ?? string.Empty).Trim();
+            if (string.IsNullOrWhiteSpace(correoNorm))
+                return null;
+
+            using (var cn = CrearConexion())
+            {
+                cn.Open();
+                const string sql = @"
+SELECT idusuario
+FROM usuario
+WHERE UPPER(TRIM(correo)) = UPPER(TRIM(@correo))
+LIMIT 1;";
+                return cn.QueryFirstOrDefault<int?>(sql, new { correo = correoNorm });
+            }
+        }
+
+        public int? ObtenerUsuarioIdPorTecnicoId(int tecnicoId)
+        {
+            if (tecnicoId <= 0)
+                return null;
+
+            using (var cn = CrearConexion())
+            {
+                cn.Open();
+
+                if (!ExisteTabla(cn, null, "aocr_tbtecnico"))
+                    return null;
+
+                const string sql = @"
+SELECT t.codigousuario
+FROM aocr_tbtecnico t
+WHERE t.codigotecnico = @tecnicoId
+LIMIT 1;";
+                return cn.QueryFirstOrDefault<int?>(sql, new { tecnicoId });
+            }
+        }
+
+        public bool VincularCuentaAcceso(int idRegistro, int usuarioId, string actor, out string mensaje)
+        {
+            mensaje = string.Empty;
+
+            if (idRegistro <= 0)
+            {
+                mensaje = "Identificador de usuario interno RT invalido.";
+                return false;
+            }
+
+            if (usuarioId <= 0)
+            {
+                mensaje = "Identificador de usuario AOCR invalido.";
+                return false;
+            }
+
+            using (var cn = CrearConexion())
+            {
+                cn.Open();
+                using (var tx = cn.BeginTransaction())
+                {
+                    try
+                    {
+                        AsegurarEstructuraBasica(cn, tx);
+
+                        const string sqlUsuario = @"
+SELECT COUNT(1)
+FROM usuario
+WHERE idusuario = @usuarioId;";
+                        var existeUsuario = cn.ExecuteScalar<int>(sqlUsuario, new { usuarioId }, tx) > 0;
+                        if (!existeUsuario)
+                        {
+                            tx.Rollback();
+                            mensaje = "No existe la cuenta AOCR que se intenta vincular.";
+                            return false;
+                        }
+
+                        const string sqlUpdate = @"
+UPDATE aocr_usuario_interno_rt
+SET usuario_id = @usuarioId,
+    updated_at = NOW(),
+    updated_by = @actor
+WHERE id = @id;";
+
+                        var rows = cn.Execute(sqlUpdate, new
+                        {
+                            id = idRegistro,
+                            usuarioId,
+                            actor = string.IsNullOrWhiteSpace(actor) ? "sistema" : actor.Trim()
+                        }, tx);
+
+                        if (rows <= 0)
+                        {
+                            tx.Rollback();
+                            mensaje = "No se encontro el registro interno RT para vincular la cuenta.";
+                            return false;
+                        }
+
+                        tx.Commit();
+                        mensaje = "Cuenta AOCR vinculada al inspector correctamente.";
+                        return true;
+                    }
+                    catch (Exception ex)
+                    {
+                        tx.Rollback();
+                        mensaje = "Error al vincular cuenta AOCR con inspector RT: " + ex.Message;
+                        return false;
+                    }
+                }
+            }
+        }
+
         private static int? ObtenerUsuarioIdPorCodigoUsuario(
             NpgsqlConnection cn,
             IDbTransaction tx,

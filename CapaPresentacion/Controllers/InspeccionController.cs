@@ -700,7 +700,8 @@ namespace CapaPresentacion.Controllers
             if (!System.IO.File.Exists(fullPath))
             {
                 _logger.LogWarning("[GestionInspeccion] VerInforme archivo inexistente. InspeccionId=" + id + ", FullPath=" + fullPath);
-                return HttpNotFound("El archivo del informe no existe en el servidor.");
+                TempData["Warning"] = "El archivo del informe firmado ya no existe en el servidor (pudo haber sido eliminado o movido). Contacte al administrador o regenere el informe.";
+                return RedirectToAction("Detalle", new { id });
             }
 
             Response.Headers["X-Content-Type-Options"] = "nosniff";
@@ -3042,12 +3043,52 @@ namespace CapaPresentacion.Controllers
                 _logger.LogWarning("[GestionInspeccion] Error enriqueciendo inspectores desde RT. InspeccionId=" + inspeccion.CodigoInspeccion + ", Error=" + ex.Message);
             }
 
-            // ── Fuente secundaria: AS400 (si RT no completó los datos) ──
+            // ── Fuente secundaria: Espejo PG (rápido, sin depender de AS400) ──
+            try
+            {
+                var daoPg = new InspectorMirrorPGDAO();
+
+                if (!principalResuelto && !string.IsNullOrWhiteSpace(cedulaPrincipal) &&
+                    EsCedulaIdentificacionValida(cedulaPrincipal))
+                {
+                    var principal = daoPg.ObtenerPorCedula(cedulaPrincipal);
+                    if (principal != null)
+                    {
+                        inspeccion.InspectorPrincipalCedula = FirstNonEmpty(inspeccion.InspectorPrincipalCedula, principal.Cedula);
+                        inspeccion.InspectorPrincipalNombre = FirstNonEmpty(inspeccion.InspectorPrincipalNombre, principal.NombreCompleto);
+                        inspeccion.InspectorPrincipalTipo   = FirstNonEmpty(inspeccion.InspectorPrincipalTipo, principal.Tipo);
+                        principalResuelto = !string.IsNullOrWhiteSpace(inspeccion.InspectorPrincipalNombre)
+                            && !string.IsNullOrWhiteSpace(inspeccion.InspectorPrincipalTipo);
+                    }
+                }
+
+                if (!apoyoResuelto && !string.IsNullOrWhiteSpace(cedulaApoyo) &&
+                    EsCedulaIdentificacionValida(cedulaApoyo))
+                {
+                    var apoyo = daoPg.ObtenerPorCedula(cedulaApoyo);
+                    if (apoyo != null)
+                    {
+                        inspeccion.InspectorApoyoCedula = FirstNonEmpty(inspeccion.InspectorApoyoCedula, apoyo.Cedula);
+                        inspeccion.InspectorApoyoNombre = FirstNonEmpty(inspeccion.InspectorApoyoNombre, apoyo.NombreCompleto);
+                        inspeccion.InspectorApoyoTipo   = FirstNonEmpty(inspeccion.InspectorApoyoTipo, apoyo.Tipo);
+                        apoyoResuelto = !string.IsNullOrWhiteSpace(inspeccion.InspectorApoyoNombre)
+                            && !string.IsNullOrWhiteSpace(inspeccion.InspectorApoyoTipo);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning("[GestionInspeccion] Error enriqueciendo inspectores desde espejo PG. InspeccionId="
+                    + inspeccion.CodigoInspeccion + ", Error=" + ex.Message);
+            }
+
+            // ── Fuente terciaria: AS400 (fallback final si PG no tiene el registro) ──
             try
             {
                 var daoAs400 = new InspectorAS400DAO(new SecureConfigType());
 
                 if (!principalResuelto && !string.IsNullOrWhiteSpace(cedulaPrincipal) &&
+                    EsCedulaIdentificacionValida(cedulaPrincipal) &&
                     (string.IsNullOrWhiteSpace(inspeccion.InspectorPrincipalNombre)
                     || string.IsNullOrWhiteSpace(inspeccion.InspectorPrincipalTipo)
                     || string.IsNullOrWhiteSpace(inspeccion.InspectorPrincipalCedula)))
@@ -3068,6 +3109,7 @@ namespace CapaPresentacion.Controllers
                 }
 
                 if (!apoyoResuelto && !string.IsNullOrWhiteSpace(cedulaApoyo) &&
+                    EsCedulaIdentificacionValida(cedulaApoyo) &&
                     (string.IsNullOrWhiteSpace(inspeccion.InspectorApoyoNombre)
                     || string.IsNullOrWhiteSpace(inspeccion.InspectorApoyoTipo)
                     || string.IsNullOrWhiteSpace(inspeccion.InspectorApoyoCedula)))
@@ -3146,6 +3188,17 @@ namespace CapaPresentacion.Controllers
             solicitud.Telefono = FirstNonEmpty(solicitud.Telefono, string.Empty);
             solicitud.Direccion = FirstNonEmpty(solicitud.Direccion, string.Empty);
             solicitud.RepresentanteLegal = FirstNonEmpty(solicitud.RepresentanteLegal, string.Empty);
+        }
+
+        /// <summary>
+        /// Determina si la cadena parece una cédula/RUC/pasaporte real (≥7 caracteres)
+        /// y no un ID numérico interno del sistema (p.ej. "35").
+        /// Evita consultas innecesarias a AS400/DB2.
+        /// </summary>
+        private static bool EsCedulaIdentificacionValida(string cedula)
+        {
+            if (string.IsNullOrWhiteSpace(cedula)) return false;
+            return cedula.Trim().Length >= 7;
         }
 
         private static string FirstNonEmpty(params string[] values)
