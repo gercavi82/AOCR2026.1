@@ -1836,7 +1836,7 @@ namespace CapaPresentacion.Controllers
         [HttpPost]
         [Authorize(Roles = "Inspector,Administrador")]
         [ValidateAntiForgeryToken]
-        public ActionResult AccionMasivaRevisionDocumental(int id, string tipoAccion, string revisionesJson)
+        public ActionResult AccionMasivaRevisionDocumental(int id, string tipoAccion, string revisionesJson, string observacionCoordinador)
         {
             var solicitud = _solicitudDAO.ObtenerPorId(id);
             if (solicitud == null)
@@ -1985,9 +1985,19 @@ namespace CapaPresentacion.Controllers
                 ? EstadoSolicitud.AceptacionDocumental
                 : EstadoSolicitud.Observada;
 
-            var observacionCierre = tipoAccionNorm == "APROBAR_TODOS"
+            var observacionCoordinadorLimpia = (observacionCoordinador ?? string.Empty).Trim();
+            if (observacionCoordinadorLimpia.Length > 500)
+            {
+                observacionCoordinadorLimpia = observacionCoordinadorLimpia.Substring(0, 500);
+            }
+
+            var observacionBase = tipoAccionNorm == "APROBAR_TODOS"
                 ? "Todos los documentos vigentes fueron aceptados por el inspector (acción masiva)."
                 : ConstruirResumenRevisionDocumental(documentosRevision, revisionesResumen, true);
+
+            var observacionCierre = string.IsNullOrWhiteSpace(observacionCoordinadorLimpia)
+                ? observacionBase
+                : observacionBase + " Observación para coordinación: " + observacionCoordinadorLimpia;
 
             string mensajeCambio;
             if (!CambiarEstadoConReglasAocr(id, estadoDestino, observacionCierre, out mensajeCambio))

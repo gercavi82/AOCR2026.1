@@ -11,9 +11,8 @@
     var puedeRevisarCoordinador = esCoordinador && informeTecnico != null && informeTecnico.FirmadoInspector && enviadoACoordinador;
 }
 
-@if (!puedeRevisarCoordinador && !esCoordinador) { return; }
-@if (informeTecnico == null) { return; }
-
+@if ((puedeRevisarCoordinador || esCoordinador) && informeTecnico != null)
+{
 <div class="card section-card" style="border-left: 4px solid #17a2b8;">
     <div class="card-body">
         <div class="section-heading">
@@ -140,3 +139,4 @@
         }
     </div>
 </div>
+}

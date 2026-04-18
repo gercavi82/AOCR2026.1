@@ -39,6 +39,8 @@ namespace CapaDatos.DAOs
                            evidencias,
                            numero_licencia_inspector,
                            trabajos_realizados,
+                           fechas_inspeccion_manual,
+                           estaciones_inspeccion_manual,
                            operacion_comercial,
                            servicios_estaciones,
                            notas,
@@ -106,6 +108,8 @@ namespace CapaDatos.DAOs
                            evidencias,
                            numero_licencia_inspector,
                            trabajos_realizados,
+                           fechas_inspeccion_manual,
+                           estaciones_inspeccion_manual,
                            operacion_comercial,
                            servicios_estaciones,
                            notas,
@@ -180,6 +184,8 @@ namespace CapaDatos.DAOs
                             evidencias = @evidencias,
                             numero_licencia_inspector = @numero_licencia_inspector,
                             trabajos_realizados = @trabajos_realizados,
+                            fechas_inspeccion_manual = @fechas_inspeccion_manual,
+                            estaciones_inspeccion_manual = @estaciones_inspeccion_manual,
                             operacion_comercial = @operacion_comercial,
                             servicios_estaciones = @servicios_estaciones,
                             notas = @notas,
@@ -218,6 +224,8 @@ namespace CapaDatos.DAOs
                         evidencias,
                         numero_licencia_inspector,
                         trabajos_realizados,
+                        fechas_inspeccion_manual,
+                        estaciones_inspeccion_manual,
                         operacion_comercial,
                         servicios_estaciones,
                         notas,
@@ -247,6 +255,8 @@ namespace CapaDatos.DAOs
                         @evidencias,
                         @numero_licencia_inspector,
                         @trabajos_realizados,
+                        @fechas_inspeccion_manual,
+                        @estaciones_inspeccion_manual,
                         @operacion_comercial,
                         @servicios_estaciones,
                         @notas,
@@ -501,6 +511,8 @@ namespace CapaDatos.DAOs
             cmd.Parameters.AddWithValue("@evidencias", (object)informe.Evidencias ?? DBNull.Value);
             cmd.Parameters.AddWithValue("@numero_licencia_inspector", (object)informe.NumeroLicenciaInspector ?? DBNull.Value);
             cmd.Parameters.AddWithValue("@trabajos_realizados", (object)informe.TrabajosRealizados ?? DBNull.Value);
+            cmd.Parameters.AddWithValue("@fechas_inspeccion_manual", (object)informe.FechasInspeccionManual ?? DBNull.Value);
+            cmd.Parameters.AddWithValue("@estaciones_inspeccion_manual", (object)informe.EstacionesInspeccionManual ?? DBNull.Value);
             cmd.Parameters.AddWithValue("@operacion_comercial", (object)informe.OperacionComercial ?? DBNull.Value);
             cmd.Parameters.AddWithValue("@servicios_estaciones", (object)informe.ServiciosEstaciones ?? DBNull.Value);
             cmd.Parameters.AddWithValue("@notas", (object)informe.Notas ?? DBNull.Value);
@@ -529,6 +541,8 @@ namespace CapaDatos.DAOs
                 Evidencias = dr["evidencias"] == DBNull.Value ? null : dr["evidencias"].ToString(),
                 NumeroLicenciaInspector = dr["numero_licencia_inspector"] == DBNull.Value ? null : dr["numero_licencia_inspector"].ToString(),
                 TrabajosRealizados = dr["trabajos_realizados"] == DBNull.Value ? null : dr["trabajos_realizados"].ToString(),
+                FechasInspeccionManual = dr["fechas_inspeccion_manual"] == DBNull.Value ? null : dr["fechas_inspeccion_manual"].ToString(),
+                EstacionesInspeccionManual = dr["estaciones_inspeccion_manual"] == DBNull.Value ? null : dr["estaciones_inspeccion_manual"].ToString(),
                 OperacionComercial = dr["operacion_comercial"] == DBNull.Value ? null : dr["operacion_comercial"].ToString(),
                 ServiciosEstaciones = dr["servicios_estaciones"] == DBNull.Value ? null : dr["servicios_estaciones"].ToString(),
                 Notas = dr["notas"] == DBNull.Value ? null : dr["notas"].ToString(),
@@ -595,6 +609,8 @@ namespace CapaDatos.DAOs
                         evidencias TEXT,
                         numero_licencia_inspector VARCHAR(120),
                         trabajos_realizados TEXT,
+                        fechas_inspeccion_manual TEXT,
+                        estaciones_inspeccion_manual TEXT,
                         operacion_comercial TEXT,
                         servicios_estaciones TEXT,
                         notas TEXT,
@@ -644,6 +660,8 @@ namespace CapaDatos.DAOs
                     ALTER TABLE public.aocr_tbinforme_inspeccion ADD COLUMN IF NOT EXISTS evidencias TEXT;
                     ALTER TABLE public.aocr_tbinforme_inspeccion ADD COLUMN IF NOT EXISTS numero_licencia_inspector VARCHAR(120);
                     ALTER TABLE public.aocr_tbinforme_inspeccion ADD COLUMN IF NOT EXISTS trabajos_realizados TEXT;
+                    ALTER TABLE public.aocr_tbinforme_inspeccion ADD COLUMN IF NOT EXISTS fechas_inspeccion_manual TEXT;
+                    ALTER TABLE public.aocr_tbinforme_inspeccion ADD COLUMN IF NOT EXISTS estaciones_inspeccion_manual TEXT;
                     ALTER TABLE public.aocr_tbinforme_inspeccion ADD COLUMN IF NOT EXISTS operacion_comercial TEXT;
                     ALTER TABLE public.aocr_tbinforme_inspeccion ADD COLUMN IF NOT EXISTS servicios_estaciones TEXT;
                     ALTER TABLE public.aocr_tbinforme_inspeccion ADD COLUMN IF NOT EXISTS notas TEXT;
@@ -688,6 +706,8 @@ namespace CapaDatos.DAOs
                        evidencias,
                        numero_licencia_inspector,
                        trabajos_realizados,
+                       fechas_inspeccion_manual,
+                       estaciones_inspeccion_manual,
                        operacion_comercial,
                        servicios_estaciones,
                        notas,
@@ -746,6 +766,8 @@ namespace CapaDatos.DAOs
                        evidencias,
                        numero_licencia_inspector,
                        trabajos_realizados,
+                       fechas_inspeccion_manual,
+                       estaciones_inspeccion_manual,
                        operacion_comercial,
                        servicios_estaciones,
                        notas,

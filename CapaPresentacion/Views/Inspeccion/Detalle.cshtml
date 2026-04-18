@@ -1301,7 +1301,7 @@
                                 <span class="hero-metric-value">@estadoActual</span>
                             </div>
                             <div class="hero-metric">
-                                <span class="hero-metric-label">Fecha programada</span>
+                                <span class="hero-metric-label">Fechas de inspeccion</span>
                                 <span class="hero-metric-value">@fechaProgramada</span>
                             </div>
                         </div>
@@ -1795,7 +1795,7 @@
                                             <input type="text" class="form-control" value="@inspectorPrincipal" readonly />
                                         </div>
                                         <div class="detail-item">
-                                            <label class="detail-label">Fecha programada</label>
+                                            <label class="detail-label">Fechas de inspeccion</label>
                                             <input type="text" class="form-control" value="@fechaProgramada" readonly />
                                         </div>
                                         <div class="detail-item">
@@ -1829,7 +1829,25 @@
                                             que el explotador <strong>@(solicitud != null && !string.IsNullOrWhiteSpace(solicitud.NombreOperador) ? solicitud.NombreOperador : "[NOMBRE DEL EXPLOTADOR]")</strong>
                                             cumple las condiciones mínimas de seguridad operacional exigidas por la Dirección General de Aviación Civil.
                                             Inspección <strong>@(Model != null && !string.IsNullOrWhiteSpace(Model.NumeroInspeccion) ? Model.NumeroInspeccion : Model.CodigoInspeccion.ToString())</strong>,
-                                            fecha programada: <strong>@fechaProgramada</strong>.
+                                            fechas de inspeccion: <strong>@(informeTecnico != null && !string.IsNullOrWhiteSpace(informeTecnico.FechasInspeccionManual) ? informeTecnico.FechasInspeccionManual : fechaProgramada)</strong>.
+                                        </div>
+                                        <div class="report-grid-2 mb-3">
+                                            <div class="detail-item">
+                                                <label class="detail-label">Fechas de inspeccion (ingreso manual)</label>
+                                                <input type="text"
+                                                       class="form-control"
+                                                       name="fechasInspeccionManual"
+                                                       value="@(informeTecnico != null ? informeTecnico.FechasInspeccionManual : string.Empty)"
+                                                       placeholder="Ejemplo: del 15/04/2026 al 16/04/2026" />
+                                            </div>
+                                            <div class="detail-item">
+                                                <label class="detail-label">Estaciones inspeccionadas (ingreso manual)</label>
+                                                <input type="text"
+                                                       class="form-control"
+                                                       name="estacionesInspeccionManual"
+                                                       value="@(informeTecnico != null ? informeTecnico.EstacionesInspeccionManual : string.Empty)"
+                                                       placeholder="Ejemplo: UIO, GYE, MEC, LTX" />
+                                            </div>
                                         </div>
                                         <label class="detail-label">1. Trabajos realizados</label>
                                         <textarea class="form-control" name="trabajosRealizados" rows="5" placeholder="Redacte el cuerpo del numeral 1 del anexo: fecha, estaciones inspeccionadas, compañía verificada, facilidades, personal técnico y alcance de la verificación.">@trabajosRealizadosInforme</textarea>
@@ -1909,6 +1927,13 @@
                                         </div>
                                         <div class="report-field-card full">
                                             <div class="report-field-heading">
+                                                <label class="detail-label mb-0">1. Conclusion</label>
+                                                <p class="report-field-copy">Registre la conclusion tecnica previa a las recomendaciones del informe.</p>
+                                            </div>
+                                            <textarea class="form-control report-textarea-md" name="conclusiones" rows="4" placeholder="Ingrese la conclusion tecnica de la inspeccion.">@(informeTecnico != null ? informeTecnico.Conclusiones : string.Empty)</textarea>
+                                        </div>
+                                        <div class="report-field-card full">
+                                            <div class="report-field-heading">
                                                 <label class="detail-label mb-0">2. Recomendaciones</label>
                                                 <p class="report-field-copy">Ingrese acciones o recomendaciones en líneas separadas para conservar legibilidad en el anexo.</p>
                                             </div>
@@ -1956,6 +1981,8 @@
                                     </script>
                                     <div>
                                         <label class="detail-label">Otros documentos adjuntos</label>
+                                        <input type="file" name="otrosAdjuntosArchivo" class="form-control form-control-sm mb-2" multiple accept=".pdf,.jpg,.jpeg,.png,.doc,.docx,.xls,.xlsx" />
+                                        <small class="text-muted d-block mb-2">Puede adjuntar uno o varios archivos adicionales en este bloque.</small>
                                         <textarea class="form-control" name="otrosAdjuntos" rows="3" placeholder="Ingrese otros documentos, uno por línea.">@otrosAdjuntosInforme</textarea>
                                     </div>
                                 </div>

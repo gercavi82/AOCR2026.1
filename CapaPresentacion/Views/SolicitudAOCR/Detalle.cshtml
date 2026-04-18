@@ -661,6 +661,13 @@
                                 <input type="hidden" name="id" value="@Model.CodigoSolicitud" />
                                 <input type="hidden" name="tipoAccion" id="tipoAccionMasiva" value="" />
                                 <input type="hidden" name="revisionesJson" id="revisionesJsonMasiva" value="" />
+                                <div class="mb-2">
+                                    <input type="text"
+                                           class="form-control form-control-sm"
+                                           name="observacionCoordinador"
+                                           maxlength="500"
+                                           placeholder="Observación opcional para coordinación (se registra en trazabilidad)." />
+                                </div>
                                 <div class="d-flex flex-wrap gap-2 justify-content-end">
                                     <button type="button"
                                             id="btnAprobarTodosDocumentos"

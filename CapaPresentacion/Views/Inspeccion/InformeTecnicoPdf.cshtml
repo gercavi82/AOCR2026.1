@@ -1,5 +1,6 @@
 @model CapaPresentacion.Models.ViewModels.InformeTecnicoPdfViewModel
 @using System
+@using System.Collections.Generic
 @using System.Globalization
 @using System.Linq
 @using System.Web
@@ -71,16 +72,41 @@
     var observacionesFinales = informe != null && !string.IsNullOrWhiteSpace(informe.Observaciones)
         ? informe.Observaciones
         : noConformidades;
+    var fechasInspeccionManual = informe != null ? informe.FechasInspeccionManual : null;
+    var estacionesInspeccionManual = informe != null ? informe.EstacionesInspeccionManual : null;
 
     var servicios = InformeTecnicoTemplateHelper.GetServicioRows(informe != null ? informe.ServiciosEstaciones : null);
     // Extraer nombres de estaciones con cobertura para el Art. 110
-    var estacionesCubiertas = new System.Collections.Generic.List<string>();
-    if (servicios.Any(s => !string.IsNullOrWhiteSpace(s.Uio) && s.Uio != "N/A")) estacionesCubiertas.Add("Quito (UIO)");
-    if (servicios.Any(s => !string.IsNullOrWhiteSpace(s.Gye) && s.Gye != "N/A")) estacionesCubiertas.Add("Guayaquil (GYE)");
-    if (servicios.Any(s => !string.IsNullOrWhiteSpace(s.Mec) && s.Mec != "N/A")) estacionesCubiertas.Add("Manta (MEC)");
-    if (servicios.Any(s => !string.IsNullOrWhiteSpace(s.Ltx) && s.Ltx != "N/A")) estacionesCubiertas.Add("Latacunga (LTX)");
-    var estacionesTextoArt110 = estacionesCubiertas.Any() ? string.Join(", ", estacionesCubiertas) : "________________";
-    var fechaInspeccionTexto = fechaProgramada.HasValue ? fechaProgramada.Value.ToString("dd/MM/yyyy", cultura) : "________________";
+    var estacionesCubiertas = new List<string>();
+    if (servicios.Any(s => !string.IsNullOrWhiteSpace(s.Uio) && s.Uio != "N/A"))
+    {
+        estacionesCubiertas.Add("Quito (UIO)");
+    }
+
+    if (servicios.Any(s => !string.IsNullOrWhiteSpace(s.Gye) && s.Gye != "N/A"))
+    {
+        estacionesCubiertas.Add("Guayaquil (GYE)");
+    }
+
+    if (servicios.Any(s => !string.IsNullOrWhiteSpace(s.Mec) && s.Mec != "N/A"))
+    {
+        estacionesCubiertas.Add("Manta (MEC)");
+    }
+
+    if (servicios.Any(s => !string.IsNullOrWhiteSpace(s.Ltx) && s.Ltx != "N/A"))
+    {
+        estacionesCubiertas.Add("Latacunga (LTX)");
+    }
+    var estacionesTextoArt110 = !string.IsNullOrWhiteSpace(estacionesInspeccionManual)
+        ? estacionesInspeccionManual.Trim()
+        : (estacionesCubiertas.Any() ? string.Join(", ", estacionesCubiertas) : "________________");
+    var fechaInspeccionTexto = !string.IsNullOrWhiteSpace(fechasInspeccionManual)
+        ? fechasInspeccionManual.Trim()
+        : (fechaProgramada.HasValue ? fechaProgramada.Value.ToString("dd/MM/yyyy", cultura) : "________________");
+    var tieneFechasInspeccion = !string.IsNullOrWhiteSpace(fechasInspeccionManual) || fechaProgramada.HasValue;
+    var fechasInspeccionVisual = !string.IsNullOrWhiteSpace(fechasInspeccionManual)
+        ? fechasInspeccionManual.Trim()
+        : (fechaProgramada.HasValue ? fechaProgramada.Value.ToString("dd/MM/yyyy", cultura) : "PENDIENTE DE COMPLETAR");
     var documentosBase = InformeTecnicoTemplateHelper.GetDocumentosAdjuntosBase();
     var documentosSeleccionados = InformeTecnicoTemplateHelper.SplitLines(informe != null ? informe.DocumentosAdjuntos : null);
     var otrosAdjuntos = InformeTecnicoTemplateHelper.SplitLines(informe != null ? informe.OtrosAdjuntos : null);
@@ -185,7 +211,7 @@
         </tr>
         <tr>
             <td><span class="field-label">Estado de inspeccion</span><span class="@claseCampo(estadoInspeccion)">@textoCampo(estadoInspeccion)</span></td>
-            <td><span class="field-label">Fechas de inspeccion</span><span class="field-value @(fechaProgramada.HasValue ? string.Empty : "pending")">@fechaCampo(fechaProgramada)</span></td>
+            <td><span class="field-label">Fechas de inspeccion</span><span class="field-value @(tieneFechasInspeccion ? string.Empty : "pending")">@fechasInspeccionVisual</span></td>
             <td><span class="field-label">Operador</span><span class="@claseCampo(operador)">@textoCampo(operador)</span></td>
         </tr>
     </table>

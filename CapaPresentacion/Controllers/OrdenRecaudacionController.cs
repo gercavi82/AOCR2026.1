@@ -965,7 +965,11 @@ namespace CapaPresentacion.Controllers
                     emailDestino = solicitud?.Email;
                 }
 
-                if (string.IsNullOrWhiteSpace(emailDestino)) return;
+                if (string.IsNullOrWhiteSpace(emailDestino))
+                {
+                    TempData["Warning"] = "La orden fue generada, pero no se pudo notificar por correo porque no existe un destinatario configurado.";
+                    return;
+                }
 
                 // Obtener lista de bancos (se mantiene para otros usos, pero la leyenda con cuentas
                 // se toma del modelo PDF para asegurar consistencia entre correo y comprobante)
@@ -1029,30 +1033,35 @@ En transferencias NO colocar sublínea<br>";
 
                 if (pdfBytes == null || pdfBytes.Length == 0)
                 {
-                    System.Diagnostics.Debug.WriteLine($"ADVERTENCIA: El PDF de la orden no se generó correctamente, no se adjuntará al correo. Orden: {orden.NumeroOrden}");
+                    System.Diagnostics.Debug.WriteLine($"ADVERTENCIA: El PDF de la orden no se generó correctamente, el correo se enviará sin adjunto. Orden: {orden.NumeroOrden}");
                 }
-                else
-                {
-                    var ordenEntidad = new OrdenRecaudacion
-                    {
-                        Id = orden.Id,
-                        NumeroOrden = orden.NumeroOrden,
-                        Estado = orden.Estado,
-                        Total = orden.Total,
-                        Correo = emailDestino,
-                        Compania = orden.Compania,
-                        NombreContribuyente = orden.NombreContribuyente
-                    };
 
-                    var resultadoCorreo = _ordenCorreoService.NotificarEvento(
-                        ordenEntidad,
-                        "ORDEN_CREADA",
-                        emailDestino,
-                        contribuyente,
-                        pdfBytes,
-                        nombreArchivo,
-                        "Orden de recaudacion generada con comprobante adjunto.");
-                    System.Diagnostics.Debug.WriteLine($"Correo encolado con adjunto PDF: {resultadoCorreo.Exitoso}");
+                var ordenEntidad = new OrdenRecaudacion
+                {
+                    Id = orden.Id,
+                    NumeroOrden = orden.NumeroOrden,
+                    Estado = orden.Estado,
+                    Total = orden.Total,
+                    Correo = emailDestino,
+                    Compania = orden.Compania,
+                    NombreContribuyente = orden.NombreContribuyente
+                };
+
+                var resultadoCorreo = _ordenCorreoService.NotificarEvento(
+                    ordenEntidad,
+                    "ORDEN_CREADA",
+                    emailDestino,
+                    contribuyente,
+                    pdfBytes != null && pdfBytes.Length > 0 ? pdfBytes : null,
+                    pdfBytes != null && pdfBytes.Length > 0 ? nombreArchivo : null,
+                    pdfBytes != null && pdfBytes.Length > 0
+                        ? "Orden de recaudacion generada con comprobante adjunto."
+                        : "Orden de recaudacion generada sin adjunto por falla de PDF.");
+                System.Diagnostics.Debug.WriteLine($"Resultado notificación ORDEN_CREADA: Exitoso={resultadoCorreo.Exitoso}, Mensaje={resultadoCorreo.Mensaje}");
+                if (!resultadoCorreo.Exitoso)
+                {
+                    TempData["Warning"] = "La orden fue generada, pero la notificación por correo no se pudo encolar: "
+                        + (resultadoCorreo.Mensaje ?? "Error no especificado.");
                 }
             }
             catch (Exception ex)

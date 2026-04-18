@@ -9,8 +9,8 @@
     var estadoInformeTecnico = (string)ViewBag.EstadoInformeTecnico ?? "BORRADOR";
 }
 
-@if (informeTecnico == null) { return; }
-
+@if (informeTecnico != null)
+{
 <div class="firma-inspector-panel mt-3">
     @* --- Estado compacto del informe --- *@
     <div class="alert alert-light alert-inline mb-3" style="font-size:0.88rem; border-left:3px solid #0d6efd;">
@@ -95,6 +95,31 @@
             </div>
         </div>
     }
+    else
+    {
+        <div class="alert alert-warning alert-inline mb-2" style="font-size:0.86rem;">
+            @if (!informeTecnico.Finalizado || string.IsNullOrWhiteSpace(informeTecnico.RutaPdf))
+            {
+                <span>La firma del inspector se habilita cuando el informe técnico está finalizado y con PDF generado.</span>
+            }
+            else
+            {
+                <span>La firma del inspector no está disponible para su usuario en el estado actual del informe.</span>
+            }
+        </div>
+
+        if (!informeTecnico.Finalizado || string.IsNullOrWhiteSpace(informeTecnico.RutaPdf))
+        {
+            using (Html.BeginForm("FinalizarInformeTecnico", "Inspeccion", FormMethod.Post, new { @class = "mb-2" }))
+            {
+                @Html.AntiForgeryToken()
+                @Html.Hidden("id", codigoInspeccion)
+                <button type="submit" class="btn btn-primary">
+                    <i class="fas fa-file-pdf me-1"></i> Finalizar informe y generar PDF
+                </button>
+            }
+        }
+    }
 
     @* --- Observación del coordinador (si fue devuelto) --- *@
     @if (!string.IsNullOrWhiteSpace(informeTecnico.ObservacionDevolucion) && string.Equals(estadoInformeTecnico, "DEVUELTO_COORDINADOR", StringComparison.OrdinalIgnoreCase))
@@ -171,3 +196,4 @@
         </div>
     }
 </div>
+}

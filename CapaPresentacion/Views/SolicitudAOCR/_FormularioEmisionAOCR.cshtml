@@ -154,6 +154,65 @@
         border-radius: 6px;
     }
 
+    .aocr-wizard .upload-dropzone {
+        background: #f8fbff;
+        border: 2px dashed #9ec5fe;
+        border-radius: 10px;
+        padding: 18px 14px;
+        text-align: center;
+        cursor: pointer;
+        transition: all .2s ease;
+        margin-bottom: 8px;
+    }
+
+    .aocr-wizard .upload-dropzone:hover {
+        border-color: #2563eb;
+        background: #eef5ff;
+    }
+
+    .aocr-wizard .upload-dropzone.drag-active {
+        border-color: #0c7c86;
+        background: #e9fbff;
+        box-shadow: 0 0 0 0.15rem rgba(12, 124, 134, 0.2);
+    }
+
+    .aocr-wizard .upload-dropzone .upload-select-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        border-radius: 8px;
+        font-weight: 600;
+        margin-bottom: 8px;
+    }
+
+    .aocr-wizard .upload-dropzone .upload-help {
+        color: #4b5563;
+        margin-bottom: 0;
+        font-size: .92rem;
+    }
+
+    .aocr-wizard .upload-file-list {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+        border: 1px solid #dbeafe;
+        border-radius: 8px;
+        background: #ffffff;
+        max-height: 130px;
+        overflow-y: auto;
+    }
+
+    .aocr-wizard .upload-file-list li {
+        padding: 6px 10px;
+        border-bottom: 1px solid #eef2f7;
+        color: #1f2937;
+        font-size: .88rem;
+    }
+
+    .aocr-wizard .upload-file-list li:last-child {
+        border-bottom: 0;
+    }
+
     .aocr-wizard .aocr-actions-bar {
         display: flex;
         justify-content: flex-end;
@@ -676,7 +735,17 @@
                                             <label class="font-weight-bold text-dark"><span class="badge badge-primary mr-2">5</span> CERTIFICADO DE RUIDO DE AERONAVES, CONFORME A LAS ESPECIFICACIONES OPERACIONALES DEL E.A.E *</label>
                                             <i class="fas fa-volume-up text-secondary fa-lg"></i>
                                         </div>
-                                        <input type="file" class="form-control-file mb-2 mt-2" id="archivoCertificadoRuido" accept=".pdf,.jpg,.jpeg,.png" multiple required onchange="validarArchivo('archivoCertificadoRuido')">                                        <small class="text-muted" id="infoArchivoCertificadoRuido"></small>
+                                        <input type="file" class="d-none" id="archivoCertificadoRuido" name="archivoCertificadoRuido" accept=".pdf,.jpg,.jpeg,.png" multiple required onchange="validarArchivo('archivoCertificadoRuido')">
+                                        <div class="upload-dropzone mt-2" id="dropzoneArchivoCertificadoRuido" onclick="abrirSelectorArchivos('archivoCertificadoRuido')">
+                                            <button type="button" class="btn btn-primary btn-sm upload-select-btn" onclick="event.stopPropagation(); abrirSelectorArchivos('archivoCertificadoRuido');">
+                                                <i class="fas fa-cloud-upload-alt"></i> Seleccionar documentos
+                                            </button>
+                                            <p class="upload-help">o arrastre y suelte aqui</p>
+                                            <small class="text-muted d-block mt-1" id="infoArchivoCertificadoRuido"></small>
+                                        </div>
+                                        <ul class="upload-file-list mb-2" id="listaArchivoCertificadoRuido">
+                                            <li class="text-muted">Sin archivos seleccionados.</li>
+                                        </ul>
                                         <div class="custom-control custom-checkbox mb-2">
                                             <input class="custom-control-input" type="checkbox" id="chkCertificadoRuido" onchange="toggleCaptura('archivoCertificadoRuido', 'capturaCertificadoRuido', this)">
                                             <label class="custom-control-label text-muted" for="chkCertificadoRuido"><small>Supera tamano permitido</small></label>
@@ -693,7 +762,17 @@
                                             <label class="font-weight-bold text-dark"><span class="badge badge-primary mr-2">6</span> CERTIFICADO DE AERONAVEGABILIDAD *</label>
                                             <i class="fas fa-file-contract text-secondary fa-lg"></i>
                                         </div>
-                                        <input type="file" class="form-control-file mb-2 mt-2" id="archivoCertificadoAeronavegabilidad" accept=".pdf,.jpg,.jpeg,.png" multiple required onchange="validarArchivo('archivoCertificadoAeronavegabilidad')">                                        <small class="text-muted" id="infoArchivoCertificadoAeronavegabilidad"></small>
+                                        <input type="file" class="d-none" id="archivoCertificadoAeronavegabilidad" name="archivoCertificadoAeronavegabilidad" accept=".pdf,.jpg,.jpeg,.png" multiple required onchange="validarArchivo('archivoCertificadoAeronavegabilidad')">
+                                        <div class="upload-dropzone mt-2" id="dropzoneArchivoCertificadoAeronavegabilidad" onclick="abrirSelectorArchivos('archivoCertificadoAeronavegabilidad')">
+                                            <button type="button" class="btn btn-primary btn-sm upload-select-btn" onclick="event.stopPropagation(); abrirSelectorArchivos('archivoCertificadoAeronavegabilidad');">
+                                                <i class="fas fa-cloud-upload-alt"></i> Seleccionar documentos
+                                            </button>
+                                            <p class="upload-help">o arrastre y suelte aqui</p>
+                                            <small class="text-muted d-block mt-1" id="infoArchivoCertificadoAeronavegabilidad"></small>
+                                        </div>
+                                        <ul class="upload-file-list mb-2" id="listaArchivoCertificadoAeronavegabilidad">
+                                            <li class="text-muted">Sin archivos seleccionados.</li>
+                                        </ul>
                                         <div class="custom-control custom-checkbox mb-2">
                                             <input class="custom-control-input" type="checkbox" id="chkCertificadoAeronavegabilidad" onchange="toggleCaptura('archivoCertificadoAeronavegabilidad', 'capturaCertificadoAeronavegabilidad', this)">
                                             <label class="custom-control-label text-muted" for="chkCertificadoAeronavegabilidad"><small>Supera tamano permitido</small></label>
@@ -1202,14 +1281,146 @@
         inicializarCompaniasSeleccionadas();
         $('#aprobacionOtrosContenedor').toggle($('#aprobacionOTROS').is(':checked'));
         $('#aeropuertoOtrosContenedor').toggle($('#aeropuertoOtros').is(':checked'));
+        inicializarDropzoneCarga('archivoCertificadoRuido', 'dropzoneArchivoCertificadoRuido');
+        inicializarDropzoneCarga('archivoCertificadoAeronavegabilidad', 'dropzoneArchivoCertificadoAeronavegabilidad');
+        actualizarResumenArchivos('archivoCertificadoRuido');
+        actualizarResumenArchivos('archivoCertificadoAeronavegabilidad');
     });
+    function abrirSelectorArchivos(idInput) {
+        const input = document.getElementById(idInput);
+        if (!input || input.disabled) {
+            return;
+        }
+
+        input.click();
+    }
+
+    function formatearTamanoArchivo(bytes) {
+        if (!bytes || bytes <= 0) {
+            return '0 KB';
+        }
+
+        var kb = bytes / 1024;
+        if (kb < 1024) {
+            return kb.toFixed(1) + ' KB';
+        }
+
+        var mb = kb / 1024;
+        return mb.toFixed(2) + ' MB';
+    }
+
+    function actualizarResumenArchivos(idInput) {
+        var input = document.getElementById(idInput);
+        if (!input) {
+            return;
+        }
+
+        var archivos = Array.from(input.files || []);
+        var baseId = idInput.charAt(0).toUpperCase() + idInput.slice(1);
+        var infoEl = document.getElementById('info' + baseId);
+        var listaEl = document.getElementById('lista' + baseId);
+
+        if (infoEl) {
+            if (archivos.length === 0) {
+                infoEl.textContent = '';
+            } else {
+                infoEl.textContent = archivos.length === 1
+                    ? '1 archivo seleccionado'
+                    : archivos.length + ' archivos seleccionados';
+            }
+        }
+
+        if (!listaEl) {
+            return;
+        }
+
+        listaEl.innerHTML = '';
+
+        if (archivos.length === 0) {
+            var vacio = document.createElement('li');
+            vacio.className = 'text-muted';
+            vacio.textContent = 'Sin archivos seleccionados.';
+            listaEl.appendChild(vacio);
+            return;
+        }
+
+        archivos.forEach(function (archivo, index) {
+            var li = document.createElement('li');
+            li.textContent = (index + 1) + '. ' + archivo.name + ' (' + formatearTamanoArchivo(archivo.size) + ')';
+            listaEl.appendChild(li);
+        });
+    }
+
+    function asignarArchivosInput(idInput, archivos) {
+        var input = document.getElementById(idInput);
+        if (!input || input.disabled || !archivos || archivos.length === 0) {
+            return;
+        }
+
+        if (typeof DataTransfer === 'undefined') {
+            abrirSelectorArchivos(idInput);
+            return;
+        }
+
+        var dt = new DataTransfer();
+        for (var i = 0; i < archivos.length; i++) {
+            dt.items.add(archivos[i]);
+        }
+
+        input.files = dt.files;
+        validarArchivo(idInput);
+    }
+
+    function inicializarDropzoneCarga(idInput, idDropzone) {
+        var input = document.getElementById(idInput);
+        var dropzone = document.getElementById(idDropzone);
+
+        if (!input || !dropzone) {
+            return;
+        }
+
+        ['dragenter', 'dragover'].forEach(function (evt) {
+            dropzone.addEventListener(evt, function (e) {
+                e.preventDefault();
+                e.stopPropagation();
+                if (!input.disabled) {
+                    dropzone.classList.add('drag-active');
+                }
+            });
+        });
+
+        ['dragleave', 'dragend', 'drop'].forEach(function (evt) {
+            dropzone.addEventListener(evt, function (e) {
+                e.preventDefault();
+                e.stopPropagation();
+                dropzone.classList.remove('drag-active');
+            });
+        });
+
+        dropzone.addEventListener('drop', function (e) {
+            if (input.disabled) {
+                return;
+            }
+
+            var archivos = e.dataTransfer ? e.dataTransfer.files : null;
+            if (!archivos || archivos.length === 0) {
+                return;
+            }
+
+            asignarArchivosInput(idInput, archivos);
+        });
+    }
+
     //Funcion que activa o desactiva el campo de captura de pantalla
     function validarArchivo(idInput) {
         const input = document.getElementById(idInput);
         if (!input) return false;
         const archivos = Array.from(input.files || []);
 
-        if (archivos.length === 0) return true;
+        if (archivos.length === 0) {
+            actualizarResumenArchivos(idInput);
+            return true;
+        }
 
         const tamanoMaximo = 10 * 1024 * 1024; // 10 MB en bytes
         const acceptAttr = (input.getAttribute('accept') || '').toLowerCase().split(',').map(s => s.trim()).filter(Boolean);
@@ -1224,8 +1435,7 @@
                     confirmButtonText: 'OK'
                 });
                 input.value = '';
-                var infoEl = document.getElementById('info' + idInput.charAt(0).toUpperCase() + idInput.slice(1));
-                if (infoEl) infoEl.textContent = '';
+                actualizarResumenArchivos(idInput);
                 return false;
             }
             if (acceptAttr.length > 0) {
@@ -1239,17 +1449,13 @@
                         confirmButtonText: 'OK'
                     });
                     input.value = '';
+                    actualizarResumenArchivos(idInput);
                     return false;
                 }
             }
         }
 
-        // Mostrar contador si hay múltiples archivos
-        var infoId = 'info' + idInput.charAt(0).toUpperCase() + idInput.slice(1);
-        var infoEl = document.getElementById(infoId);
-        if (infoEl) {
-            infoEl.textContent = archivos.length > 1 ? archivos.length + ' archivos seleccionados' : '';
-        }
+        actualizarResumenArchivos(idInput);
 
         return true;
     }
@@ -1263,6 +1469,7 @@
             inputArchivo.disabled = true;
             inputArchivo.required = false;
             divCaptura.style.display = 'block';
+            actualizarResumenArchivos(idArchivoPdf);
         } else {
             inputArchivo.disabled = false;
             inputArchivo.required = true;
