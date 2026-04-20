@@ -74,7 +74,7 @@ namespace CapaPresentacion.Services
                         ? "(@fechaDesde IS NULL OR " + fechaFiltroCol + " >= @fechaDesde)"
                         : "(@fechaDesde IS NULL)";
                     var filtroFechaHasta = fechaFiltroCol != null
-                        ? "(@fechaHasta IS NULL OR " + fechaFiltroCol + " < (@fechaHasta + INTERVAL '1 day'))"
+                        ? "(@fechaHasta IS NULL OR " + fechaFiltroCol + "::date <= @fechaHasta::date)"
                         : "(@fechaHasta IS NULL)";
 
                     string filtroCompania;

@@ -392,12 +392,17 @@ namespace CapaPresentacion.Controllers
                     try
                     {
                         var companiasHtml = ConstruirCompaniasHtmlCorreo(companiasDeclaracion);
-                        var asuntoDecl = "Declaración de responsabilidad aceptada - Sistema AOCR";
+                        var asuntoDecl = RtCorreoTextoHelper.GetAsuntoDeclaracionAceptada();
+                        var textoDeclaracionCorreo = RtCorreoTextoHelper.GetTextoDeclaracionAceptada(new Dictionary<string, string>
+                        {
+                            { "NOMBRE", nombreCompletoUsuario },
+                            { "SOLICITUD", solicitudId.ToString() }
+                        });
                         var modelDecl = new EmailTemplateModel
                         {
                             Titulo = "Declaracion de responsabilidad aceptada",
                             NombreDestinatario = nombreCompletoUsuario,
-                            MensajePrincipal = "Hemos registrado la aceptacion de su declaracion de responsabilidad RT.",
+                            MensajePrincipal = textoDeclaracionCorreo,
                             Resumen = new List<EmailFieldItem>
                             {
                                 new EmailFieldItem("Tramite", "Solicitud RT #" + solicitudId),
@@ -501,13 +506,18 @@ namespace CapaPresentacion.Controllers
                 }
 
                 // 6. Enviar correo informativo: la cuenta fue creada, las credenciales llegarán al aprobar RT
-                var asunto = "Cuenta creada - Sistema AOCR (pendiente de aprobación)";
+                var asunto = RtCorreoTextoHelper.GetAsuntoDesignacionPendiente();
+                var textoDesignacionPendiente = RtCorreoTextoHelper.GetTextoDesignacionPendiente(new Dictionary<string, string>
+                {
+                    { "NOMBRE", string.Format("{0} {1}", nombres, apellidos).Trim() },
+                    { "IDENTIFICACION", identificacionFinal ?? string.Empty },
+                    { "CORREO", correo ?? string.Empty }
+                });
                 var cuerpo = EmailTemplateRenderer.Render(new EmailTemplateModel
                 {
                     Titulo = "Cuenta creada — pendiente de aprobación",
                     NombreDestinatario = $"{nombres} {apellidos}",
-                    MensajePrincipal = "Su cuenta en el Sistema AOCR ha sido creada exitosamente. "
-                        + "Su solicitud de designación como Responsable Técnico (RT) se encuentra en proceso de revisión y aprobación por la DGAC.",
+                    MensajePrincipal = textoDesignacionPendiente,
                     Resumen = new List<EmailFieldItem>
                     {
                         new EmailFieldItem("Identificación", identificacionFinal),
@@ -1754,6 +1764,43 @@ namespace CapaPresentacion.Controllers
                 return RedirectToAction("RevisarDesignaciones");
             }
             UsuarioDAO.RechazarDesignacionRT(id);
+            try
+            {
+                if (!string.IsNullOrWhiteSpace(usuario.Email))
+                {
+                    var asunto = RtCorreoTextoHelper.GetAsuntoDevolucionRt();
+                    var textoDevolucion = RtCorreoTextoHelper.GetTextoDevolucionRt(new Dictionary<string, string>
+                    {
+                        { "NOMBRE", usuario.NombreCompleto ?? string.Empty },
+                        { "USUARIO", usuario.CodigoUsuario ?? string.Empty }
+                    });
+
+                    var cuerpo = EmailTemplateRenderer.Render(new EmailTemplateModel
+                    {
+                        Titulo = "Designacion RT devuelta",
+                        NombreDestinatario = usuario.NombreCompleto,
+                        MensajePrincipal = textoDevolucion,
+                        Resumen = new List<EmailFieldItem>
+                        {
+                            new EmailFieldItem("Usuario", usuario.CodigoUsuario ?? string.Empty),
+                            new EmailFieldItem("Estado", "Devuelta para correccion")
+                        },
+                        TextoCierre = "Puede actualizar sus documentos en el sistema y reenviar su designacion RT para nueva revision.",
+                        Footer = "Este es un correo automatico, por favor no responder."
+                    });
+
+                    var servicioCorreo = new EnviarCorreo();
+                    servicioCorreo.enviaMensajeCorreo(usuario.Email, asunto, cuerpo);
+                }
+            }
+            catch (Exception exCorreo)
+            {
+                LogBL.RegistrarError(
+                    "No se pudo enviar correo de devolucion RT.",
+                    exCorreo.ToString(),
+                    "UsuarioController");
+            }
+
             TempData["msg"] = "Designación rechazada.";
             return RedirectToAction("RevisarDesignaciones");
         }

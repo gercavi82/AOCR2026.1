@@ -91,6 +91,7 @@
     };
     var esAdministrador = usuarioTieneRol("Administrador");
     var esInspector = usuarioTieneRol("Inspector");
+    var esCoordinadorRevision = esAdministrador || usuarioTieneAlgunRol(new[] { "CoordinadorInspecciones", "Coordinador" });
     var puedeGestionarCoordinacion = esAdministrador || usuarioTieneAlgunRol(rolesCoordinacionJefatura);
     var puedeGestionarInspector = esAdministrador || esInspector;
     var puedeVerificacion = puedeGestionarCoordinacion && transicionPermitida(EstadosInspeccion.VERIFICACION_SOLICITUD);
@@ -131,21 +132,49 @@
     var puedeValidarViaticos = User.IsInRole("CoordinadorFinanciero") || User.IsInRole("DirectorFinanciero") || User.IsInRole("Administrador");
     var puedeRegistrarResultado = esInspector || puedeGestionarCoordinacion;
     var puedeRegistrarHallazgo = User.IsInRole("Inspector") || User.IsInRole("Administrador");
-    var puedeEditarInformeTecnico = esInspector || puedeGestionarCoordinacion;
+    var puedeEditarInformeTecnico = esInspector || esAdministrador;
     var puedeSubirCorreccionSolicitante = User.IsInRole("Solicitante") || User.IsInRole("Administrador");
     var esSolicitante = User.IsInRole("Solicitante");
     var esDirdac = esAdministrador || usuarioTieneAlgunRol(new[] { "DIRDAC", "Direccion", "Director", "JefaturaTecnica", "Jefe" });
     var estadoInformeTecnico = informeTecnico != null && !string.IsNullOrWhiteSpace(informeTecnico.EstadoInforme)
         ? informeTecnico.EstadoInforme
         : (informeTecnico != null && informeTecnico.Finalizado ? "GENERADO" : "BORRADOR");
-    var puedeFirmarInspector = puedeEditarInformeTecnico && informeTecnico != null && informeTecnico.Finalizado && !informeTecnico.FirmadoInspector;
+    var puedeFirmarInspector = puedeEditarInformeTecnico
+        && informeTecnico != null
+        && informeTecnico.Finalizado
+        && !informeTecnico.FirmadoInspector
+        && (string.Equals(estadoInformeTecnico, "APROBADO_COORDINADOR", System.StringComparison.OrdinalIgnoreCase)
+            || string.Equals(estadoInformeTecnico, "APROBADO_DIRECCION", System.StringComparison.OrdinalIgnoreCase));
     var informeEnviadoADirdac = informeTecnico != null && string.Equals(estadoInformeTecnico, "ENVIADO_A_DIRDAC", System.StringComparison.OrdinalIgnoreCase);
     var informeEnviadoACoordinador = informeTecnico != null && string.Equals(estadoInformeTecnico, "ENVIADO_A_COORDINADOR", System.StringComparison.OrdinalIgnoreCase);
     var informeDevueltoCoordinador = informeTecnico != null && string.Equals(estadoInformeTecnico, "DEVUELTO_COORDINADOR", System.StringComparison.OrdinalIgnoreCase);
+    var informeDevueltoDireccion = informeTecnico != null
+        && (string.Equals(estadoInformeTecnico, "DEVUELTO_DIRECCION", System.StringComparison.OrdinalIgnoreCase)
+            || string.Equals(estadoInformeTecnico, "RECHAZADO_DIRDAC", System.StringComparison.OrdinalIgnoreCase));
+    var informeAprobadoDireccion = informeTecnico != null
+        && (string.Equals(estadoInformeTecnico, "APROBADO_COORDINADOR", System.StringComparison.OrdinalIgnoreCase)
+            || string.Equals(estadoInformeTecnico, "APROBADO_DIRECCION", System.StringComparison.OrdinalIgnoreCase)
+            || string.Equals(estadoInformeTecnico, "FIRMADO_FINAL", System.StringComparison.OrdinalIgnoreCase)
+            || informeTecnico.FirmadoDirdac);
     var notificacionFormalDirdac = informeTecnico != null && informeEnviadoADirdac && informeTecnico.CorreoEnviado;
-    var puedeEnviarADirdac = puedeEditarInformeTecnico && informeTecnico != null && informeTecnico.Finalizado && informeTecnico.FirmadoInspector && !informeEnviadoADirdac && !informeEnviadoACoordinador && !informeTecnico.FirmadoDirdac;
-    var puedeReintentarNotificacionDirdac = puedeEditarInformeTecnico && informeTecnico != null && informeTecnico.Finalizado && informeTecnico.FirmadoInspector && informeEnviadoADirdac && !notificacionFormalDirdac && !informeTecnico.FirmadoDirdac;
-    var puedeFirmarDirdac = esDirdac && informeTecnico != null && informeTecnico.FirmadoInspector && !informeTecnico.FirmadoDirdac && string.Equals(estadoInformeTecnico, "ENVIADO_A_DIRDAC", System.StringComparison.OrdinalIgnoreCase);
+    var puedeEnviarADirdac = puedeEditarInformeTecnico
+        && informeTecnico != null
+        && informeTecnico.Finalizado
+        && !informeTecnico.FirmadoInspector
+        && !informeEnviadoADirdac
+        && !informeEnviadoACoordinador
+        && !informeAprobadoDireccion;
+    var puedeReintentarNotificacionDirdac = (puedeGestionarCoordinacion || esAdministrador)
+        && informeTecnico != null
+        && informeTecnico.Finalizado
+        && !informeTecnico.FirmadoInspector
+        && informeEnviadoADirdac
+        && !notificacionFormalDirdac
+        && !informeAprobadoDireccion;
+    var puedeFirmarDirdac = esDirdac
+        && informeTecnico != null
+        && !informeAprobadoDireccion
+        && string.Equals(estadoInformeTecnico, "ENVIADO_A_DIRDAC", System.StringComparison.OrdinalIgnoreCase);
     var correoSolicitante = solicitud != null && !string.IsNullOrWhiteSpace(solicitud.CorreoRepresentanteTecnico)
         ? solicitud.CorreoRepresentanteTecnico
         : (solicitud != null ? solicitud.Email : "-");
@@ -1322,7 +1351,7 @@
                                     <span class="hero-metric-value">@(informeTecnico != null ? informeTecnico.Version.ToString() : "0")</span>
                                 </div>
                                 <div class="hero-metric">
-                                    <span class="hero-metric-label">DIRDAC formalmente notificado</span>
+                                    <span class="hero-metric-label">Dirección/Jefatura notificada</span>
                                     <span class="hero-metric-value">@(informeTecnico == null ? "NO" : (notificacionFormalDirdac ? "SI" : (informeEnviadoADirdac ? "PENDIENTE" : "NO")))</span>
                                 </div>
                             </div>
@@ -1760,7 +1789,7 @@
                         </div>
                         <div>
                             <h2 class="section-title">Informe tecnico</h2>
-                            <p class="section-copy">Redacción estructurada del informe, generación automática del PDF y flujo formal de firma digital hasta DIRDAC.</p>
+                            <p class="section-copy">Redacción estructurada del informe, generación automática del PDF y flujo de revisión institucional por roles.</p>
                         </div>
                     </div>
 
@@ -2026,18 +2055,21 @@
                         <div class="alert alert-light alert-inline mb-3">Aún no hay informe cargado para esta inspección.</div>
                     }
 
-                    <div class="alert alert-light alert-inline mb-0" style="font-size:0.88rem;">
-                        La firma digital se inserta automáticamente en el bloque correspondiente según el rol del firmante.
-                    </div>
-
-                    @if (informeTecnico != null)
+                    @if (informeTecnico != null && (esInspector || esAdministrador))
                     {
-                        @* Bloque de firma del inspector (estado + formulario + envío a Dirección) *@
+                        <div class="alert alert-light alert-inline mb-0" style="font-size:0.88rem;">
+                            La firma digital del inspector se habilita despues de la revisión DIRDAC y la aprobación de Coordinación.
+                        </div>
+
+                        @* Bloque operativo del inspector (firma + correcciones + reenvio) *@
                         ViewBag.CodigoInspeccion = Model.CodigoInspeccion;
                         ViewBag.PuedeFirmarInspector = puedeFirmarInspector;
                         ViewBag.PuedeEnviarADirdac = puedeEnviarADirdac;
                         ViewBag.PuedeReintentarNotificacionDirdac = puedeReintentarNotificacionDirdac;
                         ViewBag.InformeEnviadoADirdac = informeEnviadoADirdac;
+                        ViewBag.InformeDevueltoCoordinador = informeDevueltoCoordinador;
+                        ViewBag.InformeDevueltoDireccion = informeDevueltoDireccion;
+                        ViewBag.InformeAprobadoDireccion = informeAprobadoDireccion;
                         ViewBag.EstadoInformeTecnico = estadoInformeTecnico;
                         @Html.Partial("_FirmaInspectorPanel")
                     }
@@ -2051,7 +2083,7 @@
            ══════════════════════════════════════════════════════════════ *@
         @{
             ViewBag.CodigoInspeccion = Model.CodigoInspeccion;
-            ViewBag.EsCoordinador = puedeGestionarCoordinacion;
+            ViewBag.EsCoordinador = esCoordinadorRevision;
             ViewBag.EstadoInformeTecnico = estadoInformeTecnico;
             ViewBag.RutaInformeVisual = rutaInformeVisual;
         }
@@ -2059,9 +2091,8 @@
 
         @* ══════════════════════════════════════════════════════════════
            SECCIÓN: DIRECCIÓN / JEFATURA
-           Bloque dedicado a la firma DIRDAC, trazabilidad y bandeja.
-           Se muestra cuando hay informe con firma de inspector o
-           cuando el usuario tiene rol de Dirección.
+           Bloque dedicado a la revision institucional del informe tecnico.
+           Solo se muestra para roles de Direccion/Jefatura.
            ══════════════════════════════════════════════════════════════ *@
         @{
             ViewBag.CodigoInspeccion = Model.CodigoInspeccion;
@@ -2070,6 +2101,8 @@
             ViewBag.EsSolicitante = esSolicitante;
             ViewBag.PuedeFirmarDirdac = puedeFirmarDirdac;
             ViewBag.InformeEnviadoADirdac = informeEnviadoADirdac;
+            ViewBag.InformeAprobadoDireccion = informeAprobadoDireccion;
+            ViewBag.InformeDevueltoDireccion = informeDevueltoDireccion;
             ViewBag.NotificacionFormalDirdac = notificacionFormalDirdac;
             ViewBag.EstadoInformeTecnico = estadoInformeTecnico;
             ViewBag.RutaInformeVisual = rutaInformeVisual;

@@ -153,10 +153,12 @@ namespace CapaDatos.DAOs
                     continue;
                 }
 
+                var estadoInforme = NormalizarTexto(informe.EstadoInforme);
+
                 SolicitudAOCR solicitud;
                 solicitudes.TryGetValue(inspeccion.CodigoSolicitud, out solicitud);
 
-                if (!informe.FirmadoInspector)
+                if (!informe.FirmadoInspector && string.Equals(estadoInforme, "APROBADO_COORDINADOR", StringComparison.OrdinalIgnoreCase))
                 {
                     items.Add(new DashboardInspeccionFirmaData
                     {
@@ -172,7 +174,7 @@ namespace CapaDatos.DAOs
                     });
                 }
 
-                if (informe.FirmadoInspector && !informe.FirmadoDirdac)
+                if (string.Equals(estadoInforme, "ENVIADO_A_DIRDAC", StringComparison.OrdinalIgnoreCase))
                 {
                     items.Add(new DashboardInspeccionFirmaData
                     {
@@ -182,7 +184,7 @@ namespace CapaDatos.DAOs
                         Compania = ObtenerNombreCompania(solicitud),
                         Documento = !string.IsNullOrWhiteSpace(informe.Titulo) ? informe.Titulo : "Informe técnico de inspección",
                         FirmanteRequerido = "DIRDAC",
-                        Estado = "PENDIENTE_FIRMA_DIRDAC",
+                        Estado = "PENDIENTE_REVISION_DIRDAC",
                         FechaEnvio = informe.FechaEnvioDirdac ?? informe.UpdatedAt ?? informe.FechaFinalizacion ?? inspeccion.UpdatedAt ?? inspeccion.CreatedAt,
                         InspectorAsignado = ObtenerInspectorAsignado(inspeccion, solicitud)
                     });

@@ -8,6 +8,7 @@ if (args.Length < 1 || string.IsNullOrWhiteSpace(args[0]))
 }
 
 var connectionString = args[0];
+var sqlFilePath = args.Length > 1 ? args[1] : null;
 var tables = new[]
 {
     "aocr_tbaeronave_solicitud",
@@ -22,6 +23,12 @@ try
 {
     await using var cn = new NpgsqlConnection(connectionString);
     await cn.OpenAsync();
+
+    if (!string.IsNullOrWhiteSpace(sqlFilePath))
+    {
+        await ExecuteSqlFileAsync(cn, sqlFilePath);
+        return;
+    }
 
     Console.WriteLine("=== CONTEXTO ===");
     await using (var cmdCtx = new NpgsqlCommand("SHOW search_path;", cn))
@@ -61,6 +68,63 @@ catch (Exception ex)
 {
     Console.Error.WriteLine("ERROR: " + ex.GetType().Name + " - " + ex.Message);
     Environment.ExitCode = 1;
+}
+
+static async Task ExecuteSqlFileAsync(NpgsqlConnection cn, string sqlFilePath)
+{
+    if (!File.Exists(sqlFilePath))
+    {
+        throw new FileNotFoundException("No existe el archivo SQL.", sqlFilePath);
+    }
+
+    var sql = await File.ReadAllTextAsync(sqlFilePath);
+    await using var cmd = new NpgsqlCommand(sql, cn);
+    await using var reader = await cmd.ExecuteReaderAsync();
+
+    var resultSet = 1;
+    do
+    {
+        Console.WriteLine();
+        Console.WriteLine("=== RESULTSET " + resultSet + " ===");
+
+        var colCount = reader.FieldCount;
+        if (colCount <= 0)
+        {
+            Console.WriteLine("(sin columnas)");
+        }
+        else
+        {
+            var headers = new string[colCount];
+            for (var i = 0; i < colCount; i++)
+            {
+                headers[i] = reader.GetName(i);
+            }
+
+            Console.WriteLine(string.Join(" | ", headers));
+
+            var rows = 0;
+            while (await reader.ReadAsync())
+            {
+                var values = new string[colCount];
+                for (var i = 0; i < colCount; i++)
+                {
+                    values[i] = reader.IsDBNull(i) ? "<null>" : Convert.ToString(reader.GetValue(i));
+                }
+
+                if (rows < 40)
+                {
+                    Console.WriteLine(string.Join(" | ", values));
+                }
+
+                rows++;
+            }
+
+            Console.WriteLine("(filas totales: " + rows + ")");
+        }
+
+        resultSet++;
+    }
+    while (await reader.NextResultAsync());
 }
 
 static async Task PrintTableAsync(NpgsqlConnection cn, string table)

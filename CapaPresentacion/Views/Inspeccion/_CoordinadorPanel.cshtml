@@ -1,4 +1,4 @@
-@* Partial: Sección del Coordinador — revisión de solo lectura, aprobación o devolución *@
+@* Partial: Seccion del Coordinador - revision de solo lectura, aprobacion o devolucion *@
 @{
     var informeTecnico = ViewBag.InformeTecnico as CapaModelo.InspeccionInformeTecnico;
     var codigoInspeccion = (int)ViewBag.CodigoInspeccion;
@@ -8,7 +8,11 @@
     var tieneInforme = !string.IsNullOrWhiteSpace(rutaInformeVisual);
 
     var enviadoACoordinador = string.Equals(estadoInformeTecnico, "ENVIADO_A_COORDINADOR", StringComparison.OrdinalIgnoreCase);
-    var puedeRevisarCoordinador = esCoordinador && informeTecnico != null && informeTecnico.FirmadoInspector && enviadoACoordinador;
+    var aprobadoCoordinacion = string.Equals(estadoInformeTecnico, "APROBADO_COORDINADOR", StringComparison.OrdinalIgnoreCase)
+        || string.Equals(estadoInformeTecnico, "APROBADO_DIRECCION", StringComparison.OrdinalIgnoreCase)
+        || string.Equals(estadoInformeTecnico, "FIRMADO_FINAL", StringComparison.OrdinalIgnoreCase)
+        || (informeTecnico != null && informeTecnico.FirmadoDirdac);
+    var puedeRevisarCoordinador = esCoordinador && informeTecnico != null && enviadoACoordinador;
 }
 
 @if ((puedeRevisarCoordinador || esCoordinador) && informeTecnico != null)
@@ -20,8 +24,8 @@
                 <i class="fas fa-user-tie"></i>
             </div>
             <div>
-                <h2 class="section-title">Coordinador — Revisión del Informe</h2>
-                <p class="section-copy">Revisión de solo lectura. El coordinador puede aprobar y reenviar al Director General, o devolver al inspector con argumentos.</p>
+                <h2 class="section-title">Coordinador - Revision del Informe</h2>
+                <p class="section-copy">Revision de solo lectura. Coordinacion puede aprobar y habilitar la firma final del inspector, o devolver con observacion obligatoria.</p>
             </div>
         </div>
 
@@ -29,8 +33,8 @@
         {
             <div class="alert mb-3" style="background:#d1ecf1; border-left:4px solid #17a2b8; color:#0c5460; font-size:0.9rem;">
                 <i class="fas fa-clipboard-check me-1"></i>
-                <strong>Pendiente de revisión del coordinador.</strong>
-                El informe técnico fue enviado por el inspector para su revisión. No se permiten ediciones — solo aprobar o devolver.
+                <strong>Pendiente de revision de Coordinacion.</strong>
+                El informe tecnico fue revisado por DIRDAC / Direccion - Jefatura y enviado a Coordinacion. No se permiten ediciones: solo aprobar o devolver.
             </div>
         }
         else if (string.Equals(estadoInformeTecnico, "DEVUELTO_COORDINADOR", StringComparison.OrdinalIgnoreCase))
@@ -38,23 +42,22 @@
             <div class="alert mb-3" style="background:#f8d7da; border-left:4px solid #dc3545; color:#721c24; font-size:0.9rem;">
                 <i class="fas fa-undo me-1"></i>
                 <strong>Informe devuelto al inspector.</strong>
-                El coordinador devolvió el informe con argumentos. Pendiente de respuesta del inspector.
+                Coordinacion devolvio el informe con observaciones. Pendiente de correccion y reenvio del inspector.
             </div>
         }
-        else if (string.Equals(estadoInformeTecnico, "ENVIADO_A_DIRDAC", StringComparison.OrdinalIgnoreCase) ||
-                 informeTecnico.FirmadoDirdac)
+        else if (aprobadoCoordinacion)
         {
             <div class="alert mb-3" style="background:#d1e7dd; border-left:4px solid #198754; color:#0a3622; font-size:0.9rem;">
                 <i class="fas fa-check-circle me-1"></i>
-                <strong>Informe aprobado por coordinador.</strong>
-                El informe fue aprobado y reenviado al Director General para firma.
+                <strong>Informe aprobado por Coordinacion.</strong>
+                El informe fue aprobado y devuelto al inspector para aplicar la firma final.
             </div>
         }
         else
         {
             <div class="alert mb-3" style="background:#e2e3e5; border-left:4px solid #6c757d; color:#41464b; font-size:0.9rem;">
                 <i class="fas fa-info-circle me-1"></i>
-                El informe técnico aún no ha llegado a la etapa de revisión del coordinador.
+                El informe tecnico aun no ha llegado a la etapa de revision de Coordinacion.
             </div>
         }
 
@@ -74,15 +77,15 @@
         {
             <div class="mt-3 p-3" style="background:#e8f4f8; border:1px solid #b8daff; border-radius:8px;" id="panelDecisionCoordinador">
                 <h6 style="margin:0 0 12px 0; color:#17a2b8; font-weight:600;">
-                    <i class="fas fa-clipboard-check me-1"></i> Decisión del Coordinador
+                    <i class="fas fa-clipboard-check me-1"></i> Decision de Coordinacion
                 </h6>
 
                 <div class="mb-3" id="decisionCoordBtns">
                     <p style="font-size:0.88rem; color:#555; margin-bottom:10px;">
-                        Revise el informe técnico y seleccione una acción. <strong>No puede editarlo.</strong>
+                        Revise el informe tecnico y seleccione una accion. <strong>No puede editarlo.</strong>
                     </p>
                     <button type="button" class="btn btn-success me-2" onclick="document.getElementById('formAprobCoord').style.display='block'; this.parentElement.style.display='none';">
-                        <i class="fas fa-check-circle me-1"></i> Aprobar y enviar a Director General
+                        <i class="fas fa-check-circle me-1"></i> Aprobar y devolver al inspector para firma
                     </button>
                     <button type="button" class="btn btn-outline-warning" onclick="document.getElementById('formDevolCoord').style.display='block'; this.parentElement.parentElement.querySelector('#decisionCoordBtns').style.display='none';">
                         <i class="fas fa-undo me-1"></i> Devolver al inspector
@@ -94,9 +97,9 @@
                     {
                         @Html.AntiForgeryToken()
                         @Html.Hidden("id", codigoInspeccion)
-                        <p style="font-size:0.88rem; margin-bottom:8px;">¿Confirma aprobar el informe y reenviarlo al Director General?</p>
+                        <p style="font-size:0.88rem; margin-bottom:8px;">Confirma aprobar el informe y habilitar la firma final del inspector?</p>
                         <button type="submit" class="btn btn-success me-2">
-                            <i class="fas fa-paper-plane me-1"></i> Confirmar envío a Director General
+                            <i class="fas fa-check me-1"></i> Confirmar aprobacion
                         </button>
                         <button type="button" class="btn btn-outline-secondary" onclick="document.getElementById('formAprobCoord').style.display='none'; document.getElementById('decisionCoordBtns').style.display='block';">Cancelar</button>
                     }
@@ -108,12 +111,12 @@
                         @Html.AntiForgeryToken()
                         @Html.Hidden("id", codigoInspeccion)
                         <div class="form-field mb-2">
-                            <label style="font-weight:600; font-size:0.88rem;">Argumentos de devolución <span class="text-danger">*</span></label>
+                            <label style="font-weight:600; font-size:0.88rem;">Observacion de devolucion <span class="text-danger">*</span></label>
                             <textarea name="observacionDevolucion" class="form-control" rows="3" required
-                                      placeholder="Indique los argumentos por los cuales devuelve el informe al inspector..."></textarea>
+                                      placeholder="Indique la observacion por la cual devuelve el informe al inspector..."></textarea>
                         </div>
                         <button type="submit" class="btn btn-warning me-2">
-                            <i class="fas fa-undo me-1"></i> Confirmar devolución
+                            <i class="fas fa-undo me-1"></i> Confirmar devolucion
                         </button>
                         <button type="button" class="btn btn-outline-secondary" onclick="document.getElementById('formDevolCoord').style.display='none'; document.getElementById('decisionCoordBtns').style.display='block';">Cancelar</button>
                     }
@@ -125,14 +128,14 @@
         {
             <div class="mt-3 p-3" style="background:#fff8e8; border:1px solid #ffc107; border-radius:8px;">
                 <h6 style="margin:0 0 8px 0; color:#856404; font-weight:600;">
-                    <i class="fas fa-comment-dots me-1"></i> Última observación de devolución
+                    <i class="fas fa-comment-dots me-1"></i> Ultima observacion de devolucion
                 </h6>
                 <p style="font-size:0.9rem; margin:0;">@informeTecnico.ObservacionDevolucion</p>
                 @if (informeTecnico.FechaDevolucion.HasValue)
                 {
                     <small class="text-muted">
                         @informeTecnico.FechaDevolucion.Value.ToString("dd/MM/yyyy HH:mm")
-                        @(!string.IsNullOrWhiteSpace(informeTecnico.UsuarioDevolucion) ? " — " + informeTecnico.UsuarioDevolucion : "")
+                        @(!string.IsNullOrWhiteSpace(informeTecnico.UsuarioDevolucion) ? " - " + informeTecnico.UsuarioDevolucion : "")
                     </small>
                 }
             </div>

@@ -2,12 +2,12 @@
 @using System.Linq
 @{
     Layout = "~/Views/Shared/_LayoutAOCR.cshtml";
-    ViewBag.Title = ViewBag.Title ?? "Generar Certificados";
+    ViewBag.Title = ViewBag.Title ?? "Generar Certificados AOCR";
 }
 
 <div class="container-fluid py-3">
     <h3 class="mb-3"><i class="fas fa-file-signature"></i> @ViewBag.Title</h3>
-    <p class="text-muted">Solicitudes en fase final para generación/gestión de certificado AOCR.</p>
+    <p class="text-muted">Solicitudes en fase final para emisión de certificados AOCR legalizados.</p>
 
     @if (Model == null || !Model.Any())
     {

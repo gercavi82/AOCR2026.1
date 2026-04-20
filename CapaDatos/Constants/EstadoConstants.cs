@@ -249,13 +249,19 @@ namespace CapaDatos.Constants
                 case "AOCR_EN_ELABORACION":
                     return AOCR_EnElaboracion;
                 case "AOCR_EN_REVISION":
+                case "EN REVISION AOCR":
                 case "ENVIADO_A_JEFATURA":
+                case "ENVIADO A JEFATURA":
                     return AOCR_EnRevision;
                 case "APROBADO":
                 case "APROBADO_POR_DIRECCION":
                     return Aprobada;
+                case "VALIDADO":
+                    return AOCR_Validado;
                 case "VALIDADO_TECNICAMENTE":
+                case "VALIDADO TECNICAMENTE":
                 case "ENVIADO_A_LEGALIZACION":
+                case "ENVIADO A LEGALIZACION":
                 case "AOCR_VALIDADO":
                     return AOCR_Validado;
                 case "LEGALIZADO":

@@ -1670,6 +1670,7 @@ namespace CapaPresentacion.Controllers
             return View(solicitudes);
         }
 
+        [Authorize(Roles = "Coordinador,CoordinadorInspecciones,Administrador")]
         public ActionResult RevisarSolicitudes()
         {
             // Si no hay en ENVIADO_A_INSPECTOR, mostramos otros estados pendientes
@@ -1687,7 +1688,7 @@ namespace CapaPresentacion.Controllers
         }
 
         [HttpPost]
-        [Authorize(Roles = "Inspector")]
+        [Authorize(Roles = "Coordinador,CoordinadorInspecciones,Administrador")]
         [ValidateAntiForgeryToken]
         public ActionResult Aprobar(string id)
         {
@@ -1726,7 +1727,7 @@ namespace CapaPresentacion.Controllers
         }
 
         [HttpPost]
-        [Authorize(Roles = "Inspector")]
+        [Authorize(Roles = "Coordinador,CoordinadorInspecciones,Administrador")]
         [ValidateAntiForgeryToken]
         public ActionResult Observar(string id, string observacion)
         {
@@ -1767,7 +1768,7 @@ namespace CapaPresentacion.Controllers
         }
 
         [HttpPost]
-        [Authorize(Roles = "Inspector,Administrador")]
+        [Authorize(Roles = "Coordinador,CoordinadorInspecciones,Administrador")]
         [ValidateAntiForgeryToken]
         public ActionResult RevisarDocumentoItem(int id, int codigoDocumento, string decision, string observacion)
         {
@@ -1834,7 +1835,7 @@ namespace CapaPresentacion.Controllers
         }
 
         [HttpPost]
-        [Authorize(Roles = "Inspector,Administrador")]
+        [Authorize(Roles = "Coordinador,CoordinadorInspecciones,Administrador")]
         [ValidateAntiForgeryToken]
         public ActionResult AccionMasivaRevisionDocumental(int id, string tipoAccion, string revisionesJson, string observacionCoordinador)
         {
@@ -2040,7 +2041,7 @@ namespace CapaPresentacion.Controllers
         }
 
         [HttpPost]
-        [Authorize(Roles = "Inspector,Administrador")]
+        [Authorize(Roles = "Coordinador,CoordinadorInspecciones,Administrador")]
         [ValidateAntiForgeryToken]
         public ActionResult FinalizarRevisionDocumental(int id)
         {
@@ -2158,12 +2159,10 @@ namespace CapaPresentacion.Controllers
         {
             return User.IsInRole("Administrador")
                 || User.IsInRole("Coordinador")
-                || User.IsInRole("CoordinadorInspecciones")
-                || User.IsInRole("Direccion")
-                || User.IsInRole("JefaturaTecnica");
+                || User.IsInRole("CoordinadorInspecciones");
         }
 
-        [Authorize(Roles = "JefaturaTecnica")]
+        [Authorize(Roles = "DIRDAC,Direccion,JefaturaTecnica,DirectorGeneral,Administrador")]
         public ActionResult RevisarPorJefatura()
         {
             var pendientes = _solicitudDAO.ObtenerPorEstados("ENVIADO_A_JEFATURA", EstadoSolicitud.AOCR_EnRevision, EstadoSolicitud.AOCR_EnElaboracion);
@@ -2171,23 +2170,23 @@ namespace CapaPresentacion.Controllers
         }
 
         [HttpPost]
-        [Authorize(Roles = "JefaturaTecnica")]
+        [Authorize(Roles = "DIRDAC,Direccion,JefaturaTecnica,DirectorGeneral,Administrador")]
         [ValidateAntiForgeryToken]
         public ActionResult AprobarPorJefatura(int id)
         {
             string mensajeCambio;
-            if (!CambiarEstadoConReglasAocr(id, EstadoSolicitud.AOCR_Validado, "Aprobado por Jefatura Técnica", out mensajeCambio))
+            if (!CambiarEstadoConReglasAocr(id, EstadoSolicitud.AOCR_Validado, "Validado por Dirección / Jefatura", out mensajeCambio))
             {
                 TempData["Error"] = mensajeCambio;
                 return RedirectToAction("RevisarPorJefatura");
             }
 
-            TempData["Exito"] = "La solicitud ha sido validada técnicamente.";
+            TempData["Exito"] = "La solicitud ha sido validada institucionalmente.";
             return RedirectToAction("RevisarPorJefatura");
         }
 
         [HttpPost]
-        [Authorize(Roles = "JefaturaTecnica")]
+        [Authorize(Roles = "DIRDAC,Direccion,JefaturaTecnica,DirectorGeneral,Administrador")]
         [ValidateAntiForgeryToken]
         public ActionResult ObservarPorJefatura(int id, string observaciones)
         {
@@ -2459,15 +2458,15 @@ namespace CapaPresentacion.Controllers
             return View(solicitud);
         }
 
-        [Authorize(Roles = "CoordinacionLegal,DirectorGeneral,Administrador")]
+        [Authorize(Roles = "CoordinacionLegal,CoordinadorLegal,DirectorGeneral,Administrador")]
         public ActionResult RevisarLegalizacion()
         {
-            var lista = _solicitudDAO.ObtenerPorEstados(EstadoSolicitud.Pendiente, EstadoSolicitud.AOCR_Validado);
+            var lista = _solicitudDAO.ObtenerPorEstados(EstadoSolicitud.AOCR_Validado);
             return View(lista);
         }
 
         [HttpPost]
-        [Authorize(Roles = "CoordinacionLegal,DirectorGeneral,Administrador")]
+        [Authorize(Roles = "CoordinacionLegal,CoordinadorLegal,DirectorGeneral,Administrador")]
         [ValidateAntiForgeryToken]
         public ActionResult Legalizar(int id, string observacionLegal = "")
         {
@@ -2577,7 +2576,7 @@ namespace CapaPresentacion.Controllers
         }
 
         [HttpPost]
-        [Authorize(Roles = "CoordinacionLegal,DirectorGeneral,Administrador")]
+        [Authorize(Roles = "CoordinacionLegal,CoordinadorLegal,DirectorGeneral,Administrador")]
         [ValidateAntiForgeryToken]
         public ActionResult EmitirAocr(int id, string observacion = "")
         {
@@ -2667,32 +2666,43 @@ namespace CapaPresentacion.Controllers
 
             if (destino == EstadoSolicitud.Observada)
             {
-                return User != null && (User.IsInRole("Inspector") || User.IsInRole("JefaturaTecnica") || User.IsInRole("CoordinacionLegal"));
+                return User != null && (
+                    User.IsInRole("Coordinador")
+                    || User.IsInRole("CoordinadorInspecciones")
+                    || User.IsInRole("JefaturaTecnica")
+                    || User.IsInRole("DIRDAC")
+                    || User.IsInRole("Direccion")
+                    || User.IsInRole("CoordinacionLegal")
+                    || User.IsInRole("CoordinadorLegal"));
             }
 
             if (destino == EstadoSolicitud.AceptacionDocumental)
             {
-                return User != null && User.IsInRole("Inspector");
+                return User != null && (User.IsInRole("Coordinador") || User.IsInRole("CoordinadorInspecciones"));
             }
 
             if (destino == EstadoSolicitud.PendienteAsignacionRT)
             {
-                return User != null && (User.IsInRole("Inspector") || User.IsInRole("CoordinadorInspecciones"));
+                return User != null && (User.IsInRole("Coordinador") || User.IsInRole("CoordinadorInspecciones"));
             }
 
             if (destino == EstadoSolicitud.EnInspeccion || destino == EstadoSolicitud.AOCR_EnElaboracion)
             {
-                return User != null && (User.IsInRole("Inspector") || User.IsInRole("CoordinadorInspecciones"));
+                return User != null && (User.IsInRole("Inspector") || User.IsInRole("Coordinador") || User.IsInRole("CoordinadorInspecciones"));
             }
 
             if (destino == EstadoSolicitud.AOCR_EnRevision || destino == EstadoSolicitud.AOCR_Validado)
             {
-                return User != null && User.IsInRole("JefaturaTecnica");
+                return User != null && (
+                    User.IsInRole("DIRDAC")
+                    || User.IsInRole("Direccion")
+                    || User.IsInRole("JefaturaTecnica")
+                    || User.IsInRole("DirectorGeneral"));
             }
 
             if (destino == EstadoSolicitud.AOCR_Legalizado || destino == EstadoSolicitud.AOCR_EmitidoRecibido)
             {
-                return User != null && (User.IsInRole("CoordinacionLegal") || User.IsInRole("DirectorGeneral"));
+                return User != null && (User.IsInRole("CoordinacionLegal") || User.IsInRole("CoordinadorLegal") || User.IsInRole("DirectorGeneral"));
             }
 
             return false;

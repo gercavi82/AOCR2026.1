@@ -29,7 +29,7 @@ namespace CapaPresentacion.Controllers
         // =======================================================
         // LISTADO - Solicitudes pendientes de asignación
         // =======================================================
-        [Authorize(Roles = "Administrador,Direccion,JefaturaTecnica,Coordinador,CoordinadorInspecciones")]
+        [Authorize(Roles = "Administrador,Coordinador,CoordinadorInspecciones")]
         public ActionResult Index()
         {
             _logger.LogInfo("[InspeccionesController] Inicio pantalla gestion (Tecnico/Index). Usuario=" + ObtenerUsuarioActual() + ", Rol=" + ObtenerRolActual());
@@ -144,7 +144,7 @@ namespace CapaPresentacion.Controllers
         // ASIGNAR INSPECTOR (GET)
         // =======================================================
         [HttpGet]
-        [Authorize(Roles = "Administrador,Direccion,JefaturaTecnica,Coordinador,CoordinadorInspecciones")]
+        [Authorize(Roles = "Administrador,Coordinador,CoordinadorInspecciones")]
         public ActionResult AsignarInspector(int? solicitudId, string tipoInspector = "OPS")
         {
             _logger.LogInfo("[InspeccionesController] Inicio pantalla gestion de asignacion. Usuario=" + ObtenerUsuarioActual() + ", Rol=" + ObtenerRolActual() + ", SolicitudId=" + (solicitudId.HasValue ? solicitudId.Value.ToString() : "null"));
@@ -220,7 +220,7 @@ namespace CapaPresentacion.Controllers
         // ASIGNAR INSPECTOR (POST)
         // =======================================================
         [HttpPost]
-        [Authorize(Roles = "Administrador,Direccion,JefaturaTecnica,Coordinador,CoordinadorInspecciones")]
+        [Authorize(Roles = "Administrador,Coordinador,CoordinadorInspecciones")]
         [ValidateAntiForgeryToken]
         public ActionResult AsignarInspector(
             int solicitudId,
@@ -354,7 +354,7 @@ namespace CapaPresentacion.Controllers
         }
 
         [HttpGet]
-        [Authorize(Roles = "Administrador,Direccion,JefaturaTecnica")]
+        [Authorize(Roles = "Administrador,Coordinador,CoordinadorInspecciones")]
         public JsonResult ListarInspectoresActivos(string tipoInspector = "OPS")
         {
             _logger.LogInfo("[InspeccionesController] Inicio endpoint AJAX inspectores. Usuario=" + ObtenerUsuarioActual() + ", Rol=" + ObtenerRolActual() + ", TipoInspector=" + (tipoInspector ?? ""));
@@ -410,7 +410,7 @@ namespace CapaPresentacion.Controllers
 
         private string ObtenerRolActual()
         {
-            var roles = new[] { "Administrador", "Direccion", "JefaturaTecnica" }
+            var roles = new[] { "Administrador", "Coordinador", "CoordinadorInspecciones" }
                 .Where(r => User != null && User.IsInRole(r))
                 .ToList();
 

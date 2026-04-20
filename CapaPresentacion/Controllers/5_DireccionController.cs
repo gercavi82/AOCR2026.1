@@ -8,6 +8,8 @@ using CapaNegocio;
 using CapaNegocio.Services;
 using CapaModelo;
 using CapaPresentacion.Models;
+using DatosLoggingService = CapaDatos.Services.ILoggingService;
+using DatosLoggingServiceFactory = CapaDatos.Services.LoggingServiceFactory;
 
 namespace CapaPresentacion.Controllers
 {
@@ -19,6 +21,7 @@ namespace CapaPresentacion.Controllers
         private readonly SolicitudAOCRDAO _solicitudDao = new SolicitudAOCRDAO();
         private readonly ParametroDAO _parametroDao = new ParametroDAO();
         private readonly SolicitudAocrCorreoService _solicitudAocrCorreoService = new SolicitudAocrCorreoService();
+        private readonly DatosLoggingService _logger = DatosLoggingServiceFactory.Create();
 
         // ============================================================
         // LISTADO
@@ -185,14 +188,43 @@ namespace CapaPresentacion.Controllers
         // ============================================================
         // APROBAR SOLICITUDES - DIRECCIÓN
         // ============================================================
-        [Authorize(Roles = "Direccion,JefaturaTecnica,Administrador")]
+        [Authorize(Roles = "DIRDAC,Direccion,JefaturaTecnica,DirectorGeneral,Administrador")]
         public ActionResult AprobarSolicitudes()
         {
-            var solicitudesPendientes = _solicitudDao.ObtenerPorEstados(
-                "VALIDADO_TECNICAMENTE",
-                "ENVIADO_A_JEFATURA",
-                EstadoSolicitud.AOCR_EnRevision,
-                EstadoSolicitud.AOCR_Validado);
+            var solicitudesPendientes = _solicitudDao.ObtenerParaBandejaEjecutivaAprobacion();
+
+            var pendientes = solicitudesPendientes.Count;
+            var enRevision = solicitudesPendientes.Count(s =>
+                string.Equals(EstadoSolicitud.Normalizar(s.Estado), EstadoSolicitud.AOCR_EnRevision, StringComparison.OrdinalIgnoreCase)
+                || string.Equals(EstadoSolicitud.Normalizar(s.Estado), EstadoSolicitud.AOCR_Validado, StringComparison.OrdinalIgnoreCase)
+                || string.Equals(EstadoSolicitud.Normalizar(s.Estado), EstadoSolicitud.AOCR_EnElaboracion, StringComparison.OrdinalIgnoreCase));
+            var observadas = solicitudesPendientes.Count(s => string.Equals(EstadoSolicitud.Normalizar(s.Estado), EstadoSolicitud.Observada, StringComparison.OrdinalIgnoreCase));
+            var subsanadas = solicitudesPendientes.Count(s => string.Equals(EstadoSolicitud.Normalizar(s.Estado), EstadoSolicitud.Subsanada, StringComparison.OrdinalIgnoreCase));
+
+            var roles = new List<string>();
+            if (User != null)
+            {
+                if (User.IsInRole("DIRDAC")) roles.Add("DIRDAC");
+                if (User.IsInRole("Direccion")) roles.Add("Direccion");
+                if (User.IsInRole("JefaturaTecnica")) roles.Add("JefaturaTecnica");
+                if (User.IsInRole("DirectorGeneral")) roles.Add("DirectorGeneral");
+                if (User.IsInRole("Administrador")) roles.Add("Administrador");
+            }
+
+            var muestraEstados = solicitudesPendientes
+                .Select(s => (s.Estado ?? string.Empty).Trim())
+                .Where(e => !string.IsNullOrWhiteSpace(e))
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .Take(8)
+                .ToList();
+
+            _logger.LogInfo("[Direccion] BandejaEjecutiva usuario=" + (User != null ? User.Identity.Name : "anon")
+                + ", roles=" + string.Join(",", roles)
+                + ", total=" + pendientes
+                + ", enRevision=" + enRevision
+                + ", observadas=" + observadas
+                + ", subsanadas=" + subsanadas
+                + ", estadosMuestra=" + string.Join(",", muestraEstados));
 
             return View(solicitudesPendientes);
         }
@@ -207,7 +239,7 @@ namespace CapaPresentacion.Controllers
         // ============================================================
         // VALIDACIÓN FINAL
         // ============================================================
-        [Authorize(Roles = "Direccion")]
+        [Authorize(Roles = "DIRDAC,Direccion,JefaturaTecnica,DirectorGeneral,Administrador")]
         public ActionResult ValidacionFinal(int id)
         {
             var solicitud = SolicitudAOCRBL.ObtenerPorId(id);
@@ -218,7 +250,7 @@ namespace CapaPresentacion.Controllers
         }
 
         [HttpPost]
-        [Authorize(Roles = "Direccion")]
+        [Authorize(Roles = "DIRDAC,Direccion,JefaturaTecnica,DirectorGeneral,Administrador")]
         [ValidateAntiForgeryToken]
         public ActionResult ValidacionFinal(int id, bool aprobada, string observaciones, string condicionesEspeciales, int vigencia)
         {
@@ -273,7 +305,7 @@ namespace CapaPresentacion.Controllers
         // ============================================================
         // LEGALIZAR CERTIFICADO
         // ============================================================
-        [Authorize(Roles = "Direccion")]
+        [Authorize(Roles = "DIRDAC,Direccion,JefaturaTecnica,DirectorGeneral,Administrador")]
         public ActionResult Legalizar(int id)
         {
             var solicitud = SolicitudAOCRBL.ObtenerPorId(id);
@@ -284,7 +316,7 @@ namespace CapaPresentacion.Controllers
         }
 
         [HttpPost]
-        [Authorize(Roles = "Direccion")]
+        [Authorize(Roles = "DIRDAC,Direccion,JefaturaTecnica,DirectorGeneral,Administrador")]
         [ValidateAntiForgeryToken]
         public ActionResult Legalizar(int id, string firmaDirector, string selloOficial)
         {
@@ -319,7 +351,7 @@ namespace CapaPresentacion.Controllers
         // ============================================================
         // EMITIR CERTIFICADO AOCR
         // ============================================================
-        [Authorize(Roles = "Direccion")]
+        [Authorize(Roles = "DIRDAC,Direccion,JefaturaTecnica,DirectorGeneral,Administrador")]
         public ActionResult EmitirAOCR(int id)
         {
             var solicitud = SolicitudAOCRBL.ObtenerPorId(id);
@@ -330,7 +362,7 @@ namespace CapaPresentacion.Controllers
         }
 
         [HttpPost]
-        [Authorize(Roles = "Direccion")]
+        [Authorize(Roles = "DIRDAC,Direccion,JefaturaTecnica,DirectorGeneral,Administrador")]
         [ValidateAntiForgeryToken]
         public ActionResult EmitirAOCRConfirm(int id)
         {
@@ -385,7 +417,7 @@ namespace CapaPresentacion.Controllers
         private bool UsuarioDireccionPuedeTransicionar(string estadoDestino)
         {
             var destino = EstadoSolicitud.Normalizar(estadoDestino);
-            if (User != null && (User.IsInRole("Administrador") || User.IsInRole("Direccion")))
+            if (User != null && (User.IsInRole("Administrador") || User.IsInRole("Direccion") || User.IsInRole("DIRDAC") || User.IsInRole("DirectorGeneral") || User.IsInRole("JefaturaTecnica")))
             {
                 return true;
             }

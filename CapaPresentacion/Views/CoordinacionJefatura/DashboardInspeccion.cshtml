@@ -15,8 +15,9 @@
     var quickFilter = string.IsNullOrWhiteSpace(vm.QuickFilter) ? "TODOS" : vm.QuickFilter;
     var tablero = vm.TableroAocr ?? new CapaPresentacion.Models.TableroAocrViewModel();
     const int kanbanPreviewLimit = 5;
-    var puedeGestionarAsignacion = User.IsInRole("Administrador") || User.IsInRole("Direccion") || User.IsInRole("JefaturaTecnica");
+    var puedeGestionarAsignacion = User.IsInRole("Administrador") || User.IsInRole("Coordinador") || User.IsInRole("CoordinadorInspecciones");
     var puedeVerPendientesDirdac = User.IsInRole("Administrador") || User.IsInRole("DIRDAC") || User.IsInRole("Direccion") || User.IsInRole("Director") || User.IsInRole("JefaturaTecnica") || User.IsInRole("Jefe");
+    var puedeValidarAocr = User.IsInRole("Administrador") || User.IsInRole("DIRDAC") || User.IsInRole("Direccion") || User.IsInRole("JefaturaTecnica") || User.IsInRole("DirectorGeneral");
 
     Func<string, string, string> quickFilterUrl = (value, label) => Url.Action("DashboardInspeccion", "CoordinacionJefatura", new
     {
@@ -1014,12 +1015,12 @@
                 <p class="di3-hero__greeting">@saludoHora, @nombreUsuario · @hoy.ToString("dddd d 'de' MMMM, yyyy", new System.Globalization.CultureInfo("es-EC"))</p>
             </div>
             <div class="di3-hero__actions">
-                <a href="@Url.Action("RevisionVerificacion", "CoordinacionJefatura")" class="btn"><i class="fas fa-arrow-left"></i> Revisión</a>
+                <a href="@Url.Action("RevisionVerificacion", "CoordinacionJefatura")" class="btn"><i class="fas fa-arrow-left"></i> Revisión Documental</a>
                 @if (puedeVerPendientesDirdac)
                 {
-                    <a href="@Url.Action("PendientesFirmaDirdac", "Inspeccion")" class="btn"><i class="fas fa-signature"></i> Pendientes DIRDAC</a>
+                    <a href="@Url.Action("PendientesFirmaDirdac", "Inspeccion")" class="btn"><i class="fas fa-signature"></i> Informes DIRDAC</a>
                 }
-                @if (User.IsInRole("Administrador") || User.IsInRole("JefaturaTecnica"))
+                @if (puedeValidarAocr)
                 {
                     <a href="@Url.Action("ValidarAocr", "CoordinacionJefatura")" class="btn btn-primary"><i class="fas fa-stamp"></i> Validar AOCR</a>
                 }

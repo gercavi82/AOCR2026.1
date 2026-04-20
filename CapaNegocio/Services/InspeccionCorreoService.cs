@@ -225,11 +225,11 @@ namespace CapaNegocio.Services
                 case "PENDIENTE_FIRMA_DIRDAC":
                     return new PlantillaCorreoInspeccion
                     {
-                        Asunto = "AOCR - Informe técnico firmado por inspector — pendiente firma DIRDAC " + numeroSolicitud,
-                        Titulo = "Informe técnico firmado — Pendiente firma institucional",
-                        Mensaje = "El informe técnico de inspección ha sido firmado exitosamente por el inspector asignado. "
-                            + "El documento se encuentra ahora en la bandeja de firma de Dirección / Jefatura (DIRDAC). "
-                            + "Una vez completada la firma institucional, se procederá con la generación del certificado AOCR correspondiente.",
+                        Asunto = "AOCR - Informe tecnico firmado por inspector - pendiente revision Direccion/Jefatura " + numeroSolicitud,
+                        Titulo = "Informe tecnico firmado - Pendiente revision institucional",
+                        Mensaje = "El informe tecnico de inspeccion ha sido firmado por el inspector asignado. "
+                            + "El documento se encuentra ahora en la bandeja de revision de Direccion / Jefatura (DIRDAC). "
+                            + "Una vez completada la aprobacion institucional, se procedera con la generacion del certificado AOCR correspondiente.",
                         GruposDestinatarios = new[]
                         {
                             NotificacionDestinatarioPolicyService.GrupoDireccionFinal,
@@ -240,9 +240,9 @@ namespace CapaNegocio.Services
                 case "INFORME_TECNICO_FIRMADO":
                     return new PlantillaCorreoInspeccion
                     {
-                        Asunto = "AOCR - Informe técnico firmado " + numeroSolicitud,
-                        Titulo = "Informe técnico firmado",
-                        Mensaje = "El informe técnico ya cuenta con las firmas institucionales requeridas y queda legalizado para el expediente AOCR.",
+                        Asunto = "AOCR - Informe tecnico aprobado " + numeroSolicitud,
+                        Titulo = "Informe tecnico aprobado",
+                        Mensaje = "El informe tecnico ya cuenta con la aprobacion institucional requerida y queda habilitado para el expediente AOCR.",
                         GruposDestinatarios = new[]
                         {
                             NotificacionDestinatarioPolicyService.GrupoRepresentanteTecnico,

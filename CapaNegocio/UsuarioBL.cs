@@ -103,22 +103,19 @@ namespace CapaNegocio
                 return false;
             }
 
-            var asunto = "Designación RT aprobada - Sus credenciales de acceso - Sistema AOCR";
+            var asunto = RtCorreoTextoHelper.GetAsuntoAceptacionRt();
             var companiaTexto = string.IsNullOrWhiteSpace(nombreCompania)
                 ? "SU COMPAÑÍA"
                 : nombreCompania.Trim().ToUpperInvariant();
 
-            var textoOficialAprobacion =
-                "NOS COMPLACE INFORMARLE QUE SU DESIGNACIÓN COMO RESPONSABLE TÉCNICO (RT) DE LA COMPAÑÍA " +
-                companiaTexto +
-                " HA SIDO APROBADA POR LA DGAC.";
-            var textoOficialContinuidad =
-                "EN TAL VIRTUD CON SU USUARIO PODRÁ CONTINUAR CON LOS TRAMITES EN EL SISTEMA SIMPLIFICADO AOCR";
+            var textoAprobacion = RtCorreoTextoHelper.GetTextoAceptacionRt(new Dictionary<string, string>
+            {
+                { "COMPANIA", companiaTexto },
+                { "NOMBRE", nombreCompleto ?? string.Empty },
+                { "USUARIO", codigoUsuario ?? string.Empty }
+            });
 
-            var extraHtml = "<p style='margin:0 0 12px 0; font-size:14px; color:#3a4f5e;'><strong>"
-                + HttpUtility.HtmlEncode(textoOficialAprobacion) + "</strong></p>"
-                + "<p style='margin:0 0 12px 0; font-size:14px; color:#3a4f5e;'><strong>"
-                + HttpUtility.HtmlEncode(textoOficialContinuidad) + "</strong></p>"
+            var extraHtml = RtCorreoTextoHelper.ToHtmlParagraphs(textoAprobacion)
                 + "<p style='margin:0 0 8px 0; font-size:14px; color:#3a4f5e;'>A continuacion sus credenciales de acceso al <strong>Sistema AOCR</strong>:</p>"
                 + "<div style='margin:16px 0; padding:12px 14px; background:#f8fbff; border:1px solid #d7e7ff; border-radius:6px; font-size:14px;'>"
                 + "<strong>Usuario:</strong> " + System.Net.WebUtility.HtmlEncode(codigoUsuario) + "<br/>"

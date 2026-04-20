@@ -141,7 +141,6 @@ namespace CapaDatos.DAOs
                            updated_by
                     FROM public.aocr_tbinforme_inspeccion
                     WHERE finalizado = TRUE
-                      AND firmado_inspector = TRUE
                       AND COALESCE(firmado_dirdac, FALSE) = FALSE
                        AND regexp_replace(UPPER(COALESCE(estado_informe, '')), '[\s_-]+', '_', 'g') = 'ENVIADO_A_DIRDAC'
                     ORDER BY codigo_inspeccion, version DESC;";
@@ -416,6 +415,34 @@ namespace CapaDatos.DAOs
                     cmd.Parameters.AddWithValue("@hash_documento", (object)hashDocumento ?? DBNull.Value);
                     cmd.Parameters.AddWithValue("@fecha_firma_2", fechaFirma);
                     cmd.Parameters.AddWithValue("@usuario_firma_2", (object)usuarioFirma ?? DBNull.Value);
+                    cmd.Parameters.AddWithValue("@estado_informe", (object)estadoInforme ?? DBNull.Value);
+                    cmd.Parameters.AddWithValue("@updated_by", usuarioId);
+                    cmd.ExecuteNonQuery();
+                }
+            }
+        }
+
+        public void RegistrarAprobacionDireccion(int codigoInforme, DateTime fechaRevision, string usuarioRevision, string estadoInforme, int usuarioId)
+        {
+            using (var cn = new NpgsqlConnection(_cs))
+            {
+                cn.Open();
+                EnsureSchema(cn);
+
+                const string sql = @"
+                    UPDATE public.aocr_tbinforme_inspeccion
+                    SET fecha_firma_2 = @fecha_firma_2,
+                        usuario_firma_2 = @usuario_firma_2,
+                        estado_informe = @estado_informe,
+                        updated_at = NOW(),
+                        updated_by = @updated_by
+                    WHERE codigo_informe = @codigo_informe;";
+
+                using (var cmd = new NpgsqlCommand(sql, cn))
+                {
+                    cmd.Parameters.AddWithValue("@codigo_informe", codigoInforme);
+                    cmd.Parameters.AddWithValue("@fecha_firma_2", fechaRevision);
+                    cmd.Parameters.AddWithValue("@usuario_firma_2", (object)usuarioRevision ?? DBNull.Value);
                     cmd.Parameters.AddWithValue("@estado_informe", (object)estadoInforme ?? DBNull.Value);
                     cmd.Parameters.AddWithValue("@updated_by", usuarioId);
                     cmd.ExecuteNonQuery();

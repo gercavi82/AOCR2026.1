@@ -385,7 +385,7 @@ namespace CapaPresentacion.Controllers
             catch (Exception ex)
             {
                 _logger.LogError("[GestionInspeccion] Error cargando pendientes DIRDAC: " + ex);
-                TempData["Error"] = "No se pudo cargar el listado de documentos pendientes de firma DIRDAC.";
+                TempData["Error"] = "No se pudo cargar el listado de documentos pendientes de revision Direccion/Jefatura.";
                 return RedirectToAction("Index");
             }
         }
@@ -774,7 +774,7 @@ namespace CapaPresentacion.Controllers
         }
 
         [HttpPost]
-        [Authorize(Roles = ROL_INSPECTOR + "," + ROL_COORD + "," + ROL_JEFATURA + "," + ROL_ADMIN)]
+        [Authorize(Roles = ROL_INSPECTOR + "," + ROL_ADMIN)]
         [ValidateAntiForgeryToken]
         [ValidateInput(false)]
         public ActionResult GuardarInformeTecnico()
@@ -920,7 +920,7 @@ namespace CapaPresentacion.Controllers
         }
 
         [HttpPost]
-        [Authorize(Roles = ROL_INSPECTOR + "," + ROL_COORD + "," + ROL_JEFATURA + "," + ROL_ADMIN)]
+        [Authorize(Roles = ROL_INSPECTOR + "," + ROL_ADMIN)]
         [ValidateAntiForgeryToken]
         public ActionResult FinalizarInformeTecnico(int id)
         {
@@ -1082,15 +1082,15 @@ namespace CapaPresentacion.Controllers
         }
 
         [HttpPost]
-        [Authorize(Roles = ROL_INSPECTOR + "," + ROL_COORD + "," + ROL_COORD_ALIAS + "," + ROL_JEFATURA + "," + ROL_ADMIN)]
+        [Authorize(Roles = ROL_INSPECTOR + "," + ROL_ADMIN)]
         [ValidateAntiForgeryToken]
         public ActionResult FirmarInformeInspector(int id, string passwordCertificado)
         {
-            return FirmarInformePorRol(id, passwordCertificado, "CertificadoInspector", "INSPECTOR", "FIRMADO_INSPECTOR", autoEnviarADirdac: true);
+            return FirmarInformePorRol(id, passwordCertificado, "CertificadoInspector", "INSPECTOR", "FIRMADO_FINAL", autoEnviarADirdac: false);
         }
 
         [HttpPost]
-        [Authorize(Roles = ROL_INSPECTOR + "," + ROL_COORD + "," + ROL_COORD_ALIAS + "," + ROL_JEFATURA + "," + ROL_ADMIN)]
+        [Authorize(Roles = ROL_INSPECTOR + "," + ROL_COORD + "," + ROL_COORD_ALIAS + "," + ROL_ADMIN)]
         [ValidateAntiForgeryToken]
         public ActionResult EnviarADirdac(int id)
         {
@@ -1123,7 +1123,7 @@ namespace CapaPresentacion.Controllers
         }
 
         [HttpPost]
-        [Authorize(Roles = ROL_INSPECTOR + "," + ROL_COORD + "," + ROL_COORD_ALIAS + "," + ROL_JEFATURA + "," + ROL_ADMIN)]
+        [Authorize(Roles = ROL_INSPECTOR + "," + ROL_ADMIN)]
         [ValidateAntiForgeryToken]
         public ActionResult EnviarACoordinador(int id)
         {
@@ -1137,6 +1137,24 @@ namespace CapaPresentacion.Controllers
             if (informe == null || !informe.FirmadoInspector)
             {
                 TempData["Error"] = "El informe debe estar firmado por el inspector antes de enviarlo al coordinador.";
+                return RedirectToAction("Detalle", new { id });
+            }
+
+            if (string.Equals(informe.EstadoInforme, "ENVIADO_A_COORDINADOR", StringComparison.OrdinalIgnoreCase))
+            {
+                TempData["Warning"] = "El informe ya fue enviado a Coordinación y está pendiente de revisión.";
+                return RedirectToAction("Detalle", new { id });
+            }
+
+            if (string.Equals(informe.EstadoInforme, "ENVIADO_A_DIRDAC", StringComparison.OrdinalIgnoreCase))
+            {
+                TempData["Warning"] = "El informe ya se encuentra en revisión de Dirección / Jefatura.";
+                return RedirectToAction("Detalle", new { id });
+            }
+
+            if (informe.FirmadoDirdac || string.Equals(informe.EstadoInforme, "APROBADO_DIRECCION", StringComparison.OrdinalIgnoreCase))
+            {
+                TempData["Warning"] = "El informe técnico ya fue aprobado por Dirección / Jefatura.";
                 return RedirectToAction("Detalle", new { id });
             }
 
@@ -1154,7 +1172,7 @@ namespace CapaPresentacion.Controllers
         }
 
         [HttpPost]
-        [Authorize(Roles = ROL_COORD + "," + ROL_COORD_ALIAS + "," + ROL_JEFATURA + "," + ROL_ADMIN)]
+        [Authorize(Roles = ROL_COORD + "," + ROL_COORD_ALIAS + "," + ROL_ADMIN)]
         [ValidateAntiForgeryToken]
         public ActionResult CoordinadorAprobar(int id)
         {
@@ -1170,28 +1188,26 @@ namespace CapaPresentacion.Controllers
                 return RedirectToAction("Detalle", new { id });
             }
 
-            var solicitud = _solicitudDAO.ObtenerPorId(inspeccion.CodigoSolicitud);
-            var usuarioId = ObtenerCodigoUsuario();
+            if (!string.Equals(informe.EstadoInforme, "ENVIADO_A_COORDINADOR", StringComparison.OrdinalIgnoreCase))
+            {
+                TempData["Warning"] = "El informe no se encuentra en bandeja de revisión de Coordinación.";
+                return RedirectToAction("Detalle", new { id });
+            }
 
-            var resultado = EnviarInformeADirdacInterno(inspeccion, solicitud, informe, usuarioId);
-            var informeActualizado = _informeDAO.ObtenerUltimoPorInspeccion(id);
-            var mensajeKey = resultado.Exitoso
-                ? "Success"
-                : (InformeEstaEnviadoADirdac(informeActualizado) ? "Warning" : "Error");
+            var usuarioId = ObtenerCodigoUsuario();
+            _informeDAO.ActualizarEstadoInforme(informe.CodigoInforme, "APROBADO_COORDINADOR", usuarioId);
 
             RegistrarAuditoriaInformeDigital(id,
-                "ENVIADO_A_COORDINADOR", "ENVIADO_A_DIRDAC", null, null,
-                "Coordinador aprobó y reenvió a Director General. IP=" + ObtenerIpCliente(),
+                "ENVIADO_A_COORDINADOR", "APROBADO_COORDINADOR", null, null,
+                "Coordinación aprobó el informe y lo devolvió al inspector para firma final. IP=" + ObtenerIpCliente(),
                 usuarioId, ObtenerUsuarioActual(), "APROBACION_COORDINADOR");
 
-            TempData[mensajeKey] = resultado.Exitoso
-                ? "El coordinador aprobó el informe y fue enviado al Director General."
-                : resultado.Mensaje;
+            TempData["Success"] = "Coordinación aprobó el informe. El inspector debe aplicar la firma final.";
             return RedirectToAction("Detalle", new { id });
         }
 
         [HttpPost]
-        [Authorize(Roles = ROL_COORD + "," + ROL_COORD_ALIAS + "," + ROL_JEFATURA + "," + ROL_ADMIN)]
+        [Authorize(Roles = ROL_COORD + "," + ROL_COORD_ALIAS + "," + ROL_ADMIN)]
         [ValidateAntiForgeryToken]
         public ActionResult CoordinadorDevolver(int id, string observacionDevolucion)
         {
@@ -1204,6 +1220,12 @@ namespace CapaPresentacion.Controllers
             if (informe == null)
             {
                 TempData["Error"] = "No se encontró el informe técnico.";
+                return RedirectToAction("Detalle", new { id });
+            }
+
+            if (!string.Equals(informe.EstadoInforme, "ENVIADO_A_COORDINADOR", StringComparison.OrdinalIgnoreCase))
+            {
+                TempData["Warning"] = "El informe no se encuentra en bandeja de revisión de Coordinación.";
                 return RedirectToAction("Detalle", new { id });
             }
 
@@ -1237,13 +1259,14 @@ namespace CapaPresentacion.Controllers
         [ValidateAntiForgeryToken]
         public ActionResult FirmarInformeDirdac(int id, string passwordCertificado)
         {
-            return FirmarInformePorRol(id, passwordCertificado, "CertificadoDirdac", "DIRDAC", "FIRMADO_FINAL", autoEnviarADirdac: false);
+            TempData["Error"] = "La firma digital de Dirección / Jefatura ya no aplica en esta etapa. Use el flujo de aprobación o devolución.";
+            return RedirectToAction("Detalle", new { id });
         }
 
         [HttpPost]
         [Authorize(Roles = ROLES_FIRMA_DIRDAC)]
         [ValidateAntiForgeryToken]
-        public ActionResult RechazarInformeDirdac(int id, string observacionRechazo)
+        public ActionResult DireccionAprobar(int id)
         {
             if (id <= 0)
             {
@@ -1263,35 +1286,121 @@ namespace CapaPresentacion.Controllers
                 return RedirectToAction("Detalle", new { id });
             }
 
-            if (string.IsNullOrWhiteSpace(observacionRechazo))
+            if (!string.Equals(informe.EstadoInforme, "ENVIADO_A_DIRDAC", StringComparison.OrdinalIgnoreCase))
             {
-                TempData["Error"] = "Debe ingresar una observación para rechazar el informe.";
+                TempData["Warning"] = "El informe no se encuentra en bandeja de revisión de Dirección / Jefatura.";
+                return RedirectToAction("Detalle", new { id });
+            }
+
+            if (informe.FirmadoDirdac || string.Equals(informe.EstadoInforme, "APROBADO_DIRECCION", StringComparison.OrdinalIgnoreCase))
+            {
+                TempData["Warning"] = "El informe ya fue aprobado por Dirección / Jefatura.";
                 return RedirectToAction("Detalle", new { id });
             }
 
             var usuarioId = ObtenerCodigoUsuario();
             var usuarioActual = ObtenerUsuarioActual();
+            var estadoAnterior = FirstNonEmpty(informe.EstadoInforme, "ENVIADO_A_DIRDAC");
 
-            _informeDAO.ActualizarEstadoInforme(informe.CodigoInforme, "RECHAZADO_DIRDAC", usuarioId);
+            _informeDAO.RegistrarAprobacionDireccion(
+                informe.CodigoInforme,
+                DateTime.Now,
+                usuarioActual,
+                "ENVIADO_A_COORDINADOR",
+                usuarioId);
+
+            RegistrarAuditoriaInformeDigital(
+                id,
+                estadoAnterior,
+                "ENVIADO_A_COORDINADOR",
+                null,
+                null,
+                string.Format("Informe revisado por DIRDAC / Dirección - Jefatura ({0}) y remitido a Coordinación para aprobación. IP={1}", usuarioActual, ObtenerIpCliente()),
+                usuarioId,
+                usuarioActual,
+                "APROBACION_DIRECCION");
+
+            _logger.LogInfo("[GestionInspeccion] Informe aprobado por Dirección / Jefatura. InspeccionId=" + id
+                + ", InformeId=" + informe.CodigoInforme
+                + ", Usuario=" + usuarioActual);
+
+            TempData["Success"] = "DIRDAC / Dirección - Jefatura revisó el informe y lo remitió a Coordinación.";
+            return RedirectToAction("Detalle", new { id });
+        }
+
+        [HttpPost]
+        [Authorize(Roles = ROLES_FIRMA_DIRDAC)]
+        [ValidateAntiForgeryToken]
+        public ActionResult DireccionDevolver(int id, string observacionRechazo)
+        {
+            if (id <= 0)
+            {
+                return new HttpStatusCodeResult(400, "ID inválido.");
+            }
+
+            var inspeccion = _inspeccionDAO.ObtenerPorId(id);
+            if (inspeccion == null)
+            {
+                return HttpNotFound("Inspección no encontrada.");
+            }
+
+            var informe = _informeDAO.ObtenerUltimoPorInspeccion(id);
+            if (informe == null)
+            {
+                TempData["Error"] = "No se encontró el informe técnico.";
+                return RedirectToAction("Detalle", new { id });
+            }
+
+            if (!string.Equals(informe.EstadoInforme, "ENVIADO_A_DIRDAC", StringComparison.OrdinalIgnoreCase))
+            {
+                TempData["Warning"] = "El informe no se encuentra en bandeja de revisión de Dirección / Jefatura.";
+                return RedirectToAction("Detalle", new { id });
+            }
+
+            if (string.IsNullOrWhiteSpace(observacionRechazo))
+            {
+                TempData["Error"] = "Debe ingresar una observación para devolver el informe.";
+                return RedirectToAction("Detalle", new { id });
+            }
+
+            var usuarioId = ObtenerCodigoUsuario();
+            var usuarioActual = ObtenerUsuarioActual();
+            var observacion = observacionRechazo.Trim();
+
+            _informeDAO.RegistrarDevolucionCoordinador(
+                informe.CodigoInforme,
+                observacion,
+                usuarioActual,
+                "DEVUELTO_DIRECCION",
+                usuarioId);
 
             RegistrarAuditoriaInformeDigital(
                 id,
                 FirstNonEmpty(informe.EstadoInforme, "ENVIADO_A_DIRDAC"),
-                "RECHAZADO_DIRDAC",
+                "DEVUELTO_DIRECCION",
                 null,
                 null,
-                string.Format("Informe rechazado por DIRDAC ({0}). Observacion: {1}. IP={2}", usuarioActual, observacionRechazo.Trim(), ObtenerIpCliente()),
+                string.Format("Informe devuelto por Dirección / Jefatura ({0}). Observación: {1}. IP={2}", usuarioActual, observacion, ObtenerIpCliente()),
                 usuarioId,
                 usuarioActual,
-                "RECHAZO_DIRDAC");
+                "DEVOLUCION_DIRECCION");
 
-            _logger.LogInfo("[GestionInspeccion] Informe rechazado por DIRDAC. InspeccionId=" + id
+            _logger.LogInfo("[GestionInspeccion] Informe devuelto por Dirección / Jefatura. InspeccionId=" + id
                 + ", InformeId=" + informe.CodigoInforme
                 + ", Usuario=" + usuarioActual
-                + ", Observacion=" + observacionRechazo.Trim());
+                + ", Observacion=" + observacion);
 
-            TempData["Warning"] = "Informe técnico rechazado. El inspector será notificado para realizar las correcciones.";
+            TempData["Warning"] = "Dirección / Jefatura devolvió el informe técnico al inspector para correcciones.";
             return RedirectToAction("Detalle", new { id });
+        }
+
+        [HttpPost]
+        [Authorize(Roles = ROLES_FIRMA_DIRDAC)]
+        [ValidateAntiForgeryToken]
+        public ActionResult RechazarInformeDirdac(int id, string observacionRechazo)
+        {
+            // Compatibilidad con formularios antiguos.
+            return DireccionDevolver(id, observacionRechazo);
         }
 
         // ============================================================
@@ -2303,6 +2412,14 @@ namespace CapaPresentacion.Controllers
                 return RedirectToAction("Detalle", new { id });
             }
 
+            if (string.Equals(rolFirma, "INSPECTOR", StringComparison.OrdinalIgnoreCase)
+                && !string.Equals((informe.EstadoInforme ?? string.Empty).Trim(), "APROBADO_COORDINADOR", StringComparison.OrdinalIgnoreCase)
+                && !string.Equals((informe.EstadoInforme ?? string.Empty).Trim(), "APROBADO_DIRECCION", StringComparison.OrdinalIgnoreCase))
+            {
+                TempData["Error"] = "La firma del inspector se habilita cuando DIRDAC revisa y Coordinación aprueba el informe.";
+                return RedirectToAction("Detalle", new { id });
+            }
+
             if (string.Equals(rolFirma, "DIRDAC", StringComparison.OrdinalIgnoreCase))
             {
                 if (!informe.FirmadoInspector)
@@ -2465,7 +2582,7 @@ namespace CapaPresentacion.Controllers
                 var informeActualizado = _informeDAO.ObtenerPorId(informe.CodigoInforme);
                 var resultadoEnvio = EnviarInformeADirdacInterno(inspeccion, solicitud, informeActualizado, usuarioId);
                 TempData[resultadoEnvio.Exitoso ? "Success" : "Warning"] = resultadoEnvio.Exitoso
-                    ? "Informe firmado por inspector y enviado a DIRDAC para firma institucional."
+                    ? "Informe firmado por inspector y enviado a Dirección / Jefatura para revisión institucional."
                     : "Informe firmado por inspector. " + resultadoEnvio.Mensaje;
                 return RedirectToAction("Detalle", new { id });
             }
@@ -2481,8 +2598,8 @@ namespace CapaPresentacion.Controllers
                 ConstruirDetalleCorreoFirmaFinal(inspeccion, solicitudFinal, informeFinal));
 
             TempData[resultadoNotificacion.Exitoso ? "Success" : "Warning"] = resultadoNotificacion.Exitoso
-                ? "Documento firmado por DIRDAC y notificado a los actores del proceso."
-                : "Documento firmado por DIRDAC. No fue posible enviar todas las notificaciones finales.";
+                ? "Informe técnico firmado por inspector. Se habilitó la siguiente etapa para activar y generar el certificado AOCR."
+                : "Informe técnico firmado por inspector. No fue posible enviar todas las notificaciones finales.";
 
             SincronizarSolicitudAocrTrasFirmaFinal(inspeccion, solicitudFinal, usuarioId, usuarioActual);
 
@@ -2503,7 +2620,7 @@ namespace CapaPresentacion.Controllers
             }
 
             string mensajeCambio;
-            var observacion = "Firma final del informe tecnico completada; documentos AOCR habilitados para validacion.";
+            var observacion = "Revision institucional final del informe tecnico completada; documentos AOCR habilitados para validacion.";
             var actualizado = _solicitudEstadoTransitionBL.CambiarEstadoConReglasAocr(
                 solicitud.CodigoSolicitud,
                 EstadoSolicitud.AOCR_EnElaboracion,
@@ -2514,18 +2631,18 @@ namespace CapaPresentacion.Controllers
 
             if (!actualizado)
             {
-                _logger.LogWarning("[GestionInspeccion] No se pudo sincronizar solicitud AOCR tras firma final. SolicitudId=" + solicitud.CodigoSolicitud + ", InspeccionId=" + inspeccion.CodigoInspeccion + ", Mensaje=" + mensajeCambio);
+                _logger.LogWarning("[GestionInspeccion] No se pudo sincronizar solicitud AOCR tras revision final. SolicitudId=" + solicitud.CodigoSolicitud + ", InspeccionId=" + inspeccion.CodigoInspeccion + ", Mensaje=" + mensajeCambio);
                 return;
             }
 
-            _logger.LogInfo("[GestionInspeccion] Solicitud AOCR sincronizada tras firma final. SolicitudId=" + solicitud.CodigoSolicitud + ", EstadoNuevo=" + EstadoSolicitud.AOCR_EnElaboracion + ", Usuario=" + usuarioActual);
+            _logger.LogInfo("[GestionInspeccion] Solicitud AOCR sincronizada tras revision final. SolicitudId=" + solicitud.CodigoSolicitud + ", EstadoNuevo=" + EstadoSolicitud.AOCR_EnElaboracion + ", Usuario=" + usuarioActual);
         }
 
         private ResultadoOperacion EnviarInformeADirdacInterno(Inspeccion inspeccion, SolicitudAOCR solicitud, InspeccionInformeTecnico informe, int usuarioId)
         {
             if (inspeccion == null || solicitud == null || informe == null)
             {
-                return ResultadoOperacion.Error("No existe contexto suficiente para enviar el informe técnico a DIRDAC.");
+                return ResultadoOperacion.Error("No existe contexto suficiente para enviar el informe técnico a Dirección / Jefatura.");
             }
 
             if (!informe.Finalizado)
@@ -2533,25 +2650,20 @@ namespace CapaPresentacion.Controllers
                 return ResultadoOperacion.Error("El informe técnico aún no ha sido finalizado en PDF.");
             }
 
-            if (!informe.FirmadoInspector)
-            {
-                return ResultadoOperacion.Error("Debe firmar primero el informe con el certificado del inspector.");
-            }
-
             if (informe.FirmadoDirdac)
             {
-                return ResultadoOperacion.Error("El informe técnico ya cuenta con la firma final de DIRDAC.");
+                return ResultadoOperacion.Error("El informe técnico ya cuenta con aprobación final de Dirección / Jefatura.");
             }
 
             var yaEnviadoADirdac = InformeEstaEnviadoADirdac(informe);
             if (yaEnviadoADirdac && informe.CorreoEnviado)
             {
-                return ResultadoOperacion.Error("El documento ya fue notificado a DIRDAC y está pendiente de firma final.");
+                return ResultadoOperacion.Error("El documento ya fue notificado a Dirección / Jefatura y está pendiente de revisión final.");
             }
 
             if (!yaEnviadoADirdac)
             {
-                var estadoAnterior = FirstNonEmpty(informe.EstadoInforme, "FIRMADO_INSPECTOR", "GENERADO");
+                var estadoAnterior = FirstNonEmpty(informe.EstadoInforme, "GENERADO");
                 _informeDAO.MarcarEnviadoADirdac(informe.CodigoInforme, DateTime.Now, ObtenerUsuarioActual(), false, "ENVIADO_A_DIRDAC", usuarioId);
                 RegistrarAuditoriaInformeDigital(
                     inspeccion.CodigoInspeccion,
@@ -2559,7 +2671,7 @@ namespace CapaPresentacion.Controllers
                     "ENVIADO_A_DIRDAC",
                     FirstNonEmpty(informe.RutaDocumentoFirmado, informe.RutaPdf, inspeccion.RutaInforme),
                     informe.HashDocumento,
-                    "Documento transferido automáticamente a la bandeja de firma DIRDAC. IP=" + ObtenerIpCliente(),
+                    "Documento transferido automáticamente a la bandeja de revisión de DIRDAC / Dirección - Jefatura. IP=" + ObtenerIpCliente(),
                     usuarioId,
                     ObtenerUsuarioActual(),
                     "ENVIO_DIRDAC");
@@ -2581,7 +2693,7 @@ namespace CapaPresentacion.Controllers
                     "ENVIADO_A_DIRDAC",
                     FirstNonEmpty(informe.RutaDocumentoFirmado, informe.RutaPdf, inspeccion.RutaInforme),
                     informe.HashDocumento,
-                    "Reintento de notificación formal a DIRDAC. ResultadoCorreo=" + (resultadoCorreo.Exitoso ? "OK" : "ERROR") + ". IP=" + ObtenerIpCliente(),
+                    "Reintento de notificación formal a Dirección / Jefatura. ResultadoCorreo=" + (resultadoCorreo.Exitoso ? "OK" : "ERROR") + ". IP=" + ObtenerIpCliente(),
                     usuarioId,
                     ObtenerUsuarioActual(),
                     "REENVIO_NOTIFICACION_DIRDAC");
@@ -2591,16 +2703,16 @@ namespace CapaPresentacion.Controllers
             {
                 return ResultadoOperacion.Ok(null,
                     yaEnviadoADirdac
-                        ? "La notificacion formal a DIRDAC se reenvio correctamente. El documento continua pendiente de firma final."
-                        : "Documento pendiente de firma enviado a DIRDAC correctamente.");
+                        ? "La notificacion formal a DIRDAC / Dirección - Jefatura se reenvio correctamente. El documento continua pendiente de revision."
+                        : "Documento enviado a DIRDAC / Dirección - Jefatura para revisión.");
             }
 
             return ResultadoOperacion.Error(
                 yaEnviadoADirdac
-                    ? "El documento ya está en la bandeja DIRDAC, pero continúa pendiente el correo formal. Puede reintentar la notificación más tarde."
+                    ? "El documento ya está en la bandeja de DIRDAC / Dirección - Jefatura, pero continúa pendiente el correo formal. Puede reintentar la notificación más tarde."
                     : (notificacionInternaOk
-                        ? "El documento pasó a la bandeja DIRDAC, pero falló el correo formal a Dirección. La notificación interna ya fue registrada."
-                        : "El documento pasó a la bandeja DIRDAC, pero no fue posible enviar la notificación formal a Dirección."));
+                        ? "El documento pasó a la bandeja de DIRDAC / Dirección - Jefatura, pero falló el correo formal. La notificación interna ya fue registrada."
+                        : "El documento pasó a la bandeja de DIRDAC / Dirección - Jefatura, pero no fue posible enviar la notificación formal."));
         }
 
         private bool InformeEstaEnviadoADirdac(InspeccionInformeTecnico informe)
@@ -2636,9 +2748,9 @@ namespace CapaPresentacion.Controllers
 
             var numeroSolicitud = ObtenerNumeroSolicitudVisible(solicitud);
             var compania = FirstNonEmpty(solicitud != null ? solicitud.RazonSocial : null, solicitud != null ? solicitud.NombreOperador : null, "No disponible");
-            var titulo = "Informe técnico pendiente de firma DIRDAC";
+            var titulo = "Informe técnico pendiente de revisión Dirección / Jefatura";
             var mensaje = string.Format(
-                "La inspección #{0} de la solicitud {1} ({2}) ya fue firmada por el inspector y quedó disponible para firma institucional.",
+                "La inspección #{0} de la solicitud {1} ({2}) ya fue firmada por el inspector y quedó disponible para revisión institucional de Dirección / Jefatura.",
                 inspeccion.CodigoInspeccion,
                 numeroSolicitud,
                 compania);
@@ -2999,16 +3111,10 @@ namespace CapaPresentacion.Controllers
         {
             var numeroSolicitud = ObtenerNumeroSolicitudVisible(solicitud);
             var compania = FirstNonEmpty(solicitud != null ? solicitud.RazonSocial : null, solicitud != null ? solicitud.NombreOperador : null, "No disponible");
-            var firmadoPor = informe != null ? FirstNonEmpty(informe.UsuarioFirma1, "Inspector") : "Inspector";
-            var fechaFirma = informe != null && informe.FechaFirma1.HasValue
-                ? informe.FechaFirma1.Value.ToString("dd/MM/yyyy HH:mm")
-                : DateTime.Now.ToString("dd/MM/yyyy HH:mm");
             return string.Format(
-                "Solicitud: {0}. Compañía: {1}. Firmado por inspector: {2} el {3}. Estado informe: {4}. Siguiente paso: Firma institucional DIRDAC y posterior generación del certificado AOCR. Enlace: {5}",
+                "Solicitud: {0}. Compañía: {1}. Estado informe: {2}. Siguiente paso: Revisión institucional DIRDAC / Dirección - Jefatura, aprobación de Coordinación, firma final del inspector y posterior generación del certificado AOCR. Enlace: {3}",
                 numeroSolicitud,
                 compania,
-                firmadoPor,
-                fechaFirma,
                 FirstNonEmpty(informe != null ? informe.EstadoInforme : null, "ENVIADO_A_DIRDAC"),
                 ConstruirUrlDetalle(inspeccion.CodigoInspeccion));
         }
@@ -3018,7 +3124,7 @@ namespace CapaPresentacion.Controllers
             var numeroSolicitud = ObtenerNumeroSolicitudVisible(solicitud);
             var compania = FirstNonEmpty(solicitud != null ? solicitud.RazonSocial : null, solicitud != null ? solicitud.NombreOperador : null, "No disponible");
             return string.Format(
-                "Solicitud: {0}. Compañía: {1}. Fecha firma final: {2:dd/MM/yyyy HH:mm}. Firmado por: {3}. Hash documento: {4}. Enlace: {5}",
+                "Solicitud: {0}. Compañía: {1}. Fecha revisión final: {2:dd/MM/yyyy HH:mm}. Revisado por: {3}. Hash documento: {4}. Enlace: {5}",
                 numeroSolicitud,
                 compania,
                 informe != null && informe.FechaFirma2.HasValue ? informe.FechaFirma2.Value : DateTime.Now,

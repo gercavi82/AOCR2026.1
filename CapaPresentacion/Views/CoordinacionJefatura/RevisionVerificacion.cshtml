@@ -7,7 +7,7 @@
 @using CapaModelo
 @{
     Layout = "~/Views/Shared/_LayoutAOCR.cshtml";
-    ViewBag.Title = "Revisión / Verificación";
+    ViewBag.Title = "Revisión Documental";
 
     var viewModel = Model ?? new CapaPresentacion.Models.CoordinacionJefaturaRevisionViewModel();
     var solicitudesControl = viewModel.SolicitudesControlDocumental ?? new List<SolicitudAOCR>();
@@ -24,9 +24,13 @@
         || User.IsInRole("Direccion")
         || User.IsInRole("Director");
     var puedeAsignarInspectorRevision = User.IsInRole("Administrador")
+        || User.IsInRole("CoordinadorInspecciones")
+        || User.IsInRole("Coordinador");
+    var puedeValidarAocrRevision = User.IsInRole("Administrador")
+        || User.IsInRole("DIRDAC")
         || User.IsInRole("Direccion")
-        || User.IsInRole("JefaturaTecnica")
-        || User.IsInRole("Director");
+        || User.IsInRole("DirectorGeneral")
+        || User.IsInRole("JefaturaTecnica");
     var puedeVerDetalleInspeccion = User.IsInRole("Administrador")
         || User.IsInRole("CoordinadorInspecciones")
         || User.IsInRole("Coordinador")
@@ -38,12 +42,12 @@
     var pageHeaderData = new ViewDataDictionary
     {
         { "Kicker", "Coordinación y Jefatura" },
-        { "Title", "Revisión / Verificación" },
-        { "Subtitle", "Bandeja unificada de control documental, revisión AOCR y seguimiento de inspecciones" },
+        { "Title", "Revisión Documental" },
+        { "Subtitle", "Bandeja institucional de control documental, revisión técnica y seguimiento de inspecciones" },
         { "Breadcrumbs", new[]
             {
                 new { Text = "Coordinación y Jefatura", Url = string.Empty },
-                new { Text = "Revisión / Verificación", Url = string.Empty }
+                new { Text = "Revisión Documental", Url = string.Empty }
             }
         }
     };
@@ -65,7 +69,7 @@
         "<a href=\"" + Url.Action("Index", "Dashboard") + "\" class=\"btn btn-aocr-secondary\"><i class=\"fas fa-chart-line\"></i><span>Dashboard</span></a>"
     };
 
-    if (User.IsInRole("JefaturaTecnica") || User.IsInRole("Administrador"))
+    if (puedeValidarAocrRevision)
     {
         toolbarLinks.Add("<a href=\"" + Url.Action("ValidarAocr", "CoordinacionJefatura") + "\" class=\"btn btn-aocr-primary\"><i class=\"fas fa-stamp\"></i><span>Validar AOCR</span></a>");
     }
@@ -187,7 +191,7 @@
                     <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
                         <div>
                             <h3 class="aocr-section-title mb-1"><i class="fas fa-file-contract"></i> AOCR en revisión</h3>
-                            <p class="text-muted mb-0">Documentos listos para validación de jefatura, coordinación legal o cierre formal.</p>
+                            <p class="text-muted mb-0">Documentos listos para validación institucional, legalización o cierre formal.</p>
                         </div>
                         @Html.Partial("_StatusBadge", null, new ViewDataDictionary { { "Estado", solicitudesRevision.Any() ? "En revisión" : "Completado" } })
                     </div>
@@ -229,7 +233,7 @@
                                                 <a class="btn btn-sm btn-outline-primary" href="@Url.Action("Detalle", "SolicitudAOCR", new { id = item.CodigoSolicitud })">
                                                     <i class="fas fa-eye"></i> Detalle
                                                 </a>
-                                                @if (User.IsInRole("JefaturaTecnica") || User.IsInRole("Administrador"))
+                                                @if (puedeValidarAocrRevision)
                                                 {
                                                     <a class="btn btn-sm btn-outline-warning" href="@Url.Action("ValidarAocr", "CoordinacionJefatura")">
                                                         <i class="fas fa-stamp"></i> Validar

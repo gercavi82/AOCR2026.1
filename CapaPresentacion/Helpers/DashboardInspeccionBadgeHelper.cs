@@ -88,9 +88,10 @@ namespace CapaPresentacion.Helpers
             switch (estado)
             {
                 case "PENDIENTE_FIRMA_INSPECTOR":
-                    return new DashboardInspeccionBadgeInfo("dash-badge dash-badge-orange", "Pendiente inspector");
+                    return new DashboardInspeccionBadgeInfo("dash-badge dash-badge-orange", "Pendiente firma inspector");
                 case "PENDIENTE_FIRMA_DIRDAC":
-                    return new DashboardInspeccionBadgeInfo("dash-badge dash-badge-green", "Pendiente DIRDAC");
+                case "PENDIENTE_REVISION_DIRDAC":
+                    return new DashboardInspeccionBadgeInfo("dash-badge dash-badge-green", "Pendiente revision DIRDAC");
                 default:
                     return new DashboardInspeccionBadgeInfo("dash-badge dash-badge-neutral", string.IsNullOrWhiteSpace(estado) ? "Pendiente" : estado.Replace("_", " "));
             }

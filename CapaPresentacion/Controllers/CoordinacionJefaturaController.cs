@@ -19,7 +19,7 @@ using Rotativa;
 
 namespace CapaPresentacion.Controllers
 {
-    [Authorize(Roles = "CoordinacionLegal,CoordinadorLegal,Direccion,JefaturaTecnica,DirectorGeneral,Administrador")]
+    [Authorize(Roles = "CoordinacionLegal,CoordinadorLegal,Coordinador,CoordinadorInspecciones,DIRDAC,Direccion,JefaturaTecnica,DirectorGeneral,Administrador")]
     public class CoordinacionJefaturaController : Controller
     {
         private readonly SolicitudAOCRDAO _solicitudDao = new SolicitudAOCRDAO();
@@ -39,13 +39,19 @@ namespace CapaPresentacion.Controllers
             return RedirectToAction("DashboardGerencial", "Direccion");
         }
 
-        [Authorize(Roles = "DIRDAC,Direccion,JefaturaTecnica,DirectorGeneral,Administrador,CoordinacionLegal,CoordinadorLegal")]
+        [Authorize(Roles = "DIRDAC,Direccion,JefaturaTecnica,DirectorGeneral,Administrador,CoordinacionLegal,CoordinadorLegal,Coordinador,CoordinadorInspecciones")]
         public ActionResult DashboardInspeccion(string compania = null, string inspector = null, string estado = null, string quickFilter = null)
         {
             var urlHelper = new UrlHelper(ControllerContext.RequestContext);
-            var puedeGestionarAsignacion = User.IsInRole("Administrador") || User.IsInRole("Direccion") || User.IsInRole("JefaturaTecnica");
+            var puedeGestionarAsignacion = User.IsInRole("Administrador")
+                || User.IsInRole("Coordinador")
+                || User.IsInRole("CoordinadorInspecciones");
             var puedeVerPendientesDirdac = User.IsInRole("Administrador") || User.IsInRole("DIRDAC") || User.IsInRole("Direccion") || User.IsInRole("Director") || User.IsInRole("JefaturaTecnica") || User.IsInRole("Jefe");
-            var puedeValidarAocr = User.IsInRole("Administrador") || User.IsInRole("JefaturaTecnica");
+            var puedeValidarAocr = User.IsInRole("Administrador")
+                || User.IsInRole("DIRDAC")
+                || User.IsInRole("Direccion")
+                || User.IsInRole("DirectorGeneral")
+                || User.IsInRole("JefaturaTecnica");
             var quickFilterNormalizado = NormalizarQuickFilter(quickFilter);
 
             var inspecciones = _dashboardInspeccionDao.ObtenerInspeccionesEnSeguimiento();
@@ -577,6 +583,7 @@ namespace CapaPresentacion.Controllers
             return "Pendiente de gestión inicial o asignación operativa.";
         }
 
+        [Authorize(Roles = "CoordinacionLegal,CoordinadorLegal,Coordinador,CoordinadorInspecciones,Administrador")]
         public ActionResult RevisionVerificacion()
         {
             var solicitudes = _solicitudDao.ObtenerTodos() ?? new List<SolicitudAOCR>();
@@ -602,9 +609,7 @@ namespace CapaPresentacion.Controllers
                     {
                         var estado = EstadoSolicitud.Normalizar(s.Estado);
                         return estado == EstadoSolicitud.AOCR_EnElaboracion
-                            || estado == EstadoSolicitud.AOCR_EnRevision
-                            || estado == EstadoSolicitud.AOCR_Validado
-                            || estado == EstadoSolicitud.AOCR_Legalizado;
+                            || estado == EstadoSolicitud.AOCR_EnRevision;
                     })
                     .OrderByDescending(s => s.FechaSolicitud ?? DateTime.MinValue)
                     .Take(30)
@@ -777,13 +782,13 @@ namespace CapaPresentacion.Controllers
                 && origen.IndexOf(filtro.Trim(), StringComparison.OrdinalIgnoreCase) >= 0;
         }
 
-        [Authorize(Roles = "Direccion,JefaturaTecnica,Administrador")]
+        [Authorize(Roles = "DIRDAC,Direccion,JefaturaTecnica,DirectorGeneral,Administrador")]
         public ActionResult AprobarSolicitudes()
         {
             return RedirectToAction("AprobarSolicitudes", "Direccion");
         }
 
-        [Authorize(Roles = "Direccion,JefaturaTecnica,DirectorGeneral,Administrador")]
+        [Authorize(Roles = "DIRDAC,Direccion,JefaturaTecnica,DirectorGeneral,Administrador")]
         public ActionResult ValidarAocr()
         {
             try
@@ -799,17 +804,17 @@ namespace CapaPresentacion.Controllers
             {
                 var referencia = RegistrarErrorValidacionAocr("ValidarAocr.CargarBandeja", exPg);
                 TempData["Error"] = "No se pudo cargar la bandeja de Validar AOCR por un error de base de datos. Ref: " + referencia;
-                return RedirectToAction("RevisionVerificacion");
+                return RedirectToAction("DashboardInspeccion");
             }
             catch (Exception ex)
             {
                 var referencia = RegistrarErrorValidacionAocr("ValidarAocr.CargarBandeja", ex);
                 TempData["Error"] = "No se pudo cargar la bandeja de Validar AOCR. Ref: " + referencia;
-                return RedirectToAction("RevisionVerificacion");
+                return RedirectToAction("DashboardInspeccion");
             }
         }
 
-        [Authorize(Roles = "Direccion,JefaturaTecnica,DirectorGeneral,Administrador")]
+        [Authorize(Roles = "DIRDAC,Direccion,JefaturaTecnica,DirectorGeneral,Administrador")]
         public ActionResult DocumentoValidacionAocr(int solicitudId, string tipo, bool descargar = false)
         {
             try
@@ -886,7 +891,7 @@ namespace CapaPresentacion.Controllers
             }
         }
 
-        [Authorize(Roles = "Direccion,JefaturaTecnica,DirectorGeneral,Administrador")]
+        [Authorize(Roles = "DIRDAC,Direccion,JefaturaTecnica,DirectorGeneral,Administrador")]
         public ActionResult EditarDocumentoValidacionAocr(int solicitudId, string tipo)
         {
             try
@@ -928,7 +933,7 @@ namespace CapaPresentacion.Controllers
             }
         }
 
-        [Authorize(Roles = "Direccion,JefaturaTecnica,DirectorGeneral,Administrador")]
+        [Authorize(Roles = "DIRDAC,Direccion,JefaturaTecnica,DirectorGeneral,Administrador")]
         public ActionResult PreviewDocumentoValidacionAocr(int solicitudId, string tipo)
         {
             try
@@ -972,7 +977,7 @@ namespace CapaPresentacion.Controllers
 
         [HttpPost]
         [ValidateAntiForgeryToken]
-        [Authorize(Roles = "Direccion,JefaturaTecnica,DirectorGeneral,Administrador")]
+        [Authorize(Roles = "DIRDAC,Direccion,JefaturaTecnica,DirectorGeneral,Administrador")]
         public JsonResult CargarDatosFirmaDigitalAocr(HttpPostedFileBase certificadoDigital, string passwordCertificado)
         {
             string mensajeValidacion;
@@ -1011,7 +1016,7 @@ namespace CapaPresentacion.Controllers
 
         [HttpPost]
         [ValidateAntiForgeryToken]
-        [Authorize(Roles = "Direccion,JefaturaTecnica,DirectorGeneral,Administrador")]
+        [Authorize(Roles = "DIRDAC,Direccion,JefaturaTecnica,DirectorGeneral,Administrador")]
         public ActionResult GenerarDocumentoValidacionAocr(AocrDocumentoEdicionViewModel model, string accion = null, HttpPostedFileBase certificadoDigital = null, string passwordCertificado = null)
         {
             try
@@ -1133,7 +1138,7 @@ namespace CapaPresentacion.Controllers
 
         [HttpPost]
         [ValidateAntiForgeryToken]
-        [Authorize(Roles = "Direccion,JefaturaTecnica,DirectorGeneral,Administrador")]
+        [Authorize(Roles = "DIRDAC,Direccion,JefaturaTecnica,DirectorGeneral,Administrador")]
         public JsonResult GuardarPosicionFirmaAocr(AocrFirmaPosicionEdicionViewModel model)
         {
             try
@@ -1260,13 +1265,10 @@ namespace CapaPresentacion.Controllers
             var informeFirmado = informes
                 .FirstOrDefault(x => x.Informe.Finalizado && x.Informe.FirmadoInspector && x.Informe.FirmadoDirdac);
 
-            var estadoIncluido = string.Equals(estadoSolicitud, EstadoSolicitud.AOCR_EnElaboracion, StringComparison.OrdinalIgnoreCase)
-                || string.Equals(estadoSolicitud, EstadoSolicitud.AOCR_EnRevision, StringComparison.OrdinalIgnoreCase)
-                || string.Equals(estadoSolicitud, EstadoSolicitud.AOCR_Validado, StringComparison.OrdinalIgnoreCase)
-                || string.Equals(estadoSolicitud, EstadoSolicitud.AOCR_Legalizado, StringComparison.OrdinalIgnoreCase)
+            var estadoIncluido = string.Equals(estadoSolicitud, EstadoSolicitud.AOCR_EnRevision, StringComparison.OrdinalIgnoreCase)
                 || string.Equals(estadoSolicitud, "ENVIADO_A_JEFATURA", StringComparison.OrdinalIgnoreCase);
 
-            if (!estadoIncluido && informeFirmado == null)
+            if (!estadoIncluido)
             {
                 return null;
             }
@@ -1299,8 +1301,7 @@ namespace CapaPresentacion.Controllers
             item.Documentos = ConstruirDocumentosValidacion(item);
             item.PuedeContinuar = item.FirmaCompleta
                 && item.Documentos.All(d => d.Disponible)
-                && (string.Equals(estadoSolicitud, EstadoSolicitud.AOCR_EnElaboracion, StringComparison.OrdinalIgnoreCase)
-                    || string.Equals(estadoSolicitud, EstadoSolicitud.AOCR_EnRevision, StringComparison.OrdinalIgnoreCase)
+                && (string.Equals(estadoSolicitud, EstadoSolicitud.AOCR_EnRevision, StringComparison.OrdinalIgnoreCase)
                     || string.Equals(estadoSolicitud, "ENVIADO_A_JEFATURA", StringComparison.OrdinalIgnoreCase));
 
             if (!item.FirmaCompleta)

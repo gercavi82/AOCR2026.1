@@ -75,6 +75,8 @@ namespace CapaDatos.DAOs
                     new[]
                     {
                         EstadoSolicitud.AOCR_EnRevision,
+                        "AOCR_EN_REVISION",
+                        "AOCR EN REVISION",
                         "ENVIADO_A_JEFATURA",
                         "ENVIADO A JEFATURA"
                     }
@@ -84,9 +86,11 @@ namespace CapaDatos.DAOs
                     new[]
                     {
                         EstadoSolicitud.AOCR_Validado,
+                        "VALIDADO",
                         "VALIDADO_TECNICAMENTE",
                         "ENVIADO_A_LEGALIZACION",
-                        "ENVIADO A LEGALIZACION"
+                        "ENVIADO A LEGALIZACION",
+                        "APROBADO_POR_DIRECCION"
                     }
                 },
                 {
@@ -120,8 +124,14 @@ namespace CapaDatos.DAOs
                 }
 
                 var normalizado = EstadoSolicitud.Normalizar(estado);
-                resultado.Add(NormalizarEstadoFiltro(estado));
-                resultado.Add(NormalizarEstadoFiltro(normalizado));
+                var estadoFiltroOriginal = NormalizarEstadoFiltro(estado);
+                var estadoFiltroNormalizado = NormalizarEstadoFiltro(normalizado);
+
+                resultado.Add(estadoFiltroOriginal);
+                if (DebeAgregarEstadoNormalizado(estadoFiltroOriginal, estadoFiltroNormalizado, normalizado))
+                {
+                    resultado.Add(estadoFiltroNormalizado);
+                }
 
                 string[] alias;
                 if (equivalencias.TryGetValue(normalizado, out alias))
@@ -136,6 +146,28 @@ namespace CapaDatos.DAOs
             return resultado
                 .Where(e => !string.IsNullOrWhiteSpace(e))
                 .ToList();
+        }
+
+        private static bool DebeAgregarEstadoNormalizado(string estadoOriginal, string estadoNormalizado, string normalizadoCanonico)
+        {
+            if (string.IsNullOrWhiteSpace(estadoNormalizado))
+            {
+                return false;
+            }
+
+            if (!string.Equals(normalizadoCanonico, EstadoSolicitud.Pendiente, StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+
+            if (string.Equals(estadoOriginal, estadoNormalizado, StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+
+            return estadoOriginal.Contains("PENDIENTE")
+                   || estadoOriginal.Contains("BORRADOR")
+                   || estadoOriginal.Contains("SOLICITUD CREADA");
         }
 
         private static string NormalizarEstadoFiltro(string estado)
@@ -181,6 +213,37 @@ namespace CapaDatos.DAOs
                 EstadoSolicitud.AOCR_EnElaboracion,
                 EstadoSolicitud.AOCR_EnRevision
             );
+        }
+
+        public List<SolicitudAOCR> ObtenerParaBandejaEjecutivaAprobacion()
+        {
+            var lista = ObtenerPorEstados(
+                EstadoSolicitud.AOCR_EnElaboracion,
+                EstadoSolicitud.AOCR_EnRevision,
+                EstadoSolicitud.AOCR_Validado,
+                EstadoSolicitud.Observada,
+                EstadoSolicitud.Subsanada,
+                "AOCR_EN_REVISION",
+                "AOCR EN REVISION",
+                "VALIDADO",
+                "VALIDADO_TECNICAMENTE",
+                "ENVIADO_A_JEFATURA",
+                "ENVIADO A JEFATURA",
+                "ENVIADO_A_LEGALIZACION",
+                "ENVIADO A LEGALIZACION",
+                "OBSERVADO",
+                "OBSERVADO_JEFATURA",
+                "SUBSANADO"
+            ) ?? new List<SolicitudAOCR>();
+
+            _logger.LogInfo("[Direccion] DAO.ObtenerParaBandejaEjecutivaAprobacion registros=" + lista.Count);
+            for (var i = 0; i < lista.Count && i < 10; i++)
+            {
+                var s = lista[i];
+                _logger.LogInfo("[Direccion] BandejaEjecutivaEjemplo[" + i + "] SolicitudId=" + s.CodigoSolicitud + ", Numero=" + (s.NumeroSolicitud ?? "") + ", Estado=" + (s.Estado ?? ""));
+            }
+
+            return lista;
         }
 
         public List<SolicitudAOCR> ObtenerPendientesAsignacion()

@@ -89,7 +89,8 @@
         bool esCoordinadorRol = esRol("Coordinador") || esRol("CoordinadorInspecciones");
         bool esFinancieroRol  = esRol("Financiero") || esRol("CoordinadorFinanciero");
         bool esLegalRol       = esRol("CoordinacionLegal") || esRol("CoordinadorLegal");
-        bool esDirdacRol      = esRol("DIRDAC") || esRol("Direccion") || esRol("JefaturaTecnica") || esRol("DirectorGeneral") || esRol("DirectorFinanciero");
+        bool esDirectorGeneralRol = esRol("DirectorGeneral");
+        bool esDirdacRol      = esRol("DIRDAC") || esRol("Direccion") || esRol("JefaturaTecnica") || esDirectorGeneralRol || esRol("DirectorFinanciero");
         bool esDireccionRol   = esDirdacRol;  // alias compatibilidad
         bool esTecnicaRol     = esInspectorRol || esCoordinadorRol; // alias compatibilidad
         bool esCoordinacionJefaturaRol = esLegalRol || esDirdacRol;
@@ -109,7 +110,11 @@
         bool puedeDireccion        = puedeDirdac; // alias compatibilidad
         bool puedeCoordinacionJefatura = esAdministrador || esCoordinacionJefaturaRol;
         bool puedeAprobarUsuarios  = esAdministrador || esAprobadorUsuariosRol;
-        bool puedeAdministracion   = esAdministrador || esDirdacRol;
+        bool puedeAdministracion   = esAdministrador;
+        bool puedeValidarAocr      = esAdministrador || esRol("DIRDAC") || esRol("Direccion") || esRol("JefaturaTecnica") || esDirectorGeneralRol;
+        bool puedeLegalizarEmitirAocr = esAdministrador || esLegalRol || esDirectorGeneralRol;
+        bool puedeAprobacionFinalDirdac = esAdministrador || esRol("DIRDAC") || esRol("Direccion") || esRol("JefaturaTecnica") || esDirectorGeneralRol;
+        bool puedeCoordinadorOperativo = esAdministrador || esCoordinadorRol;
 
         // Módulo de órdenes visible solo para Solicitante/Operador externo
         bool mostrarModuloOrdenes = esSolicitanteRol;
@@ -344,13 +349,13 @@
                         </a>
                     </li>
                     <li>
-                        <a class="aocr-link aocr-sidebar-item" href="@Url.Action("RevisarSolicitudes", "SolicitudAOCR")">
-                            <i class="fas fa-tasks text-white-50 mr-2"></i> Revisar Solicitudes
+                        <a class="aocr-link aocr-sidebar-item" href="@Url.Action("Index", "Inspeccion")">
+                            <i class="fas fa-clipboard-list text-white-50 mr-2"></i> Mis Inspecciones Asignadas
                         </a>
                     </li>
                     <li>
                         <a class="aocr-link aocr-sidebar-item" href="@Url.Action("Index", "Inspeccion")">
-                            <i class="fas fa-clipboard-check text-success mr-2"></i> Gestionar Inspecciones
+                            <i class="fas fa-clipboard-check text-success mr-2"></i> Ejecutar Inspección
                         </a>
                     </li>
                 </ul>
@@ -360,23 +365,19 @@
         @* ════════════════════════════════════════
            BLOQUE 4: COORDINADOR
            Visible: Coordinador, CoordinadorInspecciones
+           Alcance: Control operativo (sin firma DIRDAC ni legalización)
         ════════════════════════════════════════ *@
-        @if (puedeCoordinador)
+        @if (puedeCoordinadorOperativo)
         {
             <div class="nav-group aocr-sidebar-section mb-4">
                 <div class="group-title aocr-sidebar-section__title" style="color:#a78bfa;">
                     <i class="fas fa-sitemap mr-1"></i> Coordinador
                 </div>
                 <ul class="aocr-nav">
-                    <li><a class="aocr-link aocr-sidebar-item" href="@Url.Action("DashboardGerencial", "CoordinacionJefatura")"><i class="fas fa-chart-line text-white-50 mr-2"></i> Dashboard Gerencial</a></li>
                     <li><a class="aocr-link aocr-sidebar-item" href="@Url.Action("DashboardInspeccion", "CoordinacionJefatura")"><i class="fas fa-table-columns text-white-50 mr-2"></i> Dashboard Inspección</a></li>
-                    <li><a class="aocr-link aocr-sidebar-item" href="@Url.Action("RevisionVerificacion", "CoordinacionJefatura")"><i class="fas fa-search text-white-50 mr-2"></i> Revisión / Verificación</a></li>
+                    <li><a class="aocr-link aocr-sidebar-item" href="@Url.Action("RevisionVerificacion", "CoordinacionJefatura")"><i class="fas fa-search text-white-50 mr-2"></i> Revisión Documental</a></li>
                     <li><a class="aocr-link aocr-sidebar-item" href="@Url.Action("Index", "Tecnico")"><i class="fas fa-user-check text-white-50 mr-2"></i> Asignar Inspector</a></li>
-                    <li><a class="aocr-link aocr-sidebar-item" href="@Url.Action("AprobarSolicitudes", "CoordinacionJefatura")"><i class="fas fa-check-double text-white-50 mr-2"></i> Aprobar Solicitudes</a></li>
-                    <li><a class="aocr-link aocr-sidebar-item" href="@Url.Action("PendientesFirmaDirdac", "Inspeccion")"><i class="fas fa-file-signature text-white-50 mr-2"></i> Pendientes Firma DIRDAC</a></li>
-                    <li><a class="aocr-link aocr-sidebar-item" href="@Url.Action("ValidarAocr", "CoordinacionJefatura")"><i class="fas fa-stamp text-white-50 mr-2"></i> Validar AOCR</a></li>
-                    <li><a class="aocr-link aocr-sidebar-item" href="@Url.Action("LegalizarAocr", "CoordinacionJefatura")"><i class="fas fa-gavel text-white-50 mr-2"></i> Legalizar AOCR</a></li>
-                    <li><a class="aocr-link aocr-sidebar-item" href="@Url.Action("GenerarCertificados", "CoordinacionJefatura")"><i class="fas fa-file-contract text-white-50 mr-2"></i> Generar Certificados</a></li>
+                    <li><a class="aocr-link aocr-sidebar-item" href="@Url.Action("Index", "Inspeccion")"><i class="fas fa-clipboard-check text-white-50 mr-2"></i> Gestión / Seguimiento de Inspección</a></li>
                 </ul>
             </div>
         }
@@ -401,14 +402,15 @@
         }
 
         @* ════════════════════════════════════════
-           BLOQUE 6: DIRDAC — DIRECCIÓN
+           BLOQUE 6: DIRDAC — DIRECCIÓN / JEFATURA
            Visible: DIRDAC, Direccion, JefaturaTecnica, DirectorGeneral
+           Alcance: revisión técnica/administrativa, decisión formal y firma institucional
         ════════════════════════════════════════ *@
         @if (puedeDirdac)
         {
             <div class="nav-group aocr-sidebar-section mb-4">
                 <div class="group-title aocr-sidebar-section__title text-danger">
-                    <i class="fas fa-user-tie mr-1"></i> DIRDAC — Dirección
+                    <i class="fas fa-user-tie mr-1"></i> DIRDAC / Dirección - Jefatura
                 </div>
                 <ul class="aocr-nav">
                     <li>
@@ -417,28 +419,34 @@
                         </a>
                     </li>
                     <li>
-                        <a class="aocr-link aocr-sidebar-item" href="@Url.Action("RevisionVerificacion", "CoordinacionJefatura")">
-                            <i class="fas fa-search text-white-50 mr-2"></i> Revisión / Verificación
+                        <a class="aocr-link aocr-sidebar-item" href="@Url.Action("AprobarSolicitudes", "Direccion")">
+                            <i class="fas fa-file-check text-white-50 mr-2"></i> Revisión Final de Expedientes
                         </a>
                     </li>
                     <li>
-                        <a class="aocr-link aocr-sidebar-item" href="@Url.Action("RevisarSolicitudes", "SolicitudAOCR")">
-                            <i class="fas fa-tasks text-white-50 mr-2"></i> Revisar Solicitudes
-                        </a>
-                    </li>
-                    <li>
-                        <a class="aocr-link aocr-sidebar-item" href="@Url.Action("Index", "Tecnico")">
-                            <i class="fas fa-user-check text-white-50 mr-2"></i> Asignar Inspector
-                        </a>
-                    </li>
-                    <li>
-                        <a class="aocr-link aocr-sidebar-item" href="@Url.Action("AprobarSolicitudes", "CoordinacionJefatura")">
-                            <i class="fas fa-check-double text-white-50 mr-2"></i> Aprobar Solicitudes
+                        <a class="aocr-link aocr-sidebar-item" href="@Url.Action("AprobarSolicitudes", "Direccion")">
+                            <i class="fas fa-check-double text-white-50 mr-2"></i> Aprobación Final
                         </a>
                     </li>
                     <li>
                         <a class="aocr-link aocr-sidebar-item" href="@Url.Action("PendientesFirmaDirdac", "Inspeccion")">
-                            <i class="fas fa-file-signature text-white-50 mr-2"></i> Pendientes Firma DIRDAC
+                            <i class="fas fa-file-signature text-white-50 mr-2"></i> Informes Pendientes de Firma DIRDAC
+                        </a>
+                    </li>
+                </ul>
+            </div>
+        }
+
+        @if (puedeValidarAocr)
+        {
+            <div class="nav-group aocr-sidebar-section mb-4">
+                <div class="group-title aocr-sidebar-section__title" style="color:#06b6d4;">
+                    <i class="fas fa-stamp mr-1"></i> Validación AOCR
+                </div>
+                <ul class="aocr-nav">
+                    <li>
+                        <a class="aocr-link aocr-sidebar-item" href="@Url.Action("ValidarAocr", "CoordinacionJefatura")">
+                            <i class="fas fa-stamp text-white-50 mr-2"></i> Validar AOCR
                         </a>
                     </li>
                 </ul>
@@ -446,25 +454,25 @@
         }
 
         @* ════════════════════════════════════════
-           BLOQUE 7: LEGAL (solo si no es DIRDAC)
-           Visible: CoordinacionLegal, CoordinadorLegal
+           BLOQUE 7: LEGALIZACIÓN Y EMISIÓN
+           Visible: CoordinacionLegal, CoordinadorLegal, DirectorGeneral, Administrador
         ════════════════════════════════════════ *@
-        @if (puedeLegal && !puedeDirdac)
+        @if (puedeLegalizarEmitirAocr)
         {
             <div class="nav-group aocr-sidebar-section mb-4">
                 <div class="group-title aocr-sidebar-section__title" style="color:#fb923c;">
-                    <i class="fas fa-gavel mr-1"></i> Legal
+                    <i class="fas fa-gavel mr-1"></i> Legalización y Emisión
                 </div>
                 <ul class="aocr-nav">
                     <li><a class="aocr-link aocr-sidebar-item" href="@Url.Action("LegalizarAocr", "CoordinacionJefatura")"><i class="fas fa-gavel text-white-50 mr-2"></i> Legalizar AOCR</a></li>
-                    <li><a class="aocr-link aocr-sidebar-item" href="@Url.Action("GenerarCertificados", "CoordinacionJefatura")"><i class="fas fa-file-contract text-white-50 mr-2"></i> Generar Certificados</a></li>
+                    <li><a class="aocr-link aocr-sidebar-item" href="@Url.Action("GenerarCertificados", "CoordinacionJefatura")"><i class="fas fa-file-contract text-white-50 mr-2"></i> Generar Certificados AOCR</a></li>
                 </ul>
             </div>
         }
 
         @* ════════════════════════════════════════
            BLOQUE 8: ADMINISTRACIÓN
-           Visible: Administrador, DIRDAC
+           Visible: Administrador
         ════════════════════════════════════════ *@
         @if (puedeAdministracion || puedeAprobarUsuarios)
         {

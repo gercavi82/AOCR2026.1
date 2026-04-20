@@ -5,15 +5,19 @@
 @using System.Web.Mvc
 @using System.Web.Mvc.Html
 @using CapaModelo
+@using CapaDatos.Constants
 @{
     Layout = "~/Views/Shared/_LayoutAOCR.cshtml";
     ViewBag.Title = "Aprobación de Solicitudes AOCR";
 
     var solicitudes = Model ?? new List<SolicitudAOCR>();
     var totalPendientes = solicitudes.Count;
-    var totalObservadas = solicitudes.Count(x => !string.IsNullOrWhiteSpace(x.Estado) && x.Estado.ToUpperInvariant().Contains("OBSERV"));
-    var totalRevision = solicitudes.Count(x => !string.IsNullOrWhiteSpace(x.Estado) && (x.Estado.ToUpperInvariant().Contains("REVISION") || x.Estado.ToUpperInvariant().Contains("VALID")));
-    var totalSubsanadas = solicitudes.Count(x => !string.IsNullOrWhiteSpace(x.Estado) && x.Estado.ToUpperInvariant().Contains("SUBSAN"));
+    var totalObservadas = solicitudes.Count(x => string.Equals(EstadoSolicitud.Normalizar(x.Estado), EstadoSolicitud.Observada, StringComparison.OrdinalIgnoreCase));
+    var totalRevision = solicitudes.Count(x =>
+        string.Equals(EstadoSolicitud.Normalizar(x.Estado), EstadoSolicitud.AOCR_EnRevision, StringComparison.OrdinalIgnoreCase)
+        || string.Equals(EstadoSolicitud.Normalizar(x.Estado), EstadoSolicitud.AOCR_Validado, StringComparison.OrdinalIgnoreCase)
+        || string.Equals(EstadoSolicitud.Normalizar(x.Estado), EstadoSolicitud.AOCR_EnElaboracion, StringComparison.OrdinalIgnoreCase));
+    var totalSubsanadas = solicitudes.Count(x => string.Equals(EstadoSolicitud.Normalizar(x.Estado), EstadoSolicitud.Subsanada, StringComparison.OrdinalIgnoreCase));
 
     var pageHeaderData = new ViewDataDictionary
     {
@@ -102,7 +106,7 @@
                 @Html.Partial("_EmptyState", null, new ViewDataDictionary {
                     { "Icon", "fas fa-clipboard-check" },
                     { "Title", "No hay solicitudes pendientes de aprobación" },
-                    { "Description", "Cuando existan solicitudes en estado AOCR en revisión o validado, aparecerán aquí para decisión de dirección o jefatura." }
+                    { "Description", "Cuando existan solicitudes en estados AOCR en elaboración, AOCR en revisión, AOCR validado, observada o subsanada, aparecerán aquí para decisión de dirección o jefatura." }
                 })
             }
             else
