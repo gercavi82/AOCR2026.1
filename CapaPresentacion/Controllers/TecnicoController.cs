@@ -54,6 +54,44 @@ namespace CapaPresentacion.Controllers
         }
 
         // =======================================================
+        // BÚSQUEDA GLOBAL (AJAX) — incluye finalizadas y no finalizadas
+        // =======================================================
+        [HttpGet]
+        [Authorize(Roles = "Administrador,Coordinador,CoordinadorInspecciones")]
+        public ActionResult BuscarGlobal(string q)
+        {
+            try
+            {
+                if (string.IsNullOrWhiteSpace(q) || q.Trim().Length < 2)
+                {
+                    return Json(new { ok = true, total = 0, items = new object[0] }, JsonRequestBehavior.AllowGet);
+                }
+
+                var lista = SolicitudAOCRBL.BuscarGlobal(q, 100) ?? new List<SolicitudAOCR>();
+
+                var items = lista.Select(s => new
+                {
+                    codigoSolicitud = s.CodigoSolicitud,
+                    numeroSolicitud = s.NumeroSolicitud ?? string.Empty,
+                    nombreOperador = s.NombreOperador ?? s.RazonSocial ?? string.Empty,
+                    ruc = s.Ruc ?? string.Empty,
+                    estado = s.Estado ?? string.Empty,
+                    fechaSolicitud = s.FechaSolicitud.HasValue ? s.FechaSolicitud.Value.ToString("dd/MM/yyyy") : "-",
+                    urlDetalle = Url.Action("Detalle", "SolicitudAOCR", new { id = s.CodigoSolicitud }),
+                    urlAsignar = Url.Action("AsignarInspector", "Tecnico", new { solicitudId = s.CodigoSolicitud })
+                }).ToList();
+
+                _logger.LogInfo("[Tecnico.BuscarGlobal] q='" + q + "' total=" + items.Count);
+                return Json(new { ok = true, total = items.Count, items = items }, JsonRequestBehavior.AllowGet);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError("[Tecnico.BuscarGlobal] Error: " + ex.Message);
+                return Json(new { ok = false, mensaje = "Error al buscar: " + ex.Message }, JsonRequestBehavior.AllowGet);
+            }
+        }
+
+        // =======================================================
         // CREAR
         // =======================================================
         [Authorize(Roles = "Administrador")]

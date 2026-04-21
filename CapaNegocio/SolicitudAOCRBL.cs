@@ -84,6 +84,9 @@ namespace CapaNegocio
 
         public static List<SolicitudAOCR> ObtenerPendientesAsignacion() => new SolicitudAOCRDAO().ObtenerPendientesAsignacion();
 
+        public static List<SolicitudAOCR> BuscarGlobal(string termino, int limite = 50)
+            => new SolicitudAOCRDAO().BuscarGlobal(termino, limite);
+
         // 11. Marcar Para Inspeccion
         public static bool MarcarParaInspeccion(int idSolicitud)
         {

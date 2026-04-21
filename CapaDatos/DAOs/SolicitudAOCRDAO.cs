@@ -33,6 +33,50 @@ namespace CapaDatos.DAOs
         public List<SolicitudAOCR> ListarActivas() => ObtenerPorFiltro("deleted_at IS NULL");
         public List<SolicitudAOCR> ObtenerTodos() => ObtenerPorFiltro("1=1");
 
+        // ============================
+        // BÚSQUEDA GLOBAL (incluye finalizadas y no finalizadas)
+        // ============================
+        public List<SolicitudAOCR> BuscarGlobal(string termino, int limite = 50)
+        {
+            if (string.IsNullOrWhiteSpace(termino))
+                return new List<SolicitudAOCR>();
+
+            var t = termino.Trim();
+            if (limite <= 0 || limite > 500) limite = 50;
+
+            const string where = @"
+                deleted_at IS NULL AND (
+                       CAST(codigo_solicitud AS TEXT) ILIKE @q
+                    OR COALESCE(numero_solicitud, '') ILIKE @q
+                    OR COALESCE(nombre_operador, '') ILIKE @q
+                    OR COALESCE(nombre_explotador, '') ILIKE @q
+                    OR COALESCE(razon_social, '') ILIKE @q
+                    OR COALESCE(nombre_comercial, '') ILIKE @q
+                    OR COALESCE(ruc, '') ILIKE @q
+                    OR COALESCE(numero_aoc, '') ILIKE @q
+                    OR COALESCE(estado, '') ILIKE @q
+                )";
+
+            var lista = new List<SolicitudAOCR>();
+            using (var cn = new NpgsqlConnection(ConnectionString))
+            {
+                cn.Open();
+                string sql = $@"SELECT * FROM aocr_tbsolicitud WHERE {where} ORDER BY fecha_solicitud DESC NULLS LAST, codigo_solicitud DESC LIMIT @lim";
+                using (var cmd = new NpgsqlCommand(sql, cn))
+                {
+                    cmd.Parameters.AddWithValue("@q", "%" + t + "%");
+                    cmd.Parameters.AddWithValue("@lim", limite);
+                    using (var rd = cmd.ExecuteReader())
+                    {
+                        while (rd.Read()) lista.Add(Mapear(rd));
+                    }
+                }
+            }
+
+            _logger.LogInfo("[BuscarGlobal] termino='" + t + "' resultados=" + lista.Count);
+            return lista;
+        }
+
         public List<SolicitudAOCR> ObtenerPorUsuario(int codigoUsuario)
         {
             return ObtenerPorFiltro(

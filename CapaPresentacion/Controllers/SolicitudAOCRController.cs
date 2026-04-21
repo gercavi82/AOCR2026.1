@@ -21,6 +21,7 @@ using CapaDatos.Services;
 using CapaNegocio.Services;
 using Newtonsoft.Json;
 using Npgsql;
+using Rotativa;
 
 namespace CapaPresentacion.Controllers
 {
@@ -33,6 +34,7 @@ namespace CapaPresentacion.Controllers
         private readonly SolicitudAOCRDAO _solicitudDAO = new SolicitudAOCRDAO();
         private readonly DocumentoDAO _documentoDAO = new DocumentoDAO();
         private readonly SolicitudAocrCorreoService _solicitudAocrCorreoService = new SolicitudAocrCorreoService();
+        private readonly GeneracionAOCRService _generacionAocrService = new GeneracionAOCRService();
 
         private readonly AeronaveSolicitudDAO _aeronaveSolDAO = new AeronaveSolicitudDAO();
         private readonly PagoDAO _pagoDAO = new PagoDAO();
@@ -2455,7 +2457,256 @@ namespace CapaPresentacion.Controllers
                 documentosRevision.All(d => DocumentoTieneDecisionFinal(d, revisionesDocumentales)) &&
                 !documentosRevision.Any(d => DocumentoRequiereObservacionPendiente(d, revisionesDocumentales));
 
+            // Trazabilidad completa (aditivo, no rompe nada si la vista BD no existe)
+            try
+            {
+                ViewBag.DocumentosHistorialCompleto = _documentoDAO.ObtenerPorSolicitud(id) ?? new List<Documento>();
+            }
+            catch { ViewBag.DocumentosHistorialCompleto = new List<Documento>(); }
+
+            try
+            {
+                ViewBag.DocumentosSubsanacion = _solicitudAocrInfraBL.ObtenerDocumentosSubsanacionPorSolicitud(id);
+            }
+            catch { ViewBag.DocumentosSubsanacion = new List<CapaDatos.Entidades.DocumentoSubsanacionRegistro>(); }
+
+            try
+            {
+                ViewBag.TrazabilidadCompleta = _solicitudAocrInfraBL.ObtenerTrazabilidadCompleta(id);
+            }
+            catch { ViewBag.TrazabilidadCompleta = new List<CapaDatos.Entidades.EventoTrazabilidad>(); }
+
+            // Generación AOCR (reemplaza carga manual de "Borrador AOCR")
+            try
+            {
+                var dispAocr = _generacionAocrService.Evaluar(id);
+                ViewBag.PuedeGenerarAOCR = dispAocr != null && dispAocr.Habilitado;
+                ViewBag.MotivoGenerarAOCR = dispAocr != null
+                    ? dispAocr.Motivo
+                    : "La AOCR estará disponible cuando finalice la revisión y aprobación del informe técnico.";
+                ViewBag.DocumentoAOCRGenerado = dispAocr != null ? dispAocr.DocumentoGenerado : null;
+                ViewBag.AocrYaGenerado = dispAocr != null && dispAocr.YaGenerado;
+            }
+            catch
+            {
+                ViewBag.PuedeGenerarAOCR = false;
+                ViewBag.MotivoGenerarAOCR = "La AOCR estará disponible cuando finalice la revisión y aprobación del informe técnico.";
+                ViewBag.DocumentoAOCRGenerado = null;
+                ViewBag.AocrYaGenerado = false;
+            }
+
             return View(solicitud);
+        }
+
+        // ==========================================================================
+        // GENERACIÓN AUTOMÁTICA DEL DOCUMENTO AOCR
+        // Reemplaza la antigua "Subir Documento / Borrador AOCR" por generación
+        // institucional a partir de los datos del trámite y del informe técnico
+        // aprobado. Valida todas las reglas de negocio en backend.
+        // ==========================================================================
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        [Authorize(Roles = "Inspector,JefaturaTecnica,CoordinacionLegal,CoordinadorLegal,Direccion,DirectorGeneral,Administrador")]
+        public ActionResult GenerarAOCR(int id)
+        {
+            try
+            {
+                var disponibilidad = _generacionAocrService.Evaluar(id);
+                if (disponibilidad == null || disponibilidad.Solicitud == null)
+                {
+                    TempData["NotificacionTipo"] = "error";
+                    TempData["NotificacionMensaje"] = "La solicitud no existe o no se pudo evaluar.";
+                    return RedirectToAction("Detalle", new { id });
+                }
+
+                if (!disponibilidad.Habilitado)
+                {
+                    TempData["NotificacionTipo"] = "warning";
+                    TempData["NotificacionMensaje"] = disponibilidad.Motivo ?? "La generación de la AOCR aún no está habilitada.";
+                    return RedirectToAction("Detalle", new { id });
+                }
+
+                var solicitud = disponibilidad.Solicitud;
+                string numeroAOCR = GeneracionAOCRService.GenerarNumeroAOCR(id, DateTime.Now);
+
+                // Construir ViewModel institucional para el PDF
+                var modelo = ConstruirCertificadoAocrViewModel(solicitud, numeroAOCR);
+
+                // Generar el PDF con Rotativa (mismo pipeline que CertificadoController)
+                byte[] pdfBytes;
+                try
+                {
+                    var pdf = new ViewAsPdf("~/Views/Certificado/CertificadoAOCR.cshtml", modelo)
+                    {
+                        PageSize = Rotativa.Options.Size.A4,
+                        PageOrientation = Rotativa.Options.Orientation.Portrait,
+                        PageMargins = new Rotativa.Options.Margins(5, 5, 5, 5),
+                        CustomSwitches = "--enable-local-file-access --print-media-type --dpi 300 --zoom 1.0"
+                    };
+                    pdfBytes = pdf.BuildFile(ControllerContext);
+                }
+                catch (Exception exPdf)
+                {
+                    System.Diagnostics.Debug.WriteLine("[GenerarAOCR] Error al construir PDF: " + exPdf);
+                    TempData["NotificacionTipo"] = "error";
+                    TempData["NotificacionMensaje"] = "No se pudo generar el PDF de la AOCR: " + exPdf.Message;
+                    return RedirectToAction("Detalle", new { id });
+                }
+
+                if (pdfBytes == null || pdfBytes.Length == 0)
+                {
+                    TempData["NotificacionTipo"] = "error";
+                    TempData["NotificacionMensaje"] = "La generación del PDF devolvió un resultado vacío.";
+                    return RedirectToAction("Detalle", new { id });
+                }
+
+                // Guardar archivo físico
+                string carpetaVirtual = "~/Uploads/AOCR";
+                string carpetaFisica = Server.MapPath(carpetaVirtual);
+                if (!Directory.Exists(carpetaFisica))
+                {
+                    Directory.CreateDirectory(carpetaFisica);
+                }
+
+                string nombreArchivo = numeroAOCR.Replace("/", "-").Replace("\\", "-") +
+                                       "_" + DateTime.Now.ToString("yyyyMMddHHmmss") + ".pdf";
+                string rutaFisica = Path.Combine(carpetaFisica, nombreArchivo);
+                System.IO.File.WriteAllBytes(rutaFisica, pdfBytes);
+
+                // Persistir metadata + historial
+                int usuarioId = ObtenerUsuarioActualId();
+                string usuarioNombre = (User != null && User.Identity != null) ? User.Identity.Name : "sistema";
+
+                string mensajePersistencia;
+                var documento = _generacionAocrService.RegistrarDocumentoGenerado(
+                    id,
+                    rutaFisica,
+                    nombreArchivo,
+                    numeroAOCR,
+                    usuarioId,
+                    usuarioNombre,
+                    out mensajePersistencia);
+
+                if (documento == null)
+                {
+                    TempData["NotificacionTipo"] = "error";
+                    TempData["NotificacionMensaje"] = mensajePersistencia ?? "La AOCR se generó pero no se pudo registrar.";
+                    return RedirectToAction("Detalle", new { id });
+                }
+
+                TempData["NotificacionTipo"] = "success";
+                TempData["NotificacionMensaje"] = "AOCR generada correctamente (" + numeroAOCR + "). Documento añadido al expediente.";
+                return RedirectToAction("Detalle", new { id });
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine("[GenerarAOCR] Error inesperado: " + ex);
+                TempData["NotificacionTipo"] = "error";
+                TempData["NotificacionMensaje"] = "Error inesperado al generar la AOCR: " + ex.Message;
+                return RedirectToAction("Detalle", new { id });
+            }
+        }
+
+        /// <summary>
+        /// Descarga el archivo PDF de la AOCR generada para una solicitud.
+        /// </summary>
+        public ActionResult DescargarAOCRGenerada(int id)
+        {
+            var documento = _generacionAocrService.ObtenerAocrGeneradoVigente(id);
+            if (documento == null || string.IsNullOrWhiteSpace(documento.RutaArchivo))
+            {
+                TempData["NotificacionTipo"] = "warning";
+                TempData["NotificacionMensaje"] = "No existe una AOCR generada para esta solicitud.";
+                return RedirectToAction("Detalle", new { id });
+            }
+
+            string ruta = documento.RutaArchivo;
+            if (!Path.IsPathRooted(ruta))
+            {
+                try { ruta = Server.MapPath(ruta); } catch { /* ignore */ }
+            }
+
+            if (!System.IO.File.Exists(ruta))
+            {
+                TempData["NotificacionTipo"] = "error";
+                TempData["NotificacionMensaje"] = "El archivo de la AOCR no se encuentra disponible en el servidor.";
+                return RedirectToAction("Detalle", new { id });
+            }
+
+            string nombreDescarga = !string.IsNullOrWhiteSpace(documento.NombreArchivo)
+                ? documento.NombreArchivo
+                : ("AOCR_" + id + ".pdf");
+
+            return File(System.IO.File.ReadAllBytes(ruta), "application/pdf", nombreDescarga);
+        }
+
+        /// <summary>
+        /// Construye el ViewModel institucional para el certificado AOCR.
+        /// Replicado desde CertificadoController.ConstruirViewModel para mantener
+        /// consistencia de datos y firma institucional.
+        /// </summary>
+        private CapaModelo.Common.CertificadoAOCRViewModel ConstruirCertificadoAocrViewModel(SolicitudAOCR solicitud, string numeroAOCR)
+        {
+            string logoBase64 = null;
+            string escudoBase64 = null;
+            try
+            {
+                string logoPath = Server.MapPath("~/Content/assets/imganes/logodgac.png");
+                if (System.IO.File.Exists(logoPath))
+                {
+                    logoBase64 = Convert.ToBase64String(System.IO.File.ReadAllBytes(logoPath));
+                }
+                string escudoPath = Server.MapPath("~/Content/assets/imganes/escudo-ecuador.jpg");
+                if (System.IO.File.Exists(escudoPath))
+                {
+                    escudoBase64 = Convert.ToBase64String(System.IO.File.ReadAllBytes(escudoPath));
+                }
+            }
+            catch { /* opcional */ }
+
+            return new CapaModelo.Common.CertificadoAOCRViewModel
+            {
+                NumeroAOCR = numeroAOCR,
+                NumeroAOCBase = solicitud.NumeroSolicitud,
+                FechaEmision = DateTime.Now,
+                FechaVencimiento = null,
+                FechaRenovacion = null,
+                NumeroEnmienda = 1,
+
+                NombreExplotador = solicitud.NombreOperador,
+                EstadoExplotador = solicitud.Pais ?? "Ecuador",
+                RazonSocial = !string.IsNullOrWhiteSpace(solicitud.RazonSocial) ? solicitud.RazonSocial : solicitud.NombreOperador,
+                RUC = solicitud.Ruc,
+                DireccionExplotador = solicitud.Direccion,
+                TelefonoExplotador = solicitud.Telefono,
+                CorreoExplotador = solicitud.Email,
+
+                PuntoContactoEcuador = solicitud.RepresentanteLegal,
+                DireccionContactoEcuador = solicitud.Direccion,
+                TelefonoContactoEcuador = solicitud.Telefono,
+                CorreoContactoEcuador = solicitud.Email,
+
+                DireccionOperacional = solicitud.Direccion,
+                TelefonoOperacional = solicitud.Telefono,
+                CorreoOperacional = solicitud.Email,
+
+                RepresentanteTecnico = solicitud.TecnicoResponsableNombre,
+                CorreoRT = solicitud.CorreoRepresentanteTecnico,
+                RepresentanteLegal = solicitud.RepresentanteLegal,
+
+                TipoOperacion = solicitud.TipoOperacion,
+                AlcanceOperacion = solicitud.DescripcionOperacion,
+
+                NombreFirmante = !string.IsNullOrWhiteSpace(solicitud.Director) ? solicitud.Director : "DIRECTOR GENERAL DE AVIACION CIVIL",
+                CargoFirmante = !string.IsNullOrWhiteSpace(solicitud.CargoDirector) ? solicitud.CargoDirector : "Director General de Aviacion Civil",
+                TituloFirmante = "DIRECTOR GENERAL DE AVIACION CIVIL",
+
+                Observaciones = solicitud.Observaciones,
+
+                LogoBase64 = logoBase64,
+                EscudoBase64 = escudoBase64,
+                Solicitud = solicitud
+            };
         }
 
         [Authorize(Roles = "CoordinacionLegal,CoordinadorLegal,DirectorGeneral,Administrador")]

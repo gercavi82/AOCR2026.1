@@ -376,6 +376,10 @@
                                        class="btn btn-outline-primary" title="Ver detalle">
                                         <i class="fa fa-eye"></i>
                                     </a>
+                                    <a href="@Url.Action("Detalle", "SolicitudAOCR", new { id = inspeccion.CodigoSolicitud })"
+                                       class="btn btn-outline-secondary" title="Ver solicitud (documentos e historial)">
+                                        <i class="fa fa-folder-open"></i>
+                                    </a>
                                     @if (User.IsInRole("Inspector") || User.IsInRole("Administrador"))
                                     {
                                         <a href="@Url.Action("Editar", "Inspeccion", new { id = inspeccion.CodigoInspeccion })" 

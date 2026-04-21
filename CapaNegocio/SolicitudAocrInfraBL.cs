@@ -19,6 +19,35 @@ namespace CapaNegocio
         private readonly UsuarioInternoRTDAO _usuarioInternoRtDao = new UsuarioInternoRTDAO();
         private readonly UsuarioAS400DAO _usuarioAs400Dao = new UsuarioAS400DAO(new SecureConfigurationService());
         private readonly EmpresaAS400DAO _empresaAs400Dao = new EmpresaAS400DAO(new SecureConfigurationService());
+        private readonly TrazabilidadDAO _trazabilidadDao = new TrazabilidadDAO();
+
+        // =========================================================
+        // TRAZABILIDAD COMPLETA DEL EXPEDIENTE
+        // =========================================================
+        public List<EventoTrazabilidad> ObtenerTrazabilidadCompleta(int codigoSolicitud)
+        {
+            try
+            {
+                return _trazabilidadDao.ObtenerPorSolicitud(codigoSolicitud) ?? new List<EventoTrazabilidad>();
+            }
+            catch
+            {
+                return new List<EventoTrazabilidad>();
+            }
+        }
+
+        public List<DocumentoSubsanacionRegistro> ObtenerDocumentosSubsanacionPorSolicitud(int codigoSolicitud)
+        {
+            try
+            {
+                return _trazabilidadDao.ObtenerDocumentosSubsanacionPorSolicitud(codigoSolicitud)
+                       ?? new List<DocumentoSubsanacionRegistro>();
+            }
+            catch
+            {
+                return new List<DocumentoSubsanacionRegistro>();
+            }
+        }
 
         public List<Inspeccion> ListarInspeccionesPorSolicitud(int codigoSolicitud)
         {

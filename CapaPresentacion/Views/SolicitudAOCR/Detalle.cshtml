@@ -493,16 +493,82 @@
                 <span>Gestion Documental</span>
             </div>
 
+            @{
+                var puedeGenerarAocr = (ViewBag.PuedeGenerarAOCR != null) && (bool)ViewBag.PuedeGenerarAOCR;
+                var motivoAocr = ViewBag.MotivoGenerarAOCR as string;
+                var aocrYaGenerado = (ViewBag.AocrYaGenerado != null) && (bool)ViewBag.AocrYaGenerado;
+                var documentoAocr = ViewBag.DocumentoAOCRGenerado as CapaModelo.Documento;
+            }
+
             <div class="aocr-action-grid">
-                <a href="@Url.Action("Subir", "Documento", new { solicitudId = Model.CodigoSolicitud })" class="btn btn-primary aocr-action-btn-full">
-                    <i class="fas fa-upload"></i>
-                    Subir Documento / Borrador AOCR
-                </a>
+                @if (aocrYaGenerado && documentoAocr != null)
+                {
+                    <div class="btn btn-success aocr-action-btn-full disabled" style="cursor: default;">
+                        <i class="fas fa-check-circle"></i>
+                        AOCR Generada
+                        <small class="d-block" style="font-size: 0.78em; opacity: 0.9;">
+                            @(documentoAocr.NombreArchivo)
+                            @if (documentoAocr.FechaCarga.HasValue)
+                            {
+                                <text> — @documentoAocr.FechaCarga.Value.ToString("dd/MM/yyyy HH:mm")</text>
+                            }
+                        </small>
+                    </div>
+                    <a href="@Url.Action("DescargarAOCRGenerada", "SolicitudAOCR", new { id = Model.CodigoSolicitud })"
+                       class="btn btn-outline-success aocr-action-btn-full" target="_blank" rel="noopener">
+                        <i class="fas fa-download"></i>
+                        Descargar AOCR
+                    </a>
+                }
+                else if (puedeGenerarAocr)
+                {
+                    using (Html.BeginForm("GenerarAOCR", "SolicitudAOCR", new { id = Model.CodigoSolicitud }, FormMethod.Post, new { style = "display:contents;" }))
+                    {
+                        @Html.AntiForgeryToken()
+                        <button type="submit"
+                                class="btn btn-primary aocr-action-btn-full"
+                                onclick="return confirm('¿Confirma la generación automática del documento AOCR para esta solicitud?');"
+                                title="@(motivoAocr ?? "Generar documento AOCR desde el sistema")">
+                            <i class="fas fa-file-signature"></i>
+                            Generar AOCR
+                        </button>
+                    }
+                }
+                else
+                {
+                    <button type="button"
+                            class="btn btn-primary aocr-action-btn-full"
+                            disabled="disabled"
+                            title="@(motivoAocr ?? "Disponible una vez finalice la revisión y aprobación del informe técnico")"
+                            style="opacity: 0.55; cursor: not-allowed;">
+                        <i class="fas fa-file-signature"></i>
+                        Generar AOCR
+                    </button>
+                }
+
                 <a href="@Url.Action("Lista", "Documento", new { solicitudId = Model.CodigoSolicitud })" class="btn btn-outline-primary aocr-action-btn-full">
                     <i class="fas fa-file-alt"></i>
                     Ver Documentos de la Solicitud
                 </a>
             </div>
+
+            @if (!puedeGenerarAocr && !aocrYaGenerado)
+            {
+                <div class="alert alert-info mt-3 mb-0" style="font-size: 0.9em;">
+                    <i class="fas fa-info-circle me-1"></i>
+                    <strong>AOCR no disponible aún:</strong>
+                    @(string.IsNullOrEmpty(motivoAocr)
+                        ? "La AOCR estará disponible cuando finalice la revisión y aprobación del informe técnico."
+                        : motivoAocr)
+                </div>
+            }
+            else if (aocrYaGenerado)
+            {
+                <div class="alert alert-success mt-3 mb-0" style="font-size: 0.9em;">
+                    <i class="fas fa-check-circle me-1"></i>
+                    La AOCR de esta solicitud ya fue generada automáticamente por el sistema y está disponible en el expediente.
+                </div>
+            }
         </div>
     </div>
 
@@ -853,6 +919,202 @@
                         </div>
                     </div>
                 </form>
+            </div>
+        </div>
+    }
+
+    @{
+        var documentosHistorialCompleto = (ViewBag.DocumentosHistorialCompleto as List<Documento>) ?? new List<Documento>();
+        var documentosSubsanacion = (ViewBag.DocumentosSubsanacion as List<CapaDatos.Entidades.DocumentoSubsanacionRegistro>)
+                                    ?? new List<CapaDatos.Entidades.DocumentoSubsanacionRegistro>();
+        var trazabilidadCompleta = (ViewBag.TrazabilidadCompleta as List<CapaDatos.Entidades.EventoTrazabilidad>)
+                                   ?? new List<CapaDatos.Entidades.EventoTrazabilidad>();
+    }
+
+    @if (documentosHistorialCompleto.Count > 0)
+    {
+        var grupos = documentosHistorialCompleto
+            .GroupBy(d => (d.TipoDocumento ?? "Documento").Trim(), StringComparer.OrdinalIgnoreCase)
+            .OrderBy(g => g.Key, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        <div class="card aocr-detail-card mt-4">
+            <div class="card-header bg-white border-0 pt-4 px-4">
+                <div class="aocr-section-title mb-0">
+                    <i class="fas fa-layer-group"></i>
+                    <span>Documentos del RT — Historial de versiones</span>
+                </div>
+                <p class="text-muted small mb-0 mt-2">
+                    Se listan todos los documentos cargados por el Representante Técnico, incluyendo versiones iniciales y cargas posteriores realizadas como respuesta a observaciones.
+                </p>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-sm mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Tipo documental</th>
+                                <th>Versión</th>
+                                <th>Archivo</th>
+                                <th>Origen</th>
+                                <th>Fecha carga</th>
+                                <th>Cargado por</th>
+                                <th>Estado</th>
+                                <th>Observación</th>
+                                <th>Acción</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var grupo in grupos)
+                            {
+                                var items = grupo
+                                    .OrderByDescending(d => d.Version ?? 0)
+                                    .ThenByDescending(d => d.FechaCarga ?? DateTime.MinValue)
+                                    .ThenByDescending(d => d.CodigoDocumento)
+                                    .ToList();
+                                var idx = 0;
+                                foreach (var doc in items)
+                                {
+                                    var esVigente = (idx == 0);
+                                    var version = doc.Version ?? 1;
+                                    var esSubsanacion = version > 1 || !esVigente;
+                                    var etiquetaOrigen = esSubsanacion
+                                        ? "<span class=\"badge bg-warning text-dark\">Subsanación</span>"
+                                        : "<span class=\"badge bg-primary\">Inicial</span>";
+                                    var etiquetaVigencia = esVigente
+                                        ? "<span class=\"badge bg-success ms-1\">Vigente</span>"
+                                        : "<span class=\"badge bg-secondary ms-1\">Histórica</span>";
+                                    var rowClass = esVigente ? "table-light" : "";
+                                    <tr class="@rowClass">
+                                        <td><strong>@Html.Encode(grupo.Key)</strong></td>
+                                        <td>v@(version) @Html.Raw(etiquetaVigencia)</td>
+                                        <td>@Html.Encode(doc.NombreArchivo)</td>
+                                        <td>@Html.Raw(etiquetaOrigen)</td>
+                                        <td>@(doc.FechaCarga.HasValue ? doc.FechaCarga.Value.ToString("yyyy-MM-dd HH:mm") : "—")</td>
+                                        <td>@Html.Encode(doc.UsuarioRegistro ?? "—")</td>
+                                        <td><span class="badge bg-light text-dark border">@Html.Encode(doc.Estado ?? "—")</span></td>
+                                        <td class="text-muted small" style="max-width:220px;">@Html.Encode(doc.Observaciones ?? string.Empty)</td>
+                                        <td>
+                                            @if (!string.IsNullOrWhiteSpace(doc.RutaGuardada))
+                                            {
+                                                <a href="@Url.Action("Descargar", "Documento", new { id = doc.CodigoDocumento })" class="btn btn-sm btn-outline-primary" title="Descargar">
+                                                    <i class="fas fa-download"></i>
+                                                </a>
+                                            }
+                                        </td>
+                                    </tr>
+                                    idx++;
+                                }
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    }
+
+    @if (documentosSubsanacion.Count > 0)
+    {
+        <div class="card aocr-detail-card mt-4">
+            <div class="card-header bg-white border-0 pt-4 px-4">
+                <div class="aocr-section-title mb-0">
+                    <i class="fas fa-file-import"></i>
+                    <span>Documentos de respuesta a observaciones (Subsanación)</span>
+                </div>
+                <p class="text-muted small mb-0 mt-2">
+                    Archivos cargados por el RT en respuesta a subsanaciones emitidas por el revisor.
+                </p>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-sm mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Fecha carga</th>
+                                <th>Archivo</th>
+                                <th>Tipo</th>
+                                <th>Cargado por</th>
+                                <th>Motivo (observación)</th>
+                                <th>Fecha subsanación solicitada</th>
+                                <th>Acción</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var ds in documentosSubsanacion)
+                            {
+                                <tr>
+                                    <td>@ds.FechaCarga.ToString("yyyy-MM-dd HH:mm")</td>
+                                    <td>@Html.Encode(ds.NombreArchivo)</td>
+                                    <td>@Html.Encode(ds.TipoDocumento ?? "—")</td>
+                                    <td>@Html.Encode(ds.UsuarioCargaNombre ?? "RT")</td>
+                                    <td class="small" style="max-width:280px;">@Html.Encode(ds.ObservacionMotivo ?? string.Empty)</td>
+                                    <td>@(ds.FechaSubsanacionSolicitada.HasValue ? ds.FechaSubsanacionSolicitada.Value.ToString("yyyy-MM-dd HH:mm") : "—")</td>
+                                    <td>
+                                        @if (!string.IsNullOrWhiteSpace(ds.RutaArchivo))
+                                        {
+                                            <a href="@ds.RutaArchivo" target="_blank" class="btn btn-sm btn-outline-primary" title="Abrir">
+                                                <i class="fas fa-external-link-alt"></i>
+                                            </a>
+                                        }
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    }
+
+    @if (trazabilidadCompleta.Count > 0)
+    {
+        <div class="card aocr-detail-card mt-4">
+            <div class="card-header bg-white border-0 pt-4 px-4">
+                <div class="aocr-section-title mb-0">
+                    <i class="fas fa-stream"></i>
+                    <span>Línea de tiempo completa del expediente</span>
+                </div>
+                <p class="text-muted small mb-0 mt-2">
+                    Registro auditable de todas las acciones realizadas sobre el trámite: cambios de estado, decisiones documentales, cargas del RT, subsanaciones y eventos internos.
+                </p>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-sm table-hover mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Fecha / hora</th>
+                                <th>Usuario</th>
+                                <th>Rol</th>
+                                <th>Módulo</th>
+                                <th>Acción</th>
+                                <th>Estado anterior → nuevo</th>
+                                <th>Documento</th>
+                                <th>Observación / detalle</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var ev in trazabilidadCompleta)
+                            {
+                                var trans = string.Empty;
+                                if (!string.IsNullOrWhiteSpace(ev.EstadoAnterior) || !string.IsNullOrWhiteSpace(ev.EstadoNuevo))
+                                {
+                                    trans = (ev.EstadoAnterior ?? "—") + " → " + (ev.EstadoNuevo ?? "—");
+                                }
+                                <tr>
+                                    <td class="text-nowrap">@ev.FechaEvento.ToString("yyyy-MM-dd HH:mm")</td>
+                                    <td>@Html.Encode(ev.UsuarioNombre ?? "—")</td>
+                                    <td><span class="badge bg-light text-dark border">@Html.Encode(ev.Rol ?? "—")</span></td>
+                                    <td><span class="badge bg-info text-dark">@Html.Encode(ev.Modulo ?? "—")</span></td>
+                                    <td><strong>@Html.Encode(ev.Accion ?? "—")</strong></td>
+                                    <td class="small">@Html.Encode(trans)</td>
+                                    <td class="small">@Html.Encode(ev.DocumentoAfectado ?? string.Empty)</td>
+                                    <td class="small" style="max-width:320px;">@Html.Encode(ev.Observacion ?? string.Empty)</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
             </div>
         </div>
     }

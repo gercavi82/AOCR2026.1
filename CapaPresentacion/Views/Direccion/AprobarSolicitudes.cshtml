@@ -1,4 +1,4 @@
-﻿@inherits System.Web.Mvc.WebViewPage<List<CapaModelo.SolicitudAOCR>>
+﻿@model CapaPresentacion.Models.BandejaEjecutivaAprobacionViewModel
 @using System.Collections.Generic
 @using System.Linq
 @using System.Web
@@ -10,14 +10,15 @@
     Layout = "~/Views/Shared/_LayoutAOCR.cshtml";
     ViewBag.Title = "Aprobación de Solicitudes AOCR";
 
-    var solicitudes = Model ?? new List<SolicitudAOCR>();
-    var totalPendientes = solicitudes.Count;
-    var totalObservadas = solicitudes.Count(x => string.Equals(EstadoSolicitud.Normalizar(x.Estado), EstadoSolicitud.Observada, StringComparison.OrdinalIgnoreCase));
-    var totalRevision = solicitudes.Count(x =>
-        string.Equals(EstadoSolicitud.Normalizar(x.Estado), EstadoSolicitud.AOCR_EnRevision, StringComparison.OrdinalIgnoreCase)
-        || string.Equals(EstadoSolicitud.Normalizar(x.Estado), EstadoSolicitud.AOCR_Validado, StringComparison.OrdinalIgnoreCase)
-        || string.Equals(EstadoSolicitud.Normalizar(x.Estado), EstadoSolicitud.AOCR_EnElaboracion, StringComparison.OrdinalIgnoreCase));
-    var totalSubsanadas = solicitudes.Count(x => string.Equals(EstadoSolicitud.Normalizar(x.Estado), EstadoSolicitud.Subsanada, StringComparison.OrdinalIgnoreCase));
+    var vm = Model ?? new CapaPresentacion.Models.BandejaEjecutivaAprobacionViewModel();
+    var solicitudes = (vm.SolicitudesFiltradas != null) ? vm.SolicitudesFiltradas : new List<SolicitudAOCR>();
+    var totalPendientes = vm.Total;
+    var totalObservadas = vm.TotalObservadas;
+    var totalRevision = vm.TotalEnRevision;
+    var totalSubsanadas = vm.TotalSubsanadas;
+    var filtroActivo = string.IsNullOrWhiteSpace(vm.FiltroActivo) ? "todas" : vm.FiltroActivo;
+
+    Func<string, bool> esFiltroActivo = clave => string.Equals(filtroActivo, clave, StringComparison.OrdinalIgnoreCase);
 
     var pageHeaderData = new ViewDataDictionary
     {
@@ -32,15 +33,44 @@
         }
     };
 
+    // Hero: métrica dinámica según la categoría dominante de la bandeja
+    string heroMetricTitle;
+    string heroMetricSubtitle;
+    int heroMetricValue;
+    if (totalRevision > 0)
+    {
+        heroMetricTitle    = "En revisión";
+        heroMetricValue    = totalRevision;
+        heroMetricSubtitle = "Solicitudes en proceso de revisión";
+    }
+    else if (totalObservadas > 0)
+    {
+        heroMetricTitle    = "Observadas";
+        heroMetricValue    = totalObservadas;
+        heroMetricSubtitle = "Solicitudes que requieren atención";
+    }
+    else if (totalSubsanadas > 0)
+    {
+        heroMetricTitle    = "Subsanadas";
+        heroMetricValue    = totalSubsanadas;
+        heroMetricSubtitle = "Listas para decisión final";
+    }
+    else
+    {
+        heroMetricTitle    = "Total en bandeja";
+        heroMetricValue    = totalPendientes;
+        heroMetricSubtitle = "Solicitudes en este flujo";
+    }
+
     var heroData = new ViewDataDictionary
     {
         { "Kicker", "Certificado del Reconocimiento de Operadores Aéreo Extranjero " },
         { "Title", "Bandeja ejecutiva de aprobación" },
         { "Subtitle", "Gobierno de decisiones del flujo AOCR" },
         { "Description", "Revise la información crítica de cada solicitud y escale acciones de jefatura o coordinación legal bajo una misma línea visual institucional." },
-        { "MetricTitle", "Pendientes" },
-        { "MetricValue", totalPendientes },
-        { "MetricSubtitle", "Solicitudes listas para decisión" }
+        { "MetricTitle", heroMetricTitle },
+        { "MetricValue", heroMetricValue },
+        { "MetricSubtitle", heroMetricSubtitle }
     };
 
     var toolbarLinks = new List<string>
@@ -63,7 +93,7 @@
 
     <div class="row g-3 mb-4">
         <div class="col-12 col-md-6 col-xl-3">
-            @Html.Partial("_MetricCard", null, new ViewDataDictionary { { "Label", "Pendientes" }, { "Value", totalPendientes }, { "Modifier", "warning" }, { "Icon", "fas fa-hourglass-half" }, { "Caption", "Bandeja total de dirección" } })
+            @Html.Partial("_MetricCard", null, new ViewDataDictionary { { "Label", "Total en bandeja" }, { "Value", totalPendientes }, { "Modifier", "warning" }, { "Icon", "fas fa-hourglass-half" }, { "Caption", "Bandeja total de dirección" } })
         </div>
         <div class="col-12 col-md-6 col-xl-3">
             @Html.Partial("_MetricCard", null, new ViewDataDictionary { { "Label", "En revisión" }, { "Value", totalRevision }, { "Modifier", "info" }, { "Icon", "fas fa-magnifying-glass" }, { "Caption", "Solicitudes con validación activa" } })
@@ -98,16 +128,61 @@
                     <h3 class="aocr-section-title mb-1"><i class="fas fa-clipboard-check"></i> Bandeja de aprobación</h3>
                     <p class="text-muted mb-0">Vista ejecutiva consolidada para revisar contexto, estado y acciones disponibles por solicitud.</p>
                 </div>
-                @Html.Partial("_StatusBadge", null, new ViewDataDictionary { { "Estado", solicitudes.Any() ? "En bandeja" : "Completado" } })
+                @Html.Partial("_StatusBadge", null, new ViewDataDictionary { { "Estado", vm.Total > 0 ? "En bandeja" : "Completado" } })
             </div>
 
-            @if (!solicitudes.Any())
+            <div class="d-flex flex-wrap gap-2 mb-4">
+                <a href="@Url.Action("AprobarSolicitudes", "Direccion", new { filtro = "todas" })" class="btn @(esFiltroActivo("todas") ? "btn-aocr-primary" : "btn-aocr-secondary")">Todas (@vm.Total)</a>
+                <a href="@Url.Action("AprobarSolicitudes", "Direccion", new { filtro = "enrevision" })" class="btn @(esFiltroActivo("enrevision") ? "btn-aocr-primary" : "btn-aocr-secondary")">En revisión (@vm.TotalEnRevision)</a>
+                <a href="@Url.Action("AprobarSolicitudes", "Direccion", new { filtro = "observadas" })" class="btn @(esFiltroActivo("observadas") ? "btn-aocr-primary" : "btn-aocr-secondary")">Observadas (@vm.TotalObservadas)</a>
+                <a href="@Url.Action("AprobarSolicitudes", "Direccion", new { filtro = "subsanadas" })" class="btn @(esFiltroActivo("subsanadas") ? "btn-aocr-primary" : "btn-aocr-secondary")">Subsanadas (@vm.TotalSubsanadas)</a>
+                <a href="@Url.Action("AprobarSolicitudes", "Direccion", new { filtro = "jefatura" })" class="btn @(esFiltroActivo("jefatura") ? "btn-aocr-primary" : "btn-aocr-secondary")">Jefatura técnica (@vm.TotalJefatura)</a>
+                <a href="@Url.Action("AprobarSolicitudes", "Direccion", new { filtro = "legal" })" class="btn @(esFiltroActivo("legal") ? "btn-aocr-primary" : "btn-aocr-secondary")">Revisión legal (@vm.TotalLegal)</a>
+            </div>
+
+            @if (vm.TieneDatosFiltrados)
+            {
+                <p class="text-muted small mb-3 ms-1">Mostrando <strong>@vm.TotalFiltradas</strong> solicitud(es) &mdash; filtro activo: <strong>@vm.FiltroActivoEtiqueta</strong></p>
+            }
+
+            @if (vm.Total == 0 && (vm.Solicitudes == null || vm.Solicitudes.Count == 0))
             {
                 @Html.Partial("_EmptyState", null, new ViewDataDictionary {
                     { "Icon", "fas fa-clipboard-check" },
-                    { "Title", "No hay solicitudes pendientes de aprobación" },
+                    { "Title", "No hay solicitudes en la bandeja ejecutiva" },
                     { "Description", "Cuando existan solicitudes en estados AOCR en elaboración, AOCR en revisión, AOCR validado, observada o subsanada, aparecerán aquí para decisión de dirección o jefatura." }
                 })
+            }
+            else if (solicitudes.Count == 0)
+            {
+                var _urlTodas       = Url.Action("AprobarSolicitudes", "Direccion", new { filtro = "todas" });
+                var _urlEnRevision  = Url.Action("AprobarSolicitudes", "Direccion", new { filtro = "enrevision" });
+                var _urlObservadas  = Url.Action("AprobarSolicitudes", "Direccion", new { filtro = "observadas" });
+                var _urlSubsanadas  = Url.Action("AprobarSolicitudes", "Direccion", new { filtro = "subsanadas" });
+                <div class="alert alert-info border-0 shadow-sm mb-0" role="alert">
+                    <div class="d-flex align-items-start gap-3">
+                        <i class="fas fa-filter-circle-xmark fs-4 mt-1"></i>
+                        <div>
+                            <strong>No hay solicitudes en "@vm.FiltroActivoEtiqueta"</strong>
+                            <p class="mb-1 mt-1">Existen <strong>@vm.Total</strong> solicitud(es) en la bandeja, pero ninguna corresponde a este filtro.</p>
+                            <p class="mb-0">
+                                <a href="@_urlTodas" class="alert-link fw-semibold">Ver todas (@vm.Total)</a>
+                                @if (vm.TotalEnRevision > 0)
+                                {
+                                    <text> &middot; <a href="@_urlEnRevision" class="alert-link">Ver @vm.TotalEnRevision en revisión</a></text>
+                                }
+                                @if (vm.TotalObservadas > 0)
+                                {
+                                    <text> &middot; <a href="@_urlObservadas" class="alert-link">Ver @vm.TotalObservadas observada(s)</a></text>
+                                }
+                                @if (vm.TotalSubsanadas > 0)
+                                {
+                                    <text> &middot; <a href="@_urlSubsanadas" class="alert-link">Ver @vm.TotalSubsanadas subsanada(s)</a></text>
+                                }
+                            </p>
+                        </div>
+                    </div>
+                </div>
             }
             else
             {

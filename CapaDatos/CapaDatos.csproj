@@ -331,6 +331,8 @@
     <Compile Include="Entidades\OrdenRecaudacion.cs" />
     <Compile Include="Entidades\ControlFR3.cs" />
     <Compile Include="Entidades\ControlFR3Detalle.cs" />
+    <Compile Include="Entidades\EventoTrazabilidad.cs" />
+    <Compile Include="DAOs\TrazabilidadDAO.cs" />
     <Compile Include="Constants\EstadoConstants.cs" />
     <Compile Include="Infrastructure\ILoggerService.cs" />
     <Compile Include="Infrastructure\NLogLoggerService.cs" />

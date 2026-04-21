@@ -205,6 +205,7 @@
     <Compile Include="RolBL.cs" />
     <Compile Include="SolicitudBL.cs" />
     <Compile Include="Services\Fr3RetryService.cs" />
+    <Compile Include="Services\GeneracionAOCRService.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>

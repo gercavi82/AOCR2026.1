@@ -148,6 +148,16 @@ namespace CapaPresentacion.Controllers
                     return RedirectToAction("Index", "SolicitudAOCR");
                 }
 
+                // Guard institucional: el "Borrador AOCR" y el "AOCR generado" nunca pueden
+                // subirse manualmente. La AOCR se genera automáticamente desde
+                // SolicitudAOCR/GenerarAOCR una vez aprobado el informe técnico.
+                var tipoNormalizado = (tipoDocumento ?? string.Empty).Trim().ToUpperInvariant();
+                if (tipoNormalizado == "BORRADOR_AOCR" || tipoNormalizado == "AOCR_GENERADO" || tipoNormalizado == "AOCR")
+                {
+                    TempData["Error"] = "La AOCR no puede subirse manualmente. Use la opción 'Generar AOCR' en el detalle de la solicitud.";
+                    return RedirectToAction("Detalle", "SolicitudAOCR", new { id = solicitudId.Value });
+                }
+
                 if (archivo == null || archivo.ContentLength == 0)
                 {
                     TempData["Error"] = "Seleccione un archivo válido.";
@@ -307,11 +317,13 @@ namespace CapaPresentacion.Controllers
         #region Auxiliares
         private SelectList ObtenerTiposDocumento()
         {
+            // NOTA: "BORRADOR_AOCR" fue removido intencionalmente.
+            // La AOCR NO debe subirse manualmente; se genera automáticamente desde
+            // SolicitudAOCR/GenerarAOCR cuando el informe técnico queda aprobado.
             return new SelectList(new[] {
                 new { Val="AOC", Txt="Certificado AOC" },
                 new { Val="MEL", Txt="Lista MEL" },
                 new { Val="MANUAL_OPS", Txt="Manual Operaciones" },
-                new { Val="BORRADOR_AOCR", Txt="Borrador AOCR" },
                 new { Val="OTRO", Txt="Otro" }
             }, "Val", "Txt");
         }

@@ -373,6 +373,7 @@
     <Compile Include="Models\DashboardInspeccionViewModel.cs" />
     <Compile Include="Models\DashboardViewModel.cs" />
     <Compile Include="Models\DashboardGerencialViewModel.cs" />
+    <Compile Include="Models\BandejaEjecutivaAprobacionViewModel.cs" />
     <Compile Include="Models\UsuarioRegistroViewModel.cs" />
     <Compile Include="Models\UsuarioCreateViewModel.cs" />
     <Compile Include="Models\CrearSolicitudViewModel.cs" />

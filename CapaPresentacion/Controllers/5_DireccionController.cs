@@ -189,44 +189,155 @@ namespace CapaPresentacion.Controllers
         // APROBAR SOLICITUDES - DIRECCIÓN
         // ============================================================
         [Authorize(Roles = "DIRDAC,Direccion,JefaturaTecnica,DirectorGeneral,Administrador")]
-        public ActionResult AprobarSolicitudes()
+        public ActionResult AprobarSolicitudes(string filtro = null)
         {
-            var solicitudesPendientes = _solicitudDao.ObtenerParaBandejaEjecutivaAprobacion();
+            List<SolicitudAOCR> solicitudesBandeja;
+            List<SolicitudAOCR> solicitudesFiltradas;
+            int totalBandeja, totalEnRevision, totalObservadas, totalSubsanadas, totalJefatura, totalLegal;
+            string filtroActivo;
 
-            var pendientes = solicitudesPendientes.Count;
-            var enRevision = solicitudesPendientes.Count(s =>
-                string.Equals(EstadoSolicitud.Normalizar(s.Estado), EstadoSolicitud.AOCR_EnRevision, StringComparison.OrdinalIgnoreCase)
-                || string.Equals(EstadoSolicitud.Normalizar(s.Estado), EstadoSolicitud.AOCR_Validado, StringComparison.OrdinalIgnoreCase)
-                || string.Equals(EstadoSolicitud.Normalizar(s.Estado), EstadoSolicitud.AOCR_EnElaboracion, StringComparison.OrdinalIgnoreCase));
-            var observadas = solicitudesPendientes.Count(s => string.Equals(EstadoSolicitud.Normalizar(s.Estado), EstadoSolicitud.Observada, StringComparison.OrdinalIgnoreCase));
-            var subsanadas = solicitudesPendientes.Count(s => string.Equals(EstadoSolicitud.Normalizar(s.Estado), EstadoSolicitud.Subsanada, StringComparison.OrdinalIgnoreCase));
-
-            var roles = new List<string>();
-            if (User != null)
+            try
             {
-                if (User.IsInRole("DIRDAC")) roles.Add("DIRDAC");
-                if (User.IsInRole("Direccion")) roles.Add("Direccion");
-                if (User.IsInRole("JefaturaTecnica")) roles.Add("JefaturaTecnica");
-                if (User.IsInRole("DirectorGeneral")) roles.Add("DirectorGeneral");
-                if (User.IsInRole("Administrador")) roles.Add("Administrador");
+                solicitudesBandeja = _solicitudDao.ObtenerParaBandejaEjecutivaAprobacion() ?? new List<SolicitudAOCR>();
+
+                // Calcular contadores ANTES de determinar el filtro para poder elegir el filtro inteligente
+                totalBandeja    = solicitudesBandeja.Count;
+                totalEnRevision = solicitudesBandeja.Count(EsEnRevisionVisual);
+                totalObservadas = solicitudesBandeja.Count(EsObservadaVisual);
+                totalSubsanadas = solicitudesBandeja.Count(EsSubsanadaVisual);
+                totalJefatura   = solicitudesBandeja.Count(EsSubBandejaJefatura);
+                totalLegal      = solicitudesBandeja.Count(EsSubBandejaLegal);
+
+                // Filtro inteligente: si no se especifica filtro, elegir el primero con datos
+                if (string.IsNullOrWhiteSpace(filtro))
+                {
+                    if (totalEnRevision > 0)       filtroActivo = "enrevision";
+                    else if (totalObservadas > 0)  filtroActivo = "observadas";
+                    else if (totalSubsanadas > 0)  filtroActivo = "subsanadas";
+                    else                           filtroActivo = "todas";
+                }
+                else
+                {
+                    filtroActivo = filtro.Trim().ToLowerInvariant();
+                }
+
+                solicitudesFiltradas = FiltrarBandejaEjecutiva(solicitudesBandeja, filtroActivo);
+
+                var roles = new List<string>();
+                if (User != null)
+                {
+                    if (User.IsInRole("DIRDAC"))          roles.Add("DIRDAC");
+                    if (User.IsInRole("Direccion"))        roles.Add("Direccion");
+                    if (User.IsInRole("JefaturaTecnica"))  roles.Add("JefaturaTecnica");
+                    if (User.IsInRole("DirectorGeneral"))  roles.Add("DirectorGeneral");
+                    if (User.IsInRole("Administrador"))    roles.Add("Administrador");
+                }
+
+                var muestraEstados = solicitudesBandeja
+                    .Select(s => (s.Estado ?? string.Empty).Trim())
+                    .Where(e => !string.IsNullOrWhiteSpace(e))
+                    .Distinct(StringComparer.OrdinalIgnoreCase)
+                    .Take(8)
+                    .ToList();
+
+                _logger.LogInfo("[Direccion] BandejaEjecutiva usuario=" + (User != null ? User.Identity.Name : "anon")
+                    + ", roles="         + string.Join(",", roles)
+                    + ", totalBandeja="  + totalBandeja
+                    + ", enRevision="    + totalEnRevision
+                    + ", observadas="    + totalObservadas
+                    + ", subsanadas="    + totalSubsanadas
+                    + ", jefatura="      + totalJefatura
+                    + ", legal="         + totalLegal
+                    + ", filtroActivo="  + filtroActivo
+                    + ", totalFiltrado=" + solicitudesFiltradas.Count
+                    + ", estadosMuestra=" + string.Join(",", muestraEstados));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex);
+                solicitudesBandeja   = new List<SolicitudAOCR>();
+                solicitudesFiltradas = new List<SolicitudAOCR>();
+                filtroActivo         = "todas";
+                totalBandeja    = 0;
+                totalEnRevision = 0;
+                totalObservadas = 0;
+                totalSubsanadas = 0;
+                totalJefatura   = 0;
+                totalLegal      = 0;
+                TempData["error"] = "No fue posible cargar la bandeja ejecutiva. Detalle: " + ex.Message;
             }
 
-            var muestraEstados = solicitudesPendientes
-                .Select(s => (s.Estado ?? string.Empty).Trim())
-                .Where(e => !string.IsNullOrWhiteSpace(e))
-                .Distinct(StringComparer.OrdinalIgnoreCase)
-                .Take(8)
-                .ToList();
+            var model = new BandejaEjecutivaAprobacionViewModel
+            {
+                Solicitudes          = solicitudesBandeja,
+                SolicitudesFiltradas = solicitudesFiltradas,
+                FiltroActivo         = filtroActivo,
+                FiltroEsExplicito    = !string.IsNullOrWhiteSpace(filtro),
+                Total                = totalBandeja,
+                TotalEnRevision      = totalEnRevision,
+                TotalObservadas      = totalObservadas,
+                TotalSubsanadas      = totalSubsanadas,
+                TotalJefatura        = totalJefatura,
+                TotalLegal           = totalLegal,
+                TotalFiltradas       = solicitudesFiltradas.Count
+            };
 
-            _logger.LogInfo("[Direccion] BandejaEjecutiva usuario=" + (User != null ? User.Identity.Name : "anon")
-                + ", roles=" + string.Join(",", roles)
-                + ", total=" + pendientes
-                + ", enRevision=" + enRevision
-                + ", observadas=" + observadas
-                + ", subsanadas=" + subsanadas
-                + ", estadosMuestra=" + string.Join(",", muestraEstados));
+            return View(model);
+        }
 
-            return View(solicitudesPendientes);
+        private static List<SolicitudAOCR> FiltrarBandejaEjecutiva(List<SolicitudAOCR> solicitudes, string filtroActivo)
+        {
+            var lista = solicitudes ?? new List<SolicitudAOCR>();
+
+            switch (filtroActivo)
+            {
+                case "enrevision":
+                    return lista.Where(EsEnRevisionVisual).ToList();
+                case "observadas":
+                    return lista.Where(EsObservadaVisual).ToList();
+                case "subsanadas":
+                    return lista.Where(EsSubsanadaVisual).ToList();
+                case "jefatura":
+                    return lista.Where(EsSubBandejaJefatura).ToList();
+                case "legal":
+                    return lista.Where(EsSubBandejaLegal).ToList();
+                case "todas":
+                default:
+                    return lista.ToList();
+            }
+        }
+
+        private static bool EsEnRevisionVisual(SolicitudAOCR solicitud)
+        {
+            var estado = EstadoSolicitud.Normalizar(solicitud != null ? solicitud.Estado : null);
+            return string.Equals(estado, EstadoSolicitud.AOCR_EnRevision, StringComparison.OrdinalIgnoreCase)
+                || string.Equals(estado, EstadoSolicitud.AOCR_Validado, StringComparison.OrdinalIgnoreCase)
+                || string.Equals(estado, EstadoSolicitud.AOCR_EnElaboracion, StringComparison.OrdinalIgnoreCase);
+        }
+
+        private static bool EsObservadaVisual(SolicitudAOCR solicitud)
+        {
+            var estado = EstadoSolicitud.Normalizar(solicitud != null ? solicitud.Estado : null);
+            return string.Equals(estado, EstadoSolicitud.Observada, StringComparison.OrdinalIgnoreCase);
+        }
+
+        private static bool EsSubsanadaVisual(SolicitudAOCR solicitud)
+        {
+            var estado = EstadoSolicitud.Normalizar(solicitud != null ? solicitud.Estado : null);
+            return string.Equals(estado, EstadoSolicitud.Subsanada, StringComparison.OrdinalIgnoreCase);
+        }
+
+        private static bool EsSubBandejaJefatura(SolicitudAOCR solicitud)
+        {
+            var estado = EstadoSolicitud.Normalizar(solicitud != null ? solicitud.Estado : null);
+            return string.Equals(estado, EstadoSolicitud.AOCR_EnElaboracion, StringComparison.OrdinalIgnoreCase)
+                || string.Equals(estado, EstadoSolicitud.AOCR_EnRevision, StringComparison.OrdinalIgnoreCase);
+        }
+
+        private static bool EsSubBandejaLegal(SolicitudAOCR solicitud)
+        {
+            var estado = EstadoSolicitud.Normalizar(solicitud != null ? solicitud.Estado : null);
+            return string.Equals(estado, EstadoSolicitud.AOCR_Validado, StringComparison.OrdinalIgnoreCase);
         }
 
         [Authorize(Roles = "Direccion,JefaturaTecnica,Administrador")]

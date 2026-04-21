@@ -539,10 +539,10 @@ namespace CapaDatos.DAOs
 
         #endregion
 
-        #region EstadÃ­sticas
+        #region Estadásticas
 
         /// <summary>
-        /// Obtiene estadÃ­sticas de las Ordenes
+        /// Obtiene estadásticas de las Ordenes
         /// </summary>
         public Dictionary<string, object> ObtenerEstadisticas()
         {
@@ -4417,7 +4417,7 @@ namespace CapaDatos.DAOs
         #region MÃ©todos Async Adicionales para Controller
 
         /// <summary>
-        /// VersiÃ³n async de ListarPorUsuarioModel
+        /// Versión async de ListarPorUsuarioModel
         /// </summary>
         public Task<List<OrdenRecaudacionModel>> ListarPorUsuarioModelAsync(int codigoUsuario, string estado)
         {
@@ -4467,8 +4467,3 @@ namespace CapaDatos.DAOs
         #endregion
     }
 }
-
-
-
-
-
