@@ -22,13 +22,14 @@ WHERE table_schema IN ('mirror_raw', 'sync')
   AND table_type = 'BASE TABLE'
 ORDER BY table_schema, table_name;
 -- ESPERADO: mirror_raw (ciaarc, opcar5, opcar6, usuar1, usuarc) + sync (batch_log, rejections, tombstones, watermark)
+--            + mirror_raw (opuarc01, oidar2) para lugar de emision
 
 \echo '--- [1c] Vistas mirror_clean ---'
 SELECT table_schema, table_name
 FROM information_schema.views
 WHERE table_schema = 'mirror_clean'
 ORDER BY table_name;
--- ESPERADO: v_ciaarc_activa, v_fr3_cabecera, v_fr3_detalle, v_usuario_as400
+-- ESPERADO: v_ciaarc_activa, v_fr3_cabecera, v_fr3_detalle, v_lugar_emision_ciudad, v_usuario_as400
 
 -- =============================================
 -- SECCIÓN 2: Estado de Watermarks
@@ -43,7 +44,7 @@ SELECT
     COALESCE(last_error, '') AS last_error
 FROM sync.watermark
 ORDER BY table_name;
--- ESPERADO: al menos USUARC, USUAR1, CIAARC, OPCAR5, OPCAR6 con status='OK' tras primer sync
+-- ESPERADO: al menos USUARC, USUAR1, CIAARC, OPUARC01, OIDAR2, OPCAR5, OPCAR6 con status='OK' tras primer sync
 
 -- =============================================
 -- SECCIÓN 3: Conteos por tabla
@@ -74,7 +75,17 @@ UNION ALL
 SELECT 'mirror_raw.opcar6', COUNT(*),
     SUM(CASE WHEN COALESCE(_is_deleted,false) THEN 1 ELSE 0 END),
     COUNT(*) FILTER (WHERE _source_updated_at IS NULL)
-FROM mirror_raw.opcar6;
+FROM mirror_raw.opcar6
+UNION ALL
+SELECT 'mirror_raw.opuarc01', COUNT(*),
+    SUM(CASE WHEN COALESCE(_is_deleted,false) THEN 1 ELSE 0 END),
+    COUNT(*) FILTER (WHERE _source_updated_at IS NULL)
+FROM mirror_raw.opuarc01
+UNION ALL
+SELECT 'mirror_raw.oidar2', COUNT(*),
+    SUM(CASE WHEN COALESCE(_is_deleted,false) THEN 1 ELSE 0 END),
+    COUNT(*) FILTER (WHERE _source_updated_at IS NULL)
+FROM mirror_raw.oidar2;
 -- ESPERADO: total > 0, eliminados puede ser 0 o mayor, sin_watermark = 0 idealmente
 
 -- =============================================
@@ -203,7 +214,11 @@ FROM mirror_clean.v_usuario_as400;
 SELECT COUNT(*) AS total_cias_activas
 FROM mirror_clean.v_ciaarc_activa;
 
-\echo '--- [8c] mirror_clean.v_fr3_cabecera ---'
+\echo '--- [8c] mirror_clean.v_lugar_emision_ciudad ---'
+SELECT COUNT(*) AS total_lugar_emision_mirror
+FROM mirror_clean.v_lugar_emision_ciudad;
+
+\echo '--- [8d] mirror_clean.v_fr3_cabecera ---'
 SELECT COUNT(*) AS total_fr3, SUM(gran_total) AS suma_gran_total
 FROM mirror_clean.v_fr3_cabecera;
 

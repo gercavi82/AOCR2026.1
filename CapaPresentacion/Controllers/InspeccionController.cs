@@ -17,6 +17,7 @@ using CapaNegocio.Helpers;
 using CapaNegocio.Services;
 using CapaUtilidades;
 using CapaPresentacion.Helpers;
+using CapaPresentacion.Infrastructure;
 using CapaPresentacion.Models;
 using CapaPresentacion.Models.ViewModels;
 using iTextSharp.text.pdf;
@@ -79,6 +80,7 @@ namespace CapaPresentacion.Controllers
         private const string CARPETA_VIRTUAL_INFORMES_TECNICOS_FIRMADOS = "~/App_Data/Uploads/Inspecciones/InformesTecnicos/Firmados";
         private const string CARPETA_VIRTUAL_ADJUNTOS_INFORME = "~/App_Data/Uploads/Inspecciones/InformesTecnicos/Adjuntos";
         private const string CARPETA_VIRTUAL_DOCUMENTOS_SOLICITANTE = "~/App_Data/Uploads/Inspecciones/DocumentosSolicitante";
+        private static readonly IUserContextAccessor _userContext = new UserContextAccessor();
 
         public InspeccionController()
         {
@@ -100,11 +102,8 @@ namespace CapaPresentacion.Controllers
 
         private int ObtenerCodigoUsuario()
         {
-            if (Session["CodigoUsuario"] != null &&
-                int.TryParse(Session["CodigoUsuario"].ToString(), out var id))
-                return id;
-
-            return 0;
+            int id;
+            return _userContext.TryGetCodigoUsuario(Session, out id) ? id : 0;
         }
 
         private bool EsAdmin() => User != null && User.IsInRole(ROL_ADMIN);
@@ -208,6 +207,23 @@ namespace CapaPresentacion.Controllers
             {
                 _logger.LogInfo("[InspeccionesController] Inspecciones recibidas=" + lista.Count);
             }
+
+            // Resolver nombres de inspector por fila (cat·logo RT + solicitud).
+            var nombresInspector = new Dictionary<int, string>();
+            var solicitudesPorInspeccion = new Dictionary<int, SolicitudAOCR>();
+            if (lista != null)
+            {
+                foreach (var insp in lista)
+                {
+                    if (insp == null) { continue; }
+                    SolicitudAOCR solicitudFila = null;
+                    try { solicitudFila = _solicitudDAO.ObtenerPorId(insp.CodigoSolicitud); } catch { }
+                    nombresInspector[insp.CodigoInspeccion] = ResolverInspectorAsignadoNombre(insp, solicitudFila);
+                    if (solicitudFila != null) { solicitudesPorInspeccion[insp.CodigoInspeccion] = solicitudFila; }
+                }
+            }
+            ViewBag.InspectoresNombres = nombresInspector;
+            ViewBag.SolicitudesPorInspeccion = solicitudesPorInspeccion;
 
             return View("~/Views/Inspeccion/Index.cshtml", lista);
         }
@@ -3549,14 +3565,13 @@ namespace CapaPresentacion.Controllers
 
         private string ObtenerUsuarioActual()
         {
-            if (Session != null && Session["Usuario"] != null)
+            var usuarioSesion = Session != null ? Session["Usuario"] as string : null;
+            if (!string.IsNullOrWhiteSpace(usuarioSesion))
             {
-                return Session["Usuario"].ToString();
+                return usuarioSesion.Trim();
             }
 
-            return (User != null && User.Identity != null && User.Identity.IsAuthenticated)
-                ? User.Identity.Name
-                : "ANONIMO";
+            return _userContext.GetNombreUsuario(Session, User);
         }
 
         private string ObtenerRolActual()

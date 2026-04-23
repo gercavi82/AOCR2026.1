@@ -209,7 +209,9 @@ namespace CapaNegocio.Services
             var rol = (rolFirmante ?? string.Empty).Trim().ToUpperInvariant();
             return rol == "AOCR_FIRMANTE"
                 || rol == "INFORME_TECNICO_INSPECTOR"
-                || rol == "INFORME_TECNICO_DIRDAC";
+                || rol == "INFORME_TECNICO_DIRDAC"
+                || rol == "DIRDAC"
+                || rol == "DIRECTOR_GENERAL";
         }
 
         private static string ObtenerTituloBloqueFirma(string rolFirmante)

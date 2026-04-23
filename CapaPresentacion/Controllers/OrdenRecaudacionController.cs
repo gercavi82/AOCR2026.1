@@ -17,6 +17,7 @@ using CapaPresentacion.Models;
 using CapaPresentacion.Helpers;
 using CapaModelo;
 using CapaNegocio.Services;
+using CapaNegocio.Integraciones.As400Sync;
 using CapaNegocio.Helpers;
 using Rotativa;
 // Alias para evitar ambigï¿½edad
@@ -40,6 +41,10 @@ namespace CapaPresentacion.Controllers
                 { "usuario", "idusuario = @id" }
             };
 
+        private static readonly object MirrorSyncLock = new object();
+        private static readonly Dictionary<string, DateTime> LastOnDemandSyncUtc =
+            new Dictionary<string, DateTime>(StringComparer.OrdinalIgnoreCase);
+
         private OrdenRecaudacionDAO _ordenDAO;
         private readonly OrdenRecaudacionDAO _dao = new OrdenRecaudacionDAO();
         private readonly OrdenRecaudacionBL _bl = new OrdenRecaudacionBL();
@@ -47,6 +52,7 @@ namespace CapaPresentacion.Controllers
         private readonly SolicitudAOCRDAO _solicitudDao = new SolicitudAOCRDAO();
         private readonly BancoP9DAO _bancoDao = new BancoP9DAO(new SecureConfig());
         private readonly ParametroDAO _parametroDao = new ParametroDAO();
+        private readonly MirrorReadService _mirrorReadService = new MirrorReadService();
         private readonly IOrdenRecaudacionOrchestrator _orchestrator;
 
         public OrdenRecaudacionController(IOrdenRecaudacionOrchestrator orchestrator)
@@ -344,9 +350,7 @@ namespace CapaPresentacion.Controllers
 
                 if (!string.IsNullOrWhiteSpace(codigoCompaniaActiva))
                 {
-                    var daoEmpresa = new EmpresaAS400DAO(new SecureConfig());
-                    var empresa = daoEmpresa.ObtenerEmpresaPorCodigo(codigoCompaniaActiva);
-                    empresaNombre = empresa?.Nombre ?? "";
+                    empresaNombre = ResolverNombreCompaniaDesdeFuentes(codigoCompaniaActiva);
                 }
 
                 if (!string.IsNullOrWhiteSpace(empresaNombre))
@@ -1833,6 +1837,51 @@ En transferencias NO colocar sublínea<br>";
             return string.Empty;
         }
 
+        private string ResolverNombreCompaniaDesdeFuentes(string codigoCompania)
+        {
+            if (string.IsNullOrWhiteSpace(codigoCompania))
+            {
+                return string.Empty;
+            }
+
+            var codigo = codigoCompania.Trim().ToUpperInvariant();
+
+            try
+            {
+                var empresaMirror = _mirrorReadService.ObtenerCompaniaPorCodigo(codigo);
+                if (empresaMirror != null && !string.IsNullOrWhiteSpace(empresaMirror.NombreCompania))
+                {
+                    System.Diagnostics.Debug.WriteLine(
+                        $"ResolverNombreCompaniaDesdeFuentes[mirror]: codigo={codigo}, nombre={empresaMirror.NombreCompania.Trim()}");
+                    return empresaMirror.NombreCompania.Trim();
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine(
+                    $"ResolverNombreCompaniaDesdeFuentes[mirror]: codigo={codigo}, error={ex.GetType().FullName}, msg={ex.Message}");
+            }
+
+            try
+            {
+                var daoEmpresa = new EmpresaAS400DAO(new SecureConfig());
+                var empresa = daoEmpresa.ObtenerEmpresaPorCodigo(codigo);
+                if (empresa != null && !string.IsNullOrWhiteSpace(empresa.Nombre))
+                {
+                    System.Diagnostics.Debug.WriteLine(
+                        $"ResolverNombreCompaniaDesdeFuentes[as400]: codigo={codigo}, nombre={empresa.Nombre.Trim()}");
+                    return empresa.Nombre.Trim();
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine(
+                    $"ResolverNombreCompaniaDesdeFuentes[as400]: codigo={codigo}, error={ex.GetType().FullName}, msg={ex.Message}");
+            }
+
+            return string.Empty;
+        }
+
         /// <summary>
         /// Debug method to test order number generation and storage
         /// </summary>
@@ -1973,21 +2022,42 @@ En transferencias NO colocar sublínea<br>";
             try
             {
                 string ciudadSolicitudFallback = null;
+                string codCiudadSolicitud = null;
 
                 if (codigoSolicitud.HasValue && codigoSolicitud.Value > 0)
                 {
                     var solicitud = _solicitudDao.ObtenerPorId(codigoSolicitud.Value);
                     if (solicitud != null)
                     {
-                        var codCiudad = FirstNonEmpty(
+                        codCiudadSolicitud = FirstNonEmpty(
                             NormalizarCodigoCiudad(solicitud.CodCiudad),
                             NormalizarCodigoCiudad(ObtenerCodCiudadSolicitudDesdePostgres(codigoSolicitud.Value)),
                             NormalizarCodigoCiudad(solicitud.Ciudad));
 
                         System.Diagnostics.Debug.WriteLine(
-                            $"ResolverLugarEmisionDesdeDb: solicitud={codigoSolicitud.Value}, codCiudad={codCiudad ?? "(null)"}, ciudadSolicitud={solicitud.Ciudad ?? "(null)"}");
+                            $"ResolverLugarEmisionDesdeDb: solicitud={codigoSolicitud.Value}, codCiudad={codCiudadSolicitud ?? "(null)"}, ciudadSolicitud={solicitud.Ciudad ?? "(null)"}");
 
-                        var lugarDesdeAs400 = ResolverEstacionDesdeAs400(codCiudad);
+                        var lugarDesdeMirror = ResolverEstacionDesdeMirror(codCiudadSolicitud);
+                        if (!string.IsNullOrWhiteSpace(lugarDesdeMirror))
+                        {
+                            System.Diagnostics.Debug.WriteLine(
+                                $"ResolverLugarEmisionDesdeDb: estación mirror por solicitud={lugarDesdeMirror}");
+                            return lugarDesdeMirror;
+                        }
+
+                        // Si mirror no tiene dato, refrescar catálogos de ubicación de forma controlada
+                        // para evitar dependencia directa de AS400 en cada request.
+                        TryRefreshUbicacionMirrorOnDemand("solicitud", codCiudadSolicitud);
+
+                        lugarDesdeMirror = ResolverEstacionDesdeMirror(codCiudadSolicitud);
+                        if (!string.IsNullOrWhiteSpace(lugarDesdeMirror))
+                        {
+                            System.Diagnostics.Debug.WriteLine(
+                                $"ResolverLugarEmisionDesdeDb: estación mirror tras refresh por solicitud={lugarDesdeMirror}");
+                            return lugarDesdeMirror;
+                        }
+
+                        var lugarDesdeAs400 = ResolverEstacionDesdeAs400(codCiudadSolicitud);
                         if (!string.IsNullOrWhiteSpace(lugarDesdeAs400))
                         {
                             System.Diagnostics.Debug.WriteLine(
@@ -2008,10 +2078,29 @@ En transferencias NO colocar sublínea<br>";
                 {
                     var codCiudadUsuario = FirstNonEmpty(
                         NormalizarCodigoCiudad(ObtenerCodCiudadUsuarioDesdePostgres(codigoUsuario)),
+                        NormalizarCodigoCiudad(ObtenerCodCiudadUsuarioDesdeMirror(codigoUsuario)),
                         NormalizarCodigoCiudad(ObtenerCodCiudadUsuarioDesdeAs400(codigoUsuario)));
 
                     System.Diagnostics.Debug.WriteLine(
                         $"ResolverLugarEmisionDesdeDb: usuario={codigoUsuario}, codCiudadUsuario={codCiudadUsuario ?? "(null)"}");
+
+                    var lugarUsuarioDesdeMirror = ResolverEstacionDesdeMirror(codCiudadUsuario);
+                    if (!string.IsNullOrWhiteSpace(lugarUsuarioDesdeMirror))
+                    {
+                        System.Diagnostics.Debug.WriteLine(
+                            $"ResolverLugarEmisionDesdeDb: estación mirror por usuario={lugarUsuarioDesdeMirror}");
+                        return lugarUsuarioDesdeMirror;
+                    }
+
+                    TryRefreshUbicacionMirrorOnDemand("usuario", codCiudadUsuario);
+
+                    lugarUsuarioDesdeMirror = ResolverEstacionDesdeMirror(codCiudadUsuario);
+                    if (!string.IsNullOrWhiteSpace(lugarUsuarioDesdeMirror))
+                    {
+                        System.Diagnostics.Debug.WriteLine(
+                            $"ResolverLugarEmisionDesdeDb: estación mirror tras refresh por usuario={lugarUsuarioDesdeMirror}");
+                        return lugarUsuarioDesdeMirror;
+                    }
 
                     var lugarUsuarioDesdeAs400 = ResolverEstacionDesdeAs400(codCiudadUsuario);
                     if (!string.IsNullOrWhiteSpace(lugarUsuarioDesdeAs400))
@@ -2021,9 +2110,9 @@ En transferencias NO colocar sublínea<br>";
                         return lugarUsuarioDesdeAs400;
                     }
 
-                    var solicitudConCiudad = _solicitudDao
-                        .ObtenerPorUsuario(codigoUsuario)
-                        .FirstOrDefault(s => !string.IsNullOrWhiteSpace(s.Ciudad));
+                    var solicitudesUsuario = _solicitudDao.ObtenerPorUsuario(codigoUsuario) ?? Enumerable.Empty<SolicitudAOCR>();
+                    var solicitudConCiudad = solicitudesUsuario
+                        .FirstOrDefault(s => s != null && !string.IsNullOrWhiteSpace(s.Ciudad));
 
                     if (solicitudConCiudad != null && !string.IsNullOrWhiteSpace(solicitudConCiudad.Ciudad))
                     {
@@ -2039,10 +2128,18 @@ En transferencias NO colocar sublínea<br>";
                         $"ResolverLugarEmisionDesdeDb: fallback ciudad solicitud final={ciudadSolicitudFallback}");
                     return ciudadSolicitudFallback;
                 }
+
+                if (!string.IsNullOrWhiteSpace(codCiudadSolicitud))
+                {
+                    System.Diagnostics.Debug.WriteLine(
+                        $"ResolverLugarEmisionDesdeDb: fallback código ciudad solicitud={codCiudadSolicitud}");
+                    return codCiudadSolicitud;
+                }
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine("ResolverLugarEmisionDesdeDb: " + ex.Message);
+                System.Diagnostics.Debug.WriteLine(
+                    $"ResolverLugarEmisionDesdeDb: error={ex.GetType().FullName}, msg={ex.Message}, solicitud={(codigoSolicitud.HasValue ? codigoSolicitud.Value.ToString() : "null")}, usuario={codigoUsuario}, fallbackEntrada={fallback ?? "(null)"}");
             }
 
             if (!string.IsNullOrWhiteSpace(fallback))
@@ -2056,10 +2153,79 @@ En transferencias NO colocar sublínea<br>";
             return "Quito";
         }
 
+        private void TryRefreshUbicacionMirrorOnDemand(string origen, string codCiudad)
+        {
+            try
+            {
+                if (string.IsNullOrWhiteSpace(codCiudad))
+                {
+                    return;
+                }
+
+                var enabled = string.Equals(
+                    ConfigurationManager.AppSettings["Sync:Enabled"],
+                    "true",
+                    StringComparison.OrdinalIgnoreCase)
+                    || string.Equals(ConfigurationManager.AppSettings["Sync:Enabled"], "1", StringComparison.OrdinalIgnoreCase);
+
+                if (!enabled)
+                {
+                    return;
+                }
+
+                // Evitar ejecutar sync por cada request: cooldown por tabla.
+                if (!CanRunOnDemandSync("OPUARC01", TimeSpan.FromMinutes(5)) &&
+                    !CanRunOnDemandSync("OIDAR2", TimeSpan.FromMinutes(5)))
+                {
+                    return;
+                }
+
+                var res1 = As400MirrorSyncJob.RunOnceTable("OPUARC01");
+                var res2 = As400MirrorSyncJob.RunOnceTable("OIDAR2");
+
+                MarkOnDemandSyncExecuted("OPUARC01");
+                MarkOnDemandSyncExecuted("OIDAR2");
+
+                System.Diagnostics.Debug.WriteLine(
+                    $"TryRefreshUbicacionMirrorOnDemand: origen={origen}, codCiudad={codCiudad}, OPUARC01={res1?.Status ?? "N/A"}, OIDAR2={res2?.Status ?? "N/A"}");
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine(
+                    $"TryRefreshUbicacionMirrorOnDemand: origen={origen}, codCiudad={codCiudad}, error={ex.GetType().FullName}, msg={ex.Message}");
+            }
+        }
+
+        private static bool CanRunOnDemandSync(string tableName, TimeSpan cooldown)
+        {
+            var now = DateTime.UtcNow;
+            lock (MirrorSyncLock)
+            {
+                DateTime lastRun;
+                if (!LastOnDemandSyncUtc.TryGetValue(tableName, out lastRun))
+                {
+                    return true;
+                }
+
+                return (now - lastRun) >= cooldown;
+            }
+        }
+
+        private static void MarkOnDemandSyncExecuted(string tableName)
+        {
+            lock (MirrorSyncLock)
+            {
+                LastOnDemandSyncUtc[tableName] = DateTime.UtcNow;
+            }
+        }
+
         private static string ResolverEstacionDesdeAs400(string codCiudad)
         {
-            if (string.IsNullOrWhiteSpace(codCiudad))
+            var codCiudadNormalizado = NormalizarCodigoCiudad(codCiudad);
+            if (string.IsNullOrWhiteSpace(codCiudadNormalizado))
             {
+                System.Diagnostics.Debug.WriteLine(
+                    $"ResolverEstacionDesdeAs400: codCiudad inválido o vacío ({codCiudad ?? "(null)"}).");
                 return null;
             }
 
@@ -2067,21 +2233,61 @@ En transferencias NO colocar sublínea<br>";
             {
                 var daoUbicacion = CD_UbicacionUsuario.Instancia;
 
-                var ubicacionUsuario = daoUbicacion.UbicacionUsuarioPorCiudad(codCiudad);
+                var ubicacionUsuario = daoUbicacion.UbicacionUsuarioPorCiudad(codCiudadNormalizado);
                 if (!string.IsNullOrWhiteSpace(ubicacionUsuario?.Estacion))
                 {
+                    System.Diagnostics.Debug.WriteLine(
+                        $"ResolverEstacionDesdeAs400: estación por OPUARC01 para codCiudad={codCiudadNormalizado}, estacion={ubicacionUsuario.Estacion.Trim()}");
                     return ubicacionUsuario.Estacion.Trim();
                 }
 
-                var ubicacionAeropuerto = daoUbicacion.UbicacionAeropuertoUsuarioPorCiudad(codCiudad);
+                var ubicacionAeropuerto = daoUbicacion.UbicacionAeropuertoUsuarioPorCiudad(codCiudadNormalizado);
                 if (!string.IsNullOrWhiteSpace(ubicacionAeropuerto?.Estacion))
                 {
+                    System.Diagnostics.Debug.WriteLine(
+                        $"ResolverEstacionDesdeAs400: estación por OIDAR2 para codCiudad={codCiudadNormalizado}, estacion={ubicacionAeropuerto.Estacion.Trim()}");
                     return ubicacionAeropuerto.Estacion.Trim();
                 }
+
+                System.Diagnostics.Debug.WriteLine(
+                    $"ResolverEstacionDesdeAs400: sin filas útiles para codCiudad={codCiudadNormalizado}. Se aplicará fallback de ciudad.");
             }
-            catch
+            catch (IBM.Data.DB2.iSeries.iDB2ConversionException ex)
             {
-                // Si AS400 no responde, conservar fallback de la app sin bloquear flujo.
+                System.Diagnostics.Debug.WriteLine(
+                    $"ResolverEstacionDesdeAs400: iDB2ConversionException codCiudad={codCiudadNormalizado}, msg={ex.Message}. Se aplicará fallback de ciudad.");
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine(
+                    $"ResolverEstacionDesdeAs400: error inesperado en AS400 para codCiudad={codCiudadNormalizado}, error={ex.GetType().FullName}, msg={ex.Message}. Se aplicará fallback de ciudad.");
+            }
+
+            return null;
+        }
+
+        private string ResolverEstacionDesdeMirror(string codCiudad)
+        {
+            var codCiudadNormalizado = NormalizarCodigoCiudad(codCiudad);
+            if (string.IsNullOrWhiteSpace(codCiudadNormalizado))
+            {
+                return null;
+            }
+
+            try
+            {
+                var estacion = _mirrorReadService.ObtenerEstacionPorCodigoCiudad(codCiudadNormalizado);
+                if (!string.IsNullOrWhiteSpace(estacion))
+                {
+                    System.Diagnostics.Debug.WriteLine(
+                        $"ResolverEstacionDesdeMirror: codCiudad={codCiudadNormalizado}, estacion={estacion.Trim()}");
+                    return estacion.Trim();
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine(
+                    $"ResolverEstacionDesdeMirror: error codCiudad={codCiudadNormalizado}, error={ex.GetType().FullName}, msg={ex.Message}");
             }
 
             return null;
@@ -2124,6 +2330,62 @@ En transferencias NO colocar sublínea<br>";
                 cmd => cmd.Parameters.AddWithValue("@id", codigoUsuario));
         }
 
+        private string ObtenerCodCiudadUsuarioDesdeMirror(int codigoUsuario)
+        {
+            if (codigoUsuario <= 0)
+            {
+                return null;
+            }
+
+            try
+            {
+                var usuario = UsuarioDAO.ObtenerPorId(codigoUsuario);
+                var claves = new List<string>();
+
+                void Agregar(string valor)
+                {
+                    if (!string.IsNullOrWhiteSpace(valor))
+                    {
+                        claves.Add(valor.Trim());
+                    }
+                }
+
+                Agregar(usuario?.CodigoUsuario);
+                Agregar(usuario?.NombreUsuario);
+                Agregar(ExtraerRucCedula(usuario?.CodigoUsuario));
+                Agregar(ExtraerRucCedula(usuario?.NombreUsuario));
+
+                var solicitudesUsuario = _solicitudDao.ObtenerPorUsuario(codigoUsuario) ?? Enumerable.Empty<SolicitudAOCR>();
+                var solicitudConDatos = solicitudesUsuario.FirstOrDefault();
+                if (solicitudConDatos != null)
+                {
+                    Agregar(solicitudConDatos.Ruc);
+                    Agregar(solicitudConDatos.CedulaRepresentante);
+                    Agregar(ExtraerRucCedula(solicitudConDatos.Ruc));
+                    Agregar(ExtraerRucCedula(solicitudConDatos.CedulaRepresentante));
+                }
+
+                var codCiudad = _mirrorReadService.ObtenerCodigoCiudadPorClavesUsuario(
+                    claves
+                        .Where(c => !string.IsNullOrWhiteSpace(c))
+                        .Distinct(StringComparer.OrdinalIgnoreCase));
+
+                if (!string.IsNullOrWhiteSpace(codCiudad))
+                {
+                    System.Diagnostics.Debug.WriteLine(
+                        $"ObtenerCodCiudadUsuarioDesdeMirror: usuario={codigoUsuario}, codCiudad={codCiudad}");
+                    return codCiudad.Trim().ToUpperInvariant();
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine(
+                    $"ObtenerCodCiudadUsuarioDesdeMirror: usuario={codigoUsuario}, error={ex.GetType().FullName}, msg={ex.Message}");
+            }
+
+            return null;
+        }
+
         private string ObtenerCodCiudadUsuarioDesdeAs400(int codigoUsuario)
         {
             if (codigoUsuario <= 0)
@@ -2133,6 +2395,12 @@ En transferencias NO colocar sublínea<br>";
 
             try
             {
+                var codCiudadMirror = ObtenerCodCiudadUsuarioDesdeMirror(codigoUsuario);
+                if (!string.IsNullOrWhiteSpace(codCiudadMirror))
+                {
+                    return codCiudadMirror;
+                }
+
                 var usuario = UsuarioDAO.ObtenerPorId(codigoUsuario);
                 if (usuario == null)
                 {
@@ -2155,9 +2423,8 @@ En transferencias NO colocar sublínea<br>";
                 AgregarCandidato(ExtraerRucCedula(usuario.CodigoUsuario));
                 AgregarCandidato(ExtraerRucCedula(usuario.NombreUsuario));
 
-                var ultimaSolicitud = _solicitudDao
-                    .ObtenerPorUsuario(codigoUsuario)
-                    .FirstOrDefault();
+                var solicitudesUsuario = _solicitudDao.ObtenerPorUsuario(codigoUsuario) ?? Enumerable.Empty<SolicitudAOCR>();
+                var ultimaSolicitud = solicitudesUsuario.FirstOrDefault();
                 if (ultimaSolicitud != null)
                 {
                     AgregarCandidato(ultimaSolicitud.Ruc);
@@ -2183,7 +2450,8 @@ En transferencias NO colocar sublínea<br>";
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine("ObtenerCodCiudadUsuarioDesdeAs400: " + ex.Message);
+                System.Diagnostics.Debug.WriteLine(
+                    $"ObtenerCodCiudadUsuarioDesdeAs400: usuario={codigoUsuario}, error={ex.GetType().FullName}, msg={ex.Message}");
                 return null;
             }
         }
@@ -2337,9 +2605,7 @@ En transferencias NO colocar sublínea<br>";
 
                 if (!string.IsNullOrWhiteSpace(codigoCompaniaActiva))
                 {
-                    var daoEmpresa = new EmpresaAS400DAO(new SecureConfig());
-                    var empresa = daoEmpresa.ObtenerEmpresaPorCodigo(codigoCompaniaActiva);
-                    empresaNombre = empresa?.Nombre ?? "";
+                    empresaNombre = ResolverNombreCompaniaDesdeFuentes(codigoCompaniaActiva);
                 }
             }
             catch
@@ -2350,12 +2616,14 @@ En transferencias NO colocar sublínea<br>";
             var rucCedula = ResolverRucCedulaDesdeFuentes(userId, usuario);
             var codCiudad = FirstNonEmpty(
                 NormalizarCodigoCiudad(ObtenerCodCiudadUsuarioDesdePostgres(userId)),
+                NormalizarCodigoCiudad(ObtenerCodCiudadUsuarioDesdeMirror(userId)),
                 NormalizarCodigoCiudad(ObtenerCodCiudadUsuarioDesdeAs400(userId)));
             if (string.IsNullOrWhiteSpace(codCiudad))
             {
                 codCiudad = null;
             }
             var ciudadResolvida = FirstNonEmpty(
+                ResolverEstacionDesdeMirror(codCiudad),
                 ResolverEstacionDesdeAs400(codCiudad),
                 codCiudad,
                 "Quito");
@@ -2393,24 +2661,36 @@ En transferencias NO colocar sublínea<br>";
         {
             var candidatos = new List<string>();
 
-            void AgregarCandidato(string valor, bool desdeDb = false)
+            void AgregarCandidato(string valor, bool desdeDb = false, string origen = null)
             {
                 var normalizado = desdeDb
                     ? NormalizarIdentificacionDesdeDb(valor)
                     : ExtraerRucCedula(valor);
 
-                if (!string.IsNullOrWhiteSpace(normalizado))
+                if (!string.IsNullOrWhiteSpace(normalizado)
+                    && !candidatos.Any(c => string.Equals(c, normalizado, StringComparison.OrdinalIgnoreCase)))
                 {
                     candidatos.Add(normalizado);
+                    if (!string.IsNullOrWhiteSpace(origen))
+                    {
+                        System.Diagnostics.Debug.WriteLine(
+                            $"ResolverRucCedulaDesdeFuentes[{origen}]: userId={userId}, candidato={normalizado}");
+                    }
                 }
+            }
+
+            void LogPasoError(string paso, Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine(
+                    $"ResolverRucCedulaDesdeFuentes[{paso}]: userId={userId}, error={ex.GetType().FullName}, msg={ex.Message}");
             }
 
             try
             {
                 if (userId > 0)
                 {
-                    var solicitudConRuc = _solicitudDao
-                        .ObtenerPorUsuario(userId)
+                    var solicitudesUsuario = _solicitudDao.ObtenerPorUsuario(userId) ?? Enumerable.Empty<SolicitudAOCR>();
+                    var solicitudConRuc = solicitudesUsuario
                         .FirstOrDefault(s =>
                             s != null && (
                                 !string.IsNullOrWhiteSpace(NormalizarIdentificacionDesdeDb(s.Ruc)) ||
@@ -2418,14 +2698,14 @@ En transferencias NO colocar sublínea<br>";
 
                     if (solicitudConRuc != null)
                     {
-                        AgregarCandidato(solicitudConRuc.Ruc, true);
-                        AgregarCandidato(solicitudConRuc.CedulaRepresentante, true);
+                        AgregarCandidato(solicitudConRuc.Ruc, true, "solicitud.ruc");
+                        AgregarCandidato(solicitudConRuc.CedulaRepresentante, true, "solicitud.cedula");
                     }
                 }
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine("ResolverRucCedulaDesdeFuentes (solicitud): " + ex.Message);
+                LogPasoError("solicitud", ex);
             }
 
             try
@@ -2439,33 +2719,33 @@ En transferencias NO colocar sublínea<br>";
                         var companiaRt = rtDao.GetCompaniaById(solicitudRt.CompaniaId);
                         if (companiaRt != null)
                         {
-                            AgregarCandidato(companiaRt.Ruc, true);
+                            AgregarCandidato(companiaRt.Ruc, true, "rt.compania");
                         }
                     }
                 }
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine("ResolverRucCedulaDesdeFuentes (rt): " + ex.Message);
+                LogPasoError("rt", ex);
             }
 
             try
             {
                 if (userId > 0)
                 {
-                    var ultimaOrden = _dao
-                        .ListarPorUsuario(userId, null)
+                    var ordenesUsuario = _dao.ListarPorUsuario(userId, null) ?? Enumerable.Empty<OrdenRecaudacion>();
+                    var ultimaOrden = ordenesUsuario
                         .FirstOrDefault(o => o != null && !string.IsNullOrWhiteSpace(o.RucCedula));
 
                     if (ultimaOrden != null)
                     {
-                        AgregarCandidato(ultimaOrden.RucCedula, true);
+                        AgregarCandidato(ultimaOrden.RucCedula, true, "orden");
                     }
                 }
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine("ResolverRucCedulaDesdeFuentes (orden): " + ex.Message);
+                LogPasoError("orden", ex);
             }
 
             try
@@ -2477,14 +2757,82 @@ En transferencias NO colocar sublínea<br>";
 
                 if (usuario != null)
                 {
-                    AgregarCandidato(usuario.Ruc, true);
-                    AgregarCandidato(usuario.CodigoUsuario);
-                    AgregarCandidato(usuario.NombreUsuario);
+                    AgregarCandidato(usuario.Ruc, true, "usuario.ruc");
+                    AgregarCandidato(usuario.CodigoUsuario, false, "usuario.codigo");
+
+            try
+            {
+                if (usuario == null && userId > 0)
+                {
+                    usuario = UsuarioDAO.ObtenerPorId(userId);
+                }
+
+                var clavesMirror = new List<string>();
+                if (usuario != null)
+                {
+                    if (!string.IsNullOrWhiteSpace(usuario.CodigoUsuario)) clavesMirror.Add(usuario.CodigoUsuario);
+                    if (!string.IsNullOrWhiteSpace(usuario.NombreUsuario)) clavesMirror.Add(usuario.NombreUsuario);
+                }
+
+                var mirror = _mirrorReadService.ObtenerIdentificacionPorClavesUsuario(
+                    clavesMirror.Where(c => !string.IsNullOrWhiteSpace(c)).Distinct(StringComparer.OrdinalIgnoreCase));
+
+                if (mirror != null)
+                {
+                    AgregarCandidato(mirror.Ruc, true);
+                    AgregarCandidato(mirror.Cedula, true);
+
+                    System.Diagnostics.Debug.WriteLine(
+                        $"ResolverRucCedulaDesdeFuentes (mirror): userId={userId}, codigo={mirror.CodigoUsuario ?? "(null)"}, ruc={mirror.Ruc ?? "(null)"}, cedula={mirror.Cedula ?? "(null)"}");
                 }
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine("ResolverRucCedulaDesdeFuentes (usuario): " + ex.Message);
+                System.Diagnostics.Debug.WriteLine("ResolverRucCedulaDesdeFuentes (mirror): " + ex.Message);
+            }
+                    AgregarCandidato(usuario.NombreUsuario, false, "usuario.nombre");
+                }
+            }
+            catch (Exception ex)
+            {
+                LogPasoError("usuario", ex);
+            }
+
+            try
+            {
+                if (usuario == null && userId > 0)
+                {
+                    usuario = UsuarioDAO.ObtenerPorId(userId);
+                }
+
+                if (usuario != null)
+                {
+                    var claves = new[]
+                    {
+                        usuario.CodigoUsuario,
+                        usuario.NombreUsuario,
+                        ExtraerRucCedula(usuario.CodigoUsuario),
+                        ExtraerRucCedula(usuario.NombreUsuario)
+                    }
+                    .Where(v => !string.IsNullOrWhiteSpace(v))
+                    .Select(v => v.Trim())
+                    .Distinct(StringComparer.OrdinalIgnoreCase)
+                    .ToList();
+
+                    var identificacionMirror = _mirrorReadService.ObtenerIdentificacionPorClavesUsuario(claves);
+                    if (identificacionMirror != null)
+                    {
+                        AgregarCandidato(identificacionMirror.Ruc, true, "mirror.ruc");
+                        AgregarCandidato(identificacionMirror.Cedula, true, "mirror.cedula");
+
+                        System.Diagnostics.Debug.WriteLine(
+                            $"ResolverRucCedulaDesdeFuentes[mirror]: userId={userId}, ruc={identificacionMirror.Ruc ?? "(null)"}, cedula={identificacionMirror.Cedula ?? "(null)"}");
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                LogPasoError("mirror", ex);
             }
 
             try
@@ -2497,30 +2845,39 @@ En transferencias NO colocar sublínea<br>";
                 if (usuario != null)
                 {
                     var as400Dao = new UsuarioAS400DAO(new SecureConfig());
-                    var rucPorCodigo = as400Dao.ObtenerNumeroRucPorCodigoUsuario(usuario.CodigoUsuario);
-                    var rucPorNombre = as400Dao.ObtenerNumeroRucPorCodigoUsuario(usuario.NombreUsuario);
-                    var cedulaPorCodigo = as400Dao.ObtenerCedulaPorCodigoUsuario(usuario.CodigoUsuario);
-                    var cedulaPorNombre = as400Dao.ObtenerCedulaPorCodigoUsuario(usuario.NombreUsuario);
+                    var claves = new[] { usuario.CodigoUsuario, usuario.NombreUsuario }
+                        .Where(v => !string.IsNullOrWhiteSpace(v))
+                        .Select(v => v.Trim())
+                        .Distinct(StringComparer.OrdinalIgnoreCase)
+                        .ToList();
 
-                    AgregarCandidato(rucPorCodigo, true);
-                    AgregarCandidato(rucPorNombre, true);
-                    AgregarCandidato(cedulaPorCodigo, true);
-                    AgregarCandidato(cedulaPorNombre, true);
+                    foreach (var clave in claves)
+                    {
+                        var ruc = as400Dao.ObtenerNumeroRucPorCodigoUsuario(clave);
+                        var cedula = as400Dao.ObtenerCedulaPorCodigoUsuario(clave);
 
-                    System.Diagnostics.Debug.WriteLine(
-                        $"ResolverRucCedulaDesdeFuentes (as400): userId={userId}, codigo={usuario.CodigoUsuario ?? "(null)"}, " +
-                        $"rucCod={rucPorCodigo ?? "(null)"}, rucNom={rucPorNombre ?? "(null)"}, " +
-                        $"cedCod={cedulaPorCodigo ?? "(null)"}, cedNom={cedulaPorNombre ?? "(null)"}");
+                        AgregarCandidato(ruc, true, "as400.ruc");
+                        AgregarCandidato(cedula, true, "as400.cedula");
+
+                        System.Diagnostics.Debug.WriteLine(
+                            $"ResolverRucCedulaDesdeFuentes[as400]: userId={userId}, clave={clave}, ruc={ruc ?? "(null)"}, cedula={cedula ?? "(null)"}");
+                    }
+
+                    if (claves.Count == 0)
+                    {
+                        System.Diagnostics.Debug.WriteLine(
+                            $"ResolverRucCedulaDesdeFuentes[as400]: userId={userId}, sin claves de consulta para AS400.");
+                    }
                 }
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine("ResolverRucCedulaDesdeFuentes (as400): " + ex.Message);
+                LogPasoError("as400", ex);
             }
 
-            var resultado = candidatos.FirstOrDefault() ?? "";
+            var resultado = candidatos.FirstOrDefault() ?? string.Empty;
             System.Diagnostics.Debug.WriteLine(
-                $"ResolverRucCedulaDesdeFuentes: userId={userId}, totalCandidatos={candidatos.Count}, resultado={resultado ?? "(null)"}");
+                $"ResolverRucCedulaDesdeFuentes: userId={userId}, totalCandidatos={candidatos.Count}, resultado={resultado}, candidatos={string.Join("|", candidatos.Take(5))}");
             return resultado;
         }
 

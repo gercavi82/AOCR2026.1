@@ -122,10 +122,10 @@ namespace CapaDatos.DAOs
                     {
                         empresas.Add(new Empresa
                         {
-                            CodigoOaci = reader["CodigoOaci"]?.ToString()?.Trim(),
-                            CodigoIata = reader["CodigoIata"]?.ToString()?.Trim(),
-                            CodigoNumeroCia = reader["CodigoNumeroCia"]?.ToString()?.Trim(),
-                            Nombre = reader["NombreCompaniaAviacion"]?.ToString()?.Trim()
+                            CodigoOaci = SafeReadString(reader, "CodigoOaci", "ObtenerEmpresas", null),
+                            CodigoIata = SafeReadString(reader, "CodigoIata", "ObtenerEmpresas", null),
+                            CodigoNumeroCia = SafeReadString(reader, "CodigoNumeroCia", "ObtenerEmpresas", null),
+                            Nombre = SafeReadString(reader, "NombreCompaniaAviacion", "ObtenerEmpresas", null)
                         });
                     }
                 }
@@ -136,7 +136,7 @@ namespace CapaDatos.DAOs
                 System.Diagnostics.Debug.WriteLine($"❌ [EmpresaAS400DAO] ERROR: {ex.Message}");
                 System.Diagnostics.Debug.WriteLine($"❌ [EmpresaAS400DAO] Tipo: {ex.GetType().Name}");
                 System.Diagnostics.Debug.WriteLine($"❌ [EmpresaAS400DAO] StackTrace: {ex.StackTrace}");
-                throw new Exception("Error al consultar compañías aéreas del AS/400: " + ex.Message, ex);
+                System.Diagnostics.Debug.WriteLine("⚠️ [EmpresaAS400DAO] Se devuelve lista vacia por fallback.");
             }
             finally
             {
@@ -180,10 +180,10 @@ namespace CapaDatos.DAOs
                         {
                             return new Empresa
                             {
-                                CodigoOaci = reader["CodigoOaci"]?.ToString()?.Trim(),
-                                CodigoIata = reader["CodigoIata"]?.ToString()?.Trim(),
-                                CodigoNumeroCia = reader["CodigoNumeroCia"]?.ToString()?.Trim(),
-                                Nombre = reader["NombreCompaniaAviacion"]?.ToString()?.Trim()
+                                CodigoOaci = SafeReadString(reader, "CodigoOaci", "ObtenerEmpresaPorCodigo", codigoOaci),
+                                CodigoIata = SafeReadString(reader, "CodigoIata", "ObtenerEmpresaPorCodigo", codigoOaci),
+                                CodigoNumeroCia = SafeReadString(reader, "CodigoNumeroCia", "ObtenerEmpresaPorCodigo", codigoOaci),
+                                Nombre = SafeReadString(reader, "NombreCompaniaAviacion", "ObtenerEmpresaPorCodigo", codigoOaci)
                             };
                         }
                     }
@@ -191,7 +191,8 @@ namespace CapaDatos.DAOs
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"Error obteniendo empresa {codigoOaci} de CIAARC: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine(
+                    $"[EmpresaAS400DAO] Error obteniendo empresa codigo={codigoOaci ?? "(null)"}: tipo={ex.GetType().FullName}, msg={ex.Message}");
             }
             finally
             {
@@ -199,6 +200,61 @@ namespace CapaDatos.DAOs
             }
 
             return null;
+        }
+
+        private static string SafeReadString(iDB2DataReader reader, string columnName, string metodo, string referencia)
+        {
+            if (reader == null)
+            {
+                System.Diagnostics.Debug.WriteLine(
+                    $"[EmpresaAS400DAO] {metodo}: reader nulo para columna={columnName}, referencia={referencia ?? "(null)"}.");
+                return null;
+            }
+
+            int ordinal;
+            try
+            {
+                ordinal = reader.GetOrdinal(columnName);
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine(
+                    $"[EmpresaAS400DAO] {metodo}: columna inexistente={columnName}, referencia={referencia ?? "(null)"}, error={ex.GetType().FullName}, msg={ex.Message}");
+                return null;
+            }
+
+            try
+            {
+                if (reader.IsDBNull(ordinal))
+                {
+                    System.Diagnostics.Debug.WriteLine(
+                        $"[EmpresaAS400DAO] {metodo}: columna={columnName} viene DBNull, referencia={referencia ?? "(null)"}.");
+                    return null;
+                }
+
+                var raw = reader.GetValue(ordinal);
+                if (raw == null || raw == DBNull.Value)
+                {
+                    System.Diagnostics.Debug.WriteLine(
+                        $"[EmpresaAS400DAO] {metodo}: columna={columnName} viene null, referencia={referencia ?? "(null)"}.");
+                    return null;
+                }
+
+                var texto = Convert.ToString(raw);
+                return string.IsNullOrWhiteSpace(texto) ? null : texto.Trim();
+            }
+            catch (iDB2ConversionException ex)
+            {
+                System.Diagnostics.Debug.WriteLine(
+                    $"[EmpresaAS400DAO] {metodo}: iDB2ConversionException columna={columnName}, referencia={referencia ?? "(null)"}, msg={ex.Message}");
+                return null;
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine(
+                    $"[EmpresaAS400DAO] {metodo}: error leyendo columna={columnName}, referencia={referencia ?? "(null)"}, tipo={ex.GetType().FullName}, msg={ex.Message}");
+                return null;
+            }
         }
     }
 

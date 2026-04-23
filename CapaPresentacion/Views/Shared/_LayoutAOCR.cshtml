@@ -29,7 +29,7 @@
 
     @{
         var pageTitle = ViewBag.Title != null
-            ? System.Web.HttpUtility.HtmlDecode(System.Web.HttpUtility.HtmlDecode(ViewBag.Title.ToString()))
+            ? System.Web.HttpUtility.HtmlDecode(System.Web.HttpUtility.HtmlDecode(Convert.ToString(ViewBag.Title)))
             : "";
     }
 
@@ -53,8 +53,32 @@
     <link rel="stylesheet" href="https://cdn.datatables.net/responsive/2.4.1/css/responsive.bootstrap5.min.css">
 
     <!-- CSS Personalizado -->
+    @{
+        // Cache-busting: forzar recarga cuando cambia el archivo CSS institucional
+        string aocrCssInstVer = "0";
+        string aocrCssDtVer = "0";
+        try
+        {
+            var instPath = Server.MapPath("~/Content/aocr-institucional.css");
+            if (System.IO.File.Exists(instPath))
+            {
+                aocrCssInstVer = System.IO.File.GetLastWriteTimeUtc(instPath).Ticks.ToString();
+            }
+            var dtPath = Server.MapPath("~/Content/aocr-datatables.css");
+            if (System.IO.File.Exists(dtPath))
+            {
+                aocrCssDtVer = System.IO.File.GetLastWriteTimeUtc(dtPath).Ticks.ToString();
+            }
+        }
+        catch
+        {
+        }
+        var aocrCssInstHref = Url.Content("~/Content/aocr-institucional.css") + "?v=" + aocrCssInstVer;
+        var aocrCssDtHref = Url.Content("~/Content/aocr-datatables.css") + "?v=" + aocrCssDtVer;
+    }
     <link href="@Url.Content("~/Content/Site.css")" rel="stylesheet" />
-    <link href="@Url.Content("~/Content/aocr-institucional.css")" rel="stylesheet" />
+    <link href="@aocrCssInstHref" rel="stylesheet" />
+    <link href="@aocrCssDtHref" rel="stylesheet" />
 
     <!-- Estilos personalizados criticos (inline para performance) -->
     <style>
@@ -214,9 +238,11 @@
                        aria-haspopup="true" aria-expanded="false">
                         @{
                             var avatarUrl = Url.Content("~/Content/imganes/user.png");
-                            var avatarAlt = Session["NombreUsuario"] as string ?? "Usuario";
+                            var nombreUsuarioSidebar = (Session["NombreUsuario"] as string ?? string.Empty).Trim();
+                            var avatarAlt = !string.IsNullOrWhiteSpace(nombreUsuarioSidebar) ? nombreUsuarioSidebar : "Usuario";
                             var defaultAvatar = Url.Content("~/Content/imganes/user.png");
                             var rolSidebar = (Session["Rol"] as string ?? string.Empty).Trim();
+                            var rolUsuarioSidebar = !string.IsNullOrWhiteSpace(rolSidebar) ? rolSidebar : "Perfil institucional";
                             var empresaNombreSidebar = (Session["EmpresaNombre"] as string ?? string.Empty).Trim();
                             var empresaCodigoSidebar = (Session["EmpresaCodigo"] as string ?? string.Empty).Trim();
                             var mostrarEmpresaEnSidebar = rolSidebar.Equals("Solicitante", StringComparison.OrdinalIgnoreCase)
@@ -249,8 +275,8 @@
                                  width="90" height="90"
                                  onerror="this.onerror=null; this.src='@defaultAvatar';">
                             <p class="mb-0">
-                                <span id="user-fullname" class="d-block">@Session["NombreUsuario"]</span>
-                                <small id="user-role" class="text-muted">@Session["Rol"]</small>
+                                <span id="user-fullname" class="d-block">@avatarAlt</span>
+                                <small id="user-role" class="text-muted">@rolUsuarioSidebar</small>
                             </p>
                         </div>
                         <div class="user-footer p-3">
@@ -416,36 +442,87 @@
     <script src="https://cdn.datatables.net/responsive/2.4.1/js/responsive.bootstrap5.min.js"></script>
 
     <!-- 1.1b DataTables: defaults institucionales AOCR (aplicados a todas las tablas del proyecto) -->
+    <!--     Paginacion global fija: 5 registros por pagina. -->
     <script>
     $(function () {
         if (!$.fn || !$.fn.dataTable) return;
         $.extend(true, $.fn.dataTable.defaults, {
             language: {
-                url: 'https://cdn.datatables.net/plug-ins/1.13.4/i18n/es-ES.json',
-                emptyTable:    'No hay registros disponibles',
-                zeroRecords:   'No se encontraron resultados',
-                loadingRecords:'Cargando...',
-                processing:    'Procesando...'
+                processing:     'Procesando...',
+                search:         'Buscar:',
+                lengthMenu:     'Mostrar _MENU_ registros',
+                info:           'Mostrando _START_ a _END_ de _TOTAL_ registros',
+                infoEmpty:      'Mostrando 0 a 0 de 0 registros',
+                infoFiltered:   '(filtrado de _MAX_ registros en total)',
+                infoPostFix:    '',
+                loadingRecords: 'Cargando...',
+                zeroRecords:    'No se encontraron resultados',
+                emptyTable:     'No hay datos disponibles en esta tabla',
+                paginate: {
+                    first:    'Primero',
+                    previous: 'Anterior',
+                    next:     'Siguiente',
+                    last:     'Ultimo'
+                },
+                aria: {
+                    sortAscending:  ': activar para ordenar ascendentemente',
+                    sortDescending: ': activar para ordenar descendentemente'
+                }
             },
-            pageLength:  10,
-            lengthMenu:  [[5, 10, 25, 50, -1], [5, 10, 25, 50, 'Todos']],
+            pageLength:  5,
+            lengthChange: false,
             responsive:  true,
             autoWidth:   false,
             processing:  true,
-            dom: '<"row align-items-center mb-2"<"col-sm-6"l><"col-sm-6 text-end"f>>' +
+            pagingType:  'simple_numbers',
+            // Estandar institucional: buscador a la derecha, info y paginacion abajo (sin selector de longitud)
+            dom: '<"row align-items-center mb-2"<"col-sm-12 text-end"f>>' +
                  '<"row"<"col-12"tr>>' +
                  '<"row align-items-center mt-2"<"col-sm-5"i><"col-sm-7 d-flex justify-content-end"p>>',
             initComplete: function () {
-                // Aplica clases Bootstrap al input de búsqueda automáticamente
-                $(this).closest('.dataTables_wrapper')
-                    .find('.dataTables_filter input')
+                var $wrap = $(this).closest('.dataTables_wrapper');
+                $wrap.addClass('aocr-datatable-wrap');
+                $wrap.find('.dataTables_filter input')
                     .addClass('form-control form-control-sm')
                     .attr('placeholder', 'Buscar...');
-                $(this).closest('.dataTables_wrapper')
-                    .find('.dataTables_length select')
-                    .addClass('form-select form-select-sm');
             }
         });
+
+        // Institucional enforcement: cualquier vista que llame
+        //   $('#id').DataTable({ pageLength: 10, language: { url: ... } })
+        // queda normalizada (override fuerte) para mantener el estandar global.
+        try {
+            var _DT = $.fn.DataTable;
+            var _dt = $.fn.dataTable;
+            function _aocrNormalize(opts) {
+                if (!opts || typeof opts !== 'object') return opts;
+                // Forzar 5 registros (global)
+                opts.pageLength = 5;
+                opts.lengthChange = false;
+                // Si la vista especifica una URL remota de idioma, descartarla para usar
+                // los strings en espanol inline de los defaults institucionales.
+                if (opts.language && typeof opts.language === 'object' && opts.language.url) {
+                    delete opts.language.url;
+                }
+                // Asegurar paginacion estandar si la vista fijo otro pagingType
+                if (!opts.pagingType) { opts.pagingType = 'simple_numbers'; }
+                // Responsive por defecto salvo opt-out explicito
+                if (opts.responsive === undefined) { opts.responsive = true; }
+                return opts;
+            }
+            $.fn.DataTable = function (opts) {
+                _aocrNormalize(opts);
+                return _DT.apply(this, arguments);
+            };
+            $.each(_DT, function (k, v) { $.fn.DataTable[k] = v; });
+            $.fn.dataTable = function (opts) {
+                _aocrNormalize(opts);
+                return _dt.apply(this, arguments);
+            };
+            $.each(_dt, function (k, v) { $.fn.dataTable[k] = v; });
+        } catch (e) {
+            if (window.console) console.warn('[AOCR] No se pudo instalar el override institucional de DataTables:', e);
+        }
     });
     </script>
 

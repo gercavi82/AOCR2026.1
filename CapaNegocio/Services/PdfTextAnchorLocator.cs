@@ -27,6 +27,8 @@ namespace CapaNegocio.Services
             { "INFORME_TECNICO_INSPECTOR", new[] { "ANCLA_FIRMA_INSPECTOR_DGAC" } },
             { "INFORME_TECNICO_DIRDAC",    new[] { "ANCLA_FIRMA_DIRDAC_JEFATURA" } },
             { "AOCR_FIRMANTE",             new[] { "ANCLA_FIRMA_AUTORIZACION_AOCR" } },
+            { "DIRDAC",                    new[] { "ANCLA_FIRMA_CERTIFICADO_DIRDAC" } },
+            { "DIRECTOR_GENERAL",          new[] { "ANCLA_FIRMA_CERTIFICADO_DIRDAC" } },
         };
 
         // ── Anclas legacy (texto visible — fallback) ────────────────────────
@@ -42,6 +44,8 @@ namespace CapaNegocio.Services
         private const float AltoInforme = 96f;
         private const float AnchoAocr = 160f;      // ~34% columna A4
         private const float AltoAocr = 96f;
+        private const float AnchoCertificado = 235f; // ~50% página A4 (celda firma certificado)
+        private const float AltoCertificado = 92f;
 
         /// <summary>
         /// Intenta localizar el recuadro de firma buscando el texto ancla correspondiente al rol.
@@ -139,8 +143,11 @@ namespace CapaNegocio.Services
         private static Rectangle CalcularRectanguloFirma(TextPositionInfo ancla, Rectangle pageSize, string rol, bool esV2)
         {
             var esAocr = rol == "AOCR_FIRMANTE";
-            var ancho = esAocr ? AnchoAocr : AnchoInforme;
-            var alto = esAocr ? AltoAocr : AltoInforme;
+            var esCertificado = rol == "DIRDAC" || rol == "DIRECTOR_GENERAL";
+            float ancho, alto;
+            if (esAocr) { ancho = AnchoAocr; alto = AltoAocr; }
+            else if (esCertificado) { ancho = AnchoCertificado; alto = AltoCertificado; }
+            else { ancho = AnchoInforme; alto = AltoInforme; }
 
             float left, top;
 

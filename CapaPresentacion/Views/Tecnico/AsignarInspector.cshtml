@@ -489,7 +489,7 @@
                 <span class="progress-step-icon"><i class="fas fa-calendar-check"></i></span>
                 <div>
                     <small>Bloque 3</small>
-                    <strong>Programación de inspección</strong>
+                    <strong>Observaciones</strong>
                 </div>
             </div>
         </div>
@@ -603,31 +603,20 @@
             <div class="card section-card mt-4">
                 <div class="card-body">
                     <div class="section-heading">
-                        <span class="section-icon"><i class="fas fa-calendar-days"></i></span>
+                        <span class="section-icon"><i class="fas fa-clipboard-list"></i></span>
                         <div>
-                            <h2 class="section-title">Programación de inspección</h2>
-                            <p class="section-copy">Establezca la fecha prevista y documente observaciones operativas relevantes para el equipo técnico.</p>
+                            <h2 class="section-title">Observaciones de la asignación</h2>
+                            <p class="section-copy">Documente observaciones operativas relevantes para el equipo técnico. La fecha y hora de la inspección se registran posteriormente desde el informe técnico.</p>
                         </div>
                     </div>
 
+                    @* Campos ocultos: se mantienen valores por defecto para compatibilidad con el controlador.
+                       La programación real de la inspección se realiza en el informe técnico. *@
+                    <input type="hidden" id="fechaInspeccion" name="fechaInspeccion" value="@DateTime.Now.ToString("yyyy-MM-dd")" />
+                    <input type="hidden" id="horaInspeccion" name="horaInspeccion" value="09:00" />
+
                     <div class="row g-4">
-                        <div class="col-lg-4">
-                            <label class="form-label-strong" for="fechaInspeccion">Fecha de inspección<span class="field-required">*</span></label>
-                            <div class="input-group-modern">
-                                <span class="input-icon"><i class="fas fa-calendar-check"></i></span>
-                                <input type="date" id="fechaInspeccion" name="fechaInspeccion" class="form-control" required value="@DateTime.Now.ToString("yyyy-MM-dd")" />
-                            </div>
-
-                            <div class="mt-3">
-                                <label class="form-label-strong" for="horaInspeccion">Hora de revisión<span class="field-required">*</span></label>
-                                <div class="input-group-modern">
-                                    <span class="input-icon"><i class="fas fa-clock"></i></span>
-                                    <input type="time" id="horaInspeccion" name="horaInspeccion" class="form-control" required value="09:00" />
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="col-lg-8">
+                        <div class="col-12">
                             <label class="form-label-strong" for="observaciones">Observaciones</label>
                             <div class="input-group-modern">
                                 <span class="input-icon textarea-icon"><i class="fas fa-clipboard-list"></i></span>

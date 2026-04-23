@@ -8,7 +8,8 @@
     ViewBag.Title = "Detalles de Orden";
 
     // Crear variables para facilitar el acceso
-    var orden = Model;
+    var modeloIncompleto = Model == null;
+    var orden = Model ?? new CapaDatos.Models.OrdenRecaudacionModel();
     var estado = (orden.Estado ?? "").Trim().ToUpperInvariant();
     var puedeEditar = estado == "BORRADOR" &&
         (User != null && (User.IsInRole("Solicitante") || User.IsInRole("Administrador")));
@@ -43,6 +44,12 @@
 <div class="row">
     <div class="col-md-12">
         <div class="card">
+            @if (modeloIncompleto)
+            {
+                <div class="alert alert-warning m-3 mb-0">
+                    Se detectÃ³ informaciÃ³n parcial de la orden. Se muestran datos mÃ­nimos para evitar errores de carga.
+                </div>
+            }
             <div class="card-header bg-dark text-white">
                 <div class="d-flex justify-content-between align-items-center">
                     <h3 class="card-title mb-0">

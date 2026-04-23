@@ -1,202 +1,188 @@
-@* Partial: Seccion DIRDAC / Direccion - Jefatura - revision institucional sin firma digital *@
+@* ============================================================
+   Partial: Panel DIRDAC / Dirección - Jefatura
+   ============================================================ *@
+@model CapaPresentacion.Models.ViewModels.DireccionJefaturaPanelVm
 @{
-    var informeTecnico = ViewBag.InformeTecnico as CapaModelo.InspeccionInformeTecnico;
-    var codigoInspeccion = (int)ViewBag.CodigoInspeccion;
-    var esDirdac = (bool)(ViewBag.EsDirdac ?? false);
-    var puedeAprobarDireccion = (bool)(ViewBag.PuedeFirmarDirdac ?? false);
-    var informeEnviadoADirdac = (bool)(ViewBag.InformeEnviadoADirdac ?? false);
-    var informeAprobadoDireccion = (bool)(ViewBag.InformeAprobadoDireccion ?? false);
-    var informeDevueltoDireccion = (bool)(ViewBag.InformeDevueltoDireccion ?? false);
-    var estadoInformeTecnico = (string)ViewBag.EstadoInformeTecnico ?? "BORRADOR";
-    var rutaInformeVisual = (string)ViewBag.RutaInformeVisual;
+    var vm = Model ?? new CapaPresentacion.Models.ViewModels.DireccionJefaturaPanelVm();
+    var informeTecnico = vm.InformeTecnico;
+    var codigoInspeccion = vm.CodigoInspeccion;
+    var esDirdac = vm.EsDirdac;
+    var puedeAprobarDireccion = vm.PuedeFirmarDirdac;
+    var informeEnviadoADirdac = vm.InformeEnviadoADirdac;
+    var informeAprobadoDireccion = vm.InformeAprobadoDireccion;
+    var informeDevueltoDireccion = vm.InformeDevueltoDireccion;
+    var estadoInformeTecnico = vm.EstadoInformeTecnico ?? "BORRADOR";
+    var rutaInformeVisual = vm.RutaInformeVisual;
     var tieneInforme = !string.IsNullOrWhiteSpace(rutaInformeVisual);
+    var urlVerPdf = codigoInspeccion > 0
+        ? Url.Action("VerInforme", "Inspeccion", new { id = codigoInspeccion })
+        : "#";
 }
 
-@if (esDirdac && informeTecnico != null)
+@if (codigoInspeccion <= 0)
 {
-<div class="card section-card" style="border-left: 4px solid #6f42c1;">
-    <div class="card-body">
-        <div class="section-heading">
-            <div class="section-icon" style="background: #6f42c1;">
-                <i class="fas fa-university"></i>
+    <div class="it-alert warn">
+        <i class="fas fa-exclamation-triangle"></i>
+        <div>No hay contexto de inspecciÃ³n disponible para revisiÃ³n DIRDAC.</div>
+    </div>
+}
+else if (esDirdac && informeTecnico != null)
+{
+    @Html.Partial("_InformeFirmaStyles")
+
+    <div class="it-hero" style="background: linear-gradient(135deg, #4a2a8a 0%, #6f42c1 55%, #8a5fd8 100%); box-shadow: 0 8px 24px rgba(111,66,193,.24);">
+        <div class="it-hero-row">
+            <div>
+                <h3><i class="fas fa-university"></i> DIRDAC / Dirección - Jefatura</h3>
+                <p class="sub">Revisión institucional del informe técnico. Remitir a Coordinación o devolver con observación.</p>
             </div>
             <div>
-                <h2 class="section-title">DIRDAC / Dirección - Jefatura</h2>
-                <p class="section-copy">Revision institucional del informe tecnico. En esta etapa DIRDAC revisa y remite a Coordinacion, o devuelve con observacion obligatoria.</p>
+                @if (informeAprobadoDireccion)
+                { <span class="it-pill ok"><i class="fas fa-check-circle"></i> Revisado</span> }
+                else if (informeDevueltoDireccion)
+                { <span class="it-pill danger"><i class="fas fa-undo"></i> Devuelto</span> }
+                else if (informeEnviadoADirdac)
+                { <span class="it-pill warn"><i class="fas fa-hourglass-half"></i> Pendiente</span> }
+                else
+                { <span class="it-pill"><i class="fas fa-circle-notch"></i> Sin enviar</span> }
             </div>
         </div>
-
-        @if (informeAprobadoDireccion)
-        {
-            <div class="alert mb-3" style="background:#d1e7dd; border-left:4px solid #198754; color:#0a3622; font-size:0.9rem;">
-                <i class="fas fa-check-circle me-1"></i>
-                <strong>Revision institucional completada.</strong>
-                DIRDAC / Direccion - Jefatura reviso el informe y lo envio a Coordinacion para aprobacion.
-            </div>
-        }
-        else if (informeDevueltoDireccion)
-        {
-            <div class="alert mb-3" style="background:#f8d7da; border-left:4px solid #dc3545; color:#721c24; font-size:0.9rem;">
-                <i class="fas fa-undo me-1"></i>
-                <strong>Informe devuelto al inspector.</strong>
-                DIRDAC / Direccion - Jefatura devolvio el informe con observaciones para correccion y reenvio.
-            </div>
-        }
-        else if (informeEnviadoADirdac)
-        {
-            <div class="alert mb-3" style="background:#fff3cd; border-left:4px solid #ffc107; color:#664d03; font-size:0.9rem;">
-                <i class="fas fa-hourglass-half me-1"></i>
-                <strong>Pendiente de revision institucional.</strong>
-                El informe tecnico se encuentra en bandeja de DIRDAC / Direccion - Jefatura para revision.
-            </div>
-        }
-        else
-        {
-            <div class="alert mb-3" style="background:#e2e3e5; border-left:4px solid #6c757d; color:#41464b; font-size:0.9rem;">
-                <i class="fas fa-info-circle me-1"></i>
-                El informe tecnico aun no esta en etapa de revision de DIRDAC / Direccion - Jefatura.
-            </div>
-        }
-
-        <div class="d-flex flex-wrap gap-2 mb-3">
-            <span class="badge" style="font-size:0.82rem; padding:6px 12px; background:@(informeTecnico.FirmadoInspector ? "#198754" : "#6c757d");">
-                <i class="fas fa-@(informeTecnico.FirmadoInspector ? "check" : "clock") me-1"></i>
-                Firma Inspector: @(informeTecnico.FirmadoInspector ? "Completada" : "Pendiente")
-            </span>
-            <span class="badge" style="font-size:0.82rem; padding:6px 12px; background:@(informeEnviadoADirdac ? "#0d6efd" : "#6c757d");">
-                <i class="fas fa-@(informeEnviadoADirdac ? "inbox" : "clock") me-1"></i>
-                Bandeja DIRDAC: @(informeEnviadoADirdac ? "En revision" : "Pendiente")
-            </span>
-            <span class="badge" style="font-size:0.82rem; padding:6px 12px; background:@(informeAprobadoDireccion ? "#198754" : (informeDevueltoDireccion ? "#dc3545" : "#6c757d"));">
-                <i class="fas fa-@(informeAprobadoDireccion ? "check-double" : (informeDevueltoDireccion ? "undo" : "clock")) me-1"></i>
-                Decision DIRDAC: @(informeAprobadoDireccion ? "Aprobado" : (informeDevueltoDireccion ? "Devuelto" : "Pendiente"))
-            </span>
-        </div>
-
-        <div class="detail-grid" style="grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 0.6rem;">
-            <div class="detail-item">
-                <span class="detail-label">Version informe</span>
-                <div class="detail-value">@informeTecnico.Version</div>
-            </div>
-            <div class="detail-item">
-                <span class="detail-label">Estado del informe</span>
-                <div class="detail-value">@estadoInformeTecnico</div>
-            </div>
-            <div class="detail-item">
-                <span class="detail-label">Fecha envio a DIRDAC</span>
-                <div class="detail-value">@(informeTecnico.FechaEnvioDirdac.HasValue ? informeTecnico.FechaEnvioDirdac.Value.ToString("dd/MM/yyyy HH:mm") : "-")</div>
-            </div>
-            <div class="detail-item">
-                <span class="detail-label">Usuario envio</span>
-                <div class="detail-value">@(!string.IsNullOrWhiteSpace(informeTecnico.UsuarioEnvioDirdac) ? informeTecnico.UsuarioEnvioDirdac : "-")</div>
-            </div>
-            <div class="detail-item">
-                <span class="detail-label">Revisado por</span>
-                <div class="detail-value">@(!string.IsNullOrWhiteSpace(informeTecnico.UsuarioFirma2) ? informeTecnico.UsuarioFirma2 : "-")</div>
-            </div>
-            <div class="detail-item">
-                <span class="detail-label">Fecha revision</span>
-                <div class="detail-value">@(informeTecnico.FechaFirma2.HasValue ? informeTecnico.FechaFirma2.Value.ToString("dd/MM/yyyy HH:mm") : "-")</div>
-            </div>
-        </div>
-
-        @if (tieneInforme)
-        {
-            <div class="d-flex align-items-center gap-2 mt-3 mb-3">
-                <a class="btn btn-sm btn-outline-primary"
-                   href="@Url.Action("VerInforme", "Inspeccion", new { id = codigoInspeccion })"
-                   target="_blank" rel="noopener">
-                    <i class="fas fa-file-pdf me-1"></i> Ver PDF del informe
-                </a>
-                <small class="text-muted">@rutaInformeVisual</small>
-            </div>
-        }
-
-        @if (puedeAprobarDireccion)
-        {
-            <div class="mt-3 p-3" style="background:#f8f0ff; border:1px solid #d4b5f0; border-radius:8px;" id="panelDecisionDireccion">
-                <h6 style="margin:0 0 12px 0; color:#6f42c1; font-weight:600;">
-                    <i class="fas fa-balance-scale me-1"></i> Decision institucional
-                </h6>
-
-                <div class="mb-3" id="decisionDireccionBtns">
-                    <p style="font-size:0.88rem; color:#555; margin-bottom:10px;">
-                        Revise el informe tecnico y seleccione una accion.
-                    </p>
-                    <button type="button" class="btn btn-success me-2" onclick="mostrarAprobacionDireccion()">
-                        <i class="fas fa-check-circle me-1"></i> Revisar y enviar a Coordinacion
-                    </button>
-                    <button type="button" class="btn btn-outline-danger" onclick="mostrarDevolucionDireccion()">
-                        <i class="fas fa-undo me-1"></i> Devolver con observacion
-                    </button>
-                </div>
-
-                <div id="formAprobacionDireccion" style="display:none;" class="mt-2">
-                    @using (Html.BeginForm("DireccionAprobar", "Inspeccion", FormMethod.Post))
-                    {
-                        @Html.AntiForgeryToken()
-                        @Html.Hidden("id", codigoInspeccion)
-                        <p style="font-size:0.88rem; margin-bottom:8px;">Confirma la revision DIRDAC y el envio a Coordinacion?</p>
-                        <button type="submit" class="btn btn-success me-2">
-                            <i class="fas fa-check me-1"></i> Confirmar revision
-                        </button>
-                        <button type="button" class="btn btn-outline-secondary" onclick="cancelarDecisionDireccion()">Cancelar</button>
-                    }
-                </div>
-
-                <div id="formDevolucionDireccion" style="display:none;" class="mt-2">
-                    @using (Html.BeginForm("DireccionDevolver", "Inspeccion", FormMethod.Post))
-                    {
-                        @Html.AntiForgeryToken()
-                        @Html.Hidden("id", codigoInspeccion)
-                        <div class="form-field mb-2">
-                            <label style="font-weight:600; font-size:0.88rem;">Observacion de devolucion <span class="text-danger">*</span></label>
-                            <textarea name="observacionRechazo" class="form-control" rows="3" required
-                                      placeholder="Indique la observacion para devolver el informe al inspector..."></textarea>
-                        </div>
-                        <button type="submit" class="btn btn-danger me-2">
-                            <i class="fas fa-undo me-1"></i> Confirmar devolucion
-                        </button>
-                        <button type="button" class="btn btn-outline-secondary" onclick="cancelarDecisionDireccion()">Cancelar</button>
-                    }
-                </div>
-            </div>
-
-            <script>
-                function mostrarAprobacionDireccion() {
-                    document.getElementById('decisionDireccionBtns').style.display = 'none';
-                    document.getElementById('formDevolucionDireccion').style.display = 'none';
-                    document.getElementById('formAprobacionDireccion').style.display = 'block';
-                }
-                function mostrarDevolucionDireccion() {
-                    document.getElementById('decisionDireccionBtns').style.display = 'none';
-                    document.getElementById('formAprobacionDireccion').style.display = 'none';
-                    document.getElementById('formDevolucionDireccion').style.display = 'block';
-                }
-                function cancelarDecisionDireccion() {
-                    document.getElementById('formAprobacionDireccion').style.display = 'none';
-                    document.getElementById('formDevolucionDireccion').style.display = 'none';
-                    document.getElementById('decisionDireccionBtns').style.display = 'block';
-                }
-            </script>
-        }
-
-        @if (!string.IsNullOrWhiteSpace(informeTecnico.ObservacionDevolucion) && informeDevueltoDireccion)
-        {
-            <div class="mt-3 p-3" style="background:#fff8e8; border:1px solid #ffc107; border-radius:8px;">
-                <h6 style="margin:0 0 8px 0; color:#856404; font-weight:600;">
-                    <i class="fas fa-comment-dots me-1"></i> Ultima observacion de devolucion
-                </h6>
-                <p style="font-size:0.9rem; margin:0;">@informeTecnico.ObservacionDevolucion</p>
-                @if (informeTecnico.FechaDevolucion.HasValue)
-                {
-                    <small class="text-muted">
-                        @informeTecnico.FechaDevolucion.Value.ToString("dd/MM/yyyy HH:mm")
-                        @(!string.IsNullOrWhiteSpace(informeTecnico.UsuarioDevolucion) ? " - " + informeTecnico.UsuarioDevolucion : "")
-                    </small>
-                }
-            </div>
-        }
     </div>
-</div>
+
+    if (informeAprobadoDireccion)
+    {
+        <div class="it-alert success">
+            <i class="fas fa-check-circle"></i>
+            <div><strong>Revisión institucional completada.</strong> DIRDAC / Dirección - Jefatura remitió el informe a Coordinación para aprobación.</div>
+        </div>
+    }
+    else if (informeDevueltoDireccion)
+    {
+        <div class="it-alert danger">
+            <i class="fas fa-undo"></i>
+            <div><strong>Informe devuelto al inspector.</strong> Fue devuelto con observaciones para corrección y reenvío.</div>
+        </div>
+    }
+    else if (informeEnviadoADirdac)
+    {
+        <div class="it-alert warn">
+            <i class="fas fa-hourglass-half"></i>
+            <div><strong>Pendiente de revisión institucional.</strong> El informe técnico se encuentra en bandeja de DIRDAC / Dirección - Jefatura.</div>
+        </div>
+    }
+    else
+    {
+        <div class="it-alert neutral">
+            <i class="fas fa-info-circle"></i>
+            <div>El informe técnico aún no ha llegado a la etapa de revisión DIRDAC.</div>
+        </div>
+    }
+
+    <div class="it-meta">
+        <div class="it-meta-item"><span class="k">Versión informe</span><span class="v">@informeTecnico.Version</span></div>
+        <div class="it-meta-item"><span class="k">Estado</span><span class="v">@estadoInformeTecnico</span></div>
+        <div class="it-meta-item">
+            <span class="k">Envío a DIRDAC</span>
+            <span class="v">@(informeTecnico.FechaEnvioDirdac.HasValue ? informeTecnico.FechaEnvioDirdac.Value.ToString("dd/MM/yyyy HH:mm") : "—")</span>
+        </div>
+        <div class="it-meta-item">
+            <span class="k">Usuario envío</span>
+            <span class="v">@(!string.IsNullOrWhiteSpace(informeTecnico.UsuarioEnvioDirdac) ? informeTecnico.UsuarioEnvioDirdac : "—")</span>
+        </div>
+        <div class="it-meta-item">
+            <span class="k">Revisado por</span>
+            <span class="v">@(!string.IsNullOrWhiteSpace(informeTecnico.UsuarioFirma2) ? informeTecnico.UsuarioFirma2 : "—")</span>
+        </div>
+        <div class="it-meta-item">
+            <span class="k">Fecha revisión</span>
+            <span class="v">@(informeTecnico.FechaFirma2.HasValue ? informeTecnico.FechaFirma2.Value.ToString("dd/MM/yyyy HH:mm") : "—")</span>
+        </div>
+    </div>
+
+    if (tieneInforme)
+    {
+        <div class="it-btn-row" style="margin-bottom: 12px;">
+            <a class="it-btn ghost" href="@urlVerPdf" target="_blank" rel="noopener">
+                <i class="fas fa-file-pdf"></i> Ver PDF del informe
+            </a>
+        </div>
+    }
+
+    if (puedeAprobarDireccion)
+    {
+        <div class="it-panel dirdac">
+            <h4><i class="fas fa-balance-scale"></i> Decisión institucional</h4>
+            <p class="hint">Revise el informe técnico y seleccione una acción.</p>
+
+            <div id="dirdacDecisionBtns" class="it-btn-row">
+                <button type="button" class="it-btn success" onclick="itDirdacMostrar('dirdacFormAprob')">
+                    <i class="fas fa-check-circle"></i> Revisar y enviar a Coordinación
+                </button>
+                <button type="button" class="it-btn danger" onclick="itDirdacMostrar('dirdacFormDevol')">
+                    <i class="fas fa-undo"></i> Devolver con observación
+                </button>
+            </div>
+
+            <div id="dirdacFormAprob" style="display:none; margin-top: 14px;">
+                @using (Html.BeginForm("DireccionAprobar", "Inspeccion", FormMethod.Post))
+                {
+                    @Html.AntiForgeryToken()
+                    @Html.Hidden("id", codigoInspeccion)
+                    <div class="it-alert success" style="margin-bottom: 10px;">
+                        <i class="fas fa-question-circle"></i>
+                        <div>¿Confirma la revisión DIRDAC y el envío a Coordinación?</div>
+                    </div>
+                    <div class="it-btn-row">
+                        <button type="submit" class="it-btn success"><i class="fas fa-check"></i> Confirmar revisión</button>
+                        <button type="button" class="it-btn ghost" onclick="itDirdacCancelar()">Cancelar</button>
+                    </div>
+                }
+            </div>
+
+            <div id="dirdacFormDevol" style="display:none; margin-top: 14px;">
+                @using (Html.BeginForm("DireccionDevolver", "Inspeccion", FormMethod.Post))
+                {
+                    @Html.AntiForgeryToken()
+                    @Html.Hidden("id", codigoInspeccion)
+                    <div class="it-field">
+                        <label>Observación de devolución <span style="color:#d64545;">*</span></label>
+                        <textarea name="observacionRechazo" class="it-input" rows="3" required="required"
+                                  placeholder="Indique la observación para devolver el informe al inspector..."></textarea>
+                    </div>
+                    <div class="it-btn-row">
+                        <button type="submit" class="it-btn danger"><i class="fas fa-undo"></i> Confirmar devolución</button>
+                        <button type="button" class="it-btn ghost" onclick="itDirdacCancelar()">Cancelar</button>
+                    </div>
+                }
+            </div>
+        </div>
+
+        <script>
+            function itDirdacMostrar(id) {
+                document.getElementById('dirdacDecisionBtns').style.display = 'none';
+                document.getElementById('dirdacFormAprob').style.display = id === 'dirdacFormAprob' ? 'block' : 'none';
+                document.getElementById('dirdacFormDevol').style.display = id === 'dirdacFormDevol' ? 'block' : 'none';
+            }
+            function itDirdacCancelar() {
+                document.getElementById('dirdacFormAprob').style.display = 'none';
+                document.getElementById('dirdacFormDevol').style.display = 'none';
+                document.getElementById('dirdacDecisionBtns').style.display = 'flex';
+            }
+        </script>
+    }
+
+    if (!string.IsNullOrWhiteSpace(informeTecnico.ObservacionDevolucion) && informeDevueltoDireccion)
+    {
+        <div class="it-obs">
+            <h6><i class="fas fa-comment-dots"></i> Última observación de devolución</h6>
+            <p>@informeTecnico.ObservacionDevolucion</p>
+            @if (informeTecnico.FechaDevolucion.HasValue)
+            {
+                <small>
+                    @informeTecnico.FechaDevolucion.Value.ToString("dd/MM/yyyy HH:mm")
+                    @(!string.IsNullOrWhiteSpace(informeTecnico.UsuarioDevolucion) ? " · " + informeTecnico.UsuarioDevolucion : "")
+                </small>
+            }
+        </div>
+    }
 }

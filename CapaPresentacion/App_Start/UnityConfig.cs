@@ -12,6 +12,7 @@ using CapaNegocio.Services;
 using CapaDatos.DAOs;
 using CapaDatos.Interfaces;
 using CapaDatos.Services;
+using CapaPresentacion.Infrastructure;
 
 namespace CapaPresentacion
 {
@@ -30,8 +31,20 @@ namespace CapaPresentacion
             container.RegisterType<ParametroDAO>(new HierarchicalLifetimeManager());
 
             // Registrar servicios
-            container.RegisterType<CapaDatos.Services.IEmailService, CapaDatos.Services.EmailService>(new HierarchicalLifetimeManager());
             container.RegisterType<CapaDatos.Services.ISecureConfigurationService, CapaDatos.Services.SecureConfigurationService>(new HierarchicalLifetimeManager());
+            container.RegisterType<IUserContextAccessor, UserContextAccessor>(new HierarchicalLifetimeManager());
+            container.RegisterFactory<CapaDatos.Services.IEmailService>(c =>
+            {
+                try
+                {
+                    var cfg = c.Resolve<CapaDatos.Services.ISecureConfigurationService>();
+                    return new CapaDatos.Services.EmailService(cfg);
+                }
+                catch
+                {
+                    return new CapaDatos.Services.NoOpEmailService();
+                }
+            }, new HierarchicalLifetimeManager());
             container.RegisterFactory<CapaDatos.Services.IAuditService>(c =>
             {
                 var cfg = c.Resolve<CapaDatos.Services.ISecureConfigurationService>();
@@ -58,7 +71,7 @@ namespace CapaPresentacion
                     null,
                     c.Resolve<CapaDatos.Services.IEmailService>(),
                     null
-                ));
+                ), new HierarchicalLifetimeManager());
 
             DependencyResolver.SetResolver(new UnityDependencyResolver(container));
         }

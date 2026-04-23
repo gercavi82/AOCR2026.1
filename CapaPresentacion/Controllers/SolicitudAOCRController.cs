@@ -11,6 +11,8 @@ using CapaDatos.DAOs;
 using CapaDatos.Entidades;
 using CapaModelo;
 using CapaDatos.Constants;
+using CapaPresentacion.Filters;
+using CapaPresentacion.Infrastructure;
 using CapaPresentacion.Models;
 using CapaPresentacion.Helpers;
 using CapaNegocio;
@@ -595,9 +597,7 @@ namespace CapaPresentacion.Controllers
         }
 
         [HttpPost]
-        [ValidateAntiForgeryToken]
-        // ValidateAntiForgeryToken no funciona con JSON, usar ValidateJsonAntiForgeryToken si está disponible
-        // o implementar validación manual del token en el header
+        [ValidateAntiForgeryTokenFromHeader]
         public ActionResult FormularioCompleto(SolicitudAOCRViewModel vm)
         {
             try
@@ -870,31 +870,51 @@ namespace CapaPresentacion.Controllers
         /// Acepta JSON con { seccion, solicitud: { CodigoSolicitud, ... campos de la sección } }.
         /// </summary>
         [HttpPost]
-        [ValidateAntiForgeryToken]
+        [ValidateAntiForgeryTokenFromHeader]
         public JsonResult GuardarProgreso()
         {
             try
             {
                 int usuarioId;
-                if (!TryObtenerUsuarioActualId(out usuarioId))
-                    return Json(new { success = false, mensaje = "Sesión expirada." });
+                if (!this.TryGetSessionUserId(out usuarioId) && !TryObtenerUsuarioActualId(out usuarioId))
+                {
+                    return this.JsonContextMissing("Sesión expirada.");
+                }
 
                 string body;
                 using (var reader = new System.IO.StreamReader(Request.InputStream))
+                {
                     body = reader.ReadToEnd();
+                }
 
                 if (string.IsNullOrWhiteSpace(body))
-                    return Json(new { success = false, mensaje = "Sin datos." });
+                {
+                    return JsonEnvelope(false, "EMPTY_BODY", "Sin datos.", data: null);
+                }
 
-                dynamic payload = JsonConvert.DeserializeObject<dynamic>(body);
-                if (payload == null || payload.solicitud == null)
-                    return Json(new { success = false, mensaje = "Datos inválidos." });
+                GuardarProgresoPayload payload;
+                try
+                {
+                    payload = JsonConvert.DeserializeObject<GuardarProgresoPayload>(body);
+                }
+                catch (Exception exJson)
+                {
+                    System.Diagnostics.Debug.WriteLine("[GuardarProgreso] JSON inválido: " + exJson.Message);
+                    return JsonEnvelope(false, "INVALID_JSON", "Formato JSON inválido.", data: null);
+                }
 
-                var sol = JsonConvert.DeserializeObject<SolicitudAOCR>(payload.solicitud.ToString());
+                if (payload == null || payload.Solicitud == null)
+                {
+                    return JsonEnvelope(false, "INVALID_PAYLOAD", "Datos inválidos.", data: null);
+                }
+
+                var sol = payload.Solicitud;
                 if (sol == null)
-                    return Json(new { success = false, mensaje = "No se pudo interpretar los datos de la solicitud." });
+                {
+                    return JsonEnvelope(false, "INVALID_PAYLOAD", "No se pudo interpretar los datos de la solicitud.", data: null);
+                }
 
-                string seccion = payload.seccion != null ? (string)payload.seccion : "general";
+                string seccion = !string.IsNullOrWhiteSpace(payload.Seccion) ? payload.Seccion.Trim() : "general";
 
                 // Validaciones mínimas independientes de sección
                 var companiaActivaCodigo = ObtenerCompaniaActivaCodigo();
@@ -903,7 +923,9 @@ namespace CapaPresentacion.Controllers
                     companiaActivaCodigo, sol.CompaniasSeleccionadas, null);
 
                 if (string.IsNullOrWhiteSpace(companiaFinal))
-                    return Json(new { success = false, mensaje = "No hay compañía activa seleccionada." });
+                {
+                    return JsonEnvelope(false, "COMPANY_CONTEXT_MISSING", "No hay compañía activa seleccionada.", data: null);
+                }
 
                 sol.CompaniasSeleccionadas = companiaFinal;
 
@@ -929,7 +951,10 @@ namespace CapaPresentacion.Controllers
                     sol.Estado = "BORRADOR";
 
                     bool ok = _solicitudBL.Crear(sol, usuarioId, out msg);
-                    if (!ok) return Json(new { success = false, mensaje = msg });
+                    if (!ok)
+                    {
+                        return JsonEnvelope(false, "CREATE_FAILED", msg, data: null);
+                    }
                     idFinal = sol.CodigoSolicitud;
                 }
                 else
@@ -937,22 +962,43 @@ namespace CapaPresentacion.Controllers
                     // Solicitud existente: verificar propiedad
                     var actual = _solicitudDAO.ObtenerPorId(sol.CodigoSolicitud);
                     if (actual == null)
-                        return Json(new { success = false, mensaje = "Solicitud no encontrada." });
+                    {
+                        return JsonEnvelope(false, "NOT_FOUND", "Solicitud no encontrada.", data: null);
+                    }
                     if (!EsAdmin() && actual.CodigoUsuario != usuarioId)
-                        return Json(new { success = false, mensaje = "Sin permisos para modificar esta solicitud." });
+                    {
+                        return JsonEnvelope(false, "FORBIDDEN", "Sin permisos para modificar esta solicitud.", data: null);
+                    }
 
                     sol.CodigoUsuario = actual.CodigoUsuario;
                     bool ok = _solicitudBL.Actualizar(sol, usuarioId, out msg, EsAdmin());
-                    if (!ok) return Json(new { success = false, mensaje = msg });
+                    if (!ok)
+                    {
+                        return JsonEnvelope(false, "UPDATE_FAILED", msg, data: null);
+                    }
                     idFinal = sol.CodigoSolicitud;
                 }
 
-                return Json(new { success = true, mensaje = "Sección guardada correctamente.", id = idFinal, seccion = seccion });
+                return Json(new
+                {
+                    ok = true,
+                    success = true,
+                    code = "OK",
+                    message = "Sección guardada correctamente.",
+                    mensaje = "Sección guardada correctamente.",
+                    id = idFinal,
+                    seccion = seccion,
+                    data = new
+                    {
+                        id = idFinal,
+                        seccion = seccion
+                    }
+                });
             }
             catch (Exception ex)
             {
                 System.Diagnostics.Debug.WriteLine("[GuardarProgreso] Error: " + ex.Message);
-                return Json(new { success = false, mensaje = "Error al guardar: " + ex.Message });
+                return JsonEnvelope(false, "INTERNAL_ERROR", "Error al guardar: " + ex.Message, data: null);
             }
         }
 
@@ -3203,6 +3249,45 @@ namespace CapaPresentacion.Controllers
         {
             public int CodigoSolicitud { get; set; }
             public List<AeronaveSolicitud> Aeronaves { get; set; }
+        }
+
+        public class GuardarProgresoPayload
+        {
+            [JsonProperty("seccion")]
+            public string Seccion { get; set; }
+
+            [JsonProperty("solicitud")]
+            public SolicitudAOCR Solicitud { get; set; }
+        }
+
+        private JsonResult JsonEnvelope(bool ok, string code, string message, object data = null, object legacy = null)
+        {
+            var safeCode = string.IsNullOrWhiteSpace(code) ? (ok ? "OK" : "ERROR") : code.Trim();
+            var safeMessage = string.IsNullOrWhiteSpace(message) ? (ok ? "Operación exitosa." : "Error no controlado.") : message.Trim();
+
+            if (legacy != null)
+            {
+                return Json(new
+                {
+                    ok = ok,
+                    success = ok,
+                    code = safeCode,
+                    message = safeMessage,
+                    mensaje = safeMessage,
+                    data = data,
+                    legacy = legacy
+                });
+            }
+
+            return Json(new
+            {
+                ok = ok,
+                success = ok,
+                code = safeCode,
+                message = safeMessage,
+                mensaje = safeMessage,
+                data = data
+            });
         }
 
         private bool TryObtenerUsuarioActualId(out int idUsuario)

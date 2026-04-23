@@ -226,6 +226,17 @@
     .cert-footer-center { text-align: center; }
     .cert-footer-right { text-align: right; }
 
+    /* ---------- ANCLA OCULTA (posicionamiento firma digital) ---------- */
+    .firma-anchor {
+        font-size: 4pt;
+        color: #ffffff;
+        line-height: 4pt;
+        display: block;
+        text-align: left;
+        margin: 0;
+        padding: 0;
+    }
+
     /* ---------- UTILIDADES ---------- */
     .text-center { text-align: center; }
     .text-right { text-align: right; }
@@ -438,7 +449,8 @@
                 <br/>
                 <span class="firma-value">@(Model.FechaRenovacion.HasValue ? Model.FechaRenovacion.Value.ToString("dd/MM/yyyy", cultureEs) : "---")</span>
             </td>
-            <td style="width:50%; text-align:center;">
+            <td style="width:50%; text-align:center;" data-firma-rol="DIRDAC">
+                <span class="firma-anchor">ANCLA_FIRMA_CERTIFICADO_DIRDAC</span>
                 <span class="firma-label">Nombre y firma</span>
                 <span class="lbl-en">/ Name and signature :</span>
                 <br/><br/>

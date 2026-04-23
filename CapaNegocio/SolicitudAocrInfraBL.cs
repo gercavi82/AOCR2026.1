@@ -1,9 +1,11 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using CapaDatos.DAOs;
 using CapaDatos.Entidades;
 using CapaDatos.Models;
 using CapaDatos.Services;
+using CapaNegocio.Integraciones.As400Sync;
 using CapaModelo;
 
 namespace CapaNegocio
@@ -19,6 +21,7 @@ namespace CapaNegocio
         private readonly UsuarioInternoRTDAO _usuarioInternoRtDao = new UsuarioInternoRTDAO();
         private readonly UsuarioAS400DAO _usuarioAs400Dao = new UsuarioAS400DAO(new SecureConfigurationService());
         private readonly EmpresaAS400DAO _empresaAs400Dao = new EmpresaAS400DAO(new SecureConfigurationService());
+        private readonly MirrorReadService _mirrorReadService = new MirrorReadService();
         private readonly TrazabilidadDAO _trazabilidadDao = new TrazabilidadDAO();
 
         // =========================================================
@@ -87,21 +90,110 @@ namespace CapaNegocio
 
         public string ObtenerCedulaPorCodigoUsuario(string codigoUsuario)
         {
-            return _usuarioAs400Dao.ObtenerCedulaPorCodigoUsuario(codigoUsuario);
+            var clave = (codigoUsuario ?? string.Empty).Trim();
+            if (string.IsNullOrWhiteSpace(clave))
+            {
+                return null;
+            }
+
+            try
+            {
+                var mirror = _mirrorReadService.ObtenerIdentificacionPorClavesUsuario(new[] { clave });
+                if (mirror != null && !string.IsNullOrWhiteSpace(mirror.Cedula))
+                {
+                    return mirror.Cedula.Trim();
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine(
+                    "[SolicitudAocrInfraBL] ObtenerCedulaPorCodigoUsuario mirror error: " + ex.Message);
+            }
+
+            return _usuarioAs400Dao.ObtenerCedulaPorCodigoUsuario(clave);
         }
 
         public string ObtenerNumeroRucPorCodigoUsuario(string codigoUsuario)
         {
-            return _usuarioAs400Dao.ObtenerNumeroRucPorCodigoUsuario(codigoUsuario);
+            var clave = (codigoUsuario ?? string.Empty).Trim();
+            if (string.IsNullOrWhiteSpace(clave))
+            {
+                return null;
+            }
+
+            try
+            {
+                var mirror = _mirrorReadService.ObtenerIdentificacionPorClavesUsuario(new[] { clave });
+                if (mirror != null && !string.IsNullOrWhiteSpace(mirror.Ruc))
+                {
+                    return mirror.Ruc.Trim();
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine(
+                    "[SolicitudAocrInfraBL] ObtenerNumeroRucPorCodigoUsuario mirror error: " + ex.Message);
+            }
+
+            return _usuarioAs400Dao.ObtenerNumeroRucPorCodigoUsuario(clave);
         }
 
         public Empresa ObtenerEmpresaPorCodigo(string codigoOaci)
         {
-            return _empresaAs400Dao.ObtenerEmpresaPorCodigo(codigoOaci);
+            var codigo = (codigoOaci ?? string.Empty).Trim().ToUpperInvariant();
+            if (string.IsNullOrWhiteSpace(codigo))
+            {
+                return null;
+            }
+
+            try
+            {
+                var mirror = _mirrorReadService.ObtenerCompaniaPorCodigo(codigo);
+                if (mirror != null)
+                {
+                    return new Empresa
+                    {
+                        CodigoOaci = mirror.CodigoOaci,
+                        CodigoIata = mirror.CodigoIata,
+                        CodigoNumeroCia = mirror.CodigoNumeroCia,
+                        Nombre = mirror.NombreCompania
+                    };
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine(
+                    "[SolicitudAocrInfraBL] ObtenerEmpresaPorCodigo mirror error: " + ex.Message);
+            }
+
+            return _empresaAs400Dao.ObtenerEmpresaPorCodigo(codigo);
         }
 
         public List<Empresa> ObtenerEmpresas()
         {
+            try
+            {
+                var mirror = _mirrorReadService.ListarCompaniasActivas(5000);
+                if (mirror != null && mirror.Count > 0)
+                {
+                    return mirror
+                        .Where(c => c != null && !string.IsNullOrWhiteSpace(c.CodigoOaci))
+                        .Select(c => new Empresa
+                        {
+                            CodigoOaci = c.CodigoOaci,
+                            CodigoIata = c.CodigoIata,
+                            CodigoNumeroCia = c.CodigoNumeroCia,
+                            Nombre = c.NombreCompania
+                        })
+                        .ToList();
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine(
+                    "[SolicitudAocrInfraBL] ObtenerEmpresas mirror error: " + ex.Message);
+            }
+
             return _empresaAs400Dao.ObtenerEmpresas() ?? new List<Empresa>();
         }
     }

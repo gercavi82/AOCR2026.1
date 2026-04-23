@@ -3,6 +3,8 @@ using System.Collections.Generic;
 using Npgsql;
 using CapaNegocio.Services;
 
+using System.Linq;
+
 namespace CapaNegocio.Integraciones.As400Sync
 {
     public class MirrorUsuarioDto
@@ -26,6 +28,15 @@ namespace CapaNegocio.Integraciones.As400Sync
         public string CodigoIata { get; set; }
         public string CodigoNumeroCia { get; set; }
         public string NombreCompania { get; set; }
+    }
+
+    public class MirrorIdentificacionDto
+    {
+        public string CodigoUsuario { get; set; }
+        public string Ruc { get; set; }
+        public string Cedula { get; set; }
+        public DateTime? SourceUpdatedAt { get; set; }
+        public DateTime MirrorSyncedAt { get; set; }
     }
 
     public class MirrorFr3CabeceraDto
@@ -70,6 +81,9 @@ namespace CapaNegocio.Integraciones.As400Sync
     public class MirrorReadService
     {
         private readonly string _connectionString;
+        private static readonly object MissingMirrorObjectsLock = new object();
+        private static readonly Dictionary<string, DateTime> MissingMirrorObjectsUntilUtc = new Dictionary<string, DateTime>(StringComparer.OrdinalIgnoreCase);
+        private static readonly TimeSpan MissingMirrorObjectCooldown = TimeSpan.FromMinutes(10);
 
         public MirrorReadService()
         {
@@ -80,6 +94,11 @@ namespace CapaNegocio.Integraciones.As400Sync
         public MirrorUsuarioDto ObtenerUsuarioPorCodigo(string codigoUsuario)
         {
             if (string.IsNullOrWhiteSpace(_connectionString) || string.IsNullOrWhiteSpace(codigoUsuario))
+            {
+                return null;
+            }
+
+            if (ShouldSkipMirrorObject("mirror_raw.usuarc") || ShouldSkipMirrorObject("mirror_raw.usuar1"))
             {
                 return null;
             }
@@ -123,7 +142,8 @@ namespace CapaNegocio.Integraciones.As400Sync
             }
             catch (PostgresException ex)
             {
-                // Mirror no desplegado todavía: fallback silencioso para no romper AOCR
+                RegisterMissingMirrorObjectIfApplicable("mirror_raw.usuarc", ex);
+                RegisterMissingMirrorObjectIfApplicable("mirror_raw.usuar1", ex);
                 LogBL.RegistrarAdvertencia("MirrorReadService.ObtenerUsuarioPorCodigo no disponible: " + ex.MessageText, "MirrorReadService");
                 return null;
             }
@@ -138,6 +158,11 @@ namespace CapaNegocio.Integraciones.As400Sync
         {
             var list = new List<MirrorCompaniaDto>();
             if (string.IsNullOrWhiteSpace(_connectionString))
+            {
+                return list;
+            }
+
+            if (ShouldSkipMirrorObject("mirror_raw.ciaarc"))
             {
                 return list;
             }
@@ -174,12 +199,355 @@ namespace CapaNegocio.Integraciones.As400Sync
                     }
                 }
             }
+            catch (PostgresException ex)
+            {
+                RegisterMissingMirrorObjectIfApplicable("mirror_raw.ciaarc", ex);
+                LogBL.RegistrarAdvertencia("MirrorReadService.ListarCompaniasActivas no disponible: " + ex.MessageText, "MirrorReadService");
+            }
             catch (Exception ex)
             {
                 LogBL.RegistrarAdvertencia("MirrorReadService.ListarCompaniasActivas no disponible: " + ex.Message, "MirrorReadService");
             }
 
             return list;
+        }
+
+        public MirrorCompaniaDto ObtenerCompaniaPorCodigo(string codigoOaci)
+        {
+            if (string.IsNullOrWhiteSpace(_connectionString) || string.IsNullOrWhiteSpace(codigoOaci))
+            {
+                return null;
+            }
+
+            if (ShouldSkipMirrorObject("mirror_raw.ciaarc"))
+            {
+                return null;
+            }
+
+            const string sql = @"
+                SELECT ciacod, ciaco2, ciaco3, cianom
+                  FROM mirror_raw.ciaarc
+                 WHERE COALESCE(_is_deleted, false) = false
+                   AND UPPER(TRIM(COALESCE(ciacod, ''))) = @codigo
+                 LIMIT 1";
+
+            try
+            {
+                using (var conn = new NpgsqlConnection(_connectionString))
+                using (var cmd = new NpgsqlCommand(sql, conn))
+                {
+                    conn.Open();
+                    cmd.Parameters.AddWithValue("codigo", codigoOaci.Trim().ToUpperInvariant());
+                    using (var rd = cmd.ExecuteReader())
+                    {
+                        if (!rd.Read())
+                        {
+                            return null;
+                        }
+
+                        return new MirrorCompaniaDto
+                        {
+                            CodigoOaci = rd.IsDBNull(0) ? null : rd.GetString(0),
+                            CodigoIata = rd.IsDBNull(1) ? null : rd.GetString(1),
+                            CodigoNumeroCia = rd.IsDBNull(2) ? null : rd.GetString(2),
+                            NombreCompania = rd.IsDBNull(3) ? null : rd.GetString(3)
+                        };
+                    }
+                }
+            }
+            catch (PostgresException ex)
+            {
+                RegisterMissingMirrorObjectIfApplicable("mirror_raw.ciaarc", ex);
+                LogBL.RegistrarAdvertencia("MirrorReadService.ObtenerCompaniaPorCodigo no disponible: " + ex.MessageText, "MirrorReadService");
+                return null;
+            }
+            catch (Exception ex)
+            {
+                LogBL.RegistrarAdvertencia("MirrorReadService.ObtenerCompaniaPorCodigo no disponible: " + ex.Message, "MirrorReadService");
+                return null;
+            }
+        }
+
+        public string ObtenerCodigoCiudadPorClavesUsuario(IEnumerable<string> clavesUsuario)
+        {
+            if (string.IsNullOrWhiteSpace(_connectionString))
+            {
+                return null;
+            }
+
+            if (ShouldSkipMirrorObject("mirror_raw.usuarc") || ShouldSkipMirrorObject("mirror_raw.usuar1"))
+            {
+                return null;
+            }
+
+            var claves = NormalizarClaves(clavesUsuario);
+            if (claves.Count == 0)
+            {
+                return null;
+            }
+
+            const string sql = @"
+                SELECT
+                    COALESCE(NULLIF(BTRIM(a.usuco9), ''), NULLIF(BTRIM(u.usuco5), '')) AS codigo_ciudad
+                FROM mirror_raw.usuarc u
+                LEFT JOIN mirror_raw.usuar1 a
+                  ON UPPER(BTRIM(COALESCE(a.usuco8, ''))) = UPPER(BTRIM(COALESCE(u.usucod, '')))
+                 AND COALESCE(a._is_deleted, false) = false
+               WHERE COALESCE(u._is_deleted, false) = false
+                 AND (
+                        UPPER(BTRIM(COALESCE(u.usucod, ''))) = ANY(@claves)
+                     OR UPPER(BTRIM(COALESCE(a.usuco8, ''))) = ANY(@claves)
+                 )
+                 AND COALESCE(NULLIF(BTRIM(a.usuco9), ''), NULLIF(BTRIM(u.usuco5), '')) IS NOT NULL
+               ORDER BY
+                    CASE WHEN NULLIF(BTRIM(a.usuco9), '') IS NOT NULL THEN 0 ELSE 1 END,
+                    u._mirror_synced_at DESC
+               LIMIT 1";
+
+            try
+            {
+                using (var conn = new NpgsqlConnection(_connectionString))
+                using (var cmd = new NpgsqlCommand(sql, conn))
+                {
+                    conn.Open();
+                    cmd.Parameters.AddWithValue("claves", claves.ToArray());
+                    var value = cmd.ExecuteScalar();
+                    if (value == null || value == DBNull.Value)
+                    {
+                        return null;
+                    }
+
+                    var ciudad = Convert.ToString(value);
+                    return string.IsNullOrWhiteSpace(ciudad) ? null : ciudad.Trim().ToUpperInvariant();
+                }
+            }
+            catch (PostgresException ex)
+            {
+                RegisterMissingMirrorObjectIfApplicable("mirror_raw.usuarc", ex);
+                RegisterMissingMirrorObjectIfApplicable("mirror_raw.usuar1", ex);
+                LogBL.RegistrarAdvertencia("MirrorReadService.ObtenerCodigoCiudadPorClavesUsuario no disponible: " + ex.MessageText, "MirrorReadService");
+                return null;
+            }
+            catch (Exception ex)
+            {
+                LogBL.RegistrarAdvertencia("MirrorReadService.ObtenerCodigoCiudadPorClavesUsuario no disponible: " + ex.Message, "MirrorReadService");
+                return null;
+            }
+        }
+
+        public MirrorIdentificacionDto ObtenerIdentificacionPorClavesUsuario(IEnumerable<string> clavesUsuario)
+        {
+            if (string.IsNullOrWhiteSpace(_connectionString))
+            {
+                return null;
+            }
+
+            if (ShouldSkipMirrorObject("mirror_raw.usuarc"))
+            {
+                return null;
+            }
+
+            var claves = NormalizarClaves(clavesUsuario);
+            if (claves.Count == 0)
+            {
+                return null;
+            }
+
+            const string sql = @"
+                SELECT
+                    NULLIF(BTRIM(u.usucod), '') AS codigo_usuario,
+                    NULLIF(BTRIM(u.usunum), '') AS ruc,
+                    NULLIF(BTRIM(u.usuced), '') AS cedula,
+                    u._source_updated_at,
+                    u._mirror_synced_at
+                FROM mirror_raw.usuarc u
+               WHERE COALESCE(u._is_deleted, false) = false
+                 AND UPPER(BTRIM(COALESCE(u.usucod, ''))) = ANY(@claves)
+                 AND (
+                        NULLIF(BTRIM(u.usunum), '') IS NOT NULL
+                     OR NULLIF(BTRIM(u.usuced), '') IS NOT NULL
+                 )
+               ORDER BY u._mirror_synced_at DESC
+               LIMIT 1";
+
+            try
+            {
+                using (var conn = new NpgsqlConnection(_connectionString))
+                using (var cmd = new NpgsqlCommand(sql, conn))
+                {
+                    conn.Open();
+                    cmd.Parameters.AddWithValue("claves", claves.ToArray());
+                    using (var rd = cmd.ExecuteReader())
+                    {
+                        if (!rd.Read())
+                        {
+                            return null;
+                        }
+
+                        return new MirrorIdentificacionDto
+                        {
+                            CodigoUsuario = rd.IsDBNull(0) ? null : rd.GetString(0),
+                            Ruc = rd.IsDBNull(1) ? null : rd.GetString(1),
+                            Cedula = rd.IsDBNull(2) ? null : rd.GetString(2),
+                            SourceUpdatedAt = rd.IsDBNull(3) ? (DateTime?)null : rd.GetDateTime(3),
+                            MirrorSyncedAt = rd.IsDBNull(4) ? DateTime.MinValue : rd.GetDateTime(4)
+                        };
+                    }
+                }
+            }
+            catch (PostgresException ex)
+            {
+                RegisterMissingMirrorObjectIfApplicable("mirror_raw.usuarc", ex);
+                LogBL.RegistrarAdvertencia("MirrorReadService.ObtenerIdentificacionPorClavesUsuario no disponible: " + ex.MessageText, "MirrorReadService");
+                return null;
+            }
+            catch (Exception ex)
+            {
+                LogBL.RegistrarAdvertencia("MirrorReadService.ObtenerIdentificacionPorClavesUsuario no disponible: " + ex.Message, "MirrorReadService");
+                return null;
+            }
+        }
+
+        public string ObtenerEstacionPorCodigoCiudad(string codigoCiudad)
+        {
+            if (string.IsNullOrWhiteSpace(_connectionString) || string.IsNullOrWhiteSpace(codigoCiudad))
+            {
+                return null;
+            }
+
+            var codigoNormalizado = codigoCiudad.Trim().ToUpperInvariant();
+            var estacion = ObtenerEstacionDesdeTabla("mirror_raw.opuarc01", "opucod", "opuest", codigoNormalizado);
+            if (!string.IsNullOrWhiteSpace(estacion))
+            {
+                return estacion;
+            }
+
+            return ObtenerEstacionDesdeTabla("mirror_raw.oidar2", "oidco3", "oidno2", codigoNormalizado);
+        }
+
+        private string ObtenerEstacionDesdeTabla(string tabla, string columnaCodigo, string columnaEstacion, string codigoCiudad)
+        {
+            if (string.IsNullOrWhiteSpace(tabla) || string.IsNullOrWhiteSpace(columnaCodigo) || string.IsNullOrWhiteSpace(columnaEstacion))
+            {
+                return null;
+            }
+
+            if (ShouldSkipMirrorObject(tabla))
+            {
+                return null;
+            }
+
+            var sql = string.Format(@"
+                SELECT NULLIF(BTRIM({0}), '')
+                  FROM {1}
+                 WHERE COALESCE(_is_deleted, false) = false
+                   AND UPPER(BTRIM(COALESCE({2}, ''))) = @codigo
+                 LIMIT 1", columnaEstacion, tabla, columnaCodigo);
+
+            try
+            {
+                using (var conn = new NpgsqlConnection(_connectionString))
+                using (var cmd = new NpgsqlCommand(sql, conn))
+                {
+                    conn.Open();
+                    cmd.Parameters.AddWithValue("codigo", codigoCiudad);
+                    var value = cmd.ExecuteScalar();
+                    if (value == null || value == DBNull.Value)
+                    {
+                        return null;
+                    }
+
+                    var estacion = Convert.ToString(value);
+                    return string.IsNullOrWhiteSpace(estacion) ? null : estacion.Trim();
+                }
+            }
+            catch (PostgresException ex)
+            {
+                RegisterMissingMirrorObjectIfApplicable(tabla, ex);
+                LogBL.RegistrarAdvertencia(
+                    string.Format(
+                        "MirrorReadService.ObtenerEstacionDesdeTabla no disponible: tabla={0}, codCiudad={1}, error={2}",
+                        tabla,
+                        codigoCiudad ?? "(null)",
+                        ex.MessageText),
+                    "MirrorReadService");
+                return null;
+            }
+            catch (Exception ex)
+            {
+                LogBL.RegistrarAdvertencia(
+                    string.Format(
+                        "MirrorReadService.ObtenerEstacionDesdeTabla no disponible: tabla={0}, codCiudad={1}, error={2}",
+                        tabla,
+                        codigoCiudad ?? "(null)",
+                        ex.Message),
+                    "MirrorReadService");
+                return null;
+            }
+        }
+
+        private static bool ShouldSkipMirrorObject(string objectName)
+        {
+            if (string.IsNullOrWhiteSpace(objectName))
+            {
+                return false;
+            }
+
+            lock (MissingMirrorObjectsLock)
+            {
+                DateTime untilUtc;
+                if (!MissingMirrorObjectsUntilUtc.TryGetValue(objectName, out untilUtc))
+                {
+                    return false;
+                }
+
+                if (DateTime.UtcNow <= untilUtc)
+                {
+                    return true;
+                }
+
+                MissingMirrorObjectsUntilUtc.Remove(objectName);
+                return false;
+            }
+        }
+
+        private static void RegisterMissingMirrorObjectIfApplicable(string objectName, PostgresException ex)
+        {
+            if (string.IsNullOrWhiteSpace(objectName) || ex == null)
+            {
+                return;
+            }
+
+            var sqlState = ex.SqlState ?? string.Empty;
+            var isMissingObject =
+                string.Equals(sqlState, "42P01", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(sqlState, "42703", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(sqlState, "3F000", StringComparison.OrdinalIgnoreCase);
+
+            if (!isMissingObject)
+            {
+                return;
+            }
+
+            lock (MissingMirrorObjectsLock)
+            {
+                MissingMirrorObjectsUntilUtc[objectName] = DateTime.UtcNow.Add(MissingMirrorObjectCooldown);
+            }
+        }
+
+        private static List<string> NormalizarClaves(IEnumerable<string> clavesUsuario)
+        {
+            if (clavesUsuario == null)
+            {
+                return new List<string>();
+            }
+
+            return clavesUsuario
+                .Where(v => !string.IsNullOrWhiteSpace(v))
+                .Select(v => v.Trim().ToUpperInvariant())
+                .Where(v => !string.IsNullOrWhiteSpace(v))
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
         }
 
         /// <summary>

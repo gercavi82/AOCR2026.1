@@ -11,6 +11,15 @@
     ViewBag.Title = "Detalle de Solicitud AOCR";
     Layout = "~/Views/Shared/_LayoutAOCR.cshtml";
 
+    if (Model == null)
+    {
+        ViewData.Model = new SolicitudAOCR
+        {
+            Estado = EstadoSolicitud.Pendiente
+        };
+        TempData["Warning"] = "La solicitud se cargÃ³ con informaciÃ³n parcial. Algunas secciones pueden mostrarse en modo lectura.";
+    }
+
     var estadoActual = EstadoSolicitud.Normalizar(Model.Estado);
     var puedeInspectorDocumental =
         User.IsInRole("Inspector") &&

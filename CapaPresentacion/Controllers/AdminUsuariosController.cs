@@ -25,6 +25,84 @@ namespace CapaPresentacion.Controllers
     {
         private readonly ILoggingService _logger = LoggingServiceFactory.Create();
 
+        private List<InspectorAs400Record> BuscarInspectoresInternosPreferMirror(string texto)
+        {
+            var termino = (texto ?? string.Empty).Trim();
+            if (string.IsNullOrWhiteSpace(termino))
+            {
+                return new List<InspectorAs400Record>();
+            }
+
+            try
+            {
+                var mirrorDao = new InspectorMirrorPGDAO();
+                var resultadosMirror = mirrorDao.BuscarActivosPorCedulaONombre(termino);
+                if (resultadosMirror != null && resultadosMirror.Count > 0)
+                {
+                    _logger.LogInfo("[AdminUsuariosController] BuscarInspector origen=mirror, resultados=" + resultadosMirror.Count);
+                    return resultadosMirror;
+                }
+            }
+            catch (Exception exMirror)
+            {
+                _logger.LogWarning("[AdminUsuariosController] BuscarInspector mirror error: " + exMirror.Message);
+            }
+
+            try
+            {
+                var inspectorDao = new InspectorAS400DAO(new SecureConfigurationService());
+                var resultadosAs400 = inspectorDao.BuscarPorCedulaONombre(termino) ?? new List<InspectorAs400Record>();
+                _logger.LogInfo("[AdminUsuariosController] BuscarInspector origen=as400, resultados=" + resultadosAs400.Count);
+                return resultadosAs400;
+            }
+            catch (Exception exAs400)
+            {
+                _logger.LogWarning("[AdminUsuariosController] BuscarInspector as400 error: " + exAs400.Message);
+                return new List<InspectorAs400Record>();
+            }
+        }
+
+        private InspectorAs400Record ObtenerInspectorActivoPreferMirror(string cedula, string tipo = null)
+        {
+            var codigo = (cedula ?? string.Empty).Trim();
+            if (string.IsNullOrWhiteSpace(codigo))
+            {
+                return null;
+            }
+
+            try
+            {
+                var mirrorDao = new InspectorMirrorPGDAO();
+                var inspectorMirror = mirrorDao.ObtenerActivoPorCedula(codigo, tipo);
+                if (inspectorMirror != null)
+                {
+                    _logger.LogInfo("[AdminUsuariosController] ObtenerInspectorActivo origen=mirror, cedula=" + codigo);
+                    return inspectorMirror;
+                }
+            }
+            catch (Exception exMirror)
+            {
+                _logger.LogWarning("[AdminUsuariosController] ObtenerInspectorActivo mirror error: " + exMirror.Message);
+            }
+
+            try
+            {
+                var inspectorDao = new InspectorAS400DAO(new SecureConfigurationService());
+                var inspectorAs400 = inspectorDao.ObtenerActivoPorCedula(codigo, tipo) ?? inspectorDao.ObtenerActivoPorCedula(codigo);
+                if (inspectorAs400 != null)
+                {
+                    _logger.LogInfo("[AdminUsuariosController] ObtenerInspectorActivo origen=as400, cedula=" + codigo);
+                }
+
+                return inspectorAs400;
+            }
+            catch (Exception exAs400)
+            {
+                _logger.LogWarning("[AdminUsuariosController] ObtenerInspectorActivo as400 error: " + exAs400.Message);
+                return null;
+            }
+        }
+
         [HttpGet]
         [RequirePermission("ADM_GESTION_USUARIOS")]
         public ActionResult Index(string filtro, bool? activo, string tipo)
@@ -191,8 +269,7 @@ namespace CapaPresentacion.Controllers
             var esNumerico = texto.All(char.IsDigit);
             _logger.LogInfo("[AdminUsuariosController] BuscarUsuarioInternoRT criterio=" + (esNumerico ? "cedula" : "nombre"));
 
-            var inspectorDao = new InspectorAS400DAO(new SecureConfigurationService());
-            var resultados = inspectorDao.BuscarPorCedulaONombre(texto);
+            var resultados = BuscarInspectoresInternosPreferMirror(texto);
 
             _logger.LogInfo("[AdminUsuariosController] BuscarUsuarioInternoRT resultados=" + resultados.Count);
 
@@ -280,8 +357,7 @@ namespace CapaPresentacion.Controllers
                 return View(model);
             }
 
-            var inspectorDao = new InspectorAS400DAO(new SecureConfigurationService());
-            var inspector = inspectorDao.ObtenerActivoPorCedula(model.CodigoUsuarioBusqueda);
+            var inspector = ObtenerInspectorActivoPreferMirror(model.CodigoUsuarioBusqueda);
             if (inspector == null)
             {
                 ModelState.AddModelError("CodigoUsuarioBusqueda", "No se encontro coincidencia por cedula o nombre en la base institucional.");

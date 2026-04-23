@@ -33,11 +33,6 @@
         </div>
     </div>
 
-    @if (TempData["Error"] != null)
-    {
-        <div class="alert alert-danger">@TempData["Error"]</div>
-    }
-
     @if (!items.Any())
     {
         <div class="alert alert-info">No existen AOCR listos para validacion o aun no hay informes tecnicos con firma final institucional.</div>

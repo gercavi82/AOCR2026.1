@@ -1,7 +1,10 @@
 ﻿using System;
+using System.Collections.Generic;
+using System.Linq;
 using System.Web.Mvc;
 using CapaDatos.DAOs; // Donde reside EmpresaAS400DAO
 using CapaDatos.Services;
+using CapaNegocio.Integraciones.As400Sync;
 
 namespace CapaPresentacion.Controllers
 {
@@ -12,23 +15,47 @@ namespace CapaPresentacion.Controllers
         [AllowAnonymous]
         public JsonResult ObtenerEmpresas()
         {
+            Response.SuppressFormsAuthenticationRedirect = true;
+
             try
             {
-                Response.SuppressFormsAuthenticationRedirect = true;
-                // Conexión directa al AS/400 (IP 190.152.8.185)
+                var mirror = new MirrorReadService();
+                var mirrorCompanias = mirror.ListarCompaniasActivas(5000);
+                if (mirrorCompanias != null && mirrorCompanias.Count > 0)
+                {
+                    var empresasMirror = mirrorCompanias
+                        .Where(c => c != null && !string.IsNullOrWhiteSpace(c.CodigoOaci))
+                        .Select(c => new
+                        {
+                            CodigoOaci = (c.CodigoOaci ?? string.Empty).Trim(),
+                            CodigoIata = (c.CodigoIata ?? string.Empty).Trim(),
+                            CodigoNumeroCia = (c.CodigoNumeroCia ?? string.Empty).Trim(),
+                            Nombre = (c.NombreCompania ?? string.Empty).Trim()
+                        })
+                        .OrderBy(c => c.Nombre)
+                        .ToList();
+
+                    if (empresasMirror.Count > 0)
+                    {
+                        return Json(empresasMirror, JsonRequestBehavior.AllowGet);
+                    }
+                }
+            }
+            catch (Exception exMirror)
+            {
+                System.Diagnostics.Debug.WriteLine("EmpresaController.ObtenerEmpresas mirror error: " + exMirror.Message);
+            }
+
+            try
+            {
                 var dao = new EmpresaAS400DAO(new SecureConfigurationService());
                 var empresas = dao.ObtenerEmpresas();
-
-                // Retorna la lista de empresas (Codigo y Nombre)
                 return Json(empresas, JsonRequestBehavior.AllowGet);
             }
             catch (Exception ex)
             {
-                // Si falla el AS/400, no afecta el resto de la página
-                Response.StatusCode = 500;
-                Response.TrySkipIisCustomErrors = true;
-                Response.SuppressFormsAuthenticationRedirect = true;
-                return Json(new { error = "Fallo conexión AS400: " + ex.Message }, JsonRequestBehavior.AllowGet);
+                System.Diagnostics.Debug.WriteLine("EmpresaController.ObtenerEmpresas AS400 error: " + ex.Message);
+                return Json(new List<object>(), JsonRequestBehavior.AllowGet);
             }
         }
 
@@ -40,9 +67,10 @@ namespace CapaPresentacion.Controllers
         [AllowAnonymous]
         public JsonResult ObtenerEmpresaPorCodigo(string codigo)
         {
+            Response.SuppressFormsAuthenticationRedirect = true;
+
             try
             {
-                Response.SuppressFormsAuthenticationRedirect = true;
                 if (string.IsNullOrWhiteSpace(codigo))
                 {
                     Response.StatusCode = 400;
@@ -50,8 +78,30 @@ namespace CapaPresentacion.Controllers
                     return Json(new { error = "Código requerido" }, JsonRequestBehavior.AllowGet);
                 }
 
+                var codigoNormalizado = codigo.Trim().ToUpperInvariant();
+
+                try
+                {
+                    var mirror = new MirrorReadService();
+                    var empresaMirror = mirror.ObtenerCompaniaPorCodigo(codigoNormalizado);
+                    if (empresaMirror != null)
+                    {
+                        return Json(new
+                        {
+                            CodigoOaci = (empresaMirror.CodigoOaci ?? string.Empty).Trim(),
+                            CodigoIata = (empresaMirror.CodigoIata ?? string.Empty).Trim(),
+                            CodigoNumeroCia = (empresaMirror.CodigoNumeroCia ?? string.Empty).Trim(),
+                            Nombre = (empresaMirror.NombreCompania ?? string.Empty).Trim()
+                        }, JsonRequestBehavior.AllowGet);
+                    }
+                }
+                catch (Exception exMirror)
+                {
+                    System.Diagnostics.Debug.WriteLine("EmpresaController.ObtenerEmpresaPorCodigo mirror error: " + exMirror.Message);
+                }
+
                 var dao = new EmpresaAS400DAO(new SecureConfigurationService());
-                var empresa = dao.ObtenerEmpresaPorCodigo(codigo);
+                var empresa = dao.ObtenerEmpresaPorCodigo(codigoNormalizado);
 
                 if (empresa == null)
                 {
@@ -66,7 +116,6 @@ namespace CapaPresentacion.Controllers
             {
                 Response.StatusCode = 500;
                 Response.TrySkipIisCustomErrors = true;
-                Response.SuppressFormsAuthenticationRedirect = true;
                 return Json(new { error = "Error al consultar empresa: " + ex.Message }, JsonRequestBehavior.AllowGet);
             }
         }

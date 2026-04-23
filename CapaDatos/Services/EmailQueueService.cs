@@ -82,6 +82,7 @@ namespace CapaDatos.Services
         Task MarcarEnviadoAsync(int id, string messageId);
         Task<IEnumerable<EmailQueueItem>> ObtenerPendientesAsync(int limite = 10);
         Task ReprogramarReintentoAsync(int id, TimeSpan delay);
+        Task<int> ReactivarEnviandoAbandonadosAsync(TimeSpan antiguedadMinima);
     }
 
     #endregion
@@ -375,6 +376,35 @@ namespace CapaDatos.Services
             });
         }
 
+        /// <summary>
+        /// Reactiva correos que quedaron en estado ENVIANDO tras un reinicio/crash
+        /// del procesador. Solo afecta filas cuya última actualización (updated_at
+        /// o created_at) sea anterior al umbral indicado.
+        /// </summary>
+        public Task<int> ReactivarEnviandoAbandonadosAsync(TimeSpan antiguedadMinima)
+        {
+            var segundos = (int)Math.Max(60, antiguedadMinima.TotalSeconds);
+            const string sql = @"
+                UPDATE email_queue
+                SET status = 'PENDIENTE',
+                    proximo_intento = NOW(),
+                    updated_at = NOW()
+                WHERE status = 'ENVIANDO'
+                  AND COALESCE(updated_at, created_at) < NOW() - (@segundos * INTERVAL '1 second');";
+
+            var afectadas = ExecuteWithConnection(conn =>
+            {
+                EnsureEmailQueueSchema(conn);
+                using (var cmd = CreateCommand(conn, sql))
+                {
+                    AddParameter(cmd, "@segundos", segundos, NpgsqlDbType.Integer);
+                    return cmd.ExecuteNonQuery();
+                }
+            });
+
+            return Task.FromResult(afectadas);
+        }
+
         public async Task<IEnumerable<EmailQueueItem>> ObtenerPendientesAsync(int limite = 10)
         {
             const string sql = @"
@@ -617,6 +647,26 @@ namespace CapaDatos.Services
         public void Start()
         {
             _logger.LogInfo("Iniciando procesador de cola de correos");
+
+            // Reclamar correos que quedaron ENVIANDO tras un crash/reinicio previo.
+            try
+            {
+                var reactivados = _queueService
+                    .ReactivarEnviandoAbandonadosAsync(TimeSpan.FromMinutes(10))
+                    .GetAwaiter()
+                    .GetResult();
+                if (reactivados > 0)
+                {
+                    _logger.LogInfo(string.Format(
+                        "Reactivados {0} correos abandonados en estado ENVIANDO (> 10 min).",
+                        reactivados));
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, new LogContext { ErrorCode = "EMAIL_QUEUE_RECLAIM_ERROR" });
+            }
+
             _processingTask = Task.Run(() => ProcessQueueAsync(_cancellationTokenSource.Token));
         }
 
@@ -662,6 +712,12 @@ namespace CapaDatos.Services
                 catch (OperationCanceledException)
                 {
                     break;
+                }
+                catch (DataAccessException dbEx) when (dbEx.ErrorCode == "CONNECTION_ERROR")
+                {
+                    // Error transitorio de BD: esperar menos para recuperarse más rápido
+                    _logger.LogError(dbEx, new LogContext { ErrorCode = "EMAIL_QUEUE_DB_TRANSIENT" });
+                    await Task.Delay(TimeSpan.FromSeconds(10), cancellationToken);
                 }
                 catch (Exception ex)
                 {

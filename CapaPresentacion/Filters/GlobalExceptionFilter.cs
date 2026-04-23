@@ -170,10 +170,14 @@ namespace CapaPresentacion.Filters
             {
                 Data = new
                 {
+                    ok = false,
                     success = false,
+                    message = errorInfo.UserMessage,
                     error = errorInfo.UserMessage,
+                    code = errorInfo.ErrorCode,
                     errorCode = errorInfo.ErrorCode,
-                    correlationId = correlationId
+                    correlationId = correlationId,
+                    data = (object)null
                 },
                 JsonRequestBehavior = JsonRequestBehavior.AllowGet
             };
@@ -243,9 +247,13 @@ namespace CapaPresentacion.Filters
             {
                 Data = new
                 {
+                    ok = false,
                     success = false,
+                    message = "La sesion expiro o el formulario perdio validez. Recargue la pagina e intente nuevamente.",
                     error = "La sesion expiro o el formulario perdio validez. Recargue la pagina e intente nuevamente.",
-                    errorCode = "ANTI_FORGERY_INVALID"
+                    code = "ANTI_FORGERY_INVALID",
+                    errorCode = "ANTI_FORGERY_INVALID",
+                    data = (object)null
                 },
                 JsonRequestBehavior = JsonRequestBehavior.AllowGet
             };

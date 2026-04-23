@@ -50,9 +50,11 @@ namespace CapaDatos.DAOs
                     var columnasUsuario = GetColumnas(conn, _schema, _tablaUsuario);
                     if (columnasUsuario.Contains("USUCO5"))
                     {
-                        var ciudad = ObtenerCampoPorPk(conn, _schema, _tablaUsuario, "USUCOD", codigo, "USUCO5");
+                        var ciudad = ObtenerCampoPorPkSeguro(conn, _schema, _tablaUsuario, "USUCOD", codigo, "USUCO5");
                         if (!string.IsNullOrWhiteSpace(ciudad))
                         {
+                            System.Diagnostics.Debug.WriteLine(
+                                $"[AOCR][AS400][Usuario] ObtenerCodigoCiudadPorCodigoUsuario: fuente={_tablaUsuario}.USUCO5, codigoUsuario={codigo}, ciudad={ciudad.Trim().ToUpperInvariant()}");
                             return ciudad;
                         }
                     }
@@ -65,28 +67,36 @@ namespace CapaDatos.DAOs
                     {
                         if (columnasAdicional.Contains("USUCO9"))
                         {
-                            var ciudadAdicional = ObtenerCampoPorPk(conn, _schema, _tablaAdicional, pkAdicional, codigo, "USUCO9");
+                            var ciudadAdicional = ObtenerCampoPorPkSeguro(conn, _schema, _tablaAdicional, pkAdicional, codigo, "USUCO9");
                             if (!string.IsNullOrWhiteSpace(ciudadAdicional))
                             {
+                                System.Diagnostics.Debug.WriteLine(
+                                    $"[AOCR][AS400][Usuario] ObtenerCodigoCiudadPorCodigoUsuario: fuente={_tablaAdicional}.USUCO9, codigoUsuario={codigo}, ciudad={ciudadAdicional.Trim().ToUpperInvariant()}");
                                 return ciudadAdicional;
                             }
                         }
 
                         if (columnasAdicional.Contains("USUCO5"))
                         {
-                            var ciudadAlterna = ObtenerCampoPorPk(conn, _schema, _tablaAdicional, pkAdicional, codigo, "USUCO5");
+                            var ciudadAlterna = ObtenerCampoPorPkSeguro(conn, _schema, _tablaAdicional, pkAdicional, codigo, "USUCO5");
                             if (!string.IsNullOrWhiteSpace(ciudadAlterna))
                             {
+                                System.Diagnostics.Debug.WriteLine(
+                                    $"[AOCR][AS400][Usuario] ObtenerCodigoCiudadPorCodigoUsuario: fuente={_tablaAdicional}.USUCO5, codigoUsuario={codigo}, ciudad={ciudadAlterna.Trim().ToUpperInvariant()}");
                                 return ciudadAlterna;
                             }
                         }
                     }
 
+                    System.Diagnostics.Debug.WriteLine(
+                        $"[AOCR][AS400][Usuario] ObtenerCodigoCiudadPorCodigoUsuario: sin ciudad para codigoUsuario={codigo}. Se aplicara fallback superior.");
                     return null;
                 });
             }
-            catch
+            catch (Exception ex)
             {
+                System.Diagnostics.Debug.WriteLine(
+                    $"[AOCR][AS400][Usuario] ObtenerCodigoCiudadPorCodigoUsuario: error codigoUsuario={codigo}, error={ex.GetType().FullName}, msg={ex.Message}. Se aplicara fallback superior.");
                 return null;
             }
         }
@@ -165,8 +175,10 @@ namespace CapaDatos.DAOs
                     };
                 });
             }
-            catch
+            catch (Exception ex)
             {
+                System.Diagnostics.Debug.WriteLine(
+                    $"[AOCR][AS400][Usuario] ObtenerDatosUsuarioInterno: codigoEntrada={codigoEntrada}, error={ex.GetType().FullName}, msg={ex.Message}");
                 return null;
             }
         }
@@ -184,28 +196,10 @@ namespace CapaDatos.DAOs
                 return null;
             }
 
-            var codigo = ObtenerCampoPorPkSeguro(conn, _schema, _tablaUsuario, "USUCOD", valor, "USUCOD");
-            if (!string.IsNullOrWhiteSpace(codigo))
-            {
-                return codigo.Trim().ToUpperInvariant();
-            }
-
-            codigo = ObtenerCampoPorPkSeguro(conn, _schema, _tablaAdicional, "USUCO8", valor, "USUCO8");
-            if (!string.IsNullOrWhiteSpace(codigo))
-            {
-                return codigo.Trim().ToUpperInvariant();
-            }
-
-            codigo = ObtenerCampoPorPkSeguro(conn, _schema, _tablaAdicional, "USUCOD", valor, "USUCOD");
-            if (!string.IsNullOrWhiteSpace(codigo))
-            {
-                return codigo.Trim().ToUpperInvariant();
-            }
-
             var columnasUsuario = GetColumnas(conn, _schema, _tablaUsuario);
-            if (columnasUsuario.Contains("USUCED"))
+            if (columnasUsuario.Contains("USUCOD"))
             {
-                codigo = ObtenerCampoPorFiltroSeguro(conn, _schema, _tablaUsuario, "USUCED", valor, "USUCOD");
+                var codigo = ObtenerCampoPorPkSeguro(conn, _schema, _tablaUsuario, "USUCOD", valor, "USUCOD");
                 if (!string.IsNullOrWhiteSpace(codigo))
                 {
                     return codigo.Trim().ToUpperInvariant();
@@ -213,11 +207,38 @@ namespace CapaDatos.DAOs
             }
 
             var columnasAdicional = GetColumnas(conn, _schema, _tablaAdicional);
+            if (columnasAdicional.Contains("USUCO8"))
+            {
+                var codigo = ObtenerCampoPorPkSeguro(conn, _schema, _tablaAdicional, "USUCO8", valor, "USUCO8");
+                if (!string.IsNullOrWhiteSpace(codigo))
+                {
+                    return codigo.Trim().ToUpperInvariant();
+                }
+            }
+
+            if (columnasAdicional.Contains("USUCOD"))
+            {
+                var codigo = ObtenerCampoPorPkSeguro(conn, _schema, _tablaAdicional, "USUCOD", valor, "USUCOD");
+                if (!string.IsNullOrWhiteSpace(codigo))
+                {
+                    return codigo.Trim().ToUpperInvariant();
+                }
+            }
+
+            if (columnasUsuario.Contains("USUCED"))
+            {
+                var codigo = ObtenerCampoPorFiltroSeguro(conn, _schema, _tablaUsuario, "USUCED", valor, "USUCOD");
+                if (!string.IsNullOrWhiteSpace(codigo))
+                {
+                    return codigo.Trim().ToUpperInvariant();
+                }
+            }
+
             if (columnasAdicional.Contains("USUCED"))
             {
                 if (columnasAdicional.Contains("USUCO8"))
                 {
-                    codigo = ObtenerCampoPorFiltroSeguro(conn, _schema, _tablaAdicional, "USUCED", valor, "USUCO8");
+                    var codigo = ObtenerCampoPorFiltroSeguro(conn, _schema, _tablaAdicional, "USUCED", valor, "USUCO8");
                     if (!string.IsNullOrWhiteSpace(codigo))
                     {
                         return codigo.Trim().ToUpperInvariant();
@@ -226,7 +247,7 @@ namespace CapaDatos.DAOs
 
                 if (columnasAdicional.Contains("USUCOD"))
                 {
-                    codigo = ObtenerCampoPorFiltroSeguro(conn, _schema, _tablaAdicional, "USUCED", valor, "USUCOD");
+                    var codigo = ObtenerCampoPorFiltroSeguro(conn, _schema, _tablaAdicional, "USUCED", valor, "USUCOD");
                     if (!string.IsNullOrWhiteSpace(codigo))
                     {
                         return codigo.Trim().ToUpperInvariant();
@@ -250,61 +271,50 @@ namespace CapaDatos.DAOs
             {
                 return ExecuteWithConnection(conn =>
                 {
-                    // Ruta directa (más robusta): evita depender de metadatos para lectura.
-                    var numero = ObtenerCampoPorPkSeguro(conn, _schema, _tablaUsuario, "USUCOD", codigo, "USUNUM");
-                    if (!string.IsNullOrWhiteSpace(numero))
-                    {
-                        return numero;
-                    }
-
-                    numero = ObtenerCampoPorPkSeguro(conn, _schema, _tablaAdicional, "USUCO8", codigo, "USUNUM");
-                    if (!string.IsNullOrWhiteSpace(numero))
-                    {
-                        return numero;
-                    }
-
-                    numero = ObtenerCampoPorPkSeguro(conn, _schema, _tablaAdicional, "USUCOD", codigo, "USUNUM");
-                    if (!string.IsNullOrWhiteSpace(numero))
-                    {
-                        return numero;
-                    }
-
-                    // Fallback legacy por columnas detectadas.
                     var columnasUsuario = GetColumnas(conn, _schema, _tablaUsuario);
-                    if (columnasUsuario.Contains("USUNUM"))
+                    var columnasAdicional = GetColumnas(conn, _schema, _tablaAdicional);
+
+                    if (!columnasUsuario.Contains("USUNUM") && !columnasAdicional.Contains("USUNUM"))
                     {
-                        numero = ObtenerCampoPorPk(conn, _schema, _tablaUsuario, "USUCOD", codigo, "USUNUM");
+                        System.Diagnostics.Debug.WriteLine(
+                            $"[AOCR][AS400][Usuario] ObtenerNumeroRucPorCodigoUsuario: no existe columna USUNUM en {_schema}.{_tablaUsuario}/{_tablaAdicional}. codigoUsuario={codigo}");
+                        return null;
+                    }
+
+                    if (columnasUsuario.Contains("USUCOD") && columnasUsuario.Contains("USUNUM"))
+                    {
+                        var numero = ObtenerCampoPorPkSeguro(conn, _schema, _tablaUsuario, "USUCOD", codigo, "USUNUM");
                         if (!string.IsNullOrWhiteSpace(numero))
                         {
                             return numero;
                         }
                     }
 
-                    var columnasAdicional = GetColumnas(conn, _schema, _tablaAdicional);
-                    var pkAdicional = columnasAdicional.Contains("USUCO8")
-                        ? "USUCO8"
-                        : (columnasAdicional.Contains("USUCOD") ? "USUCOD" : null);
+                    var pkCandidatosAdicional = new[] { "USUCO8", "USUCOD" }
+                        .Where(col => columnasAdicional.Contains(col))
+                        .ToList();
 
-                    if (!string.IsNullOrWhiteSpace(pkAdicional) && columnasAdicional.Contains("USUNUM"))
+                    foreach (var pkAdicional in pkCandidatosAdicional)
                     {
-                        var numeroAdicional = ObtenerCampoPorPk(
-                            conn,
-                            _schema,
-                            _tablaAdicional,
-                            pkAdicional,
-                            codigo,
-                            "USUNUM");
-                        if (!string.IsNullOrWhiteSpace(numeroAdicional))
+                        if (!columnasAdicional.Contains("USUNUM"))
                         {
-                            return numeroAdicional;
+                            continue;
+                        }
+
+                        var numero = ObtenerCampoPorPkSeguro(conn, _schema, _tablaAdicional, pkAdicional, codigo, "USUNUM");
+                        if (!string.IsNullOrWhiteSpace(numero))
+                        {
+                            return numero;
                         }
                     }
 
                     return null;
                 });
             }
-            catch
+            catch (Exception ex)
             {
+                System.Diagnostics.Debug.WriteLine(
+                    $"[AOCR][AS400][Usuario] ObtenerNumeroRucPorCodigoUsuario: codigoUsuario={codigo}, error={ex.GetType().FullName}, msg={ex.Message}");
                 return null;
             }
         }
@@ -322,61 +332,50 @@ namespace CapaDatos.DAOs
             {
                 return ExecuteWithConnection(conn =>
                 {
-                    // Ruta directa (más robusta): evita depender de metadatos para lectura.
-                    var cedula = ObtenerCampoPorPkSeguro(conn, _schema, _tablaUsuario, "USUCOD", codigo, "USUCED");
-                    if (!string.IsNullOrWhiteSpace(cedula))
-                    {
-                        return cedula;
-                    }
-
-                    cedula = ObtenerCampoPorPkSeguro(conn, _schema, _tablaAdicional, "USUCO8", codigo, "USUCED");
-                    if (!string.IsNullOrWhiteSpace(cedula))
-                    {
-                        return cedula;
-                    }
-
-                    cedula = ObtenerCampoPorPkSeguro(conn, _schema, _tablaAdicional, "USUCOD", codigo, "USUCED");
-                    if (!string.IsNullOrWhiteSpace(cedula))
-                    {
-                        return cedula;
-                    }
-
-                    // Fallback legacy por columnas detectadas.
                     var columnasUsuario = GetColumnas(conn, _schema, _tablaUsuario);
-                    if (columnasUsuario.Contains("USUCED"))
+                    var columnasAdicional = GetColumnas(conn, _schema, _tablaAdicional);
+
+                    if (!columnasUsuario.Contains("USUCED") && !columnasAdicional.Contains("USUCED"))
                     {
-                        cedula = ObtenerCampoPorPk(conn, _schema, _tablaUsuario, "USUCOD", codigo, "USUCED");
+                        System.Diagnostics.Debug.WriteLine(
+                            $"[AOCR][AS400][Usuario] ObtenerCedulaPorCodigoUsuario: no existe columna USUCED en {_schema}.{_tablaUsuario}/{_tablaAdicional}. codigoUsuario={codigo}");
+                        return null;
+                    }
+
+                    if (columnasUsuario.Contains("USUCOD") && columnasUsuario.Contains("USUCED"))
+                    {
+                        var cedula = ObtenerCampoPorPkSeguro(conn, _schema, _tablaUsuario, "USUCOD", codigo, "USUCED");
                         if (!string.IsNullOrWhiteSpace(cedula))
                         {
                             return cedula;
                         }
                     }
 
-                    var columnasAdicional = GetColumnas(conn, _schema, _tablaAdicional);
-                    var pkAdicional = columnasAdicional.Contains("USUCO8")
-                        ? "USUCO8"
-                        : (columnasAdicional.Contains("USUCOD") ? "USUCOD" : null);
+                    var pkCandidatosAdicional = new[] { "USUCO8", "USUCOD" }
+                        .Where(col => columnasAdicional.Contains(col))
+                        .ToList();
 
-                    if (!string.IsNullOrWhiteSpace(pkAdicional) && columnasAdicional.Contains("USUCED"))
+                    foreach (var pkAdicional in pkCandidatosAdicional)
                     {
-                        var cedulaAdicional = ObtenerCampoPorPk(
-                            conn,
-                            _schema,
-                            _tablaAdicional,
-                            pkAdicional,
-                            codigo,
-                            "USUCED");
-                        if (!string.IsNullOrWhiteSpace(cedulaAdicional))
+                        if (!columnasAdicional.Contains("USUCED"))
                         {
-                            return cedulaAdicional;
+                            continue;
+                        }
+
+                        var cedula = ObtenerCampoPorPkSeguro(conn, _schema, _tablaAdicional, pkAdicional, codigo, "USUCED");
+                        if (!string.IsNullOrWhiteSpace(cedula))
+                        {
+                            return cedula;
                         }
                     }
 
                     return null;
                 });
             }
-            catch
+            catch (Exception ex)
             {
+                System.Diagnostics.Debug.WriteLine(
+                    $"[AOCR][AS400][Usuario] ObtenerCedulaPorCodigoUsuario: codigoUsuario={codigo}, error={ex.GetType().FullName}, msg={ex.Message}");
                 return null;
             }
         }
@@ -387,7 +386,7 @@ namespace CapaDatos.DAOs
 
             if (record == null || string.IsNullOrWhiteSpace(record.CodigoUsuario))
             {
-                error = "El código de usuario es requerido para registrar en AS400.";
+                error = "El codigo de usuario es requerido para registrar en AS400.";
                 return false;
             }
 
@@ -433,7 +432,7 @@ namespace CapaDatos.DAOs
 
         private Dictionary<string, object> ConstruirValoresUsuario(UsuarioAs400Record record, string fecha, string hora)
         {
-            // Límites según SNAP USUARC
+            // Limites segun SNAP USUARC
             var usuario    = SafeString(record.UsuarioAuditoria, 10, "AOCR");
             var dispositivo = SafeString(record.Dispositivo, 15, "WEB");
 
@@ -454,8 +453,8 @@ namespace CapaDatos.DAOs
                 ["USUCO5"] = SafeString(record.CiudadCodigo,        4),
                 ["USUCO6"] = SafeString(record.DependenciaCodigo,   4),
                 ["USUUSU"] = usuario,
-                ["USUFEC"] = fecha,   // A08 — yyyyMMdd = 8 chars exactos
-                ["USUHOR"] = hora,    // A08 — HHmmss   = 6 chars (OK, <8)
+                ["USUFEC"] = fecha,   // A08 - yyyyMMdd = 8 chars exactos
+                ["USUHOR"] = hora,    // A08 - HHmmss   = 6 chars (OK, <8)
                 ["USUDIS"] = dispositivo,
                 ["USUUS1"] = usuario,
                 ["USUFE1"] = fecha,
@@ -466,7 +465,7 @@ namespace CapaDatos.DAOs
 
         private Dictionary<string, object> ConstruirValoresAdicional(UsuarioAs400Record record, string fecha, string hora)
         {
-            // Límites según SNAP USUAR1
+            // Limites segun SNAP USUAR1
             var usuario    = SafeString(record.UsuarioAuditoria, 10, "AOCR");
             var dispositivo = SafeString(record.Dispositivo, 15, "WEB");
             var codigo     = SafeString(record.CodigoUsuario, 10);
@@ -483,12 +482,12 @@ namespace CapaDatos.DAOs
                 ["USUCO7"] = SafeString(record.CorreoAdicional,    60),
                 ["USUOID"] = record.OidCentroContable.HasValue ? (object)record.OidCentroContable.Value : 0m,
                 ["USUCO9"] = SafeString(record.CiudadCodigoAdicional ?? record.CiudadCodigo, 4),
-                // Auditoría creación — USUAR1 usa USUUS2/USUFE2/USUHO2/USUDI2
+                // Auditoria creacion - USUAR1 usa USUUS2/USUFE2/USUHO2/USUDI2
                 ["USUUS2"] = usuario,
                 ["USUFE2"] = fecha,
                 ["USUHO2"] = hora,
                 ["USUDI2"] = dispositivo,
-                // Auditoría modificación — USUAR1 usa USUUS3/USUFE3/USUHO3/USUDI3
+                // Auditoria modificacion - USUAR1 usa USUUS3/USUFE3/USUHO3/USUDI3
                 ["USUUS3"] = usuario,
                 ["USUFE3"] = fecha,
                 ["USUHO3"] = hora,
@@ -563,18 +562,12 @@ namespace CapaDatos.DAOs
             string pkValue,
             string campo)
         {
-            var sql = $"SELECT TRIM({campo}) FROM {schema}.{table} WHERE {pkColumn} = ? FETCH FIRST 1 ROWS ONLY";
+            var sql = $"SELECT NULLIF(TRIM(CHAR({campo})), '') FROM {schema}.{table} WHERE {pkColumn} = ? FETCH FIRST 1 ROWS ONLY";
             using (var cmd = new OdbcCommand(sql, conn))
             {
                 AddParameter(cmd, pkValue, OdbcType.VarChar);
                 var value = cmd.ExecuteScalar();
-                if (value == null || value == DBNull.Value)
-                {
-                    return null;
-                }
-
-                var texto = value.ToString();
-                return string.IsNullOrWhiteSpace(texto) ? null : texto.Trim();
+                return SafeScalarToTrimmedString(value);
             }
         }
 
@@ -586,19 +579,24 @@ namespace CapaDatos.DAOs
             string filtroValue,
             string campo)
         {
-            var sql = $"SELECT TRIM({campo}) FROM {schema}.{table} WHERE {filtroColumn} = ? FETCH FIRST 1 ROWS ONLY";
+            var sql = $"SELECT NULLIF(TRIM(CHAR({campo})), '') FROM {schema}.{table} WHERE {filtroColumn} = ? FETCH FIRST 1 ROWS ONLY";
             using (var cmd = new OdbcCommand(sql, conn))
             {
                 AddParameter(cmd, filtroValue, OdbcType.VarChar);
                 var value = cmd.ExecuteScalar();
-                if (value == null || value == DBNull.Value)
-                {
-                    return null;
-                }
-
-                var texto = value.ToString();
-                return string.IsNullOrWhiteSpace(texto) ? null : texto.Trim();
+                return SafeScalarToTrimmedString(value);
             }
+        }
+
+        private static string SafeScalarToTrimmedString(object value)
+        {
+            if (value == null || value == DBNull.Value)
+            {
+                return null;
+            }
+
+            var texto = Convert.ToString(value, CultureInfo.InvariantCulture);
+            return string.IsNullOrWhiteSpace(texto) ? null : texto.Trim();
         }
 
         private string ObtenerCampoPorPkSeguro(
@@ -613,8 +611,32 @@ namespace CapaDatos.DAOs
             {
                 return ObtenerCampoPorPk(conn, schema, table, pkColumn, pkValue, campo);
             }
-            catch
+            catch (OdbcException ex)
             {
+                string sqlState = "N/A";
+                string nativeError = "N/A";
+                try
+                {
+                    if (ex.Errors != null && ex.Errors.Count > 0)
+                    {
+                        sqlState = ex.Errors[0].SQLState ?? "N/A";
+                        nativeError = ex.Errors[0].NativeError.ToString(CultureInfo.InvariantCulture);
+                    }
+                }
+                catch (Exception logEx)
+                {
+                    System.Diagnostics.Debug.WriteLine(
+                        $"[AOCR][AS400][Usuario] ObtenerCampoPorPkSeguro: no se pudo extraer SQLState. schema={schema}, table={table}, campo={campo}, error={logEx.GetType().FullName}, msg={logEx.Message}");
+                }
+
+                System.Diagnostics.Debug.WriteLine(
+                    $"[AOCR][AS400][Usuario] ObtenerCampoPorPkSeguro[ODBC]: schema={schema}, table={table}, pkColumn={pkColumn}, pkValue={pkValue ?? "(null)"}, campo={campo}, sqlState={sqlState}, nativeError={nativeError}, error={ex.GetType().FullName}, msg={ex.Message}");
+                return null;
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine(
+                    $"[AOCR][AS400][Usuario] ObtenerCampoPorPkSeguro: schema={schema}, table={table}, pkColumn={pkColumn}, pkValue={pkValue ?? "(null)"}, campo={campo}, error={ex.GetType().FullName}, msg={ex.Message}");
                 return null;
             }
         }
@@ -631,8 +653,32 @@ namespace CapaDatos.DAOs
             {
                 return ObtenerCampoPorFiltro(conn, schema, table, filtroColumn, filtroValue, campo);
             }
-            catch
+            catch (OdbcException ex)
             {
+                string sqlState = "N/A";
+                string nativeError = "N/A";
+                try
+                {
+                    if (ex.Errors != null && ex.Errors.Count > 0)
+                    {
+                        sqlState = ex.Errors[0].SQLState ?? "N/A";
+                        nativeError = ex.Errors[0].NativeError.ToString(CultureInfo.InvariantCulture);
+                    }
+                }
+                catch (Exception logEx)
+                {
+                    System.Diagnostics.Debug.WriteLine(
+                        $"[AOCR][AS400][Usuario] ObtenerCampoPorFiltroSeguro: no se pudo extraer SQLState. schema={schema}, table={table}, campo={campo}, error={logEx.GetType().FullName}, msg={logEx.Message}");
+                }
+
+                System.Diagnostics.Debug.WriteLine(
+                    $"[AOCR][AS400][Usuario] ObtenerCampoPorFiltroSeguro[ODBC]: schema={schema}, table={table}, filtroColumn={filtroColumn}, filtroValue={filtroValue ?? "(null)"}, campo={campo}, sqlState={sqlState}, nativeError={nativeError}, error={ex.GetType().FullName}, msg={ex.Message}");
+                return null;
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine(
+                    $"[AOCR][AS400][Usuario] ObtenerCampoPorFiltroSeguro: schema={schema}, table={table}, filtroColumn={filtroColumn}, filtroValue={filtroValue ?? "(null)"}, campo={campo}, error={ex.GetType().FullName}, msg={ex.Message}");
                 return null;
             }
         }
@@ -664,9 +710,10 @@ namespace CapaDatos.DAOs
                     }
                 }
             }
-            catch
+            catch (Exception ex)
             {
-                // Si falla la consulta de columnas, devolvemos vacío para manejarlo arriba.
+                System.Diagnostics.Debug.WriteLine(
+                    $"[AOCR][AS400][Usuario] GetColumnas: schema={schema}, table={table}, error={ex.GetType().FullName}, msg={ex.Message}. Se devuelve lista vacía.");
                 return new HashSet<string>(StringComparer.OrdinalIgnoreCase);
             }
 
@@ -680,7 +727,7 @@ namespace CapaDatos.DAOs
             return value.Trim();
         }
 
-        // Trunca al máximo permitido por el campo AS400 según SNAP
+        // Trunca al maximo permitido por el campo AS400 segun SNAP
         private static string SafeString(string value, int maxLength, string fallback = "")
         {
             var s = SafeString(value, fallback);
@@ -719,3 +766,4 @@ namespace CapaDatos.DAOs
         }
     }
 }
+

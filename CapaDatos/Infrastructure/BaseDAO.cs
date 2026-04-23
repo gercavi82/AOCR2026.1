@@ -67,6 +67,14 @@ namespace CapaDatos.Infrastructure
                 {
                     throw WrapDatabaseException(ex);
                 }
+                catch (System.IO.IOException ex)
+                {
+                    throw new DataAccessException("Error de red al conectar con la base de datos. Intente más tarde.", "CONNECTION_ERROR", ex);
+                }
+                catch (System.Net.Sockets.SocketException ex)
+                {
+                    throw new DataAccessException("Error de red al conectar con la base de datos. Intente más tarde.", "CONNECTION_ERROR", ex);
+                }
             }
         }
 
@@ -86,6 +94,14 @@ namespace CapaDatos.Infrastructure
                 {
                     throw WrapDatabaseException(ex);
                 }
+                catch (System.IO.IOException ex)
+                {
+                    throw new DataAccessException("Error de red al conectar con la base de datos. Intente más tarde.", "CONNECTION_ERROR", ex);
+                }
+                catch (System.Net.Sockets.SocketException ex)
+                {
+                    throw new DataAccessException("Error de red al conectar con la base de datos. Intente más tarde.", "CONNECTION_ERROR", ex);
+                }
             }
         }
 
@@ -97,7 +113,23 @@ namespace CapaDatos.Infrastructure
         {
             using (var connection = CreateConnection())
             {
-                connection.Open();
+                try
+                {
+                    connection.Open();
+                }
+                catch (System.IO.IOException ex)
+                {
+                    throw new DataAccessException("Error de red al conectar con la base de datos. Intente más tarde.", "CONNECTION_ERROR", ex);
+                }
+                catch (System.Net.Sockets.SocketException ex)
+                {
+                    throw new DataAccessException("Error de red al conectar con la base de datos. Intente más tarde.", "CONNECTION_ERROR", ex);
+                }
+                catch (NpgsqlException ex)
+                {
+                    throw WrapDatabaseException(ex);
+                }
+
                 using (var transaction = connection.BeginTransaction(isolationLevel))
                 {
                     try

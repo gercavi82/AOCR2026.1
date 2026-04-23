@@ -6,6 +6,7 @@ using CapaDatos.Constants;
 using CapaNegocio;
 using CapaModelo;
 using CapaPresentacion.Models;
+using CapaPresentacion.Infrastructure;
 
 namespace CapaPresentacion.Controllers
 {
@@ -14,21 +15,22 @@ namespace CapaPresentacion.Controllers
     {
         // ✅ 1. INSTANCIAMOS LA LÓGICA DE NEGOCIO (¡Muy Importante!)
         private readonly SolicitudBL _solicitudBL = new SolicitudBL();
+        private static readonly IUserContextAccessor _userContext = new UserContextAccessor();
 
         // ==============================
         // Helpers de sesión/rol
         // ==============================
         private int ObtenerCodigoUsuario()
         {
-            if (Session["CodigoUsuario"] != null)
-                return Convert.ToInt32(Session["CodigoUsuario"]);
-            return 0;
+            int codigoUsuario;
+            return _userContext.TryGetCodigoUsuario(Session, out codigoUsuario) ? codigoUsuario : 0;
         }
 
         private string ObtenerRol()
         {
-            if (Session["Rol"] != null)
-                return Session["Rol"].ToString();
+            var rolSesion = _userContext.GetRol(Session);
+            if (!string.IsNullOrWhiteSpace(rolSesion))
+                return rolSesion;
 
             if (User != null && User.IsInRole("Administrador")) return "Administrador";
             if (User != null && User.IsInRole("Financiero")) return "Financiero";

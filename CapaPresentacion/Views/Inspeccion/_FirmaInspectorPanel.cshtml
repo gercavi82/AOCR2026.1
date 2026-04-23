@@ -1,126 +1,199 @@
-@* Partial: Bloque operativo del inspector dentro de la seccion Informe Tecnico *@
+@* ============================================================
+   Partial: Panel de firma del Inspector — rediseño ergonómico
+   ============================================================ *@
+@model CapaPresentacion.Models.ViewModels.FirmaInspectorPanelVm
 @{
-    var informeTecnico = ViewBag.InformeTecnico as CapaModelo.InspeccionInformeTecnico;
-    var codigoInspeccion = (int)ViewBag.CodigoInspeccion;
-    var puedeFirmarInspector = (bool)(ViewBag.PuedeFirmarInspector ?? false);
-    var puedeEnviarADirdac = (bool)(ViewBag.PuedeEnviarADirdac ?? false);
-    var puedeReintentarNotificacionDirdac = (bool)(ViewBag.PuedeReintentarNotificacionDirdac ?? false);
-    var informeEnviadoADirdac = (bool)(ViewBag.InformeEnviadoADirdac ?? false);
-    var informeDevueltoCoordinador = (bool)(ViewBag.InformeDevueltoCoordinador ?? false);
-    var informeDevueltoDireccion = (bool)(ViewBag.InformeDevueltoDireccion ?? false);
-    var informeAprobadoDireccion = (bool)(ViewBag.InformeAprobadoDireccion ?? false);
-    var estadoInformeTecnico = (string)ViewBag.EstadoInformeTecnico ?? "BORRADOR";
+    var vm = Model ?? new CapaPresentacion.Models.ViewModels.FirmaInspectorPanelVm();
+    var informeTecnico = vm.InformeTecnico;
+    var codigoInspeccion = vm.CodigoInspeccion;
+    var puedeFirmarInspector = vm.PuedeFirmarInspector;
+    var puedeEnviarADirdac = vm.PuedeEnviarADirdac;
+    var puedeReintentarNotificacionDirdac = vm.PuedeReintentarNotificacionDirdac;
+    var informeEnviadoADirdac = vm.InformeEnviadoADirdac;
+    var informeEnviadoACoordinador = informeTecnico != null
+        && string.Equals(vm.EstadoInformeTecnico ?? "BORRADOR", "ENVIADO_A_COORDINADOR", StringComparison.OrdinalIgnoreCase);
+    var informeDevueltoCoordinador = vm.InformeDevueltoCoordinador;
+    var informeDevueltoDireccion = vm.InformeDevueltoDireccion;
+    var informeAprobadoDireccion = vm.InformeAprobadoDireccion;
+    var estadoInformeTecnico = vm.EstadoInformeTecnico ?? "BORRADOR";
+    var tieneRutaPdf = informeTecnico != null
+        && (!string.IsNullOrWhiteSpace(informeTecnico.RutaPdf) || !string.IsNullOrWhiteSpace(informeTecnico.RutaDocumentoFirmado));
+    var urlVerPdf = codigoInspeccion > 0
+        ? Url.Action("VerInforme", "Inspeccion", new { id = codigoInspeccion })
+        : "#";
+
+    // Etiquetas de estado
+    string estadoLabel;
+    string estadoClass;
+    switch (estadoInformeTecnico)
+    {
+        case "BORRADOR": estadoLabel = "Borrador"; estadoClass = ""; break;
+        case "GENERADO": estadoLabel = "PDF generado"; estadoClass = "info"; break;
+        case "FIRMADO_INSPECTOR": estadoLabel = "Firmado por inspector"; estadoClass = "ok"; break;
+        case "ENVIADO_A_COORDINADOR": estadoLabel = "En revisión · Coordinación"; estadoClass = "info"; break;
+        case "ENVIADO_A_DIRDAC": estadoLabel = "En revisión · DIRDAC"; estadoClass = "warn"; break;
+        case "APROBADO_COORDINADOR": estadoLabel = "Aprobado por Coordinación"; estadoClass = "ok"; break;
+        case "APROBADO_DIRECCION": estadoLabel = "Aprobado por Dirección"; estadoClass = "ok"; break;
+        case "DEVUELTO_COORDINADOR": estadoLabel = "Devuelto · Coordinación"; estadoClass = "danger"; break;
+        case "DEVUELTO_DIRECCION":
+        case "RECHAZADO_DIRDAC": estadoLabel = "Devuelto · Dirección"; estadoClass = "danger"; break;
+        case "FIRMADO_FINAL": estadoLabel = "Firmado · Final"; estadoClass = "ok"; break;
+        default: estadoLabel = estadoInformeTecnico; estadoClass = ""; break;
+    }
+
+    // Cálculo de pasos
+    var pasoGenerado = informeTecnico != null && informeTecnico.Finalizado && !string.IsNullOrWhiteSpace(informeTecnico.RutaPdf);
+    var pasoDirdac = informeEnviadoADirdac || informeAprobadoDireccion || informeDevueltoDireccion;
+    var pasoCoord = informeEnviadoACoordinador
+        || string.Equals(estadoInformeTecnico, "APROBADO_COORDINADOR", StringComparison.OrdinalIgnoreCase)
+        || informeDevueltoCoordinador
+        || string.Equals(estadoInformeTecnico, "FIRMADO_FINAL", StringComparison.OrdinalIgnoreCase)
+        || (informeTecnico != null && informeTecnico.FirmadoInspector);
+    var pasoFirmado = informeTecnico != null && informeTecnico.FirmadoInspector;
+    var pasoActivo1 = !pasoGenerado;
+    var pasoActivo2 = pasoGenerado && !pasoDirdac;
+    var pasoActivo3 = pasoDirdac && !pasoCoord;
+    var pasoActivo4 = pasoCoord && !pasoFirmado;
 }
 
-@if (informeTecnico != null)
+@if (codigoInspeccion <= 0)
 {
-<div class="firma-inspector-panel mt-3">
-    <div class="alert alert-light alert-inline mb-3" style="font-size:0.88rem; border-left:3px solid #0d6efd;">
-        <strong>Version:</strong> @informeTecnico.Version
-        <span class="ms-3"><strong>Estado:</strong>
-            @switch (estadoInformeTecnico)
-            {
-                case "BORRADOR":
-                    <span class="badge bg-secondary">Borrador</span>
-                    break;
-                case "GENERADO":
-                    <span class="badge bg-info text-dark">Generado</span>
-                    break;
-                case "FIRMADO_INSPECTOR":
-                    <span class="badge bg-primary">Firmado por inspector</span>
-                    break;
-                case "ENVIADO_A_COORDINADOR":
-                    <span class="badge bg-info text-dark">En revision de Coordinacion</span>
-                    break;
-                case "ENVIADO_A_DIRDAC":
-                    <span class="badge bg-warning text-dark">En revision DIRDAC</span>
-                    break;
-                case "APROBADO_COORDINADOR":
-                    <span class="badge bg-primary">Aprobado por Coordinacion</span>
-                    break;
-                case "DEVUELTO_COORDINADOR":
-                    <span class="badge bg-danger">Devuelto por Coordinacion</span>
-                    break;
-                case "DEVUELTO_DIRECCION":
-                case "RECHAZADO_DIRDAC":
-                    <span class="badge bg-danger">Devuelto por Direccion/Jefatura</span>
-                    break;
-                case "APROBADO_DIRECCION":
-                    <span class="badge bg-success">Revision DIRDAC completada</span>
-                    break;
-                case "FIRMADO_FINAL":
-                    <span class="badge bg-success">Firmado por Inspector</span>
-                    break;
-                default:
-                    <span class="badge bg-secondary">@estadoInformeTecnico</span>
-                    break;
-            }
-        </span>
-        <span class="ms-3"><strong>Firma inspector:</strong>
-            @if (informeTecnico.FirmadoInspector)
-            {
-                <span class="badge bg-success"><i class="fas fa-check me-1"></i>Aplicada</span>
-            }
-            else
-            {
-                <span class="badge bg-secondary">Pendiente</span>
-            }
-        </span>
+    <div class="it-alert warn">
+        <i class="fas fa-exclamation-triangle"></i>
+        <div>No hay contexto de inspecciÃ³n disponible para el panel de firma.</div>
+    </div>
+}
+else if (informeTecnico != null)
+{
+    @Html.Partial("_InformeFirmaStyles")
+
+    <div class="it-hero">
+        <div class="it-hero-row">
+            <div>
+                <h3><i class="fas fa-file-signature"></i> Firma del Inspector DGAC</h3>
+                <p class="sub">Versión <strong>@informeTecnico.Version</strong> · Inspección #@codigoInspeccion</p>
+            </div>
+            <div>
+                <span class="it-pill @estadoClass">
+                    @if (estadoClass == "ok") { <i class="fas fa-check-circle"></i> }
+                    else if (estadoClass == "warn") { <i class="fas fa-hourglass-half"></i> }
+                    else if (estadoClass == "danger") { <i class="fas fa-undo"></i> }
+                    else if (estadoClass == "info") { <i class="fas fa-paper-plane"></i> }
+                    else { <i class="fas fa-circle"></i> }
+                    @estadoLabel
+                </span>
+            </div>
+        </div>
+
+        <div class="it-steps">
+            <div class="it-step @(pasoGenerado ? "done" : (pasoActivo1 ? "active" : ""))">
+                <span class="n">1</span> PDF generado
+            </div>
+            <div class="it-step @(pasoDirdac ? "done" : (pasoActivo2 ? "active" : ""))">
+                <span class="n">2</span> Revisión DIRDAC
+            </div>
+            <div class="it-step @(pasoCoord ? "done" : (pasoActivo3 ? "active" : ""))">
+                <span class="n">3</span> Aprobación Coord.
+            </div>
+            <div class="it-step @(pasoFirmado ? "done" : (pasoActivo4 ? "active" : ""))">
+                <span class="n">4</span> Firma final
+            </div>
+        </div>
     </div>
 
-    @if (puedeFirmarInspector)
+    @* ── Observación de devolución ── *@
+    if (!string.IsNullOrWhiteSpace(informeTecnico.ObservacionDevolucion) && (informeDevueltoCoordinador || informeDevueltoDireccion))
     {
-        <div class="signature-panel">
-            <h6 style="margin:0 0 0.25rem 0; color: var(--inspection-primary); font-weight: 600;">
-                <i class="fas fa-file-signature me-1"></i> Firma del Inspector DGAC
-            </h6>
-            @using (Html.BeginForm("FirmarInformeInspector", "Inspeccion", FormMethod.Post, new { enctype = "multipart/form-data" }))
+        <div class="it-obs">
+            <h6><i class="fas fa-comment-dots"></i> Informe devuelto para corrección</h6>
+            <p>@informeTecnico.ObservacionDevolucion</p>
+            @if (informeTecnico.FechaDevolucion.HasValue)
+            {
+                <small>
+                    @informeTecnico.FechaDevolucion.Value.ToString("dd/MM/yyyy HH:mm")
+                    @(!string.IsNullOrWhiteSpace(informeTecnico.UsuarioDevolucion) ? " · " + informeTecnico.UsuarioDevolucion : "")
+                </small>
+            }
+        </div>
+    }
+
+    @* ── Panel de firma activa ── *@
+    if (puedeFirmarInspector)
+    {
+        <div class="it-panel">
+            <h4><i class="fas fa-signature"></i> Aplicar firma digital</h4>
+            <p class="hint">Cargue su certificado digital personal (.p12 / .pfx) y la contraseña para firmar el informe técnico.</p>
+
+            @using (Html.BeginForm("FirmarInformeInspector", "Inspeccion", FormMethod.Post, new { enctype = "multipart/form-data", id = "frmFirmaInspector" }))
             {
                 @Html.AntiForgeryToken()
                 @Html.Hidden("id", codigoInspeccion)
-                <div class="compact-form">
-                    <div class="form-field">
-                        <label>Certificado (.p12 / .pfx)</label>
-                        <input type="file" name="CertificadoInspector" class="form-control" accept=".p12,.pfx" required />
-                    </div>
-                    <div class="form-field">
-                        <label>Contrasena</label>
-                        <input type="password" name="passwordCertificado" class="form-control" autocomplete="off" required />
-                    </div>
-                    <div style="padding-bottom:2px;">
-                        <button type="submit" class="btn btn-success">
-                            <i class="fas fa-file-signature me-1"></i> Firmar informe
-                        </button>
-                    </div>
+
+                <div class="it-field">
+                    <label for="fileCertInspector">Certificado digital (.p12 / .pfx)</label>
+                    <input type="file" name="CertificadoInspector" id="fileCertInspector"
+                           class="it-input" accept=".p12,.pfx" required="required" />
                 </div>
+
+                <div class="it-field">
+                    <label for="pwdCertInspector">Contraseña del certificado</label>
+                    <input type="password" name="passwordCertificado" id="pwdCertInspector"
+                           class="it-input" autocomplete="off" required="required" placeholder="•••••••••••" />
+                    <button type="button" class="it-toggle" onclick="itTogglePwd('pwdCertInspector', this)" title="Mostrar / ocultar">
+                        <i class="far fa-eye"></i>
+                    </button>
+                </div>
+
+                <button type="submit" class="it-btn success full" id="btnFirmarInspector">
+                    <i class="fas fa-shield-alt"></i> Firmar informe
+                </button>
             }
+
+            <div class="it-info">
+                <i class="fas fa-lock"></i>
+                <div>Solo usted conoce la contraseña. El archivo del certificado se procesa en memoria y no se guarda.</div>
+            </div>
         </div>
     }
     else if (informeTecnico.FirmadoInspector)
     {
-        <div class="firma-status-card">
-            <div class="firma-status-icon"><i class="fas fa-check"></i></div>
-            <div class="firma-status-text">
-                Firma del inspector completada correctamente.
-                <strong>Firmado por @(!string.IsNullOrWhiteSpace(informeTecnico.UsuarioFirma1) ? informeTecnico.UsuarioFirma1 : "-") el @(informeTecnico.FechaFirma1.HasValue ? informeTecnico.FechaFirma1.Value.ToString("dd/MM/yyyy HH:mm") : "-")</strong>
+        <div class="it-panel">
+            <div class="it-done">
+                <div class="icon"><i class="fas fa-check"></i></div>
+                <h5>Informe firmado digitalmente</h5>
+                <p>
+                    Firmado por <strong>@(!string.IsNullOrWhiteSpace(informeTecnico.UsuarioFirma1) ? informeTecnico.UsuarioFirma1 : "—")</strong>
+                    el <strong>@(informeTecnico.FechaFirma1.HasValue ? informeTecnico.FechaFirma1.Value.ToString("dd/MM/yyyy HH:mm") : "—")</strong>.
+                </p>
+                @if (tieneRutaPdf)
+                {
+                    <a class="it-btn success full" href="@urlVerPdf" target="_blank" rel="noopener">
+                        <i class="fas fa-file-pdf"></i> Ver PDF firmado
+                    </a>
+                }
             </div>
         </div>
     }
     else
     {
-        <div class="alert alert-warning alert-inline mb-2" style="font-size:0.86rem;">
+        var alertClass = (!informeTecnico.Finalizado || string.IsNullOrWhiteSpace(informeTecnico.RutaPdf)) ? "warn" : "info";
+        <div class="it-alert @alertClass">
             @if (!informeTecnico.Finalizado || string.IsNullOrWhiteSpace(informeTecnico.RutaPdf))
             {
-                <span>La firma del inspector se habilita cuando el informe tecnico esta finalizado y con PDF generado.</span>
+                <i class="fas fa-info-circle"></i>
+                <div>
+                    <strong>Falta finalizar el informe.</strong> Complete y finalice el informe técnico para generar el PDF; después podrá firmarlo digitalmente.
+                </div>
             }
-            else if (string.Equals(estadoInformeTecnico, "ENVIADO_A_DIRDAC", StringComparison.OrdinalIgnoreCase)
-                || string.Equals(estadoInformeTecnico, "ENVIADO_A_COORDINADOR", StringComparison.OrdinalIgnoreCase))
+            else if (informeEnviadoADirdac || informeEnviadoACoordinador)
             {
-                <span>La firma del inspector se habilita luego de la revisión DIRDAC y aprobación de Coordinación.</span>
+                <i class="fas fa-hourglass-half"></i>
+                <div>La firma digital se habilita luego de la revisión de DIRDAC y la aprobación de Coordinación.</div>
             }
             else
             {
-                <span>La firma del inspector no esta disponible para su usuario en el estado actual del informe.</span>
+                <i class="fas fa-user-lock"></i>
+                <div>La firma del inspector no está disponible para su usuario en el estado actual del informe.</div>
             }
         </div>
 
@@ -130,92 +203,93 @@
             {
                 @Html.AntiForgeryToken()
                 @Html.Hidden("id", codigoInspeccion)
-                <button type="submit" class="btn btn-primary">
-                    <i class="fas fa-file-pdf me-1"></i> Finalizar informe y generar PDF
+                <button type="submit" class="it-btn primary">
+                    <i class="fas fa-file-pdf"></i> Finalizar informe y generar PDF
                 </button>
             }
         }
     }
 
-    @if (!string.IsNullOrWhiteSpace(informeTecnico.ObservacionDevolucion) && (informeDevueltoCoordinador || informeDevueltoDireccion))
+    @* ── Enviar a DIRDAC ── *@
+    if (puedeEnviarADirdac || puedeReintentarNotificacionDirdac)
     {
-        <div class="alert mt-3 mb-2" style="background:#fff3cd; border-left:4px solid #ffc107; font-size:0.88rem;">
-            <i class="fas fa-exclamation-triangle me-1"></i>
-            <strong>Informe devuelto para correccion</strong><br />
-            <em>Observacion:</em> @informeTecnico.ObservacionDevolucion
-            @if (informeTecnico.FechaDevolucion.HasValue)
+        <div class="it-panel" style="padding: 14px 16px;">
+            @if (puedeReintentarNotificacionDirdac)
             {
-                <br /><small class="text-muted">Devuelto el @informeTecnico.FechaDevolucion.Value.ToString("dd/MM/yyyy HH:mm")
-                @(!string.IsNullOrWhiteSpace(informeTecnico.UsuarioDevolucion) ? " por " + informeTecnico.UsuarioDevolucion : "")</small>
+                <div class="it-alert warn" style="margin-bottom: 10px;">
+                    <i class="fas fa-envelope-open-text"></i>
+                    <div>El documento ya está en bandeja DIRDAC pero la notificación por correo falló. Puede reintentarla.</div>
+                </div>
             }
-            <br /><small>Puede corregir, generar nueva version, firmar nuevamente y reenviar a Coordinacion.</small>
+            else
+            {
+                <h4 style="color:#0b3d78;"><i class="fas fa-paper-plane"></i> Remitir a DIRDAC para revisión</h4>
+                <p class="hint">Envíe el PDF generado a la bandeja de DIRDAC / Dirección - Jefatura para la revisión institucional.</p>
+            }
+
+            @using (Html.BeginForm("EnviarADirdac", "Inspeccion", FormMethod.Post))
+            {
+                @Html.AntiForgeryToken()
+                @Html.Hidden("id", codigoInspeccion)
+                <button type="submit" class="it-btn primary full">
+                    <i class="fas fa-@(puedeReintentarNotificacionDirdac ? "redo" : "paper-plane")"></i>
+                    @(puedeReintentarNotificacionDirdac ? "Reintentar notificación DIRDAC" : "Enviar a DIRDAC")
+                </button>
+            }
         </div>
     }
 
-    @if (puedeEnviarADirdac || puedeReintentarNotificacionDirdac)
+    @* ── Timeline de estados informativos ── *@
+    if (informeEnviadoACoordinador)
     {
-        if (puedeReintentarNotificacionDirdac)
-        {
-            <div class="alert alert-warning alert-inline mt-3 mb-2" style="font-size:0.86rem;">
-                El documento ya esta en bandeja de Direccion / Jefatura, pero la notificacion por correo sigue pendiente.
-            </div>
-        }
-
-        using (Html.BeginForm("EnviarADirdac", "Inspeccion", FormMethod.Post, new { @class = "mt-2" }))
-        {
-            @Html.AntiForgeryToken()
-            @Html.Hidden("id", codigoInspeccion)
-            <button type="submit" class="btn btn-outline-primary">
-                <i class="fas fa-paper-plane me-1"></i>
-                @(puedeReintentarNotificacionDirdac ? "Reintentar notificacion DIRDAC" : "Enviar a DIRDAC para revision")
-            </button>
-        }
-    }
-
-    @if (string.Equals(estadoInformeTecnico, "ENVIADO_A_COORDINADOR", StringComparison.OrdinalIgnoreCase))
-    {
-        <div class="firma-status-card mt-3" style="border-left-color: #17a2b8;">
-            <div class="firma-status-icon" style="background: #17a2b8;"><i class="fas fa-user-check"></i></div>
-            <div class="firma-status-text">
-                <strong>Informe enviado a Coordinacion</strong><br />
-                El informe tecnico fue remitido a Coordinacion para revision. Coordinacion puede aprobar o devolver con observaciones.
-            </div>
+        <div class="it-alert info">
+            <i class="fas fa-user-check"></i>
+            <div><strong>Informe en Coordinación.</strong> Coordinación revisará el documento y podrá aprobarlo o devolverlo con observaciones.</div>
         </div>
     }
     else if (informeEnviadoADirdac && !informeAprobadoDireccion)
     {
-        <div class="firma-status-card mt-3" style="border-left-color: #0d6efd;">
-            <div class="firma-status-icon" style="background: #0d6efd;"><i class="fas fa-paper-plane"></i></div>
-            <div class="firma-status-text">
-                <strong>Informe en revision DIRDAC</strong><br />
-                El informe tecnico fue remitido a DIRDAC / Direccion - Jefatura para revision institucional.
+        <div class="it-alert warn">
+            <i class="fas fa-paper-plane"></i>
+            <div>
+                <strong>Informe en revisión DIRDAC.</strong>
                 @if (informeTecnico.FechaEnvioDirdac.HasValue)
                 {
-                    <br /><small class="text-muted">Enviado el @informeTecnico.FechaEnvioDirdac.Value.ToString("dd/MM/yyyy HH:mm")
-                    @(!string.IsNullOrWhiteSpace(informeTecnico.UsuarioEnvioDirdac) ? " por " + informeTecnico.UsuarioEnvioDirdac : "")</small>
+                    <text>Enviado el @informeTecnico.FechaEnvioDirdac.Value.ToString("dd/MM/yyyy HH:mm") @(!string.IsNullOrWhiteSpace(informeTecnico.UsuarioEnvioDirdac) ? "por " + informeTecnico.UsuarioEnvioDirdac : "").</text>
                 }
             </div>
         </div>
     }
     else if (string.Equals(estadoInformeTecnico, "APROBADO_COORDINADOR", StringComparison.OrdinalIgnoreCase))
     {
-        <div class="firma-status-card mt-3" style="border-left-color: #198754;">
-            <div class="firma-status-icon" style="background: #198754;"><i class="fas fa-pen-nib"></i></div>
-            <div class="firma-status-text">
-                <strong>Aprobado por Coordinacion</strong><br />
-                La revision institucional concluyo y ahora corresponde la firma final del inspector.
-            </div>
+        <div class="it-alert success">
+            <i class="fas fa-pen-nib"></i>
+            <div><strong>Aprobado por Coordinación.</strong> La revisión institucional concluyó; ahora corresponde la firma final del inspector.</div>
         </div>
     }
-    else if (informeAprobadoDireccion)
+    else if (informeAprobadoDireccion && informeTecnico.FirmadoInspector)
     {
-        <div class="firma-status-card mt-3" style="border-left-color: #198754;">
-            <div class="firma-status-icon" style="background: #198754;"><i class="fas fa-check-double"></i></div>
-            <div class="firma-status-text">
-                <strong>Informe finalizado</strong><br />
-                El informe tecnico ya fue firmado por inspector y paso a la activacion AOCR.
-            </div>
+        <div class="it-alert success">
+            <i class="fas fa-check-double"></i>
+            <div><strong>Informe finalizado.</strong> El informe técnico ya fue firmado por el inspector y pasó a la activación AOCR.</div>
         </div>
     }
-</div>
+
+    <script>
+        function itTogglePwd(id, btn) {
+            var i = document.getElementById(id);
+            if (!i) return;
+            var icon = btn.querySelector('i');
+            if (i.type === 'password') { i.type = 'text'; icon.className = 'far fa-eye-slash'; }
+            else { i.type = 'password'; icon.className = 'far fa-eye'; }
+        }
+        (function () {
+            var f = document.getElementById('frmFirmaInspector');
+            if (!f) return;
+            f.addEventListener('submit', function () {
+                var b = document.getElementById('btnFirmarInspector');
+                if (b) { b.setAttribute('disabled', 'disabled'); b.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i> Firmando...'; }
+            });
+        })();
+    </script>
 }

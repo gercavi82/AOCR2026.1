@@ -84,7 +84,7 @@ namespace CapaDatos.DAOs
                     cmd.Parameters.AddWithValue("@codSol", cert.CodigoSolicitud);
                     cmd.Parameters.AddWithValue("@num", (object)cert.NumeroCertificado ?? DBNull.Value);
                     cmd.Parameters.AddWithValue("@tipo", (object)cert.Tipo ?? "AOCR");
-                    cmd.Parameters.AddWithValue("@estado", (object)cert.Estado ?? "GENERADO");
+                    cmd.Parameters.AddWithValue("@estado", (object)cert.Estado ?? "Vigente");
                     cmd.Parameters.AddWithValue("@fe", (object)cert.FechaEmision ?? DateTime.Now);
                     cmd.Parameters.AddWithValue("@fv", (object)cert.FechaVencimiento ?? DBNull.Value);
                     cmd.Parameters.AddWithValue("@ruta", (object)cert.RutaDocumento ?? DBNull.Value);

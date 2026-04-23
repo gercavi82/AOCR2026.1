@@ -115,6 +115,51 @@ BEGIN
 END $$;
 
 -- =====================
+-- mirror_raw.OPUARC01 (ubicacion por ciudad)
+-- =====================
+CREATE TABLE IF NOT EXISTS mirror_raw.opuarc01 (
+    opucod varchar(10) PRIMARY KEY,
+    opuoid numeric(18,0) NULL,
+    opuest varchar(120) NULL,
+    _source_updated_at timestamp NULL,
+    _source_op varchar(1) NULL,
+    _row_hash varchar(64) NULL,
+    _is_deleted boolean NOT NULL DEFAULT false,
+    _mirror_batch_id uuid NULL,
+    _mirror_synced_at timestamp NOT NULL DEFAULT now()
+);
+
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE schemaname='mirror_raw' AND indexname='ix_opuarc01_ciudad') THEN
+        CREATE INDEX ix_opuarc01_ciudad ON mirror_raw.opuarc01 (opucod);
+    END IF;
+END $$;
+
+-- =====================
+-- mirror_raw.OIDAR2 (aeropuerto por ciudad)
+-- =====================
+CREATE TABLE IF NOT EXISTS mirror_raw.oidar2 (
+    oidco3 varchar(10) NOT NULL,
+    oidoi2 numeric(18,0) NOT NULL,
+    oidno2 varchar(120) NULL,
+    _source_updated_at timestamp NULL,
+    _source_op varchar(1) NULL,
+    _row_hash varchar(64) NULL,
+    _is_deleted boolean NOT NULL DEFAULT false,
+    _mirror_batch_id uuid NULL,
+    _mirror_synced_at timestamp NOT NULL DEFAULT now(),
+    CONSTRAINT pk_mirror_oidar2 PRIMARY KEY (oidco3, oidoi2)
+);
+
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE schemaname='mirror_raw' AND indexname='ix_oidar2_ciudad') THEN
+        CREATE INDEX ix_oidar2_ciudad ON mirror_raw.oidar2 (oidco3);
+    END IF;
+END $$;
+
+-- =====================
 -- mirror_raw.OPCAR5 (FR3 cabecera - subconjunto funcional AOCR)
 -- =====================
 CREATE TABLE IF NOT EXISTS mirror_raw.opcar5 (
@@ -257,3 +302,24 @@ SELECT
 FROM mirror_raw.ciaarc
 WHERE COALESCE(_is_deleted, false) = false
   AND TRIM(COALESCE(ciaest, '')) = 'AC';
+
+CREATE OR REPLACE VIEW mirror_clean.v_lugar_emision_ciudad AS
+SELECT
+    UPPER(TRIM(opucod)) AS codigo_ciudad,
+    NULLIF(TRIM(opuest), '') AS lugar_emision,
+    'OPUARC01'::text AS fuente,
+    _mirror_synced_at
+FROM mirror_raw.opuarc01
+WHERE COALESCE(_is_deleted, false) = false
+  AND NULLIF(TRIM(opucod), '') IS NOT NULL
+  AND NULLIF(TRIM(opuest), '') IS NOT NULL
+UNION ALL
+SELECT
+    UPPER(TRIM(oidco3)) AS codigo_ciudad,
+    NULLIF(TRIM(oidno2), '') AS lugar_emision,
+    'OIDAR2'::text AS fuente,
+    _mirror_synced_at
+FROM mirror_raw.oidar2
+WHERE COALESCE(_is_deleted, false) = false
+  AND NULLIF(TRIM(oidco3), '') IS NOT NULL
+  AND NULLIF(TRIM(oidno2), '') IS NOT NULL;

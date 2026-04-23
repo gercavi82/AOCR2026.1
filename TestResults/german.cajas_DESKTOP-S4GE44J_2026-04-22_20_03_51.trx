@@ -1,0 +1,391 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TestRun id="219daff1-e413-4b20-b569-9f098a3815c2" name="german.cajas@DESKTOP-S4GE44J 2026-04-22 20:03:51" runUser="DESKTOP-S4GE44J\CodexSandboxOffline" xmlns="http://microsoft.com/schemas/VisualStudio/TeamTest/2010">
+  <Times creation="2026-04-22T20:03:51.9017635-05:00" queuing="2026-04-22T20:03:51.9017635-05:00" start="2026-04-22T20:03:51.1255531-05:00" finish="2026-04-22T20:03:52.3897630-05:00" />
+  <TestSettings name="default" id="e615fd0f-93b4-4db4-ae36-48e9c6cfe761">
+    <Deployment runDeploymentRoot="german.cajas_DESKTOP-S4GE44J_2026-04-22_20_03_51" />
+  </TestSettings>
+  <Results>
+    <UnitTestResult executionId="68c2fae6-6bb3-41cd-93a3-2cc4ebdc1c98" testId="5bb6a88d-92cf-ad24-4246-eb79316e0c63" testName="Matriz_TransicionesInvalidas_DebeBloquear (AOCR En Revision,AOCR Emitido/Recibido)" computerName="DESKTOP-S4GE44J" duration="00:00:00.0000049" startTime="2026-04-22T20:03:51.9047940-05:00" endTime="2026-04-22T20:03:51.9047940-05:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="68c2fae6-6bb3-41cd-93a3-2cc4ebdc1c98" />
+    <UnitTestResult executionId="6329cd95-f016-44aa-805b-1862c3bf50cc" testId="98af0476-00fc-2b2e-5e94-efb32518d639" testName="Matriz_TransicionesInvalidas_DebeBloquear (AOCR Emitido/Recibido,AOCR En Revision)" computerName="DESKTOP-S4GE44J" duration="00:00:00.0000050" startTime="2026-04-22T20:03:51.9047940-05:00" endTime="2026-04-22T20:03:51.9047940-05:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="6329cd95-f016-44aa-805b-1862c3bf50cc" />
+    <UnitTestResult executionId="48fc4d30-8f91-45aa-9a08-128477b71365" testId="5d4bfedd-0225-eef3-2127-50d8f8dff382" testName="ValidarMonto_Negativo_Invalido" computerName="DESKTOP-S4GE44J" duration="00:00:00.0001973" startTime="2026-04-22T20:03:51.8847635-05:00" endTime="2026-04-22T20:03:51.8847635-05:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="48fc4d30-8f91-45aa-9a08-128477b71365" />
+    <UnitTestResult executionId="7890820f-fbea-4b95-90cc-03dfa20d1494" testId="670bb6d9-a4f1-135c-c7dd-f0ccc69b993e" testName="ValidarArchivo_ExtensionPdf_Valido" computerName="DESKTOP-S4GE44J" duration="00:00:00.0003086" startTime="2026-04-22T20:03:51.8837636-05:00" endTime="2026-04-22T20:03:51.8837636-05:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="7890820f-fbea-4b95-90cc-03dfa20d1494" />
+    <UnitTestResult executionId="af3abf06-bd0a-479d-a7af-e35aeea8beea" testId="e05d4a0d-05df-4d45-46db-c44a4bab4935" testName="EsTransicionPermitida_TransicionesValidas_DebeRetornarTrue (Documentacion Completa,En Inspeccion)" computerName="DESKTOP-S4GE44J" duration="00:00:00.0000063" startTime="2026-04-22T20:03:52.2037642-05:00" endTime="2026-04-22T20:03:52.2037642-05:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="af3abf06-bd0a-479d-a7af-e35aeea8beea" />
+    <UnitTestResult executionId="cb856d77-e852-4ecc-b3fd-d15dc3c8d85f" testId="635f5c69-2052-56ac-66a5-5151569efbb8" testName="Matriz_TransicionesInvalidas_DebeBloquear (Solicitud Creada,AOCR Legalizado)" computerName="DESKTOP-S4GE44J" duration="00:00:00.0003846" startTime="2026-04-22T20:03:51.9027619-05:00" endTime="2026-04-22T20:03:51.9037629-05:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="cb856d77-e852-4ecc-b3fd-d15dc3c8d85f" />
+    <UnitTestResult executionId="e111965b-9fb0-4d4c-a6ac-ee9fa054db42" testId="fd3121a5-0467-9c14-1917-e0e774685500" testName="EsTransicionPermitida_TransicionesValidas_DebeRetornarTrue (AOCR En Revision,AOCR Validado)" computerName="DESKTOP-S4GE44J" duration="00:00:00.0000093" startTime="2026-04-22T20:03:52.2037642-05:00" endTime="2026-04-22T20:03:52.2037642-05:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="e111965b-9fb0-4d4c-a6ac-ee9fa054db42" />
+    <UnitTestResult executionId="adf717ea-dd9b-4e37-bcce-4909ae79db79" testId="55f3a4f2-6020-440a-ef9f-f35d7b91779a" testName="Matriz_TransicionesValidas_DebePermitir (Subsanada,Documentacion Pendiente)" computerName="DESKTOP-S4GE44J" duration="00:00:00.0000048" startTime="2026-04-22T20:03:51.9017635-05:00" endTime="2026-04-22T20:03:51.9027619-05:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="adf717ea-dd9b-4e37-bcce-4909ae79db79" />
+    <UnitTestResult executionId="e07f94df-d5b3-4746-a2c4-f54ebd25c88a" testId="d4753ea5-7a73-da42-2b09-1b2e24fe28d3" testName="Matriz_TransicionesValidas_DebePermitir (Documentacion Pendiente,Observada)" computerName="DESKTOP-S4GE44J" duration="00:00:00.0000070" startTime="2026-04-22T20:03:51.9017635-05:00" endTime="2026-04-22T20:03:51.9017635-05:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="e07f94df-d5b3-4746-a2c4-f54ebd25c88a" />
+    <UnitTestResult executionId="fdfd9dbe-7fa9-43cf-86c6-e30e3e948e38" testId="3d058df1-d70c-be0b-f690-2dc4115ce34f" testName="Matriz_TransicionesInvalidas_DebeBloquear (Pendiente Asignacion RT,AOCR En Revision)" computerName="DESKTOP-S4GE44J" duration="00:00:00.0000053" startTime="2026-04-22T20:03:51.9037629-05:00" endTime="2026-04-22T20:03:51.9037629-05:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="fdfd9dbe-7fa9-43cf-86c6-e30e3e948e38" />
+    <UnitTestResult executionId="d72367e7-f556-43e8-ad19-02cde35d5485" testId="ac3f7675-4029-0865-00a0-3f2e8bcbbf75" testName="Matriz_TransicionesValidas_DebePermitir (AOCR Legalizado,AOCR Emitido/Recibido)" computerName="DESKTOP-S4GE44J" duration="00:00:00.0000049" startTime="2026-04-22T20:03:51.9027619-05:00" endTime="2026-04-22T20:03:51.9027619-05:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="d72367e7-f556-43e8-ad19-02cde35d5485" />
+    <UnitTestResult executionId="7202b494-25d2-4794-b3db-6ac25ac449f4" testId="fb712e4c-a09a-a4b4-e631-d7f7301c144b" testName="ObtenerOrden_IdValido_RetornaOrden" computerName="DESKTOP-S4GE44J" duration="00:00:00.0017949" startTime="2026-04-22T20:03:51.8797407-05:00" endTime="2026-04-22T20:03:51.8817958-05:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="7202b494-25d2-4794-b3db-6ac25ac449f4" />
+    <UnitTestResult executionId="bc1d7c73-c280-4440-a65c-269e135d529e" testId="87153650-0b4b-e7dd-edb3-d7d29f8f1e7e" testName="EncolarCorreo_SinDestinatario_Falla" computerName="DESKTOP-S4GE44J" duration="00:00:00.0000855" startTime="2026-04-22T20:03:51.8897968-05:00" endTime="2026-04-22T20:03:51.8897968-05:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="bc1d7c73-c280-4440-a65c-269e135d529e" />
+    <UnitTestResult executionId="d1b8adc1-1695-456e-82a4-622410e07891" testId="8524fd19-a0a7-cd7c-e3ef-a83e05ec6059" testName="Matriz_TransicionesValidas_DebePermitir (En Inspeccion,AOCR En Elaboracion)" computerName="DESKTOP-S4GE44J" duration="00:00:00.0000049" startTime="2026-04-22T20:03:51.9027619-05:00" endTime="2026-04-22T20:03:51.9027619-05:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="d1b8adc1-1695-456e-82a4-622410e07891" />
+    <UnitTestResult executionId="4cae372b-6de0-4e17-a421-67e24ed7c59c" testId="bddd4904-c6a0-388b-5775-56ee2a0af1ec" testName="Matriz_TransicionesValidas_DebePermitir (Aceptacion Documental,Pendiente Asignacion RT)" computerName="DESKTOP-S4GE44J" duration="00:00:00.0000050" startTime="2026-04-22T20:03:51.9027619-05:00" endTime="2026-04-22T20:03:51.9027619-05:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="4cae372b-6de0-4e17-a421-67e24ed7c59c" />
+    <UnitTestResult executionId="bc781b6c-3b6f-4374-ac36-fc7d4387f2b1" testId="030b14fb-3b14-4960-f94b-83394855ae9d" testName="EsTransicionPermitida_TransicionesInvalidas_DebeRetornarFalse (Observada,AOCR Validado)" computerName="DESKTOP-S4GE44J" duration="00:00:00.0000093" startTime="2026-04-22T20:03:52.2057644-05:00" endTime="2026-04-22T20:03:52.2057644-05:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="bc781b6c-3b6f-4374-ac36-fc7d4387f2b1" />
+    <UnitTestResult executionId="d1e63a4a-156b-462b-8670-db4d940090d2" testId="084b2f8b-72e1-b973-5a12-41e9ee505641" testName="EsTransicionPermitida_EstadosLegacyNormalizados_DebeRetornarTrue (APROBADO_POR_DIRECCION,LEGALIZADO)" computerName="DESKTOP-S4GE44J" duration="00:00:00.0006686" startTime="2026-04-22T20:03:52.2067752-05:00" endTime="2026-04-22T20:03:52.2077629-05:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Failed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="d1e63a4a-156b-462b-8670-db4d940090d2">
+      <Output>
+        <ErrorInfo>
+          <Message>Error de Assert.IsTrue. Se esperaba transicion valida tras normalizacion: APROBADO_POR_DIRECCION -&gt; LEGALIZADO</Message>
+          <StackTrace>   en AOCR.Tests.Unit.SolicitudEstadoTransitionBLTests.EsTransicionPermitida_EstadosLegacyNormalizados_DebeRetornarTrue(String actualLegacy, String destinoLegacy) en C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\AOCR.Tests\Unit\SolicitudEstadoTransitionBLTests.cs:línea 46&#xD;
+</StackTrace>
+        </ErrorInfo>
+      </Output>
+    </UnitTestResult>
+    <UnitTestResult executionId="fe95bf9a-d3e5-404c-9c48-6340a4da09f5" testId="7ba9af93-e836-cee5-2d32-1f38b166c3bf" testName="EncolarCorreo_DatosValidos_RetornaId" computerName="DESKTOP-S4GE44J" duration="00:00:00.0001344" startTime="2026-04-22T20:03:51.8897968-05:00" endTime="2026-04-22T20:03:51.8897968-05:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="fe95bf9a-d3e5-404c-9c48-6340a4da09f5" />
+    <UnitTestResult executionId="c6e1824b-79d2-42f8-ac15-3ff9f868600d" testId="bec301a9-3f89-743f-3e03-3a3c24a4683a" testName="ActualizarEstado_OrdenExistente_Exitoso" computerName="DESKTOP-S4GE44J" duration="00:00:00.0011815" startTime="2026-04-22T20:03:51.8817958-05:00" endTime="2026-04-22T20:03:51.8827638-05:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="c6e1824b-79d2-42f8-ac15-3ff9f868600d" />
+    <UnitTestResult executionId="0c194526-89f3-4547-b7b2-baff1b19e777" testId="8b2f8c39-66aa-9a67-5b44-b3416762c893" testName="FlujoCompleto_CrearOrdenHastaPago_Exitoso" computerName="DESKTOP-S4GE44J" duration="00:00:00.0630324" startTime="2026-04-22T20:03:51.7484819-05:00" endTime="2026-04-22T20:03:51.8648174-05:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="NotExecuted" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="0c194526-89f3-4547-b7b2-baff1b19e777">
+      <Output>
+        <ErrorInfo>
+          <Message>Error de Assert.Inconclusive. Test de integración - requiere BD</Message>
+          <StackTrace>   en AOCR.Tests.Integration.FlujoCompletoTests.FlujoCompleto_CrearOrdenHastaPago_Exitoso() en C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\AOCR.Tests\Integration\FlujoCompletoTests.cs:línea 18&#xD;
+</StackTrace>
+        </ErrorInfo>
+      </Output>
+    </UnitTestResult>
+    <UnitTestResult executionId="2fbf7851-9614-48d5-a50d-312da0e1fbbd" testId="6d0b85d9-49c7-d679-5b96-d17a0df938d1" testName="EsTransicionPermitida_EstadosLegacyNormalizados_DebeRetornarTrue (ENVIADO_A_JEFATURA,AOCR_Validado)" computerName="DESKTOP-S4GE44J" duration="00:00:00.0001850" startTime="2026-04-22T20:03:52.2067752-05:00" endTime="2026-04-22T20:03:52.2067752-05:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="2fbf7851-9614-48d5-a50d-312da0e1fbbd" />
+    <UnitTestResult executionId="6efa1806-6611-4fb0-bb5a-cb7059381242" testId="f4db67e1-4556-8e73-1ed7-178372bc52c5" testName="EsTransicionPermitida_TransicionesValidas_DebeRetornarTrue (En Revision,Aceptacion Documental)" computerName="DESKTOP-S4GE44J" duration="00:00:00.0000114" startTime="2026-04-22T20:03:52.2037642-05:00" endTime="2026-04-22T20:03:52.2037642-05:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="6efa1806-6611-4fb0-bb5a-cb7059381242" />
+    <UnitTestResult executionId="6e3be8e7-3dc5-4902-9938-87062c31f757" testId="6162ed3c-60f9-ca87-f0b1-14954518e2b2" testName="GenerarPdf_SinNumeroOrden_Falla" computerName="DESKTOP-S4GE44J" duration="00:00:00.0000579" startTime="2026-04-22T20:03:52.2087639-05:00" endTime="2026-04-22T20:03:52.2087639-05:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="6e3be8e7-3dc5-4902-9938-87062c31f757" />
+    <UnitTestResult executionId="6473b4fe-ca61-4f88-8773-90fe262817ce" testId="65669073-f6cb-b796-f369-61f20dec513b" testName="Matriz_TransicionesValidas_DebePermitir (AOCR En Revision,AOCR Validado)" computerName="DESKTOP-S4GE44J" duration="00:00:00.0000047" startTime="2026-04-22T20:03:51.9027619-05:00" endTime="2026-04-22T20:03:51.9027619-05:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="6473b4fe-ca61-4f88-8773-90fe262817ce" />
+    <UnitTestResult executionId="885945a5-5053-4a63-8781-eee1f18b9fde" testId="11d557d1-7edc-cfe1-4cae-1b1e55518806" testName="EsTransicionPermitida_TransicionesValidas_DebeRetornarTrue (Pendiente,Observada)" computerName="DESKTOP-S4GE44J" duration="00:00:00.2979900" startTime="2026-04-22T20:03:51.9047940-05:00" endTime="2026-04-22T20:03:52.2027656-05:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="885945a5-5053-4a63-8781-eee1f18b9fde" />
+    <UnitTestResult executionId="a63059e4-8b68-4ec7-b082-16c05d91fc9d" testId="8b8f40c0-0f9f-4a7f-709b-5f419eda5cf3" testName="EsTransicionPermitida_TransicionesInvalidas_DebeRetornarFalse (Pendiente,AOCR Legalizado)" computerName="DESKTOP-S4GE44J" duration="00:00:00.0007519" startTime="2026-04-22T20:03:52.2047635-05:00" endTime="2026-04-22T20:03:52.2057644-05:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Failed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="a63059e4-8b68-4ec7-b082-16c05d91fc9d">
+      <Output>
+        <ErrorInfo>
+          <Message>Error de Assert.IsFalse. Se esperaba transicion invalida: Pendiente -&gt; AOCR Legalizado</Message>
+          <StackTrace>   en AOCR.Tests.Unit.SolicitudEstadoTransitionBLTests.EsTransicionPermitida_TransicionesInvalidas_DebeRetornarFalse(String actual, String destino) en C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\AOCR.Tests\Unit\SolicitudEstadoTransitionBLTests.cs:línea 36&#xD;
+</StackTrace>
+        </ErrorInfo>
+      </Output>
+    </UnitTestResult>
+    <UnitTestResult executionId="93f97db5-237a-4189-8da6-c3bddb5a106b" testId="931616ce-b494-8596-41ef-25a325d1a42a" testName="GenerarPdf_OrdenNula_LanzaExcepcion" computerName="DESKTOP-S4GE44J" duration="00:00:00.0001074" startTime="2026-04-22T20:03:52.2077629-05:00" endTime="2026-04-22T20:03:52.2087639-05:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="93f97db5-237a-4189-8da6-c3bddb5a106b" />
+    <UnitTestResult executionId="f852ce76-943d-4f27-ab04-fc2a3503ccc6" testId="6f81574e-136a-66d4-6a01-38ca2c6dd3bc" testName="Matriz_TransicionesValidas_DebePermitir (Pendiente Asignacion RT,En Inspeccion)" computerName="DESKTOP-S4GE44J" duration="00:00:00.0000045" startTime="2026-04-22T20:03:51.9027619-05:00" endTime="2026-04-22T20:03:51.9027619-05:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="f852ce76-943d-4f27-ab04-fc2a3503ccc6" />
+    <UnitTestResult executionId="93a414ef-e11a-4ed7-a9f8-44192a90ff68" testId="6610b768-d115-7a2d-859e-2a476dac1781" testName="EsTransicionPermitida_TransicionesInvalidas_DebeRetornarFalse (Pendiente Asignacion RT,AOCR Legalizado)" computerName="DESKTOP-S4GE44J" duration="00:00:00.0000069" startTime="2026-04-22T20:03:52.2057644-05:00" endTime="2026-04-22T20:03:52.2057644-05:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="93a414ef-e11a-4ed7-a9f8-44192a90ff68" />
+    <UnitTestResult executionId="7de5d4d6-75c4-475b-a7b3-0eb8d5704657" testId="85ab1dac-d7cf-9cf5-c392-49272ac40b1a" testName="ObtenerOrden_IdInexistente_RetornaNull" computerName="DESKTOP-S4GE44J" duration="00:00:00.0004689" startTime="2026-04-22T20:03:51.8827638-05:00" endTime="2026-04-22T20:03:51.8837636-05:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="7de5d4d6-75c4-475b-a7b3-0eb8d5704657" />
+    <UnitTestResult executionId="0db19c14-a278-40dd-9bc4-8368c97ba8a7" testId="8bd54b3b-52ea-b441-3df4-26f5f61ddae6" testName="Matriz_TransicionesInvalidas_DebeBloquear (En Inspeccion,AOCR Legalizado)" computerName="DESKTOP-S4GE44J" duration="00:00:00.0000049" startTime="2026-04-22T20:03:51.9037629-05:00" endTime="2026-04-22T20:03:51.9037629-05:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="0db19c14-a278-40dd-9bc4-8368c97ba8a7" />
+    <UnitTestResult executionId="660b3681-692b-4be3-889f-c1ebe6557e65" testId="84f0f9fc-fd71-c2d4-a3c2-44dce01adef7" testName="EsTransicionPermitida_TransicionesValidas_DebeRetornarTrue (Aceptacion Documental,Pendiente Asignacion RT)" computerName="DESKTOP-S4GE44J" duration="00:00:00.0000056" startTime="2026-04-22T20:03:52.2037642-05:00" endTime="2026-04-22T20:03:52.2037642-05:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="660b3681-692b-4be3-889f-c1ebe6557e65" />
+    <UnitTestResult executionId="76448ae5-db4a-4c66-b345-c00c56523335" testId="9e6da589-d1d4-2673-576f-395e7a104363" testName="EsTransicionPermitida_TransicionesValidas_DebeRetornarTrue (AOCR Validado,AOCR Legalizado)" computerName="DESKTOP-S4GE44J" duration="00:00:00.0000089" startTime="2026-04-22T20:03:52.2037642-05:00" endTime="2026-04-22T20:03:52.2047635-05:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="76448ae5-db4a-4c66-b345-c00c56523335" />
+    <UnitTestResult executionId="a69d474a-4e61-4373-b75a-2ae8b5c9944f" testId="7a15ec3f-551f-205c-000c-e0c3860d58fa" testName="Matriz_TransicionesValidas_DebePermitir (Observada,Subsanada)" computerName="DESKTOP-S4GE44J" duration="00:00:00.0000049" startTime="2026-04-22T20:03:51.9017635-05:00" endTime="2026-04-22T20:03:51.9017635-05:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="a69d474a-4e61-4373-b75a-2ae8b5c9944f" />
+    <UnitTestResult executionId="0da134ab-06a6-4c26-bf6c-4d3c65d66084" testId="18e234b8-2d7b-b4d0-344c-5811693677a2" testName="EsTransicionPermitida_EstadosLegacyNormalizados_DebeRetornarTrue (CERTIFICADO_EMITIDO,AOCR_EMITIDO_RECIBIDO)" computerName="DESKTOP-S4GE44J" duration="00:00:00.0003771" startTime="2026-04-22T20:03:52.2077629-05:00" endTime="2026-04-22T20:03:52.2077629-05:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Failed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="0da134ab-06a6-4c26-bf6c-4d3c65d66084">
+      <Output>
+        <ErrorInfo>
+          <Message>Error de Assert.IsTrue. Se esperaba transicion valida tras normalizacion: CERTIFICADO_EMITIDO -&gt; AOCR_EMITIDO_RECIBIDO</Message>
+          <StackTrace>   en AOCR.Tests.Unit.SolicitudEstadoTransitionBLTests.EsTransicionPermitida_EstadosLegacyNormalizados_DebeRetornarTrue(String actualLegacy, String destinoLegacy) en C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\AOCR.Tests\Unit\SolicitudEstadoTransitionBLTests.cs:línea 46&#xD;
+</StackTrace>
+        </ErrorInfo>
+      </Output>
+    </UnitTestResult>
+    <UnitTestResult executionId="7387e9af-dc44-4ab6-b521-9e1092202eef" testId="0f8d89cc-3c25-0b90-bf6b-463ae237c8d9" testName="EsTransicionPermitida_TransicionesInvalidas_DebeRetornarFalse (AOCR Emitido/Recibido,AOCR En Revision)" computerName="DESKTOP-S4GE44J" duration="00:00:00.0000070" startTime="2026-04-22T20:03:52.2057644-05:00" endTime="2026-04-22T20:03:52.2057644-05:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="7387e9af-dc44-4ab6-b521-9e1092202eef" />
+    <UnitTestResult executionId="2c1453e3-306b-4ac8-a2ef-c327a44ded85" testId="e7c2c311-456b-9100-d2b8-2c29a30333e5" testName="EsTransicionPermitida_TransicionesInvalidas_DebeRetornarFalse (Rechazada,AOCR Emitido/Recibido)" computerName="DESKTOP-S4GE44J" duration="00:00:00.0000064" startTime="2026-04-22T20:03:52.2057644-05:00" endTime="2026-04-22T20:03:52.2067752-05:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="2c1453e3-306b-4ac8-a2ef-c327a44ded85" />
+    <UnitTestResult executionId="ab1228da-31ef-47bd-b023-52bfcc13f7c2" testId="1c9c850f-e9cc-6746-d57b-f8101af5b0ba" testName="Matriz_TransicionesValidas_DebePermitir (AOCR En Elaboracion,AOCR En Revision)" computerName="DESKTOP-S4GE44J" duration="00:00:00.0000048" startTime="2026-04-22T20:03:51.9027619-05:00" endTime="2026-04-22T20:03:51.9027619-05:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="ab1228da-31ef-47bd-b023-52bfcc13f7c2" />
+    <UnitTestResult executionId="9356ef3d-8661-4348-9009-1a10d0c686a2" testId="7efac4e5-0d4a-c79b-3fe6-9f8215db521e" testName="ValidarArchivo_PathTraversal_Sanitizado" computerName="DESKTOP-S4GE44J" duration="00:00:00.0001235" startTime="2026-04-22T20:03:52.2087639-05:00" endTime="2026-04-22T20:03:52.2087639-05:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="9356ef3d-8661-4348-9009-1a10d0c686a2" />
+    <UnitTestResult executionId="ab288aa5-9fe9-44b2-8151-aaf9bf5d873c" testId="9a257d47-c25c-4046-6ece-592514569a27" testName="EsTransicionPermitida_TransicionesValidas_DebeRetornarTrue (Pendiente Asignacion RT,En Inspeccion)" computerName="DESKTOP-S4GE44J" duration="00:00:00.0000087" startTime="2026-04-22T20:03:52.2037642-05:00" endTime="2026-04-22T20:03:52.2037642-05:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="ab288aa5-9fe9-44b2-8151-aaf9bf5d873c" />
+    <UnitTestResult executionId="58a25722-066d-4b15-9753-461e28f942e9" testId="8621eede-c3e5-5e1d-65c1-f772369c5c9d" testName="NombreArchivo_CaracteresPeligrosos_Removidos" computerName="DESKTOP-S4GE44J" duration="00:00:00.0000919" startTime="2026-04-22T20:03:52.2087639-05:00" endTime="2026-04-22T20:03:52.2107631-05:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="58a25722-066d-4b15-9753-461e28f942e9" />
+    <UnitTestResult executionId="2f8bc88e-a81c-4144-bc43-736fff8d16d2" testId="a0d8548d-c447-a5f1-8f7f-c0f1cc016639" testName="ValidarArchivo_ExtensionExe_Invalido" computerName="DESKTOP-S4GE44J" duration="00:00:00.0003088" startTime="2026-04-22T20:03:51.8837636-05:00" endTime="2026-04-22T20:03:51.8847635-05:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="2f8bc88e-a81c-4144-bc43-736fff8d16d2" />
+    <UnitTestResult executionId="ff13096b-7b36-4234-8783-eb7928b02e98" testId="e47674b4-3125-881c-8b67-bcc4e26d823f" testName="EsTransicionPermitida_TransicionesInvalidas_DebeRetornarFalse (AOCR Validado,En Inspeccion)" computerName="DESKTOP-S4GE44J" duration="00:00:00.0000102" startTime="2026-04-22T20:03:52.2057644-05:00" endTime="2026-04-22T20:03:52.2057644-05:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="ff13096b-7b36-4234-8783-eb7928b02e98" />
+    <UnitTestResult executionId="47e6a46d-a9e7-43c8-b739-e41809fae985" testId="b2764189-3653-005f-53bb-8993f83d050d" testName="Matriz_TransicionesValidas_DebePermitir (Solicitud Creada,Documentacion Pendiente)" computerName="DESKTOP-S4GE44J" duration="00:00:00.0025601" startTime="2026-04-22T20:03:51.8897968-05:00" endTime="2026-04-22T20:03:51.9017635-05:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="47e6a46d-a9e7-43c8-b739-e41809fae985" />
+    <UnitTestResult executionId="8b84777c-d7ee-4706-aadb-1bbf560c53f4" testId="a7db5e90-ba70-eb9f-924f-0c598e8e2950" testName="Matriz_TransicionesInvalidas_DebeBloquear (AOCR Validado,En Inspeccion)" computerName="DESKTOP-S4GE44J" duration="00:00:00.0000049" startTime="2026-04-22T20:03:51.9047940-05:00" endTime="2026-04-22T20:03:51.9047940-05:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="8b84777c-d7ee-4706-aadb-1bbf560c53f4" />
+    <UnitTestResult executionId="dde5d02b-0acf-4abe-b3f5-a230d85355fb" testId="3571b916-2103-d541-e0fd-a0f64ee224a6" testName="EsTransicionPermitida_TransicionesValidas_DebeRetornarTrue (AOCR Legalizado,AOCR Emitido/Recibido)" computerName="DESKTOP-S4GE44J" duration="00:00:00.0000093" startTime="2026-04-22T20:03:52.2047635-05:00" endTime="2026-04-22T20:03:52.2047635-05:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="dde5d02b-0acf-4abe-b3f5-a230d85355fb" />
+    <UnitTestResult executionId="54cf0225-e745-4936-85b7-8faaa52859e7" testId="d925989e-ccfb-699e-945b-1068d4a9d076" testName="Matriz_TransicionesInvalidas_DebeBloquear (Documentacion Pendiente,AOCR En Revision)" computerName="DESKTOP-S4GE44J" duration="00:00:00.0000070" startTime="2026-04-22T20:03:51.9037629-05:00" endTime="2026-04-22T20:03:51.9037629-05:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="54cf0225-e745-4936-85b7-8faaa52859e7" />
+    <UnitTestResult executionId="4bdc882e-7209-4faa-bb76-449ace68d58f" testId="011f4e7d-42a6-7237-eb5c-a4f4604928ef" testName="Matriz_TransicionesInvalidas_DebeBloquear (Observada,AOCR En Elaboracion)" computerName="DESKTOP-S4GE44J" duration="00:00:00.0000051" startTime="2026-04-22T20:03:51.9037629-05:00" endTime="2026-04-22T20:03:51.9037629-05:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="4bdc882e-7209-4faa-bb76-449ace68d58f" />
+    <UnitTestResult executionId="31dc5f3e-22b8-4574-9fff-ea2ecb702556" testId="3cd830cc-999b-0acb-ff86-a1918f340789" testName="CrearOrden_DatosValidos_RetornaExito" computerName="DESKTOP-S4GE44J" duration="00:00:00.0027828" startTime="2026-04-22T20:03:51.8738225-05:00" endTime="2026-04-22T20:03:51.8768177-05:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="31dc5f3e-22b8-4574-9fff-ea2ecb702556" />
+    <UnitTestResult executionId="d73ed952-fd53-4c7c-b0e3-ed0a42141653" testId="e5a43bfc-f34b-653c-c011-ccdffb4b60be" testName="Matriz_TransicionesInvalidas_DebeBloquear (AOCR En Elaboracion,AOCR Emitido/Recibido)" computerName="DESKTOP-S4GE44J" duration="00:00:00.0000052" startTime="2026-04-22T20:03:51.9037629-05:00" endTime="2026-04-22T20:03:51.9047940-05:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="d73ed952-fd53-4c7c-b0e3-ed0a42141653" />
+    <UnitTestResult executionId="be759672-e500-4ec1-a59a-2f7f2cd6eae6" testId="061be749-4608-9c9e-beec-eb09973ea57b" testName="CrearOrden_SinContribuyente_EsCero" computerName="DESKTOP-S4GE44J" duration="00:00:00.0023246" startTime="2026-04-22T20:03:51.8768177-05:00" endTime="2026-04-22T20:03:51.8797407-05:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Failed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="be759672-e500-4ec1-a59a-2f7f2cd6eae6">
+      <Output>
+        <ErrorInfo>
+          <Message>Error de Assert.AreEqual. Se esperaba &lt;0&gt;, pero es &lt;(null)&gt;. </Message>
+          <StackTrace>   en AOCR.Tests.Unit.OrdenRecaudacionOrchestratorTests.CrearOrden_SinContribuyente_EsCero() en C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\AOCR.Tests\Unit\OrdenRecaudacionOrchestratorTests.cs:línea 54&#xD;
+</StackTrace>
+        </ErrorInfo>
+      </Output>
+    </UnitTestResult>
+    <UnitTestResult executionId="647d47e8-61ed-454a-88ba-8411977f50f2" testId="e0199b15-fa31-f0be-64b9-0a763b398054" testName="Matriz_TransicionesValidas_DebePermitir (AOCR Validado,AOCR Legalizado)" computerName="DESKTOP-S4GE44J" duration="00:00:00.0000047" startTime="2026-04-22T20:03:51.9027619-05:00" endTime="2026-04-22T20:03:51.9027619-05:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="647d47e8-61ed-454a-88ba-8411977f50f2" />
+    <UnitTestResult executionId="954a67f0-80ae-4b51-bf9c-aedf01a99857" testId="4d2a2ae8-d53e-60ea-b008-7f0dcdef2e7e" testName="Matriz_NormalizacionLegacy_DebeMapearYValidar" computerName="DESKTOP-S4GE44J" duration="00:00:00.0001333" startTime="2026-04-22T20:03:51.9047940-05:00" endTime="2026-04-22T20:03:51.9047940-05:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="954a67f0-80ae-4b51-bf9c-aedf01a99857" />
+    <UnitTestResult executionId="162617f7-e967-4e56-8ff8-eb533541725c" testId="e4cb36bd-f93d-c4a9-fda2-5aeada9eecd9" testName="ValidarFecha_Futura_Invalida" computerName="DESKTOP-S4GE44J" duration="00:00:00.0001393" startTime="2026-04-22T20:03:51.8897968-05:00" endTime="2026-04-22T20:03:51.8897968-05:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="162617f7-e967-4e56-8ff8-eb533541725c" />
+  </Results>
+  <TestDefinitions>
+    <UnitTest name="ActualizarEstado_OrdenExistente_Exitoso" storage="c:\aocr\aocr\aocr05-01-2026\aocr1\aocr\aocr.tests\bin\debug\aocr.tests.dll" id="bec301a9-3f89-743f-3e03-3a3c24a4683a">
+      <Execution id="c6e1824b-79d2-42f8-ac15-3ff9f868600d" />
+      <TestMethod codeBase="C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\AOCR.Tests\bin\Debug\AOCR.Tests.dll" adapterTypeName="executor://mstestadapter/v2" className="AOCR.Tests.Unit.OrdenRecaudacionOrchestratorTests" name="ActualizarEstado_OrdenExistente_Exitoso" />
+    </UnitTest>
+    <UnitTest name="EsTransicionPermitida_TransicionesValidas_DebeRetornarTrue (AOCR Validado,AOCR Legalizado)" storage="c:\aocr\aocr\aocr05-01-2026\aocr1\aocr\aocr.tests\bin\debug\aocr.tests.dll" id="9e6da589-d1d4-2673-576f-395e7a104363">
+      <Execution id="76448ae5-db4a-4c66-b345-c00c56523335" />
+      <TestMethod codeBase="C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\AOCR.Tests\bin\Debug\AOCR.Tests.dll" adapterTypeName="executor://mstestadapter/v2" className="AOCR.Tests.Unit.SolicitudEstadoTransitionBLTests" name="EsTransicionPermitida_TransicionesValidas_DebeRetornarTrue" />
+    </UnitTest>
+    <UnitTest name="ValidarMonto_Negativo_Invalido" storage="c:\aocr\aocr\aocr05-01-2026\aocr1\aocr\aocr.tests\bin\debug\aocr.tests.dll" id="5d4bfedd-0225-eef3-2127-50d8f8dff382">
+      <Execution id="48fc4d30-8f91-45aa-9a08-128477b71365" />
+      <TestMethod codeBase="C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\AOCR.Tests\bin\Debug\AOCR.Tests.dll" adapterTypeName="executor://mstestadapter/v2" className="AOCR.Tests.Unit.ValidacionesTests" name="ValidarMonto_Negativo_Invalido" />
+    </UnitTest>
+    <UnitTest name="CrearOrden_DatosValidos_RetornaExito" storage="c:\aocr\aocr\aocr05-01-2026\aocr1\aocr\aocr.tests\bin\debug\aocr.tests.dll" id="3cd830cc-999b-0acb-ff86-a1918f340789">
+      <Execution id="31dc5f3e-22b8-4574-9fff-ea2ecb702556" />
+      <TestMethod codeBase="C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\AOCR.Tests\bin\Debug\AOCR.Tests.dll" adapterTypeName="executor://mstestadapter/v2" className="AOCR.Tests.Unit.OrdenRecaudacionOrchestratorTests" name="CrearOrden_DatosValidos_RetornaExito" />
+    </UnitTest>
+    <UnitTest name="Matriz_NormalizacionLegacy_DebeMapearYValidar" storage="c:\aocr\aocr\aocr05-01-2026\aocr1\aocr\aocr.tests\bin\debug\aocr.tests.dll" id="4d2a2ae8-d53e-60ea-b008-7f0dcdef2e7e">
+      <Execution id="954a67f0-80ae-4b51-bf9c-aedf01a99857" />
+      <TestMethod codeBase="C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\AOCR.Tests\bin\Debug\AOCR.Tests.dll" adapterTypeName="executor://mstestadapter/v2" className="AOCR.Tests.Unit.EstadoSolicitudTransitionMatrixTests" name="Matriz_NormalizacionLegacy_DebeMapearYValidar" />
+    </UnitTest>
+    <UnitTest name="ValidarArchivo_ExtensionPdf_Valido" storage="c:\aocr\aocr\aocr05-01-2026\aocr1\aocr\aocr.tests\bin\debug\aocr.tests.dll" id="670bb6d9-a4f1-135c-c7dd-f0ccc69b993e">
+      <Execution id="7890820f-fbea-4b95-90cc-03dfa20d1494" />
+      <TestMethod codeBase="C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\AOCR.Tests\bin\Debug\AOCR.Tests.dll" adapterTypeName="executor://mstestadapter/v2" className="AOCR.Tests.Unit.ValidacionesTests" name="ValidarArchivo_ExtensionPdf_Valido" />
+    </UnitTest>
+    <UnitTest name="EsTransicionPermitida_TransicionesInvalidas_DebeRetornarFalse (AOCR Validado,En Inspeccion)" storage="c:\aocr\aocr\aocr05-01-2026\aocr1\aocr\aocr.tests\bin\debug\aocr.tests.dll" id="e47674b4-3125-881c-8b67-bcc4e26d823f">
+      <Execution id="ff13096b-7b36-4234-8783-eb7928b02e98" />
+      <TestMethod codeBase="C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\AOCR.Tests\bin\Debug\AOCR.Tests.dll" adapterTypeName="executor://mstestadapter/v2" className="AOCR.Tests.Unit.SolicitudEstadoTransitionBLTests" name="EsTransicionPermitida_TransicionesInvalidas_DebeRetornarFalse" />
+    </UnitTest>
+    <UnitTest name="FlujoCompleto_CrearOrdenHastaPago_Exitoso" storage="c:\aocr\aocr\aocr05-01-2026\aocr1\aocr\aocr.tests\bin\debug\aocr.tests.dll" id="8b2f8c39-66aa-9a67-5b44-b3416762c893">
+      <TestCategory>
+        <TestCategoryItem TestCategory="Integration" />
+      </TestCategory>
+      <Execution id="0c194526-89f3-4547-b7b2-baff1b19e777" />
+      <TestMethod codeBase="C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\AOCR.Tests\bin\Debug\AOCR.Tests.dll" adapterTypeName="executor://mstestadapter/v2" className="AOCR.Tests.Integration.FlujoCompletoTests" name="FlujoCompleto_CrearOrdenHastaPago_Exitoso" />
+    </UnitTest>
+    <UnitTest name="Matriz_TransicionesValidas_DebePermitir (Pendiente Asignacion RT,En Inspeccion)" storage="c:\aocr\aocr\aocr05-01-2026\aocr1\aocr\aocr.tests\bin\debug\aocr.tests.dll" id="6f81574e-136a-66d4-6a01-38ca2c6dd3bc">
+      <Execution id="f852ce76-943d-4f27-ab04-fc2a3503ccc6" />
+      <TestMethod codeBase="C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\AOCR.Tests\bin\Debug\AOCR.Tests.dll" adapterTypeName="executor://mstestadapter/v2" className="AOCR.Tests.Unit.EstadoSolicitudTransitionMatrixTests" name="Matriz_TransicionesValidas_DebePermitir" />
+    </UnitTest>
+    <UnitTest name="ObtenerOrden_IdValido_RetornaOrden" storage="c:\aocr\aocr\aocr05-01-2026\aocr1\aocr\aocr.tests\bin\debug\aocr.tests.dll" id="fb712e4c-a09a-a4b4-e631-d7f7301c144b">
+      <Execution id="7202b494-25d2-4794-b3db-6ac25ac449f4" />
+      <TestMethod codeBase="C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\AOCR.Tests\bin\Debug\AOCR.Tests.dll" adapterTypeName="executor://mstestadapter/v2" className="AOCR.Tests.Unit.OrdenRecaudacionOrchestratorTests" name="ObtenerOrden_IdValido_RetornaOrden" />
+    </UnitTest>
+    <UnitTest name="Matriz_TransicionesValidas_DebePermitir (Solicitud Creada,Documentacion Pendiente)" storage="c:\aocr\aocr\aocr05-01-2026\aocr1\aocr\aocr.tests\bin\debug\aocr.tests.dll" id="b2764189-3653-005f-53bb-8993f83d050d">
+      <Execution id="47e6a46d-a9e7-43c8-b739-e41809fae985" />
+      <TestMethod codeBase="C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\AOCR.Tests\bin\Debug\AOCR.Tests.dll" adapterTypeName="executor://mstestadapter/v2" className="AOCR.Tests.Unit.EstadoSolicitudTransitionMatrixTests" name="Matriz_TransicionesValidas_DebePermitir" />
+    </UnitTest>
+    <UnitTest name="EsTransicionPermitida_EstadosLegacyNormalizados_DebeRetornarTrue (ENVIADO_A_JEFATURA,AOCR_Validado)" storage="c:\aocr\aocr\aocr05-01-2026\aocr1\aocr\aocr.tests\bin\debug\aocr.tests.dll" id="6d0b85d9-49c7-d679-5b96-d17a0df938d1">
+      <Execution id="2fbf7851-9614-48d5-a50d-312da0e1fbbd" />
+      <TestMethod codeBase="C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\AOCR.Tests\bin\Debug\AOCR.Tests.dll" adapterTypeName="executor://mstestadapter/v2" className="AOCR.Tests.Unit.SolicitudEstadoTransitionBLTests" name="EsTransicionPermitida_EstadosLegacyNormalizados_DebeRetornarTrue" />
+    </UnitTest>
+    <UnitTest name="Matriz_TransicionesInvalidas_DebeBloquear (AOCR En Revision,AOCR Emitido/Recibido)" storage="c:\aocr\aocr\aocr05-01-2026\aocr1\aocr\aocr.tests\bin\debug\aocr.tests.dll" id="5bb6a88d-92cf-ad24-4246-eb79316e0c63">
+      <Execution id="68c2fae6-6bb3-41cd-93a3-2cc4ebdc1c98" />
+      <TestMethod codeBase="C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\AOCR.Tests\bin\Debug\AOCR.Tests.dll" adapterTypeName="executor://mstestadapter/v2" className="AOCR.Tests.Unit.EstadoSolicitudTransitionMatrixTests" name="Matriz_TransicionesInvalidas_DebeBloquear" />
+    </UnitTest>
+    <UnitTest name="EncolarCorreo_SinDestinatario_Falla" storage="c:\aocr\aocr\aocr05-01-2026\aocr1\aocr\aocr.tests\bin\debug\aocr.tests.dll" id="87153650-0b4b-e7dd-edb3-d7d29f8f1e7e">
+      <Execution id="bc1d7c73-c280-4440-a65c-269e135d529e" />
+      <TestMethod codeBase="C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\AOCR.Tests\bin\Debug\AOCR.Tests.dll" adapterTypeName="executor://mstestadapter/v2" className="AOCR.Tests.Unit.EmailQueueTests" name="EncolarCorreo_SinDestinatario_Falla" />
+    </UnitTest>
+    <UnitTest name="EsTransicionPermitida_TransicionesValidas_DebeRetornarTrue (Aceptacion Documental,Pendiente Asignacion RT)" storage="c:\aocr\aocr\aocr05-01-2026\aocr1\aocr\aocr.tests\bin\debug\aocr.tests.dll" id="84f0f9fc-fd71-c2d4-a3c2-44dce01adef7">
+      <Execution id="660b3681-692b-4be3-889f-c1ebe6557e65" />
+      <TestMethod codeBase="C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\AOCR.Tests\bin\Debug\AOCR.Tests.dll" adapterTypeName="executor://mstestadapter/v2" className="AOCR.Tests.Unit.SolicitudEstadoTransitionBLTests" name="EsTransicionPermitida_TransicionesValidas_DebeRetornarTrue" />
+    </UnitTest>
+    <UnitTest name="ValidarFecha_Futura_Invalida" storage="c:\aocr\aocr\aocr05-01-2026\aocr1\aocr\aocr.tests\bin\debug\aocr.tests.dll" id="e4cb36bd-f93d-c4a9-fda2-5aeada9eecd9">
+      <Execution id="162617f7-e967-4e56-8ff8-eb533541725c" />
+      <TestMethod codeBase="C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\AOCR.Tests\bin\Debug\AOCR.Tests.dll" adapterTypeName="executor://mstestadapter/v2" className="AOCR.Tests.Unit.ValidacionesTests" name="ValidarFecha_Futura_Invalida" />
+    </UnitTest>
+    <UnitTest name="Matriz_TransicionesValidas_DebePermitir (Aceptacion Documental,Pendiente Asignacion RT)" storage="c:\aocr\aocr\aocr05-01-2026\aocr1\aocr\aocr.tests\bin\debug\aocr.tests.dll" id="bddd4904-c6a0-388b-5775-56ee2a0af1ec">
+      <Execution id="4cae372b-6de0-4e17-a421-67e24ed7c59c" />
+      <TestMethod codeBase="C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\AOCR.Tests\bin\Debug\AOCR.Tests.dll" adapterTypeName="executor://mstestadapter/v2" className="AOCR.Tests.Unit.EstadoSolicitudTransitionMatrixTests" name="Matriz_TransicionesValidas_DebePermitir" />
+    </UnitTest>
+    <UnitTest name="EncolarCorreo_DatosValidos_RetornaId" storage="c:\aocr\aocr\aocr05-01-2026\aocr1\aocr\aocr.tests\bin\debug\aocr.tests.dll" id="7ba9af93-e836-cee5-2d32-1f38b166c3bf">
+      <Execution id="fe95bf9a-d3e5-404c-9c48-6340a4da09f5" />
+      <TestMethod codeBase="C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\AOCR.Tests\bin\Debug\AOCR.Tests.dll" adapterTypeName="executor://mstestadapter/v2" className="AOCR.Tests.Unit.EmailQueueTests" name="EncolarCorreo_DatosValidos_RetornaId" />
+    </UnitTest>
+    <UnitTest name="Matriz_TransicionesInvalidas_DebeBloquear (Pendiente Asignacion RT,AOCR En Revision)" storage="c:\aocr\aocr\aocr05-01-2026\aocr1\aocr\aocr.tests\bin\debug\aocr.tests.dll" id="3d058df1-d70c-be0b-f690-2dc4115ce34f">
+      <Execution id="fdfd9dbe-7fa9-43cf-86c6-e30e3e948e38" />
+      <TestMethod codeBase="C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\AOCR.Tests\bin\Debug\AOCR.Tests.dll" adapterTypeName="executor://mstestadapter/v2" className="AOCR.Tests.Unit.EstadoSolicitudTransitionMatrixTests" name="Matriz_TransicionesInvalidas_DebeBloquear" />
+    </UnitTest>
+    <UnitTest name="GenerarPdf_OrdenNula_LanzaExcepcion" storage="c:\aocr\aocr\aocr05-01-2026\aocr1\aocr\aocr.tests\bin\debug\aocr.tests.dll" id="931616ce-b494-8596-41ef-25a325d1a42a">
+      <Execution id="93f97db5-237a-4189-8da6-c3bddb5a106b" />
+      <TestMethod codeBase="C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\AOCR.Tests\bin\Debug\AOCR.Tests.dll" adapterTypeName="executor://mstestadapter/v2" className="AOCR.Tests.Unit.PdfGeneratorTests" name="GenerarPdf_OrdenNula_LanzaExcepcion" />
+    </UnitTest>
+    <UnitTest name="Matriz_TransicionesInvalidas_DebeBloquear (AOCR Emitido/Recibido,AOCR En Revision)" storage="c:\aocr\aocr\aocr05-01-2026\aocr1\aocr\aocr.tests\bin\debug\aocr.tests.dll" id="98af0476-00fc-2b2e-5e94-efb32518d639">
+      <Execution id="6329cd95-f016-44aa-805b-1862c3bf50cc" />
+      <TestMethod codeBase="C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\AOCR.Tests\bin\Debug\AOCR.Tests.dll" adapterTypeName="executor://mstestadapter/v2" className="AOCR.Tests.Unit.EstadoSolicitudTransitionMatrixTests" name="Matriz_TransicionesInvalidas_DebeBloquear" />
+    </UnitTest>
+    <UnitTest name="NombreArchivo_CaracteresPeligrosos_Removidos" storage="c:\aocr\aocr\aocr05-01-2026\aocr1\aocr\aocr.tests\bin\debug\aocr.tests.dll" id="8621eede-c3e5-5e1d-65c1-f772369c5c9d">
+      <Execution id="58a25722-066d-4b15-9753-461e28f942e9" />
+      <TestMethod codeBase="C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\AOCR.Tests\bin\Debug\AOCR.Tests.dll" adapterTypeName="executor://mstestadapter/v2" className="AOCR.Tests.Unit.SecurityTests" name="NombreArchivo_CaracteresPeligrosos_Removidos" />
+    </UnitTest>
+    <UnitTest name="EsTransicionPermitida_EstadosLegacyNormalizados_DebeRetornarTrue (APROBADO_POR_DIRECCION,LEGALIZADO)" storage="c:\aocr\aocr\aocr05-01-2026\aocr1\aocr\aocr.tests\bin\debug\aocr.tests.dll" id="084b2f8b-72e1-b973-5a12-41e9ee505641">
+      <Execution id="d1e63a4a-156b-462b-8670-db4d940090d2" />
+      <TestMethod codeBase="C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\AOCR.Tests\bin\Debug\AOCR.Tests.dll" adapterTypeName="executor://mstestadapter/v2" className="AOCR.Tests.Unit.SolicitudEstadoTransitionBLTests" name="EsTransicionPermitida_EstadosLegacyNormalizados_DebeRetornarTrue" />
+    </UnitTest>
+    <UnitTest name="EsTransicionPermitida_EstadosLegacyNormalizados_DebeRetornarTrue (CERTIFICADO_EMITIDO,AOCR_EMITIDO_RECIBIDO)" storage="c:\aocr\aocr\aocr05-01-2026\aocr1\aocr\aocr.tests\bin\debug\aocr.tests.dll" id="18e234b8-2d7b-b4d0-344c-5811693677a2">
+      <Execution id="0da134ab-06a6-4c26-bf6c-4d3c65d66084" />
+      <TestMethod codeBase="C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\AOCR.Tests\bin\Debug\AOCR.Tests.dll" adapterTypeName="executor://mstestadapter/v2" className="AOCR.Tests.Unit.SolicitudEstadoTransitionBLTests" name="EsTransicionPermitida_EstadosLegacyNormalizados_DebeRetornarTrue" />
+    </UnitTest>
+    <UnitTest name="EsTransicionPermitida_TransicionesValidas_DebeRetornarTrue (AOCR En Revision,AOCR Validado)" storage="c:\aocr\aocr\aocr05-01-2026\aocr1\aocr\aocr.tests\bin\debug\aocr.tests.dll" id="fd3121a5-0467-9c14-1917-e0e774685500">
+      <Execution id="e111965b-9fb0-4d4c-a6ac-ee9fa054db42" />
+      <TestMethod codeBase="C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\AOCR.Tests\bin\Debug\AOCR.Tests.dll" adapterTypeName="executor://mstestadapter/v2" className="AOCR.Tests.Unit.SolicitudEstadoTransitionBLTests" name="EsTransicionPermitida_TransicionesValidas_DebeRetornarTrue" />
+    </UnitTest>
+    <UnitTest name="EsTransicionPermitida_TransicionesInvalidas_DebeRetornarFalse (AOCR Emitido/Recibido,AOCR En Revision)" storage="c:\aocr\aocr\aocr05-01-2026\aocr1\aocr\aocr.tests\bin\debug\aocr.tests.dll" id="0f8d89cc-3c25-0b90-bf6b-463ae237c8d9">
+      <Execution id="7387e9af-dc44-4ab6-b521-9e1092202eef" />
+      <TestMethod codeBase="C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\AOCR.Tests\bin\Debug\AOCR.Tests.dll" adapterTypeName="executor://mstestadapter/v2" className="AOCR.Tests.Unit.SolicitudEstadoTransitionBLTests" name="EsTransicionPermitida_TransicionesInvalidas_DebeRetornarFalse" />
+    </UnitTest>
+    <UnitTest name="Matriz_TransicionesInvalidas_DebeBloquear (Documentacion Pendiente,AOCR En Revision)" storage="c:\aocr\aocr\aocr05-01-2026\aocr1\aocr\aocr.tests\bin\debug\aocr.tests.dll" id="d925989e-ccfb-699e-945b-1068d4a9d076">
+      <Execution id="54cf0225-e745-4936-85b7-8faaa52859e7" />
+      <TestMethod codeBase="C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\AOCR.Tests\bin\Debug\AOCR.Tests.dll" adapterTypeName="executor://mstestadapter/v2" className="AOCR.Tests.Unit.EstadoSolicitudTransitionMatrixTests" name="Matriz_TransicionesInvalidas_DebeBloquear" />
+    </UnitTest>
+    <UnitTest name="Matriz_TransicionesValidas_DebePermitir (AOCR En Elaboracion,AOCR En Revision)" storage="c:\aocr\aocr\aocr05-01-2026\aocr1\aocr\aocr.tests\bin\debug\aocr.tests.dll" id="1c9c850f-e9cc-6746-d57b-f8101af5b0ba">
+      <Execution id="ab1228da-31ef-47bd-b023-52bfcc13f7c2" />
+      <TestMethod codeBase="C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\AOCR.Tests\bin\Debug\AOCR.Tests.dll" adapterTypeName="executor://mstestadapter/v2" className="AOCR.Tests.Unit.EstadoSolicitudTransitionMatrixTests" name="Matriz_TransicionesValidas_DebePermitir" />
+    </UnitTest>
+    <UnitTest name="Matriz_TransicionesValidas_DebePermitir (Documentacion Pendiente,Observada)" storage="c:\aocr\aocr\aocr05-01-2026\aocr1\aocr\aocr.tests\bin\debug\aocr.tests.dll" id="d4753ea5-7a73-da42-2b09-1b2e24fe28d3">
+      <Execution id="e07f94df-d5b3-4746-a2c4-f54ebd25c88a" />
+      <TestMethod codeBase="C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\AOCR.Tests\bin\Debug\AOCR.Tests.dll" adapterTypeName="executor://mstestadapter/v2" className="AOCR.Tests.Unit.EstadoSolicitudTransitionMatrixTests" name="Matriz_TransicionesValidas_DebePermitir" />
+    </UnitTest>
+    <UnitTest name="Matriz_TransicionesInvalidas_DebeBloquear (AOCR Validado,En Inspeccion)" storage="c:\aocr\aocr\aocr05-01-2026\aocr1\aocr\aocr.tests\bin\debug\aocr.tests.dll" id="a7db5e90-ba70-eb9f-924f-0c598e8e2950">
+      <Execution id="8b84777c-d7ee-4706-aadb-1bbf560c53f4" />
+      <TestMethod codeBase="C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\AOCR.Tests\bin\Debug\AOCR.Tests.dll" adapterTypeName="executor://mstestadapter/v2" className="AOCR.Tests.Unit.EstadoSolicitudTransitionMatrixTests" name="Matriz_TransicionesInvalidas_DebeBloquear" />
+    </UnitTest>
+    <UnitTest name="Matriz_TransicionesValidas_DebePermitir (En Inspeccion,AOCR En Elaboracion)" storage="c:\aocr\aocr\aocr05-01-2026\aocr1\aocr\aocr.tests\bin\debug\aocr.tests.dll" id="8524fd19-a0a7-cd7c-e3ef-a83e05ec6059">
+      <Execution id="d1b8adc1-1695-456e-82a4-622410e07891" />
+      <TestMethod codeBase="C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\AOCR.Tests\bin\Debug\AOCR.Tests.dll" adapterTypeName="executor://mstestadapter/v2" className="AOCR.Tests.Unit.EstadoSolicitudTransitionMatrixTests" name="Matriz_TransicionesValidas_DebePermitir" />
+    </UnitTest>
+    <UnitTest name="Matriz_TransicionesInvalidas_DebeBloquear (En Inspeccion,AOCR Legalizado)" storage="c:\aocr\aocr\aocr05-01-2026\aocr1\aocr\aocr.tests\bin\debug\aocr.tests.dll" id="8bd54b3b-52ea-b441-3df4-26f5f61ddae6">
+      <Execution id="0db19c14-a278-40dd-9bc4-8368c97ba8a7" />
+      <TestMethod codeBase="C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\AOCR.Tests\bin\Debug\AOCR.Tests.dll" adapterTypeName="executor://mstestadapter/v2" className="AOCR.Tests.Unit.EstadoSolicitudTransitionMatrixTests" name="Matriz_TransicionesInvalidas_DebeBloquear" />
+    </UnitTest>
+    <UnitTest name="ValidarArchivo_ExtensionExe_Invalido" storage="c:\aocr\aocr\aocr05-01-2026\aocr1\aocr\aocr.tests\bin\debug\aocr.tests.dll" id="a0d8548d-c447-a5f1-8f7f-c0f1cc016639">
+      <Execution id="2f8bc88e-a81c-4144-bc43-736fff8d16d2" />
+      <TestMethod codeBase="C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\AOCR.Tests\bin\Debug\AOCR.Tests.dll" adapterTypeName="executor://mstestadapter/v2" className="AOCR.Tests.Unit.ValidacionesTests" name="ValidarArchivo_ExtensionExe_Invalido" />
+    </UnitTest>
+    <UnitTest name="ValidarArchivo_PathTraversal_Sanitizado" storage="c:\aocr\aocr\aocr05-01-2026\aocr1\aocr\aocr.tests\bin\debug\aocr.tests.dll" id="7efac4e5-0d4a-c79b-3fe6-9f8215db521e">
+      <Execution id="9356ef3d-8661-4348-9009-1a10d0c686a2" />
+      <TestMethod codeBase="C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\AOCR.Tests\bin\Debug\AOCR.Tests.dll" adapterTypeName="executor://mstestadapter/v2" className="AOCR.Tests.Unit.SecurityTests" name="ValidarArchivo_PathTraversal_Sanitizado" />
+    </UnitTest>
+    <UnitTest name="Matriz_TransicionesValidas_DebePermitir (AOCR Validado,AOCR Legalizado)" storage="c:\aocr\aocr\aocr05-01-2026\aocr1\aocr\aocr.tests\bin\debug\aocr.tests.dll" id="e0199b15-fa31-f0be-64b9-0a763b398054">
+      <Execution id="647d47e8-61ed-454a-88ba-8411977f50f2" />
+      <TestMethod codeBase="C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\AOCR.Tests\bin\Debug\AOCR.Tests.dll" adapterTypeName="executor://mstestadapter/v2" className="AOCR.Tests.Unit.EstadoSolicitudTransitionMatrixTests" name="Matriz_TransicionesValidas_DebePermitir" />
+    </UnitTest>
+    <UnitTest name="EsTransicionPermitida_TransicionesInvalidas_DebeRetornarFalse (Pendiente Asignacion RT,AOCR Legalizado)" storage="c:\aocr\aocr\aocr05-01-2026\aocr1\aocr\aocr.tests\bin\debug\aocr.tests.dll" id="6610b768-d115-7a2d-859e-2a476dac1781">
+      <Execution id="93a414ef-e11a-4ed7-a9f8-44192a90ff68" />
+      <TestMethod codeBase="C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\AOCR.Tests\bin\Debug\AOCR.Tests.dll" adapterTypeName="executor://mstestadapter/v2" className="AOCR.Tests.Unit.SolicitudEstadoTransitionBLTests" name="EsTransicionPermitida_TransicionesInvalidas_DebeRetornarFalse" />
+    </UnitTest>
+    <UnitTest name="EsTransicionPermitida_TransicionesInvalidas_DebeRetornarFalse (Pendiente,AOCR Legalizado)" storage="c:\aocr\aocr\aocr05-01-2026\aocr1\aocr\aocr.tests\bin\debug\aocr.tests.dll" id="8b8f40c0-0f9f-4a7f-709b-5f419eda5cf3">
+      <Execution id="a63059e4-8b68-4ec7-b082-16c05d91fc9d" />
+      <TestMethod codeBase="C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\AOCR.Tests\bin\Debug\AOCR.Tests.dll" adapterTypeName="executor://mstestadapter/v2" className="AOCR.Tests.Unit.SolicitudEstadoTransitionBLTests" name="EsTransicionPermitida_TransicionesInvalidas_DebeRetornarFalse" />
+    </UnitTest>
+    <UnitTest name="EsTransicionPermitida_TransicionesValidas_DebeRetornarTrue (Documentacion Completa,En Inspeccion)" storage="c:\aocr\aocr\aocr05-01-2026\aocr1\aocr\aocr.tests\bin\debug\aocr.tests.dll" id="e05d4a0d-05df-4d45-46db-c44a4bab4935">
+      <Execution id="af3abf06-bd0a-479d-a7af-e35aeea8beea" />
+      <TestMethod codeBase="C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\AOCR.Tests\bin\Debug\AOCR.Tests.dll" adapterTypeName="executor://mstestadapter/v2" className="AOCR.Tests.Unit.SolicitudEstadoTransitionBLTests" name="EsTransicionPermitida_TransicionesValidas_DebeRetornarTrue" />
+    </UnitTest>
+    <UnitTest name="Matriz_TransicionesInvalidas_DebeBloquear (Solicitud Creada,AOCR Legalizado)" storage="c:\aocr\aocr\aocr05-01-2026\aocr1\aocr\aocr.tests\bin\debug\aocr.tests.dll" id="635f5c69-2052-56ac-66a5-5151569efbb8">
+      <Execution id="cb856d77-e852-4ecc-b3fd-d15dc3c8d85f" />
+      <TestMethod codeBase="C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\AOCR.Tests\bin\Debug\AOCR.Tests.dll" adapterTypeName="executor://mstestadapter/v2" className="AOCR.Tests.Unit.EstadoSolicitudTransitionMatrixTests" name="Matriz_TransicionesInvalidas_DebeBloquear" />
+    </UnitTest>
+    <UnitTest name="EsTransicionPermitida_TransicionesValidas_DebeRetornarTrue (AOCR Legalizado,AOCR Emitido/Recibido)" storage="c:\aocr\aocr\aocr05-01-2026\aocr1\aocr\aocr.tests\bin\debug\aocr.tests.dll" id="3571b916-2103-d541-e0fd-a0f64ee224a6">
+      <Execution id="dde5d02b-0acf-4abe-b3f5-a230d85355fb" />
+      <TestMethod codeBase="C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\AOCR.Tests\bin\Debug\AOCR.Tests.dll" adapterTypeName="executor://mstestadapter/v2" className="AOCR.Tests.Unit.SolicitudEstadoTransitionBLTests" name="EsTransicionPermitida_TransicionesValidas_DebeRetornarTrue" />
+    </UnitTest>
+    <UnitTest name="EsTransicionPermitida_TransicionesInvalidas_DebeRetornarFalse (Rechazada,AOCR Emitido/Recibido)" storage="c:\aocr\aocr\aocr05-01-2026\aocr1\aocr\aocr.tests\bin\debug\aocr.tests.dll" id="e7c2c311-456b-9100-d2b8-2c29a30333e5">
+      <Execution id="2c1453e3-306b-4ac8-a2ef-c327a44ded85" />
+      <TestMethod codeBase="C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\AOCR.Tests\bin\Debug\AOCR.Tests.dll" adapterTypeName="executor://mstestadapter/v2" className="AOCR.Tests.Unit.SolicitudEstadoTransitionBLTests" name="EsTransicionPermitida_TransicionesInvalidas_DebeRetornarFalse" />
+    </UnitTest>
+    <UnitTest name="EsTransicionPermitida_TransicionesValidas_DebeRetornarTrue (En Revision,Aceptacion Documental)" storage="c:\aocr\aocr\aocr05-01-2026\aocr1\aocr\aocr.tests\bin\debug\aocr.tests.dll" id="f4db67e1-4556-8e73-1ed7-178372bc52c5">
+      <Execution id="6efa1806-6611-4fb0-bb5a-cb7059381242" />
+      <TestMethod codeBase="C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\AOCR.Tests\bin\Debug\AOCR.Tests.dll" adapterTypeName="executor://mstestadapter/v2" className="AOCR.Tests.Unit.SolicitudEstadoTransitionBLTests" name="EsTransicionPermitida_TransicionesValidas_DebeRetornarTrue" />
+    </UnitTest>
+    <UnitTest name="EsTransicionPermitida_TransicionesValidas_DebeRetornarTrue (Pendiente Asignacion RT,En Inspeccion)" storage="c:\aocr\aocr\aocr05-01-2026\aocr1\aocr\aocr.tests\bin\debug\aocr.tests.dll" id="9a257d47-c25c-4046-6ece-592514569a27">
+      <Execution id="ab288aa5-9fe9-44b2-8151-aaf9bf5d873c" />
+      <TestMethod codeBase="C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\AOCR.Tests\bin\Debug\AOCR.Tests.dll" adapterTypeName="executor://mstestadapter/v2" className="AOCR.Tests.Unit.SolicitudEstadoTransitionBLTests" name="EsTransicionPermitida_TransicionesValidas_DebeRetornarTrue" />
+    </UnitTest>
+    <UnitTest name="GenerarPdf_SinNumeroOrden_Falla" storage="c:\aocr\aocr\aocr05-01-2026\aocr1\aocr\aocr.tests\bin\debug\aocr.tests.dll" id="6162ed3c-60f9-ca87-f0b1-14954518e2b2">
+      <Execution id="6e3be8e7-3dc5-4902-9938-87062c31f757" />
+      <TestMethod codeBase="C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\AOCR.Tests\bin\Debug\AOCR.Tests.dll" adapterTypeName="executor://mstestadapter/v2" className="AOCR.Tests.Unit.PdfGeneratorTests" name="GenerarPdf_SinNumeroOrden_Falla" />
+    </UnitTest>
+    <UnitTest name="EsTransicionPermitida_TransicionesValidas_DebeRetornarTrue (Pendiente,Observada)" storage="c:\aocr\aocr\aocr05-01-2026\aocr1\aocr\aocr.tests\bin\debug\aocr.tests.dll" id="11d557d1-7edc-cfe1-4cae-1b1e55518806">
+      <Execution id="885945a5-5053-4a63-8781-eee1f18b9fde" />
+      <TestMethod codeBase="C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\AOCR.Tests\bin\Debug\AOCR.Tests.dll" adapterTypeName="executor://mstestadapter/v2" className="AOCR.Tests.Unit.SolicitudEstadoTransitionBLTests" name="EsTransicionPermitida_TransicionesValidas_DebeRetornarTrue" />
+    </UnitTest>
+    <UnitTest name="EsTransicionPermitida_TransicionesInvalidas_DebeRetornarFalse (Observada,AOCR Validado)" storage="c:\aocr\aocr\aocr05-01-2026\aocr1\aocr\aocr.tests\bin\debug\aocr.tests.dll" id="030b14fb-3b14-4960-f94b-83394855ae9d">
+      <Execution id="bc781b6c-3b6f-4374-ac36-fc7d4387f2b1" />
+      <TestMethod codeBase="C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\AOCR.Tests\bin\Debug\AOCR.Tests.dll" adapterTypeName="executor://mstestadapter/v2" className="AOCR.Tests.Unit.SolicitudEstadoTransitionBLTests" name="EsTransicionPermitida_TransicionesInvalidas_DebeRetornarFalse" />
+    </UnitTest>
+    <UnitTest name="Matriz_TransicionesValidas_DebePermitir (Observada,Subsanada)" storage="c:\aocr\aocr\aocr05-01-2026\aocr1\aocr\aocr.tests\bin\debug\aocr.tests.dll" id="7a15ec3f-551f-205c-000c-e0c3860d58fa">
+      <Execution id="a69d474a-4e61-4373-b75a-2ae8b5c9944f" />
+      <TestMethod codeBase="C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\AOCR.Tests\bin\Debug\AOCR.Tests.dll" adapterTypeName="executor://mstestadapter/v2" className="AOCR.Tests.Unit.EstadoSolicitudTransitionMatrixTests" name="Matriz_TransicionesValidas_DebePermitir" />
+    </UnitTest>
+    <UnitTest name="Matriz_TransicionesInvalidas_DebeBloquear (AOCR En Elaboracion,AOCR Emitido/Recibido)" storage="c:\aocr\aocr\aocr05-01-2026\aocr1\aocr\aocr.tests\bin\debug\aocr.tests.dll" id="e5a43bfc-f34b-653c-c011-ccdffb4b60be">
+      <Execution id="d73ed952-fd53-4c7c-b0e3-ed0a42141653" />
+      <TestMethod codeBase="C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\AOCR.Tests\bin\Debug\AOCR.Tests.dll" adapterTypeName="executor://mstestadapter/v2" className="AOCR.Tests.Unit.EstadoSolicitudTransitionMatrixTests" name="Matriz_TransicionesInvalidas_DebeBloquear" />
+    </UnitTest>
+    <UnitTest name="Matriz_TransicionesValidas_DebePermitir (AOCR Legalizado,AOCR Emitido/Recibido)" storage="c:\aocr\aocr\aocr05-01-2026\aocr1\aocr\aocr.tests\bin\debug\aocr.tests.dll" id="ac3f7675-4029-0865-00a0-3f2e8bcbbf75">
+      <Execution id="d72367e7-f556-43e8-ad19-02cde35d5485" />
+      <TestMethod codeBase="C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\AOCR.Tests\bin\Debug\AOCR.Tests.dll" adapterTypeName="executor://mstestadapter/v2" className="AOCR.Tests.Unit.EstadoSolicitudTransitionMatrixTests" name="Matriz_TransicionesValidas_DebePermitir" />
+    </UnitTest>
+    <UnitTest name="Matriz_TransicionesValidas_DebePermitir (AOCR En Revision,AOCR Validado)" storage="c:\aocr\aocr\aocr05-01-2026\aocr1\aocr\aocr.tests\bin\debug\aocr.tests.dll" id="65669073-f6cb-b796-f369-61f20dec513b">
+      <Execution id="6473b4fe-ca61-4f88-8773-90fe262817ce" />
+      <TestMethod codeBase="C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\AOCR.Tests\bin\Debug\AOCR.Tests.dll" adapterTypeName="executor://mstestadapter/v2" className="AOCR.Tests.Unit.EstadoSolicitudTransitionMatrixTests" name="Matriz_TransicionesValidas_DebePermitir" />
+    </UnitTest>
+    <UnitTest name="CrearOrden_SinContribuyente_EsCero" storage="c:\aocr\aocr\aocr05-01-2026\aocr1\aocr\aocr.tests\bin\debug\aocr.tests.dll" id="061be749-4608-9c9e-beec-eb09973ea57b">
+      <Execution id="be759672-e500-4ec1-a59a-2f7f2cd6eae6" />
+      <TestMethod codeBase="C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\AOCR.Tests\bin\Debug\AOCR.Tests.dll" adapterTypeName="executor://mstestadapter/v2" className="AOCR.Tests.Unit.OrdenRecaudacionOrchestratorTests" name="CrearOrden_SinContribuyente_EsCero" />
+    </UnitTest>
+    <UnitTest name="Matriz_TransicionesInvalidas_DebeBloquear (Observada,AOCR En Elaboracion)" storage="c:\aocr\aocr\aocr05-01-2026\aocr1\aocr\aocr.tests\bin\debug\aocr.tests.dll" id="011f4e7d-42a6-7237-eb5c-a4f4604928ef">
+      <Execution id="4bdc882e-7209-4faa-bb76-449ace68d58f" />
+      <TestMethod codeBase="C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\AOCR.Tests\bin\Debug\AOCR.Tests.dll" adapterTypeName="executor://mstestadapter/v2" className="AOCR.Tests.Unit.EstadoSolicitudTransitionMatrixTests" name="Matriz_TransicionesInvalidas_DebeBloquear" />
+    </UnitTest>
+    <UnitTest name="ObtenerOrden_IdInexistente_RetornaNull" storage="c:\aocr\aocr\aocr05-01-2026\aocr1\aocr\aocr.tests\bin\debug\aocr.tests.dll" id="85ab1dac-d7cf-9cf5-c392-49272ac40b1a">
+      <Execution id="7de5d4d6-75c4-475b-a7b3-0eb8d5704657" />
+      <TestMethod codeBase="C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\AOCR.Tests\bin\Debug\AOCR.Tests.dll" adapterTypeName="executor://mstestadapter/v2" className="AOCR.Tests.Unit.OrdenRecaudacionOrchestratorTests" name="ObtenerOrden_IdInexistente_RetornaNull" />
+    </UnitTest>
+    <UnitTest name="Matriz_TransicionesValidas_DebePermitir (Subsanada,Documentacion Pendiente)" storage="c:\aocr\aocr\aocr05-01-2026\aocr1\aocr\aocr.tests\bin\debug\aocr.tests.dll" id="55f3a4f2-6020-440a-ef9f-f35d7b91779a">
+      <Execution id="adf717ea-dd9b-4e37-bcce-4909ae79db79" />
+      <TestMethod codeBase="C:\AOCR\AOCR\AOCR05-01-2026\AOCR1\AOCR\AOCR.Tests\bin\Debug\AOCR.Tests.dll" adapterTypeName="executor://mstestadapter/v2" className="AOCR.Tests.Unit.EstadoSolicitudTransitionMatrixTests" name="Matriz_TransicionesValidas_DebePermitir" />
+    </UnitTest>
+  </TestDefinitions>
+  <TestEntries>
+    <TestEntry testId="5bb6a88d-92cf-ad24-4246-eb79316e0c63" executionId="68c2fae6-6bb3-41cd-93a3-2cc4ebdc1c98" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="98af0476-00fc-2b2e-5e94-efb32518d639" executionId="6329cd95-f016-44aa-805b-1862c3bf50cc" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="5d4bfedd-0225-eef3-2127-50d8f8dff382" executionId="48fc4d30-8f91-45aa-9a08-128477b71365" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="670bb6d9-a4f1-135c-c7dd-f0ccc69b993e" executionId="7890820f-fbea-4b95-90cc-03dfa20d1494" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="e05d4a0d-05df-4d45-46db-c44a4bab4935" executionId="af3abf06-bd0a-479d-a7af-e35aeea8beea" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="635f5c69-2052-56ac-66a5-5151569efbb8" executionId="cb856d77-e852-4ecc-b3fd-d15dc3c8d85f" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="fd3121a5-0467-9c14-1917-e0e774685500" executionId="e111965b-9fb0-4d4c-a6ac-ee9fa054db42" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="55f3a4f2-6020-440a-ef9f-f35d7b91779a" executionId="adf717ea-dd9b-4e37-bcce-4909ae79db79" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="d4753ea5-7a73-da42-2b09-1b2e24fe28d3" executionId="e07f94df-d5b3-4746-a2c4-f54ebd25c88a" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="3d058df1-d70c-be0b-f690-2dc4115ce34f" executionId="fdfd9dbe-7fa9-43cf-86c6-e30e3e948e38" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="ac3f7675-4029-0865-00a0-3f2e8bcbbf75" executionId="d72367e7-f556-43e8-ad19-02cde35d5485" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="fb712e4c-a09a-a4b4-e631-d7f7301c144b" executionId="7202b494-25d2-4794-b3db-6ac25ac449f4" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="87153650-0b4b-e7dd-edb3-d7d29f8f1e7e" executionId="bc1d7c73-c280-4440-a65c-269e135d529e" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="8524fd19-a0a7-cd7c-e3ef-a83e05ec6059" executionId="d1b8adc1-1695-456e-82a4-622410e07891" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="bddd4904-c6a0-388b-5775-56ee2a0af1ec" executionId="4cae372b-6de0-4e17-a421-67e24ed7c59c" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="030b14fb-3b14-4960-f94b-83394855ae9d" executionId="bc781b6c-3b6f-4374-ac36-fc7d4387f2b1" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="084b2f8b-72e1-b973-5a12-41e9ee505641" executionId="d1e63a4a-156b-462b-8670-db4d940090d2" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="7ba9af93-e836-cee5-2d32-1f38b166c3bf" executionId="fe95bf9a-d3e5-404c-9c48-6340a4da09f5" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="bec301a9-3f89-743f-3e03-3a3c24a4683a" executionId="c6e1824b-79d2-42f8-ac15-3ff9f868600d" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="8b2f8c39-66aa-9a67-5b44-b3416762c893" executionId="0c194526-89f3-4547-b7b2-baff1b19e777" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="6d0b85d9-49c7-d679-5b96-d17a0df938d1" executionId="2fbf7851-9614-48d5-a50d-312da0e1fbbd" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="f4db67e1-4556-8e73-1ed7-178372bc52c5" executionId="6efa1806-6611-4fb0-bb5a-cb7059381242" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="6162ed3c-60f9-ca87-f0b1-14954518e2b2" executionId="6e3be8e7-3dc5-4902-9938-87062c31f757" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="65669073-f6cb-b796-f369-61f20dec513b" executionId="6473b4fe-ca61-4f88-8773-90fe262817ce" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="11d557d1-7edc-cfe1-4cae-1b1e55518806" executionId="885945a5-5053-4a63-8781-eee1f18b9fde" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="8b8f40c0-0f9f-4a7f-709b-5f419eda5cf3" executionId="a63059e4-8b68-4ec7-b082-16c05d91fc9d" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="931616ce-b494-8596-41ef-25a325d1a42a" executionId="93f97db5-237a-4189-8da6-c3bddb5a106b" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="6f81574e-136a-66d4-6a01-38ca2c6dd3bc" executionId="f852ce76-943d-4f27-ab04-fc2a3503ccc6" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="6610b768-d115-7a2d-859e-2a476dac1781" executionId="93a414ef-e11a-4ed7-a9f8-44192a90ff68" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="85ab1dac-d7cf-9cf5-c392-49272ac40b1a" executionId="7de5d4d6-75c4-475b-a7b3-0eb8d5704657" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="8bd54b3b-52ea-b441-3df4-26f5f61ddae6" executionId="0db19c14-a278-40dd-9bc4-8368c97ba8a7" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="84f0f9fc-fd71-c2d4-a3c2-44dce01adef7" executionId="660b3681-692b-4be3-889f-c1ebe6557e65" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="9e6da589-d1d4-2673-576f-395e7a104363" executionId="76448ae5-db4a-4c66-b345-c00c56523335" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="7a15ec3f-551f-205c-000c-e0c3860d58fa" executionId="a69d474a-4e61-4373-b75a-2ae8b5c9944f" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="18e234b8-2d7b-b4d0-344c-5811693677a2" executionId="0da134ab-06a6-4c26-bf6c-4d3c65d66084" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="0f8d89cc-3c25-0b90-bf6b-463ae237c8d9" executionId="7387e9af-dc44-4ab6-b521-9e1092202eef" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="e7c2c311-456b-9100-d2b8-2c29a30333e5" executionId="2c1453e3-306b-4ac8-a2ef-c327a44ded85" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="1c9c850f-e9cc-6746-d57b-f8101af5b0ba" executionId="ab1228da-31ef-47bd-b023-52bfcc13f7c2" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="7efac4e5-0d4a-c79b-3fe6-9f8215db521e" executionId="9356ef3d-8661-4348-9009-1a10d0c686a2" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="9a257d47-c25c-4046-6ece-592514569a27" executionId="ab288aa5-9fe9-44b2-8151-aaf9bf5d873c" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="8621eede-c3e5-5e1d-65c1-f772369c5c9d" executionId="58a25722-066d-4b15-9753-461e28f942e9" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="a0d8548d-c447-a5f1-8f7f-c0f1cc016639" executionId="2f8bc88e-a81c-4144-bc43-736fff8d16d2" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="e47674b4-3125-881c-8b67-bcc4e26d823f" executionId="ff13096b-7b36-4234-8783-eb7928b02e98" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="b2764189-3653-005f-53bb-8993f83d050d" executionId="47e6a46d-a9e7-43c8-b739-e41809fae985" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="a7db5e90-ba70-eb9f-924f-0c598e8e2950" executionId="8b84777c-d7ee-4706-aadb-1bbf560c53f4" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="3571b916-2103-d541-e0fd-a0f64ee224a6" executionId="dde5d02b-0acf-4abe-b3f5-a230d85355fb" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="d925989e-ccfb-699e-945b-1068d4a9d076" executionId="54cf0225-e745-4936-85b7-8faaa52859e7" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="011f4e7d-42a6-7237-eb5c-a4f4604928ef" executionId="4bdc882e-7209-4faa-bb76-449ace68d58f" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="3cd830cc-999b-0acb-ff86-a1918f340789" executionId="31dc5f3e-22b8-4574-9fff-ea2ecb702556" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="e5a43bfc-f34b-653c-c011-ccdffb4b60be" executionId="d73ed952-fd53-4c7c-b0e3-ed0a42141653" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="061be749-4608-9c9e-beec-eb09973ea57b" executionId="be759672-e500-4ec1-a59a-2f7f2cd6eae6" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="e0199b15-fa31-f0be-64b9-0a763b398054" executionId="647d47e8-61ed-454a-88ba-8411977f50f2" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="4d2a2ae8-d53e-60ea-b008-7f0dcdef2e7e" executionId="954a67f0-80ae-4b51-bf9c-aedf01a99857" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="e4cb36bd-f93d-c4a9-fda2-5aeada9eecd9" executionId="162617f7-e967-4e56-8ff8-eb533541725c" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+  </TestEntries>
+  <TestLists>
+    <TestList name="Resultados sin formato de lista" id="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestList name="Todos los resultados cargados" id="19431567-8539-422a-85d7-44ee4e166bda" />
+  </TestLists>
+  <ResultSummary outcome="Failed">
+    <Counters total="54" executed="53" passed="49" failed="4" error="0" timeout="0" aborted="0" inconclusive="0" passedButRunAborted="0" notRunnable="0" notExecuted="0" disconnected="0" warning="0" completed="0" inProgress="0" pending="0" />
+    <Output>
+      <StdOut>Se ha omitido la prueba 'FlujoCompleto_CrearOrdenHastaPago_Exitoso' en la serie de pruebas.&#xD;
+</StdOut>
+    </Output>
+  </ResultSummary>
+</TestRun>

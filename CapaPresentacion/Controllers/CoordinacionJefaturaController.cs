@@ -9,6 +9,7 @@ using System.Web;
 using System.Web.Mvc;
 using CapaDatos.Constants;
 using CapaDatos.DAOs;
+using CapaDatos.Models;
 using CapaModelo;
 using CapaNegocio;
 using CapaNegocio.Helpers;
@@ -32,6 +33,7 @@ namespace CapaPresentacion.Controllers
         private readonly AocrFirmaPosicionDocumentoDAO _aocrFirmaPosicionDocumentoDao = new AocrFirmaPosicionDocumentoDAO();
         private readonly FirmaDigitalService _firmaDigitalService = new FirmaDigitalService();
         private readonly DashboardInspeccionDAO _dashboardInspeccionDao = new DashboardInspeccionDAO();
+        private readonly UsuarioInternoRTDAO _usuarioInternoRTDAO = new UsuarioInternoRTDAO();
 
         [Authorize(Roles = "Direccion,JefaturaTecnica,DirectorGeneral,Administrador")]
         public ActionResult DashboardGerencial()
@@ -701,16 +703,57 @@ namespace CapaPresentacion.Controllers
             return "No disponible";
         }
 
-        private static string ObtenerInspectorAsignadoSeguimiento(Inspeccion inspeccion, SolicitudAOCR solicitud)
+        private string ObtenerInspectorAsignadoSeguimiento(Inspeccion inspeccion, SolicitudAOCR solicitud)
         {
+            // 1) Nombre ya persistido en la inspección (asignación via AsignarInspector o informe técnico).
             if (inspeccion != null && !string.IsNullOrWhiteSpace(inspeccion.InspectorPrincipalNombre))
             {
                 return inspeccion.InspectorPrincipalNombre.Trim();
             }
 
+            // 2) Nombre en la solicitud (técnico responsable).
             if (solicitud != null && !string.IsNullOrWhiteSpace(solicitud.TecnicoResponsableNombre))
             {
                 return solicitud.TecnicoResponsableNombre.Trim();
+            }
+
+            // 3) Fallback RT: si hay código/cédula, consultar catálogo oficial.
+            try
+            {
+                UsuarioInternoRTRegistro registro = null;
+
+                if (inspeccion != null && inspeccion.CodigoInspector.HasValue && inspeccion.CodigoInspector.Value > 0)
+                {
+                    registro = _usuarioInternoRTDAO.ObtenerInspectorActivoPorTecnicoIdOUsuarioId(inspeccion.CodigoInspector.Value);
+                }
+
+                if (registro == null && solicitud != null && solicitud.CodigoTecnico.HasValue && solicitud.CodigoTecnico.Value > 0)
+                {
+                    registro = _usuarioInternoRTDAO.ObtenerInspectorActivoPorTecnicoIdOUsuarioId(solicitud.CodigoTecnico.Value);
+                }
+
+                var cedula = inspeccion != null && !string.IsNullOrWhiteSpace(inspeccion.InspectorPrincipalCedula)
+                    ? inspeccion.InspectorPrincipalCedula
+                    : (solicitud != null ? solicitud.TecnicoResponsableCedula : null);
+
+                if (registro == null && !string.IsNullOrWhiteSpace(cedula))
+                {
+                    registro = _usuarioInternoRTDAO.ObtenerInspectorAsignableActivo(cedula);
+                }
+
+                if (registro != null && !string.IsNullOrWhiteSpace(registro.NombreVisual))
+                {
+                    return registro.NombreVisual.Trim();
+                }
+
+                if (!string.IsNullOrWhiteSpace(cedula))
+                {
+                    return cedula.Trim();
+                }
+            }
+            catch
+            {
+                // Silenciar: no interrumpir la bandeja si el catálogo RT falla.
             }
 
             return "No asignado";
@@ -791,6 +834,9 @@ namespace CapaPresentacion.Controllers
         [Authorize(Roles = "DIRDAC,Direccion,JefaturaTecnica,DirectorGeneral,Administrador")]
         public ActionResult ValidarAocr()
         {
+            // Evitar fuga de TempData["Error"] establecido por otras acciones.
+            TempData.Remove("Error");
+
             try
             {
                 var model = new ValidarAocrViewModel
@@ -1057,16 +1103,45 @@ namespace CapaPresentacion.Controllers
                 var pdfBytes = pdf.BuildFile(ControllerContext);
                 if (firmarDigitalmente)
                 {
-                    string mensajeValidacion;
-                    if (!EsCertificadoDigitalValido(certificadoDigital, out mensajeValidacion))
+                    // Si el usuario no sube certificado, intentar usar el certificado institucional.
+                    byte[] certificadoBytesInstitucional = null;
+                    string passwordInstitucional = null;
+                    var usandoInstitucional = false;
+                    if (certificadoDigital == null || certificadoDigital.ContentLength <= 0)
                     {
-                        return new HttpStatusCodeResult(400, mensajeValidacion);
+                        string errorInstitucional;
+                        if (!TryCargarCertificadoInstitucional(out certificadoBytesInstitucional, out passwordInstitucional, out errorInstitucional))
+                        {
+                            return new HttpStatusCodeResult(400, errorInstitucional);
+                        }
+                        usandoInstitucional = true;
+                    }
+                    else
+                    {
+                        string mensajeValidacion;
+                        if (!EsCertificadoDigitalValido(certificadoDigital, out mensajeValidacion))
+                        {
+                            return new HttpStatusCodeResult(400, mensajeValidacion);
+                        }
                     }
 
                     using (var ms = new MemoryStream())
                     {
-                        certificadoDigital.InputStream.CopyTo(ms);
-                        var infoCertificado = _firmaDigitalService.LeerCertificado(ms.ToArray(), passwordCertificado);
+                        byte[] certificadoBytes;
+                        string passwordCert;
+                        if (usandoInstitucional)
+                        {
+                            certificadoBytes = certificadoBytesInstitucional;
+                            passwordCert = passwordInstitucional;
+                        }
+                        else
+                        {
+                            certificadoDigital.InputStream.CopyTo(ms);
+                            certificadoBytes = ms.ToArray();
+                            passwordCert = passwordCertificado;
+                        }
+
+                        var infoCertificado = _firmaDigitalService.LeerCertificado(certificadoBytes, passwordCert);
                         if (!infoCertificado.Exitoso)
                         {
                             return new HttpStatusCodeResult(400, infoCertificado.Mensaje);
@@ -1083,8 +1158,8 @@ namespace CapaPresentacion.Controllers
 
                         var resultadoFirma = _firmaDigitalService.FirmarPdf(
                             pdfBytes,
-                            ms.ToArray(),
-                            passwordCertificado,
+                            certificadoBytes,
+                            passwordCert,
                             nombreFirmante,
                             motivoFirma,
                             "Sistema AOCR DGAC",
@@ -1265,8 +1340,17 @@ namespace CapaPresentacion.Controllers
             var informeFirmado = informes
                 .FirstOrDefault(x => x.Informe.Finalizado && x.Informe.FirmadoInspector && x.Informe.FirmadoDirdac);
 
+            var firmaCompleta = informeFirmado != null;
+
+            // Incluir tambien solicitudes con informe tecnico firmado que aun no
+            // han transicionado al estado AOCR En Revision (flujo incompleto en datos).
+            var estadoPermitidoConFirma = firmaCompleta
+                && (string.Equals(estadoSolicitud, EstadoSolicitud.EnInspeccion, StringComparison.OrdinalIgnoreCase)
+                    || string.Equals(estadoSolicitud, EstadoSolicitud.AOCR_EnElaboracion, StringComparison.OrdinalIgnoreCase));
+
             var estadoIncluido = string.Equals(estadoSolicitud, EstadoSolicitud.AOCR_EnRevision, StringComparison.OrdinalIgnoreCase)
-                || string.Equals(estadoSolicitud, "ENVIADO_A_JEFATURA", StringComparison.OrdinalIgnoreCase);
+                || string.Equals(estadoSolicitud, "ENVIADO_A_JEFATURA", StringComparison.OrdinalIgnoreCase)
+                || estadoPermitidoConFirma;
 
             if (!estadoIncluido)
             {
@@ -1274,7 +1358,6 @@ namespace CapaPresentacion.Controllers
             }
 
             var contextoActivo = informeFirmado ?? informes.FirstOrDefault();
-            var firmaCompleta = informeFirmado != null;
             var certificado = _certificadoDao.ObtenerPorSolicitud(solicitud.CodigoSolicitud);
             var aeronaves = _aeronaveSolicitudDao.ObtenerPorSolicitud(solicitud.CodigoSolicitud) ?? new List<AeronaveSolicitud>();
             var numeroAocr = certificado != null && !string.IsNullOrWhiteSpace(certificado.NumeroCertificado)
@@ -1889,6 +1972,53 @@ namespace CapaPresentacion.Controllers
             }
 
             return true;
+        }
+
+        private bool TryCargarCertificadoInstitucional(out byte[] certificadoBytes, out string password, out string mensajeError)
+        {
+            certificadoBytes = null;
+            password = null;
+            mensajeError = null;
+
+            var rutaConfigurada = System.Configuration.ConfigurationManager.AppSettings["Aocr:CertificadoInstitucionalRuta"];
+            var passwordConfigurado = System.Configuration.ConfigurationManager.AppSettings["Aocr:CertificadoInstitucionalPassword"];
+
+            if (string.IsNullOrWhiteSpace(rutaConfigurada))
+            {
+                mensajeError = "Debe cargar un certificado digital .p12/.pfx. (No hay certificado institucional configurado en el servidor.)";
+                return false;
+            }
+
+            string rutaAbsoluta;
+            try
+            {
+                rutaAbsoluta = rutaConfigurada.StartsWith("~", StringComparison.Ordinal)
+                    ? Server.MapPath(rutaConfigurada)
+                    : rutaConfigurada;
+            }
+            catch (Exception ex)
+            {
+                mensajeError = "Ruta del certificado institucional no válida: " + ex.Message;
+                return false;
+            }
+
+            if (!System.IO.File.Exists(rutaAbsoluta))
+            {
+                mensajeError = "No se encontró el archivo del certificado institucional configurado (" + rutaAbsoluta + ").";
+                return false;
+            }
+
+            try
+            {
+                certificadoBytes = System.IO.File.ReadAllBytes(rutaAbsoluta);
+                password = passwordConfigurado ?? string.Empty;
+                return true;
+            }
+            catch (Exception ex)
+            {
+                mensajeError = "No se pudo leer el certificado institucional: " + ex.Message;
+                return false;
+            }
         }
 
         private static string ConstruirContenidoQrFirmaAocr(ValidarAocrSolicitudItemViewModel item, AocrDocumentoEdicionViewModel model, string tipoDocumento, InformacionCertificadoDigital infoCertificado, string nombreFirmante)

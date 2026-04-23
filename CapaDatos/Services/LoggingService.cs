@@ -179,6 +179,30 @@ namespace CapaDatos.Services
                 sb.AppendFormat("    Exception: {0}", ex.GetType().Name);
                 sb.AppendLine();
                 sb.AppendFormat("    StackTrace: {0}", ex.StackTrace);
+
+                var inner = ex.InnerException;
+                var nivel = 1;
+                while (inner != null && nivel <= 5)
+                {
+                    sb.AppendLine();
+                    sb.AppendFormat("    Inner[{0}]: {1} - {2}", nivel, inner.GetType().Name, inner.Message);
+                    // Para NpgsqlException, SqlState vive en ex.Data["SqlState"]
+                    try
+                    {
+                        if (inner.Data != null && inner.Data.Contains("SqlState"))
+                        {
+                            sb.AppendFormat(" (SqlState={0})", inner.Data["SqlState"]);
+                        }
+                    }
+                    catch { }
+                    if (!string.IsNullOrEmpty(inner.StackTrace))
+                    {
+                        sb.AppendLine();
+                        sb.AppendFormat("    Inner[{0}] StackTrace: {1}", nivel, inner.StackTrace);
+                    }
+                    inner = inner.InnerException;
+                    nivel++;
+                }
             }
 
             return sb.ToString();

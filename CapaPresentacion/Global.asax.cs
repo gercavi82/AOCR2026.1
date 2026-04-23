@@ -24,6 +24,10 @@ namespace CapaPresentacion
             Dapper.DefaultTypeMap.MatchNamesWithUnderscores = true;
             // Evita colisiones de antiforgery con otras apps en localhost.
             AntiForgeryConfig.CookieName = "__AOCR_RequestVerificationToken";
+            // Suprime la heurística de identidad: evita HttpAntiForgeryException
+            // "token creado para usuario distinto" al cambiar de sesión.
+            // La protección sigue activa: el cookie + campo oculto se validan.
+            AntiForgeryConfig.SuppressIdentityHeuristicChecks = true;
 
             AreaRegistration.RegisterAllAreas();
             FilterConfig.RegisterGlobalFilters(GlobalFilters.Filters);

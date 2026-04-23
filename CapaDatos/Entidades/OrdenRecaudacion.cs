@@ -19,6 +19,7 @@ namespace CapaDatos.Entidades
             FechaCreacion = DateTime.Now;
             Estado = EstadoOrden.Borrador;
             Activo = true;
+            ContribuyenteId = 0;
         }
 
         [Key]

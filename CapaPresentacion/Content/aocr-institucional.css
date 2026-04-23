@@ -983,14 +983,30 @@ body.aocr-body {
 .aocr-table-card thead th,
 .table-dgac thead th {
     padding: 0.88rem 0.9rem;
-    background: linear-gradient(180deg, #eff6fb 0%, #eaf2f8 100%);
-    color: var(--aocr-ink-700);
+    background: #1B4F72 !important;
+    color: #ffffff !important;
     font-size: 0.8rem;
     font-weight: 700;
     white-space: nowrap;
-    border-bottom: 1px solid var(--aocr-border);
+    border-bottom: 2px solid #0d3d66 !important;
+    border-top: none !important;
     text-transform: uppercase;
     letter-spacing: 0.04em;
+}
+.aocr-table thead th:first-child,
+.aocr-table-card thead th:first-child,
+.table-dgac thead th:first-child {
+    border-top-left-radius: 8px;
+}
+.aocr-table thead th:last-child,
+.aocr-table-card thead th:last-child,
+.table-dgac thead th:last-child {
+    border-top-right-radius: 8px;
+}
+.aocr-table thead th a,
+.aocr-table-card thead th a,
+.table-dgac thead th a {
+    color: #ffffff !important;
 }
 
 .aocr-table tbody td,

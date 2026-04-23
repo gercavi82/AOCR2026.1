@@ -25,6 +25,8 @@ namespace CapaNegocio.DTOs
 
         public static OperationResult<T> Ok(T data, string message = null) => new OperationResult<T> { Success = true, Data = data, Message = message };
         public static new OperationResult<T> Fail(string message, string errorCode = null) => new OperationResult<T> { Success = false, Message = message, ErrorCode = errorCode };
+        public static OperationResult<T> NotFound(string message = "Registro no encontrado", string errorCode = "NOT_FOUND") =>
+            new OperationResult<T> { Success = false, Message = message, ErrorCode = errorCode };
     }
 
     public class EnviarNotificacionRequest

@@ -31,7 +31,7 @@ namespace CapaNegocio
                 NumeroCertificado = "AOCR-" + DateTime.Now.Ticks,
                 FechaEmision = DateTime.Now,
                 FechaVencimiento = DateTime.Now.AddYears(1),
-                Estado = "GENERADO",
+                Estado = "Vigente",
                 EmitidoPor = usuario,
                 RutaDocumento = null
             };

@@ -58,9 +58,12 @@ ALTER TABLE mirror_raw.opcar6
 
 DROP VIEW IF EXISTS mirror_clean.v_ciaarc_activa;
 DROP VIEW IF EXISTS mirror_clean.v_usuario_as400;
+DROP VIEW IF EXISTS mirror_clean.v_lugar_emision_ciudad;
 
 DROP TABLE IF EXISTS mirror_raw.opcar6;
 DROP TABLE IF EXISTS mirror_raw.opcar5;
+DROP TABLE IF EXISTS mirror_raw.oidar2;
+DROP TABLE IF EXISTS mirror_raw.opuarc01;
 DROP TABLE IF EXISTS mirror_raw.ciaarc;
 DROP TABLE IF EXISTS mirror_raw.usuar1;
 DROP TABLE IF EXISTS mirror_raw.usuarc;

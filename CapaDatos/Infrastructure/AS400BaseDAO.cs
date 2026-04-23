@@ -250,8 +250,10 @@ namespace CapaDatos.Infrastructure
                     return true;
                 }
             }
-            catch
+            catch (Exception ex)
             {
+                System.Diagnostics.Debug.WriteLine(
+                    "[AS400BaseDAO] CanOpen fallo: " + ex.GetType().FullName + " - " + ex.Message);
                 return false;
             }
         }
@@ -323,29 +325,115 @@ namespace CapaDatos.Infrastructure
 
         protected string GetString(IDataReader reader, int ordinal)
         {
-            if (reader.IsDBNull(ordinal))
+            if (reader == null)
             {
                 return null;
             }
-            return reader.GetString(ordinal).TrimEnd();
+
+            try
+            {
+                if (ordinal < 0 || ordinal >= reader.FieldCount || reader.IsDBNull(ordinal))
+                {
+                    return null;
+                }
+
+                var value = reader.GetValue(ordinal);
+                if (value == null || value == DBNull.Value)
+                {
+                    return null;
+                }
+
+                var text = Convert.ToString(value, CultureInfo.InvariantCulture);
+                return string.IsNullOrWhiteSpace(text) ? null : text.Trim();
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine(
+                    "[AS400BaseDAO] GetString fallo: ordinal=" + ordinal + ", error=" + ex.GetType().FullName + ", msg=" + ex.Message);
+                return null;
+            }
         }
 
         protected decimal GetDecimal(IDataReader reader, int ordinal, decimal defaultValue = 0m)
         {
-            if (reader.IsDBNull(ordinal))
+            if (reader == null)
             {
                 return defaultValue;
             }
-            return reader.GetDecimal(ordinal);
+
+            try
+            {
+                if (ordinal < 0 || ordinal >= reader.FieldCount || reader.IsDBNull(ordinal))
+                {
+                    return defaultValue;
+                }
+
+                var value = reader.GetValue(ordinal);
+                if (value == null || value == DBNull.Value)
+                {
+                    return defaultValue;
+                }
+
+                if (value is decimal decimalValue) return decimalValue;
+                if (value is int intValue) return intValue;
+                if (value is long longValue) return longValue;
+                if (value is short shortValue) return shortValue;
+                if (value is double doubleValue) return (decimal)doubleValue;
+                if (value is float floatValue) return (decimal)floatValue;
+
+                decimal parsed;
+                if (decimal.TryParse(Convert.ToString(value, CultureInfo.InvariantCulture), NumberStyles.Any, CultureInfo.InvariantCulture, out parsed)
+                    || decimal.TryParse(Convert.ToString(value, CultureInfo.CurrentCulture), NumberStyles.Any, CultureInfo.CurrentCulture, out parsed))
+                {
+                    return parsed;
+                }
+
+                return defaultValue;
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine(
+                    "[AS400BaseDAO] GetDecimal fallo: ordinal=" + ordinal + ", error=" + ex.GetType().FullName + ", msg=" + ex.Message);
+                return defaultValue;
+            }
         }
 
         protected int GetInt(IDataReader reader, int ordinal, int defaultValue = 0)
         {
-            if (reader.IsDBNull(ordinal))
+            if (reader == null)
             {
                 return defaultValue;
             }
-            return reader.GetInt32(ordinal);
+
+            try
+            {
+                if (ordinal < 0 || ordinal >= reader.FieldCount || reader.IsDBNull(ordinal))
+                {
+                    return defaultValue;
+                }
+
+                var value = reader.GetValue(ordinal);
+                if (value == null || value == DBNull.Value)
+                {
+                    return defaultValue;
+                }
+
+                if (value is int intValue) return intValue;
+                if (value is long longValue) return Convert.ToInt32(longValue);
+                if (value is short shortValue) return shortValue;
+                if (value is decimal decimalValue) return Convert.ToInt32(decimalValue);
+
+                int parsed;
+                return int.TryParse(Convert.ToString(value, CultureInfo.InvariantCulture), NumberStyles.Any, CultureInfo.InvariantCulture, out parsed)
+                    ? parsed
+                    : defaultValue;
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine(
+                    "[AS400BaseDAO] GetInt fallo: ordinal=" + ordinal + ", error=" + ex.GetType().FullName + ", msg=" + ex.Message);
+                return defaultValue;
+            }
         }
 
         #endregion

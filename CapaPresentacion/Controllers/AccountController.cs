@@ -508,9 +508,7 @@ namespace CapaPresentacion.Controllers
             if (!ModelState.IsValid)
                 return View(model);
 
-            int idUsuario = 0;
-            var v = Session["UserId"] ?? Session["IdUsuario"];
-            if (v != null) int.TryParse(v.ToString(), out idUsuario);
+            int idUsuario = ObtenerUsuarioSesionId();
 
             if (idUsuario <= 0)
             {
@@ -634,8 +632,7 @@ namespace CapaPresentacion.Controllers
             try
             {
                 int idUsuario = 0;
-                var v = Session["UserId"] ?? Session["IdUsuario"];
-                if (v != null) int.TryParse(v.ToString(), out idUsuario);
+                idUsuario = ObtenerUsuarioSesionId();
 
                 if (idUsuario <= 0)
                     return Json(new { tieneOrden = false, mensaje = "Sesión expirada" }, JsonRequestBehavior.AllowGet);
@@ -929,9 +926,7 @@ namespace CapaPresentacion.Controllers
                     preferirMirror)
                 {
                     var mirror = new MirrorReadService();
-                    var empresaMirror = mirror.ListarCompaniasActivas(5000)
-                        .FirstOrDefault(x => x != null &&
-                            string.Equals((x.CodigoOaci ?? string.Empty).Trim(), (codigoEmpresa ?? string.Empty).Trim(), StringComparison.OrdinalIgnoreCase));
+                    var empresaMirror = mirror.ObtenerCompaniaPorCodigo(codigoEmpresa);
 
                     if (empresaMirror != null && !string.IsNullOrWhiteSpace(empresaMirror.NombreCompania))
                     {

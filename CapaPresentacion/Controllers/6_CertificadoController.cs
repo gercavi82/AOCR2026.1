@@ -4,6 +4,7 @@ using System.Web;
 using System.Web.Mvc;
 using CapaNegocio;
 using CapaNegocio.Helpers;
+using CapaNegocio.Services;
 using CapaModelo.Common;
 using CapaUtilidades;
 using CapaModelo;
@@ -17,6 +18,9 @@ namespace CapaPresentacion.Controllers
     public class CertificadoController : Controller
     {
         private readonly CertificadoBL _bl = new CertificadoBL();
+        private readonly FirmaDigitalService _firmaService = new FirmaDigitalService();
+        private readonly AocrFirmaDocumentoDAO _firmaDocDao = new AocrFirmaDocumentoDAO();
+        private readonly HistorialEstadoDAO _historialDao = new HistorialEstadoDAO();
 
         private static string GenerarNumeroAOCR(int idSolicitud, DateTime? fecha = null)
         {
@@ -180,6 +184,266 @@ namespace CapaPresentacion.Controllers
                 return Content("<h3>Error Vista Previa</h3><pre>" +
                     System.Web.HttpUtility.HtmlEncode(ex.ToString()) + "</pre>", "text/html");
             }
+        }
+
+        // ============================================================
+        //   FIRMAR CERTIFICADO AOCR — SOLO CONTRASEÑA (COORDINADOR)
+        //   Usa el certificado institucional preconfigurado en el
+        //   servidor; el usuario SOLO ingresa la contraseña del .p12.
+        // ============================================================
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        [Authorize(Roles = "CoordinacionLegal,Direccion,JefaturaTecnica,DirectorGeneral,Administrador")]
+        public ActionResult FirmarCertificadoAOCR(int solicitudId, string password)
+        {
+            try
+            {
+                if (solicitudId <= 0)
+                {
+                    TempData["Error"] = "Identificador de solicitud no válido.";
+                    return RedirectToAction("Detalle", new { solicitudId });
+                }
+
+                if (string.IsNullOrWhiteSpace(password))
+                {
+                    TempData["Error"] = "Debe ingresar la contraseña del certificado digital.";
+                    return RedirectToAction("Detalle", new { solicitudId });
+                }
+
+                // 1) Cargar certificado institucional preconfigurado
+                byte[] certificadoBytes;
+                string passwordDescartada;
+                string errorCert;
+                if (!TryCargarCertificadoInstitucional(out certificadoBytes, out passwordDescartada, out errorCert))
+                {
+                    TempData["Error"] = errorCert;
+                    return RedirectToAction("Detalle", new { solicitudId });
+                }
+
+                // 2) Validar contraseña ingresada contra el .p12 institucional
+                var infoCert = _firmaService.LeerCertificado(certificadoBytes, password);
+                if (infoCert == null || !infoCert.Exitoso)
+                {
+                    TempData["Error"] = infoCert != null && !string.IsNullOrWhiteSpace(infoCert.Mensaje)
+                        ? infoCert.Mensaje
+                        : "Contraseña incorrecta o certificado no válido.";
+                    return RedirectToAction("Detalle", new { solicitudId });
+                }
+
+                // 3) Asegurar que exista el registro de Certificado en BD
+                string usuarioNombre = User?.Identity?.Name ?? "Sistema";
+                var cert = _bl.ObtenerPorSolicitud(solicitudId);
+                if (cert == null)
+                {
+                    _bl.GenerarCertificado(solicitudId, usuarioNombre);
+                    cert = _bl.ObtenerPorSolicitud(solicitudId);
+                }
+                if (cert == null)
+                {
+                    TempData["Error"] = "No se pudo crear/obtener el registro del certificado AOCR.";
+                    return RedirectToAction("Detalle", new { solicitudId });
+                }
+
+                // 4) Construir modelo y generar PDF vía Rotativa
+                var modelo = ConstruirViewModel(solicitudId);
+                var nombreFirmante = !string.IsNullOrWhiteSpace(infoCert.NombreTitular)
+                    ? infoCert.NombreTitular
+                    : usuarioNombre;
+                var cargoFirmante = "Coordinador/a Legal AOCR";
+
+                var pdf = new ViewAsPdf("~/Views/Certificado/CertificadoAOCR.cshtml", modelo)
+                {
+                    PageSize = Rotativa.Options.Size.A4,
+                    PageOrientation = Rotativa.Options.Orientation.Portrait,
+                    PageMargins = new Rotativa.Options.Margins(5, 5, 5, 5),
+                    CustomSwitches = "--enable-local-file-access --print-media-type --dpi 300 --zoom 1.0"
+                };
+
+                byte[] pdfBytes;
+                try
+                {
+                    pdfBytes = pdf.BuildFile(ControllerContext);
+                }
+                catch (Exception exPdf)
+                {
+                    TempData["Error"] = "No se pudo generar el PDF del certificado: " + exPdf.Message;
+                    return RedirectToAction("Detalle", new { solicitudId });
+                }
+
+                // 5) QR + firma digital
+                var contenidoQr = ConstruirContenidoQrCertificado(solicitudId, modelo, infoCert, nombreFirmante, cargoFirmante);
+                var resultado = _firmaService.FirmarPdf(
+                    pdfBytes,
+                    certificadoBytes,
+                    password,
+                    nombreFirmante,
+                    "Firma del Coordinador — Certificado AOCR",
+                    "Sistema AOCR DGAC",
+                    "DIRDAC",
+                    contenidoQr,
+                    null);
+
+                if (resultado == null || !resultado.Exitoso)
+                {
+                    TempData["Error"] = resultado != null && !string.IsNullOrWhiteSpace(resultado.Mensaje)
+                        ? resultado.Mensaje
+                        : "No se pudo aplicar la firma digital al certificado.";
+                    return RedirectToAction("Detalle", new { solicitudId });
+                }
+
+                // 6) Persistir PDF firmado
+                string rutaRelativa = GuardarCertificadoFirmado(solicitudId, resultado.PdfFirmado);
+
+                // 7) Actualizar registro de Certificado
+                try
+                {
+                    cert.RutaDocumento = rutaRelativa;
+                    cert.Estado = "Vigente";
+                    cert.EmitidoPor = usuarioNombre;
+                    cert.AprobadoPor = nombreFirmante;
+                    cert.UpdatedAt = DateTime.Now;
+                    new CertificadoDAO().Actualizar(cert);
+                }
+                catch (Exception exUpd)
+                {
+                    System.Diagnostics.Debug.WriteLine("WARN Certificado.Actualizar: " + exUpd);
+                }
+
+                // 8) Registrar firma en aocr_tbfirma_documento
+                try
+                {
+                    _firmaDocDao.Registrar(new AocrFirmaDocumento
+                    {
+                        CodigoSolicitud = solicitudId,
+                        CodigoInspeccion = null,
+                        TipoDocumento = "CERTIFICADO_AOCR",
+                        NumeroAocr = modelo?.NumeroAOCR,
+                        NombreArchivo = System.IO.Path.GetFileName(rutaRelativa),
+                        RutaDocumento = rutaRelativa,
+                        HashDocumento = resultado.HashSha256,
+                        CodigoQr = contenidoQr,
+                        SujetoCertificado = resultado.SujetoCertificado ?? infoCert.SujetoCertificado,
+                        NombreFirmante = nombreFirmante,
+                        CargoFirmante = cargoFirmante,
+                        FechaFirma = DateTime.Now,
+                        CodigoUsuario = null,
+                        UsuarioNombre = usuarioNombre
+                    });
+                }
+                catch (Exception exReg)
+                {
+                    System.Diagnostics.Debug.WriteLine("WARN AocrFirmaDocumento.Registrar: " + exReg);
+                }
+
+                // 9) Registrar trazabilidad en historial de estado
+                try
+                {
+                    _historialDao.RegistrarCambio(
+                        solicitudId,
+                        "CertificadoAOCR_PendienteFirma",
+                        "CertificadoAOCR_Firmado",
+                        0,
+                        "Certificado AOCR firmado por " + nombreFirmante + " (" + cargoFirmante + ")");
+                }
+                catch (Exception exHist)
+                {
+                    System.Diagnostics.Debug.WriteLine("WARN HistorialEstado.RegistrarCambio: " + exHist);
+                }
+
+                TempData["OK"] = "Certificado AOCR firmado correctamente por " + nombreFirmante + ".";
+                return RedirectToAction("Detalle", new { solicitudId });
+            }
+            catch (Exception ex)
+            {
+                TempData["Error"] = "Error al firmar el certificado AOCR: " + ex.Message;
+                return RedirectToAction("Detalle", new { solicitudId });
+            }
+        }
+
+        // ============================================================
+        //   Helpers privados: certificado institucional + almacenado
+        // ============================================================
+        private bool TryCargarCertificadoInstitucional(out byte[] certificadoBytes, out string password, out string mensajeError)
+        {
+            certificadoBytes = null;
+            password = null;
+            mensajeError = null;
+
+            var rutaConfigurada = System.Configuration.ConfigurationManager.AppSettings["Aocr:CertificadoInstitucionalRuta"];
+            var passwordConfigurado = System.Configuration.ConfigurationManager.AppSettings["Aocr:CertificadoInstitucionalPassword"];
+
+            if (string.IsNullOrWhiteSpace(rutaConfigurada))
+            {
+                mensajeError = "No hay un certificado institucional configurado en el servidor. Solicite al administrador configurar 'Aocr:CertificadoInstitucionalRuta' en Web.config.";
+                return false;
+            }
+
+            string rutaAbsoluta;
+            try
+            {
+                rutaAbsoluta = rutaConfigurada.StartsWith("~", StringComparison.Ordinal)
+                    ? Server.MapPath(rutaConfigurada)
+                    : rutaConfigurada;
+            }
+            catch (Exception ex)
+            {
+                mensajeError = "Ruta del certificado institucional no válida: " + ex.Message;
+                return false;
+            }
+
+            if (!System.IO.File.Exists(rutaAbsoluta))
+            {
+                mensajeError = "No se encontró el archivo del certificado institucional (" + rutaAbsoluta + ").";
+                return false;
+            }
+
+            try
+            {
+                certificadoBytes = System.IO.File.ReadAllBytes(rutaAbsoluta);
+                password = passwordConfigurado ?? string.Empty;
+                return true;
+            }
+            catch (Exception ex)
+            {
+                mensajeError = "No se pudo leer el certificado institucional: " + ex.Message;
+                return false;
+            }
+        }
+
+        private string GuardarCertificadoFirmado(int solicitudId, byte[] contenido)
+        {
+            var carpetaRelativa = "~/App_Data/Uploads/AOCR/Certificados/" + solicitudId;
+            var carpetaAbsoluta = Server.MapPath(carpetaRelativa);
+            if (!Directory.Exists(carpetaAbsoluta))
+            {
+                Directory.CreateDirectory(carpetaAbsoluta);
+            }
+
+            var nombreSeguro = "certificado_aocr_" + DateTime.Now.ToString("yyyyMMddHHmmss") + "_" + solicitudId + ".pdf";
+            var rutaAbsoluta = Path.Combine(carpetaAbsoluta, nombreSeguro);
+            System.IO.File.WriteAllBytes(rutaAbsoluta, contenido ?? new byte[0]);
+
+            return VirtualPathUtility.ToAbsolute(carpetaRelativa.TrimStart('~') + "/" + nombreSeguro);
+        }
+
+        private static string ConstruirContenidoQrCertificado(int solicitudId, CertificadoAOCRViewModel modelo, InformacionCertificadoDigital infoCert, string nombreFirmante, string cargoFirmante)
+        {
+            var partes = new System.Collections.Generic.List<string>
+            {
+                "Sistema=AOCR DGAC",
+                "Documento=CERTIFICADO_AOCR",
+                "SolicitudId=" + solicitudId,
+                "NumeroAOCR=" + (modelo != null ? (modelo.NumeroAOCR ?? string.Empty) : string.Empty),
+                "Firmante=" + (nombreFirmante ?? string.Empty),
+                "Cargo=" + (cargoFirmante ?? string.Empty),
+                "FechaFirma=" + DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"),
+                "Certificado=" + (infoCert != null ? (infoCert.SujetoCertificado ?? string.Empty) : string.Empty),
+                "VigenciaHasta=" + (infoCert != null && infoCert.VigenteHasta.HasValue
+                    ? infoCert.VigenteHasta.Value.ToString("yyyy-MM-dd HH:mm:ss")
+                    : string.Empty)
+            };
+
+            return string.Join(" | ", partes);
         }
 
         // ============================================================

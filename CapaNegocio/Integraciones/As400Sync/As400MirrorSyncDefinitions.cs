@@ -11,6 +11,8 @@ namespace CapaNegocio.Integraciones.As400Sync
                 CreateUsuarc(),
                 CreateUsuar1(),
                 CreateCiaarc(),
+                CreateOpuarc01(),
+                CreateOidar2(),
                 CreateOpcar5(),
                 CreateOpcar6()
             };
@@ -80,6 +82,44 @@ namespace CapaNegocio.Integraciones.As400Sync
                 BatchSize = 10000,
                 Notes = "Catalogo de companias. Sin watermark confiable en AOCR actual; usa snapshot + reconcile de deletes.",
                 Columns = MapSame("CIACOD", "CIACO2", "CIACO3", "CIANOM", "CIAEST")
+            };
+        }
+
+        private static SyncTableDefinition CreateOpuarc01()
+        {
+            return new SyncTableDefinition
+            {
+                Name = "OPUARC01",
+                SourceSchema = "DGACDAT",
+                SourceTable = "OPUARC01",
+                TargetSchema = "mirror_raw",
+                TargetTable = "opuarc01",
+                PrimaryKeys = new List<string> { "opucod" },
+                IncrementalMode = SyncIncrementalMode.FullSnapshot,
+                DeleteStrategy = DeleteStrategy.FullSnapshotReconcile,
+                AllowFullSnapshotDeleteReconcile = true,
+                BatchSize = 10000,
+                Notes = "Catalogo ubicacion usuario (lugar emision). Snapshot completo para evitar dependencia AS400 en linea.",
+                Columns = MapSame("OPUOID", "OPUCOD", "OPUEST")
+            };
+        }
+
+        private static SyncTableDefinition CreateOidar2()
+        {
+            return new SyncTableDefinition
+            {
+                Name = "OIDAR2",
+                SourceSchema = "DGACDAT",
+                SourceTable = "OIDAR2",
+                TargetSchema = "mirror_raw",
+                TargetTable = "oidar2",
+                PrimaryKeys = new List<string> { "oidco3", "oidoi2" },
+                IncrementalMode = SyncIncrementalMode.FullSnapshot,
+                DeleteStrategy = DeleteStrategy.FullSnapshotReconcile,
+                AllowFullSnapshotDeleteReconcile = true,
+                BatchSize = 10000,
+                Notes = "Ubicacion aeropuerto por ciudad (fallback para lugar emision). Snapshot completo.",
+                Columns = MapSame("OIDOI2", "OIDCO3", "OIDNO2")
             };
         }
 

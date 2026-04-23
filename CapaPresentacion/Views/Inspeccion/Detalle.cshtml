@@ -2,11 +2,18 @@
 @using CapaModelo
 @using CapaDatos.Constants
 @using CapaPresentacion.Helpers
+@using CapaPresentacion.Models.ViewModels
 @using System.Web.Mvc
 @using System.Web.Mvc.Html
 @using System.Linq
 
 @{
+    if (Model == null)
+    {
+        ViewData.Model = new Inspeccion();
+        TempData["Warning"] = "Se detectÃ³ un detalle de inspecciÃ³n sin modelo completo. Se cargÃ³ contexto mÃ­nimo para evitar errores.";
+    }
+
     ViewBag.Title = "Detalle Inspeccion";
     Layout = "~/Views/Shared/_LayoutAOCR.cshtml";
     var hallazgos = ViewBag.Hallazgos as IEnumerable<Hallazgo>;
@@ -2061,17 +2068,20 @@
                             La firma digital del inspector se habilita despues de la revisión DIRDAC y la aprobación de Coordinación.
                         </div>
 
-                        @* Bloque operativo del inspector (firma + correcciones + reenvio) *@
-                        ViewBag.CodigoInspeccion = Model.CodigoInspeccion;
-                        ViewBag.PuedeFirmarInspector = puedeFirmarInspector;
-                        ViewBag.PuedeEnviarADirdac = puedeEnviarADirdac;
-                        ViewBag.PuedeReintentarNotificacionDirdac = puedeReintentarNotificacionDirdac;
-                        ViewBag.InformeEnviadoADirdac = informeEnviadoADirdac;
-                        ViewBag.InformeDevueltoCoordinador = informeDevueltoCoordinador;
-                        ViewBag.InformeDevueltoDireccion = informeDevueltoDireccion;
-                        ViewBag.InformeAprobadoDireccion = informeAprobadoDireccion;
-                        ViewBag.EstadoInformeTecnico = estadoInformeTecnico;
-                        @Html.Partial("_FirmaInspectorPanel")
+                        var firmaInspectorVm = new FirmaInspectorPanelVm
+                        {
+                            CodigoInspeccion = Model.CodigoInspeccion,
+                            InformeTecnico = informeTecnico,
+                            PuedeFirmarInspector = puedeFirmarInspector,
+                            PuedeEnviarADirdac = puedeEnviarADirdac,
+                            PuedeReintentarNotificacionDirdac = puedeReintentarNotificacionDirdac,
+                            InformeEnviadoADirdac = informeEnviadoADirdac,
+                            InformeDevueltoCoordinador = informeDevueltoCoordinador,
+                            InformeDevueltoDireccion = informeDevueltoDireccion,
+                            InformeAprobadoDireccion = informeAprobadoDireccion,
+                            EstadoInformeTecnico = estadoInformeTecnico
+                        };
+                        @Html.Partial("_FirmaInspectorPanel", firmaInspectorVm)
                     }
                 </div>
             </div>
@@ -2082,12 +2092,16 @@
            Bloque de revisión de solo lectura por el coordinador.
            ══════════════════════════════════════════════════════════════ *@
         @{
-            ViewBag.CodigoInspeccion = Model.CodigoInspeccion;
-            ViewBag.EsCoordinador = esCoordinadorRevision;
-            ViewBag.EstadoInformeTecnico = estadoInformeTecnico;
-            ViewBag.RutaInformeVisual = rutaInformeVisual;
+            var coordinadorVm = new CoordinadorPanelVm
+            {
+                CodigoInspeccion = Model.CodigoInspeccion,
+                InformeTecnico = informeTecnico,
+                EsCoordinador = esCoordinadorRevision,
+                EstadoInformeTecnico = estadoInformeTecnico,
+                RutaInformeVisual = rutaInformeVisual
+            };
         }
-        @Html.Partial("_CoordinadorPanel")
+        @Html.Partial("_CoordinadorPanel", coordinadorVm)
 
         @* ══════════════════════════════════════════════════════════════
            SECCIÓN: DIRECCIÓN / JEFATURA
@@ -2095,19 +2109,20 @@
            Solo se muestra para roles de Direccion/Jefatura.
            ══════════════════════════════════════════════════════════════ *@
         @{
-            ViewBag.CodigoInspeccion = Model.CodigoInspeccion;
-            ViewBag.EsDirdac = esDirdac;
-            ViewBag.EsInspector = esInspector;
-            ViewBag.EsSolicitante = esSolicitante;
-            ViewBag.PuedeFirmarDirdac = puedeFirmarDirdac;
-            ViewBag.InformeEnviadoADirdac = informeEnviadoADirdac;
-            ViewBag.InformeAprobadoDireccion = informeAprobadoDireccion;
-            ViewBag.InformeDevueltoDireccion = informeDevueltoDireccion;
-            ViewBag.NotificacionFormalDirdac = notificacionFormalDirdac;
-            ViewBag.EstadoInformeTecnico = estadoInformeTecnico;
-            ViewBag.RutaInformeVisual = rutaInformeVisual;
+            var direccionVm = new DireccionJefaturaPanelVm
+            {
+                CodigoInspeccion = Model.CodigoInspeccion,
+                InformeTecnico = informeTecnico,
+                EsDirdac = esDirdac,
+                PuedeFirmarDirdac = puedeFirmarDirdac,
+                InformeEnviadoADirdac = informeEnviadoADirdac,
+                InformeAprobadoDireccion = informeAprobadoDireccion,
+                InformeDevueltoDireccion = informeDevueltoDireccion,
+                EstadoInformeTecnico = estadoInformeTecnico,
+                RutaInformeVisual = rutaInformeVisual
+            };
         }
-        @Html.Partial("_DireccionJefaturaPanel")
+        @Html.Partial("_DireccionJefaturaPanel", direccionVm)
 
         <div class="utility-grid">
             <div class="card section-card">

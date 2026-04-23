@@ -490,6 +490,146 @@ namespace CapaDatos.DAOs
             }
         }
 
+        public List<InspectorAs400Record> BuscarActivosPorCedulaONombre(string texto, int limite = 20)
+        {
+            var termino = (texto ?? string.Empty).Trim();
+            if (string.IsNullOrWhiteSpace(termino))
+            {
+                return new List<InspectorAs400Record>();
+            }
+
+            if (limite <= 0)
+            {
+                limite = 20;
+            }
+
+            try
+            {
+                using (var cn = new NpgsqlConnection(_connectionString))
+                {
+                    cn.Open();
+
+                    if (!ExisteTabla(cn, "aocr_tbinspectores"))
+                    {
+                        return new List<InspectorAs400Record>();
+                    }
+
+                    const string sql = @"
+                        SELECT TRIM(COALESCE(cedula,'')) AS cedula,
+                               TRIM(COALESCE(nombre_completo,'')) AS nombre,
+                               TRIM(COALESCE(estado,'')) AS estado,
+                               TRIM(COALESCE(tipo,'')) AS tipo
+                        FROM public.aocr_tbinspectores
+                        WHERE UPPER(TRIM(COALESCE(estado,''))) = 'AC'
+                          AND (
+                                LOWER(TRIM(COALESCE(cedula,''))) LIKE LOWER(@patronCedula)
+                             OR LOWER(TRIM(COALESCE(nombre_completo,''))) LIKE LOWER(@patronNombre)
+                          )
+                        ORDER BY
+                            CASE
+                                WHEN LOWER(TRIM(COALESCE(cedula,''))) = LOWER(@texto) THEN 0
+                                WHEN LOWER(TRIM(COALESCE(nombre_completo,''))) = LOWER(@texto) THEN 1
+                                WHEN LOWER(TRIM(COALESCE(cedula,''))) LIKE LOWER(@patronCedulaPrefijo) THEN 2
+                                ELSE 3
+                            END,
+                            TRIM(COALESCE(nombre_completo,''))
+                        LIMIT @limite;";
+
+                    using (var cmd = new NpgsqlCommand(sql, cn))
+                    {
+                        cmd.Parameters.AddWithValue("@texto", termino);
+                        cmd.Parameters.AddWithValue("@patronCedula", "%" + termino + "%");
+                        cmd.Parameters.AddWithValue("@patronCedulaPrefijo", termino + "%");
+                        cmd.Parameters.AddWithValue("@patronNombre", "%" + termino + "%");
+                        cmd.Parameters.AddWithValue("@limite", limite);
+
+                        var resultados = new List<InspectorAs400Record>();
+                        using (var rd = cmd.ExecuteReader())
+                        {
+                            while (rd.Read())
+                            {
+                                resultados.Add(new InspectorAs400Record
+                                {
+                                    Cedula = rd.IsDBNull(0) ? null : rd.GetString(0),
+                                    NombreCompleto = rd.IsDBNull(1) ? null : rd.GetString(1),
+                                    Estado = rd.IsDBNull(2) ? null : rd.GetString(2),
+                                    Tipo = rd.IsDBNull(3) ? null : rd.GetString(3)
+                                });
+                            }
+                        }
+
+                        return resultados;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError("[InspectoresDAO-PG] Error en BuscarActivosPorCedulaONombre texto=" + termino + ": " + ex);
+                return new List<InspectorAs400Record>();
+            }
+        }
+
+        public InspectorAs400Record ObtenerActivoPorCedula(string cedula, string tipo = null)
+        {
+            var codigo = (cedula ?? string.Empty).Trim();
+            if (string.IsNullOrWhiteSpace(codigo))
+            {
+                return null;
+            }
+
+            var tipoNorm = (tipo ?? string.Empty).Trim().ToUpperInvariant();
+
+            try
+            {
+                using (var cn = new NpgsqlConnection(_connectionString))
+                {
+                    cn.Open();
+
+                    if (!ExisteTabla(cn, "aocr_tbinspectores"))
+                    {
+                        return null;
+                    }
+
+                    const string sql = @"
+                        SELECT TRIM(COALESCE(cedula,'')),
+                               TRIM(COALESCE(nombre_completo,'')),
+                               TRIM(COALESCE(estado,'')),
+                               TRIM(COALESCE(tipo,''))
+                        FROM public.aocr_tbinspectores
+                        WHERE LOWER(TRIM(COALESCE(cedula,''))) = LOWER(TRIM(@cedula))
+                          AND UPPER(TRIM(COALESCE(estado,''))) = 'AC'
+                          AND (@tipo = '' OR UPPER(TRIM(COALESCE(tipo,''))) = @tipo)
+                        LIMIT 1;";
+
+                    using (var cmd = new NpgsqlCommand(sql, cn))
+                    {
+                        cmd.Parameters.AddWithValue("@cedula", codigo);
+                        cmd.Parameters.AddWithValue("@tipo", tipoNorm);
+                        using (var rd = cmd.ExecuteReader())
+                        {
+                            if (!rd.Read())
+                            {
+                                return null;
+                            }
+
+                            return new InspectorAs400Record
+                            {
+                                Cedula = rd.IsDBNull(0) ? null : rd.GetString(0),
+                                NombreCompleto = rd.IsDBNull(1) ? null : rd.GetString(1),
+                                Estado = rd.IsDBNull(2) ? null : rd.GetString(2),
+                                Tipo = rd.IsDBNull(3) ? null : rd.GetString(3)
+                            };
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError("[InspectoresDAO-PG] Error en ObtenerActivoPorCedula cedula=" + codigo + ": " + ex);
+                return null;
+            }
+        }
+
         private static bool ExisteColumna(NpgsqlConnection cn, string tabla, string columna)
         {
             const string sql = @"

@@ -982,8 +982,7 @@ namespace CapaPresentacion.Controllers
                                   : rolSelect;
 
                 // 2. VALIDAR EMPRESA (Tu lógica original estaba bien)
-                var daoEmpresa = new EmpresaAS400DAO(new DataSecureConfig());
-                var empresas = daoEmpresa.ObtenerEmpresas();
+                var empresas = ObtenerEmpresasPreferMirror(5000);
                 var empresaSeleccionada = empresas.FirstOrDefault(e =>
                     string.Equals((e.Codigo ?? string.Empty).Trim(), (empresaCodigo ?? string.Empty).Trim(), StringComparison.OrdinalIgnoreCase));
 
@@ -1357,18 +1356,12 @@ namespace CapaPresentacion.Controllers
 
             try
             {
-                bool preferirMirror;
-                if (bool.TryParse(ConfigurationManager.AppSettings["Sync:Mirror:PreferReadForEmpresas"], out preferirMirror) && preferirMirror)
-                {
-                    var mirror = new MirrorReadService();
-                    var empresaMirror = mirror.ListarCompaniasActivas(5000)
-                        .FirstOrDefault(x => x != null &&
-                            string.Equals((x.CodigoOaci ?? string.Empty).Trim(), codigoEmpresa, StringComparison.OrdinalIgnoreCase));
+                var mirror = new MirrorReadService();
+                var empresaMirror = mirror.ObtenerCompaniaPorCodigo(codigoEmpresa);
 
-                    if (empresaMirror != null && !string.IsNullOrWhiteSpace(empresaMirror.NombreCompania))
-                    {
-                        return empresaMirror.NombreCompania.Trim();
-                    }
+                if (empresaMirror != null && !string.IsNullOrWhiteSpace(empresaMirror.NombreCompania))
+                {
+                    return empresaMirror.NombreCompania.Trim();
                 }
             }
             catch (Exception exMirror)
@@ -1417,16 +1410,7 @@ namespace CapaPresentacion.Controllers
                 StringComparer.OrdinalIgnoreCase);
 
             var items = new List<SelectListItem>();
-            var catalogo = new List<Empresa>();
-            try
-            {
-                var daoEmpresa = new EmpresaAS400DAO(new DataSecureConfig());
-                catalogo = daoEmpresa.ObtenerEmpresas() ?? new List<Empresa>();
-            }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine("GestionarCompaniasRT: error cargando catálogo AS400: " + ex.Message);
-            }
+            var catalogo = ObtenerEmpresasPreferMirror(5000);
 
             foreach (var empresa in catalogo
                 .Where(e => e != null && !string.IsNullOrWhiteSpace(e.CodigoOaci))
@@ -1489,8 +1473,7 @@ namespace CapaPresentacion.Controllers
 
             try
             {
-                var daoEmpresa = new EmpresaAS400DAO(new DataSecureConfig());
-                var empresa = daoEmpresa.ObtenerEmpresaPorCodigo(codigo);
+                var empresa = ObtenerEmpresaPorCodigoPreferMirror(codigo);
                 if (empresa != null && !string.IsNullOrWhiteSpace(empresa.Nombre))
                 {
                     return empresa.Nombre.Trim();
@@ -1505,6 +1488,91 @@ namespace CapaPresentacion.Controllers
             }
 
             return codigo;
+        }
+
+        private List<Empresa> ObtenerEmpresasPreferMirror(int take)
+        {
+            var catalogo = new List<Empresa>();
+
+            try
+            {
+                var mirror = new MirrorReadService();
+                var mirrorCompanias = mirror.ListarCompaniasActivas(take);
+                if (mirrorCompanias != null && mirrorCompanias.Count > 0)
+                {
+                    catalogo = mirrorCompanias
+                        .Where(c => c != null && !string.IsNullOrWhiteSpace(c.CodigoOaci))
+                        .Select(c => new Empresa
+                        {
+                            CodigoOaci = (c.CodigoOaci ?? string.Empty).Trim(),
+                            CodigoIata = (c.CodigoIata ?? string.Empty).Trim(),
+                            CodigoNumeroCia = (c.CodigoNumeroCia ?? string.Empty).Trim(),
+                            Nombre = (c.NombreCompania ?? string.Empty).Trim()
+                        })
+                        .OrderBy(c => c.Nombre ?? string.Empty)
+                        .ToList();
+                }
+            }
+            catch (Exception exMirror)
+            {
+                System.Diagnostics.Debug.WriteLine("UsuarioController.ObtenerEmpresasPreferMirror mirror error: " + exMirror.Message);
+            }
+
+            if (catalogo.Count > 0)
+            {
+                return catalogo;
+            }
+
+            try
+            {
+                var daoEmpresa = new EmpresaAS400DAO(new DataSecureConfig());
+                return daoEmpresa.ObtenerEmpresas() ?? new List<Empresa>();
+            }
+            catch (Exception exAs400)
+            {
+                System.Diagnostics.Debug.WriteLine("UsuarioController.ObtenerEmpresasPreferMirror AS400 error: " + exAs400.Message);
+                return new List<Empresa>();
+            }
+        }
+
+        private Empresa ObtenerEmpresaPorCodigoPreferMirror(string codigoCompania)
+        {
+            var codigo = (codigoCompania ?? string.Empty).Trim().ToUpperInvariant();
+            if (string.IsNullOrWhiteSpace(codigo))
+            {
+                return null;
+            }
+
+            try
+            {
+                var mirror = new MirrorReadService();
+                var mirrorCompania = mirror.ObtenerCompaniaPorCodigo(codigo);
+                if (mirrorCompania != null)
+                {
+                    return new Empresa
+                    {
+                        CodigoOaci = (mirrorCompania.CodigoOaci ?? string.Empty).Trim(),
+                        CodigoIata = (mirrorCompania.CodigoIata ?? string.Empty).Trim(),
+                        CodigoNumeroCia = (mirrorCompania.CodigoNumeroCia ?? string.Empty).Trim(),
+                        Nombre = (mirrorCompania.NombreCompania ?? string.Empty).Trim()
+                    };
+                }
+            }
+            catch (Exception exMirror)
+            {
+                System.Diagnostics.Debug.WriteLine("UsuarioController.ObtenerEmpresaPorCodigoPreferMirror mirror error: " + exMirror.Message);
+            }
+
+            try
+            {
+                var daoEmpresa = new EmpresaAS400DAO(new DataSecureConfig());
+                return daoEmpresa.ObtenerEmpresaPorCodigo(codigo);
+            }
+            catch (Exception exAs400)
+            {
+                System.Diagnostics.Debug.WriteLine("UsuarioController.ObtenerEmpresaPorCodigoPreferMirror AS400 error: " + exAs400.Message);
+                return null;
+            }
         }
 
         private static List<CompaniaDeclaracionItem> ParsearCompaniasDeclaracion(string companiasJson)

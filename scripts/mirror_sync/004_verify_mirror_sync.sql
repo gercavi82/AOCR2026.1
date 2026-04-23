@@ -26,7 +26,13 @@ SELECT 'mirror_raw.usuar1', COUNT(*), SUM(CASE WHEN COALESCE(_is_deleted,false) 
 FROM mirror_raw.usuar1
 UNION ALL
 SELECT 'mirror_raw.ciaarc', COUNT(*), SUM(CASE WHEN COALESCE(_is_deleted,false) THEN 1 ELSE 0 END)
-FROM mirror_raw.ciaarc;
+FROM mirror_raw.ciaarc
+UNION ALL
+SELECT 'mirror_raw.opuarc01', COUNT(*), SUM(CASE WHEN COALESCE(_is_deleted,false) THEN 1 ELSE 0 END)
+FROM mirror_raw.opuarc01
+UNION ALL
+SELECT 'mirror_raw.oidar2', COUNT(*), SUM(CASE WHEN COALESCE(_is_deleted,false) THEN 1 ELSE 0 END)
+FROM mirror_raw.oidar2;
 
 -- 5) Consistencia básica usuarios espejo
 SELECT
@@ -47,3 +53,14 @@ FROM mirror_raw.usuar1 a
 LEFT JOIN mirror_raw.usuarc u ON u.usucod = a.usuco8
 WHERE u.usucod IS NULL
   AND COALESCE(a._is_deleted, false) = false;
+
+-- 7) Cobertura ubicacion/lugar emision
+SELECT COUNT(*) AS opuarc01_con_estacion
+FROM mirror_raw.opuarc01
+WHERE COALESCE(_is_deleted, false) = false
+  AND COALESCE(TRIM(opuest), '') <> '';
+
+SELECT COUNT(*) AS oidar2_con_estacion
+FROM mirror_raw.oidar2
+WHERE COALESCE(_is_deleted, false) = false
+  AND COALESCE(TRIM(oidno2), '') <> '';

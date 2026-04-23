@@ -6,6 +6,7 @@ using CapaModelo;
 using CapaNegocio;
 using CapaNegocio.Services;
 using CapaDatos.DAOs;
+using CapaPresentacion.Infrastructure;
 using DataSecureConfigurationService = CapaDatos.Services.SecureConfigurationService;
 
 namespace CapaPresentacion.Controllers
@@ -15,6 +16,7 @@ namespace CapaPresentacion.Controllers
     {
         private readonly CapaNegocio.Services.ILoggingService _logger;
         private readonly SolicitudAocrCorreoService _solicitudAocrCorreoService;
+        private static readonly IUserContextAccessor _userContext = new UserContextAccessor();
 
         public TecnicoController()
         {
@@ -436,14 +438,13 @@ namespace CapaPresentacion.Controllers
 
         private string ObtenerUsuarioActual()
         {
-            if (Session != null && Session["Usuario"] != null)
+            var usuarioSesion = Session != null ? Session["Usuario"] as string : null;
+            if (!string.IsNullOrWhiteSpace(usuarioSesion))
             {
-                return Session["Usuario"].ToString();
+                return usuarioSesion.Trim();
             }
 
-            return (User != null && User.Identity != null && User.Identity.IsAuthenticated)
-                ? User.Identity.Name
-                : "ANONIMO";
+            return _userContext.GetNombreUsuario(Session, User);
         }
 
         private string ObtenerRolActual()

@@ -120,6 +120,11 @@ namespace CapaNegocio
             var actual = EstadoSolicitud.Normalizar(estadoActual);
             var destino = EstadoSolicitud.Normalizar(estadoDestino);
 
+            if (string.Equals(actual, destino, StringComparison.OrdinalIgnoreCase))
+            {
+                return string.Equals(actual, EstadoSolicitud.AOCR_EmitidoRecibido, StringComparison.OrdinalIgnoreCase);
+            }
+
             if ((actual == EstadoSolicitud.Pendiente || actual == EstadoSolicitud.EnRevision || actual == EstadoSolicitud.DocumentacionPendiente) &&
                 (destino == EstadoSolicitud.Observada || destino == EstadoSolicitud.AceptacionDocumental))
             {
@@ -148,7 +153,8 @@ namespace CapaNegocio
                 return true;
             }
 
-            if ((actual == EstadoSolicitud.Pendiente || actual == EstadoSolicitud.AOCR_Validado) && destino == EstadoSolicitud.AOCR_Legalizado)
+            if ((actual == EstadoSolicitud.Aprobada || actual == EstadoSolicitud.AOCR_Validado) &&
+                destino == EstadoSolicitud.AOCR_Legalizado)
             {
                 return true;
             }

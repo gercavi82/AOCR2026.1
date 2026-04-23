@@ -5,6 +5,7 @@ using System.Web.Mvc;
 using CapaModelo;
 using CapaNegocio;
 using CapaDatos.Constants;
+using CapaPresentacion.Infrastructure;
 
 namespace CapaPresentacion.Controllers
 {
@@ -15,16 +16,15 @@ namespace CapaPresentacion.Controllers
     [Authorize]
     public class NotificacionController : Controller
     {
+        private static readonly IUserContextAccessor _userContext = new UserContextAccessor();
+
         // ============================================
         // OBTENER CODIGOUSUARIO DE SESIÃ“N
         // ============================================
         private int ObtenerCodigoUsuario()
         {
-            if (Session["CodigoUsuario"] != null &&
-                int.TryParse(Session["CodigoUsuario"].ToString(), out var id))
-                return id;
-
-            return 0;
+            int id;
+            return _userContext.TryGetCodigoUsuario(Session, out id) ? id : 0;
         }
 
 

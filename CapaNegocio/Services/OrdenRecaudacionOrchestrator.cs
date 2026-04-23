@@ -52,7 +52,7 @@ namespace CapaNegocio.Services
             _pagoRepository = pagoRepository ?? throw new ArgumentNullException("pagoRepository");
             _contribuyenteRepository = contribuyenteRepository; // Puede ser null
             _pdfService = pdfService;
-            _emailService = emailService;
+            _emailService = emailService ?? new NoOpDataEmailService();
             _fileService = fileService;
             _ordenCorreoService = new OrdenRecaudacionCorreoService();
         }
@@ -350,6 +350,11 @@ namespace CapaNegocio.Services
                         return OperationResult<GenerarPdfResponse>.Fail(
                             "Tipo de documento no soportado: " + request.TipoDocumento,
                             "INVALID_TYPE");
+                }
+
+                if (contenidoPdf == null || contenidoPdf.Length == 0)
+                {
+                    return OperationResult<GenerarPdfResponse>.Fail("No se pudo generar contenido PDF.", "PDF_EMPTY");
                 }
 
                 var response = new GenerarPdfResponse
@@ -751,6 +756,18 @@ namespace CapaNegocio.Services
 <p>Saludos,<br/>Sistema AOCR</p>
 </body>
 </html>", orden.NumeroOrden);
+        }
+
+        private sealed class NoOpDataEmailService : DataEmailService
+        {
+            public Task<CapaDatos.Services.EmailSendResult> EnviarAsync(string para, string paraNombre, string asunto, string cuerpo, byte[] adjunto = null, string adjuntoNombre = null)
+            {
+                return Task.FromResult(new CapaDatos.Services.EmailSendResult
+                {
+                    Success = false,
+                    Error = "EMAIL_SERVICE_DISABLED"
+                });
+            }
         }
 
         #endregion

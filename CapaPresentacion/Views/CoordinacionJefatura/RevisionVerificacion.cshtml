@@ -108,282 +108,375 @@
         <div class="alert alert-danger" role="alert">@TempData["Error"]</div>
     }
 
-    <div class="row g-3 mb-4">
-        <div class="col-12 col-md-6 col-xl-3">
-            @Html.Partial("_MetricCard", null, new ViewDataDictionary { { "Label", "En bandeja" }, { "Value", totalBandeja }, { "Modifier", "info" }, { "Icon", "fas fa-inbox" }, { "Caption", "Total consolidado del módulo" } })
+    <!-- Tarjetas métricas (fila única, compactas) -->
+    <div class="rv-metrics mb-3">
+        <div class="rv-metric rv-metric--accent">
+            <div class="rv-metric__icon"><i class="fas fa-inbox"></i></div>
+            <div class="rv-metric__body">
+                <div class="rv-metric__label">En bandeja</div>
+                <div class="rv-metric__value">@totalBandeja</div>
+                <div class="rv-metric__caption">Total consolidado</div>
+            </div>
         </div>
-        <div class="col-12 col-md-6 col-xl-3">
-            @Html.Partial("_MetricCard", null, new ViewDataDictionary { { "Label", "Control documental" }, { "Value", solicitudesControl.Count }, { "Modifier", "warning" }, { "Icon", "fas fa-folder-open" }, { "Caption", "Solicitudes pendientes de revisión" } })
+        <div class="rv-metric rv-metric--success rv-metric--featured">
+            <div class="rv-metric__icon"><i class="fas fa-user-check"></i></div>
+            <div class="rv-metric__body">
+                <div class="rv-metric__label">Inspecciones</div>
+                <div class="rv-metric__value">@inspeccionesSeguimientoItems.Count</div>
+                <div class="rv-metric__caption">Seguimiento activo</div>
+            </div>
         </div>
-        <div class="col-12 col-md-6 col-xl-3">
-            @Html.Partial("_MetricCard", null, new ViewDataDictionary { { "Label", "AOCR en revisión" }, { "Value", solicitudesRevision.Count }, { "Modifier", "primary" }, { "Icon", "fas fa-file-signature" }, { "Caption", "Casos listos para validar o legalizar" } })
+        <div class="rv-metric rv-metric--warning">
+            <div class="rv-metric__icon"><i class="fas fa-folder-open"></i></div>
+            <div class="rv-metric__body">
+                <div class="rv-metric__label">Control documental</div>
+                <div class="rv-metric__value">@solicitudesControl.Count</div>
+                <div class="rv-metric__caption">Pendientes de revisión</div>
+            </div>
         </div>
-        <div class="col-12 col-md-6 col-xl-3">
-            @Html.Partial("_MetricCard", null, new ViewDataDictionary { { "Label", "Inspecciones" }, { "Value", inspeccionesSeguimientoItems.Count }, { "Modifier", "success" }, { "Icon", "fas fa-user-check" }, { "Caption", "Seguimiento coordinado activo" } })
+        <div class="rv-metric rv-metric--primary">
+            <div class="rv-metric__icon"><i class="fas fa-file-signature"></i></div>
+            <div class="rv-metric__body">
+                <div class="rv-metric__label">AOCR en revisión</div>
+                <div class="rv-metric__value">@solicitudesRevision.Count</div>
+                <div class="rv-metric__caption">Validar o legalizar</div>
+            </div>
         </div>
     </div>
 
     @Html.Partial("_ActionToolbar", null, toolbarData)
 
-    <div class="row g-4">
-        <div class="col-12">
-            <div class="card aocr-content-card aocr-table-card">
-                <div class="card-body">
-                    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
-                        <div>
-                            <h3 class="aocr-section-title mb-1"><i class="fas fa-folder-open"></i> Control documental</h3>
-                            <p class="text-muted mb-0">Solicitudes pendientes de revisión documental y validación previa.</p>
-                        </div>
-                        @Html.Partial("_StatusBadge", null, new ViewDataDictionary { { "Estado", solicitudesControl.Any() ? "En bandeja" : "Completado" } })
-                    </div>
+    <!-- Pestañas operativas — Inspecciones como primera y activa por defecto -->
+    <div class="card aocr-content-card rv-tabs-card">
+        <div class="card-body p-0">
+            <ul class="nav nav-tabs rv-nav" id="rvTabs" role="tablist">
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link active" id="rv-tab-insp" data-bs-toggle="tab" data-bs-target="#rv-pane-insp" type="button" role="tab" aria-controls="rv-pane-insp" aria-selected="true">
+                        <i class="fas fa-user-check me-2"></i> Inspecciones en seguimiento
+                        <span class="badge bg-success-subtle text-success ms-2">@inspeccionesSeguimientoItems.Count</span>
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="rv-tab-ctrl" data-bs-toggle="tab" data-bs-target="#rv-pane-ctrl" type="button" role="tab" aria-controls="rv-pane-ctrl" aria-selected="false">
+                        <i class="fas fa-folder-open me-2"></i> Control documental
+                        <span class="badge bg-warning-subtle text-warning ms-2">@solicitudesControl.Count</span>
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="rv-tab-aocr" data-bs-toggle="tab" data-bs-target="#rv-pane-aocr" type="button" role="tab" aria-controls="rv-pane-aocr" aria-selected="false">
+                        <i class="fas fa-file-signature me-2"></i> AOCR en revisión
+                        <span class="badge bg-primary-subtle text-primary ms-2">@solicitudesRevision.Count</span>
+                    </button>
+                </li>
+            </ul>
 
-                    @if (!solicitudesControl.Any())
-                    {
-                        @Html.Partial("_EmptyState", null, new ViewDataDictionary {
-                            { "Icon", "fas fa-folder-open" },
-                            { "Title", "Sin pendientes en control documental" },
-                            { "Description", "No existen solicitudes pendientes de revisión documental en este momento." }
-                        })
-                    }
-                    else
-                    {
-                        <div class="table-responsive aocr-table-wrap">
-                            <table class="table aocr-table align-middle mb-0">
-                                <thead>
-                                    <tr>
-                                        <th>Solicitud</th>
-                                        <th>Operador</th>
-                                        <th>Estado</th>
-                                        <th>Fecha</th>
-                                        <th class="text-end">Acciones</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    @foreach (var item in solicitudesControl)
-                                    {
-                                        var numeroSolicitud = !string.IsNullOrWhiteSpace(item.NumeroSolicitud) ? item.NumeroSolicitud : item.CodigoSolicitud.ToString();
-                                        <tr>
-                                            <td>
-                                                <div class="fw-semibold text-primary">@numeroSolicitud</div>
-                                                <small class="text-muted">Código @item.CodigoSolicitud</small>
-                                            </td>
-                                            <td>@(string.IsNullOrWhiteSpace(item.NombreOperador) ? "No especificado" : item.NombreOperador)</td>
-                                            <td>@Html.Partial("_StatusBadge", null, new ViewDataDictionary { { "Estado", item.Estado } })</td>
-                                            <td>@(item.FechaSolicitud.HasValue ? item.FechaSolicitud.Value.ToString("dd/MM/yyyy") : "No registrada")</td>
-                                            <td class="text-end">
-                                                <a class="btn btn-sm btn-outline-primary" href="@Url.Action("Detalle", "SolicitudAOCR", new { id = item.CodigoSolicitud })">
-                                                    <i class="fas fa-eye"></i> Detalle
-                                                </a>
-                                            </td>
-                                        </tr>
-                                    }
-                                </tbody>
-                            </table>
-                        </div>
-                    }
+            <div class="tab-content rv-tab-content">
+                <!-- 1) INSPECCIONES (PRIMERO, ACTIVA) -->
+                <div class="tab-pane fade show active" id="rv-pane-insp" role="tabpanel" aria-labelledby="rv-tab-insp">
+                    @Html.Partial("_BandejaInspecciones", inspeccionesSeguimientoItems, new ViewDataDictionary {
+                        { "puedeDecidirRevision", puedeDecidirRevision },
+                        { "puedeAsignarInspectorRevision", puedeAsignarInspectorRevision },
+                        { "puedeVerDetalleInspeccion", puedeVerDetalleInspeccion },
+                        { "returnUrlRevision", returnUrlRevision }
+                    })
                 </div>
-            </div>
-        </div>
 
-        <div class="col-12">
-            <div class="card aocr-content-card aocr-table-card">
-                <div class="card-body">
-                    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
-                        <div>
-                            <h3 class="aocr-section-title mb-1"><i class="fas fa-file-contract"></i> AOCR en revisión</h3>
-                            <p class="text-muted mb-0">Documentos listos para validación institucional, legalización o cierre formal.</p>
-                        </div>
-                        @Html.Partial("_StatusBadge", null, new ViewDataDictionary { { "Estado", solicitudesRevision.Any() ? "En revisión" : "Completado" } })
-                    </div>
-
-                    @if (!solicitudesRevision.Any())
-                    {
-                        @Html.Partial("_EmptyState", null, new ViewDataDictionary {
-                            { "Icon", "fas fa-file-contract" },
-                            { "Title", "Sin AOCR pendientes de revisión" },
-                            { "Description", "No existen AOCR listos para validar, legalizar o cerrar en esta bandeja." }
-                        })
-                    }
-                    else
-                    {
-                        <div class="table-responsive aocr-table-wrap">
-                            <table class="table aocr-table align-middle mb-0">
-                                <thead>
-                                    <tr>
-                                        <th>Solicitud</th>
-                                        <th>Operador</th>
-                                        <th>Estado</th>
-                                        <th>Fecha</th>
-                                        <th class="text-end">Acciones</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    @foreach (var item in solicitudesRevision)
-                                    {
-                                        var numeroSolicitud = !string.IsNullOrWhiteSpace(item.NumeroSolicitud) ? item.NumeroSolicitud : item.CodigoSolicitud.ToString();
-                                        <tr>
-                                            <td>
-                                                <div class="fw-semibold text-primary">@numeroSolicitud</div>
-                                                <small class="text-muted">Código @item.CodigoSolicitud</small>
-                                            </td>
-                                            <td>@(string.IsNullOrWhiteSpace(item.NombreOperador) ? "No especificado" : item.NombreOperador)</td>
-                                            <td>@Html.Partial("_StatusBadge", null, new ViewDataDictionary { { "Estado", item.Estado } })</td>
-                                            <td>@(item.FechaSolicitud.HasValue ? item.FechaSolicitud.Value.ToString("dd/MM/yyyy") : "No registrada")</td>
-                                            <td class="text-end">
-                                                <a class="btn btn-sm btn-outline-primary" href="@Url.Action("Detalle", "SolicitudAOCR", new { id = item.CodigoSolicitud })">
-                                                    <i class="fas fa-eye"></i> Detalle
-                                                </a>
-                                                @if (puedeValidarAocrRevision)
-                                                {
-                                                    <a class="btn btn-sm btn-outline-warning" href="@Url.Action("ValidarAocr", "CoordinacionJefatura")">
-                                                        <i class="fas fa-stamp"></i> Validar
-                                                    </a>
-                                                }
-                                                @if (User.IsInRole("CoordinacionLegal") || User.IsInRole("CoordinadorLegal") || User.IsInRole("DirectorGeneral") || User.IsInRole("Administrador"))
-                                                {
-                                                    <a class="btn btn-sm btn-outline-success" href="@Url.Action("LegalizarAocr", "CoordinacionJefatura")">
-                                                        <i class="fas fa-scale-balanced"></i> Legalizar
-                                                    </a>
-                                                }
-                                            </td>
-                                        </tr>
-                                    }
-                                </tbody>
-                            </table>
-                        </div>
-                    }
+                <!-- 2) CONTROL DOCUMENTAL -->
+                <div class="tab-pane fade" id="rv-pane-ctrl" role="tabpanel" aria-labelledby="rv-tab-ctrl">
+                    @Html.Partial("_BandejaControlDocumental", solicitudesControl)
                 </div>
-            </div>
-        </div>
 
-        <div class="col-12">
-            <div class="card aocr-content-card aocr-table-card">
-                <div class="card-body">
-                    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
-                        <div>
-                            <h3 class="aocr-section-title mb-1"><i class="fas fa-search"></i> Inspecciones en seguimiento</h3>
-                            <p class="text-muted mb-0">Seguimiento coordinado de inspecciones asociadas al flujo AOCR institucional.</p>
-                        </div>
-                        @Html.Partial("_StatusBadge", null, new ViewDataDictionary { { "Estado", inspeccionesSeguimientoItems.Any() ? "En seguimiento" : "Completado" } })
-                    </div>
-
-                    @if (!inspeccionesSeguimientoItems.Any())
-                    {
-                        @Html.Partial("_EmptyState", null, new ViewDataDictionary {
-                            { "Icon", "fas fa-user-check" },
-                            { "Title", "Sin inspecciones en seguimiento" },
-                            { "Description", "No existen inspecciones activas en la bandeja de coordinación y jefatura." }
-                        })
-                    }
-                    else
-                    {
-                        <div class="table-responsive aocr-table-wrap">
-                            <table class="table aocr-table align-middle mb-0">
-                                <thead>
-                                    <tr>
-                                        <th>Inspección</th>
-                                        <th>Solicitud / compañía</th>
-                                        <th>Etapa actual</th>
-                                        <th>Inspector</th>
-                                        <th>Contexto operativo</th>
-                                        <th class="text-end">Acciones</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    @foreach (var item in inspeccionesSeguimientoItems)
-                                    {
-                                        var inspeccion = item.Inspeccion;
-                                        var hayAccionesFila = (puedeDecidirRevision && (item.PuedeAceptarSolicitud || item.PuedeObservar || item.PuedeCerrar))
-                                            || (puedeAsignarInspectorRevision && item.PuedeAsignarInspector);
-                                        if (inspeccion == null)
-                                        {
-                                            continue;
-                                        }
-                                        <tr>
-                                            <td>
-                                                <div class="fw-semibold text-primary">@item.NumeroInspeccion</div>
-                                                <small class="text-muted">Código @inspeccion.CodigoInspeccion</small>
-                                            </td>
-                                            <td>
-                                                <div class="fw-semibold">@item.NumeroSolicitud</div>
-                                                <small class="text-muted">@item.OperadorNombre</small>
-                                            </td>
-                                            <td>
-                                                @Html.Partial("_StatusBadge", null, new ViewDataDictionary { { "Estado", item.EtapaActual } })
-                                                <div class="small text-muted mt-1">@item.EstadoNormalizado</div>
-                                            </td>
-                                            <td>@item.InspectorAsignado</td>
-                                            <td>
-                                                <div class="small text-muted">@item.MensajeOperativo</div>
-                                                <div class="small text-primary mt-1">@item.ResumenAcciones</div>
-                                            </td>
-                                            <td class="text-end">
-                                                <div class="d-flex flex-wrap justify-content-end gap-2">
-                                                    @if (!hayAccionesFila)
-                                                    {
-                                                        <span class="small text-muted align-self-center">@item.MensajeSinAcciones</span>
-                                                    }
-                                                    @if (puedeDecidirRevision && item.PuedeAceptarSolicitud)
-                                                    {
-                                                        using (Html.BeginForm("CambiarEstado", "Inspeccion", FormMethod.Post, new { @class = "d-inline-flex" }))
-                                                        {
-                                                            @Html.AntiForgeryToken()
-                                                            @Html.Hidden("id", inspeccion.CodigoInspeccion)
-                                                            @Html.Hidden("estado", CapaDatos.Constants.EstadosInspeccion.ACEPTADA)
-                                                            @Html.Hidden("returnUrl", returnUrlRevision)
-                                                            <button type="submit" class="btn btn-sm btn-outline-success">
-                                                                <i class="fas fa-check"></i> Aceptar
-                                                            </button>
-                                                        }
-                                                    }
-                                                    @if (puedeDecidirRevision && item.PuedeObservar)
-                                                    {
-                                                        using (Html.BeginForm("CambiarEstado", "Inspeccion", FormMethod.Post, new { @class = "d-inline-flex" }))
-                                                        {
-                                                            @Html.AntiForgeryToken()
-                                                            @Html.Hidden("id", inspeccion.CodigoInspeccion)
-                                                            @Html.Hidden("estado", CapaDatos.Constants.EstadosInspeccion.OBSERVADA)
-                                                            @Html.Hidden("returnUrl", returnUrlRevision)
-                                                            <button type="submit" class="btn btn-sm btn-outline-danger">
-                                                                <i class="fas fa-circle-exclamation"></i> Observar
-                                                            </button>
-                                                        }
-                                                    }
-                                                    @if (puedeDecidirRevision && item.PuedeCerrar)
-                                                    {
-                                                        using (Html.BeginForm("CambiarEstado", "Inspeccion", FormMethod.Post, new { @class = "d-inline-flex" }))
-                                                        {
-                                                            @Html.AntiForgeryToken()
-                                                            @Html.Hidden("id", inspeccion.CodigoInspeccion)
-                                                            @Html.Hidden("estado", CapaDatos.Constants.EstadosInspeccion.CERRADA)
-                                                            @Html.Hidden("returnUrl", returnUrlRevision)
-                                                            <button type="submit" class="btn btn-sm btn-outline-dark">
-                                                                <i class="fas fa-xmark"></i> Cerrar
-                                                            </button>
-                                                        }
-                                                    }
-                                                    @if (puedeAsignarInspectorRevision && item.PuedeAsignarInspector)
-                                                    {
-                                                        <a class="btn btn-sm btn-outline-secondary" href="@Url.Action("AsignarInspector", "Tecnico", new { solicitudId = inspeccion.CodigoSolicitud })">
-                                                            <i class="fas fa-user-check"></i> Asignar inspector
-                                                        </a>
-                                                    }
-                                                    @if (puedeVerDetalleInspeccion)
-                                                    {
-                                                        <a class="btn btn-sm btn-outline-primary" href="@Url.Action("Detalle", "Inspeccion", new { id = inspeccion.CodigoInspeccion })">
-                                                            <i class="fas fa-eye"></i> Detalle
-                                                        </a>
-                                                    }
-                                                </div>
-                                            </td>
-                                        </tr>
-                                    }
-                                </tbody>
-                            </table>
-                        </div>
-                    }
+                <!-- 3) AOCR EN REVISIÓN -->
+                <div class="tab-pane fade" id="rv-pane-aocr" role="tabpanel" aria-labelledby="rv-tab-aocr">
+                    @Html.Partial("_BandejaAocrRevision", solicitudesRevision, new ViewDataDictionary {
+                        { "puedeValidarAocrRevision", puedeValidarAocrRevision }
+                    })
                 </div>
             </div>
         </div>
     </div>
+
+    <!-- ─── Panel lateral (offcanvas) con vista rápida de la inspección ─── -->
+    <div class="offcanvas offcanvas-end rv-offcanvas" tabindex="-1" id="rvInspeccionPanel" aria-labelledby="rvInspeccionPanelLabel">
+        <div class="offcanvas-header">
+            <div>
+                <div class="rv-off__kicker">Vista rápida</div>
+                <h5 class="offcanvas-title" id="rvInspeccionPanelLabel">Detalle de inspección</h5>
+            </div>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Cerrar"></button>
+        </div>
+        <div class="offcanvas-body">
+            <div id="rvInspeccionPanelBody">
+                <p class="text-muted small mb-0">Seleccione una inspección para ver el resumen.</p>
+            </div>
+        </div>
+        <div class="offcanvas-footer p-3 border-top">
+            <a href="#" id="rvInspeccionPanelDetalle" class="btn btn-aocr-primary w-100" target="_self">
+                <i class="fas fa-external-link-alt me-2"></i> Abrir detalle completo
+            </a>
+        </div>
+    </div>
 </div>
+
+<style>
+    /* ─── Metric strip compacto ─── */
+    .rv-metrics {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 14px;
+    }
+    @@media (max-width: 992px) { .rv-metrics { grid-template-columns: repeat(2, 1fr); } }
+    @@media (max-width: 576px) { .rv-metrics { grid-template-columns: 1fr; } }
+    .rv-metric {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        background: #fff;
+        border: 1px solid rgba(14,46,71,.08);
+        border-left: 4px solid #1B4F72;
+        border-radius: 10px;
+        padding: 12px 14px;
+        box-shadow: 0 1px 3px rgba(14,46,71,.04);
+        transition: transform .15s ease, box-shadow .15s ease;
+    }
+    .rv-metric:hover { transform: translateY(-2px); box-shadow: 0 6px 16px rgba(14,46,71,.08); }
+    .rv-metric--featured { background: linear-gradient(135deg, #f1fbf5 0%, #fff 60%); border-left-color: #1a7a46; }
+    .rv-metric--warning  { border-left-color: #b78312; }
+    .rv-metric--primary  { border-left-color: #1B4F72; }
+    .rv-metric--success  { border-left-color: #1a7a46; }
+    .rv-metric--accent   { border-left-color: #0f6a7f; }
+    .rv-metric__icon {
+        width: 42px; height: 42px;
+        display: flex; align-items: center; justify-content: center;
+        border-radius: 10px;
+        background: #f3f7fb; color: #1B4F72;
+        font-size: 1.1rem;
+    }
+    .rv-metric--success .rv-metric__icon  { background: #e8f6ef; color: #1a7a46; }
+    .rv-metric--warning .rv-metric__icon  { background: #fdf4e0; color: #b78312; }
+    .rv-metric--primary .rv-metric__icon  { background: #e8f1f8; color: #1B4F72; }
+    .rv-metric--accent  .rv-metric__icon  { background: #e6f4f6; color: #0f6a7f; }
+    .rv-metric__body { min-width: 0; line-height: 1.1; }
+    .rv-metric__label   { font-size: .78rem; color: #6e8799; font-weight: 600; text-transform: uppercase; letter-spacing: .3px; }
+    .rv-metric__value   { font-size: 1.65rem; font-weight: 800; color: #14293d; margin-top: 2px; }
+    .rv-metric__caption { font-size: .75rem; color: #8898a8; }
+
+    /* ─── Tabs card ─── */
+    .rv-tabs-card { border-radius: 12px; overflow: hidden; }
+    .rv-nav {
+        background: #f8fafb;
+        border-bottom: 1px solid rgba(14,46,71,.08);
+        padding: 0 14px;
+        gap: 2px;
+    }
+    .rv-nav .nav-link {
+        border: none !important;
+        color: #6e8799;
+        font-weight: 600;
+        font-size: .92rem;
+        padding: 14px 18px;
+        border-radius: 0 !important;
+        border-bottom: 3px solid transparent !important;
+        transition: all .15s ease;
+    }
+    .rv-nav .nav-link:hover { color: #1B4F72; background: rgba(27,79,114,.04); }
+    .rv-nav .nav-link.active {
+        color: #1B4F72 !important;
+        background: transparent !important;
+        border-bottom-color: #1B4F72 !important;
+    }
+    .rv-nav .nav-link .badge { font-size: .72rem; padding: .28em .55em; font-weight: 700; }
+    .rv-tab-content { padding: 20px 22px; }
+
+    /* ─── Pane headers ─── */
+    .rv-pane-header {
+        display: flex; align-items: center; justify-content: space-between;
+        gap: 12px; flex-wrap: wrap;
+        margin-bottom: 14px; padding-bottom: 10px;
+        border-bottom: 1px dashed rgba(14,46,71,.08);
+    }
+    .rv-pane-title {
+        font-size: 1.1rem; font-weight: 700; color: #14293d; margin: 0;
+    }
+    .rv-pane-title i { color: #1B4F72; margin-right: 6px; }
+    .rv-pane-sub { font-size: .82rem; color: #6e8799; margin: 2px 0 0; }
+
+    /* ─── Tabla de inspecciones: contexto truncado ─── */
+    .rv-context {
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        font-size: .82rem;
+        color: #6e8799;
+        line-height: 1.35;
+        max-height: 2.7em;
+    }
+    .rv-row-actions .btn { padding: .28rem .55rem; }
+    .rv-row-actions .btn i { font-size: .8rem; }
+
+    /* ─── Filtros rápidos (chips) ─── */
+    .rv-quick-filters { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+    .rv-chip {
+        display: inline-flex; align-items: center; gap: 6px;
+        border: 1px solid rgba(14,46,71,.14);
+        background: #fff; color: #3a5468;
+        border-radius: 999px;
+        padding: 6px 12px;
+        font-size: .82rem; font-weight: 600;
+        transition: all .15s ease;
+        cursor: pointer;
+    }
+    .rv-chip:hover { border-color: #1B4F72; color: #1B4F72; background: #f3f7fb; }
+    .rv-chip.active { background: #1B4F72; border-color: #1B4F72; color: #fff; box-shadow: 0 2px 6px rgba(27,79,114,.2); }
+    .rv-chip.active .rv-chip__count { background: rgba(255,255,255,.25); color: #fff; }
+    .rv-chip__count {
+        display: inline-flex; align-items: center; justify-content: center;
+        min-width: 22px; padding: 1px 7px;
+        background: #eef2f6; color: #1B4F72;
+        border-radius: 999px;
+        font-size: .72rem; font-weight: 700;
+    }
+    .rv-chip i { font-size: .78rem; }
+    .rv-chip--success.active { background: #1a7a46; border-color: #1a7a46; }
+    .rv-chip--danger.active  { background: #b03434; border-color: #b03434; }
+    .rv-chip--info.active    { background: #0f6a7f; border-color: #0f6a7f; }
+    .rv-chip--primary.active { background: #1B4F72; border-color: #1B4F72; }
+
+    /* ─── Offcanvas lateral ─── */
+    .rv-offcanvas { width: 440px; max-width: 100vw; }
+    .rv-offcanvas .offcanvas-header {
+        background: linear-gradient(135deg, #1B4F72 0%, #0f6a7f 100%);
+        color: #fff;
+        border-bottom: 3px solid #d4a017;
+    }
+    .rv-offcanvas .offcanvas-header .btn-close { filter: invert(1) brightness(1.5); }
+    .rv-off__kicker {
+        font-size: .72rem; text-transform: uppercase; letter-spacing: .8px;
+        opacity: .85; font-weight: 600;
+    }
+    .rv-offcanvas .offcanvas-title { color: #fff; margin: 0; font-weight: 700; }
+    .rv-off-section { margin-bottom: 14px; }
+    .rv-off-section__label {
+        font-size: .72rem; text-transform: uppercase; letter-spacing: .5px;
+        color: #8898a8; font-weight: 700; margin-bottom: 4px;
+    }
+    .rv-off-section__value { font-size: .92rem; color: #14293d; font-weight: 600; word-wrap: break-word; }
+    .rv-off-section__value--muted { color: #6e8799; font-weight: 500; font-style: italic; }
+    .rv-off-badge {
+        display: inline-block; padding: 3px 10px; border-radius: 999px;
+        font-size: .78rem; font-weight: 600;
+        background: #eef2f6; color: #1B4F72;
+    }
+</style>
+
+@section Scripts {
+    <script>
+        (function () {
+            function initAocrDataTables() {
+                if (!window.jQuery || !$.fn || !$.fn.DataTable) { return false; }
+                $('.aocr-datatable').each(function () {
+                    var $t = $(this);
+                    if ($.fn.DataTable.isDataTable($t)) { return; }
+                    $t.DataTable({
+                        order: [],
+                        pageLength: 5,
+                        lengthChange: false,
+                        columnDefs: [{ orderable: false, targets: -1 }]
+                    });
+                });
+                return true;
+            }
+
+            if (!initAocrDataTables()) {
+                document.addEventListener('AOCR.DataTablesReady', initAocrDataTables);
+                $(function () { initAocrDataTables(); });
+            }
+
+            // Ajustar columnas al mostrar una pestaña (DataTables mide mal cuando la tabla está oculta)
+            $(function () {
+                $('#rvTabs button[data-bs-toggle="tab"]').on('shown.bs.tab', function () {
+                    $('.aocr-datatable').each(function () {
+                        if ($.fn.DataTable.isDataTable(this)) {
+                            $(this).DataTable().columns.adjust();
+                        }
+                    });
+                });
+            });
+
+            // ─── Filtros rápidos (chips) sobre la tabla de Inspecciones ───
+            $(function () {
+                var tableSel = '#tblInspeccionesSeguimiento';
+                var currentFilter = 'ALL';
+
+                // Filtro custom para DataTables basado en data-rv-estado en el <tr>
+                $.fn.dataTable.ext.search.push(function (settings, data, dataIndex) {
+                    if (settings.nTable.id !== 'tblInspeccionesSeguimiento') { return true; }
+                    if (currentFilter === 'ALL') { return true; }
+                    var row = settings.aoData[dataIndex].nTr;
+                    var est = (row && row.getAttribute('data-rv-estado') || '').toUpperCase();
+                    return est === currentFilter;
+                });
+
+                $(document).on('click', '.rv-quick-filters .rv-chip', function () {
+                    var $btn = $(this);
+                    $btn.closest('.rv-quick-filters').find('.rv-chip').removeClass('active');
+                    $btn.addClass('active');
+                    currentFilter = ($btn.data('rv-filter') || 'ALL').toString().toUpperCase();
+                    if ($.fn.DataTable.isDataTable(tableSel)) {
+                        $(tableSel).DataTable().draw();
+                    }
+                });
+            });
+
+            // ─── Panel lateral: vista rápida de inspección ───
+            $(function () {
+                function escapeHtml(s) {
+                    if (s === null || s === undefined) { return ''; }
+                    return String(s)
+                        .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+                        .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+                }
+                function section(label, value, mutedFallback) {
+                    var v = (value && String(value).trim()) ? escapeHtml(value) : null;
+                    var inner = v
+                        ? '<div class="rv-off-section__value">' + v + '</div>'
+                        : '<div class="rv-off-section__value rv-off-section__value--muted">' + escapeHtml(mutedFallback || 'Sin información') + '</div>';
+                    return '<div class="rv-off-section"><div class="rv-off-section__label">' + escapeHtml(label) + '</div>' + inner + '</div>';
+                }
+
+                $(document).on('click', '.rv-quick-view', function () {
+                    var $b = $(this);
+                    var numero = $b.data('insp-numero');
+                    var codigo = $b.data('insp-codigo');
+                    var solicitud = $b.data('insp-solicitud');
+                    var operador = $b.data('insp-operador');
+                    var etapa = $b.data('insp-etapa');
+                    var estado = $b.data('insp-estado');
+                    var inspector = $b.data('insp-inspector');
+                    var mensaje = $b.data('insp-mensaje');
+                    var resumen = $b.data('insp-resumen');
+                    var urlDetalle = $b.data('insp-detalle-url') || '#';
+
+                    $('#rvInspeccionPanelLabel').text(numero ? ('Inspección ' + numero) : 'Detalle de inspección');
+
+                    var html = ''
+                        + '<div class="d-flex align-items-center justify-content-between mb-3">'
+                        +   '<span class="rv-off-badge"><i class="fas fa-hashtag me-1"></i>' + escapeHtml(codigo || '—') + '</span>'
+                        +   '<span class="rv-off-badge"><i class="fas fa-flag me-1"></i>' + escapeHtml(etapa || '—') + '</span>'
+                        + '</div>'
+                        + section('Solicitud', solicitud, 'No registrada')
+                        + section('Operador', operador, 'No especificado')
+                        + section('Estado normalizado', estado, 'Sin estado')
+                        + section('Inspector asignado', inspector && inspector !== 'No asignado' ? inspector : null, 'No asignado')
+                        + section('Contexto operativo', mensaje, 'Sin mensaje operativo')
+                        + section('Resumen de acciones', resumen, 'Sin acciones pendientes');
+
+                    $('#rvInspeccionPanelBody').html(html);
+                    $('#rvInspeccionPanelDetalle').attr('href', urlDetalle);
+                });
+            });
+        })();
+    </script>
+}

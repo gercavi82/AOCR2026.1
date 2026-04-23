@@ -398,6 +398,22 @@ namespace CapaDatos.Services
         }
     }
     /// <summary>
+    /// Null Object para escenarios donde el servicio real no está disponible.
+    /// </summary>
+    public class NoOpEmailService : IEmailService
+    {
+        public Task<EmailSendResult> EnviarAsync(string para, string paraNombre, string asunto, string cuerpo,
+            byte[] adjunto = null, string adjuntoNombre = null)
+        {
+            return Task.FromResult(new EmailSendResult
+            {
+                Success = false,
+                Error = "EMAIL_SERVICE_DISABLED"
+            });
+        }
+    }
+
+    /// <summary>
     /// Facade que encola correos
     /// </summary>
     public class QueuedEmailService : IEmailService

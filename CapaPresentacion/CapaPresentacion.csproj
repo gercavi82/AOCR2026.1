@@ -290,6 +290,7 @@
     <Compile Include="App_Start\FilterConfig.cs" />
     <Compile Include="App_Start\RouteConfig.cs" />
     <Compile Include="App_Start\UnityConfig.cs" />
+    <Compile Include="Filters\ValidateAntiForgeryTokenFromHeaderAttribute.cs" />
     <Compile Include="Controllers\ConfigApiController.cs" />
     <Compile Include="Controllers\DashboardController.cs" />
     <Compile Include="Controllers\EmpresaController.cs" />
@@ -346,6 +347,8 @@
     <Compile Include="Helpers\RevisionDocumentalDisplayHelper.cs" />
     <Compile Include="Infrastructure\OrdenRecaudacionFilters.cs" />
     <Compile Include="Infrastructure\OrdenRecaudacionRoutes.cs" />
+    <Compile Include="Infrastructure\ControllerGuardExtensions.cs" />
+    <Compile Include="Infrastructure\UserContextAccessor.cs" />
     <Compile Include="Models\CambiarContrasenaViewModel.cs" />
     <Compile Include="Models\AdminUsuarios\AdminRolPermisosViewModel.cs" />
     <Compile Include="Models\AdminUsuarios\AdminUsuarioTransferenciaViewModel.cs" />
@@ -361,6 +364,7 @@
     <Compile Include="Models\RT\RegistroRTVM.cs" />
     <Compile Include="Models\Validation\RucCedulaValidationAttribute.cs" />
     <Compile Include="Models\ViewModels\InspectorDashboardViewModel.cs" />
+    <Compile Include="Models\ViewModels\InspeccionPanelViewModels.cs" />
     <Compile Include="Models\ViewModels\InformeTecnicoPdfViewModel.cs" />
     <Compile Include="Models\ViewModels\OrdenRecaudacionPDFModel.cs" />
     <Compile Include="Models\ViewModels\ReportesFinancierosViewModel.cs" />
@@ -2914,6 +2918,9 @@
     <Content Include="Views\CoordinacionJefatura\AocrReconocimientoPdf.cshtml" />
     <Content Include="Views\CoordinacionJefatura\AocrCondicionesLimitacionesPdf.cshtml" />
     <Content Include="Views\CoordinacionJefatura\RevisionVerificacion.cshtml" />
+    <Content Include="Views\CoordinacionJefatura\_BandejaInspecciones.cshtml" />
+    <Content Include="Views\CoordinacionJefatura\_BandejaControlDocumental.cshtml" />
+    <Content Include="Views\CoordinacionJefatura\_BandejaAocrRevision.cshtml" />
     <Content Include="Views\Direccion\DashboardGerencial.cshtml" />
     <Content Include="Views\Direccion\ConfiguracionSistema.cshtml" />
     <Content Include="Views\Financiero\Index.cshtml" />
