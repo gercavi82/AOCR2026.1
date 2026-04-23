@@ -62,6 +62,9 @@ DROP VIEW IF EXISTS mirror_clean.v_lugar_emision_ciudad;
 
 DROP TABLE IF EXISTS mirror_raw.opcar6;
 DROP TABLE IF EXISTS mirror_raw.opcar5;
+DROP TABLE IF EXISTS mirror_raw.opsarc;
+DROP TABLE IF EXISTS mirror_raw.txdgac;
+DROP TABLE IF EXISTS mirror_raw.opiar2;
 DROP TABLE IF EXISTS mirror_raw.oidar2;
 DROP TABLE IF EXISTS mirror_raw.opuarc01;
 DROP TABLE IF EXISTS mirror_raw.ciaarc;

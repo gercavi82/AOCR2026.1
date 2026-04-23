@@ -97,6 +97,22 @@ namespace CapaNegocio
             return ok;
         }
 
+        public static bool UpsertPorClave(Parametro p, int codigoUsuario, out string mensaje)
+        {
+            mensaje = string.Empty;
+
+            if (p == null || string.IsNullOrWhiteSpace(p.Clave))
+            {
+                mensaje = "Parámetro inválido.";
+                return false;
+            }
+
+            p.Activo = true;
+            bool ok = _dao.UpsertPorClave(p, codigoUsuario);
+            mensaje = ok ? "Parámetro guardado correctamente." : "No se pudo guardar el parámetro.";
+            return ok;
+        }
+
         // ==============================
         // Eliminar Soft
         // ==============================

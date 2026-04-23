@@ -256,6 +256,45 @@ namespace CapaDatos.DAOs
             }
         }
 
+        public bool UpsertPorClave(Parametro p, int codigoUsuario)
+        {
+            if (p == null || string.IsNullOrWhiteSpace(p.Clave))
+            {
+                return false;
+            }
+
+            const string sqlUpdate = @"
+                UPDATE aocr_tbparametro
+                   SET valor = @valor,
+                       descripcion = @descripcion,
+                       activo = @activo,
+                       updatedat = @updatedat,
+                       updatedby = @updatedby,
+                       deletedat = NULL,
+                       deletedby = NULL
+                 WHERE clave = @clave;";
+
+            using (var cn = CrearConexion())
+            using (var cmd = new NpgsqlCommand(sqlUpdate, cn))
+            {
+                cmd.Parameters.AddWithValue("@clave", (object)p.Clave ?? DBNull.Value);
+                cmd.Parameters.AddWithValue("@valor", (object)p.Valor ?? DBNull.Value);
+                cmd.Parameters.AddWithValue("@descripcion", (object)p.Descripcion ?? DBNull.Value);
+                cmd.Parameters.AddWithValue("@activo", p.Activo);
+                cmd.Parameters.AddWithValue("@updatedat", DateTime.Now);
+                cmd.Parameters.AddWithValue("@updatedby", codigoUsuario);
+
+                cn.Open();
+                var updated = cmd.ExecuteNonQuery();
+                if (updated > 0)
+                {
+                    return true;
+                }
+            }
+
+            return Crear(p, codigoUsuario);
+        }
+
         // ==============================
         // Eliminar Soft
         // ==============================

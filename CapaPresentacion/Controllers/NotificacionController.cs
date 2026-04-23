@@ -47,7 +47,6 @@ namespace CapaPresentacion.Controllers
         // GET: /Notificacion/ObtenerNoLeidas
         // API JSON para obtener notificaciones no leÃ­das
         // ============================================
-        [AllowAnonymous]
         [HttpGet]
         public JsonResult ObtenerNoLeidas()
         {
@@ -98,7 +97,6 @@ namespace CapaPresentacion.Controllers
         // GET: /Notificacion/ObtenerRecientes
         // API JSON para obtener últimas N notificaciones
         // ============================================
-        [AllowAnonymous]
         [HttpGet]
         public JsonResult ObtenerRecientes(int cantidad = 10)
         {
@@ -309,7 +307,6 @@ namespace CapaPresentacion.Controllers
         // GET: /Notificacion/ContarNoLeidas
         // Obtiene solo el conteo de notificaciones no leÃ­das
         // ============================================
-        [AllowAnonymous]
         [HttpGet]
         public JsonResult ContarNoLeidas()
         {

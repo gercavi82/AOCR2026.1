@@ -26,13 +26,18 @@ namespace CapaPresentacion
             container.RegisterType<OrdenRecaudacionDAO>(new HierarchicalLifetimeManager(), new InjectionConstructor());
             container.RegisterType<ConceptoDAO>(new HierarchicalLifetimeManager());
             container.RegisterType<SolicitudAOCRDAO>(new HierarchicalLifetimeManager());
-            container.RegisterType<BancoP9DAO>(new HierarchicalLifetimeManager());
             container.RegisterType<PagoDAO>(new HierarchicalLifetimeManager(), new InjectionConstructor());
             container.RegisterType<ParametroDAO>(new HierarchicalLifetimeManager());
 
             // Registrar servicios
+            container.RegisterType<CapaDatos.Services.SecureConfigurationService>(new HierarchicalLifetimeManager());
             container.RegisterType<CapaDatos.Services.ISecureConfigurationService, CapaDatos.Services.SecureConfigurationService>(new HierarchicalLifetimeManager());
             container.RegisterType<IUserContextAccessor, UserContextAccessor>(new HierarchicalLifetimeManager());
+            container.RegisterFactory<BancoP9DAO>(c =>
+            {
+                var cfg = c.Resolve<CapaDatos.Services.ISecureConfigurationService>();
+                return new BancoP9DAO(cfg);
+            }, new HierarchicalLifetimeManager());
             container.RegisterFactory<CapaDatos.Services.IEmailService>(c =>
             {
                 try

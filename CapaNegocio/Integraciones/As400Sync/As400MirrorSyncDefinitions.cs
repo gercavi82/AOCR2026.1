@@ -13,6 +13,9 @@ namespace CapaNegocio.Integraciones.As400Sync
                 CreateCiaarc(),
                 CreateOpuarc01(),
                 CreateOidar2(),
+                CreateOpiar2(),
+                CreateTxdgac(),
+                CreateOpsarc(),
                 CreateOpcar5(),
                 CreateOpcar6()
             };
@@ -148,6 +151,63 @@ namespace CapaNegocio.Integraciones.As400Sync
                     "OPCRU1","OPCEM1","OPCNAC","OPCUS7","OPCDA4","OPCH01","OPCOI1","OPCTE1","OPCNO4",
                     "OPCDI3","OPCOI2","OPCVA6","OPCFOR","OPCNO5","OPCMOD","OPCPES","OPCC08","OPCNO6",
                     "OPCEM2","OPCMAT","OPCPRO","OPCSUB","OPCOI3","OPCDI2","OPCFE9","OPCBAN","OPCCHE","OPCNUM")
+            };
+        }
+
+        private static SyncTableDefinition CreateOpiar2()
+        {
+            return new SyncTableDefinition
+            {
+                Name = "OPIAR2",
+                SourceSchema = "DGACDAT",
+                SourceTable = "OPIAR2",
+                TargetSchema = "mirror_raw",
+                TargetTable = "opiar2",
+                PrimaryKeys = new List<string> { "opiced", "opitip" },
+                IncrementalMode = SyncIncrementalMode.FullSnapshot,
+                DeleteStrategy = DeleteStrategy.FullSnapshotReconcile,
+                AllowFullSnapshotDeleteReconcile = true,
+                BatchSize = 10000,
+                Notes = "Catalogo de inspectores institucionales (OPS/AIR). Snapshot completo para soporte de consulta RT sin AS400 en linea.",
+                Columns = MapSame("OPICED", "OPINO2", "OPIES1", "OPITIP")
+            };
+        }
+
+        private static SyncTableDefinition CreateTxdgac()
+        {
+            return new SyncTableDefinition
+            {
+                Name = "TXDGAC",
+                SourceSchema = "DGACSYS",
+                SourceTable = "TXDGAC",
+                TargetSchema = "mirror_raw",
+                TargetTable = "txdgac",
+                PrimaryKeys = new List<string> { "valdds", "valval" },
+                IncrementalMode = SyncIncrementalMode.FullSnapshot,
+                DeleteStrategy = DeleteStrategy.FullSnapshotReconcile,
+                AllowFullSnapshotDeleteReconcile = true,
+                BatchSize = 10000,
+                Notes = "Tabla de listas de valores AS400/P9 (bancos, formas de pago y otros catalogos).",
+                Columns = MapSame("VALDDS", "VALVAL", "VALDES")
+            };
+        }
+
+        private static SyncTableDefinition CreateOpsarc()
+        {
+            return new SyncTableDefinition
+            {
+                Name = "OPSARC",
+                SourceSchema = "DGACDAT",
+                SourceTable = "OPSARC",
+                TargetSchema = "mirror_raw",
+                TargetTable = "opsarc",
+                PrimaryKeys = new List<string> { "opsaer", "opsano" },
+                IncrementalMode = SyncIncrementalMode.FullSnapshot,
+                DeleteStrategy = DeleteStrategy.FullSnapshotReconcile,
+                AllowFullSnapshotDeleteReconcile = true,
+                BatchSize = 2000,
+                Notes = "Secuenciales FR3 por aeropuerto/anio. Se replica para trazabilidad y contingencia de numeracion.",
+                Columns = MapSame("OPSAER", "OPSANO", "OPSSEC")
             };
         }
 

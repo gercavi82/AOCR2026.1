@@ -21,8 +21,8 @@ FROM information_schema.tables
 WHERE table_schema IN ('mirror_raw', 'sync')
   AND table_type = 'BASE TABLE'
 ORDER BY table_schema, table_name;
--- ESPERADO: mirror_raw (ciaarc, opcar5, opcar6, usuar1, usuarc) + sync (batch_log, rejections, tombstones, watermark)
---            + mirror_raw (opuarc01, oidar2) para lugar de emision
+-- ESPERADO: mirror_raw (ciaarc, opcar5, opcar6, opiar2, opsarc, oidar2, opuarc01, txdgac, usuar1, usuarc)
+--            + sync (batch_log, rejections, tombstones, watermark)
 
 \echo '--- [1c] Vistas mirror_clean ---'
 SELECT table_schema, table_name
@@ -44,7 +44,7 @@ SELECT
     COALESCE(last_error, '') AS last_error
 FROM sync.watermark
 ORDER BY table_name;
--- ESPERADO: al menos USUARC, USUAR1, CIAARC, OPUARC01, OIDAR2, OPCAR5, OPCAR6 con status='OK' tras primer sync
+-- ESPERADO: al menos USUARC, USUAR1, CIAARC, OPUARC01, OIDAR2, OPIAR2, TXDGAC, OPSARC, OPCAR5, OPCAR6 con status='OK' tras primer sync
 
 -- =============================================
 -- SECCIÓN 3: Conteos por tabla
@@ -85,7 +85,22 @@ UNION ALL
 SELECT 'mirror_raw.oidar2', COUNT(*),
     SUM(CASE WHEN COALESCE(_is_deleted,false) THEN 1 ELSE 0 END),
     COUNT(*) FILTER (WHERE _source_updated_at IS NULL)
-FROM mirror_raw.oidar2;
+FROM mirror_raw.oidar2
+UNION ALL
+SELECT 'mirror_raw.opiar2', COUNT(*),
+    SUM(CASE WHEN COALESCE(_is_deleted,false) THEN 1 ELSE 0 END),
+    COUNT(*) FILTER (WHERE _source_updated_at IS NULL)
+FROM mirror_raw.opiar2
+UNION ALL
+SELECT 'mirror_raw.txdgac', COUNT(*),
+    SUM(CASE WHEN COALESCE(_is_deleted,false) THEN 1 ELSE 0 END),
+    COUNT(*) FILTER (WHERE _source_updated_at IS NULL)
+FROM mirror_raw.txdgac
+UNION ALL
+SELECT 'mirror_raw.opsarc', COUNT(*),
+    SUM(CASE WHEN COALESCE(_is_deleted,false) THEN 1 ELSE 0 END),
+    COUNT(*) FILTER (WHERE _source_updated_at IS NULL)
+FROM mirror_raw.opsarc;
 -- ESPERADO: total > 0, eliminados puede ser 0 o mayor, sin_watermark = 0 idealmente
 
 -- =============================================
