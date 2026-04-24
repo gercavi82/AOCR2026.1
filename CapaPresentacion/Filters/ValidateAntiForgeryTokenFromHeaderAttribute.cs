@@ -34,7 +34,29 @@ namespace CapaPresentacion.Filters
             var cookie = request.Cookies[AntiForgeryConfig.CookieName];
             if (cookie != null) cookieToken = cookie.Value;
 
-            AntiForgery.Validate(cookieToken, formToken);
+            try
+            {
+                AntiForgery.Validate(cookieToken, formToken);
+            }
+            catch (HttpAntiForgeryException)
+            {
+                filterContext.HttpContext.Response.StatusCode = 400;
+                filterContext.HttpContext.Response.TrySkipIisCustomErrors = true;
+                filterContext.Result = new JsonResult
+                {
+                    Data = new
+                    {
+                        ok = false,
+                        success = false,
+                        message = "La sesion expiro o el formulario perdio validez. Recargue la pagina e intente nuevamente.",
+                        error = "La sesion expiro o el formulario perdio validez. Recargue la pagina e intente nuevamente.",
+                        code = "ANTI_FORGERY_INVALID",
+                        errorCode = "ANTI_FORGERY_INVALID",
+                        data = (object)null
+                    },
+                    JsonRequestBehavior = JsonRequestBehavior.AllowGet
+                };
+            }
         }
     }
 }

@@ -641,7 +641,7 @@
         $(document).ready(function() {
             // Validar monto máximo en modal de pago
             $('input[name="Monto"]').on('change', function() {
-                var max = parseFloat('@saldoPendiente');
+                var max = parseFloat('@saldoPendiente.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture)');
                 var value = parseFloat($(this).val());
 
                 if (value > max) {

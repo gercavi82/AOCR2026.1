@@ -3,6 +3,7 @@ using System.Configuration;
 using CapaDatos.Constants;
 using CapaDatos.DAOs;
 using CapaModelo;
+using CapaNegocio.Services;
 
 namespace CapaNegocio
 {
@@ -90,7 +91,7 @@ namespace CapaNegocio
 
             try
             {
-                NotificarCambioEstadoAocr(solicitud, codigoSolicitud, estadoDestino);
+                NotificarCambioEstadoAocr(solicitud, codigoSolicitud, estadoActual, estadoDestino);
             }
             catch
             {
@@ -168,13 +169,15 @@ namespace CapaNegocio
             return false;
         }
 
-        private static void NotificarCambioEstadoAocr(SolicitudAOCR solicitud, int codigoSolicitud, string estadoDestino)
+        private static void NotificarCambioEstadoAocr(
+            SolicitudAOCR solicitud, int codigoSolicitud, string estadoAnterior, string estadoDestino)
         {
             if (solicitud == null || codigoSolicitud <= 0)
             {
                 return;
             }
 
+            // Notificaciones en-sistema (campana)
             if (solicitud.CodigoUsuario > 0)
             {
                 NotificacionBL.NotificarCambioEstado(solicitud.CodigoUsuario, codigoSolicitud, estadoDestino);
@@ -185,6 +188,53 @@ namespace CapaNegocio
             {
                 NotificacionBL.NotificarCambioEstado(solicitud.CodigoTecnico.Value, codigoSolicitud, estadoDestino);
             }
+
+            // Notificaciones por correo según transición
+            try { DispatchCorreoEventoPorEstado(solicitud, estadoAnterior, estadoDestino); } catch { }
+        }
+
+        private static void DispatchCorreoEventoPorEstado(
+            SolicitudAOCR solicitud, string estadoAnterior, string estadoDestino)
+        {
+            string evento = null;
+            switch (estadoDestino)
+            {
+                case EstadoSolicitud.Observada:
+                    evento = "OBSERVADA";
+                    break;
+
+                case EstadoSolicitud.Subsanada:
+                    evento = "SUBSANADA";
+                    break;
+
+                case EstadoSolicitud.AceptacionDocumental:
+                    evento = "ACEPTACION_DOCUMENTAL";
+                    break;
+
+                case EstadoSolicitud.PendienteAsignacionRT:
+                    evento = "PENDIENTE_ASIGNACION_INSPECTOR";
+                    break;
+
+                case EstadoSolicitud.SolicitudCreada:
+                case EstadoSolicitud.DocumentacionPendiente:
+                    // Pago aprobado: RT puede continuar la solicitud
+                    if (estadoAnterior == EstadoSolicitud.PagoPendiente ||
+                        estadoAnterior == EstadoSolicitud.PagoValidado)
+                    {
+                        evento = "PAGO_APROBADO";
+                    }
+                    break;
+
+                case EstadoSolicitud.AOCR_Legalizado:
+                    evento = "AOCR_LEGALIZADO";
+                    break;
+
+                case EstadoSolicitud.AOCR_EmitidoRecibido:
+                    evento = "AOCR_EMITIDO_RECIBIDO";
+                    break;
+            }
+            if (evento == null) { return; }
+            new SolicitudAocrCorreoService().NotificarEvento(solicitud, evento, null);
         }
     }
 }

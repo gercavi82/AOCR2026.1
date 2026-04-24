@@ -1421,6 +1421,56 @@ namespace CapaDatos.DAOs
             return null;
         }
 
+        public bool TieneAprobacionFinancieraSolicitud(int codigoSolicitud)
+        {
+            if (codigoSolicitud <= 0)
+            {
+                return false;
+            }
+
+            try
+            {
+                using (var conn = new NpgsqlConnection(_connectionString))
+                {
+                    conn.Open();
+
+                    const string sql = @"
+                        SELECT
+                            EXISTS (
+                                SELECT 1
+                                FROM aocr_tbpago p
+                                WHERE (
+                                    p.codigo_solicitud = @codigoSolicitud
+                                    OR p.codigo_solicitud IN (
+                                        SELECT o.id
+                                        FROM aocr_or_orden o
+                                        WHERE o.codigo_solicitud = @codigoSolicitud
+                                    )
+                                )
+                                AND UPPER(TRIM(COALESCE(p.estado, ''))) IN ('VALIDADO', 'APROBADO')
+                            )
+                            OR EXISTS (
+                                SELECT 1
+                                FROM aocr_or_orden o
+                                WHERE o.codigo_solicitud = @codigoSolicitud
+                                AND UPPER(TRIM(COALESCE(o.estado, ''))) IN ('FACTURADA', 'PAGADA', 'COMPLETADA')
+                            );";
+
+                    using (var cmd = new NpgsqlCommand(sql, conn))
+                    {
+                        cmd.Parameters.AddWithValue("@codigoSolicitud", codigoSolicitud);
+                        var result = cmd.ExecuteScalar();
+                        return result != null && result != DBNull.Value && Convert.ToBoolean(result);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error en TieneAprobacionFinancieraSolicitud");
+                return false;
+            }
+        }
+
         public Pago ObtenerPagoPorId(int pagoId)
         {
             if (pagoId <= 0)

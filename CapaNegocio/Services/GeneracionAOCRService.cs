@@ -109,9 +109,9 @@ namespace CapaNegocio.Services
                 resultado.Motivo = "El informe técnico no ha sido firmado por el inspector.";
                 return resultado;
             }
-            if (!informe.FirmadoDirdac)
+            if (!InformeTieneRevisionDireccionAprobada(informe))
             {
-                resultado.Motivo = "El informe técnico no ha sido aprobado/firmado por Dirección.";
+                resultado.Motivo = "El informe técnico no ha sido revisado/aprobado por DIRDAC o Dirección.";
                 return resultado;
             }
 
@@ -161,8 +161,8 @@ namespace CapaNegocio.Services
                     if (inf == null) continue;
 
                     if (mejor == null) { mejor = inf; continue; }
-                    int scoreActual = (inf.Finalizado ? 1 : 0) + (inf.FirmadoInspector ? 1 : 0) + (inf.FirmadoDirdac ? 1 : 0);
-                    int scoreMejor = (mejor.Finalizado ? 1 : 0) + (mejor.FirmadoInspector ? 1 : 0) + (mejor.FirmadoDirdac ? 1 : 0);
+                    int scoreActual = (inf.Finalizado ? 1 : 0) + (inf.FirmadoInspector ? 1 : 0) + (InformeTieneRevisionDireccionAprobada(inf) ? 1 : 0);
+                    int scoreMejor = (mejor.Finalizado ? 1 : 0) + (mejor.FirmadoInspector ? 1 : 0) + (InformeTieneRevisionDireccionAprobada(mejor) ? 1 : 0);
                     if (scoreActual > scoreMejor) mejor = inf;
                 }
                 return mejor;
@@ -171,6 +171,30 @@ namespace CapaNegocio.Services
             {
                 return null;
             }
+        }
+
+        private static bool InformeTieneRevisionDireccionAprobada(InspeccionInformeTecnico informe)
+        {
+            if (informe == null)
+            {
+                return false;
+            }
+
+            if (informe.FirmadoDirdac)
+            {
+                return true;
+            }
+
+            if (informe.FechaFirma2.HasValue && !string.IsNullOrWhiteSpace(informe.UsuarioFirma2))
+            {
+                return true;
+            }
+
+            var estadoInforme = (informe.EstadoInforme ?? string.Empty).Trim().ToUpperInvariant();
+            return estadoInforme == "APROBADO_DIRECCION"
+                || estadoInforme == "ENVIADO_A_COORDINADOR"
+                || estadoInforme == "APROBADO_COORDINADOR"
+                || estadoInforme == "FIRMADO_FINAL";
         }
 
         /// <summary>

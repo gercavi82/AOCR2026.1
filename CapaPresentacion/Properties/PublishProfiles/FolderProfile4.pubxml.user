@@ -21,37 +21,37 @@
       <publishTime>12/08/2020 18:05:32</publishTime>
     </File>
     <File Include="bin/BouncyCastle.Cryptography.dll">
-      <publishTime>05/27/2024 06:55:46</publishTime>
+      <publishTime>07/31/2025 11:19:54</publishTime>
     </File>
     <File Include="bin/CapaDatos.dll">
-      <publishTime>04/24/2026 08:34:49</publishTime>
+      <publishTime>04/24/2026 13:47:08</publishTime>
     </File>
     <File Include="bin/CapaDatos.dll.config">
-      <publishTime>04/23/2026 16:07:37</publishTime>
+      <publishTime>04/24/2026 10:25:56</publishTime>
     </File>
     <File Include="bin/CapaDatos.pdb">
-      <publishTime>04/24/2026 08:34:49</publishTime>
+      <publishTime>04/24/2026 13:47:08</publishTime>
     </File>
     <File Include="bin/CapaModelo.dll">
-      <publishTime>04/20/2026 14:13:29</publishTime>
+      <publishTime>04/24/2026 11:50:13</publishTime>
     </File>
     <File Include="bin/CapaModelo.pdb">
-      <publishTime>04/20/2026 14:13:29</publishTime>
+      <publishTime>04/24/2026 11:50:13</publishTime>
     </File>
     <File Include="bin/CapaNegocio.dll">
-      <publishTime>04/24/2026 08:34:50</publishTime>
+      <publishTime>04/24/2026 13:47:09</publishTime>
     </File>
     <File Include="bin/CapaNegocio.dll.config">
-      <publishTime>04/23/2026 16:07:37</publishTime>
+      <publishTime>04/24/2026 10:25:56</publishTime>
     </File>
     <File Include="bin/CapaNegocio.pdb">
-      <publishTime>04/24/2026 08:34:50</publishTime>
+      <publishTime>04/24/2026 13:47:09</publishTime>
     </File>
     <File Include="bin/CapaPresentacion.dll">
-      <publishTime>04/24/2026 08:34:51</publishTime>
+      <publishTime>04/24/2026 13:47:11</publishTime>
     </File>
     <File Include="bin/CapaPresentacion.pdb">
-      <publishTime>04/24/2026 08:34:51</publishTime>
+      <publishTime>04/24/2026 13:47:11</publishTime>
     </File>
     <File Include="bin/ClassLibrary1.dll">
       <publishTime>04/14/2026 16:31:07</publishTime>
@@ -747,7 +747,7 @@
       <publishTime>03/10/2026 19:02:03</publishTime>
     </File>
     <File Include="bin/System.IO.Packaging.dll">
-      <publishTime>10/31/2023 10:01:02</publishTime>
+      <publishTime>09/16/2024 18:11:40</publishTime>
     </File>
     <File Include="bin/System.IO.Pipelines.dll">
       <publishTime>02/15/2022 17:10:38</publishTime>
@@ -8148,7 +8148,7 @@
       <publishTime>03/17/2026 11:06:42</publishTime>
     </File>
     <File Include="Views/OrdenRecaudacion/Detalles.cshtml">
-      <publishTime>04/22/2026 21:40:05</publishTime>
+      <publishTime>04/24/2026 12:25:39</publishTime>
     </File>
     <File Include="Views/OrdenRecaudacion/Editar.cshtml">
       <publishTime>03/19/2026 15:12:54</publishTime>
@@ -8160,7 +8160,7 @@
       <publishTime>04/14/2026 15:31:44</publishTime>
     </File>
     <File Include="Views/OrdenRecaudacion/Nueva.cshtml">
-      <publishTime>04/23/2026 12:22:39</publishTime>
+      <publishTime>04/24/2026 10:25:56</publishTime>
     </File>
     <File Include="Views/OrdenRecaudacion/Obligatoria.cshtml">
       <publishTime>03/11/2026 16:26:38</publishTime>
@@ -8289,7 +8289,7 @@
       <publishTime>03/19/2026 10:02:35</publishTime>
     </File>
     <File Include="Views/Shared/_Sidebar.cshtml">
-      <publishTime>04/23/2026 09:48:47</publishTime>
+      <publishTime>04/24/2026 13:26:01</publishTime>
     </File>
     <File Include="Views/Shared/_SidebarEstadoOrdenes.cshtml">
       <publishTime>02/06/2026 11:41:27</publishTime>
@@ -8331,7 +8331,7 @@
       <publishTime>03/17/2026 11:04:08</publishTime>
     </File>
     <File Include="Views/SolicitudAOCR/Subsanar.cshtml">
-      <publishTime>03/26/2026 11:13:33</publishTime>
+      <publishTime>04/24/2026 11:29:37</publishTime>
     </File>
     <File Include="Views/SolicitudAOCR/_CreateModal.cshtml">
       <publishTime>01/28/2026 10:36:51</publishTime>
@@ -8406,13 +8406,13 @@
       <publishTime>03/17/2026 09:32:01</publishTime>
     </File>
     <File Include="Views/Web.config">
-      <publishTime>03/02/2026 10:17:04</publishTime>
+      <publishTime>04/24/2026 11:42:37</publishTime>
     </File>
     <File Include="Views/_ViewStart.cshtml">
       <publishTime>01/28/2026 10:52:54</publishTime>
     </File>
     <File Include="Web.config">
-      <publishTime>04/24/2026 08:36:08</publishTime>
+      <publishTime>04/24/2026 13:48:16</publishTime>
     </File>
   </ItemGroup>
 </Project>

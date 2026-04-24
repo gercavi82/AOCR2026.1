@@ -626,7 +626,9 @@ namespace CapaPresentacion.Controllers
 
             try
             {
-                ViewBag.Pagos = await _dao.ObtenerPagosPorOrdenAsync(id);
+                var pagos = await _dao.ObtenerPagosPorOrdenAsync(id);
+                NormalizarMontosPagoDesfasados(pagos, orden.Total);
+                ViewBag.Pagos = pagos;
             }
             catch
             {
@@ -1432,8 +1434,7 @@ En transferencias NO colocar sublínea<br>";
 
             decimal montoValue;
             var montoRaw = (Monto ?? Request["Monto"] ?? "").Trim();
-            if (!decimal.TryParse(montoRaw, System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.CurrentCulture, out montoValue) &&
-                !decimal.TryParse(montoRaw, System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out montoValue))
+            if (!TryParseDecimalConfig(montoRaw, out montoValue))
             {
                 TempData["Error"] = "Monto inválido";
                 return RedirectToAction("Detalles", new { id = id });
@@ -1442,6 +1443,21 @@ En transferencias NO colocar sublínea<br>";
             if (montoValue <= 0)
             {
                 TempData["Error"] = "El monto debe ser mayor a cero";
+                return RedirectToAction("Detalles", new { id = id });
+            }
+
+            var pagosExistentes = _dao.ObtenerPagosPorOrden(id) ?? new List<CapaDatos.Models.PagoModel>();
+            var totalPagadoValidado = pagosExistentes
+                .Where(p =>
+                {
+                    var estadoPago = (p.Estado ?? string.Empty).Trim().ToUpperInvariant();
+                    return estadoPago == "APROBADO" || estadoPago == "VALIDADO";
+                })
+                .Sum(p => p.Monto);
+            var saldoPendienteReal = Math.Max(orden.Total - totalPagadoValidado, 0m);
+            if (saldoPendienteReal > 0m && montoValue > saldoPendienteReal)
+            {
+                TempData["Error"] = "El monto no puede exceder el saldo pendiente de $" + saldoPendienteReal.ToString("#,##0.00", new System.Globalization.CultureInfo("es-EC")) + ".";
                 return RedirectToAction("Detalles", new { id = id });
             }
 
@@ -3374,6 +3390,30 @@ En transferencias NO colocar sublínea<br>";
             catch (Exception ex)
             {
                 return Content($"Error listando drivers: {ex.Message}", "text/plain");
+            }
+        }
+
+        private static void NormalizarMontosPagoDesfasados(List<CapaDatos.Models.PagoModel> pagos, decimal totalOrden)
+        {
+            if (pagos == null || pagos.Count == 0 || totalOrden <= 0m)
+            {
+                return;
+            }
+
+            foreach (var pago in pagos)
+            {
+                if (pago == null || pago.Monto <= totalOrden * 10m)
+                {
+                    continue;
+                }
+
+                var montoNormalizado = Math.Round(pago.Monto / 100m, 2);
+                if (montoNormalizado > 0m && montoNormalizado <= Math.Round(totalOrden * 1.01m, 2))
+                {
+                    System.Diagnostics.Debug.WriteLine(
+                        $"OrdenRecaudacion/Detalles: monto de pago normalizado por desfase x100. PagoId={pago.CodigoPago}, original={pago.Monto}, normalizado={montoNormalizado}");
+                    pago.Monto = montoNormalizado;
+                }
             }
         }
     }

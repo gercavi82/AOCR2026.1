@@ -42,7 +42,7 @@ namespace CapaDatos.Services
         /// <summary>Constructor sin parámetros para compatibilidad</summary>
         public EmailService() : this(new SecureConfigurationService()) { }
 
-        public async Task<EmailSendResult> EnviarAsync(string para, string paraNombre, string asunto, string cuerpo,
+        public Task<EmailSendResult> EnviarAsync(string para, string paraNombre, string asunto, string cuerpo,
             byte[] adjunto = null, string adjuntoNombre = null)
         {
             var creds = _config.GetEmailCredentials();
@@ -73,13 +73,13 @@ namespace CapaDatos.Services
                             message.Attachments.Add(attachment);
                         }
 
-                        await client.SendMailAsync(message).ConfigureAwait(false);
+                        client.Send(message);
 
-                        return new EmailSendResult
+                        return Task.FromResult(new EmailSendResult
                         {
                             Success = true,
                             MessageId = Guid.NewGuid().ToString()
-                        };
+                        });
                     }
                 }
             }
@@ -102,11 +102,11 @@ namespace CapaDatos.Services
                         _logger.LogWarning("Correo enviado por fallback EnviarCorreo.",
                             new LogContext { ErrorCode = "EMAIL_FALLBACK_OK" });
 
-                        return new EmailSendResult
+                        return Task.FromResult(new EmailSendResult
                         {
                             Success = true,
                             MessageId = Guid.NewGuid().ToString()
-                        };
+                        });
                     }
                 }
                 catch (Exception exFallback)
@@ -114,11 +114,11 @@ namespace CapaDatos.Services
                     _logger.LogError(exFallback, new LogContext { ErrorCode = "EMAIL_FALLBACK_EX" });
                 }
 
-                return new EmailSendResult
+                return Task.FromResult(new EmailSendResult
                 {
                     Success = false,
                     Error = ex.Message
-                };
+                });
             }
         }
 

@@ -106,14 +106,24 @@ namespace CapaPresentacion.Controllers
             Usuario usuario;
             List<string> roles;
 
-            bool ok = UsuarioBL.Autenticar(
-                model.Usuario,
-                model.Contrasena,
-                out usuario,
-                out roles,
-                out mensaje,
-                actualizarUltimaConexion: false
-            );
+            bool ok;
+            try
+            {
+                ok = UsuarioBL.Autenticar(
+                    model.Usuario,
+                    model.Contrasena,
+                    out usuario,
+                    out roles,
+                    out mensaje,
+                    actualizarUltimaConexion: false
+                );
+            }
+            catch (Exception ex) when (EsErrorConexionBaseDatos(ex))
+            {
+                System.Diagnostics.Debug.WriteLine("Account/Login: error de conexión a base de datos: " + ex.Message);
+                ModelState.AddModelError("", "No se pudo conectar con la base de datos. Intente nuevamente en unos minutos.");
+                return View(model);
+            }
 
             if (!ok || usuario == null)
             {
@@ -972,6 +982,23 @@ namespace CapaPresentacion.Controllers
             }
 
             return RedirectToLocal(returnUrl);
+        }
+
+        private static bool EsErrorConexionBaseDatos(Exception ex)
+        {
+            while (ex != null)
+            {
+                var typeName = ex.GetType().FullName ?? string.Empty;
+                if (ex is TimeoutException ||
+                    typeName.IndexOf("Npgsql", StringComparison.OrdinalIgnoreCase) >= 0)
+                {
+                    return true;
+                }
+
+                ex = ex.InnerException;
+            }
+
+            return false;
         }
     }
 }

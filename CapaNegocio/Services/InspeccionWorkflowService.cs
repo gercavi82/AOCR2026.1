@@ -63,6 +63,17 @@ namespace CapaNegocio.Services
                     ? EstadosInspeccion.RESULTADO_SATISFACTORIO
                     : EstadosInspeccion.RESULTADO_NO_SATISFACTORIO;
 
+                if (esSatisfactorio)
+                {
+                    var noConformidadesAbiertas = ContarNoConformidadesAbiertas(inspeccionId);
+                    if (noConformidadesAbiertas > 0)
+                    {
+                        return ResultadoOperacion.Error(
+                            "No se puede registrar resultado satisfactorio mientras existan no conformidades abiertas (" +
+                            noConformidadesAbiertas + ").");
+                    }
+                }
+
                 inspeccion.ResultadoEvaluacion = esSatisfactorio
                     ? EstadosInspeccion.RESULTADO_SATISFACTORIO
                     : EstadosInspeccion.RESULTADO_NO_SATISFACTORIO;
@@ -312,6 +323,25 @@ namespace CapaNegocio.Services
                     if (!validacionDocs.EsValido)
                     {
                         return ResultadoOperacion.Error("No se puede cerrar la inspección. " + ConstruirMensajeFaltantes(validacionDocs));
+                    }
+
+                    var noConformidadesAbiertas = ContarNoConformidadesAbiertas(inspeccionId);
+                    if (noConformidadesAbiertas > 0)
+                    {
+                        return ResultadoOperacion.Error(
+                            "No se puede cerrar la inspección mientras existan no conformidades abiertas (" +
+                            noConformidadesAbiertas + ").");
+                    }
+                }
+
+                if (string.Equals(estadoDestinoNormalizado, EstadosInspeccion.RESULTADO_SATISFACTORIO, StringComparison.OrdinalIgnoreCase))
+                {
+                    var noConformidadesAbiertas = ContarNoConformidadesAbiertas(inspeccionId);
+                    if (noConformidadesAbiertas > 0)
+                    {
+                        return ResultadoOperacion.Error(
+                            "No se puede aprobar la inspección mientras existan no conformidades abiertas (" +
+                            noConformidadesAbiertas + ").");
                     }
                 }
 
@@ -571,6 +601,32 @@ namespace CapaNegocio.Services
             }
 
             return "Existen observaciones documentales pendientes.";
+        }
+
+        private int ContarNoConformidadesAbiertas(int inspeccionId)
+        {
+            if (inspeccionId <= 0)
+            {
+                return 0;
+            }
+
+            var hallazgos = _hallazgoBL.ObtenerPorInspeccion(inspeccionId) ?? new List<Hallazgo>();
+            var abiertas = 0;
+
+            foreach (var hallazgo in hallazgos)
+            {
+                if (hallazgo == null)
+                {
+                    continue;
+                }
+
+                if (!string.Equals((hallazgo.Estado ?? string.Empty).Trim(), "CERRADO", StringComparison.OrdinalIgnoreCase))
+                {
+                    abiertas++;
+                }
+            }
+
+            return abiertas;
         }
     }
 }
