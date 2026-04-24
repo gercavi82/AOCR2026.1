@@ -29,7 +29,7 @@ namespace CapaDatos.DAOs
             get
             {
                 if (_instancia == null)
-                    _instancia = new CD_ListaValor();
+                    _instancia = new CD_ListaValor(new SecureConfigurationService());
                 return _instancia;
             }
         }

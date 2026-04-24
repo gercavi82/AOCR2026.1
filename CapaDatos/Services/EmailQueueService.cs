@@ -113,13 +113,13 @@ namespace CapaDatos.Services
             return await EncolarConAdjuntosAsync(item, item != null ? item.Adjuntos : null);
         }
 
-        public async Task<int> EncolarConAdjuntosAsync(EmailQueueItem item, IEnumerable<EmailAttachmentItem> attachments)
+        public Task<int> EncolarConAdjuntosAsync(EmailQueueItem item, IEnumerable<EmailAttachmentItem> attachments)
         {
-            return ExecuteInTransaction((conn, tx) =>
+            return Task.FromResult(ExecuteInTransaction((conn, tx) =>
             {
                 bool duplicateEvent;
                 return EncolarConAdjuntosEnTransaccion(conn, tx, item, attachments, out duplicateEvent);
-            });
+            }));
         }
 
         public int EncolarConAdjuntosEnTransaccion(
@@ -337,7 +337,7 @@ namespace CapaDatos.Services
             }
         }
 
-        public async Task<EmailQueueItem> ObtenerSiguienteAsync()
+        public Task<EmailQueueItem> ObtenerSiguienteAsync()
         {
             // Usar FOR UPDATE SKIP LOCKED para evitar conflictos en procesamiento concurrente
             const string sql = @"
@@ -353,7 +353,7 @@ namespace CapaDatos.Services
                 )
                 RETURNING *";
 
-            return ExecuteWithConnection(conn =>
+            return Task.FromResult(ExecuteWithConnection(conn =>
             {
                 EnsureEmailQueueSchema(conn);
                 EmailQueueItem item = null;
@@ -373,7 +373,7 @@ namespace CapaDatos.Services
                 }
 
                 return item;
-            });
+            }));
         }
 
         /// <summary>
@@ -405,7 +405,7 @@ namespace CapaDatos.Services
             return Task.FromResult(afectadas);
         }
 
-        public async Task<IEnumerable<EmailQueueItem>> ObtenerPendientesAsync(int limite = 10)
+        public Task<IEnumerable<EmailQueueItem>> ObtenerPendientesAsync(int limite = 10)
         {
             const string sql = @"
                 SELECT * FROM email_queue
@@ -414,7 +414,7 @@ namespace CapaDatos.Services
                 ORDER BY created_at ASC
                 LIMIT @limite";
 
-            return ExecuteWithConnection(conn =>
+            return Task.FromResult<IEnumerable<EmailQueueItem>>(ExecuteWithConnection(conn =>
             {
                 EnsureEmailQueueSchema(conn);
                 var lista = new List<EmailQueueItem>();
@@ -436,10 +436,10 @@ namespace CapaDatos.Services
                 }
 
                 return lista;
-            });
+            }));
         }
 
-        public async Task ActualizarEstadoAsync(int id, string estado, string error = null)
+        public Task ActualizarEstadoAsync(int id, string estado, string error = null)
         {
             const string sqlConError = @"
                 UPDATE email_queue SET
@@ -473,9 +473,10 @@ namespace CapaDatos.Services
                     });
                 }
             });
+            return Task.CompletedTask;
         }
 
-        public async Task MarcarEnviadoAsync(int id, string messageId)
+        public Task MarcarEnviadoAsync(int id, string messageId)
         {
             const string sqlConCampos = @"
                 UPDATE email_queue SET
@@ -506,9 +507,10 @@ namespace CapaDatos.Services
                     });
                 }
             });
+            return Task.CompletedTask;
         }
 
-        public async Task ReprogramarReintentoAsync(int id, TimeSpan delay)
+        public Task ReprogramarReintentoAsync(int id, TimeSpan delay)
         {
             const string sqlConIntentos = @"
                 UPDATE email_queue SET
@@ -547,6 +549,7 @@ namespace CapaDatos.Services
             });
 
             _logger.LogInfo(string.Format("Email {0} reprogramado para {1:HH:mm:ss}", id, proximoIntento));
+            return Task.CompletedTask;
         }
 
         private EmailQueueItem MapearItem(System.Data.IDataReader reader)

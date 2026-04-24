@@ -37,6 +37,7 @@ namespace CapaDatos.Models
         public string CorreoUsuario { get; set; }
         public string CreadoPor { get; set; }
         public DateTime? FechaCreacionRegistro { get; set; }
+        public string NumeroSolicitud { get; set; }
 
         // ✅ NUEVO: Propiedad usada por la vista Index.cshtml
         // Regla por defecto: VENCE a los 30 días desde FechaCreacion,

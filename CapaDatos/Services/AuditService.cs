@@ -59,7 +59,7 @@ namespace CapaDatos.Services
             _logger = LoggingServiceFactory.Create();
         }
 
-        public async Task RegistrarCambioEstadoAsync(CambioEstadoAudit audit)
+        public Task RegistrarCambioEstadoAsync(CambioEstadoAudit audit)
         {
             const string sql = @"
                 INSERT INTO audit_cambios_estado (
@@ -112,9 +112,10 @@ namespace CapaDatos.Services
                 });
                 // No propagar error de auditoría para no afectar operación principal
             }
+            return Task.CompletedTask;
         }
 
-        public async Task RegistrarAccionAsync(AccionAudit audit)
+        public Task RegistrarAccionAsync(AccionAudit audit)
         {
             const string sql = @"
                 INSERT INTO audit_acciones (
@@ -154,6 +155,7 @@ namespace CapaDatos.Services
                     ErrorCode = "AUDIT_ERROR"
                 });
             }
+            return Task.CompletedTask;
         }
     }
 }

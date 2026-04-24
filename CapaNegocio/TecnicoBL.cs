@@ -232,7 +232,9 @@ namespace CapaNegocio
             try
             {
                 // Verificar si tiene inspecciones asignadas
-                var inspecciones = new List<Inspeccion>();
+                var inspeccionDAO = new InspeccionDAOType();
+                var inspecciones = inspeccionDAO.ListarPorInspector(codigoTecnico);
+                if (inspecciones != null && inspecciones.Count > 0)
                 {
                     mensaje = "No se puede eliminar el técnico porque tiene inspecciones asignadas.";
                     return false;

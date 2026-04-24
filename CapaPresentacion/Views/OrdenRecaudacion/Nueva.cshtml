@@ -23,10 +23,11 @@
             {
                 @Html.AntiForgeryToken()
 
-                @Html.HiddenFor(m => m.Orden.Subtotal, new { id = "Subtotal" })
-                @Html.HiddenFor(m => m.Orden.Admin, new { id = "Admin" })
-                @Html.HiddenFor(m => m.Orden.Total, new { id = "Total" })
+                <input type="hidden" id="Subtotal" value="0" />
+                <input type="hidden" id="Admin" value="0" />
+                <input type="hidden" id="Total" value="0" />
                 @Html.HiddenFor(m => m.DetallesJson, new { id = "DetallesJson" })
+                @Html.HiddenFor(m => m.RucCedula, new { id = "RucCedulaGeneral" })
 
                 <div class="card-body">
 
@@ -72,6 +73,7 @@
                             <div class="mb-3">
                                 <label class="form-label">Compañía</label>
                                 @Html.HiddenFor(m => m.Orden.Compania)
+                                @Html.HiddenFor(m => m.Orden.NombreContribuyente, new { id = "Orden_NombreContribuyente" })
                                 <div id="Orden_Compania_Texto" class="form-control bg-light" aria-readonly="true" title="Este valor se obtiene automáticamente y no es editable.">
                                     @(Model != null && Model.Orden != null ? (Model.Orden.Compania ?? string.Empty) : string.Empty)
                                 </div>
@@ -84,7 +86,7 @@
 
                             <div class="mb-3">
                                 <label class="form-label">RUC/Cédula</label>
-                                @Html.TextBoxFor(m => m.Orden.RucCedula, new { @class = "form-control", placeholder = "RUC o Cédula", autocomplete = "off", maxlength = "13" })
+                                @Html.TextBoxFor(m => m.Orden.RucCedula, new { @class = "form-control", placeholder = "RUC o Cédula", autocomplete = "off", maxlength = "13", inputmode = "numeric", pattern = "[0-9]*", oninput = "this.value=this.value.replace(/\\D/g,'').slice(0,13);" })
                                 <small class="text-muted">Valor obtenido automáticamente. Puede corregirlo si es necesario (RUC: 13 dígitos / Cédula: 10 dígitos).</small>
                             </div>
 
@@ -213,6 +215,20 @@
 
                             var detalles = [];
 
+                            function limpiarSoloDigitos(valor, maximo) {
+                                var limpio = (valor || '').toString().replace(/\D/g, '');
+                                if (typeof maximo === 'number' && maximo > 0) {
+                                    return limpio.slice(0, maximo);
+                                }
+                                return limpio;
+                            }
+
+                            var $rucCedula = $('#Orden_RucCedula');
+                            $rucCedula.on('input paste blur', function () {
+                                $(this).val(limpiarSoloDigitos($(this).val(), 13));
+                            });
+                            $rucCedula.val(limpiarSoloDigitos($rucCedula.val(), 13));
+
                             function aplicarSolicitudSeleccionada() {
                                 var $sel = $('#Orden_CodigoSolicitud');
                                 if ($sel.length === 0) return;
@@ -223,15 +239,10 @@
                                     return;
                                 }
 
-                                var compania = $opt.data('compania') || '';
-                                var ruc = $opt.data('ruc') || '';
+                                var ruc = limpiarSoloDigitos($opt.data('ruc') || '', 13);
                                 var correo = $opt.data('correo') || '';
                                 var telefono = $opt.data('telefono') || '';
 
-                                if (compania) {
-                                    $('#Orden_Compania').val(compania);
-                                    $('#Orden_Compania_Texto').text(compania);
-                                }
                                 if (ruc) $('#Orden_RucCedula').val(ruc);
                                 if (correo) $('#Orden_Correo').val(correo);
                                 if (telefono) $('#Orden_Telefono').val(telefono);
@@ -288,6 +299,12 @@
                     return { ConceptoId: d.ConceptoId, Cantidad: d.Cantidad };
                 });
                 $('#DetallesJson').val(JSON.stringify(payload));
+
+                // Mantener sincronizados campos requeridos del ViewModel.
+                var ruc = limpiarSoloDigitos($('#Orden_RucCedula').val(), 13);
+                var compania = ($('#Orden_Compania').val() || '').trim();
+                $('#RucCedulaGeneral').val(ruc);
+                $('#Orden_NombreContribuyente').val(compania);
             }
 
                             $('#btnAgregarConcepto').on('click', function () {
@@ -353,6 +370,7 @@
                                     e.preventDefault();
                                     return false;
                                 }
+                                $('#Orden_RucCedula').val(limpiarSoloDigitos($('#Orden_RucCedula').val(), 13));
                                 actualizarCamposOcultos();
                                 return true;
                             });

@@ -17,7 +17,8 @@ namespace CapaNegocio.Integraciones.As400Sync
                 CreateTxdgac(),
                 CreateOpsarc(),
                 CreateOpcar5(),
-                CreateOpcar6()
+                CreateOpcar6(),
+                CreateOpcarc()
             };
         }
 
@@ -78,13 +79,20 @@ namespace CapaNegocio.Integraciones.As400Sync
                 TargetSchema = "mirror_raw",
                 TargetTable = "ciaarc",
                 PrimaryKeys = new List<string> { "ciacod" },
-                IncrementalMode = SyncIncrementalMode.FullSnapshot,
-                DeleteStrategy = DeleteStrategy.FullSnapshotReconcile,
+                IncrementalMode = SyncIncrementalMode.WatermarkDateTimeChars,
+                DeleteStrategy = DeleteStrategy.TombstoneTable,
+                WatermarkDateColumn = "CIAFE1",
+                WatermarkTimeColumn = "CIAHO1",
                 SoftDeleteSourceColumn = "CIAEST",
                 SoftDeleteActiveValue = "AC",
-                BatchSize = 10000,
-                Notes = "Catalogo de companias. Sin watermark confiable en AOCR actual; usa snapshot + reconcile de deletes.",
-                Columns = MapSame("CIACOD", "CIACO2", "CIACO3", "CIANOM", "CIAEST")
+                BatchSize = 2000,
+                Notes = "Catálogo de compañías AS400 (DGACDAT.CIAARC). CIARUC = RUC de la compañía. Watermark por CIAFE1+CIAHO1.",
+                Columns = MapSame(
+                    "CIAOID", "CIACOD", "CIACO2", "CIACO3", "CIANOM", "CIATI1", "CIADIR",
+                    "CIARUC", "CIAEMA", "CIATEL", "CIACEL", "CIADI2", "CIATE1", "CIACOR",
+                    "CIAREP", "CIANO1", "CIATIP", "CIAEST", "CIACIU", "CIAES1", "CIAOI1",
+                    "CIAUSU", "CIAFEC", "CIAHOR", "CIADIS", "CIAUS1", "CIAFE1", "CIAHO1",
+                    "CIADI1", "CIADI3", "CIATE2", "CIACE1", "CIAEM1", "CIARE1", "CIAOI2", "CIACO4")
             };
         }
 
@@ -123,6 +131,30 @@ namespace CapaNegocio.Integraciones.As400Sync
                 BatchSize = 10000,
                 Notes = "Ubicacion aeropuerto por ciudad (fallback para lugar emision). Snapshot completo.",
                 Columns = MapSame("OIDOI2", "OIDCO3", "OIDNO2")
+            };
+        }
+
+        private static SyncTableDefinition CreateOpcarc()
+        {
+            return new SyncTableDefinition
+            {
+                Name = "OPCARC",
+                SourceSchema = "DGACDAT",
+                SourceTable = "OPCARC",
+                TargetSchema = "mirror_raw",
+                TargetTable = "opcarc",
+                PrimaryKeys = new List<string> { "opccod" },
+                IncrementalMode = SyncIncrementalMode.WatermarkDateTimeChars,
+                WatermarkDateColumn = "OPCDA2",
+                WatermarkTimeColumn = "OPCHO4",
+                DeleteStrategy = DeleteStrategy.None,
+                Enabled = true,
+                BatchSize = 2000,
+                Notes = "Catalogo de operadores DGAC (OPCARC). Incluye RUC/identificacion fiscal. 5000+ entradas.",
+                Columns = MapSame(
+                    "OPCCOD", "OPCSIG", "OPCCO1", "OPCNOM", "OPCCO2", "OPCNO1", "OPCDIR",
+                    "OPCRUC", "OPCEMA", "OPCREP", "OPCUS3", "OPCDA2", "OPCHO4", "OPCUS4",
+                    "OPCDA3", "OPCHO5", "OPCCEL", "OPCTEL")
             };
         }
 

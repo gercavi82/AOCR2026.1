@@ -85,6 +85,50 @@ namespace CapaDatos.DAOs
             );
         }
 
+        public string ObtenerIdentificacionRecientePorCompania(string codigoCompania, string nombreCompania, int? codigoUsuarioPreferido = null)
+        {
+            var codigo = (codigoCompania ?? string.Empty).Trim().ToUpperInvariant();
+            var nombre = (nombreCompania ?? string.Empty).Trim().ToUpperInvariant();
+
+            if (string.IsNullOrWhiteSpace(codigo) && string.IsNullOrWhiteSpace(nombre))
+            {
+                return string.Empty;
+            }
+
+            const string sql = @"
+                SELECT
+                    COALESCE(NULLIF(TRIM(ruc), ''), NULLIF(TRIM(cedula_representante), ''), '') AS identificacion
+                FROM aocr_tbsolicitud
+                WHERE deleted_at IS NULL
+                  AND @nombre <> ''
+                  AND (
+                        UPPER(TRIM(COALESCE(nombre_operador, ''))) = @nombre
+                        OR UPPER(TRIM(COALESCE(razon_social, ''))) = @nombre
+                  )
+                  AND (
+                        NULLIF(TRIM(COALESCE(ruc, '')), '') IS NOT NULL
+                        OR NULLIF(TRIM(COALESCE(cedula_representante, '')), '') IS NOT NULL
+                  )
+                ORDER BY
+                    CASE
+                        WHEN @codigoUsuarioPreferido IS NOT NULL AND codigo_usuario = @codigoUsuarioPreferido THEN 0
+                        ELSE 1
+                    END,
+                    fecha_solicitud DESC NULLS LAST,
+                    codigo_solicitud DESC
+                LIMIT 1;";
+
+            using (var cn = new NpgsqlConnection(ConnectionString))
+            {
+                cn.Open();
+                return (cn.ExecuteScalar<string>(sql, new
+                {
+                    nombre,
+                    codigoUsuarioPreferido
+                }) ?? string.Empty).Trim();
+            }
+        }
+
         public List<SolicitudAOCR> ObtenerPorEstado(string estado)
         {
             return ObtenerPorEstados(estado);

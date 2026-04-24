@@ -13,6 +13,7 @@ using CapaDatos.Interfaces;
 using CapaDatos.Infrastructure;
 using CapaDatos.Models;
 using CapaDatos.Services;
+using CapaModelo.Common;
 using CapaModelo.DTOs;
 using DetalleOrdenEnt = CapaDatos.Entidades.DetalleOrden;
 
@@ -3410,7 +3411,7 @@ namespace CapaDatos.DAOs
                 var asunto = string.Equals(estado, "FR3_GENERADO", StringComparison.OrdinalIgnoreCase)
                     ? string.Format("FR3 generado - Orden {0}", ordenLabel)
                     : string.Format("FR3 con error - Orden {0}", ordenLabel);
-                var cuerpo = ConstruirCuerpoNotificacionFr3(ordenLabel, estado, fr3Numero, detalleError);
+                var cuerpo = ConstruirCuerpoNotificacionFr3(ordenLabel, estado, fr3Numero, detalleError, nombreSolicitante);
 
                 var queueService = new EmailQueueService(_connectionString);
                 foreach (var destinatario in destinatarios)
@@ -3446,23 +3447,47 @@ namespace CapaDatos.DAOs
             string numeroOrden,
             string estadoFr3,
             string fr3Numero,
-            string detalleError)
+            string detalleError,
+            string nombreDestinatario = null)
         {
             var fr3 = string.IsNullOrWhiteSpace(fr3Numero) ? "N/D" : fr3Numero.Trim();
             var detalle = string.IsNullOrWhiteSpace(detalleError) ? "Sin detalle adicional." : detalleError.Trim();
+            var destinatario = string.IsNullOrWhiteSpace(nombreDestinatario) ? "Usuario AOCR" : nombreDestinatario.Trim();
 
             if (string.Equals(estadoFr3, "FR3_GENERADO", StringComparison.OrdinalIgnoreCase))
             {
-                return string.Format(
-                    "<p>Estimado usuario,</p><p>La orden <strong>{0}</strong> completó la generación de FR3.</p><p><strong>FR3:</strong> {1}</p><p>Sistema AOCR</p>",
-                    numeroOrden,
-                    fr3);
+                var model = new EmailTemplateModel
+                {
+                    Titulo = "FR3 Generado Exitosamente",
+                    NombreDestinatario = destinatario,
+                    MensajePrincipal = "La orden completó la generación del FR3 exitosamente.",
+                    Resumen = new List<EmailFieldItem>
+                    {
+                        new EmailFieldItem("Orden", numeroOrden),
+                        new EmailFieldItem("Número FR3", fr3)
+                    },
+                    TextoCierre = "Puede revisar el detalle de la orden desde el sistema AOCR.",
+                    Footer = "Este es un mensaje automatico del workflow financiero AOCR."
+                };
+                return EmailTemplateRenderer.Render(model);
             }
 
-            return string.Format(
-                "<p>Estimado usuario,</p><p>La orden <strong>{0}</strong> presentó un error en la generación FR3.</p><p><strong>Detalle:</strong> {1}</p><p>Sistema AOCR</p>",
-                numeroOrden,
-                detalle);
+            {
+                var model = new EmailTemplateModel
+                {
+                    Titulo = "Error en Generación FR3",
+                    NombreDestinatario = destinatario,
+                    MensajePrincipal = "La orden presentó un error durante la generación del FR3.",
+                    Resumen = new List<EmailFieldItem>
+                    {
+                        new EmailFieldItem("Orden", numeroOrden)
+                    },
+                    Observaciones = detalle,
+                    TextoCierre = "Si el error persiste, contacte al administrador del sistema.",
+                    Footer = "Este es un mensaje automatico del workflow financiero AOCR."
+                };
+                return EmailTemplateRenderer.Render(model);
+            }
         }
 
         private static string NormalizarFragmentoEventKey(string value)

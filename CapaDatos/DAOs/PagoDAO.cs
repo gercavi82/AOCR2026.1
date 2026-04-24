@@ -19,7 +19,7 @@ namespace CapaDatos.DAOs
         {
         }
 
-        public async Task<int> CrearAsync(Pago pago)
+        public Task<int> CrearAsync(Pago pago)
         {
             const string sql = @"
                 INSERT INTO pagos (
@@ -32,7 +32,7 @@ namespace CapaDatos.DAOs
                     @estado, @fecha_registro, @usuario_registro
                 ) RETURNING id";
 
-            return ExecuteWithConnection(conn =>
+            return Task.FromResult(ExecuteWithConnection(conn =>
             {
                 return ExecuteScalar<int>(conn, sql, cmd =>
                 {
@@ -48,15 +48,15 @@ namespace CapaDatos.DAOs
                     AddParameter(cmd, "@fecha_registro", pago.FechaRegistro, NpgsqlDbType.Timestamp);
                     AddParameter(cmd, "@usuario_registro", pago.UsuarioRegistro, NpgsqlDbType.Varchar);
                 });
-            });
+            }));
         }
 
-        public async Task<Pago> ObtenerPorIdAsync(int id)
+        public Task<Pago> ObtenerPorIdAsync(int id)
         {
             const string sql = @"
                 SELECT * FROM pagos WHERE id = @id";
 
-            return ExecuteWithConnection(conn =>
+            return Task.FromResult(ExecuteWithConnection(conn =>
             {
                 using (var cmd = CreateCommand(conn, sql))
                 {
@@ -71,10 +71,10 @@ namespace CapaDatos.DAOs
                         return null;
                     }
                 }
-            });
+            }));
         }
 
-        public async Task<Pago> ObtenerPorOrdenIdAsync(int ordenId)
+        public Task<Pago> ObtenerPorOrdenIdAsync(int ordenId)
         {
             const string sql = @"
                 SELECT * FROM pagos 
@@ -82,7 +82,7 @@ namespace CapaDatos.DAOs
                 ORDER BY fecha_registro DESC 
                 LIMIT 1";
 
-            return ExecuteWithConnection(conn =>
+            return Task.FromResult(ExecuteWithConnection(conn =>
             {
                 using (var cmd = CreateCommand(conn, sql))
                 {
@@ -97,10 +97,10 @@ namespace CapaDatos.DAOs
                         return null;
                     }
                 }
-            });
+            }));
         }
 
-        public async Task<IEnumerable<Pago>> ObtenerPorEstadoAsync(string estado)
+        public Task<IEnumerable<Pago>> ObtenerPorEstadoAsync(string estado)
         {
             const string sql = @"
                 SELECT p.*, o.numero_orden
@@ -109,7 +109,7 @@ namespace CapaDatos.DAOs
                 WHERE p.estado = @estado
                 ORDER BY p.fecha_registro ASC";
 
-            return ExecuteWithConnection(conn =>
+            return Task.FromResult<IEnumerable<Pago>>(ExecuteWithConnection(conn =>
             {
                 var lista = new List<Pago>();
 
@@ -127,10 +127,10 @@ namespace CapaDatos.DAOs
                 }
 
                 return lista;
-            });
+            }));
         }
 
-        public async Task<bool> ActualizarAsync(Pago pago)
+        public Task<bool> ActualizarAsync(Pago pago)
         {
             const string sql = @"
                 UPDATE pagos SET
@@ -140,7 +140,7 @@ namespace CapaDatos.DAOs
                     usuario_validacion = @usuario_validacion
                 WHERE id = @id";
 
-            return ExecuteWithConnection(conn =>
+            return Task.FromResult(ExecuteWithConnection(conn =>
             {
                 var rows = ExecuteNonQuery(conn, sql, cmd =>
                 {
@@ -152,10 +152,10 @@ namespace CapaDatos.DAOs
                 });
 
                 return rows > 0;
-            });
+            }));
         }
 
-        public async Task<bool> ActualizarEstadoAsync(int id, string nuevoEstado, string usuario)
+        public Task<bool> ActualizarEstadoAsync(int id, string nuevoEstado, string usuario)
         {
             const string sql = @"
                 UPDATE pagos SET
@@ -164,7 +164,7 @@ namespace CapaDatos.DAOs
                     usuario_validacion = @usuario_validacion
                 WHERE id = @id";
 
-            return ExecuteWithConnection(conn =>
+            return Task.FromResult(ExecuteWithConnection(conn =>
             {
                 var rows = ExecuteNonQuery(conn, sql, cmd =>
                 {
@@ -175,7 +175,7 @@ namespace CapaDatos.DAOs
                 });
 
                 return rows > 0;
-            });
+            }));
         }
 
         #region Métodos de Compatibilidad

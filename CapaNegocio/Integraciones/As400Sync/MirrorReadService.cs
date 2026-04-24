@@ -486,6 +486,146 @@ namespace CapaNegocio.Integraciones.As400Sync
             }
         }
 
+        public string ObtenerRucCompaniaPorCodigo(string codigoOaci, string nombreCompania = null)
+        {
+            if (string.IsNullOrWhiteSpace(_connectionString))
+            {
+                return string.Empty;
+            }
+
+            // 1) Buscar en mirror_raw.ciaarc (CIARUC): catálogo de compañías AS400 con RUC directo.
+            //    Prioridad: código OACI exacto (CIACOD), luego nombre (CIANOM o CIANO1).
+            if (!ShouldSkipMirrorObject("mirror_raw.ciaarc"))
+            {
+                const string sqlCiaarc = @"
+                    SELECT NULLIF(TRIM(COALESCE(ciaruc, '')), '') AS ruc
+                      FROM mirror_raw.ciaarc
+                     WHERE COALESCE(_is_deleted, false) = false
+                       AND NULLIF(TRIM(COALESCE(ciaruc, '')), '') IS NOT NULL
+                       AND (
+                            (@codigo <> '' AND UPPER(TRIM(COALESCE(ciacod, ''))) = @codigo)
+                            OR
+                            (@nombre <> '' AND (
+                                UPPER(TRIM(COALESCE(cianom, ''))) = @nombre
+                                OR UPPER(TRIM(COALESCE(ciano1, ''))) = @nombre
+                            ))
+                       )
+                  ORDER BY _mirror_synced_at DESC
+                     LIMIT 1";
+
+                try
+                {
+                    using (var conn = new NpgsqlConnection(_connectionString))
+                    using (var cmd = new NpgsqlCommand(sqlCiaarc, conn))
+                    {
+                        conn.Open();
+                        cmd.Parameters.AddWithValue("codigo", (codigoOaci ?? string.Empty).Trim().ToUpperInvariant());
+                        cmd.Parameters.AddWithValue("nombre", (nombreCompania ?? string.Empty).Trim().ToUpperInvariant());
+                        var rucCiaarc = (cmd.ExecuteScalar() as string ?? string.Empty).Trim();
+                        if (!string.IsNullOrWhiteSpace(rucCiaarc))
+                        {
+                            return rucCiaarc;
+                        }
+                    }
+                }
+                catch (PostgresException ex)
+                {
+                    RegisterMissingMirrorObjectIfApplicable("mirror_raw.ciaarc", ex);
+                    LogBL.RegistrarAdvertencia("MirrorReadService.ObtenerRucCompaniaPorCodigo (ciaarc): " + ex.MessageText, "MirrorReadService");
+                }
+                catch (Exception ex)
+                {
+                    LogBL.RegistrarAdvertencia("MirrorReadService.ObtenerRucCompaniaPorCodigo (ciaarc): " + ex.Message, "MirrorReadService");
+                }
+            }
+
+            // 2) Buscar en mirror_raw.opcarc (OPCRUC) — catálogo de operadores AS400, 5000+ entradas.
+            //    Clave: opccod (código OACI) o opcnom (nombre).
+            if (!ShouldSkipMirrorObject("mirror_raw.opcarc"))
+            {
+                const string sqlOpcarc = @"
+                    SELECT NULLIF(TRIM(COALESCE(opcruc, '')), '') AS ruc
+                      FROM mirror_raw.opcarc
+                     WHERE NULLIF(TRIM(COALESCE(opcruc, '')), '') IS NOT NULL
+                       AND (
+                            (@codigo <> '' AND UPPER(TRIM(COALESCE(opccod, ''))) = @codigo)
+                            OR
+                            (@codigo <> '' AND UPPER(TRIM(COALESCE(opcco1, ''))) = @codigo)
+                            OR
+                            (@nombre <> '' AND UPPER(TRIM(COALESCE(opcnom, ''))) = @nombre)
+                       )
+                  ORDER BY opccod
+                     LIMIT 1";
+
+                try
+                {
+                    using (var conn = new NpgsqlConnection(_connectionString))
+                    using (var cmd = new NpgsqlCommand(sqlOpcarc, conn))
+                    {
+                        conn.Open();
+                        cmd.Parameters.AddWithValue("codigo", (codigoOaci ?? string.Empty).Trim().ToUpperInvariant());
+                        cmd.Parameters.AddWithValue("nombre", (nombreCompania ?? string.Empty).Trim().ToUpperInvariant());
+                        var rucOpcarc = (cmd.ExecuteScalar() as string ?? string.Empty).Trim();
+                        if (!string.IsNullOrWhiteSpace(rucOpcarc))
+                        {
+                            return rucOpcarc;
+                        }
+                    }
+                }
+                catch (PostgresException ex)
+                {
+                    RegisterMissingMirrorObjectIfApplicable("mirror_raw.opcarc", ex);
+                    LogBL.RegistrarAdvertencia("MirrorReadService.ObtenerRucCompaniaPorCodigo (opcarc): " + ex.MessageText, "MirrorReadService");
+                }
+                catch (Exception ex)
+                {
+                    LogBL.RegistrarAdvertencia("MirrorReadService.ObtenerRucCompaniaPorCodigo (opcarc): " + ex.Message, "MirrorReadService");
+                }
+            }
+
+            // 3) Fallback: buscar en mirror_raw.opcar5 (OPCRU1) — FR3 del cliente.
+            if (ShouldSkipMirrorObject("mirror_raw.opcar5"))
+            {
+                return string.Empty;
+            }
+
+            const string sql = @"
+                SELECT NULLIF(TRIM(COALESCE(opcru1, '')), '') AS ruc
+                  FROM mirror_raw.opcar5
+                 WHERE COALESCE(_is_deleted, false) = false
+                   AND NULLIF(TRIM(COALESCE(opcru1, '')), '') IS NOT NULL
+                   AND (
+                        (@codigo <> '' AND UPPER(TRIM(COALESCE(opcc08, ''))) = @codigo)
+                        OR
+                        (@nombre <> '' AND UPPER(TRIM(COALESCE(opcno5, ''))) = @nombre)
+                   )
+              ORDER BY _mirror_synced_at DESC
+                 LIMIT 1";
+
+            try
+            {
+                using (var conn = new NpgsqlConnection(_connectionString))
+                using (var cmd = new NpgsqlCommand(sql, conn))
+                {
+                    conn.Open();
+                    cmd.Parameters.AddWithValue("codigo", (codigoOaci ?? string.Empty).Trim().ToUpperInvariant());
+                    cmd.Parameters.AddWithValue("nombre", (nombreCompania ?? string.Empty).Trim().ToUpperInvariant());
+                    return (cmd.ExecuteScalar() as string ?? string.Empty).Trim();
+                }
+            }
+            catch (PostgresException ex)
+            {
+                RegisterMissingMirrorObjectIfApplicable("mirror_raw.opcar5", ex);
+                LogBL.RegistrarAdvertencia("MirrorReadService.ObtenerRucCompaniaPorCodigo no disponible: " + ex.MessageText, "MirrorReadService");
+                return string.Empty;
+            }
+            catch (Exception ex)
+            {
+                LogBL.RegistrarAdvertencia("MirrorReadService.ObtenerRucCompaniaPorCodigo no disponible: " + ex.Message, "MirrorReadService");
+                return string.Empty;
+            }
+        }
+
         private static bool ShouldSkipMirrorObject(string objectName)
         {
             if (string.IsNullOrWhiteSpace(objectName))

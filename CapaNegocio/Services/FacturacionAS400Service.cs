@@ -31,7 +31,7 @@ namespace CapaNegocio.Services
             mensaje = null;
             try
             {
-                var dao = new FacturacionAS400DAO();
+                var dao = new FacturacionAS400DAO(new CapaDatos.Services.SecureConfigurationService());
                 return dao.TestConnection(out mensaje);
             }
             catch (Exception ex)
@@ -202,7 +202,7 @@ namespace CapaNegocio.Services
                     detalles,
                     pago);
 
-                var dao = new FacturacionAS400DAO();
+                var dao = new FacturacionAS400DAO(new CapaDatos.Services.SecureConfigurationService());
                 FacturacionAS400Result resultadoFr3;
                 string errorAs400;
                 var ok = dao.RegistrarFactura(record, out resultadoFr3, out errorAs400);

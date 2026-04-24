@@ -162,7 +162,17 @@
                                 <table class="table table-sm table-borderless">
                                     <tr>
                                         <td class="fw-bold" style="width: 150px;">Número:</td>
-                                        <td>@orden.NumeroOrden</td>
+                                        <td>
+                                            @if (!string.IsNullOrWhiteSpace(orden.NumeroSolicitud))
+                                            {
+                                                <span>@orden.NumeroSolicitud</span>
+                                                <div class="text-muted" style="font-size:0.8em;">Ref. OR: @orden.NumeroOrden</div>
+                                            }
+                                            else
+                                            {
+                                                @orden.NumeroOrden
+                                            }
+                                        </td>
                                     </tr>
                                     <tr>
                                         <td class="fw-bold">Fecha Creación:</td>

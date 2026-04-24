@@ -66,7 +66,6 @@ namespace CapaPresentacion.Models
             public string Observacion { get; set; }
 
             // Para selección de concepto
-            [Required(ErrorMessage = "Debe seleccionar al menos un concepto")]
             [Display(Name = "Conceptos")]
             public List<int> ConceptosSeleccionados { get; set; } = new List<int>();
 

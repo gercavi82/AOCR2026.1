@@ -343,26 +343,14 @@ namespace CapaPresentacion.Controllers
             try
             {
                 usuario = UsuarioDAO.ObtenerPorId(userId);
-                var empresaNombre = "";
-                var codigoCompaniaActiva = CompaniaActivaSessionHelper.ObtenerCodigo(Session);
-                if (string.IsNullOrWhiteSpace(codigoCompaniaActiva))
-                {
-                    codigoCompaniaActiva = usuario != null ? usuario.EmpresaCodigo : string.Empty;
-                }
-
-                if (!string.IsNullOrWhiteSpace(codigoCompaniaActiva))
-                {
-                    empresaNombre = ResolverNombreCompaniaDesdeFuentes(codigoCompaniaActiva);
-                }
+                var empresaNombre = ObtenerNombreCompaniaActiva(usuario);
 
                 if (!string.IsNullOrWhiteSpace(empresaNombre))
                     model.Orden.Compania = empresaNombre;
-                else if (!string.IsNullOrWhiteSpace(usuario?.NombreCompleto))
-                    model.Orden.Compania = usuario.NombreCompleto;
 
                 var rucCedula = ResolverRucCedulaDesdeFuentes(userId, usuario);
                 if (!string.IsNullOrWhiteSpace(rucCedula))
-                    model.Orden.RucCedula = rucCedula;
+                    model.Orden.RucCedula = ExtraerRucCedula(rucCedula);
 
                 if (!string.IsNullOrWhiteSpace(usuario?.Email))
                     model.Orden.Correo = usuario.Email;
@@ -379,7 +367,7 @@ namespace CapaPresentacion.Controllers
                 {
                     if (string.IsNullOrWhiteSpace(solicitudAuto.Ruc))
                     {
-                        solicitudAuto.Ruc = ResolverRucCedulaDesdeFuentes(userId, usuario);
+                        solicitudAuto.Ruc = ExtraerRucCedula(ResolverRucCedulaDesdeFuentes(userId, usuario));
                     }
 
                     model.Solicitudes = new List<CapaPresentacion.Models.OrdenRecaudacionNuevaVM.SolicitudOptionVM>
@@ -397,12 +385,8 @@ namespace CapaPresentacion.Controllers
                         }
                     };
                     model.Orden.CodigoSolicitud = solicitudAuto.CodigoSolicitud;
-                    // Prefill de campos desde DB (editables)
-                    var compania = !string.IsNullOrWhiteSpace(solicitudAuto.RazonSocial)
-                        ? solicitudAuto.RazonSocial
-                        : solicitudAuto.NombreOperador;
-                    if (!string.IsNullOrWhiteSpace(compania)) model.Orden.Compania = compania;
-                    if (!string.IsNullOrWhiteSpace(solicitudAuto.Ruc)) model.Orden.RucCedula = solicitudAuto.Ruc;
+                    // Compania siempre desde compania activa en sesion
+                    if (!string.IsNullOrWhiteSpace(solicitudAuto.Ruc)) model.Orden.RucCedula = ExtraerRucCedula(solicitudAuto.Ruc);
                     if (!string.IsNullOrWhiteSpace(solicitudAuto.Email)) model.Orden.Correo = solicitudAuto.Email;
                     if (!string.IsNullOrWhiteSpace(solicitudAuto.Telefono)) model.Orden.Telefono = solicitudAuto.Telefono;
                 }
@@ -416,8 +400,15 @@ namespace CapaPresentacion.Controllers
             PrefillDesdeUltimaOrden(userId, model);
             if (string.IsNullOrWhiteSpace(model.Orden.RucCedula))
             {
-                model.Orden.RucCedula = ResolverRucCedulaDesdeFuentes(userId, usuario);
+                model.Orden.RucCedula = ExtraerRucCedula(ResolverRucCedulaDesdeFuentes(userId, usuario));
             }
+
+            var nombreCompaniaActiva = ObtenerNombreCompaniaActiva(usuario);
+            if (!string.IsNullOrWhiteSpace(nombreCompaniaActiva))
+            {
+                model.Orden.Compania = nombreCompaniaActiva;
+            }
+
             model.Orden.LugarEmision = ResolverLugarEmisionDesdeDb(model.Orden.CodigoSolicitud, userId);
             return View(model);
         }
@@ -495,7 +486,16 @@ namespace CapaPresentacion.Controllers
                     CargarConceptosNueva(model);
                     return View(model);
                 }
-                model.Orden.RucCedula = rucDesdeDb;
+                model.Orden.RucCedula = ExtraerRucCedula(rucDesdeDb);
+
+                var nombreCompaniaActiva = ObtenerNombreCompaniaActiva(usuarioActual);
+                if (string.IsNullOrWhiteSpace(nombreCompaniaActiva))
+                {
+                    ModelState.AddModelError("Orden.Compania", "No se encontró la compañía activa de la sesión. Seleccione una compañía activa e intente nuevamente.");
+                    CargarConceptosNueva(model);
+                    return View(model);
+                }
+                model.Orden.Compania = nombreCompaniaActiva;
 
                 System.Diagnostics.Debug.WriteLine($"Controller Nueva: idUsuario = {idUsuario}");
 
@@ -510,8 +510,8 @@ namespace CapaPresentacion.Controllers
                     CodigoUsuario = idUsuario,
                     CodigoSolicitud = codigoSolicitud,
                     LugarEmision = lugarEmisionDb,
-                    Compania = model.Orden?.Compania,
-                    NombreContribuyente = model.Orden?.Compania,
+                    Compania = nombreCompaniaActiva,
+                    NombreContribuyente = nombreCompaniaActiva,
                     RucCedula = model.Orden?.RucCedula,
                     RucContribuyente = model.Orden?.RucCedula,
                     Correo = model.Orden?.Correo,
@@ -728,6 +728,11 @@ namespace CapaPresentacion.Controllers
                     ? usuario.NombreCompleto
                     : usuario?.NombreUsuario;
             }
+
+            if (string.IsNullOrWhiteSpace(orden.NumeroSolicitud) && !string.IsNullOrWhiteSpace(solicitud?.NumeroSolicitud))
+            {
+                orden.NumeroSolicitud = solicitud.NumeroSolicitud;
+            }
         }
 
         // GET: /OrdenRecaudacion/Editar/5
@@ -942,11 +947,11 @@ namespace CapaPresentacion.Controllers
             }
         }
 
-        private async Task EnviarNotificacionOrdenGeneradaAsync(OrdenRecaudacionModel orden)
+        private Task EnviarNotificacionOrdenGeneradaAsync(OrdenRecaudacionModel orden)
         {
             try
             {
-                if (orden == null) return;
+                if (orden == null) return Task.CompletedTask;
 
                 var emailDestino = orden.Correo;
                 if (string.IsNullOrWhiteSpace(emailDestino))
@@ -974,7 +979,7 @@ namespace CapaPresentacion.Controllers
                 if (string.IsNullOrWhiteSpace(emailDestino))
                 {
                     TempData["Warning"] = "La orden fue generada, pero no se pudo notificar por correo porque no existe un destinatario configurado.";
-                    return;
+                    return Task.CompletedTask;
                 }
 
                 // Obtener lista de bancos (se mantiene para otros usos, pero la leyenda con cuentas
@@ -1074,6 +1079,7 @@ En transferencias NO colocar sublínea<br>";
             {
                 System.Diagnostics.Debug.WriteLine("Error enviando notificación de orden generada: " + ex.Message);
             }
+            return Task.CompletedTask;
         }
 
         // POST: /OrdenRecaudacion/Enviar/5
@@ -2006,9 +2012,6 @@ En transferencias NO colocar sublínea<br>";
                 var ultimaOrden = _dao.ListarPorUsuario(userId, null).FirstOrDefault();
                 if (ultimaOrden == null) return;
 
-                if (string.IsNullOrWhiteSpace(model.Orden.Compania) && !string.IsNullOrWhiteSpace(ultimaOrden.Compania))
-                    model.Orden.Compania = ultimaOrden.Compania;
-
                 if (string.IsNullOrWhiteSpace(model.Orden.RucCedula) && !string.IsNullOrWhiteSpace(ultimaOrden.RucCedula))
                     model.Orden.RucCedula = ultimaOrden.RucCedula;
 
@@ -2022,6 +2025,39 @@ En transferencias NO colocar sublínea<br>";
             {
                 // Ignorar errores de prefill por historial para no bloquear el formulario.
             }
+        }
+
+        private string ObtenerNombreCompaniaActiva(Usuario usuario)
+        {
+            try
+            {
+                var nombreSesion = (CompaniaActivaSessionHelper.ObtenerNombre(Session) ?? string.Empty).Trim();
+                if (!string.IsNullOrWhiteSpace(nombreSesion))
+                {
+                    return nombreSesion;
+                }
+
+                var codigoCompaniaActiva = (CompaniaActivaSessionHelper.ObtenerCodigo(Session) ?? string.Empty).Trim();
+                if (string.IsNullOrWhiteSpace(codigoCompaniaActiva))
+                {
+                    codigoCompaniaActiva = (usuario != null ? usuario.EmpresaCodigo : string.Empty) ?? string.Empty;
+                }
+
+                if (!string.IsNullOrWhiteSpace(codigoCompaniaActiva))
+                {
+                    var nombre = ResolverNombreCompaniaDesdeFuentes(codigoCompaniaActiva);
+                    if (!string.IsNullOrWhiteSpace(nombre))
+                    {
+                        return nombre;
+                    }
+                }
+            }
+            catch
+            {
+                // no-op
+            }
+
+            return string.Empty;
         }
 
         private string ResolverLugarEmisionDesdeDb(int? codigoSolicitud, int codigoUsuario, string fallback = null)
@@ -2682,6 +2718,8 @@ En transferencias NO colocar sublínea<br>";
         private string ResolverRucCedulaDesdeFuentes(int userId, Usuario usuario = null)
         {
             var candidatos = new List<string>();
+            var codigoCompaniaActiva = (CompaniaActivaSessionHelper.ObtenerCodigo(Session) ?? string.Empty).Trim();
+            var nombreCompaniaActiva = (CompaniaActivaSessionHelper.ObtenerNombre(Session) ?? string.Empty).Trim();
 
             void AgregarCandidato(string valor, bool desdeDb = false, string origen = null)
             {
@@ -2705,6 +2743,106 @@ En transferencias NO colocar sublínea<br>";
             {
                 System.Diagnostics.Debug.WriteLine(
                     $"ResolverRucCedulaDesdeFuentes[{paso}]: userId={userId}, error={ex.GetType().FullName}, msg={ex.Message}");
+            }
+
+            bool CompaniaCoincide(SolicitudAOCR solicitud, string codigoCompania)
+            {
+                if (solicitud == null || string.IsNullOrWhiteSpace(codigoCompania))
+                {
+                    return false;
+                }
+
+                var codigo = codigoCompania.Trim();
+                if (!string.IsNullOrWhiteSpace(solicitud.CodigoOaci) &&
+                    string.Equals((solicitud.CodigoOaci ?? string.Empty).Trim(), codigo, StringComparison.OrdinalIgnoreCase))
+                {
+                    return true;
+                }
+
+                var lista = solicitud.CompaniasSeleccionadas ?? string.Empty;
+                if (string.IsNullOrWhiteSpace(lista))
+                {
+                    if (string.IsNullOrWhiteSpace(solicitud.CodigoOaci))
+                    {
+                        // Compatibilidad con solicitudes legacy sin marca explícita de compañía.
+                        if (!string.IsNullOrWhiteSpace(nombreCompaniaActiva))
+                        {
+                            var nombreSolicitud = FirstNonEmpty(
+                                solicitud.NombreComercial,
+                                solicitud.NombreOperador,
+                                solicitud.RazonSocial);
+
+                            if (!string.IsNullOrWhiteSpace(nombreSolicitud) &&
+                                string.Equals(nombreSolicitud.Trim(), nombreCompaniaActiva, StringComparison.OrdinalIgnoreCase))
+                            {
+                                return true;
+                            }
+                        }
+
+                        return true;
+                    }
+
+                    return false;
+                }
+
+                return lista
+                    .Split(new[] { ',', ';', '|' }, StringSplitOptions.RemoveEmptyEntries)
+                    .Select(x => (x ?? string.Empty).Trim())
+                    .Any(x => x.Equals(codigo, StringComparison.OrdinalIgnoreCase));
+            }
+
+            // 1) Prioridad funcional: RUC/Cédula de la compañía activa seleccionada.
+            try
+            {
+                if (userId > 0 && (!string.IsNullOrWhiteSpace(codigoCompaniaActiva) || !string.IsNullOrWhiteSpace(nombreCompaniaActiva)))
+                {
+                    var solicitudesUsuario = _solicitudDao.ObtenerPorUsuario(userId) ?? Enumerable.Empty<SolicitudAOCR>();
+                    var solicitudCompaniaActiva = solicitudesUsuario
+                        .Where(s => CompaniaCoincide(s, codigoCompaniaActiva))
+                        .FirstOrDefault(s =>
+                            s != null && (
+                                !string.IsNullOrWhiteSpace(NormalizarIdentificacionDesdeDb(s.Ruc)) ||
+                                !string.IsNullOrWhiteSpace(NormalizarIdentificacionDesdeDb(s.CedulaRepresentante))));
+
+                    if (solicitudCompaniaActiva != null)
+                    {
+                        AgregarCandidato(solicitudCompaniaActiva.Ruc, true, "compania_activa.solicitud.ruc");
+                        AgregarCandidato(solicitudCompaniaActiva.CedulaRepresentante, true, "compania_activa.solicitud.cedula");
+                    }
+
+                    // Si no existe una solicitud del usuario para la compañía activa,
+                    // buscar identificación reciente por compañía (global), priorizando al usuario actual.
+                    var identificacionCompania = _solicitudDao.ObtenerIdentificacionRecientePorCompania(
+                        codigoCompaniaActiva,
+                        nombreCompaniaActiva,
+                        userId);
+                    AgregarCandidato(identificacionCompania, true, "compania_activa.global");
+
+                    // Respaldo desde mirror FR3 (AS400 replicado): opcc08(codigo_oaci_cia) + opcru1(ruc).
+                    var rucCompaniaMirror = _mirrorReadService.ObtenerRucCompaniaPorCodigo(
+                        codigoCompaniaActiva,
+                        nombreCompaniaActiva);
+                    AgregarCandidato(rucCompaniaMirror, true, "compania_activa.mirror_fr3");
+                }
+            }
+            catch (Exception ex)
+            {
+                LogPasoError("compania_activa", ex);
+            }
+
+            // 2) Fuente principal de respaldo: identificación registrada del usuario en AOCR.
+            //    Prioriza cédulaidentificacion y luego identificación tributaria/RUC según esquema.
+            try
+            {
+                if (userId > 0)
+                {
+                    var identificacionPrincipal = UsuarioDAO.ObtenerIdentificacionPrincipal(userId);
+                    AgregarCandidato(identificacionPrincipal, true, "usuario.registro");
+                }
+            }
+            catch (Exception ex)
+            {
+                LogPasoError("usuario.registro", ex);
             }
 
             try
@@ -2984,7 +3122,7 @@ En transferencias NO colocar sublínea<br>";
             decimal x; return decimal.TryParse(d[key].ToString(), out x) ? x : 0m;
         }
 
-        private async Task CargarViewBagsParaNueva()
+        private Task CargarViewBagsParaNueva()
         {
             try
             {
@@ -2996,6 +3134,7 @@ En transferencias NO colocar sublínea<br>";
             }
             
             ViewBag.Contribuyentes = new List<object>();
+            return Task.CompletedTask;
         }
 
         // Mï¿½todo helper con tipo correcto:
