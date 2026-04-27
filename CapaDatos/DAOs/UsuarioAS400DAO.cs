@@ -164,14 +164,17 @@ namespace CapaDatos.DAOs
                         }
                     }
 
+                    var ciudadCodigo = string.IsNullOrWhiteSpace(ciudad)
+                        ? string.Empty
+                        : ciudad.Trim().ToUpperInvariant();
+                    var opcoi3 = ResolverOpcoi3PorCiudad(ciudadCodigo);
+
                     return new UsuarioInternoAs400Info
                     {
                         CodigoUsuario = codigo,
-                        CiudadCodigo = string.IsNullOrWhiteSpace(ciudad)
-                            ? string.Empty
-                            : ciudad.Trim().ToUpperInvariant(),
+                        CiudadCodigo = ciudadCodigo,
                         CodigoFinanciero = codigoFinanciero,
-                        Opcoi3 = codigoFinanciero
+                        Opcoi3 = opcoi3
                     };
                 });
             }
@@ -181,6 +184,30 @@ namespace CapaDatos.DAOs
                     $"[AOCR][AS400][Usuario] ObtenerDatosUsuarioInterno: codigoEntrada={codigoEntrada}, error={ex.GetType().FullName}, msg={ex.Message}");
                 return null;
             }
+        }
+
+        private static decimal? ResolverOpcoi3PorCiudad(string ciudadCodigo)
+        {
+            if (string.IsNullOrWhiteSpace(ciudadCodigo))
+            {
+                return null;
+            }
+
+            try
+            {
+                var ubicacion = CD_UbicacionUsuario.Instancia.UbicacionUsuarioPorCiudad(ciudadCodigo.Trim().ToUpperInvariant());
+                if (ubicacion != null && ubicacion.OidUbicacion > 0m)
+                {
+                    return ubicacion.OidUbicacion;
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine(
+                    $"[AOCR][AS400][Usuario] ResolverOpcoi3PorCiudad: ciudadCodigo={ciudadCodigo}, error={ex.GetType().FullName}, msg={ex.Message}");
+            }
+
+            return null;
         }
 
         private string ResolverCodigoUsuarioInterno(OdbcConnection conn, string codigoOIdentificacion)

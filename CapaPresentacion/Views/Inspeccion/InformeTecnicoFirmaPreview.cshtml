@@ -4,12 +4,33 @@
 
 @{
     Layout = "~/Views/Shared/_PdfLayoutDGACAocr.cshtml";
+    var inspeccion = Model != null ? Model.Inspeccion : null;
+    var solicitud = Model != null ? Model.Solicitud : null;
     var informe = Model != null ? Model.Informe : null;
     var cultura = new CultureInfo("es-EC");
     Func<string, string> textoCampo = value => !string.IsNullOrWhiteSpace(value) ? value.Trim() : "";
-    var elaboradoPor = Model != null && Model.Inspeccion != null && !string.IsNullOrWhiteSpace(Model.Inspeccion.InspectorPrincipalNombre)
-        ? Model.Inspeccion.InspectorPrincipalNombre
-        : (Model != null && Model.Solicitud != null ? Model.Solicitud.TecnicoResponsableNombre : null);
+    var inspectorPrincipalNombre = inspeccion != null ? (inspeccion.InspectorPrincipalNombre ?? string.Empty).Trim() : string.Empty;
+    if (string.IsNullOrWhiteSpace(inspectorPrincipalNombre) && solicitud != null)
+    {
+        inspectorPrincipalNombre = (solicitud.TecnicoResponsableNombre ?? string.Empty).Trim();
+    }
+
+    var inspectorPrincipalCedula = inspeccion != null ? (inspeccion.InspectorPrincipalCedula ?? string.Empty).Trim() : string.Empty;
+    if (string.IsNullOrWhiteSpace(inspectorPrincipalCedula) && solicitud != null)
+    {
+        inspectorPrincipalCedula = (solicitud.TecnicoResponsableCedula ?? string.Empty).Trim();
+    }
+
+    if (string.IsNullOrWhiteSpace(inspectorPrincipalCedula) && inspeccion != null && inspeccion.CodigoInspector.HasValue)
+    {
+        inspectorPrincipalCedula = inspeccion.CodigoInspector.Value.ToString();
+    }
+
+    var elaboradoPor = !string.IsNullOrWhiteSpace(inspectorPrincipalNombre)
+        ? (string.IsNullOrWhiteSpace(inspectorPrincipalCedula) || string.Equals(inspectorPrincipalNombre, inspectorPrincipalCedula, StringComparison.OrdinalIgnoreCase)
+            ? inspectorPrincipalNombre
+            : inspectorPrincipalNombre + " - " + inspectorPrincipalCedula)
+        : (!string.IsNullOrWhiteSpace(inspectorPrincipalCedula) ? inspectorPrincipalCedula : null);
     var revisadoPor = informe != null ? informe.UsuarioFirma2 : null;
     var firmanteInspector = informe != null && !string.IsNullOrWhiteSpace(informe.UsuarioFirma1) ? informe.UsuarioFirma1 : null;
     var firmadoInspector = informe != null && informe.FirmadoInspector;
@@ -30,8 +51,8 @@
         .small { font-size: 8pt; color: #444; }
         .field-label { display: block; font-weight: bold; font-size: 8.5pt; margin-bottom: 4px; text-transform: uppercase; }
         .field-value { display: block; min-height: 20px; padding: 4px 6px; border: 1px dashed #666; background: #fbfbfb; }
-        .signature-slot { height: 120px; min-height: 120px; border: 1px dashed #999; background: #fff; margin-top: 6px; overflow: hidden; position: relative; }
-        .firma-anchor { font-size: 1px; color: #fff; line-height: 1px; height: 1px; overflow: hidden; display: block; }
+        .signature-slot { height: 120px; min-height: 120px; border: 1px dashed #999; background: #fff; margin-top: 6px; overflow: hidden; position: relative; text-align: left; }
+        .firma-anchor { font-size: 1px; color: #fff; line-height: 1px; height: 1px; overflow: hidden; display: block; position: absolute; left: 0; top: 0; width: 1px; text-align: left; white-space: nowrap; }
     </style>
 }
 

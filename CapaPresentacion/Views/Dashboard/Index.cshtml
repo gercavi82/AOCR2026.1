@@ -255,6 +255,7 @@
                         var id = row && row.id ? Number(row.id) : 0;
                         var detalleUrl = detalleBase + '/' + encodeURIComponent(id);
                         var pdfUrl = descargarBase + '/' + encodeURIComponent(id);
+                        var previewUrl = pdfUrl + '?vistaPrevia=true';
 
                         var container = document.createElement('div');
 
@@ -265,14 +266,24 @@
                         var iDet = document.createElement('i'); iDet.className = 'fas fa-eye';
                         linkDetalle.appendChild(iDet);
 
+                        var linkPreview = document.createElement('a');
+                        linkPreview.setAttribute('href', previewUrl);
+                        linkPreview.setAttribute('class', 'btn btn-sm btn-outline-secondary me-1');
+                        linkPreview.setAttribute('target', '_blank');
+                        linkPreview.setAttribute('title', 'Vista previa PDF');
+                        var iPreview = document.createElement('i'); iPreview.className = 'fas fa-eye';
+                        linkPreview.appendChild(iPreview);
+
                         var linkPdf = document.createElement('a');
                         linkPdf.setAttribute('href', pdfUrl);
                         linkPdf.setAttribute('class', 'btn btn-sm btn-primary');
+                        linkPdf.setAttribute('target', '_blank');
                         linkPdf.setAttribute('title', 'Descargar PDF');
                         var iPdf = document.createElement('i'); iPdf.className = 'fas fa-download';
                         linkPdf.appendChild(iPdf);
 
                         container.appendChild(linkDetalle);
+                        container.appendChild(linkPreview);
                         container.appendChild(linkPdf);
 
                         return container.innerHTML;

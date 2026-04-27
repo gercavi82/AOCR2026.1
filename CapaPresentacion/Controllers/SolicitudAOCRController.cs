@@ -999,13 +999,13 @@ namespace CapaPresentacion.Controllers
                         return JsonEnvelope(false, "FORBIDDEN", "Sin permisos para modificar esta solicitud.", data: null);
                     }
 
-                    sol.CodigoUsuario = actual.CodigoUsuario;
-                    bool ok = _solicitudBL.Actualizar(sol, usuarioId, out msg, EsAdmin());
+                    AplicarCambiosGuardarProgreso(actual, sol, seccion);
+                    bool ok = _solicitudBL.Actualizar(actual, usuarioId, out msg, EsAdmin());
                     if (!ok)
                     {
                         return JsonEnvelope(false, "UPDATE_FAILED", msg, data: null);
                     }
-                    idFinal = sol.CodigoSolicitud;
+                    idFinal = actual.CodigoSolicitud;
                 }
 
                 return Json(new
@@ -1028,6 +1028,55 @@ namespace CapaPresentacion.Controllers
             {
                 System.Diagnostics.Debug.WriteLine("[GuardarProgreso] Error: " + ex.Message);
                 return JsonEnvelope(false, "INTERNAL_ERROR", "Error al guardar: " + ex.Message, data: null);
+            }
+        }
+
+        private static void AplicarCambiosGuardarProgreso(SolicitudAOCR actual, SolicitudAOCR parcial, string seccion)
+        {
+            if (actual == null || parcial == null)
+            {
+                return;
+            }
+
+            actual.NombreOperador = parcial.NombreOperador;
+            actual.RazonSocial = parcial.RazonSocial;
+            actual.NombreComercial = parcial.NombreComercial;
+            actual.CodigoOaci = parcial.CodigoOaci;
+            actual.CompaniasSeleccionadas = parcial.CompaniasSeleccionadas;
+
+            if (parcial.TipoSolicitud.HasValue)
+            {
+                actual.TipoSolicitud = parcial.TipoSolicitud;
+            }
+
+            if (!string.IsNullOrWhiteSpace(parcial.Estado))
+            {
+                actual.Estado = parcial.Estado;
+            }
+
+            var seccionNormalizada = (seccion ?? string.Empty).Trim().ToLowerInvariant();
+            if (seccionNormalizada == "explotador")
+            {
+                actual.RepresentanteLegal = parcial.RepresentanteLegal;
+                actual.CedulaRepresentante = parcial.CedulaRepresentante;
+                actual.CorreoRepresentanteTecnico = parcial.CorreoRepresentanteTecnico;
+                actual.Direccion = parcial.Direccion;
+                actual.Telefono = parcial.Telefono;
+                actual.Email = parcial.Email;
+                actual.Ruc = parcial.Ruc;
+                return;
+            }
+
+            if (seccionNormalizada == "operaciones")
+            {
+                actual.TipoOperacion = parcial.TipoOperacion;
+                actual.DescripcionOperacion = parcial.DescripcionOperacion;
+                actual.ResumenOperacionesEae = parcial.ResumenOperacionesEae;
+                actual.NumeroAOC = parcial.NumeroAOC;
+                actual.AprobacionesEspeciales = parcial.AprobacionesEspeciales;
+                actual.AprobacionesEspecialesOtros = parcial.AprobacionesEspecialesOtros;
+                actual.AeropuertosEcuador = parcial.AeropuertosEcuador;
+                actual.AeropuertosEcuadorOtros = parcial.AeropuertosEcuadorOtros;
             }
         }
 
@@ -2776,7 +2825,7 @@ namespace CapaPresentacion.Controllers
         /// <summary>
         /// Descarga el archivo PDF de la AOCR generada para una solicitud.
         /// </summary>
-        public ActionResult DescargarAOCRGenerada(int id)
+        public ActionResult DescargarAOCRGenerada(int id, bool vistaPrevia = false)
         {
             var documento = _generacionAocrService.ObtenerAocrGeneradoVigente(id);
             if (documento == null || string.IsNullOrWhiteSpace(documento.RutaArchivo))
@@ -2803,7 +2852,10 @@ namespace CapaPresentacion.Controllers
                 ? documento.NombreArchivo
                 : ("AOCR_" + id + ".pdf");
 
-            return File(System.IO.File.ReadAllBytes(ruta), "application/pdf", nombreDescarga);
+            var bytes = System.IO.File.ReadAllBytes(ruta);
+            return vistaPrevia
+                ? File(bytes, "application/pdf")
+                : File(bytes, "application/pdf", nombreDescarga);
         }
 
         /// <summary>

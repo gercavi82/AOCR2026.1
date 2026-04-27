@@ -523,6 +523,11 @@
                             }
                         </small>
                     </div>
+                    <a href="@Url.Action("DescargarAOCRGenerada", "SolicitudAOCR", new { id = Model.CodigoSolicitud, vistaPrevia = true })"
+                       class="btn btn-outline-primary aocr-action-btn-full" target="_blank" rel="noopener">
+                        <i class="fas fa-eye"></i>
+                        Vista previa AOCR
+                    </a>
                     <a href="@Url.Action("DescargarAOCRGenerada", "SolicitudAOCR", new { id = Model.CodigoSolicitud })"
                        class="btn btn-outline-success aocr-action-btn-full" target="_blank" rel="noopener">
                         <i class="fas fa-download"></i>
@@ -1006,6 +1011,19 @@
                                         <td>
                                             @if (!string.IsNullOrWhiteSpace(doc.RutaGuardada))
                                             {
+                                                var esPdfSolicitud = string.Equals(System.IO.Path.GetExtension(doc.NombreArchivo ?? string.Empty), ".pdf", System.StringComparison.OrdinalIgnoreCase);
+                                                if (esPdfSolicitud)
+                                                {
+                                                    <a href="@Url.Action("Descargar", "Documento", new { id = doc.CodigoDocumento, vistaPrevia = true })"
+                                                       class="btn btn-sm btn-outline-secondary aocr-pdf-open"
+                                                       data-pdf-url="@Url.Action("Descargar", "Documento", new { id = doc.CodigoDocumento, vistaPrevia = true })"
+                                                       data-download-url="@Url.Action("Descargar", "Documento", new { id = doc.CodigoDocumento })"
+                                                       data-title="@doc.NombreArchivo"
+                                                       data-status="@doc.Estado"
+                                                       title="Vista previa">
+                                                        <i class="fas fa-eye"></i>
+                                                    </a>
+                                                }
                                                 <a href="@Url.Action("Descargar", "Documento", new { id = doc.CodigoDocumento })" class="btn btn-sm btn-outline-primary" title="Descargar">
                                                     <i class="fas fa-download"></i>
                                                 </a>

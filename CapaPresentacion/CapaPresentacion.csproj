@@ -363,6 +363,7 @@
     <Compile Include="Models\Validation\RucCedulaValidationAttribute.cs" />
     <Compile Include="Models\ViewModels\InspectorDashboardViewModel.cs" />
     <Compile Include="Models\ViewModels\InspeccionPanelViewModels.cs" />
+    <Compile Include="Models\ViewModels\AocrPdfViewerViewModel.cs" />
     <Compile Include="Models\ViewModels\InformeTecnicoPdfViewModel.cs" />
     <Compile Include="Models\ViewModels\OrdenRecaudacionPDFModel.cs" />
     <Compile Include="Models\ViewModels\ReportesFinancierosViewModel.cs" />
@@ -392,6 +393,11 @@
   </ItemGroup>
   <ItemGroup>
     <Content Include="Content\aocr-institucional.css" />
+    <Content Include="Content\aocr-responsive.css" />
+    <Content Include="Content\aocr-pdf-viewer\aocr-pdf-viewer.css" />
+    <Content Include="Content\aocr-pdf-viewer\aocr-pdf-viewer.js" />
+    <Content Include="Content\aocr-pdf-viewer\pdf.min.js" />
+    <Content Include="Content\aocr-pdf-viewer\pdf.worker.min.js" />
     <Content Include="Content\assets\css\bootstrap.min.css" />
     <Content Include="Content\assets\css\chartist-custom.css" />
     <Content Include="Content\assets\css\dgac.css" />
@@ -572,6 +578,7 @@
     <Content Include="Rotativa\wkhtmltoimage.exe" />
     <Content Include="Rotativa\wkhtmltopdf.exe" />
     <Content Include="Scripts\aocr-config.js" />
+    <Content Include="Scripts\aocr-datatables.js" />
     <Content Include="Scripts\aocr-utils.js" />
     <Content Include="Scripts\app\global.js" />
     <Content Include="Content\dist\js\dgac.js" />
@@ -2851,6 +2858,7 @@
     <Content Include="Views\Shared\_PdfBrandingHeader.cshtml" />
     <Content Include="Views\Shared\_PdfLayoutDGAC.cshtml" />
     <Content Include="Views\Shared\_PdfLayoutDGACAocr.cshtml" />
+    <Content Include="Views\Shared\_AocrPdfViewer.cshtml" />
     <Content Include="Views\Home\About.cshtml" />
     <Content Include="Views\Home\Contact.cshtml" />
     <Content Include="Views\Home\Index.cshtml" />
@@ -2863,6 +2871,8 @@
     <Content Include="Views\Inspeccion\Detalle.cshtml" />
     <Content Include="Views\Inspeccion\Crear.cshtml" />
     <Content Include="Views\Inspeccion\Editar.cshtml" />
+    <Content Include="Views\Inspeccion\InformeTecnicoPdf.cshtml" />
+    <Content Include="Views\Inspeccion\InformeTecnicoFirmaPreview.cshtml" />
     <Content Include="Views\Tecnico\Crear.cshtml" />
     <Content Include="Views\Inspeccion\Index.cshtml" />
     <Content Include="Views\Hallazgo\Index.cshtml" />

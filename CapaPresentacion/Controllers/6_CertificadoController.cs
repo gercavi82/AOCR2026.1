@@ -123,7 +123,7 @@ namespace CapaPresentacion.Controllers
         // ============================================================
         //                   DESCARGAR PDF DE CERTIFICADO
         // ============================================================
-        public ActionResult DescargarPDF(int id)
+        public ActionResult DescargarPDF(int id, bool vistaPrevia = false)
         {
             var cert = _bl.Obtener(id);
 
@@ -138,13 +138,15 @@ namespace CapaPresentacion.Controllers
             if (!System.IO.File.Exists(rutaFisica))
                 return Content("El archivo PDF no se encuentra en el servidor.");
 
-            return File(rutaFisica, "application/pdf", "certificado.pdf");
+            return vistaPrevia
+                ? File(rutaFisica, "application/pdf")
+                : File(rutaFisica, "application/pdf", "certificado.pdf");
         }
 
         // ============================================================
         //        GENERAR PDF DEL CERTIFICADO AOCR
         // ============================================================
-        public ActionResult GenerarCertificadoPdf(int solicitudId)
+        public ActionResult GenerarCertificadoPdf(int solicitudId, bool vistaPrevia = false)
         {
             try
             {
@@ -157,6 +159,11 @@ namespace CapaPresentacion.Controllers
                     PageMargins = new Rotativa.Options.Margins(5, 5, 5, 5),
                     CustomSwitches = "--enable-local-file-access --print-media-type --dpi 300 --zoom 1.0"
                 };
+
+                if (!vistaPrevia)
+                {
+                    pdf.FileName = "Certificado_AOCR_" + solicitudId + ".pdf";
+                }
 
                 return pdf;
             }

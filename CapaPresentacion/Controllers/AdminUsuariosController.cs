@@ -311,6 +311,9 @@ namespace CapaPresentacion.Controllers
             var infoAs400 = usuarioAs400Dao.ObtenerDatosUsuarioInterno(cedula)
                            ?? usuarioAs400Dao.ObtenerDatosUsuarioInterno(nombre)
                            ?? usuarioAs400Dao.ObtenerDatosUsuarioInterno(cedula.PadLeft(10, '0'));
+            var opcoi3 = ResolverOpcoi3PorCiudad(
+                infoAs400 != null ? infoAs400.CiudadCodigo : string.Empty,
+                infoAs400 != null ? infoAs400.Opcoi3 : null);
 
             var daoInterno = new UsuarioInternoRTDAO();
             var existente = daoInterno.ObtenerActivoPorCodigoUsuario(cedula);
@@ -326,7 +329,7 @@ namespace CapaPresentacion.Controllers
                     codigoUsuario = cedula,
                     ciudadCodigo = infoAs400 != null ? (infoAs400.CiudadCodigo ?? string.Empty) : string.Empty,
                     codigoFinanciero = infoAs400 != null ? infoAs400.CodigoFinanciero : null,
-                    opcoi3 = infoAs400 != null ? infoAs400.Opcoi3 : null,
+                    opcoi3 = opcoi3,
                     yaRegistrado = existente != null,
                     message = existente != null
                         ? "El usuario ya tiene un registro interno RT activo."
@@ -378,11 +381,14 @@ namespace CapaPresentacion.Controllers
 
             model.CiudadCodigo = infoAs400 != null ? (infoAs400.CiudadCodigo ?? string.Empty) : (model.CiudadCodigo ?? string.Empty);
             model.CodigoFinanciero = infoAs400 != null ? infoAs400.CodigoFinanciero : model.CodigoFinanciero;
-            model.Opcoi3 = infoAs400 != null ? infoAs400.Opcoi3 : model.Opcoi3;
+            model.Opcoi3 = ResolverOpcoi3PorCiudad(
+                model.CiudadCodigo,
+                infoAs400 != null ? infoAs400.Opcoi3 : model.Opcoi3);
 
             string nombres;
             string apellidos;
             SepararNombreCompleto(model.NombreCompleto, out nombres, out apellidos);
+            var opcoi3 = ResolverOpcoi3PorCiudad(model.CiudadCodigo, model.Opcoi3);
 
             var daoInterno = new UsuarioInternoRTDAO();
             var registro = new UsuarioInternoRTRegistro
@@ -399,7 +405,7 @@ namespace CapaPresentacion.Controllers
                 CodigoFinanciero = model.CodigoFinanciero ?? 0m,
                 Opcar5 = (model.Opcar5 ?? string.Empty).Trim(),
                 Opcaer = string.Empty,
-                Opcoi3 = model.Opcoi3 ?? (model.CodigoFinanciero ?? 0m),
+                Opcoi3 = opcoi3 ?? 0m,
                 CorreoInstitucional = (model.CorreoInstitucional ?? string.Empty).Trim(),
                 RolInterno = (model.RolInterno ?? string.Empty).Trim(),
                 Observaciones = (model.Observaciones ?? string.Empty).Trim(),
@@ -442,6 +448,7 @@ namespace CapaPresentacion.Controllers
             }
 
             var model = MapearUsuarioInternoRTViewModel(registro);
+            model.Opcoi3 = ResolverOpcoi3PorCiudad(model.CiudadCodigo, model.Opcoi3);
             CargarRolesUsuarioInterno(model, model.RolInterno);
             return View("CrearUsuarioInternoRT", model);
         }
@@ -474,6 +481,7 @@ namespace CapaPresentacion.Controllers
                 return View("CrearUsuarioInternoRT", model);
             }
 
+            var opcoi3 = ResolverOpcoi3PorCiudad(model.CiudadCodigo, model.Opcoi3);
             var registro = new UsuarioInternoRTRegistro
             {
                 Id = model.Id,
@@ -491,7 +499,7 @@ namespace CapaPresentacion.Controllers
                 CodigoFinanciero = model.CodigoFinanciero ?? 0m,
                 Opcar5 = (model.Opcar5 ?? string.Empty).Trim(),
                 Opcaer = string.Empty,
-                Opcoi3 = model.Opcoi3 ?? (model.CodigoFinanciero ?? 0m),
+                Opcoi3 = opcoi3 ?? 0m,
                 CorreoInstitucional = (model.CorreoInstitucional ?? string.Empty).Trim(),
                 RolInterno = (model.RolInterno ?? string.Empty).Trim(),
                 Observaciones = (model.Observaciones ?? string.Empty).Trim(),
@@ -2007,6 +2015,34 @@ namespace CapaPresentacion.Controllers
             }
 
             return normalizado;
+        }
+
+        private decimal? ResolverOpcoi3PorCiudad(string ciudadCodigo, decimal? fallback = null)
+        {
+            var codigoNormalizado = NormalizarCodigo(ciudadCodigo, 10);
+            if (string.IsNullOrWhiteSpace(codigoNormalizado))
+            {
+                return fallback.HasValue && fallback.Value > 0m ? fallback : null;
+            }
+
+            try
+            {
+                var ubicacion = CD_UbicacionUsuario.Instancia.UbicacionUsuarioPorCiudad(codigoNormalizado);
+                if (ubicacion != null && ubicacion.OidUbicacion > 0m)
+                {
+                    return ubicacion.OidUbicacion;
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(
+                    string.Format(
+                        "[AdminUsuariosController] No se pudo resolver OPUOID para ciudad {0}: {1}",
+                        codigoNormalizado,
+                        ex.Message));
+            }
+
+            return fallback.HasValue && fallback.Value > 0m ? fallback : null;
         }
 
         private void SincronizarVinculoCuentaAccesoEnMemoria(IList<UsuarioInternoRTRegistro> registros)

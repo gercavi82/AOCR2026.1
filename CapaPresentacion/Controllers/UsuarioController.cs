@@ -698,7 +698,7 @@ namespace CapaPresentacion.Controllers
 
         [HttpGet]
         [AllowAnonymous]
-        public ActionResult DescargarFormularioDesignacionRT()
+        public ActionResult DescargarFormularioDesignacionRT(bool vistaPrevia = false)
         {
             using (var ms = new MemoryStream())
             {
@@ -774,7 +774,9 @@ namespace CapaPresentacion.Controllers
 
                 doc.Close();
                 var bytes = ms.ToArray();
-                return File(bytes, "application/pdf", "Formulario_Designacion_RT.pdf");
+                return vistaPrevia
+                    ? File(bytes, "application/pdf")
+                    : File(bytes, "application/pdf", "Formulario_Designacion_RT.pdf");
             }
         }
 
@@ -850,7 +852,7 @@ namespace CapaPresentacion.Controllers
 
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public ActionResult DescargarDeclaracionResponsabilidad(string nombreCompleto, string companiasJson, string empresa, string identificacion)
+        public ActionResult DescargarDeclaracionResponsabilidad(string nombreCompleto, string companiasJson, string empresa, string identificacion, bool vistaPrevia = false)
         {
             var nombre = (nombreCompleto ?? "").Trim();
             var companiasDeclaracion = ParsearCompaniasDeclaracion(companiasJson);
@@ -881,7 +883,9 @@ namespace CapaPresentacion.Controllers
                 textoDeclaracion,
                 DateTime.Now);
 
-            return File(pdfBytes, "application/pdf", "Declaracion_Responsabilidad_RT.pdf");
+            return vistaPrevia
+                ? File(pdfBytes, "application/pdf")
+                : File(pdfBytes, "application/pdf", "Declaracion_Responsabilidad_RT.pdf");
         }
 
         // =====================================================

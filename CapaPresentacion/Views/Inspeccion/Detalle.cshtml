@@ -146,6 +146,23 @@
     var estadoInformeTecnico = informeTecnico != null && !string.IsNullOrWhiteSpace(informeTecnico.EstadoInforme)
         ? informeTecnico.EstadoInforme
         : (informeTecnico != null && informeTecnico.Finalizado ? "GENERADO" : "BORRADOR");
+    var informeDefinitivoUrl = Model != null && Model.CodigoInspeccion > 0
+        ? Url.Action("VerInforme", "Inspeccion", new { id = Model.CodigoInspeccion })
+        : string.Empty;
+    var informeDescargaUrl = Model != null && Model.CodigoInspeccion > 0
+        ? Url.Action("DescargarInforme", "Inspeccion", new { id = Model.CodigoInspeccion })
+        : string.Empty;
+    var mostrarPanelVistaPrevia = tieneInforme || puedeEditarInformeTecnico;
+    var copyVistaPrevia = tieneInforme
+        ? "Consulte el PDF consolidado debajo del flujo BPMN antes de continuar con la revisión o firma."
+        : "La vista previa del borrador se actualizará automáticamente mientras completa o corrige el informe técnico.";
+    var rutaVistaPreviaTexto = tieneInforme
+        ? rutaInformeVisual
+        : "La vista previa automática aparecerá aquí cuando empiece a ingresar o actualizar la información del informe.";
+    var ayudaViewer = tieneInforme
+        ? "Documento definitivo disponible para revisión y firma."
+        : "La vista previa automática se actualizará mientras edita el informe técnico.";
+    var estadoViewer = tieneInforme ? estadoInformeTecnico : "VISTA PREVIA AUTOMÁTICA";
     var puedeFirmarInspector = puedeEditarInformeTecnico
         && informeTecnico != null
         && informeTecnico.Finalizado
@@ -221,6 +238,7 @@
     var serviciosEstacionesInforme = InformeTecnicoTemplateHelper.GetServicioRows(informeTecnico != null ? informeTecnico.ServiciosEstaciones : null);
     var documentosAdjuntosBase = InformeTecnicoTemplateHelper.GetDocumentosAdjuntosBase();
     var documentosAdjuntosSeleccionados = InformeTecnicoTemplateHelper.SplitLines(informeTecnico != null ? informeTecnico.DocumentosAdjuntos : null);
+    var documentosAdjuntosArchivos = InformeTecnicoTemplateHelper.ParseDocumentosAdjuntosArchivos(informeTecnico != null ? informeTecnico.DocumentosAdjuntosArchivos : null);
     var numeroLicenciaInspector = informeTecnico != null && !string.IsNullOrWhiteSpace(informeTecnico.NumeroLicenciaInspector)
         ? informeTecnico.NumeroLicenciaInspector
         : (!string.IsNullOrWhiteSpace(inspectorPrincipalCedula) ? inspectorPrincipalCedula : string.Empty);
@@ -233,6 +251,36 @@
         ? informeTecnico.NoConformidades
         : (informeTecnico != null ? informeTecnico.Observaciones : string.Empty);
     var otrosAdjuntosInforme = informeTecnico != null ? informeTecnico.OtrosAdjuntos : string.Empty;
+    var resultadoInforme = !string.IsNullOrWhiteSpace(informeTecnico != null ? informeTecnico.Resultado : null)
+        ? informeTecnico.Resultado
+        : (Model != null ? Model.Resultado : string.Empty);
+    var notasLineas = InformeTecnicoTemplateHelper.SplitLines(notasInforme).Take(5).ToList();
+    while (notasLineas.Count < 5)
+    {
+        notasLineas.Add(string.Empty);
+    }
+
+    var noConformidadesLineas = InformeTecnicoTemplateHelper.SplitLines(noConformidadesInforme).Take(4).ToList();
+    while (noConformidadesLineas.Count < 4)
+    {
+        noConformidadesLineas.Add(string.Empty);
+    }
+
+    var recomendacionesLineas = InformeTecnicoTemplateHelper.SplitLines(informeTecnico != null ? informeTecnico.Recomendaciones : null).Take(3).ToList();
+    while (recomendacionesLineas.Count < 3)
+    {
+        recomendacionesLineas.Add(string.Empty);
+    }
+
+    var otrosAdjuntosLineas = InformeTecnicoTemplateHelper.SplitLines(otrosAdjuntosInforme).Take(4).ToList();
+    if (!otrosAdjuntosLineas.Any())
+    {
+        otrosAdjuntosLineas.Add("Orden de Inspección.");
+    }
+    while (otrosAdjuntosLineas.Count < 2)
+    {
+        otrosAdjuntosLineas.Add(string.Empty);
+    }
 }
 
 @section Styles {
@@ -429,8 +477,24 @@
         }
 
         .inspection-detail-page .inspection-services-table {
+            width: 100%;
             margin-bottom: 0;
             font-size: 0.92rem;
+            table-layout: fixed;
+        }
+
+        .inspection-detail-page .inspection-services-shell {
+            width: 100%;
+            border: 1px solid rgba(27, 79, 114, 0.1);
+            border-radius: 18px;
+            overflow-x: auto;
+            overflow-y: hidden;
+            background: #fff;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        .inspection-detail-page .inspection-services-shell .inspection-services-table {
+            min-width: 760px;
         }
 
         .inspection-detail-page .inspection-services-table th,
@@ -438,8 +502,352 @@
             vertical-align: middle;
         }
 
+        .inspection-detail-page .inspection-services-table th:first-child,
+        .inspection-detail-page .inspection-services-table td:first-child {
+            width: 38%;
+            min-width: 250px;
+        }
+
+        .inspection-detail-page .inspection-services-table th:not(:first-child),
+        .inspection-detail-page .inspection-services-table td:not(:first-child) {
+            width: 15.5%;
+        }
+
         .inspection-detail-page .inspection-services-table td:not(:first-child) {
             text-align: center;
+        }
+
+        .inspection-detail-page .inspection-services-table .service-text {
+            width: 100%;
+            min-width: 0;
+        }
+
+        .inspection-detail-page .report-coverage-workspace {
+            display: grid;
+            gap: 1rem;
+            padding: 1.15rem;
+            border: 1px solid rgba(27, 79, 114, 0.11);
+            border-radius: 22px;
+            background: linear-gradient(180deg, #fbfdff 0%, #ffffff 100%);
+        }
+
+        .inspection-detail-page .report-coverage-head {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 1rem;
+        }
+
+        .inspection-detail-page .report-coverage-kicker {
+            display: inline-flex;
+            align-items: center;
+            padding: 0.34rem 0.7rem;
+            border-radius: 999px;
+            background: rgba(27, 79, 114, 0.08);
+            color: var(--inspection-primary-dark);
+            font-size: 0.72rem;
+            font-weight: 800;
+            letter-spacing: 0.04em;
+            text-transform: uppercase;
+        }
+
+        .inspection-detail-page .report-coverage-title {
+            margin: 0.75rem 0 0;
+            color: var(--inspection-primary-dark);
+            font-size: 1rem;
+            font-weight: 800;
+        }
+
+        .inspection-detail-page .report-coverage-copy {
+            margin: 0.3rem 0 0;
+            color: var(--inspection-muted);
+            font-size: 0.84rem;
+            line-height: 1.55;
+            max-width: 720px;
+        }
+
+        .inspection-detail-page .report-coverage-meta {
+            display: inline-flex;
+            align-items: center;
+            padding: 0.45rem 0.8rem;
+            border-radius: 999px;
+            background: rgba(15, 123, 132, 0.1);
+            color: var(--inspection-accent);
+            font-size: 0.76rem;
+            font-weight: 800;
+            white-space: nowrap;
+        }
+
+        .inspection-detail-page .report-original-editor {
+            display: grid;
+            gap: 1.25rem;
+        }
+
+        .inspection-detail-page .report-original-doc {
+            border: 1px solid rgba(27, 79, 114, 0.12);
+            border-radius: 26px;
+            background: linear-gradient(180deg, #fffefc 0%, #ffffff 100%);
+            padding: 1.5rem;
+            box-shadow: 0 18px 46px rgba(15, 23, 42, 0.05);
+        }
+
+        .inspection-detail-page .report-original-header {
+            text-align: center;
+            border-bottom: 1px solid rgba(27, 79, 114, 0.12);
+            padding-bottom: 1rem;
+            margin-bottom: 1.2rem;
+        }
+
+        .inspection-detail-page .report-original-annex {
+            margin: 0;
+            color: var(--inspection-primary-dark);
+            font-size: 0.86rem;
+            font-weight: 800;
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+        }
+
+        .inspection-detail-page .report-original-entity {
+            margin: 0.45rem 0 0;
+            color: var(--inspection-primary-dark);
+            font-size: 0.96rem;
+            font-weight: 800;
+            text-transform: uppercase;
+        }
+
+        .inspection-detail-page .report-original-title {
+            margin: 0.45rem 0 0;
+            color: var(--inspection-primary-dark);
+            font-size: 1.25rem;
+            font-weight: 900;
+            text-transform: uppercase;
+        }
+
+        .inspection-detail-page .report-original-block {
+            margin-top: 1.3rem;
+        }
+
+        .inspection-detail-page .report-original-label {
+            display: block;
+            margin-bottom: 0.7rem;
+            color: var(--inspection-primary-dark);
+            font-size: 0.84rem;
+            font-weight: 900;
+            letter-spacing: 0.04em;
+            text-transform: uppercase;
+        }
+
+        .inspection-detail-page .report-original-inline {
+            display: grid;
+            grid-template-columns: auto minmax(0, 1fr);
+            gap: 0.75rem;
+            align-items: center;
+        }
+
+        .inspection-detail-page .report-original-inline-copy {
+            color: var(--inspection-primary-dark);
+            font-size: 0.92rem;
+            font-weight: 700;
+            text-transform: uppercase;
+        }
+
+        .inspection-detail-page .report-original-input,
+        .inspection-detail-page .report-original-doc input.form-control,
+        .inspection-detail-page .report-original-doc textarea.form-control,
+        .inspection-detail-page .report-original-doc select.form-control {
+            border-radius: 14px;
+            border-color: rgba(27, 79, 114, 0.15);
+            box-shadow: none;
+        }
+
+        .inspection-detail-page .report-original-readonly {
+            background: #f7fafc;
+            font-weight: 600;
+        }
+
+        .inspection-detail-page .report-original-text {
+            padding: 1rem 1.1rem;
+            border: 1px solid rgba(27, 79, 114, 0.1);
+            border-radius: 18px;
+            background: #fff;
+            color: #243647;
+            font-size: 0.94rem;
+            line-height: 1.85;
+        }
+
+        .inspection-detail-page .report-original-strong {
+            font-weight: 800;
+            color: var(--inspection-primary-dark);
+        }
+
+        .inspection-detail-page .report-original-fill {
+            display: inline-flex;
+            min-width: 160px;
+            padding: 0.2rem 0.5rem;
+            border-bottom: 1px dashed rgba(27, 79, 114, 0.45);
+            font-weight: 700;
+            color: var(--inspection-primary-dark);
+        }
+
+        .inspection-detail-page .report-original-fill.long {
+            min-width: 260px;
+        }
+
+        .inspection-detail-page .report-original-operation {
+            margin-top: 0.85rem;
+            display: grid;
+            gap: 0.6rem;
+        }
+
+        .inspection-detail-page .report-original-lines {
+            display: grid;
+            gap: 0.55rem;
+        }
+
+        .inspection-detail-page .report-original-line {
+            display: grid;
+            grid-template-columns: auto minmax(0, 1fr);
+            gap: 0.55rem;
+            align-items: center;
+        }
+
+        .inspection-detail-page .report-original-bullet {
+            color: var(--inspection-primary-dark);
+            font-size: 1rem;
+            font-weight: 900;
+            line-height: 1;
+        }
+
+        .inspection-detail-page .report-original-line-input {
+            width: 100%;
+            padding: 0.55rem 0.8rem;
+            border: 1px solid rgba(27, 79, 114, 0.14);
+            border-radius: 14px;
+            background: #fff;
+            color: #243647;
+        }
+
+        .inspection-detail-page .report-original-line-input:focus {
+            outline: none;
+            border-color: rgba(15, 123, 132, 0.65);
+            box-shadow: 0 0 0 3px rgba(15, 123, 132, 0.12);
+        }
+
+        .inspection-detail-page .report-original-result-list {
+            display: grid;
+            gap: 0.65rem;
+            margin-top: 0.8rem;
+        }
+
+        .inspection-detail-page .report-original-result-item {
+            display: grid;
+            grid-template-columns: auto auto 1fr;
+            gap: 0.55rem;
+            align-items: center;
+            padding: 0.75rem 0.9rem;
+            border: 1px solid rgba(27, 79, 114, 0.12);
+            border-radius: 16px;
+            background: #fff;
+        }
+
+        .inspection-detail-page .report-original-result-item input {
+            margin: 0;
+        }
+
+        .inspection-detail-page .report-original-documents {
+            display: grid;
+            gap: 0.8rem;
+        }
+
+        .inspection-detail-page .report-original-document-item {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) minmax(220px, 320px);
+            gap: 0.8rem;
+            align-items: center;
+            padding: 0.85rem 0.95rem;
+            border: 1px solid rgba(27, 79, 114, 0.11);
+            border-radius: 16px;
+            background: #fff;
+        }
+
+        .inspection-detail-page .report-original-document-main {
+            display: flex;
+            align-items: flex-start;
+            gap: 0.6rem;
+            color: #243647;
+            font-size: 0.92rem;
+        }
+
+        .inspection-detail-page .report-original-document-main input[type="checkbox"] {
+            margin-top: 0.2rem;
+        }
+
+        .inspection-detail-page .report-original-document-upload {
+            display: grid;
+            gap: 0.35rem;
+        }
+
+        .inspection-detail-page .report-original-document-note {
+            display: block;
+            color: var(--inspection-muted);
+            font-size: 0.78rem;
+            line-height: 1.35;
+            word-break: break-word;
+        }
+
+        .inspection-detail-page .report-original-sublist {
+            margin-top: 0.85rem;
+            padding-left: 1.25rem;
+            display: grid;
+            gap: 0.55rem;
+        }
+
+        .inspection-detail-page .report-original-subitem {
+            display: grid;
+            grid-template-columns: auto minmax(0, 1fr);
+            gap: 0.45rem;
+            align-items: center;
+        }
+
+        .inspection-detail-page .report-original-signature {
+            margin-top: 1.8rem;
+            padding-top: 1.5rem;
+            border-top: 1px solid rgba(27, 79, 114, 0.12);
+            text-align: center;
+        }
+
+        .inspection-detail-page .report-original-signature-line {
+            width: min(320px, 100%);
+            margin: 0 auto 0.85rem;
+            border-bottom: 1px solid #2b2b2b;
+            height: 48px;
+        }
+
+        .inspection-detail-page .report-original-signature-name,
+        .inspection-detail-page .report-original-signature-license,
+        .inspection-detail-page .report-original-signature-role,
+        .inspection-detail-page .report-original-signature-specialty {
+            margin: 0.2rem 0;
+            color: var(--inspection-primary-dark);
+            font-size: 0.92rem;
+            font-weight: 700;
+            text-transform: uppercase;
+        }
+
+        .inspection-detail-page .report-original-actions {
+            display: grid;
+            gap: 1rem;
+            padding: 1.15rem;
+            border-radius: 22px;
+            border: 1px solid rgba(27, 79, 114, 0.11);
+            background: linear-gradient(180deg, #fbfdff 0%, #ffffff 100%);
+        }
+
+        .inspection-detail-page .report-original-actions-copy {
+            margin: 0;
+            color: var(--inspection-muted);
+            font-size: 0.84rem;
+            line-height: 1.55;
         }
 
         .inspection-detail-page .inspection-services-table .service-check {
@@ -688,6 +1096,12 @@
             align-items: start;
         }
 
+        .inspection-detail-page .central-side-stack {
+            display: flex;
+            flex-direction: column;
+            min-width: 0;
+        }
+
         .inspection-detail-page .stack-grid {
             display: grid;
             gap: 1rem;
@@ -870,6 +1284,355 @@
             width: 100%;
             max-width: none;
             resize: vertical;
+        }
+
+        .inspection-detail-page .report-workspace-toolbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 1rem;
+            padding: 1.1rem 1.15rem;
+            border: 1px solid rgba(27, 79, 114, 0.11);
+            border-radius: 24px;
+            background: linear-gradient(135deg, rgba(27, 79, 114, 0.08) 0%, rgba(15, 123, 132, 0.07) 100%);
+        }
+
+        .inspection-detail-page .report-workspace-main {
+            display: grid;
+            gap: 0.45rem;
+            min-width: 0;
+        }
+
+        .inspection-detail-page .report-workspace-kicker {
+            display: inline-flex;
+            align-items: center;
+            width: fit-content;
+            padding: 0.32rem 0.7rem;
+            border-radius: 999px;
+            background: rgba(27, 79, 114, 0.12);
+            color: var(--inspection-primary-dark);
+            font-size: 0.72rem;
+            font-weight: 800;
+            letter-spacing: 0.04em;
+            text-transform: uppercase;
+        }
+
+        .inspection-detail-page .report-workspace-title {
+            margin: 0;
+            color: var(--inspection-primary-dark);
+            font-size: 1.08rem;
+            font-weight: 800;
+        }
+
+        .inspection-detail-page .report-workspace-copy {
+            margin: 0;
+            color: var(--inspection-muted);
+            font-size: 0.84rem;
+            line-height: 1.55;
+            max-width: 820px;
+        }
+
+        .inspection-detail-page .report-workspace-pills {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.45rem;
+        }
+
+        .inspection-detail-page .report-workspace-pill {
+            display: inline-flex;
+            align-items: center;
+            padding: 0.34rem 0.72rem;
+            border-radius: 999px;
+            background: #ffffff;
+            border: 1px solid rgba(27, 79, 114, 0.12);
+            color: var(--inspection-primary);
+            font-size: 0.76rem;
+            font-weight: 700;
+        }
+
+        .inspection-detail-page .report-workspace-side {
+            display: grid;
+            gap: 0.55rem;
+            align-content: start;
+            min-width: 250px;
+        }
+
+        .inspection-detail-page .report-workspace-status {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.45rem;
+            width: fit-content;
+            padding: 0.42rem 0.78rem;
+            border-radius: 999px;
+            background: rgba(25, 135, 84, 0.1);
+            color: #157347;
+            font-size: 0.76rem;
+            font-weight: 800;
+        }
+
+        .inspection-detail-page .report-workspace-hint {
+            margin: 0;
+            color: var(--inspection-muted);
+            font-size: 0.81rem;
+            line-height: 1.5;
+        }
+
+        .inspection-detail-page .report-accordion {
+            display: grid;
+            gap: 0.9rem;
+        }
+
+        .inspection-detail-page .report-accordion .accordion-item {
+            border: 1px solid rgba(27, 79, 114, 0.11);
+            border-radius: 22px;
+            overflow: hidden;
+            background: #ffffff;
+            box-shadow: none;
+        }
+
+        .inspection-detail-page .report-accordion .accordion-button {
+            display: flex;
+            align-items: flex-start;
+            gap: 0.9rem;
+            padding: 1rem 1.1rem;
+            background: linear-gradient(135deg, rgba(27, 79, 114, 0.08) 0%, rgba(15, 123, 132, 0.05) 100%);
+            box-shadow: none;
+        }
+
+        .inspection-detail-page .report-accordion .accordion-button:not(.collapsed) {
+            background: linear-gradient(135deg, rgba(27, 79, 114, 0.12) 0%, rgba(15, 123, 132, 0.08) 100%);
+            box-shadow: none;
+        }
+
+        .inspection-detail-page .report-accordion .accordion-button:focus {
+            box-shadow: none;
+        }
+
+        .inspection-detail-page .report-accordion-code {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 2rem;
+            height: 2rem;
+            border-radius: 999px;
+            background: rgba(27, 79, 114, 0.12);
+            color: var(--inspection-primary-dark);
+            font-size: 0.86rem;
+            font-weight: 800;
+            flex: 0 0 auto;
+        }
+
+        .inspection-detail-page .report-accordion-title-wrap {
+            display: grid;
+            gap: 0.25rem;
+            flex: 1 1 auto;
+            min-width: 0;
+            text-align: left;
+        }
+
+        .inspection-detail-page .report-accordion-title {
+            color: var(--inspection-primary-dark);
+            font-size: 1rem;
+            font-weight: 800;
+            line-height: 1.3;
+        }
+
+        .inspection-detail-page .report-accordion-copy {
+            color: var(--inspection-muted);
+            font-size: 0.82rem;
+            line-height: 1.5;
+        }
+
+        .inspection-detail-page .report-accordion-badge {
+            display: inline-flex;
+            align-items: center;
+            padding: 0.34rem 0.68rem;
+            border-radius: 999px;
+            background: rgba(15, 123, 132, 0.11);
+            color: var(--inspection-accent);
+            font-size: 0.72rem;
+            font-weight: 800;
+            white-space: nowrap;
+        }
+
+        .inspection-detail-page .report-accordion .accordion-body {
+            padding: 1rem 1.1rem 1.15rem;
+            background: #f8fbfd;
+        }
+
+        .inspection-detail-page .report-section-table-wrap {
+            border: 1px solid rgba(27, 79, 114, 0.11);
+            border-radius: 22px;
+            overflow: hidden;
+            background: linear-gradient(180deg, #fbfdff 0%, #ffffff 100%);
+        }
+
+        .inspection-detail-page .report-accordion .report-section-table-wrap {
+            box-shadow: none;
+        }
+
+        .inspection-detail-page .report-section-table {
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 0;
+            table-layout: fixed;
+        }
+
+        .inspection-detail-page .report-section-table thead th.section-header-cell {
+            padding: 0;
+            border: 0;
+            background: linear-gradient(135deg, rgba(27, 79, 114, 0.1) 0%, rgba(15, 123, 132, 0.08) 100%);
+        }
+
+        .inspection-detail-page .report-section-table .section-header-main {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 1rem;
+            padding: 1rem 1.1rem;
+        }
+
+        .inspection-detail-page .report-section-table .section-header-title {
+            margin: 0;
+            color: var(--inspection-primary-dark);
+            font-size: 1rem;
+            font-weight: 800;
+        }
+
+        .inspection-detail-page .report-section-table .section-header-copy {
+            margin: 0.25rem 0 0;
+            color: var(--inspection-muted);
+            font-size: 0.82rem;
+            line-height: 1.5;
+        }
+
+        .inspection-detail-page .report-section-table .section-header-badge {
+            display: inline-flex;
+            align-items: center;
+            padding: 0.34rem 0.65rem;
+            border-radius: 999px;
+            background: rgba(15, 123, 132, 0.11);
+            color: var(--inspection-accent);
+            font-size: 0.72rem;
+            font-weight: 800;
+            white-space: nowrap;
+        }
+
+        .inspection-detail-page .report-section-table tbody th,
+        .inspection-detail-page .report-section-table tbody td {
+            padding: 1rem 1.05rem;
+            border-top: 1px solid rgba(27, 79, 114, 0.11);
+            vertical-align: top;
+        }
+
+        .inspection-detail-page .report-section-table tbody tr:first-child > th,
+        .inspection-detail-page .report-section-table tbody tr:first-child > td {
+            border-top: 0;
+        }
+
+        .inspection-detail-page .report-section-table .field-label-cell {
+            width: 18%;
+            background: rgba(27, 79, 114, 0.04);
+            color: var(--inspection-primary-dark);
+            font-size: 0.74rem;
+            font-weight: 800;
+            letter-spacing: 0.04em;
+            text-transform: uppercase;
+        }
+
+        .inspection-detail-page .report-section-table .field-value-cell {
+            background: #fff;
+        }
+
+        .inspection-detail-page .report-section-table .field-stack {
+            display: grid;
+            gap: 0.55rem;
+        }
+
+        .inspection-detail-page .report-section-table .field-help {
+            margin: 0;
+            color: var(--inspection-muted);
+            font-size: 0.81rem;
+            line-height: 1.5;
+        }
+
+        .inspection-detail-page .report-section-table .field-note {
+            margin-top: 0.2rem;
+        }
+
+        .inspection-detail-page .report-section-table .field-value-cell .alert {
+            margin-bottom: 0;
+        }
+
+        .inspection-detail-page .report-section-table .field-value-cell .table-responsive,
+        .inspection-detail-page .report-section-table .field-value-cell .table-shell {
+            margin-top: 0.15rem;
+        }
+
+        .inspection-detail-page .report-support-grid {
+            display: grid;
+            grid-template-columns: minmax(0, 1.2fr) minmax(320px, 0.8fr);
+            gap: 1rem;
+            align-items: start;
+        }
+
+        .inspection-detail-page .report-support-card {
+            padding: 1.1rem;
+            border-radius: 22px;
+            border: 1px solid rgba(27, 79, 114, 0.11);
+            background: linear-gradient(180deg, #fbfdff 0%, #ffffff 100%);
+        }
+
+        .inspection-detail-page .report-support-head {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 0.75rem;
+            margin-bottom: 0.95rem;
+        }
+
+        .inspection-detail-page .report-support-title {
+            margin: 0;
+            color: var(--inspection-primary-dark);
+            font-size: 1rem;
+            font-weight: 800;
+        }
+
+        .inspection-detail-page .report-support-copy {
+            margin: 0.25rem 0 0;
+            color: var(--inspection-muted);
+            font-size: 0.82rem;
+            line-height: 1.5;
+        }
+
+        .inspection-detail-page .report-action-dock {
+            display: grid;
+            gap: 1rem;
+        }
+
+        .inspection-detail-page .report-action-note {
+            margin: 0;
+            padding: 0.85rem 0.95rem;
+            border-radius: 16px;
+            background: rgba(27, 79, 114, 0.06);
+            color: var(--inspection-muted);
+            font-size: 0.84rem;
+            line-height: 1.55;
+        }
+
+        .inspection-detail-page .report-action-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 0.75rem;
+        }
+
+        .inspection-detail-page .report-action-grid .btn {
+            width: 100%;
+        }
+
+        .inspection-detail-page .report-preview-card {
+            position: sticky;
+            top: 1rem;
         }
 
         .inspection-detail-page .report-textarea-lg {
@@ -1269,6 +2032,41 @@
                 grid-template-columns: 1fr;
             }
 
+            .inspection-detail-page .report-preview-card {
+                position: static;
+            }
+
+            .inspection-detail-page .report-workspace-toolbar,
+            .inspection-detail-page .report-support-grid {
+                grid-template-columns: 1fr;
+                flex-direction: column;
+            }
+
+            .inspection-detail-page .report-coverage-head {
+                flex-direction: column;
+            }
+
+            .inspection-detail-page .report-original-inline,
+            .inspection-detail-page .report-original-document-item {
+                grid-template-columns: 1fr;
+            }
+
+            .inspection-detail-page .report-original-doc {
+                padding: 1.2rem;
+            }
+
+            .inspection-detail-page .report-workspace-side {
+                min-width: 0;
+            }
+
+            .inspection-detail-page .report-action-grid {
+                grid-template-columns: 1fr 1fr;
+            }
+
+            .inspection-detail-page .report-section-table .section-header-main {
+                flex-direction: column;
+            }
+
             .inspection-detail-page .report-grid-3 {
                 grid-template-columns: 1fr 1fr;
             }
@@ -1297,6 +2095,55 @@
 
             .inspection-detail-page .action-footer {
                 align-items: stretch;
+            }
+
+            .inspection-detail-page .report-accordion .accordion-button {
+                flex-wrap: wrap;
+            }
+
+            .inspection-detail-page .report-accordion-badge {
+                order: 3;
+            }
+
+            .inspection-detail-page .report-action-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .inspection-detail-page .report-original-fill,
+            .inspection-detail-page .report-original-fill.long {
+                display: block;
+                min-width: 0;
+                width: 100%;
+                margin: 0.4rem 0;
+            }
+
+            .inspection-detail-page .report-original-text {
+                line-height: 1.7;
+            }
+
+            .inspection-detail-page .report-original-result-item,
+            .inspection-detail-page .report-original-subitem {
+                grid-template-columns: auto 1fr;
+            }
+
+            .inspection-detail-page .report-section-table,
+            .inspection-detail-page .report-section-table > thead,
+            .inspection-detail-page .report-section-table > tbody,
+            .inspection-detail-page .report-section-table > thead > tr,
+            .inspection-detail-page .report-section-table > tbody > tr,
+            .inspection-detail-page .report-section-table > thead > tr > th,
+            .inspection-detail-page .report-section-table > tbody > tr > th,
+            .inspection-detail-page .report-section-table > tbody > tr > td {
+                display: block;
+                width: 100%;
+            }
+
+            .inspection-detail-page .report-section-table .field-label-cell {
+                padding-bottom: 0.4rem;
+            }
+
+            .inspection-detail-page .report-section-table .field-value-cell {
+                padding-top: 0.5rem;
             }
         }
     </style>
@@ -1606,186 +2453,239 @@
         </div>
 
         <div class="central-grid">
-            <div class="card section-card">
-                <div class="card-body">
-                    <div class="section-heading">
-                        <div class="section-icon">
-                            <i class="fas fa-project-diagram"></i>
-                        </div>
-                        <div>
-                            <h2 class="section-title">Flujo BPMN de inspección</h2>
-                            <p class="section-copy">Transiciones, lectura operativa del estado y decisiones disponibles según el rol autenticado.</p>
-                        </div>
-                    </div>
-
-                    <div class="stack-grid">
-                        <div class="bpmn-panel">
-                            <div class="bpmn-mini-grid">
-                                <div class="bpmn-mini-card">
-                                    <small>Estado actual</small>
-                                    <strong>@estadoActualNormalizado</strong>
-                                </div>
-                                <div class="bpmn-mini-card">
-                                    <small>Resultado</small>
-                                    <strong>@resultadoActual</strong>
-                                </div>
-                                <div class="bpmn-mini-card">
-                                    <small>Operador</small>
-                                    <strong>@operadorInspeccionado</strong>
-                                </div>
-                                <div class="bpmn-mini-card">
-                                    <small>Inspector principal</small>
-                                    <strong>@inspectorPrincipal</strong>
-                                </div>
+            <div class="central-side-stack">
+                <div class="card section-card">
+                    <div class="card-body">
+                        <div class="section-heading">
+                            <div class="section-icon">
+                                <i class="fas fa-project-diagram"></i>
+                            </div>
+                            <div>
+                                <h2 class="section-title">Flujo BPMN de inspección</h2>
+                                <p class="section-copy">Transiciones, lectura operativa del estado y decisiones disponibles según el rol autenticado.</p>
                             </div>
                         </div>
 
-                    @if (mostrarAvisoCoordinacionDetalle)
-                    {
-                        <div class="alert alert-info mb-3" role="alert">
-                            <strong>Gestion institucional centralizada en Direccion / Jefatura.</strong>
-                            <div class="mt-2">@mensajeCoordinacionDetalle</div>
-                            <div class="d-flex flex-wrap gap-3 mt-3 small">
-                                <span><strong>Solicitud:</strong> @(solicitud != null && !string.IsNullOrWhiteSpace(solicitud.NumeroSolicitud) ? solicitud.NumeroSolicitud : (Model != null ? Model.CodigoSolicitud.ToString() : "-"))</span>
-                                <span><strong>Compania:</strong> @operadorInspeccionado</span>
-                                <span><strong>Estado actual:</strong> @estadoActualNormalizado</span>
-                                <span><strong>Inspector:</strong> @inspectorPrincipal</span>
+                        <div class="stack-grid">
+                            <div class="bpmn-panel">
+                                <div class="bpmn-mini-grid">
+                                    <div class="bpmn-mini-card">
+                                        <small>Estado actual</small>
+                                        <strong>@estadoActualNormalizado</strong>
+                                    </div>
+                                    <div class="bpmn-mini-card">
+                                        <small>Resultado</small>
+                                        <strong>@resultadoActual</strong>
+                                    </div>
+                                    <div class="bpmn-mini-card">
+                                        <small>Operador</small>
+                                        <strong>@operadorInspeccionado</strong>
+                                    </div>
+                                    <div class="bpmn-mini-card">
+                                        <small>Inspector principal</small>
+                                        <strong>@inspectorPrincipal</strong>
+                                    </div>
+                                </div>
                             </div>
-                            <div class="d-flex flex-wrap gap-2 mt-3">
-                                <a href="@urlRevisionVerificacion" class="btn btn-sm btn-outline-primary">
-                                    <i class="fas fa-search"></i> Abrir Revisión / Verificación
-                                </a>
-                                @if (puedeDerivarAsignacionInspector)
+
+                        @if (mostrarAvisoCoordinacionDetalle)
+                        {
+                            <div class="alert alert-info mb-3" role="alert">
+                                <strong>Gestion institucional centralizada en Direccion / Jefatura.</strong>
+                                <div class="mt-2">@mensajeCoordinacionDetalle</div>
+                                <div class="d-flex flex-wrap gap-3 mt-3 small">
+                                    <span><strong>Solicitud:</strong> @(solicitud != null && !string.IsNullOrWhiteSpace(solicitud.NumeroSolicitud) ? solicitud.NumeroSolicitud : (Model != null ? Model.CodigoSolicitud.ToString() : "-"))</span>
+                                    <span><strong>Compania:</strong> @operadorInspeccionado</span>
+                                    <span><strong>Estado actual:</strong> @estadoActualNormalizado</span>
+                                    <span><strong>Inspector:</strong> @inspectorPrincipal</span>
+                                </div>
+                                <div class="d-flex flex-wrap gap-2 mt-3">
+                                    <a href="@urlRevisionVerificacion" class="btn btn-sm btn-outline-primary">
+                                        <i class="fas fa-search"></i> Abrir Revisión / Verificación
+                                    </a>
+                                    @if (puedeDerivarAsignacionInspector)
+                                    {
+                                        <a href="@urlAsignarInspectorDetalle" class="btn btn-sm btn-outline-secondary">
+                                            <i class="fas fa-user-check"></i> Asignar inspector
+                                        </a>
+                                    }
+                                </div>
+                            </div>
+                        }
+
+                        @if (mostrarBloqueCoordinacionDetalle)
+                        {
+                            <div class="role-panel">
+                                <div class="role-panel-head">
+                                    <div>
+                                        <h3 class="role-panel-title">Coordinación y jefatura</h3>
+                                        <p class="role-panel-copy">Decisiones institucionales y transiciones de alto nivel para esta inspección.</p>
+                                    </div>
+                                    <span class="status-pill primary"><i class="fas fa-user-shield"></i> Coordinación</span>
+                                </div>
+                                <div class="button-flow">
+                                    @if (puedeVerificacion)
+                                    {
+                                        using (Html.BeginForm("CambiarEstado", "Inspeccion", FormMethod.Post))
+                                        {
+                                            @Html.AntiForgeryToken()
+                                            @Html.Hidden("id", Model.CodigoInspeccion)
+                                            @Html.Hidden("estado", EstadosInspeccion.VERIFICACION_SOLICITUD)
+                                            <button type="submit" class="btn btn-outline-primary">Verificacion</button>
+                                        }
+                                    }
+                                    @if (puedeAceptarSolicitud)
+                                    {
+                                        using (Html.BeginForm("CambiarEstado", "Inspeccion", FormMethod.Post))
+                                        {
+                                            @Html.AntiForgeryToken()
+                                            @Html.Hidden("id", Model.CodigoInspeccion)
+                                            @Html.Hidden("estado", EstadosInspeccion.ACEPTADA)
+                                            <button type="submit" class="btn btn-outline-success">Aceptar solicitud</button>
+                                        }
+                                    }
+                                    @if (puedeObservar)
+                                    {
+                                        using (Html.BeginForm("CambiarEstado", "Inspeccion", FormMethod.Post))
+                                        {
+                                            @Html.AntiForgeryToken()
+                                            @Html.Hidden("id", Model.CodigoInspeccion)
+                                            @Html.Hidden("estado", EstadosInspeccion.OBSERVADA)
+                                            <button type="submit" class="btn btn-outline-danger">Observar</button>
+                                        }
+                                    }
+                                    @if (puedeSubsanada)
+                                    {
+                                        using (Html.BeginForm("CambiarEstado", "Inspeccion", FormMethod.Post))
+                                        {
+                                            @Html.AntiForgeryToken()
+                                            @Html.Hidden("id", Model.CodigoInspeccion)
+                                            @Html.Hidden("estado", EstadosInspeccion.SUBSANADA)
+                                            <button type="submit" class="btn btn-outline-warning">Subsanada</button>
+                                        }
+                                    }
+                                    @if (puedeCerrar)
+                                    {
+                                        using (Html.BeginForm("CambiarEstado", "Inspeccion", FormMethod.Post))
+                                        {
+                                            @Html.AntiForgeryToken()
+                                            @Html.Hidden("id", Model.CodigoInspeccion)
+                                            @Html.Hidden("estado", EstadosInspeccion.CERRADA)
+                                            <button type="submit" class="btn btn-outline-dark">Cerrar</button>
+                                        }
+                                    }
+                                </div>
+                                @if (!hayAccionesCoordinacionDisponibles)
                                 {
-                                    <a href="@urlAsignarInspectorDetalle" class="btn btn-sm btn-outline-secondary">
-                                        <i class="fas fa-user-check"></i> Asignar inspector
+                                    <small class="text-muted d-block mt-2">No hay transiciones habilitadas para este bloque desde el estado actual (@estadoActualNormalizado).</small>
+                                }
+                            </div>
+                        }
+
+                        @if (mostrarBloqueInspectorDetalle)
+                        {
+                            <div class="role-panel">
+                                <div class="role-panel-head">
+                                    <div>
+                                        <h3 class="role-panel-title">Operación de inspector</h3>
+                                        <p class="role-panel-copy">Acciones disponibles para ejecución operativa y documentación técnica del inspector.</p>
+                                    </div>
+                                    <span class="status-pill warning"><i class="fas fa-user-check"></i> Inspector</span>
+                                </div>
+                                <div class="button-flow">
+                                    @if (puedeIniciarInspeccion)
+                                    {
+                                        using (Html.BeginForm("CambiarEstado", "Inspeccion", FormMethod.Post))
+                                        {
+                                            @Html.AntiForgeryToken()
+                                            @Html.Hidden("id", Model.CodigoInspeccion)
+                                            @Html.Hidden("estado", EstadosInspeccion.EN_INSPECCION)
+                                            <button type="submit" class="btn btn-outline-warning">Iniciar inspeccion</button>
+                                        }
+                                    }
+                                    @if (puedeInformeElaborado)
+                                    {
+                                        using (Html.BeginForm("CambiarEstado", "Inspeccion", FormMethod.Post))
+                                        {
+                                            @Html.AntiForgeryToken()
+                                            @Html.Hidden("id", Model.CodigoInspeccion)
+                                            @Html.Hidden("estado", EstadosInspeccion.INFORME_ELABORADO)
+                                            <button type="submit" class="btn btn-outline-info">Informe elaborado</button>
+                                        }
+                                    }
+                                    @if (puedeObservacionDocumental)
+                                    {
+                                        using (Html.BeginForm("CambiarEstado", "Inspeccion", FormMethod.Post))
+                                        {
+                                            @Html.AntiForgeryToken()
+                                            @Html.Hidden("id", Model.CodigoInspeccion)
+                                            @Html.Hidden("estado", EstadosInspeccion.OBSERVACION_DOCUMENTAL)
+                                            <button type="submit" class="btn btn-outline-danger">Observacion documental</button>
+                                        }
+                                    }
+                                </div>
+                                @if (!hayAccionesInspectorDisponibles)
+                                {
+                                    <small class="text-muted d-block mt-2">@mensajeInspectorSinAcciones</small>
+                                }
+                            </div>
+                        }
+
+                        </div>
+
+                    </div>
+                </div>
+
+                @if (mostrarPanelVistaPrevia)
+                {
+                    <div class="card section-card soft-card report-preview-card">
+                        <div class="card-body">
+                            <div class="section-heading">
+                                <div class="section-icon">
+                                    <i class="fas fa-file-pdf"></i>
+                                </div>
+                                <div>
+                                    <h2 class="section-title">Vista previa del informe técnico</h2>
+                                    <p class="section-copy">@copyVistaPrevia</p>
+                                </div>
+                            </div>
+
+                            <div class="report-pdf-bar d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-3">
+                                <div>
+                                    <span class="report-pdf-title">@(tieneInforme ? "Documento disponible para revisión / firma" : "Vista previa automática del borrador")</span>
+                                    <div class="report-pdf-path" id="reportPdfPathInformeTecnico">@rutaVistaPreviaTexto</div>
+                                </div>
+                                @if (tieneInforme)
+                                {
+                                    <a class="btn btn-ver-pdf aocr-pdf-open"
+                                       id="btnAbrirPdfInformeTecnico"
+                                       href="@informeDefinitivoUrl"
+                                       data-pdf-url="@informeDefinitivoUrl"
+                                       data-download-url="@informeDescargaUrl"
+                                       data-title="Informe Técnico"
+                                       data-subtitle="Documento definitivo disponible para revisión / firma"
+                                       data-status="@estadoInformeTecnico"
+                                       rel="noopener">
+                                        Ver PDF
                                     </a>
                                 }
                             </div>
-                        </div>
-                    }
-
-                    @if (mostrarBloqueCoordinacionDetalle)
-                    {
-                        <div class="role-panel">
-                            <div class="role-panel-head">
-                                <div>
-                                    <h3 class="role-panel-title">Coordinación y jefatura</h3>
-                                    <p class="role-panel-copy">Decisiones institucionales y transiciones de alto nivel para esta inspección.</p>
-                                </div>
-                                <span class="status-pill primary"><i class="fas fa-user-shield"></i> Coordinación</span>
-                            </div>
-                            <div class="button-flow">
-                                @if (puedeVerificacion)
-                                {
-                                    using (Html.BeginForm("CambiarEstado", "Inspeccion", FormMethod.Post))
-                                    {
-                                        @Html.AntiForgeryToken()
-                                        @Html.Hidden("id", Model.CodigoInspeccion)
-                                        @Html.Hidden("estado", EstadosInspeccion.VERIFICACION_SOLICITUD)
-                                        <button type="submit" class="btn btn-outline-primary">Verificacion</button>
-                                    }
-                                }
-                                @if (puedeAceptarSolicitud)
-                                {
-                                    using (Html.BeginForm("CambiarEstado", "Inspeccion", FormMethod.Post))
-                                    {
-                                        @Html.AntiForgeryToken()
-                                        @Html.Hidden("id", Model.CodigoInspeccion)
-                                        @Html.Hidden("estado", EstadosInspeccion.ACEPTADA)
-                                        <button type="submit" class="btn btn-outline-success">Aceptar solicitud</button>
-                                    }
-                                }
-                                @if (puedeObservar)
-                                {
-                                    using (Html.BeginForm("CambiarEstado", "Inspeccion", FormMethod.Post))
-                                    {
-                                        @Html.AntiForgeryToken()
-                                        @Html.Hidden("id", Model.CodigoInspeccion)
-                                        @Html.Hidden("estado", EstadosInspeccion.OBSERVADA)
-                                        <button type="submit" class="btn btn-outline-danger">Observar</button>
-                                    }
-                                }
-                                @if (puedeSubsanada)
-                                {
-                                    using (Html.BeginForm("CambiarEstado", "Inspeccion", FormMethod.Post))
-                                    {
-                                        @Html.AntiForgeryToken()
-                                        @Html.Hidden("id", Model.CodigoInspeccion)
-                                        @Html.Hidden("estado", EstadosInspeccion.SUBSANADA)
-                                        <button type="submit" class="btn btn-outline-warning">Subsanada</button>
-                                    }
-                                }
-                                @if (puedeCerrar)
-                                {
-                                    using (Html.BeginForm("CambiarEstado", "Inspeccion", FormMethod.Post))
-                                    {
-                                        @Html.AntiForgeryToken()
-                                        @Html.Hidden("id", Model.CodigoInspeccion)
-                                        @Html.Hidden("estado", EstadosInspeccion.CERRADA)
-                                        <button type="submit" class="btn btn-outline-dark">Cerrar</button>
-                                    }
-                                }
-                            </div>
-                            @if (!hayAccionesCoordinacionDisponibles)
+                            @Html.Partial("~/Views/Shared/_AocrPdfViewer.cshtml", new AocrPdfViewerViewModel
                             {
-                                <small class="text-muted d-block mt-2">No hay transiciones habilitadas para este bloque desde el estado actual (@estadoActualNormalizado).</small>
-                            }
+                                PdfUrl = tieneInforme ? informeDefinitivoUrl : string.Empty,
+                                DescargarUrl = tieneInforme ? informeDescargaUrl : string.Empty,
+                                Titulo = "Informe Técnico",
+                                EstadoDocumento = estadoViewer,
+                                MensajeAyuda = ayudaViewer,
+                                PermitirDescarga = true,
+                                PermitirImpresion = true,
+                                MostrarToolbar = true,
+                                ContenedorId = "viewerInformeTecnicoDefinitivo",
+                                PantallaCompleta = false
+                            })
                         </div>
-                    }
-
-                    @if (mostrarBloqueInspectorDetalle)
-                    {
-                        <div class="role-panel">
-                            <div class="role-panel-head">
-                                <div>
-                                    <h3 class="role-panel-title">Operación de inspector</h3>
-                                    <p class="role-panel-copy">Acciones disponibles para ejecución operativa y documentación técnica del inspector.</p>
-                                </div>
-                                <span class="status-pill warning"><i class="fas fa-user-check"></i> Inspector</span>
-                            </div>
-                            <div class="button-flow">
-                                @if (puedeIniciarInspeccion)
-                                {
-                                    using (Html.BeginForm("CambiarEstado", "Inspeccion", FormMethod.Post))
-                                    {
-                                        @Html.AntiForgeryToken()
-                                        @Html.Hidden("id", Model.CodigoInspeccion)
-                                        @Html.Hidden("estado", EstadosInspeccion.EN_INSPECCION)
-                                        <button type="submit" class="btn btn-outline-warning">Iniciar inspeccion</button>
-                                    }
-                                }
-                                @if (puedeInformeElaborado)
-                                {
-                                    using (Html.BeginForm("CambiarEstado", "Inspeccion", FormMethod.Post))
-                                    {
-                                        @Html.AntiForgeryToken()
-                                        @Html.Hidden("id", Model.CodigoInspeccion)
-                                        @Html.Hidden("estado", EstadosInspeccion.INFORME_ELABORADO)
-                                        <button type="submit" class="btn btn-outline-info">Informe elaborado</button>
-                                    }
-                                }
-                                @if (puedeObservacionDocumental)
-                                {
-                                    using (Html.BeginForm("CambiarEstado", "Inspeccion", FormMethod.Post))
-                                    {
-                                        @Html.AntiForgeryToken()
-                                        @Html.Hidden("id", Model.CodigoInspeccion)
-                                        @Html.Hidden("estado", EstadosInspeccion.OBSERVACION_DOCUMENTAL)
-                                        <button type="submit" class="btn btn-outline-danger">Observacion documental</button>
-                                    }
-                                }
-                            </div>
-                            @if (!hayAccionesInspectorDisponibles)
-                            {
-                                <small class="text-muted d-block mt-2">@mensajeInspectorSinAcciones</small>
-                            }
-                        </div>
-                    }
-
                     </div>
-
-                </div>
+                }
             </div>
 
             <div class="card section-card soft-card">
@@ -1802,262 +2702,177 @@
 
                     @if (puedeEditarInformeTecnico)
                     {
-                        using (Html.BeginForm("GuardarInformeTecnico", "Inspeccion", FormMethod.Post, new { @class = "mb-4", enctype = "multipart/form-data" }))
+                        using (Html.BeginForm("GuardarInformeTecnico", "Inspeccion", FormMethod.Post, new { @class = "mb-4", id = "formInformeTecnico", enctype = "multipart/form-data", data_tiene_informe = tieneInforme ? "true" : "false", data_operador_informe = operadorInspeccionado }))
                         {
                             @Html.AntiForgeryToken()
                             @Html.Hidden("id", Model.CodigoInspeccion)
                             @Html.Hidden("titulo", string.IsNullOrWhiteSpace(informeTecnico != null ? informeTecnico.Titulo : null) ? "Informe de inspeccion" : informeTecnico.Titulo)
 
-                            <div class="report-shell">
-                                <div class="report-module">
-                                    <div class="report-module-head">
-                                        <div>
-                                            <h3 class="report-module-title">A. Datos base del informe</h3>
-                                            <p class="report-module-copy">Identificación del informe, operador inspeccionado y parámetros base del documento técnico.</p>
-                                        </div>
-                                        <span class="report-module-badge">Base</span>
+                            <div class="report-shell report-original-editor">
+                                <div class="report-original-doc">
+                                    <div class="report-original-header">
+                                        <p class="report-original-annex">ANEXO 1</p>
+                                        <p class="report-original-entity">DIRECCION INSPECCION Y CERTIFICACION AERONAUTICA</p>
+                                        <h3 class="report-original-title">INFORME DE INSPECCION</h3>
                                     </div>
-                                    <div class="report-grid-2">
-                                        <div class="detail-item">
-                                            <label class="detail-label">Orden de inspección</label>
-                                            <input type="text" class="form-control" value="@numeroInspeccionVisual" readonly />
-                                        </div>
-                                        <div class="detail-item">
-                                            <label class="detail-label">Operador inspeccionado</label>
-                                            <input type="text" class="form-control" value="@operadorInspeccionado" readonly />
-                                        </div>
-                                        <div class="detail-item">
-                                            <label class="detail-label">Inspector DGAC</label>
-                                            <input type="text" class="form-control" value="@inspectorPrincipal" readonly />
-                                        </div>
-                                        <div class="detail-item">
-                                            <label class="detail-label">Fechas de inspeccion</label>
-                                            <input type="text" class="form-control" value="@fechaProgramada" readonly />
-                                        </div>
-                                        <div class="detail-item">
-                                            <label class="detail-label">No. licencia inspector</label>
-                                            <input type="text" class="form-control" name="numeroLicenciaInspector" value="@numeroLicenciaInspector" placeholder="Licencia o identificacion del inspector" />
-                                        </div>
-                                        <div class="detail-item">
-                                            <label class="detail-label">Resultado tecnico</label>
-                                            <select name="resultado" class="form-control result-select" required>
-                                                <option value="" @(string.IsNullOrWhiteSpace(informeTecnico != null ? informeTecnico.Resultado : null) ? "selected" : null) disabled>Seleccione</option>
-                                                <option value="SATISFACTORIO" @(string.Equals(informeTecnico != null ? informeTecnico.Resultado : null, "SATISFACTORIO", System.StringComparison.OrdinalIgnoreCase) ? "selected" : null)>Satisfactorio</option>
-                                                <option value="NO_SATISFACTORIO" @(string.Equals(informeTecnico != null ? informeTecnico.Resultado : null, "NO_SATISFACTORIO", System.StringComparison.OrdinalIgnoreCase) ? "selected" : null)>Insatisfactorio</option>
-                                                <option value="OBSERVACION_DOCUMENTAL" @(string.Equals(informeTecnico != null ? informeTecnico.Resultado : null, "OBSERVACION_DOCUMENTAL", System.StringComparison.OrdinalIgnoreCase) ? "selected" : null)>Observacion documental</option>
-                                            </select>
-                                        </div>
-                                    </div>
-                                </div>
 
-                                <div class="report-module">
-                                    <div class="report-module-head">
-                                        <div>
-                                            <h3 class="report-module-title">B. Contexto técnico</h3>
-                                            <p class="report-module-copy">Descripción del trabajo realizado y contexto operativo del anexo técnico.</p>
-                                        </div>
-                                        <span class="report-module-badge">Contexto</span>
+                                    <div class="report-original-inline">
+                                        <span class="report-original-inline-copy">ORDEN DE INSPECCION:</span>
+                                        <input type="text" class="form-control report-original-input report-original-readonly" value="@numeroInspeccionVisual" readonly />
                                     </div>
-                                    <div class="mb-3">
-                                        <div class="alert alert-light" style="border-left:3px solid #0d6efd; font-size:0.88rem;">
-                                            <strong>Art. 110.- Inspección del Código Aeronáutico</strong><br />
-                                            Con fundamento en el Art. 110 del Código Aeronáutico, se realizó la inspección con el fin de comprobar
-                                            que el explotador <strong>@(solicitud != null && !string.IsNullOrWhiteSpace(solicitud.NombreOperador) ? solicitud.NombreOperador : "[NOMBRE DEL EXPLOTADOR]")</strong>
-                                            cumple las condiciones mínimas de seguridad operacional exigidas por la Dirección General de Aviación Civil.
-                                            Inspección <strong>@(Model != null && !string.IsNullOrWhiteSpace(Model.NumeroInspeccion) ? Model.NumeroInspeccion : Model.CodigoInspeccion.ToString())</strong>,
-                                            fechas de inspeccion: <strong>@(informeTecnico != null && !string.IsNullOrWhiteSpace(informeTecnico.FechasInspeccionManual) ? informeTecnico.FechasInspeccionManual : fechaProgramada)</strong>.
+
+                                    <div class="report-original-block">
+                                        <span class="report-original-label">TRABAJOS REALIZADOS:</span>
+                                        <input type="hidden" id="trabajosRealizadosField" name="trabajosRealizados" value="@trabajosRealizadosInforme" />
+                                        <div class="report-original-text">
+                                            En cumplimiento del Art. 110 del Código Aeronáutico, entre
+                                            <span class="report-original-fill">
+                                                <input type="text" id="fechasInspeccionManualField" class="form-control report-original-input border-0 p-0 bg-transparent" name="fechasInspeccionManual" value="@(informeTecnico != null ? informeTecnico.FechasInspeccionManual : string.Empty)" placeholder="fecha" />
+                                            </span>
+                                            se realizó la inspección a la(s) estación(es) de
+                                            <span class="report-original-fill long">
+                                                <input type="text" id="estacionesInspeccionManualField" class="form-control report-original-input border-0 p-0 bg-transparent" name="estacionesInspeccionManual" value="@(informeTecnico != null ? informeTecnico.EstacionesInspeccionManual : string.Empty)" placeholder="UIO, GYE, MEC, LTX" />
+                                            </span>
+                                            con el fin de verificar que la compañía
+                                            <span class="report-original-fill long">@operadorInspeccionado</span>
+                                            cuenta con instalaciones, facilidades y personal técnico - operativo que brinda asistencia en tierra a sus operaciones comerciales, en la(s) cual(es) se verificó lo siguiente:
                                         </div>
-                                        <div class="report-grid-2 mb-3">
-                                            <div class="detail-item">
-                                                <label class="detail-label">Fechas de inspeccion (ingreso manual)</label>
-                                                <input type="text"
-                                                       class="form-control"
-                                                       name="fechasInspeccionManual"
-                                                       value="@(informeTecnico != null ? informeTecnico.FechasInspeccionManual : string.Empty)"
-                                                       placeholder="Ejemplo: del 15/04/2026 al 16/04/2026" />
-                                            </div>
-                                            <div class="detail-item">
-                                                <label class="detail-label">Estaciones inspeccionadas (ingreso manual)</label>
-                                                <input type="text"
-                                                       class="form-control"
-                                                       name="estacionesInspeccionManual"
-                                                       value="@(informeTecnico != null ? informeTecnico.EstacionesInspeccionManual : string.Empty)"
-                                                       placeholder="Ejemplo: UIO, GYE, MEC, LTX" />
+
+                                        <input type="hidden" name="operacionComercial" value="@operacionComercialInforme" />
+                                        <div class="report-original-operation">
+                                            <div class="report-original-text">
+                                                La operación comercial de <span class="report-original-strong">@operadorInspeccionado</span> será asistida por:
                                             </div>
                                         </div>
-                                        <label class="detail-label">1. Trabajos realizados</label>
-                                        <textarea class="form-control" name="trabajosRealizados" rows="5" placeholder="Redacte el cuerpo del numeral 1 del anexo: fecha, estaciones inspeccionadas, compañía verificada, facilidades, personal técnico y alcance de la verificación.">@trabajosRealizadosInforme</textarea>
-                                        <div class="inspection-doc-note">Este bloque alimenta el párrafo principal del anexo antes de la matriz UIO / GYE / MEC / LTX.</div>
-                                    </div>
-                                    <div class="report-grid-2">
-                                        <div class="detail-item">
-                                            <label class="detail-label">Operación comercial</label>
-                                            <input type="text" class="form-control" name="operacionComercial" value="@operacionComercialInforme" placeholder="Operación comercial de la compañía inspeccionada" />
-                                        </div>
-                                        <div class="detail-item">
-                                            <label class="detail-label">Anexo</label>
-                                            <input type="text" class="form-control" value="ANEXO 1 - INFORME DE INSPECCIÓN" readonly />
-                                        </div>
-                                    </div>
-                                </div>
 
-                                <div class="report-module">
-                                    <div class="report-module-head">
-                                        <div>
-                                            <h3 class="report-module-title">C. Cuadrícula de cumplimiento / verificación</h3>
-                                            <p class="report-module-copy">Matriz de servicios y responsabilidades verificadas por estación.</p>
-                                        </div>
-                                        <span class="report-module-badge">Cobertura</span>
-                                    </div>
-                                    <label class="detail-label">Cobertura por estación</label>
-                                    <input type="hidden" name="serviciosEstacionesPresent" value="true" />
-                                    <div class="table-responsive table-shell">
-                                        <table class="table table-bordered inspection-services-table">
-                                            <thead>
-                                                <tr>
-                                                    <th>Servicio / responsabilidad</th>
-                                                    <th class="text-center">UIO</th>
-                                                    <th class="text-center">GYE</th>
-                                                    <th class="text-center">MEC</th>
-                                                    <th class="text-center">LTX</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody>
-                                                @foreach (var fila in serviciosEstacionesInforme)
-                                                {
+                                        <input type="hidden" name="serviciosEstacionesPresent" value="true" />
+                                        <div class="inspection-services-shell mt-3">
+                                            <table class="table table-bordered inspection-services-table">
+                                                <thead>
                                                     <tr>
-                                                        <td>@fila.Label</td>
-                                                        <td><input type="text" class="form-control form-control-sm service-text" name="@("servicio_" + fila.Key + "_uio")" value="@(fila.Uio ?? "")" placeholder="—" /></td>
-                                                        <td><input type="text" class="form-control form-control-sm service-text" name="@("servicio_" + fila.Key + "_gye")" value="@(fila.Gye ?? "")" placeholder="—" /></td>
-                                                        <td><input type="text" class="form-control form-control-sm service-text" name="@("servicio_" + fila.Key + "_mec")" value="@(fila.Mec ?? "")" placeholder="—" /></td>
-                                                        <td><input type="text" class="form-control form-control-sm service-text" name="@("servicio_" + fila.Key + "_ltx")" value="@(fila.Ltx ?? "")" placeholder="—" /></td>
+                                                        <th>Servicio / responsabilidad</th>
+                                                        <th class="text-center">UIO</th>
+                                                        <th class="text-center">GYE</th>
+                                                        <th class="text-center">MEC</th>
+                                                        <th class="text-center">LTX</th>
                                                     </tr>
-                                                }
-                                            </tbody>
-                                        </table>
+                                                </thead>
+                                                <tbody>
+                                                    @foreach (var fila in serviciosEstacionesInforme)
+                                                    {
+                                                        <tr>
+                                                            <td>@fila.Label</td>
+                                                            <td><input type="text" class="form-control form-control-sm service-text" name="@("servicio_" + fila.Key + "_uio")" value="@(fila.Uio ?? "")" placeholder="" /></td>
+                                                            <td><input type="text" class="form-control form-control-sm service-text" name="@("servicio_" + fila.Key + "_gye")" value="@(fila.Gye ?? "")" placeholder="" /></td>
+                                                            <td><input type="text" class="form-control form-control-sm service-text" name="@("servicio_" + fila.Key + "_mec")" value="@(fila.Mec ?? "")" placeholder="" /></td>
+                                                            <td><input type="text" class="form-control form-control-sm service-text" name="@("servicio_" + fila.Key + "_ltx")" value="@(fila.Ltx ?? "")" placeholder="" /></td>
+                                                        </tr>
+                                                    }
+                                                </tbody>
+                                            </table>
+                                        </div>
                                     </div>
-                                </div>
 
-                                <div class="report-module">
-                                    <div class="report-module-head">
-                                        <div>
-                                            <h3 class="report-module-title">D. Observaciones</h3>
-                                            <p class="report-module-copy">Notas, no conformidades, conclusión técnica y recomendaciones del informe.</p>
-                                        </div>
-                                        <span class="report-module-badge">Observación</span>
+                                    <div class="report-original-block">
+                                        <span class="report-original-label">Notas:</span>
+                                        <textarea class="form-control report-original-input" name="notas" rows="6" placeholder="Ingrese aquí las notas del informe. Cada línea se conservará en el PDF.">@notasInforme</textarea>
                                     </div>
-                                    <div class="report-observation-grid">
-                                        <div class="report-field-card">
-                                            <div class="report-field-heading">
-                                                <label class="detail-label mb-0">Notas</label>
-                                                <p class="report-field-copy">Registre notas breves en líneas separadas para que se reflejen como viñetas en el PDF final.</p>
-                                            </div>
-                                            <textarea class="form-control report-textarea-lg" name="notas" rows="5" placeholder="Ingrese una nota por línea para que se muestre como viñeta en el PDF.">@notasInforme</textarea>
-                                        </div>
-                                        <div class="report-field-card">
-                                            <div class="report-field-heading">
-                                                <label class="detail-label mb-0">No conformidades</label>
-                                                <p class="report-field-copy">Consolide hallazgos documentales o técnicos en formato de una observación por línea.</p>
-                                            </div>
-                                            <textarea class="form-control report-textarea-lg" name="noConformidades" rows="5" placeholder="Ingrese una no conformidad por línea.">@noConformidadesInforme</textarea>
-                                        </div>
-                                        <div class="report-field-card full">
-                                            <div class="report-field-heading">
-                                                <label class="detail-label mb-0">1. Conclusion</label>
-                                                <p class="report-field-copy">Registre la conclusion tecnica previa a las recomendaciones del informe.</p>
-                                            </div>
-                                            <textarea class="form-control report-textarea-md" name="conclusiones" rows="4" placeholder="Ingrese la conclusion tecnica de la inspeccion.">@(informeTecnico != null ? informeTecnico.Conclusiones : string.Empty)</textarea>
-                                        </div>
-                                        <div class="report-field-card full">
-                                            <div class="report-field-heading">
-                                                <label class="detail-label mb-0">2. Recomendaciones</label>
-                                                <p class="report-field-copy">Ingrese acciones o recomendaciones en líneas separadas para conservar legibilidad en el anexo.</p>
-                                            </div>
-                                            <textarea class="form-control report-textarea-md" name="recomendaciones" rows="4" placeholder="Ingrese una recomendación por línea.">@(informeTecnico != null ? informeTecnico.Recomendaciones : string.Empty)</textarea>
-                                        </div>
-                                    </div>
-                                </div>
 
-                                <div class="report-module">
-                                    <div class="report-module-head">
-                                        <div>
-                                            <h3 class="report-module-title">E. Documentos adjuntos</h3>
-                                            <p class="report-module-copy">Selección de anexos base y documentos adicionales que acompañan el PDF técnico.</p>
-                                        </div>
-                                        <span class="report-module-badge">Adjuntos</span>
+                                    <div class="report-original-block">
+                                        <span class="report-original-label">No Conformidades:</span>
+                                        <textarea class="form-control report-original-input" name="noConformidades" rows="5" placeholder="Ingrese aquí las no conformidades. Cada línea se conservará en el PDF.">@noConformidadesInforme</textarea>
                                     </div>
-                                    <label class="detail-label">Documentos adjuntos</label>
-                                    <input type="hidden" name="documentosAdjuntosPresent" value="true" />
-                                    <div class="inspection-checklist mb-3">
-                                        @{ var idxAdj = 0; }
-                                        @foreach (var adjunto in documentosAdjuntosBase)
-                                        {
-                                            var estaSeleccionado = documentosAdjuntosSeleccionados.Any(item => string.Equals(item, adjunto, System.StringComparison.OrdinalIgnoreCase));
-                                            var adjFileKey = "archivoAdjunto_" + idxAdj;
-                                            <label class="inspection-check">
-                                                <input type="checkbox" name="documentosAdjuntos" value="@adjunto" @(estaSeleccionado ? "checked" : null)
-                                                       onchange="toggleFileUpload(this, '@adjFileKey')" />
-                                                <div>
-                                                    <strong>@adjunto</strong>
-                                                    <span>Se mostrará en la hoja de adjuntos del PDF.</span>
-                                                    <div id="@adjFileKey" class="mt-1" style="display:@(estaSeleccionado ? "block" : "none");">
-                                                        <input type="file" name="@adjFileKey" class="form-control form-control-sm" accept=".pdf,.jpg,.jpeg,.png,.doc,.docx,.xls,.xlsx" />
-                                                        <small class="text-muted">Adjunte el archivo de respaldo (opcional).</small>
+
+                                    <div class="report-original-block">
+                                        <span class="report-original-label">2. CONCLUSION</span>
+                                        <input type="hidden" id="conclusionesField" name="conclusiones" value="@(informeTecnico != null ? informeTecnico.Conclusiones : string.Empty)" />
+                                        <div class="report-original-text">El resultado de la inspección es:</div>
+                                        <div class="report-original-result-list">
+                                            <label class="report-original-result-item">
+                                                <span class="report-original-bullet">•</span>
+                                                <input type="radio" name="resultado" value="SATISFACTORIO" @(string.Equals(resultadoInforme, "SATISFACTORIO", System.StringComparison.OrdinalIgnoreCase) ? "checked" : null) />
+                                                <span>Satisfactorio</span>
+                                            </label>
+                                            <label class="report-original-result-item">
+                                                <span class="report-original-bullet">•</span>
+                                                <input type="radio" name="resultado" value="NO_SATISFACTORIO" @(string.Equals(resultadoInforme, "NO_SATISFACTORIO", System.StringComparison.OrdinalIgnoreCase) || string.Equals(resultadoInforme, "INSATISFACTORIO", System.StringComparison.OrdinalIgnoreCase) ? "checked" : null) />
+                                                <span>Insatisfactorio.</span>
+                                            </label>
+                                        </div>
+                                    </div>
+
+                                    <div class="report-original-block">
+                                        <span class="report-original-label">3. RECOMENDACIONES:</span>
+                                        <textarea class="form-control report-original-input" name="recomendaciones" rows="5" placeholder="Ingrese aquí las recomendaciones. Cada línea se conservará en el PDF.">@(informeTecnico != null ? informeTecnico.Recomendaciones : string.Empty)</textarea>
+                                    </div>
+
+                                    <div class="report-original-block">
+                                        <span class="report-original-label">DOCUMENTOS ADJUNTOS:</span>
+                                        <input type="hidden" name="documentosAdjuntosPresent" value="true" />
+                                        <div class="report-original-documents">
+                                            @{ var idxAdj = 0; }
+                                            @foreach (var adjunto in documentosAdjuntosBase)
+                                            {
+                                                var estaSeleccionado = documentosAdjuntosSeleccionados.Any(item => string.Equals(item, adjunto, System.StringComparison.OrdinalIgnoreCase));
+                                                var archivoAdjuntoActual = documentosAdjuntosArchivos.ContainsKey(adjunto) ? documentosAdjuntosArchivos[adjunto] : string.Empty;
+                                                var resumenAdjuntoActual = !string.IsNullOrWhiteSpace(archivoAdjuntoActual)
+                                                    ? "Archivo cargado: " + archivoAdjuntoActual
+                                                    : (estaSeleccionado ? "Documento marcado en el informe. Sin archivo cargado." : string.Empty);
+                                                var adjFileKey = "archivoAdjunto_" + idxAdj;
+                                                var adjSummaryId = "adjuntoResumen_" + idxAdj;
+                                                <div class="report-original-document-item">
+                                                    <label class="report-original-document-main">
+                                                        <span class="report-original-bullet">•</span>
+                                                        <input type="checkbox" name="documentosAdjuntos" value="@adjunto" @(estaSeleccionado ? "checked" : null) />
+                                                        <span>@adjunto</span>
+                                                    </label>
+                                                    <div class="report-original-document-upload">
+                                                        <input type="file" name="@adjFileKey" class="form-control form-control-sm" accept=".pdf,.jpg,.jpeg,.png,.doc,.docx,.xls,.xlsx" data-file-summary-target="@adjSummaryId" />
+                                                        <small class="report-original-document-note" id="@adjSummaryId" data-existing-summary="@resumenAdjuntoActual">@resumenAdjuntoActual</small>
                                                     </div>
                                                 </div>
-                                            </label>
-                                            idxAdj++;
-                                        }
+                                                idxAdj++;
+                                            }
+                                        </div>
+
+                                        <div class="report-original-text mt-3">
+                                            <strong>• OTROS:</strong>
+                                            <textarea class="form-control report-original-input mt-3" name="otrosAdjuntos" rows="4" placeholder="Ingrese aquí otros documentos adjuntos. Puede usar una línea por documento.">@otrosAdjuntosInforme</textarea>
+                                            <input type="file" name="otrosAdjuntosArchivo" class="form-control form-control-sm mt-3" multiple accept=".pdf,.jpg,.jpeg,.png,.doc,.docx,.xls,.xlsx" />
+                                        </div>
                                     </div>
-                                    <script>
-                                        function toggleFileUpload(chk, fileId) {
-                                            var el = document.getElementById(fileId);
-                                            if (el) { el.style.display = chk.checked ? 'block' : 'none'; }
-                                        }
-                                    </script>
-                                    <div>
-                                        <label class="detail-label">Otros documentos adjuntos</label>
-                                        <input type="file" name="otrosAdjuntosArchivo" class="form-control form-control-sm mb-2" multiple accept=".pdf,.jpg,.jpeg,.png,.doc,.docx,.xls,.xlsx" />
-                                        <small class="text-muted d-block mb-2">Puede adjuntar uno o varios archivos adicionales en este bloque.</small>
-                                        <textarea class="form-control" name="otrosAdjuntos" rows="3" placeholder="Ingrese otros documentos, uno por línea.">@otrosAdjuntosInforme</textarea>
+
+                                    <div class="report-original-signature">
+                                        <div class="report-original-signature-line"></div>
+                                        <p class="report-original-signature-name">@(!string.IsNullOrWhiteSpace(inspectorPrincipalNombre) ? inspectorPrincipalNombre : "NOMBRE DEL INSPECTOR")</p>
+                                        <p class="report-original-signature-license">@(string.IsNullOrWhiteSpace(numeroLicenciaInspector) ? "No. LICENCIA" : "No. LICENCIA " + numeroLicenciaInspector)</p>
+                                        <p class="report-original-signature-role">INSPECTOR DGAC</p>
+                                        <p class="report-original-signature-specialty">ESPECIALISTA CERTIFICACION DE OPERACIONES</p>
                                     </div>
                                 </div>
 
-                                <div class="report-module">
-                                    <div class="report-module-head">
-                                        <div>
-                                            <h3 class="report-module-title">F. Acciones</h3>
-                                            <p class="report-module-copy">Gestione el borrador o cierre la edición para generar el PDF del informe técnico.</p>
-                                        </div>
-                                        <span class="report-module-badge">Acciones</span>
-                                    </div>
-                                    <div class="report-actions-bar">
-                                        <p class="report-actions-copy">El documento PDF se genera automáticamente al finalizar el informe con la información consolidada en esta sección.</p>
-                                        <div class="report-actions-buttons">
-                                            <button type="submit" class="btn btn-outline-primary">Guardar borrador</button>
-                                            <button type="submit" class="btn btn-primary" name="finalizar" value="true">Finalizar informe y generar PDF</button>
-                                        </div>
+                                <div class="report-original-actions">
+                                    <p class="report-original-actions-copy">El anexo conserva la estructura original del informe. Puede guardar el borrador, abrir la vista previa o finalizar el documento definitivo.</p>
+                                    <div class="report-action-grid">
+                                        <button type="submit" class="btn btn-outline-primary">
+                                            <i class="fas fa-save me-1"></i> Guardar borrador
+                                        </button>
+                                        <button type="button" class="btn btn-outline-secondary" id="btnPreviewInformeTecnico">
+                                            <i class="fas fa-eye me-1"></i> Previsualizar informe
+                                        </button>
+                                        <button type="submit" class="btn btn-primary" name="finalizar" value="true" onclick="return confirm('¿Confirma que desea finalizar el informe técnico y generar el PDF definitivo?');">
+                                            <i class="fas fa-file-pdf me-1"></i> Finalizar informe
+                                        </button>
+                                        <a class="btn btn-light" href="@Url.Action("Index", "Inspeccion")">
+                                            <i class="fas fa-arrow-left me-1"></i> Volver
+                                        </a>
                                     </div>
                                 </div>
                             </div>
                         }
                     }
 
-                    @if (tieneInforme)
-                    {
-                        <div class="report-pdf-bar d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-3">
-                            <div>
-                                <span class="report-pdf-title">Documento disponible para revisión / firma</span>
-                                <div class="report-pdf-path">@rutaInformeVisual</div>
-                            </div>
-                            <a class="btn btn-ver-pdf"
-                               href="@Url.Action("VerInforme", "Inspeccion", new { id = Model.CodigoInspeccion })"
-                               rel="noopener">
-                                Ver PDF
-                            </a>
-                        </div>
-                    }
-                    else
+                    @if (!tieneInforme && !mostrarPanelVistaPrevia)
                     {
                         <div class="alert alert-light alert-inline mb-3">Aún no hay informe cargado para esta inspección.</div>
                     }
@@ -2295,7 +3110,17 @@
                                             <td>
                                                 @if (!string.IsNullOrWhiteSpace(doc.RutaArchivo))
                                                 {
-                                                    <a href="@Url.Action("VerDocumentoSolicitante", "Inspeccion", new { documentoId = doc.CodigoDocumento })" target="_blank" rel="noopener">@(doc.NombreArchivoOriginal ?? doc.NombreArchivoStorage)</a>
+                                                    var urlDocSolicitante = Url.Action("VerDocumentoSolicitante", "Inspeccion", new { documentoId = doc.CodigoDocumento });
+                                                    var esPdfSolicitante = string.Equals(doc.ContentType, "application/pdf", System.StringComparison.OrdinalIgnoreCase)
+                                                        || string.Equals(System.IO.Path.GetExtension(doc.NombreArchivoOriginal ?? doc.NombreArchivoStorage ?? string.Empty), ".pdf", System.StringComparison.OrdinalIgnoreCase);
+                                                    <a href="@urlDocSolicitante"
+                                                       class="@(esPdfSolicitante ? "aocr-pdf-open" : "")"
+                                                       data-pdf-url="@urlDocSolicitante"
+                                                       data-title="Documento del solicitante"
+                                                       data-subtitle="Archivo revisado dentro del expediente de inspección"
+                                                       data-status="Documento"
+                                                       target="_blank"
+                                                       rel="noopener">@(doc.NombreArchivoOriginal ?? doc.NombreArchivoStorage)</a>
                                                 }
                                                 else
                                                 {
@@ -2418,6 +3243,317 @@
         </div>
     </div>
 </div>
+
+@section Scripts {
+    <script>
+        (function () {
+            var form = document.getElementById('formInformeTecnico');
+            var btnPreview = document.getElementById('btnPreviewInformeTecnico');
+            var viewerInline = document.getElementById('viewerInformeTecnicoDefinitivo');
+            var viewerStatus = viewerInline ? viewerInline.querySelector('.aocr-pdf-status') : null;
+            var viewerHelp = viewerInline ? viewerInline.querySelector('.aocr-pdf-help') : null;
+            var reportPdfPath = document.getElementById('reportPdfPathInformeTecnico');
+            var previewTimer = null;
+            var previewInFlight = false;
+            var queuedRequest = null;
+            var tieneInformeDefinitivo = (form.getAttribute('data-tiene-informe') || 'false') === 'true';
+            var operadorTextoInforme = form.getAttribute('data-operador-informe') || '';
+
+            if (!form || !btnPreview) {
+                return;
+            }
+
+            function syncLineCollection(container) {
+                if (!container) {
+                    return;
+                }
+
+                var targetId = container.getAttribute('data-lines-target');
+                if (!targetId) {
+                    return;
+                }
+
+                var target = document.getElementById(targetId);
+                if (!target) {
+                    return;
+                }
+
+                var values = [];
+                Array.prototype.forEach.call(container.querySelectorAll('input[type="text"]'), function (input) {
+                    var value = input && typeof input.value === 'string' ? input.value.trim() : '';
+                    if (value) {
+                        values.push(value);
+                    }
+                });
+
+                target.value = values.join('\n');
+            }
+
+            function syncGeneratedDocumentFields() {
+                Array.prototype.forEach.call(form.querySelectorAll('[data-lines-target]'), function (container) {
+                    syncLineCollection(container);
+                });
+
+                var fechas = document.getElementById('fechasInspeccionManualField');
+                var estaciones = document.getElementById('estacionesInspeccionManualField');
+                var trabajos = document.getElementById('trabajosRealizadosField');
+                var conclusion = document.getElementById('conclusionesField');
+                var resultadoSeleccionado = form.querySelector('input[name="resultado"]:checked');
+                var fechasTexto = fechas && fechas.value ? fechas.value.trim() : '';
+                var estacionesTexto = estaciones && estaciones.value ? estaciones.value.trim() : '';
+
+                if (trabajos) {
+                    trabajos.value = 'En cumplimiento del Art. 110 del Código Aeronáutico, entre '
+                        + (fechasTexto || '___________ ( fecha ) ___________')
+                        + ' se realizó la inspección a la(s) estación(es) de '
+                        + (estacionesTexto || '_________, ________, _____________, ____________')
+                        + ' con el fin de verificar que la compañía '
+                        + (operadorTextoInforme || '__________________')
+                        + ' cuenta con instalaciones, facilidades y personal técnico - operativo que brinda asistencia en tierra a sus operaciones comerciales, en la(s) cual(es) se verificó lo siguiente:';
+                }
+
+                if (conclusion) {
+                    if (!resultadoSeleccionado) {
+                        conclusion.value = stringEmpty();
+                    } else if (resultadoSeleccionado.value === 'SATISFACTORIO') {
+                        conclusion.value = 'El resultado de la inspección es: Satisfactorio.';
+                    } else {
+                        conclusion.value = 'El resultado de la inspección es: Insatisfactorio.';
+                    }
+                }
+            }
+
+            function stringEmpty() {
+                return '';
+            }
+
+            function syncAttachmentFileSummary(input) {
+                if (!input) {
+                    return;
+                }
+
+                var targetId = input.getAttribute('data-file-summary-target');
+                if (!targetId) {
+                    return;
+                }
+
+                var target = document.getElementById(targetId);
+                if (!target) {
+                    return;
+                }
+
+                var existingSummary = target.getAttribute('data-existing-summary') || '';
+                var files = Array.prototype.slice.call(input.files || []);
+                if (files.length === 0) {
+                    target.textContent = existingSummary;
+                    return;
+                }
+
+                target.textContent = 'Archivo seleccionado: ' + files.map(function (file) {
+                    return file.name;
+                }).join(', ');
+            }
+
+            function buildPreviewFormData(includeFiles, silent) {
+                syncGeneratedDocumentFields();
+                var formData = new FormData(form);
+
+                if (!includeFiles) {
+                    Array.prototype.forEach.call(form.querySelectorAll('input[type="file"]'), function (input) {
+                        if (input && input.name) {
+                            formData.delete(input.name);
+                        }
+                    });
+                }
+
+                formData.set('previewSilent', silent ? 'true' : 'false');
+                return formData;
+            }
+
+            function refreshInlinePreview(result) {
+                if (!viewerInline || !result || !result.pdfUrl) {
+                    return;
+                }
+
+                viewerInline.setAttribute('data-pdf-url', result.pdfUrl);
+                viewerInline.setAttribute('data-download-url', result.downloadUrl || result.pdfUrl);
+
+                if (viewerStatus) {
+                    viewerStatus.textContent = result.estado || 'VISTA PREVIA';
+                }
+
+                if (viewerHelp) {
+                    viewerHelp.textContent = 'Vista previa del borrador actual. Se actualiza automáticamente mientras edita el informe técnico.';
+                }
+
+                if (reportPdfPath) {
+                    reportPdfPath.textContent = 'Vista previa automática actualizada a las ' + new Date().toLocaleTimeString('es-EC');
+                }
+
+                if (window.AOCRPdfViewer && window.AOCRPdfViewer.instances) {
+                    var viewer = window.AOCRPdfViewer.instances[viewerInline.id];
+                    if (!viewer && typeof window.AOCRPdfViewer.init === 'function') {
+                        window.AOCRPdfViewer.init(document);
+                        viewer = window.AOCRPdfViewer.instances[viewerInline.id];
+                    }
+
+                    if (viewer && typeof viewer.load === 'function') {
+                        viewer.load(result.pdfUrl);
+                    }
+                }
+            }
+
+            function requestPreview(options) {
+                options = options || {};
+
+                if (previewInFlight) {
+                    queuedRequest = options;
+                    return;
+                }
+
+                var originalHtml = btnPreview.innerHTML;
+                previewInFlight = true;
+
+                if (options.openInModal) {
+                    btnPreview.disabled = true;
+                    btnPreview.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i> Generando vista previa...';
+                }
+
+                fetch('@Url.Action("PrevisualizarInformeTecnico", "Inspeccion")', {
+                    method: 'POST',
+                    body: buildPreviewFormData(!!options.includeFiles, !!options.silent),
+                    credentials: 'same-origin',
+                    headers: { 'X-Requested-With': 'XMLHttpRequest' }
+                })
+                .then(function (response) {
+                    if (!response.ok) {
+                        throw new Error('HTTP ' + response.status);
+                    }
+                    return response.json();
+                })
+                .then(function (result) {
+                    if (!result || !result.success) {
+                        throw new Error(result && result.message ? result.message : 'No se pudo generar la vista previa.');
+                    }
+
+                    refreshInlinePreview(result);
+
+                    if (options.openInModal) {
+                        if (window.AOCRPdfViewer && typeof window.AOCRPdfViewer.open === 'function') {
+                            window.AOCRPdfViewer.open({
+                                url: result.pdfUrl,
+                                downloadUrl: result.downloadUrl || result.pdfUrl,
+                                title: 'Vista previa del Informe Técnico',
+                                subtitle: 'Documento generado en modo borrador. No finaliza, no firma y no mueve el flujo.',
+                                status: result.estado || 'VISTA PREVIA'
+                            });
+                        } else {
+                            window.open(result.pdfUrl, '_blank', 'noopener');
+                        }
+                    }
+                })
+                .catch(function (error) {
+                    if (options.silent) {
+                        return;
+                    }
+
+                    var message = error && error.message ? error.message : 'No se pudo generar la vista previa del informe técnico.';
+                    if (window.Swal) {
+                        window.Swal.fire('Vista previa no disponible', message, 'warning');
+                    } else {
+                        alert(message);
+                    }
+                })
+                .finally(function () {
+                    previewInFlight = false;
+
+                    if (options.openInModal) {
+                        btnPreview.disabled = false;
+                        btnPreview.innerHTML = originalHtml;
+                    }
+
+                    if (queuedRequest) {
+                        var nextRequest = queuedRequest;
+                        queuedRequest = null;
+                        requestPreview(nextRequest);
+                    }
+                });
+            }
+
+            function scheduleAutoPreview(delay) {
+                clearTimeout(previewTimer);
+                previewTimer = window.setTimeout(function () {
+                    requestPreview({ includeFiles: false, openInModal: false, silent: true });
+                }, typeof delay === 'number' ? delay : 1400);
+            }
+
+            Array.prototype.forEach.call(form.querySelectorAll('input, textarea, select'), function (field) {
+                if (!field || !field.name || field.disabled) {
+                    return;
+                }
+
+                var tagName = (field.tagName || '').toUpperCase();
+                var type = (field.type || '').toLowerCase();
+                if (type === 'hidden' || type === 'submit' || type === 'button' || type === 'reset') {
+                    return;
+                }
+
+                if (type === 'file') {
+                    syncAttachmentFileSummary(field);
+                    field.addEventListener('change', function () {
+                        syncAttachmentFileSummary(field);
+                        scheduleAutoPreview(500);
+                    });
+                    return;
+                }
+
+                if (tagName === 'SELECT' || type === 'checkbox' || type === 'radio') {
+                    field.addEventListener('change', function () {
+                        scheduleAutoPreview(450);
+                    });
+                    return;
+                }
+
+                field.addEventListener('input', function () {
+                    scheduleAutoPreview();
+                });
+
+                field.addEventListener('change', function () {
+                    scheduleAutoPreview(450);
+                });
+            });
+
+            Array.prototype.forEach.call(form.querySelectorAll('.report-original-line-input'), function (field) {
+                field.addEventListener('input', function () {
+                    syncGeneratedDocumentFields();
+                    scheduleAutoPreview();
+                });
+
+                field.addEventListener('change', function () {
+                    syncGeneratedDocumentFields();
+                    scheduleAutoPreview(450);
+                });
+            });
+
+            form.addEventListener('submit', function () {
+                syncGeneratedDocumentFields();
+                clearTimeout(previewTimer);
+            });
+
+            btnPreview.addEventListener('click', function () {
+                if (btnPreview.disabled) {
+                    return;
+                }
+
+                clearTimeout(previewTimer);
+                requestPreview({ includeFiles: true, openInModal: true, silent: false });
+            });
+
+            syncGeneratedDocumentFields();
+            scheduleAutoPreview(tieneInformeDefinitivo ? 250 : 700);
+        })();
+    </script>
+}
 
 
 <div class="modal fade" id="modalHallazgo" tabindex="-1" aria-hidden="true">

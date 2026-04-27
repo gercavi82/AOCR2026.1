@@ -46,6 +46,7 @@ namespace CapaDatos.DAOs
                            notas,
                            no_conformidades,
                            documentos_adjuntos,
+                           documentos_adjuntos_archivos,
                            otros_adjuntos,
                            resultado,
                            observaciones,
@@ -115,6 +116,7 @@ namespace CapaDatos.DAOs
                            notas,
                            no_conformidades,
                            documentos_adjuntos,
+                           documentos_adjuntos_archivos,
                            otros_adjuntos,
                            resultado,
                            observaciones,
@@ -190,6 +192,7 @@ namespace CapaDatos.DAOs
                             notas = @notas,
                             no_conformidades = @no_conformidades,
                             documentos_adjuntos = @documentos_adjuntos,
+                            documentos_adjuntos_archivos = @documentos_adjuntos_archivos,
                             otros_adjuntos = @otros_adjuntos,
                             resultado = @resultado,
                             observaciones = @observaciones,
@@ -230,6 +233,7 @@ namespace CapaDatos.DAOs
                         notas,
                         no_conformidades,
                         documentos_adjuntos,
+                        documentos_adjuntos_archivos,
                         otros_adjuntos,
                         resultado,
                         observaciones,
@@ -261,6 +265,7 @@ namespace CapaDatos.DAOs
                         @notas,
                         @no_conformidades,
                         @documentos_adjuntos,
+                        @documentos_adjuntos_archivos,
                         @otros_adjuntos,
                         @resultado,
                         @observaciones,
@@ -545,6 +550,7 @@ namespace CapaDatos.DAOs
             cmd.Parameters.AddWithValue("@notas", (object)informe.Notas ?? DBNull.Value);
             cmd.Parameters.AddWithValue("@no_conformidades", (object)informe.NoConformidades ?? DBNull.Value);
             cmd.Parameters.AddWithValue("@documentos_adjuntos", (object)informe.DocumentosAdjuntos ?? DBNull.Value);
+            cmd.Parameters.AddWithValue("@documentos_adjuntos_archivos", (object)informe.DocumentosAdjuntosArchivos ?? DBNull.Value);
             cmd.Parameters.AddWithValue("@otros_adjuntos", (object)informe.OtrosAdjuntos ?? DBNull.Value);
             cmd.Parameters.AddWithValue("@resultado", (object)informe.Resultado ?? DBNull.Value);
             cmd.Parameters.AddWithValue("@observaciones", (object)informe.Observaciones ?? DBNull.Value);
@@ -575,6 +581,7 @@ namespace CapaDatos.DAOs
                 Notas = dr["notas"] == DBNull.Value ? null : dr["notas"].ToString(),
                 NoConformidades = dr["no_conformidades"] == DBNull.Value ? null : dr["no_conformidades"].ToString(),
                 DocumentosAdjuntos = dr["documentos_adjuntos"] == DBNull.Value ? null : dr["documentos_adjuntos"].ToString(),
+                DocumentosAdjuntosArchivos = dr["documentos_adjuntos_archivos"] == DBNull.Value ? null : dr["documentos_adjuntos_archivos"].ToString(),
                 OtrosAdjuntos = dr["otros_adjuntos"] == DBNull.Value ? null : dr["otros_adjuntos"].ToString(),
                 Resultado = dr["resultado"] == DBNull.Value ? null : dr["resultado"].ToString(),
                 Observaciones = dr["observaciones"] == DBNull.Value ? null : dr["observaciones"].ToString(),
@@ -643,6 +650,7 @@ namespace CapaDatos.DAOs
                         notas TEXT,
                         no_conformidades TEXT,
                         documentos_adjuntos TEXT,
+                        documentos_adjuntos_archivos TEXT,
                         otros_adjuntos TEXT,
                         resultado VARCHAR(100),
                         observaciones TEXT,
@@ -694,6 +702,7 @@ namespace CapaDatos.DAOs
                     ALTER TABLE public.aocr_tbinforme_inspeccion ADD COLUMN IF NOT EXISTS notas TEXT;
                     ALTER TABLE public.aocr_tbinforme_inspeccion ADD COLUMN IF NOT EXISTS no_conformidades TEXT;
                     ALTER TABLE public.aocr_tbinforme_inspeccion ADD COLUMN IF NOT EXISTS documentos_adjuntos TEXT;
+                    ALTER TABLE public.aocr_tbinforme_inspeccion ADD COLUMN IF NOT EXISTS documentos_adjuntos_archivos TEXT;
                     ALTER TABLE public.aocr_tbinforme_inspeccion ADD COLUMN IF NOT EXISTS otros_adjuntos TEXT;
                     ALTER TABLE public.aocr_tbinforme_inspeccion ADD COLUMN IF NOT EXISTS estado_informe VARCHAR(80);
                     ALTER TABLE public.aocr_tbinforme_inspeccion ADD COLUMN IF NOT EXISTS firmado_inspector BOOLEAN NOT NULL DEFAULT FALSE;
@@ -740,6 +749,7 @@ namespace CapaDatos.DAOs
                        notas,
                        no_conformidades,
                        documentos_adjuntos,
+                       documentos_adjuntos_archivos,
                        otros_adjuntos,
                        resultado,
                        observaciones,
@@ -800,6 +810,7 @@ namespace CapaDatos.DAOs
                        notas,
                        no_conformidades,
                        documentos_adjuntos,
+                       documentos_adjuntos_archivos,
                        otros_adjuntos,
                        resultado,
                        observaciones,

@@ -21,6 +21,7 @@
                              https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://cdn.datatables.net;
                    img-src    'self' data: https:;
                    font-src   'self' data: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net;
+                   worker-src 'self' blob:;
                    connect-src 'self' https:;" />
 
     <!-- Preconexiones para mejorar performance -->
@@ -79,6 +80,8 @@
     <link href="@Url.Content("~/Content/Site.css")" rel="stylesheet" />
     <link href="@aocrCssInstHref" rel="stylesheet" />
     <link href="@aocrCssDtHref" rel="stylesheet" />
+    <link href="@Url.Content("~/Content/aocr-responsive.css")" rel="stylesheet" />
+    <link href="@Url.Content("~/Content/aocr-pdf-viewer/aocr-pdf-viewer.css")" rel="stylesheet" />
 
     <!-- Estilos personalizados criticos (inline para performance) -->
     <style>
@@ -440,6 +443,12 @@
     <script src="https://cdn.datatables.net/1.13.4/js/dataTables.bootstrap5.min.js"></script>
     <script src="https://cdn.datatables.net/responsive/2.4.1/js/dataTables.responsive.min.js"></script>
     <script src="https://cdn.datatables.net/responsive/2.4.1/js/responsive.bootstrap5.min.js"></script>
+    <script>
+        window.AOCR_PDF_WORKER_URL = '@Url.Content("~/Content/aocr-pdf-viewer/pdf.worker.min.js")';
+    </script>
+    <script src="@Url.Content("~/Content/aocr-pdf-viewer/pdf.min.js")"></script>
+    <script src="@Url.Content("~/Content/aocr-pdf-viewer/aocr-pdf-viewer.js")"></script>
+    <script src="@Url.Content("~/Scripts/aocr-datatables.js")"></script>
 
     <!-- 1.1b DataTables: defaults institucionales AOCR (aplicados a todas las tablas del proyecto) -->
     <!--     Paginacion global fija: 5 registros por pagina. -->
@@ -679,7 +688,7 @@
         function loadAdminLTE() {
             console.log('🎨 Cargando AdminLTE...');
             var script = document.createElement('script');
-            script.src = 'https://cdn.jsdelivr.net/npm/admin-lte@3.2/dist/js/adminlte.min.js';
+            script.src = '@Url.Content("~/Content/dist/js/adminlte.js")';
             script.async = false;
 
             script.onload = function () {

@@ -106,17 +106,23 @@ namespace CapaPresentacion.Controllers
         }
 
         [HttpGet]
-        public ActionResult ExportarPdf(FiltroReporteDTO filtros)
+        public ActionResult ExportarPdf(FiltroReporteDTO filtros, bool vistaPrevia = false)
         {
             var vm = ConstruirViewModel(filtros, incluirOrdenes: true);
-            return new ViewAsPdf("ExportPdf", vm)
+            var pdf = new ViewAsPdf("ExportPdf", vm)
             {
-                FileName = "ReporteFinanciero_" + DateTime.Now.ToString("yyyyMMdd_HHmmss") + ".pdf",
                 PageSize = Size.A4,
                 PageOrientation = Orientation.Landscape,
                 PageMargins = new Margins(0, 0, 0, 0),
                 CustomSwitches = PdfBrandingHelper.StandardRotativaSwitches
             };
+
+            if (!vistaPrevia)
+            {
+                pdf.FileName = "ReporteFinanciero_" + DateTime.Now.ToString("yyyyMMdd_HHmmss") + ".pdf";
+            }
+
+            return pdf;
         }
 
         [HttpGet]

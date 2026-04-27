@@ -152,6 +152,20 @@ namespace CapaDatos.DAOs
                     cmd.ExecuteNonQuery();
                 }
 
+                const string alterSql = @"
+                    ALTER TABLE public.aocr_tbhistorial_estado_inspeccion ADD COLUMN IF NOT EXISTS estado_anterior VARCHAR(120);
+                    ALTER TABLE public.aocr_tbhistorial_estado_inspeccion ADD COLUMN IF NOT EXISTS estado_nuevo VARCHAR(120);
+                    ALTER TABLE public.aocr_tbhistorial_estado_inspeccion ADD COLUMN IF NOT EXISTS observacion TEXT;
+                    ALTER TABLE public.aocr_tbhistorial_estado_inspeccion ADD COLUMN IF NOT EXISTS origen VARCHAR(60);
+                    ALTER TABLE public.aocr_tbhistorial_estado_inspeccion ADD COLUMN IF NOT EXISTS codigo_usuario INTEGER;
+                    ALTER TABLE public.aocr_tbhistorial_estado_inspeccion ADD COLUMN IF NOT EXISTS usuario_nombre VARCHAR(160);
+                    ALTER TABLE public.aocr_tbhistorial_estado_inspeccion ADD COLUMN IF NOT EXISTS fecha_cambio TIMESTAMP NOT NULL DEFAULT NOW();";
+
+                using (var cmd = new NpgsqlCommand(alterSql, cn))
+                {
+                    cmd.ExecuteNonQuery();
+                }
+
                 _schemaReady = true;
             }
         }

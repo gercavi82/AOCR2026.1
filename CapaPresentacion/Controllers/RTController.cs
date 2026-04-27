@@ -108,7 +108,7 @@ namespace CapaPresentacion.Controllers
         }
 
         [HttpGet]
-        public ActionResult DescargarDeclaracionPdf(int solicitudId)
+        public ActionResult DescargarDeclaracionPdf(int solicitudId, bool vistaPrevia = false)
         {
             var usuarioId = ObtenerUsuarioId();
             var solicitud = _service.GetSolicitudByUsuario(usuarioId);
@@ -141,7 +141,9 @@ namespace CapaPresentacion.Controllers
             try
             {
                 var pdfBytes = GenerarDeclaracionPdf(vm);
-                return File(pdfBytes, "application/pdf", fileName);
+                return vistaPrevia
+                    ? File(pdfBytes, "application/pdf")
+                    : File(pdfBytes, "application/pdf", fileName);
             }
             catch (Exception ex)
             {

@@ -43,6 +43,7 @@
                         <tbody>
                             @foreach (var doc in Model)
                             {
+                                var esPdf = string.Equals(System.IO.Path.GetExtension(doc.NombreArchivo ?? string.Empty), ".pdf", System.StringComparison.OrdinalIgnoreCase);
                                 <tr>
                                     <td class="align-middle font-weight-bold">@doc.NombreArchivo</td>
                                     <td class="align-middle"><span class="badge badge-info">@doc.TipoDocumento</span></td>
@@ -53,6 +54,18 @@
                                             <a href="@Url.Action("Detalle", "Documento", new { id = doc.CodigoDocumento })" class="btn btn-sm btn-outline-primary" title="Ver Detalle">
                                                 <i class="fas fa-eye"></i>
                                             </a>
+                                            @if (esPdf)
+                                            {
+                                                <a href="@Url.Action("Descargar", "Documento", new { id = doc.CodigoDocumento, vistaPrevia = true })"
+                                                   class="btn btn-sm btn-outline-secondary aocr-pdf-open"
+                                                   data-pdf-url="@Url.Action("Descargar", "Documento", new { id = doc.CodigoDocumento, vistaPrevia = true })"
+                                                   data-download-url="@Url.Action("Descargar", "Documento", new { id = doc.CodigoDocumento })"
+                                                   data-title="@doc.NombreArchivo"
+                                                   data-status="@doc.Estado"
+                                                   title="Vista previa PDF">
+                                                    <i class="fas fa-file-pdf"></i>
+                                                </a>
+                                            }
                                             <a href="@Url.Action("Descargar", "Documento", new { id = doc.CodigoDocumento })" class="btn btn-sm btn-outline-success" title="Descargar">
                                                 <i class="fas fa-download"></i>
                                             </a>

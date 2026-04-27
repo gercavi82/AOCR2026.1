@@ -1,0 +1,191 @@
+html {
+    overflow-x: hidden;
+}
+
+body {
+    overflow-x: hidden;
+}
+
+.content-wrapper,
+.main-content,
+.container,
+.container-fluid {
+    max-width: 100%;
+}
+
+.card,
+.modal-content,
+.dropdown-menu {
+    max-width: 100%;
+}
+
+.table-responsive,
+.aocr-table-responsive {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+.table {
+    min-width: max-content;
+}
+
+.aocr-action-toolbar,
+.report-actions-buttons,
+.report-pdf-bar,
+.aocr-action-grid,
+.btn-group {
+    flex-wrap: wrap;
+}
+
+.aocr-action-toolbar .btn,
+.report-actions-buttons .btn {
+    white-space: normal;
+}
+
+.modal-dialog {
+    max-width: min(1000px, calc(100vw - 24px));
+}
+
+.modal-body {
+    max-width: 100%;
+    overflow-x: hidden;
+}
+
+textarea.form-control {
+    min-height: 88px;
+}
+
+img,
+canvas,
+iframe,
+object,
+embed {
+    max-width: 100%;
+}
+
+.dataTables_wrapper {
+    max-width: 100%;
+}
+
+.dataTables_wrapper .row {
+    margin-left: 0;
+    margin-right: 0;
+}
+
+@media (max-width: 992px) {
+    .content-wrapper {
+        margin-left: 0 !important;
+    }
+
+    .card-body {
+        padding: 1rem;
+    }
+
+    .section-heading,
+    .report-module-head {
+        align-items: flex-start;
+        flex-direction: column;
+        gap: .75rem;
+    }
+
+    .report-grid-2,
+    .report-observation-grid {
+        display: grid;
+        grid-template-columns: 1fr !important;
+    }
+}
+
+@media (max-width: 768px) {
+    .container,
+    .container-fluid {
+        padding-left: .75rem;
+        padding-right: .75rem;
+    }
+
+    .card {
+        border-radius: 8px;
+    }
+
+    .card-header,
+    .card-body,
+    .card-footer {
+        padding: .85rem;
+    }
+
+    .btn,
+    .form-control,
+    .form-select {
+        min-height: 38px;
+    }
+
+    .btn-group,
+    .aocr-action-toolbar,
+    .report-actions-buttons,
+    .report-pdf-bar,
+    .aocr-action-grid,
+    .modal-footer {
+        align-items: stretch !important;
+        display: flex !important;
+        flex-direction: column !important;
+        gap: .5rem;
+        width: 100%;
+    }
+
+    .btn-group > .btn,
+    .aocr-action-toolbar .btn,
+    .report-actions-buttons .btn,
+    .report-pdf-bar .btn,
+    .aocr-action-grid .btn,
+    .modal-footer .btn {
+        border-radius: 6px !important;
+        width: 100%;
+    }
+
+    .modal-dialog {
+        margin: .5rem;
+        max-width: calc(100vw - 1rem);
+    }
+
+    .modal-content {
+        max-height: calc(100vh - 1rem);
+    }
+
+    .modal-body {
+        overflow-y: auto;
+    }
+
+    .table {
+        font-size: .86rem;
+    }
+
+    .dataTables_wrapper .dataTables_filter {
+        text-align: left !important;
+    }
+
+    .dataTables_wrapper .dataTables_filter input {
+        margin-left: 0;
+        width: 100%;
+    }
+
+    .dataTables_wrapper .dataTables_info,
+    .dataTables_wrapper .dataTables_paginate {
+        justify-content: center !important;
+        text-align: center;
+    }
+}
+
+@media (max-width: 576px) {
+    h1, .h1 { font-size: 1.55rem; }
+    h2, .h2 { font-size: 1.35rem; }
+    h3, .h3 { font-size: 1.15rem; }
+
+    .section-title,
+    .report-module-title {
+        font-size: 1rem;
+    }
+
+    .dataTables_wrapper .pagination {
+        flex-wrap: wrap;
+        justify-content: center;
+    }
+}

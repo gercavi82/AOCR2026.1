@@ -11,6 +11,8 @@ namespace CapaDatos.DAOs
         private string CS => ConexionDAO.CadenaConexion;
         private const string TABLA = "public.aocr_tbhallazgo";
         private const string SQLSTATE_RELATION_DOES_NOT_EXIST = "42P01";
+        private static readonly object SyncLock = new object();
+        private static bool _schemaReady;
 
         private static bool EsRelacionNoExiste(PostgresException ex)
         {
@@ -54,6 +56,7 @@ namespace CapaDatos.DAOs
                 using (var conn = new NpgsqlConnection(CS))
                 {
                     conn.Open();
+                    EnsureSchema(conn);
 
                     string sql = $@"
                         INSERT INTO {TABLA}
@@ -97,6 +100,7 @@ namespace CapaDatos.DAOs
                 using (var conn = new NpgsqlConnection(CS))
                 {
                     conn.Open();
+                    EnsureSchema(conn);
 
                     string sql = $@"
                         UPDATE {TABLA}
@@ -148,6 +152,7 @@ namespace CapaDatos.DAOs
                 using (var conn = new NpgsqlConnection(CS))
                 {
                     conn.Open();
+                    EnsureSchema(conn);
 
                     string sql = $@"
                         SELECT *
@@ -192,6 +197,7 @@ namespace CapaDatos.DAOs
                 using (var conn = new NpgsqlConnection(CS))
                 {
                     conn.Open();
+                    EnsureSchema(conn);
 
                     string sql = $@"
                         UPDATE {TABLA}
@@ -244,6 +250,7 @@ namespace CapaDatos.DAOs
                 using (var conn = new NpgsqlConnection(CS))
                 {
                     conn.Open();
+                    EnsureSchema(conn);
 
                     string sql = $@"
                         SELECT 
@@ -285,6 +292,68 @@ namespace CapaDatos.DAOs
             }
 
             return estadisticas;
+        }
+
+        private static void EnsureSchema(NpgsqlConnection cn)
+        {
+            if (_schemaReady)
+            {
+                return;
+            }
+
+            lock (SyncLock)
+            {
+                if (_schemaReady)
+                {
+                    return;
+                }
+
+                const string sql = @"
+                    CREATE TABLE IF NOT EXISTS public.aocr_tbhallazgo
+                    (
+                        codigo_hallazgo SERIAL PRIMARY KEY,
+                        codigo_inspeccion INTEGER NOT NULL,
+                        descripcion TEXT,
+                        criticidad VARCHAR(30),
+                        estado VARCHAR(40),
+                        accion_correctiva TEXT,
+                        fecha_deteccion TIMESTAMP,
+                        fecha_cierre TIMESTAMP,
+                        responsable VARCHAR(200),
+                        created_at TIMESTAMP,
+                        created_by VARCHAR(100),
+                        updated_at TIMESTAMP,
+                        updated_by VARCHAR(100)
+                    );
+
+                    CREATE INDEX IF NOT EXISTS idx_hallazgo_inspeccion
+                        ON public.aocr_tbhallazgo(codigo_inspeccion, fecha_deteccion DESC);";
+
+                using (var cmd = new NpgsqlCommand(sql, cn))
+                {
+                    cmd.ExecuteNonQuery();
+                }
+
+                const string alterSql = @"
+                    ALTER TABLE public.aocr_tbhallazgo ADD COLUMN IF NOT EXISTS descripcion TEXT;
+                    ALTER TABLE public.aocr_tbhallazgo ADD COLUMN IF NOT EXISTS criticidad VARCHAR(30);
+                    ALTER TABLE public.aocr_tbhallazgo ADD COLUMN IF NOT EXISTS estado VARCHAR(40);
+                    ALTER TABLE public.aocr_tbhallazgo ADD COLUMN IF NOT EXISTS accion_correctiva TEXT;
+                    ALTER TABLE public.aocr_tbhallazgo ADD COLUMN IF NOT EXISTS fecha_deteccion TIMESTAMP;
+                    ALTER TABLE public.aocr_tbhallazgo ADD COLUMN IF NOT EXISTS fecha_cierre TIMESTAMP;
+                    ALTER TABLE public.aocr_tbhallazgo ADD COLUMN IF NOT EXISTS responsable VARCHAR(200);
+                    ALTER TABLE public.aocr_tbhallazgo ADD COLUMN IF NOT EXISTS created_at TIMESTAMP;
+                    ALTER TABLE public.aocr_tbhallazgo ADD COLUMN IF NOT EXISTS created_by VARCHAR(100);
+                    ALTER TABLE public.aocr_tbhallazgo ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP;
+                    ALTER TABLE public.aocr_tbhallazgo ADD COLUMN IF NOT EXISTS updated_by VARCHAR(100);";
+
+                using (var cmd = new NpgsqlCommand(alterSql, cn))
+                {
+                    cmd.ExecuteNonQuery();
+                }
+
+                _schemaReady = true;
+            }
         }
     }
 }

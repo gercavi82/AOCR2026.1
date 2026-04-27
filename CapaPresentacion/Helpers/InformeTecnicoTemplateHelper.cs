@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace CapaPresentacion.Helpers
 {
@@ -37,7 +38,7 @@ namespace CapaPresentacion.Helpers
             new ServicioEstacionDef("servicio_provision_combustible", "Servicio Provision de combustible"),
             new ServicioEstacionDef("servicio_mantenimiento_linea", "Servicio Mantenimiento en Linea"),
             new ServicioEstacionDef("servicio_procesamiento_carga", "Servicio Procesamiento de Carga"),
-            new ServicioEstacionDef("instalaciones", "Instalaciones")
+            new ServicioEstacionDef("instalaciones", "Instalaciones.")
         };
 
         private static readonly string[] DocumentosAdjuntosBase = new[]
@@ -78,6 +79,78 @@ namespace CapaPresentacion.Helpers
         public static IList<string> GetDocumentosAdjuntosBase()
         {
             return new List<string>(DocumentosAdjuntosBase);
+        }
+
+        public static IDictionary<string, string> ParseDocumentosAdjuntosArchivos(string serialized)
+        {
+            var values = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+            if (string.IsNullOrWhiteSpace(serialized))
+            {
+                return values;
+            }
+
+            var normalized = serialized.Replace("\r\n", "\n").Replace('\r', '\n');
+            var lines = normalized.Split(new[] { '\n' }, StringSplitOptions.RemoveEmptyEntries);
+            foreach (var line in lines)
+            {
+                var parts = line.Split(new[] { '|' }, 2);
+                if (parts.Length == 0)
+                {
+                    continue;
+                }
+
+                var key = CleanLine(parts[0]);
+                var fileName = parts.Length > 1 ? NormalizeFileName(parts[1]) : null;
+                if (string.IsNullOrWhiteSpace(key) || string.IsNullOrWhiteSpace(fileName))
+                {
+                    continue;
+                }
+
+                values[key] = fileName;
+            }
+
+            return values;
+        }
+
+        public static string SerializeDocumentosAdjuntosArchivos(IDictionary<string, string> values)
+        {
+            if (values == null || values.Count == 0)
+            {
+                return null;
+            }
+
+            var lines = new List<string>();
+
+            foreach (var label in DocumentosAdjuntosBase)
+            {
+                string fileName;
+                if (!values.TryGetValue(label, out fileName))
+                {
+                    continue;
+                }
+
+                var normalizedFileName = NormalizeFileName(fileName);
+                if (string.IsNullOrWhiteSpace(normalizedFileName))
+                {
+                    continue;
+                }
+
+                lines.Add(NormalizeCell(label) + "|" + normalizedFileName);
+            }
+
+            foreach (var pair in values.Where(x => !DocumentosAdjuntosBase.Contains(x.Key, StringComparer.OrdinalIgnoreCase)))
+            {
+                var key = NormalizeCell(pair.Key);
+                var normalizedFileName = NormalizeFileName(pair.Value);
+                if (string.IsNullOrWhiteSpace(key) || string.IsNullOrWhiteSpace(normalizedFileName))
+                {
+                    continue;
+                }
+
+                lines.Add(key + "|" + normalizedFileName);
+            }
+
+            return lines.Count == 0 ? null : string.Join("\n", lines);
         }
 
         public static string SerializeServicioRows(IDictionary<string, string[]> values)
@@ -234,6 +307,18 @@ namespace CapaPresentacion.Helpers
 
             cleaned = cleaned.Replace("|", "/");
             return cleaned.Length > 160 ? cleaned.Substring(0, 160) : cleaned;
+        }
+
+        private static string NormalizeFileName(string value)
+        {
+            var cleaned = CleanLine(value);
+            if (string.IsNullOrWhiteSpace(cleaned))
+            {
+                return null;
+            }
+
+            cleaned = cleaned.Replace("|", "_");
+            return cleaned.Length > 240 ? cleaned.Substring(0, 240) : cleaned;
         }
 
         private static string CleanLine(string value)

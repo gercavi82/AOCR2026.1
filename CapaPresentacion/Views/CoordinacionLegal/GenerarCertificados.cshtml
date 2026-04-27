@@ -39,8 +39,8 @@
                             <td>
                                 <a class="btn btn-sm btn-info" href="@Url.Action("Detalle", "SolicitudAOCR", new { id = s.CodigoSolicitud })">Detalle</a>
                                 <a class="btn btn-sm btn-primary" href="@Url.Action("Detalle", "Certificado", new { solicitudId = s.CodigoSolicitud })">Certificado</a>
-                                <a class="btn btn-sm btn-success" href="@Url.Action("GenerarCertificadoPdf", "Certificado", new { solicitudId = s.CodigoSolicitud })" target="_blank" title="Generar PDF del certificado AOCR"><i class="fas fa-file-pdf"></i> Generar PDF</a>
-                                <a class="btn btn-sm btn-outline-secondary" href="@Url.Action("VistaPreviaCertificado", "Certificado", new { solicitudId = s.CodigoSolicitud })" target="_blank" title="Vista previa HTML"><i class="fas fa-eye"></i> Preview</a>
+                                <a class="btn btn-sm btn-outline-secondary" href="@Url.Action("GenerarCertificadoPdf", "Certificado", new { solicitudId = s.CodigoSolicitud, vistaPrevia = true })" target="_blank" title="Vista previa PDF del certificado AOCR"><i class="fas fa-eye"></i> Vista previa</a>
+                                <a class="btn btn-sm btn-success" href="@Url.Action("GenerarCertificadoPdf", "Certificado", new { solicitudId = s.CodigoSolicitud })" target="_blank" title="Descargar PDF del certificado AOCR"><i class="fas fa-file-pdf"></i> Descargar PDF</a>
                             </td>
                         </tr>
                     }

@@ -90,12 +90,24 @@
                         {
                             var estadoVisible = RevisionDocumentalDisplayHelper.GetVisibleStateLabel(doc.Estado);
                             var badgeClass = RevisionDocumentalDisplayHelper.GetBadgeClass(doc.Estado);
+                            var esPdf = string.Equals(System.IO.Path.GetExtension(doc.NombreArchivo ?? string.Empty), ".pdf", System.StringComparison.OrdinalIgnoreCase);
                             <tr data-tipo="@doc.TipoDocumento">
                                 <td>@Html.Encode(doc.TipoDocumento)</td>
                                 <td>@Html.Encode(doc.NombreArchivo)</td>
                                 <td>@(doc.FechaCarga.HasValue ? doc.FechaCarga.Value.ToString("dd/MM/yyyy HH:mm") : "-")</td>
                                 <td><span class="@badgeClass">@estadoVisible</span></td>
                                 <td class="text-center">
+                                    @if (esPdf)
+                                    {
+                                        <a href="@Url.Action("Descargar", "Documento", new { id = doc.CodigoDocumento, vistaPrevia = true })"
+                                           class="btn btn-sm btn-outline-secondary aocr-pdf-open"
+                                           data-pdf-url="@Url.Action("Descargar", "Documento", new { id = doc.CodigoDocumento, vistaPrevia = true })"
+                                           data-download-url="@Url.Action("Descargar", "Documento", new { id = doc.CodigoDocumento })"
+                                           data-title="@doc.NombreArchivo"
+                                           data-status="@estadoVisible">
+                                            <i class="fas fa-eye"></i> Vista previa
+                                        </a>
+                                    }
                                     <a href="@Url.Action("Descargar", "Documento", new { id = doc.CodigoDocumento })" class="btn btn-sm btn-aocr-primary">
                                         <i class="fas fa-download"></i> Descargar
                                     </a>
@@ -142,5 +154,4 @@
         });
     </script>
 }
-
 

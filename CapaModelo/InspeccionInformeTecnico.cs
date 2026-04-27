@@ -22,6 +22,7 @@ namespace CapaModelo
         public string Notas { get; set; }
         public string NoConformidades { get; set; }
         public string DocumentosAdjuntos { get; set; }
+        public string DocumentosAdjuntosArchivos { get; set; }
         public string OtrosAdjuntos { get; set; }
         public string Resultado { get; set; }
         public string Observaciones { get; set; }

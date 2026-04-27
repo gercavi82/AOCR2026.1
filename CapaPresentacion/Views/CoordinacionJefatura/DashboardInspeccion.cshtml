@@ -1229,6 +1229,10 @@
                                                 {
                                                     <a class="btn btn-sm btn-outline-success" href="@item.UrlAccionPrincipal" title="@item.TextoAccionPrincipal"><i class="fas fa-bolt"></i></a>
                                                 }
+                                                @if (!string.IsNullOrWhiteSpace(item.UrlVerDocumento))
+                                                {
+                                                    <a class="btn btn-sm btn-outline-secondary" href="@item.UrlVerDocumento" target="_blank" title="Vista previa PDF"><i class="fas fa-eye"></i></a>
+                                                }
                                                 @if (!string.IsNullOrWhiteSpace(item.UrlDescargarPdf))
                                                 {
                                                     <a class="btn btn-sm btn-outline-secondary" href="@item.UrlDescargarPdf" title="Descargar PDF"><i class="fas fa-download"></i></a>

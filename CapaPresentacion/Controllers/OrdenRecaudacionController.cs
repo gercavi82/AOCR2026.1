@@ -1649,7 +1649,7 @@ En transferencias NO colocar sublínea<br>";
         /// Descargar PDF de orden
         /// </summary>
         [HttpGet]
-        public ActionResult DescargarPdf(int id)
+        public ActionResult DescargarPdf(int id, bool vistaPrevia = false)
         {
             int idUsuario = GetUserId();
             if (idUsuario <= 0) return RedirectToAction("Login", "Account");
@@ -1667,14 +1667,20 @@ En transferencias NO colocar sublínea<br>";
                 var pdfModel = BuildOrdenRecaudacionPdfModel(ordenModel);
                 var nombreArchivo = "Orden_" + (ordenModel.NumeroOrden ?? id.ToString()) + ".pdf";
 
-                return new PartialViewAsPdf("OrdenRecaudacionPDF", pdfModel)
+                var pdf = new PartialViewAsPdf("OrdenRecaudacionPDF", pdfModel)
                 {
-                    FileName = nombreArchivo,
                     PageSize = Rotativa.Options.Size.A4,
                     PageOrientation = Rotativa.Options.Orientation.Portrait,
                     PageMargins = new Rotativa.Options.Margins(0, 0, 0, 0),
                     CustomSwitches = PdfBrandingHelper.StandardRotativaSwitches
                 };
+
+                if (!vistaPrevia)
+                {
+                    pdf.FileName = nombreArchivo;
+                }
+
+                return pdf;
             }
             catch (Exception ex)
             {

@@ -45,74 +45,34 @@ namespace CapaDatos.Services
         public Task<EmailSendResult> EnviarAsync(string para, string paraNombre, string asunto, string cuerpo,
             byte[] adjunto = null, string adjuntoNombre = null)
         {
-            var creds = _config.GetEmailCredentials();
-
             try
             {
-                using (var client = new SmtpClient(creds.SmtpServer, creds.SmtpPort))
+                var creds = _config.GetEmailCredentials();
+                var correoDirecto = new EnviarCorreo(_config);
+                var from = string.IsNullOrWhiteSpace(creds != null ? creds.FromAddress : null) ? null : creds.FromAddress;
+
+                var enviado = (adjunto != null && adjunto.Length > 0)
+                    ? correoDirecto.enviaMensajeCorreoConAdjuntoDesde(from, para, asunto, cuerpo, adjunto, adjuntoNombre, "application/octet-stream")
+                    : correoDirecto.enviaMensajeCorreoDesde(from, para, asunto, cuerpo);
+
+                if (enviado)
                 {
-                    client.EnableSsl = creds.UseSsl;
-                    if (!string.IsNullOrEmpty(creds.Username))
+                    return Task.FromResult(new EmailSendResult
                     {
-                        client.Credentials = new NetworkCredential(creds.Username, creds.Password);
-                    }
-                    client.Timeout = 30000;
-
-                    using (var message = new MailMessage())
-                    {
-                        message.From = new MailAddress(creds.FromAddress, creds.FromName);
-                        message.To.Add(new MailAddress(para, paraNombre));
-                        message.Subject = asunto;
-                        message.Body = cuerpo;
-                        message.IsBodyHtml = true;
-
-                        if (adjunto != null && adjunto.Length > 0 && !string.IsNullOrEmpty(adjuntoNombre))
-                        {
-                            var stream = new System.IO.MemoryStream(adjunto);
-                            var attachment = new Attachment(stream, adjuntoNombre, "application/octet-stream");
-                            message.Attachments.Add(attachment);
-                        }
-
-                        client.Send(message);
-
-                        return Task.FromResult(new EmailSendResult
-                        {
-                            Success = true,
-                            MessageId = Guid.NewGuid().ToString()
-                        });
-                    }
+                        Success = true,
+                        MessageId = Guid.NewGuid().ToString()
+                    });
                 }
+
+                return Task.FromResult(new EmailSendResult
+                {
+                    Success = false,
+                    Error = "No fue posible enviar el correo."
+                });
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, new LogContext { ErrorCode = "EMAIL_ERROR" });
-
-                // Fallback al servicio legacy que ya funciona con relay interno.
-                try
-                {
-                    var correoFallback = new EnviarCorreo(_config);
-                    var from = string.IsNullOrWhiteSpace(creds?.FromAddress) ? null : creds.FromAddress;
-
-                    var enviado = (adjunto != null && adjunto.Length > 0)
-                        ? correoFallback.enviaMensajeCorreoConAdjuntoDesde(from, para, asunto, cuerpo, adjunto, adjuntoNombre, "application/octet-stream")
-                        : correoFallback.enviaMensajeCorreoDesde(from, para, asunto, cuerpo);
-
-                    if (enviado)
-                    {
-                        _logger.LogWarning("Correo enviado por fallback EnviarCorreo.",
-                            new LogContext { ErrorCode = "EMAIL_FALLBACK_OK" });
-
-                        return Task.FromResult(new EmailSendResult
-                        {
-                            Success = true,
-                            MessageId = Guid.NewGuid().ToString()
-                        });
-                    }
-                }
-                catch (Exception exFallback)
-                {
-                    _logger.LogError(exFallback, new LogContext { ErrorCode = "EMAIL_FALLBACK_EX" });
-                }
 
                 return Task.FromResult(new EmailSendResult
                 {

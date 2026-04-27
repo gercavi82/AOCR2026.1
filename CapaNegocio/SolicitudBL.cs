@@ -98,6 +98,7 @@ namespace CapaNegocio
 
             if (actual == null) { mensaje = "Solicitud no encontrada."; return false; }
 
+            PreservarCamposControlEnActualizacion(modelo, actual);
             modelo.UpdatedAt = DateTime.Now;
             modelo.UpdatedBy = codigoUsuario.ToString();
 
@@ -190,6 +191,7 @@ namespace CapaNegocio
                     return false;
                 }
 
+                PreservarCamposControlEnActualizacion(modelo, actual);
                 modelo.UpdatedAt = DateTime.Now;
                 modelo.UpdatedBy = codigoUsuario.ToString();
 
@@ -217,6 +219,33 @@ namespace CapaNegocio
             // Formato requerido: DGAC-GOP-YYYY-AOCR###
             return $"DGAC-GOP-{year}-AOCR{(total + 1):D3}";
         }
+
+        private static void PreservarCamposControlEnActualizacion(SolicitudAOCR modelo, SolicitudAOCR actual)
+        {
+            if (modelo == null || actual == null)
+            {
+                return;
+            }
+
+            modelo.CodigoUsuario = actual.CodigoUsuario;
+            modelo.FechaSolicitud = modelo.FechaSolicitud ?? actual.FechaSolicitud ?? actual.CreatedAt ?? DateTime.Now;
+
+            if (string.IsNullOrWhiteSpace(modelo.NumeroSolicitud))
+            {
+                modelo.NumeroSolicitud = actual.NumeroSolicitud;
+            }
+
+            if (!modelo.TipoSolicitud.HasValue)
+            {
+                modelo.TipoSolicitud = actual.TipoSolicitud;
+            }
+
+            if (string.IsNullOrWhiteSpace(modelo.Estado))
+            {
+                modelo.Estado = actual.Estado;
+            }
+        }
+
         public List<SolicitudAOCR> ObtenerTodos()
         {
             return _solicitudDAO.ObtenerTodos();

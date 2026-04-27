@@ -189,8 +189,8 @@ namespace CapaPresentacion
             // Detener procesador de cola
             if (_emailProcessor != null)
             {
-                _emailProcessor.Stop();
                 _emailProcessor.Dispose();
+                _emailProcessor = null;
             }
         }
 

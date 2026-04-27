@@ -17,6 +17,7 @@
     bool yaFirmado = Model != null && !string.IsNullOrWhiteSpace(Model.RutaDocumento);
     var urlPreview = Url.Action("VistaPreviaCertificado", new { solicitudId = solicitudId });
     var urlPdfFirmado = Model != null ? Url.Action("DescargarPDF", new { id = Model.CodigoCertificado }) : null;
+    var urlPdfFirmadoPreview = Model != null ? Url.Action("DescargarPDF", new { id = Model.CodigoCertificado, vistaPrevia = true }) : null;
     var urlPdfActivo = yaFirmado ? urlPdfFirmado : urlPreview;
 }
 
@@ -364,7 +365,10 @@
                             <div class="icon"><i class="fas fa-check"></i></div>
                             <h4>Certificado firmado</h4>
                             <p>La firma digital del Coordinador ya fue aplicada correctamente.</p>
-                            <a class="btn-soft success" style="width:100%; justify-content:center; padding:11px;" href="@urlPdfFirmado">
+                            <a class="btn-soft ghost" style="width:100%; justify-content:center; padding:10px;" href="@urlPdfFirmadoPreview" target="_blank">
+                                <i class="fas fa-eye"></i> Vista previa PDF
+                            </a>
+                            <a class="btn-soft success" style="width:100%; justify-content:center; padding:11px; margin-top:8px;" href="@urlPdfFirmado">
                                 <i class="fas fa-download"></i> Descargar PDF firmado
                             </a>
                             <button type="button" onclick="document.getElementById('formFirmaReFirmar').style.display='block'; this.style.display='none';"

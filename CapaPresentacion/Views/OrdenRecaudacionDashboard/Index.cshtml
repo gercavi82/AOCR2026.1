@@ -593,7 +593,8 @@
                         if (row.estado !== 'FACTURADA' && row.estado !== 'COMPLETADA' && row.estado !== 'PAGADA' && row.estado !== 'ANULADA') {
                             h += '<button class="ord-act ord-act--danger btnAccionAnular" data-id="' + row.id + '" title="Anular"><i class="fas fa-times"></i></button> ';
                         }
-                        h += '<a class="ord-act" href="' + pdfBase + '/' + row.id + '" title="PDF"><i class="fas fa-file-pdf"></i></a>';
+                        h += '<a class="ord-act" href="' + pdfBase + '/' + row.id + '?vistaPrevia=true" target="_blank" title="Vista previa PDF"><i class="fas fa-eye"></i></a> ';
+                        h += '<a class="ord-act" href="' + pdfBase + '/' + row.id + '" target="_blank" title="Descargar PDF"><i class="fas fa-download"></i></a>';
                         return h;
                     }
                 }

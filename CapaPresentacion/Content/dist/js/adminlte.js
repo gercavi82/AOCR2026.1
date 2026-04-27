@@ -1196,7 +1196,7 @@
 
   var IFrame = /*#__PURE__*/function () {
     function IFrame(element, config) {
-      this._config = config;
+      this._config = config || Default$7;
       this._element = element;
 
       this._init();
@@ -1538,6 +1538,10 @@
     ;
 
     IFrame._jQueryInterface = function _jQueryInterface(operation) {
+      if (this && this.jquery && this.length === 0) {
+        return this;
+      }
+
       var data = $__default['default'](this).data(DATA_KEY$7);
 
       var _options = $__default['default'].extend({}, Default$7, $__default['default'](this).data());
@@ -1567,7 +1571,13 @@
 
 
   $__default['default'](window).on('load', function () {
-    IFrame._jQueryInterface.call($__default['default'](SELECTOR_DATA_TOGGLE$1));
+    var $iframeToggles = $__default['default'](SELECTOR_DATA_TOGGLE$1);
+
+    if ($iframeToggles.length === 0) {
+      return;
+    }
+
+    IFrame._jQueryInterface.call($iframeToggles);
   });
   /**
    * jQuery API

@@ -259,6 +259,27 @@ namespace CapaDatos.DAOs
                     cmd.ExecuteNonQuery();
                 }
 
+                const string alterSql = @"
+                    ALTER TABLE public.aocr_tbdocumento_inspeccion ADD COLUMN IF NOT EXISTS codigo_informe INTEGER;
+                    ALTER TABLE public.aocr_tbdocumento_inspeccion ADD COLUMN IF NOT EXISTS codigo_documento_base INTEGER;
+                    ALTER TABLE public.aocr_tbdocumento_inspeccion ADD COLUMN IF NOT EXISTS version INTEGER NOT NULL DEFAULT 1;
+                    ALTER TABLE public.aocr_tbdocumento_inspeccion ADD COLUMN IF NOT EXISTS tipo_documento VARCHAR(150);
+                    ALTER TABLE public.aocr_tbdocumento_inspeccion ADD COLUMN IF NOT EXISTS nombre_archivo_original VARCHAR(255);
+                    ALTER TABLE public.aocr_tbdocumento_inspeccion ADD COLUMN IF NOT EXISTS nombre_archivo_storage VARCHAR(255);
+                    ALTER TABLE public.aocr_tbdocumento_inspeccion ADD COLUMN IF NOT EXISTS ruta_archivo VARCHAR(600);
+                    ALTER TABLE public.aocr_tbdocumento_inspeccion ADD COLUMN IF NOT EXISTS hash_archivo VARCHAR(64);
+                    ALTER TABLE public.aocr_tbdocumento_inspeccion ADD COLUMN IF NOT EXISTS tamano_bytes BIGINT;
+                    ALTER TABLE public.aocr_tbdocumento_inspeccion ADD COLUMN IF NOT EXISTS content_type VARCHAR(150);
+                    ALTER TABLE public.aocr_tbdocumento_inspeccion ADD COLUMN IF NOT EXISTS observacion TEXT;
+                    ALTER TABLE public.aocr_tbdocumento_inspeccion ADD COLUMN IF NOT EXISTS subido_por_rol VARCHAR(60);
+                    ALTER TABLE public.aocr_tbdocumento_inspeccion ADD COLUMN IF NOT EXISTS codigo_usuario INTEGER;
+                    ALTER TABLE public.aocr_tbdocumento_inspeccion ADD COLUMN IF NOT EXISTS created_at TIMESTAMP NOT NULL DEFAULT NOW();";
+
+                using (var cmd = new NpgsqlCommand(alterSql, cn))
+                {
+                    cmd.ExecuteNonQuery();
+                }
+
                 _schemaReady = true;
             }
         }

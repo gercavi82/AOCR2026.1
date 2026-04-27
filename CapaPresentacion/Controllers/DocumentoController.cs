@@ -221,7 +221,7 @@ namespace CapaPresentacion.Controllers
             }
         }
 
-        public ActionResult Descargar(int id)
+        public ActionResult Descargar(int id, bool vistaPrevia = false)
         {
             try
             {
@@ -235,6 +235,12 @@ namespace CapaPresentacion.Controllers
                 }
 
                 byte[] bytes = System.IO.File.ReadAllBytes(doc.RutaArchivo);
+                var esPdf = string.Equals(Path.GetExtension(doc.NombreArchivo ?? doc.RutaArchivo ?? string.Empty), ".pdf", StringComparison.OrdinalIgnoreCase);
+                if (vistaPrevia && esPdf)
+                {
+                    return File(bytes, "application/pdf");
+                }
+
                 return File(bytes, "application/octet-stream", doc.NombreArchivo);
             }
             catch

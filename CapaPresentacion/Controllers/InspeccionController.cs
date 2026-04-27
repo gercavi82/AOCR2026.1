@@ -78,6 +78,7 @@ namespace CapaPresentacion.Controllers
         private const string CARPETA_VIRTUAL_INFORMES = "~/App_Data/Uploads/Inspecciones";
         private const string CARPETA_VIRTUAL_INFORMES_TECNICOS = "~/App_Data/Uploads/Inspecciones/InformesTecnicos";
         private const string CARPETA_VIRTUAL_INFORMES_TECNICOS_FIRMADOS = "~/App_Data/Uploads/Inspecciones/InformesTecnicos/Firmados";
+        private const string CARPETA_VIRTUAL_TEMP_PDF = "~/App_Data/TempPdf";
         private const string CARPETA_VIRTUAL_ADJUNTOS_INFORME = "~/App_Data/Uploads/Inspecciones/InformesTecnicos/Adjuntos";
         private const string CARPETA_VIRTUAL_DOCUMENTOS_SOLICITANTE = "~/App_Data/Uploads/Inspecciones/DocumentosSolicitante";
         private static readonly IUserContextAccessor _userContext = new UserContextAccessor();
@@ -367,7 +368,7 @@ namespace CapaPresentacion.Controllers
                 }
             }
 
-            EnriquecerInspectoresDetalle(inspeccion, ViewBag.Solicitud as SolicitudAOCR);
+            EnriquecerInspectoresInformeTecnico(inspeccion, ViewBag.Solicitud as SolicitudAOCR);
             ViewBag.InspectorAsignadoNombre = ResolverInspectorAsignadoNombre(inspeccion, ViewBag.Solicitud as SolicitudAOCR);
 
             return View("~/Views/Inspeccion/Detalle.cshtml", inspeccion);
@@ -428,6 +429,7 @@ namespace CapaPresentacion.Controllers
 
             var solicitud = _solicitudDAO.ObtenerPorId(inspeccion.CodigoSolicitud);
             NormalizarDatosOperadorSolicitud(solicitud);
+            EnriquecerInspectoresInformeTecnico(inspeccion, solicitud);
             var informe = _informeDAO.ObtenerUltimoPorInspeccion(id);
             var vm = new InformeTecnicoPdfViewModel
             {
@@ -736,8 +738,8 @@ namespace CapaPresentacion.Controllers
             if (!System.IO.File.Exists(fullPath))
             {
                 _logger.LogWarning("[GestionInspeccion] VerInforme archivo inexistente. InspeccionId=" + id + ", FullPath=" + fullPath);
-                TempData["Warning"] = "El archivo del informe firmado ya no existe en el servidor (pudo haber sido eliminado o movido). Contacte al administrador o regenere el informe.";
-                return RedirectToAction("Detalle", new { id });
+                Response.TrySkipIisCustomErrors = true;
+                return new HttpStatusCodeResult(404, "El archivo del informe firmado ya no existe en el servidor.");
             }
 
             Response.Headers["X-Content-Type-Options"] = "nosniff";
@@ -825,72 +827,9 @@ namespace CapaPresentacion.Controllers
                     return new HttpStatusCodeResult(403, "No autorizado para editar el informe técnico.");
                 }
 
-                var informeActual = _informeDAO.ObtenerUltimoPorInspeccion(id);
-                var titulo = TomarCampoTexto(form, "titulo", 250, informeActual != null ? informeActual.Titulo : null);
-                var resumen = TomarCampoTexto(form, "resumen", 8000, informeActual != null ? informeActual.Resumen : null);
-                var antecedentes = TomarCampoTexto(form, "antecedentes", 8000, informeActual != null ? informeActual.Antecedentes : null);
-                var alcance = TomarCampoTexto(form, "alcance", 8000, informeActual != null ? informeActual.Alcance : null);
-                var desarrollo = TomarCampoTexto(form, "desarrollo", 12000, informeActual != null ? informeActual.Desarrollo : null);
-                var evidencias = TomarCampoTexto(form, "evidencias", 12000, informeActual != null ? informeActual.Evidencias : null);
-                var numeroLicenciaInspector = TomarCampoTexto(form, "numeroLicenciaInspector", 120, informeActual != null ? informeActual.NumeroLicenciaInspector : null);
-                var trabajosRealizados = TomarCampoTexto(form, "trabajosRealizados", 12000, informeActual != null ? informeActual.TrabajosRealizados : null);
-                var fechasInspeccionManual = TomarCampoTexto(form, "fechasInspeccionManual", 500, informeActual != null ? informeActual.FechasInspeccionManual : null);
-                var estacionesInspeccionManual = TomarCampoTexto(form, "estacionesInspeccionManual", 1000, informeActual != null ? informeActual.EstacionesInspeccionManual : null);
-                var operacionComercial = TomarCampoTexto(form, "operacionComercial", 500, informeActual != null ? informeActual.OperacionComercial : null);
-                var serviciosEstaciones = TomarServiciosEstaciones(form, informeActual != null ? informeActual.ServiciosEstaciones : null);
-                var notas = TomarCampoTexto(form, "notas", 8000, informeActual != null ? informeActual.Notas : null);
-                var noConformidades = TomarCampoTexto(form, "noConformidades", 8000, informeActual != null ? informeActual.NoConformidades : null);
-                var documentosAdjuntos = TomarDocumentosAdjuntos(form, informeActual != null ? informeActual.DocumentosAdjuntos : null);
-                var otrosAdjuntos = TomarCampoTexto(form, "otrosAdjuntos", 4000, informeActual != null ? informeActual.OtrosAdjuntos : null);
-                var archivosOtrosAdjuntos = GuardarArchivosAdjuntosInforme(id);
-                if (archivosOtrosAdjuntos.Count > 0)
-                {
-                    var otrosAdjuntosItems = InformeTecnicoTemplateHelper.SplitLines(otrosAdjuntos).ToList();
-                    foreach (var nombreArchivo in archivosOtrosAdjuntos)
-                    {
-                        if (string.IsNullOrWhiteSpace(nombreArchivo))
-                        {
-                            continue;
-                        }
-
-                        if (!otrosAdjuntosItems.Any(x => string.Equals(x, nombreArchivo, StringComparison.OrdinalIgnoreCase)))
-                        {
-                            otrosAdjuntosItems.Add(nombreArchivo);
-                        }
-                    }
-
-                    otrosAdjuntos = InformeTecnicoTemplateHelper.SerializeLines(otrosAdjuntosItems);
-                }
-                var resultado = TomarCampoTexto(form, "resultado", 120, informeActual != null ? informeActual.Resultado : null);
-                var observaciones = TomarCampoTexto(form, "observaciones", 8000, informeActual != null ? informeActual.Observaciones : null);
-                var conclusiones = TomarCampoTexto(form, "conclusiones", 8000, informeActual != null ? informeActual.Conclusiones : null);
-                var recomendaciones = TomarCampoTexto(form, "recomendaciones", 8000, informeActual != null ? informeActual.Recomendaciones : null);
-
                 var usuarioId = ObtenerCodigoUsuario();
-                var informe = _informeDAO.GuardarBorrador(new InspeccionInformeTecnico
-                {
-                    CodigoInspeccion = id,
-                    Titulo = titulo,
-                    Resumen = resumen,
-                    Antecedentes = antecedentes,
-                    Alcance = alcance,
-                    Desarrollo = desarrollo,
-                    Evidencias = evidencias,
-                    NumeroLicenciaInspector = numeroLicenciaInspector,
-                    TrabajosRealizados = trabajosRealizados,
-                    FechasInspeccionManual = fechasInspeccionManual,
-                    EstacionesInspeccionManual = estacionesInspeccionManual,
-                    OperacionComercial = operacionComercial,
-                    ServiciosEstaciones = serviciosEstaciones,
-                    Notas = notas,
-                    NoConformidades = noConformidades,
-                    DocumentosAdjuntos = documentosAdjuntos,
-                    OtrosAdjuntos = otrosAdjuntos,
-                    Resultado = resultado,
-                    Observaciones = observaciones,
-                    Conclusiones = conclusiones,
-                    Recomendaciones = recomendaciones
-                }, usuarioId);
+                var informeActual = _informeDAO.ObtenerUltimoPorInspeccion(id);
+                var informe = _informeDAO.GuardarBorrador(ConstruirInformeTecnicoDesdeFormulario(id, form, informeActual, true), usuarioId);
 
                 if (!finalizar)
                 {
@@ -932,6 +871,141 @@ namespace CapaPresentacion.Controllers
                 _logger.LogError("[GestionInspeccion] Error en GuardarInformeTecnico: " + ex);
                 TempData["Error"] = "No se pudo guardar el informe técnico. Verifique los datos ingresados e intente nuevamente.";
                 return RedirectToAction("Detalle", new { id });
+            }
+        }
+
+        [HttpPost]
+        [Authorize(Roles = ROL_INSPECTOR + "," + ROL_ADMIN)]
+        [ValidateAntiForgeryToken]
+        [ValidateInput(false)]
+        public JsonResult PrevisualizarInformeTecnico()
+        {
+            var id = 0;
+            try
+            {
+                var form = Request != null && Request.Unvalidated != null ? Request.Unvalidated.Form : null;
+                var previewSilentRaw = form != null ? form["previewSilent"] : null;
+                var previewSilent = false;
+
+                int.TryParse(form != null ? form["id"] : null, out id);
+                if (!string.IsNullOrWhiteSpace(previewSilentRaw))
+                {
+                    bool.TryParse(previewSilentRaw, out previewSilent);
+                }
+
+                if (id <= 0)
+                {
+                    return Json(new { success = false, message = "ID de inspección inválido." });
+                }
+
+                var inspeccion = _inspeccionDAO.ObtenerPorId(id);
+                if (inspeccion == null)
+                {
+                    return Json(new { success = false, message = "Inspección no encontrada." });
+                }
+
+                if (!PuedeAccederInspeccion(inspeccion))
+                {
+                    return Json(new { success = false, message = "No autorizado para previsualizar este informe técnico." });
+                }
+
+                var usuarioId = ObtenerCodigoUsuario();
+                var informeActual = _informeDAO.ObtenerUltimoPorInspeccion(id);
+                var informePreview = ConstruirInformeTecnicoDesdeFormulario(id, form, informeActual, false);
+                informePreview.CodigoInforme = informeActual != null ? informeActual.CodigoInforme : 0;
+                informePreview.Version = informeActual != null && informeActual.Version > 0 ? informeActual.Version : 1;
+                informePreview.EstadoInforme = "EN_PREVISUALIZACION";
+                informePreview.Finalizado = false;
+
+                var solicitud = _solicitudDAO.ObtenerPorId(inspeccion.CodigoSolicitud);
+                NormalizarDatosOperadorSolicitud(solicitud);
+
+                var pdfBytes = GenerarPdfInformeTecnico(inspeccion, solicitud, informePreview, true);
+                var token = GuardarInformeTecnicoPreviewPdf(id, usuarioId, pdfBytes);
+                var pdfUrl = Url.Action("VerPreviewInformeTecnico", "Inspeccion", new { token = token });
+
+                if (!previewSilent)
+                {
+                    RegistrarAuditoriaInformeDigital(
+                        id,
+                        FirstNonEmpty(informeActual != null ? informeActual.EstadoInforme : null, "BORRADOR_INFORME"),
+                        "EN_PREVISUALIZACION",
+                        "TEMP:" + token,
+                        null,
+                        "Vista previa temporal del informe técnico generada. No finaliza ni firma documento. IP=" + ObtenerIpCliente(),
+                        usuarioId,
+                        ObtenerUsuarioActual(),
+                        "INFORME_PREVIEW_GENERADO");
+                }
+
+                return Json(new
+                {
+                    success = true,
+                    pdfUrl = pdfUrl,
+                    downloadUrl = pdfUrl,
+                    estado = "VISTA PREVIA",
+                    message = "Vista previa generada correctamente."
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError("[GestionInspeccion] Error en PrevisualizarInformeTecnico: " + ex);
+                return Json(new { success = false, message = "No se pudo generar la vista previa. Verifique los datos e intente nuevamente." });
+            }
+        }
+
+        [HttpGet]
+        [Authorize(Roles = ROLES_GESTION_INSPECCION_CON_SOLICITANTE)]
+        public ActionResult VerPreviewInformeTecnico(string token)
+        {
+            try
+            {
+                if (string.IsNullOrWhiteSpace(token))
+                {
+                    return new HttpStatusCodeResult(400, "Token inválido.");
+                }
+
+                var safeToken = Path.GetFileNameWithoutExtension(token).Replace("\0", string.Empty);
+                var parts = safeToken.Split('_');
+                if (parts.Length < 6 || !string.Equals(parts[0], "InformeTecnico", StringComparison.OrdinalIgnoreCase) || !string.Equals(parts[1], "Preview", StringComparison.OrdinalIgnoreCase))
+                {
+                    return new HttpStatusCodeResult(400, "Token inválido.");
+                }
+
+                int codigoInspeccion;
+                int usuarioToken;
+                if (!int.TryParse(parts[2], out codigoInspeccion) || !int.TryParse(parts[3], out usuarioToken))
+                {
+                    return new HttpStatusCodeResult(400, "Token inválido.");
+                }
+
+                if (usuarioToken != ObtenerCodigoUsuario() && !EsAdmin())
+                {
+                    return new HttpStatusCodeResult(403, "No autorizado para ver esta vista previa.");
+                }
+
+                var inspeccion = _inspeccionDAO.ObtenerPorId(codigoInspeccion);
+                if (inspeccion == null || !PuedeAccederInspeccion(inspeccion))
+                {
+                    return new HttpStatusCodeResult(403, "No autorizado para ver esta vista previa.");
+                }
+
+                LimpiarPdfTemporalesAntiguos();
+                var basePath = Server.MapPath(CARPETA_VIRTUAL_TEMP_PDF);
+                var fullPath = Path.Combine(basePath, safeToken + ".pdf");
+                if (!EsRutaDentroDeBase(fullPath, basePath) || !System.IO.File.Exists(fullPath))
+                {
+                    return HttpNotFound("La vista previa expiró o no se encuentra disponible. Vuelva a generarla.");
+                }
+
+                Response.Headers["X-Content-Type-Options"] = "nosniff";
+                Response.AddHeader("Content-Disposition", "inline; filename=InformeTecnico_VistaPrevia.pdf");
+                return File(fullPath, "application/pdf");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError("[GestionInspeccion] Error en VerPreviewInformeTecnico: " + ex);
+                return new HttpStatusCodeResult(500, "No se pudo cargar la vista previa del informe técnico.");
             }
         }
 
@@ -1990,13 +2064,22 @@ namespace CapaPresentacion.Controllers
             return false;
         }
 
-        private byte[] GenerarPdfInformeTecnico(Inspeccion inspeccion, SolicitudAOCR solicitud, InspeccionInformeTecnico informe)
+        private byte[] GenerarPdfInformeTecnico(Inspeccion inspeccion, SolicitudAOCR solicitud, InspeccionInformeTecnico informe, bool esVistaPrevia = false)
         {
+            EnriquecerInspectoresInformeTecnico(inspeccion, solicitud);
+
             var vm = new InformeTecnicoPdfViewModel
             {
                 Inspeccion = inspeccion,
                 Solicitud = solicitud,
-                Informe = informe
+                Informe = informe,
+                EsVistaPrevia = esVistaPrevia,
+                EsDefinitivo = !esVistaPrevia,
+                MostrarMarcaAguaBorrador = esVistaPrevia,
+                MostrarFirmas = true,
+                MostrarFirmaInspector = true,
+                MostrarFirmaDirector = !esVistaPrevia,
+                EstadoDocumento = esVistaPrevia ? "EN_PREVISUALIZACION" : FirstNonEmpty(informe != null ? informe.EstadoInforme : null, "GENERADO")
             };
 
             var pdf = new PartialViewAsPdf("InformeTecnicoPdf", vm)
@@ -2163,6 +2246,39 @@ namespace CapaPresentacion.Controllers
             return codigoInspector.ToString();
         }
 
+        private void EnriquecerInspectoresInformeTecnico(Inspeccion inspeccion, SolicitudAOCR solicitud)
+        {
+            EnriquecerInspectoresDetalle(inspeccion, solicitud);
+
+            if (inspeccion == null || !string.IsNullOrWhiteSpace(inspeccion.InspectorPrincipalNombre))
+            {
+                return;
+            }
+
+            var inspectorAsignado = ResolverInspectorAsignadoNombre(inspeccion, solicitud);
+            var codigoInspector = inspeccion.CodigoInspector.HasValue ? inspeccion.CodigoInspector.Value.ToString() : null;
+            if (string.IsNullOrWhiteSpace(inspectorAsignado)
+                || string.Equals(inspectorAsignado, "No asignado", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(inspectorAsignado, codigoInspector, StringComparison.OrdinalIgnoreCase))
+            {
+                return;
+            }
+
+            var separador = inspectorAsignado.LastIndexOf(" - ", StringComparison.Ordinal);
+            if (separador > 0)
+            {
+                inspeccion.InspectorPrincipalNombre = inspectorAsignado.Substring(0, separador).Trim();
+                if (string.IsNullOrWhiteSpace(inspeccion.InspectorPrincipalCedula))
+                {
+                    inspeccion.InspectorPrincipalCedula = inspectorAsignado.Substring(separador + 3).Trim();
+                }
+
+                return;
+            }
+
+            inspeccion.InspectorPrincipalNombre = inspectorAsignado.Trim();
+        }
+
         private string ConstruirHtmlHeaderHojaInformeTecnico()
         {
             var barra = ObtenerFuenteBrandingHojaInformeTecnico("barra.png");
@@ -2286,9 +2402,143 @@ namespace CapaPresentacion.Controllers
             return CARPETA_VIRTUAL_INFORMES_TECNICOS.TrimStart('~') + "/" + fileName;
         }
 
-        private List<string> GuardarArchivosAdjuntosInforme(int codigoInspeccion)
+        private string GuardarInformeTecnicoPreviewPdf(int codigoInspeccion, int usuarioId, byte[] pdfBytes)
+        {
+            LimpiarPdfTemporalesAntiguos();
+            var basePath = Server.MapPath(CARPETA_VIRTUAL_TEMP_PDF);
+            if (!Directory.Exists(basePath))
+            {
+                Directory.CreateDirectory(basePath);
+            }
+
+            var token = string.Format(
+                "InformeTecnico_Preview_{0}_{1}_{2}_{3}",
+                codigoInspeccion,
+                usuarioId,
+                DateTime.Now.ToString("yyyyMMddHHmmss"),
+                Guid.NewGuid().ToString("N"));
+            var fullPath = Path.Combine(basePath, token + ".pdf");
+            System.IO.File.WriteAllBytes(fullPath, pdfBytes ?? new byte[0]);
+            return token;
+        }
+
+        private void LimpiarPdfTemporalesAntiguos()
+        {
+            try
+            {
+                var basePath = Server.MapPath(CARPETA_VIRTUAL_TEMP_PDF);
+                if (!Directory.Exists(basePath))
+                {
+                    return;
+                }
+
+                var limite = DateTime.Now.AddHours(-6);
+                foreach (var file in Directory.GetFiles(basePath, "InformeTecnico_Preview_*.pdf"))
+                {
+                    try
+                    {
+                        if (System.IO.File.GetLastWriteTime(file) < limite)
+                        {
+                            System.IO.File.Delete(file);
+                        }
+                    }
+                    catch
+                    {
+                    }
+                }
+            }
+            catch
+            {
+            }
+        }
+
+        private InspeccionInformeTecnico ConstruirInformeTecnicoDesdeFormulario(int codigoInspeccion, System.Collections.Specialized.NameValueCollection form, InspeccionInformeTecnico informeActual, bool guardarAdjuntos)
+        {
+            var documentosAdjuntosItems = InformeTecnicoTemplateHelper.SplitLines(TomarDocumentosAdjuntos(form, informeActual != null ? informeActual.DocumentosAdjuntos : null)).ToList();
+            var documentosAdjuntosArchivos = InformeTecnicoTemplateHelper.ParseDocumentosAdjuntosArchivos(informeActual != null ? informeActual.DocumentosAdjuntosArchivos : null);
+            var otrosAdjuntos = TomarCampoTexto(form, "otrosAdjuntos", 4000, informeActual != null ? informeActual.OtrosAdjuntos : null);
+            if (guardarAdjuntos)
+            {
+                var adjuntosBaseGuardados = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+                var archivosOtrosAdjuntos = GuardarArchivosAdjuntosInforme(codigoInspeccion, adjuntosBaseGuardados);
+
+                foreach (var adjuntoBase in adjuntosBaseGuardados)
+                {
+                    if (string.IsNullOrWhiteSpace(adjuntoBase.Key) || string.IsNullOrWhiteSpace(adjuntoBase.Value))
+                    {
+                        continue;
+                    }
+
+                    documentosAdjuntosArchivos[adjuntoBase.Key] = adjuntoBase.Value;
+                    if (!documentosAdjuntosItems.Any(x => string.Equals(x, adjuntoBase.Key, StringComparison.OrdinalIgnoreCase)))
+                    {
+                        documentosAdjuntosItems.Add(adjuntoBase.Key);
+                    }
+                }
+
+                if (archivosOtrosAdjuntos.Count > 0)
+                {
+                    var otrosAdjuntosItems = InformeTecnicoTemplateHelper.SplitLines(otrosAdjuntos).ToList();
+                    foreach (var nombreArchivo in archivosOtrosAdjuntos)
+                    {
+                        if (string.IsNullOrWhiteSpace(nombreArchivo))
+                        {
+                            continue;
+                        }
+
+                        if (!otrosAdjuntosItems.Any(x => string.Equals(x, nombreArchivo, StringComparison.OrdinalIgnoreCase)))
+                        {
+                            otrosAdjuntosItems.Add(nombreArchivo);
+                        }
+                    }
+
+                    otrosAdjuntos = InformeTecnicoTemplateHelper.SerializeLines(otrosAdjuntosItems);
+                }
+            }
+
+            var documentosAdjuntosNormalizados = new HashSet<string>(
+                documentosAdjuntosItems.Where(x => !string.IsNullOrWhiteSpace(x)),
+                StringComparer.OrdinalIgnoreCase);
+            documentosAdjuntosArchivos = documentosAdjuntosArchivos
+                .Where(x => documentosAdjuntosNormalizados.Contains(x.Key) && !string.IsNullOrWhiteSpace(x.Value))
+                .ToDictionary(x => x.Key, x => x.Value, StringComparer.OrdinalIgnoreCase);
+            var documentosAdjuntos = InformeTecnicoTemplateHelper.SerializeLines(documentosAdjuntosItems);
+
+            return new InspeccionInformeTecnico
+            {
+                CodigoInspeccion = codigoInspeccion,
+                Titulo = TomarCampoTexto(form, "titulo", 250, informeActual != null ? informeActual.Titulo : null),
+                Resumen = TomarCampoTexto(form, "resumen", 8000, informeActual != null ? informeActual.Resumen : null),
+                Antecedentes = TomarCampoTexto(form, "antecedentes", 8000, informeActual != null ? informeActual.Antecedentes : null),
+                Alcance = TomarCampoTexto(form, "alcance", 8000, informeActual != null ? informeActual.Alcance : null),
+                Desarrollo = TomarCampoTexto(form, "desarrollo", 12000, informeActual != null ? informeActual.Desarrollo : null),
+                Evidencias = TomarCampoTexto(form, "evidencias", 12000, informeActual != null ? informeActual.Evidencias : null),
+                NumeroLicenciaInspector = TomarCampoTexto(form, "numeroLicenciaInspector", 120, informeActual != null ? informeActual.NumeroLicenciaInspector : null),
+                TrabajosRealizados = TomarCampoTexto(form, "trabajosRealizados", 12000, informeActual != null ? informeActual.TrabajosRealizados : null),
+                FechasInspeccionManual = TomarCampoTexto(form, "fechasInspeccionManual", 500, informeActual != null ? informeActual.FechasInspeccionManual : null),
+                EstacionesInspeccionManual = TomarCampoTexto(form, "estacionesInspeccionManual", 1000, informeActual != null ? informeActual.EstacionesInspeccionManual : null),
+                OperacionComercial = TomarCampoTexto(form, "operacionComercial", 500, informeActual != null ? informeActual.OperacionComercial : null),
+                ServiciosEstaciones = TomarServiciosEstaciones(form, informeActual != null ? informeActual.ServiciosEstaciones : null),
+                Notas = TomarCampoTexto(form, "notas", 8000, informeActual != null ? informeActual.Notas : null),
+                NoConformidades = TomarCampoTexto(form, "noConformidades", 8000, informeActual != null ? informeActual.NoConformidades : null),
+                DocumentosAdjuntos = documentosAdjuntos,
+                DocumentosAdjuntosArchivos = InformeTecnicoTemplateHelper.SerializeDocumentosAdjuntosArchivos(documentosAdjuntosArchivos),
+                OtrosAdjuntos = otrosAdjuntos,
+                Resultado = TomarCampoTexto(form, "resultado", 120, informeActual != null ? informeActual.Resultado : null),
+                Observaciones = TomarCampoTexto(form, "observaciones", 8000, informeActual != null ? informeActual.Observaciones : null),
+                Conclusiones = TomarCampoTexto(form, "conclusiones", 8000, informeActual != null ? informeActual.Conclusiones : null),
+                Recomendaciones = TomarCampoTexto(form, "recomendaciones", 8000, informeActual != null ? informeActual.Recomendaciones : null),
+                RutaPdf = informeActual != null ? informeActual.RutaPdf : null,
+                EstadoInforme = informeActual != null ? informeActual.EstadoInforme : "BORRADOR_INFORME",
+                Finalizado = informeActual != null && informeActual.Finalizado,
+                CorreoEnviado = informeActual != null && informeActual.CorreoEnviado
+            };
+        }
+
+        private List<string> GuardarArchivosAdjuntosInforme(int codigoInspeccion, IDictionary<string, string> adjuntosBaseGuardados)
         {
             var otrosAdjuntosGuardados = new List<string>();
+            var documentosAdjuntosBase = InformeTecnicoTemplateHelper.GetDocumentosAdjuntosBase();
             if (Request == null || Request.Files == null || Request.Files.Count == 0) { return otrosAdjuntosGuardados; }
 
             var basePath = Server.MapPath(CARPETA_VIRTUAL_ADJUNTOS_INFORME);
@@ -2316,9 +2566,20 @@ namespace CapaPresentacion.Controllers
                 var fullPath = Path.Combine(basePath, safeFileName);
                 file.SaveAs(fullPath);
 
+                var nombreVisible = LimpiarNombreArchivoVisible(file.FileName);
+
+                if (esAdjuntoBase && adjuntosBaseGuardados != null)
+                {
+                    var rawIndex = key.Substring("archivoAdjunto_".Length);
+                    int indiceAdjunto;
+                    if (int.TryParse(rawIndex, out indiceAdjunto) && indiceAdjunto >= 0 && indiceAdjunto < documentosAdjuntosBase.Count && !string.IsNullOrWhiteSpace(nombreVisible))
+                    {
+                        adjuntosBaseGuardados[documentosAdjuntosBase[indiceAdjunto]] = nombreVisible;
+                    }
+                }
+
                 if (esAdjuntoLibre)
                 {
-                    var nombreVisible = LimpiarNombreArchivoVisible(file.FileName);
                     if (!string.IsNullOrWhiteSpace(nombreVisible))
                     {
                         otrosAdjuntosGuardados.Add(nombreVisible);

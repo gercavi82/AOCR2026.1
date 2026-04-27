@@ -40,8 +40,8 @@ namespace CapaNegocio.Services
         };
 
         // Dimensiones del rectángulo de firma según tipo de plantilla
-        private const float AnchoInforme = 200f;   // ~50% columna A4 con márgenes
-        private const float AltoInforme = 96f;
+        private const float AnchoInforme = 320f;   // tarjeta visual de firma del informe técnico
+        private const float AltoInforme = 93f;
         private const float AnchoAocr = 160f;      // ~34% columna A4
         private const float AltoAocr = 96f;
         private const float AnchoCertificado = 235f; // ~50% página A4 (celda firma certificado)

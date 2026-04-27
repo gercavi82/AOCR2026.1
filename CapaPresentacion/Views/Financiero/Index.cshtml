@@ -721,11 +721,17 @@
             <td>
                 @if (orden != null)
                 {
-                    <a href="@Url.Action("DescargarPdf", "OrdenRecaudacion", new { id = orden.Id })"
+                    <a href="@Url.Action("DescargarPdf", "OrdenRecaudacion", new { id = orden.Id, vistaPrevia = true })"
                        target="_blank"
                        class="btn btn-outline-secondary btn-sm btn-pdf"
-                       title="Ver PDF de la orden">
-                        <i class="fas fa-file-pdf"></i>
+                       title="Vista previa PDF de la orden">
+                        <i class="fas fa-eye"></i>
+                    </a>
+                    <a href="@Url.Action("DescargarPdf", "OrdenRecaudacion", new { id = orden.Id })"
+                       target="_blank"
+                       class="btn btn-outline-success btn-sm btn-pdf"
+                       title="Descargar PDF de la orden">
+                        <i class="fas fa-download"></i>
                     </a>
                 }
                 else
