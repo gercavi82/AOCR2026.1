@@ -44,23 +44,46 @@ namespace CapaDatos.DAOs
             var t = termino.Trim();
             if (limite <= 0 || limite > 500) limite = 50;
 
-            const string where = @"
-                deleted_at IS NULL AND (
-                       CAST(codigo_solicitud AS TEXT) ILIKE @q
-                    OR COALESCE(numero_solicitud, '') ILIKE @q
-                    OR COALESCE(nombre_operador, '') ILIKE @q
-                    OR COALESCE(nombre_explotador, '') ILIKE @q
-                    OR COALESCE(razon_social, '') ILIKE @q
-                    OR COALESCE(nombre_comercial, '') ILIKE @q
-                    OR COALESCE(ruc, '') ILIKE @q
-                    OR COALESCE(numero_aoc, '') ILIKE @q
-                    OR COALESCE(estado, '') ILIKE @q
-                )";
-
             var lista = new List<SolicitudAOCR>();
             using (var cn = new NpgsqlConnection(ConnectionString))
             {
                 cn.Open();
+                var columnas = ObtenerColumnasTabla(cn, "aocr_tbsolicitud");
+                var filtrosBusqueda = new List<string>
+                {
+                    "CAST(codigo_solicitud AS TEXT) ILIKE @q"
+                };
+
+                void AgregarFiltroTexto(string nombreColumna)
+                {
+                    if (columnas.Contains(nombreColumna))
+                    {
+                        filtrosBusqueda.Add("COALESCE(" + nombreColumna + ", '') ILIKE @q");
+                    }
+                }
+
+                AgregarFiltroTexto("numero_solicitud");
+                AgregarFiltroTexto("nombre_operador");
+                AgregarFiltroTexto("nombre_explotador");
+                AgregarFiltroTexto("operador");
+                AgregarFiltroTexto("nombre_compania");
+                AgregarFiltroTexto("compania_nombre");
+                AgregarFiltroTexto("razon_social");
+                AgregarFiltroTexto("razon_social_operador");
+                AgregarFiltroTexto("nombre_comercial");
+                AgregarFiltroTexto("ruc");
+                AgregarFiltroTexto("ruc_operador");
+                AgregarFiltroTexto("ruc_explotador");
+                AgregarFiltroTexto("identificacion_ruc");
+                AgregarFiltroTexto("numero_ruc");
+                AgregarFiltroTexto("numero_aoc");
+                AgregarFiltroTexto("estado");
+
+                var where = @"
+                deleted_at IS NULL AND (
+                       " + string.Join("\n                    OR ", filtrosBusqueda) + @"
+                )";
+
                 string sql = $@"SELECT * FROM aocr_tbsolicitud WHERE {where} ORDER BY fecha_solicitud DESC NULLS LAST, codigo_solicitud DESC LIMIT @lim";
                 using (var cmd = new NpgsqlCommand(sql, cn))
                 {

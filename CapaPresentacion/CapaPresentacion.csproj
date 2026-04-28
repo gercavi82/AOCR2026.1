@@ -393,6 +393,7 @@
   </ItemGroup>
   <ItemGroup>
     <Content Include="Content\aocr-institucional.css" />
+    <Content Include="Content\aocr-datatables.css" />
     <Content Include="Content\aocr-responsive.css" />
     <Content Include="Content\aocr-pdf-viewer\aocr-pdf-viewer.css" />
     <Content Include="Content\aocr-pdf-viewer\aocr-pdf-viewer.js" />

@@ -169,4 +169,47 @@
     .it-obs h6 { margin: 0 0 5px; color: #856404; font-weight: 700; font-size: .85rem; display: flex; align-items: center; gap: 6px; }
     .it-obs p { margin: 0; font-size: .87rem; color: #3a2a00; line-height: 1.45; }
     .it-obs small { color: #856404; font-size: .74rem; }
+
+    @@media (max-width: 768px) {
+        .it-hero {
+            padding: 16px;
+        }
+
+        .it-hero-row {
+            align-items: flex-start;
+            flex-direction: column;
+        }
+
+        .it-steps {
+            grid-template-columns: 1fr;
+        }
+
+        .it-panel {
+            border-radius: 12px;
+            padding: 14px;
+        }
+
+        .it-btn-row {
+            align-items: stretch;
+            flex-direction: column;
+        }
+
+        .it-btn-row .it-btn {
+            justify-content: center;
+            width: 100%;
+        }
+
+        .it-input {
+            min-height: 42px;
+        }
+
+        .it-meta {
+            grid-template-columns: 1fr;
+        }
+
+        .it-alert,
+        .it-info {
+            padding: 10px 12px;
+        }
+    }
 </style>

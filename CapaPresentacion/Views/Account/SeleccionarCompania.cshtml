@@ -1,8 +1,14 @@
 @model CapaPresentacion.Models.SeleccionCompaniaViewModel
 @using System
+@using System.Linq
+@using System.Web
 @{
     Layout = null;
     ViewBag.Title = "Seleccionar Compañía";
+    var mostrarAgregarCompania = Model != null && Model.MostrarAgregarCompania;
+    var companiasAsignadas = Model != null && Model.Companias != null
+        ? Model.Companias.Where(c => c != null && !string.IsNullOrWhiteSpace(c.Codigo)).ToList()
+        : new System.Collections.Generic.List<CapaPresentacion.Models.CompaniaAsignadaViewModel>();
 }
 <!DOCTYPE html>
 <html lang="es">
@@ -37,6 +43,32 @@
             border-top-right-radius: 12px;
             font-weight: 700;
         }
+
+        .card-select .btn-link-toggle {
+            color: #0c7c86;
+            font-weight: 600;
+            padding-left: 0;
+            padding-right: 0;
+            text-decoration: none;
+        }
+
+        .card-select .btn-link-toggle:hover {
+            color: #1b4f72;
+        }
+
+        .add-company-panel {
+            background: #f8fbff;
+            border: 1px solid #d7ebff;
+            border-radius: 10px;
+            margin-top: 1rem;
+            padding: 1rem;
+        }
+
+        .add-company-help {
+            color: #516072;
+            font-size: .9rem;
+            margin-bottom: .75rem;
+        }
     </style>
 </head>
 <body>
@@ -51,6 +83,13 @@
             {
                 <div class="alert alert-danger">
                     @Html.ValidationSummary(false, "", new { @class = "mb-0" })
+                </div>
+            }
+
+            @if (TempData["SeleccionCompaniaSuccess"] != null)
+            {
+                <div class="alert alert-success">
+                    @TempData["SeleccionCompaniaSuccess"]
                 </div>
             }
 
@@ -82,7 +121,183 @@
                     Continuar
                 </button>
             }
+
+            <div class="mt-3">
+                <button type="button"
+                        class="btn btn-link btn-link-toggle"
+                        id="btnMostrarAgregarCompania"
+                        aria-expanded="@(mostrarAgregarCompania ? "true" : "false")"
+                        aria-controls="panelAgregarCompania">
+                    Agregar compañía
+                </button>
+            </div>
+
+            <div id="panelAgregarCompania" class="add-company-panel" style="display:@(mostrarAgregarCompania ? "block" : "none")">
+                <div class="add-company-help">
+                    Añada una compañía adicional a su usuario RT y luego podrá seleccionarla en esta misma pantalla.
+                </div>
+
+                @using (Html.BeginForm("AgregarCompaniaSeleccion", "Account", FormMethod.Post, new { id = "formAgregarCompania" }))
+                {
+                    @Html.AntiForgeryToken()
+                    @Html.HiddenFor(m => m.ReturnUrl)
+                    @Html.HiddenFor(m => m.CompaniaSeleccionada)
+                    @Html.HiddenFor(m => m.NuevaCompaniaNombre, new { id = "NuevaCompaniaNombre" })
+                    <input type="hidden" name="MostrarAgregarCompania" value="true" />
+
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold" for="NuevaCompaniaCodigo">Compañía adicional</label>
+                        <select class="form-select" id="NuevaCompaniaCodigo" name="NuevaCompaniaCodigo" data-selected="@((Model != null ? Model.NuevaCompaniaCodigo : string.Empty) ?? string.Empty)">
+                            <option value="">-- Cargando compañías disponibles... --</option>
+                        </select>
+                    </div>
+
+                    <button type="submit" class="btn btn-outline-primary w-100">
+                        Agregar compañía
+                    </button>
+                }
+            </div>
         </div>
     </div>
+
+    <script>
+        (function () {
+            var btnToggle = document.getElementById('btnMostrarAgregarCompania');
+            var panel = document.getElementById('panelAgregarCompania');
+            var selectNueva = document.getElementById('NuevaCompaniaCodigo');
+            var inputNombre = document.getElementById('NuevaCompaniaNombre');
+            var catalogoCargado = false;
+            var endpointEmpresas = '@Url.Action("ObtenerEmpresas", "Empresa")';
+            var selectedCode = (selectNueva ? (selectNueva.getAttribute('data-selected') || '') : '').toUpperCase();
+            var assignedCodes = [
+@for (var i = 0; i < companiasAsignadas.Count; i++)
+{
+    var codigo = (companiasAsignadas[i].Codigo ?? string.Empty).Trim().ToUpperInvariant();
+<text>                '@Html.Raw(HttpUtility.JavaScriptStringEncode(codigo))'@(i < companiasAsignadas.Count - 1 ? "," : string.Empty)
+</text>
+}
+            ];
+
+            function setPanelVisible(visible) {
+                if (!panel || !btnToggle) {
+                    return;
+                }
+
+                panel.style.display = visible ? 'block' : 'none';
+                btnToggle.setAttribute('aria-expanded', visible ? 'true' : 'false');
+            }
+
+            function actualizarNombreSeleccionado() {
+                if (!selectNueva || !inputNombre) {
+                    return;
+                }
+
+                var option = selectNueva.options[selectNueva.selectedIndex];
+                inputNombre.value = option ? (option.getAttribute('data-nombre') || '') : '';
+            }
+
+            function construirTextoOpcion(empresa) {
+                var codigo = (empresa.CodigoOaci || '').trim();
+                var iata = (empresa.CodigoIata || '').trim();
+                var nombre = (empresa.Nombre || '').trim();
+
+                if (!codigo) {
+                    return nombre;
+                }
+
+                return iata ? ('[' + codigo + '/' + iata + '] ' + nombre) : ('[' + codigo + '] ' + nombre);
+            }
+
+            function renderEmpresas(empresas) {
+                if (!selectNueva) {
+                    return;
+                }
+
+                var options = ['<option value="">-- Seleccione una compañía --</option>'];
+                var disponibles = (empresas || []).filter(function (empresa) {
+                    var codigo = ((empresa && empresa.CodigoOaci) || '').trim().toUpperCase();
+                    return codigo && assignedCodes.indexOf(codigo) === -1;
+                });
+
+                if (disponibles.length === 0) {
+                    options.push('<option value="">No hay más compañías disponibles</option>');
+                    selectNueva.innerHTML = options.join('');
+                    actualizarNombreSeleccionado();
+                    return;
+                }
+
+                disponibles.sort(function (a, b) {
+                    var nombreA = ((a && a.Nombre) || '').trim().toUpperCase();
+                    var nombreB = ((b && b.Nombre) || '').trim().toUpperCase();
+                    return nombreA.localeCompare(nombreB);
+                });
+
+                disponibles.forEach(function (empresa) {
+                    var codigo = ((empresa.CodigoOaci || '')).trim().toUpperCase();
+                    var nombre = ((empresa.Nombre || '')).trim();
+                    var selected = codigo === selectedCode ? ' selected' : '';
+                    options.push('<option value="' + codigo + '" data-nombre="' + nombre.replace(/"/g, '&quot;') + '"' + selected + '>' + construirTextoOpcion(empresa) + '</option>');
+                });
+
+                selectNueva.innerHTML = options.join('');
+                actualizarNombreSeleccionado();
+            }
+
+            function renderError() {
+                if (!selectNueva) {
+                    return;
+                }
+
+                selectNueva.innerHTML = '<option value="">No se pudo cargar el catálogo de compañías</option>';
+                actualizarNombreSeleccionado();
+            }
+
+            function cargarEmpresas() {
+                if (catalogoCargado || !selectNueva) {
+                    actualizarNombreSeleccionado();
+                    return;
+                }
+
+                catalogoCargado = true;
+                fetch(endpointEmpresas, {
+                    credentials: 'same-origin',
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest'
+                    }
+                })
+                    .then(function (response) {
+                        if (!response.ok) {
+                            throw new Error('HTTP ' + response.status);
+                        }
+                        return response.json();
+                    })
+                    .then(function (data) {
+                        renderEmpresas(Array.isArray(data) ? data : []);
+                    })
+                    .catch(function () {
+                        catalogoCargado = false;
+                        renderError();
+                    });
+            }
+
+            if (btnToggle) {
+                btnToggle.addEventListener('click', function () {
+                    var visible = panel && panel.style.display !== 'none';
+                    setPanelVisible(!visible);
+                    if (!visible) {
+                        cargarEmpresas();
+                    }
+                });
+            }
+
+            if (selectNueva) {
+                selectNueva.addEventListener('change', actualizarNombreSeleccionado);
+            }
+
+            if (@(mostrarAgregarCompania ? "true" : "false")) {
+                cargarEmpresas();
+            }
+        })();
+    </script>
 </body>
 </html>

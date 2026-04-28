@@ -707,39 +707,61 @@ namespace CapaPresentacion.Controllers
                 return new HttpStatusCodeResult(403, "No autorizado para ver el informe.");
 
             var informeTecnico = _informeDAO.ObtenerUltimoPorInspeccion(id);
-            var rutaRelativa = FirstNonEmpty(
+            var rutasCandidatas = new[]
+            {
                 informeTecnico != null ? informeTecnico.RutaDocumentoFirmado : null,
                 inspeccion.RutaInforme,
-                informeTecnico != null ? informeTecnico.RutaPdf : null,
-                string.Empty);
+                informeTecnico != null ? informeTecnico.RutaPdf : null
+            }
+            .Where(ruta => !string.IsNullOrWhiteSpace(ruta))
+            .Select(NormalizarRutaRelativaInforme)
+            .Where(ruta => !string.IsNullOrWhiteSpace(ruta))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
 
-            if (string.IsNullOrWhiteSpace(rutaRelativa))
+            if (rutasCandidatas.Count == 0)
             {
                 _logger.LogWarning("[GestionInspeccion] VerInforme sin ruta. InspeccionId=" + id);
                 return HttpNotFound("La inspección aún no tiene informe cargado.");
             }
 
-            // Compatibilidad: la ruta puede venir como "~/..." o "/..."
-            if (rutaRelativa.StartsWith("~"))
-                rutaRelativa = rutaRelativa.Substring(1);
-
-            if (!rutaRelativa.StartsWith("/"))
-                rutaRelativa = "/" + rutaRelativa;
-
-            var fullPath = Server.MapPath("~" + rutaRelativa);
-
             var baseDir = Server.MapPath(CARPETA_VIRTUAL_INFORMES);
-            if (!EsRutaDentroDeBase(fullPath, baseDir))
+            string rutaRelativa = null;
+            string fullPath = null;
+            var rutasFueraBase = new List<string>();
+
+            foreach (var rutaCandidata in rutasCandidatas)
             {
-                _logger.LogWarning("[GestionInspeccion] VerInforme ruta fuera de base. InspeccionId=" + id + ", Ruta=" + rutaRelativa + ", FullPath=" + fullPath + ", BaseDir=" + baseDir);
-                return new HttpStatusCodeResult(400, "Ruta de informe inválida.");
+                var fullPathCandidata = Server.MapPath("~" + rutaCandidata);
+                if (!EsRutaDentroDeBase(fullPathCandidata, baseDir))
+                {
+                    rutasFueraBase.Add(rutaCandidata);
+                    continue;
+                }
+
+                if (System.IO.File.Exists(fullPathCandidata))
+                {
+                    rutaRelativa = rutaCandidata;
+                    fullPath = fullPathCandidata;
+                    break;
+                }
             }
 
-            if (!System.IO.File.Exists(fullPath))
+            if (string.IsNullOrWhiteSpace(fullPath))
             {
-                _logger.LogWarning("[GestionInspeccion] VerInforme archivo inexistente. InspeccionId=" + id + ", FullPath=" + fullPath);
+                if (rutasFueraBase.Count > 0)
+                {
+                    _logger.LogWarning("[GestionInspeccion] VerInforme rutas fuera de base. InspeccionId=" + id + ", Rutas=" + string.Join(" | ", rutasFueraBase));
+                }
+
+                _logger.LogWarning("[GestionInspeccion] VerInforme archivo inexistente. InspeccionId=" + id + ", RutasIntentadas=" + string.Join(" | ", rutasCandidatas));
                 Response.TrySkipIisCustomErrors = true;
                 return new HttpStatusCodeResult(404, "El archivo del informe firmado ya no existe en el servidor.");
+            }
+
+            if (!string.Equals(rutaRelativa, rutasCandidatas[0], StringComparison.OrdinalIgnoreCase))
+            {
+                _logger.LogInfo("[GestionInspeccion] VerInforme resolvio ruta alternativa. InspeccionId=" + id + ", RutaUsada=" + rutaRelativa + ", RutaPreferida=" + rutasCandidatas[0]);
             }
 
             Response.Headers["X-Content-Type-Options"] = "nosniff";
@@ -3345,18 +3367,34 @@ namespace CapaPresentacion.Controllers
 
         private string ResolverRutaAbsolutaInforme(string rutaRelativa)
         {
+            var rutaNormalizada = NormalizarRutaRelativaInforme(rutaRelativa);
+            if (string.IsNullOrWhiteSpace(rutaNormalizada))
+            {
+                return null;
+            }
+
+            return Server.MapPath("~" + rutaNormalizada);
+        }
+
+        private static string NormalizarRutaRelativaInforme(string rutaRelativa)
+        {
             if (string.IsNullOrWhiteSpace(rutaRelativa))
             {
                 return null;
             }
 
             var ruta = rutaRelativa.Trim();
-            if (!ruta.StartsWith("~"))
+            if (ruta.StartsWith("~"))
             {
-                ruta = "~" + (ruta.StartsWith("/") ? ruta : "/" + ruta);
+                ruta = ruta.Substring(1);
             }
 
-            return Server.MapPath(ruta);
+            if (!ruta.StartsWith("/"))
+            {
+                ruta = "/" + ruta;
+            }
+
+            return ruta;
         }
 
         private void RegistrarAuditoriaInformeDigital(int codigoInspeccion, string estadoAnterior, string estadoNuevo, string rutaDocumento, string hashDocumento, string detalle, int usuarioId, string usuarioNombre, string origen)

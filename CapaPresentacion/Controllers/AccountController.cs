@@ -269,7 +269,7 @@ namespace CapaPresentacion.Controllers
         }
 
         [Authorize]
-        public ActionResult SeleccionarCompania()
+        public ActionResult SeleccionarCompania(string companiaSeleccionada = null)
         {
             var usuarioId = ObtenerUsuarioSesionId();
             if (usuarioId <= 0)
@@ -303,17 +303,11 @@ namespace CapaPresentacion.Controllers
                 return RedireccionarDespuesLogin(usuarioId, returnUrlUnica);
             }
 
-            var vm = new SeleccionCompaniaViewModel
-            {
-                ReturnUrl = Session[CompaniaActivaSessionHelper.SessionCompaniaPendienteReturnUrl] as string,
-                Companias = companiasAsignadas.Select(c => new CompaniaAsignadaViewModel
-                {
-                    Codigo = c.CompaniaCodigo,
-                    Nombre = !string.IsNullOrWhiteSpace(c.CompaniaNombre)
-                        ? c.CompaniaNombre
-                        : ResolverNombreCompaniaPorCodigo(c.CompaniaCodigo)
-                }).ToList()
-            };
+            var codigoActivo = CompaniaActivaSessionHelper.ObtenerCodigo(Session);
+            var vm = ConstruirSeleccionCompaniaViewModel(
+                companiasAsignadas,
+                Session[CompaniaActivaSessionHelper.SessionCompaniaPendienteReturnUrl] as string,
+                !string.IsNullOrWhiteSpace(companiaSeleccionada) ? companiaSeleccionada : codigoActivo);
 
             return View(vm);
         }
@@ -347,18 +341,12 @@ namespace CapaPresentacion.Controllers
 
             if (seleccion == null)
             {
-                var vm = new SeleccionCompaniaViewModel
-                {
-                    ReturnUrl = model != null ? model.ReturnUrl : null,
-                    CompaniaSeleccionada = model != null ? model.CompaniaSeleccionada : null,
-                    Companias = companiasAsignadas.Select(c => new CompaniaAsignadaViewModel
-                    {
-                        Codigo = c.CompaniaCodigo,
-                        Nombre = !string.IsNullOrWhiteSpace(c.CompaniaNombre)
-                            ? c.CompaniaNombre
-                            : ResolverNombreCompaniaPorCodigo(c.CompaniaCodigo)
-                    }).ToList()
-                };
+                var vm = ConstruirSeleccionCompaniaViewModel(
+                    companiasAsignadas,
+                    model != null ? model.ReturnUrl : null,
+                    model != null ? model.CompaniaSeleccionada : null,
+                    model != null ? model.NuevaCompaniaCodigo : null,
+                    model != null && model.MostrarAgregarCompania);
 
                 ModelState.AddModelError("", "La compañía seleccionada no está asignada a su usuario.");
                 return View(vm);
@@ -377,6 +365,102 @@ namespace CapaPresentacion.Controllers
 
             Session.Remove(CompaniaActivaSessionHelper.SessionCompaniaPendienteReturnUrl);
             return RedireccionarDespuesLogin(usuarioId, returnUrl);
+        }
+
+        [HttpPost]
+        [Authorize]
+        [ValidateAntiForgeryToken]
+        public ActionResult AgregarCompaniaSeleccion(SeleccionCompaniaViewModel model)
+        {
+            var usuarioId = ObtenerUsuarioSesionId();
+            if (usuarioId <= 0)
+            {
+                return RedirectToAction("Login", "Account");
+            }
+
+            var usuario = UsuarioDAO.ObtenerPorId(usuarioId);
+            if (usuario == null)
+            {
+                TempData["LoginError"] = "No se pudo cargar su perfil de usuario.";
+                return RedirectToAction("Login", "Account");
+            }
+
+            if (EsAdministradorSesion(usuario))
+            {
+                return RedireccionarDespuesLogin(usuarioId, model != null ? model.ReturnUrl : null);
+            }
+
+            var companiasAsignadas = ObtenerCompaniasAsignadasConFallback(usuario);
+            var codigo = (model != null ? model.NuevaCompaniaCodigo : null) ?? string.Empty;
+            codigo = codigo.Trim().ToUpperInvariant();
+
+            if (string.IsNullOrWhiteSpace(codigo))
+            {
+                ModelState.AddModelError("", "Seleccione una compañía adicional para agregar.");
+                return View("SeleccionarCompania", ConstruirSeleccionCompaniaViewModel(
+                    companiasAsignadas,
+                    model != null ? model.ReturnUrl : null,
+                    model != null ? model.CompaniaSeleccionada : null,
+                    codigo,
+                    true));
+            }
+
+            if (companiasAsignadas.Any(c => string.Equals((c.CompaniaCodigo ?? string.Empty).Trim(), codigo, StringComparison.OrdinalIgnoreCase)))
+            {
+                ModelState.AddModelError("", "La compañía seleccionada ya está asignada a su usuario.");
+                return View("SeleccionarCompania", ConstruirSeleccionCompaniaViewModel(
+                    companiasAsignadas,
+                    model != null ? model.ReturnUrl : null,
+                    model != null ? model.CompaniaSeleccionada : null,
+                    codigo,
+                    true));
+            }
+
+            var nombreCompania = ((model != null ? model.NuevaCompaniaNombre : null) ?? string.Empty).Trim();
+            if (string.IsNullOrWhiteSpace(nombreCompania))
+            {
+                nombreCompania = ResolverNombreCompaniaPorCodigo(codigo);
+            }
+
+            if (string.IsNullOrWhiteSpace(nombreCompania))
+            {
+                ModelState.AddModelError("", "No se pudo validar la compañía seleccionada. Intente nuevamente.");
+                return View("SeleccionarCompania", ConstruirSeleccionCompaniaViewModel(
+                    companiasAsignadas,
+                    model != null ? model.ReturnUrl : null,
+                    model != null ? model.CompaniaSeleccionada : null,
+                    codigo,
+                    true));
+            }
+
+            var actor = !string.IsNullOrWhiteSpace(usuario.NombreUsuario)
+                ? usuario.NombreUsuario.Trim()
+                : ("usuario_" + usuarioId);
+
+            var daoCompanias = new UsuarioCompaniaRTDAO();
+            var agregado = false;
+            try
+            {
+                agregado = daoCompanias.AgregarCompania(usuarioId, codigo, nombreCompania, actor);
+            }
+            catch
+            {
+                agregado = false;
+            }
+
+            if (!agregado)
+            {
+                ModelState.AddModelError("", "No fue posible agregar la compañía seleccionada a su usuario.");
+                return View("SeleccionarCompania", ConstruirSeleccionCompaniaViewModel(
+                    companiasAsignadas,
+                    model != null ? model.ReturnUrl : null,
+                    model != null ? model.CompaniaSeleccionada : null,
+                    codigo,
+                    true));
+            }
+
+            TempData["SeleccionCompaniaSuccess"] = "La compañía se agregó correctamente. Ahora puede seleccionarla para continuar.";
+            return RedirectToAction("SeleccionarCompania", new { companiaSeleccionada = codigo });
         }
 
         [HttpPost]
@@ -763,6 +847,43 @@ namespace CapaPresentacion.Controllers
 
             int id;
             return int.TryParse(v.ToString(), out id) ? id : 0;
+        }
+
+        private SeleccionCompaniaViewModel ConstruirSeleccionCompaniaViewModel(
+            IEnumerable<UsuarioCompaniaRT> companiasAsignadas,
+            string returnUrl,
+            string companiaSeleccionada = null,
+            string nuevaCompaniaCodigo = null,
+            bool mostrarAgregarCompania = false)
+        {
+            var lista = (companiasAsignadas ?? Enumerable.Empty<UsuarioCompaniaRT>())
+                .Where(c => c != null && !string.IsNullOrWhiteSpace(c.CompaniaCodigo))
+                .Select(c => new CompaniaAsignadaViewModel
+                {
+                    Codigo = (c.CompaniaCodigo ?? string.Empty).Trim().ToUpperInvariant(),
+                    Nombre = !string.IsNullOrWhiteSpace(c.CompaniaNombre)
+                        ? c.CompaniaNombre.Trim()
+                        : ResolverNombreCompaniaPorCodigo(c.CompaniaCodigo)
+                })
+                .GroupBy(c => c.Codigo, StringComparer.OrdinalIgnoreCase)
+                .Select(g => g.First())
+                .OrderBy(c => c.Nombre ?? string.Empty)
+                .ToList();
+
+            var seleccion = (companiaSeleccionada ?? string.Empty).Trim().ToUpperInvariant();
+            if (!lista.Any(c => string.Equals(c.Codigo, seleccion, StringComparison.OrdinalIgnoreCase)))
+            {
+                seleccion = string.Empty;
+            }
+
+            return new SeleccionCompaniaViewModel
+            {
+                ReturnUrl = returnUrl,
+                CompaniaSeleccionada = seleccion,
+                NuevaCompaniaCodigo = (nuevaCompaniaCodigo ?? string.Empty).Trim().ToUpperInvariant(),
+                MostrarAgregarCompania = mostrarAgregarCompania,
+                Companias = lista
+            };
         }
 
         private List<UsuarioCompaniaRT> ObtenerCompaniasAsignadasConFallback(Usuario usuario)

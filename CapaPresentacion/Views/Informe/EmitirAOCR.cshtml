@@ -7,6 +7,7 @@
     ViewBag.Title = "Emitir Certificado AOCR";
 }
 
+<div class="container-fluid py-3 aocr-certificate-page">
 <h2><i class="glyphicon glyphicon-certificate"></i> Emisión del Certificado AOCR</h2>
 <hr />
 
@@ -44,7 +45,7 @@
     <div class="panel-heading">
         <h3 class="panel-title">Certificado de Operador Aéreo - AOCR</h3>
     </div>
-    <div class="panel-body" id="certificado-content" style="background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%); padding: 40px; border: 5px double #003366;">
+    <div class="panel-body aocr-certificate-preview" id="certificado-content" style="background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%); padding: 40px; border: 5px double #003366;">
 
         <!-- Encabezado del Certificado -->
         <div style="text-align: center; margin-bottom: 40px; border-bottom: 3px solid #003366; padding-bottom: 20px;">
@@ -287,7 +288,7 @@
     </div>
 
     <div class="form-group">
-        <div class="col-md-offset-3 col-md-9">
+        <div class="col-md-offset-3 col-md-9 aocr-actions">
             <button type="submit" class="btn btn-success btn-lg" style="padding: 15px 40px;">
                 <i class="glyphicon glyphicon-download-alt"></i> Emitir y Descargar Certificado
             </button>
@@ -318,6 +319,8 @@
             <li><strong>Seguimiento:</strong> Se programarán inspecciones de seguimiento según el cronograma establecido.</li>
         </ol>
     </div>
+</div>
+
 </div>
 
 @section Scripts {
