@@ -311,10 +311,15 @@
                             <i class="fas fa-folder-open text-white-50 mr-2"></i> Mis Solicitudes
                         </a>
                     </li>
+                    <li>
+                        <a class="aocr-link aocr-sidebar-item" href="@Url.Action("Registro", "RT")">
+                            <i class="fas fa-id-card text-white-50 mr-2"></i> Mi Expediente RT
+                        </a>
+                    </li>
                     @if (esRepresentanteRtRol || tieneOrdenGenerada)
                     {
                         <li>
-                            <a class="aocr-link aocr-sidebar-item" href="@Url.Action("CargarDocumentos", "SolicitudAOCR")">
+                            <a class="aocr-link aocr-sidebar-item" href="@Url.Action("Index", "SolicitudAOCR")">
                                 <i class="fas fa-file-upload text-info mr-2"></i> Cargar Documentos
                             </a>
                         </li>
@@ -345,8 +350,8 @@
                         </a>
                     </li>
                     <li>
-                        <a class="aocr-link aocr-sidebar-item" href="@Url.Action("Index", "Inspeccion")">
-                            <i class="fas fa-clipboard-check text-success mr-2"></i> Ejecutar Inspección
+                        <a class="aocr-link aocr-sidebar-item" href="@Url.Action("Index", "Inspeccion", new { vista = "revision-documental" })">
+                            <i class="fas fa-file-alt text-success mr-2"></i> Revisión Documental
                         </a>
                     </li>
                 </ul>
@@ -410,6 +415,11 @@
                         </a>
                     </li>
                     <li>
+                        <a class="aocr-link aocr-sidebar-item" href="@Url.Action("RevisionVerificacion", "CoordinacionJefatura")">
+                            <i class="fas fa-search text-white-50 mr-2"></i> Revisión Documental
+                        </a>
+                    </li>
+                    <li>
                         <a class="aocr-link aocr-sidebar-item" href="@Url.Action("AprobarSolicitudes", "Direccion")">
                             <i class="fas fa-file-check text-white-50 mr-2"></i> Revisión Final de Expedientes
                         </a>
@@ -455,6 +465,7 @@
                     <i class="fas fa-gavel mr-1"></i> Legalización y Emisión
                 </div>
                 <ul class="aocr-nav">
+                    <li><a class="aocr-link aocr-sidebar-item" href="@Url.Action("RevisionVerificacion", "CoordinacionJefatura")"><i class="fas fa-search text-white-50 mr-2"></i> Revisión Documental</a></li>
                     <li><a class="aocr-link aocr-sidebar-item" href="@Url.Action("LegalizarAocr", "CoordinacionJefatura")"><i class="fas fa-gavel text-white-50 mr-2"></i> Legalizar AOCR</a></li>
                     <li><a class="aocr-link aocr-sidebar-item" href="@Url.Action("GenerarCertificados", "CoordinacionJefatura")"><i class="fas fa-file-contract text-white-50 mr-2"></i> Generar Certificados AOCR</a></li>
                 </ul>

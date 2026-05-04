@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.Linq;
+using CapaDatos.Constants;
 
 namespace CapaDatos.Models
 {
@@ -46,9 +47,12 @@ namespace CapaDatos.Models
         {
             get
             {
-                var est = (Estado ?? "").Trim().ToUpperInvariant();
+                var est = EstadoOrden.NormalizarEstado(Estado);
 
-                if (est == "PAGADA" || est == "ANULADA")
+                if (est == EstadoOrden.Pagada ||
+                    est == EstadoOrden.Anulada ||
+                    est == EstadoOrden.Facturada ||
+                    est == EstadoOrden.Completada)
                     return false;
 
                 if (FechaCreacion == default(DateTime))
@@ -59,12 +63,18 @@ namespace CapaDatos.Models
             }
         }
 
-        public bool PuedeEditar() => string.Equals(Estado, "BORRADOR", StringComparison.OrdinalIgnoreCase);
+        public bool PuedeEditar() => string.Equals(EstadoOrden.NormalizarEstado(Estado), EstadoOrden.Borrador, StringComparison.OrdinalIgnoreCase);
         public bool PuedeGenerar() => PuedeEditar() && Total > 0;
-        public bool PuedeAnular() =>
-            string.Equals(Estado, "BORRADOR", StringComparison.OrdinalIgnoreCase) ||
-            string.Equals(Estado, "GENERADA", StringComparison.OrdinalIgnoreCase) ||
-            string.Equals(Estado, "ENVIADA", StringComparison.OrdinalIgnoreCase);
+        public bool PuedeAnular()
+        {
+            var estado = EstadoOrden.NormalizarEstado(Estado);
+            return string.Equals(estado, EstadoOrden.Borrador, StringComparison.OrdinalIgnoreCase) ||
+                   string.Equals(estado, EstadoOrden.Generada, StringComparison.OrdinalIgnoreCase) ||
+                   string.Equals(estado, EstadoOrden.Pendiente, StringComparison.OrdinalIgnoreCase) ||
+                   string.Equals(estado, EstadoOrden.Enviada, StringComparison.OrdinalIgnoreCase) ||
+                   string.Equals(estado, EstadoOrden.EnRevisionFinanciera, StringComparison.OrdinalIgnoreCase) ||
+                   string.Equals(estado, EstadoOrden.Devuelta, StringComparison.OrdinalIgnoreCase);
+        }
         public string ConceptoNombre
         {
             get
@@ -80,19 +90,25 @@ namespace CapaDatos.Models
         {
             get
             {
-                var estado = (Estado ?? "").Trim().ToUpperInvariant();
+                var estado = EstadoOrden.NormalizarEstado(Estado);
                 switch (estado)
                 {
-                    case "BORRADOR":
+                    case EstadoOrden.Borrador:
                         return "secondary"; // Gris
-                    case "PENDIENTE":
+                    case EstadoOrden.Pendiente:
+                    case EstadoOrden.Generada:
                         return "warning"; // Amarillo
-                    case "PROCESADA":
+                    case EstadoOrden.Enviada:
+                        return "info"; // Azul
+                    case EstadoOrden.EnRevisionFinanciera:
                         return "info"; // Azul claro
-                    case "FACTURADA":
-                    case "COMPLETADA":
+                    case EstadoOrden.Devuelta:
+                        return "danger"; // Rojo
+                    case EstadoOrden.Facturada:
+                    case EstadoOrden.Completada:
+                    case EstadoOrden.Pagada:
                         return "success"; // Verde
-                    case "ANULADA":
+                    case EstadoOrden.Anulada:
                         return "danger"; // Rojo
                     default:
                         return "secondary"; // Gris por defecto

@@ -3,6 +3,8 @@
 
     var registry = {};
     var modalId = 'aocrPdfViewerGlobalModal';
+    var pdfjsLoadPromise = null;
+    var dynamicImportFactory = null;
 
     function qs(root, selector) {
         return root ? root.querySelector(selector) : null;
@@ -16,6 +18,49 @@
 
     function getPdfJs() {
         return window.pdfjsLib || window['pdfjs-dist/build/pdf'];
+    }
+
+    function getPdfLibUrl() {
+        return window.AOCR_PDF_LIB_URL || '/Content/aocr-pdf-viewer/pdf.min.js';
+    }
+
+    function importPdfJsModule(moduleUrl) {
+        if (!dynamicImportFactory) {
+            dynamicImportFactory = Function('moduleUrl', 'return import(moduleUrl);');
+        }
+        return dynamicImportFactory(moduleUrl);
+    }
+
+    function ensurePdfJsLoaded() {
+        var pdfjs = getPdfJs();
+        if (pdfjs && pdfjs.getDocument) {
+            setWorker();
+            return Promise.resolve(pdfjs);
+        }
+
+        if (!pdfjsLoadPromise) {
+            pdfjsLoadPromise = importPdfJsModule(getPdfLibUrl()).then(function (module) {
+                var loaded = module && module.getDocument
+                    ? module
+                    : (module && module.default && module.default.getDocument ? module.default : null);
+
+                if (!loaded || !loaded.getDocument) {
+                    throw new Error('No se pudo inicializar pdf.js.');
+                }
+
+                window.pdfjsLib = loaded;
+                setWorker();
+                return loaded;
+            }).catch(function (error) {
+                pdfjsLoadPromise = null;
+                if (error) {
+                    error.aocrPdfJsLoad = true;
+                }
+                throw error;
+            });
+        }
+
+        return pdfjsLoadPromise;
     }
 
     function setWorker() {
@@ -116,23 +161,31 @@
             return;
         }
 
-        setWorker();
-        var pdfjs = getPdfJs();
-        if (!pdfjs || !pdfjs.getDocument || !this.canvas || !this.ctx) {
-            this.useFallback();
-            return;
-        }
+        ensurePdfJsLoaded().then(function (pdfjs) {
+            if (!pdfjs || !pdfjs.getDocument || !self.canvas || !self.ctx) {
+                self.useFallback();
+                return null;
+            }
 
-        var task = pdfjs.getDocument({
-            url: this.pdfUrl,
-            withCredentials: true
-        });
+            var task = pdfjs.getDocument({
+                url: self.pdfUrl,
+                withCredentials: true
+            });
 
-        task.promise.then(function (pdfDoc) {
+            return task.promise;
+        }).then(function (pdfDoc) {
+            if (!pdfDoc) {
+                return;
+            }
             self.pdfDoc = pdfDoc;
             self.updateToolbar();
             self.renderPage(1);
         }).catch(function (error) {
+            if (error && error.aocrPdfJsLoad) {
+                self.useFallback();
+                return;
+            }
+
             self.fail(error);
         });
     };

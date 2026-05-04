@@ -647,6 +647,15 @@ namespace CapaPresentacion.Controllers
                 ViewBag.MensajeComprobante = "Debe registrar el comprobante antes de continuar.";
             }
 
+            try
+            {
+                ViewBag.FacturaPago = _dao.ObtenerFacturaPagoPorOrden(id);
+            }
+            catch
+            {
+                ViewBag.FacturaPago = null;
+            }
+
             // Cargar lista de bancos desde P9
             ViewBag.ListaBancoPago = ToSelectList("OPCBAN");
             
@@ -1424,11 +1433,20 @@ En transferencias NO colocar sublínea<br>";
             if (orden == null || orden.CodigoUsuario != idUsuario)
                 return HttpNotFound();
 
-            var estadoOrden = (orden.Estado ?? "").Trim();
-            if (!estadoOrden.Equals("PENDIENTE", StringComparison.OrdinalIgnoreCase) &&
-                !estadoOrden.Equals("GENERADA", StringComparison.OrdinalIgnoreCase))
+            var estadoOrden = CapaDatos.Constants.EstadoOrden.NormalizarEstado(orden.Estado);
+            if (!estadoOrden.Equals(CapaDatos.Constants.EstadoOrden.Pendiente, StringComparison.OrdinalIgnoreCase) &&
+                !estadoOrden.Equals(CapaDatos.Constants.EstadoOrden.Generada, StringComparison.OrdinalIgnoreCase) &&
+                !estadoOrden.Equals(CapaDatos.Constants.EstadoOrden.Devuelta, StringComparison.OrdinalIgnoreCase))
             {
-                TempData["Error"] = "Solo se puede subir comprobante cuando la orden esté en GENERADA o PENDIENTE.";
+                TempData["Error"] = "Solo se puede cargar respaldo cuando la orden esté en GENERADA, PENDIENTE o DEVUELTA.";
+                return RedirectToAction("Detalles", new { id = id });
+            }
+
+            if (ComprobanteArchivo == null || ComprobanteArchivo.ContentLength <= 0)
+            {
+                TempData["Error"] = estadoOrden.Equals(CapaDatos.Constants.EstadoOrden.Devuelta, StringComparison.OrdinalIgnoreCase)
+                    ? "Debe adjuntar el respaldo actualizado antes de reenviar a Financiero."
+                    : "Debe adjuntar el respaldo de pago antes de enviar a Financiero.";
                 return RedirectToAction("Detalles", new { id = id });
             }
 
@@ -1577,7 +1595,9 @@ En transferencias NO colocar sublínea<br>";
                         // No bloquear el flujo si el email falla
                     }
 
-                    TempData["OK"] = "Comprobante enviado. La orden está en revisión financiera.";
+                    TempData["OK"] = estadoOrden.Equals(CapaDatos.Constants.EstadoOrden.Devuelta, StringComparison.OrdinalIgnoreCase)
+                        ? "Respaldo actualizado reenviado. La orden vuelve a revisión financiera."
+                        : "Comprobante enviado. La orden está en revisión financiera.";
                     return RedirectToAction("Detalles", new { id = id });
                 }
             catch (Exception ex)
@@ -1688,6 +1708,77 @@ En transferencias NO colocar sublínea<br>";
                 TempData["ErrorMessage"] = "Error al generar el PDF.";
                 return RedirectToAction("Detalles", new { id });
             }
+        }
+
+        [HttpGet]
+        public ActionResult DescargarFactura(int id)
+        {
+            int idUsuario = GetUserId();
+            if (idUsuario <= 0) return RedirectToAction("Login", "Account");
+
+            var ordenModel = _dao.ObtenerOrdenPorIdModel(id);
+            if (ordenModel == null)
+                return HttpNotFound();
+
+            var esFinanciero = User != null && (User.IsInRole("Financiero") || User.IsInRole("Administrador"));
+            if (!esFinanciero && ordenModel.CodigoUsuario != idUsuario)
+                return HttpNotFound();
+
+            try
+            {
+                var factura = _dao.ObtenerFacturaPagoPorOrden(id);
+                if (factura == null || string.IsNullOrWhiteSpace(factura.FilePath))
+                {
+                    TempData["Error"] = "La factura aun no esta disponible para descarga.";
+                    return RedirectToAction("Detalles", new { id });
+                }
+
+                var rutaFisica = ResolverRutaArchivoRegistrado(factura.FilePath);
+                if (string.IsNullOrWhiteSpace(rutaFisica) || !System.IO.File.Exists(rutaFisica))
+                {
+                    TempData["Error"] = "No se encontro el archivo de factura registrado.";
+                    return RedirectToAction("Detalles", new { id });
+                }
+
+                var nombreArchivo = !string.IsNullOrWhiteSpace(factura.FileName)
+                    ? factura.FileName
+                    : Path.GetFileName(rutaFisica);
+                var contentType = !string.IsNullOrWhiteSpace(factura.ContentType)
+                    ? factura.ContentType
+                    : MimeMapping.GetMimeMapping(nombreArchivo);
+
+                return File(System.IO.File.ReadAllBytes(rutaFisica), contentType, nombreArchivo);
+            }
+            catch (Exception ex)
+            {
+                CapaNegocio.LogBL.RegistrarError(
+                    $"Error descargando factura de orden {id}",
+                    ex.ToString(),
+                    "OrdenRecaudacionController");
+                TempData["Error"] = "No fue posible descargar la factura.";
+                return RedirectToAction("Detalles", new { id });
+            }
+        }
+
+        private string ResolverRutaArchivoRegistrado(string rutaArchivo)
+        {
+            if (string.IsNullOrWhiteSpace(rutaArchivo))
+            {
+                return null;
+            }
+
+            if (Path.IsPathRooted(rutaArchivo))
+            {
+                return Path.GetFullPath(rutaArchivo);
+            }
+
+            if (rutaArchivo.StartsWith("~"))
+            {
+                return Server.MapPath(rutaArchivo);
+            }
+
+            var basePath = FileStorageHelper.GetPhysicalBasePath(FileStorageHelper.BasePathStorage);
+            return Path.Combine(basePath, rutaArchivo.TrimStart('/', '\\').Replace('/', Path.DirectorySeparatorChar));
         }
 
 

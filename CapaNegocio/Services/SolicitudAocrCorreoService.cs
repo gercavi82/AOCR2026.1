@@ -183,6 +183,20 @@ namespace CapaNegocio.Services
                         }
                     };
 
+                case "ACEPTACION_COORDINADOR_FIRMADA":
+                    return new PlantillaSolicitudCorreo
+                    {
+                        Asunto = "AOCR - Aceptación documental firmada #" + solicitud.CodigoSolicitud,
+                        Titulo = "Aceptación documental firmada",
+                        Mensaje = "La coordinación firmó la aceptación documental de la solicitud AOCR. " +
+                                  "El documento final ya se encuentra disponible para su descarga desde el expediente.",
+                        GruposDestinatarios = new[]
+                        {
+                            NotificacionDestinatarioPolicyService.GrupoRepresentanteTecnico,
+                            NotificacionDestinatarioPolicyService.GrupoOperadorSolicitante
+                        }
+                    };
+
                 case "PENDIENTE_ASIGNACION_INSPECTOR":
                 case "SOLICITUD_COMPLETADA":
                     return new PlantillaSolicitudCorreo

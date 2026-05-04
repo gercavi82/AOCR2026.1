@@ -26,6 +26,7 @@ namespace CapaNegocio.Services
         {
             { "INFORME_TECNICO_INSPECTOR", new[] { "ANCLA_FIRMA_INSPECTOR_DGAC" } },
             { "INFORME_TECNICO_DIRDAC",    new[] { "ANCLA_FIRMA_DIRDAC_JEFATURA" } },
+            { "LV_EAE_INSPECTOR",          new[] { "ANCLA_FIRMA_LV_EAE_INSPECTOR" } },
             { "AOCR_FIRMANTE",             new[] { "ANCLA_FIRMA_AUTORIZACION_AOCR" } },
             { "DIRDAC",                    new[] { "ANCLA_FIRMA_CERTIFICADO_DIRDAC" } },
             { "DIRECTOR_GENERAL",          new[] { "ANCLA_FIRMA_CERTIFICADO_DIRDAC" } },
@@ -36,12 +37,15 @@ namespace CapaNegocio.Services
         {
             { "INFORME_TECNICO_INSPECTOR", new[] { "FIRMA DEL INSPECTOR DGAC" } },
             { "INFORME_TECNICO_DIRDAC",    new[] { "FIRMA DEL DIRECTOR / JEFATURA" } },
+            { "LV_EAE_INSPECTOR",          new[] { "ESPACIO RESERVADO PARA FIRMA DEL TECNICO", "FIRMA DEL TÉCNICO / INSPECTOR RESPONSABLE", "FIRMA DEL TECNICO / INSPECTOR RESPONSABLE" } },
             { "AOCR_FIRMANTE",             new[] { "FIRMA DE AUTORIZACION AOCR", "FIRMA DE AUTORIZACION" } },
         };
 
         // Dimensiones del rectángulo de firma según tipo de plantilla
         private const float AnchoInforme = 320f;   // tarjeta visual de firma del informe técnico
         private const float AltoInforme = 93f;
+        private const float AnchoLvEae = 352f;
+        private const float AltoLvEae = 84f;
         private const float AnchoAocr = 160f;      // ~34% columna A4
         private const float AltoAocr = 96f;
         private const float AnchoCertificado = 235f; // ~50% página A4 (celda firma certificado)
@@ -144,8 +148,10 @@ namespace CapaNegocio.Services
         {
             var esAocr = rol == "AOCR_FIRMANTE";
             var esCertificado = rol == "DIRDAC" || rol == "DIRECTOR_GENERAL";
+            var esLvEae = rol == "LV_EAE_INSPECTOR";
             float ancho, alto;
             if (esAocr) { ancho = AnchoAocr; alto = AltoAocr; }
+            else if (esLvEae) { ancho = AnchoLvEae; alto = AltoLvEae; }
             else if (esCertificado) { ancho = AnchoCertificado; alto = AltoCertificado; }
             else { ancho = AnchoInforme; alto = AltoInforme; }
 

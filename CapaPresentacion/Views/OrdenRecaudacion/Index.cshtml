@@ -1,5 +1,6 @@
 @inherits System.Web.Mvc.WebViewPage<List<CapaDatos.Models.OrdenRecaudacionModel>>
 @using CapaModelo
+@using CapaDatos.Constants
 @using System.Web.Mvc
 @using System.Web.Mvc.Html
     @{
@@ -192,6 +193,12 @@
                 background-color: var(--color-primary-light) !important;
                 color: white !important;
                 border: 1px solid var(--color-primary-light);
+            }
+
+            .estado-devuelta {
+                background-color: #c56a1a !important;
+                color: white !important;
+                border: 1px solid #c56a1a;
             }
 
             .estado-pagada {
@@ -1665,16 +1672,23 @@
             return "bg-secondary";
         }
 
-        var estadoUpper = estado.Trim().ToUpperInvariant();
+        var estadoUpper = NormalizarEstadoVisual(estado);
 
         switch (estadoUpper)
         {
-            case "BORRADOR": return "estado-borrador";
-            case "PENDIENTE": return "estado-generada";
-            case "PROCESADA": return "estado-enviada";
-            case "FACTURADA": return "estado-pagada";
-            case "COMPLETADA": return "estado-pagada";
-            case "ANULADA": return "estado-anulada";
+            case EstadoOrden.Borrador: return "estado-borrador";
+            case EstadoOrden.Generada: return "estado-generada";
+            case EstadoOrden.Enviada:
+            case EstadoOrden.EnRevisionFinanciera:
+                return "estado-enviada";
+            case EstadoOrden.Devuelta:
+                return "estado-devuelta";
+            case EstadoOrden.Facturada:
+            case EstadoOrden.Completada:
+            case EstadoOrden.Pagada:
+                return "estado-pagada";
+            case EstadoOrden.Anulada:
+                return "estado-anulada";
             default: return "bg-secondary";
         }
     }
@@ -1689,13 +1703,17 @@
             return "DESCONOCIDO";
         }
 
-        var est = estado.Trim().ToUpperInvariant();
+        var est = NormalizarEstadoVisual(estado);
         switch (est)
         {
-            case "PENDIENTE": return "PENDIENTE";
-            case "PROCESADA": return "PROCESADA";
-            case "FACTURADA": return "FACTURADA";
-            case "COMPLETADA": return "COMPLETADA";
+            case EstadoOrden.Generada: return "GENERADA";
+            case EstadoOrden.Enviada: return "ENVIADA";
+            case EstadoOrden.EnRevisionFinanciera: return "EN REVISION FINANCIERA";
+            case EstadoOrden.Devuelta: return "DEVUELTA";
+            case EstadoOrden.Facturada: return "FACTURADA";
+            case EstadoOrden.Completada: return "COMPLETADA";
+            case EstadoOrden.Pagada: return "PAGADA";
+            case EstadoOrden.Anulada: return "ANULADA";
             default: return est;
         }
     }
@@ -1751,17 +1769,31 @@
             return "SIN ESTADO";
         }
 
-        var est = estado.Trim().ToUpperInvariant();
+        var est = NormalizarEstadoVisual(estado);
         switch (est)
         {
-            case "BORRADOR": return "Borrador";
-            case "PENDIENTE": return "Pendiente de pago";
-            case "PROCESADA": return "En revisión financiera";
-            case "FACTURADA": return "Factura generada";
-            case "COMPLETADA": return "Completada";
-            case "ANULADA": return "Anulada";
+            case EstadoOrden.Borrador: return "Borrador";
+            case EstadoOrden.Generada: return "Generada / pendiente de pago";
+            case EstadoOrden.Enviada: return "Enviada a financiero";
+            case EstadoOrden.EnRevisionFinanciera: return "En revision financiera";
+            case EstadoOrden.Devuelta: return "Devuelta para correccion";
+            case EstadoOrden.Facturada: return "Factura generada";
+            case EstadoOrden.Completada: return "Completada";
+            case EstadoOrden.Pagada: return "Pagada";
+            case EstadoOrden.Anulada: return "Anulada";
             default: return est;
         }
+    }
+
+    public static string NormalizarEstadoVisual(string estado)
+    {
+        var actual = EstadoOrden.NormalizarEstado(estado);
+        if (actual == EstadoOrden.Pendiente || actual == EstadoOrden.Generada)
+        {
+            return EstadoOrden.Generada;
+        }
+
+        return actual;
     }
 }
 

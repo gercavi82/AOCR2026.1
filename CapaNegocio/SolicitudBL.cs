@@ -54,8 +54,12 @@ namespace CapaNegocio
             {
                 if (modelo == null) { mensaje = "Datos de solicitud inválidos."; return false; }
 
+                var estadoInicial = string.IsNullOrWhiteSpace(modelo.Estado)
+                    ? EstadoSolicitud.Pendiente
+                    : EstadoSolicitud.Normalizar(modelo.Estado);
+
                 modelo.CodigoUsuario = codigoUsuario;
-                modelo.Estado = EstadoSolicitud.Pendiente;
+                modelo.Estado = estadoInicial;
                 modelo.FechaSolicitud = DateTime.Now;
                 modelo.CreatedAt = DateTime.Now;
                 modelo.CreatedBy = codigoUsuario.ToString();
@@ -70,7 +74,7 @@ namespace CapaNegocio
                     modelo.CodigoSolicitud = id;
                     try
                     {
-                        _historialDAO.RegistrarCambio(id, null, EstadoSolicitud.Pendiente, codigoUsuario, "Creación inicial del trámite.");
+                        _historialDAO.RegistrarCambio(id, null, estadoInicial, codigoUsuario, "Creación inicial del trámite.");
                     }
                     catch (Exception exHistorial)
                     {

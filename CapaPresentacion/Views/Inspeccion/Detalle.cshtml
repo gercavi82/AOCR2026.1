@@ -23,7 +23,11 @@
     var informeTecnico = ViewBag.InformeTecnico as InspeccionInformeTecnico;
     var documentosSolicitante = ViewBag.DocumentosSolicitante as IEnumerable<DocumentoInspeccion>;
     var documentosLista = documentosSolicitante != null ? documentosSolicitante.ToList() : new List<DocumentoInspeccion>();
+    var documentoSolicitanteBase = documentosLista.OrderByDescending(d => d.CodigoDocumento).FirstOrDefault();
     var solicitud = ViewBag.Solicitud as SolicitudAOCR;
+    var listaVerificacionOperacionalEae = ViewBag.ListaVerificacionOperacionalEae as ListaVerificacionOperacionalEae;
+    var usaFlujoListaVerificacionOperacionalEae = ViewBag.UsaFlujoListaVerificacionOperacionalEae != null
+        && (bool)ViewBag.UsaFlujoListaVerificacionOperacionalEae;
     var fechaProgramada = Model != null && Model.FechaProgramada.HasValue ? Model.FechaProgramada.Value.ToString("yyyy-MM-dd") : "-";
     var fechaPagoViaticos = Model != null && Model.FechaPagoViaticos.HasValue ? Model.FechaPagoViaticos.Value.ToString("yyyy-MM-dd HH:mm") : "-";
     var montoViaticos = Model != null && Model.ViaticosMonto.HasValue ? Model.ViaticosMonto.Value.ToString("0.00") : "-";
@@ -70,12 +74,19 @@
             ? inspectorApoyoNombre
             : (inspectorApoyoNombre + " - " + inspectorApoyoCedula))
         : (!string.IsNullOrWhiteSpace(inspectorApoyoCedula) ? inspectorApoyoCedula : "No asignado");
-    var rutaInformeVisual = !string.IsNullOrWhiteSpace(informeTecnico != null ? informeTecnico.RutaDocumentoFirmado : null)
-        ? informeTecnico.RutaDocumentoFirmado
-        : (!string.IsNullOrWhiteSpace(Model != null ? Model.RutaInforme : null)
-            ? Model.RutaInforme
-            : (informeTecnico != null ? informeTecnico.RutaPdf : null));
+    var rutaInformeDisponible = ViewBag.RutaInformeTecnicoDisponible as string;
+    var rutaInformeVisual = !string.IsNullOrWhiteSpace(rutaInformeDisponible)
+        ? rutaInformeDisponible
+        : string.Empty;
+    var rutaListaVerificacionDisponible = ViewBag.RutaListaVerificacionOperacionalEaeDisponible as string;
+    var rutaListaVerificacionVisual = !string.IsNullOrWhiteSpace(rutaListaVerificacionDisponible)
+        ? rutaListaVerificacionDisponible
+        : string.Empty;
     var tieneInforme = !string.IsNullOrWhiteSpace(rutaInformeVisual);
+    var tieneListaVerificacionOperacionalEae = !string.IsNullOrWhiteSpace(rutaListaVerificacionVisual);
+    var listaVerificacionFirmada = listaVerificacionOperacionalEae != null
+        && listaVerificacionOperacionalEae.Finalizado
+        && listaVerificacionOperacionalEae.FirmadoTecnico;
     var estadoActualNormalizado = EstadosInspeccion.NormalizarEstado(estadoActual);
     var estadosPermitidosDesdeActual = EstadosInspeccion.ObtenerEstadosPermitidos(estadoActualNormalizado);
     Func<string, bool> usuarioTieneRol = rol => User != null && User.IsInRole(rol);
@@ -98,9 +109,20 @@
     };
     var esAdministrador = usuarioTieneRol("Administrador");
     var esInspector = usuarioTieneRol("Inspector");
+    var estadoDocumentalNormalizado = (estadoDocumental ?? string.Empty).Trim().ToUpperInvariant();
+    var revisionDocumentalInspectorConfirmada =
+        string.Equals(estadoDocumentalNormalizado, "EN_REVISION", System.StringComparison.OrdinalIgnoreCase)
+        || string.Equals(estadoDocumentalNormalizado, "ACEPTADA", System.StringComparison.OrdinalIgnoreCase)
+        || string.Equals(estadoDocumentalNormalizado, "OBSERVACION_DOCUMENTAL", System.StringComparison.OrdinalIgnoreCase)
+        || string.Equals(estadoDocumentalNormalizado, "OBSERVADO", System.StringComparison.OrdinalIgnoreCase)
+        || string.Equals(estadoDocumentalNormalizado, "APROBADO", System.StringComparison.OrdinalIgnoreCase);
+    var inspectorDebeRevisarDocumentos = (esInspector || esAdministrador) && !revisionDocumentalInspectorConfirmada;
+    var mensajeBloqueoRevisionDocumentalInspector = inspectorDebeRevisarDocumentos
+        ? "Antes de ejecutar acciones del inspector debe revisar los documentos de la solicitud y confirmar esa revisión documental."
+        : string.Empty;
     var esCoordinadorRevision = esAdministrador || usuarioTieneAlgunRol(new[] { "CoordinadorInspecciones", "Coordinador" });
     var puedeGestionarCoordinacion = esAdministrador || usuarioTieneAlgunRol(rolesCoordinacionJefatura);
-    var puedeGestionarInspector = esAdministrador || esInspector;
+    var puedeGestionarInspector = (esAdministrador || esInspector) && !inspectorDebeRevisarDocumentos;
     var puedeVerificacion = puedeGestionarCoordinacion && transicionPermitida(EstadosInspeccion.VERIFICACION_SOLICITUD);
     var puedeAceptarSolicitud = puedeGestionarCoordinacion && transicionPermitida(EstadosInspeccion.ACEPTADA);
     var puedeObservar = puedeGestionarCoordinacion && transicionPermitida(EstadosInspeccion.OBSERVADA);
@@ -130,16 +152,20 @@
         : (string.Equals(estadoActualNormalizado, EstadosInspeccion.ACEPTADA, System.StringComparison.OrdinalIgnoreCase)
             ? "La solicitud ya fue aceptada. El siguiente paso institucional es asignar inspector o revisar el avance desde Direccion / Jefatura."
             : "Las decisiones institucionales de este tramite se controlan desde Direccion / Jefatura para mantener una sola trazabilidad operativa por rol y estado.");
-    var mensajeInspectorSinAcciones = EstadosInspeccion.EsEstadoBloqueCoordinacionJefatura(estadoActualNormalizado)
-        ? "El tramite se encuentra en etapa de verificacion por Direccion / Jefatura. Aun no existen acciones disponibles para el Inspector."
-        : "No existen acciones operativas disponibles para el Inspector en la etapa actual del tramite.";
+    var mensajeInspectorSinAcciones = inspectorDebeRevisarDocumentos
+        ? mensajeBloqueoRevisionDocumentalInspector
+        : (EstadosInspeccion.EsEstadoBloqueCoordinacionJefatura(estadoActualNormalizado)
+            ? "El tramite se encuentra en etapa de verificacion por Direccion / Jefatura. Aun no existen acciones disponibles para el Inspector."
+            : "No existen acciones operativas disponibles para el Inspector en la etapa actual del tramite.");
     var puedePlanificar = esAdministrador || usuarioTieneRol("CoordinadorInspecciones");
-    var puedeSubirInforme = User.IsInRole("Inspector") || User.IsInRole("Administrador");
-    var puedeSolicitarViaticos = esInspector || puedeGestionarCoordinacion;
+    var puedeSubirInforme = (User.IsInRole("Inspector") || User.IsInRole("Administrador")) && !inspectorDebeRevisarDocumentos;
+    var puedeSolicitarViaticos = ((esInspector || esAdministrador) && !inspectorDebeRevisarDocumentos)
+        || (!esInspector && !esAdministrador && puedeGestionarCoordinacion);
     var puedeValidarViaticos = User.IsInRole("CoordinadorFinanciero") || User.IsInRole("DirectorFinanciero") || User.IsInRole("Administrador");
-    var puedeRegistrarResultado = esInspector || puedeGestionarCoordinacion;
-    var puedeRegistrarHallazgo = User.IsInRole("Inspector") || User.IsInRole("Administrador");
-    var puedeEditarInformeTecnico = esInspector || esAdministrador;
+    var informeTecnicoFirmadoInspector = informeTecnico != null && informeTecnico.Finalizado && informeTecnico.FirmadoInspector;
+    var puedeRegistrarResultado = (esInspector || esAdministrador) && !inspectorDebeRevisarDocumentos && informeTecnicoFirmadoInspector;
+    var puedeRegistrarHallazgo = (User.IsInRole("Inspector") || User.IsInRole("Administrador")) && !inspectorDebeRevisarDocumentos;
+    var puedeEditarInformeTecnico = (esInspector || esAdministrador) && !inspectorDebeRevisarDocumentos;
     var puedeSubirCorreccionSolicitante = User.IsInRole("Solicitante") || User.IsInRole("Administrador");
     var esSolicitante = User.IsInRole("Solicitante");
     var esDirdac = esAdministrador || usuarioTieneAlgunRol(new[] { "DIRDAC", "Direccion", "Director", "JefaturaTecnica", "Jefe" });
@@ -152,23 +178,47 @@
     var informeDescargaUrl = Model != null && Model.CodigoInspeccion > 0
         ? Url.Action("DescargarInforme", "Inspeccion", new { id = Model.CodigoInspeccion })
         : string.Empty;
-    var mostrarPanelVistaPrevia = tieneInforme || puedeEditarInformeTecnico;
-    var copyVistaPrevia = tieneInforme
-        ? "Consulte el PDF consolidado debajo del flujo BPMN antes de continuar con la revisión o firma."
-        : "La vista previa del borrador se actualizará automáticamente mientras completa o corrige el informe técnico.";
-    var rutaVistaPreviaTexto = tieneInforme
-        ? rutaInformeVisual
-        : "La vista previa automática aparecerá aquí cuando empiece a ingresar o actualizar la información del informe.";
-    var ayudaViewer = tieneInforme
-        ? "Documento definitivo disponible para revisión y firma."
-        : "La vista previa automática se actualizará mientras edita el informe técnico.";
-    var estadoViewer = tieneInforme ? estadoInformeTecnico : "VISTA PREVIA AUTOMÁTICA";
+    var listaVerificacionOperacionalEaeUrl = Model != null && Model.CodigoInspeccion > 0
+        ? Url.Action("VerListaVerificacionOperacionalEae", "Inspeccion", new { id = Model.CodigoInspeccion })
+        : string.Empty;
+    var listaVerificacionOperacionalEaeDescargaUrl = Model != null && Model.CodigoInspeccion > 0
+        ? Url.Action("DescargarListaVerificacionOperacionalEae", "Inspeccion", new { id = Model.CodigoInspeccion })
+        : string.Empty;
+    var urlDocumentosSolicitud = Model != null && Model.CodigoSolicitud > 0
+        ? Url.Action("Lista", "Documento", new { solicitudId = Model.CodigoSolicitud })
+        : string.Empty;
+    var mensajeBloqueoInformeTecnico = usaFlujoListaVerificacionOperacionalEae && !listaVerificacionFirmada
+        ? "Debe completar, finalizar y firmar la Lista de Verificación Operacional EAE antes de habilitar el informe técnico."
+        : string.Empty;
+    var abrirModalListaVerificacionAlCargar = !string.IsNullOrWhiteSpace(mensajeBloqueoInformeTecnico);
+    var mostrarPanelVistaPrevia = (!usaFlujoListaVerificacionOperacionalEae || listaVerificacionFirmada || tieneInforme)
+        && (tieneInforme || puedeEditarInformeTecnico);
+    var copyVistaPrevia = !string.IsNullOrWhiteSpace(mensajeBloqueoInformeTecnico) && !tieneInforme
+        ? "El informe técnico quedará disponible cuando la LV/EAE esté firmada por el técnico responsable."
+        : (tieneInforme
+            ? "Consulte el PDF consolidado debajo del flujo BPMN antes de continuar con la revisión o firma."
+            : "La vista previa del borrador se actualizará automáticamente mientras completa o corrige el informe técnico.");
+    var rutaVistaPreviaTexto = !string.IsNullOrWhiteSpace(mensajeBloqueoInformeTecnico) && !tieneInforme
+        ? "El flujo del informe técnico está bloqueado por la LV/EAE hasta que exista un documento firmado."
+        : (tieneInforme
+            ? rutaInformeVisual
+            : "La vista previa automática aparecerá aquí cuando empiece a ingresar o actualizar la información del informe.");
+    var ayudaViewer = !string.IsNullOrWhiteSpace(mensajeBloqueoInformeTecnico) && !tieneInforme
+        ? "La vista del informe técnico se habilitará cuando la lista operacional EAE esté firmada."
+        : (tieneInforme
+            ? "Documento definitivo disponible para revisión y firma."
+            : "La vista previa automática se actualizará mientras edita el informe técnico.");
+    var estadoViewer = !string.IsNullOrWhiteSpace(mensajeBloqueoInformeTecnico) && !tieneInforme
+        ? "BLOQUEADO POR LV/EAE"
+        : (tieneInforme ? estadoInformeTecnico : "VISTA PREVIA AUTOMÁTICA");
     var puedeFirmarInspector = puedeEditarInformeTecnico
         && informeTecnico != null
         && informeTecnico.Finalizado
         && !informeTecnico.FirmadoInspector
-        && (string.Equals(estadoInformeTecnico, "APROBADO_COORDINADOR", System.StringComparison.OrdinalIgnoreCase)
-            || string.Equals(estadoInformeTecnico, "APROBADO_DIRECCION", System.StringComparison.OrdinalIgnoreCase));
+        && (usaFlujoListaVerificacionOperacionalEae
+            ? listaVerificacionFirmada
+            : (string.Equals(estadoInformeTecnico, "APROBADO_COORDINADOR", System.StringComparison.OrdinalIgnoreCase)
+                || string.Equals(estadoInformeTecnico, "APROBADO_DIRECCION", System.StringComparison.OrdinalIgnoreCase)));
     var informeEnviadoADirdac = informeTecnico != null && string.Equals(estadoInformeTecnico, "ENVIADO_A_DIRDAC", System.StringComparison.OrdinalIgnoreCase);
     var informeEnviadoACoordinador = informeTecnico != null && string.Equals(estadoInformeTecnico, "ENVIADO_A_COORDINADOR", System.StringComparison.OrdinalIgnoreCase);
     var informeDevueltoCoordinador = informeTecnico != null && string.Equals(estadoInformeTecnico, "DEVUELTO_COORDINADOR", System.StringComparison.OrdinalIgnoreCase);
@@ -181,21 +231,24 @@
             || string.Equals(estadoInformeTecnico, "FIRMADO_FINAL", System.StringComparison.OrdinalIgnoreCase)
             || informeTecnico.FirmadoDirdac);
     var notificacionFormalDirdac = informeTecnico != null && informeEnviadoADirdac && informeTecnico.CorreoEnviado;
-    var puedeEnviarADirdac = puedeEditarInformeTecnico
+    var puedeEnviarADirdac = !usaFlujoListaVerificacionOperacionalEae
+        && puedeEditarInformeTecnico
         && informeTecnico != null
         && informeTecnico.Finalizado
         && !informeTecnico.FirmadoInspector
         && !informeEnviadoADirdac
         && !informeEnviadoACoordinador
         && !informeAprobadoDireccion;
-    var puedeReintentarNotificacionDirdac = (puedeGestionarCoordinacion || esAdministrador)
+    var puedeReintentarNotificacionDirdac = !usaFlujoListaVerificacionOperacionalEae
+        && (puedeGestionarCoordinacion || esAdministrador)
         && informeTecnico != null
         && informeTecnico.Finalizado
         && !informeTecnico.FirmadoInspector
         && informeEnviadoADirdac
         && !notificacionFormalDirdac
         && !informeAprobadoDireccion;
-    var puedeFirmarDirdac = esDirdac
+    var puedeFirmarDirdac = !usaFlujoListaVerificacionOperacionalEae
+        && esDirdac
         && informeTecnico != null
         && !informeAprobadoDireccion
         && string.Equals(estadoInformeTecnico, "ENVIADO_A_DIRDAC", System.StringComparison.OrdinalIgnoreCase);
@@ -288,6 +341,48 @@
     {
         otrosAdjuntosLineas.Add(string.Empty);
     }
+
+    var puedeRenderizarEditorInforme = puedeEditarInformeTecnico && string.IsNullOrWhiteSpace(mensajeBloqueoInformeTecnico);
+    var estadoListaVerificacionResumen = !usaFlujoListaVerificacionOperacionalEae
+        ? "No aplica para este tipo de inspeccion."
+        : (listaVerificacionFirmada
+            ? "LV/EAE finalizada y firmada por el tecnico responsable."
+            : (listaVerificacionOperacionalEae != null && listaVerificacionOperacionalEae.Finalizado
+                ? "LV/EAE finalizada y pendiente de firma."
+                : (listaVerificacionOperacionalEae != null
+                    ? "LV/EAE en elaboracion."
+                    : "LV/EAE pendiente de elaboracion.")));
+    var estadoFirmaInspectorResumen = informeTecnico != null && informeTecnico.FirmadoInspector
+        ? "La firma del inspector ya consta en el documento."
+        : (puedeFirmarInspector
+            ? "La firma digital ya esta habilitada en el panel inferior."
+            : (usaFlujoListaVerificacionOperacionalEae && !listaVerificacionFirmada
+                ? "La firma se habilitara cuando la LV/EAE quede firmada."
+                : "La firma se habilitara cuando el flujo documental quede listo."));
+    var estadoWorkspaceInforme = !string.IsNullOrWhiteSpace(mensajeBloqueoInformeTecnico) && !tieneInforme
+        ? "Bloqueado por LV/EAE"
+        : (tieneInforme ? estadoInformeTecnico : "Borrador en edicion");
+    var claseEstadoWorkspaceInforme = !string.IsNullOrWhiteSpace(mensajeBloqueoInformeTecnico) && !tieneInforme
+        ? "warning"
+        : (tieneInforme ? string.Empty : "neutral");
+    var iconoEstadoWorkspaceInforme = !string.IsNullOrWhiteSpace(mensajeBloqueoInformeTecnico) && !tieneInforme
+        ? "fa-lock"
+        : (tieneInforme ? "fa-check-circle" : "fa-edit");
+    var copyWorkspaceInforme = usaFlujoListaVerificacionOperacionalEae
+        ? "Concentre la redaccion, los adjuntos, la vista previa y la firma del expediente EAE en un solo workspace tecnico."
+        : "Consolide el borrador, controle el PDF definitivo y deje listo el expediente para revision institucional sin pasos dispersos.";
+    var ayudaWorkspaceInforme = !string.IsNullOrWhiteSpace(mensajeBloqueoInformeTecnico)
+        ? mensajeBloqueoInformeTecnico
+        : (tieneInforme
+            ? "El PDF definitivo ya existe y puede revisarse en paralelo mientras ajusta o valida el expediente."
+            : "Trabaje por modulos: contexto, observaciones, resultado y anexos; luego use la vista previa antes de finalizar.");
+    var documentosAdjuntosSeleccionadosTotal = documentosAdjuntosSeleccionados.Count;
+    var otrosAdjuntosRegistradosTotal = InformeTecnicoTemplateHelper.SplitLines(otrosAdjuntosInforme).Count(x => !string.IsNullOrWhiteSpace(x));
+    var totalAdjuntosInforme = documentosAdjuntosSeleccionadosTotal + otrosAdjuntosRegistradosTotal;
+    var resultadoInformeVisual = !string.IsNullOrWhiteSpace(resultadoInforme) ? resultadoInforme.Replace("_", " ") : "Pendiente";
+    var modoConsultaInformeCopy = puedeEditarInformeTecnico && !string.IsNullOrWhiteSpace(mensajeBloqueoInformeTecnico)
+        ? "Existe un documento consultable, pero la edicion y la firma siguen condicionadas a la LV/EAE."
+        : "Su rol puede revisar el documento y su estado, pero la redaccion operativa sigue bajo control del inspector.";
 }
 
 @section Styles {
@@ -1377,6 +1472,16 @@
             font-weight: 800;
         }
 
+        .inspection-detail-page .report-workspace-status.warning {
+            background: rgba(196, 138, 24, 0.12);
+            color: var(--inspection-warning);
+        }
+
+        .inspection-detail-page .report-workspace-status.neutral {
+            background: rgba(27, 79, 114, 0.08);
+            color: var(--inspection-primary-dark);
+        }
+
         .inspection-detail-page .report-workspace-hint {
             margin: 0;
             color: var(--inspection-muted);
@@ -1384,354 +1489,52 @@
             line-height: 1.5;
         }
 
-        .inspection-detail-page .report-accordion {
+        .inspection-detail-page .report-readiness-list {
             display: grid;
-            gap: 0.9rem;
+            gap: 0.75rem;
         }
 
-        .inspection-detail-page .report-accordion .accordion-item {
+        .inspection-detail-page .report-readiness-item {
+            display: grid;
+            grid-template-columns: auto 1fr;
+            gap: 0.75rem;
+            align-items: start;
+            padding: 0.85rem 0.9rem;
+            border-radius: 18px;
             border: 1px solid rgba(27, 79, 114, 0.11);
-            border-radius: 22px;
-            overflow: hidden;
             background: #ffffff;
-            box-shadow: none;
         }
 
-        .inspection-detail-page .report-accordion .accordion-button {
-            display: flex;
-            align-items: flex-start;
-            gap: 0.9rem;
-            padding: 1rem 1.1rem;
-            background: linear-gradient(135deg, rgba(27, 79, 114, 0.08) 0%, rgba(15, 123, 132, 0.05) 100%);
-            box-shadow: none;
-        }
-
-        .inspection-detail-page .report-accordion .accordion-button:not(.collapsed) {
-            background: linear-gradient(135deg, rgba(27, 79, 114, 0.12) 0%, rgba(15, 123, 132, 0.08) 100%);
-            box-shadow: none;
-        }
-
-        .inspection-detail-page .report-accordion .accordion-button:focus {
-            box-shadow: none;
-        }
-
-        .inspection-detail-page .report-accordion-code {
+        .inspection-detail-page .report-readiness-icon {
             display: inline-flex;
             align-items: center;
             justify-content: center;
             width: 2rem;
             height: 2rem;
             border-radius: 999px;
-            background: rgba(27, 79, 114, 0.12);
+            background: rgba(27, 79, 114, 0.1);
             color: var(--inspection-primary-dark);
-            font-size: 0.86rem;
-            font-weight: 800;
             flex: 0 0 auto;
         }
 
-        .inspection-detail-page .report-accordion-title-wrap {
-            display: grid;
-            gap: 0.25rem;
-            flex: 1 1 auto;
-            min-width: 0;
-            text-align: left;
-        }
-
-        .inspection-detail-page .report-accordion-title {
-            color: var(--inspection-primary-dark);
-            font-size: 1rem;
-            font-weight: 800;
-            line-height: 1.3;
-        }
-
-        .inspection-detail-page .report-accordion-copy {
-            color: var(--inspection-muted);
-            font-size: 0.82rem;
-            line-height: 1.5;
-        }
-
-        .inspection-detail-page .report-accordion-badge {
-            display: inline-flex;
-            align-items: center;
-            padding: 0.34rem 0.68rem;
-            border-radius: 999px;
-            background: rgba(15, 123, 132, 0.11);
-            color: var(--inspection-accent);
-            font-size: 0.72rem;
-            font-weight: 800;
-            white-space: nowrap;
-        }
-
-        .inspection-detail-page .report-accordion .accordion-body {
-            padding: 1rem 1.1rem 1.15rem;
-            background: #f8fbfd;
-        }
-
-        .inspection-detail-page .report-section-table-wrap {
-            border: 1px solid rgba(27, 79, 114, 0.11);
-            border-radius: 22px;
-            overflow: hidden;
-            background: linear-gradient(180deg, #fbfdff 0%, #ffffff 100%);
-        }
-
-        .inspection-detail-page .report-accordion .report-section-table-wrap {
-            box-shadow: none;
-        }
-
-        .inspection-detail-page .report-section-table {
-            width: 100%;
-            border-collapse: separate;
-            border-spacing: 0;
-            table-layout: fixed;
-        }
-
-        .inspection-detail-page .report-section-table thead th.section-header-cell {
-            padding: 0;
-            border: 0;
-            background: linear-gradient(135deg, rgba(27, 79, 114, 0.1) 0%, rgba(15, 123, 132, 0.08) 100%);
-        }
-
-        .inspection-detail-page .report-section-table .section-header-main {
-            display: flex;
-            justify-content: space-between;
-            align-items: flex-start;
-            gap: 1rem;
-            padding: 1rem 1.1rem;
-        }
-
-        .inspection-detail-page .report-section-table .section-header-title {
+        .inspection-detail-page .report-readiness-title {
             margin: 0;
             color: var(--inspection-primary-dark);
-            font-size: 1rem;
-            font-weight: 800;
-        }
-
-        .inspection-detail-page .report-section-table .section-header-copy {
-            margin: 0.25rem 0 0;
-            color: var(--inspection-muted);
-            font-size: 0.82rem;
-            line-height: 1.5;
-        }
-
-        .inspection-detail-page .report-section-table .section-header-badge {
-            display: inline-flex;
-            align-items: center;
-            padding: 0.34rem 0.65rem;
-            border-radius: 999px;
-            background: rgba(15, 123, 132, 0.11);
-            color: var(--inspection-accent);
-            font-size: 0.72rem;
-            font-weight: 800;
-            white-space: nowrap;
-        }
-
-        .inspection-detail-page .report-section-table tbody th,
-        .inspection-detail-page .report-section-table tbody td {
-            padding: 1rem 1.05rem;
-            border-top: 1px solid rgba(27, 79, 114, 0.11);
-            vertical-align: top;
-        }
-
-        .inspection-detail-page .report-section-table tbody tr:first-child > th,
-        .inspection-detail-page .report-section-table tbody tr:first-child > td {
-            border-top: 0;
-        }
-
-        .inspection-detail-page .report-section-table .field-label-cell {
-            width: 18%;
-            background: rgba(27, 79, 114, 0.04);
-            color: var(--inspection-primary-dark);
-            font-size: 0.74rem;
-            font-weight: 800;
-            letter-spacing: 0.04em;
-            text-transform: uppercase;
-        }
-
-        .inspection-detail-page .report-section-table .field-value-cell {
-            background: #fff;
-        }
-
-        .inspection-detail-page .report-section-table .field-stack {
-            display: grid;
-            gap: 0.55rem;
-        }
-
-        .inspection-detail-page .report-section-table .field-help {
-            margin: 0;
-            color: var(--inspection-muted);
-            font-size: 0.81rem;
-            line-height: 1.5;
-        }
-
-        .inspection-detail-page .report-section-table .field-note {
-            margin-top: 0.2rem;
-        }
-
-        .inspection-detail-page .report-section-table .field-value-cell .alert {
-            margin-bottom: 0;
-        }
-
-        .inspection-detail-page .report-section-table .field-value-cell .table-responsive,
-        .inspection-detail-page .report-section-table .field-value-cell .table-shell {
-            margin-top: 0.15rem;
-        }
-
-        .inspection-detail-page .report-support-grid {
-            display: grid;
-            grid-template-columns: minmax(0, 1.2fr) minmax(320px, 0.8fr);
-            gap: 1rem;
-            align-items: start;
-        }
-
-        .inspection-detail-page .report-support-card {
-            padding: 1.1rem;
-            border-radius: 22px;
-            border: 1px solid rgba(27, 79, 114, 0.11);
-            background: linear-gradient(180deg, #fbfdff 0%, #ffffff 100%);
-        }
-
-        .inspection-detail-page .report-support-head {
-            display: flex;
-            justify-content: space-between;
-            align-items: flex-start;
-            gap: 0.75rem;
-            margin-bottom: 0.95rem;
-        }
-
-        .inspection-detail-page .report-support-title {
-            margin: 0;
-            color: var(--inspection-primary-dark);
-            font-size: 1rem;
-            font-weight: 800;
-        }
-
-        .inspection-detail-page .report-support-copy {
-            margin: 0.25rem 0 0;
-            color: var(--inspection-muted);
-            font-size: 0.82rem;
-            line-height: 1.5;
-        }
-
-        .inspection-detail-page .report-action-dock {
-            display: grid;
-            gap: 1rem;
-        }
-
-        .inspection-detail-page .report-action-note {
-            margin: 0;
-            padding: 0.85rem 0.95rem;
-            border-radius: 16px;
-            background: rgba(27, 79, 114, 0.06);
-            color: var(--inspection-muted);
             font-size: 0.84rem;
-            line-height: 1.55;
-        }
-
-        .inspection-detail-page .report-action-grid {
-            display: grid;
-            grid-template-columns: repeat(2, minmax(0, 1fr));
-            gap: 0.75rem;
-        }
-
-        .inspection-detail-page .report-action-grid .btn {
-            width: 100%;
-        }
-
-        .inspection-detail-page .report-preview-card {
-            position: sticky;
-            top: 1rem;
-        }
-
-        .inspection-detail-page .report-textarea-lg {
-            min-height: 132px;
-        }
-
-        .inspection-detail-page .report-textarea-md {
-            min-height: 116px;
-        }
-
-        .inspection-detail-page .table-shell {
-            border: 1px solid rgba(27, 79, 114, 0.1);
-            border-radius: 18px;
-            overflow: hidden;
-            background: #fff;
-        }
-
-        .inspection-detail-page .utility-grid {
-            display: grid;
-            grid-template-columns: repeat(2, minmax(0, 1fr));
-            gap: 1rem;
-            margin-top: 1.25rem;
-        }
-
-        .inspection-detail-page .table-card-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            gap: 1rem;
-            margin-bottom: 1rem;
-        }
-
-        .inspection-detail-page .section-badge {
-            display: inline-flex;
-            align-items: center;
-            padding: 0.35rem 0.7rem;
-            border-radius: 999px;
-            background: rgba(27, 79, 114, 0.08);
-            color: var(--inspection-primary);
-            font-size: 0.74rem;
             font-weight: 800;
+            line-height: 1.35;
         }
 
-        .inspection-detail-page .hallazgos-summary {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 0.75rem;
-            margin-top: 0.35rem;
+        .inspection-detail-page .report-readiness-copy {
+            margin: 0.18rem 0 0;
+            color: var(--inspection-muted);
+            font-size: 0.8rem;
+            line-height: 1.5;
         }
 
-        .inspection-detail-page .hallazgos-summary-item {
-            display: inline-flex;
-            align-items: center;
-            gap: 0.45rem;
-            padding: 0.5rem 0.8rem;
-            border-radius: 14px;
-            background: #f4f8fb;
-            color: var(--inspection-primary-dark);
-            font-size: 0.82rem;
-            font-weight: 700;
-        }
-
-        .inspection-detail-page .hallazgos-empty-card {
-            background: linear-gradient(180deg, #f8fbfd 0%, #ffffff 100%);
-        }
-
-        .inspection-detail-page .button-flow {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 0.75rem;
-        }
-
-        .inspection-detail-page .button-flow form {
-            margin: 0;
-        }
-
-        .inspection-detail-page .button-flow .btn,
-        .inspection-detail-page .compact-form .btn,
-        .inspection-detail-page .upload-panel .btn,
-        .inspection-detail-page .action-footer .btn {
-            border-radius: 14px;
-            font-weight: 700;
-            padding: 0.65rem 1rem;
-        }
-
-        .inspection-detail-page .btn-ver-pdf {
-            border-radius: 12px;
-            font-weight: 700;
-            padding: 0.55rem 1rem;
-            color: #ffffff;
-            background: #198754;
-            border: 1px solid #198754;
+        .inspection-detail-page .report-accordion {
+            display: grid;
+            gap: 0.9rem;
         }
 
         .inspection-detail-page .btn-ver-pdf:hover,
@@ -1803,6 +1606,24 @@
         .inspection-detail-page .form-select:focus {
             border-color: rgba(15, 123, 132, 0.65);
             box-shadow: 0 0 0 0.2rem rgba(15, 123, 132, 0.12);
+        }
+
+        .inspection-detail-page .lv-operacional-table .form-select {
+            min-height: 46px;
+            padding: 0.6rem 2.35rem 0.6rem 0.85rem;
+            line-height: 1.35;
+            background-position: right 0.85rem center;
+            background-size: 16px 12px;
+            white-space: normal;
+        }
+
+        .inspection-detail-page .lv-operacional-table .form-select option {
+            color: #243746;
+            background-color: #ffffff;
+        }
+
+        .inspection-detail-page .lv-operacional-table .lv-comentarios {
+            min-height: 92px;
         }
 
         .inspection-detail-page .upload-panel {
@@ -1899,6 +1720,77 @@
             border: 1px solid rgba(27, 79, 114, 0.1);
             background: linear-gradient(180deg, #f8fbfd 0%, #ffffff 100%);
             padding: 1rem 1.1rem;
+        }
+
+        .inspection-detail-page .lv-modal .modal-dialog {
+            max-width: min(1380px, calc(100vw - 2rem));
+        }
+
+        .inspection-detail-page .lv-modal .modal-content {
+            border: 0;
+            border-radius: 26px;
+            overflow: hidden;
+            box-shadow: 0 26px 54px rgba(13, 40, 58, 0.18);
+            background: linear-gradient(180deg, #f7fbfd 0%, #eef5f8 100%);
+        }
+
+        .inspection-detail-page .lv-modal .modal-header {
+            position: sticky;
+            top: 0;
+            z-index: 10;
+            padding: 1rem 1.25rem;
+            border-bottom: 1px solid rgba(27, 79, 114, 0.1);
+            background: linear-gradient(135deg, rgba(27, 79, 114, 0.96) 0%, rgba(15, 123, 132, 0.92) 100%);
+            color: #fff;
+        }
+
+        .inspection-detail-page .lv-modal .modal-title {
+            font-weight: 800;
+            letter-spacing: 0.01em;
+        }
+
+        .inspection-detail-page .lv-modal .modal-header .text-muted {
+            color: rgba(255, 255, 255, 0.78) !important;
+        }
+
+        .inspection-detail-page .lv-modal .btn-close {
+            filter: invert(1) brightness(200%);
+            opacity: 0.92;
+        }
+
+        .inspection-detail-page .lv-modal .modal-body {
+            padding: 1rem;
+            background: linear-gradient(180deg, #f7fbfd 0%, #eef5f8 100%);
+        }
+
+        .inspection-detail-page .lv-modal #bloqueListaVerificacionOperacionalEae {
+            margin-bottom: 0;
+            border: 0;
+            box-shadow: none;
+            background: transparent;
+        }
+
+        .inspection-detail-page .lv-modal #bloqueListaVerificacionOperacionalEae > .card-body {
+            padding: 0;
+        }
+
+        .inspection-detail-page .lv-modal .section-heading {
+            margin-bottom: 1rem;
+        }
+
+        .inspection-detail-page .lv-modal .lv-operacional-actions,
+        .inspection-detail-page .lv-modal .lv-signature-actions {
+            position: sticky;
+            bottom: -1rem;
+            z-index: 8;
+            margin-top: 1rem;
+            padding: 1rem 0 0.25rem;
+            background: linear-gradient(180deg, rgba(247, 251, 253, 0.08) 0%, #eef5f8 34%, #eef5f8 100%);
+        }
+
+        .inspection-detail-page .lv-modal .lv-operacional-actions .btn,
+        .inspection-detail-page .lv-modal .lv-signature-actions .btn {
+            box-shadow: 0 12px 24px rgba(13, 40, 58, 0.08);
         }
 
         .inspection-detail-page .report-pdf-bar {
@@ -2896,41 +2788,58 @@
                                     </div>
                                     <span class="status-pill warning"><i class="fas fa-user-check"></i> Inspector</span>
                                 </div>
-                                <div class="button-flow">
-                                    @if (puedeIniciarInspeccion)
-                                    {
-                                        using (Html.BeginForm("CambiarEstado", "Inspeccion", FormMethod.Post))
-                                        {
-                                            @Html.AntiForgeryToken()
-                                            @Html.Hidden("id", Model.CodigoInspeccion)
-                                            @Html.Hidden("estado", EstadosInspeccion.EN_INSPECCION)
-                                            <button type="submit" class="btn btn-outline-warning">Iniciar inspeccion</button>
-                                        }
-                                    }
-                                    @if (puedeInformeElaborado)
-                                    {
-                                        using (Html.BeginForm("CambiarEstado", "Inspeccion", FormMethod.Post))
-                                        {
-                                            @Html.AntiForgeryToken()
-                                            @Html.Hidden("id", Model.CodigoInspeccion)
-                                            @Html.Hidden("estado", EstadosInspeccion.INFORME_ELABORADO)
-                                            <button type="submit" class="btn btn-outline-info">Informe elaborado</button>
-                                        }
-                                    }
-                                    @if (puedeObservacionDocumental)
-                                    {
-                                        using (Html.BeginForm("CambiarEstado", "Inspeccion", FormMethod.Post))
-                                        {
-                                            @Html.AntiForgeryToken()
-                                            @Html.Hidden("id", Model.CodigoInspeccion)
-                                            @Html.Hidden("estado", EstadosInspeccion.OBSERVACION_DOCUMENTAL)
-                                            <button type="submit" class="btn btn-outline-danger">Observacion documental</button>
-                                        }
-                                    }
-                                </div>
-                                @if (!hayAccionesInspectorDisponibles)
+                                @if (inspectorDebeRevisarDocumentos)
                                 {
-                                    <small class="text-muted d-block mt-2">@mensajeInspectorSinAcciones</small>
+                                    <div class="alert alert-warning alert-inline mb-0">@mensajeBloqueoRevisionDocumentalInspector</div>
+                                }
+                                else
+                                {
+                                    <div class="button-flow">
+                                        @if (puedeIniciarInspeccion)
+                                        {
+                                            using (Html.BeginForm("CambiarEstado", "Inspeccion", FormMethod.Post))
+                                            {
+                                                @Html.AntiForgeryToken()
+                                                @Html.Hidden("id", Model.CodigoInspeccion)
+                                                @Html.Hidden("estado", EstadosInspeccion.EN_INSPECCION)
+                                                <button type="submit" class="btn btn-outline-warning">Iniciar inspeccion</button>
+                                            }
+                                        }
+                                        @if (puedeInformeElaborado)
+                                        {
+                                            using (Html.BeginForm("CambiarEstado", "Inspeccion", FormMethod.Post))
+                                            {
+                                                @Html.AntiForgeryToken()
+                                                @Html.Hidden("id", Model.CodigoInspeccion)
+                                                @Html.Hidden("estado", EstadosInspeccion.INFORME_ELABORADO)
+                                                <button type="submit" class="btn btn-outline-info">Informe elaborado</button>
+                                            }
+                                        }
+                                        @if (puedeObservacionDocumental)
+                                        {
+                                            using (Html.BeginForm("CambiarEstado", "Inspeccion", FormMethod.Post))
+                                            {
+                                                @Html.AntiForgeryToken()
+                                                @Html.Hidden("id", Model.CodigoInspeccion)
+                                                @Html.Hidden("estado", EstadosInspeccion.OBSERVACION_DOCUMENTAL)
+                                                <button type="submit" class="btn btn-outline-danger">Observacion documental</button>
+                                            }
+                                        }
+                                        @if (usaFlujoListaVerificacionOperacionalEae)
+                                        {
+                                            <button type="button" class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#modalListaVerificacionOperacionalEae">
+                                                @(listaVerificacionFirmada ? "Ver LV operacional EAE" : "Completar LV operacional EAE")
+                                            </button>
+                                        }
+                                    </div>
+                                        if (usaFlujoListaVerificacionOperacionalEae)
+                                    {
+                                        <small class="text-primary d-block mt-2">La LV/EAE es obligatoria antes de elaborar y firmar el informe técnico.</small>
+                                    }
+                                        if (!hayAccionesInspectorDisponibles)
+                                    {
+                                        <small class="text-muted d-block mt-2">@mensajeInspectorSinAcciones</small>
+                                    }
                                 }
                             </div>
                         }
@@ -2939,6 +2848,86 @@
 
                     </div>
                 </div>
+
+                @if (usaFlujoListaVerificacionOperacionalEae)
+                {
+                    var listaVerificacionVm = new ListaVerificacionOperacionalEaePanelVm
+                    {
+                        CodigoInspeccion = Model.CodigoInspeccion,
+                        Solicitud = solicitud,
+                        ListaVerificacion = listaVerificacionOperacionalEae,
+                        PuedeEditar = puedeEditarInformeTecnico,
+                        PuedeFirmar = puedeEditarInformeTecnico && listaVerificacionOperacionalEae != null && listaVerificacionOperacionalEae.Finalizado && !listaVerificacionFirmada,
+                        EstaFirmada = listaVerificacionFirmada,
+                        UrlVisualizacion = tieneListaVerificacionOperacionalEae ? listaVerificacionOperacionalEaeUrl : string.Empty,
+                        UrlDescarga = tieneListaVerificacionOperacionalEae ? listaVerificacionOperacionalEaeDescargaUrl : string.Empty,
+                        UrlDocumentosSolicitud = urlDocumentosSolicitud,
+                        MensajeBloqueoEdicion = inspectorDebeRevisarDocumentos ? mensajeBloqueoRevisionDocumentalInspector : string.Empty,
+                        PuedeConfirmarRevisionDocumental = inspectorDebeRevisarDocumentos && (esInspector || esAdministrador)
+                    };
+
+                    var estadoListaVentana = listaVerificacionFirmada
+                        ? "LV firmada"
+                        : (listaVerificacionOperacionalEae != null && listaVerificacionOperacionalEae.Finalizado
+                            ? "LV completada"
+                            : (listaVerificacionOperacionalEae != null && listaVerificacionOperacionalEae.CodigoListaVerificacion > 0
+                                ? "LV en borrador"
+                                : "LV pendiente"));
+                    var claseListaVentana = listaVerificacionFirmada
+                        ? "success"
+                        : (listaVerificacionOperacionalEae != null && listaVerificacionOperacionalEae.Finalizado
+                            ? "primary"
+                            : "warning");
+                    var resumenListaVentana = listaVerificacionFirmada
+                        ? "La lista ya fue firmada y queda como prerequisito cumplido para continuar con el informe técnico."
+                        : (listaVerificacionOperacionalEae != null && listaVerificacionOperacionalEae.Finalizado
+                            ? "La lista ya fue completada. Revísela en la ventana dedicada y continúe con la firma del técnico responsable."
+                            : "Complete la LV/EAE en una ventana dedicada antes de pasar a la elaboración del informe técnico.");
+
+                    <div class="card section-card soft-card" id="bloqueListaVerificacionOperacionalEaeResumen">
+                        <div class="card-body">
+                            <div class="section-heading">
+                                <div class="section-icon">
+                                    <i class="fas fa-clipboard-check"></i>
+                                </div>
+                                <div>
+                                    <h2 class="section-title">Lista de verificación operacional (LV)</h2>
+                                    <p class="section-copy">La LV/EAE ahora se gestiona en una ventana dedicada para no mezclar su captura con el editor del informe técnico.</p>
+                                </div>
+                            </div>
+
+                            <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3">
+                                <div>
+                                    <span class="status-pill @claseListaVentana"><i class="fas fa-window-maximize"></i> @estadoListaVentana</span>
+                                    <p class="section-copy mb-0 mt-2">@resumenListaVentana</p>
+                                </div>
+                                <div class="button-flow">
+                                    <button type="button" class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#modalListaVerificacionOperacionalEae">
+                                        <i class="fas fa-external-link-alt me-1"></i>
+                                        @(listaVerificacionFirmada ? "Abrir ventana LV" : "Completar LV en ventana")
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="modal fade lv-modal" id="modalListaVerificacionOperacionalEae" tabindex="-1" aria-labelledby="modalListaVerificacionOperacionalEaeLabel" aria-hidden="true" data-auto-open="@(abrirModalListaVerificacionAlCargar ? "true" : "false")">
+                        <div class="modal-dialog modal-xl modal-dialog-scrollable">
+                            <div class="modal-content">
+                                <div class="modal-header">
+                                    <div>
+                                        <h5 class="modal-title" id="modalListaVerificacionOperacionalEaeLabel">Lista de verificación operacional (LV/EAE)</h5>
+                                        <small class="text-muted">Gestione la lista antes de elaborar o firmar el informe técnico.</small>
+                                    </div>
+                                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+                                </div>
+                                <div class="modal-body bg-light">
+                                    @Html.Partial("_ListaVerificacionOperacionalEaePanel", listaVerificacionVm)
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                }
 
                 @if (mostrarPanelVistaPrevia)
                 {
@@ -3000,11 +2989,18 @@
                         </div>
                         <div>
                             <h2 class="section-title">Informe tecnico</h2>
-                            <p class="section-copy">Redacción estructurada del informe, generación automática del PDF y flujo de revisión institucional por roles.</p>
+                            <p class="section-copy">@(usaFlujoListaVerificacionOperacionalEae
+                                ? "Redacción estructurada del informe con firma directa del inspector una vez completada la LV/EAE."
+                                : "Redacción estructurada del informe, generación automática del PDF y flujo de revisión institucional por roles.")</p>
                         </div>
                     </div>
 
-                    @if (puedeEditarInformeTecnico)
+                    @if (!string.IsNullOrWhiteSpace(mensajeBloqueoInformeTecnico))
+                    {
+                        <div class="alert alert-warning alert-inline mb-3">@mensajeBloqueoInformeTecnico</div>
+                    }
+
+                    @if (puedeEditarInformeTecnico && string.IsNullOrWhiteSpace(mensajeBloqueoInformeTecnico))
                     {
                         using (Html.BeginForm("GuardarInformeTecnico", "Inspeccion", FormMethod.Post, new { @class = "mb-4", id = "formInformeTecnico", enctype = "multipart/form-data", data_tiene_informe = tieneInforme ? "true" : "false", data_operador_informe = operadorInspeccionado }))
                         {
@@ -3247,16 +3243,19 @@
                         <div class="alert alert-light alert-inline mb-3">Aún no hay informe cargado para esta inspección.</div>
                     }
 
-                    @if (informeTecnico != null && (esInspector || esAdministrador))
+                    @if (!inspectorDebeRevisarDocumentos && informeTecnico != null && (esInspector || esAdministrador) && (!usaFlujoListaVerificacionOperacionalEae || listaVerificacionFirmada || informeTecnico.FirmadoInspector))
                     {
                         <div class="alert alert-light alert-inline mb-0" style="font-size:0.88rem;">
-                            La firma digital del inspector se habilita despues de la revisión DIRDAC y la aprobación de Coordinación.
+                            @(usaFlujoListaVerificacionOperacionalEae
+                                ? "En el flujo EAE la firma del inspector se aplica directamente una vez que la LV/EAE se encuentre firmada."
+                                : "La firma digital del inspector se habilita despues de la revisión DIRDAC y la aprobación de Coordinación.")
                         </div>
 
                         var firmaInspectorVm = new FirmaInspectorPanelVm
                         {
                             CodigoInspeccion = Model.CodigoInspeccion,
                             InformeTecnico = informeTecnico,
+                            UsaFlujoListaVerificacionEae = usaFlujoListaVerificacionOperacionalEae,
                             PuedeFirmarInspector = puedeFirmarInspector,
                             PuedeEnviarADirdac = puedeEnviarADirdac,
                             PuedeReintentarNotificacionDirdac = puedeReintentarNotificacionDirdac,
@@ -3268,15 +3267,22 @@
                         };
                         @Html.Partial("_FirmaInspectorPanel", firmaInspectorVm)
                     }
+                    else if (!inspectorDebeRevisarDocumentos && usaFlujoListaVerificacionOperacionalEae && (esInspector || esAdministrador))
+                    {
+                        <div class="alert alert-warning alert-inline mb-0" style="font-size:0.88rem;">
+                            El panel de firma del informe técnico se habilitara cuando la lista de verificación operacional EAE quede firmada.
+                        </div>
+                    }
                 </div>
             </div>
         </div>
 
-        @* ══════════════════════════════════════════════════════════════
-           SECCIÓN: COORDINADOR
-           Bloque de revisión de solo lectura por el coordinador.
-           ══════════════════════════════════════════════════════════════ *@
-        @{
+        @if (!usaFlujoListaVerificacionOperacionalEae)
+        {
+            @* ══════════════════════════════════════════════════════════════
+               SECCIÓN: COORDINADOR
+               Bloque de revisión de solo lectura por el coordinador.
+               ══════════════════════════════════════════════════════════════ *@
             var coordinadorVm = new CoordinadorPanelVm
             {
                 CodigoInspeccion = Model.CodigoInspeccion,
@@ -3285,15 +3291,13 @@
                 EstadoInformeTecnico = estadoInformeTecnico,
                 RutaInformeVisual = rutaInformeVisual
             };
-        }
-        @Html.Partial("_CoordinadorPanel", coordinadorVm)
+            @Html.Partial("_CoordinadorPanel", coordinadorVm)
 
-        @* ══════════════════════════════════════════════════════════════
-           SECCIÓN: DIRECCIÓN / JEFATURA
-           Bloque dedicado a la revision institucional del informe tecnico.
-           Solo se muestra para roles de Direccion/Jefatura.
-           ══════════════════════════════════════════════════════════════ *@
-        @{
+            @* ══════════════════════════════════════════════════════════════
+               SECCIÓN: DIRECCIÓN / JEFATURA
+               Bloque dedicado a la revision institucional del informe tecnico.
+               Solo se muestra para roles de Direccion/Jefatura.
+               ══════════════════════════════════════════════════════════════ *@
             var direccionVm = new DireccionJefaturaPanelVm
             {
                 CodigoInspeccion = Model.CodigoInspeccion,
@@ -3306,8 +3310,8 @@
                 EstadoInformeTecnico = estadoInformeTecnico,
                 RutaInformeVisual = rutaInformeVisual
             };
+            @Html.Partial("_DireccionJefaturaPanel", direccionVm)
         }
-        @Html.Partial("_DireccionJefaturaPanel", direccionVm)
 
         <div class="aocr-mobile-collapse-shell">
             <button class="aocr-mobile-collapse-toggle d-md-none" type="button" data-bs-toggle="collapse" data-bs-target="#collapseDetalleGestion" aria-expanded="false" aria-controls="collapseDetalleGestion">
@@ -3380,6 +3384,13 @@
                             <p class="section-copy">Registro formal del cierre técnico y evaluación operativa del proceso de inspección.</p>
                         </div>
                     </div>
+
+                    @if (!inspectorDebeRevisarDocumentos && (esInspector || esAdministrador) && !informeTecnicoFirmadoInspector)
+                    {
+                        <div class="alert alert-warning alert-inline mb-3">
+                            Debe finalizar y firmar el informe tecnico antes de registrar el resultado de la inspeccion.
+                        </div>
+                    }
 
                     @if (puedeRegistrarResultado)
                     {
@@ -3471,11 +3482,77 @@
                         </div>
                     </div>
 
+                    @if (!string.IsNullOrWhiteSpace(urlDocumentosSolicitud))
+                    {
+                        <div class="mb-3">
+                            <a href="@urlDocumentosSolicitud" class="btn btn-outline-primary w-100" target="_blank" rel="noopener">
+                                <i class="fas fa-file-alt me-2"></i>
+                                Ver Documentos de la Solicitud
+                            </a>
+                        </div>
+                    }
+
+                    @if (esInspector || esAdministrador)
+                    {
+                        if (inspectorDebeRevisarDocumentos)
+                        {
+                            <div class="alert alert-warning alert-inline mb-3">@mensajeBloqueoRevisionDocumentalInspector</div>
+                            using (Html.BeginForm("ConfirmarRevisionDocumentalInspector", "Inspeccion", FormMethod.Post, new { @class = "mb-3" }))
+                            {
+                                @Html.AntiForgeryToken()
+                                @Html.Hidden("id", Model.CodigoInspeccion)
+                                <button type="submit" class="btn btn-warning w-100">
+                                    <i class="fas fa-check-double me-2"></i>
+                                    Confirmar revisión documental
+                                </button>
+                            }
+                        }
+                    }
+
                     @if (esSolicitante)
                     {
                         <div class="alert alert-inline mb-3">
                             Revise el informe final, atienda las observaciones registradas y cargue una nueva versión del documento requerido.
                         </div>
+
+                        if (puedeSubirCorreccionSolicitante)
+                        {
+                            using (Html.BeginForm("SubirDocumentoSolicitante", "Inspeccion", FormMethod.Post, new { enctype = "multipart/form-data", @class = "compact-form mb-3" }))
+                            {
+                                @Html.AntiForgeryToken()
+                                @Html.Hidden("id", Model.CodigoInspeccion)
+                                <div class="row g-3 align-items-end mb-3">
+                                    <div class="col-md-4 mb-3">
+                                        <label class="form-label fw-semibold" for="documentoBaseIdSolicitante">Documento observado</label>
+                                        <select class="form-control" id="documentoBaseIdSolicitante" name="documentoBaseId">
+                                            <option value="">Seleccione si corrige un documento existente</option>
+                                            @foreach (var docBase in documentosLista.OrderByDescending(d => d.CodigoDocumento))
+                                            {
+                                                <option value="@docBase.CodigoDocumento">@((docBase.TipoDocumento ?? "DOCUMENTO") + " · v" + docBase.Version + (!string.IsNullOrWhiteSpace(docBase.Observacion) ? " · " + docBase.Observacion : string.Empty))</option>
+                                            }
+                                        </select>
+                                    </div>
+                                    <div class="col-md-4 mb-3">
+                                        <label class="form-label fw-semibold" for="tipoDocumentoSolicitante">Tipo de documento</label>
+                                        <input type="text" class="form-control" id="tipoDocumentoSolicitante" name="tipoDocumento" value="@(documentoSolicitanteBase != null ? documentoSolicitanteBase.TipoDocumento : "DOCUMENTO_CORREGIDO")" required />
+                                    </div>
+                                    <div class="col-md-4 mb-3">
+                                        <label class="form-label fw-semibold" for="archivoSolicitanteCorregido">Archivo corregido</label>
+                                        <input type="file" class="form-control" id="archivoSolicitanteCorregido" name="DocumentoSolicitante" accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png" required />
+                                    </div>
+                                    <div class="col-12 mb-3">
+                                        <label class="form-label fw-semibold" for="observacionCorreccionSolicitante">Observación del solicitante</label>
+                                        <textarea class="form-control" id="observacionCorreccionSolicitante" name="observacion" rows="2" placeholder="Detalle breve de la corrección realizada para revisión técnica."></textarea>
+                                    </div>
+                                    <div class="col-12 d-flex justify-content-end">
+                                        <button type="submit" class="btn btn-outline-primary">
+                                            <i class="fas fa-upload"></i>
+                                            Cargar nueva version
+                                        </button>
+                                    </div>
+                                </div>
+                            }
+                        }
                     }
 
                     @if (documentosLista.Any())
@@ -3668,12 +3745,13 @@
             var previewTimer = null;
             var previewInFlight = false;
             var queuedRequest = null;
-            var tieneInformeDefinitivo = (form.getAttribute('data-tiene-informe') || 'false') === 'true';
-            var operadorTextoInforme = form.getAttribute('data-operador-informe') || '';
 
             if (!form || !btnPreview) {
                 return;
             }
+
+            var tieneInformeDefinitivo = (form.getAttribute('data-tiene-informe') || 'false') === 'true';
+            var operadorTextoInforme = form.getAttribute('data-operador-informe') || '';
 
             function syncLineCollection(container) {
                 if (!container) {
@@ -3963,6 +4041,26 @@
 
             syncGeneratedDocumentFields();
             scheduleAutoPreview(tieneInformeDefinitivo ? 250 : 700);
+        })();
+
+        (function () {
+            var modalElement = document.getElementById('modalListaVerificacionOperacionalEae');
+            if (!modalElement) {
+                return;
+            }
+
+            var debeAbrirse = (modalElement.getAttribute('data-auto-open') || 'false') === 'true';
+            if (!debeAbrirse || !window.bootstrap || !window.bootstrap.Modal) {
+                return;
+            }
+
+            window.setTimeout(function () {
+                if (modalElement.classList.contains('show')) {
+                    return;
+                }
+
+                window.bootstrap.Modal.getOrCreateInstance(modalElement).show();
+            }, 320);
         })();
     </script>
 }

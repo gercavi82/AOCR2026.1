@@ -5,6 +5,8 @@
 @{
     ViewBag.Title = "Operador";
     Layout = "~/Views/Shared/_LayoutAOCR.cshtml";
+    var tipoSolicitudInicial = (int)(ViewBag.TipoSolicitudInicial ?? 1);
+    var abrirModalInicial = (bool)(ViewBag.AbrirModalInicial ?? false);
 }
 
 @section Styles {
@@ -134,7 +136,9 @@
                     </a>
                 </li>
                 <li>
-                    <a class="dropdown-item" href="#">
+                    <a class="dropdown-item"
+                       href="javascript:void(0)"
+                       onclick="window.cargarFormulario(null, 3)">
                         <i class="fas fa-edit text-info me-2"></i> Modificación
                     </a>
                 </li>
@@ -235,7 +239,7 @@
             }
 
             // 2) FUNCIÓN GLOBAL DE CARGA (Bootstrap 5 Modal API + AJAX)
-            window.cargarFormulario = function (idSolicitud) {
+            window.cargarFormulario = function (idSolicitud, tipoSolicitud) {
                 const modalEl = document.getElementById('modalFormulario');
                 const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
                 modal.show();
@@ -250,7 +254,7 @@
                 $.ajax({
                     url: '@Url.Action("FormularioEmisionAOCR", "SolicitudAOCR")',
                     type: 'GET',
-                    data: { oid: idSolicitud },
+                    data: { oid: idSolicitud, tipoSolicitud: tipoSolicitud },
                     dataType: 'html',
                     timeout: 10000,
                     success: function (data) {
@@ -296,6 +300,10 @@
                     }
                 });
             };
+
+            if (@(abrirModalInicial ? "true" : "false")) {
+                window.cargarFormulario(null, @tipoSolicitudInicial);
+            }
         });
     </script>
 }

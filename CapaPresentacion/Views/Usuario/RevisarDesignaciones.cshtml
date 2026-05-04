@@ -39,6 +39,28 @@ else
                 @foreach (var u in Model)
                 {
                     var estadoRt = (u.EstadoDesignacionRT ?? "pendiente").Trim().ToLowerInvariant();
+                    var estadoExpedienteRt = (u.EstadoSolicitudRT ?? string.Empty).Trim().ToUpperInvariant();
+                    if (string.IsNullOrWhiteSpace(estadoExpedienteRt))
+                    {
+                        if (estadoRt == "aceptado")
+                        {
+                            estadoExpedienteRt = "FINALIZADO";
+                        }
+                        else if (estadoRt == "rechazado")
+                        {
+                            estadoExpedienteRt = "DEVUELTO_CON_OBSERVACIONES";
+                        }
+                        else
+                        {
+                            estadoExpedienteRt = "EN_REVISION_COORDINADOR";
+                        }
+                    }
+
+                    var observacionRt = (u.ObservacionSolicitudRT ?? string.Empty).Trim();
+                    var enRevision = u.Activo
+                        && (estadoExpedienteRt == "EN_REVISION_COORDINADOR"
+                            || estadoExpedienteRt == "ENVIADO"
+                            || estadoExpedienteRt == "ENVIADA");
                     var puedeEliminar = u.PuedeEliminarRT;
                     if (string.IsNullOrWhiteSpace(estadoRt))
                     {
@@ -46,23 +68,27 @@ else
                     }
 
                     var claseEstadoRt = "badge badge-secondary";
-                    if (estadoRt == "pendiente")
+                    if (estadoExpedienteRt == "EN_REVISION_COORDINADOR" || estadoExpedienteRt == "ENVIADO" || estadoExpedienteRt == "ENVIADA")
                     {
-                        claseEstadoRt = "badge badge-warning";
+                        claseEstadoRt = "badge badge-info";
                     }
-                    else if (estadoRt == "aceptado")
+                    else if (estadoExpedienteRt == "FINALIZADO" || estadoExpedienteRt == "APROBADO" || estadoExpedienteRt == "FIRMADO")
                     {
                         claseEstadoRt = "badge badge-success";
                     }
-                    else if (estadoRt == "rechazado")
+                    else if (estadoExpedienteRt == "DEVUELTO_CON_OBSERVACIONES")
                     {
-                        claseEstadoRt = "badge badge-danger";
+                        claseEstadoRt = "badge badge-warning";
                     }
 
                     <tr>
                         <td>
                             @Html.Encode(u.NombreCompleto)
                             <div class="text-muted small">@Html.Encode(u.CodigoUsuario)</div>
+                            @if (u.SolicitudRtId.HasValue)
+                            {
+                                <div class="text-muted small">Expediente RT #@u.SolicitudRtId.Value</div>
+                            }
                             @if (!puedeEliminar)
                             {
                                 <div class="text-danger small mt-1">
@@ -79,7 +105,14 @@ else
                                 <i class="fas fa-building me-1"></i> Gestionar
                             </a>
                         </td>
-                        <td><span class="@claseEstadoRt">@Html.Encode(estadoRt.ToUpperInvariant())</span></td>
+                        <td>
+                            <span class="@claseEstadoRt">@Html.Encode(estadoExpedienteRt)</span>
+                            <div class="text-muted small mt-1">Legacy: @Html.Encode(estadoRt.ToUpperInvariant())</div>
+                            @if (!string.IsNullOrWhiteSpace(observacionRt))
+                            {
+                                <div class="small text-warning mt-1">Obs.: @Html.Encode(observacionRt)</div>
+                            }
+                        </td>
                         <td>
                             @if (u.Activo)
                             {
@@ -96,6 +129,12 @@ else
                                 <a class="btn btn-outline-primary btn-sm" href="@Url.Action("DescargarDesignacionRT", "Usuario", new { id = u.Id })">
                                     <i class="fas fa-file-download mr-1"></i> Ver PDF
                                 </a>
+                                if (!string.IsNullOrWhiteSpace(u.RutaConstanciaRT))
+                                {
+                                    <a class="btn btn-outline-success btn-sm mt-1" href="@Url.Action("DescargarConstanciaRT", "Usuario", new { id = u.Id })">
+                                        <i class="fas fa-file-circle-check mr-1"></i> Constancia
+                                    </a>
+                                }
                             }
                             else
                             {
@@ -103,7 +142,7 @@ else
                             }
                         </td>
                         <td class="text-center">
-                            @if (u.Activo && estadoRt == "pendiente")
+                            @if (enRevision)
                             {
                                 <form method="post" action="@Url.Action("AceptarDesignacion", "Usuario")" class="d-inline">
                                     @Html.AntiForgeryToken()
@@ -113,11 +152,17 @@ else
                                     </button>
                                 </form>
 
-                                <form method="post" action="@Url.Action("RechazarDesignacion", "Usuario")" class="d-inline">
+                                <form method="post" action="@Url.Action("RechazarDesignacion", "Usuario")" class="mt-2 text-start">
                                     @Html.AntiForgeryToken()
                                     <input type="hidden" name="id" value="@u.Id" />
-                                    <button type="submit" class="btn btn-warning btn-sm mr-1 mb-1" title="Rechazar RT" onclick="return confirm('Desea rechazar esta designacion RT?');">
-                                        <i class="fas fa-times"></i>
+                                    <textarea name="observacion"
+                                              class="form-control form-control-sm mb-1"
+                                              rows="2"
+                                              maxlength="500"
+                                              placeholder="Observación obligatoria para devolver la solicitud RT"
+                                              required></textarea>
+                                    <button type="submit" class="btn btn-warning btn-sm mr-1 mb-1" title="Devolver RT" onclick="return confirm('Desea devolver esta designacion RT con observaciones?');">
+                                        <i class="fas fa-undo"></i> Devolver
                                     </button>
                                 </form>
                             }

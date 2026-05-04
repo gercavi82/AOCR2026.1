@@ -158,6 +158,11 @@ namespace CapaNegocio.Services
                 return new Rectangle(32f, 52f, 262f, 142f);
             }
 
+            if (rol == "LV_EAE_INSPECTOR")
+            {
+                return new Rectangle(120f, 72f, 472f, 156f);
+            }
+
             // Informe Técnico — columna derecha (DIRDAC)
             if (rol == "INFORME_TECNICO_DIRDAC")
             {
@@ -228,6 +233,7 @@ namespace CapaNegocio.Services
             var rol = (rolFirmante ?? string.Empty).Trim().ToUpperInvariant();
             return rol == "AOCR_FIRMANTE"
                 || rol == "INFORME_TECNICO_INSPECTOR"
+                || rol == "LV_EAE_INSPECTOR"
                 || rol == "INFORME_TECNICO_DIRDAC"
                 || rol == "DIRDAC"
                 || rol == "DIRECTOR_GENERAL";
@@ -237,6 +243,11 @@ namespace CapaNegocio.Services
         {
             var rol = (rolFirmante ?? string.Empty).Trim().ToUpperInvariant();
             if (rol == "INFORME_TECNICO_INSPECTOR")
+            {
+                return "Firmado electronicamente por:\n";
+            }
+
+            if (rol == "LV_EAE_INSPECTOR")
             {
                 return "Firmado electronicamente por:\n";
             }
@@ -258,6 +269,11 @@ namespace CapaNegocio.Services
         {
             var rol = (rolFirmante ?? string.Empty).Trim().ToUpperInvariant();
             if (rol == "INFORME_TECNICO_INSPECTOR")
+            {
+                return "INSPECTOR";
+            }
+
+            if (rol == "LV_EAE_INSPECTOR")
             {
                 return "INSPECTOR";
             }
@@ -340,7 +356,7 @@ namespace CapaNegocio.Services
                     var rol = (rolFirmante ?? string.Empty).Trim().ToUpperInvariant();
                     var esAocr = rol == "AOCR_FIRMANTE";
                     var esFirmaIntegrada = EsFirmaIntegradaEnPlantilla(rolFirmante);
-                    var esInformeTecnico = rol == "INFORME_TECNICO_INSPECTOR" || rol == "INFORME_TECNICO_DIRDAC";
+                    var esInformeTecnico = rol == "INFORME_TECNICO_INSPECTOR" || rol == "INFORME_TECNICO_DIRDAC" || rol == "LV_EAE_INSPECTOR";
                     if (esFirmaIntegrada)
                     {
                         canvas.SetColorFill(BaseColor.WHITE);
@@ -427,6 +443,11 @@ namespace CapaNegocio.Services
             if (rol == "INFORME_TECNICO_INSPECTOR")
             {
                 return "INSPECTOR DGAC";
+            }
+
+            if (rol == "LV_EAE_INSPECTOR")
+            {
+                return "TECNICO / INSPECTOR DGAC";
             }
 
             if (rol == "INSPECTOR")

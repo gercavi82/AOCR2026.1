@@ -2,13 +2,17 @@
 @{
     Layout = "~/Views/Shared/_LayoutAOCR.cshtml";
     ViewBag.Title = "Designación RT";
-    bool bloqueado = string.Equals(Model.Estado, "ENVIADA", System.StringComparison.OrdinalIgnoreCase);
+    var estado = (Model.Estado ?? ViewBag.EstadoRt as string ?? "BORRADOR").Trim().ToUpperInvariant();
+    var observacionCoordinador = (ViewBag.ObservacionCoordinadorRt as string ?? string.Empty).Trim();
+    var tieneConstanciaRt = ViewBag.TieneConstanciaRt != null && (bool)ViewBag.TieneConstanciaRt;
+    bool bloqueado = !(string.Equals(estado, "BORRADOR", System.StringComparison.OrdinalIgnoreCase)
+        || string.Equals(estado, "DEVUELTO_CON_OBSERVACIONES", System.StringComparison.OrdinalIgnoreCase));
 }
 
 <div class="container mt-4">
     <div class="card shadow-sm">
         <div class="card-header bg-primary text-white">
-            <h4 class="mb-0">Declaración RT Firmada</h4>
+            <h4 class="mb-0">Designación RT Firmada</h4>
         </div>
         <div class="card-body">
             @if (TempData["Ok"] != null)
@@ -20,10 +24,35 @@
                 <div class="alert alert-danger">@TempData["Error"]</div>
             }
 
-            @if (bloqueado)
+            @if (string.Equals(estado, "ENVIADO", System.StringComparison.OrdinalIgnoreCase)
+                || string.Equals(estado, "EN_REVISION_COORDINADOR", System.StringComparison.OrdinalIgnoreCase))
             {
                 <div class="alert alert-info">
                     La solicitud ya fue enviada y está en revisión por Coordinador.
+                </div>
+            }
+            else if (string.Equals(estado, "DEVUELTO_CON_OBSERVACIONES", System.StringComparison.OrdinalIgnoreCase))
+            {
+                <div class="alert alert-warning">
+                    <strong>Solicitud devuelta.</strong>
+                    @if (!string.IsNullOrWhiteSpace(observacionCoordinador))
+                    {
+                        <span> Observación de coordinación: @observacionCoordinador</span>
+                    }
+                </div>
+            }
+            else if (string.Equals(estado, "FINALIZADO", System.StringComparison.OrdinalIgnoreCase)
+                || string.Equals(estado, "FIRMADO", System.StringComparison.OrdinalIgnoreCase)
+                || string.Equals(estado, "APROBADO", System.StringComparison.OrdinalIgnoreCase))
+            {
+                <div class="alert alert-success d-flex flex-column flex-lg-row align-items-lg-center justify-content-between gap-2">
+                    <div>La solicitud RT fue aprobada y el expediente ya está finalizado.</div>
+                    @if (tieneConstanciaRt)
+                    {
+                        <a class="btn btn-outline-success btn-sm" href="@Url.Action("DescargarConstancia", "RT")">
+                            Descargar constancia
+                        </a>
+                    }
                 </div>
             }
 
@@ -55,7 +84,7 @@
                 }
 
                 <div class="d-flex justify-content-between">
-                    <span class="badge bg-secondary">Estado: @Model.Estado</span>
+                    <span class="badge bg-secondary">Estado: @estado</span>
                     if (bloqueado)
                     {
                         <button type="submit" class="btn btn-outline-primary" disabled="disabled">

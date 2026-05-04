@@ -1,0 +1,306 @@
+@model CapaPresentacion.Models.ViewModels.ListaVerificacionOperacionalEaePanelVm
+@using System
+@using System.Collections.Generic
+@using System.Linq
+@using CapaModelo
+@using CapaPresentacion.Models.ViewModels
+
+@{
+    var vm = Model ?? new ListaVerificacionOperacionalEaePanelVm();
+    var lista = vm.ListaVerificacion ?? new ListaVerificacionOperacionalEae();
+    var items = (lista.Items ?? new List<ListaVerificacionOperacionalEaeItem>()).OrderBy(item => item.Orden).ToList();
+    var tieneLv = lista.CodigoListaVerificacion > 0 || items.Any(item => !string.IsNullOrWhiteSpace(item.EstadoCumplimiento) || !string.IsNullOrWhiteSpace(item.EstadoImplementacion) || !string.IsNullOrWhiteSpace(item.PruebasNotasComentarios));
+    var tienePdf = !string.IsNullOrWhiteSpace(vm.UrlVisualizacion);
+    var firmada = vm.EstaFirmada || (lista.Finalizado && lista.FirmadoTecnico);
+    var finalizada = lista.Finalizado;
+    var estado = (lista.EstadoLista ?? "LV_BORRADOR").ToUpperInvariant();
+
+    string estadoLabel;
+    string estadoClass;
+    switch (estado)
+    {
+        case "LV_FIRMADA":
+        case "FIRMADA":
+            estadoLabel = "LV firmada";
+            estadoClass = "success";
+            break;
+        case "LV_COMPLETADA":
+        case "FINALIZADA":
+        case "COMPLETA":
+            estadoLabel = "LV completada";
+            estadoClass = "primary";
+            break;
+        default:
+            estadoLabel = tieneLv ? "LV borrador" : "Sin LV";
+            estadoClass = tieneLv ? "secondary" : "warning";
+            break;
+    }
+}
+
+<div class="card section-card soft-card" id="bloqueListaVerificacionOperacionalEae">
+    <div class="card-body">
+        <div class="section-heading">
+            <div class="section-icon">
+                <i class="fas fa-clipboard-check"></i>
+            </div>
+            <div>
+                <h2 class="section-title">LISTA DE VERIFICACIÓN OPERACIONAL (LV)</h2>
+                <p class="section-copy">Evaluación técnica de un explotador de servicios aéreos extranjero (EAE) - RDAC 129</p>
+            </div>
+        </div>
+
+        <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-3">
+            <div>
+                <span class="badge bg-@estadoClass">@estadoLabel</span>
+                <span class="ms-2 text-muted">Resultado general: <strong>@(string.IsNullOrWhiteSpace(lista.ResultadoGeneral) ? "PENDIENTE" : lista.ResultadoGeneral)</strong></span>
+            </div>
+            <div class="d-flex flex-column flex-md-row gap-2">
+                @if (tienePdf)
+                {
+                    <a class="btn btn-outline-primary" href="@vm.UrlVisualizacion" target="_blank" rel="noopener">
+                        <i class="fas fa-file-pdf me-1"></i> Vista previa LV
+                    </a>
+                    <a class="btn btn-outline-secondary" href="@vm.UrlDescarga" target="_blank" rel="noopener">
+                        <i class="fas fa-download me-1"></i> Descargar LV
+                    </a>
+                }
+            </div>
+        </div>
+
+        @if (!tieneLv)
+        {
+            <div class="alert alert-warning alert-inline mb-3">
+                Antes de generar el Informe Tecnico debe completar la Lista de Verificacion Operacional (LV).
+            </div>
+        }
+        else if (firmada)
+        {
+            <div class="alert alert-success alert-inline mb-3">
+                La Lista de Verificacion Operacional ya fue firmada. Ahora puede generar el Informe Tecnico.
+                Flujo simplificado activo: LV firmada + Informe Tecnico firmado por Tecnico / Inspector.
+            </div>
+        }
+        else if (finalizada)
+        {
+            <div class="alert alert-info alert-inline mb-3">
+                La Lista de Verificacion Operacional fue completada correctamente. Proceda con la firma del Tecnico / Inspector.
+            </div>
+        }
+        else
+        {
+            <div class="alert alert-warning alert-inline mb-3">
+                Informe Tecnico bloqueado. Primero complete y firme la Lista de Verificacion Operacional (LV).
+            </div>
+        }
+
+        @if (tienePdf)
+        {
+            @Html.Partial("~/Views/Shared/_AocrPdfViewer.cshtml", new AocrPdfViewerViewModel
+            {
+                PdfUrl = vm.UrlVisualizacion,
+                DescargarUrl = vm.UrlDescarga,
+                Titulo = "Lista de Verificacion Operacional (LV)",
+                EstadoDocumento = lista.EstadoLista ?? "LV_BORRADOR",
+                MensajeAyuda = firmada ? "LV firmada por el Tecnico / Inspector responsable." : "Revise el PDF generado antes de aplicar la firma digital.",
+                PermitirDescarga = true,
+                PermitirImpresion = true,
+                MostrarToolbar = true,
+                ContenedorId = "viewerListaVerificacionOperacionalEae",
+                PantallaCompleta = false
+            })
+        }
+        else if (finalizada || firmada)
+        {
+            <div class="alert alert-warning alert-inline mb-3">
+                El registro de la LV/EAE existe, pero el PDF asociado no está disponible en el servidor. Debe regenerarse o volver a finalizarse antes de abrir la vista previa.
+            </div>
+        }
+
+        @if (!vm.PuedeEditar && !firmada)
+        {
+            <div class="alert alert-warning alert-inline mb-3">
+                @(!string.IsNullOrWhiteSpace(vm.MensajeBloqueoEdicion)
+                    ? vm.MensajeBloqueoEdicion
+                    : "La lista de verificación operacional se encuentra disponible solo en modo consulta para su rol o en el estado actual del trámite.")
+            </div>
+
+            <div class="d-flex flex-column flex-md-row gap-2 mb-3">
+                @if (!string.IsNullOrWhiteSpace(vm.UrlDocumentosSolicitud))
+                {
+                    <a class="btn btn-outline-primary" href="@vm.UrlDocumentosSolicitud" target="_blank" rel="noopener">
+                        <i class="fas fa-file-alt me-1"></i> Ver documentos de la solicitud
+                    </a>
+                }
+
+                @if (vm.PuedeConfirmarRevisionDocumental)
+                {
+                    using (Html.BeginForm("ConfirmarRevisionDocumentalInspector", "Inspeccion", FormMethod.Post, new { @class = "mb-0" }))
+                    {
+                        @Html.AntiForgeryToken()
+                        @Html.Hidden("id", vm.CodigoInspeccion)
+                        <button type="submit" class="btn btn-warning">
+                            <i class="fas fa-check-double me-1"></i> Confirmar revisión documental
+                        </button>
+                    }
+                }
+            </div>
+
+            <div class="alert alert-light alert-inline mb-3">
+                Cuando la revisión documental esté confirmada, esta misma ventana mostrará la cabecera completa de la LV/EAE, la tabla de criterios y los botones para guardar, finalizar o firmar.
+            </div>
+        }
+
+        @if (vm.PuedeEditar && !firmada)
+        {
+            using (Html.BeginForm("GuardarListaVerificacionOperacionalEae", "Inspeccion", FormMethod.Post, new { @class = "mt-4" }))
+            {
+                @Html.AntiForgeryToken()
+                @Html.Hidden("id", vm.CodigoInspeccion)
+
+                <div class="row g-3 mb-3">
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">1. Nombre del EAE / Nombre comercial del EAE</label>
+                        <input class="form-control" name="lvNombreEae" value="@(lista.NombreEae ?? string.Empty)" required="required" />
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">2. N AOC / Fecha de expedicion / Validez</label>
+                        <input class="form-control" name="lvNumeroAocFechaValidez" value="@(lista.NumeroAocFechaValidez ?? string.Empty)" required="required" />
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">3. Direccion del EAE y contacto en Estado del explotador</label>
+                        <textarea class="form-control" name="lvDireccionEstadoExplotador" rows="2" required="required">@(lista.DireccionEstadoExplotador ?? string.Empty)</textarea>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">4. Direccion del EAE y contacto en Estado que emite reconocimiento</label>
+                        <textarea class="form-control" name="lvDireccionEstadoReconocimiento" rows="2" required="required">@(lista.DireccionEstadoReconocimiento ?? string.Empty)</textarea>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">5. Tipo/s de aeronave/s: marca, modelo, numero de serie</label>
+                        <textarea class="form-control" name="lvTiposAeronaves" rows="2" required="required">@(lista.TiposAeronaves ?? string.Empty)</textarea>
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <label class="form-label">6. Tipo de operacion</label>
+                        <input class="form-control" name="lvTipoOperacion" value="@(lista.TipoOperacion ?? string.Empty)" required="required" />
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <label class="form-label">7. Fecha</label>
+                        <input class="form-control" type="date" name="lvFecha" value="@(lista.FechaLista.HasValue ? lista.FechaLista.Value.ToString("yyyy-MM-dd") : DateTime.Now.ToString("yyyy-MM-dd"))" required="required" />
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">8. Inspector responsable de la aprobacion</label>
+                        <input class="form-control" name="lvInspectorResponsable" value="@(lista.InspectorResponsable ?? string.Empty)" required="required" />
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">Cargo del Tecnico / Inspector</label>
+                        <input class="form-control" name="lvCargoInspector" value="@(string.IsNullOrWhiteSpace(lista.CargoInspector) ? "Tecnico / Inspector responsable" : lista.CargoInspector)" />
+                    </div>
+                </div>
+
+                <div class="table-responsive">
+                    <table class="table table-bordered align-middle lv-operacional-table">
+                        <thead class="table-light">
+                            <tr>
+                                <th style="min-width:130px;">9. Referencia</th>
+                                <th style="min-width:260px;">10. Pregunta del requisito</th>
+                                <th style="min-width:180px;">11. Estado de cumplimiento del requisito</th>
+                                <th style="min-width:340px;">12. Orientacion para el examen de pruebas o evidencias</th>
+                                <th style="min-width:180px;">13. Estado de implementacion</th>
+                                <th style="min-width:280px;">14. Pruebas / Notas / Comentarios</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var item in items)
+                            {
+                                var cumplimiento = (item.EstadoCumplimiento ?? string.Empty).Trim().ToUpperInvariant();
+                                var implementacion = (item.EstadoImplementacion ?? string.Empty).Trim().ToUpperInvariant();
+                                <tr>
+                                    <td style="white-space:pre-line;">@item.Referencia</td>
+                                    <td style="white-space:pre-line;"><strong>@item.Codigo</strong><br />@item.PreguntaRequisito</td>
+                                    <td>
+                                        <select class="form-select lv-cumplimiento" name="@("lvItem_" + item.Codigo + "_cumplimiento")" required="required">
+                                            <option value="">Seleccione...</option>
+                                            <option value="SATISFACTORIO" @(cumplimiento == "SATISFACTORIO" ? "selected" : null)>Satisfactorio</option>
+                                            <option value="NO_SATISFACTORIO" @(cumplimiento == "NO_SATISFACTORIO" ? "selected" : null)>No satisfactorio</option>
+                                            <option value="NO_APLICABLE" @(cumplimiento == "NO_APLICABLE" ? "selected" : null)>No aplicable</option>
+                                        </select>
+                                    </td>
+                                    <td style="white-space:pre-line;">@item.OrientacionEvidencia</td>
+                                    <td>
+                                        <select class="form-select lv-implementacion" name="@("lvItem_" + item.Codigo + "_implementacion")" required="required">
+                                            <option value="">Seleccione...</option>
+                                            <option value="IMPLEMENTADO" @(implementacion == "IMPLEMENTADO" ? "selected" : null)>Implementado</option>
+                                            <option value="NO_IMPLEMENTADO" @(implementacion == "NO_IMPLEMENTADO" ? "selected" : null)>No implementado</option>
+                                            <option value="NO_APLICABLE" @(implementacion == "NO_APLICABLE" ? "selected" : null)>No aplicable</option>
+                                        </select>
+                                    </td>
+                                    <td>
+                                        <textarea class="form-control lv-comentarios" name="@("lvItem_" + item.Codigo + "_comentarios")" rows="3" placeholder="Pruebas, notas o comentarios. Obligatorio si no es satisfactorio o no implementado.">@(item.PruebasNotasComentarios ?? string.Empty)</textarea>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="d-flex flex-column flex-md-row gap-2 mt-3 lv-operacional-actions">
+                    <button type="submit" class="btn btn-outline-primary">
+                        <i class="fas fa-save me-1"></i> Guardar LV
+                    </button>
+                    <button type="submit" class="btn btn-primary" name="finalizar" value="true" onclick="return validarComentariosLvEae(this.form);">
+                        <i class="fas fa-file-pdf me-1"></i> Finalizar LV
+                    </button>
+                </div>
+            }
+        }
+
+        @if (finalizada && !firmada && vm.PuedeFirmar)
+        {
+            <div class="card mt-4 border-0 bg-light">
+                <div class="card-body">
+                    <h5 class="mb-3"><i class="fas fa-signature me-2"></i>Firma del Tecnico / Inspector responsable de la LV</h5>
+                    @using (Html.BeginForm("FirmarListaVerificacionOperacionalEae", "Inspeccion", FormMethod.Post, new { enctype = "multipart/form-data" }))
+                    {
+                        @Html.AntiForgeryToken()
+                        @Html.Hidden("id", vm.CodigoInspeccion)
+
+                        <div class="row g-3">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Certificado digital (.p12 / .pfx)</label>
+                                <input type="file" name="CertificadoInspector" class="form-control" accept=".p12,.pfx" required="required" />
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Contrasena del certificado</label>
+                                <input type="password" name="passwordCertificado" class="form-control" autocomplete="off" required="required" />
+                            </div>
+                        </div>
+                        <div class="lv-signature-actions">
+                            <button type="submit" class="btn btn-success">
+                                <i class="fas fa-shield-alt me-1"></i> Firmar Lista de Verificacion LV
+                            </button>
+                        </div>
+                    }
+                </div>
+            </div>
+        }
+    </div>
+</div>
+
+<script>
+function validarComentariosLvEae(form) {
+    if (!form) return true;
+    var filas = form.querySelectorAll('.lv-operacional-table tbody tr');
+    for (var i = 0; i < filas.length; i++) {
+        var fila = filas[i];
+        var cumplimiento = fila.querySelector('.lv-cumplimiento');
+        var implementacion = fila.querySelector('.lv-implementacion');
+        var comentarios = fila.querySelector('.lv-comentarios');
+        var requiereComentario = (cumplimiento && cumplimiento.value === 'NO_SATISFACTORIO') || (implementacion && implementacion.value === 'NO_IMPLEMENTADO');
+        if (requiereComentario && comentarios && !comentarios.value.trim()) {
+            alert('Ingrese Pruebas / Notas / Comentarios para todo item No satisfactorio o No implementado.');
+            comentarios.focus();
+            return false;
+        }
+    }
+    return confirm('Confirma que desea finalizar la Lista de Verificacion Operacional (LV) y generar el PDF?');
+}
+</script>

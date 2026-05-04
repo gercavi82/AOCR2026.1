@@ -1,6 +1,8 @@
 ﻿using System;
 using System.IO;
 using System.Web.Mvc;
+using CapaModelo;
+using CapaModelo.RT;
 using CapaModelo.RT.ViewModels;
 using CapaNegocio.Services;
 using CapaNegocio.Helpers;
@@ -25,12 +27,45 @@ namespace CapaPresentacion.Controllers
             return 0;
         }
 
+        private void CargarContextoSolicitudRt(SolicitudRTModel solicitud, int usuarioId)
+        {
+            var usuario = usuarioId > 0 ? UsuarioDAO.ObtenerPorId(usuarioId) : null;
+            var estado = solicitud != null ? _service.NormalizarEstado(solicitud.Estado) : RTService.EstadoBorrador;
+            var documento = solicitud != null ? _service.GetDocumentoDesignacion(solicitud.Id) : null;
+
+            var rutaConstancia = usuario != null ? (usuario.RutaConstanciaRT ?? string.Empty).Trim() : string.Empty;
+            var tieneConstancia = false;
+            if (!string.IsNullOrWhiteSpace(rutaConstancia))
+            {
+                try
+                {
+                    var rutaFisica = Server.MapPath(rutaConstancia);
+                    tieneConstancia = System.IO.File.Exists(rutaFisica);
+                }
+                catch
+                {
+                    tieneConstancia = false;
+                }
+            }
+
+            ViewBag.EstadoRt = estado;
+            ViewBag.SolicitudRtId = solicitud != null ? solicitud.Id : 0;
+            ViewBag.EsEditableRt = solicitud == null || _service.EsEstadoEditable(estado);
+            ViewBag.ObservacionCoordinadorRt = solicitud != null ? (solicitud.ObservacionCoordinador ?? string.Empty).Trim() : string.Empty;
+            ViewBag.TieneDeclaracionRt = solicitud != null && solicitud.DeclaracionAceptada;
+            ViewBag.TieneDocumentoRt = documento != null;
+            ViewBag.NombreArchivoRt = documento != null ? documento.NombreArchivo : string.Empty;
+            ViewBag.TieneConstanciaRt = tieneConstancia;
+            ViewBag.EstadoDesignacionLegacyRt = usuario != null ? (usuario.EstadoDesignacionRT ?? string.Empty).Trim() : string.Empty;
+        }
+
         [HttpGet]
         public ActionResult Registro()
         {
             var usuarioId = ObtenerUsuarioId();
             var solicitud = _service.GetSolicitudByUsuario(usuarioId);
             var vm = new RegistroRTVM();
+            var usuario = usuarioId > 0 ? UsuarioDAO.ObtenerPorId(usuarioId) : null;
 
             if (solicitud != null)
             {
@@ -44,6 +79,12 @@ namespace CapaPresentacion.Controllers
 
                 ViewBag.Estado = solicitud.Estado;
             }
+            else if (usuario != null)
+            {
+                vm.Email = usuario.Email;
+            }
+
+            CargarContextoSolicitudRt(solicitud, usuarioId);
 
             return View(vm);
         }
@@ -56,6 +97,7 @@ namespace CapaPresentacion.Controllers
 
             if (!ModelState.IsValid)
             {
+                CargarContextoSolicitudRt(_service.GetSolicitudByUsuario(usuarioId), usuarioId);
                 return View("Registro", vm);
             }
 
@@ -68,6 +110,7 @@ namespace CapaPresentacion.Controllers
             catch (Exception ex)
             {
                 ModelState.AddModelError("", ex.Message);
+                CargarContextoSolicitudRt(_service.GetSolicitudByUsuario(usuarioId), usuarioId);
                 return View("Registro", vm);
             }
         }
@@ -103,6 +146,8 @@ namespace CapaPresentacion.Controllers
             {
                 vm.TextoDeclaracion = textoPersonalizado;
             }
+
+            CargarContextoSolicitudRt(solicitud, usuarioId);
 
             return View(vm);
         }
@@ -159,6 +204,7 @@ namespace CapaPresentacion.Controllers
             var usuarioId = ObtenerUsuarioId();
             if (!ModelState.IsValid)
             {
+                CargarContextoSolicitudRt(_service.GetSolicitudByUsuario(usuarioId), usuarioId);
                 return View("Declaracion", vm);
             }
 
@@ -171,6 +217,7 @@ namespace CapaPresentacion.Controllers
             catch (Exception ex)
             {
                 ModelState.AddModelError("", ex.Message);
+                CargarContextoSolicitudRt(_service.GetSolicitudByUsuario(usuarioId), usuarioId);
                 return View("Declaracion", vm);
             }
         }
@@ -194,6 +241,8 @@ namespace CapaPresentacion.Controllers
                 Estado = solicitud.Estado
             };
 
+            CargarContextoSolicitudRt(solicitud, usuarioId);
+
             return View(vm);
         }
 
@@ -204,6 +253,7 @@ namespace CapaPresentacion.Controllers
             var usuarioId = ObtenerUsuarioId();
             if (!ModelState.IsValid)
             {
+                CargarContextoSolicitudRt(_service.GetSolicitudByUsuario(usuarioId), usuarioId);
                 return View("Designacion", vm);
             }
 
@@ -216,6 +266,7 @@ namespace CapaPresentacion.Controllers
             catch (Exception ex)
             {
                 ModelState.AddModelError("", ex.Message);
+                CargarContextoSolicitudRt(_service.GetSolicitudByUsuario(usuarioId), usuarioId);
                 return View("Designacion", vm);
             }
         }
@@ -236,6 +287,31 @@ namespace CapaPresentacion.Controllers
             }
 
             return RedirectToAction("Designacion", new { solicitudId });
+        }
+
+        [HttpGet]
+        public ActionResult DescargarConstancia()
+        {
+            var usuarioId = ObtenerUsuarioId();
+            var usuario = usuarioId > 0 ? UsuarioDAO.ObtenerPorId(usuarioId) : null;
+            if (usuario == null || string.IsNullOrWhiteSpace(usuario.RutaConstanciaRT))
+            {
+                return HttpNotFound();
+            }
+
+            var rutaFisica = Server.MapPath(usuario.RutaConstanciaRT);
+            if (!System.IO.File.Exists(rutaFisica))
+            {
+                return HttpNotFound();
+            }
+
+            var esPdf = string.Equals(Path.GetExtension(rutaFisica), ".pdf", StringComparison.OrdinalIgnoreCase);
+            return File(
+                rutaFisica,
+                esPdf ? "application/pdf" : "text/plain",
+                esPdf
+                    ? "Constancia_RT_" + (usuario.CodigoUsuario ?? usuarioId.ToString()) + ".pdf"
+                    : "Constancia_RT_" + (usuario.CodigoUsuario ?? usuarioId.ToString()) + ".txt");
         }
 
         private static byte[] GenerarDeclaracionPdf(DeclaracionPdfVM vm)

@@ -26,7 +26,7 @@
             <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3">
                 <div>
                     <h2 class="mb-1">Validar AOCR</h2>
-                    <p class="text-muted mb-0">Documentos AOCR disponibles despues de la firma completa del informe tecnico institucional.</p>
+                    <p class="text-muted mb-0">Documentos AOCR institucionales disponibles segun la fase del tramite; en modificaciones directas, Condiciones y Limitaciones puede prepararse sin informe tecnico firmado.</p>
                 </div>
                 <a class="btn btn-outline-secondary" href="@Url.Action("DashboardInspeccion", "CoordinacionJefatura")">Volver al dashboard</a>
             </div>
@@ -35,7 +35,7 @@
 
     @if (!items.Any())
     {
-        <div class="alert alert-info">No existen AOCR listos para validacion o aun no hay informes tecnicos con firma final institucional.</div>
+        <div class="alert alert-info">No existen trámites AOCR listos para validación institucional en este momento.</div>
     }
     else
     {
@@ -43,6 +43,14 @@
         {
             var solicitud = item.Solicitud;
             var estadoNormalizado = EstadoSolicitud.Normalizar(solicitud != null ? solicitud.Estado : null);
+            var esModificacionDirecta = solicitud != null
+                && solicitud.TipoSolicitud.GetValueOrDefault() == 3
+                && (estadoNormalizado == EstadoSolicitud.GeneradoCondicionesLimitaciones
+                    || estadoNormalizado == EstadoSolicitud.EnRevisionCoordinadorFinal
+                    || estadoNormalizado == EstadoSolicitud.EnviadoDcav
+                    || estadoNormalizado == EstadoSolicitud.FirmadoDcav
+                    || estadoNormalizado == EstadoSolicitud.Finalizado);
+            var alertaEstadoClass = (item.FirmaCompleta || esModificacionDirecta) ? "alert-success" : "alert-warning";
             <div class="card shadow-sm border-0 mb-4">
                 <div class="card-body">
                     <div class="d-flex flex-column flex-lg-row justify-content-between gap-3 mb-3">
@@ -84,7 +92,7 @@
                         </div>
                     </div>
 
-                    <div class="alert @(item.FirmaCompleta ? "alert-success" : "alert-warning") mb-3">
+                    <div class="alert @alertaEstadoClass mb-3">
                         <strong>@item.MensajeEstado</strong>
                         @if (!string.IsNullOrWhiteSpace(item.MensajeAdvertencia))
                         {
@@ -120,11 +128,22 @@
                                         </td>
                                         <td>@(documento.FechaDocumento.HasValue ? documento.FechaDocumento.Value.ToString("dd/MM/yyyy HH:mm") : "Pendiente")</td>
                                         <td>
-                                            @if (documento.Disponible)
+                                            @{ var tieneAcciones = !string.IsNullOrWhiteSpace(documento.UrlEditar) || !string.IsNullOrWhiteSpace(documento.UrlVer) || !string.IsNullOrWhiteSpace(documento.UrlDescargar); }
+                                            @if (tieneAcciones)
                                             {
                                                 <div class="d-flex gap-2 flex-wrap">
-                                                    <a class="btn btn-sm btn-primary" href="@documento.UrlEditar">Completar</a>
-                                                    <a class="btn btn-sm btn-outline-secondary" href="@documento.UrlVer" target="_blank" rel="noopener">PDF directo</a>
+                                                    @if (!string.IsNullOrWhiteSpace(documento.UrlEditar))
+                                                    {
+                                                        <a class="btn btn-sm btn-primary" href="@documento.UrlEditar">Completar</a>
+                                                    }
+                                                    @if (!string.IsNullOrWhiteSpace(documento.UrlVer))
+                                                    {
+                                                        <a class="btn btn-sm btn-outline-secondary" href="@documento.UrlVer" target="_blank" rel="noopener">PDF directo</a>
+                                                    }
+                                                    @if (!string.IsNullOrWhiteSpace(documento.UrlDescargar))
+                                                    {
+                                                        <a class="btn btn-sm btn-outline-dark" href="@documento.UrlDescargar" target="_blank" rel="noopener">Descargar</a>
+                                                    }
                                                 </div>
                                             }
                                             else

@@ -34,6 +34,29 @@ namespace CapaPresentacion.Controllers
                 return RedirectToAction("Login", "Account");
             }
 
+            var usuarioId = ObtenerUsuarioSesionId();
+            var rolSesion = (Session["Rol"] as string ?? string.Empty).Trim();
+            var usuario = usuarioId > 0 ? UsuarioDAO.ObtenerPorId(usuarioId) : null;
+            var solicitudRt = usuarioId > 0 ? new RTService().GetSolicitudByUsuario(usuarioId) : null;
+
+            var tieneExpedienteRt = solicitudRt != null
+                || (usuario != null && (
+                    !string.IsNullOrWhiteSpace(usuario.EstadoDesignacionRT)
+                    || !string.IsNullOrWhiteSpace(usuario.RutaDocumentoLegal)
+                    || !string.IsNullOrWhiteSpace(usuario.RutaConstanciaRT)));
+
+            var esPerfilRt = rolSesion.Equals("Solicitante", StringComparison.OrdinalIgnoreCase)
+                || rolSesion.Equals("Operador", StringComparison.OrdinalIgnoreCase)
+                || rolSesion.Equals("RT", StringComparison.OrdinalIgnoreCase)
+                || rolSesion.Equals("RepresentanteTecnico", StringComparison.OrdinalIgnoreCase)
+                || rolSesion.Equals("Representante Técnico", StringComparison.OrdinalIgnoreCase)
+                || rolSesion.Equals("RepresentanteLegal", StringComparison.OrdinalIgnoreCase);
+
+            if (tieneExpedienteRt || esPerfilRt)
+            {
+                return RedirectToAction("Registro", "RT");
+            }
+
             return RedirectToAction("CambiarContrasena", "Account");
         }
 
@@ -333,6 +356,8 @@ namespace CapaPresentacion.Controllers
                 bool declaracionHistorialRegistrada = false;
                 bool pdfDeclaracionGenerado = false;
                 bool correoDeclaracionEnviado = false;
+                bool documentoRtSincronizado = false;
+                bool solicitudRtEnviada = false;
                 try
                 {
                     var nombreEmpresaPrincipal = companiasDeclaracion[0].Nombre;
@@ -361,6 +386,26 @@ namespace CapaPresentacion.Controllers
 
                     rtService.AceptarDeclaracion(solicitudId, usuarioId, textoDeclaracionFinal);
                     declaracionRegistrada = true;
+
+                    try
+                    {
+                        rtService.RegistrarDesignacionExistente(
+                            solicitudId,
+                            usuarioId,
+                            rutaDocumento,
+                            archivoDesignacion != null ? Path.GetFileName(archivoDesignacion.FileName) : null);
+                        documentoRtSincronizado = true;
+
+                        rtService.EnviarSolicitud(solicitudId, usuarioId);
+                        solicitudRtEnviada = true;
+                    }
+                    catch (Exception exSolicitudRt)
+                    {
+                        LogBL.RegistrarError(
+                            "Error sincronizando expediente RT tras el registro de usuario.",
+                            exSolicitudRt.ToString(),
+                            "UsuarioController");
+                    }
 
                     byte[] pdfDeclaracion = null;
                     var fechaAceptacion = DateTime.Now;
@@ -590,6 +635,14 @@ namespace CapaPresentacion.Controllers
                     if (!correoDeclaracionEnviado)
                     {
                         mensajeFinal += " La aceptación se registró, pero no se pudo enviar el correo de declaración.";
+                    }
+                    if (!documentoRtSincronizado)
+                    {
+                        mensajeFinal += " La cuenta fue creada, pero no se pudo sincronizar el documento en el expediente RT.";
+                    }
+                    if (!solicitudRtEnviada)
+                    {
+                        mensajeFinal += " La cuenta fue creada, pero la solicitud RT no quedó enviada a revisión de coordinación.";
                     }
                 }
 
@@ -1144,6 +1197,36 @@ namespace CapaPresentacion.Controllers
         public ActionResult RevisarDesignaciones()
         {
             var usuarios = UsuarioDAO.ObtenerUsuariosRTParaRevision();
+
+            var rtService = new RTService();
+            foreach (var usuario in usuarios)
+            {
+                if (usuario == null || usuario.Id <= 0)
+                {
+                    continue;
+                }
+
+                try
+                {
+                    var solicitudRt = rtService.GetSolicitudByUsuario(usuario.Id);
+                    if (solicitudRt == null)
+                    {
+                        continue;
+                    }
+
+                    usuario.SolicitudRtId = solicitudRt.Id;
+                    usuario.EstadoSolicitudRT = rtService.NormalizarEstado(solicitudRt.Estado);
+                    usuario.ObservacionSolicitudRT = (solicitudRt.ObservacionCoordinador ?? string.Empty).Trim();
+                }
+                catch (Exception ex)
+                {
+                    LogBL.RegistrarError(
+                        "No se pudo enriquecer el expediente RT en la bandeja de revisión.",
+                        ex.ToString() + " | usuarioId=" + usuario.Id,
+                        "UsuarioController");
+                }
+            }
+
             return View("RevisarDesignaciones", usuarios);
         }
 
@@ -1285,7 +1368,13 @@ namespace CapaPresentacion.Controllers
                 return HttpNotFound();
             }
 
-            return File(rutaFisica, "text/plain", $"ConstanciaRT_{usuario.CodigoUsuario}.txt");
+            var esPdf = string.Equals(Path.GetExtension(rutaFisica), ".pdf", StringComparison.OrdinalIgnoreCase);
+            return File(
+                rutaFisica,
+                esPdf ? "application/pdf" : "text/plain",
+                esPdf
+                    ? $"ConstanciaRT_{usuario.CodigoUsuario}.pdf"
+                    : $"ConstanciaRT_{usuario.CodigoUsuario}.txt");
         }
 
         [HttpPost]
@@ -1293,19 +1382,16 @@ namespace CapaPresentacion.Controllers
         [ValidateAntiForgeryToken]
         public ActionResult AceptarDesignacion(int id)
         {
-            // Lógica para marcar como aceptado y generar constancia
             var usuario = UsuarioDAO.ObtenerPorId(id);
             if (usuario == null)
             {
                 TempData["error"] = "Usuario no encontrado.";
                 return RedirectToAction("RevisarDesignaciones");
             }
-            // Generar constancia y obtener la ruta
+
             string rutaConstancia = GenerarConstanciaRT(usuario);
-            // Marcar como aceptado y guardar la ruta de la constancia
             UsuarioDAO.AceptarDesignacionRT(id, rutaConstancia);
 
-            // Compatibilidad: garantizar al menos una compañía asignada para RT.
             var daoCompaniasRt = new UsuarioCompaniaRTDAO();
             var companiasAsignadas = daoCompaniasRt.ObtenerCompaniasAsignadas(id);
             if (companiasAsignadas.Count == 0)
@@ -1329,6 +1415,33 @@ namespace CapaPresentacion.Controllers
                     ? companiasAsignadas[0].CompaniaNombre
                     : companiasAsignadas[0].CompaniaCodigo)
                 : ResolverNombreCompaniaUsuario(usuario);
+
+            string detalleSincronizacion = string.Empty;
+            try
+            {
+                var rtService = new RTService();
+                var solicitudRt = rtService.GetSolicitudByUsuario(id);
+                if (solicitudRt != null)
+                {
+                    rtService.RegistrarAprobacionFinal(
+                        solicitudRt.Id,
+                        ObtenerUsuarioSesionId(),
+                        "Solicitud RT aprobada y constancia institucional generada.");
+                }
+                else
+                {
+                    detalleSincronizacion = " No se encontró expediente RT para cerrar el workflow nuevo; se mantuvo la aprobación legacy.";
+                }
+            }
+            catch (Exception exRt)
+            {
+                detalleSincronizacion = " No se pudo sincronizar el estado final del expediente RT.";
+                LogBL.RegistrarError(
+                    "No se pudo sincronizar la aprobación final del expediente RT.",
+                    exRt.ToString() + " | usuarioId=" + id,
+                    "UsuarioController");
+            }
+
             string mensajeCorreo;
             var correoEnviado = UsuarioBL.NotificarAceptacionConClaveTemporal(
                 usuario.Email,
@@ -1339,9 +1452,9 @@ namespace CapaPresentacion.Controllers
             );
 
             if (correoEnviado)
-                TempData["msg"] = "Designación aceptada, constancia generada y correo enviado con clave temporal.";
+                TempData["msg"] = "Designación aceptada, constancia generada y correo enviado con clave temporal." + detalleSincronizacion;
             else
-                TempData["msg"] = "Designación aceptada y constancia generada. " + (mensajeCorreo ?? "");
+                TempData["msg"] = "Designación aceptada y constancia generada. " + (mensajeCorreo ?? string.Empty) + detalleSincronizacion;
             return RedirectToAction("RevisarDesignaciones");
         }
 
@@ -1826,16 +1939,47 @@ namespace CapaPresentacion.Controllers
         [HttpPost]
         [Authorize(Roles = "Administrador,CoordinacionLegal,JefaturaTecnica")]
         [ValidateAntiForgeryToken]
-        public ActionResult RechazarDesignacion(int id)
+        public ActionResult RechazarDesignacion(int id, string observacion)
         {
-            // Lógica para marcar como rechazada
             var usuario = UsuarioDAO.ObtenerPorId(id);
             if (usuario == null)
             {
                 TempData["error"] = "Usuario no encontrado.";
                 return RedirectToAction("RevisarDesignaciones");
             }
+
+            var observacionNormalizada = (observacion ?? string.Empty).Trim();
+            if (string.IsNullOrWhiteSpace(observacionNormalizada))
+            {
+                TempData["error"] = "Debe ingresar una observación para devolver la designación RT.";
+                return RedirectToAction("RevisarDesignaciones");
+            }
+
             UsuarioDAO.RechazarDesignacionRT(id);
+
+            string detalleSincronizacion = string.Empty;
+            try
+            {
+                var rtService = new RTService();
+                var solicitudRt = rtService.GetSolicitudByUsuario(id);
+                if (solicitudRt != null)
+                {
+                    rtService.DevolverConObservaciones(solicitudRt.Id, ObtenerUsuarioSesionId(), observacionNormalizada);
+                }
+                else
+                {
+                    detalleSincronizacion = " No se encontró expediente RT para registrar la devolución en el workflow nuevo.";
+                }
+            }
+            catch (Exception exRt)
+            {
+                detalleSincronizacion = " No se pudo sincronizar la devolución en el expediente RT.";
+                LogBL.RegistrarError(
+                    "No se pudo sincronizar la devolución del expediente RT.",
+                    exRt.ToString() + " | usuarioId=" + id,
+                    "UsuarioController");
+            }
+
             try
             {
                 if (!string.IsNullOrWhiteSpace(usuario.Email))
@@ -1855,8 +1999,10 @@ namespace CapaPresentacion.Controllers
                         Resumen = new List<EmailFieldItem>
                         {
                             new EmailFieldItem("Usuario", usuario.CodigoUsuario ?? string.Empty),
-                            new EmailFieldItem("Estado", "Devuelta para correccion")
+                            new EmailFieldItem("Estado", "Devuelta para correccion"),
+                            new EmailFieldItem("Observacion", observacionNormalizada)
                         },
+                        Observaciones = observacionNormalizada,
                         TextoCierre = "Puede actualizar sus documentos en el sistema y reenviar su designacion RT para nueva revision.",
                         Footer = "Este es un correo automatico, por favor no responder."
                     });
@@ -1873,7 +2019,7 @@ namespace CapaPresentacion.Controllers
                     "UsuarioController");
             }
 
-            TempData["msg"] = "Designación rechazada.";
+                    TempData["msg"] = "Designación rechazada y devuelta para corrección." + detalleSincronizacion;
             return RedirectToAction("RevisarDesignaciones");
         }
 
@@ -1944,16 +2090,73 @@ namespace CapaPresentacion.Controllers
             return RedirectToAction("RevisarDesignaciones");
         }
 
-        // Simulación de generación de constancia (puedes reemplazar por PDF real)
         private string GenerarConstanciaRT(Usuario usuario)
         {
             string carpeta = Server.MapPath("~/App_Data/ConstanciasRT/");
             if (!Directory.Exists(carpeta)) Directory.CreateDirectory(carpeta);
-            string nombreArchivo = $"Constancia_{usuario.CodigoUsuario}_{DateTime.Now:yyyyMMddHHmmss}.txt";
+
+            string nombreArchivo = $"Constancia_{usuario.CodigoUsuario}_{DateTime.Now:yyyyMMddHHmmss}.pdf";
             string archivo = Path.Combine(carpeta, nombreArchivo);
-            System.IO.File.WriteAllText(archivo, $"Constancia de aceptación de designación RT para {usuario.NombreCompleto} ({usuario.CodigoUsuario}) - Fecha: {DateTime.Now}");
-            // Retornar la ruta relativa para guardar en la BD
+
+            using (var fs = new FileStream(archivo, FileMode.Create, FileAccess.Write, FileShare.None))
+            using (var doc = new iTextSharp.text.Document(iTextSharp.text.PageSize.A4, 36f, 36f, 120f, 90f))
+            {
+                var writer = iTextSharp.text.pdf.PdfWriter.GetInstance(doc, fs);
+                writer.PageEvent = PdfBrandingHelper.CreateITextPageEvent(Server, "UsuarioController.GenerarConstanciaRT");
+                doc.Open();
+
+                var titleFont = iTextSharp.text.FontFactory.GetFont(iTextSharp.text.FontFactory.HELVETICA_BOLD, 15);
+                var subtitleFont = iTextSharp.text.FontFactory.GetFont(iTextSharp.text.FontFactory.HELVETICA_BOLD, 11);
+                var bodyFont = iTextSharp.text.FontFactory.GetFont(iTextSharp.text.FontFactory.HELVETICA, 10);
+
+                var titulo = new iTextSharp.text.Paragraph("CONSTANCIA DE APROBACION DE DESIGNACION RT", titleFont)
+                {
+                    Alignment = iTextSharp.text.Element.ALIGN_CENTER,
+                    SpacingAfter = 12f
+                };
+                doc.Add(titulo);
+
+                doc.Add(new iTextSharp.text.Paragraph("La Dirección General de Aviación Civil deja constancia de que la designación del siguiente Responsable Técnico fue revisada y aprobada.", bodyFont)
+                {
+                    Alignment = iTextSharp.text.Element.ALIGN_JUSTIFIED,
+                    SpacingAfter = 14f
+                });
+
+                var tabla = new iTextSharp.text.pdf.PdfPTable(2)
+                {
+                    WidthPercentage = 100,
+                    SpacingAfter = 14f
+                };
+                tabla.SetWidths(new[] { 34f, 66f });
+
+                AgregarFilaTabla(tabla, "Usuario:", usuario.CodigoUsuario ?? string.Empty, bodyFont);
+                AgregarFilaTabla(tabla, "Nombre completo:", usuario.NombreCompleto ?? string.Empty, bodyFont);
+                AgregarFilaTabla(tabla, "Correo:", usuario.Email ?? string.Empty, bodyFont);
+                AgregarFilaTabla(tabla, "Empresa referencial:", ResolverNombreCompaniaUsuario(usuario), bodyFont);
+                AgregarFilaTabla(tabla, "Fecha de aprobación:", DateTime.Now.ToString("dd/MM/yyyy HH:mm"), bodyFont);
+                doc.Add(tabla);
+
+                doc.Add(new iTextSharp.text.Paragraph("Esta constancia fue generada automáticamente por el Sistema AOCR para fines de trazabilidad institucional.", subtitleFont)
+                {
+                    SpacingAfter = 26f
+                });
+
+                doc.Add(new iTextSharp.text.Paragraph("______________________________________________", bodyFont));
+                doc.Add(new iTextSharp.text.Paragraph("Coordinación / Jefatura competente", bodyFont));
+
+                doc.Close();
+            }
+
             return $"~/App_Data/ConstanciasRT/{nombreArchivo}";
+        }
+
+        private int ObtenerUsuarioSesionId()
+        {
+            var sessionUserId = Session["IdUsuario"] ?? Session["UserId"];
+            int usuarioId;
+            return sessionUserId != null && int.TryParse(sessionUserId.ToString(), out usuarioId)
+                ? usuarioId
+                : 0;
         }
 
         private static void NormalizarNombresApellidos(ref string nombres, ref string apellidos)

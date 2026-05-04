@@ -8,55 +8,104 @@ namespace CapaDatos.Constants
         public const string Borrador = "BORRADOR";
         public const string Generada = "GENERADA";
         public const string Pendiente = "PENDIENTE";
+        public const string Enviada = "ENVIADA";
+        public const string EnRevisionFinanciera = "EN_REVISION_FINANCIERA";
+        public const string Devuelta = "DEVUELTA";
         public const string Completada = "COMPLETADA";
         public const string Facturada = "FACTURADA";
         public const string Pagada = "PAGADA";
         public const string Anulada = "ANULADA";
 
+        public static string NormalizarEstado(string estado)
+        {
+            var actual = (estado ?? string.Empty).Trim().ToUpperInvariant().Replace(" ", "_");
+
+            switch (actual)
+            {
+                case "PROCESADA":
+                case "EN_REVISION":
+                case EnRevisionFinanciera:
+                    return EnRevisionFinanciera;
+                case Enviada:
+                    return Enviada;
+                case Devuelta:
+                    return Devuelta;
+                case Facturada:
+                    return Facturada;
+                case Completada:
+                    return Completada;
+                case Pagada:
+                    return Pagada;
+                case Anulada:
+                    return Anulada;
+                case Pendiente:
+                    return Pendiente;
+                case Generada:
+                    return Generada;
+                case Borrador:
+                    return Borrador;
+                default:
+                    return actual;
+            }
+        }
+
         public static bool PermiteEditar(string estado)
         {
-            return string.Equals(estado, Borrador, StringComparison.OrdinalIgnoreCase);
+            return string.Equals(NormalizarEstado(estado), Borrador, StringComparison.OrdinalIgnoreCase);
         }
 
         public static bool PermiteCambiarEstado(string estado)
         {
-            if (string.IsNullOrWhiteSpace(estado)) return false;
+            var actual = NormalizarEstado(estado);
+            if (string.IsNullOrWhiteSpace(actual)) return false;
 
-            return string.Equals(estado, Borrador, StringComparison.OrdinalIgnoreCase) ||
-                   string.Equals(estado, Generada, StringComparison.OrdinalIgnoreCase) ||
-                   string.Equals(estado, Pendiente, StringComparison.OrdinalIgnoreCase);
+            return string.Equals(actual, Borrador, StringComparison.OrdinalIgnoreCase) ||
+                   string.Equals(actual, Generada, StringComparison.OrdinalIgnoreCase) ||
+                   string.Equals(actual, Pendiente, StringComparison.OrdinalIgnoreCase) ||
+                   string.Equals(actual, Enviada, StringComparison.OrdinalIgnoreCase) ||
+                   string.Equals(actual, EnRevisionFinanciera, StringComparison.OrdinalIgnoreCase) ||
+                   string.Equals(actual, Devuelta, StringComparison.OrdinalIgnoreCase);
         }
 
         public static bool EsEstadoFinal(string estado)
         {
-            if (string.IsNullOrWhiteSpace(estado)) return false;
+            var actual = NormalizarEstado(estado);
+            if (string.IsNullOrWhiteSpace(actual)) return false;
 
-            return string.Equals(estado, Pagada, StringComparison.OrdinalIgnoreCase) ||
-                   string.Equals(estado, Anulada, StringComparison.OrdinalIgnoreCase) ||
-                   string.Equals(estado, Completada, StringComparison.OrdinalIgnoreCase) ||
-                   string.Equals(estado, Facturada, StringComparison.OrdinalIgnoreCase);
+            return string.Equals(actual, Pagada, StringComparison.OrdinalIgnoreCase) ||
+                   string.Equals(actual, Anulada, StringComparison.OrdinalIgnoreCase) ||
+                   string.Equals(actual, Completada, StringComparison.OrdinalIgnoreCase) ||
+                   string.Equals(actual, Facturada, StringComparison.OrdinalIgnoreCase);
         }
 
         public static bool EsPagado(string estado)
         {
-            if (string.IsNullOrWhiteSpace(estado)) return false;
+            var actual = NormalizarEstado(estado);
+            if (string.IsNullOrWhiteSpace(actual)) return false;
 
-            return string.Equals(estado, Pagada, StringComparison.OrdinalIgnoreCase) ||
-                   string.Equals(estado, Completada, StringComparison.OrdinalIgnoreCase) ||
-                   string.Equals(estado, Facturada, StringComparison.OrdinalIgnoreCase);
+            return string.Equals(actual, Pagada, StringComparison.OrdinalIgnoreCase) ||
+                   string.Equals(actual, Completada, StringComparison.OrdinalIgnoreCase) ||
+                   string.Equals(actual, Facturada, StringComparison.OrdinalIgnoreCase);
         }
 
         public static string ObtenerColorBadge(string estado)
         {
-            if (string.IsNullOrWhiteSpace(estado)) return "secondary";
+            var actual = NormalizarEstado(estado);
+            if (string.IsNullOrWhiteSpace(actual)) return "secondary";
 
-            switch (estado.ToUpperInvariant())
+            switch (actual)
             {
                 case Borrador:
                     return "secondary";
                 case Pendiente:
                 case Generada:
                     return "warning";
+                case Enviada:
+                    return "info";
+                case EnRevisionFinanciera:
+                    return "primary";
+                case Devuelta:
+                    return "danger";
                 case Facturada:
                 case Completada:
                 case Pagada:
@@ -75,6 +124,9 @@ namespace CapaDatos.Constants
                 Borrador,
                 Generada,
                 Pendiente,
+                Enviada,
+                EnRevisionFinanciera,
+                Devuelta,
                 Completada,
                 Facturada,
                 Pagada,
@@ -140,7 +192,14 @@ namespace CapaDatos.Constants
         public const string Observada = "Observada";
         public const string Subsanada = "Subsanada";
         public const string AceptacionDocumental = "Aceptacion Documental";
+        public const string RequiereInspeccion = "Requiere Inspeccion";
+        public const string GeneradoCondicionesLimitaciones = "Generado Condiciones y Limitaciones";
+        public const string EnRevisionCoordinadorFinal = "En Revision Coordinador Final";
+        public const string EnviadoDcav = "Enviado DCAV";
+        public const string FirmadoDcav = "Firmado DCAV";
         public const string PendienteAsignacionRT = "Pendiente Asignacion RT";
+        public const string FirmadoCoordinador = "Firmado Coordinador";
+        public const string Finalizado = "Finalizado";
         public const string EnInspeccion = "En Inspeccion";
         public const string AOCR_EnElaboracion = "AOCR En Elaboracion";
         public const string AOCR_EnRevision = "AOCR En Revision";
@@ -165,11 +224,20 @@ namespace CapaDatos.Constants
 
             // BPMN AOCR
             SolicitudCreada,
+                Pendiente,
+                EnRevision,
             DocumentacionPendiente,
             Observada,
             Subsanada,
             AceptacionDocumental,
+            RequiereInspeccion,
+            GeneradoCondicionesLimitaciones,
+            EnRevisionCoordinadorFinal,
+            EnviadoDcav,
+            FirmadoDcav,
             PendienteAsignacionRT,
+            FirmadoCoordinador,
+            Finalizado,
             EnInspeccion,
             AOCR_EnElaboracion,
             AOCR_EnRevision,
@@ -181,11 +249,20 @@ namespace CapaDatos.Constants
         private static readonly Dictionary<string, string[]> Transiciones = new Dictionary<string, string[]>(StringComparer.OrdinalIgnoreCase)
         {
             { SolicitudCreada, new[] { DocumentacionPendiente, Observada } },
+            { Pendiente, new[] { EnRevision } },
+            { EnRevision, new[] { Observada, AceptacionDocumental, EnInspeccion } },
             { DocumentacionPendiente, new[] { Observada, AceptacionDocumental } },
             { Observada, new[] { Subsanada } },
-            { Subsanada, new[] { DocumentacionPendiente, AceptacionDocumental } },
-            { AceptacionDocumental, new[] { PendienteAsignacionRT, EnInspeccion } },
+            { Subsanada, new[] { DocumentacionPendiente, AceptacionDocumental, EnInspeccion } },
+            { AceptacionDocumental, new[] { RequiereInspeccion, GeneradoCondicionesLimitaciones, PendienteAsignacionRT, EnInspeccion, FirmadoCoordinador } },
+            { RequiereInspeccion, new[] { PendienteAsignacionRT, EnInspeccion } },
+            { GeneradoCondicionesLimitaciones, new[] { EnRevisionCoordinadorFinal } },
+            { EnRevisionCoordinadorFinal, new[] { EnviadoDcav } },
+            { EnviadoDcav, new[] { FirmadoDcav } },
+            { FirmadoDcav, new[] { Finalizado } },
             { PendienteAsignacionRT, new[] { EnInspeccion } },
+            { FirmadoCoordinador, new[] { Finalizado } },
+            { Finalizado, Array.Empty<string>() },
             { EnInspeccion, new[] { AOCR_EnElaboracion } },
             { AOCR_EnElaboracion, new[] { AOCR_EnRevision } },
             { AOCR_EnRevision, new[] { AOCR_Validado, Observada } },
@@ -219,13 +296,35 @@ namespace CapaDatos.Constants
                 case "DOCUMENTACION_PENDIENTE":
                 case "ENVIADO":
                 case "PREPARANDO":
+                case "ENVIADO_COORDINADOR":
+                case "ENVIADO COORDINADOR":
+                case "EN_REVISION_COORDINADOR":
+                case "EN REVISION COORDINADOR":
                     return EnRevision;
                 case "DOCUMENTOS_COMPLETOS":
                 case "DOCUMENTACION_COMPLETA":
                     return DocumentacionCompleta;
                 case "ACEPTACION_DOCUMENTAL":
+                case "ACEPTADO_INSPECTOR":
                 case "APROBADO_POR_INSPECTOR":
+                case "DOCUMENTACION_ACEPTADA":
+                case "DOCUMENTACION ACEPTADA":
                     return AceptacionDocumental;
+                case "REQUIERE_INSPECCION":
+                case "REQUIERE INSPECCION":
+                    return RequiereInspeccion;
+                case "GENERADO_CONDICIONES_LIMITACIONES":
+                case "GENERADO CONDICIONES LIMITACIONES":
+                    return GeneradoCondicionesLimitaciones;
+                case "EN_REVISION_COORDINADOR_FINAL":
+                case "EN REVISION COORDINADOR FINAL":
+                    return EnRevisionCoordinadorFinal;
+                case "ENVIADO_DCAV":
+                case "ENVIADO DCAV":
+                    return EnviadoDcav;
+                case "FIRMADO_DCAV":
+                case "FIRMADO DCAV":
+                    return FirmadoDcav;
                 case "PENDIENTE_ASIGNACION_RT":
                 case "PENDIENTE ASIGNACION RT":
                 case "PENDIENTE_ASIGNACION_TECNICA":
@@ -238,6 +337,9 @@ namespace CapaDatos.Constants
                 case "PAGO_VALIDADO_ADMIN":
                     return PagoValidado;
                 case "INSPECCION_ASIGNADA":
+                case "INSPECTOR_ASIGNADO":
+                case "EN_REVISION_INSPECTOR":
+                case "EN REVISION INSPECTOR":
                 case "ENVIADO_A_INSPECTOR":
                 case "EN_INSPECCION":
                 case "INSPECCION_PROGRAMADA":
@@ -269,12 +371,23 @@ namespace CapaDatos.Constants
                     return AOCR_Legalizado;
                 case "RECHAZADO":
                 case "OBSERVADO":
+                case "DEVUELTO":
+                case "DEVUELTA":
+                case "DEVUELTO_CON_OBSERVACIONES":
+                case "DEVUELTO_RT":
+                case "DEVUELTO RT":
                 case "OBSERVADO_JEFATURA":
                 case "RECHAZADO_POR_DIRECCION":
                     return Observada;
                 case "SUBSANADO":
                 case "SUBSANADA":
                     return Subsanada;
+                case "FIRMADO_COORDINADOR":
+                case "AUTORIZACION_FIRMADA":
+                case "FIRMADO COORDINADOR":
+                    return FirmadoCoordinador;
+                case "FINALIZADO":
+                    return Finalizado;
                 case "CERTIFICADO_LEGALIZADO":
                 case "CERTIFICADO_EMITIDO":
                 case "AOCR_EMITIDO":

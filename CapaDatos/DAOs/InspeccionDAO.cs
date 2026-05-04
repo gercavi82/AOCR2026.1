@@ -13,6 +13,8 @@ namespace CapaDatos.DAOs
     public class InspeccionDAO
     {
         private readonly string _cs;
+        private static readonly object SyncLock = new object();
+        private static bool _schemaReady;
 
         public InspeccionDAO()
         {
@@ -27,6 +29,7 @@ namespace CapaDatos.DAOs
             using (var cn = new NpgsqlConnection(_cs))
             {
                 cn.Open();
+                EnsureSchema(cn);
 
                 var columnasSolicitud = ObtenerColumnasTabla(cn, "aocr_tbsolicitud");
                 var columnasSelectSolicitud = new[]
@@ -574,8 +577,40 @@ namespace CapaDatos.DAOs
             };
         }
 
+        private static void EnsureSchema(NpgsqlConnection cn)
+        {
+            if (_schemaReady)
+            {
+                return;
+            }
+
+            lock (SyncLock)
+            {
+                if (_schemaReady)
+                {
+                    return;
+                }
+
+                const string sql = @"
+                    ALTER TABLE IF EXISTS public.aocr_tbinspeccion ADD COLUMN IF NOT EXISTS estado_documental VARCHAR(50);
+                    ALTER TABLE IF EXISTS public.aocr_tbinspeccion ADD COLUMN IF NOT EXISTS resultado_evaluacion VARCHAR(50);";
+
+                using (var cmd = new NpgsqlCommand(sql, cn))
+                {
+                    cmd.ExecuteNonQuery();
+                }
+
+                _schemaReady = true;
+            }
+        }
+
         private static HashSet<string> ObtenerColumnasTabla(NpgsqlConnection cn, string tabla)
         {
+            if (string.Equals(tabla, "aocr_tbinspeccion", StringComparison.OrdinalIgnoreCase))
+            {
+                EnsureSchema(cn);
+            }
+
             var columnas = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
             const string sql = @"
                 SELECT column_name

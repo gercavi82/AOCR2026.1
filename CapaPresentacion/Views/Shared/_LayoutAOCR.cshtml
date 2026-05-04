@@ -444,9 +444,9 @@
     <script src="https://cdn.datatables.net/responsive/2.4.1/js/dataTables.responsive.min.js"></script>
     <script src="https://cdn.datatables.net/responsive/2.4.1/js/responsive.bootstrap5.min.js"></script>
     <script>
+        window.AOCR_PDF_LIB_URL = '@Url.Content("~/Content/aocr-pdf-viewer/pdf.min.js")';
         window.AOCR_PDF_WORKER_URL = '@Url.Content("~/Content/aocr-pdf-viewer/pdf.worker.min.js")';
     </script>
-    <script src="@Url.Content("~/Content/aocr-pdf-viewer/pdf.min.js")"></script>
     <script src="@Url.Content("~/Content/aocr-pdf-viewer/aocr-pdf-viewer.js")"></script>
     <script src="@Url.Content("~/Scripts/aocr-datatables.js")"></script>
 
@@ -596,10 +596,8 @@
                 if (typeof window.$ === 'undefined') {
                     window.$ = jQuery;
                 }
-                console.log('✅ jQuery verificado');
                 checkBootstrap();
             } else {
-                console.log('⏳ Esperando jQuery...');
                 setTimeout(checkJQuery, 50);
             }
         }
@@ -608,10 +606,8 @@
         function checkBootstrap() {
             if (window.bootstrap && typeof bootstrap !== 'undefined') {
                 loadedScripts.bootstrap = true;
-                console.log('✅ Bootstrap verificado');
                 loadDataTables();
             } else {
-                console.log('⏳ Esperando Bootstrap...');
                 setTimeout(checkBootstrap, 50);
             }
         }
@@ -631,13 +627,11 @@
             // DataTables ya se carga estáticamente en <head> — solo notificar que está listo
             if (window.jQuery && $.fn.dataTable) {
                 loadedScripts.datatables = true;
-                console.log('✅ DataTables ya disponible (carga estática)');
                 document.dispatchEvent(new Event('AOCR.DataTablesReady'));
                 if (window.AOCR) { window.AOCR.dataTablesLoaded = true; }
                 loadSweetAlert();
             } else {
                 // Fallback: cargar dinámicamente si por alguna razón no está
-                console.log('📊 DataTables no encontrado, cargando dinámicamente...');
                 var dtScripts = [
                     'https://cdn.datatables.net/1.13.4/js/jquery.dataTables.min.js',
                     'https://cdn.datatables.net/1.13.4/js/dataTables.bootstrap5.min.js',
@@ -647,7 +641,6 @@
                 function loadNextScript(index) {
                     if (index >= dtScripts.length) {
                         loadedScripts.datatables = true;
-                        console.log('✅ DataTables cargado dinámicamente');
                         document.dispatchEvent(new Event('AOCR.DataTablesReady'));
                         if (window.AOCR) { window.AOCR.dataTablesLoaded = true; }
                         loadSweetAlert();
@@ -665,14 +658,12 @@
         }
 
         function loadSweetAlert() {
-            console.log('💫 Cargando SweetAlert...');
             var script = document.createElement('script');
             script.src = 'https://cdn.jsdelivr.net/npm/sweetalert2@11';
             script.async = false;
 
             script.onload = function () {
                 loadedScripts.sweetalert = true;
-                console.log('✅ SweetAlert2 cargado');
                 loadAdminLTE();
             };
 
@@ -686,14 +677,12 @@
         }
 
         function loadAdminLTE() {
-            console.log('🎨 Cargando AdminLTE...');
             var script = document.createElement('script');
             script.src = '@Url.Content("~/Content/dist/js/adminlte.js")';
             script.async = false;
 
             script.onload = function () {
                 loadedScripts.adminlte = true;
-                console.log('✅ AdminLTE cargado');
                 loadLocalScripts();
             };
 
@@ -707,14 +696,11 @@
         }
 
         function loadLocalScripts() {
-            console.log('📁 Cargando scripts locales...');
-
             // Cargar site.js
             var siteScript = document.createElement('script');
             siteScript.src = '@Url.Content("~/Scripts/site.js")';
             siteScript.async = false;
             siteScript.onload = function() {
-                console.log('✅ site.js cargado');
                 loadAppJS();
             };
             siteScript.onerror = function() {
@@ -730,7 +716,6 @@
             appScript.src = '@Url.Content("~/Scripts/app.js")';
             appScript.async = false;
             appScript.onload = function() {
-                console.log('✅ app.js cargado');
                 initializeAOCRSystem();
             };
             appScript.onerror = function() {
@@ -741,8 +726,6 @@
         }
 
         function initializeAOCRSystem() {
-            console.log('🚀 Inicializando sistema AOCR...');
-
             // Verificar dependencias mínimas
             if (!loadedScripts.jquery) {
                 console.error('❌ jQuery no cargado - abortando inicialización');
@@ -766,7 +749,6 @@
                 // Ocultar loader global
                 $('#global-loader').fadeOut(300, function () {
                     $(this).remove();
-                    console.log('✅ Loader ocultado');
                 });
 
                 // Inicializar componentes globales
@@ -776,9 +758,6 @@
 
                 // Integración con site.js y app.js
                 integrateWithSiteJS();
-
-                console.log('✅ Sistema AOCR inicializado completamente');
-                console.log('📊 Dependencias:', loadedScripts);
             });
         }
 
@@ -797,7 +776,6 @@
                             console.warn('Tooltip error:', e);
                         }
                     });
-                    console.log('✅ Tooltips globales inicializados:', tooltipTriggerList.length);
                 } catch (e) {
                     console.error('Error inicializando tooltips:', e);
                 }

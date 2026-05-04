@@ -4,13 +4,10 @@
 (function () {
     // Evitar múltiples cargas
     if (window._APP_JS_LOADED) {
-        console.log('ℹ️ app.js ya cargado, omitiendo...');
         return;
     }
 
     window._APP_JS_LOADED = true;
-
-    console.log('🚀 app.js cargado');
 
     // Aplicación principal
     var OrdenRecaudacionApp = {
@@ -20,8 +17,6 @@
                 console.error('jQuery no disponible para OrdenRecaudacionApp');
                 return;
             }
-
-            console.log('✅ Aplicación de Órdenes iniciada');
             this.bindEvents();
             this.initComponents();
         },
@@ -34,15 +29,11 @@
 
         initComponents: function () {
             // Inicializar componentes específicos
-            console.log('🔧 Inicializando componentes app.js');
-
             // Puedes inicializar DataTables específicos aquí si es necesario
             // pero el layout principal ya maneja los DataTables globales
         },
 
         exportData: function () {
-            console.log('📤 Exportando datos...');
-
             // Usar notificación de Site o AOCR
             var message = 'Exportando datos...';
             if (window.Site && Site.notify) {
@@ -57,7 +48,6 @@
 
         filtrarPorEstado: function () {
             var estado = $(this).val();
-            console.log('🔍 Filtrando por estado:', estado);
 
             // Buscar tabla de ordenes en esta página
             var $tabla = $('#tablaOrdenes');
@@ -77,7 +67,6 @@
             });
         } else {
             // Si jQuery no está disponible aún, esperar
-            console.log('⏳ app.js esperando jQuery...');
             setTimeout(initializeApp, 100);
         }
     }

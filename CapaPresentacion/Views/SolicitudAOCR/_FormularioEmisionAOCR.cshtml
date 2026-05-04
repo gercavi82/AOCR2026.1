@@ -7,6 +7,7 @@
 @{
     Layout = null;
     var sol = Model != null ? Model.Solicitud : null;
+    var esModificacion = sol != null && sol.TipoSolicitud.HasValue && sol.TipoSolicitud.Value == 3;
     var codigoSolicitud = sol != null ? sol.CodigoSolicitud : 0;
     var usuario = Model != null ? Model.Usuario : null;
     var nombreRepresentanteTecnico = Model != null ? (Model.NombreRepresentanteTecnico ?? "") : "";
@@ -288,6 +289,7 @@
                                         <input type="hidden" id="tipoOperacion" value="@HttpUtility.HtmlEncode(sol != null ? sol.TipoOperacion : "")" />
                                         <input type="hidden" id="descripcionOperacion" value="@HttpUtility.HtmlEncode(sol != null ? sol.DescripcionOperacion : "")" />
                                         <input type="hidden" id="observacionesGenerales" value="@HttpUtility.HtmlEncode(sol != null ? sol.ObservacionesGenerales : "")" />
+                                        <input type="hidden" id="esSolicitudModificacion" value="@(esModificacion ? "1" : "0")" />
                                         <input type="hidden" id="companiasSeleccionadasRaw" value="@HttpUtility.HtmlEncode(companiaSeleccionadaRaw)" />
 
                                         <div class="bg-light p-3 rounded mb-4 border">
@@ -636,7 +638,7 @@
                                     <div class="anexo-item border border-primary rounded p-3 mb-3">
                                         <div class="d-flex justify-content-between align-items-center mb-2">
                                             <label class="font-weight-bold text-primary h6 mb-0">
-                                                <i class="fas fa-receipt mr-1"></i> Comprobante de Pago *
+                                                <i class="fas fa-receipt mr-1"></i> Factura *
                                             </label>
                                             <span class="badge badge-primary">Obligatorio</span>
                                         </div>
@@ -732,10 +734,10 @@
 
                                     <div class="anexo-item">
                                         <div class="d-flex justify-content-between">
-                                            <label class="font-weight-bold text-dark"><span class="badge badge-primary mr-2">5</span> CERTIFICADO DE RUIDO DE AERONAVES, CONFORME A LAS ESPECIFICACIONES OPERACIONALES DEL E.A.E *</label>
+                                            <label class="font-weight-bold text-dark"><span class="badge @(esModificacion ? "badge-secondary" : "badge-primary") mr-2">5</span> CERTIFICADO DE RUIDO DE AERONAVES, CONFORME A LAS ESPECIFICACIONES OPERACIONALES DEL E.A.E @(esModificacion ? "(opcional)" : "*")</label>
                                             <i class="fas fa-volume-up text-secondary fa-lg"></i>
                                         </div>
-                                        <input type="file" class="d-none" id="archivoCertificadoRuido" name="archivoCertificadoRuido" accept=".pdf,.jpg,.jpeg,.png" multiple required onchange="validarArchivo('archivoCertificadoRuido')">
+                                        <input type="file" class="d-none" id="archivoCertificadoRuido" name="archivoCertificadoRuido" accept=".pdf,.jpg,.jpeg,.png" multiple @(esModificacion ? null : Html.Raw("required=\"required\"")) onchange="validarArchivo('archivoCertificadoRuido')">
                                         <div class="upload-dropzone mt-2" id="dropzoneArchivoCertificadoRuido" onclick="abrirSelectorArchivos('archivoCertificadoRuido')">
                                             <button type="button" class="btn btn-primary btn-sm upload-select-btn" onclick="event.stopPropagation(); abrirSelectorArchivos('archivoCertificadoRuido');">
                                                 <i class="fas fa-cloud-upload-alt"></i> Seleccionar documentos
@@ -753,16 +755,16 @@
                                         <div id="capturaCertificadoRuido" style="display:none;" class="p-2 bg-light border mb-2">
                                             <input type="file" class="form-control-file" accept=".jpg,.jpeg,.png">
                                         </div>
-                                        <textarea class="form-control form-control-sm" id="conceptoCertificadoRuido" rows="1" placeholder="Enlace o descripcion..." required onblur="validarConcepto('conceptoCertificadoRuido')"></textarea>
+                                        <textarea class="form-control form-control-sm" id="conceptoCertificadoRuido" rows="1" placeholder="Enlace o descripcion..." @(esModificacion ? null : Html.Raw("required=\"required\"")) onblur="validarConcepto('conceptoCertificadoRuido')"></textarea>
                                         <div class="text-danger small mt-1" id="alertaConceptoCertificadoRuido" style="display:none;">? Requerido.</div>
                                     </div>
 
                                     <div class="anexo-item">
                                         <div class="d-flex justify-content-between">
-                                            <label class="font-weight-bold text-dark"><span class="badge badge-primary mr-2">6</span> CERTIFICADO DE AERONAVEGABILIDAD *</label>
+                                            <label class="font-weight-bold text-dark"><span class="badge badge-secondary mr-2">6</span> CERTIFICADO DE AERONAVEGABILIDAD (opcional)</label>
                                             <i class="fas fa-file-contract text-secondary fa-lg"></i>
                                         </div>
-                                        <input type="file" class="d-none" id="archivoCertificadoAeronavegabilidad" name="archivoCertificadoAeronavegabilidad" accept=".pdf,.jpg,.jpeg,.png" multiple required onchange="validarArchivo('archivoCertificadoAeronavegabilidad')">
+                                        <input type="file" class="d-none" id="archivoCertificadoAeronavegabilidad" name="archivoCertificadoAeronavegabilidad" accept=".pdf,.jpg,.jpeg,.png" multiple onchange="validarArchivo('archivoCertificadoAeronavegabilidad')">
                                         <div class="upload-dropzone mt-2" id="dropzoneArchivoCertificadoAeronavegabilidad" onclick="abrirSelectorArchivos('archivoCertificadoAeronavegabilidad')">
                                             <button type="button" class="btn btn-primary btn-sm upload-select-btn" onclick="event.stopPropagation(); abrirSelectorArchivos('archivoCertificadoAeronavegabilidad');">
                                                 <i class="fas fa-cloud-upload-alt"></i> Seleccionar documentos
@@ -780,7 +782,7 @@
                                         <div id="capturaCertificadoAeronavegabilidad" style="display:none;" class="p-2 bg-light border mb-2">
                                             <input type="file" class="form-control-file" accept=".jpg,.jpeg,.png">
                                         </div>
-                                        <textarea class="form-control form-control-sm" id="conceptoCertificadoAeronavegabilidad" rows="1" placeholder="Enlace o descripcion..." required onblur="validarConcepto('conceptoCertificadoAeronavegabilidad')"></textarea>
+                                        <textarea class="form-control form-control-sm" id="conceptoCertificadoAeronavegabilidad" rows="1" placeholder="Enlace o descripcion..." onblur="validarConcepto('conceptoCertificadoAeronavegabilidad')"></textarea>
                                         <div class="text-danger small mt-1" id="alertaConceptoCertificadoAeronavegabilidad" style="display:none;">? Requerido.</div>
                                     </div>
 
@@ -1662,13 +1664,14 @@
   }
 
   function construirMetadatosDocumentos() {
+        const esModificacion = (document.getElementById('esSolicitudModificacion') || {}).value === '1';
     return [
       { InputId: 'archivoAOC', TipoDocumento: 'COPIA_AOC_VALIDA', Concepto: $('#conceptoAOC').val() || '', Obligatorio: true },
       { InputId: 'archivoOpSpecs', TipoDocumento: 'OPSPECS_ESPECIFICACIONES_OPERACIONALES', Concepto: $('#conceptoOpSpecs').val() || '', Obligatorio: true },
       { InputId: 'archivoManualOperaciones', TipoDocumento: 'MANUAL_OPERACIONES', Concepto: $('#conceptoManualOperaciones').val() || '', Obligatorio: true },
       { InputId: 'archivoPermisoOperacion', TipoDocumento: 'PERMISO_OPERACION_CNAC', Concepto: $('#conceptoPermisoOperacion').val() || '', Obligatorio: true },
-      { InputId: 'archivoCertificadoRuido', TipoDocumento: 'CERTIFICADO_RUIDO_AERONAVES_EAE', Concepto: $('#conceptoCertificadoRuido').val() || '', Obligatorio: true },
-      { InputId: 'archivoCertificadoAeronavegabilidad', TipoDocumento: 'CERTIFICADO_AERONAVEGABILIDAD', Concepto: $('#conceptoCertificadoAeronavegabilidad').val() || '', Obligatorio: true },
+            { InputId: 'archivoCertificadoRuido', TipoDocumento: 'CERTIFICADO_RUIDO_AERONAVES_EAE', Concepto: $('#conceptoCertificadoRuido').val() || '', Obligatorio: !esModificacion },
+            { InputId: 'archivoCertificadoAeronavegabilidad', TipoDocumento: 'CERTIFICADO_AERONAVEGABILIDAD', Concepto: $('#conceptoCertificadoAeronavegabilidad').val() || '', Obligatorio: false },
       { InputId: 'archivoPoderRepresentante', TipoDocumento: 'COPIA_CERTIFICADA_PODER_REPRESENTANTE_ECUADOR', Concepto: $('#conceptoPoderRepresentante').val() || '', Obligatorio: true },
       { InputId: 'archivoFacturaPago', TipoDocumento: 'COMPROBANTE_PAGO', Concepto: $('#conceptoFacturaPago').val() || '', Obligatorio: true },
       { InputId: 'archivoOtro', TipoDocumento: 'OTRO', Concepto: $('#conceptoOtro').val() || '', Obligatorio: false }
@@ -1677,15 +1680,17 @@
 
   function validarDocumentosObligatorios() {
     const obligatorios = [
-      { id: 'archivoFacturaPago', nombre: 'Comprobante de pago' },
+            { id: 'archivoFacturaPago', nombre: 'Factura' },
       { id: 'archivoAOC', nombre: 'Copia de AOC valida' },
       { id: 'archivoOpSpecs', nombre: 'OpSpecs' },
       { id: 'archivoManualOperaciones', nombre: 'Manual de Operaciones' },
       { id: 'archivoPermisoOperacion', nombre: 'Permiso Operacion C.N.A.C' },
-      { id: 'archivoCertificadoRuido', nombre: 'Certificado de Ruido de Aeronaves' },
-      { id: 'archivoCertificadoAeronavegabilidad', nombre: 'Certificado de Aeronavegabilidad' },
       { id: 'archivoPoderRepresentante', nombre: 'Copia certificada del poder del representante legal en Ecuador' }
     ];
+
+        if (((document.getElementById('esSolicitudModificacion') || {}).value) !== '1') {
+            obligatorios.push({ id: 'archivoCertificadoRuido', nombre: 'Certificado de Ruido de Aeronaves' });
+        }
 
     const faltantes = obligatorios.filter(function (item) {
       const input = document.getElementById(item.id);

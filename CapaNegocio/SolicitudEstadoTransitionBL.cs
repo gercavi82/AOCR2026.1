@@ -126,8 +126,56 @@ namespace CapaNegocio
                 return string.Equals(actual, EstadoSolicitud.AOCR_EmitidoRecibido, StringComparison.OrdinalIgnoreCase);
             }
 
-            if ((actual == EstadoSolicitud.Pendiente || actual == EstadoSolicitud.EnRevision || actual == EstadoSolicitud.DocumentacionPendiente) &&
+            if ((actual == EstadoSolicitud.Pendiente
+                    || actual == EstadoSolicitud.EnRevision
+                    || actual == EstadoSolicitud.DocumentacionPendiente
+                    || actual == EstadoSolicitud.Subsanada
+                    || actual == EstadoSolicitud.EnInspeccion) &&
                 (destino == EstadoSolicitud.Observada || destino == EstadoSolicitud.AceptacionDocumental))
+            {
+                return true;
+            }
+
+            if ((actual == EstadoSolicitud.EnRevision
+                    || actual == EstadoSolicitud.DocumentacionPendiente
+                    || actual == EstadoSolicitud.Subsanada) &&
+                destino == EstadoSolicitud.EnInspeccion)
+            {
+                return true;
+            }
+
+            if (actual == EstadoSolicitud.AceptacionDocumental && destino == EstadoSolicitud.FirmadoCoordinador)
+            {
+                return true;
+            }
+
+            if (actual == EstadoSolicitud.AceptacionDocumental &&
+                (destino == EstadoSolicitud.RequiereInspeccion || destino == EstadoSolicitud.GeneradoCondicionesLimitaciones))
+            {
+                return true;
+            }
+
+            if (actual == EstadoSolicitud.GeneradoCondicionesLimitaciones && destino == EstadoSolicitud.EnRevisionCoordinadorFinal)
+            {
+                return true;
+            }
+
+            if (actual == EstadoSolicitud.EnRevisionCoordinadorFinal && destino == EstadoSolicitud.EnviadoDcav)
+            {
+                return true;
+            }
+
+            if (actual == EstadoSolicitud.EnviadoDcav && destino == EstadoSolicitud.FirmadoDcav)
+            {
+                return true;
+            }
+
+            if (actual == EstadoSolicitud.FirmadoDcav && destino == EstadoSolicitud.Finalizado)
+            {
+                return true;
+            }
+
+            if (actual == EstadoSolicitud.FirmadoCoordinador && destino == EstadoSolicitud.Finalizado)
             {
                 return true;
             }
@@ -144,6 +192,12 @@ namespace CapaNegocio
             }
 
             if (actual == EstadoSolicitud.PendienteAsignacionRT && destino == EstadoSolicitud.EnInspeccion)
+            {
+                return true;
+            }
+
+            if (actual == EstadoSolicitud.RequiereInspeccion &&
+                (destino == EstadoSolicitud.PendienteAsignacionRT || destino == EstadoSolicitud.EnInspeccion))
             {
                 return true;
             }

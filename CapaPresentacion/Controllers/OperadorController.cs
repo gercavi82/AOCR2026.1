@@ -13,7 +13,7 @@ namespace CapaPresentacion.Controllers
         // Si ya tienes Modificacion en el menú:
         public ActionResult Modificacion()
         {
-            return View("~/Views/SolicitudAOCR/Modificacion.cshtml");
+            return RedirectToAction("Index", "SolicitudAOCR", new { tipoSolicitud = 3, abrirModal = true });
         }
 
         // Ruta solicitada por el sidebar anterior; redirige a solicitudes para evitar 404

@@ -219,6 +219,35 @@ namespace CapaDatos.DAOs
             }
         }
 
+        public void UpdateEstado(int solicitudId, string estado, string observacionCoordinador = null, DateTime? fechaEnvio = null)
+        {
+            const string sql = @"
+                UPDATE aocr_solicitud_rt
+                SET estado = @estado,
+                    observacion_coordinador = CASE
+                        WHEN @actualizarObservacion THEN @observacionCoordinador
+                        ELSE observacion_coordinador
+                    END,
+                    fecha_envio = CASE
+                        WHEN @fechaEnvio IS NULL THEN fecha_envio
+                        ELSE @fechaEnvio
+                    END,
+                    updated_at = NOW()
+                WHERE id = @id;";
+
+            using (var cn = CrearConexion())
+            {
+                cn.Execute(sql, new
+                {
+                    id = solicitudId,
+                    estado,
+                    observacionCoordinador,
+                    fechaEnvio,
+                    actualizarObservacion = observacionCoordinador != null
+                });
+            }
+        }
+
         public void InsertHistorialEstado(int solicitudId, string estado, int usuarioId, string motivo)
         {
             const string sql = @"

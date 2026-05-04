@@ -4,6 +4,7 @@ using System.Globalization;
 using System.Linq;
 using System.Web;
 using System.Web.Mvc;
+using CapaDatos.Constants;
 using CapaDatos.DAOs;
 using CapaDatos.Models;
 using CapaDatos.Services;
@@ -35,28 +36,15 @@ namespace CapaPresentacion.Controllers
 
         private ActionResult ConstruirDashboardFinanciero(string estado)
         {
-            var estadoFiltro = string.IsNullOrWhiteSpace(estado)
-                ? "TODAS"
-                : estado.Trim().ToUpperInvariant();
-
-            // Para "TODAS" no aplicar filtro en SQL
-            var estadoConsulta = estadoFiltro == "TODAS" ? null : estadoFiltro;
-            var ordenesEnt = _ordenDAO.ObtenerTodasLasOrdenes(estadoConsulta) ?? new List<CapaDatos.Entidades.OrdenRecaudacion>();
+            var estadoFiltro = NormalizarFiltroDashboard(estado);
+            var ordenesEnt = _ordenDAO.ObtenerTodasLasOrdenes(null) ?? new List<CapaDatos.Entidades.OrdenRecaudacion>();
             var ordenes = ordenesEnt.Select(MapearOrden).ToList();
 
-            // Si no hay resultados y se estaba filtrando, intentar sin filtro para descartar problemas de estado
-            if (!string.IsNullOrEmpty(estadoConsulta) && (ordenes == null || ordenes.Count == 0))
+            if (!string.Equals(estadoFiltro, "TODAS", StringComparison.OrdinalIgnoreCase))
             {
-                var todasEnt = _ordenDAO.ObtenerTodasLasOrdenes(null) ?? new List<CapaDatos.Entidades.OrdenRecaudacion>();
-                var todas = todasEnt.Select(MapearOrden).ToList();
-                ViewBag.SinResultadosConFiltro = true;
-                ViewBag.TotalSinFiltro = todas.Count;
-                if (todas.Any())
-                {
-                    ordenes = todas;
-                    estadoFiltro = "TODAS";
-                    estadoConsulta = null;
-                }
+                ordenes = ordenes
+                    .Where(o => CoincideEstadoDashboard(o != null ? o.Estado : null, estadoFiltro))
+                    .ToList();
             }
 
             var vms = new List<OrdenValidacionFinancieraVM>();
@@ -100,17 +88,17 @@ namespace CapaPresentacion.Controllers
             var orden = _ordenDAO.ObtenerOrdenPorId(id);
             if (orden == null) return HttpNotFound();
 
+            var estado = EstadoOrden.NormalizarEstado(orden.Estado);
+            if (estado != EstadoOrden.EnRevisionFinanciera)
+            {
+                TempData["Error"] = "Solo se pueden aprobar ordenes en revision financiera.";
+                return RedirectToAction("Index");
+            }
+
             var comprobanteService = new ComprobanteService();
             if (!comprobanteService.ExisteComprobanteValido(id, out var mensajeComprobante))
             {
                 TempData["Error"] = mensajeComprobante;
-                return RedirectToAction("Index");
-            }
-
-            var estado = ((orden.Estado ?? "").Trim()).ToUpperInvariant().Replace(" ", "_");
-            if (estado != "PROCESADA")
-            {
-                TempData["Error"] = "Solo se pueden aprobar Ã³rdenes en estado PROCESADA.";
                 return RedirectToAction("Index");
             }
 
@@ -153,6 +141,13 @@ namespace CapaPresentacion.Controllers
         {
             var orden = _ordenDAO.ObtenerOrdenPorId(id);
             if (orden == null) return HttpNotFound();
+
+            var estado = EstadoOrden.NormalizarEstado(orden.Estado);
+            if (estado != EstadoOrden.EnRevisionFinanciera)
+            {
+                TempData["Error"] = "Solo se pueden aprobar pagos de ordenes en revision financiera.";
+                return RedirectToAction("Index");
+            }
 
             var comprobanteService = new ComprobanteService();
             if (!comprobanteService.ExisteComprobanteValido(id, out var mensajeComprobante))
@@ -214,6 +209,30 @@ namespace CapaPresentacion.Controllers
             if (model.OrdenId <= 0)
             {
                 return JsonErrorLogged("Orden inválida.");
+            }
+
+            var orden = _ordenDAO.ObtenerOrdenPorId(model.OrdenId);
+            if (orden == null)
+            {
+                return JsonErrorLogged("Orden no encontrada.");
+            }
+
+            var estadoOrden = EstadoOrden.NormalizarEstado(orden.Estado);
+            var ordenYaAprobada = estadoOrden == EstadoOrden.Facturada ||
+                                  estadoOrden == EstadoOrden.Completada ||
+                                  estadoOrden == EstadoOrden.Pagada;
+            if (estadoOrden != EstadoOrden.EnRevisionFinanciera && !ordenYaAprobada)
+            {
+                return JsonErrorLogged("Solo se puede registrar factura para ordenes en revision financiera.");
+            }
+
+            if (!ordenYaAprobada)
+            {
+                var comprobanteService = new ComprobanteService();
+                if (!comprobanteService.ExisteComprobanteValido(model.OrdenId, out var mensajeComprobante))
+                {
+                    return JsonErrorLogged(mensajeComprobante);
+                }
             }
 
             if (string.IsNullOrWhiteSpace(model.NumeroFactura))
@@ -400,13 +419,23 @@ namespace CapaPresentacion.Controllers
                 return JsonErrorLogged("Orden no encontrada.");
             }
 
-            var estado = ((orden.Estado ?? "").Trim()).ToUpperInvariant().Replace(" ", "_");
-            var permiteAprobar = estado == "PROCESADA" || estado.StartsWith("PENDIENTE");
-            var yaAprobada = estado == "FACTURADA" || estado == "COMPLETADA";
+            var estado = EstadoOrden.NormalizarEstado(orden.Estado);
+            var permiteAprobar = estado == EstadoOrden.EnRevisionFinanciera;
+            var yaAprobada = estado == EstadoOrden.Facturada || estado == EstadoOrden.Completada || estado == EstadoOrden.Pagada;
             if (!permiteAprobar && !yaAprobada)
             {
                 LogAprobarYEnviarAs400Request("ESTADO_NO_PERMITIDO", ordenId.ToString(CultureInfo.InvariantCulture), orden.Estado);
-                return JsonErrorLogged("Solo se pueden aprobar ordenes en estado PROCESADA o PENDIENTE. Estado actual: " + (orden.Estado ?? "N/D"));
+                return JsonErrorLogged("Solo se pueden aprobar ordenes en revision financiera. Estado actual: " + (orden.Estado ?? "N/D"));
+            }
+
+            if (permiteAprobar)
+            {
+                var comprobanteService = new ComprobanteService();
+                if (!comprobanteService.ExisteComprobanteValido(ordenId, out var mensajeComprobante))
+                {
+                    LogAprobarYEnviarAs400Request("COMPROBANTE_INVALIDO", ordenId.ToString(CultureInfo.InvariantCulture), mensajeComprobante);
+                    return JsonErrorLogged(mensajeComprobante);
+                }
             }
 
             var usuario = User != null && User.Identity != null && !string.IsNullOrWhiteSpace(User.Identity.Name)
@@ -429,15 +458,16 @@ namespace CapaPresentacion.Controllers
                     {
                         var ordenRevalidada = _ordenDAO.ObtenerOrdenPorId(ordenId);
                         var estadoRevalidado = ((ordenRevalidada != null ? ordenRevalidada.Estado : null) ?? string.Empty)
-                            .Trim()
-                            .ToUpperInvariant()
-                            .Replace(" ", "_");
-                        if (estadoRevalidado == "FACTURADA" || estadoRevalidado == "COMPLETADA")
+                            .Trim();
+                        var estadoRevalidadoNormalizado = EstadoOrden.NormalizarEstado(estadoRevalidado);
+                        if (estadoRevalidadoNormalizado == EstadoOrden.Facturada ||
+                            estadoRevalidadoNormalizado == EstadoOrden.Completada ||
+                            estadoRevalidadoNormalizado == EstadoOrden.Pagada)
                         {
                             aprobacionIdempotente = true;
                             orden = ordenRevalidada ?? orden;
                             CapaNegocio.LogBL.RegistrarInfo(
-                                string.Format("AprobarYEnviarAS400 idempotente por carrera. OrdenId={0}, Estado={1}", ordenId, estadoRevalidado),
+                                string.Format("AprobarYEnviarAS400 idempotente por carrera. OrdenId={0}, Estado={1}", ordenId, estadoRevalidadoNormalizado),
                                 "FinancieroController");
                         }
                         else
@@ -602,18 +632,28 @@ namespace CapaPresentacion.Controllers
             var orden = _ordenDAO.ObtenerOrdenPorId(id);
             if (orden == null) return HttpNotFound();
 
-            var estado = ((orden.Estado ?? "").Trim()).ToUpperInvariant().Replace(" ", "_");
-            if (estado != "PROCESADA" && estado != "PENDIENTE")
+            var estado = CapaDatos.Constants.EstadoOrden.NormalizarEstado(orden.Estado);
+            if (estado != CapaDatos.Constants.EstadoOrden.EnRevisionFinanciera &&
+                estado != CapaDatos.Constants.EstadoOrden.Pendiente &&
+                estado != CapaDatos.Constants.EstadoOrden.Enviada)
             {
-                TempData["Error"] = "Solo se pueden rechazar Ã³rdenes en estado PROCESADA o PENDIENTE.";
+                TempData["Error"] = "Solo se pueden devolver órdenes en revisión financiera.";
                 return RedirectToAction("Index");
             }
 
             var user = User?.Identity?.Name ?? "FINANCIERO";
+            var motivoTrim = motivo.Trim();
 
             try
             {
-                var rechazoAplicado = _ordenDAO.ActualizarPagoYEstadoTransaccional(id, null, "ANULADO", user, motivo, "ANULADA", out var err);
+                var rechazoAplicado = _ordenDAO.ActualizarPagoYEstadoTransaccional(
+                    id,
+                    null,
+                    CapaDatos.Constants.EstadoPago.Rechazado,
+                    user,
+                    motivoTrim,
+                    CapaDatos.Constants.EstadoOrden.Devuelta,
+                    out var err);
                 if (!rechazoAplicado)
                 {
                     var detalleError = (err ?? string.Empty).Trim();
@@ -621,13 +661,13 @@ namespace CapaPresentacion.Controllers
                         detalleError.IndexOf("No se encontr", StringComparison.OrdinalIgnoreCase) >= 0 &&
                         detalleError.IndexOf("pago", StringComparison.OrdinalIgnoreCase) >= 0;
 
-                    // Rechazo sin pago asociado: anula la orden igualmente para retirarla del flujo financiero.
+                    // Si no existe pago asociado, al menos se devuelve la orden con motivo visible para el RT.
                     if (noTienePago)
                     {
-                        rechazoAplicado = _ordenDAO.CambiarEstado(id, "ANULADA", motivo);
+                        rechazoAplicado = _ordenDAO.CambiarEstado(id, CapaDatos.Constants.EstadoOrden.Devuelta, motivoTrim);
                         if (!rechazoAplicado)
                         {
-                            err = "No se pudo actualizar el estado de la orden a ANULADA.";
+                            err = "No se pudo actualizar el estado de la orden a DEVUELTA.";
                         }
                     }
                 }
@@ -649,7 +689,7 @@ namespace CapaPresentacion.Controllers
                     CapaNegocio.LogBL.RegistrarError($"Error notificando rechazo Orden={orden.NumeroOrden}", exMail.ToString(), "FinancieroController");
                 }
 
-                TempData["Success"] = "Orden rechazada correctamente.";
+                TempData["Success"] = "Orden devuelta correctamente al RT para corrección.";
             }
             catch (System.Exception ex)
             {
@@ -744,12 +784,61 @@ namespace CapaPresentacion.Controllers
         // GET: /Financiero/TodasOrdenes
         public ActionResult TodasOrdenes(string estado)
         {
-            var ordenesEnt = _ordenDAO.ObtenerTodasLasOrdenes(estado) ?? new List<CapaDatos.Entidades.OrdenRecaudacion>();
+            var estadoFiltro = NormalizarFiltroDashboard(estado);
+            var ordenesEnt = _ordenDAO.ObtenerTodasLasOrdenes(null) ?? new List<CapaDatos.Entidades.OrdenRecaudacion>();
             var ordenes = ordenesEnt.Select(MapearOrden).ToList();
+            if (!string.Equals(estadoFiltro, "TODAS", StringComparison.OrdinalIgnoreCase))
+            {
+                ordenes = ordenes.Where(o => CoincideEstadoDashboard(o != null ? o.Estado : null, estadoFiltro)).ToList();
+            }
+
             return View(ordenes);
         }
 
         #region Helpers
+        private static string NormalizarEstadoDashboard(string estado)
+        {
+            var actual = EstadoOrden.NormalizarEstado(estado);
+            if (actual == EstadoOrden.Pendiente || actual == EstadoOrden.Generada)
+            {
+                return EstadoOrden.Generada;
+            }
+
+            return actual;
+        }
+
+        private static string NormalizarFiltroDashboard(string estado)
+        {
+            var actual = (estado ?? string.Empty).Trim().ToUpperInvariant().Replace(" ", "_");
+            if (string.IsNullOrWhiteSpace(actual))
+            {
+                return "TODAS";
+            }
+
+            switch (actual)
+            {
+                case "TODAS":
+                    return "TODAS";
+                case "PROCESADA":
+                case "EN_REVISION":
+                case "EN_REVISION_FINANCIERA":
+                    return EstadoOrden.EnRevisionFinanciera;
+                case "PENDIENTE":
+                case "GENERADA":
+                    return EstadoOrden.Generada;
+                default:
+                    return NormalizarEstadoDashboard(actual);
+            }
+        }
+
+        private static bool CoincideEstadoDashboard(string estadoOrden, string estadoFiltro)
+        {
+            return string.Equals(
+                NormalizarEstadoDashboard(estadoOrden),
+                NormalizarFiltroDashboard(estadoFiltro),
+                StringComparison.OrdinalIgnoreCase);
+        }
+
         private OrdenRecaudacionModel MapearOrden(CapaDatos.Entidades.OrdenRecaudacion o)
         {
             if (o == null) return null;
@@ -758,7 +847,7 @@ namespace CapaPresentacion.Controllers
             {
                 Id = o.Id,
                 NumeroOrden = o.NumeroOrden,
-                Estado = o.Estado,
+                Estado = NormalizarEstadoDashboard(o.Estado),
                 Total = o.Total ?? 0m,
                 Subtotal = o.Subtotal ?? 0m,
                 Iva = o.Iva ?? 0m,

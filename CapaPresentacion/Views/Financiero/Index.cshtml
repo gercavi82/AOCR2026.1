@@ -1,4 +1,5 @@
 ﻿@inherits System.Web.Mvc.WebViewPage<List<CapaPresentacion.Models.OrdenValidacionFinancieraVM>>
+@using CapaDatos.Constants
 @using CapaModelo
 @using CapaNegocio.Services
 @using System.Linq
@@ -12,30 +13,70 @@
 
     Func<string, string> normalizarEstado = estado =>
     {
-        return (estado ?? string.Empty).Trim().ToUpperInvariant().Replace(" ", "_");
+        var actual = EstadoOrden.NormalizarEstado(estado);
+        return actual == EstadoOrden.Pendiente || actual == EstadoOrden.Generada
+            ? EstadoOrden.Generada
+            : actual;
+    };
+
+    Func<string, string> textoEstado = estado =>
+    {
+        switch (normalizarEstado(estado))
+        {
+            case EstadoOrden.Generada:
+                return "GENERADA";
+            case EstadoOrden.Enviada:
+                return "ENVIADA";
+            case EstadoOrden.EnRevisionFinanciera:
+                return "EN REVISION FINANCIERA";
+            case EstadoOrden.Devuelta:
+                return "DEVUELTA";
+            case EstadoOrden.Facturada:
+                return "FACTURADA";
+            case EstadoOrden.Completada:
+                return "COMPLETADA";
+            case EstadoOrden.Pagada:
+                return "PAGADA";
+            case EstadoOrden.Anulada:
+                return "ANULADA";
+            case EstadoOrden.Borrador:
+                return "BORRADOR";
+            default:
+                return normalizarEstado(estado);
+        }
     };
 
     var totalOrdenes = registros.Count;
     var montoTotal = registros.Sum(x => x != null && x.Orden != null ? x.Orden.Total : 0m);
+    var generadas = registros.Count(x =>
+    {
+        var estado = x != null && x.Orden != null ? normalizarEstado(x.Orden.Estado) : string.Empty;
+        return estado == EstadoOrden.Generada;
+    });
     var enRevision = registros.Count(x =>
     {
         var estado = x != null && x.Orden != null ? normalizarEstado(x.Orden.Estado) : string.Empty;
-        return estado == "PROCESADA" || estado.StartsWith("PENDIENTE");
+        return estado == EstadoOrden.EnRevisionFinanciera;
+    });
+    var devueltas = registros.Count(x =>
+    {
+        var estado = x != null && x.Orden != null ? normalizarEstado(x.Orden.Estado) : string.Empty;
+        return estado == EstadoOrden.Devuelta;
     });
     var facturadas = registros.Count(x =>
     {
         var estado = x != null && x.Orden != null ? normalizarEstado(x.Orden.Estado) : string.Empty;
-        return estado == "FACTURADA";
+        return estado == EstadoOrden.Facturada;
     });
     var completadas = registros.Count(x =>
     {
         var estado = x != null && x.Orden != null ? normalizarEstado(x.Orden.Estado) : string.Empty;
-        return estado == "COMPLETADA";
+        return estado == EstadoOrden.Completada;
     });
     var anuladas = registros.Count(x =>
     {
         var estado = x != null && x.Orden != null ? normalizarEstado(x.Orden.Estado) : string.Empty;
-        return estado == "ANULADA";
+        return estado == EstadoOrden.Anulada;
     });
 
     var fr3Ok = registros.Count(x => !string.IsNullOrWhiteSpace(x != null ? x.Fr3Numero : null));
@@ -303,6 +344,11 @@
         min-height: 8px;
     }
 
+    .fin-bar-generadas { background: #f2c94c; }
+    .fin-bar-revision { background: #53b7cf; }
+    .fin-bar-devueltas { background: #f38b63; }
+    .fin-bar-facturadas { background: #9fcb52; }
+
     .fin-bar-label {
         display: block;
         margin-top: 8px;
@@ -459,8 +505,9 @@
         <form method="get" class="fin-filter-form">
             <label class="mb-0 aocr-field-label">Estado:</label>
             <select name="estado" class="form-select form-select-sm" onchange="this.form.submit()" style="min-width:180px;">
-                <option value="PROCESADA" @(ViewBag.EstadoFiltro == "PROCESADA" ? "selected" : "")>En revisión</option>
-                <option value="PENDIENTE" @(ViewBag.EstadoFiltro == "PENDIENTE" ? "selected" : "")>Pendiente</option>
+                <option value="EN_REVISION_FINANCIERA" @(ViewBag.EstadoFiltro == "EN_REVISION_FINANCIERA" ? "selected" : "")>En revision financiera</option>
+                <option value="GENERADA" @(ViewBag.EstadoFiltro == "GENERADA" ? "selected" : "")>Generada</option>
+                <option value="DEVUELTA" @(ViewBag.EstadoFiltro == "DEVUELTA" ? "selected" : "")>Devuelta</option>
                 <option value="FACTURADA" @(ViewBag.EstadoFiltro == "FACTURADA" ? "selected" : "")>Facturada</option>
                 <option value="COMPLETADA" @(ViewBag.EstadoFiltro == "COMPLETADA" ? "selected" : "")>Completada</option>
                 <option value="ANULADA" @(ViewBag.EstadoFiltro == "ANULADA" ? "selected" : "")>Anulada</option>
@@ -489,7 +536,7 @@
                     <li><span><span class="fin-dot" style="background:#9fcb52;"></span>Completadas</span><strong>@completadas</strong></li>
                     <li><span><span class="fin-dot" style="background:#53b7cf;"></span>Facturadas</span><strong>@facturadas</strong></li>
                     <li><span><span class="fin-dot" style="background:#f2c94c;"></span>En revisión</span><strong>@enRevision</strong></li>
-                    <li><span><span class="fin-dot" style="background:#f38b63;"></span>Anuladas</span><strong>@anuladas</strong></li>
+                    <li><span><span class="fin-dot" style="background:#f38b63;"></span>Devueltas</span><strong>@devueltas</strong></li>
                 </ul>
             </div>
         </div>
@@ -524,7 +571,9 @@
             <div class="fin-metric-value">@enRevision</div>
             <div class="fin-metric-sub">Órdenes que requieren gestión o revisión.</div>
             <ul class="fin-list">
-                <li><div><div class="fin-list-title">Pendientes / procesadas</div><div class="fin-list-sub">Carga activa del equipo</div></div><strong>@enRevision</strong></li>
+                <li><div><div class="fin-list-title">Generadas</div><div class="fin-list-sub">Ordenes emitidas pendientes de pago</div></div><strong>@generadas</strong></li>
+                <li><div><div class="fin-list-title">En revision financiera</div><div class="fin-list-sub">Carga activa del equipo</div></div><strong>@enRevision</strong></li>
+                <li><div><div class="fin-list-title">Devueltas al RT</div><div class="fin-list-sub">Requieren correccion y reenvio</div></div><strong>@devueltas</strong></li>
                 <li><div><div class="fin-list-title">Anuladas</div><div class="fin-list-sub">Casos cerrados por reverso</div></div><strong>@anuladas</strong></li>
             </ul>
         </div>
@@ -534,22 +583,28 @@
                 <div class="fin-metric-label">Distribución por Estado</div>
                 <strong class="small text-muted">@totalOrdenes total</strong>
             </div>
+            @{
+                var alturaGeneradas = Math.Max(12, totalOrdenes > 0 ? (int)Math.Round((decimal)generadas * 100m / totalOrdenes) : 0);
+                var alturaRevision = Math.Max(12, totalOrdenes > 0 ? (int)Math.Round((decimal)enRevision * 100m / totalOrdenes) : 0);
+                var alturaDevueltas = Math.Max(12, totalOrdenes > 0 ? (int)Math.Round((decimal)devueltas * 100m / totalOrdenes) : 0);
+                var alturaFacturadas = Math.Max(12, totalOrdenes > 0 ? (int)Math.Round((decimal)facturadas * 100m / totalOrdenes) : 0);
+            }
             <div class="fin-bars">
                 <div class="fin-bar-item">
-                    <div class="fin-bar-stack"><div class="fin-bar" style="height:@(Math.Max(12, totalOrdenes > 0 ? (int)Math.Round((decimal)enRevision * 100m / totalOrdenes) : 0))px;background:#f2c94c;"></div></div>
-                    <span class="fin-bar-label">Revisión</span>
+                    <div class="fin-bar-stack"><div class="fin-bar fin-bar-generadas" data-height="@alturaGeneradas"></div></div>
+                    <span class="fin-bar-label">Generadas</span>
                 </div>
                 <div class="fin-bar-item">
-                    <div class="fin-bar-stack"><div class="fin-bar" style="height:@(Math.Max(12, totalOrdenes > 0 ? (int)Math.Round((decimal)facturadas * 100m / totalOrdenes) : 0))px;background:#53b7cf;"></div></div>
+                    <div class="fin-bar-stack"><div class="fin-bar fin-bar-revision" data-height="@alturaRevision"></div></div>
+                    <span class="fin-bar-label">Revision</span>
+                </div>
+                <div class="fin-bar-item">
+                    <div class="fin-bar-stack"><div class="fin-bar fin-bar-devueltas" data-height="@alturaDevueltas"></div></div>
+                    <span class="fin-bar-label">Devueltas</span>
+                </div>
+                <div class="fin-bar-item">
+                    <div class="fin-bar-stack"><div class="fin-bar fin-bar-facturadas" data-height="@alturaFacturadas"></div></div>
                     <span class="fin-bar-label">Facturadas</span>
-                </div>
-                <div class="fin-bar-item">
-                    <div class="fin-bar-stack"><div class="fin-bar" style="height:@(Math.Max(12, totalOrdenes > 0 ? (int)Math.Round((decimal)completadas * 100m / totalOrdenes) : 0))px;background:#9fcb52;"></div></div>
-                    <span class="fin-bar-label">Completadas</span>
-                </div>
-                <div class="fin-bar-item">
-                    <div class="fin-bar-stack"><div class="fin-bar" style="height:@(Math.Max(12, totalOrdenes > 0 ? (int)Math.Round((decimal)anuladas * 100m / totalOrdenes) : 0))px;background:#f38b63;"></div></div>
-                    <span class="fin-bar-label">Anuladas</span>
                 </div>
             </div>
         </div>
@@ -624,7 +679,7 @@
                             </div>
                             <div class="text-end">
                                 <div class="fin-list-title">@ordenReciente.Total.ToString("N2")</div>
-                                <div class="fin-list-sub">@Html.Encode(ordenReciente.Estado)</div>
+                                <div class="fin-list-sub">@Html.Encode(textoEstado(ordenReciente.Estado))</div>
                             </div>
                         </li>
                     }
@@ -673,9 +728,8 @@
             {
                 var orden = item.Orden;
                 var pago = item.Pago;
-                var estadoNorm = orden != null ? ((orden.Estado ?? "").Trim().ToUpperInvariant().Replace(" ", "_")) : "";
-                var esPendiente = !string.IsNullOrWhiteSpace(estadoNorm) && estadoNorm.StartsWith("PENDIENTE");
-                var puedeGestionarPorEstado = (estadoNorm == "PROCESADA" || esPendiente);
+                var estadoNorm = orden != null ? normalizarEstado(orden.Estado) : string.Empty;
+                var puedeGestionarPorEstado = estadoNorm == EstadoOrden.EnRevisionFinanciera;
         <tr>
             <td>@Html.Encode(i)</td>
             <td>@Html.Encode(orden != null ? orden.NumeroOrden : "-")</td>
@@ -688,14 +742,30 @@
                     var badgeCss = "bg-secondary";
                     switch (estadoNorm)
                     {
-                        case "COMPLETADA": badgeCss = "bg-success"; break;
-                        case "FACTURADA": badgeCss = "bg-info text-dark"; break;
-                        case "ANULADA": badgeCss = "bg-danger"; break;
-                        case "RECHAZADA": badgeCss = "bg-warning text-dark"; break;
-                        case "PROCESADA": badgeCss = "bg-primary"; break;
+                        case EstadoOrden.Completada:
+                        case EstadoOrden.Pagada:
+                            badgeCss = "bg-success";
+                            break;
+                        case EstadoOrden.Facturada:
+                            badgeCss = "bg-info text-dark";
+                            break;
+                        case EstadoOrden.Anulada:
+                            badgeCss = "bg-danger";
+                            break;
+                        case EstadoOrden.Devuelta:
+                            badgeCss = "bg-danger";
+                            break;
+                        case EstadoOrden.EnRevisionFinanciera:
+                            badgeCss = "bg-primary";
+                            break;
+                        case EstadoOrden.Enviada:
+                            badgeCss = "bg-info text-dark";
+                            break;
+                        case EstadoOrden.Generada:
+                            badgeCss = "bg-warning text-dark";
+                            break;
                     }
-                    if (esPendiente) { badgeCss = "bg-warning text-dark"; }
-                    <span class="badge @badgeCss">@Html.Encode(orden.Estado)</span>
+                    <span class="badge @badgeCss">@Html.Encode(textoEstado(orden.Estado))</span>
                 }
             </td>
             <td>
@@ -805,7 +875,7 @@
     <div class="modal-dialog">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title">Rechazar Orden</h5>
+                <h5 class="modal-title">Devolver Orden</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <form id="formRechazarOrden" method="post" action="@Url.Action("RechazarOrden", "Financiero")">
@@ -816,12 +886,12 @@
                         <small class="text-muted">Orden:</small>
                         <div><strong id="rechazo_numero_orden">-</strong></div>
                     </div>
-                    <label class="form-label">Motivo</label>
+                    <label class="form-label">Motivo de devolucion</label>
                     <textarea name="motivo" class="form-control" rows="3" required></textarea>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                    <button type="submit" class="btn btn-danger"><i class="fas fa-times me-1"></i>Rechazar</button>
+                    <button type="submit" class="btn btn-danger"><i class="fas fa-times me-1"></i>Devolver</button>
                 </div>
             </form>
         </div>
@@ -852,7 +922,7 @@
 
                     <div class="alert alert-info py-2" role="alert">
                         <i class="fas fa-info-circle me-1"></i>
-                        Se aprobará la orden y se enviará la facturación FR3 al AS400.
+                        Se aprobara la orden y se enviara la facturacion FR3 al AS400 solo despues de validar el comprobante de pago.
                     </div>
                 </div>
                 <div class="modal-footer">
@@ -885,6 +955,18 @@
 <script src="https://cdn.datatables.net/buttons/2.4.2/js/buttons.print.min.js"></script>
 <script>
 (function () {
+    function applyBarHeights() {
+        var bars = document.querySelectorAll('.fin-bar[data-height]');
+        for (var i = 0; i < bars.length; i++) {
+            var rawHeight = parseInt(bars[i].getAttribute('data-height'), 10);
+            if (!isNaN(rawHeight) && rawHeight > 0) {
+                bars[i].style.height = rawHeight + 'px';
+            }
+        }
+    }
+
+    applyBarHeights();
+
     // =============================================
     // DataTables — Gestión de órdenes
     // =============================================

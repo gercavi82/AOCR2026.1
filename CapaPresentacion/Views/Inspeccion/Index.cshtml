@@ -48,6 +48,8 @@
     });
     var totalNoSatisfactorio = inspeccionesOrdenadas.Count(i => normEstado(i.Estado) == "RESULTADO_NO_SATISFACTORIO");
     var totalPendientes = Math.Max(0, total - totalAceptadas - totalObservadas - totalNoSatisfactorio);
+    var vistaActualInspeccion = (ViewBag.VistaActualInspeccion as string ?? string.Empty).Trim();
+    var mostrarGuiaRevisionDocumental = string.Equals(vistaActualInspeccion, "revision-documental", StringComparison.OrdinalIgnoreCase);
 }
 
 @section Styles {
@@ -279,6 +281,13 @@
             <div class="rv-pane-header">
                 <div>
                     <h3 class="rv-pane-title" id="inspPaneTitle"><i class="fas fa-layer-group"></i> Todas las inspecciones</h3>
+
+            @if (mostrarGuiaRevisionDocumental)
+            {
+                <div class="alert alert-info mb-3" role="alert">
+                    <strong>Revisión documental del inspector:</strong> abra el detalle de una inspección asignada, use <strong>Ver Documentos de la Solicitud</strong> y luego confirme la revisión documental antes de continuar con las acciones operativas.
+                </div>
+            }
                     <p class="rv-pane-sub" id="inspPaneSub">Listado completo ordenado por prioridad operativa.</p>
                 </div>
                 <div class="rv-search">

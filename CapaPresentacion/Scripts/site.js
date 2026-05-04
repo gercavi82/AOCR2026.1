@@ -4,13 +4,10 @@
 (function () {
     // Evitar múltiples cargas
     if (window._SITE_JS_LOADED) {
-        console.log('ℹ️ site.js ya cargado, omitiendo...');
         return;
     }
 
     window._SITE_JS_LOADED = true;
-
-    console.log('🌐 site.js cargado');
 
     // Configuración global del sitio
     var SiteConfig = {
@@ -63,7 +60,6 @@
             confirm: confirmAction
         };
     } else {
-        console.log('ℹ️ Site ya existe, solo añadiendo funciones faltantes');
         window.Site.notify = window.Site.notify || showNotification;
         window.Site.confirm = window.Site.confirm || confirmAction;
     }

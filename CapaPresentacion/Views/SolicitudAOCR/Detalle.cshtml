@@ -21,22 +21,70 @@
     }
 
     var estadoActual = EstadoSolicitud.Normalizar(Model.Estado);
+    var estadoVisibleExpediente = (ViewBag.EstadoDocumentalVisible as string ?? Model.Estado ?? string.Empty);
+    var esSolicitudModificacion = Model.TipoSolicitud.GetValueOrDefault() == 3;
     var puedeInspectorDocumental =
         User.IsInRole("Inspector") &&
         (estadoActual == EstadoSolicitud.Pendiente
          || estadoActual == EstadoSolicitud.EnRevision
          || estadoActual == EstadoSolicitud.DocumentacionPendiente
-         || estadoActual == EstadoSolicitud.Subsanada);
+         || estadoActual == EstadoSolicitud.Subsanada
+         || estadoActual == EstadoSolicitud.EnInspeccion);
 
     var revisionesDocumentales = ViewBag.RevisionesDocumentales as Dictionary<int, Tuple<string, string>>
         ?? new Dictionary<int, Tuple<string, string>>();
     var puedeFinalizarRevisionDocumental = (bool)(ViewBag.PuedeFinalizarRevisionDocumental ?? false);
+    var inspeccionesSolicitud = ViewBag.InspeccionesSolicitud as IEnumerable<Inspeccion>
+        ?? Enumerable.Empty<Inspeccion>();
+    var inspeccionVinculada = inspeccionesSolicitud
+        .Where(i => i != null && i.CodigoInspeccion > 0)
+        .OrderByDescending(i => i.CodigoInspeccion)
+        .FirstOrDefault();
+    var estadoInspeccionVinculada = inspeccionVinculada != null
+        ? EstadosInspeccion.NormalizarEstado(inspeccionVinculada.Estado)
+        : string.Empty;
+    Func<string, string> textoEstadoInspeccion = estado =>
+    {
+        if (string.IsNullOrWhiteSpace(estado))
+        {
+            return "SIN ESTADO";
+        }
+
+        switch (EstadosInspeccion.NormalizarEstado(estado))
+        {
+            case EstadosInspeccion.SOLICITUD_INSPECCION_CREADA:
+                return "SOLICITUD CREADA";
+            case EstadosInspeccion.VERIFICACION_SOLICITUD:
+                return "VERIFICACION DE SOLICITUD";
+            case EstadosInspeccion.ACEPTADA:
+                return "ACEPTADA";
+            case EstadosInspeccion.OBSERVADA:
+                return "OBSERVADA";
+            case EstadosInspeccion.SUBSANADA:
+                return "SUBSANADA";
+            case EstadosInspeccion.PAGO_VALIDADO:
+                return "PAGO VALIDADO";
+            case EstadosInspeccion.EN_INSPECCION:
+                return "EN INSPECCION";
+            default:
+                return EstadosInspeccion.NormalizarEstado(estado).Replace("_", " ");
+        }
+    };
+    var usuarioActualId = (int)(ViewBag.UsuarioActualId ?? 0);
+    var esPropietario = usuarioActualId > 0 && Model.CodigoUsuario == usuarioActualId;
+    var puedeAbrirInspeccionVinculada = inspeccionVinculada != null &&
+        (esPropietario
+         || User.IsInRole("Inspector")
+         || User.IsInRole("Coordinador")
+         || User.IsInRole("CoordinadorInspecciones")
+         || User.IsInRole("Administrador"));
+    var urlInspeccionVinculada = puedeAbrirInspeccionVinculada
+        ? Url.Action("Detalle", "Inspeccion", new { id = inspeccionVinculada.CodigoInspeccion })
+        : string.Empty;
 
     var puedeSolicitarInspeccion =
         (User.IsInRole("Inspector") || User.IsInRole("Administrador")) &&
-        (estadoActual == EstadoSolicitud.AceptacionDocumental
-         || estadoActual == EstadoSolicitud.DocumentacionCompleta
-         || estadoActual == EstadoSolicitud.Aprobada
+        (estadoActual == EstadoSolicitud.DocumentacionCompleta
          || estadoActual == EstadoSolicitud.PendienteAsignacionRT);
 
     var puedeMarcarElaboracion =
@@ -58,10 +106,75 @@
     var puedeEmitirAocr =
         (User.IsInRole("CoordinacionLegal") || User.IsInRole("DirectorGeneral") || User.IsInRole("Administrador")) &&
         estadoActual == EstadoSolicitud.AOCR_Legalizado;
-
-    var usuarioActualId = (int)(ViewBag.UsuarioActualId ?? 0);
-    var esPropietario = usuarioActualId > 0 && Model.CodigoUsuario == usuarioActualId;
+    var tieneInspectorAsignado = Model.CodigoTecnico.HasValue
+        || !string.IsNullOrWhiteSpace(Model.TecnicoResponsableCedula)
+        || !string.IsNullOrWhiteSpace(Model.TecnicoResponsableNombre);
     var puedeSubsanar = esPropietario && estadoActual == EstadoSolicitud.Observada;
+    var puedeGestionarAsignacionInspector =
+        (User.IsInRole("Coordinador") || User.IsInRole("CoordinadorInspecciones") || User.IsInRole("Administrador")) &&
+        (estadoActual == EstadoSolicitud.EnRevision
+         || estadoActual == EstadoSolicitud.DocumentacionPendiente
+         || estadoActual == EstadoSolicitud.Subsanada
+         || estadoActual == EstadoSolicitud.RequiereInspeccion
+         || estadoActual == EstadoSolicitud.PendienteAsignacionRT
+         || estadoActual == EstadoSolicitud.AceptacionDocumental
+         || estadoActual == EstadoSolicitud.DocumentacionCompleta
+         || estadoActual == EstadoSolicitud.EnInspeccion);
+    var textoAccionInspector = tieneInspectorAsignado ? "Reasignar inspector" : "Asignar inspector";
+    var urlAsignacionInspector = Url.Action("AsignarInspector", "Tecnico", new { solicitudId = Model.CodigoSolicitud });
+    var puedeFirmarAceptacionDocumental =
+        !esSolicitudModificacion &&
+        (User.IsInRole("Coordinador") || User.IsInRole("CoordinadorInspecciones") || User.IsInRole("Administrador")) &&
+        estadoActual == EstadoSolicitud.AceptacionDocumental;
+    var puedeDescargarAceptacionDocumental =
+        !esSolicitudModificacion &&
+        (esPropietario || User.IsInRole("Coordinador") || User.IsInRole("CoordinadorInspecciones") || User.IsInRole("Administrador")) &&
+        (estadoActual == EstadoSolicitud.FirmadoCoordinador || estadoActual == EstadoSolicitud.Finalizado);
+    var puedeResolverRutaModificacion =
+        esSolicitudModificacion &&
+        (User.IsInRole("Inspector") || User.IsInRole("Administrador")) &&
+        estadoActual == EstadoSolicitud.AceptacionDocumental;
+    var puedePrepararCondicionesModificacion =
+        esSolicitudModificacion &&
+        (User.IsInRole("Inspector")
+         || User.IsInRole("CoordinacionLegal")
+         || User.IsInRole("CoordinadorLegal")
+         || User.IsInRole("Coordinador")
+         || User.IsInRole("CoordinadorInspecciones")
+         || User.IsInRole("DIRDAC")
+         || User.IsInRole("Direccion")
+         || User.IsInRole("DirectorGeneral")
+         || User.IsInRole("JefaturaTecnica")
+         || User.IsInRole("Administrador")) &&
+        (estadoActual == EstadoSolicitud.GeneradoCondicionesLimitaciones
+         || estadoActual == EstadoSolicitud.EnRevisionCoordinadorFinal);
+    var puedeRevisarCondicionesModificacion =
+        esSolicitudModificacion &&
+        (User.IsInRole("Coordinador") || User.IsInRole("CoordinadorInspecciones") || User.IsInRole("Administrador")) &&
+        estadoActual == EstadoSolicitud.GeneradoCondicionesLimitaciones;
+    var puedeEnviarCondicionesDcav =
+        esSolicitudModificacion &&
+        (User.IsInRole("Coordinador") || User.IsInRole("CoordinadorInspecciones") || User.IsInRole("Administrador")) &&
+        estadoActual == EstadoSolicitud.EnRevisionCoordinadorFinal;
+    var puedeFirmarCondicionesModificacion =
+        esSolicitudModificacion &&
+        (User.IsInRole("DIRDAC")
+         || User.IsInRole("Direccion")
+         || User.IsInRole("DirectorGeneral")
+         || User.IsInRole("JefaturaTecnica")
+         || User.IsInRole("Administrador")) &&
+        estadoActual == EstadoSolicitud.EnviadoDcav;
+    var puedeDescargarCondicionesModificacion =
+        esSolicitudModificacion &&
+        (esPropietario
+         || User.IsInRole("DIRDAC")
+         || User.IsInRole("Direccion")
+         || User.IsInRole("DirectorGeneral")
+         || User.IsInRole("JefaturaTecnica")
+         || User.IsInRole("Coordinador")
+         || User.IsInRole("CoordinadorInspecciones")
+         || User.IsInRole("Administrador")) &&
+        (estadoActual == EstadoSolicitud.FirmadoDcav || estadoActual == EstadoSolicitud.Finalizado);
 
     var direccionCompleta = string.Join(", ", new[]
     {
@@ -80,6 +193,9 @@
 
         if (normalized == EstadoSolicitud.AOCR_Validado
             || normalized == EstadoSolicitud.AceptacionDocumental
+            || normalized == EstadoSolicitud.FirmadoCoordinador
+            || normalized == EstadoSolicitud.FirmadoDcav
+            || normalized == EstadoSolicitud.Finalizado
             || normalized == EstadoSolicitud.AOCR_Legalizado
             || normalized == EstadoSolicitud.AOCR_EmitidoRecibido
             || normalized == EstadoSolicitud.Aprobada)
@@ -90,6 +206,10 @@
         if (normalized == EstadoSolicitud.EnRevision
             || normalized == EstadoSolicitud.AOCR_EnRevision
             || normalized == EstadoSolicitud.AOCR_EnElaboracion
+            || normalized == EstadoSolicitud.RequiereInspeccion
+            || normalized == EstadoSolicitud.GeneradoCondicionesLimitaciones
+            || normalized == EstadoSolicitud.EnRevisionCoordinadorFinal
+            || normalized == EstadoSolicitud.EnviadoDcav
             || normalized == EstadoSolicitud.EnInspeccion)
         {
             return "aocr-badge info";
@@ -367,7 +487,7 @@
                 </div>
                 <div class="text-lg-end">
                     <div class="mb-2 small text-uppercase opacity-75">Estado del tramite</div>
-                    <span class="@estadoCss(Model.Estado)">@Model.Estado</span>
+                    <span class="@estadoCss(estadoVisibleExpediente)">@estadoVisibleExpediente</span>
                 </div>
             </div>
 
@@ -495,6 +615,26 @@
         </div>
     }
 
+    @if (puedeGestionarAsignacionInspector)
+    {
+        <div class="card border-secondary mb-4" style="border-left: 5px solid #6c757d !important;">
+            <div class="card-body p-4">
+                <div class="d-flex align-items-start gap-3">
+                    <div class="text-secondary fs-3"><i class="fas fa-user-check"></i></div>
+                    <div class="flex-grow-1">
+                        <h5 class="fw-bold text-secondary mb-1">Asignación de Inspector</h5>
+                        <p class="text-muted mb-3">@(tieneInspectorAsignado
+                            ? "La solicitud ya tiene inspector asignado. Puede reasignar si requiere redistribuir la revisión o actualizar la fecha programada."
+                            : "El coordinador debe asignar inspector antes de que continúe la revisión técnica de la solicitud y la factura.")</p>
+                        <a href="@urlAsignacionInspector" class="btn btn-outline-secondary">
+                            <i class="fas fa-user-cog me-1"></i> @textoAccionInspector
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+
     <div class="card aocr-detail-card aocr-action-card mb-4">
         <div class="card-body p-4">
             <div class="aocr-section-title">
@@ -553,7 +693,7 @@
                     <button type="button"
                             class="btn btn-primary aocr-action-btn-full"
                             disabled="disabled"
-                            title="@(motivoAocr ?? "Disponible una vez finalice la revisión y aprobación del informe técnico")"
+                            title="@(motivoAocr ?? "Disponible una vez la inspeccion sea satisfactoria y el informe tecnico quede firmado por el inspector")"
                             style="opacity: 0.55; cursor: not-allowed;">
                         <i class="fas fa-file-signature"></i>
                         Generar AOCR
@@ -572,7 +712,7 @@
                     <i class="fas fa-info-circle me-1"></i>
                     <strong>AOCR no disponible aún:</strong>
                     @(string.IsNullOrEmpty(motivoAocr)
-                        ? "La AOCR estará disponible cuando finalice la revisión y aprobación del informe técnico."
+                        ? "La AOCR estara disponible cuando la inspeccion sea satisfactoria y el informe tecnico quede firmado por el inspector."
                         : motivoAocr)
                 </div>
             }
@@ -772,6 +912,257 @@
         </div>
     }
 
+    @if (puedeFirmarAceptacionDocumental)
+    {
+        <div class="card aocr-detail-card aocr-review-card success mb-4">
+            <div class="card-body p-4">
+                <div class="aocr-section-title mb-3">
+                    <i class="fas fa-file-signature"></i>
+                    <span>Autorizacion final</span>
+                </div>
+                <p class="text-muted mb-3">El inspector ya aceptó la solicitud y la factura. La coordinación debe firmar la autorización final antes de poner el PDF a disposición del RT.</p>
+                <form method="post" action="@Url.Action("FirmarAceptacionDocumental", "SolicitudAOCR")">
+                    @Html.AntiForgeryToken()
+                    @Html.Hidden("id", Model.CodigoSolicitud)
+                    <div class="row g-3 align-items-end">
+                        <div class="col-md-8">
+                            <label class="form-label fw-semibold" for="observacionAceptacion">Observacion de autorizacion</label>
+                            <textarea class="form-control" id="observacionAceptacion" name="observacion" rows="3" placeholder="Constancia interna de la autorización final firmada."></textarea>
+                        </div>
+                        <div class="col-md-4 d-flex justify-content-end">
+                            <button type="submit" class="btn btn-success aocr-action-btn w-100">
+                                <i class="fas fa-pen-nib"></i>
+                                Firmar autorizacion final
+                            </button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    }
+
+    @if (puedeDescargarAceptacionDocumental)
+    {
+        <div class="card aocr-detail-card aocr-review-card info mb-4">
+            <div class="card-body p-4 d-flex flex-column flex-lg-row justify-content-between align-items-lg-center gap-3">
+                <div>
+                    <div class="aocr-section-title mb-2">
+                        <i class="fas fa-file-pdf"></i>
+                        <span>Autorizacion final firmada</span>
+                    </div>
+                    <p class="text-muted mb-0">El documento de autorización final ya está listo para consulta y descarga.</p>
+                    @if (esPropietario && estadoActual == EstadoSolicitud.FirmadoCoordinador)
+                    {
+                        <div class="small text-secondary mt-2">La primera descarga del RT cerrará esta fase como <strong>FINALIZADO</strong>.</div>
+                    }
+                </div>
+                <div class="d-flex flex-wrap gap-2">
+                    <a href="@Url.Action("DescargarAceptacionDocumental", "SolicitudAOCR", new { id = Model.CodigoSolicitud, vistaPrevia = true })" class="btn btn-outline-secondary aocr-action-btn" target="_blank">
+                        <i class="fas fa-eye"></i>
+                        Vista previa
+                    </a>
+                    <a href="@Url.Action("DescargarAceptacionDocumental", "SolicitudAOCR", new { id = Model.CodigoSolicitud })" class="btn btn-outline-primary aocr-action-btn">
+                        <i class="fas fa-download"></i>
+                        Descargar autorizacion
+                    </a>
+                </div>
+            </div>
+        </div>
+    }
+
+    @if (puedeResolverRutaModificacion)
+    {
+        <div class="card aocr-detail-card aocr-review-card info mb-4">
+            <div class="card-body p-4">
+                <div class="aocr-section-title mb-3">
+                    <i class="fas fa-code-branch"></i>
+                    <span>Resolucion de modificacion</span>
+                </div>
+                <p class="text-muted mb-3">La documentación ya fue aceptada. El inspector debe resolver si la modificación continúa al módulo de inspección o si puede cerrarse con Condiciones y Limitaciones sin nueva inspección.</p>
+                <form method="post">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" name="id" value="@Model.CodigoSolicitud" />
+                    <div class="row g-3 align-items-end">
+                        <div class="col-md-8">
+                            <label class="form-label fw-semibold" for="obsResolucionModificacion">Observacion del inspector</label>
+                            <textarea class="form-control" id="obsResolucionModificacion" name="observacion" rows="3" placeholder="Fundamente si la modificación requiere inspección o si puede cerrar directo con Condiciones y Limitaciones."></textarea>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="aocr-review-actions">
+                                <button formaction="@Url.Action("GenerarCondicionesLimitacionesModificacion", "SolicitudAOCR")" class="btn btn-success aocr-action-btn" type="submit">
+                                    <i class="fas fa-file-contract"></i>
+                                    No requiere nueva inspeccion
+                                </button>
+                                <button formaction="@Url.Action("MarcarRequiereInspeccionModificacion", "SolicitudAOCR")" class="btn btn-outline-warning aocr-action-btn" type="submit">
+                                    <i class="fas fa-clipboard-list"></i>
+                                    Derivar a inspeccion
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    }
+
+    @if (puedePrepararCondicionesModificacion)
+    {
+        <div class="card aocr-detail-card aocr-review-card success mb-4">
+            <div class="card-body p-4 d-flex flex-column flex-lg-row justify-content-between align-items-lg-center gap-3">
+                <div>
+                    <div class="aocr-section-title mb-2">
+                        <i class="fas fa-file-pdf"></i>
+                        <span>Condiciones y Limitaciones de la modificacion</span>
+                    </div>
+                    <p class="text-muted mb-0">El documento institucional ya puede completarse y revisarse desde este trámite antes del envío a DCAV/DGAC.</p>
+                </div>
+                <div class="d-flex flex-wrap gap-2">
+                    <a href="@Url.Action("EditarDocumentoValidacionAocr", "CoordinacionJefatura", new { solicitudId = Model.CodigoSolicitud, tipo = "CONDICIONES_LIMITACIONES" })" class="btn btn-primary aocr-action-btn">
+                        <i class="fas fa-pen"></i>
+                        Completar documento
+                    </a>
+                    <a href="@Url.Action("DocumentoValidacionAocr", "CoordinacionJefatura", new { solicitudId = Model.CodigoSolicitud, tipo = "CONDICIONES_LIMITACIONES", descargar = false })" class="btn btn-outline-secondary aocr-action-btn" target="_blank" rel="noopener">
+                        <i class="fas fa-eye"></i>
+                        PDF directo
+                    </a>
+                </div>
+            </div>
+        </div>
+    }
+
+    @if (esSolicitudModificacion && inspeccionVinculada != null && (estadoActual == EstadoSolicitud.RequiereInspeccion || estadoActual == EstadoSolicitud.EnInspeccion || estadoActual == EstadoSolicitud.PendienteAsignacionRT))
+    {
+        <div class="card aocr-detail-card aocr-review-card warning mb-4">
+            <div class="card-body p-4 d-flex flex-column flex-lg-row justify-content-between align-items-lg-center gap-3">
+                <div>
+                    <div class="aocr-section-title mb-2">
+                        <i class="fas fa-clipboard-check"></i>
+                        <span>Solicitud de inspeccion vinculada</span>
+                    </div>
+                    <p class="text-muted mb-2">La modificación ya tiene una inspección asociada. La revisión, observación y subsanación deben continuar dentro del módulo de inspección para no perder trazabilidad con el trámite original.</p>
+                    <div class="small text-secondary">Inspeccion #@inspeccionVinculada.CodigoInspeccion - Estado actual: <strong>@textoEstadoInspeccion(estadoInspeccionVinculada)</strong></div>
+                </div>
+                @if (puedeAbrirInspeccionVinculada)
+                {
+                    <a href="@urlInspeccionVinculada" class="btn btn-outline-primary aocr-action-btn flex-shrink-0">
+                        <i class="fas fa-external-link-alt"></i>
+                        Abrir solicitud de inspeccion
+                    </a>
+                }
+            </div>
+        </div>
+    }
+
+    @if (puedeRevisarCondicionesModificacion)
+    {
+        <div class="card aocr-detail-card aocr-review-card info mb-4">
+            <div class="card-body p-4">
+                <div class="aocr-section-title mb-3">
+                    <i class="fas fa-search"></i>
+                    <span>Revision final de coordinacion</span>
+                </div>
+                <form method="post" action="@Url.Action("RevisarCondicionesLimitacionesModificacion", "SolicitudAOCR")">
+                    @Html.AntiForgeryToken()
+                    @Html.Hidden("id", Model.CodigoSolicitud)
+                    <div class="row g-3 align-items-end">
+                        <div class="col-md-8">
+                            <label class="form-label fw-semibold" for="obsRevisionCondiciones">Observacion</label>
+                            <textarea class="form-control" id="obsRevisionCondiciones" name="observacion" rows="3" placeholder="Constancia de revisión previa al envío a DCAV/DGAC."></textarea>
+                        </div>
+                        <div class="col-md-4 d-flex justify-content-end">
+                            <button type="submit" class="btn btn-primary aocr-action-btn w-100">
+                                <i class="fas fa-check-circle"></i>
+                                Marcar revision final
+                            </button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    }
+
+    @if (puedeEnviarCondicionesDcav)
+    {
+        <div class="card aocr-detail-card aocr-review-card legal mb-4">
+            <div class="card-body p-4">
+                <div class="aocr-section-title mb-3">
+                    <i class="fas fa-paper-plane"></i>
+                    <span>Envio a DCAV / DGAC</span>
+                </div>
+                <form method="post" action="@Url.Action("EnviarCondicionesLimitacionesDcav", "SolicitudAOCR")">
+                    @Html.AntiForgeryToken()
+                    @Html.Hidden("id", Model.CodigoSolicitud)
+                    <div class="row g-3 align-items-end">
+                        <div class="col-md-8">
+                            <label class="form-label fw-semibold" for="obsEnvioDcav">Observacion de envío</label>
+                            <textarea class="form-control" id="obsEnvioDcav" name="observacion" rows="3" placeholder="Detalle del envío institucional para firma final."></textarea>
+                        </div>
+                        <div class="col-md-4 d-flex justify-content-end">
+                            <button type="submit" class="btn btn-success aocr-action-btn w-100">
+                                <i class="fas fa-share-square"></i>
+                                Enviar a DCAV / DGAC
+                            </button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    }
+
+    @if (puedeFirmarCondicionesModificacion)
+    {
+        <div class="card aocr-detail-card aocr-review-card legal mb-4">
+            <div class="card-body p-4 d-flex flex-column flex-lg-row justify-content-between align-items-lg-center gap-3">
+                <div>
+                    <div class="aocr-section-title mb-2">
+                        <i class="fas fa-file-signature"></i>
+                        <span>Firma institucional pendiente</span>
+                    </div>
+                    <p class="text-muted mb-0">El documento ya fue revisado por coordinación y está listo para firma digital institucional de DCAV/DGAC.</p>
+                </div>
+                <div class="d-flex flex-wrap gap-2">
+                    <a href="@Url.Action("EditarDocumentoValidacionAocr", "CoordinacionJefatura", new { solicitudId = Model.CodigoSolicitud, tipo = "CONDICIONES_LIMITACIONES" })" class="btn btn-dark aocr-action-btn">
+                        <i class="fas fa-signature"></i>
+                        Abrir para firmar
+                    </a>
+                    <a href="@Url.Action("DocumentoValidacionAocr", "CoordinacionJefatura", new { solicitudId = Model.CodigoSolicitud, tipo = "CONDICIONES_LIMITACIONES", descargar = false })" class="btn btn-outline-secondary aocr-action-btn" target="_blank" rel="noopener">
+                        <i class="fas fa-eye"></i>
+                        Vista previa
+                    </a>
+                </div>
+            </div>
+        </div>
+    }
+
+    @if (puedeDescargarCondicionesModificacion)
+    {
+        <div class="card aocr-detail-card aocr-review-card success mb-4">
+            <div class="card-body p-4 d-flex flex-column flex-lg-row justify-content-between align-items-lg-center gap-3">
+                <div>
+                    <div class="aocr-section-title mb-2">
+                        <i class="fas fa-download"></i>
+                        <span>Condiciones y Limitaciones firmadas</span>
+                    </div>
+                    <p class="text-muted mb-0">El documento final firmado ya está disponible para consulta y descarga.</p>
+                    @if (esPropietario && estadoActual == EstadoSolicitud.FirmadoDcav)
+                    {
+                        <div class="small text-secondary mt-2">La primera descarga del RT cerrará esta fase como <strong>FINALIZADO</strong>.</div>
+                    }
+                </div>
+                <div class="d-flex flex-wrap gap-2">
+                    <a href="@Url.Action("DescargarCondicionesLimitacionesModificacion", "SolicitudAOCR", new { id = Model.CodigoSolicitud, vistaPrevia = true })" class="btn btn-outline-secondary aocr-action-btn" target="_blank" rel="noopener">
+                        <i class="fas fa-eye"></i>
+                        Vista previa
+                    </a>
+                    <a href="@Url.Action("DescargarCondicionesLimitacionesModificacion", "SolicitudAOCR", new { id = Model.CodigoSolicitud })" class="btn btn-outline-primary aocr-action-btn">
+                        <i class="fas fa-download"></i>
+                        Descargar documento firmado
+                    </a>
+                </div>
+            </div>
+        </div>
+    }
+
     @if (puedeSolicitarInspeccion)
     {
         <div class="card aocr-detail-card aocr-review-card warning mb-4">
@@ -781,11 +1172,13 @@
                         <i class="fas fa-clipboard-list"></i>
                         <span>Gestion de Inspeccion</span>
                     </div>
-                    <p class="text-muted mb-0">La documentacion fue aceptada y el tramite esta listo para pasar a la fase de inspeccion.</p>
+                    <p class="text-muted mb-0">@(estadoActual == EstadoSolicitud.RequiereInspeccion
+                        ? "La modificación fue derivada a inspección y ya puede continuar en el módulo de inspección."
+                        : "La documentacion fue aceptada y el tramite esta listo para pasar a la fase de inspeccion.")</p>
                 </div>
                 <a href="@Url.Action("SolicitarInspeccion", "SolicitudAOCR", new { id = Model.CodigoSolicitud })" class="btn btn-outline-primary aocr-action-btn flex-shrink-0">
                     <i class="fas fa-arrow-right"></i>
-                    Pasar a En Inspeccion
+                    @(estadoActual == EstadoSolicitud.RequiereInspeccion ? "Continuar a En Inspeccion" : "Pasar a En Inspeccion")
                 </a>
             </div>
         </div>

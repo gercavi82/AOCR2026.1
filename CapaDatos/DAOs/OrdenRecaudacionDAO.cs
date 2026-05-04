@@ -2300,10 +2300,22 @@ namespace CapaDatos.DAOs
                             }
                         }
 
-                        var sqlUpdateOrden = "UPDATE aocr_or_orden SET estado = @estado WHERE id = @id";
+                        var estadoOrdenNormalizado = EstadoOrden.NormalizarEstado(nuevoEstadoOrden);
+                        var persistirObservacionOrden =
+                            !string.IsNullOrWhiteSpace(observaciones) &&
+                            (string.Equals(estadoOrdenNormalizado, EstadoOrden.Devuelta, StringComparison.OrdinalIgnoreCase) ||
+                             string.Equals(estadoOrdenNormalizado, EstadoOrden.Anulada, StringComparison.OrdinalIgnoreCase));
+
+                        var sqlUpdateOrden = persistirObservacionOrden
+                            ? "UPDATE aocr_or_orden SET estado = @estado, observacion = @observacion WHERE id = @id"
+                            : "UPDATE aocr_or_orden SET estado = @estado WHERE id = @id";
                         using (var cmdOrd = new NpgsqlCommand(sqlUpdateOrden, conn, tx))
                         {
                             cmdOrd.Parameters.AddWithValue("@estado", nuevoEstadoOrden);
+                            if (persistirObservacionOrden)
+                            {
+                                cmdOrd.Parameters.AddWithValue("@observacion", observaciones.Trim());
+                            }
                             cmdOrd.Parameters.AddWithValue("@id", ordenId);
                             var rowsOrd = cmdOrd.ExecuteNonQuery();
                             if (rowsOrd <= 0)

@@ -6,6 +6,7 @@
     var vm = Model ?? new CapaPresentacion.Models.ViewModels.FirmaInspectorPanelVm();
     var informeTecnico = vm.InformeTecnico;
     var codigoInspeccion = vm.CodigoInspeccion;
+    var usaFlujoListaVerificacionEae = vm.UsaFlujoListaVerificacionEae;
     var puedeFirmarInspector = vm.PuedeFirmarInspector;
     var puedeEnviarADirdac = vm.PuedeEnviarADirdac;
     var puedeReintentarNotificacionDirdac = vm.PuedeReintentarNotificacionDirdac;
@@ -43,12 +44,14 @@
 
     // Cálculo de pasos
     var pasoGenerado = informeTecnico != null && informeTecnico.Finalizado && !string.IsNullOrWhiteSpace(informeTecnico.RutaPdf);
-    var pasoDirdac = informeEnviadoADirdac || informeAprobadoDireccion || informeDevueltoDireccion;
-    var pasoCoord = informeEnviadoACoordinador
-        || string.Equals(estadoInformeTecnico, "APROBADO_COORDINADOR", StringComparison.OrdinalIgnoreCase)
-        || informeDevueltoCoordinador
-        || string.Equals(estadoInformeTecnico, "FIRMADO_FINAL", StringComparison.OrdinalIgnoreCase)
-        || (informeTecnico != null && informeTecnico.FirmadoInspector);
+    var pasoDirdac = !usaFlujoListaVerificacionEae && (informeEnviadoADirdac || informeAprobadoDireccion || informeDevueltoDireccion);
+    var pasoCoord = usaFlujoListaVerificacionEae
+        ? pasoGenerado
+        : (informeEnviadoACoordinador
+            || string.Equals(estadoInformeTecnico, "APROBADO_COORDINADOR", StringComparison.OrdinalIgnoreCase)
+            || informeDevueltoCoordinador
+            || string.Equals(estadoInformeTecnico, "FIRMADO_FINAL", StringComparison.OrdinalIgnoreCase)
+            || (informeTecnico != null && informeTecnico.FirmadoInspector));
     var pasoFirmado = informeTecnico != null && informeTecnico.FirmadoInspector;
     var pasoActivo1 = !pasoGenerado;
     var pasoActivo2 = pasoGenerado && !pasoDirdac;
@@ -71,7 +74,13 @@ else if (informeTecnico != null)
         <div class="it-hero-row">
             <div>
                 <h3><i class="fas fa-file-signature"></i> Firma del Inspector DGAC</h3>
-                <p class="sub">Versión <strong>@informeTecnico.Version</strong> · Inspección #@codigoInspeccion</p>
+                <p class="sub">
+                    Versión <strong>@informeTecnico.Version</strong> · Inspección #@codigoInspeccion
+                    @if (usaFlujoListaVerificacionEae)
+                    {
+                        <text> · Flujo directo EAE sin Coordinación ni DIRDAC</text>
+                    }
+                </p>
             </div>
             <div>
                 <span class="it-pill @estadoClass">
@@ -89,15 +98,24 @@ else if (informeTecnico != null)
             <div class="it-step @(pasoGenerado ? "done" : (pasoActivo1 ? "active" : ""))">
                 <span class="n">1</span> PDF generado
             </div>
-            <div class="it-step @(pasoDirdac ? "done" : (pasoActivo2 ? "active" : ""))">
-                <span class="n">2</span> Revisión DIRDAC
-            </div>
-            <div class="it-step @(pasoCoord ? "done" : (pasoActivo3 ? "active" : ""))">
-                <span class="n">3</span> Aprobación Coord.
-            </div>
-            <div class="it-step @(pasoFirmado ? "done" : (pasoActivo4 ? "active" : ""))">
-                <span class="n">4</span> Firma final
-            </div>
+            @if (usaFlujoListaVerificacionEae)
+            {
+                <div class="it-step @(pasoFirmado ? "done" : (pasoActivo2 ? "active" : ""))">
+                    <span class="n">2</span> Firma final inspector
+                </div>
+            }
+            else
+            {
+                <div class="it-step @(pasoDirdac ? "done" : (pasoActivo2 ? "active" : ""))">
+                    <span class="n">2</span> Revisión DIRDAC
+                </div>
+                <div class="it-step @(pasoCoord ? "done" : (pasoActivo3 ? "active" : ""))">
+                    <span class="n">3</span> Aprobación Coord.
+                </div>
+                <div class="it-step @(pasoFirmado ? "done" : (pasoActivo4 ? "active" : ""))">
+                    <span class="n">4</span> Firma final
+                </div>
+            }
         </div>
     </div>
 
@@ -185,10 +203,15 @@ else if (informeTecnico != null)
                     <strong>Falta finalizar el informe.</strong> Complete y finalice el informe técnico para generar el PDF; después podrá firmarlo digitalmente.
                 </div>
             }
-            else if (informeEnviadoADirdac || informeEnviadoACoordinador)
+            else if (!usaFlujoListaVerificacionEae && (informeEnviadoADirdac || informeEnviadoACoordinador))
             {
                 <i class="fas fa-hourglass-half"></i>
                 <div>La firma digital se habilita luego de la revisión de DIRDAC y la aprobación de Coordinación.</div>
+            }
+            else if (usaFlujoListaVerificacionEae)
+            {
+                <i class="fas fa-info-circle"></i>
+                <div>En el flujo EAE la firma del inspector queda disponible apenas el PDF del informe ha sido generado.</div>
             }
             else
             {
@@ -211,7 +234,7 @@ else if (informeTecnico != null)
     }
 
     @* ── Enviar a DIRDAC ── *@
-    if (puedeEnviarADirdac || puedeReintentarNotificacionDirdac)
+    if (!usaFlujoListaVerificacionEae && (puedeEnviarADirdac || puedeReintentarNotificacionDirdac))
     {
         <div class="it-panel" style="padding: 14px 16px;">
             @if (puedeReintentarNotificacionDirdac)
@@ -240,14 +263,14 @@ else if (informeTecnico != null)
     }
 
     @* ── Timeline de estados informativos ── *@
-    if (informeEnviadoACoordinador)
+    if (!usaFlujoListaVerificacionEae && informeEnviadoACoordinador)
     {
         <div class="it-alert info">
             <i class="fas fa-user-check"></i>
             <div><strong>Informe en Coordinación.</strong> Coordinación revisará el documento y podrá aprobarlo o devolverlo con observaciones.</div>
         </div>
     }
-    else if (informeEnviadoADirdac && !informeAprobadoDireccion)
+    else if (!usaFlujoListaVerificacionEae && informeEnviadoADirdac && !informeAprobadoDireccion)
     {
         <div class="it-alert warn">
             <i class="fas fa-paper-plane"></i>

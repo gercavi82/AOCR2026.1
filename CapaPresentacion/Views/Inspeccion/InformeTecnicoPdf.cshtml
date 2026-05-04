@@ -15,6 +15,7 @@
     var esVistaPrevia = Model != null && Model.EsVistaPrevia;
     var mostrarMarcaAguaBorrador = Model != null && Model.MostrarMarcaAguaBorrador;
     var mostrarFirmas = Model == null || Model.MostrarFirmas;
+    var mostrarFirmaDirector = Model != null && Model.MostrarFirmaDirector;
     var cultura = new CultureInfo("es-EC");
 
     var textoNoAplica = "No aplica";
@@ -250,11 +251,11 @@
             </div>
             <div class="signature-name">@nombreInspectorVisual</div>
             <div class="signature-license">@licenciaInspectorVisual</div>
-            <div class="signature-role">INSPECTOR DGAC</div>
-            <div class="signature-specialty">ESPECIALISTA CERTIFICACION DE OPERACIONES</div>
+            <div class="signature-role">FIRMA DEL TÉCNICO / INSPECTOR RESPONSABLE</div>
+            <div class="signature-specialty">Nombre: @nombreInspectorVisual &nbsp; Cargo: TECNICO / INSPECTOR DGAC &nbsp; Fecha: @(informe != null && informe.FechaFirma1.HasValue ? informe.FechaFirma1.Value.ToString("dd/MM/yyyy", cultura) : textoNoAplica)</div>
         </div>
 
-        @if (mostrarFirmas)
+        @if (mostrarFirmas && mostrarFirmaDirector)
         {
             <div class="hidden-anchor">
                 <span>ANCLA_FIRMA_DIRDAC_JEFATURA</span>

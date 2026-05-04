@@ -1025,6 +1025,10 @@ WHERE codigo_solicitud=@id AND deleted_at IS NULL;";
                         var estadoPermiteAsignacionInicial =
                             string.Equals(estadoActualNormalizado, EstadoSolicitud.PendienteAsignacionRT, StringComparison.OrdinalIgnoreCase) ||
                             string.Equals(estadoActualNormalizado, EstadoSolicitud.Pendiente, StringComparison.OrdinalIgnoreCase) ||
+                            string.Equals(estadoActualNormalizado, EstadoSolicitud.EnRevision, StringComparison.OrdinalIgnoreCase) ||
+                            string.Equals(estadoActualNormalizado, EstadoSolicitud.DocumentacionPendiente, StringComparison.OrdinalIgnoreCase) ||
+                            string.Equals(estadoActualNormalizado, EstadoSolicitud.Subsanada, StringComparison.OrdinalIgnoreCase) ||
+                            string.Equals(estadoActualNormalizado, EstadoSolicitud.RequiereInspeccion, StringComparison.OrdinalIgnoreCase) ||
                             string.Equals(estadoActualNormalizado, EstadoSolicitud.AceptacionDocumental, StringComparison.OrdinalIgnoreCase) ||
                             string.Equals(estadoActualNormalizado, EstadoSolicitud.DocumentacionCompleta, StringComparison.OrdinalIgnoreCase);
 

@@ -2,8 +2,38 @@
 @{
     Layout = "~/Views/Shared/_LayoutAOCR.cshtml";
     ViewBag.Title = "Registro RT";
-    var estado = ViewBag.Estado as string ?? "BORRADOR";
-    bool bloqueado = string.Equals(estado, "ENVIADA", System.StringComparison.OrdinalIgnoreCase);
+    var estado = (ViewBag.EstadoRt as string ?? ViewBag.Estado as string ?? "BORRADOR").Trim().ToUpperInvariant();
+    var observacionCoordinador = (ViewBag.ObservacionCoordinadorRt as string ?? string.Empty).Trim();
+    var tieneDeclaracionRt = ViewBag.TieneDeclaracionRt != null && (bool)ViewBag.TieneDeclaracionRt;
+    var tieneDocumentoRt = ViewBag.TieneDocumentoRt != null && (bool)ViewBag.TieneDocumentoRt;
+    var tieneConstanciaRt = ViewBag.TieneConstanciaRt != null && (bool)ViewBag.TieneConstanciaRt;
+    var solicitudIdActual = Model.SolicitudId ?? 0;
+    if (solicitudIdActual <= 0 && ViewBag.SolicitudRtId != null)
+    {
+        int.TryParse(System.Convert.ToString(ViewBag.SolicitudRtId), out solicitudIdActual);
+    }
+    var esEditable = ViewBag.EsEditableRt == null || (bool)ViewBag.EsEditableRt;
+    bool bloqueado = !esEditable;
+    var claseEstado = "secondary";
+    var mensajeEstado = "Complete la información base del expediente RT y continúe con declaración y designación.";
+    switch (estado)
+    {
+        case "ENVIADO":
+        case "EN_REVISION_COORDINADOR":
+            claseEstado = "info";
+            mensajeEstado = "La solicitud RT ya fue enviada y se encuentra en revisión de coordinación.";
+            break;
+        case "DEVUELTO_CON_OBSERVACIONES":
+            claseEstado = "warning";
+            mensajeEstado = "La solicitud RT fue devuelta. Corrija la información, cargue nuevamente el documento si aplica y reenvíe.";
+            break;
+        case "FINALIZADO":
+        case "FIRMADO":
+        case "APROBADO":
+            claseEstado = "success";
+            mensajeEstado = "La solicitud RT fue aprobada y el expediente quedó cerrado.";
+            break;
+    }
 }
 
 <div class="container mt-4">
@@ -21,10 +51,60 @@
                 <div class="alert alert-danger">@TempData["Error"]</div>
             }
 
-            @if (bloqueado)
+            <div class="alert alert-@claseEstado">
+                <div class="d-flex flex-column flex-lg-row align-items-lg-center justify-content-between gap-2">
+                    <div>
+                        <strong>Estado actual:</strong> @estado
+                        <div class="small mt-1">@mensajeEstado</div>
+                    </div>
+                    @if (solicitudIdActual > 0)
+                    {
+                        <div class="d-flex flex-wrap gap-2">
+                            <a class="btn btn-outline-primary btn-sm" href="@Url.Action("Declaracion", "RT", new { solicitudId = solicitudIdActual })">
+                                Declaración
+                            </a>
+                            <a class="btn btn-outline-primary btn-sm" href="@Url.Action("Designacion", "RT", new { solicitudId = solicitudIdActual })">
+                                Designación
+                            </a>
+                            @if (tieneConstanciaRt)
+                            {
+                                <a class="btn btn-outline-success btn-sm" href="@Url.Action("DescargarConstancia", "RT")">
+                                    Descargar constancia
+                                </a>
+                            }
+                        </div>
+                    }
+                </div>
+            </div>
+
+            @if (!string.IsNullOrWhiteSpace(observacionCoordinador) && string.Equals(estado, "DEVUELTO_CON_OBSERVACIONES", System.StringComparison.OrdinalIgnoreCase))
             {
-                <div class="alert alert-info">
-                    La solicitud ya fue enviada y está en revisión por Coordinador.
+                <div class="alert alert-warning">
+                    <strong>Observación de coordinación:</strong> @observacionCoordinador
+                </div>
+            }
+
+            @if (solicitudIdActual > 0)
+            {
+                <div class="row g-3 mb-3">
+                    <div class="col-md-4">
+                        <div class="border rounded p-3 h-100">
+                            <div class="small text-muted">Declaración</div>
+                            <div class="fw-semibold">@(tieneDeclaracionRt ? "Aceptada" : "Pendiente")</div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="border rounded p-3 h-100">
+                            <div class="small text-muted">Designación PDF</div>
+                            <div class="fw-semibold">@(tieneDocumentoRt ? "Cargada" : "Pendiente")</div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="border rounded p-3 h-100">
+                            <div class="small text-muted">Constancia</div>
+                            <div class="fw-semibold">@(tieneConstanciaRt ? "Disponible" : "No generada")</div>
+                        </div>
+                    </div>
                 </div>
             }
 
@@ -68,7 +148,7 @@
                 <div class="d-flex justify-content-between">
                     <span class="badge bg-secondary">Estado: @estado</span>
                     <button type="submit" class="btn btn-primary" @(bloqueado ? "disabled" : "")>
-                        Guardar y continuar
+                        @(solicitudIdActual > 0 ? "Actualizar y continuar" : "Guardar y continuar")
                     </button>
                 </div>
             }

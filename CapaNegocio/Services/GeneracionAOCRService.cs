@@ -11,7 +11,7 @@ namespace CapaNegocio.Services
     /// <summary>
     /// Servicio institucional para la generación automática del documento AOCR.
     /// Reemplaza la carga manual del "Borrador AOCR" por generación controlada
-    /// a partir de los datos del trámite y el informe técnico aprobado.
+    /// a partir de los datos del trámite y el informe técnico que completa la fase tecnica.
     ///
     /// Este servicio evalúa las reglas de habilitación y persiste el documento
     /// generado. La creación física del PDF se realiza en la capa de presentación
@@ -86,11 +86,11 @@ namespace CapaNegocio.Services
 
             if (!estadoValido)
             {
-                resultado.Motivo = "La AOCR estará disponible cuando finalice la revisión y aprobación del informe técnico.";
+                resultado.Motivo = "La AOCR estará disponible cuando la inspeccion sea satisfactoria y el informe tecnico quede firmado por el inspector.";
                 return resultado;
             }
 
-            // Regla 2: informe técnico finalizado y firmado (inspector + dirección)
+            // Regla 2: informe tecnico finalizado y con cierre valido del flujo tecnico AOCR.
             InspeccionInformeTecnico informe = ObtenerInformeAprobado(codigoSolicitud);
             resultado.InformeAprobado = informe;
 
@@ -109,9 +109,9 @@ namespace CapaNegocio.Services
                 resultado.Motivo = "El informe técnico no ha sido firmado por el inspector.";
                 return resultado;
             }
-            if (!InformeTieneRevisionDireccionAprobada(informe))
+            if (!InformeCompletaFaseTecnicaAocr(informe))
             {
-                resultado.Motivo = "El informe técnico no ha sido revisado/aprobado por DIRDAC o Dirección.";
+                resultado.Motivo = "El informe tecnico todavia no completa la fase tecnica que habilita la AOCR.";
                 return resultado;
             }
 
@@ -161,8 +161,8 @@ namespace CapaNegocio.Services
                     if (inf == null) continue;
 
                     if (mejor == null) { mejor = inf; continue; }
-                    int scoreActual = (inf.Finalizado ? 1 : 0) + (inf.FirmadoInspector ? 1 : 0) + (InformeTieneRevisionDireccionAprobada(inf) ? 1 : 0);
-                    int scoreMejor = (mejor.Finalizado ? 1 : 0) + (mejor.FirmadoInspector ? 1 : 0) + (InformeTieneRevisionDireccionAprobada(mejor) ? 1 : 0);
+                    int scoreActual = (inf.Finalizado ? 1 : 0) + (inf.FirmadoInspector ? 1 : 0) + (InformeCompletaFaseTecnicaAocr(inf) ? 1 : 0);
+                    int scoreMejor = (mejor.Finalizado ? 1 : 0) + (mejor.FirmadoInspector ? 1 : 0) + (InformeCompletaFaseTecnicaAocr(mejor) ? 1 : 0);
                     if (scoreActual > scoreMejor) mejor = inf;
                 }
                 return mejor;
@@ -173,9 +173,14 @@ namespace CapaNegocio.Services
             }
         }
 
-        private static bool InformeTieneRevisionDireccionAprobada(InspeccionInformeTecnico informe)
+        private static bool InformeCompletaFaseTecnicaAocr(InspeccionInformeTecnico informe)
         {
             if (informe == null)
+            {
+                return false;
+            }
+
+            if (!informe.Finalizado || !informe.FirmadoInspector)
             {
                 return false;
             }
@@ -191,8 +196,12 @@ namespace CapaNegocio.Services
             }
 
             var estadoInforme = (informe.EstadoInforme ?? string.Empty).Trim().ToUpperInvariant();
+            if (estadoInforme == "INFORME_FIRMADO_TECNICO")
+            {
+                return true;
+            }
+
             return estadoInforme == "APROBADO_DIRECCION"
-                || estadoInforme == "ENVIADO_A_COORDINADOR"
                 || estadoInforme == "APROBADO_COORDINADOR"
                 || estadoInforme == "FIRMADO_FINAL";
         }

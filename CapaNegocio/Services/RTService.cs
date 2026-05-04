@@ -14,7 +14,13 @@ namespace CapaNegocio.Services
         private readonly DocumentoRTDao _docDao = new DocumentoRTDao();
 
         public const string EstadoBorrador = "BORRADOR";
-        public const string EstadoEnviada = "ENVIADA";
+        public const string EstadoEnviadoLegacy = "ENVIADA";
+        public const string EstadoEnviado = "ENVIADO";
+        public const string EstadoEnRevisionCoordinador = "EN_REVISION_COORDINADOR";
+        public const string EstadoDevueltoConObservaciones = "DEVUELTO_CON_OBSERVACIONES";
+        public const string EstadoAprobado = "APROBADO";
+        public const string EstadoFirmado = "FIRMADO";
+        public const string EstadoFinalizado = "FINALIZADO";
         public const string TipoDocumentoDesignacion = "DESIGNACION_RT";
 
         public string ObtenerTextoDeclaracion()
@@ -52,6 +58,29 @@ namespace CapaNegocio.Services
             return _docDao.GetDocumentoDesignacion(solicitudId);
         }
 
+        public bool EsEstadoEditable(string estado)
+        {
+            return string.Equals(NormalizarEstado(estado), EstadoBorrador, StringComparison.OrdinalIgnoreCase)
+                || string.Equals(NormalizarEstado(estado), EstadoDevueltoConObservaciones, StringComparison.OrdinalIgnoreCase);
+        }
+
+        public string NormalizarEstado(string estado)
+        {
+            var estadoNormalizado = (estado ?? string.Empty).Trim().ToUpperInvariant();
+
+            if (string.IsNullOrWhiteSpace(estadoNormalizado))
+            {
+                return EstadoBorrador;
+            }
+
+            if (estadoNormalizado == EstadoEnviadoLegacy)
+            {
+                return EstadoEnviado;
+            }
+
+            return estadoNormalizado;
+        }
+
         public int GuardarBorrador(RegistroRTVM vm, int usuarioId)
         {
             if (vm == null) throw new ArgumentNullException(nameof(vm));
@@ -82,7 +111,7 @@ namespace CapaNegocio.Services
                 return solicitudId;
             }
 
-            if (!string.Equals(solicitud.Estado, EstadoBorrador, StringComparison.OrdinalIgnoreCase))
+            if (!EsEstadoEditable(solicitud.Estado))
                 throw new InvalidOperationException("No se puede modificar una solicitud enviada.");
 
             _rtDao.UpdateCompania(solicitud.CompaniaId, new CompaniaModel
@@ -102,8 +131,8 @@ namespace CapaNegocio.Services
             var solicitud = _rtDao.GetSolicitudById(solicitudId);
             ValidarPropietario(solicitud, usuarioId);
 
-            if (!string.Equals(solicitud.Estado, EstadoBorrador, StringComparison.OrdinalIgnoreCase))
-                throw new InvalidOperationException("La solicitud no está en estado BORRADOR.");
+            if (!EsEstadoEditable(solicitud.Estado))
+                throw new InvalidOperationException("La solicitud no está en un estado editable.");
 
             _rtDao.UpdateDeclaracionAceptada(solicitudId, true, textoDeclaracion);
         }
@@ -113,8 +142,8 @@ namespace CapaNegocio.Services
             var solicitud = _rtDao.GetSolicitudById(solicitudId);
             ValidarPropietario(solicitud, usuarioId);
 
-            if (!string.Equals(solicitud.Estado, EstadoBorrador, StringComparison.OrdinalIgnoreCase))
-                throw new InvalidOperationException("La solicitud no está en estado BORRADOR.");
+            if (!EsEstadoEditable(solicitud.Estado))
+                throw new InvalidOperationException("La solicitud no está en un estado editable.");
 
             if (!FileStorageHelper.ValidatePdf(pdf, out var error))
                 throw new InvalidOperationException(error);
@@ -141,13 +170,56 @@ namespace CapaNegocio.Services
             return doc;
         }
 
+        public DocumentoModel RegistrarDesignacionExistente(int solicitudId, int usuarioId, string rutaStorage, string nombreArchivo)
+        {
+            var solicitud = _rtDao.GetSolicitudById(solicitudId);
+            ValidarPropietario(solicitud, usuarioId);
+
+            if (!EsEstadoEditable(solicitud.Estado)
+                && !string.Equals(NormalizarEstado(solicitud.Estado), EstadoEnviado, StringComparison.OrdinalIgnoreCase)
+                && !string.Equals(NormalizarEstado(solicitud.Estado), EstadoEnRevisionCoordinador, StringComparison.OrdinalIgnoreCase))
+            {
+                throw new InvalidOperationException("La solicitud no admite actualización del documento en el estado actual.");
+            }
+
+            if (string.IsNullOrWhiteSpace(rutaStorage))
+            {
+                throw new InvalidOperationException("La ruta del documento RT es obligatoria.");
+            }
+
+            var rutaFisica = HttpContext.Current != null
+                ? HttpContext.Current.Server.MapPath(rutaStorage)
+                : null;
+
+            if (string.IsNullOrWhiteSpace(rutaFisica) || !File.Exists(rutaFisica))
+            {
+                throw new InvalidOperationException("No se encontró el documento RT en el almacenamiento configurado.");
+            }
+
+            var info = new FileInfo(rutaFisica);
+            var doc = new DocumentoModel
+            {
+                SolicitudRtId = solicitudId,
+                Tipo = TipoDocumentoDesignacion,
+                NombreArchivo = string.IsNullOrWhiteSpace(nombreArchivo) ? info.Name : nombreArchivo.Trim(),
+                RutaStorage = rutaStorage,
+                TamanoBytes = info.Length,
+                HashSha256 = FileStorageHelper.ComputeSha256(rutaFisica),
+                CreatedBy = usuarioId.ToString(),
+                CreatedAt = DateTime.Now
+            };
+
+            _docDao.UpsertDocumentoDesignacion(solicitudId, doc);
+            return doc;
+        }
+
         public void EnviarSolicitud(int solicitudId, int usuarioId)
         {
             var solicitud = _rtDao.GetSolicitudById(solicitudId);
             ValidarPropietario(solicitud, usuarioId);
 
-            if (!string.Equals(solicitud.Estado, EstadoBorrador, StringComparison.OrdinalIgnoreCase))
-                throw new InvalidOperationException("La solicitud ya fue enviada o no está en estado BORRADOR.");
+            if (!EsEstadoEditable(solicitud.Estado))
+                throw new InvalidOperationException("La solicitud ya fue enviada o no está en un estado editable.");
 
             if (!solicitud.DeclaracionAceptada)
                 throw new InvalidOperationException("Debe aceptar la declaración de responsabilidad antes de enviar.");
@@ -156,8 +228,42 @@ namespace CapaNegocio.Services
             if (doc == null)
                 throw new InvalidOperationException("Debe adjuntar la Designación de RT legalizada (PDF)." );
 
-            _rtDao.UpdateEstadoEnviada(solicitudId, DateTime.Now);
-            _rtDao.InsertHistorialEstado(solicitudId, EstadoEnviada, usuarioId, null);
+            var fechaEnvio = DateTime.Now;
+            _rtDao.UpdateEstado(solicitudId, EstadoEnRevisionCoordinador, null, fechaEnvio);
+            _rtDao.InsertHistorialEstado(solicitudId, EstadoEnviado, usuarioId, null);
+            _rtDao.InsertHistorialEstado(solicitudId, EstadoEnRevisionCoordinador, usuarioId, null);
+        }
+
+        public void DevolverConObservaciones(int solicitudId, int usuarioId, string observacion)
+        {
+            var solicitud = _rtDao.GetSolicitudById(solicitudId);
+            if (solicitud == null)
+                throw new InvalidOperationException("Solicitud no encontrada.");
+
+            var observacionNormalizada = (observacion ?? string.Empty).Trim();
+            if (string.IsNullOrWhiteSpace(observacionNormalizada))
+                throw new InvalidOperationException("Debe registrar una observación para devolver la solicitud RT.");
+
+            _rtDao.UpdateEstado(solicitudId, EstadoDevueltoConObservaciones, observacionNormalizada);
+            _rtDao.InsertHistorialEstado(solicitudId, EstadoDevueltoConObservaciones, usuarioId, observacionNormalizada);
+        }
+
+        public void RegistrarAprobacionFinal(int solicitudId, int usuarioId, string observacion = null)
+        {
+            var solicitud = _rtDao.GetSolicitudById(solicitudId);
+            if (solicitud == null)
+                throw new InvalidOperationException("Solicitud no encontrada.");
+
+            var observacionNormalizada = string.IsNullOrWhiteSpace(observacion) ? null : observacion.Trim();
+
+            _rtDao.UpdateEstado(solicitudId, EstadoAprobado, observacionNormalizada);
+            _rtDao.InsertHistorialEstado(solicitudId, EstadoAprobado, usuarioId, observacionNormalizada);
+
+            _rtDao.UpdateEstado(solicitudId, EstadoFirmado, observacionNormalizada);
+            _rtDao.InsertHistorialEstado(solicitudId, EstadoFirmado, usuarioId, observacionNormalizada);
+
+            _rtDao.UpdateEstado(solicitudId, EstadoFinalizado, observacionNormalizada);
+            _rtDao.InsertHistorialEstado(solicitudId, EstadoFinalizado, usuarioId, observacionNormalizada);
         }
 
         private static void ValidarPropietario(SolicitudRTModel solicitud, int usuarioId)

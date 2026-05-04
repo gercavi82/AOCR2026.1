@@ -1,8 +1,42 @@
 ﻿@inherits System.Web.Mvc.WebViewPage<List<CapaDatos.Models.OrdenRecaudacionModel>>
+@using CapaDatos.Constants
 @using CapaModelo
 @using System.Web.Mvc
 @using System.Web.Mvc.Html
 @functions {
+    public static string NormalizarEstadoVisual(string estado)
+    {
+        var actual = EstadoOrden.NormalizarEstado(estado);
+        if (actual == EstadoOrden.Pendiente || actual == EstadoOrden.Generada)
+        {
+            return EstadoOrden.Generada;
+        }
+
+        return actual;
+    }
+
+    public static string GetTextoEstado(string estado)
+    {
+        if (string.IsNullOrWhiteSpace(estado))
+        {
+            return "SIN ESTADO";
+        }
+
+        var est = NormalizarEstadoVisual(estado);
+        switch (est)
+        {
+            case EstadoOrden.Generada: return "GENERADA";
+            case EstadoOrden.Enviada: return "ENVIADA";
+            case EstadoOrden.EnRevisionFinanciera: return "EN REVISION FINANCIERA";
+            case EstadoOrden.Devuelta: return "DEVUELTA";
+            case EstadoOrden.Facturada: return "FACTURADA";
+            case EstadoOrden.Completada: return "COMPLETADA";
+            case EstadoOrden.Pagada: return "PAGADA";
+            case EstadoOrden.Anulada: return "ANULADA";
+            default: return est;
+        }
+    }
+
     public static string GetTextoTramite(string estado)
     {
         if (string.IsNullOrWhiteSpace(estado))
@@ -10,15 +44,18 @@
             return "SIN ESTADO";
         }
 
-        var est = estado.Trim().ToUpperInvariant();
+        var est = NormalizarEstadoVisual(estado);
         switch (est)
         {
-            case "BORRADOR": return "Borrador";
-            case "PENDIENTE": return "Pendiente de pago";
-            case "PROCESADA": return "En revisión financiera";
-            case "FACTURADA": return "Factura generada";
-            case "COMPLETADA": return "Completada";
-            case "ANULADA": return "Anulada";
+            case EstadoOrden.Borrador: return "Borrador";
+            case EstadoOrden.Generada: return "Generada / pendiente de pago";
+            case EstadoOrden.Enviada: return "Enviada a financiero";
+            case EstadoOrden.EnRevisionFinanciera: return "En revision financiera";
+            case EstadoOrden.Devuelta: return "Devuelta para correccion";
+            case EstadoOrden.Facturada: return "Factura generada";
+            case EstadoOrden.Completada: return "Completada";
+            case EstadoOrden.Pagada: return "Pagada";
+            case EstadoOrden.Anulada: return "Anulada";
             default: return est;
         }
     }
@@ -67,7 +104,7 @@
                                     <td>@orden.NumeroOrden</td>
                                     <td>@orden.CodigoUsuario</td>
                                     <td>@orden.FechaCreacion.ToString("dd/MM/yyyy")</td>
-                                    <td>@orden.Estado</td>
+                                    <td>@GetTextoEstado(orden.Estado)</td>
                                     <td>@GetTextoTramite(orden.Estado)</td>
                                     <td>@orden.Total.ToString("C")</td>
                                     <td class="text-center">
@@ -79,10 +116,10 @@
                                         </a>
 
                                         @{
-                                            var estadoNorm = (orden.Estado ?? "").Trim().ToUpperInvariant().Replace(" ", "_");
+                                            var estadoNorm = NormalizarEstadoVisual(orden.Estado);
                                         }
 
-                                        @if (estadoNorm == "PROCESADA")
+                                        @if (estadoNorm == EstadoOrden.EnRevisionFinanciera)
                                         {
                                             using (Html.BeginForm("AprobarOrden", "Financiero", FormMethod.Post))
                                             {
@@ -93,14 +130,14 @@
 
                                             <button class="btn btn-sm btn-danger ms-1" type="button"
                                                     data-bs-toggle="modal" data-bs-target="#modalRechazo-@orden.Id">
-                                                Rechazar
+                                                Devolver
                                             </button>
 
                                             <div class="modal fade" id="modalRechazo-@orden.Id" tabindex="-1" aria-hidden="true">
                                                 <div class="modal-dialog">
                                                     <div class="modal-content">
                                                         <div class="modal-header">
-                                                            <h5 class="modal-title">Rechazar Orden</h5>
+                                                            <h5 class="modal-title">Devolver Orden</h5>
                                                             <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                                                         </div>
                                                         @using (Html.BeginForm("RechazarOrden", "Financiero", FormMethod.Post))
@@ -108,12 +145,12 @@
                                                             @Html.AntiForgeryToken()
                                                             @Html.Hidden("id", orden.Id)
                                                             <div class="modal-body">
-                                                                <label class="form-label">Motivo</label>
+                                                                <label class="form-label">Motivo de devolucion</label>
                                                                 <textarea name="motivo" class="form-control" rows="3" required></textarea>
                                                             </div>
                                                             <div class="modal-footer">
                                                                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                                                                <button type="submit" class="btn btn-danger">Rechazar</button>
+                                                                <button type="submit" class="btn btn-danger">Devolver</button>
                                                             </div>
                                                         }
                                                     </div>

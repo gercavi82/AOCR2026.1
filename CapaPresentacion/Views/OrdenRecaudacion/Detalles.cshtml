@@ -1,5 +1,6 @@
 ﻿@inherits System.Web.Mvc.WebViewPage<CapaDatos.Models.OrdenRecaudacionModel>
 @using CapaModelo
+@using CapaDatos.Constants
 @using System.Web.Mvc
 @using System.Web.Mvc.Html
 @using System.Globalization
@@ -10,22 +11,26 @@
     // Crear variables para facilitar el acceso
     var modeloIncompleto = Model == null;
     var orden = Model ?? new CapaDatos.Models.OrdenRecaudacionModel();
-    var estado = (orden.Estado ?? "").Trim().ToUpperInvariant();
-    var puedeEditar = estado == "BORRADOR" &&
+    var estado = EstadoOrden.NormalizarEstado(orden.Estado);
+    var puedeEditar = estado == EstadoOrden.Borrador &&
         (User != null && (User.IsInRole("Solicitante") || User.IsInRole("Administrador")));
-    var puedeGenerar = estado == "BORRADOR" && orden.Total > 0;
+    var puedeGenerar = estado == EstadoOrden.Borrador && orden.Total > 0;
     int solicitudId = 0;
     int.TryParse(orden.CodigoSolicitud ?? "", out solicitudId);
     var tieneSolicitudValida = solicitudId > 0;
-    var puedeSubirComprobante = (estado == "PENDIENTE" || estado == "GENERADA") && tieneSolicitudValida;
-    var puedeAnular = estado != "ANULADA" && estado != "FACTURADA" && estado != "COMPLETADA";
+    var puedeSubirComprobante = (estado == EstadoOrden.Pendiente || estado == EstadoOrden.Generada || estado == EstadoOrden.Devuelta) && tieneSolicitudValida;
+    var puedeAnular = estado != EstadoOrden.Anulada && estado != EstadoOrden.Facturada && estado != EstadoOrden.Completada;
+    var esDevuelta = estado == EstadoOrden.Devuelta;
+    var motivoDevolucion = esDevuelta ? (orden.Observacion ?? string.Empty).Trim() : string.Empty;
 
     // Obtener documentos y pagos desde ViewBag
     var documentos = ViewBag.Documentos as List<CapaDatos.Models.DocumentoModel> ?? new List<CapaDatos.Models.DocumentoModel>();
     var pagos = ViewBag.Pagos as List<CapaDatos.Models.PagoModel> ?? new List<CapaDatos.Models.PagoModel>();
+    var facturaPago = ViewBag.FacturaPago as CapaDatos.Models.FacturaPagoRegistroModel;
     var culturaEsEc = new CultureInfo("es-EC");
     var tieneComprobanteValido = ViewBag.TieneComprobanteValido != null && (bool)ViewBag.TieneComprobanteValido;
     var mensajeComprobante = ViewBag.MensajeComprobante as string ?? "Debe registrar el comprobante antes de continuar.";
+    var tieneFacturaDescargable = facturaPago != null && !string.IsNullOrWhiteSpace(facturaPago.FilePath);
 
     // Calcular total pagado
     // Contar pagos aprobados/validados (ambos estados son equivalentes funcionalmente)
@@ -34,9 +39,9 @@
         return e == "APROBADO" || e == "VALIDADO";
     }).Sum(p => p.Monto);
     var saldoPendiente = orden.Total - totalPagado;
-    var tieneSaldoPendiente = saldoPendiente > 0 && estado != "FACTURADA" && estado != "COMPLETADA";
+    var tieneSaldoPendiente = saldoPendiente > 0 && estado != EstadoOrden.Facturada && estado != EstadoOrden.Completada;
     var tienePagoAprobado = orden.Total > 0 && totalPagado >= orden.Total;
-    var facturaGenerada = estado == "FACTURADA" || estado == "COMPLETADA";
+    var facturaGenerada = estado == EstadoOrden.Facturada || estado == EstadoOrden.Completada;
     var ordenCompleta = tieneSolicitudValida && tienePagoAprobado && facturaGenerada && !tieneSaldoPendiente;
 
 }
@@ -67,6 +72,14 @@
                            class="btn btn-success btn-sm" target="_blank">
                             <i class="fas fa-file-pdf me-1"></i> Descargar PDF
                         </a>
+                        @if (facturaGenerada && tieneFacturaDescargable)
+                        {
+                            <a href="@Url.Action("DescargarFactura", new { id = orden.Id })"
+                               class="btn btn-warning btn-sm" target="_blank"
+                               title="Descargar factura @(string.IsNullOrWhiteSpace(facturaPago.NumeroFactura) ? string.Empty : facturaPago.NumeroFactura)">
+                                <i class="fas fa-file-invoice me-1"></i> Descargar Factura
+                            </a>
+                        }
                     </div>
                 </div>
             </div>
@@ -87,10 +100,27 @@
                         <i class="fas fa-check-circle me-2"></i> Orden completada: solicitud vinculada, pago aprobado, factura generada y sin saldo pendiente.
                     </div>
                 }
+                @if (facturaGenerada && tieneFacturaDescargable)
+                {
+                    <div class="alert alert-info mb-3">
+                        <i class="fas fa-file-invoice me-2"></i> La factura ya esta disponible para descarga.
+                    </div>
+                }
                 @if (!tieneComprobanteValido)
                 {
                     <div class="alert alert-warning mb-3">
                         <i class="fas fa-exclamation-triangle me-2"></i> @mensajeComprobante
+                    </div>
+                }
+                @if (esDevuelta)
+                {
+                    <div class="alert alert-danger mb-3">
+                        <i class="fas fa-undo-alt me-2"></i> Financiero devolvió esta orden para corrección.
+                        @if (!string.IsNullOrWhiteSpace(motivoDevolucion))
+                        {
+                            <div class="mt-2"><strong>Motivo:</strong> @motivoDevolucion</div>
+                        }
+                        <div class="mt-2">Debe cargar un respaldo actualizado y reenviarlo para nueva revisión.</div>
                     </div>
                 }
                 <div class="row">
@@ -98,13 +128,13 @@
                         <span class="badge bg-@orden.EstadoColor fs-6 p-2">
                             <i class="fas fa-circle me-1"></i> @orden.Estado
                         </span>
-                        @if (tieneSaldoPendiente && estado != "ANULADA")
+                        @if (tieneSaldoPendiente && estado != EstadoOrden.Anulada)
                         {
                             <span class="badge bg-warning ms-2">
                                 <i class="fas fa-clock me-1"></i> PENDIENTE
                             </span>
                         }
-                        else if (estado == "FACTURADA" || estado == "COMPLETADA")
+                        else if (estado == EstadoOrden.Facturada || estado == EstadoOrden.Completada)
                         {
                             <span class="badge bg-success ms-2">
                                 <i class="fas fa-check-circle me-1"></i> FACTURADA
@@ -131,11 +161,11 @@
                                     <i class="fas fa-upload me-1"></i> Subir Comprobante
                                 </button>
                             }
-                            else if (estado == "PENDIENTE" || estado == "GENERADA")
+                            else if (estado == EstadoOrden.Pendiente || estado == EstadoOrden.Generada || estado == EstadoOrden.Devuelta)
                             {
                                 <button type="button" class="btn btn-success btn-sm" disabled
-                                        title="Debe vincular una solicitud válida para subir comprobante.">
-                                    <i class="fas fa-upload me-1"></i> Subir Comprobante
+                                        title="Debe vincular una solicitud válida para cargar el respaldo.">
+                                    <i class="fas fa-upload me-1"></i> @(esDevuelta ? "Reenviar Respaldo" : "Subir Comprobante")
                                 </button>
                             }
                             @if (puedeAnular)
@@ -356,18 +386,20 @@
                 @if (User.IsInRole("Administrador") || User.IsInRole("Financiero"))
                 {
                     <td>
-                        @if (estadoPago.Equals("Pendiente", System.StringComparison.OrdinalIgnoreCase))
+                        if (estadoPago.Equals("Pendiente", System.StringComparison.OrdinalIgnoreCase))
                         {
                             <div class="btn-group btn-group-sm" role="group">
+                                @Html.Hidden("PagoId_" + pago.CodigoPago, pago.CodigoPago, new { @class = "js-pago-id" })
+                                @Html.Hidden("NumeroFactura_" + pago.CodigoPago, numeroFactura, new { @class = "js-numero-factura" })
                                 <button type="button"
                                         class="btn btn-success btn-sm"
-                                        onclick="validarPago(@pago.CodigoPago, '@pago.NumeroFactura')"
+                                        onclick="validarPagoDesdeFila(this)"
                                         title="Validar pago">
                                     <i class="fas fa-check"></i>
                                 </button>
                                 <button type="button"
                                         class="btn btn-danger btn-sm"
-                                        onclick="rechazarPago(@pago.CodigoPago, '@pago.NumeroFactura')"
+                                        onclick="rechazarPagoDesdeFila(this)"
                                         title="Rechazar pago">
                                     <i class="fas fa-times"></i>
                                 </button>
@@ -676,6 +708,30 @@
                 return true;
             });
         });
+
+        function obtenerDatosPagoDesdeFila(button) {
+            var grupo = button ? button.closest('.btn-group') : null;
+            if (!grupo) {
+                return { pagoId: 0, numeroFactura: '' };
+            }
+
+            var pagoIdInput = grupo.querySelector('.js-pago-id');
+            var numeroFacturaInput = grupo.querySelector('.js-numero-factura');
+            return {
+                pagoId: pagoIdInput ? pagoIdInput.value : 0,
+                numeroFactura: numeroFacturaInput ? numeroFacturaInput.value : ''
+            };
+        }
+
+        function validarPagoDesdeFila(button) {
+            var datos = obtenerDatosPagoDesdeFila(button);
+            validarPago(datos.pagoId, datos.numeroFactura);
+        }
+
+        function rechazarPagoDesdeFila(button) {
+            var datos = obtenerDatosPagoDesdeFila(button);
+            rechazarPago(datos.pagoId, datos.numeroFactura);
+        }
 
         // Función para validar pago
         function validarPago(pagoId, numeroFactura) {

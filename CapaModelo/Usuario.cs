@@ -25,6 +25,9 @@ namespace CapaModelo
         public string RutaConstanciaRT { get; set; }
         public DateTime? FechaRevisionDesignacion { get; set; }
         public string Ruc { get; set; }
+        public int? SolicitudRtId { get; set; }
+        public string EstadoSolicitudRT { get; set; }
+        public string ObservacionSolicitudRT { get; set; }
 
         // Métricas para gestión RT (evita intentar eliminar usuarios con datos operativos asociados)
         public int OrdenesRecaudacionCount { get; set; }

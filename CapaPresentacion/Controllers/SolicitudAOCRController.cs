@@ -35,6 +35,7 @@ namespace CapaPresentacion.Controllers
         private readonly SolicitudEstadoTransitionBL _solicitudEstadoTransitionBL = new SolicitudEstadoTransitionBL();
         private readonly SolicitudAOCRDAO _solicitudDAO = new SolicitudAOCRDAO();
         private readonly DocumentoDAO _documentoDAO = new DocumentoDAO();
+        private readonly AocrFirmaDocumentoDAO _aocrFirmaDocumentoDao = new AocrFirmaDocumentoDAO();
         private readonly SolicitudAocrCorreoService _solicitudAocrCorreoService = new SolicitudAocrCorreoService();
         private readonly GeneracionAOCRService _generacionAocrService = new GeneracionAOCRService();
 
@@ -49,9 +50,55 @@ namespace CapaPresentacion.Controllers
             ".pdf", ".jpg", ".jpeg", ".png"
         };
 
-        private const int TamanoMaximoDocumentoMb = 10;
+        private static readonly IDictionary<string, string> DocumentoObligatorioEtiquetas = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+        {
+            { "FACTURA", "Factura" },
+            { "AOC", "Copia de AOC valida" },
+            { "OPSPECS", "OpSpecs" },
+            { "MANUAL_OPERACIONES", "Manual de Operaciones" },
+            { "PERMISO_OPERACION", "Permiso de Operacion C.N.A.C" },
+            { "CERTIFICADO_RUIDO", "Certificados de Ruido" },
+            { "PODER_REPRESENTANTE", "Poder otorgado al representante legal" }
+        };
 
-        public ActionResult Index() => View();
+        private static readonly IDictionary<string, string[]> DocumentoObligatorioTipos = new Dictionary<string, string[]>(StringComparer.OrdinalIgnoreCase)
+        {
+            { "FACTURA", new[] { "COMPROBANTE_PAGO", "FACTURA", "FACTURA_PAGO" } },
+            { "AOC", new[] { "COPIA_AOC_VALIDA" } },
+            { "OPSPECS", new[] { "OPSPECS_ESPECIFICACIONES_OPERACIONALES" } },
+            { "MANUAL_OPERACIONES", new[] { "MANUAL_OPERACIONES" } },
+            { "PERMISO_OPERACION", new[] { "PERMISO_OPERACION_CNAC" } },
+            { "CERTIFICADO_RUIDO", new[] { "CERTIFICADO_RUIDO_AERONAVES_EAE" } },
+            { "PODER_REPRESENTANTE", new[] { "COPIA_CERTIFICADA_PODER_REPRESENTANTE_ECUADOR" } }
+        };
+
+        private static readonly IDictionary<string, string> DocumentoObligatorioInputs = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+        {
+            { "archivoFacturaPago", "FACTURA" },
+            { "archivoAOC", "AOC" },
+            { "archivoOpSpecs", "OPSPECS" },
+            { "archivoManualOperaciones", "MANUAL_OPERACIONES" },
+            { "archivoPermisoOperacion", "PERMISO_OPERACION" },
+            { "archivoCertificadoRuido", "CERTIFICADO_RUIDO" },
+            { "archivoPoderRepresentante", "PODER_REPRESENTANTE" }
+        };
+
+        private const int TamanoMaximoDocumentoMb = 10;
+    private const string DocumentoTipoCondicionesLimitaciones = "CONDICIONES_LIMITACIONES";
+
+        public ActionResult Index(int? tipoSolicitud = null, bool abrirModal = false)
+        {
+            ViewBag.TipoSolicitudInicial = NormalizarTipoSolicitud(tipoSolicitud);
+            ViewBag.AbrirModalInicial = abrirModal;
+            return View();
+        }
+
+        [HttpGet]
+        public ActionResult CargarDocumentos()
+        {
+            TempData["Info"] = "Seleccione una solicitud para gestionar o cargar documentos desde su detalle.";
+            return RedirectToAction("Index");
+        }
 
         // Obtener solicitudes del usuario actual en formato JSON
         [HttpGet]
@@ -174,6 +221,42 @@ namespace CapaPresentacion.Controllers
             }
         }
 
+        private static int NormalizarTipoSolicitud(int? tipoSolicitud)
+        {
+            switch (tipoSolicitud ?? 1)
+            {
+                case 1:
+                case 2:
+                case 3:
+                    return tipoSolicitud ?? 1;
+                default:
+                    return 1;
+            }
+        }
+
+        private static bool EsSolicitudModificacion(SolicitudAOCR solicitud)
+        {
+            return solicitud != null && solicitud.TipoSolicitud.GetValueOrDefault() == 3;
+        }
+
+        private static bool SolicitudModificacionTieneNuevoAeropuertoDeclarado(SolicitudAOCR solicitud)
+        {
+            if (!EsSolicitudModificacion(solicitud))
+            {
+                return false;
+            }
+
+            return !string.IsNullOrWhiteSpace(solicitud.AeropuertosEcuador)
+                || !string.IsNullOrWhiteSpace(solicitud.AeropuertosEcuadorOtros);
+        }
+
+        private static IEnumerable<KeyValuePair<string, string>> ObtenerDocumentosObligatoriosPorTipoSolicitud(int? tipoSolicitud)
+        {
+            var tipoNormalizado = NormalizarTipoSolicitud(tipoSolicitud);
+            return DocumentoObligatorioEtiquetas.Where(item =>
+                tipoNormalizado != 3 || !string.Equals(item.Key, "CERTIFICADO_RUIDO", StringComparison.OrdinalIgnoreCase));
+        }
+
         private string ObtenerNombreInspector(SolicitudAOCR solicitud)
         {
             if (solicitud == null)
@@ -250,6 +333,10 @@ namespace CapaPresentacion.Controllers
                 return "Subsanada";
             if (norm == EstadoSolicitud.AceptacionDocumental || norm == EstadoSolicitud.DocumentacionCompleta)
                 return "Documentación Aceptada";
+            if (norm == EstadoSolicitud.FirmadoCoordinador)
+                return "Aceptación firmada por coordinación";
+            if (norm == EstadoSolicitud.Finalizado)
+                return "Finalizado";
             if (norm == EstadoSolicitud.EnInspeccion || norm == EstadoSolicitud.InspeccionProgramada)
                 return "En Inspección";
             if (norm == EstadoSolicitud.InspeccionRealizada)
@@ -286,6 +373,7 @@ namespace CapaPresentacion.Controllers
 
             // Finalizadas / Aprobadas
             if (norm == EstadoSolicitud.AOCR_EmitidoRecibido ||
+                norm == EstadoSolicitud.Finalizado ||
                 norm == EstadoSolicitud.CertificadoEmitido ||
                 norm == EstadoSolicitud.Aprobada ||
                 norm == EstadoSolicitud.Anulada)
@@ -299,7 +387,7 @@ namespace CapaPresentacion.Controllers
         // GET: Carga el formulario parcial con datos de BD
         // =========================================================
         [HttpGet]
-        public ActionResult FormularioEmisionAOCR(int? oid)
+        public ActionResult FormularioEmisionAOCR(int? oid, int? tipoSolicitud = null)
         {
             try
             {
@@ -425,10 +513,13 @@ namespace CapaPresentacion.Controllers
                 }
                 else
                 {
+                    var tipoSolicitudInicial = NormalizarTipoSolicitud(tipoSolicitud);
+
                     // NUEVO: precargar desde usuario
                     vm.Solicitud = new SolicitudAOCR
                     {
                         CodigoUsuario = usuarioId,
+                        TipoSolicitud = tipoSolicitudInicial,
                         FechaSolicitud = DateTime.Now,
                         Estado = EstadoSolicitud.Pendiente,
                         Email = vm.Usuario != null ? vm.Usuario.Email : "",
@@ -782,10 +873,12 @@ namespace CapaPresentacion.Controllers
                 SolicitudAOCR actual = null;
                 var esNuevaSolicitud = vm.Solicitud.CodigoSolicitud <= 0;
                 var solicitudPerteneceUsuarioActual = vm.Solicitud.CodigoSolicitud <= 0;
+                var estadoActualNormalizado = string.Empty;
+                var esBorradorLegacy = false;
                 if (vm.Solicitud.CodigoSolicitud <= 0)
                 {
                     vm.Solicitud.CodigoUsuario = usuarioId;
-                    vm.Solicitud.TipoSolicitud = 1;
+                    vm.Solicitud.TipoSolicitud = NormalizarTipoSolicitud(vm.Solicitud.TipoSolicitud);
                 }
                 else
                 {
@@ -811,6 +904,32 @@ namespace CapaPresentacion.Controllers
 
                     vm.Solicitud.CodigoUsuario = actual.CodigoUsuario;
                     solicitudPerteneceUsuarioActual = actual.CodigoUsuario == usuarioId;
+                    estadoActualNormalizado = EstadoSolicitud.Normalizar(actual.Estado ?? string.Empty);
+                    esBorradorLegacy = string.Equals((actual.Estado ?? string.Empty).Trim(), "BORRADOR", StringComparison.OrdinalIgnoreCase);
+                    vm.Solicitud.Estado = actual.Estado;
+                }
+
+                var requiereEnvioCoordinador = esNuevaSolicitud
+                    || string.Equals(estadoActualNormalizado, EstadoSolicitud.Pendiente, StringComparison.OrdinalIgnoreCase)
+                    || string.Equals(estadoActualNormalizado, EstadoSolicitud.SolicitudCreada, StringComparison.OrdinalIgnoreCase)
+                    || esBorradorLegacy;
+
+                var documentosFaltantes = ObtenerDocumentosObligatoriosFaltantes(
+                    actual != null ? (int?)actual.CodigoSolicitud : null,
+                    Request != null ? Request.Files : null,
+                    vm.Solicitud != null && vm.Solicitud.TipoSolicitud.HasValue ? vm.Solicitud.TipoSolicitud : (actual != null ? actual.TipoSolicitud : null));
+                if (documentosFaltantes.Count > 0)
+                {
+                    return JsonConEstado(new
+                    {
+                        success = false,
+                        mensaje = "Debe adjuntar todos los documentos obligatorios antes de enviar la solicitud. Faltan: " + string.Join(", ", documentosFaltantes) + "."
+                    }, 400);
+                }
+
+                if (requiereEnvioCoordinador)
+                {
+                    vm.Solicitud.Estado = EstadoSolicitud.EnRevision;
                 }
 
                 var identificacionFormulario = NormalizarIdentificacion(vm.Solicitud.CedulaRepresentante ?? vm.Solicitud.Ruc);
@@ -870,6 +989,39 @@ namespace CapaPresentacion.Controllers
                 }
 
                 MarcarSubsanadaDespuesDeGuardar(actual, idFinal, usuarioId);
+
+                if (!esNuevaSolicitud && requiereEnvioCoordinador)
+                {
+                    try
+                    {
+                        new HistorialEstadoDAO().RegistrarCambio(
+                            idFinal,
+                            actual != null ? EstadoSolicitud.Normalizar(actual.Estado) : null,
+                            EstadoSolicitud.EnRevision,
+                            usuarioId,
+                            "Solicitud formal enviada al coordinador para revisión documental.");
+                    }
+                    catch (Exception exHistorialEnvio)
+                    {
+                        System.Diagnostics.Debug.WriteLine("[FormularioCompleto] Error registrando historial de envío documental: " + exHistorialEnvio.Message);
+                    }
+                }
+
+                if (requiereEnvioCoordinador)
+                {
+                    try
+                    {
+                        var solicitudNotificacion = _solicitudDAO.ObtenerPorId(idFinal) ?? vm.Solicitud;
+                        _solicitudAocrCorreoService.NotificarEvento(
+                            solicitudNotificacion,
+                            "SOLICITUD_COMPLETADA",
+                            "Solicitud formal enviada al coordinador para revisión documental.");
+                    }
+                    catch (Exception exCorreoCoordinacion)
+                    {
+                        System.Diagnostics.Debug.WriteLine("[FormularioCompleto] Error notificando envío a coordinación: " + exCorreoCoordinacion.Message);
+                    }
+                }
 
                 if (esNuevaSolicitud)
                 {
@@ -974,7 +1126,7 @@ namespace CapaPresentacion.Controllers
                 {
                     // Nueva solicitud
                     sol.CodigoUsuario = usuarioId;
-                    sol.TipoSolicitud = 1;
+                    sol.TipoSolicitud = NormalizarTipoSolicitud(sol.TipoSolicitud);
                     if (string.IsNullOrWhiteSpace(sol.NumeroSolicitud))
                         sol.NumeroSolicitud = "BORRADOR-" + DateTime.Now.ToString("yyyyMMddHHmmss");
                     sol.Estado = "BORRADOR";
@@ -1396,6 +1548,53 @@ namespace CapaPresentacion.Controllers
                 default:
                     return "OTRO";
             }
+        }
+
+        private List<string> ObtenerDocumentosObligatoriosFaltantes(int? codigoSolicitud, HttpFileCollectionBase archivos, int? tipoSolicitud)
+        {
+            var cubiertos = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            var documentosExistentes = codigoSolicitud.HasValue && codigoSolicitud.Value > 0
+                ? (_documentoDAO.ObtenerPorSolicitud(codigoSolicitud.Value) ?? new List<Documento>())
+                : new List<Documento>();
+            var documentosObligatorios = ObtenerDocumentosObligatoriosPorTipoSolicitud(tipoSolicitud).ToList();
+            var clavesObligatorias = new HashSet<string>(documentosObligatorios.Select(item => item.Key), StringComparer.OrdinalIgnoreCase);
+
+            foreach (var documento in documentosExistentes.Where(d => d != null && d.CodigoDocumento > 0))
+            {
+                foreach (var item in DocumentoObligatorioTipos)
+                {
+                    if (clavesObligatorias.Contains(item.Key)
+                        && item.Value.Any(tipo => string.Equals(tipo, documento.TipoDocumento ?? string.Empty, StringComparison.OrdinalIgnoreCase)))
+                    {
+                        cubiertos.Add(item.Key);
+                    }
+                }
+            }
+
+            if (archivos != null)
+            {
+                for (var i = 0; i < archivos.Count; i++)
+                {
+                    var archivo = archivos[i];
+                    if (archivo == null || archivo.ContentLength <= 0)
+                    {
+                        continue;
+                    }
+
+                    var inputKey = (archivos.GetKey(i) ?? string.Empty).Trim();
+                    string documentoObligatorio;
+                    if (DocumentoObligatorioInputs.TryGetValue(inputKey, out documentoObligatorio)
+                        && clavesObligatorias.Contains(documentoObligatorio))
+                    {
+                        cubiertos.Add(documentoObligatorio);
+                    }
+                }
+            }
+
+            return documentosObligatorios
+                .Where(item => !cubiertos.Contains(item.Key))
+                .Select(item => item.Value)
+                .ToList();
         }
 
         private static void SetIfExists(object obj, string prop, object value)
@@ -1894,7 +2093,7 @@ namespace CapaPresentacion.Controllers
         }
 
         [HttpPost]
-        [Authorize(Roles = "Coordinador,CoordinadorInspecciones,Administrador")]
+        [Authorize(Roles = "Inspector,Coordinador,CoordinadorInspecciones,Administrador")]
         [ValidateAntiForgeryToken]
         public ActionResult RevisarDocumentoItem(int id, int codigoDocumento, string decision, string observacion)
         {
@@ -1969,7 +2168,7 @@ namespace CapaPresentacion.Controllers
         }
 
         [HttpPost]
-        [Authorize(Roles = "Coordinador,CoordinadorInspecciones,Administrador")]
+        [Authorize(Roles = "Inspector,Coordinador,CoordinadorInspecciones,Administrador")]
         [ValidateAntiForgeryToken]
         public ActionResult AccionMasivaRevisionDocumental(int id, string tipoAccion, string revisionesJson, string observacionCoordinador)
         {
@@ -2174,16 +2373,11 @@ namespace CapaPresentacion.Controllers
                 ? "Se aprobó masivamente la revisión documental y la solicitud avanzó a Aceptación Documental."
                 : "Se registró la devolución/observación masiva y la solicitud fue devuelta al operador.";
 
-            if (tipoAccionNorm == "APROBAR_TODOS" && UsuarioPuedeAsignarInspector())
-            {
-                return RedirectToAction("AsignarInspector", "Tecnico", new { solicitudId = id });
-            }
-
             return RedirectToAction("Detalle", new { id });
         }
 
         [HttpPost]
-        [Authorize(Roles = "Coordinador,CoordinadorInspecciones,Administrador")]
+        [Authorize(Roles = "Inspector,Coordinador,CoordinadorInspecciones,Administrador")]
         [ValidateAntiForgeryToken]
         public ActionResult FinalizarRevisionDocumental(int id)
         {
@@ -2289,11 +2483,6 @@ namespace CapaPresentacion.Controllers
             TempData["NotificacionMensaje"] = tieneDocumentosDevueltos
                 ? "La revisión documental fue cerrada y la solicitud se devolvió al operador con observaciones."
                 : "La revisión documental fue cerrada y la solicitud avanzó a Aceptación Documental.";
-
-            if (!tieneDocumentosDevueltos && UsuarioPuedeAsignarInspector())
-            {
-                return RedirectToAction("AsignarInspector", "Tecnico", new { solicitudId = id });
-            }
 
             return RedirectToAction("Detalle", new { id });
         }
@@ -2661,12 +2850,22 @@ namespace CapaPresentacion.Controllers
             ViewBag.HistorialEstados = _solicitudAocrInfraBL.ObtenerHistorialEstadosPorSolicitud(id);
             ViewBag.UsuarioActualId = ObtenerUsuarioActualId();
 
+            try
+            {
+                ViewBag.InspeccionesSolicitud = _solicitudAocrInfraBL.ListarInspeccionesPorSolicitud(id) ?? new List<Inspeccion>();
+            }
+            catch
+            {
+                ViewBag.InspeccionesSolicitud = new List<Inspeccion>();
+            }
+
             ViewBag.AsignacionActiva = _solicitudAocrInfraBL.ObtenerAsignacionActiva(id);
             ViewBag.HistorialAsignaciones = _solicitudAocrInfraBL.ObtenerHistorialAsignacion(id);
             var documentosRevision = ObtenerDocumentosVigentesParaRevision(id);
             var revisionesDocumentales = _solicitudAocrInfraBL.ObtenerUltimasRevisionesPorSolicitud(id);
             ViewBag.DocumentosSolicitud = documentosRevision;
             ViewBag.RevisionesDocumentales = revisionesDocumentales;
+            ViewBag.EstadoDocumentalVisible = ObtenerEstadoDocumentalVisible(solicitud, revisionesDocumentales);
             ViewBag.PuedeFinalizarRevisionDocumental =
                 documentosRevision.Count > 0 &&
                 documentosRevision.All(d => DocumentoTieneDecisionFinal(d, revisionesDocumentales)) &&
@@ -2698,19 +2897,213 @@ namespace CapaPresentacion.Controllers
                 ViewBag.PuedeGenerarAOCR = dispAocr != null && dispAocr.Habilitado;
                 ViewBag.MotivoGenerarAOCR = dispAocr != null
                     ? dispAocr.Motivo
-                    : "La AOCR estará disponible cuando finalice la revisión y aprobación del informe técnico.";
+                    : "La AOCR estará disponible cuando la inspeccion sea satisfactoria y el informe tecnico quede firmado por el inspector.";
                 ViewBag.DocumentoAOCRGenerado = dispAocr != null ? dispAocr.DocumentoGenerado : null;
                 ViewBag.AocrYaGenerado = dispAocr != null && dispAocr.YaGenerado;
             }
             catch
             {
                 ViewBag.PuedeGenerarAOCR = false;
-                ViewBag.MotivoGenerarAOCR = "La AOCR estará disponible cuando finalice la revisión y aprobación del informe técnico.";
+                ViewBag.MotivoGenerarAOCR = "La AOCR estará disponible cuando la inspeccion sea satisfactoria y el informe tecnico quede firmado por el inspector.";
                 ViewBag.DocumentoAOCRGenerado = null;
                 ViewBag.AocrYaGenerado = false;
             }
 
             return View(solicitud);
+        }
+
+        [HttpPost]
+        [Authorize(Roles = "Coordinador,CoordinadorInspecciones,Administrador")]
+        [ValidateAntiForgeryToken]
+        public ActionResult FirmarAceptacionDocumental(int id, string observacion = "")
+        {
+            var solicitud = _solicitudDAO.ObtenerPorId(id);
+            if (solicitud == null)
+            {
+                return HttpNotFound();
+            }
+
+            var estadoActual = EstadoSolicitud.Normalizar(solicitud.Estado ?? string.Empty);
+            if (!string.Equals(estadoActual, EstadoSolicitud.AceptacionDocumental, StringComparison.OrdinalIgnoreCase))
+            {
+                TempData["NotificacionTipo"] = "warning";
+                TempData["NotificacionMensaje"] = "La aceptación documental solo se puede firmar cuando el inspector haya aceptado toda la documentación.";
+                return RedirectToAction("Detalle", new { id });
+            }
+
+            var revisiones = _solicitudAocrInfraBL.ObtenerUltimasRevisionesPorSolicitud(id);
+            var documentosRevision = ObtenerDocumentosVigentesParaRevision(id);
+            if (documentosRevision.Count == 0 || documentosRevision.Any(d => ObtenerDecisionRevisionDocumental(d, revisiones) != "ACEPTADO"))
+            {
+                TempData["NotificacionTipo"] = "warning";
+                TempData["NotificacionMensaje"] = "No se puede firmar la aceptación mientras existan documentos sin aceptar por el inspector.";
+                return RedirectToAction("Detalle", new { id });
+            }
+
+            var observacionFirma = string.IsNullOrWhiteSpace(observacion)
+                ? "Aceptación documental firmada por coordinación."
+                : observacion.Trim();
+
+            string mensajeCambio;
+            if (!CambiarEstadoConReglasAocr(id, EstadoSolicitud.FirmadoCoordinador, observacionFirma, out mensajeCambio))
+            {
+                TempData["NotificacionTipo"] = "error";
+                TempData["NotificacionMensaje"] = mensajeCambio;
+                return RedirectToAction("Detalle", new { id });
+            }
+
+            try
+            {
+                var solicitudActualizada = _solicitudDAO.ObtenerPorId(id) ?? solicitud;
+                _solicitudAocrCorreoService.NotificarEvento(solicitudActualizada, "ACEPTACION_COORDINADOR_FIRMADA", observacionFirma);
+            }
+            catch (Exception exCorreo)
+            {
+                System.Diagnostics.Debug.WriteLine("[FirmarAceptacionDocumental] Error notificando aceptación firmada: " + exCorreo.Message);
+            }
+
+            TempData["NotificacionTipo"] = "success";
+            TempData["NotificacionMensaje"] = "La aceptación documental fue firmada. El RT ya puede descargar el documento final.";
+            return RedirectToAction("Detalle", new { id });
+        }
+
+        public ActionResult DescargarAceptacionDocumental(int id, bool vistaPrevia = false)
+        {
+            var solicitud = _solicitudDAO.ObtenerPorId(id);
+            if (solicitud == null)
+            {
+                return HttpNotFound();
+            }
+
+            var usuarioActualId = ObtenerUsuarioActualId();
+            var esPropietario = usuarioActualId > 0 && solicitud.CodigoUsuario == usuarioActualId;
+            var puedeDescargar = esPropietario
+                || EsAdmin()
+                || (User != null && (User.IsInRole("Coordinador") || User.IsInRole("CoordinadorInspecciones")));
+            if (!puedeDescargar)
+            {
+                return new HttpStatusCodeResult(403, "No autorizado para descargar la aceptación documental.");
+            }
+
+            var estadoActual = EstadoSolicitud.Normalizar(solicitud.Estado ?? string.Empty);
+            if (!string.Equals(estadoActual, EstadoSolicitud.FirmadoCoordinador, StringComparison.OrdinalIgnoreCase)
+                && !string.Equals(estadoActual, EstadoSolicitud.Finalizado, StringComparison.OrdinalIgnoreCase))
+            {
+                TempData["NotificacionTipo"] = "warning";
+                TempData["NotificacionMensaje"] = "La aceptación documental aún no está firmada por coordinación.";
+                return RedirectToAction("Detalle", new { id });
+            }
+
+            var historialEstados = _solicitudAocrInfraBL.ObtenerHistorialEstadosPorSolicitud(id) ?? new List<CapaModelo.HistorialEstado>();
+            var firmaCoordinacion = historialEstados
+                .Where(h => h != null && string.Equals(EstadoSolicitud.Normalizar(h.EstadoNuevo), EstadoSolicitud.FirmadoCoordinador, StringComparison.OrdinalIgnoreCase))
+                .OrderByDescending(h => h.FechaCambio)
+                .FirstOrDefault();
+
+            var documentosRevision = ObtenerDocumentosVigentesParaRevision(id);
+            var revisiones = _solicitudAocrInfraBL.ObtenerUltimasRevisionesPorSolicitud(id);
+            ViewBag.AceptacionFirmante = firmaCoordinacion != null && !string.IsNullOrWhiteSpace(firmaCoordinacion.NombreUsuario)
+                ? firmaCoordinacion.NombreUsuario
+                : (User != null && User.Identity != null ? User.Identity.Name : "Coordinación AOCR");
+            ViewBag.AceptacionFechaFirma = firmaCoordinacion != null ? firmaCoordinacion.FechaCambio : (solicitud.UpdatedAt ?? DateTime.Now);
+            ViewBag.AceptacionObservacion = firmaCoordinacion != null ? firmaCoordinacion.Observaciones : "Aceptación documental firmada por coordinación.";
+            ViewBag.AceptacionDocumentos = documentosRevision
+                .Where(d => ObtenerDecisionRevisionDocumental(d, revisiones) == "ACEPTADO")
+                .Select(ObtenerEtiquetaDocumento)
+                .ToList();
+
+            var pdf = new ViewAsPdf("~/Views/SolicitudAOCR/AceptacionDocumentalPdf.cshtml", solicitud)
+            {
+                FileName = "AceptacionDocumental_AOCR_" + id + ".pdf",
+                PageSize = Rotativa.Options.Size.A4,
+                PageOrientation = Rotativa.Options.Orientation.Portrait,
+                PageMargins = new Rotativa.Options.Margins(10, 10, 12, 12),
+                CustomSwitches = "--enable-local-file-access --print-media-type --dpi 300 --zoom 1.0"
+            };
+
+            var pdfBytes = pdf.BuildFile(ControllerContext);
+
+            if (!vistaPrevia && esPropietario && string.Equals(estadoActual, EstadoSolicitud.FirmadoCoordinador, StringComparison.OrdinalIgnoreCase))
+            {
+                string mensajeCambio;
+                if (!CambiarEstadoConReglasAocr(id, EstadoSolicitud.Finalizado, "Aceptación documental descargada por el RT.", out mensajeCambio))
+                {
+                    System.Diagnostics.Debug.WriteLine("[DescargarAceptacionDocumental] No se pudo marcar la solicitud como finalizada: " + mensajeCambio);
+                }
+            }
+
+            return vistaPrevia
+                ? File(pdfBytes, "application/pdf")
+                : File(pdfBytes, "application/pdf", "AceptacionDocumental_AOCR_" + id + ".pdf");
+        }
+
+        [Authorize]
+        public ActionResult DescargarCondicionesLimitacionesModificacion(int id, bool vistaPrevia = false)
+        {
+            var solicitud = _solicitudDAO.ObtenerPorId(id);
+            if (solicitud == null)
+            {
+                return HttpNotFound();
+            }
+
+            if (!EsSolicitudModificacion(solicitud))
+            {
+                return new HttpStatusCodeResult(400, "La solicitud indicada no corresponde a una modificación AOCR.");
+            }
+
+            var usuarioActualId = ObtenerUsuarioActualId();
+            var esPropietario = usuarioActualId > 0 && solicitud.CodigoUsuario == usuarioActualId;
+            var esUsuarioInterno = EsAdmin()
+                || (User != null && (
+                    User.IsInRole("DIRDAC")
+                    || User.IsInRole("Direccion")
+                    || User.IsInRole("DirectorGeneral")
+                    || User.IsInRole("JefaturaTecnica")
+                    || User.IsInRole("Coordinador")
+                    || User.IsInRole("CoordinadorInspecciones")));
+
+            if (!esPropietario && !esUsuarioInterno)
+            {
+                return new HttpStatusCodeResult(403, "No tiene permisos para acceder al documento firmado.");
+            }
+
+            var estadoActual = EstadoSolicitud.Normalizar(solicitud.Estado ?? string.Empty);
+            if (!string.Equals(estadoActual, EstadoSolicitud.FirmadoDcav, StringComparison.OrdinalIgnoreCase)
+                && !string.Equals(estadoActual, EstadoSolicitud.Finalizado, StringComparison.OrdinalIgnoreCase))
+            {
+                TempData["NotificacionTipo"] = "warning";
+                TempData["NotificacionMensaje"] = "El documento firmado de Condiciones y Limitaciones aún no está disponible para descarga.";
+                return RedirectToAction("Detalle", new { id });
+            }
+
+            var firma = _aocrFirmaDocumentoDao.ObtenerUltimoPorSolicitudTipo(id, DocumentoTipoCondicionesLimitaciones);
+            if (firma == null || string.IsNullOrWhiteSpace(firma.RutaDocumento))
+            {
+                return HttpNotFound("No existe un PDF firmado de Condiciones y Limitaciones para esta solicitud.");
+            }
+
+            var rutaFisica = ResolverRutaDocumentoAocrFirmado(firma.RutaDocumento);
+            if (string.IsNullOrWhiteSpace(rutaFisica) || !System.IO.File.Exists(rutaFisica))
+            {
+                return HttpNotFound("No se encontró el archivo PDF firmado en almacenamiento.");
+            }
+
+            if (!vistaPrevia && esPropietario && string.Equals(estadoActual, EstadoSolicitud.FirmadoDcav, StringComparison.OrdinalIgnoreCase))
+            {
+                string mensajeCambio;
+                if (!CambiarEstadoConReglasAocr(id, EstadoSolicitud.Finalizado, "Descarga final de Condiciones y Limitaciones firmada por RT.", out mensajeCambio))
+                {
+                    System.Diagnostics.Debug.WriteLine("[DescargarCondicionesLimitacionesModificacion] No se pudo marcar la solicitud como finalizada: " + mensajeCambio);
+                }
+            }
+
+            var nombreArchivo = !string.IsNullOrWhiteSpace(firma.NombreArchivo)
+                ? firma.NombreArchivo
+                : System.IO.Path.GetFileName(rutaFisica);
+
+            return vistaPrevia
+                ? File(rutaFisica, "application/pdf")
+                : File(rutaFisica, "application/pdf", nombreArchivo);
         }
 
         // ==========================================================================
@@ -2997,32 +3390,41 @@ namespace CapaPresentacion.Controllers
             if (solicitud == null) return HttpNotFound();
 
             var estadoActual = EstadoSolicitud.Normalizar(solicitud.Estado ?? string.Empty);
-            if (!string.Equals(estadoActual, EstadoSolicitud.PendienteAsignacionRT, StringComparison.OrdinalIgnoreCase))
+            if (!string.Equals(estadoActual, EstadoSolicitud.PendienteAsignacionRT, StringComparison.OrdinalIgnoreCase)
+                && !string.Equals(estadoActual, EstadoSolicitud.RequiereInspeccion, StringComparison.OrdinalIgnoreCase))
             {
-                TempData["NotificacionMensaje"] = "No se puede solicitar inspección desde el estado actual. Primero debe estar en Pendiente Asignación RT.";
+                TempData["NotificacionMensaje"] = "No se puede solicitar inspección desde el estado actual. Primero debe estar en Pendiente Asignación RT o Requiere Inspección.";
                 TempData["NotificacionTipo"] = "warning";
                 return RedirectToAction("Detalle", new { id });
             }
 
-            if (!SolicitudTieneInspectorAsignado(solicitud))
+            var inspecciones = _solicitudAocrInfraBL.ListarInspeccionesPorSolicitud(id) ?? new List<Inspeccion>();
+            var inspeccionVinculada = ObtenerUltimaInspeccionVinculada(inspecciones);
+            if (inspeccionVinculada == null)
+            {
+                TempData["NotificacionMensaje"] = "Debe registrar y asignar la inspección vinculada antes de mover la solicitud a En Inspección.";
+                TempData["NotificacionTipo"] = "warning";
+                return RedirectToAction("Detalle", new { id });
+            }
+
+            if (!SolicitudTieneInspectorAsignado(solicitud) && !InspeccionTieneInspectorAsignado(inspeccionVinculada))
             {
                 TempData["NotificacionMensaje"] = "Debe existir un inspector/RT asignado antes de iniciar la inspección.";
                 TempData["NotificacionTipo"] = "warning";
                 return RedirectToAction("Detalle", new { id });
             }
 
+            if (!InspeccionPermiteInicioOperativo(inspeccionVinculada))
+            {
+                TempData["NotificacionMensaje"] = "La solicitud de inspección vinculada aún está en revisión o con observaciones. Complete primero ese flujo en el módulo de inspección antes de pasar a En Inspección.";
+                TempData["NotificacionTipo"] = "info";
+                return RedirectToAction("Detalle", "Inspeccion", new { id = inspeccionVinculada.CodigoInspeccion });
+            }
+
             if (!SolicitudTieneAprobacionFinanciera(id))
             {
                 TempData["NotificacionMensaje"] = "La solicitud no tiene aprobación financiera registrada. No se puede iniciar inspección.";
                 TempData["NotificacionTipo"] = "error";
-                return RedirectToAction("Detalle", new { id });
-            }
-
-            var inspecciones = _solicitudAocrInfraBL.ListarInspeccionesPorSolicitud(id) ?? new List<Inspeccion>();
-            if (inspecciones.Count == 0)
-            {
-                TempData["NotificacionMensaje"] = "Debe registrar una inspección antes de mover la solicitud a En Inspección.";
-                TempData["NotificacionTipo"] = "warning";
                 return RedirectToAction("Detalle", new { id });
             }
 
@@ -3035,6 +3437,158 @@ namespace CapaPresentacion.Controllers
             }
 
             TempData["NotificacionMensaje"] = "Inspección solicitada correctamente.";
+            return RedirectToAction("Detalle", new { id });
+        }
+
+        [HttpPost]
+        [Authorize(Roles = "Inspector,Administrador")]
+        [ValidateAntiForgeryToken]
+        public ActionResult MarcarRequiereInspeccionModificacion(int id, string observacion = "")
+        {
+            var solicitud = _solicitudDAO.ObtenerPorId(id);
+            if (solicitud == null) return HttpNotFound();
+
+            if (!EsSolicitudModificacion(solicitud))
+            {
+                TempData["NotificacionTipo"] = "warning";
+                TempData["NotificacionMensaje"] = "La solicitud indicada no corresponde a una modificación AOCR.";
+                return RedirectToAction("Detalle", new { id });
+            }
+
+            if (!string.Equals(EstadoSolicitud.Normalizar(solicitud.Estado), EstadoSolicitud.AceptacionDocumental, StringComparison.OrdinalIgnoreCase))
+            {
+                TempData["NotificacionTipo"] = "warning";
+                TempData["NotificacionMensaje"] = "Solo puede derivar a inspección una modificación con documentación ya aceptada.";
+                return RedirectToAction("Detalle", new { id });
+            }
+
+            var observacionFinal = !string.IsNullOrWhiteSpace(observacion)
+                ? observacion.Trim()
+                : "El inspector determinó que la modificación requiere derivación al módulo de inspección.";
+
+            string mensajeCambio;
+            if (!CambiarEstadoConReglasAocr(id, EstadoSolicitud.RequiereInspeccion, observacionFinal, out mensajeCambio))
+            {
+                TempData["NotificacionTipo"] = "error";
+                TempData["NotificacionMensaje"] = mensajeCambio;
+                return RedirectToAction("Detalle", new { id });
+            }
+
+            TempData["NotificacionTipo"] = "success";
+            TempData["NotificacionMensaje"] = "La modificación fue marcada como REQUIERE_INSPECCIÓN.";
+            return RedirectToAction("Detalle", new { id });
+        }
+
+        [HttpPost]
+        [Authorize(Roles = "Inspector,Administrador")]
+        [ValidateAntiForgeryToken]
+        public ActionResult GenerarCondicionesLimitacionesModificacion(int id, string observacion = "")
+        {
+            var solicitud = _solicitudDAO.ObtenerPorId(id);
+            if (solicitud == null) return HttpNotFound();
+
+            if (!EsSolicitudModificacion(solicitud))
+            {
+                TempData["NotificacionTipo"] = "warning";
+                TempData["NotificacionMensaje"] = "La solicitud indicada no corresponde a una modificación AOCR.";
+                return RedirectToAction("Detalle", new { id });
+            }
+
+            if (!string.Equals(EstadoSolicitud.Normalizar(solicitud.Estado), EstadoSolicitud.AceptacionDocumental, StringComparison.OrdinalIgnoreCase))
+            {
+                TempData["NotificacionTipo"] = "warning";
+                TempData["NotificacionMensaje"] = "Solo puede generar Condiciones y Limitaciones cuando la documentación de la modificación ya fue aceptada.";
+                return RedirectToAction("Detalle", new { id });
+            }
+
+            var observacionFinal = !string.IsNullOrWhiteSpace(observacion)
+                ? observacion.Trim()
+                : "El inspector determinó que la modificación no requiere nueva inspección. Se habilita la generación de Condiciones y Limitaciones.";
+
+            string mensajeCambio;
+            if (!CambiarEstadoConReglasAocr(id, EstadoSolicitud.GeneradoCondicionesLimitaciones, observacionFinal, out mensajeCambio))
+            {
+                TempData["NotificacionTipo"] = "error";
+                TempData["NotificacionMensaje"] = mensajeCambio;
+                return RedirectToAction("Detalle", new { id });
+            }
+
+            TempData["NotificacionTipo"] = "success";
+            TempData["NotificacionMensaje"] = "La modificación quedó lista para revisión final de Condiciones y Limitaciones.";
+            return RedirectToAction("Detalle", new { id });
+        }
+
+        [HttpPost]
+        [Authorize(Roles = "Coordinador,CoordinadorInspecciones,Administrador")]
+        [ValidateAntiForgeryToken]
+        public ActionResult RevisarCondicionesLimitacionesModificacion(int id, string observacion = "")
+        {
+            var solicitud = _solicitudDAO.ObtenerPorId(id);
+            if (solicitud == null) return HttpNotFound();
+
+            if (!EsSolicitudModificacion(solicitud))
+            {
+                TempData["NotificacionTipo"] = "warning";
+                TempData["NotificacionMensaje"] = "La solicitud indicada no corresponde a una modificación AOCR.";
+                return RedirectToAction("Detalle", new { id });
+            }
+
+            if (!string.Equals(EstadoSolicitud.Normalizar(solicitud.Estado), EstadoSolicitud.GeneradoCondicionesLimitaciones, StringComparison.OrdinalIgnoreCase))
+            {
+                TempData["NotificacionTipo"] = "warning";
+                TempData["NotificacionMensaje"] = "Solo puede abrir revisión final desde el estado GENERADO_CONDICIONES_LIMITACIONES.";
+                return RedirectToAction("Detalle", new { id });
+            }
+
+            string mensajeCambio;
+            if (!CambiarEstadoConReglasAocr(id, EstadoSolicitud.EnRevisionCoordinadorFinal,
+                string.IsNullOrWhiteSpace(observacion) ? "Condiciones y Limitaciones enviadas a revisión final de coordinación." : observacion.Trim(),
+                out mensajeCambio))
+            {
+                TempData["NotificacionTipo"] = "error";
+                TempData["NotificacionMensaje"] = mensajeCambio;
+                return RedirectToAction("Detalle", new { id });
+            }
+
+            TempData["NotificacionTipo"] = "success";
+            TempData["NotificacionMensaje"] = "La modificación pasó a EN_REVISION_COORDINADOR_FINAL.";
+            return RedirectToAction("Detalle", new { id });
+        }
+
+        [HttpPost]
+        [Authorize(Roles = "Coordinador,CoordinadorInspecciones,Administrador")]
+        [ValidateAntiForgeryToken]
+        public ActionResult EnviarCondicionesLimitacionesDcav(int id, string observacion = "")
+        {
+            var solicitud = _solicitudDAO.ObtenerPorId(id);
+            if (solicitud == null) return HttpNotFound();
+
+            if (!EsSolicitudModificacion(solicitud))
+            {
+                TempData["NotificacionTipo"] = "warning";
+                TempData["NotificacionMensaje"] = "La solicitud indicada no corresponde a una modificación AOCR.";
+                return RedirectToAction("Detalle", new { id });
+            }
+
+            if (!string.Equals(EstadoSolicitud.Normalizar(solicitud.Estado), EstadoSolicitud.EnRevisionCoordinadorFinal, StringComparison.OrdinalIgnoreCase))
+            {
+                TempData["NotificacionTipo"] = "warning";
+                TempData["NotificacionMensaje"] = "Solo puede enviar a DCAV una modificación en revisión final de coordinación.";
+                return RedirectToAction("Detalle", new { id });
+            }
+
+            string mensajeCambio;
+            if (!CambiarEstadoConReglasAocr(id, EstadoSolicitud.EnviadoDcav,
+                string.IsNullOrWhiteSpace(observacion) ? "Condiciones y Limitaciones enviadas a DCAV/DGAC para firma." : observacion.Trim(),
+                out mensajeCambio))
+            {
+                TempData["NotificacionTipo"] = "error";
+                TempData["NotificacionMensaje"] = mensajeCambio;
+                return RedirectToAction("Detalle", new { id });
+            }
+
+            TempData["NotificacionTipo"] = "success";
+            TempData["NotificacionMensaje"] = "La modificación fue enviada a DCAV/DGAC para firma institucional.";
             return RedirectToAction("Detalle", new { id });
         }
 
@@ -3177,9 +3731,9 @@ namespace CapaPresentacion.Controllers
                 return false;
             }
 
-            if (!InformeTieneRevisionInstitucionalCompletada(informe))
+            if (!InformeCompletaFaseTecnicaAocr(informe))
             {
-                mensaje = "No se puede avanzar porque el informe técnico todavía no tiene revisión/aprobación institucional DIRDAC-Dirección.";
+                mensaje = "No se puede avanzar porque el informe tecnico todavia no completa la firma final del flujo tecnico AOCR.";
                 return false;
             }
 
@@ -3206,9 +3760,14 @@ namespace CapaPresentacion.Controllers
                    || resultadoEvaluacion == "SATISFACTORIO";
         }
 
-        private static bool InformeTieneRevisionInstitucionalCompletada(InspeccionInformeTecnico informe)
+        private static bool InformeCompletaFaseTecnicaAocr(InspeccionInformeTecnico informe)
         {
             if (informe == null)
+            {
+                return false;
+            }
+
+            if (!informe.Finalizado || !informe.FirmadoInspector)
             {
                 return false;
             }
@@ -3224,8 +3783,12 @@ namespace CapaPresentacion.Controllers
             }
 
             var estadoInforme = (informe.EstadoInforme ?? string.Empty).Trim().ToUpperInvariant();
+            if (estadoInforme == "INFORME_FIRMADO_TECNICO")
+            {
+                return true;
+            }
+
             return estadoInforme == "APROBADO_DIRECCION"
-                || estadoInforme == "ENVIADO_A_COORDINADOR"
                 || estadoInforme == "APROBADO_COORDINADOR"
                 || estadoInforme == "FIRMADO_FINAL";
         }
@@ -3254,7 +3817,8 @@ namespace CapaPresentacion.Controllers
             if (destino == EstadoSolicitud.Observada)
             {
                 return User != null && (
-                    User.IsInRole("Coordinador")
+                    User.IsInRole("Inspector")
+                    || User.IsInRole("Coordinador")
                     || User.IsInRole("CoordinadorInspecciones")
                     || User.IsInRole("JefaturaTecnica")
                     || User.IsInRole("DIRDAC")
@@ -3265,12 +3829,44 @@ namespace CapaPresentacion.Controllers
 
             if (destino == EstadoSolicitud.AceptacionDocumental)
             {
+                return User != null && (
+                    User.IsInRole("Inspector")
+                    || User.IsInRole("Coordinador")
+                    || User.IsInRole("CoordinadorInspecciones"));
+            }
+
+            if (destino == EstadoSolicitud.RequiereInspeccion || destino == EstadoSolicitud.GeneradoCondicionesLimitaciones)
+            {
+                return User != null && User.IsInRole("Inspector");
+            }
+
+            if (destino == EstadoSolicitud.EnRevisionCoordinadorFinal || destino == EstadoSolicitud.EnviadoDcav)
+            {
                 return User != null && (User.IsInRole("Coordinador") || User.IsInRole("CoordinadorInspecciones"));
+            }
+
+            if (destino == EstadoSolicitud.FirmadoDcav)
+            {
+                return User != null && (
+                    User.IsInRole("DIRDAC")
+                    || User.IsInRole("Direccion")
+                    || User.IsInRole("JefaturaTecnica")
+                    || User.IsInRole("DirectorGeneral"));
             }
 
             if (destino == EstadoSolicitud.PendienteAsignacionRT)
             {
                 return User != null && (User.IsInRole("Coordinador") || User.IsInRole("CoordinadorInspecciones"));
+            }
+
+            if (destino == EstadoSolicitud.FirmadoCoordinador)
+            {
+                return User != null && (User.IsInRole("Coordinador") || User.IsInRole("CoordinadorInspecciones"));
+            }
+
+            if (destino == EstadoSolicitud.Finalizado)
+            {
+                return User != null && User.Identity != null && User.Identity.IsAuthenticated;
             }
 
             if (destino == EstadoSolicitud.EnInspeccion || destino == EstadoSolicitud.AOCR_EnElaboracion)
@@ -3300,7 +3896,106 @@ namespace CapaPresentacion.Controllers
             return string.Equals(estadoNormalizado, EstadoSolicitud.EnRevision, StringComparison.OrdinalIgnoreCase)
                 || string.Equals(estadoNormalizado, EstadoSolicitud.DocumentacionPendiente, StringComparison.OrdinalIgnoreCase)
                 || string.Equals(estadoNormalizado, EstadoSolicitud.Subsanada, StringComparison.OrdinalIgnoreCase)
+                || string.Equals(estadoNormalizado, EstadoSolicitud.EnInspeccion, StringComparison.OrdinalIgnoreCase)
                 || string.Equals(estadoNormalizado, EstadoSolicitud.DocumentacionCompleta, StringComparison.OrdinalIgnoreCase);
+        }
+
+        private string ObtenerEstadoDocumentalVisible(SolicitudAOCR solicitud, IDictionary<int, Tuple<string, string>> revisiones)
+        {
+            var estadoNormalizado = EstadoSolicitud.Normalizar(solicitud != null ? solicitud.Estado : null);
+            if (string.Equals(estadoNormalizado, EstadoSolicitud.Finalizado, StringComparison.OrdinalIgnoreCase))
+            {
+                return "FINALIZADO";
+            }
+
+            if (string.Equals(estadoNormalizado, EstadoSolicitud.FirmadoDcav, StringComparison.OrdinalIgnoreCase))
+            {
+                return "FIRMADO_DCAV";
+            }
+
+            if (string.Equals(estadoNormalizado, EstadoSolicitud.EnviadoDcav, StringComparison.OrdinalIgnoreCase))
+            {
+                return "ENVIADO_DCAV";
+            }
+
+            if (string.Equals(estadoNormalizado, EstadoSolicitud.EnRevisionCoordinadorFinal, StringComparison.OrdinalIgnoreCase))
+            {
+                return "EN_REVISION_COORDINADOR_FINAL";
+            }
+
+            if (string.Equals(estadoNormalizado, EstadoSolicitud.GeneradoCondicionesLimitaciones, StringComparison.OrdinalIgnoreCase))
+            {
+                return "GENERADO_CONDICIONES_LIMITACIONES";
+            }
+
+            if (string.Equals(estadoNormalizado, EstadoSolicitud.RequiereInspeccion, StringComparison.OrdinalIgnoreCase))
+            {
+                return "REQUIERE_INSPECCION";
+            }
+
+            if (string.Equals(estadoNormalizado, EstadoSolicitud.FirmadoCoordinador, StringComparison.OrdinalIgnoreCase))
+            {
+                return "AUTORIZACION_FIRMADA";
+            }
+
+            if (string.Equals(estadoNormalizado, EstadoSolicitud.AceptacionDocumental, StringComparison.OrdinalIgnoreCase)
+                || string.Equals(estadoNormalizado, EstadoSolicitud.DocumentacionCompleta, StringComparison.OrdinalIgnoreCase))
+            {
+                return "ACEPTADO_INSPECTOR";
+            }
+
+            if (string.Equals(estadoNormalizado, EstadoSolicitud.Observada, StringComparison.OrdinalIgnoreCase))
+            {
+                return "OBSERVADO";
+            }
+
+            var tieneInspector = SolicitudTieneInspectorAsignado(solicitud);
+            if (string.Equals(estadoNormalizado, EstadoSolicitud.EnInspeccion, StringComparison.OrdinalIgnoreCase))
+            {
+                return revisiones != null && revisiones.Count > 0
+                    ? "EN_REVISION_INSPECTOR"
+                    : "INSPECTOR_ASIGNADO";
+            }
+
+            if (string.Equals(estadoNormalizado, EstadoSolicitud.Subsanada, StringComparison.OrdinalIgnoreCase))
+            {
+                return tieneInspector ? "EN_REVISION_INSPECTOR" : "EN_REVISION_COORDINADOR";
+            }
+
+            if (string.Equals(estadoNormalizado, EstadoSolicitud.EnRevision, StringComparison.OrdinalIgnoreCase)
+                || string.Equals(estadoNormalizado, EstadoSolicitud.DocumentacionPendiente, StringComparison.OrdinalIgnoreCase))
+            {
+                return tieneInspector ? "INSPECTOR_ASIGNADO" : "EN_REVISION_COORDINADOR";
+            }
+
+            if (string.Equals(estadoNormalizado, EstadoSolicitud.Pendiente, StringComparison.OrdinalIgnoreCase)
+                || string.Equals(estadoNormalizado, EstadoSolicitud.SolicitudCreada, StringComparison.OrdinalIgnoreCase))
+            {
+                return "BORRADOR";
+            }
+
+            return (solicitud != null ? solicitud.Estado : estadoNormalizado ?? string.Empty) ?? string.Empty;
+        }
+
+        private string ResolverRutaDocumentoAocrFirmado(string rutaDocumento)
+        {
+            if (string.IsNullOrWhiteSpace(rutaDocumento))
+            {
+                return null;
+            }
+
+            var ruta = rutaDocumento.Trim();
+            if (Path.IsPathRooted(ruta))
+            {
+                return ruta;
+            }
+
+            if (ruta.StartsWith("~", StringComparison.OrdinalIgnoreCase))
+            {
+                return Server.MapPath(ruta);
+            }
+
+            return Server.MapPath("~" + (ruta.StartsWith("/") ? ruta : "/" + ruta));
         }
 
         private bool SolicitudTieneAprobacionFinanciera(int codigoSolicitud)
@@ -3330,6 +4025,45 @@ namespace CapaPresentacion.Controllers
             return (solicitud.CodigoTecnico.HasValue && solicitud.CodigoTecnico.Value > 0)
                 || !string.IsNullOrWhiteSpace(solicitud.TecnicoResponsableCedula)
                 || !string.IsNullOrWhiteSpace(solicitud.TecnicoResponsableNombre);
+        }
+
+        private static Inspeccion ObtenerUltimaInspeccionVinculada(IEnumerable<Inspeccion> inspecciones)
+        {
+            if (inspecciones == null)
+            {
+                return null;
+            }
+
+            return inspecciones
+                .Where(i => i != null && i.CodigoInspeccion > 0)
+                .OrderByDescending(i => i.CodigoInspeccion)
+                .FirstOrDefault();
+        }
+
+        private static bool InspeccionTieneInspectorAsignado(Inspeccion inspeccion)
+        {
+            if (inspeccion == null)
+            {
+                return false;
+            }
+
+            return (inspeccion.CodigoInspector.HasValue && inspeccion.CodigoInspector.Value > 0)
+                || !string.IsNullOrWhiteSpace(inspeccion.InspectorPrincipalCedula)
+                || !string.IsNullOrWhiteSpace(inspeccion.InspectorPrincipalNombre);
+        }
+
+        private static bool InspeccionPermiteInicioOperativo(Inspeccion inspeccion)
+        {
+            if (inspeccion == null)
+            {
+                return false;
+            }
+
+            var estadoNormalizado = EstadosInspeccion.NormalizarEstado(inspeccion.Estado);
+            return string.Equals(estadoNormalizado, EstadosInspeccion.ACEPTADA, StringComparison.OrdinalIgnoreCase)
+                || string.Equals(estadoNormalizado, EstadosInspeccion.SUBSANADA, StringComparison.OrdinalIgnoreCase)
+                || string.Equals(estadoNormalizado, EstadosInspeccion.PAGO_VALIDADO, StringComparison.OrdinalIgnoreCase)
+                || string.Equals(estadoNormalizado, EstadosInspeccion.EN_INSPECCION, StringComparison.OrdinalIgnoreCase);
         }
 
         private List<Documento> ObtenerDocumentosVigentesParaRevision(int codigoSolicitud)

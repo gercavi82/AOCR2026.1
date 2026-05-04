@@ -15,6 +15,7 @@ namespace CapaNegocio.Services
         private readonly InspeccionDAO _inspeccionDAO;
         private readonly InspeccionBL _inspeccionBL;
         private readonly HallazgoBL _hallazgoBL;
+        private readonly InspeccionInformeDAO _informeDAO;
         private readonly SolicitudAOCRDAO _solicitudDAO;
         private readonly AuditoriaService _auditoriaService;
         private readonly ValidacionDocumentalService _validacionDocumentalService;
@@ -26,6 +27,7 @@ namespace CapaNegocio.Services
             _inspeccionDAO = new InspeccionDAO();
             _inspeccionBL = new InspeccionBL();
             _hallazgoBL = new HallazgoBL();
+            _informeDAO = new InspeccionInformeDAO();
             _solicitudDAO = new SolicitudAOCRDAO();
             _auditoriaService = new AuditoriaService();
             _validacionDocumentalService = new ValidacionDocumentalService();
@@ -51,6 +53,22 @@ namespace CapaNegocio.Services
                 if (inspeccion == null)
                 {
                     return ResultadoOperacion.Error("Inspección no encontrada");
+                }
+
+                var informe = _informeDAO.ObtenerUltimoPorInspeccion(inspeccionId);
+                if (informe == null)
+                {
+                    return ResultadoOperacion.Error("No se puede registrar el resultado sin informe tecnico.");
+                }
+
+                if (!informe.Finalizado)
+                {
+                    return ResultadoOperacion.Error("No se puede registrar el resultado mientras el informe tecnico no este finalizado.");
+                }
+
+                if (!informe.FirmadoInspector)
+                {
+                    return ResultadoOperacion.Error("No se puede registrar el resultado hasta que el informe tecnico este firmado por el inspector.");
                 }
 
                 var resultadoNormalizado = (resultado ?? string.Empty).Trim().ToUpperInvariant();

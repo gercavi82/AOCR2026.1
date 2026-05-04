@@ -1,0 +1,133 @@
+@model CapaPresentacion.Models.ViewModels.ListaVerificacionOperacionalEaePdfViewModel
+@using System
+@using System.Collections.Generic
+@using System.Globalization
+@using System.Linq
+@using CapaModelo
+
+@{
+    Layout = "~/Views/Shared/_PdfLayoutDGACAocr.cshtml";
+
+    var lista = Model != null ? Model.ListaVerificacion : null;
+    var items = lista != null && lista.Items != null
+        ? lista.Items.OrderBy(item => item.Orden).ToList()
+        : new List<ListaVerificacionOperacionalEaeItem>();
+    var cultura = new CultureInfo("es-EC");
+    var fechaLista = lista != null && lista.FechaLista.HasValue ? lista.FechaLista.Value.ToString("dd/MM/yyyy", cultura) : DateTime.Now.ToString("dd/MM/yyyy", cultura);
+    Func<string, string> texto = value => !string.IsNullOrWhiteSpace(value) ? value.Trim() : "No registra";
+    Func<string, string, string> check = (actual, esperado) => string.Equals((actual ?? string.Empty).Trim(), esperado, StringComparison.OrdinalIgnoreCase) ? "☒" : "☐";
+}
+
+@section PdfHead {
+    <style>
+        body { font-family: Arial, Helvetica, sans-serif; font-size: 7.3pt; color: #111; }
+        .lv-page { width: 100%; }
+        .manual-top { width: 100%; border-collapse: collapse; margin-bottom: 4px; font-size: 6.5pt; color: #333; }
+        .manual-top td { vertical-align: top; border: none; padding: 0; }
+        .manual-right { text-align: right; }
+        .institution { text-align: center; font-weight: bold; text-transform: uppercase; font-size: 10pt; line-height: 1.25; margin-top: 4px; }
+        .title { text-align: center; font-weight: bold; font-size: 9pt; line-height: 1.25; margin-top: 4px; }
+        .rdac { text-align: center; font-weight: bold; margin: 3px 0 6px; font-size: 9pt; }
+        .meta-list { width: 100%; border-collapse: collapse; margin: 0 0 4px; }
+        .meta-list td { border: none; padding: 1.5px 2px; vertical-align: top; line-height: 1.25; }
+        .meta-label { width: 35%; font-weight: bold; }
+        .meta-value { border-bottom: 1px solid #222 !important; min-height: 12px; }
+        .lv-table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+        .lv-table th, .lv-table td { border: 1px solid #222; padding: 3px; vertical-align: top; line-height: 1.18; }
+        .lv-table th { text-align: center; font-weight: bold; background: #f5f5f5; }
+        .col-ref { width: 11%; }
+        .col-question { width: 18%; }
+        .col-compliance { width: 13%; }
+        .col-guidance { width: 31%; }
+        .col-implementation { width: 13%; }
+        .col-comments { width: 14%; }
+        .cell-pre { white-space: pre-line; }
+        .checks div { margin-bottom: 3px; white-space: nowrap; }
+        .code { font-weight: bold; display: block; margin-bottom: 2px; }
+        .signature-block { margin-top: 16px; page-break-inside: avoid; text-align: center; }
+        .signature-title { font-weight: bold; text-transform: uppercase; margin-bottom: 8px; }
+        .signature-slot { width: 360px; height: 90px; margin: 0 auto 8px; border: 1px solid #222; position: relative; text-align: center; line-height: 90px; color: #666; }
+        .firma-anchor { position: absolute; left: 0; top: 0; width: 1px; height: 1px; overflow: hidden; color: transparent; font-size: 1px; line-height: 1px; }
+        .signature-data { width: 70%; margin: 0 auto; border-collapse: collapse; }
+        .signature-data td { border: none; padding: 3px 4px; text-align: left; }
+        .line { border-bottom: 1px solid #222 !important; }
+        .footer-line { margin-top: 8px; width: 100%; font-size: 6.5pt; color: #333; }
+    </style>
+}
+
+<div class="lv-page">
+    <table class="manual-top">
+        <tr>
+            <td>Parte II - Explotadores de servicios aereos<br />Volumen VII - Vigilancia de explotadores extranjeros en operaciones de transporte aereo comercial</td>
+            <td class="manual-right">Capitulo 2 - Solicitud, evaluacion y aprobacion de un explotador extranjero<br />Manual del Inspector de Operaciones Ecuador</td>
+        </tr>
+    </table>
+
+    <div class="institution">DIRECCIÓN GENERAL DE AVIACIÓN CIVIL</div>
+    <div class="title">
+        LISTA DE VERIFICACIÓN (LV)<br />
+        EVALUACIÓN TÉCNICA DE UN EXPLOTADOR DE SERVICIOS AÉREOS EXTRANJERO (EAE)
+    </div>
+    <div class="rdac">RDAC 129</div>
+
+    <table class="meta-list">
+        <tr><td class="meta-label">1. Nombre del EAE / Nombre comercial del EAE:</td><td class="meta-value">@texto(lista != null ? lista.NombreEae : null)</td></tr>
+        <tr><td class="meta-label">2. N AOC / Fecha de expedicion / Validez:</td><td class="meta-value">@texto(lista != null ? lista.NumeroAocFechaValidez : null)</td></tr>
+        <tr><td class="meta-label">3. Direccion del EAE y datos de contacto de la gerencia de operaciones en el Estado del explotador:</td><td class="meta-value">@texto(lista != null ? lista.DireccionEstadoExplotador : null)</td></tr>
+        <tr><td class="meta-label">4. Direccion del EAE y datos de contacto en el Estado que emite el reconocimiento:</td><td class="meta-value">@texto(lista != null ? lista.DireccionEstadoReconocimiento : null)</td></tr>
+        <tr><td class="meta-label">5. Tipo/s de aeronave/s (marca, modelo, numero de serie):</td><td class="meta-value">@texto(lista != null ? lista.TiposAeronaves : null)</td></tr>
+        <tr><td class="meta-label">6. Tipo de operacion:</td><td class="meta-value">@texto(lista != null ? lista.TipoOperacion : null)</td></tr>
+        <tr><td class="meta-label">7. Fecha:</td><td class="meta-value">@fechaLista</td></tr>
+        <tr><td class="meta-label">8. Inspector responsable de la aprobacion:</td><td class="meta-value">@texto(lista != null ? lista.InspectorResponsable : null)</td></tr>
+    </table>
+
+    <table class="lv-table">
+        <thead>
+            <tr>
+                <th class="col-ref">9.<br />Referencia</th>
+                <th class="col-question">10.<br />Pregunta del requisito</th>
+                <th class="col-compliance">11.<br />Estado de cumplimiento del requisito</th>
+                <th class="col-guidance">12.<br />Orientacion para el examen de pruebas o evidencias</th>
+                <th class="col-implementation">13.<br />Estado de implementacion</th>
+                <th class="col-comments">14.<br />Pruebas / Notas / Comentarios</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var item in items)
+            {
+                <tr>
+                    <td class="cell-pre">@item.Referencia</td>
+                    <td class="cell-pre"><span class="code">@item.Codigo</span>@item.PreguntaRequisito</td>
+                    <td class="checks">
+                        <div>@check(item.EstadoCumplimiento, "SATISFACTORIO") Satisfactorio</div>
+                        <div>@check(item.EstadoCumplimiento, "NO_SATISFACTORIO") No satisfactorio</div>
+                        <div>@check(item.EstadoCumplimiento, "NO_APLICABLE") No aplicable</div>
+                    </td>
+                    <td class="cell-pre">@item.OrientacionEvidencia</td>
+                    <td class="checks">
+                        <div>@check(item.EstadoImplementacion, "IMPLEMENTADO") Implementado</div>
+                        <div>@check(item.EstadoImplementacion, "NO_IMPLEMENTADO") No implementado</div>
+                        <div>@check(item.EstadoImplementacion, "NO_APLICABLE") No aplicable</div>
+                    </td>
+                    <td class="cell-pre">@texto(item.PruebasNotasComentarios)</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+
+    <div class="signature-block">
+        <div class="signature-title">FIRMA DEL TÉCNICO / INSPECTOR RESPONSABLE</div>
+        <div class="signature-slot" data-firma-rol="LV_EAE_INSPECTOR">
+            <span class="firma-anchor">ANCLA_FIRMA_LV_EAE_INSPECTOR</span>
+            <span class="firma-anchor">ESPACIO RESERVADO PARA FIRMA DEL TECNICO</span>
+            ESPACIO RESERVADO PARA FIRMA DEL TECNICO
+        </div>
+        <table class="signature-data">
+            <tr><td style="width:18%;">Nombre:</td><td class="line">@texto(lista != null ? lista.InspectorResponsable : null)</td></tr>
+            <tr><td>Cargo:</td><td class="line">@texto(lista != null ? lista.CargoInspector : null)</td></tr>
+            <tr><td>Fecha:</td><td class="line">@(lista != null && lista.FechaFirma.HasValue ? lista.FechaFirma.Value.ToString("dd/MM/yyyy", cultura) : fechaLista)</td></tr>
+        </table>
+    </div>
+
+    <div class="footer-line">31/07/2025 PII-VVII-C2-9 Tercera Edicion</div>
+</div>

@@ -34,6 +34,7 @@ namespace CapaPresentacion.Controllers
         private readonly FirmaDigitalService _firmaDigitalService = new FirmaDigitalService();
         private readonly DashboardInspeccionDAO _dashboardInspeccionDao = new DashboardInspeccionDAO();
         private readonly UsuarioInternoRTDAO _usuarioInternoRTDAO = new UsuarioInternoRTDAO();
+        private readonly SolicitudEstadoTransitionBL _solicitudEstadoTransitionBL = new SolicitudEstadoTransitionBL();
 
         [Authorize(Roles = "Direccion,JefaturaTecnica,DirectorGeneral,Administrador")]
         public ActionResult DashboardGerencial()
@@ -585,7 +586,6 @@ namespace CapaPresentacion.Controllers
             return "Pendiente de gestión inicial o asignación operativa.";
         }
 
-        [Authorize(Roles = "CoordinacionLegal,CoordinadorLegal,Coordinador,CoordinadorInspecciones,Administrador")]
         public ActionResult RevisionVerificacion()
         {
             var solicitudes = _solicitudDao.ObtenerTodos() ?? new List<SolicitudAOCR>();
@@ -860,7 +860,7 @@ namespace CapaPresentacion.Controllers
             }
         }
 
-        [Authorize(Roles = "DIRDAC,Direccion,JefaturaTecnica,DirectorGeneral,Administrador")]
+        [Authorize(Roles = "Inspector,CoordinacionLegal,CoordinadorLegal,Coordinador,CoordinadorInspecciones,DIRDAC,Direccion,JefaturaTecnica,DirectorGeneral,Administrador")]
         public ActionResult DocumentoValidacionAocr(int solicitudId, string tipo, bool descargar = false)
         {
             try
@@ -878,15 +878,16 @@ namespace CapaPresentacion.Controllers
                     return HttpNotFound("No existe contexto disponible para el documento AOCR solicitado.");
                 }
 
-                if (!item.FirmaCompleta)
-                {
-                    return new HttpStatusCodeResult(409, "La firma del informe tecnico aun no esta completa para habilitar este documento.");
-                }
-
-                var tipoNormalizado = (tipo ?? string.Empty).Trim().ToUpperInvariant();
-                if (tipoNormalizado != "RECONOCIMIENTO" && tipoNormalizado != "CONDICIONES_LIMITACIONES")
+                var tipoNormalizado = NormalizarTipoDocumento(tipo);
+                if (tipoNormalizado == null)
                 {
                     return new HttpStatusCodeResult(400, "Tipo de documento AOCR no valido.");
+                }
+
+                var habilitadoPorModificacion = PuedeEditarCondicionesLimitacionesModificacion(item, tipoNormalizado);
+                if (!item.FirmaCompleta && !habilitadoPorModificacion)
+                {
+                    return new HttpStatusCodeResult(409, "La firma del informe tecnico aun no esta completa para habilitar este documento.");
                 }
 
                 RegistrarTrazabilidadDocumento(item.Solicitud, tipoNormalizado, descargar ? "DESCARGA" : "VISUALIZACION");
@@ -901,6 +902,19 @@ namespace CapaPresentacion.Controllers
                         return descargar
                             ? File(rutaFisica, "application/pdf", string.IsNullOrWhiteSpace(nombreArchivoExistente) ? "Reconocimiento_AOCR.pdf" : nombreArchivoExistente)
                             : File(rutaFisica, "application/pdf");
+                    }
+                }
+
+                if (habilitadoPorModificacion && string.Equals(tipoNormalizado, "CONDICIONES_LIMITACIONES", StringComparison.OrdinalIgnoreCase))
+                {
+                    var documentoFirmado = _aocrFirmaDocumentoDao.ObtenerUltimoPorSolicitudTipo(item.Solicitud.CodigoSolicitud, tipoNormalizado);
+                    var rutaFirmada = ResolverRutaDocumento(documentoFirmado != null ? documentoFirmado.RutaDocumento : null);
+                    if (!string.IsNullOrWhiteSpace(rutaFirmada) && System.IO.File.Exists(rutaFirmada))
+                    {
+                        var nombreArchivoFirmado = Path.GetFileName(rutaFirmada);
+                        return descargar
+                            ? File(rutaFirmada, "application/pdf", string.IsNullOrWhiteSpace(nombreArchivoFirmado) ? "Condiciones_Limitaciones_AOCR_" + item.Solicitud.CodigoSolicitud + "_firmado.pdf" : nombreArchivoFirmado)
+                            : File(rutaFirmada, "application/pdf");
                     }
                 }
 
@@ -920,7 +934,7 @@ namespace CapaPresentacion.Controllers
                     CustomSwitches = ConstruirSwitchesPdfValidacionAocr()
                 };
 
-                    var pdfBytes = pdf.BuildFile(ControllerContext);
+                var pdfBytes = pdf.BuildFile(ControllerContext);
                 return descargar
                     ? File(pdfBytes, "application/pdf", nombreArchivo)
                     : File(pdfBytes, "application/pdf");
@@ -937,7 +951,7 @@ namespace CapaPresentacion.Controllers
             }
         }
 
-        [Authorize(Roles = "DIRDAC,Direccion,JefaturaTecnica,DirectorGeneral,Administrador")]
+        [Authorize(Roles = "Inspector,CoordinacionLegal,CoordinadorLegal,Coordinador,CoordinadorInspecciones,DIRDAC,Direccion,JefaturaTecnica,DirectorGeneral,Administrador")]
         public ActionResult EditarDocumentoValidacionAocr(int solicitudId, string tipo)
         {
             try
@@ -954,7 +968,7 @@ namespace CapaPresentacion.Controllers
                     return HttpNotFound("No existe contexto disponible para el documento AOCR solicitado.");
                 }
 
-                if (!item.FirmaCompleta)
+                if (!item.FirmaCompleta && !PuedeEditarCondicionesLimitacionesModificacion(item, tipoNormalizado))
                 {
                     return new HttpStatusCodeResult(409, "La firma del informe tecnico aun no esta completa para habilitar este documento.");
                 }
@@ -979,7 +993,7 @@ namespace CapaPresentacion.Controllers
             }
         }
 
-        [Authorize(Roles = "DIRDAC,Direccion,JefaturaTecnica,DirectorGeneral,Administrador")]
+        [Authorize(Roles = "Inspector,CoordinacionLegal,CoordinadorLegal,Coordinador,CoordinadorInspecciones,DIRDAC,Direccion,JefaturaTecnica,DirectorGeneral,Administrador")]
         public ActionResult PreviewDocumentoValidacionAocr(int solicitudId, string tipo)
         {
             try
@@ -996,7 +1010,7 @@ namespace CapaPresentacion.Controllers
                     return HttpNotFound("No existe contexto disponible para el documento AOCR solicitado.");
                 }
 
-                if (!item.FirmaCompleta)
+                if (!item.FirmaCompleta && !PuedeEditarCondicionesLimitacionesModificacion(item, tipoNormalizado))
                 {
                     return new HttpStatusCodeResult(409, "La firma del informe tecnico aun no esta completa para habilitar este documento.");
                 }
@@ -1062,7 +1076,7 @@ namespace CapaPresentacion.Controllers
 
         [HttpPost]
         [ValidateAntiForgeryToken]
-        [Authorize(Roles = "DIRDAC,Direccion,JefaturaTecnica,DirectorGeneral,Administrador")]
+        [Authorize(Roles = "Inspector,CoordinacionLegal,CoordinadorLegal,Coordinador,CoordinadorInspecciones,DIRDAC,Direccion,JefaturaTecnica,DirectorGeneral,Administrador")]
         public ActionResult GenerarDocumentoValidacionAocr(AocrDocumentoEdicionViewModel model, string accion = null, HttpPostedFileBase certificadoDigital = null, string passwordCertificado = null)
         {
             try
@@ -1089,6 +1103,11 @@ namespace CapaPresentacion.Controllers
                     : "Condiciones_Limitaciones_AOCR_" + model.SolicitudId + ".pdf";
                 var descargar = string.Equals(accion, "DESCARGAR", StringComparison.OrdinalIgnoreCase);
                 var firmarDigitalmente = string.Equals(accion, "FIRMAR_DESCARGAR", StringComparison.OrdinalIgnoreCase);
+
+                if (firmarDigitalmente && !UsuarioActualPuedeFirmarDocumentoValidacionAocr())
+                {
+                    return new HttpStatusCodeResult(403, "Solo los roles institucionales autorizados pueden firmar digitalmente este documento AOCR.");
+                }
 
                 RegistrarTrazabilidadDocumento(item.Solicitud, tipoNormalizado, descargar ? "DESCARGA_DESDE_PLANTILLA" : "VISUALIZACION_DESDE_PLANTILLA");
 
@@ -1192,6 +1211,22 @@ namespace CapaPresentacion.Controllers
                         {
                             GuardarPosicionFirmaAocr(item, model, tipoNormalizado, posicionFirmaVisual, "PUNTERO");
                         }
+
+                        if (item != null
+                            && item.Solicitud != null
+                            && item.Solicitud.TipoSolicitud.GetValueOrDefault() == 3
+                            && string.Equals(tipoNormalizado, "CONDICIONES_LIMITACIONES", StringComparison.OrdinalIgnoreCase)
+                            && string.Equals(EstadoSolicitud.Normalizar(item.Solicitud.Estado), EstadoSolicitud.EnviadoDcav, StringComparison.OrdinalIgnoreCase))
+                        {
+                            string mensajeCambio;
+                            _solicitudEstadoTransitionBL.CambiarEstadoConReglasAocr(
+                                model.SolicitudId,
+                                EstadoSolicitud.FirmadoDcav,
+                                "Condiciones y Limitaciones firmadas por DCAV/DGAC.",
+                                ObtenerUsuarioActualIdSeguro(),
+                                _ => true,
+                                out mensajeCambio);
+                        }
                     }
                 }
 
@@ -1213,7 +1248,7 @@ namespace CapaPresentacion.Controllers
 
         [HttpPost]
         [ValidateAntiForgeryToken]
-        [Authorize(Roles = "DIRDAC,Direccion,JefaturaTecnica,DirectorGeneral,Administrador")]
+        [Authorize(Roles = "Inspector,CoordinacionLegal,CoordinadorLegal,Coordinador,CoordinadorInspecciones,DIRDAC,Direccion,JefaturaTecnica,DirectorGeneral,Administrador")]
         public JsonResult GuardarPosicionFirmaAocr(AocrFirmaPosicionEdicionViewModel model)
         {
             try
@@ -1341,6 +1376,7 @@ namespace CapaPresentacion.Controllers
                 .FirstOrDefault(x => x.Informe.Finalizado && x.Informe.FirmadoInspector && x.Informe.FirmadoDirdac);
 
             var firmaCompleta = informeFirmado != null;
+            var esModificacionDirecta = EsSolicitudModificacionDirectaSinInspeccion(solicitud, estadoSolicitud);
 
             // Incluir tambien solicitudes con informe tecnico firmado que aun no
             // han transicionado al estado AOCR En Revision (flujo incompleto en datos).
@@ -1350,7 +1386,8 @@ namespace CapaPresentacion.Controllers
 
             var estadoIncluido = string.Equals(estadoSolicitud, EstadoSolicitud.AOCR_EnRevision, StringComparison.OrdinalIgnoreCase)
                 || string.Equals(estadoSolicitud, "ENVIADO_A_JEFATURA", StringComparison.OrdinalIgnoreCase)
-                || estadoPermitidoConFirma;
+                || estadoPermitidoConFirma
+                || esModificacionDirecta;
 
             if (!estadoIncluido)
             {
@@ -1379,6 +1416,8 @@ namespace CapaPresentacion.Controllers
                 ListoParaEnvioRt = string.Equals(estadoSolicitud, EstadoSolicitud.AOCR_Validado, StringComparison.OrdinalIgnoreCase)
                     || string.Equals(estadoSolicitud, EstadoSolicitud.AOCR_Legalizado, StringComparison.OrdinalIgnoreCase)
                     || string.Equals(estadoSolicitud, EstadoSolicitud.AOCR_EmitidoRecibido, StringComparison.OrdinalIgnoreCase)
+                    || string.Equals(estadoSolicitud, EstadoSolicitud.FirmadoDcav, StringComparison.OrdinalIgnoreCase)
+                    || string.Equals(estadoSolicitud, EstadoSolicitud.Finalizado, StringComparison.OrdinalIgnoreCase)
             };
 
             item.Documentos = ConstruirDocumentosValidacion(item);
@@ -1387,7 +1426,30 @@ namespace CapaPresentacion.Controllers
                 && (string.Equals(estadoSolicitud, EstadoSolicitud.AOCR_EnRevision, StringComparison.OrdinalIgnoreCase)
                     || string.Equals(estadoSolicitud, "ENVIADO_A_JEFATURA", StringComparison.OrdinalIgnoreCase));
 
-            if (!item.FirmaCompleta)
+            if (!item.FirmaCompleta && esModificacionDirecta)
+            {
+                if (string.Equals(estadoSolicitud, EstadoSolicitud.GeneradoCondicionesLimitaciones, StringComparison.OrdinalIgnoreCase))
+                {
+                    item.MensajeEstado = "Condiciones y Limitaciones listas para preparación";
+                    item.MensajeAdvertencia = "La modificación no requiere nueva inspección. El documento institucional puede completarse desde esta bandeja.";
+                }
+                else if (string.Equals(estadoSolicitud, EstadoSolicitud.EnRevisionCoordinadorFinal, StringComparison.OrdinalIgnoreCase))
+                {
+                    item.MensajeEstado = "Condiciones y Limitaciones en revisión final";
+                    item.MensajeAdvertencia = "La coordinación debe revisar el documento antes de enviarlo a DCAV/DGAC.";
+                }
+                else if (string.Equals(estadoSolicitud, EstadoSolicitud.EnviadoDcav, StringComparison.OrdinalIgnoreCase))
+                {
+                    item.MensajeEstado = "Pendiente de firma DCAV/DGAC";
+                    item.MensajeAdvertencia = "El documento ya está listo para firma institucional.";
+                }
+                else
+                {
+                    item.MensajeEstado = "Documento firmado disponible";
+                    item.MensajeAdvertencia = "La modificación fue firmada y ya puede descargarse por el RT.";
+                }
+            }
+            else if (!item.FirmaCompleta)
             {
                 item.MensajeEstado = "Pendiente de firma del informe tecnico";
                 item.MensajeAdvertencia = "La firma institucional del informe tecnico aun no esta completa; por eso los documentos AOCR no se habilitan todavia.";
@@ -1411,6 +1473,10 @@ namespace CapaPresentacion.Controllers
         {
             var urlHelper = new UrlHelper(ControllerContext.RequestContext);
             var fechaBase = item.FechaFirmaFinal ?? item.FechaDisponibilidad ?? DateTime.Now;
+            var estadoSolicitud = EstadoSolicitud.Normalizar(item != null && item.Solicitud != null ? item.Solicitud.Estado : null);
+            var esModificacionDirecta = EsSolicitudModificacionDirectaSinInspeccion(item != null ? item.Solicitud : null, estadoSolicitud);
+            var condicionesFirmadas = string.Equals(estadoSolicitud, EstadoSolicitud.FirmadoDcav, StringComparison.OrdinalIgnoreCase)
+                || string.Equals(estadoSolicitud, EstadoSolicitud.Finalizado, StringComparison.OrdinalIgnoreCase);
 
             return new List<ValidarAocrDocumentoItemViewModel>
             {
@@ -1418,10 +1484,12 @@ namespace CapaPresentacion.Controllers
                 {
                     TipoDocumento = "RECONOCIMIENTO",
                     NombreVisible = "Reconocimiento de Certificado de Explotador de Servicios Aereos",
-                    Estado = item.FirmaCompleta ? "Disponible" : "Pendiente",
+                    Estado = item.FirmaCompleta ? "Disponible" : (esModificacionDirecta ? "No aplica" : "Pendiente"),
                     Observacion = item.FirmaCompleta
                         ? "Documento listo para visualizacion, revision y descarga."
-                        : "Falta firma final del informe tecnico para habilitar este documento.",
+                        : (esModificacionDirecta
+                            ? "La modificación directa de Condiciones y Limitaciones no genera un reconocimiento adicional."
+                            : "Falta firma final del informe tecnico para habilitar este documento."),
                     UrlEditar = item.FirmaCompleta ? urlHelper.Action("EditarDocumentoValidacionAocr", "CoordinacionJefatura", new { solicitudId = item.Solicitud.CodigoSolicitud, tipo = "RECONOCIMIENTO" }) : null,
                     UrlVer = item.FirmaCompleta ? urlHelper.Action("DocumentoValidacionAocr", "CoordinacionJefatura", new { solicitudId = item.Solicitud.CodigoSolicitud, tipo = "RECONOCIMIENTO", descargar = false }) : null,
                     UrlDescargar = item.FirmaCompleta ? urlHelper.Action("DocumentoValidacionAocr", "CoordinacionJefatura", new { solicitudId = item.Solicitud.CodigoSolicitud, tipo = "RECONOCIMIENTO", descargar = true }) : null,
@@ -1432,17 +1500,55 @@ namespace CapaPresentacion.Controllers
                 {
                     TipoDocumento = "CONDICIONES_LIMITACIONES",
                     NombreVisible = "Condiciones y Limitaciones",
-                    Estado = item.FirmaCompleta ? "Disponible" : "Pendiente",
+                    Estado = item.FirmaCompleta ? "Disponible" : (esModificacionDirecta ? (condicionesFirmadas ? "Firmado" : "En preparación") : "Pendiente"),
                     Observacion = item.FirmaCompleta
                         ? "Documento listo para visualizacion, revision y descarga."
-                        : "Falta firma final del informe tecnico para habilitar este documento.",
-                    UrlEditar = item.FirmaCompleta ? urlHelper.Action("EditarDocumentoValidacionAocr", "CoordinacionJefatura", new { solicitudId = item.Solicitud.CodigoSolicitud, tipo = "CONDICIONES_LIMITACIONES" }) : null,
-                    UrlVer = item.FirmaCompleta ? urlHelper.Action("DocumentoValidacionAocr", "CoordinacionJefatura", new { solicitudId = item.Solicitud.CodigoSolicitud, tipo = "CONDICIONES_LIMITACIONES", descargar = false }) : null,
-                    UrlDescargar = item.FirmaCompleta ? urlHelper.Action("DocumentoValidacionAocr", "CoordinacionJefatura", new { solicitudId = item.Solicitud.CodigoSolicitud, tipo = "CONDICIONES_LIMITACIONES", descargar = true }) : null,
+                        : (esModificacionDirecta
+                            ? (condicionesFirmadas
+                                ? "Documento firmado institucionalmente y listo para descarga final."
+                                : "Documento habilitado para edición y revisión en el flujo de modificación sin inspección.")
+                            : "Falta firma final del informe tecnico para habilitar este documento."),
+                    UrlEditar = (item.FirmaCompleta || esModificacionDirecta) ? urlHelper.Action("EditarDocumentoValidacionAocr", "CoordinacionJefatura", new { solicitudId = item.Solicitud.CodigoSolicitud, tipo = "CONDICIONES_LIMITACIONES" }) : null,
+                    UrlVer = (item.FirmaCompleta || esModificacionDirecta) ? urlHelper.Action("DocumentoValidacionAocr", "CoordinacionJefatura", new { solicitudId = item.Solicitud.CodigoSolicitud, tipo = "CONDICIONES_LIMITACIONES", descargar = false }) : null,
+                    UrlDescargar = item.FirmaCompleta
+                        ? urlHelper.Action("DocumentoValidacionAocr", "CoordinacionJefatura", new { solicitudId = item.Solicitud.CodigoSolicitud, tipo = "CONDICIONES_LIMITACIONES", descargar = true })
+                        : (condicionesFirmadas ? urlHelper.Action("DocumentoValidacionAocr", "CoordinacionJefatura", new { solicitudId = item.Solicitud.CodigoSolicitud, tipo = "CONDICIONES_LIMITACIONES", descargar = true }) : null),
                     FechaDocumento = fechaBase,
-                    Disponible = item.FirmaCompleta
+                    Disponible = item.FirmaCompleta || condicionesFirmadas
                 }
             };
+        }
+
+        private static bool EsSolicitudModificacionDirectaSinInspeccion(SolicitudAOCR solicitud, string estadoSolicitud)
+        {
+            if (solicitud == null || solicitud.TipoSolicitud.GetValueOrDefault() != 3)
+            {
+                return false;
+            }
+
+            var estadoNormalizado = EstadoSolicitud.Normalizar(estadoSolicitud);
+            return string.Equals(estadoNormalizado, EstadoSolicitud.GeneradoCondicionesLimitaciones, StringComparison.OrdinalIgnoreCase)
+                || string.Equals(estadoNormalizado, EstadoSolicitud.EnRevisionCoordinadorFinal, StringComparison.OrdinalIgnoreCase)
+                || string.Equals(estadoNormalizado, EstadoSolicitud.EnviadoDcav, StringComparison.OrdinalIgnoreCase)
+                || string.Equals(estadoNormalizado, EstadoSolicitud.FirmadoDcav, StringComparison.OrdinalIgnoreCase)
+                || string.Equals(estadoNormalizado, EstadoSolicitud.Finalizado, StringComparison.OrdinalIgnoreCase);
+        }
+
+        private static bool PuedeEditarCondicionesLimitacionesModificacion(ValidarAocrSolicitudItemViewModel item, string tipoDocumento)
+        {
+            return string.Equals(tipoDocumento, "CONDICIONES_LIMITACIONES", StringComparison.OrdinalIgnoreCase)
+                && item != null
+                && EsSolicitudModificacionDirectaSinInspeccion(item.Solicitud, item.Solicitud != null ? item.Solicitud.Estado : null);
+        }
+
+        private bool UsuarioActualPuedeFirmarDocumentoValidacionAocr()
+        {
+            return User != null
+                && (User.IsInRole("Administrador")
+                    || User.IsInRole("DIRDAC")
+                    || User.IsInRole("Direccion")
+                    || User.IsInRole("DirectorGeneral")
+                    || User.IsInRole("JefaturaTecnica"));
         }
 
         private AocrDocumentoPdfViewModel ConstruirDocumentoPdfModel(ValidarAocrSolicitudItemViewModel item, AocrDocumentoEdicionViewModel edicion, string tipoDocumento)

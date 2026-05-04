@@ -6,6 +6,11 @@
     Layout = "~/Views/Shared/_LayoutAOCR.cshtml";
     ViewBag.Title = "Completar Condiciones y Limitaciones AOCR";
     var filas = Model != null ? Model.AeronavesCondiciones ?? new List<AocrCondicionAeronaveFilaViewModel>() : new List<AocrCondicionAeronaveFilaViewModel>();
+    var puedeFirmarDigitalmente = User.IsInRole("Administrador")
+        || User.IsInRole("DIRDAC")
+        || User.IsInRole("Direccion")
+        || User.IsInRole("DirectorGeneral")
+        || User.IsInRole("JefaturaTecnica");
 }
 
 @* ── Page toolbar ── *@
@@ -242,10 +247,21 @@
         <button type="submit" name="accion" value="DESCARGAR" class="btn btn-success">
             <i class="fas fa-download me-1"></i>Descargar PDF
         </button>
-        <button type="submit" name="accion" value="FIRMAR_DESCARGAR" class="btn btn-dark">
+        <button type="submit"
+                name="accion"
+                value="FIRMAR_DESCARGAR"
+                class="btn btn-dark"
+                @(puedeFirmarDigitalmente ? null : Html.Raw("disabled=\"disabled\" title=\"Solo los roles institucionales autorizados pueden firmar digitalmente este documento.\""))>
             <i class="fas fa-file-signature me-1"></i>Firmar digitalmente y descargar
         </button>
     </div>
+
+    if (!puedeFirmarDigitalmente)
+    {
+        <div class="alert alert-info">
+            Puede preparar y descargar la plantilla para revisión interna. La firma digital final queda habilitada solo para los roles institucionales de DCAV/DGAC.
+        </div>
+    }
 }
 
 <script>

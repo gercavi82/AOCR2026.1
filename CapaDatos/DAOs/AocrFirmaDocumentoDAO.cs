@@ -83,6 +83,77 @@ namespace CapaDatos.DAOs
             }
         }
 
+        public AocrFirmaDocumento ObtenerUltimoPorSolicitudTipo(int codigoSolicitud, string tipoDocumento)
+        {
+            if (codigoSolicitud <= 0 || string.IsNullOrWhiteSpace(tipoDocumento))
+            {
+                return null;
+            }
+
+            using (var cn = new NpgsqlConnection(_cs))
+            {
+                cn.Open();
+                EnsureSchema(cn);
+
+                const string sql = @"
+                    SELECT codigo_firma,
+                           codigo_solicitud,
+                           codigo_inspeccion,
+                           tipo_documento,
+                           numero_aocr,
+                           nombre_archivo,
+                           ruta_documento,
+                           hash_documento,
+                           codigo_qr,
+                           sujeto_certificado,
+                           nombre_firmante,
+                           cargo_firmante,
+                           fecha_firma,
+                           codigo_usuario,
+                           usuario_nombre,
+                           created_at
+                    FROM public.aocr_tbfirma_documento
+                    WHERE codigo_solicitud = @codigo_solicitud
+                      AND UPPER(COALESCE(tipo_documento, '')) = UPPER(@tipo_documento)
+                    ORDER BY fecha_firma DESC, codigo_firma DESC
+                    LIMIT 1;";
+
+                using (var cmd = new NpgsqlCommand(sql, cn))
+                {
+                    cmd.Parameters.AddWithValue("@codigo_solicitud", codigoSolicitud);
+                    cmd.Parameters.AddWithValue("@tipo_documento", tipoDocumento.Trim());
+
+                    using (var rd = cmd.ExecuteReader())
+                    {
+                        if (!rd.Read())
+                        {
+                            return null;
+                        }
+
+                        return new AocrFirmaDocumento
+                        {
+                            CodigoFirma = rd["codigo_firma"] != DBNull.Value ? Convert.ToInt32(rd["codigo_firma"]) : 0,
+                            CodigoSolicitud = rd["codigo_solicitud"] != DBNull.Value ? Convert.ToInt32(rd["codigo_solicitud"]) : 0,
+                            CodigoInspeccion = rd["codigo_inspeccion"] != DBNull.Value ? (int?)Convert.ToInt32(rd["codigo_inspeccion"]) : null,
+                            TipoDocumento = rd["tipo_documento"] != DBNull.Value ? rd["tipo_documento"].ToString() : null,
+                            NumeroAocr = rd["numero_aocr"] != DBNull.Value ? rd["numero_aocr"].ToString() : null,
+                            NombreArchivo = rd["nombre_archivo"] != DBNull.Value ? rd["nombre_archivo"].ToString() : null,
+                            RutaDocumento = rd["ruta_documento"] != DBNull.Value ? rd["ruta_documento"].ToString() : null,
+                            HashDocumento = rd["hash_documento"] != DBNull.Value ? rd["hash_documento"].ToString() : null,
+                            CodigoQr = rd["codigo_qr"] != DBNull.Value ? rd["codigo_qr"].ToString() : null,
+                            SujetoCertificado = rd["sujeto_certificado"] != DBNull.Value ? rd["sujeto_certificado"].ToString() : null,
+                            NombreFirmante = rd["nombre_firmante"] != DBNull.Value ? rd["nombre_firmante"].ToString() : null,
+                            CargoFirmante = rd["cargo_firmante"] != DBNull.Value ? rd["cargo_firmante"].ToString() : null,
+                            FechaFirma = rd["fecha_firma"] != DBNull.Value ? Convert.ToDateTime(rd["fecha_firma"]) : DateTime.MinValue,
+                            CodigoUsuario = rd["codigo_usuario"] != DBNull.Value ? (int?)Convert.ToInt32(rd["codigo_usuario"]) : null,
+                            UsuarioNombre = rd["usuario_nombre"] != DBNull.Value ? rd["usuario_nombre"].ToString() : null,
+                            CreatedAt = rd["created_at"] != DBNull.Value ? (DateTime?)Convert.ToDateTime(rd["created_at"]) : null
+                        };
+                    }
+                }
+            }
+        }
+
         private static void EnsureSchema(NpgsqlConnection cn)
         {
             if (_schemaReady)
