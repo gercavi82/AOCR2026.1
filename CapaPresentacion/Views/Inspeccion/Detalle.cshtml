@@ -138,19 +138,10 @@
     var mostrarBloqueInspectorDetalle = esInspector || (esAdministrador && EstadosInspeccion.EsEstadoBloqueInspector(estadoActualNormalizado));
     var mostrarAccionesCierreDetalle = false;
     var urlRevisionVerificacion = Url.Action("RevisionVerificacion", "CoordinacionJefatura");
-    var puedeDerivarAsignacionInspector = puedeGestionarCoordinacion
-        && Model != null
-        && Model.CodigoSolicitud > 0
-        && (string.Equals(estadoActualNormalizado, EstadosInspeccion.ACEPTADA, System.StringComparison.OrdinalIgnoreCase)
-            || string.Equals(estadoActualNormalizado, EstadosInspeccion.SUBSANADA, System.StringComparison.OrdinalIgnoreCase)
-            || string.Equals(estadoActualNormalizado, EstadosInspeccion.PAGO_VALIDADO, System.StringComparison.OrdinalIgnoreCase));
-    var urlAsignarInspectorDetalle = puedeDerivarAsignacionInspector
-        ? Url.Action("AsignarInspector", "Tecnico", new { solicitudId = Model.CodigoSolicitud })
-        : string.Empty;
     var mensajeCoordinacionDetalle = string.Equals(estadoActualNormalizado, EstadosInspeccion.VERIFICACION_SOLICITUD, System.StringComparison.OrdinalIgnoreCase)
         ? "La verificacion institucional de esta solicitud se ejecuta desde la bandeja de Direccion / Jefatura. Alli se concentran las decisiones de aceptar, observar o cerrar sin duplicar acciones en la pantalla operativa de inspeccion."
         : (string.Equals(estadoActualNormalizado, EstadosInspeccion.ACEPTADA, System.StringComparison.OrdinalIgnoreCase)
-            ? "La solicitud ya fue aceptada. El siguiente paso institucional es asignar inspector o revisar el avance desde Direccion / Jefatura."
+            ? "La solicitud ya fue aceptada. El siguiente paso institucional es gestionar la asignación desde el módulo Asignación de Inspectores del menú Coordinador o revisar el avance desde Direccion / Jefatura."
             : "Las decisiones institucionales de este tramite se controlan desde Direccion / Jefatura para mantener una sola trazabilidad operativa por rol y estado.");
     var mensajeInspectorSinAcciones = inspectorDebeRevisarDocumentos
         ? mensajeBloqueoRevisionDocumentalInspector
@@ -2699,12 +2690,6 @@
                                     <a href="@urlRevisionVerificacion" class="btn btn-sm btn-outline-primary">
                                         <i class="fas fa-search"></i> Abrir Revisión / Verificación
                                     </a>
-                                    @if (puedeDerivarAsignacionInspector)
-                                    {
-                                        <a href="@urlAsignarInspectorDetalle" class="btn btn-sm btn-outline-secondary">
-                                            <i class="fas fa-user-check"></i> Asignar inspector
-                                        </a>
-                                    }
                                 </div>
                             </div>
                         }

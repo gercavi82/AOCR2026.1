@@ -31,6 +31,8 @@
     var tieneComprobanteValido = ViewBag.TieneComprobanteValido != null && (bool)ViewBag.TieneComprobanteValido;
     var mensajeComprobante = ViewBag.MensajeComprobante as string ?? "Debe registrar el comprobante antes de continuar.";
     var tieneFacturaDescargable = facturaPago != null && !string.IsNullOrWhiteSpace(facturaPago.FilePath);
+    var abrirModalPago = ViewBag.AbrirModalPago != null && (bool)ViewBag.AbrirModalPago;
+    var abrirModalPagoJs = (abrirModalPago && puedeSubirComprobante) ? "true" : "false";
 
     // Calcular total pagado
     // Contar pagos aprobados/validados (ambos estados son equivalentes funcionalmente)
@@ -675,6 +677,14 @@
 @section Scripts {
     <script>
         $(document).ready(function() {
+            var debeAbrirModalPago = '@abrirModalPagoJs' === 'true';
+            if (debeAbrirModalPago) {
+                var modalPago = document.getElementById('modalPago');
+                if (modalPago && typeof bootstrap !== 'undefined' && bootstrap.Modal) {
+                    bootstrap.Modal.getOrCreateInstance(modalPago).show();
+                }
+            }
+
             // Validar monto máximo en modal de pago
             $('input[name="Monto"]').on('change', function() {
                 var max = parseFloat('@saldoPendiente.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture)');

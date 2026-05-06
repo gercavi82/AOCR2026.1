@@ -12,6 +12,7 @@ using CapaNegocio.Services;
 using System.Threading.Tasks;
 using CapaPresentacion.Filters;
 using CapaPresentacion.Models;
+using CapaDatos.DAOs;
 using CapaDatos.Interfaces;
 
 namespace CapaPresentacion.Controllers
@@ -42,6 +43,39 @@ namespace CapaPresentacion.Controllers
             var pagos = new List<Pago>();
             ViewBag.SolicitudId = solicitudId;
             return View(pagos);
+        }
+
+        public async Task<ActionResult> Ver(int id)
+        {
+            if (id <= 0)
+            {
+                return new HttpStatusCodeResult(400, "ID inválido.");
+            }
+
+            var pago = await _pagoRepository.ObtenerPorIdAsync(id);
+            if (pago == null)
+            {
+                return HttpNotFound("Pago no encontrado.");
+            }
+
+            var solicitudId = pago.CodigoSolicitud;
+            if (solicitudId <= 0 && pago.OrdenId > 0)
+            {
+                var orden = new OrdenRecaudacionDAO().ObtenerPorId(pago.OrdenId);
+                solicitudId = orden?.CodigoSolicitud ?? 0;
+            }
+
+            if (solicitudId > 0)
+            {
+                return RedirectToAction("Detalle", new { solicitudId = solicitudId });
+            }
+
+            if (pago.OrdenId > 0)
+            {
+                return RedirectToAction("Detalles", "OrdenRecaudacion", new { id = pago.OrdenId });
+            }
+
+            return HttpNotFound("No se pudo resolver el trámite asociado al pago.");
         }
 
         /// <summary>

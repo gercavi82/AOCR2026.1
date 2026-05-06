@@ -342,7 +342,9 @@
     <Compile Include="Helpers\DashboardInspeccionBadgeHelper.cs" />
     <Compile Include="Helpers\InformeTecnicoTemplateHelper.cs" />
     <Compile Include="Helpers\NotificacionCorreoHelper.cs" />
+    <Compile Include="Helpers\OrdenRecaudacionPagoHelper.cs" />
     <Compile Include="Helpers\RevisionDocumentalDisplayHelper.cs" />
+    <Compile Include="Helpers\SessionTimeoutHelper.cs" />
     <Compile Include="Infrastructure\OrdenRecaudacionFilters.cs" />
     <Compile Include="Infrastructure\OrdenRecaudacionRoutes.cs" />
     <Compile Include="Infrastructure\ControllerGuardExtensions.cs" />
@@ -2838,7 +2840,6 @@
     <Content Include="Views\Inspeccion\Planificacion.cshtml" />
     <Content Include="Views\Tecnico\AsignarInspector.cshtml" />
     <Content Include="Views\Tecnico\Index.cshtml" />
-    <Content Include="Views\Tecnico\VerificarDoc.cshtml" />
     <Content Include="Web.config">
       <SubType>Designer</SubType>
     </Content>
@@ -2877,7 +2878,6 @@
     <Content Include="Views\Inspeccion\InformeTecnicoFirmaPreview.cshtml" />
     <Content Include="Views\Inspeccion\ListaVerificacionOperacionalEaePdf.cshtml" />
     <Content Include="Views\Inspeccion\_ListaVerificacionOperacionalEaePanel.cshtml" />
-    <Content Include="Views\Tecnico\Crear.cshtml" />
     <Content Include="Views\Inspeccion\Index.cshtml" />
     <Content Include="Views\Hallazgo\Index.cshtml" />
     <Content Include="Views\Hallazgo\Crear.cshtml" />
@@ -2943,9 +2943,6 @@
     <Content Include="Views\CoordinacionLegal\GenerarCertificados.cshtml" />
     <Content Include="Views\OrdenRecaudacion\Obligatoria.cshtml" />
     <Content Include="Views\Dashboard\Index.cshtml" />
-    <Content Include="Views\Parametro\EmitirAOCR.cshtml" />
-    <Content Include="Views\Parametro\Legalizar.cshtml" />
-    <Content Include="Views\Parametro\ValidacionFinal.cshtml" />
     <Content Include="Views\OrdenRecaudacion\Nueva.cshtml" />
     <Content Include="Views\OrdenRecaudacion\Detalles.cshtml" />
     <Content Include="Views\OrdenRecaudacion\Editar.cshtml" />
@@ -2955,18 +2952,11 @@
     <Content Include="Views\ControlFR3\Editar.cshtml" />
     <Content Include="Views\Orden\Detalle.cshtml" />
     <Content Include="Views\Orden\MisOrdenes.cshtml" />
-    <Content Include="Views\Checklist\EmitirAOCR.cshtml" />
-    <Content Include="Views\Checklist\Legalizar.cshtml" />
-    <Content Include="Views\Checklist\ValidacionFinal.cshtml" />
-    <Content Include="Views\Direccion\AprobarSolicitudes.cshtml" />
     <Content Include="Views\Direccion\Crear.cshtml" />
     <Content Include="Views\Direccion\Detalle.cshtml" />
     <Content Include="Views\Direccion\Editar.cshtml" />
     <Content Include="Views\Direccion\Eliminar.cshtml" />
-    <Content Include="Views\Direccion\EmitirAOCR.cshtml" />
     <Content Include="Views\Direccion\Index.cshtml" />
-    <Content Include="Views\Direccion\Legalizar.cshtml" />
-    <Content Include="Views\Direccion\ValidacionFinal.cshtml" />
     <Content Include="Views\Financiero\TodasOrdenes.cshtml" />
     <Content Include="Views\ReportesFinancieros\Index.cshtml" />
     <Content Include="Views\ReportesFinancieros\_Filtros.cshtml" />
@@ -2974,15 +2964,9 @@
     <Content Include="Views\ReportesFinancieros\_Graficos.cshtml" />
     <Content Include="Views\ReportesFinancieros\_TablaResultados.cshtml" />
     <Content Include="Views\ReportesFinancieros\ExportPdf.cshtml" />
-    <Content Include="Views\Informe\EmitirAOCR.cshtml" />
-    <Content Include="Views\Informe\Legalizar.cshtml" />
-    <Content Include="Views\Informe\ValidacionFinal.cshtml" />
     <Content Include="Views\SolicitudAOCR\_CreateModal.cshtml" />
     <Content Include="Views\SolicitudAOCR\_FormularioEmisionAOCR_REVISION.md" />
     <Content Include="Views\SolicitudAOCR\Modificacion.cshtml" />
-    <Content Include="Views\Usuario\EmitirAOCR.cshtml" />
-    <Content Include="Views\Usuario\Legalizar.cshtml" />
-    <Content Include="Views\Usuario\ValidacionFinal.cshtml" />
     <Content Include="Views\RT\Registro.cshtml" />
     <Content Include="Views\RT\Declaracion.cshtml" />
     <Content Include="Views\RT\Designacion.cshtml" />

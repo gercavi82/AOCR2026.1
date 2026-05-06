@@ -254,7 +254,7 @@ WITH asignaciones AS
     FROM rol r
     JOIN seguridad_permiso p
       ON p.codigo IN ('LEGAL_REVISAR_SOLICITUD', 'LEGAL_GENERAR_CERTIFICADO')
-    WHERE UPPER(TRIM(r.descripcion)) IN ('COORDINACIONLEGAL', 'COORDINADORLEGAL', 'ADMINISTRADOR')
+    WHERE UPPER(TRIM(r.descripcion)) IN ('COORDINACIONLEGAL', 'COORDINADORLEGAL', 'DIRECTORGENERAL', 'ADMINISTRADOR')
 )
 INSERT INTO seguridad_rol_permiso
     (codigorol, id_permiso, activo, creado_en, creado_por, actualizado_en, actualizado_por)

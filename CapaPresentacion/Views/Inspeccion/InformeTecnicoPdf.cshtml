@@ -101,6 +101,9 @@
     var nombreInspectorFirma = firmadoInspector && !string.IsNullOrWhiteSpace(firmanteInspector) ? firmanteInspector : inspector;
     var nombreInspectorVisual = !string.IsNullOrWhiteSpace(nombreInspectorFirma) ? nombreInspectorFirma.Trim().ToUpperInvariant() : textoNoAplica.ToUpperInvariant();
     var licenciaInspectorVisual = !string.IsNullOrWhiteSpace(licenciaInspector) ? "No. LICENCIA " + licenciaInspector.Trim() : textoNoAplica.ToUpperInvariant();
+    var firmadoDirdac = informe != null && informe.FirmadoDirdac;
+    var revisadoPor = informe != null && !string.IsNullOrWhiteSpace(informe.UsuarioFirma2) ? informe.UsuarioFirma2 : null;
+    var nombreDirdacVisual = !string.IsNullOrWhiteSpace(revisadoPor) ? revisadoPor.Trim().ToUpperInvariant() : "DIRECTOR / JEFATURA";
 }
 
 @section PdfHead {
@@ -257,9 +260,14 @@
 
         @if (mostrarFirmas && mostrarFirmaDirector)
         {
-            <div class="hidden-anchor">
-                <span>ANCLA_FIRMA_DIRDAC_JEFATURA</span>
-                <span>FIRMA DEL DIRECTOR / JEFATURA</span>
+            <div class="signature-block">
+                <div class="signature-slot" data-firma-rol="INFORME_TECNICO_DIRDAC">
+                    <span class="firma-anchor">ANCLA_FIRMA_DIRDAC_JEFATURA</span>
+                </div>
+                <div class="signature-name">@nombreDirdacVisual</div>
+                <div class="signature-license">@(firmadoDirdac && informe != null && informe.FechaFirma2.HasValue ? "REVISADO " + informe.FechaFirma2.Value.ToString("dd/MM/yyyy", cultura) : textoNoAplica.ToUpperInvariant())</div>
+                <div class="signature-role">FIRMA DEL DIRECTOR / JEFATURA</div>
+                <div class="signature-specialty">Nombre: @nombreDirdacVisual &nbsp; Cargo: DIRECCION / JEFATURA &nbsp; Fecha: @(firmadoDirdac && informe != null && informe.FechaFirma2.HasValue ? informe.FechaFirma2.Value.ToString("dd/MM/yyyy", cultura) : textoNoAplica)</div>
             </div>
         }
     </div>

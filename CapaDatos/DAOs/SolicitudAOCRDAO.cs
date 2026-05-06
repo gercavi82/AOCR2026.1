@@ -956,8 +956,8 @@ WHERE codigo_solicitud=@id AND deleted_at IS NULL;";
                 var inspectorPrincipal = usuarioInternoRtDao.ObtenerInspectorAsignableActivo(cedulaPrincipal, tipoInspectorNormalizado);
                 if (inspectorPrincipal == null)
                 {
-                    _logger.LogWarning("[GestionInspeccion] PuedeGestionar=False. Motivo=Inspector principal no existe/activo en RT. Cedula=" + cedulaPrincipal);
-                    mensaje = "El inspector principal seleccionado no existe o no está activo en Usuarios RT / Inspectores.";
+                    _logger.LogWarning("[GestionInspeccion] PuedeGestionar=False. Motivo=Inspector principal no existe/activo en catalogo. Cedula=" + cedulaPrincipal);
+                    mensaje = "El inspector principal seleccionado no existe o no está activo en el catálogo de inspectores.";
                     return false;
                 }
 
@@ -967,8 +967,8 @@ WHERE codigo_solicitud=@id AND deleted_at IS NULL;";
                     inspectorApoyo = usuarioInternoRtDao.ObtenerInspectorAsignableActivo(cedulaApoyo, tipoInspectorNormalizado);
                     if (inspectorApoyo == null)
                     {
-                        _logger.LogWarning("[GestionInspeccion] PuedeGestionar=False. Motivo=Inspector apoyo no existe/activo en RT. Cedula=" + cedulaApoyo);
-                        mensaje = "El inspector de apoyo seleccionado no existe o no está activo en Usuarios RT / Inspectores.";
+                        _logger.LogWarning("[GestionInspeccion] PuedeGestionar=False. Motivo=Inspector apoyo no existe/activo en catalogo. Cedula=" + cedulaApoyo);
+                        mensaje = "El inspector de apoyo seleccionado no existe o no está activo en el catálogo de inspectores.";
                         return false;
                     }
 

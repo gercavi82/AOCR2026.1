@@ -239,7 +239,10 @@ namespace CapaDatos.Constants
                 $"/Inspeccion/Detalle/{codigoInspeccion}";
 
             public static string Pago(int codigoPago) =>
-                $"/Pago/Detalle/{codigoPago}";
+                $"/Pago/Ver/{codigoPago}";
+
+            public static string Hallazgo(int codigoHallazgo) =>
+                $"/Inspeccion/VerHallazgo/{codigoHallazgo}";
 
             public static string OrdenRecaudacion(int codigoOrden) =>
                 $"/OrdenRecaudacion/Detalle/{codigoOrden}";

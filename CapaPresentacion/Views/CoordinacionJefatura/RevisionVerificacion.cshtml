@@ -65,7 +65,6 @@
 
     var toolbarLinks = new List<string>
     {
-        "<a href=\"" + Url.Action("Index", "Tecnico") + "\" class=\"btn btn-aocr-secondary\"><i class=\"fas fa-list-check\"></i><span>Bandeja técnica</span></a>",
         "<a href=\"" + Url.Action("Index", "Dashboard") + "\" class=\"btn btn-aocr-secondary\"><i class=\"fas fa-chart-line\"></i><span>Dashboard</span></a>"
     };
 
@@ -76,7 +75,7 @@
 
     if (User.IsInRole("CoordinacionLegal") || User.IsInRole("CoordinadorLegal") || User.IsInRole("DirectorGeneral") || User.IsInRole("Administrador"))
     {
-        toolbarLinks.Add("<a href=\"" + Url.Action("LegalizarAocr", "CoordinacionJefatura") + "\" class=\"btn btn-aocr-primary\"><i class=\"fas fa-scale-balanced\"></i><span>Legalizar AOCR</span></a>");
+        toolbarLinks.Add("<a href=\"" + Url.Action("RevisarLegalizacion", "SolicitudAOCR") + "\" class=\"btn btn-aocr-primary\"><i class=\"fas fa-scale-balanced\"></i><span>Legalizar AOCR</span></a>");
     }
 
     var toolbarData = new ViewDataDictionary

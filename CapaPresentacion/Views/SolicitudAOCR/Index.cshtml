@@ -405,7 +405,7 @@
                 <a id="btnEmisionAOCR" class="dropdown-item" href="#">
                     <i class="fas fa-file-alt text-primary me-2"></i> Emisión AOCR
                 </a>
-                <a class="dropdown-item" href="@Url.Action("Modificacion", "Operador")">
+                <a class="dropdown-item" href="@Url.Action("Index", "SolicitudAOCR", new { tipoSolicitud = 3, abrirModal = true })">
                     <i class="fas fa-edit text-info me-2"></i> Modificación
                 </a>
                 <div class="dropdown-divider"></div>
@@ -475,11 +475,13 @@
 @section scripts {
     <script>
     $(document).ready(function () {
+        var abrirModalInicial = @Html.Raw(((bool?)ViewBag.AbrirModalInicial ?? false) ? "true" : "false");
+        var tipoSolicitudInicial = @((int?)ViewBag.TipoSolicitudInicial ?? 1);
 
-        // Abrir modal de inmediato si llega con ?abrir=nueva
+        // Soporta tanto la apertura canonical via ViewBag como el querystring legacy ?abrir=nueva.
         var urlParams = new URLSearchParams(window.location.search);
-        if (urlParams.get('abrir') === 'nueva') {
-            setTimeout(function () { cargarFormulario(null); }, 150);
+        if (abrirModalInicial || urlParams.get('abrir') === 'nueva') {
+            setTimeout(function () { cargarFormulario(null, tipoSolicitudInicial); }, 150);
         }
 
         var datosGlobales = [];
@@ -679,14 +681,14 @@
         // Modal
         $('#btnEmisionAOCR').on('click', function(e) {
             e.preventDefault();
-            cargarFormulario(null);
+            cargarFormulario(null, 1);
         });
 
         window.consultarSolicitud = function(id) {
-            cargarFormulario(id);
+            cargarFormulario(id, null);
         };
 
-        function cargarFormulario(idSolicitud) {
+        function cargarFormulario(idSolicitud, tipoSolicitud) {
             var modalEl = document.getElementById('modalFormulario');
             var modal = bootstrap.Modal.getOrCreateInstance(modalEl);
             modal.show();
@@ -698,7 +700,7 @@
             $.ajax({
                 url: '@Url.Action("FormularioEmisionAOCR", "SolicitudAOCR")',
                 type: 'GET',
-                data: { oid: idSolicitud },
+                data: { oid: idSolicitud, tipoSolicitud: tipoSolicitud },
                 success: function(data) {
                     $('#contenidoModal').hide().html(data).fadeIn(200);
                 },

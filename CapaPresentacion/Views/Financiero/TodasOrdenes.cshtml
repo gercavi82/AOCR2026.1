@@ -110,7 +110,8 @@
                                     <td class="text-center">
                                         <a href="@Url.Action("Detalles", "OrdenRecaudacion", new { id = orden.Id })"
                                            class="btn btn-sm btn-outline-primary"
-                                           title="Ver detalles">
+                                           title="Ver detalles"
+                                           aria-label="Ver detalles de la orden @orden.NumeroOrden">
                                             <i class="fas fa-eye"></i>
                                             <span class="visually-hidden">Ver Detalles</span>
                                         </a>
@@ -121,16 +122,25 @@
 
                                         @if (estadoNorm == EstadoOrden.EnRevisionFinanciera)
                                         {
-                                            using (Html.BeginForm("AprobarOrden", "Financiero", FormMethod.Post))
+                                            using (Html.BeginForm("AprobarOrden", "Financiero", FormMethod.Post, new { @class = "d-inline" }))
                                             {
                                                 @Html.AntiForgeryToken()
                                                 @Html.Hidden("id", orden.Id)
-                                                <button type="submit" class="btn btn-sm btn-success ms-1">Aprobar</button>
+                                                <button type="submit"
+                                                        class="btn btn-sm btn-success ms-1"
+                                                        title="Aprobar orden"
+                                                        aria-label="Aprobar orden @orden.NumeroOrden">
+                                                    <i class="fas fa-check"></i>
+                                                    <span class="visually-hidden">Aprobar</span>
+                                                </button>
                                             }
 
                                             <button class="btn btn-sm btn-danger ms-1" type="button"
+                                                    title="Devolver orden"
+                                                    aria-label="Devolver orden @orden.NumeroOrden"
                                                     data-bs-toggle="modal" data-bs-target="#modalRechazo-@orden.Id">
-                                                Devolver
+                                                <i class="fas fa-times"></i>
+                                                <span class="visually-hidden">Devolver</span>
                                             </button>
 
                                             <div class="modal fade" id="modalRechazo-@orden.Id" tabindex="-1" aria-hidden="true">

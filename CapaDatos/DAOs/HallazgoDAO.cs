@@ -189,6 +189,48 @@ namespace CapaDatos.DAOs
             return lista;
         }
 
+        public Hallazgo ObtenerPorId(int codigoHallazgo)
+        {
+            if (codigoHallazgo <= 0)
+            {
+                return null;
+            }
+
+            try
+            {
+                using (var conn = new NpgsqlConnection(CS))
+                {
+                    conn.Open();
+                    EnsureSchema(conn);
+
+                    string sql = $@"
+                        SELECT *
+                        FROM {TABLA}
+                        WHERE codigo_hallazgo = @codigoHallazgo
+                        LIMIT 1;";
+
+                    using (var cmd = new NpgsqlCommand(sql, conn))
+                    {
+                        cmd.Parameters.AddWithValue("@codigoHallazgo", codigoHallazgo);
+
+                        using (var dr = cmd.ExecuteReader())
+                        {
+                            return dr.Read() ? MapearDesdeDataReader(dr) : null;
+                        }
+                    }
+                }
+            }
+            catch (PostgresException ex) when (EsRelacionNoExiste(ex))
+            {
+                return null;
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error en ObtenerPorId: {ex.Message}");
+                return null;
+            }
+        }
+
         // ✅ Cerrar hallazgo
         public bool CerrarHallazgo(int codigoHallazgo, string accionCorrectiva, string responsable, string usuario)
         {

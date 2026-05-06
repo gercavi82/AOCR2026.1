@@ -22,8 +22,11 @@
 
     var estadoActual = EstadoSolicitud.Normalizar(Model.Estado);
     var estadoVisibleExpediente = (ViewBag.EstadoDocumentalVisible as string ?? Model.Estado ?? string.Empty);
+    var procesoCerradoOperativamente = (bool)(ViewBag.ProcesoCerradoOperativamente ?? false);
+    var documentosObligatoriosFaltantes = (ViewBag.DocumentosObligatoriosFaltantes as List<string>) ?? new List<string>();
     var esSolicitudModificacion = Model.TipoSolicitud.GetValueOrDefault() == 3;
     var puedeInspectorDocumental =
+        !procesoCerradoOperativamente &&
         User.IsInRole("Inspector") &&
         (estadoActual == EstadoSolicitud.Pendiente
          || estadoActual == EstadoSolicitud.EnRevision
@@ -81,48 +84,77 @@
     var urlInspeccionVinculada = puedeAbrirInspeccionVinculada
         ? Url.Action("Detalle", "Inspeccion", new { id = inspeccionVinculada.CodigoInspeccion })
         : string.Empty;
+    Func<string, string, string> resolverInspectorDetalle = (nombre, identificador) =>
+    {
+        var nombreLimpio = string.IsNullOrWhiteSpace(nombre) ? string.Empty : nombre.Trim();
+        var identificadorLimpio = string.IsNullOrWhiteSpace(identificador) ? string.Empty : identificador.Trim();
 
-    var puedeSolicitarInspeccion =
-        (User.IsInRole("Inspector") || User.IsInRole("Administrador")) &&
-        (estadoActual == EstadoSolicitud.DocumentacionCompleta
-         || estadoActual == EstadoSolicitud.PendienteAsignacionRT);
+        if (!string.IsNullOrWhiteSpace(nombreLimpio))
+        {
+            return string.IsNullOrWhiteSpace(identificadorLimpio)
+                || string.Equals(nombreLimpio, identificadorLimpio, StringComparison.OrdinalIgnoreCase)
+                ? nombreLimpio
+                : nombreLimpio + " - " + identificadorLimpio;
+        }
+
+        return !string.IsNullOrWhiteSpace(identificadorLimpio)
+            ? identificadorLimpio
+            : "Sin asignar";
+    };
+    var inspectorPrincipalNombre = !string.IsNullOrWhiteSpace(Model.TecnicoResponsableNombre)
+        ? Model.TecnicoResponsableNombre
+        : (inspeccionVinculada != null ? inspeccionVinculada.InspectorPrincipalNombre : null);
+    var inspectorPrincipalIdentificador = !string.IsNullOrWhiteSpace(Model.TecnicoResponsableCedula)
+        ? Model.TecnicoResponsableCedula
+        : (inspeccionVinculada != null && !string.IsNullOrWhiteSpace(inspeccionVinculada.InspectorPrincipalCedula)
+            ? inspeccionVinculada.InspectorPrincipalCedula
+            : (Model.CodigoTecnico.HasValue
+                ? Model.CodigoTecnico.Value.ToString()
+                : (inspeccionVinculada != null && inspeccionVinculada.CodigoInspector.HasValue
+                    ? inspeccionVinculada.CodigoInspector.Value.ToString()
+                    : null)));
+    var inspectorAsignadoDetalle = resolverInspectorDetalle(inspectorPrincipalNombre, inspectorPrincipalIdentificador);
+    var inspectorApoyoNombre = !string.IsNullOrWhiteSpace(Model.InspectorApoyoNombre)
+        ? Model.InspectorApoyoNombre
+        : (inspeccionVinculada != null ? inspeccionVinculada.InspectorApoyoNombre : null);
+    var inspectorApoyoIdentificador = !string.IsNullOrWhiteSpace(Model.InspectorApoyoCedula)
+        ? Model.InspectorApoyoCedula
+        : (inspeccionVinculada != null ? inspeccionVinculada.InspectorApoyoCedula : null);
+    var inspectorApoyoDetalle = resolverInspectorDetalle(inspectorApoyoNombre, inspectorApoyoIdentificador);
 
     var puedeMarcarElaboracion =
+        !procesoCerradoOperativamente &&
         (User.IsInRole("CoordinadorInspecciones") || User.IsInRole("Administrador")) &&
         estadoActual == EstadoSolicitud.EnInspeccion;
 
     var puedeMarcarRevision =
+        !procesoCerradoOperativamente &&
         (User.IsInRole("JefaturaTecnica") || User.IsInRole("Administrador")) &&
         estadoActual == EstadoSolicitud.AOCR_EnElaboracion;
 
     var puedeValidarJefatura =
+        !procesoCerradoOperativamente &&
         (User.IsInRole("JefaturaTecnica") || User.IsInRole("Administrador")) &&
         estadoActual == EstadoSolicitud.AOCR_EnRevision;
 
     var puedeLegalizar =
+        !procesoCerradoOperativamente &&
         (User.IsInRole("CoordinacionLegal") || User.IsInRole("DirectorGeneral") || User.IsInRole("Administrador")) &&
-        estadoActual == EstadoSolicitud.AOCR_Validado;
+        (estadoActual == EstadoSolicitud.AOCR_Validado || estadoActual == EstadoSolicitud.Aprobada);
 
     var puedeEmitirAocr =
+        !procesoCerradoOperativamente &&
         (User.IsInRole("CoordinacionLegal") || User.IsInRole("DirectorGeneral") || User.IsInRole("Administrador")) &&
         estadoActual == EstadoSolicitud.AOCR_Legalizado;
+    var mensajeExito = (TempData["Exito"] ?? TempData["success"]) as string;
+    var mensajeError = (TempData["Error"] ?? TempData["error"]) as string;
+    var mensajeWarning = TempData["Warning"] as string;
     var tieneInspectorAsignado = Model.CodigoTecnico.HasValue
         || !string.IsNullOrWhiteSpace(Model.TecnicoResponsableCedula)
         || !string.IsNullOrWhiteSpace(Model.TecnicoResponsableNombre);
-    var puedeSubsanar = esPropietario && estadoActual == EstadoSolicitud.Observada;
-    var puedeGestionarAsignacionInspector =
-        (User.IsInRole("Coordinador") || User.IsInRole("CoordinadorInspecciones") || User.IsInRole("Administrador")) &&
-        (estadoActual == EstadoSolicitud.EnRevision
-         || estadoActual == EstadoSolicitud.DocumentacionPendiente
-         || estadoActual == EstadoSolicitud.Subsanada
-         || estadoActual == EstadoSolicitud.RequiereInspeccion
-         || estadoActual == EstadoSolicitud.PendienteAsignacionRT
-         || estadoActual == EstadoSolicitud.AceptacionDocumental
-         || estadoActual == EstadoSolicitud.DocumentacionCompleta
-         || estadoActual == EstadoSolicitud.EnInspeccion);
-    var textoAccionInspector = tieneInspectorAsignado ? "Reasignar inspector" : "Asignar inspector";
-    var urlAsignacionInspector = Url.Action("AsignarInspector", "Tecnico", new { solicitudId = Model.CodigoSolicitud });
+    var puedeSubsanar = !procesoCerradoOperativamente && esPropietario && estadoActual == EstadoSolicitud.Observada;
     var puedeFirmarAceptacionDocumental =
+        !procesoCerradoOperativamente &&
         !esSolicitudModificacion &&
         (User.IsInRole("Coordinador") || User.IsInRole("CoordinadorInspecciones") || User.IsInRole("Administrador")) &&
         estadoActual == EstadoSolicitud.AceptacionDocumental;
@@ -131,10 +163,12 @@
         (esPropietario || User.IsInRole("Coordinador") || User.IsInRole("CoordinadorInspecciones") || User.IsInRole("Administrador")) &&
         (estadoActual == EstadoSolicitud.FirmadoCoordinador || estadoActual == EstadoSolicitud.Finalizado);
     var puedeResolverRutaModificacion =
+        !procesoCerradoOperativamente &&
         esSolicitudModificacion &&
         (User.IsInRole("Inspector") || User.IsInRole("Administrador")) &&
         estadoActual == EstadoSolicitud.AceptacionDocumental;
     var puedePrepararCondicionesModificacion =
+        !procesoCerradoOperativamente &&
         esSolicitudModificacion &&
         (User.IsInRole("Inspector")
          || User.IsInRole("CoordinacionLegal")
@@ -149,14 +183,17 @@
         (estadoActual == EstadoSolicitud.GeneradoCondicionesLimitaciones
          || estadoActual == EstadoSolicitud.EnRevisionCoordinadorFinal);
     var puedeRevisarCondicionesModificacion =
+        !procesoCerradoOperativamente &&
         esSolicitudModificacion &&
         (User.IsInRole("Coordinador") || User.IsInRole("CoordinadorInspecciones") || User.IsInRole("Administrador")) &&
         estadoActual == EstadoSolicitud.GeneradoCondicionesLimitaciones;
     var puedeEnviarCondicionesDcav =
+        !procesoCerradoOperativamente &&
         esSolicitudModificacion &&
         (User.IsInRole("Coordinador") || User.IsInRole("CoordinadorInspecciones") || User.IsInRole("Administrador")) &&
         estadoActual == EstadoSolicitud.EnRevisionCoordinadorFinal;
     var puedeFirmarCondicionesModificacion =
+        !procesoCerradoOperativamente &&
         esSolicitudModificacion &&
         (User.IsInRole("DIRDAC")
          || User.IsInRole("Direccion")
@@ -175,6 +212,8 @@
          || User.IsInRole("CoordinadorInspecciones")
          || User.IsInRole("Administrador")) &&
         (estadoActual == EstadoSolicitud.FirmadoDcav || estadoActual == EstadoSolicitud.Finalizado);
+    var puedeIniciarNuevaOrden = esPropietario || User.IsInRole("Solicitante");
+    var urlNuevaOrden = Url.Action("Index", "SolicitudAOCR", new { tipoSolicitud = 1, abrirModal = true });
 
     var direccionCompleta = string.Join(", ", new[]
     {
@@ -221,7 +260,7 @@
 
 <style>
     .aocr-detail-shell {
-        padding: 1.5rem 0 2rem;
+        padding: clamp(1rem, 2vw, 1.5rem) 0 2rem;
     }
 
     .aocr-detail-card {
@@ -253,7 +292,7 @@
     }
 
     .aocr-hero-title {
-        font-size: 2rem;
+        font-size: clamp(1.5rem, 4vw, 2rem);
         font-weight: 700;
         margin: 1rem 0 0.5rem;
     }
@@ -462,18 +501,66 @@
         letter-spacing: 0.03em;
     }
 
-    @@media (max-width: 767.98px) {
-        .aocr-hero-title {
-            font-size: 1.5rem;
-        }
-
-        .aocr-detail-shell {
-            padding-top: 1rem;
-        }
-    }
 </style>
 
 <div class="container-fluid aocr-detail-shell">
+    @if (!string.IsNullOrWhiteSpace(mensajeExito))
+    {
+        <div class="alert alert-success mb-4" role="alert">@mensajeExito</div>
+    }
+
+    @if (!string.IsNullOrWhiteSpace(mensajeError))
+    {
+        <div class="alert alert-danger mb-4" role="alert">@mensajeError</div>
+    }
+
+    @if (!string.IsNullOrWhiteSpace(mensajeWarning))
+    {
+        <div class="alert alert-warning mb-4" role="alert">@mensajeWarning</div>
+    }
+
+    @if (procesoCerradoOperativamente)
+    {
+        <div class="card border-secondary mb-4" style="border-left: 5px solid #6c757d !important;">
+            <div class="card-body p-4">
+                <div class="d-flex align-items-start gap-3">
+                    <div class="text-secondary fs-3"><i class="fas fa-lock"></i></div>
+                    <div class="flex-grow-1">
+                        <h5 class="fw-bold text-secondary mb-1">Proceso cerrado operativamente</h5>
+                        <p class="text-muted mb-3">Este expediente ya terminó su flujo AOCR y quedó en modo consulta histórica. Las acciones operativas quedan bloqueadas; si necesita continuar con un nuevo trámite, genere una Nueva Orden de Recaudación.</p>
+                        @if (puedeIniciarNuevaOrden)
+                        {
+                            <a href="@urlNuevaOrden" class="btn btn-primary">
+                                <i class="fas fa-plus-circle me-1"></i> Nueva Orden de Recaudación
+                            </a>
+                        }
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+
+    @if (!procesoCerradoOperativamente && documentosObligatoriosFaltantes.Count > 0)
+    {
+        <div class="card border-danger mb-4" style="border-left: 5px solid #dc3545 !important;">
+            <div class="card-body p-4">
+                <div class="d-flex align-items-start gap-3">
+                    <div class="text-danger fs-3"><i class="fas fa-file-exclamation"></i></div>
+                    <div class="flex-grow-1">
+                        <h5 class="fw-bold text-danger mb-1">Documentación obligatoria pendiente</h5>
+                        <p class="text-muted mb-2">No puede continuar al siguiente paso mientras no se carguen todos los documentos solicitados en la Solicitud AOCR.</p>
+                        <ul class="mb-0">
+                            @foreach (var documentoPendiente in documentosObligatoriosFaltantes)
+                            {
+                                <li>@documentoPendiente</li>
+                            }
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+
     <div class="card aocr-detail-card aocr-hero mb-4">
         <div class="card-body">
             <div class="d-flex flex-column flex-lg-row justify-content-between gap-3 align-items-lg-start">
@@ -505,8 +592,8 @@
                     <div class="aocr-summary-value">@(string.IsNullOrWhiteSpace(Model.TipoOperacion) ? "No definido" : Model.TipoOperacion)</div>
                 </div>
                 <div class="aocr-summary-item">
-                    <div class="aocr-summary-label">Tecnico responsable</div>
-                    <div class="aocr-summary-value">@(string.IsNullOrWhiteSpace(Model.TecnicoResponsableNombre) ? "Sin asignar" : Model.TecnicoResponsableNombre)</div>
+                    <div class="aocr-summary-label">Inspector asignado</div>
+                    <div class="aocr-summary-value">@inspectorAsignadoDetalle</div>
                 </div>
             </div>
         </div>
@@ -573,8 +660,12 @@
                             <div class="aocr-info-value">@(string.IsNullOrWhiteSpace(Model.DescripcionOperacion) ? "No definida" : Model.DescripcionOperacion)</div>
                         </div>
                         <div class="aocr-info-item">
-                            <div class="aocr-info-label"><i class="fas fa-user-cog"></i> Tecnico responsable</div>
-                            <div class="aocr-info-value">@(string.IsNullOrWhiteSpace(Model.TecnicoResponsableNombre) ? "Sin asignar" : Model.TecnicoResponsableNombre + (string.IsNullOrWhiteSpace(Model.TecnicoResponsableCedula) ? string.Empty : " - " + Model.TecnicoResponsableCedula))</div>
+                            <div class="aocr-info-label"><i class="fas fa-user-cog"></i> Inspector principal</div>
+                            <div class="aocr-info-value">@inspectorAsignadoDetalle</div>
+                        </div>
+                        <div class="aocr-info-item">
+                            <div class="aocr-info-label"><i class="fas fa-user-friends"></i> Inspector apoyo</div>
+                            <div class="aocr-info-value">@inspectorApoyoDetalle</div>
                         </div>
                     </div>
                 </div>
@@ -615,26 +706,6 @@
         </div>
     }
 
-    @if (puedeGestionarAsignacionInspector)
-    {
-        <div class="card border-secondary mb-4" style="border-left: 5px solid #6c757d !important;">
-            <div class="card-body p-4">
-                <div class="d-flex align-items-start gap-3">
-                    <div class="text-secondary fs-3"><i class="fas fa-user-check"></i></div>
-                    <div class="flex-grow-1">
-                        <h5 class="fw-bold text-secondary mb-1">Asignación de Inspector</h5>
-                        <p class="text-muted mb-3">@(tieneInspectorAsignado
-                            ? "La solicitud ya tiene inspector asignado. Puede reasignar si requiere redistribuir la revisión o actualizar la fecha programada."
-                            : "El coordinador debe asignar inspector antes de que continúe la revisión técnica de la solicitud y la factura.")</p>
-                        <a href="@urlAsignacionInspector" class="btn btn-outline-secondary">
-                            <i class="fas fa-user-cog me-1"></i> @textoAccionInspector
-                        </a>
-                    </div>
-                </div>
-            </div>
-        </div>
-    }
-
     <div class="card aocr-detail-card aocr-action-card mb-4">
         <div class="card-body p-4">
             <div class="aocr-section-title">
@@ -643,7 +714,7 @@
             </div>
 
             @{
-                var puedeGenerarAocr = (ViewBag.PuedeGenerarAOCR != null) && (bool)ViewBag.PuedeGenerarAOCR;
+                var puedeGenerarAocr = !procesoCerradoOperativamente && (ViewBag.PuedeGenerarAOCR != null) && (bool)ViewBag.PuedeGenerarAOCR;
                 var motivoAocr = ViewBag.MotivoGenerarAOCR as string;
                 var aocrYaGenerado = (ViewBag.AocrYaGenerado != null) && (bool)ViewBag.AocrYaGenerado;
                 var documentoAocr = ViewBag.DocumentoAOCRGenerado as CapaModelo.Documento;
@@ -693,7 +764,9 @@
                     <button type="button"
                             class="btn btn-primary aocr-action-btn-full"
                             disabled="disabled"
-                            title="@(motivoAocr ?? "Disponible una vez la inspeccion sea satisfactoria y el informe tecnico quede firmado por el inspector")"
+                            title="@(procesoCerradoOperativamente
+                                ? "El expediente está cerrado; solo permanece habilitada la consulta histórica y la Nueva Orden de Recaudación."
+                                : (motivoAocr ?? "Disponible una vez la inspeccion sea satisfactoria y el informe tecnico quede firmado por el inspector"))"
                             style="opacity: 0.55; cursor: not-allowed;">
                         <i class="fas fa-file-signature"></i>
                         Generar AOCR
@@ -736,7 +809,8 @@
             Tuple<string, string> revisionActual;
             return revisionesDocumentales.TryGetValue(doc.CodigoDocumento, out revisionActual)
                    || RevisionDocumentalDisplayHelper.IsAcceptedState(estadoDoc)
-                   || RevisionDocumentalDisplayHelper.IsReturnedState(estadoDoc);
+                   || RevisionDocumentalDisplayHelper.IsReturnedState(estadoDoc)
+                   || RevisionDocumentalDisplayHelper.IsModificationRequestedState(estadoDoc);
         });
         var documentosConObservacionPendiente = documentosRevision.Count(doc =>
         {
@@ -748,6 +822,10 @@
             {
                 decisionActual = (revisionActual.Item1 ?? string.Empty).Trim().ToUpperInvariant();
                 observacionActual = string.IsNullOrWhiteSpace(revisionActual.Item2) ? observacionActual : revisionActual.Item2.Trim();
+            }
+            else if (RevisionDocumentalDisplayHelper.IsModificationRequestedState(doc.Estado))
+            {
+                decisionActual = "OBSERVADO";
             }
             else if (RevisionDocumentalDisplayHelper.IsReturnedState(doc.Estado))
             {
@@ -763,7 +841,11 @@
             Tuple<string, string> revisionActual;
             var decisionActual = revisionesDocumentales.TryGetValue(doc.CodigoDocumento, out revisionActual) && revisionActual != null
                 ? (revisionActual.Item1 ?? string.Empty).Trim().ToUpperInvariant()
-                : ((RevisionDocumentalDisplayHelper.IsAcceptedState(doc.Estado) ? "ACEPTADO" : (RevisionDocumentalDisplayHelper.IsReturnedState(doc.Estado) ? "DEVUELTO" : string.Empty)));
+                : (RevisionDocumentalDisplayHelper.IsAcceptedState(doc.Estado)
+                    ? "ACEPTADO"
+                    : (RevisionDocumentalDisplayHelper.IsModificationRequestedState(doc.Estado)
+                        ? "OBSERVADO"
+                        : (RevisionDocumentalDisplayHelper.IsReturnedState(doc.Estado) ? "DEVUELTO" : string.Empty)));
             return decisionActual == "ACEPTADO";
         });
         var existeObservadoODevuelto = documentosRevision.Any(doc =>
@@ -771,7 +853,11 @@
             Tuple<string, string> revisionActual;
             var decisionActual = revisionesDocumentales.TryGetValue(doc.CodigoDocumento, out revisionActual) && revisionActual != null
                 ? (revisionActual.Item1 ?? string.Empty).Trim().ToUpperInvariant()
-                : ((RevisionDocumentalDisplayHelper.IsAcceptedState(doc.Estado) ? "ACEPTADO" : (RevisionDocumentalDisplayHelper.IsReturnedState(doc.Estado) ? "DEVUELTO" : string.Empty)));
+                : (RevisionDocumentalDisplayHelper.IsAcceptedState(doc.Estado)
+                    ? "ACEPTADO"
+                    : (RevisionDocumentalDisplayHelper.IsModificationRequestedState(doc.Estado)
+                        ? "OBSERVADO"
+                        : (RevisionDocumentalDisplayHelper.IsReturnedState(doc.Estado) ? "DEVUELTO" : string.Empty)));
             return decisionActual == "DEVUELTO" || decisionActual == "OBSERVADO";
         });
 
@@ -830,7 +916,11 @@
                                     var tieneRevisionGuardada = revisionesDocumentales.TryGetValue(doc.CodigoDocumento, out revisionActual) && revisionActual != null;
                                     var decisionActual = tieneRevisionGuardada
                                         ? (revisionActual.Item1 ?? string.Empty).Trim().ToUpperInvariant()
-                                        : (RevisionDocumentalDisplayHelper.IsAcceptedState(estadoDoc) ? "ACEPTADO" : (RevisionDocumentalDisplayHelper.IsReturnedState(estadoDoc) ? "DEVUELTO" : string.Empty));
+                                        : (RevisionDocumentalDisplayHelper.IsAcceptedState(estadoDoc)
+                                            ? "ACEPTADO"
+                                            : (RevisionDocumentalDisplayHelper.IsModificationRequestedState(estadoDoc)
+                                                ? "OBSERVADO"
+                                                : (RevisionDocumentalDisplayHelper.IsReturnedState(estadoDoc) ? "DEVUELTO" : string.Empty)));
                                     var observacionActual = tieneRevisionGuardada
                                         ? (revisionActual.Item2 ?? string.Empty).Trim()
                                         : (doc.Observaciones ?? string.Empty).Trim();
@@ -846,8 +936,8 @@
                                             <select name="decision" class="form-select form-select-sm js-decision-documental" data-codigo-documento="@doc.CodigoDocumento" required form="@formId">
                                                 <option value="">Seleccione</option>
                                                 <option value="ACEPTADO" @(decisionActual == "ACEPTADO" ? "selected" : null)>Aceptado</option>
-                                                <option value="DEVUELTO" @(decisionActual == "DEVUELTO" ? "selected" : null)>Devuelto</option>
-                                                <option value="OBSERVADO" @(decisionActual == "OBSERVADO" ? "selected" : null)>Observado</option>
+                                                <option value="DEVUELTO" @(decisionActual == "DEVUELTO" ? "selected" : null)>Rechazado</option>
+                                                <option value="OBSERVADO" @(decisionActual == "OBSERVADO" ? "selected" : null)>Solicitar modificación</option>
                                             </select>
                                         </td>
                                         <td style="min-width: 280px;">
@@ -1030,7 +1120,7 @@
         </div>
     }
 
-    @if (esSolicitudModificacion && inspeccionVinculada != null && (estadoActual == EstadoSolicitud.RequiereInspeccion || estadoActual == EstadoSolicitud.EnInspeccion || estadoActual == EstadoSolicitud.PendienteAsignacionRT))
+    @if (inspeccionVinculada != null && (estadoActual == EstadoSolicitud.RequiereInspeccion || estadoActual == EstadoSolicitud.EnInspeccion || estadoActual == EstadoSolicitud.PendienteAsignacionRT))
     {
         <div class="card aocr-detail-card aocr-review-card warning mb-4">
             <div class="card-body p-4 d-flex flex-column flex-lg-row justify-content-between align-items-lg-center gap-3">
@@ -1039,14 +1129,14 @@
                         <i class="fas fa-clipboard-check"></i>
                         <span>Solicitud de inspeccion vinculada</span>
                     </div>
-                    <p class="text-muted mb-2">La modificación ya tiene una inspección asociada. La revisión, observación y subsanación deben continuar dentro del módulo de inspección para no perder trazabilidad con el trámite original.</p>
+                    <p class="text-muted mb-2">Este trámite ya tiene una inspección asociada. La revisión, observación, pago e inicio operativo deben continuar dentro del módulo de inspección para mantener la trazabilidad del flujo AOCR.</p>
                     <div class="small text-secondary">Inspeccion #@inspeccionVinculada.CodigoInspeccion - Estado actual: <strong>@textoEstadoInspeccion(estadoInspeccionVinculada)</strong></div>
                 </div>
                 @if (puedeAbrirInspeccionVinculada)
                 {
                     <a href="@urlInspeccionVinculada" class="btn btn-outline-primary aocr-action-btn flex-shrink-0">
                         <i class="fas fa-external-link-alt"></i>
-                        Abrir solicitud de inspeccion
+                        Abrir inspeccion vinculada
                     </a>
                 }
             </div>
@@ -1159,27 +1249,6 @@
                         Descargar documento firmado
                     </a>
                 </div>
-            </div>
-        </div>
-    }
-
-    @if (puedeSolicitarInspeccion)
-    {
-        <div class="card aocr-detail-card aocr-review-card warning mb-4">
-            <div class="card-body p-4 d-flex flex-column flex-lg-row justify-content-between align-items-lg-center gap-3">
-                <div>
-                    <div class="aocr-section-title mb-2">
-                        <i class="fas fa-clipboard-list"></i>
-                        <span>Gestion de Inspeccion</span>
-                    </div>
-                    <p class="text-muted mb-0">@(estadoActual == EstadoSolicitud.RequiereInspeccion
-                        ? "La modificación fue derivada a inspección y ya puede continuar en el módulo de inspección."
-                        : "La documentacion fue aceptada y el tramite esta listo para pasar a la fase de inspeccion.")</p>
-                </div>
-                <a href="@Url.Action("SolicitarInspeccion", "SolicitudAOCR", new { id = Model.CodigoSolicitud })" class="btn btn-outline-primary aocr-action-btn flex-shrink-0">
-                    <i class="fas fa-arrow-right"></i>
-                    @(estadoActual == EstadoSolicitud.RequiereInspeccion ? "Continuar a En Inspeccion" : "Pasar a En Inspeccion")
-                </a>
             </div>
         </div>
     }

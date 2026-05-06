@@ -16,6 +16,12 @@ namespace CapaPresentacion.Helpers
             return normalized == "DEVUELTO" || normalized == "RECHAZADO";
         }
 
+        public static bool IsModificationRequestedState(string estado)
+        {
+            var normalized = Normalize(estado);
+            return normalized == "OBSERVADO" || normalized == "MODIFICACION_SOLICITADA";
+        }
+
         public static string GetVisibleStateLabel(string estado)
         {
             if (IsAcceptedState(estado))
@@ -23,9 +29,14 @@ namespace CapaPresentacion.Helpers
                 return "ACEPTADO";
             }
 
+            if (IsModificationRequestedState(estado))
+            {
+                return "MODIFICACION SOLICITADA";
+            }
+
             if (IsReturnedState(estado))
             {
-                return "DEVUELTO";
+                return "RECHAZADO";
             }
 
             var normalized = Normalize(estado);
@@ -37,6 +48,11 @@ namespace CapaPresentacion.Helpers
             if (IsAcceptedState(estado))
             {
                 return "badge bg-success";
+            }
+
+            if (IsModificationRequestedState(estado))
+            {
+                return "badge bg-warning text-dark";
             }
 
             if (IsReturnedState(estado))

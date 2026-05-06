@@ -36,6 +36,8 @@
 
         bool tieneOrdenGenerada = false;
         bool tieneOrdenBorrador = false;
+        bool tieneOrdenPendienteProceso = false;
+        bool tieneOrdenPendienteComprobante = false;
         try
         {
             if (idUsuario > 0)
@@ -47,17 +49,27 @@
                 // Refrescar cada 30 segundos
                 var cacheTimeKey = cacheKey + "_t";
                 var cachedTime = Session[cacheTimeKey] as long?;
-                if (cached != null && cachedTime.HasValue && (now - cachedTime.Value) < TimeSpan.FromSeconds(30).Ticks)
+                if (cached != null && cached.Length >= 4 && cachedTime.HasValue && (now - cachedTime.Value) < TimeSpan.FromSeconds(30).Ticks)
                 {
                     tieneOrdenGenerada = cached[0] == 1;
                     tieneOrdenBorrador = cached[1] == 1;
+                    tieneOrdenPendienteProceso = cached[2] == 1;
+                    tieneOrdenPendienteComprobante = cached[3] == 1;
                 }
                 else
                 {
                     var daoOR = new OrdenRecaudacionDAO();
-                    tieneOrdenGenerada = daoOR.ExisteORGeneradaOPagada(idUsuario);
+                    tieneOrdenGenerada = daoOR.TieneOrdenHabilitanteAOCR(idUsuario);
                     tieneOrdenBorrador = daoOR.ExisteORMinima(idUsuario);
-                    Session[cacheKey] = new[] { tieneOrdenGenerada ? 1 : 0, tieneOrdenBorrador ? 1 : 0 };
+                    tieneOrdenPendienteProceso = daoOR.TieneOrdenActivaEnProceso(idUsuario);
+                    tieneOrdenPendienteComprobante = daoOR.TieneOrdenPendienteComprobante(idUsuario);
+                    Session[cacheKey] = new[]
+                    {
+                        tieneOrdenGenerada ? 1 : 0,
+                        tieneOrdenBorrador ? 1 : 0,
+                        tieneOrdenPendienteProceso ? 1 : 0,
+                        tieneOrdenPendienteComprobante ? 1 : 0
+                    };
                     Session[cacheTimeKey] = now;
                 }
             }
@@ -201,16 +213,29 @@
     {
         <!-- Indicador de estado de orden fijo en el sidebar -->
         var mostrarOrdenComoHabilitada = !requiereOrden || tieneOrdenGenerada;
-        var claseAlertaOrden = mostrarOrdenComoHabilitada ? "alert-success" : tieneOrdenBorrador ? "alert-warning" : "alert-danger";
-        var claseIconoOrden = mostrarOrdenComoHabilitada ? "text-success" : tieneOrdenBorrador ? "text-warning" : "text-danger";
+        var claseAlertaOrden = mostrarOrdenComoHabilitada
+            ? "alert-success"
+            : (tieneOrdenPendienteProceso ? "alert-warning" : (tieneOrdenBorrador ? "alert-warning" : "alert-danger"));
+        var claseIconoOrden = mostrarOrdenComoHabilitada
+            ? "text-success"
+            : (tieneOrdenPendienteProceso ? "text-warning" : (tieneOrdenBorrador ? "text-warning" : "text-danger"));
         <div class="alert aocr-sidebar-alert @claseAlertaOrden mb-3 py-2 small" role="alert">
             <div class="d-flex align-items-center">
                 <i class="fas fa-file-invoice-dollar @claseIconoOrden mr-2"></i>
                 <div>
                     @if (mostrarOrdenComoHabilitada)
                     {
-                        <strong>Orden Generada ✓</strong>
-                        <div class="text-success small">Puede acceder al sistema</div>
+                        <strong>Orden validada ✓</strong>
+                        <div class="text-success small">El pago ya habilita el flujo AOCR.</div>
+                    }
+                    else if (tieneOrdenPendienteProceso)
+                    {
+                        <strong>Orden en proceso ⚠</strong>
+                        <div class="text-warning small">
+                            <a href="@Url.Action("Index", "OrdenRecaudacion")" class="text-warning">
+                                @(tieneOrdenPendienteComprobante ? "Cargar comprobante desde Mis Órdenes" : "Revisar estado en Mis Órdenes")
+                            </a>
+                        </div>
                     }
                     else if (tieneOrdenBorrador)
                     {
@@ -286,13 +311,13 @@
                     @if (requiereOrden)
                     {
                         <li>
-                            <a class="aocr-link aocr-sidebar-item @(tieneOrdenBorrador ? "text-warning fw-bold" : "")" href="@(tieneOrdenBorrador ? Url.Action("Obligatoria","OrdenRecaudacion") : Url.Action("Nueva","OrdenRecaudacion"))">
-                                <i class="fas fa-file-invoice-dollar @(tieneOrdenBorrador ? "text-warning" : "text-primary") mr-2"></i>
-                                @(tieneOrdenBorrador ? "Completar Orden Pendiente" : "Nueva Orden de Recaudación")
+                            <a class="aocr-link aocr-sidebar-item @((tieneOrdenBorrador || tieneOrdenPendienteProceso) ? "text-warning fw-bold" : "")" href="@(tieneOrdenPendienteProceso ? Url.Action("Index","OrdenRecaudacion") : (tieneOrdenBorrador ? Url.Action("Obligatoria","OrdenRecaudacion") : Url.Action("Nueva","OrdenRecaudacion")))">
+                                <i class="fas fa-file-invoice-dollar @((tieneOrdenBorrador || tieneOrdenPendienteProceso) ? "text-warning" : "text-primary") mr-2"></i>
+                                @(tieneOrdenPendienteProceso ? "Continuar Orden Pendiente" : (tieneOrdenBorrador ? "Completar Orden Pendiente" : "Nueva Orden de Recaudación"))
                             </a>
                         </li>
                         <li>
-                            <a class="aocr-link aocr-sidebar-item" href="@Url.Action("MisOrdenes", "Orden")">
+                            <a class="aocr-link aocr-sidebar-item" href="@Url.Action("Index", "OrdenRecaudacion")">
                                 <i class="fas fa-history text-white-50 mr-2"></i> Mis Órdenes
                             </a>
                         </li>
@@ -372,7 +397,7 @@
                 <ul class="aocr-nav">
                     <li><a class="aocr-link aocr-sidebar-item" href="@Url.Action("DashboardInspeccion", "CoordinacionJefatura")"><i class="fas fa-table-columns text-white-50 mr-2"></i> Dashboard Inspección</a></li>
                     <li><a class="aocr-link aocr-sidebar-item" href="@Url.Action("RevisionVerificacion", "CoordinacionJefatura")"><i class="fas fa-search text-white-50 mr-2"></i> Revisión Documental</a></li>
-                    <li><a class="aocr-link aocr-sidebar-item" href="@Url.Action("Index", "Tecnico")"><i class="fas fa-user-check text-white-50 mr-2"></i> Asignar Inspector</a></li>
+                    <li><a class="aocr-link aocr-sidebar-item" href="@Url.Action("Index", "Tecnico")"><i class="fas fa-user-plus text-white-50 mr-2"></i> Asignación de Inspectores</a></li>
                     <li><a class="aocr-link aocr-sidebar-item" href="@Url.Action("Index", "Inspeccion")"><i class="fas fa-clipboard-check text-white-50 mr-2"></i> Gestión / Seguimiento de Inspección</a></li>
                 </ul>
             </div>
@@ -420,34 +445,18 @@
                         </a>
                     </li>
                     <li>
-                        <a class="aocr-link aocr-sidebar-item" href="@Url.Action("AprobarSolicitudes", "Direccion")">
-                            <i class="fas fa-file-check text-white-50 mr-2"></i> Revisión Final de Expedientes
+                        <a class="aocr-link aocr-sidebar-item" href="@Url.Action("RevisarPorJefatura", "SolicitudAOCR")">
+                            <i class="fas fa-file-check text-white-50 mr-2"></i> Revisión Jefatura AOCR
                         </a>
                     </li>
                     <li>
-                        <a class="aocr-link aocr-sidebar-item" href="@Url.Action("AprobarSolicitudes", "Direccion")">
-                            <i class="fas fa-check-double text-white-50 mr-2"></i> Aprobación Final
+                        <a class="aocr-link aocr-sidebar-item" href="@Url.Action("ValidarAocr", "CoordinacionJefatura")">
+                            <i class="fas fa-check-double text-white-50 mr-2"></i> Validar AOCR
                         </a>
                     </li>
                     <li>
                         <a class="aocr-link aocr-sidebar-item" href="@Url.Action("PendientesFirmaDirdac", "Inspeccion")">
                             <i class="fas fa-file-signature text-white-50 mr-2"></i> Informes Pendientes de Firma DIRDAC
-                        </a>
-                    </li>
-                </ul>
-            </div>
-        }
-
-        @if (puedeValidarAocr)
-        {
-            <div class="nav-group aocr-sidebar-section mb-4">
-                <div class="group-title aocr-sidebar-section__title" style="color:#06b6d4;">
-                    <i class="fas fa-stamp mr-1"></i> Validación AOCR
-                </div>
-                <ul class="aocr-nav">
-                    <li>
-                        <a class="aocr-link aocr-sidebar-item" href="@Url.Action("ValidarAocr", "CoordinacionJefatura")">
-                            <i class="fas fa-stamp text-white-50 mr-2"></i> Validar AOCR
                         </a>
                     </li>
                 </ul>
@@ -466,8 +475,8 @@
                 </div>
                 <ul class="aocr-nav">
                     <li><a class="aocr-link aocr-sidebar-item" href="@Url.Action("RevisionVerificacion", "CoordinacionJefatura")"><i class="fas fa-search text-white-50 mr-2"></i> Revisión Documental</a></li>
-                    <li><a class="aocr-link aocr-sidebar-item" href="@Url.Action("LegalizarAocr", "CoordinacionJefatura")"><i class="fas fa-gavel text-white-50 mr-2"></i> Legalizar AOCR</a></li>
-                    <li><a class="aocr-link aocr-sidebar-item" href="@Url.Action("GenerarCertificados", "CoordinacionJefatura")"><i class="fas fa-file-contract text-white-50 mr-2"></i> Generar Certificados AOCR</a></li>
+                    <li><a class="aocr-link aocr-sidebar-item" href="@Url.Action("RevisarLegalizacion", "SolicitudAOCR")"><i class="fas fa-gavel text-white-50 mr-2"></i> Legalizar AOCR</a></li>
+                    <li><a class="aocr-link aocr-sidebar-item" href="@Url.Action("GenerarCertificados", "CoordinacionLegal")"><i class="fas fa-file-contract text-white-50 mr-2"></i> Generar Certificados AOCR</a></li>
                 </ul>
             </div>
         }

@@ -23,6 +23,11 @@ namespace CapaNegocio
             return _dao.ObtenerPorId(id);
         }
 
+        public Certificado ObtenerPorNumero(string numeroCertificado)
+        {
+            return _dao.ObtenerPorNumero(numeroCertificado);
+        }
+
         public int GenerarCertificado(int solicitudId, string usuario)
         {
             var cert = new Certificado
@@ -31,22 +36,12 @@ namespace CapaNegocio
                 NumeroCertificado = "AOCR-" + DateTime.Now.Ticks,
                 FechaEmision = DateTime.Now,
                 FechaVencimiento = DateTime.Now.AddYears(1),
-                Estado = "Vigente",
+                Estado = "GENERADO",
                 EmitidoPor = usuario,
                 RutaDocumento = null
             };
 
             return _dao.Crear(cert); // ✅ ahora Crear devuelve int
-        }
-
-
-        public bool SubirPDF(int id, string ruta)
-        {
-            var cert = _dao.ObtenerPorId(id);
-            if (cert == null) return false;
-
-            cert.RutaPdf = ruta;
-            return _dao.Actualizar(cert);
         }
     }
 }

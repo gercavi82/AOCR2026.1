@@ -205,6 +205,21 @@
         padding-top: 2px;
     }
 
+    .cert-signature-slot {
+        width: 76mm;
+        height: 22mm;
+        margin: 14px auto 8px;
+        position: relative;
+        overflow: hidden;
+    }
+
+    .cert-signature-slot img {
+        display: block;
+        max-height: 38px;
+        max-width: 100%;
+        margin: 8px auto 0;
+    }
+
     /* ---------- PIE ---------- */
     .cert-footer {
         border: 1.5px solid #003366;
@@ -237,6 +252,12 @@
         padding: 0;
     }
 
+    .cert-signature-slot .firma-anchor {
+        position: absolute;
+        top: 0;
+        left: 0;
+    }
+
     /* ---------- UTILIDADES ---------- */
     .text-center { text-align: center; }
     .text-right { text-align: right; }
@@ -266,7 +287,7 @@
         <td rowspan="2" style="width:33%; text-align:center; vertical-align:middle; border-bottom:none;">
             @if (!string.IsNullOrWhiteSpace(Model.LogoBase64))
             {
-                <img src="data:image/png;base64,@Model.LogoBase64" style="max-height:55px; max-width:90px;" alt="DGAC" />
+                <img src="data:image/jpeg;base64,@Model.LogoBase64" style="max-height:72px; max-width:72px;" alt="DAC" />
             }
         </td>
         <td style="width:34%; text-align:center; vertical-align:middle; border-bottom:none;">
@@ -289,21 +310,13 @@
 </table>
 
 <!-- =============================================
-     CUERPO: 3 COLUMNAS PRINCIPALES
      ============================================= -->
 <table class="cert-main-table" style="border-top:none;">
-    <!-- Fila: AOCR#/AOC / Nombre Explotador / Contacto Ecuador -->
     <tr>
         <td class="col-left" style="border-top:1.5px solid #003366;">
-            <span class="lbl-es">AOCR #</span>
-            <span class="cell-value" style="font-weight:bold; font-size:9pt;">@safe(Model.NumeroAOCR)</span>
-            <br/><br/>
-            <span style="font-size:7.5pt; color:#444;">
-                Otorgado en base al AOC No. ---<br/>
-                emitido por (Estado Explotador)
-            </span>
+            <span class="lbl-es">emitido por (Estado Explotador)</span>
             <br/>
-            <span class="lbl-en">Issued based don the original AOC granted by (State of the Operator)</span>
+            <span class="lbl-en">Issued based on the original AOC granted by (State of the Operator)</span>
             <br/><br/>
             <span class="lbl-es">Fecha de Vencimiento:</span>
             <span class="lbl-en">/ Expiry date</span>
@@ -450,16 +463,15 @@
                 <span class="firma-value">@(Model.FechaRenovacion.HasValue ? Model.FechaRenovacion.Value.ToString("dd/MM/yyyy", cultureEs) : "---")</span>
             </td>
             <td style="width:50%; text-align:center;" data-firma-rol="DIRDAC">
-                <span class="firma-anchor">ANCLA_FIRMA_CERTIFICADO_DIRDAC</span>
                 <span class="firma-label">Nombre y firma</span>
                 <span class="lbl-en">/ Name and signature :</span>
-                <br/><br/>
-                @if (!string.IsNullOrWhiteSpace(Model.RutaFirmaDigital))
-                {
-                    <img src="@Model.RutaFirmaDigital" style="max-height:45px;" alt="Firma" />
-                    <br/>
-                }
-                <br/>
+                <div class="cert-signature-slot" data-firma-rol="DIRDAC">
+                    <span class="firma-anchor">ANCLA_FIRMA_CERTIFICADO_DIRDAC</span>
+                    @if (!string.IsNullOrWhiteSpace(Model.RutaFirmaDigital))
+                    {
+                        <img src="@Model.RutaFirmaDigital" alt="Firma" />
+                    }
+                </div>
                 <div style="border-top:1.5px solid #000; width:70%; margin:8px auto 4px; padding-top:4px;">
                     <span style="font-weight:bold; font-size:8.5pt;">@safe(Model.NombreFirmante)</span>
                 </div>

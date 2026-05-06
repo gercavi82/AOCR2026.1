@@ -92,6 +92,33 @@ namespace CapaNegocio.Helpers
             }
         }
 
+        public static string NormalizeStoredPath(string storedPath)
+        {
+            if (string.IsNullOrWhiteSpace(storedPath))
+            {
+                return storedPath;
+            }
+
+            var normalized = storedPath.Trim().Replace("\\", "/");
+
+            while (normalized.StartsWith("~/~/", StringComparison.Ordinal))
+            {
+                normalized = "~/" + normalized.Substring(4);
+            }
+
+            while (normalized.StartsWith("~~/", StringComparison.Ordinal))
+            {
+                normalized = "~/" + normalized.Substring(3);
+            }
+
+            while (normalized.StartsWith("//", StringComparison.Ordinal))
+            {
+                normalized = "/" + normalized.TrimStart('/');
+            }
+
+            return normalized;
+        }
+
         public static string ComputeSha256(string fullPath)
         {
             using (var sha = SHA256.Create())
@@ -104,14 +131,15 @@ namespace CapaNegocio.Helpers
 
         private static string ResolvePath(string storedPath)
         {
-            if (string.IsNullOrWhiteSpace(storedPath)) return storedPath;
-            if (storedPath.StartsWith("~"))
+            var normalizedPath = NormalizeStoredPath(storedPath);
+            if (string.IsNullOrWhiteSpace(normalizedPath)) return normalizedPath;
+            if (normalizedPath.StartsWith("~"))
             {
-                return HttpContext.Current.Server.MapPath(storedPath);
+                return HttpContext.Current.Server.MapPath(normalizedPath);
             }
 
             var baseDir = GetPhysicalBasePath();
-            return Path.Combine(baseDir, storedPath.TrimStart('/', '\\'));
+            return Path.Combine(baseDir, normalizedPath.TrimStart('/', '\\'));
         }
 
         private static FileUploadOptions BuildOptions(string[] allowedExts, int maxSizeMb, string folderRelative, bool validateMagic)
@@ -160,11 +188,17 @@ namespace CapaNegocio.Helpers
             var normalizedFolder = NormalizeFolder(folderRelative);
             if (!string.IsNullOrWhiteSpace(BasePathStorage) && BasePathStorage.StartsWith("~"))
             {
-                var relative = Path.Combine(BasePathStorage.TrimEnd('~', '/'), normalizedFolder, storedName).Replace("\\", "/");
-                return relative.StartsWith("/") ? "~" + relative : "~" + "/" + relative;
+                var prefix = NormalizeStoredPath(BasePathStorage).TrimEnd('/');
+                var relative = string.IsNullOrWhiteSpace(normalizedFolder)
+                    ? prefix + "/" + storedName
+                    : prefix + "/" + normalizedFolder.Replace("\\", "/").Trim('/') + "/" + storedName;
+                return NormalizeStoredPath(relative);
             }
 
-            return Path.Combine(normalizedFolder, storedName).Replace("\\", "/");
+            var fallback = string.IsNullOrWhiteSpace(normalizedFolder)
+                ? storedName
+                : Path.Combine(normalizedFolder, storedName).Replace("\\", "/");
+            return NormalizeStoredPath(fallback);
         }
     }
 }

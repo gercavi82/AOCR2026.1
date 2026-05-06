@@ -242,9 +242,6 @@ namespace CapaPresentacion.Controllers
                     ? urlHelper.Action("DescargarInforme", "Inspeccion", new { id = documento.CodigoInspeccion.Value })
                     : null;
                 var urlRevisar = urlHelper.Action("RevisionVerificacion", "CoordinacionJefatura");
-                var urlAsignarInspector = puedeGestionarAsignacion
-                    ? urlHelper.Action("AsignarInspector", "Tecnico", new { solicitudId = codigoSolicitud, tipoInspector = tipo })
-                    : null;
                 var urlFirmar = listoParaFirma && firmaInspector && !firmaDirdac && puedeVerPendientesDirdac
                     ? urlHelper.Action("PendientesFirmaDirdac", "Inspeccion")
                     : null;
@@ -259,12 +256,7 @@ namespace CapaPresentacion.Controllers
                 var textoAccionPrincipal = "Ver";
                 var urlAccionPrincipal = urlDetalle;
 
-                if (puedeAsignarInspector && !string.IsNullOrWhiteSpace(urlAsignarInspector))
-                {
-                    textoAccionPrincipal = "Asignar inspector";
-                    urlAccionPrincipal = urlAsignarInspector;
-                }
-                else if (!string.IsNullOrWhiteSpace(urlFirmar))
+                if (!string.IsNullOrWhiteSpace(urlFirmar))
                 {
                     textoAccionPrincipal = "Firmar";
                     urlAccionPrincipal = urlFirmar;
@@ -676,7 +668,7 @@ namespace CapaPresentacion.Controllers
                     PuedeAceptarSolicitud = estadosPermitidos.Any(x => string.Equals(EstadosInspeccion.NormalizarEstado(x), EstadosInspeccion.ACEPTADA, System.StringComparison.OrdinalIgnoreCase)),
                     PuedeObservar = estadosPermitidos.Any(x => string.Equals(EstadosInspeccion.NormalizarEstado(x), EstadosInspeccion.OBSERVADA, System.StringComparison.OrdinalIgnoreCase)),
                     PuedeCerrar = estadosPermitidos.Any(x => string.Equals(EstadosInspeccion.NormalizarEstado(x), EstadosInspeccion.CERRADA, System.StringComparison.OrdinalIgnoreCase)),
-                    PuedeAsignarInspector = PuedeAsignarInspectorEnSeguimiento(estadoNormalizado, inspeccion)
+                    PuedeAsignarInspector = PuedeAsignarInspectorEnSeguimiento(estadoNormalizado, inspeccion, solicitud)
                 });
             }
 
@@ -759,16 +751,26 @@ namespace CapaPresentacion.Controllers
             return "No asignado";
         }
 
-        private static bool PuedeAsignarInspectorEnSeguimiento(string estadoNormalizado, Inspeccion inspeccion)
+        private bool PuedeAsignarInspectorEnSeguimiento(string estadoNormalizado, Inspeccion inspeccion, SolicitudAOCR solicitud)
         {
-            if (inspeccion == null || inspeccion.CodigoInspector.HasValue)
+            if (inspeccion == null)
             {
                 return false;
             }
 
-            return string.Equals(estadoNormalizado, EstadosInspeccion.ACEPTADA, System.StringComparison.OrdinalIgnoreCase)
-                || string.Equals(estadoNormalizado, EstadosInspeccion.SUBSANADA, System.StringComparison.OrdinalIgnoreCase)
-                || string.Equals(estadoNormalizado, EstadosInspeccion.PAGO_VALIDADO, System.StringComparison.OrdinalIgnoreCase);
+            var inspectorAsignado = ObtenerInspectorAsignadoSeguimiento(inspeccion, solicitud);
+            if (!string.Equals(inspectorAsignado, "No asignado", StringComparison.OrdinalIgnoreCase))
+            {
+                return false;
+            }
+
+            var estado = EstadosInspeccion.NormalizarEstado(estadoNormalizado);
+
+            return string.Equals(estado, EstadosInspeccion.SOLICITUD_INSPECCION_CREADA, StringComparison.OrdinalIgnoreCase)
+                || string.Equals(estado, EstadosInspeccion.VERIFICACION_SOLICITUD, StringComparison.OrdinalIgnoreCase)
+                || string.Equals(estado, EstadosInspeccion.ACEPTADA, StringComparison.OrdinalIgnoreCase)
+                || string.Equals(estado, EstadosInspeccion.SUBSANADA, StringComparison.OrdinalIgnoreCase)
+                || string.Equals(estado, EstadosInspeccion.PAGO_VALIDADO, StringComparison.OrdinalIgnoreCase);
         }
 
         private static string ConstruirMensajeOperativoSeguimiento(string estadoNormalizado, Inspeccion inspeccion)
@@ -782,7 +784,7 @@ namespace CapaPresentacion.Controllers
             {
                 return inspeccion != null && inspeccion.CodigoInspector.HasValue
                     ? "La solicitud fue aceptada y ya cuenta con inspector asignado. Puede continuar el seguimiento del avance."
-                    : "La solicitud fue aceptada. El siguiente paso operativo es asignar inspector para iniciar la inspeccion.";
+                    : "La solicitud fue aceptada. El siguiente paso operativo es gestionar la asignación desde el módulo Asignación de Inspectores del menú Coordinador.";
             }
 
             if (string.Equals(estadoNormalizado, EstadosInspeccion.SUBSANADA, System.StringComparison.OrdinalIgnoreCase))
@@ -823,12 +825,6 @@ namespace CapaPresentacion.Controllers
 
             return !string.IsNullOrWhiteSpace(origen)
                 && origen.IndexOf(filtro.Trim(), StringComparison.OrdinalIgnoreCase) >= 0;
-        }
-
-        [Authorize(Roles = "DIRDAC,Direccion,JefaturaTecnica,DirectorGeneral,Administrador")]
-        public ActionResult AprobarSolicitudes()
-        {
-            return RedirectToAction("AprobarSolicitudes", "Direccion");
         }
 
         [Authorize(Roles = "DIRDAC,Direccion,JefaturaTecnica,DirectorGeneral,Administrador")]
@@ -1295,18 +1291,6 @@ namespace CapaPresentacion.Controllers
                 Response.StatusCode = 500;
                 return Json(new { ok = false, mensaje = "Error interno al guardar la posicion de firma. Ref: " + referencia });
             }
-        }
-
-        [Authorize(Roles = "CoordinacionLegal,CoordinadorLegal,DirectorGeneral,Administrador")]
-        public ActionResult LegalizarAocr()
-        {
-            return RedirectToAction("RevisarLegalizacion", "SolicitudAOCR");
-        }
-
-        [Authorize(Roles = "CoordinacionLegal,CoordinadorLegal,DirectorGeneral,Administrador")]
-        public ActionResult GenerarCertificados()
-        {
-            return RedirectToAction("GenerarCertificados", "CoordinacionLegal");
         }
 
         private List<ValidarAocrSolicitudItemViewModel> ConstruirItemsValidacionAocr()

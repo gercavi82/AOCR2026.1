@@ -55,7 +55,7 @@ namespace CapaDatos.DAOs
                             : (i.UpdatedAt ?? i.CreatedAt ?? i.FechaProgramada),
                         EtapaActual = EstadosInspeccion.ObtenerDescripcion(estadoNormalizado),
                         RequiereRevisionInstitucional = RequiereRevisionInstitucional(estadoNormalizado),
-                        PuedeAsignarInspector = PuedeAsignarInspector(estadoNormalizado, i),
+                        PuedeAsignarInspector = PuedeAsignarInspector(estadoNormalizado, i, solicitud),
                         RequiereFirmaDirdac = informe != null && informe.FirmadoInspector && !informe.FirmadoDirdac,
                         TieneInformePdf = informe != null && !string.IsNullOrWhiteSpace(FirstNonEmpty(informe.RutaDocumentoFirmado, informe.RutaPdf, i.RutaInforme))
                     };
@@ -465,17 +465,34 @@ namespace CapaDatos.DAOs
                 || string.Equals(estado, EstadosInspeccion.OBSERVACION_DOCUMENTAL, StringComparison.OrdinalIgnoreCase);
         }
 
-        private static bool PuedeAsignarInspector(string estadoNormalizado, Inspeccion inspeccion)
+        private static bool PuedeAsignarInspector(string estadoNormalizado, Inspeccion inspeccion, SolicitudAOCR solicitud)
         {
-            if (inspeccion == null || inspeccion.CodigoInspector.HasValue)
+            if (inspeccion == null)
+            {
+                return false;
+            }
+
+            if (TieneInspectorAsignado(inspeccion, solicitud))
             {
                 return false;
             }
 
             var estado = EstadosInspeccion.NormalizarEstado(estadoNormalizado);
-            return string.Equals(estado, EstadosInspeccion.ACEPTADA, StringComparison.OrdinalIgnoreCase)
+            return string.Equals(estado, EstadosInspeccion.SOLICITUD_INSPECCION_CREADA, StringComparison.OrdinalIgnoreCase)
+                || string.Equals(estado, EstadosInspeccion.VERIFICACION_SOLICITUD, StringComparison.OrdinalIgnoreCase)
+                || string.Equals(estado, EstadosInspeccion.ACEPTADA, StringComparison.OrdinalIgnoreCase)
                 || string.Equals(estado, EstadosInspeccion.SUBSANADA, StringComparison.OrdinalIgnoreCase)
                 || string.Equals(estado, EstadosInspeccion.PAGO_VALIDADO, StringComparison.OrdinalIgnoreCase);
+        }
+
+        private static bool TieneInspectorAsignado(Inspeccion inspeccion, SolicitudAOCR solicitud)
+        {
+            return (inspeccion != null && inspeccion.CodigoInspector.HasValue && inspeccion.CodigoInspector.Value > 0)
+                || (inspeccion != null && !string.IsNullOrWhiteSpace(inspeccion.InspectorPrincipalNombre))
+                || (inspeccion != null && !string.IsNullOrWhiteSpace(inspeccion.InspectorPrincipalCedula))
+                || (solicitud != null && solicitud.CodigoTecnico.HasValue && solicitud.CodigoTecnico.Value > 0)
+                || (solicitud != null && !string.IsNullOrWhiteSpace(solicitud.TecnicoResponsableNombre))
+                || (solicitud != null && !string.IsNullOrWhiteSpace(solicitud.TecnicoResponsableCedula));
         }
 
         private static bool EstadoEsObservado(string estado)

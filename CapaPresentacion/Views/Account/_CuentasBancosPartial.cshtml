@@ -1,72 +1,75 @@
 ﻿@inherits System.Web.Mvc.WebViewPage
 @using CapaModelo
+@using CapaPresentacion.Helpers
 @using System.Web.Mvc
 @using System.Web.Mvc.Html
+
+@{
+    var cuentas = OrdenRecaudacionPagoHelper.ObtenerCuentasBancarias();
+    var introHtml = OrdenRecaudacionPagoHelper.ObtenerIntroHtml();
+    var firmaHtml = OrdenRecaudacionPagoHelper.ObtenerFirmaHtml();
+}
 
 <div class="text-center mb-3">
     <img src="@Url.Content("~/Content/imganes/logodgac.jpg")" alt="Logo DGAC" style="width:180px;" />
     <h6 class="mt-2 mb-0">Pago de servicios aeroportuarios</h6>
 </div>
 
-<p class="mb-3" style="text-align:justify">
-    Para los servicios <strong>AEROPORTUARIOS y/o AERONÁUTICOS</strong>, use las siguientes cuentas.
-    <strong>Realice el pago con 72 horas de anticipación.</strong>
-</p>
+<p class="mb-3" style="text-align:justify">@Html.Raw(introHtml)</p>
 
 <div class="row">
-    <div class="col-md-4 mb-3">
-        <div class="p-3 border rounded h-100">
-            <div class="text-center mb-2">
-                <a href="https://www.pichincha.com/" target="_blank" rel="noopener noreferrer">
-                    <img src="@Url.Content("~/Content/imganes/bancopichincha.png")" style="max-width:120px" alt="Banco Pichincha" />
-                </a>
+    @foreach (var cuenta in cuentas)
+    {
+        <div class="col-md-4 mb-3">
+            <div class="p-3 border rounded h-100">
+                <div class="text-center mb-2">
+                    @if (!string.IsNullOrWhiteSpace(cuenta.SitioWeb))
+                    {
+                        <a href="@cuenta.SitioWeb" target="_blank" rel="noopener noreferrer">
+                            @if (!string.IsNullOrWhiteSpace(cuenta.LogoUrl))
+                            {
+                                <img src="@Url.Content(cuenta.LogoUrl)" style="max-width:@(cuenta.LogoMaxWidth ?? "120px")" alt="@cuenta.Banco" />
+                            }
+                            else
+                            {
+                                <strong>@cuenta.Banco</strong>
+                            }
+                        </a>
+                    }
+                    else if (!string.IsNullOrWhiteSpace(cuenta.LogoUrl))
+                    {
+                        <img src="@Url.Content(cuenta.LogoUrl)" style="max-width:@(cuenta.LogoMaxWidth ?? "120px")" alt="@cuenta.Banco" />
+                    }
+                    else
+                    {
+                        <strong>@cuenta.Banco</strong>
+                    }
+                </div>
+                <ul class="mb-0" style="font-size:.95rem; line-height:1.8">
+                    <li><strong>Cuenta Corriente:</strong> @cuenta.CuentaCorriente</li>
+                    @if (!string.IsNullOrWhiteSpace(cuenta.Sublinea))
+                    {
+                        <li><strong>Sublínea:</strong> @cuenta.Sublinea</li>
+                    }
+                    @if (!string.IsNullOrWhiteSpace(cuenta.Titular))
+                    {
+                        <li><strong>Titular:</strong> @cuenta.Titular</li>
+                    }
+                    @if (!string.IsNullOrWhiteSpace(cuenta.Ruc))
+                    {
+                        <li><strong>RUC:</strong> @cuenta.Ruc</li>
+                    }
+                    @if (!string.IsNullOrWhiteSpace(cuenta.NotaTransferencia))
+                    {
+                        <li><em>@cuenta.NotaTransferencia</em></li>
+                    }
+                </ul>
             </div>
-            <ul class="mb-0" style="font-size:.95rem; line-height:1.8">
-                <li><strong>Cuenta Corriente:</strong> 2100310688</li>
-                <li><strong>Sublínea:</strong> 30200 (en depósitos)</li>
-                <li><strong>Titular:</strong> Dirección General de Aviación Civil</li>
-                <li><strong>RUC:</strong> 1768014410001</li>
-                <li><em>En transferencias NO colocar sublínea</em></li>
-            </ul>
         </div>
-    </div>
-
-    <div class="col-md-4 mb-3">
-        <div class="p-3 border rounded h-100">
-            <div class="text-center mb-2">
-                <a href="https://www.bancointernacional.com.ec/" target="_blank" rel="noopener noreferrer">
-                    <img src="@Url.Content("~/Content/imganes/bancointernacional.png")" style="max-width:120px" alt="Banco Internacional" />
-                </a>
-            </div>
-            <ul class="mb-0" style="font-size:.95rem; line-height:1.8">
-                <li><strong>Cuenta Corriente:</strong> 520608140</li>
-                <li><strong>Sublínea:</strong> 30200 (en depósitos)</li>
-                <li><strong>Titular:</strong> Dirección General de Aviación Civil</li>
-                <li><strong>RUC:</strong> 1768014410001</li>
-                <li><em>En transferencias NO colocar sublínea</em></li>
-            </ul>
-        </div>
-    </div>
-
-    <div class="col-md-4 mb-3">
-        <div class="p-3 border rounded h-100">
-            <div class="text-center mb-2">
-                <a href="https://www.bgr.com.ec/" target="_blank" rel="noopener noreferrer">
-                    <img src="@Url.Content("~/Content/imganes/banco-general-ruminahui.png")" style="max-width:55px" alt="Banco Rumiñahui" />
-                </a>
-            </div>
-            <ul class="mb-0" style="font-size:.95rem; line-height:1.8">
-                <li><strong>Cuenta Corriente:</strong> 8002531204</li>
-                <li><strong>Sublínea:</strong> 30200 (en depósitos)</li>
-                <li><strong>Titular:</strong> Dirección General de Aviación Civil</li>
-                <li><strong>RUC:</strong> 1768014410001</li>
-                <li><em>En transferencias NO colocar sublínea</em></li>
-            </ul>
-        </div>
-    </div>
+    }
 </div>
 
 <div class="text-center mt-3">
-    <strong>DIRECCIÓN FINANCIERA — DGAC</strong>
+    @Html.Raw(firmaHtml)
 </div>
 

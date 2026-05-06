@@ -91,19 +91,32 @@ namespace CapaNegocio.Services
 
             try
             {
-                string path = ruta;
-                if (ruta.StartsWith("~"))
+                var rutaNormalizada = FileStorageHelper.NormalizeStoredPath(ruta);
+                string path = rutaNormalizada;
+                if (rutaNormalizada.StartsWith("~"))
                 {
                     var ctx = HttpContext.Current;
                     if (ctx?.Server != null)
                     {
-                        path = ctx.Server.MapPath(ruta);
+                        path = ctx.Server.MapPath(rutaNormalizada);
+                    }
+
+                    if (!File.Exists(path))
+                    {
+                        var baseVirtual = FileStorageHelper.NormalizeStoredPath(FileStorageHelper.BasePathStorage).TrimEnd('/');
+                        if (!string.IsNullOrWhiteSpace(baseVirtual) &&
+                            rutaNormalizada.StartsWith(baseVirtual + "/", StringComparison.OrdinalIgnoreCase))
+                        {
+                            var relativePath = rutaNormalizada.Substring(baseVirtual.Length).TrimStart('/', '\\');
+                            var basePath = FileStorageHelper.GetPhysicalBasePath(FileStorageHelper.BasePathStorage);
+                            path = Path.Combine(basePath, relativePath.Replace('/', Path.DirectorySeparatorChar));
+                        }
                     }
                 }
-                else if (!Path.IsPathRooted(ruta))
+                else if (!Path.IsPathRooted(rutaNormalizada))
                 {
                     var basePath = FileStorageHelper.GetPhysicalBasePath(FileStorageHelper.BasePathStorage);
-                    path = Path.Combine(basePath, ruta.TrimStart('/', '\\'));
+                    path = Path.Combine(basePath, rutaNormalizada.TrimStart('/', '\\'));
                 }
 
                 if (File.Exists(path))

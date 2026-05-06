@@ -190,17 +190,22 @@ namespace CapaNegocio.Services
             var totalH = Math.Max(1f, total.Top - total.Bottom);
             var rol = (rolFirmante ?? string.Empty).Trim().ToUpperInvariant();
             var esInformeTecnico = rol == "INFORME_TECNICO_INSPECTOR" || rol == "INFORME_TECNICO_DIRDAC";
+            var esCertificado = rol == "DIRDAC" || rol == "DIRECTOR_GENERAL";
 
             // En informe técnico se usa un QR dominante, casi a toda la altura del bloque.
             // En las demás plantillas se mantiene la ubicación heredada.
             var qrSize = esInformeTecnico
                 ? Math.Min(totalH * 0.82f, totalW * 0.34f)
-                : Math.Min(totalH * 0.45f, totalW * 0.35f);
+                : (esCertificado
+                    ? Math.Min(totalH * 0.38f, totalW * 0.28f)
+                    : Math.Min(totalH * 0.45f, totalW * 0.35f));
             qrSize = Math.Max(qrSize, 32f); // mínimo 32pt
-            var padding = Math.Max(4f, totalH * 0.05f);
+            var padding = esCertificado ? Math.Max(3f, totalH * 0.04f) : Math.Max(4f, totalH * 0.05f);
             var qrBottom = esInformeTecnico
                 ? total.Bottom + Math.Max(padding, (totalH - qrSize) / 2f)
-                : total.Bottom + padding;
+                : (esCertificado
+                    ? total.Bottom + Math.Max(padding + 1f, (totalH - qrSize) / 2f)
+                    : total.Bottom + padding);
 
             return new Rectangle(
                 total.Left + padding,
@@ -215,17 +220,18 @@ namespace CapaNegocio.Services
             var totalH = Math.Max(1f, total.Top - total.Bottom);
             var rol = (rolFirmante ?? string.Empty).Trim().ToUpperInvariant();
             var esInformeTecnico = rol == "INFORME_TECNICO_INSPECTOR" || rol == "INFORME_TECNICO_DIRDAC";
+            var esCertificado = rol == "DIRDAC" || rol == "DIRECTOR_GENERAL";
 
             // Texto: a la derecha del QR, ocupa el resto del ancho
             var qrRect = ObtenerRectanguloQr(rolFirmante, total);
-            var leftMargin = qrRect.Right + (esInformeTecnico ? 12f : 4f);
-            var padding = Math.Max(4f, totalH * 0.05f);
+            var leftMargin = qrRect.Right + (esInformeTecnico ? 12f : (esCertificado ? 6f : 4f));
+            var padding = esCertificado ? Math.Max(3f, totalH * 0.04f) : Math.Max(4f, totalH * 0.05f);
 
             return new Rectangle(
                 leftMargin,
-                total.Bottom + (esInformeTecnico ? padding + 2f : padding),
-                total.Right - padding,
-                total.Top - (esInformeTecnico ? padding + 2f : padding));
+                total.Bottom + (esInformeTecnico ? padding + 2f : (esCertificado ? padding + 1f : padding)),
+                total.Right - (esCertificado ? padding + 2f : padding),
+                total.Top - (esInformeTecnico ? padding + 2f : (esCertificado ? padding + 1f : padding)));
         }
 
         private static bool EsFirmaIntegradaEnPlantilla(string rolFirmante)
@@ -355,6 +361,7 @@ namespace CapaNegocio.Services
                     canvas.SaveState();
                     var rol = (rolFirmante ?? string.Empty).Trim().ToUpperInvariant();
                     var esAocr = rol == "AOCR_FIRMANTE";
+                    var esCertificado = rol == "DIRDAC" || rol == "DIRECTOR_GENERAL";
                     var esFirmaIntegrada = EsFirmaIntegradaEnPlantilla(rolFirmante);
                     var esInformeTecnico = rol == "INFORME_TECNICO_INSPECTOR" || rol == "INFORME_TECNICO_DIRDAC" || rol == "LV_EAE_INSPECTOR";
                     if (esFirmaIntegrada)
@@ -395,23 +402,39 @@ namespace CapaNegocio.Services
                             baseNormal = BaseFont.CreateFont(BaseFont.HELVETICA, BaseFont.CP1252, BaseFont.NOT_EMBEDDED);
                             baseBold = BaseFont.CreateFont(BaseFont.HELVETICA_BOLD, BaseFont.CP1252, BaseFont.NOT_EMBEDDED);
                         }
+                        else if (esCertificado)
+                        {
+                            baseNormal = BaseFont.CreateFont(BaseFont.HELVETICA, BaseFont.CP1252, BaseFont.NOT_EMBEDDED);
+                            baseBold = BaseFont.CreateFont(BaseFont.HELVETICA_BOLD, BaseFont.CP1252, BaseFont.NOT_EMBEDDED);
+                        }
 
-                        var tituloFont = new Font(baseNormal, esAocr ? 5.4f : 9f, Font.NORMAL, BaseColor.BLACK);
-                        var nombreFont = new Font(baseBold, esAocr ? 7.0f : 16f, Font.BOLD, BaseColor.BLACK);
-                        var detalleFont = new Font(baseNormal, esAocr ? 5.2f : 8.5f, Font.NORMAL, BaseColor.BLACK);
+                        var tituloFont = new Font(baseNormal, esAocr ? 5.4f : (esCertificado ? 5.6f : 9f), Font.NORMAL, BaseColor.BLACK);
+                        var nombreFont = new Font(baseBold, esAocr ? 7.0f : (esCertificado ? 8.2f : 16f), Font.BOLD, BaseColor.BLACK);
+                        var detalleFont = new Font(baseNormal, esAocr ? 5.2f : (esCertificado ? 5.9f : 8.5f), Font.NORMAL, BaseColor.BLACK);
 
                         var ct = new ColumnText(canvas);
-                        ct.SetSimpleColumn(rectTexto.Left, rectTexto.Bottom, rectTexto.Right, rectTexto.Top, esAocr ? 5.8f : 12f, Element.ALIGN_LEFT);
+                        ct.SetSimpleColumn(rectTexto.Left, rectTexto.Bottom, rectTexto.Right, rectTexto.Top, esAocr ? 5.8f : (esCertificado ? 7.2f : 12f), Element.ALIGN_LEFT);
                         var tituloBloque = ObtenerTituloBloqueFirma(rolFirmante);
                         if (!string.IsNullOrWhiteSpace(tituloBloque))
                         {
                             ct.AddText(new Phrase(tituloBloque, tituloFont));
                         }
-                        ct.AddText(new Phrase((string.IsNullOrWhiteSpace(nombreFirmante) ? "USUARIO AOCR" : nombreFirmante.Trim().ToUpperInvariant()) + "\n", nombreFont));
+                        var nombreVisual = string.IsNullOrWhiteSpace(nombreFirmante)
+                            ? "USUARIO AOCR"
+                            : (esCertificado ? nombreFirmante.Trim() : nombreFirmante.Trim().ToUpperInvariant());
+                        ct.AddText(new Phrase(nombreVisual + "\n", nombreFont));
                         if (!esAocr)
                         {
-                            ct.AddText(new Phrase("Rol: " + ObtenerEtiquetaRol(rolFirmante) + "\n", detalleFont));
-                            ct.AddText(new Phrase("Fecha: " + fechaFirma.ToString("dd/MM/yyyy HH:mm"), detalleFont));
+                            if (esCertificado)
+                            {
+                                ct.AddText(new Phrase(ObtenerEtiquetaRol(rolFirmante) + "\n", detalleFont));
+                                ct.AddText(new Phrase("Fecha: " + fechaFirma.ToString("dd/MM/yyyy HH:mm"), detalleFont));
+                            }
+                            else
+                            {
+                                ct.AddText(new Phrase("Rol: " + ObtenerEtiquetaRol(rolFirmante) + "\n", detalleFont));
+                                ct.AddText(new Phrase("Fecha: " + fechaFirma.ToString("dd/MM/yyyy HH:mm"), detalleFont));
+                            }
                         }
                         else
                         {

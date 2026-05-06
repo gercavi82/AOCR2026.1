@@ -28,7 +28,7 @@ namespace CapaNegocio.Services
 
             // Defaults seguros
             if (string.IsNullOrWhiteSpace(cert.Estado))
-                cert.Estado = "Vigente";
+                cert.Estado = "GENERADO";
 
             if (!cert.FechaEmision.HasValue)
                 cert.FechaEmision = DateTime.Now;

@@ -18,7 +18,7 @@ namespace CapaNegocio
                 { "FIN_VER_PAGOS", new[] { "Administrador", "Financiero", "CoordinadorFinanciero", "DirectorFinanciero" } },
                 { "FIN_APROBAR_PAGO", new[] { "Administrador", "Financiero", "CoordinadorFinanciero", "DirectorFinanciero" } },
                 { "LEGAL_REVISAR_SOLICITUD", new[] { "Administrador", "CoordinacionLegal", "CoordinadorLegal" } },
-                { "LEGAL_GENERAR_CERTIFICADO", new[] { "Administrador", "CoordinacionLegal", "CoordinadorLegal" } },
+                { "LEGAL_GENERAR_CERTIFICADO", new[] { "Administrador", "CoordinacionLegal", "CoordinadorLegal", "DirectorGeneral" } },
                 { "ORD_ANULAR", new[] { "Administrador", "Solicitante", "Operador" } }
             };
 

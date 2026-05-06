@@ -306,7 +306,7 @@ namespace CapaNegocio
                 "Nueva Solicitud",
                 $"Se ha registrado una nueva solicitud #{codigoSolicitud}",
                 "INFO",
-                $"/SolicitudAOCR/Detalle/{codigoSolicitud}"
+                TiposNotificacion.Urls.Solicitud(codigoSolicitud)
             );
         }
 
@@ -338,7 +338,7 @@ namespace CapaNegocio
                 titulo,
                 $"La solicitud #{codigoSolicitud} cambió a estado: {estado}",
                 tipo,
-                $"/SolicitudAOCR/Detalle/{codigoSolicitud}",
+                TiposNotificacion.Urls.Solicitud(codigoSolicitud),
                 "SolicitudAOCR",
                 codigoSolicitud,
                 "aocr_tbsolicitud"
@@ -443,7 +443,7 @@ namespace CapaNegocio
                 "Inspección Programada",
                 $"Inspección #{codigoInspeccion} programada para {fechaInspeccion:dd/MM/yyyy HH:mm}",
                 "WARNING",
-                $"/inspecciones/detalle/{codigoInspeccion}"
+                TiposNotificacion.Urls.Inspeccion(codigoInspeccion)
             );
         }
 
@@ -454,7 +454,7 @@ namespace CapaNegocio
                 "Pago Recibido",
                 $"Se ha registrado un pago de ${monto:N2}",
                 "SUCCESS",
-                $"/pagos/detalle/{codigoPago}"
+                TiposNotificacion.Urls.Pago(codigoPago)
             );
         }
 
@@ -468,7 +468,7 @@ namespace CapaNegocio
                 "Vencimiento de Certificado",
                 $"El certificado #{codigoCertificado} vence en {diasRestantes} días ({fechaVencimiento:dd/MM/yyyy})",
                 tipo,
-                $"/certificados/detalle/{codigoCertificado}"
+                TiposNotificacion.Urls.Certificado(codigoCertificado.ToString())
             );
         }
 
@@ -479,7 +479,7 @@ namespace CapaNegocio
                 "Hallazgo Crítico",
                 $"Se ha detectado un hallazgo crítico: {descripcion}",
                 "ERROR",
-                $"/hallazgos/detalle/{codigoHallazgo}"
+                TiposNotificacion.Urls.Hallazgo(codigoHallazgo)
             );
         }
 

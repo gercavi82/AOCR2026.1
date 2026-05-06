@@ -77,3 +77,10 @@
 </table>
 
 <div class="ref">@Model.Referencia</div>
+
+@if (!string.IsNullOrWhiteSpace(Model.LeyendaBancos))
+{
+    <div style="margin-top:20px; font-size:12px; line-height:1.6;">
+        @Html.Raw(Model.LeyendaBancos)
+    </div>
+}

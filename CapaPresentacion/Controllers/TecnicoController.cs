@@ -14,6 +14,8 @@ namespace CapaPresentacion.Controllers
     [Authorize] // No restringas aquí para no bloquear otras acciones por rol
     public class TecnicoController : Controller
     {
+        private const string CatalogoInspectoresLabel = "Catalogo institucional de inspectores activos";
+
         private readonly CapaNegocio.Services.ILoggingService _logger;
         private readonly SolicitudAocrCorreoService _solicitudAocrCorreoService;
         private static readonly IUserContextAccessor _userContext = new UserContextAccessor();
@@ -24,160 +26,20 @@ namespace CapaPresentacion.Controllers
             _solicitudAocrCorreoService = new SolicitudAocrCorreoService();
         }
 
-        // ✅ Según tu error, tu carpeta REAL parece ser: Views/Tecnico
-        // Si NO es esa, cámbiala a la carpeta real (por ejemplo: "~/Views/Tecnico/")
-        private const string VIEWS_TECNICO = "~/Views/Tecnico/";
-
         // =======================================================
-        // LISTADO - Solicitudes pendientes de asignación
+        // BANDEJA STANDALONE - Asignación de inspectores
         // =======================================================
         [Authorize(Roles = "Administrador,Coordinador,CoordinadorInspecciones")]
         public ActionResult Index()
         {
             _logger.LogInfo("[InspeccionesController] Inicio pantalla gestion (Tecnico/Index). Usuario=" + ObtenerUsuarioActual() + ", Rol=" + ObtenerRolActual());
 
-            // Obtener solicitudes que necesitan asignación de inspector
-            var lista = SolicitudAOCRBL.ObtenerPendientesAsignacion();
+            var pendientes = SolicitudAOCRBL.ObtenerPendientesAsignacion() ?? new List<SolicitudAOCR>();
+            ViewBag.TotalPendientes = pendientes.Count;
 
-            if (lista == null)
-            {
-                _logger.LogWarning("[InspeccionesController] Lista de pendientes vino NULL.");
-            }
-            else if (lista.Count == 0)
-            {
-                _logger.LogWarning("[InspeccionesController] No hay pendientes para asignacion de inspector.");
-            }
-            else
-            {
-                _logger.LogInfo("[InspeccionesController] Pendientes para asignacion=" + lista.Count);
-            }
+            _logger.LogInfo("[InspeccionesController] Bandeja standalone de asignacion cargada. Pendientes=" + pendientes.Count);
 
-            return View(VIEWS_TECNICO + "Index.cshtml", lista);
-        }
-
-        // =======================================================
-        // BÚSQUEDA GLOBAL (AJAX) — incluye finalizadas y no finalizadas
-        // =======================================================
-        [HttpGet]
-        [Authorize(Roles = "Administrador,Coordinador,CoordinadorInspecciones")]
-        public ActionResult BuscarGlobal(string q)
-        {
-            try
-            {
-                if (string.IsNullOrWhiteSpace(q) || q.Trim().Length < 2)
-                {
-                    return Json(new { ok = true, total = 0, items = new object[0] }, JsonRequestBehavior.AllowGet);
-                }
-
-                var lista = SolicitudAOCRBL.BuscarGlobal(q, 100) ?? new List<SolicitudAOCR>();
-
-                var items = lista.Select(s => new
-                {
-                    codigoSolicitud = s.CodigoSolicitud,
-                    numeroSolicitud = s.NumeroSolicitud ?? string.Empty,
-                    nombreOperador = s.NombreOperador ?? s.RazonSocial ?? string.Empty,
-                    ruc = s.Ruc ?? string.Empty,
-                    estado = s.Estado ?? string.Empty,
-                    fechaSolicitud = s.FechaSolicitud.HasValue ? s.FechaSolicitud.Value.ToString("dd/MM/yyyy") : "-",
-                    urlDetalle = Url.Action("Detalle", "SolicitudAOCR", new { id = s.CodigoSolicitud }),
-                    urlAsignar = Url.Action("AsignarInspector", "Tecnico", new { solicitudId = s.CodigoSolicitud })
-                }).ToList();
-
-                _logger.LogInfo("[Tecnico.BuscarGlobal] q='" + q + "' total=" + items.Count);
-                return Json(new { ok = true, total = items.Count, items = items }, JsonRequestBehavior.AllowGet);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError("[Tecnico.BuscarGlobal] Error: " + ex.Message);
-                return Json(new { ok = false, mensaje = "Error al buscar: " + ex.Message }, JsonRequestBehavior.AllowGet);
-            }
-        }
-
-        // =======================================================
-        // CREAR
-        // =======================================================
-        [Authorize(Roles = "Administrador")]
-        public ActionResult Crear()
-        {
-            return View(VIEWS_TECNICO + "Crear.cshtml");
-        }
-
-        [HttpPost]
-        [Authorize(Roles = "Administrador")]
-        [ValidateAntiForgeryToken]
-        public ActionResult Crear(Tecnico modelo)
-        {
-            if (!ModelState.IsValid)
-                return View(VIEWS_TECNICO + "Crear.cshtml", modelo);
-
-            string mensaje;
-            bool ok = TecnicoBL.Insertar(modelo, out mensaje);
-
-            if (!ok)
-            {
-                ViewBag.Error = mensaje;
-                return View(VIEWS_TECNICO + "Crear.cshtml", modelo);
-            }
-
-            TempData["Success"] = "Técnico creado correctamente.";
-            return RedirectToAction("Index");
-        }
-
-        // =======================================================
-        // EDITAR
-        // =======================================================
-        [Authorize(Roles = "Administrador")]
-        public ActionResult Editar(int id)
-        {
-            if (id <= 0) return new HttpStatusCodeResult(400, "ID inválido.");
-
-            var modelo = TecnicoBL.ObtenerPorId(id);
-            if (modelo == null)
-            {
-                TempData["Error"] = "Técnico no encontrado.";
-                return RedirectToAction("Index");
-            }
-
-            return View(VIEWS_TECNICO + "Editar.cshtml", modelo);
-        }
-
-        [HttpPost]
-        [Authorize(Roles = "Administrador")]
-        [ValidateAntiForgeryToken]
-        public ActionResult Editar(Tecnico modelo)
-        {
-            if (!ModelState.IsValid)
-                return View(VIEWS_TECNICO + "Editar.cshtml", modelo);
-
-            string mensaje;
-            bool ok = TecnicoBL.Actualizar(modelo, out mensaje);
-
-            if (!ok)
-            {
-                ViewBag.Error = mensaje;
-                return View(VIEWS_TECNICO + "Editar.cshtml", modelo);
-            }
-
-            TempData["Success"] = "Técnico actualizado correctamente.";
-            return RedirectToAction("Index");
-        }
-
-        // =======================================================
-        // ELIMINAR
-        // =======================================================
-        [Authorize(Roles = "Administrador")]
-        public ActionResult Eliminar(int id)
-        {
-            if (id <= 0) return new HttpStatusCodeResult(400, "ID inválido.");
-
-            string mensaje;
-            bool ok = TecnicoBL.Eliminar(id, out mensaje);
-
-            TempData[ok ? "Success" : "Error"] = ok
-                ? "Técnico eliminado correctamente."
-                : mensaje;
-
-            return RedirectToAction("Index");
+            return View("Index", pendientes);
         }
 
         // =======================================================
@@ -193,7 +55,7 @@ namespace CapaPresentacion.Controllers
             {
                 _logger.LogWarning("[InspeccionesController] Bloqueo funcional: solicitudId invalido.");
                 TempData["Info"] = "Seleccione una solicitud pendiente para asignar inspector.";
-                return RedirectToAction("Index");
+                return RedirigirABandejaAsignacion();
             }
 
             var solicitud = SolicitudAOCRBL.ObtenerPorId(solicitudId.Value);
@@ -201,7 +63,7 @@ namespace CapaPresentacion.Controllers
             {
                 _logger.LogWarning("[InspeccionesController] Bloqueo funcional: solicitud no encontrada. SolicitudId=" + solicitudId.Value);
                 TempData["Error"] = "Solicitud no encontrada.";
-                return RedirectToAction("Index");
+                return RedirigirABandejaAsignacion();
             }
 
             _logger.LogInfo("[InspeccionesController] SolicitudId=" + solicitud.CodigoSolicitud + ", EstadoActual=" + (solicitud.Estado ?? "(null)") + ", NumeroSolicitud=" + (solicitud.NumeroSolicitud ?? ""));
@@ -210,14 +72,14 @@ namespace CapaPresentacion.Controllers
 
             var tipoInspectorNormalizado = NormalizarTipoInspector(tipoInspector);
             var inspectores = UsuarioInternoRTBL.ListarInspectoresAsignables(tipoInspectorNormalizado) ?? new List<CapaDatos.Models.UsuarioInternoRTRegistro>();
-            var origenInspectores = "Usuarios RT / Inspectores";
+            var origenInspectores = CatalogoInspectoresLabel;
 
             _logger.LogInfo("[InspeccionesController] Origen inspectores=" + origenInspectores + ", TipoFiltro=" + tipoInspectorNormalizado + ", InspectoresRecibidos=" + inspectores.Count);
 
             if (inspectores.Count == 0)
             {
-                _logger.LogWarning("[InspeccionesController] Lista de inspectores RT vacia para SolicitudId=" + solicitud.CodigoSolicitud + ".");
-                ViewBag.WarningInspectores = "No se encontraron usuarios RT activos con rol Inspector para el filtro seleccionado.";
+                _logger.LogWarning("[InspeccionesController] Lista de inspectores vacia para SolicitudId=" + solicitud.CodigoSolicitud + ".");
+                ViewBag.WarningInspectores = "No se encontraron inspectores activos con rol Inspector para el filtro seleccionado.";
             }
 
             ViewBag.TipoInspector = tipoInspectorNormalizado;
@@ -253,7 +115,7 @@ namespace CapaPresentacion.Controllers
 
             _logger.LogInfo("[InspeccionesController] ViewModel cargado correctamente. SolicitudId=" + solicitud.CodigoSolicitud + ", ViewBagInspectores=" + inspectores.Count);
 
-            return View(VIEWS_TECNICO + "AsignarInspector.cshtml", solicitud);
+            return View("AsignarInspector", solicitud);
         }
 
         // =======================================================
@@ -277,7 +139,7 @@ namespace CapaPresentacion.Controllers
             {
                 _logger.LogWarning("[GestionInspeccion] PuedeGestionar=False, Motivo=SolicitudId invalido");
                 TempData["Error"] = "Solicitud inválida.";
-                return RedirectToAction("Index");
+                return RedirigirABandejaAsignacion();
             }
 
             if (string.IsNullOrWhiteSpace(inspectorPrincipal))
@@ -304,7 +166,7 @@ namespace CapaPresentacion.Controllers
                 var inspectorPrincipalRegistro = UsuarioInternoRTBL.ObtenerInspectorAsignable(inspectorPrincipal, tipoInspectorNormalizado);
                 if (inspectorPrincipalRegistro == null)
                 {
-                    TempData["Error"] = "El inspector principal seleccionado ya no está activo o no pertenece al catálogo Usuarios RT / Inspectores.";
+                    TempData["Error"] = "El inspector principal seleccionado ya no está activo o no pertenece al catálogo de inspectores.";
                     return RedirectToAction("AsignarInspector", new { solicitudId, tipoInspector });
                 }
 
@@ -314,7 +176,7 @@ namespace CapaPresentacion.Controllers
                     inspectorApoyoRegistro = UsuarioInternoRTBL.ObtenerInspectorAsignable(inspectorApoyo, tipoInspectorNormalizado);
                     if (inspectorApoyoRegistro == null)
                     {
-                        TempData["Error"] = "El inspector de apoyo seleccionado ya no está activo o no pertenece al catálogo Usuarios RT / Inspectores.";
+                        TempData["Error"] = "El inspector de apoyo seleccionado ya no está activo o no pertenece al catálogo de inspectores.";
                         return RedirectToAction("AsignarInspector", new { solicitudId, tipoInspector });
                     }
                 }
@@ -327,7 +189,7 @@ namespace CapaPresentacion.Controllers
 
                 var fechaHoraInspeccion = fechaInspeccion.Date.Add(horaRevision);
 
-                _logger.LogInfo("[GestionInspeccion] Inspectores RT validados. Principal=" + inspectorPrincipalRegistro.UsuarioLogin + ", Apoyo=" + (inspectorApoyoRegistro != null ? inspectorApoyoRegistro.UsuarioLogin : string.Empty));
+                _logger.LogInfo("[GestionInspeccion] Inspectores validados desde catalogo institucional. Principal=" + inspectorPrincipalRegistro.UsuarioLogin + ", Apoyo=" + (inspectorApoyoRegistro != null ? inspectorApoyoRegistro.UsuarioLogin : string.Empty));
 
                 string mensaje;
                 bool ok = SolicitudAOCRBL.AsignarInspectores(
@@ -382,14 +244,14 @@ namespace CapaPresentacion.Controllers
                 }
 
                 return ok
-                    ? RedirectToAction("Index")
+                    ? RedirigirABandejaAsignacion()
                     : RedirectToAction("AsignarInspector", new { solicitudId, tipoInspector });
             }
             catch (Exception ex)
             {
                 _logger.LogError("[GestionInspeccion] Error no controlado en asignacion: " + ex);
                 TempData["Error"] = "Error crítico: " + ex.Message;
-                return RedirectToAction("Index");
+                return RedirigirABandejaAsignacion();
             }
         }
 
@@ -415,9 +277,14 @@ namespace CapaPresentacion.Controllers
                 })
                 .ToList();
 
-            _logger.LogInfo("[InspeccionesController] Endpoint AJAX inspectores OK. Origen=Usuarios RT / Inspectores, Tipo=" + tipoNormalizado + ", Cantidad=" + payload.Count);
+            _logger.LogInfo("[InspeccionesController] Endpoint AJAX inspectores OK. Origen=" + CatalogoInspectoresLabel + ", Tipo=" + tipoNormalizado + ", Cantidad=" + payload.Count);
 
-            return Json(new { success = true, tipo = tipoNormalizado, origen = "Usuarios RT / Inspectores", items = payload }, JsonRequestBehavior.AllowGet);
+            return Json(new { success = true, tipo = tipoNormalizado, origen = CatalogoInspectoresLabel, items = payload }, JsonRequestBehavior.AllowGet);
+        }
+
+        private RedirectToRouteResult RedirigirABandejaAsignacion()
+        {
+            return RedirectToAction("Index", "Tecnico");
         }
 
         private static string NormalizarTipoInspector(string tipoInspector)

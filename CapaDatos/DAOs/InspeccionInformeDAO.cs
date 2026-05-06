@@ -96,8 +96,9 @@ namespace CapaDatos.DAOs
                 cn.Open();
                 EnsureSchema(cn);
 
-                const string sql = @"
-                    SELECT DISTINCT ON (codigo_inspeccion)
+                  const string sql = @"
+                      WITH ultimos AS (
+                       SELECT DISTINCT ON (codigo_inspeccion)
                            codigo_informe,
                            codigo_inspeccion,
                            version,
@@ -141,11 +142,58 @@ namespace CapaDatos.DAOs
                            created_by,
                            updated_at,
                            updated_by
-                    FROM public.aocr_tbinforme_inspeccion
-                    WHERE finalizado = TRUE
-                      AND COALESCE(firmado_dirdac, FALSE) = FALSE
-                       AND regexp_replace(UPPER(COALESCE(estado_informe, '')), '[\s_-]+', '_', 'g') = 'ENVIADO_A_DIRDAC'
-                    ORDER BY codigo_inspeccion, version DESC;";
+                       FROM public.aocr_tbinforme_inspeccion
+                       ORDER BY codigo_inspeccion, version DESC, codigo_informe DESC
+                      )
+                      SELECT codigo_informe,
+                          codigo_inspeccion,
+                          version,
+                          titulo,
+                          resumen,
+                          antecedentes,
+                          alcance,
+                          desarrollo,
+                          evidencias,
+                          numero_licencia_inspector,
+                          trabajos_realizados,
+                          fechas_inspeccion_manual,
+                          estaciones_inspeccion_manual,
+                          operacion_comercial,
+                          servicios_estaciones,
+                          notas,
+                          no_conformidades,
+                          documentos_adjuntos,
+                          documentos_adjuntos_archivos,
+                          otros_adjuntos,
+                          resultado,
+                          observaciones,
+                          conclusiones,
+                          recomendaciones,
+                          ruta_pdf,
+                          estado_informe,
+                          firmado_inspector,
+                          firmado_dirdac,
+                          ruta_documento_firmado,
+                          hash_documento,
+                          fecha_firma_1,
+                          fecha_firma_2,
+                          usuario_firma_1,
+                          usuario_firma_2,
+                          fecha_envio_dirdac,
+                          usuario_envio_dirdac,
+                          finalizado,
+                          correo_enviado,
+                          fecha_finalizacion,
+                          created_at,
+                          created_by,
+                          updated_at,
+                          updated_by
+                      FROM ultimos
+                      WHERE finalizado = TRUE
+                     AND COALESCE(firmado_dirdac, FALSE) = FALSE
+                     AND regexp_replace(UPPER(COALESCE(estado_informe, '')), '[\s_-]+', '_', 'g') = 'ENVIADO_A_DIRDAC'
+                      ORDER BY COALESCE(fecha_envio_dirdac, fecha_finalizacion, updated_at, created_at) DESC,
+                         codigo_inspeccion DESC;";
 
                 using (var cmd = new NpgsqlCommand(sql, cn))
                 using (var dr = cmd.ExecuteReader())

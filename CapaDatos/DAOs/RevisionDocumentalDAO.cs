@@ -7,6 +7,9 @@ namespace CapaDatos.DAOs
 {
     public class RevisionDocumentalDAO
     {
+        private static readonly object SyncLock = new object();
+        private static bool _schemaReady;
+
         private string ConnectionString =>
             ConfigurationManager.ConnectionStrings["AOCRConnection"].ConnectionString;
 
@@ -26,10 +29,7 @@ namespace CapaDatos.DAOs
             using (var cn = new NpgsqlConnection(ConnectionString))
             {
                 cn.Open();
-                if (!ExisteTabla(cn, "aocr_tbrevision_documental"))
-                {
-                    return false;
-                }
+                EnsureSchema(cn);
 
                 const string sql = @"
                     INSERT INTO aocr_tbrevision_documental
@@ -79,10 +79,7 @@ namespace CapaDatos.DAOs
             using (var cn = new NpgsqlConnection(ConnectionString))
             {
                 cn.Open();
-                if (!ExisteTabla(cn, "aocr_tbrevision_documental"))
-                {
-                    return resultado;
-                }
+                EnsureSchema(cn);
 
                 const string sql = @"
                     SELECT codigo_documento, decision, observacion
@@ -144,10 +141,7 @@ namespace CapaDatos.DAOs
             using (var cn = new NpgsqlConnection(ConnectionString))
             {
                 cn.Open();
-                if (!ExisteTabla(cn, "aocr_tbhistorial_documental"))
-                {
-                    return false;
-                }
+                EnsureSchema(cn);
 
                 const string sql = @"
                     INSERT INTO aocr_tbhistorial_documental
@@ -186,14 +180,59 @@ namespace CapaDatos.DAOs
             }
         }
 
-        private static bool ExisteTabla(NpgsqlConnection cn, string tabla)
+        private static void EnsureSchema(NpgsqlConnection cn)
         {
-            const string sql = "SELECT to_regclass(@tabla) IS NOT NULL;";
-            using (var cmd = new NpgsqlCommand(sql, cn))
+            if (_schemaReady)
             {
-                cmd.Parameters.AddWithValue("@tabla", tabla);
-                var result = cmd.ExecuteScalar();
-                return result != null && result != DBNull.Value && Convert.ToBoolean(result);
+                return;
+            }
+
+            lock (SyncLock)
+            {
+                if (_schemaReady)
+                {
+                    return;
+                }
+
+                const string sql = @"
+                    CREATE TABLE IF NOT EXISTS public.aocr_tbrevision_documental
+                    (
+                        id SERIAL PRIMARY KEY,
+                        codigo_solicitud INTEGER NOT NULL,
+                        codigo_documento INTEGER NOT NULL,
+                        decision VARCHAR(60) NOT NULL,
+                        observacion TEXT,
+                        codigo_usuario_revisor INTEGER,
+                        fecha_revision TIMESTAMP NOT NULL DEFAULT NOW(),
+                        created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+                        created_by VARCHAR(150)
+                    );
+
+                    CREATE INDEX IF NOT EXISTS idx_revision_documental_solicitud_doc
+                        ON public.aocr_tbrevision_documental(codigo_solicitud, codigo_documento, fecha_revision DESC, created_at DESC);
+
+                    CREATE TABLE IF NOT EXISTS public.aocr_tbhistorial_documental
+                    (
+                        id SERIAL PRIMARY KEY,
+                        codigo_solicitud INTEGER NOT NULL,
+                        codigo_documento INTEGER,
+                        evento VARCHAR(120) NOT NULL,
+                        detalle TEXT,
+                        codigo_usuario INTEGER,
+                        fecha_evento TIMESTAMP NOT NULL DEFAULT NOW(),
+                        created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+                        created_by VARCHAR(150)
+                    );
+
+                    CREATE INDEX IF NOT EXISTS idx_historial_documental_solicitud
+                        ON public.aocr_tbhistorial_documental(codigo_solicitud, fecha_evento DESC, created_at DESC);";
+
+                using (var cmd = new NpgsqlCommand(sql, cn))
+                {
+                    cmd.ExecuteNonQuery();
+                }
+
+                _schemaReady = true;
             }
         }
     }

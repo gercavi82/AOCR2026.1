@@ -73,9 +73,9 @@ else
                 {
                     var inspeccion = item.Inspeccion;
                     if (inspeccion == null) { continue; }
-                    var hayAccionesFila = (puedeDecidirRevision && (item.PuedeAceptarSolicitud || item.PuedeObservar || item.PuedeCerrar))
-                        || (puedeAsignarInspectorRevision && item.PuedeAsignarInspector);
+                    var hayAccionesFila = (puedeDecidirRevision && (item.PuedeAceptarSolicitud || item.PuedeObservar || item.PuedeCerrar));
                     var estadoNorm = (item.EstadoNormalizado ?? "").Trim().ToUpperInvariant();
+                    var inspectorPendienteAsignacion = string.Equals(item.InspectorAsignado, "No asignado", StringComparison.OrdinalIgnoreCase);
                     var urlDetalle = Url.Action("Detalle", "Inspeccion", new { id = inspeccion.CodigoInspeccion });
                     <tr data-rv-estado="@estadoNorm">
                         <td>
@@ -91,7 +91,18 @@ else
                             <div class="small text-muted mt-1">@item.EstadoNormalizado</div>
                         </td>
                         <td>
-                            <span class="@(string.Equals(item.InspectorAsignado, "No asignado", StringComparison.OrdinalIgnoreCase) ? "text-muted fst-italic" : "fw-semibold")">@item.InspectorAsignado</span>
+                            @if (inspectorPendienteAsignacion)
+                            {
+                                <div class="text-warning fw-semibold">Pendiente de asignación</div>
+                                if (puedeAsignarInspectorRevision && item.PuedeAsignarInspector)
+                                {
+                                    <small class="text-muted">Gestione la asignación desde el menú Coordinador &gt; Asignación de Inspectores.</small>
+                                }
+                            }
+                            else
+                            {
+                                <div class="fw-semibold">@item.InspectorAsignado</div>
+                            }
                         </td>
                         <td>
                             <div class="rv-context" title="@item.MensajeOperativo">@item.MensajeOperativo</div>
@@ -134,10 +145,6 @@ else
                                         @Html.Hidden("returnUrl", returnUrlRevision)
                                         <button type="submit" class="btn btn-outline-dark" title="Cerrar"><i class="fas fa-xmark"></i></button>
                                     }
-                                }
-                                @if (puedeAsignarInspectorRevision && item.PuedeAsignarInspector)
-                                {
-                                    <a class="btn btn-outline-secondary" title="Asignar inspector" href="@Url.Action("AsignarInspector", "Tecnico", new { solicitudId = inspeccion.CodigoSolicitud })"><i class="fas fa-user-plus"></i></a>
                                 }
                                 <button type="button" class="btn btn-outline-info rv-quick-view"
                                         title="Vista rápida"

@@ -3,7 +3,6 @@ using System.IO;
 using System.Web;
 using System.Web.Mvc;
 using CapaNegocio;
-using CapaNegocio.Helpers;
 using CapaNegocio.Services;
 using CapaModelo.Common;
 using CapaUtilidades;
@@ -17,7 +16,10 @@ namespace CapaPresentacion.Controllers
     [Authorize(Roles = "CoordinacionLegal,Direccion,JefaturaTecnica,DirectorGeneral,Administrador")]
     public class CertificadoController : Controller
     {
+        private const string VistaCertificadoAocr = "~/Views/Certificado/CertificadoAOCR.cshtml";
+
         private readonly CertificadoBL _bl = new CertificadoBL();
+        private readonly CertificadoDAO _certificadoDao = new CertificadoDAO();
         private readonly FirmaDigitalService _firmaService = new FirmaDigitalService();
         private readonly AocrFirmaDocumentoDAO _firmaDocDao = new AocrFirmaDocumentoDAO();
         private readonly HistorialEstadoDAO _historialDao = new HistorialEstadoDAO();
@@ -34,90 +36,30 @@ namespace CapaPresentacion.Controllers
         public ActionResult Detalle(int solicitudId)
         {
             var certificado = _bl.ObtenerPorSolicitud(solicitudId);
+            certificado = SincronizarCertificadoConFirmaRegistrada(certificado);
 
             ViewBag.SolicitudId = solicitudId;
 
             return View(certificado);
         }
 
-        // ============================================================
-        //  GENERAR REGISTRO EN BD (redirige a Detalle) — legacy
-        // ============================================================
-        public ActionResult Generar(int solicitudId)
+        public ActionResult Ver(string id)
         {
-            string usuario = User?.Identity?.Name ?? "Sistema";
+            if (string.IsNullOrWhiteSpace(id))
+                return HttpNotFound("El certificado no existe.");
 
-            try
-            {
-                var existente = _bl.ObtenerPorSolicitud(solicitudId);
-                if (existente == null)
-                    _bl.GenerarCertificado(solicitudId, usuario);
-            }
-            catch (Exception ex)
-            {
-                TempData["Error"] = "Error al crear registro de certificado: " + ex.Message;
-            }
+            Certificado certificado = null;
+            int codigoCertificado;
+            if (int.TryParse(id, out codigoCertificado))
+                certificado = _bl.Obtener(codigoCertificado);
 
-            return RedirectToAction("Detalle", new { solicitudId });
-        }
+            if (certificado == null)
+                certificado = _bl.ObtenerPorNumero(id);
 
-        // ============================================================
-        //                   SUBIR PDF DE CERTIFICADO
-        // ============================================================
-        [HttpPost]
-        [ValidateAntiForgeryToken]
-        public ActionResult SubirPDF(int id, int solicitudId, HttpPostedFileBase archivo)
-        {
-            try
-            {
-                if (archivo == null || archivo.ContentLength == 0)
-                {
-                    TempData["Error"] = "Debe seleccionar un archivo PDF.";
-                    return RedirectToAction("Detalle", new { solicitudId });
-                }
+            if (certificado == null || certificado.CodigoSolicitud <= 0)
+                return HttpNotFound("El certificado no existe.");
 
-                // Validar extensión
-                string extension = Path.GetExtension(archivo.FileName).ToLower();
-                if (extension != ".pdf")
-                {
-                    TempData["Error"] = "Solo se permiten archivos PDF.";
-                    return RedirectToAction("Detalle", new { solicitudId });
-                }
-
-                // Construcción de ruta segura
-                string carpeta = "~/App_Data/Certificados/";
-
-                var options = new FileUploadOptions
-                {
-                    BasePath = FileStorageHelper.GetPhysicalBasePath(carpeta),
-                    Subfolder = string.Empty,
-                    AllowedExtensions = new[] { ".pdf" },
-                    AllowedContentTypes = new[] { "application/pdf" },
-                    MaxSizeMb = 10,
-                    ValidateMagicBytes = true
-                };
-
-                string error;
-                FileUploadResult result;
-                if (!FileUploadService.TrySave(archivo, options, out result, out error))
-                {
-                    TempData["Error"] = error ?? "No se pudo guardar el PDF.";
-                    return RedirectToAction("Detalle", new { solicitudId });
-                }
-
-                string rutaRelativa = carpeta + result.StoredName;
-
-                // Registrar en BD
-                _bl.SubirPDF(id, rutaRelativa);
-
-                TempData["OK"] = "Archivo PDF subido correctamente.";
-            }
-            catch (Exception ex)
-            {
-                TempData["Error"] = "Error al subir PDF: " + ex.Message;
-            }
-
-            return RedirectToAction("Detalle", new { solicitudId });
+            return RedirectToAction("Detalle", new { solicitudId = certificado.CodigoSolicitud });
         }
 
         // ============================================================
@@ -126,6 +68,12 @@ namespace CapaPresentacion.Controllers
         public ActionResult DescargarPDF(int id, bool vistaPrevia = false)
         {
             var cert = _bl.Obtener(id);
+            cert = SincronizarCertificadoConFirmaRegistrada(cert);
+            var requiereRectificacion = RequiereRectificacionPorCambioPlantilla(cert);
+            if (requiereRectificacion)
+            {
+                cert = RectificarCertificadoFirmadoSiPlantillaCambio(cert);
+            }
 
             if (cert == null)
                 return Content("El certificado no existe.");
@@ -133,10 +81,15 @@ namespace CapaPresentacion.Controllers
             if (string.IsNullOrWhiteSpace(cert.RutaPdf))
                 return Content("El archivo PDF no está registrado.");
 
-            string rutaFisica = Server.MapPath(cert.RutaPdf);
+            string rutaFisica = ResolverRutaFisica(cert.RutaPdf);
 
             if (!System.IO.File.Exists(rutaFisica))
                 return Content("El archivo PDF no se encuentra en el servidor.");
+
+            if (vistaPrevia)
+            {
+                DeshabilitarCacheRespuestaPdf();
+            }
 
             return vistaPrevia
                 ? File(rutaFisica, "application/pdf")
@@ -150,6 +103,11 @@ namespace CapaPresentacion.Controllers
         {
             try
             {
+                if (vistaPrevia)
+                {
+                    DeshabilitarCacheRespuestaPdf();
+                }
+
                 var modelo = ConstruirViewModel(solicitudId);
 
                 var pdf = new ViewAsPdf("~/Views/Certificado/CertificadoAOCR.cshtml", modelo)
@@ -175,22 +133,83 @@ namespace CapaPresentacion.Controllers
             }
         }
 
-        // ============================================================
-        //        VISTA PREVIA DEL CERTIFICADO (HTML)
-        // ============================================================
-        public ActionResult VistaPreviaCertificado(int solicitudId)
+        private void DeshabilitarCacheRespuestaPdf()
         {
+            if (Response == null)
+            {
+                return;
+            }
+
+            Response.Cache.SetCacheability(HttpCacheability.NoCache);
+            Response.Cache.SetNoStore();
+            Response.Cache.SetRevalidation(HttpCacheRevalidation.AllCaches);
+            Response.Cache.SetExpires(DateTime.UtcNow.AddMinutes(-1));
+            Response.Cache.SetMaxAge(TimeSpan.Zero);
+            Response.AppendHeader("Pragma", "no-cache");
+        }
+
+        private Certificado SincronizarCertificadoConFirmaRegistrada(Certificado cert)
+        {
+            if (cert == null || cert.CodigoSolicitud <= 0)
+            {
+                return cert;
+            }
+
+            AocrFirmaDocumento ultimaFirma = null;
             try
             {
-                var modelo = ConstruirViewModel(solicitudId);
-                return View("~/Views/Certificado/CertificadoAOCR.cshtml", modelo);
+                ultimaFirma = _firmaDocDao.ObtenerUltimoPorSolicitudTipo(cert.CodigoSolicitud, "CERTIFICADO_AOCR");
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine("ERROR VistaPreviaCertificado: " + ex);
-                return Content("<h3>Error Vista Previa</h3><pre>" +
-                    System.Web.HttpUtility.HtmlEncode(ex.ToString()) + "</pre>", "text/html");
+                System.Diagnostics.Debug.WriteLine("WARN AocrFirmaDocumento.ObtenerUltimoPorSolicitudTipo: " + ex);
+                return cert;
             }
+
+            if (ultimaFirma == null || string.IsNullOrWhiteSpace(ultimaFirma.RutaDocumento))
+            {
+                return cert;
+            }
+
+            if (string.Equals(cert.RutaDocumento, ultimaFirma.RutaDocumento, StringComparison.OrdinalIgnoreCase))
+            {
+                if (!cert.UpdatedAt.HasValue)
+                {
+                    cert.UpdatedAt = ultimaFirma.CreatedAt ?? ultimaFirma.FechaFirma;
+                }
+
+                if (string.IsNullOrWhiteSpace(cert.AprobadoPor))
+                {
+                    cert.AprobadoPor = ultimaFirma.NombreFirmante;
+                }
+
+                return cert;
+            }
+
+            cert.RutaDocumento = ultimaFirma.RutaDocumento;
+            cert.Estado = "APROBADO";
+            cert.UpdatedAt = ultimaFirma.CreatedAt ?? ultimaFirma.FechaFirma;
+
+            if (string.IsNullOrWhiteSpace(cert.EmitidoPor))
+            {
+                cert.EmitidoPor = ultimaFirma.UsuarioNombre;
+            }
+
+            if (string.IsNullOrWhiteSpace(cert.AprobadoPor))
+            {
+                cert.AprobadoPor = ultimaFirma.NombreFirmante;
+            }
+
+            try
+            {
+                _certificadoDao.Actualizar(cert);
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine("WARN Certificado.SincronizarRutaFirmada: " + ex);
+            }
+
+            return cert;
         }
 
         // ============================================================
@@ -251,98 +270,264 @@ namespace CapaPresentacion.Controllers
                     return RedirectToAction("Detalle", new { solicitudId });
                 }
 
-                // 4) Construir modelo y generar PDF vía Rotativa
-                var modelo = ConstruirViewModel(solicitudId);
-                var nombreFirmante = !string.IsNullOrWhiteSpace(infoCert.NombreTitular)
-                    ? infoCert.NombreTitular
-                    : usuarioNombre;
-                var cargoFirmante = "Coordinador/a Legal AOCR";
-
-                var pdf = new ViewAsPdf("~/Views/Certificado/CertificadoAOCR.cshtml", modelo)
-                {
-                    PageSize = Rotativa.Options.Size.A4,
-                    PageOrientation = Rotativa.Options.Orientation.Portrait,
-                    PageMargins = new Rotativa.Options.Margins(5, 5, 5, 5),
-                    CustomSwitches = "--enable-local-file-access --print-media-type --dpi 300 --zoom 1.0"
-                };
-
-                byte[] pdfBytes;
-                try
-                {
-                    pdfBytes = pdf.BuildFile(ControllerContext);
-                }
-                catch (Exception exPdf)
-                {
-                    TempData["Error"] = "No se pudo generar el PDF del certificado: " + exPdf.Message;
-                    return RedirectToAction("Detalle", new { solicitudId });
-                }
-
-                // 5) QR + firma digital
-                var contenidoQr = ConstruirContenidoQrCertificado(solicitudId, modelo, infoCert, nombreFirmante, cargoFirmante);
-                var resultado = _firmaService.FirmarPdf(
-                    pdfBytes,
+                cert = FirmarYPersistirCertificado(
+                    solicitudId,
+                    cert,
                     certificadoBytes,
                     password,
-                    nombreFirmante,
-                    "Firma del Coordinador — Certificado AOCR",
-                    "Sistema AOCR DGAC",
-                    "DIRDAC",
-                    contenidoQr,
-                    null);
+                    infoCert,
+                    usuarioNombre,
+                    usuarioNombre,
+                    true);
 
-                if (resultado == null || !resultado.Exitoso)
+                TempData["OK"] = "Certificado AOCR firmado correctamente por " + cert.AprobadoPor + ".";
+                return RedirectToAction("Detalle", new { solicitudId });
+            }
+            catch (Exception ex)
+            {
+                TempData["Error"] = "Error al firmar el certificado AOCR: " + ex.Message;
+                return RedirectToAction("Detalle", new { solicitudId });
+            }
+        }
+
+        private Certificado RectificarCertificadoFirmadoSiPlantillaCambio(Certificado cert)
+        {
+            if (!RequiereRectificacionPorCambioPlantilla(cert))
+            {
+                return cert;
+            }
+
+            try
+            {
+                byte[] certificadoBytes;
+                string passwordConfigurado;
+                string errorCert;
+                if (!TryCargarCertificadoInstitucional(out certificadoBytes, out passwordConfigurado, out errorCert))
                 {
-                    TempData["Error"] = resultado != null && !string.IsNullOrWhiteSpace(resultado.Mensaje)
+                    System.Diagnostics.Debug.WriteLine("WARN Certificado.RectificarPlantilla: " + errorCert);
+                    return cert;
+                }
+
+                if (string.IsNullOrWhiteSpace(passwordConfigurado))
+                {
+                    System.Diagnostics.Debug.WriteLine("WARN Certificado.RectificarPlantilla: no hay contraseña configurada para re-firma automática.");
+                    return cert;
+                }
+
+                var infoCert = _firmaService.LeerCertificado(certificadoBytes, passwordConfigurado);
+                if (infoCert == null || !infoCert.Exitoso)
+                {
+                    System.Diagnostics.Debug.WriteLine(
+                        "WARN Certificado.RectificarPlantilla: " +
+                        (infoCert != null ? infoCert.Mensaje : "no se pudo validar el certificado institucional."));
+                    return cert;
+                }
+
+                var usuarioEmision = !string.IsNullOrWhiteSpace(cert.EmitidoPor)
+                    ? cert.EmitidoPor
+                    : (User?.Identity?.Name ?? "Sistema");
+
+                return FirmarYPersistirCertificado(
+                    cert.CodigoSolicitud,
+                    cert,
+                    certificadoBytes,
+                    passwordConfigurado,
+                    infoCert,
+                    usuarioEmision,
+                    "Sistema AOCR",
+                    false);
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine("WARN Certificado.RectificarPlantilla: " + ex);
+                return cert;
+            }
+        }
+
+        private bool RequiereRectificacionPorCambioPlantilla(Certificado cert)
+        {
+            if (cert == null || cert.CodigoSolicitud <= 0 || string.IsNullOrWhiteSpace(cert.RutaDocumento))
+            {
+                return false;
+            }
+
+            try
+            {
+                var fechaReferenciaUtc = ObtenerFechaReferenciaRectificacionCertificadoUtc();
+                if (!fechaReferenciaUtc.HasValue)
+                {
+                    return false;
+                }
+
+                var rutaPdf = ResolverRutaFisica(cert.RutaDocumento);
+                if (string.IsNullOrWhiteSpace(rutaPdf) || !System.IO.File.Exists(rutaPdf))
+                {
+                    return true;
+                }
+
+                return System.IO.File.GetLastWriteTimeUtc(rutaPdf) < fechaReferenciaUtc.Value;
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine("WARN Certificado.RequiereRectificacionPorCambioPlantilla: " + ex);
+                return false;
+            }
+        }
+
+        private DateTime? ObtenerFechaReferenciaRectificacionCertificadoUtc()
+        {
+            DateTime? fechaReferenciaUtc = null;
+
+            ActualizarFechaReferenciaUtc(ref fechaReferenciaUtc, ResolverRutaFisica(VistaCertificadoAocr));
+            ActualizarFechaReferenciaUtc(ref fechaReferenciaUtc, ResolverRutaFisica("~/bin/AOCR.dll"));
+
+            try
+            {
+                var raizWeb = Server?.MapPath("~/");
+                if (!string.IsNullOrWhiteSpace(raizWeb))
+                {
+                    var raizSolucion = System.IO.Path.GetFullPath(System.IO.Path.Combine(raizWeb, ".."));
+
+                    ActualizarFechaReferenciaUtc(ref fechaReferenciaUtc, System.IO.Path.Combine(raizWeb, "Controllers", "6_CertificadoController.cs"));
+                    ActualizarFechaReferenciaUtc(ref fechaReferenciaUtc, System.IO.Path.Combine(raizSolucion, "CapaNegocio", "Services", "FirmaDigitalService.cs"));
+                    ActualizarFechaReferenciaUtc(ref fechaReferenciaUtc, System.IO.Path.Combine(raizSolucion, "CapaNegocio", "Services", "PdfTextAnchorLocator.cs"));
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine("WARN Certificado.ObtenerFechaReferenciaRectificacionCertificadoUtc: " + ex);
+            }
+
+            return fechaReferenciaUtc;
+        }
+
+        private static void ActualizarFechaReferenciaUtc(ref DateTime? fechaReferenciaUtc, string ruta)
+        {
+            if (string.IsNullOrWhiteSpace(ruta) || !System.IO.File.Exists(ruta))
+            {
+                return;
+            }
+
+            var fechaRutaUtc = System.IO.File.GetLastWriteTimeUtc(ruta);
+            if (!fechaReferenciaUtc.HasValue || fechaRutaUtc > fechaReferenciaUtc.Value)
+            {
+                fechaReferenciaUtc = fechaRutaUtc;
+            }
+        }
+
+        private string ResolverRutaFisica(string ruta)
+        {
+            if (string.IsNullOrWhiteSpace(ruta))
+            {
+                return null;
+            }
+
+            var rutaNormalizada = ruta.Trim();
+
+            if (rutaNormalizada.StartsWith("~/", StringComparison.Ordinal))
+            {
+                return Server.MapPath(rutaNormalizada);
+            }
+
+            if (rutaNormalizada.StartsWith("/", StringComparison.Ordinal)
+                || (rutaNormalizada.StartsWith("\\", StringComparison.Ordinal) && !rutaNormalizada.StartsWith("\\\\", StringComparison.Ordinal)))
+            {
+                return Server.MapPath("~/" + rutaNormalizada.TrimStart('/', '\\'));
+            }
+
+            return Path.IsPathRooted(rutaNormalizada)
+                ? rutaNormalizada
+                : Server.MapPath("~/" + rutaNormalizada.TrimStart('/', '\\'));
+        }
+
+        private Certificado FirmarYPersistirCertificado(
+            int solicitudId,
+            Certificado cert,
+            byte[] certificadoBytes,
+            string passwordFirma,
+            InformacionCertificadoDigital infoCert,
+            string usuarioNombreEmision,
+            string usuarioNombreRegistroFirma,
+            bool registrarHistorial)
+        {
+            if (cert == null)
+            {
+                throw new InvalidOperationException("No se pudo crear/obtener el registro del certificado AOCR.");
+            }
+
+            var modelo = ConstruirViewModel(solicitudId);
+            var nombreFirmante = !string.IsNullOrWhiteSpace(infoCert?.NombreTitular)
+                ? infoCert.NombreTitular
+                : (usuarioNombreEmision ?? "Sistema");
+            var cargoFirmante = "Coordinador/a Legal AOCR";
+            var fechaFirma = DateTime.Now;
+
+            var pdf = new ViewAsPdf(VistaCertificadoAocr, modelo)
+            {
+                PageSize = Rotativa.Options.Size.A4,
+                PageOrientation = Rotativa.Options.Orientation.Portrait,
+                PageMargins = new Rotativa.Options.Margins(5, 5, 5, 5),
+                CustomSwitches = "--enable-local-file-access --print-media-type --dpi 300 --zoom 1.0"
+            };
+
+            byte[] pdfBytes = pdf.BuildFile(ControllerContext);
+
+            var contenidoQr = ConstruirContenidoQrCertificado(solicitudId, modelo, infoCert, nombreFirmante, cargoFirmante);
+            var resultado = _firmaService.FirmarPdf(
+                pdfBytes,
+                certificadoBytes,
+                passwordFirma,
+                nombreFirmante,
+                "Firma del Coordinador — Certificado AOCR",
+                "Sistema AOCR DGAC",
+                "DIRDAC",
+                contenidoQr,
+                null);
+
+            if (resultado == null || !resultado.Exitoso)
+            {
+                throw new InvalidOperationException(
+                    resultado != null && !string.IsNullOrWhiteSpace(resultado.Mensaje)
                         ? resultado.Mensaje
-                        : "No se pudo aplicar la firma digital al certificado.";
-                    return RedirectToAction("Detalle", new { solicitudId });
-                }
+                        : "No se pudo aplicar la firma digital al certificado.");
+            }
 
-                // 6) Persistir PDF firmado
-                string rutaRelativa = GuardarCertificadoFirmado(solicitudId, resultado.PdfFirmado);
+            var rutaRelativa = GuardarCertificadoFirmado(solicitudId, resultado.PdfFirmado);
 
-                // 7) Actualizar registro de Certificado
-                try
-                {
-                    cert.RutaDocumento = rutaRelativa;
-                    cert.Estado = "Vigente";
-                    cert.EmitidoPor = usuarioNombre;
-                    cert.AprobadoPor = nombreFirmante;
-                    cert.UpdatedAt = DateTime.Now;
-                    new CertificadoDAO().Actualizar(cert);
-                }
-                catch (Exception exUpd)
-                {
-                    System.Diagnostics.Debug.WriteLine("WARN Certificado.Actualizar: " + exUpd);
-                }
+            cert.RutaDocumento = rutaRelativa;
+            cert.Estado = "APROBADO";
+            cert.EmitidoPor = usuarioNombreEmision;
+            cert.AprobadoPor = nombreFirmante;
+            cert.UpdatedAt = fechaFirma;
+            _certificadoDao.Actualizar(cert);
 
-                // 8) Registrar firma en aocr_tbfirma_documento
-                try
+            try
+            {
+                _firmaDocDao.Registrar(new AocrFirmaDocumento
                 {
-                    _firmaDocDao.Registrar(new AocrFirmaDocumento
-                    {
-                        CodigoSolicitud = solicitudId,
-                        CodigoInspeccion = null,
-                        TipoDocumento = "CERTIFICADO_AOCR",
-                        NumeroAocr = modelo?.NumeroAOCR,
-                        NombreArchivo = System.IO.Path.GetFileName(rutaRelativa),
-                        RutaDocumento = rutaRelativa,
-                        HashDocumento = resultado.HashSha256,
-                        CodigoQr = contenidoQr,
-                        SujetoCertificado = resultado.SujetoCertificado ?? infoCert.SujetoCertificado,
-                        NombreFirmante = nombreFirmante,
-                        CargoFirmante = cargoFirmante,
-                        FechaFirma = DateTime.Now,
-                        CodigoUsuario = null,
-                        UsuarioNombre = usuarioNombre
-                    });
-                }
-                catch (Exception exReg)
-                {
-                    System.Diagnostics.Debug.WriteLine("WARN AocrFirmaDocumento.Registrar: " + exReg);
-                }
+                    CodigoSolicitud = solicitudId,
+                    CodigoInspeccion = null,
+                    TipoDocumento = "CERTIFICADO_AOCR",
+                    NumeroAocr = modelo?.NumeroAOCR,
+                    NombreArchivo = System.IO.Path.GetFileName(rutaRelativa),
+                    RutaDocumento = rutaRelativa,
+                    HashDocumento = resultado.HashSha256,
+                    CodigoQr = contenidoQr,
+                    SujetoCertificado = resultado.SujetoCertificado ?? (infoCert != null ? infoCert.SujetoCertificado : null),
+                    NombreFirmante = nombreFirmante,
+                    CargoFirmante = cargoFirmante,
+                    FechaFirma = fechaFirma,
+                    CodigoUsuario = null,
+                    UsuarioNombre = usuarioNombreRegistroFirma ?? usuarioNombreEmision
+                });
+            }
+            catch (Exception exReg)
+            {
+                System.Diagnostics.Debug.WriteLine("WARN AocrFirmaDocumento.Registrar: " + exReg);
+            }
 
-                // 9) Registrar trazabilidad en historial de estado
+            if (registrarHistorial)
+            {
                 try
                 {
                     _historialDao.RegistrarCambio(
@@ -356,15 +541,9 @@ namespace CapaPresentacion.Controllers
                 {
                     System.Diagnostics.Debug.WriteLine("WARN HistorialEstado.RegistrarCambio: " + exHist);
                 }
+            }
 
-                TempData["OK"] = "Certificado AOCR firmado correctamente por " + nombreFirmante + ".";
-                return RedirectToAction("Detalle", new { solicitudId });
-            }
-            catch (Exception ex)
-            {
-                TempData["Error"] = "Error al firmar el certificado AOCR: " + ex.Message;
-                return RedirectToAction("Detalle", new { solicitudId });
-            }
+            return cert;
         }
 
         // ============================================================
@@ -388,9 +567,7 @@ namespace CapaPresentacion.Controllers
             string rutaAbsoluta;
             try
             {
-                rutaAbsoluta = rutaConfigurada.StartsWith("~", StringComparison.Ordinal)
-                    ? Server.MapPath(rutaConfigurada)
-                    : rutaConfigurada;
+                rutaAbsoluta = ResolverRutaFisica(rutaConfigurada);
             }
             catch (Exception ex)
             {
@@ -477,7 +654,9 @@ namespace CapaPresentacion.Controllers
             string escudoBase64 = null;
             try
             {
-                string logoPath = Server.MapPath("~/Content/assets/imganes/logodgac.png");
+                string logoPath = Server.MapPath("~/Content/assets/imganes/logo2.jpg");
+                if (!System.IO.File.Exists(logoPath))
+                    logoPath = Server.MapPath("~/Content/assets/imganes/logodgac.jpg");
                 if (System.IO.File.Exists(logoPath))
                     logoBase64 = Convert.ToBase64String(System.IO.File.ReadAllBytes(logoPath));
 

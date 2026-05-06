@@ -738,7 +738,7 @@
                     apiBaseUrl: '@Url.Content("~/")',
                     debug: @(HttpContext.Current.IsDebuggingEnabled ? "true" : "false"),
                     uploadMaxSize: 10 * 1024 * 1024,
-                    sessionTimeout: 20 * 60 * 1000,
+                    sessionTimeout: @(CapaPresentacion.Helpers.SessionTimeoutHelper.GetTimeoutMinutes()) * 60 * 1000,
                     user: {
                         id: '@(Session["UserId"] ?? "")',
                         name: '@(Session["NombreUsuario"] ?? "")',
@@ -788,8 +788,8 @@
         function initSessionManagement() {
             // Tu código existente de gestión de sesión
             var sessionTimer, warningTimer, countdownTimer;
-            var WARNING_TIME = 5 * 60 * 1000;
-            var TOTAL_TIMEOUT = 25 * 60 * 1000;
+            var WARNING_TIME = @(CapaPresentacion.Helpers.SessionTimeoutHelper.GetWarningMinutes()) * 60 * 1000;
+            var TOTAL_TIMEOUT = @(CapaPresentacion.Helpers.SessionTimeoutHelper.GetTimeoutMinutes()) * 60 * 1000;
 
             function resetSessionTimers() {
                 clearTimeout(sessionTimer);
@@ -812,7 +812,7 @@
                     if (!modalElement) return;
 
                     var modal = new bootstrap.Modal(modalElement);
-                    var timeLeft = 300;
+                    var timeLeft = @(CapaPresentacion.Helpers.SessionTimeoutHelper.GetWarningMinutes()) * 60;
                     var countdownEl = document.getElementById('session-countdown');
 
                     function updateCountdown() {

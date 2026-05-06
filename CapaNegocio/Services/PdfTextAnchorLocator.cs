@@ -48,8 +48,8 @@ namespace CapaNegocio.Services
         private const float AltoLvEae = 84f;
         private const float AnchoAocr = 160f;      // ~34% columna A4
         private const float AltoAocr = 96f;
-        private const float AnchoCertificado = 235f; // ~50% página A4 (celda firma certificado)
-        private const float AltoCertificado = 92f;
+        private const float AnchoCertificado = 188f; // ancho util reducido para dejar aire dentro del slot del certificado
+        private const float AltoCertificado = 46f;
 
         /// <summary>
         /// Intenta localizar el recuadro de firma buscando el texto ancla correspondiente al rol.
@@ -160,8 +160,16 @@ namespace CapaNegocio.Services
             if (esV2)
             {
                 // Ancla v2: el texto está dentro del slot, marca su esquina superior-izquierda
-                left = ancla.X;
-                top = ancla.Y + 2f; // small offset up to cover the anchor text
+                if (esCertificado)
+                {
+                    left = ancla.X - 10f;
+                    top = ancla.Y + ancla.FontSize + 4f;
+                }
+                else
+                {
+                    left = ancla.X;
+                    top = ancla.Y + 2f; // small offset up to cover the anchor text
+                }
             }
             else
             {

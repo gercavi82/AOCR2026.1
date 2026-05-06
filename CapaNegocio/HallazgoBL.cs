@@ -118,6 +118,15 @@ namespace CapaNegocio
         // =========================================================
 
         /// <summary>
+        /// Obtiene un hallazgo por su identificador.
+        /// </summary>
+        public Hallazgo ObtenerPorId(int codigoHallazgo)
+        {
+            if (codigoHallazgo <= 0) return null;
+            return _hallazgoDAO.ObtenerPorId(codigoHallazgo);
+        }
+
+        /// <summary>
         /// Compat: si necesitas ObtenerPorId, lo resolvemos consultando por inspección
         /// y filtrando (no ideal, pero compila sin tocar DAO).
         /// RECOMENDADO: implementar un método real ObtenerPorId en el DAO.

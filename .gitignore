@@ -9,3 +9,5 @@ packages/
 *.log
 *.vsidx
 **/App_Data/Logs/
+
+.fake

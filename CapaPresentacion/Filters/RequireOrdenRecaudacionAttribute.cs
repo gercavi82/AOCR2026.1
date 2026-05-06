@@ -22,12 +22,14 @@ namespace CapaPresentacion.Filters
 
             var dao = new OrdenRecaudacionDAO();
             bool ok = RequiereGenerada
-                ? dao.ExisteORGeneradaOPagada(usuarioId)
+                ? dao.TieneOrdenHabilitanteAOCR(usuarioId)
                 : dao.ExisteORMinima(usuarioId);
 
             if (!ok)
             {
-                filterContext.Result = new RedirectResult("~/OrdenRecaudacion/Nueva");
+                filterContext.Result = dao.TieneOrdenActivaEnProceso(usuarioId)
+                    ? (ActionResult)new RedirectResult("~/OrdenRecaudacion/Index")
+                    : new RedirectResult("~/OrdenRecaudacion/Nueva");
                 return;
             }
 

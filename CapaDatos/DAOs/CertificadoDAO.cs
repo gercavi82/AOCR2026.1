@@ -29,6 +29,7 @@ namespace CapaDatos.DAOs
             public string CreatedBy;
             public string UpdatedAt;
             public string UpdatedBy;
+            public bool UsaEstadosLegados;
         }
 
         private NpgsqlConnection CrearConexion()
@@ -48,6 +49,7 @@ namespace CapaDatos.DAOs
             {
                 cn.Open();
                 var schema = ResolverSchema(cn);
+                var estadoPersistido = TraducirEstadoParaPersistencia(cert != null ? cert.Estado : null, schema.UsaEstadosLegados);
 
                 var columnas = new List<string>();
                 var valores = new List<string>();
@@ -55,7 +57,10 @@ namespace CapaDatos.DAOs
                 AgregarParametro(columnas, valores, schema.CodigoSolicitud, "@codSol");
                 AgregarParametro(columnas, valores, schema.NumeroCertificado, "@num");
                 AgregarParametro(columnas, valores, schema.Tipo, "@tipo");
-                AgregarParametro(columnas, valores, schema.Estado, "@estado");
+                if (!string.IsNullOrWhiteSpace(estadoPersistido))
+                {
+                    AgregarParametro(columnas, valores, schema.Estado, "@estado");
+                }
                 AgregarParametro(columnas, valores, schema.FechaEmision, "@fe");
                 AgregarParametro(columnas, valores, schema.FechaVencimiento, "@fv");
                 AgregarParametro(columnas, valores, schema.RutaDocumento, "@ruta");
@@ -84,7 +89,7 @@ namespace CapaDatos.DAOs
                     cmd.Parameters.AddWithValue("@codSol", cert.CodigoSolicitud);
                     cmd.Parameters.AddWithValue("@num", (object)cert.NumeroCertificado ?? DBNull.Value);
                     cmd.Parameters.AddWithValue("@tipo", (object)cert.Tipo ?? "AOCR");
-                    cmd.Parameters.AddWithValue("@estado", (object)cert.Estado ?? "Vigente");
+                    cmd.Parameters.AddWithValue("@estado", (object)estadoPersistido ?? DBNull.Value);
                     cmd.Parameters.AddWithValue("@fe", (object)cert.FechaEmision ?? DateTime.Now);
                     cmd.Parameters.AddWithValue("@fv", (object)cert.FechaVencimiento ?? DBNull.Value);
                     cmd.Parameters.AddWithValue("@ruta", (object)cert.RutaDocumento ?? DBNull.Value);
@@ -108,9 +113,13 @@ namespace CapaDatos.DAOs
             {
                 cn.Open();
                 var schema = ResolverSchema(cn);
+                var estadoPersistido = TraducirEstadoParaPersistencia(cert != null ? cert.Estado : null, schema.UsaEstadosLegados);
                 var sets = new List<string>();
 
-                AgregarSet(sets, schema.Estado, "@estado");
+                if (!string.IsNullOrWhiteSpace(estadoPersistido))
+                {
+                    AgregarSet(sets, schema.Estado, "@estado");
+                }
                 AgregarSet(sets, schema.RutaDocumento, "@ruta");
                 AgregarSet(sets, schema.Observaciones, "@obs");
                 AgregarSet(sets, schema.EmitidoPor, "@emit");
@@ -133,7 +142,7 @@ namespace CapaDatos.DAOs
                 using (var cmd = new NpgsqlCommand(sql, cn))
                 {
                     cmd.Parameters.AddWithValue("@id", cert.CodigoCertificado);
-                    cmd.Parameters.AddWithValue("@estado", (object)cert.Estado ?? DBNull.Value);
+                    cmd.Parameters.AddWithValue("@estado", (object)estadoPersistido ?? DBNull.Value);
                     cmd.Parameters.AddWithValue("@ruta", (object)cert.RutaDocumento ?? DBNull.Value);
                     cmd.Parameters.AddWithValue("@obs", (object)cert.Observaciones ?? DBNull.Value);
                     cmd.Parameters.AddWithValue("@emit", (object)cert.EmitidoPor ?? DBNull.Value);
@@ -190,18 +199,43 @@ namespace CapaDatos.DAOs
             }
         }
 
+        public Certificado ObtenerPorNumero(string numeroCertificado)
+        {
+            using (var cn = CrearConexion())
+            {
+                cn.Open();
+                var schema = ResolverSchema(cn);
+                var sql = ConstruirSelect(schema) + $@"
+                    WHERE {schema.NumeroCertificado}=@numero
+                    ORDER BY {schema.CodigoCertificado} DESC
+                    LIMIT 1;";
+
+                using (var cmd = new NpgsqlCommand(sql, cn))
+                {
+                    cmd.Parameters.AddWithValue("@numero", numeroCertificado);
+                    using (var rd = cmd.ExecuteReader())
+                    {
+                        return rd.Read() ? Map(rd) : null;
+                    }
+                }
+            }
+        }
+
         private static Certificado Map(IDataRecord rd)
         {
+            var rutaDocumento = rd["rutadocumento"] != DBNull.Value ? rd["rutadocumento"].ToString() : null;
+            var estadoPersistido = rd["estado"] != DBNull.Value ? rd["estado"].ToString() : null;
+
             return new Certificado
             {
                 CodigoCertificado = rd["codigocertificado"] != DBNull.Value ? Convert.ToInt32(rd["codigocertificado"]) : 0,
                 CodigoSolicitud = rd["codigosolicitud"] != DBNull.Value ? Convert.ToInt32(rd["codigosolicitud"]) : 0,
                 NumeroCertificado = rd["numerocertificado"] != DBNull.Value ? rd["numerocertificado"].ToString() : null,
                 Tipo = rd["tipo"] != DBNull.Value ? rd["tipo"].ToString() : null,
-                Estado = rd["estado"] != DBNull.Value ? rd["estado"].ToString() : null,
+                Estado = TraducirEstadoDesdePersistencia(estadoPersistido, rutaDocumento),
                 FechaEmision = rd["fechaemision"] != DBNull.Value ? (DateTime?)Convert.ToDateTime(rd["fechaemision"]) : null,
                 FechaVencimiento = rd["fechavencimiento"] != DBNull.Value ? (DateTime?)Convert.ToDateTime(rd["fechavencimiento"]) : null,
-                RutaDocumento = rd["rutadocumento"] != DBNull.Value ? rd["rutadocumento"].ToString() : null,
+                RutaDocumento = rutaDocumento,
                 Observaciones = rd["observaciones"] != DBNull.Value ? rd["observaciones"].ToString() : null,
                 EmitidoPor = rd["emitidopor"] != DBNull.Value ? rd["emitidopor"].ToString() : null,
                 AprobadoPor = rd["aprobadopor"] != DBNull.Value ? rd["aprobadopor"].ToString() : null,
@@ -261,6 +295,60 @@ namespace CapaDatos.DAOs
             sets.Add($"{columna}={valor}");
         }
 
+        private static string TraducirEstadoDesdePersistencia(string estadoPersistido, string rutaDocumento)
+        {
+            if (string.IsNullOrWhiteSpace(estadoPersistido))
+            {
+                return string.IsNullOrWhiteSpace(rutaDocumento) ? "GENERADO" : "APROBADO";
+            }
+
+            switch (estadoPersistido.Trim().ToUpperInvariant())
+            {
+                case "VIGENTE":
+                    return string.IsNullOrWhiteSpace(rutaDocumento) ? "GENERADO" : "APROBADO";
+                case "VENCIDO":
+                    return "VENCIDO";
+                case "SUSPENDIDO":
+                    return "SUSPENDIDO";
+                case "REVOCADO":
+                    return "ANULADO";
+                default:
+                    return estadoPersistido;
+            }
+        }
+
+        private static string TraducirEstadoParaPersistencia(string estado, bool usaEstadosLegados)
+        {
+            if (string.IsNullOrWhiteSpace(estado))
+            {
+                return null;
+            }
+
+            if (!usaEstadosLegados)
+            {
+                return estado;
+            }
+
+            switch (estado.Trim().ToUpperInvariant())
+            {
+                case "GENERADO":
+                    return null;
+                case "APROBADO":
+                case "VIGENTE":
+                    return "Vigente";
+                case "VENCIDO":
+                    return "Vencido";
+                case "SUSPENDIDO":
+                    return "Suspendido";
+                case "ANULADO":
+                case "RECHAZADO":
+                case "REVOCADO":
+                    return "Revocado";
+                default:
+                    return estado;
+            }
+        }
+
         private static CertificadoSchema ResolverSchema(NpgsqlConnection cn)
         {
             return new CertificadoSchema
@@ -280,8 +368,43 @@ namespace CapaDatos.DAOs
                 CreatedAt = ResolverColumnaOpcional(cn, TablaCertificado, "created_at", "createdat", "fecha_creacion"),
                 CreatedBy = ResolverColumnaOpcional(cn, TablaCertificado, "created_by", "createdby", "usuario_creacion"),
                 UpdatedAt = ResolverColumnaOpcional(cn, TablaCertificado, "updated_at", "updatedat", "fecha_actualizacion"),
-                UpdatedBy = ResolverColumnaOpcional(cn, TablaCertificado, "updated_by", "updatedby", "usuario_actualizacion")
+                UpdatedBy = ResolverColumnaOpcional(cn, TablaCertificado, "updated_by", "updatedby", "usuario_actualizacion"),
+                UsaEstadosLegados = TieneConstraintEstadosLegados(cn, TablaCertificado)
             };
+        }
+
+        private static bool TieneConstraintEstadosLegados(NpgsqlConnection cn, string tabla)
+        {
+            const string sql = @"
+                SELECT pg_get_constraintdef(c.oid)
+                FROM pg_constraint c
+                WHERE c.conrelid = to_regclass(@tabla)
+                  AND c.contype = 'c';";
+
+            using (var cmd = new NpgsqlCommand(sql, cn))
+            {
+                cmd.Parameters.AddWithValue("@tabla", tabla);
+
+                using (var rd = cmd.ExecuteReader())
+                {
+                    while (rd.Read())
+                    {
+                        var definicion = rd[0] != DBNull.Value ? rd[0].ToString() : null;
+                        if (string.IsNullOrWhiteSpace(definicion))
+                        {
+                            continue;
+                        }
+
+                        if (definicion.IndexOf("'Vigente'", StringComparison.OrdinalIgnoreCase) >= 0 &&
+                            definicion.IndexOf("'APROBADO'", StringComparison.OrdinalIgnoreCase) < 0)
+                        {
+                            return true;
+                        }
+                    }
+                }
+            }
+
+            return false;
         }
 
         private static string ResolverColumna(NpgsqlConnection cn, string tabla, params string[] candidatos)

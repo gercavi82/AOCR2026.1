@@ -1,7 +1,10 @@
 using System;
 using System.Collections.Generic;
 using System.Data;
+using System.Linq;
+using CapaDatos.Constants;
 using CapaDatos.Models;
+using CapaModelo;
 using Dapper;
 using Npgsql;
 
@@ -9,6 +12,12 @@ namespace CapaDatos.DAOs
 {
     public class UsuarioInternoRTDAO
     {
+        private static readonly string[] RolesInspectorCompatibles =
+        {
+            RolesAOCR.INSPECTOR,
+            "Inspectores"
+        };
+
         private const string SelectUsuarioInterno = @"
 SELECT
     id                               AS Id,
@@ -435,7 +444,9 @@ WHERE activo = TRUE
   AND (@tipo = '' OR UPPER(TRIM(COALESCE(tipo, ''))) = @tipo)
 ORDER BY COALESCE(nombre_completo, codigo_usuario), codigo_usuario;";
 
-                return cn.Query<UsuarioInternoRTRegistro>(sql, new { tipo = tipoNormalizado }).AsList();
+                                var inspectoresRt = cn.Query<UsuarioInternoRTRegistro>(sql, new { tipo = tipoNormalizado }).AsList();
+                                var inspectoresFallback = ObtenerInspectoresDesdeUsuarios(tipoNormalizado);
+                                return CombinarCatalogosInspectores(inspectoresRt, inspectoresFallback);
             }
         }
 
@@ -724,7 +735,8 @@ WHERE id = @id;";
 
         public UsuarioInternoRTRegistro ResolverDestinatarioAsignacionPorCodigoUsuario(string codigoUsuario)
         {
-            return ObtenerActivoPorCodigoUsuario(codigoUsuario);
+            return ObtenerActivoPorCodigoUsuario(codigoUsuario)
+                ?? ObtenerInspectorFallbackPorCodigoUsuario(codigoUsuario, null);
         }
 
         public UsuarioInternoRTRegistro ObtenerInspectorAsignableActivo(string codigoUsuario, string tipoInspector = null)
@@ -756,7 +768,7 @@ LIMIT 1;";
                 {
                     codigoUsuario = codigo,
                     tipo = tipoNormalizado
-                });
+                }) ?? ObtenerInspectorFallbackPorCodigoUsuario(codigo, tipoNormalizado);
             }
         }
 
@@ -814,8 +826,179 @@ LIMIT 1;";
 
         public string ObtenerCorreoInstitucionalPorCodigoUsuario(string codigoUsuario)
         {
-            var registro = ObtenerActivoPorCodigoUsuario(codigoUsuario);
+            var registro = ResolverDestinatarioAsignacionPorCodigoUsuario(codigoUsuario);
             return registro != null ? (registro.CorreoInstitucional ?? string.Empty).Trim() : string.Empty;
+        }
+
+        private static List<UsuarioInternoRTRegistro> ObtenerInspectoresDesdeUsuarios(string tipoInspector)
+        {
+            var usuarios = new List<Usuario>();
+
+            foreach (var rol in RolesInspectorCompatibles)
+            {
+                try
+                {
+                    var usuariosRol = UsuarioDAO.ListarPorRol(rol) ?? new List<Usuario>();
+                    usuarios.AddRange(usuariosRol.Where(u => u != null && u.Activo));
+                }
+                catch
+                {
+                    // Mantener el flujo principal basado en RT aunque el fallback de usuarios falle.
+                }
+            }
+
+            return usuarios
+                .GroupBy(ConstruirClaveUsuarioFallback, StringComparer.OrdinalIgnoreCase)
+                .Select(g => MapearUsuarioAInspectorFallback(g.First(), tipoInspector))
+                .Where(x => x != null && !string.IsNullOrWhiteSpace(x.UsuarioLogin))
+                .OrderBy(x => x.NombreVisual ?? string.Empty)
+                .ThenBy(x => x.UsuarioLogin ?? string.Empty)
+                .ToList();
+        }
+
+        private static UsuarioInternoRTRegistro ObtenerInspectorFallbackPorCodigoUsuario(string codigoUsuario, string tipoInspector)
+        {
+            var codigoNormalizado = NormalizarCodigo(codigoUsuario);
+            if (string.IsNullOrWhiteSpace(codigoNormalizado))
+            {
+                return null;
+            }
+
+            return ObtenerInspectoresDesdeUsuarios(tipoInspector)
+                .FirstOrDefault(u =>
+                    string.Equals(NormalizarCodigo(u.CodigoUsuario), codigoNormalizado, StringComparison.OrdinalIgnoreCase)
+                    || string.Equals(NormalizarCodigo(u.Identificacion), codigoNormalizado, StringComparison.OrdinalIgnoreCase)
+                    || string.Equals(NormalizarCodigo(u.CorreoInstitucional), codigoNormalizado, StringComparison.OrdinalIgnoreCase));
+        }
+
+        private static List<UsuarioInternoRTRegistro> CombinarCatalogosInspectores(
+            IEnumerable<UsuarioInternoRTRegistro> inspectoresRt,
+            IEnumerable<UsuarioInternoRTRegistro> inspectoresFallback)
+        {
+            var catalogo = new Dictionary<string, UsuarioInternoRTRegistro>(StringComparer.OrdinalIgnoreCase);
+
+            foreach (var inspector in inspectoresRt ?? Enumerable.Empty<UsuarioInternoRTRegistro>())
+            {
+                RegistrarInspectorCatalogo(catalogo, inspector);
+            }
+
+            foreach (var inspector in inspectoresFallback ?? Enumerable.Empty<UsuarioInternoRTRegistro>())
+            {
+                RegistrarInspectorCatalogo(catalogo, inspector, false);
+            }
+
+            return catalogo.Values
+                .OrderBy(x => x.NombreVisual ?? string.Empty)
+                .ThenBy(x => x.UsuarioLogin ?? string.Empty)
+                .ToList();
+        }
+
+        private static void RegistrarInspectorCatalogo(
+            IDictionary<string, UsuarioInternoRTRegistro> catalogo,
+            UsuarioInternoRTRegistro inspector,
+            bool sobrescribir = true)
+        {
+            if (catalogo == null || inspector == null)
+            {
+                return;
+            }
+
+            var clave = ConstruirClaveInspector(inspector);
+            if (string.IsNullOrWhiteSpace(clave))
+            {
+                return;
+            }
+
+            if (!catalogo.ContainsKey(clave) || sobrescribir)
+            {
+                catalogo[clave] = inspector;
+            }
+        }
+
+        private static string ConstruirClaveInspector(UsuarioInternoRTRegistro inspector)
+        {
+            if (inspector == null)
+            {
+                return string.Empty;
+            }
+
+            var codigo = NormalizarCodigo(inspector.UsuarioLogin);
+            if (!string.IsNullOrWhiteSpace(codigo))
+            {
+                return "COD:" + codigo;
+            }
+
+            if (inspector.UsuarioId.HasValue && inspector.UsuarioId.Value > 0)
+            {
+                return "USR:" + inspector.UsuarioId.Value;
+            }
+
+            if (inspector.TecnicoId.HasValue && inspector.TecnicoId.Value > 0)
+            {
+                return "TEC:" + inspector.TecnicoId.Value;
+            }
+
+            return string.Empty;
+        }
+
+        private static string ConstruirClaveUsuarioFallback(Usuario usuario)
+        {
+            if (usuario == null)
+            {
+                return string.Empty;
+            }
+
+            var codigo = NormalizarCodigo(usuario.CodigoUsuario);
+            if (!string.IsNullOrWhiteSpace(codigo))
+            {
+                return codigo;
+            }
+
+            return usuario.Id > 0 ? "USR:" + usuario.Id : string.Empty;
+        }
+
+        private static UsuarioInternoRTRegistro MapearUsuarioAInspectorFallback(Usuario usuario, string tipoInspector)
+        {
+            if (usuario == null || !usuario.Activo)
+            {
+                return null;
+            }
+
+            var tipoNormalizado = NormalizarTipoInspectorFiltro(tipoInspector);
+            return new UsuarioInternoRTRegistro
+            {
+                UsuarioId = usuario.Id > 0 ? (int?)usuario.Id : null,
+                CodigoUsuario = (usuario.CodigoUsuario ?? string.Empty).Trim(),
+                Identificacion = (usuario.CodigoUsuario ?? string.Empty).Trim(),
+                Nombres = (usuario.NombreUsuario ?? string.Empty).Trim(),
+                Apellidos = (usuario.ApellidoUsuario ?? string.Empty).Trim(),
+                NombreCompleto = ConstruirNombreUsuarioFallback(usuario),
+                Tipo = tipoNormalizado,
+                CorreoInstitucional = (usuario.Email ?? string.Empty).Trim(),
+                RolInterno = RolesAOCR.INSPECTOR,
+                EstadoAs400 = "AC",
+                Activo = true,
+                Observaciones = "Catálogo fallback desde usuario / rol"
+            };
+        }
+
+        private static string ConstruirNombreUsuarioFallback(Usuario usuario)
+        {
+            if (usuario == null)
+            {
+                return string.Empty;
+            }
+
+            var nombre = string.Join(" ", new[]
+            {
+                usuario.NombreCompleto,
+                usuario.NombreUsuario,
+                usuario.ApellidoUsuario
+            }.Where(x => !string.IsNullOrWhiteSpace(x))).Trim();
+
+            return string.IsNullOrWhiteSpace(nombre)
+                ? (usuario.CodigoUsuario ?? string.Empty).Trim()
+                : nombre;
         }
 
         public bool ExisteCorreoInstitucional(string correo, int? excluirId = null)

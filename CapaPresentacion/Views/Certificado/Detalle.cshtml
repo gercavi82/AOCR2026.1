@@ -15,10 +15,13 @@
                        || User.IsInRole("Direccion")
                        || User.IsInRole("JefaturaTecnica");
     bool yaFirmado = Model != null && !string.IsNullOrWhiteSpace(Model.RutaDocumento);
-    var urlPreview = Url.Action("VistaPreviaCertificado", new { solicitudId = solicitudId });
-    var urlPdfFirmado = Model != null ? Url.Action("DescargarPDF", new { id = Model.CodigoCertificado }) : null;
-    var urlPdfFirmadoPreview = Model != null ? Url.Action("DescargarPDF", new { id = Model.CodigoCertificado, vistaPrevia = true }) : null;
-    var urlPdfActivo = yaFirmado ? urlPdfFirmado : urlPreview;
+    var cacheToken = Model != null && Model.UpdatedAt.HasValue
+        ? Model.UpdatedAt.Value.Ticks.ToString()
+        : DateTime.UtcNow.Ticks.ToString();
+    var urlPreview = Url.Action("GenerarCertificadoPdf", new { solicitudId = solicitudId, vistaPrevia = true, v = cacheToken });
+    var urlPdfFirmadoDescarga = Model != null ? Url.Action("DescargarPDF", new { id = Model.CodigoCertificado }) : null;
+    var urlPdfFirmadoPreview = Model != null ? Url.Action("DescargarPDF", new { id = Model.CodigoCertificado, vistaPrevia = true, v = cacheToken }) : null;
+    var urlPdfActivo = yaFirmado ? urlPdfFirmadoPreview : urlPreview;
 }
 
 <style>
@@ -284,11 +287,8 @@
         <div class="cert-alert warn">
             <i class="fas fa-info-circle"></i>
             <div>
-                No existe registro de certificado en BD. El registro se crea automáticamente al firmar por primera vez,
-                o puede crearlo manualmente:
-                <a class="btn-soft primary" style="margin-left:10px;" href="@Url.Action("Generar", new { solicitudId = solicitudId })">
-                    <i class="fas fa-plus-circle"></i> Crear registro
-                </a>
+                No existe registro de certificado en BD. La vista previa y la firma siguen disponibles;
+                el registro se crea automáticamente al firmar por primera vez.
             </div>
         </div>
     }
@@ -310,7 +310,7 @@
                     </a>
                     @if (yaFirmado)
                     {
-                        <a class="btn-soft success btn-xs" href="@urlPdfFirmado">
+                        <a class="btn-soft success btn-xs" href="@urlPdfFirmadoDescarga">
                             <i class="fas fa-download"></i> Descargar
                         </a>
                     }
@@ -340,8 +340,8 @@
                             <div class="cert-meta-item">
                                 <span class="k">Estado</span>
                                 <span class="v">
-                                    @if (string.Equals(Model.Estado, "Vigente", StringComparison.OrdinalIgnoreCase))
-                                    { <span style="color:#0c6b45;">● @Model.Estado</span> }
+                                    @if (Model.EstaVigente || string.Equals(Model.Estado, "Vigente", StringComparison.OrdinalIgnoreCase))
+                                    { <span style="color:#0c6b45;">● Vigente</span> }
                                     else { <text>@Model.Estado</text> }
                                 </span>
                             </div>
@@ -368,7 +368,7 @@
                             <a class="btn-soft ghost" style="width:100%; justify-content:center; padding:10px;" href="@urlPdfFirmadoPreview" target="_blank">
                                 <i class="fas fa-eye"></i> Vista previa PDF
                             </a>
-                            <a class="btn-soft success" style="width:100%; justify-content:center; padding:11px; margin-top:8px;" href="@urlPdfFirmado">
+                            <a class="btn-soft success" style="width:100%; justify-content:center; padding:11px; margin-top:8px;" href="@urlPdfFirmadoDescarga">
                                 <i class="fas fa-download"></i> Descargar PDF firmado
                             </a>
                             <button type="button" onclick="document.getElementById('formFirmaReFirmar').style.display='block'; this.style.display='none';"

@@ -88,6 +88,7 @@ namespace CapaPresentacion.Filters
                 "DirectorFinanciero",
                 "CoordinacionLegal",
                 "CoordinadorLegal",
+                "DirectorGeneral",
                 "Direccion",
                 "JefaturaTecnica",
                 "Solicitante",

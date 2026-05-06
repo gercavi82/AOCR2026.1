@@ -171,6 +171,7 @@ namespace CapaPresentacion.Controllers
 
             roles = roles ?? new List<string>();
             var rolesString = roles.Count > 0 ? string.Join(",", roles.Distinct(StringComparer.OrdinalIgnoreCase)) : string.Empty;
+            var sessionTimeoutMinutes = SessionTimeoutHelper.GetTimeoutMinutes();
 
             // ============================
             // COOKIE DE AUTENTICACIÓN (PRODUCCIÓN)
@@ -179,7 +180,7 @@ namespace CapaPresentacion.Controllers
                 1,
                 usuario.NombreUsuario ?? model.Usuario ?? "usuario",
                 DateTime.Now,
-                DateTime.Now.AddMinutes(60),
+                DateTime.Now.AddMinutes(sessionTimeoutMinutes),
                 model.Recordarme,
                 rolesString,
                 FormsAuthentication.FormsCookiePath
@@ -219,6 +220,7 @@ namespace CapaPresentacion.Controllers
 
             Session["Roles"] = roles;
             Session["Rol"] = roles.Count > 0 ? roles[0] : null;
+            Session.Timeout = sessionTimeoutMinutes;
             Session["LastActivity"] = DateTime.Now;
 
             // Forzar cambio cuando hay marca explícita o cuando la última conexión fue limpiada (reset clave).
@@ -732,14 +734,18 @@ namespace CapaPresentacion.Controllers
                     return Json(new { tieneOrden = false, mensaje = "Sesión expirada" }, JsonRequestBehavior.AllowGet);
 
                 var ordenDAO = new OrdenRecaudacionDAO();
-                bool tieneOrden = ordenDAO.ExisteORGeneradaOPagada(idUsuario);
+                bool tieneOrden = ordenDAO.TieneOrdenHabilitanteAOCR(idUsuario);
                 bool tieneBorrador = ordenDAO.ExisteORMinima(idUsuario);
+                bool tieneOrdenPendiente = ordenDAO.TieneOrdenActivaEnProceso(idUsuario);
+                bool tieneOrdenPendienteComprobante = ordenDAO.TieneOrdenPendienteComprobante(idUsuario);
 
                 return Json(new
                 {
                     tieneOrdenGenerada = tieneOrden,
                     tieneOrdenBorrador = tieneBorrador,
-                    redireccionar = !tieneOrden
+                    tieneOrdenPendiente = tieneOrdenPendiente,
+                    tieneOrdenPendienteComprobante = tieneOrdenPendienteComprobante,
+                    redireccionar = !(tieneOrden || tieneOrdenPendiente || tieneBorrador)
                 }, JsonRequestBehavior.AllowGet);
             }
             catch (Exception ex)
@@ -754,8 +760,9 @@ namespace CapaPresentacion.Controllers
         [ValidateAntiForgeryToken]
         public JsonResult ExtenderSesion()
         {
+            Session.Timeout = SessionTimeoutHelper.GetTimeoutMinutes();
             Session["LastActivity"] = DateTime.Now;
-            return Json(new { ok = true });
+            return Json(new { ok = true, timeoutMinutes = Session.Timeout });
         }
 
         private static bool EsUsuarioRt(Usuario usuario)
@@ -1091,18 +1098,27 @@ namespace CapaPresentacion.Controllers
             // ============================
             var ordenDAO = new OrdenRecaudacionDAO();
 
-            bool tieneOrdenGeneradaOPagada = ordenDAO.ExisteORGeneradaOPagada(usuarioId);
+            bool tieneOrdenGeneradaOPagada = ordenDAO.TieneOrdenHabilitanteAOCR(usuarioId);
             bool tieneOrdenBorrador = ordenDAO.ExisteORMinima(usuarioId);
+            bool tieneOrdenPendiente = ordenDAO.TieneOrdenActivaEnProceso(usuarioId);
+            bool tieneOrdenPendienteComprobante = ordenDAO.TieneOrdenPendienteComprobante(usuarioId);
 
             Session["TieneOrdenGenerada"] = tieneOrdenGeneradaOPagada;
             Session["TieneOrdenBorrador"] = tieneOrdenBorrador;
+            Session["TieneOrdenPendienteProceso"] = tieneOrdenPendiente;
+            Session["TieneOrdenPendienteComprobante"] = tieneOrdenPendienteComprobante;
 
-            if (!tieneOrdenGeneradaOPagada)
+            if (tieneOrdenGeneradaOPagada)
             {
-                return RedirectToAction("Obligatoria", "OrdenRecaudacion");
+                return RedirectToLocal(returnUrl);
             }
 
-            return RedirectToLocal(returnUrl);
+            if (tieneOrdenPendiente || tieneOrdenBorrador)
+            {
+                return RedirectToAction("Index", "OrdenRecaudacion");
+            }
+
+            return RedirectToAction("Obligatoria", "OrdenRecaudacion");
         }
 
         private static bool EsErrorConexionBaseDatos(Exception ex)

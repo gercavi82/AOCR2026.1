@@ -26,7 +26,7 @@ namespace CapaPresentacion.Controllers
                 int idUsuario = ObtenerIdUsuario();
                 if (idUsuario <= 0)
                 {
-                    TempData["Error"] = "Debe iniciar sesión.";
+                    TempData["Error"] = "Debe iniciar sesiï¿½n.";
                     return RedirectToAction("Login", "Account");
                 }
 
@@ -68,45 +68,7 @@ namespace CapaPresentacion.Controllers
         // GET: Orden/MisOrdenes
         public ActionResult MisOrdenes()
         {
-            try
-            {
-                int idUsuario = ObtenerIdUsuario();
-                if (idUsuario <= 0)
-                {
-                    TempData["Error"] = "Debe iniciar sesión.";
-                    return RedirectToAction("Login", "Account");
-                }
-
-                // 1) Traer las órdenes del usuario
-                var dt = _dao.ObtenerOrdenesPorUsuario(idUsuario);
-
-                // 2) Map a ViewModels
-                var ordenes = new List<OrdenRecaudacionViewModel>();
-                foreach (DataRow row in dt.Rows)
-                {
-                    var vm = new OrdenRecaudacionViewModel
-                    {
-                        Id = Convert.ToInt32(row["id"]),
-                        NumeroOrden = row["numero_orden"]?.ToString() ?? "",
-                        FechaCreacion = row["fecha_creacion"] == DBNull.Value ? DateTime.MinValue : Convert.ToDateTime(row["fecha_creacion"]),
-                        Estado = row["estado"]?.ToString() ?? "",
-                        Subtotal = row["subtotal"] == DBNull.Value ? 0m : Convert.ToDecimal(row["subtotal"]),
-                        Admin = row["admin"] == DBNull.Value ? 0m : Convert.ToDecimal(row["admin"]),
-                        Total = row["total"] == DBNull.Value ? 0m : Convert.ToDecimal(row["total"]),
-                        Observacion = row["observacion"]?.ToString() ?? ""
-                    };
-                    ordenes.Add(vm);
-                }
-
-                ViewBag.Mensaje = "Mis Órdenes de recaudación";
-
-                return View(ordenes);
-            }
-            catch (Exception ex)
-            {
-                TempData["Error"] = $"Error al cargar las órdenes: {ex.Message}";
-                return RedirectToAction("Index", "Dashboard");
-            }
+            return RedirectToAction("Index", "OrdenRecaudacion");
         }
 
         private int ObtenerIdUsuario()

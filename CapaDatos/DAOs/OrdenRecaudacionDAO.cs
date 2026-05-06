@@ -3925,6 +3925,149 @@ namespace CapaDatos.DAOs
             }
         }
 
+        public bool TieneOrdenHabilitanteAOCR(int codigoUsuario)
+        {
+            if (codigoUsuario <= 0)
+            {
+                return false;
+            }
+
+            try
+            {
+                using (var conn = new NpgsqlConnection(_connectionString))
+                {
+                    conn.Open();
+                    const string sql = @"SELECT COUNT(*)
+                                         FROM aocr_or_orden
+                                         WHERE codigo_usuario::text = @codigoUsuario
+                                           AND UPPER(TRIM(COALESCE(estado, ''))) IN ('FACTURADA', 'PAGADA', 'COMPLETADA')";
+
+                    using (var cmd = new NpgsqlCommand(sql, conn))
+                    {
+                        cmd.Parameters.AddWithValue("@codigoUsuario", codigoUsuario.ToString());
+                        return Convert.ToInt32(cmd.ExecuteScalar()) > 0;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error en TieneOrdenHabilitanteAOCR");
+                return false;
+            }
+        }
+
+        public bool TieneOrdenActivaEnProceso(int codigoUsuario)
+        {
+            if (codigoUsuario <= 0)
+            {
+                return false;
+            }
+
+            try
+            {
+                using (var conn = new NpgsqlConnection(_connectionString))
+                {
+                    conn.Open();
+                    const string sql = @"SELECT COUNT(*)
+                                         FROM aocr_or_orden
+                                         WHERE codigo_usuario::text = @codigoUsuario
+                                           AND UPPER(TRIM(COALESCE(estado, ''))) NOT IN ('BORRADOR', 'ANULADA', 'FACTURADA', 'PAGADA', 'COMPLETADA')";
+
+                    using (var cmd = new NpgsqlCommand(sql, conn))
+                    {
+                        cmd.Parameters.AddWithValue("@codigoUsuario", codigoUsuario.ToString());
+                        return Convert.ToInt32(cmd.ExecuteScalar()) > 0;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error en TieneOrdenActivaEnProceso");
+                return false;
+            }
+        }
+
+        public bool TieneOrdenPendienteComprobante(int codigoUsuario)
+        {
+            if (codigoUsuario <= 0)
+            {
+                return false;
+            }
+
+            try
+            {
+                using (var conn = new NpgsqlConnection(_connectionString))
+                {
+                    conn.Open();
+                    const string sql = @"SELECT COUNT(*)
+                                         FROM aocr_or_orden
+                                         WHERE codigo_usuario::text = @codigoUsuario
+                                           AND UPPER(TRIM(COALESCE(estado, ''))) IN ('PENDIENTE', 'GENERADA', 'DEVUELTA')";
+
+                    using (var cmd = new NpgsqlCommand(sql, conn))
+                    {
+                        cmd.Parameters.AddWithValue("@codigoUsuario", codigoUsuario.ToString());
+                        return Convert.ToInt32(cmd.ExecuteScalar()) > 0;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error en TieneOrdenPendienteComprobante");
+                return false;
+            }
+        }
+
+        public OrdenRecaudacionModel ObtenerOrdenPendienteUsuarioAccion(int codigoUsuario)
+        {
+            if (codigoUsuario <= 0)
+            {
+                return null;
+            }
+
+            try
+            {
+                using (var conn = new NpgsqlConnection(_connectionString))
+                {
+                    conn.Open();
+                    const string sql = @"SELECT o.*, c.nombre as concepto_nombre
+                                         FROM aocr_or_orden o
+                                         LEFT JOIN aocr_or_concepto c ON o.concepto_id = c.id
+                                         WHERE o.codigo_usuario::text = @codigoUsuario
+                                           AND UPPER(TRIM(COALESCE(o.estado, ''))) IN ('BORRADOR', 'PENDIENTE', 'GENERADA', 'DEVUELTA')
+                                         ORDER BY CASE UPPER(TRIM(COALESCE(o.estado, '')))
+                                                    WHEN 'DEVUELTA' THEN 0
+                                                    WHEN 'PENDIENTE' THEN 1
+                                                    WHEN 'GENERADA' THEN 2
+                                                    WHEN 'BORRADOR' THEN 3
+                                                    ELSE 4
+                                                  END,
+                                                  o.fecha_creacion DESC,
+                                                  o.id DESC
+                                         LIMIT 1";
+
+                    using (var cmd = new NpgsqlCommand(sql, conn))
+                    {
+                        cmd.Parameters.AddWithValue("@codigoUsuario", codigoUsuario.ToString());
+
+                        using (var reader = cmd.ExecuteReader())
+                        {
+                            if (reader.Read())
+                            {
+                                return MapearOrdenModel(MapearOrden(reader));
+                            }
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error en ObtenerOrdenPendienteUsuarioAccion");
+            }
+
+            return null;
+        }
+
         public bool ExisteORMinima(int codigoUsuario)
         {
             if (codigoUsuario <= 0)

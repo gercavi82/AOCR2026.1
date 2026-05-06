@@ -1,355 +1,266 @@
-﻿@model IEnumerable<CapaModelo.SolicitudAOCR>
-@using CapaModelo
+﻿@inherits System.Web.Mvc.WebViewPage<IEnumerable<CapaModelo.SolicitudAOCR>>
+@using System
+@using System.Linq
 @using System.Web.Mvc
-@using System.Web.Mvc.Html
-
+@using CapaModelo
 @{
-    ViewBag.Title = "Asignación de Inspectores";
     Layout = "~/Views/Shared/_LayoutAOCR.cshtml";
+    ViewBag.Title = "Asignacion de inspectores";
 }
-
-<div class="aocr-module-header mb-3">
-    <div class="aocr-module-header-left">
-        <h2 class="aocr-module-header-title">Asignación de Inspectores</h2>
-        <p class="aocr-module-header-subtitle">Coordinación de Inspecciones — Solicitudes pendientes de asignación</p>
-    </div>
-</div>
-
-
-@if (TempData["Success"] != null)
-{
-    <div class="alert alert-aocr alert-success alert-dismissible fade show mb-3" role="alert">
-        <i class="fas fa-check-circle me-1"></i> @TempData["Success"]
-        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-    </div>
-}
-
-@if (TempData["Error"] != null)
-{
-    <div class="alert alert-aocr alert-danger alert-dismissible fade show mb-3" role="alert">
-        <i class="fas fa-exclamation-circle me-1"></i> @TempData["Error"]
-        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-    </div>
-}
-
-@if (TempData["Info"] != null)
-{
-    <div class="alert alert-aocr alert-info alert-dismissible fade show mb-3" role="alert">
-        <i class="fas fa-info-circle me-1"></i> @TempData["Info"]
-        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-    </div>
-}
-
-
-<div class="card aocr-table-card">
-<div class="card-body p-0">
-    @if (Model != null && Model.Any())
+@functions {
+    public string NumeroSolicitud(SolicitudAOCR solicitud)
     {
-        <div class="aocr-toolbar px-3 py-3 border-bottom">
-            <div class="aocr-toolbar-row">
-                <div class="aocr-search">
-                    <i class="fas fa-search aocr-search-icon"></i>
-                    <input type="text" id="aocrPagBuscar" class="form-control aocr-search-input"
-                           placeholder="Búsqueda global: código, Nº solicitud, operador, RUC, estado..."
-                           autocomplete="off" aria-label="Búsqueda global" />
-                    <button type="button" class="btn btn-link aocr-search-clear" id="aocrPagLimpiar"
-                            title="Limpiar" aria-label="Limpiar">
-                        <i class="fas fa-times"></i>
-                    </button>
-                </div>
-                <div class="aocr-toolbar-info">
-                    <span class="badge bg-light text-dark border" id="aocrPagModo">
-                        <i class="fas fa-filter me-1"></i> Pendientes de asignación
-                    </span>
-                    <span class="text-muted small" id="aocrPagInfo">&nbsp;</span>
-                </div>
-            </div>
-            <div class="aocr-toolbar-hint text-muted small mt-1">
-                <i class="fas fa-info-circle me-1"></i>
-                Escriba al menos 2 caracteres para buscar en <strong>todas</strong> las solicitudes (incluyendo finalizadas).
-            </div>
-        </div>
-
-        <style>
-            .aocr-toolbar-row{display:flex;align-items:center;gap:12px;flex-wrap:wrap;justify-content:space-between;}
-            .aocr-search{position:relative;flex:1 1 360px;max-width:520px;}
-            .aocr-search-input{padding-left:38px;padding-right:36px;height:38px;border-radius:8px;}
-            .aocr-search-icon{position:absolute;left:12px;top:50%;transform:translateY(-50%);color:#6c757d;pointer-events:none;}
-            .aocr-search-clear{position:absolute;right:4px;top:50%;transform:translateY(-50%);color:#6c757d;text-decoration:none;padding:4px 8px;display:none;}
-            .aocr-search-clear:hover{color:#dc3545;}
-            .aocr-search.has-text .aocr-search-clear{display:inline-block;}
-            .aocr-toolbar-info{display:flex;align-items:center;gap:10px;}
-            #tablaAsignacion tbody tr.aocr-row-loading td{opacity:.5;}
-        </style>
-
-        <div class="aocr-table-wrap">
-            <table class="table table-dgac mb-0" id="tablaAsignacion">
-                <thead>
-                    <tr>
-                        <th style="width:110px;">Código</th>
-                        <th>N° Solicitud</th>
-                        <th>Operador</th>
-                        <th>Fecha Solicitud</th>
-                        <th>Estado</th>
-                        <th style="width:140px;" class="text-center">Acciones</th>
-                    </tr>
-                </thead>
-                <tbody id="aocrTbodyLocal">
-                    @foreach (var s in Model)
-                    {
-                        <tr class="aocr-pag-row">
-                            <td class="fw-bold text-primary">@Html.Encode(s.CodigoSolicitud)</td>
-                            <td>@Html.Encode(s.NumeroSolicitud)</td>
-                            <td>@Html.Encode(s.NombreOperador)</td>
-                            <td>@Html.Encode(s.FechaSolicitud.HasValue ? s.FechaSolicitud.Value.ToString("dd/MM/yyyy") : "-")</td>
-                            <td>
-                                @Html.Partial("_StatusBadge", new ViewDataDictionary { { "Estado", s.Estado } })
-                            </td>
-                            <td class="text-center">
-                                <a href="@Url.Action("AsignarInspector", "Tecnico", new { solicitudId = s.CodigoSolicitud })"
-                                   class="btn btn-sm btn-primary" title="Asignar Inspector">
-                                    <i class="fas fa-user-check me-1"></i> Asignar
-                                </a>
-                            </td>
-                        </tr>
-                    }
-                </tbody>
-                <tbody id="aocrTbodyBusqueda" style="display:none;"></tbody>
-            </table>
-        </div>
-
-        <div class="d-flex align-items-center justify-content-end px-3 py-2 border-top flex-wrap gap-2" id="aocrPagContainer">
-            <nav aria-label="Paginación">
-                <ul class="pagination pagination-sm mb-0" id="aocrPagNav"></ul>
-            </nav>
-        </div>
-
-        <script>
-            (function () {
-                var PAGE_SIZE = 5;
-                var urlBuscarGlobal = '@Url.Action("BuscarGlobal", "Tecnico")';
-                var urlDetalle = '@Url.Action("Detalle", "SolicitudAOCR")';
-                var urlAsignar = '@Url.Action("AsignarInspector", "Tecnico")';
-
-                var allRows = Array.prototype.slice.call(
-                    document.querySelectorAll('#aocrTbodyLocal tr.aocr-pag-row')
-                );
-                var currentPage = 1;
-                var modoBusqueda = false;
-                var resultadosBusqueda = [];
-
-                var tbodyLocal = document.getElementById('aocrTbodyLocal');
-                var tbodyBusqueda = document.getElementById('aocrTbodyBusqueda');
-                var nav = document.getElementById('aocrPagNav');
-                var info = document.getElementById('aocrPagInfo');
-                var modo = document.getElementById('aocrPagModo');
-                var input = document.getElementById('aocrPagBuscar');
-                var btnLimpiar = document.getElementById('aocrPagLimpiar');
-                var searchWrap = input.closest('.aocr-search');
-
-                function escHtml(s) {
-                    if (s === null || s === undefined) return '';
-                    return String(s).replace(/[&<>"']/g, function (c) {
-                        return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
-                    });
-                }
-
-                function totalPaginas() {
-                    var total = modoBusqueda ? resultadosBusqueda.length : allRows.length;
-                    return Math.max(1, Math.ceil(total / PAGE_SIZE));
-                }
-
-                function renderLocal() {
-                    tbodyBusqueda.style.display = 'none';
-                    tbodyLocal.style.display = '';
-                    var total = allRows.length;
-                    if (currentPage > totalPaginas()) currentPage = totalPaginas();
-                    var start = (currentPage - 1) * PAGE_SIZE;
-                    var end = start + PAGE_SIZE;
-                    for (var i = 0; i < allRows.length; i++) {
-                        allRows[i].style.display = (i >= start && i < end) ? '' : 'none';
-                    }
-                    info.textContent = total === 0 ? 'Sin registros'
-                        : 'Mostrando ' + (start + 1) + ' - ' + Math.min(end, total) + ' de ' + total;
-                    modo.innerHTML = '<i class="fas fa-filter me-1"></i> Pendientes de asignación';
-                    renderNav();
-                }
-
-                function renderBusqueda() {
-                    tbodyLocal.style.display = 'none';
-                    tbodyBusqueda.style.display = '';
-                    tbodyBusqueda.innerHTML = '';
-
-                    var total = resultadosBusqueda.length;
-                    if (total === 0) {
-                        tbodyBusqueda.innerHTML =
-                            '<tr><td colspan="6" class="text-center text-muted py-4">' +
-                            '<i class="fas fa-search me-1"></i> No se encontraron solicitudes para la búsqueda.' +
-                            '</td></tr>';
-                        info.textContent = 'Sin resultados';
-                        nav.innerHTML = '';
-                        modo.innerHTML = '<i class="fas fa-globe me-1"></i> Búsqueda global';
-                        return;
-                    }
-
-                    if (currentPage > totalPaginas()) currentPage = totalPaginas();
-                    var start = (currentPage - 1) * PAGE_SIZE;
-                    var end = Math.min(start + PAGE_SIZE, total);
-
-                    for (var i = start; i < end; i++) {
-                        var r = resultadosBusqueda[i];
-                        var tr = document.createElement('tr');
-                        tr.innerHTML =
-                            '<td class="fw-bold text-primary">' + escHtml(r.codigoSolicitud) + '</td>' +
-                            '<td>' + escHtml(r.numeroSolicitud) + '</td>' +
-                            '<td>' + escHtml(r.nombreOperador) +
-                                (r.ruc ? ' <span class="text-muted small">(' + escHtml(r.ruc) + ')</span>' : '') + '</td>' +
-                            '<td>' + escHtml(r.fechaSolicitud) + '</td>' +
-                            '<td><span class="badge bg-secondary">' + escHtml(r.estado) + '</span></td>' +
-                            '<td class="text-center">' +
-                                '<a href="' + escHtml(r.urlDetalle) + '" class="btn btn-sm btn-outline-primary" title="Ver detalle">' +
-                                '<i class="fas fa-eye"></i></a> ' +
-                                '<a href="' + escHtml(r.urlAsignar) + '" class="btn btn-sm btn-primary" title="Asignar">' +
-                                '<i class="fas fa-user-check"></i></a>' +
-                            '</td>';
-                        tbodyBusqueda.appendChild(tr);
-                    }
-
-                    info.textContent = 'Mostrando ' + (start + 1) + ' - ' + end + ' de ' + total + ' (global)';
-                    modo.innerHTML = '<i class="fas fa-globe me-1"></i> Búsqueda global';
-                    renderNav();
-                }
-
-                function render() {
-                    if (modoBusqueda) renderBusqueda();
-                    else renderLocal();
-                }
-
-                function addItem(label, page, opts) {
-                    opts = opts || {};
-                    var li = document.createElement('li');
-                    li.className = 'page-item' + (opts.disabled ? ' disabled' : '') + (opts.active ? ' active' : '');
-                    var a = document.createElement('a');
-                    a.className = 'page-link';
-                    a.href = '#';
-                    a.innerHTML = label;
-                    a.addEventListener('click', function (e) {
-                        e.preventDefault();
-                        if (opts.disabled || opts.active) return;
-                        currentPage = page;
-                        render();
-                    });
-                    li.appendChild(a);
-                    nav.appendChild(li);
-                }
-
-                function renderNav() {
-                    nav.innerHTML = '';
-                    var tp = totalPaginas();
-                    var total = modoBusqueda ? resultadosBusqueda.length : allRows.length;
-                    if (total === 0) return;
-
-                    addItem('&laquo;', currentPage - 1, { disabled: currentPage === 1 });
-                    var maxButtons = 7;
-                    var startPage = Math.max(1, currentPage - Math.floor(maxButtons / 2));
-                    var endPage = Math.min(tp, startPage + maxButtons - 1);
-                    startPage = Math.max(1, endPage - maxButtons + 1);
-
-                    if (startPage > 1) {
-                        addItem('1', 1, { active: currentPage === 1 });
-                        if (startPage > 2) addItem('&hellip;', 0, { disabled: true });
-                    }
-                    for (var p = startPage; p <= endPage; p++) {
-                        addItem(String(p), p, { active: currentPage === p });
-                    }
-                    if (endPage < tp) {
-                        if (endPage < tp - 1) addItem('&hellip;', 0, { disabled: true });
-                        addItem(String(tp), tp, { active: currentPage === tp });
-                    }
-                    addItem('&raquo;', currentPage + 1, { disabled: currentPage === tp });
-                }
-
-                var debounce = null;
-                var ultimoToken = 0;
-                function buscar() {
-                    var q = (input.value || '').trim();
-                    if (q.length === 0) {
-                        modoBusqueda = false;
-                        currentPage = 1;
-                        searchWrap.classList.remove('has-text');
-                        render();
-                        return;
-                    }
-                    searchWrap.classList.add('has-text');
-                    if (q.length < 2) {
-                        modoBusqueda = true;
-                        resultadosBusqueda = [];
-                        info.textContent = 'Escriba al menos 2 caracteres...';
-                        return;
-                    }
-
-                    modoBusqueda = true;
-                    var token = ++ultimoToken;
-                    info.textContent = 'Buscando...';
-
-                    var xhr = new XMLHttpRequest();
-                    xhr.open('GET', urlBuscarGlobal + '?q=' + encodeURIComponent(q), true);
-                    xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
-                    xhr.onreadystatechange = function () {
-                        if (xhr.readyState !== 4) return;
-                        if (token !== ultimoToken) return;
-                        if (xhr.status >= 200 && xhr.status < 300) {
-                            try {
-                                var resp = JSON.parse(xhr.responseText);
-                                if (resp && resp.ok) {
-                                    resultadosBusqueda = resp.items || [];
-                                    currentPage = 1;
-                                    render();
-                                    return;
-                                }
-                                info.textContent = (resp && resp.mensaje) ? resp.mensaje : 'Error en la búsqueda';
-                            } catch (e) {
-                                info.textContent = 'Error al procesar la respuesta';
-                            }
-                        } else {
-                            info.textContent = 'Error HTTP ' + xhr.status;
-                        }
-                    };
-                    xhr.send();
-                }
-
-                input.addEventListener('input', function () {
-                    searchWrap.classList.toggle('has-text', (input.value || '').length > 0);
-                    clearTimeout(debounce);
-                    debounce = setTimeout(buscar, 300);
-                });
-                input.addEventListener('keydown', function (e) {
-                    if (e.key === 'Enter') { e.preventDefault(); clearTimeout(debounce); buscar(); }
-                    if (e.key === 'Escape') { input.value = ''; buscar(); }
-                });
-                btnLimpiar.addEventListener('click', function () {
-                    input.value = '';
-                    searchWrap.classList.remove('has-text');
-                    buscar();
-                    input.focus();
-                });
-
-                render();
-            })();
-        </script>
-    }
-        else
+        if (solicitud == null)
         {
-            <div class="p-3">
-            @Html.Partial("_EmptyState", null, new ViewDataDictionary {
-                { "Icon",        "fas fa-user-check" },
-                { "Title",       "Sin solicitudes pendientes" },
-                { "Description", "No hay solicitudes pendientes de asignación de inspector en este momento." }
-            })
+            return "N/D";
+        }
+
+        return string.IsNullOrWhiteSpace(solicitud.NumeroSolicitud)
+            ? solicitud.CodigoSolicitud.ToString()
+            : solicitud.NumeroSolicitud.Trim();
+    }
+
+    public string Operador(SolicitudAOCR solicitud)
+    {
+        if (solicitud == null)
+        {
+            return "No disponible";
+        }
+
+        if (!string.IsNullOrWhiteSpace(solicitud.NombreOperador))
+        {
+            return solicitud.NombreOperador.Trim();
+        }
+
+        if (!string.IsNullOrWhiteSpace(solicitud.RazonSocial))
+        {
+            return solicitud.RazonSocial.Trim();
+        }
+
+        return "No disponible";
+    }
+
+    public string InspectorPrincipal(SolicitudAOCR solicitud)
+    {
+        if (solicitud == null)
+        {
+            return "Sin asignar";
+        }
+
+        if (!string.IsNullOrWhiteSpace(solicitud.TecnicoResponsableNombre) && !string.IsNullOrWhiteSpace(solicitud.TecnicoResponsableCedula))
+        {
+            return solicitud.TecnicoResponsableNombre.Trim() + " - " + solicitud.TecnicoResponsableCedula.Trim();
+        }
+
+        if (!string.IsNullOrWhiteSpace(solicitud.TecnicoResponsableNombre))
+        {
+            return solicitud.TecnicoResponsableNombre.Trim();
+        }
+
+        if (!string.IsNullOrWhiteSpace(solicitud.TecnicoResponsableCedula))
+        {
+            return solicitud.TecnicoResponsableCedula.Trim();
+        }
+
+        return "Sin asignar";
+    }
+
+    public string InspectorApoyo(SolicitudAOCR solicitud)
+    {
+        if (solicitud == null)
+        {
+            return "Sin apoyo";
+        }
+
+        if (!string.IsNullOrWhiteSpace(solicitud.InspectorApoyoNombre) && !string.IsNullOrWhiteSpace(solicitud.InspectorApoyoCedula))
+        {
+            return solicitud.InspectorApoyoNombre.Trim() + " - " + solicitud.InspectorApoyoCedula.Trim();
+        }
+
+        if (!string.IsNullOrWhiteSpace(solicitud.InspectorApoyoNombre))
+        {
+            return solicitud.InspectorApoyoNombre.Trim();
+        }
+
+        if (!string.IsNullOrWhiteSpace(solicitud.InspectorApoyoCedula))
+        {
+            return solicitud.InspectorApoyoCedula.Trim();
+        }
+
+        return "Sin apoyo";
+    }
+
+    public bool TieneAsignado(SolicitudAOCR solicitud)
+    {
+        if (solicitud == null)
+        {
+            return false;
+        }
+
+        return !string.IsNullOrWhiteSpace(solicitud.TecnicoResponsableCedula)
+            || !string.IsNullOrWhiteSpace(solicitud.TecnicoResponsableNombre);
+    }
+
+    public string TipoInspector(SolicitudAOCR solicitud)
+    {
+        if (solicitud == null)
+        {
+            return "OPS";
+        }
+
+        if (!string.IsNullOrWhiteSpace(solicitud.TecnicoResponsableTipo))
+        {
+            return solicitud.TecnicoResponsableTipo.Trim().ToUpperInvariant();
+        }
+
+        if (!string.IsNullOrWhiteSpace(solicitud.InspectorApoyoTipo))
+        {
+            return solicitud.InspectorApoyoTipo.Trim().ToUpperInvariant();
+        }
+
+        return "OPS";
+    }
+
+    public string FechaVisible(SolicitudAOCR solicitud)
+    {
+        if (solicitud == null)
+        {
+            return "Sin fecha";
+        }
+
+        DateTime? fecha = solicitud.FechaSolicitud;
+        if (!fecha.HasValue && solicitud.CreatedAt.HasValue)
+        {
+            fecha = solicitud.CreatedAt.Value;
+        }
+        if (!fecha.HasValue && solicitud.FechaCreacion > DateTime.MinValue)
+        {
+            fecha = solicitud.FechaCreacion;
+        }
+
+        return fecha.HasValue ? fecha.Value.ToString("dd/MM/yyyy") : "Sin fecha";
+    }
+}
+<style>
+    .tecnico-index-hero { background:#183b59; color:#fff; border-radius:20px; padding:24px; margin-bottom:24px; }
+    .tecnico-index-hero h1 { margin:8px 0 10px; font-size:30px; font-weight:800; }
+    .tecnico-index-eyebrow { display:inline-block; padding:6px 12px; border-radius:999px; background:rgba(255,255,255,.15); font-size:12px; font-weight:700; text-transform:uppercase; }
+    .tecnico-index-card { background:#fff; border:1px solid rgba(24,59,89,.12); border-radius:20px; box-shadow:0 14px 32px rgba(15,45,64,.08); overflow:hidden; }
+    .tecnico-index-card-head { padding:20px 24px; border-bottom:1px solid rgba(24,59,89,.08); display:flex; justify-content:space-between; gap:16px; align-items:center; }
+    .tecnico-index-card-head h2 { margin:0 0 4px; font-size:22px; font-weight:800; color:#19354c; }
+    .tecnico-index-card-head p { margin:0; color:#6c7b86; }
+    .tecnico-index-badge { display:inline-flex; align-items:center; gap:8px; padding:10px 14px; border-radius:999px; background:#eef5f9; color:#1b4f72; font-weight:700; }
+    .tecnico-index-wrap { padding:0 24px 24px; overflow-x:auto; }
+    .tecnico-index-table { width:100%; border-collapse:separate; border-spacing:0; }
+    .tecnico-index-table th, .tecnico-index-table td { padding:16px 12px; vertical-align:top; border-bottom:1px solid rgba(24,59,89,.08); }
+    .tecnico-index-table thead th { font-size:12px; font-weight:800; letter-spacing:.04em; text-transform:uppercase; color:#6c7b86; }
+    .tecnico-index-table tbody tr:last-child td { border-bottom:0; }
+    .tecnico-index-numero { display:block; font-size:16px; font-weight:800; color:#1b4f72; }
+    .tecnico-index-sub { display:block; margin-top:4px; font-size:12px; color:#6c7b86; }
+    .tecnico-index-assign span { display:block; margin-bottom:4px; }
+    .tecnico-index-actions { display:flex; flex-wrap:wrap; gap:8px; }
+    .tecnico-index-actions a { display:inline-flex; align-items:center; gap:8px; padding:10px 14px; border-radius:12px; text-decoration:none; font-weight:700; }
+    .tecnico-index-primary { background:#1b4f72; color:#fff; }
+    .tecnico-index-primary:hover, .tecnico-index-primary:focus { color:#fff; background:#153d58; text-decoration:none; }
+    .tecnico-index-secondary { background:#eef5f9; color:#1b4f72; }
+    .tecnico-index-secondary:hover, .tecnico-index-secondary:focus { color:#153d58; background:#e2edf4; text-decoration:none; }
+</style>
+<div class="container-fluid">
+    <section class="tecnico-index-hero">
+        <span class="tecnico-index-eyebrow"><i class="fas fa-user-check"></i> Modulo coordinador</span>
+        <h1>Asignacion standalone de inspectores</h1>
+        <p>Esta bandeja mantiene la asignacion y reasignacion de inspectores AOCR como una accion separada del flujo de revision.</p>
+    </section>
+
+    @if (TempData["Success"] != null)
+    {
+        <div class="alert alert-success"><i class="fas fa-circle-check"></i> @TempData["Success"]</div>
+    }
+    @if (TempData["Info"] != null)
+    {
+        <div class="alert alert-info"><i class="fas fa-circle-info"></i> @TempData["Info"]</div>
+    }
+    @if (TempData["Error"] != null)
+    {
+        <div class="alert alert-danger"><i class="fas fa-circle-exclamation"></i> @TempData["Error"]</div>
+    }
+
+    <section class="tecnico-index-card">
+        <div class="tecnico-index-card-head">
+            <div>
+                <h2>Solicitudes pendientes de asignacion</h2>
+                <p>Abra la solicitud y gestione al inspector principal o de apoyo desde una bandeja dedicada.</p>
+            </div>
+            <span class="tecnico-index-badge"><i class="fas fa-list-check"></i> @(ViewBag.TotalPendientes is int ? (int)ViewBag.TotalPendientes : (Model == null ? 0 : Model.Count())) registros</span>
+        </div>
+
+        @if (Model == null || !Model.Any())
+        {
+            <div class="p-4">
+                @Html.Partial("~/Views/Shared/_EmptyState.cshtml", null, new ViewDataDictionary
+                {
+                    { "Icon", "fas fa-user-clock" },
+                    { "Title", "No hay solicitudes pendientes de asignacion" },
+                    { "Description", "Cuando exista una solicitud AOCR pendiente de coordinacion, aparecera aqui para asignar o reasignar inspectores." }
+                })
             </div>
         }
-    </div>
+        else
+        {
+            <div class="tecnico-index-wrap">
+                <table class="tecnico-index-table">
+                    <thead>
+                        <tr>
+                            <th>Solicitud</th>
+                            <th>Operador</th>
+                            <th>Estado</th>
+                            <th>Fecha</th>
+                            <th>Asignacion actual</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var item in Model.OrderByDescending(x => x.FechaSolicitud ?? x.CreatedAt ?? x.FechaCreacion).ThenByDescending(x => x.CodigoSolicitud))
+                        {
+                            <tr>
+                                <td>
+                                    <span class="tecnico-index-numero">@NumeroSolicitud(item)</span>
+                                    <span class="tecnico-index-sub">Codigo @item.CodigoSolicitud</span>
+                                </td>
+                                <td>
+                                    <strong>@Operador(item)</strong>
+                                    @if (!string.IsNullOrWhiteSpace(item.CodigoOaci))
+                                    {
+                                        <span class="tecnico-index-sub">OACI @item.CodigoOaci.Trim()</span>
+                                    }
+                                </td>
+                                <td>
+                                    @Html.Partial("~/Views/Shared/_StatusBadge.cshtml", null, new ViewDataDictionary { { "Estado", item.Estado } })
+                                </td>
+                                <td>@FechaVisible(item)</td>
+                                <td>
+                                    <div class="tecnico-index-assign">
+                                        <span><strong>Principal:</strong> @InspectorPrincipal(item)</span>
+                                        <span><strong>Apoyo:</strong> @InspectorApoyo(item)</span>
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="tecnico-index-actions">
+                                        <a href="@Url.Action("AsignarInspector", "Tecnico", new { solicitudId = item.CodigoSolicitud, tipoInspector = TipoInspector(item) })" class="tecnico-index-primary">
+                                            <i class="fas fa-user-pen"></i>
+                                            <span>@(TieneAsignado(item) ? "Reasignar inspector" : "Asignar inspector")</span>
+                                        </a>
+                                        <a href="@Url.Action("Detalle", "SolicitudAOCR", new { id = item.CodigoSolicitud })" class="tecnico-index-secondary">
+                                            <i class="fas fa-file-lines"></i>
+                                            <span>Ver detalle</span>
+                                        </a>
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </section>
 </div>
-
-
-

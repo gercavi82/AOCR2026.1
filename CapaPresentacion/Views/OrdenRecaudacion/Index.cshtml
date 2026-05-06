@@ -76,6 +76,33 @@
             tieneOrdenBorrador = false;
         }
 
+        int ordenPendienteAccionId = 0;
+        bool tieneOrdenPendienteAccion = false;
+        bool ordenPendienteRequiereComprobante = false;
+
+        try
+        {
+            var ordenPendienteAccionIdRaw = ViewBag.OrdenPendienteAccionId as object;
+            if (ordenPendienteAccionIdRaw != null)
+            {
+                int.TryParse(System.Convert.ToString(ordenPendienteAccionIdRaw), out ordenPendienteAccionId);
+            }
+
+            tieneOrdenPendienteAccion = ordenPendienteAccionId > 0;
+
+            var ordenPendienteRequiereComprobanteRaw = ViewBag.OrdenPendienteRequiereComprobante as object;
+            if (ordenPendienteRequiereComprobanteRaw != null)
+            {
+                bool.TryParse(System.Convert.ToString(ordenPendienteRequiereComprobanteRaw), out ordenPendienteRequiereComprobante);
+            }
+        }
+        catch (Exception)
+        {
+            ordenPendienteAccionId = 0;
+            tieneOrdenPendienteAccion = false;
+            ordenPendienteRequiereComprobante = false;
+        }
+
         // Validar usuario autenticado
         bool usuarioAutenticado = User != null && User.Identity != null && User.Identity.IsAuthenticated;
         bool esSolicitante = usuarioAutenticado && (User.IsInRole("Solicitante") || User.IsInRole("Administrador"));
@@ -353,11 +380,14 @@
             <div class="col-md-4 text-md-end mt-3 mt-md-0">
                 @if (esSolicitante)
                 {
-                    <a href="@Url.Action("Nueva", "OrdenRecaudacion")"
+                    <a href="@(tieneOrdenPendienteAccion
+                                 ? Url.Action("Detalles", "OrdenRecaudacion", new { id = ordenPendienteAccionId, abrirPago = ordenPendienteRequiereComprobante })
+                                 : Url.Action("Nueva", "OrdenRecaudacion"))"
                        class="btn btn-primary btn-lg hover-shadow d-inline-flex align-items-center"
                        id="btn-nueva-orden"
-                       aria-label="Crear nueva orden de recaudación">
-                        <i class="fas fa-plus-circle me-2"></i> Nueva Orden
+                       aria-label="@(tieneOrdenPendienteAccion ? "Continuar orden de recaudación pendiente" : "Crear nueva orden de recaudación")">
+                        <i class="fas @(ordenPendienteRequiereComprobante ? "fa-upload" : (tieneOrdenPendienteAccion ? "fa-play-circle" : "fa-plus-circle")) me-2"></i>
+                        @(ordenPendienteRequiereComprobante ? "Subir Comprobante" : (tieneOrdenPendienteAccion ? "Continuar Orden" : "Nueva Orden"))
                     </a>
                 }
 
@@ -684,10 +714,13 @@
                             </p>
                             @if (esSolicitante)
                             {
-                                <a href="@Url.Action("Nueva", "OrdenRecaudacion")"
+                                <a href="@(tieneOrdenPendienteAccion
+                                             ? Url.Action("Detalles", "OrdenRecaudacion", new { id = ordenPendienteAccionId, abrirPago = ordenPendienteRequiereComprobante })
+                                             : Url.Action("Nueva", "OrdenRecaudacion"))"
                                    class="btn btn-primary px-4 py-2 d-inline-flex align-items-center"
                                    id="btn-primera-orden">
-                                    <i class="fas fa-plus-circle me-2"></i> Crear primera orden
+                                    <i class="fas @(ordenPendienteRequiereComprobante ? "fa-upload" : (tieneOrdenPendienteAccion ? "fa-play-circle" : "fa-plus-circle")) me-2"></i>
+                                    @(ordenPendienteRequiereComprobante ? "Subir comprobante pendiente" : (tieneOrdenPendienteAccion ? "Continuar orden pendiente" : "Crear primera orden"))
                                 </a>
                             }
                         </div>
@@ -729,6 +762,13 @@
                                     }
 
                                     bool puedeEditar = esSolicitante && esBorrador;
+                                    string estadoNormalizado = EstadoOrden.NormalizarEstado(orden.Estado);
+                                    bool puedeSubirComprobante = esSolicitante &&
+                                                                 !string.IsNullOrWhiteSpace(orden.CodigoSolicitud) &&
+                                                                 (estadoNormalizado == EstadoOrden.Pendiente ||
+                                                                  estadoNormalizado == EstadoOrden.Generada ||
+                                                                  estadoNormalizado == EstadoOrden.Devuelta);
+                                    string tituloComprobante = estadoNormalizado == EstadoOrden.Devuelta ? "Reenviar comprobante" : "Subir comprobante";
 
                                     // Formatear valores monetarios
                                     string totalFormatted = FormatCurrency(orden.Total);
@@ -849,6 +889,18 @@
                                                        data-id="@orden.Id"
                                                        aria-label="Editar orden @orden.NumeroOrden">
                                                         <i class="fas fa-edit"></i>
+                                                    </a>
+                                                }
+
+                                                @if (puedeSubirComprobante)
+                                                {
+                                                    <a href="@Url.Action("Detalles", "OrdenRecaudacion", new { id = orden.Id, abrirPago = true })"
+                                                       class="btn btn-outline-warning btn-sm btn-comprobante"
+                                                       title="@tituloComprobante"
+                                                       data-bs-toggle="tooltip"
+                                                       data-id="@orden.Id"
+                                                       aria-label="@tituloComprobante para la orden @orden.NumeroOrden">
+                                                        <i class="fas fa-upload"></i>
                                                     </a>
                                                 }
 

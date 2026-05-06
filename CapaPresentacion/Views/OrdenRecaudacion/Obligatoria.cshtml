@@ -212,6 +212,22 @@
     {
         bool.TryParse(System.Convert.ToString(tieneOrdenBorradorRaw), out tieneOrdenBorrador);
     }
+
+    var ordenPendienteAccionId = 0;
+    var ordenPendienteRequiereComprobante = false;
+    var ordenPendienteAccionIdRaw = ViewBag.OrdenPendienteAccionId as object;
+    if (ordenPendienteAccionIdRaw != null)
+    {
+        int.TryParse(System.Convert.ToString(ordenPendienteAccionIdRaw), out ordenPendienteAccionId);
+    }
+
+    var ordenPendienteRequiereComprobanteRaw = ViewBag.OrdenPendienteRequiereComprobante as object;
+    if (ordenPendienteRequiereComprobanteRaw != null)
+    {
+        bool.TryParse(System.Convert.ToString(ordenPendienteRequiereComprobanteRaw), out ordenPendienteRequiereComprobante);
+    }
+
+    var tieneOrdenPendienteAccion = ordenPendienteAccionId > 0;
 }
 @section Styles{
     <style>
@@ -355,8 +371,11 @@
         <div class="col-md-4 text-md-end">
             @if (User != null && (User.IsInRole("Solicitante") || User.IsInRole("Administrador")))
             {
-                <a href="@Url.Action("Nueva", "OrdenRecaudacion")" class="btn btn-primary btn-lg hover-shadow" id="btn-nueva-orden">
-                    <i class="fas fa-plus-circle me-2"></i> Nueva Orden
+                <a href="@(tieneOrdenPendienteAccion
+                             ? Url.Action("Detalles", "OrdenRecaudacion", new { id = ordenPendienteAccionId, abrirPago = ordenPendienteRequiereComprobante })
+                             : Url.Action("Nueva", "OrdenRecaudacion"))" class="btn btn-primary btn-lg hover-shadow" id="btn-nueva-orden">
+                    <i class="fas @(ordenPendienteRequiereComprobante ? "fa-upload" : (tieneOrdenPendienteAccion ? "fa-play-circle" : "fa-plus-circle")) me-2"></i>
+                    @(ordenPendienteRequiereComprobante ? "Subir Comprobante" : (tieneOrdenPendienteAccion ? "Continuar Orden" : "Nueva Orden"))
                 </a>
             }
             @if (User != null && (User.IsInRole("Solicitante") || User.IsInRole("Administrador") || User.IsInRole("Financiero")))
@@ -570,8 +589,11 @@
                     </p>
                     @if (User != null && (User.IsInRole("Solicitante") || User.IsInRole("Administrador")))
                     {
-                        <a href="@Url.Action("Nueva", "OrdenRecaudacion")" class="btn btn-primary mt-2" id="btn-primera-orden">
-                            <i class="fas fa-plus-circle me-2"></i> Crear primera orden
+                        <a href="@(tieneOrdenPendienteAccion
+                                     ? Url.Action("Detalles", "OrdenRecaudacion", new { id = ordenPendienteAccionId, abrirPago = ordenPendienteRequiereComprobante })
+                                     : Url.Action("Nueva", "OrdenRecaudacion"))" class="btn btn-primary mt-2" id="btn-primera-orden">
+                            <i class="fas @(ordenPendienteRequiereComprobante ? "fa-upload" : (tieneOrdenPendienteAccion ? "fa-play-circle" : "fa-plus-circle")) me-2"></i>
+                            @(ordenPendienteRequiereComprobante ? "Subir comprobante pendiente" : (tieneOrdenPendienteAccion ? "Continuar orden pendiente" : "Crear primera orden"))
                         </a>
                     }
                 </div>

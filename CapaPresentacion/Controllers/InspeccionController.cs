@@ -4,6 +4,7 @@ using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Text;
+using System.Transactions;
 using System.Web;
 using System.Web.Mvc;
 using CapaDatos.Constants;
@@ -419,6 +420,23 @@ namespace CapaPresentacion.Controllers
             return View("~/Views/Inspeccion/Detalle.cshtml", inspeccion);
         }
 
+        [Authorize(Roles = ROLES_GESTION_INSPECCION_CON_SOLICITANTE)]
+        public ActionResult VerHallazgo(int id)
+        {
+            if (id <= 0)
+            {
+                return new HttpStatusCodeResult(400, "ID inválido.");
+            }
+
+            var hallazgo = _hallazgoBL.ObtenerPorId(id);
+            if (hallazgo == null)
+            {
+                return HttpNotFound("Hallazgo no encontrado.");
+            }
+
+            return RedirectToAction("Detalle", new { id = hallazgo.CodigoInspeccion });
+        }
+
         [HttpGet]
         [Authorize(Roles = ROLES_FIRMA_DIRDAC)]
         public ActionResult PendientesFirmaDirdac()
@@ -697,13 +715,51 @@ namespace CapaPresentacion.Controllers
                     ? "OPERACION_INSPECTOR"
                     : "COORDINACION_Y_JEFATURA";
 
-                bool ok = _inspeccionBL.CambiarEstado(
-                    id,
-                    estadoDestino,
-                    codigoUsuario,
-                    "Cambio de estado BPMN desde bloque " + bloqueBpmn + ".",
-                    ObtenerUsuarioActual(),
-                    bloqueBpmn);
+                SolicitudAOCR solicitudAocr = null;
+                if (string.Equals(estadoDestino, EstadosInspeccion.EN_INSPECCION, StringComparison.OrdinalIgnoreCase))
+                {
+                    string mensajeValidacion;
+                    string claveTempData;
+                    if (!PuedeIniciarInspeccionAocr(inspeccion, out solicitudAocr, out mensajeValidacion, out claveTempData))
+                    {
+                        TempData[claveTempData] = mensajeValidacion;
+                        return RedirigirTrasCambioEstado(id, returnUrl);
+                    }
+                }
+
+                var opcionesTx = new TransactionOptions
+                {
+                    IsolationLevel = IsolationLevel.ReadCommitted,
+                    Timeout = TransactionManager.MaximumTimeout
+                };
+
+                bool ok;
+                using (var scope = new TransactionScope(TransactionScopeOption.Required, opcionesTx))
+                {
+                    ok = _inspeccionBL.CambiarEstado(
+                        id,
+                        estadoDestino,
+                        codigoUsuario,
+                        "Cambio de estado BPMN desde bloque " + bloqueBpmn + ".",
+                        ObtenerUsuarioActual(),
+                        bloqueBpmn);
+
+                    if (ok && string.Equals(estadoDestino, EstadosInspeccion.EN_INSPECCION, StringComparison.OrdinalIgnoreCase))
+                    {
+                        string mensajeCambioSolicitud;
+                        if (!SincronizarSolicitudAocrAlIniciarInspeccion(solicitudAocr, codigoUsuario, out mensajeCambioSolicitud))
+                        {
+                            throw new ApplicationException(string.IsNullOrWhiteSpace(mensajeCambioSolicitud)
+                                ? "No se pudo sincronizar la solicitud AOCR al iniciar la inspección."
+                                : mensajeCambioSolicitud);
+                        }
+                    }
+
+                    if (ok)
+                    {
+                        scope.Complete();
+                    }
+                }
 
                 string estadoPersistido = "N/A";
                 if (ok)
@@ -722,9 +778,16 @@ namespace CapaPresentacion.Controllers
 
                 _logger.LogInfo("[GestionInspeccion] PuedeGestionar=" + ok + ", InspeccionId=" + id + ", EstadoDestino=" + estadoDestino + ", EstadoPersistido=" + estadoPersistido + ", Usuario=" + ObtenerUsuarioActual());
 
-                TempData[ok ? "Success" : "Error"] = ok
-                    ? "Estado actualizado correctamente."
-                    : "No se pudo actualizar el estado.";
+                if (ok && string.Equals(estadoDestino, EstadosInspeccion.EN_INSPECCION, StringComparison.OrdinalIgnoreCase))
+                {
+                    TempData["Success"] = "Inspección iniciada correctamente. La solicitud AOCR quedó sincronizada y el flujo debe continuar desde este módulo.";
+                }
+                else
+                {
+                    TempData[ok ? "Success" : "Error"] = ok
+                        ? "Estado actualizado correctamente."
+                        : "No se pudo actualizar el estado.";
+                }
             }
             catch (Exception ex)
             {
@@ -2691,6 +2754,143 @@ namespace CapaPresentacion.Controllers
             }
 
             return RedirectToAction("Detalle", new { id });
+        }
+
+        private bool PuedeIniciarInspeccionAocr(Inspeccion inspeccion, out SolicitudAOCR solicitud, out string mensaje, out string claveTempData)
+        {
+            solicitud = null;
+            mensaje = string.Empty;
+            claveTempData = "Error";
+
+            if (inspeccion == null || inspeccion.CodigoSolicitud <= 0)
+            {
+                return true;
+            }
+
+            solicitud = _solicitudDAO.ObtenerPorId(inspeccion.CodigoSolicitud);
+            if (solicitud == null)
+            {
+                mensaje = "No se pudo resolver la solicitud AOCR vinculada a esta inspección.";
+                return false;
+            }
+
+            var estadoSolicitud = EstadoSolicitud.Normalizar(solicitud.Estado ?? string.Empty);
+            if (!string.Equals(estadoSolicitud, EstadoSolicitud.PendienteAsignacionRT, StringComparison.OrdinalIgnoreCase)
+                && !string.Equals(estadoSolicitud, EstadoSolicitud.RequiereInspeccion, StringComparison.OrdinalIgnoreCase)
+                && !string.Equals(estadoSolicitud, EstadoSolicitud.EnInspeccion, StringComparison.OrdinalIgnoreCase))
+            {
+                claveTempData = "Warning";
+                mensaje = "La solicitud AOCR vinculada no está en una etapa válida para iniciar la inspección desde este módulo.";
+                return false;
+            }
+
+            if (!SolicitudAocrTieneInspectorAsignado(solicitud) && !InspeccionAocrTieneInspectorAsignado(inspeccion))
+            {
+                claveTempData = "Warning";
+                mensaje = "Debe existir un inspector/RT asignado antes de iniciar la inspección.";
+                return false;
+            }
+
+            if (!InspeccionPermiteInicioOperativoAocr(inspeccion))
+            {
+                claveTempData = "Warning";
+                mensaje = "La inspección vinculada aún está en revisión o con observaciones. Complete primero ese flujo antes de iniciarla.";
+                return false;
+            }
+
+            if (!SolicitudTieneAprobacionFinancieraAocr(solicitud.CodigoSolicitud))
+            {
+                mensaje = "La solicitud no tiene aprobación financiera registrada. No se puede iniciar inspección.";
+                return false;
+            }
+
+            return true;
+        }
+
+        private bool SincronizarSolicitudAocrAlIniciarInspeccion(SolicitudAOCR solicitud, int usuarioId, out string mensajeCambio)
+        {
+            mensajeCambio = string.Empty;
+
+            if (solicitud == null)
+            {
+                mensajeCambio = "No existe una solicitud AOCR vinculada para sincronizar.";
+                return false;
+            }
+
+            if (usuarioId <= 0)
+            {
+                mensajeCambio = "No se pudo resolver el usuario actual para sincronizar la solicitud AOCR.";
+                return false;
+            }
+
+            var estadoSolicitud = EstadoSolicitud.Normalizar(solicitud.Estado ?? string.Empty);
+            if (string.Equals(estadoSolicitud, EstadoSolicitud.EnInspeccion, StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+
+            return _solicitudEstadoTransitionBL.CambiarEstadoConReglasAocr(
+                solicitud.CodigoSolicitud,
+                EstadoSolicitud.EnInspeccion,
+                "Inicio operativo desde el módulo de inspección.",
+                usuarioId,
+                destino => string.Equals(destino, EstadoSolicitud.EnInspeccion, StringComparison.OrdinalIgnoreCase),
+                out mensajeCambio);
+        }
+
+        private bool SolicitudTieneAprobacionFinancieraAocr(int codigoSolicitud)
+        {
+            if (codigoSolicitud <= 0)
+            {
+                return false;
+            }
+
+            try
+            {
+                return new OrdenRecaudacionDAO().TieneAprobacionFinancieraSolicitud(codigoSolicitud);
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        private static bool SolicitudAocrTieneInspectorAsignado(SolicitudAOCR solicitud)
+        {
+            if (solicitud == null)
+            {
+                return false;
+            }
+
+            return (solicitud.CodigoTecnico.HasValue && solicitud.CodigoTecnico.Value > 0)
+                || !string.IsNullOrWhiteSpace(solicitud.TecnicoResponsableCedula)
+                || !string.IsNullOrWhiteSpace(solicitud.TecnicoResponsableNombre);
+        }
+
+        private static bool InspeccionAocrTieneInspectorAsignado(Inspeccion inspeccion)
+        {
+            if (inspeccion == null)
+            {
+                return false;
+            }
+
+            return (inspeccion.CodigoInspector.HasValue && inspeccion.CodigoInspector.Value > 0)
+                || !string.IsNullOrWhiteSpace(inspeccion.InspectorPrincipalCedula)
+                || !string.IsNullOrWhiteSpace(inspeccion.InspectorPrincipalNombre);
+        }
+
+        private static bool InspeccionPermiteInicioOperativoAocr(Inspeccion inspeccion)
+        {
+            if (inspeccion == null)
+            {
+                return false;
+            }
+
+            var estadoNormalizado = EstadosInspeccion.NormalizarEstado(inspeccion.Estado);
+            return string.Equals(estadoNormalizado, EstadosInspeccion.ACEPTADA, StringComparison.OrdinalIgnoreCase)
+                || string.Equals(estadoNormalizado, EstadosInspeccion.SUBSANADA, StringComparison.OrdinalIgnoreCase)
+                || string.Equals(estadoNormalizado, EstadosInspeccion.PAGO_VALIDADO, StringComparison.OrdinalIgnoreCase)
+                || string.Equals(estadoNormalizado, EstadosInspeccion.EN_INSPECCION, StringComparison.OrdinalIgnoreCase);
         }
 
         private bool PuedeAccederSolicitante(Inspeccion ins)

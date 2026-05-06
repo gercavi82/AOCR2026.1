@@ -5,17 +5,10 @@ using CapaPresentacion.Filters;
 
 namespace CapaPresentacion.Controllers
 {
-    [Authorize(Roles = "CoordinacionLegal,Administrador")]
+    [Authorize(Roles = "CoordinacionLegal,CoordinadorLegal,DirectorGeneral,Administrador")]
     public class CoordinacionLegalController : Controller
     {
         private readonly SolicitudAOCRDAO _solicitudDao = new SolicitudAOCRDAO();
-
-        // GET: /CoordinacionLegal/RevisarLegal
-        [RequirePermission("LEGAL_REVISAR_SOLICITUD")]
-        public ActionResult RevisarLegal()
-        {
-            return RedirectToAction("RevisarLegalizacion", "SolicitudAOCR");
-        }
 
         // GET: /CoordinacionLegal/GenerarCertificados
         [RequirePermission("LEGAL_GENERAR_CERTIFICADO")]

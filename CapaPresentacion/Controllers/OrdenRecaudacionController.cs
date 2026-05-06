@@ -296,6 +296,7 @@ namespace CapaPresentacion.Controllers
             if (idUsuario <= 0) return RedirectToAction("Login", "Account");
 
             CargarEstadosCombo(estado);
+            CargarContinuidadOrdenUsuario(idUsuario);
 
             var ordenes = _dao.ListarPorUsuarioModel(idUsuario, estado) ?? new List<OrdenRecaudacionModel>();
 
@@ -319,6 +320,7 @@ namespace CapaPresentacion.Controllers
             System.Diagnostics.Debug.WriteLine($"Obligatoria: Usuario ID = {idUsuario}");
 
             CargarEstadosCombo(null);
+            CargarContinuidadOrdenUsuario(idUsuario);
 
             var ordenes = _dao.ListarPorUsuario(idUsuario, null) ?? new List<OrdenRecaudacion>();
             System.Diagnostics.Debug.WriteLine(string.Format("Obligatoria: Se encontraron {0} Órdenes", ordenes.Count));
@@ -326,18 +328,49 @@ namespace CapaPresentacion.Controllers
             // Estadisticas
             var est = _dao.ObtenerEstadisticas(idUsuario);
             ViewBag.Estadisticas = MapearEstadisticasParaVista(est);
-            ViewBag.TieneOrdenBorrador = ordenes.Any(o => string.Equals((o.Estado ?? "").Trim(), "BORRADOR", StringComparison.OrdinalIgnoreCase));
 
             return View(ordenes);
+        }
+
+        private void CargarContinuidadOrdenUsuario(int idUsuario)
+        {
+            var ordenPendiente = _dao.ObtenerOrdenPendienteUsuarioAccion(idUsuario);
+            var estadoPendiente = EstadoOrden.NormalizarEstado(ordenPendiente != null ? ordenPendiente.Estado : null);
+            var requiereComprobante = estadoPendiente == EstadoOrden.Pendiente ||
+                                      estadoPendiente == EstadoOrden.Generada ||
+                                      estadoPendiente == EstadoOrden.Devuelta;
+
+            ViewBag.OrdenPendienteAccionId = ordenPendiente != null ? ordenPendiente.Id : 0;
+            ViewBag.OrdenPendienteNumero = ordenPendiente != null ? ordenPendiente.NumeroOrden : string.Empty;
+            ViewBag.OrdenPendienteRequiereComprobante = requiereComprobante;
+            ViewBag.TieneOrdenBorrador = estadoPendiente == EstadoOrden.Borrador;
         }
 
         // GET: /OrdenRecaudacion/Nueva
         [Authorize(Roles = "Solicitante,Administrador,Operador")]
         public ActionResult Nueva()
         {
+            var userId = GetUserId();
+            if (userId <= 0)
+            {
+                return RedirectToAction("Login", "Account");
+            }
+
+            var ordenPendiente = _dao.ObtenerOrdenPendienteUsuarioAccion(userId);
+            if (ordenPendiente != null)
+            {
+                var estadoPendiente = EstadoOrden.NormalizarEstado(ordenPendiente.Estado);
+                var requiereComprobante = estadoPendiente == EstadoOrden.Pendiente ||
+                                          estadoPendiente == EstadoOrden.Generada ||
+                                          estadoPendiente == EstadoOrden.Devuelta;
+                TempData["OK"] = requiereComprobante
+                    ? "Ya existe una orden pendiente de comprobante. Continúe con esa orden antes de crear otra."
+                    : "Ya existe una orden en borrador. Continúe con esa orden antes de crear otra.";
+                return RedirectToAction("Detalles", new { id = ordenPendiente.Id, abrirPago = requiereComprobante });
+            }
+
             var model = new CapaPresentacion.Models.OrdenRecaudacionNuevaVM();
             CargarConceptosNueva(model);
-            var userId = GetUserId();
             Usuario usuario = null;
             // Prefill bÃ¡sico desde usuario/empresa (editables)
             try
@@ -423,6 +456,27 @@ namespace CapaPresentacion.Controllers
         {
             try
             {
+                var idUsuario = GetUserId();
+                if (idUsuario <= 0)
+                {
+                    ModelState.AddModelError("", "Usuario no autenticado.");
+                    CargarConceptosNueva(model);
+                    return View(model);
+                }
+
+                var ordenPendiente = _dao.ObtenerOrdenPendienteUsuarioAccion(idUsuario);
+                if (ordenPendiente != null)
+                {
+                    var estadoPendiente = EstadoOrden.NormalizarEstado(ordenPendiente.Estado);
+                    var requiereComprobante = estadoPendiente == EstadoOrden.Pendiente ||
+                                              estadoPendiente == EstadoOrden.Generada ||
+                                              estadoPendiente == EstadoOrden.Devuelta;
+                    TempData["Error"] = requiereComprobante
+                        ? "Ya existe una orden pendiente de comprobante para este usuario. Cargue el respaldo y continúe con la orden existente."
+                        : "Ya existe una orden en borrador para este usuario. Complete la orden existente antes de crear otra.";
+                    return RedirectToAction("Detalles", new { id = ordenPendiente.Id, abrirPago = requiereComprobante });
+                }
+
                 // Parsear detalles del JSON
                 var detalles = new List<DetalleOrdenRequest>();
                 if (!string.IsNullOrWhiteSpace(model.DetallesJson))
@@ -470,14 +524,6 @@ namespace CapaPresentacion.Controllers
                 var total = subtotal + admin;
 
                 // Crear la entidad OrdenRecaudacion
-                var idUsuario = GetUserId();
-                if (idUsuario <= 0)
-                {
-                    ModelState.AddModelError("", "Usuario no autenticado.");
-                    CargarConceptosNueva(model);
-                    return View(model);
-                }
-
                 var usuarioActual = UsuarioDAO.ObtenerPorId(idUsuario);
                 var rucDesdeDb = ResolverRucCedulaDesdeFuentes(idUsuario, usuarioActual);
                 if (string.IsNullOrWhiteSpace(rucDesdeDb))
@@ -610,7 +656,7 @@ namespace CapaPresentacion.Controllers
         }
 
         // GET: /OrdenRecaudacion/Detalles/5
-        public async Task<ActionResult> Detalles(int id)
+        public async Task<ActionResult> Detalles(int id, bool abrirPago = false)
         {
             int idUsuario = GetUserId();
             if (idUsuario <= 0) return RedirectToAction("Login", "Account");
@@ -619,6 +665,8 @@ namespace CapaPresentacion.Controllers
             var esAdmin = User != null && (User.IsInRole("Administrador") || User.IsInRole("Financiero"));
             if (orden == null || (!esAdmin && orden.CodigoUsuario != idUsuario))
                 return HttpNotFound();
+
+            ViewBag.AbrirModalPago = abrirPago;
 
             CompletarDatosOrdenParaVista(orden);
 
@@ -993,34 +1041,11 @@ namespace CapaPresentacion.Controllers
                     return Task.CompletedTask;
                 }
 
-                // Obtener lista de bancos (se mantiene para otros usos, pero la leyenda con cuentas
-                // se toma del modelo PDF para asegurar consistencia entre correo y comprobante)
-                var bancos = _bancoDao.ObtenerBancos();
-
                 var pdfModel = BuildOrdenRecaudacionPdfModel(orden);
-                pdfModel.LeyendaBancos = @"Para los servicios AEROPORTUARIOS y/o AERONAUTICOS, use las siguientes cuentas. Realice el pago con 72 horas de anticipación.<br><br>
-<b>Banco Pichincha</b><br>
-Cuenta Corriente: 2100310688<br>
-Sublínea: 30200 (en depósitos)<br>
-Titular: Dirección General de Aviación Civil<br>
-RUC: 1768014410001<br>
-En transferencias NO colocar sublínea<br><br>
-<b>Banco Internacional</b><br>
-Cuenta Corriente: 520608140<br>
-Sublínea: 30200 (en depósitos)<br>
-Titular: Dirección General de Aviación Civil<br>
-RUC: 1768014410001<br>
-En transferencias NO colocar sublínea<br><br>
-<b>Banco Rumiñahui</b><br>
-Cuenta Corriente: 8002531204<br>
-Sublínea: 30200 (en depósitos)<br>
-Titular: Dirección General de Aviación Civil<br>
-RUC: 1768014410001<br>
-En transferencias NO colocar sublínea<br>";
+                pdfModel.LeyendaBancos = OrdenRecaudacionPagoHelper.ConstruirLeyendaHtml();
 
-                // Usar la leyenda detallada (con números de cuenta) también en el cuerpo del correo
-                string bancosHtml = "<ul style='margin:0;padding-left:18px;'>" + string.Join("", bancos.Select(b => $"<li>{b.Descripcion}</li>")) + "</ul>";
-                string leyendaBancos = $"<p><strong>Puede realizar el pago de la orden en los siguientes bancos autorizados:</strong></p>{pdfModel.LeyendaBancos}";
+                // Reutilizar la misma leyenda configurable/fallback en correo y PDF.
+                string leyendaBancos = pdfModel.LeyendaBancos;
                 var nombreArchivo = "Comprobante_Orden_" + (orden.NumeroOrden ?? orden.Id.ToString()) + ".pdf";
                 byte[] pdfBytes = null;
 

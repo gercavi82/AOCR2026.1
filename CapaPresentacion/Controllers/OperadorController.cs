@@ -5,22 +5,22 @@ namespace CapaPresentacion.Controllers
     [Authorize]
     public class OperadorController : Controller
     {
+        // Compatibilidad: la bandeja del operador converge en SolicitudAOCR/Index.
         public ActionResult Index()
         {
-            return View();
+            return RedirectToAction("Index", "SolicitudAOCR");
         }
 
-        // Si ya tienes Modificacion en el menú:
+        // Compatibilidad: conservar alias legacy para enlaces antiguos.
         public ActionResult Modificacion()
         {
             return RedirectToAction("Index", "SolicitudAOCR", new { tipoSolicitud = 3, abrirModal = true });
         }
 
-        // Ruta solicitada por el sidebar anterior; redirige a solicitudes para evitar 404
+        // Compatibilidad: antigua ruta de acceso rápido al alta desde el menú lateral.
         public ActionResult RegistrarAeronave()
         {
-            // Redirige a creación de solicitud AOCR, ajusta si existe otra pantalla específica
-            return RedirectToAction("Index", "SolicitudAOCR");
+            return RedirectToAction("Index", "SolicitudAOCR", new { tipoSolicitud = 1, abrirModal = true });
         }
     }
 }
