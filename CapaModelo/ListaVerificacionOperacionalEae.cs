@@ -77,23 +77,33 @@ namespace CapaModelo
     public class ListaVerificacionOperacionalEaeItem
     {
         public string Codigo { get; set; }
+        public string CodigoPregunta { get; set; }
         public int Orden { get; set; }
+        public int GrupoRequisitoId { get; set; }
         public string Referencia { get; set; }
         public string PreguntaRequisito { get; set; }
+        public string NotaPregunta { get; set; }
         public string EstadoCumplimiento { get; set; }
         public string OrientacionEvidencia { get; set; }
         public string EstadoImplementacion { get; set; }
         public string PruebasNotasComentarios { get; set; }
+        public bool EsOrientacionIndependiente { get; set; }
+        public bool EsNotaOrientacion { get; set; }
+        public bool EsLiteral { get; set; }
+        public bool EsSubnumeral { get; set; }
 
         public ListaVerificacionOperacionalEaeItem()
         {
             Codigo = string.Empty;
+            CodigoPregunta = string.Empty;
             Referencia = string.Empty;
             PreguntaRequisito = string.Empty;
+            NotaPregunta = string.Empty;
             EstadoCumplimiento = string.Empty;
             OrientacionEvidencia = string.Empty;
             EstadoImplementacion = string.Empty;
             PruebasNotasComentarios = string.Empty;
+            EsOrientacionIndependiente = true;
         }
 
         public bool EstaCompleto()

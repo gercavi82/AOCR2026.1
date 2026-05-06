@@ -30,6 +30,12 @@ namespace CapaPresentacion
                 "~/Content/toastr/toastr.min.css"
             ));
 
+            bundles.Add(new StyleBundle("~/Content/auth").Include(
+                "~/Content/bootstrap.min.css",
+                "~/Content/fontawesome-all.min.css",
+                "~/Content/plugins/sweetalert2/sweetalert2.min.css"
+            ));
+
             // ======================
             // JS (ORDEN CRÍTICO)
             // ======================
@@ -64,6 +70,13 @@ namespace CapaPresentacion
                 "~/Scripts/app/global.js",
                 "~/Scripts/app/notifications.js",
                 "~/Scripts/app/forms.js"
+            ));
+
+            bundles.Add(new ScriptBundle("~/bundles/auth").Include(
+                "~/Scripts/jquery-3.6.4.min.js",
+                "~/Scripts/bootstrap.bundle.min.js",
+                "~/Content/plugins/sweetalert2/sweetalert2.min.js",
+                "~/Scripts/aocr-utils.js"
             ));
         }
     }

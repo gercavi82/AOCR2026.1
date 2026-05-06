@@ -651,26 +651,7 @@ namespace CapaDatos.Services
         {
             _logger.LogInfo("Iniciando procesador de cola de correos");
 
-            // Reclamar correos que quedaron ENVIANDO tras un crash/reinicio previo.
-            try
-            {
-                var reactivados = _queueService
-                    .ReactivarEnviandoAbandonadosAsync(TimeSpan.FromMinutes(10))
-                    .GetAwaiter()
-                    .GetResult();
-                if (reactivados > 0)
-                {
-                    _logger.LogInfo(string.Format(
-                        "Reactivados {0} correos abandonados en estado ENVIANDO (> 10 min).",
-                        reactivados));
-                }
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, new LogContext { ErrorCode = "EMAIL_QUEUE_RECLAIM_ERROR" });
-            }
-
-            _processingTask = Task.Run(() => ProcessQueueAsync(_cancellationTokenSource.Token));
+            _processingTask = Task.Run(() => InitializeAndProcessQueueAsync(_cancellationTokenSource.Token));
         }
 
         public void Stop()
@@ -728,6 +709,32 @@ namespace CapaDatos.Services
                     await Task.Delay(TimeSpan.FromSeconds(30), cancellationToken);
                 }
             }
+        }
+
+        private async Task InitializeAndProcessQueueAsync(CancellationToken cancellationToken)
+        {
+            var startupStopwatch = System.Diagnostics.Stopwatch.StartNew();
+
+            try
+            {
+                var reactivados = await _queueService.ReactivarEnviandoAbandonadosAsync(TimeSpan.FromMinutes(10));
+                if (reactivados > 0)
+                {
+                    _logger.LogInfo(string.Format(
+                        "Reactivados {0} correos abandonados en estado ENVIANDO (> 10 min).",
+                        reactivados));
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, new LogContext { ErrorCode = "EMAIL_QUEUE_RECLAIM_ERROR" });
+            }
+
+            _logger.LogInfo(string.Format(
+                "[PERF][EMAIL_QUEUE] Inicializacion de cola completada en {0} ms",
+                startupStopwatch.ElapsedMilliseconds));
+
+            await ProcessQueueAsync(cancellationToken);
         }
 
         private async Task ProcessItemAsync(EmailQueueItem item)

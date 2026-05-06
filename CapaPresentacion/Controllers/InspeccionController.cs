@@ -3361,13 +3361,26 @@ namespace CapaPresentacion.Controllers
             var plantilla = ObtenerPlantillaListaVerificacionOperacionalEae(solicitud);
             var respuestas = DeserializarItemsListaVerificacionOperacionalEae(lista.ItemsJson)
                 .Where(item => item != null && !string.IsNullOrWhiteSpace(item.Codigo))
+                .ToList();
+
+            var respuestasPorCodigo = respuestas
                 .GroupBy(item => item.Codigo, StringComparer.OrdinalIgnoreCase)
                 .ToDictionary(group => group.Key, group => group.First(), StringComparer.OrdinalIgnoreCase);
 
+            var respuestasPorPregunta = respuestas
+                .Select(item => new { Clave = ObtenerClavePreguntaListaVerificacionOperacionalEae(item), Item = item })
+                .Where(item => !string.IsNullOrWhiteSpace(item.Clave))
+                .GroupBy(item => item.Clave, StringComparer.OrdinalIgnoreCase)
+                .ToDictionary(group => group.Key, group => group.First().Item, StringComparer.OrdinalIgnoreCase);
+
             foreach (var item in plantilla)
             {
-                ListaVerificacionOperacionalEaeItem respuesta;
-                if (!respuestas.TryGetValue(item.Codigo, out respuesta) || respuesta == null)
+                ListaVerificacionOperacionalEaeItem respuesta = null;
+                var clavePregunta = ObtenerClavePreguntaListaVerificacionOperacionalEae(item);
+                if ((!respuestasPorCodigo.TryGetValue(item.Codigo, out respuesta) || respuesta == null)
+                    && (string.IsNullOrWhiteSpace(clavePregunta)
+                        || !respuestasPorPregunta.TryGetValue(clavePregunta, out respuesta)
+                        || respuesta == null))
                 {
                     continue;
                 }
@@ -3377,10 +3390,69 @@ namespace CapaPresentacion.Controllers
                 item.PruebasNotasComentarios = (respuesta.PruebasNotasComentarios ?? string.Empty).Trim();
             }
 
+            UnificarNotasListaVerificacionOperacionalEae(plantilla);
+
             lista.Items = plantilla;
             if (string.IsNullOrWhiteSpace(lista.ResultadoGeneral))
             {
                 lista.ResultadoGeneral = CalcularResultadoGeneralListaVerificacionOperacionalEae(plantilla);
+            }
+        }
+
+        private static string ObtenerClavePreguntaListaVerificacionOperacionalEae(ListaVerificacionOperacionalEaeItem item)
+        {
+            if (item == null)
+            {
+                return string.Empty;
+            }
+
+            var codigoPregunta = (item.CodigoPregunta ?? string.Empty).Trim();
+            if (!string.IsNullOrWhiteSpace(codigoPregunta))
+            {
+                return codigoPregunta;
+            }
+
+            return (item.Codigo ?? string.Empty).Trim();
+        }
+
+        private static void UnificarNotasListaVerificacionOperacionalEae(IList<ListaVerificacionOperacionalEaeItem> items)
+        {
+            if (items == null || items.Count == 0)
+            {
+                return;
+            }
+
+            foreach (var grupo in items
+                .Where(item => item != null)
+                .GroupBy(ObtenerClavePreguntaListaVerificacionOperacionalEae, StringComparer.OrdinalIgnoreCase))
+            {
+                ListaVerificacionOperacionalEaeItem itemBase = null;
+                foreach (var item in grupo.OrderBy(valor => valor.Orden))
+                {
+                    if (!item.EsNotaOrientacion || itemBase == null)
+                    {
+                        itemBase = item;
+                        continue;
+                    }
+
+                    var cumplimiento = !string.IsNullOrWhiteSpace(itemBase.EstadoCumplimiento)
+                        ? itemBase.EstadoCumplimiento
+                        : item.EstadoCumplimiento;
+                    var implementacion = !string.IsNullOrWhiteSpace(itemBase.EstadoImplementacion)
+                        ? itemBase.EstadoImplementacion
+                        : item.EstadoImplementacion;
+                    var comentarios = !string.IsNullOrWhiteSpace(itemBase.PruebasNotasComentarios)
+                        ? itemBase.PruebasNotasComentarios
+                        : item.PruebasNotasComentarios;
+
+                    itemBase.EstadoCumplimiento = NormalizarCumplimientoListaVerificacionOperacionalEae(cumplimiento);
+                    itemBase.EstadoImplementacion = NormalizarImplementacionListaVerificacionOperacionalEae(implementacion);
+                    itemBase.PruebasNotasComentarios = (comentarios ?? string.Empty).Trim();
+
+                    item.EstadoCumplimiento = itemBase.EstadoCumplimiento;
+                    item.EstadoImplementacion = itemBase.EstadoImplementacion;
+                    item.PruebasNotasComentarios = itemBase.PruebasNotasComentarios;
+                }
             }
         }
 
@@ -3462,37 +3534,182 @@ namespace CapaPresentacion.Controllers
             }
         }
 
+        private sealed class OrientacionPlantillaLvEae
+        {
+            public string Texto { get; set; }
+            public bool EsNotaOrientacion { get; set; }
+            public bool EsLiteral { get; set; }
+            public bool EsSubnumeral { get; set; }
+        }
+
         private List<ListaVerificacionOperacionalEaeItem> ObtenerPlantillaListaVerificacionOperacionalEae(SolicitudAOCR solicitud)
         {
-            return new List<ListaVerificacionOperacionalEaeItem>
+            var items = new List<ListaVerificacionOperacionalEaeItem>();
+            var orden = 1;
+
+            AgregarGrupoLvEae(items, ref orden, 1, "129.010 (a)\n129.100 (b) (1)", "129-1",
+                "Ha presentado el explotador extranjero el formulario de solicitud de reconocimiento de su AOC?",
+                null,
+                CrearOrientacionPlantillaLvEae("1. Verificar que el explotador haya completado los formularios de solicitud de la forma y manera que prescribe la AAC.", esSubnumeral: true),
+                CrearOrientacionPlantillaLvEae("Nota: Revisar el formulario y asegurarse que este debidamente completado.", esNotaOrientacion: true),
+                CrearOrientacionPlantillaLvEae("2. Verificar que los datos coincidan con los registros presentados.", esSubnumeral: true));
+
+            AgregarGrupoLvEae(items, ref orden, 2, "129.100 (b) (5) y (7)", "129-2",
+                "Ha presentado el explotador extranjero una descripcion de la operacion propuesta?",
+                "Esta parte requiere coordinacion con los inspectores de aeronavegabilidad.",
+                CrearOrientacionPlantillaLvEae("1. Verificar que dentro de la descripcion se identifique si se trata de:", esSubnumeral: true),
+                CrearOrientacionPlantillaLvEae("a. operaciones regulares o no regulares.", esLiteral: true),
+                CrearOrientacionPlantillaLvEae("b. transporte de pasajeros/carga/otros.", esLiteral: true),
+                CrearOrientacionPlantillaLvEae("2. Verificar que en la descripcion del area de operaciones se identifiquen:", esSubnumeral: true),
+                CrearOrientacionPlantillaLvEae("a. los aeropuertos que se pretende utilizar.", esLiteral: true),
+                CrearOrientacionPlantillaLvEae("b. las areas especiales en que pretende operar; por ejemplo Cordillera de los Andes.", esLiteral: true),
+                CrearOrientacionPlantillaLvEae("c. las aprobaciones especificas requeridas.", esLiteral: true),
+                CrearOrientacionPlantillaLvEae("3. Verificar que el explotador haya presentado los tipos y las matriculas de las aeronaves sujetas a la operacion.", esSubnumeral: true),
+                CrearOrientacionPlantillaLvEae("Nota 1. Algunos Estados requieren que las aeronaves esten listadas en las OpSpecs. Si no estan en las OpSpecs, el explotador debe presentarlas en otro documento, como una parte del manual de operaciones, o copias de los certificados de matricula que atestiguen que el EAE es el explotador de dichas aeronaves.", esNotaOrientacion: true),
+                CrearOrientacionPlantillaLvEae("Nota 2. Verificar la nacionalidad de las aeronaves involucradas. Es posible que el Estado de matricula sea diferente del Estado del explotador. En este caso, identificar los Estados de matricula en la Casilla 14.", esNotaOrientacion: true));
+
+            AgregarGrupoLvEae(items, ref orden, 3, "129.200 (a) (3) y (4)", "129-3",
+                "Ha presentado el explotador extranjero los contratos de las aeronaves?",
+                "Esta parte requiere coordinacion con los inspectores de aeronavegabilidad.",
+                CrearOrientacionPlantillaLvEae("1. Verificar que se presenten los contratos de las aeronaves afectadas a intercambio o arrendamiento de aeronave con tripulacion.", esSubnumeral: true),
+                CrearOrientacionPlantillaLvEae("2. En caso de arrendamiento de aeronave con tripulacion, verificar aprobacion de la AAC del Estado del explotador.", esSubnumeral: true),
+                CrearOrientacionPlantillaLvEae("3. Si existe acuerdo del Articulo 83 bis, verificar resumenes del acuerdo.", esSubnumeral: true),
+                CrearOrientacionPlantillaLvEae("4. Verificar certificados de cobertura de seguro para cada aeronave.", esSubnumeral: true));
+
+            AgregarGrupoLvEae(items, ref orden, 4, "129.100 (b) (8)", "129-4",
+                "Ha presentado el explotador extranjero los certificados de ruido de las aeronaves?",
+                "Esta parte requiere coordinacion con los inspectores de aeronavegabilidad.",
+                CrearOrientacionPlantillaLvEae("1. Verificar que el certificado de ruido y documentos tecnicos de respaldo esten de acuerdo al Anexo 16, Volumen 1.", esSubnumeral: true),
+                CrearOrientacionPlantillaLvEae("2. Verificar que la homologacion acustica fue otorgada o convalidada por el Estado de matricula y se encuentre vigente.", esSubnumeral: true));
+
+            AgregarGrupoLvEae(items, ref orden, 5, "129.100 (b) (2)", "129-5",
+                "Ha presentado el explotador extranjero una copia de su AOC y las OpSpecs actualizadas que autorizan las operaciones solicitadas?",
+                null,
+                CrearOrientacionPlantillaLvEae("1. Verificar que el AOC contiene la informacion requerida y autoriza las operaciones solicitadas.", esSubnumeral: true),
+                CrearOrientacionPlantillaLvEae("2. Verificar que las OpSpecs contienen la informacion requerida y autorizan las operaciones solicitadas.", esSubnumeral: true),
+                CrearOrientacionPlantillaLvEae("a. modelos de aeronave.", esLiteral: true),
+                CrearOrientacionPlantillaLvEae("b. tipo de transporte.", esLiteral: true),
+                CrearOrientacionPlantillaLvEae("c. area de operaciones.", esLiteral: true),
+                CrearOrientacionPlantillaLvEae("d. aprobaciones especificas.", esLiteral: true),
+                CrearOrientacionPlantillaLvEae("e. matriculas y aerodromos, si aplica.", esLiteral: true));
+
+            AgregarGrupoLvEae(items, ref orden, 6, "129.100 (b) (3)", "129-6",
+                "Ha presentado el explotador extranjero una copia de su manual de operaciones vigente?",
+                null,
+                CrearOrientacionPlantillaLvEae("1. Verificar que el manual de operaciones este completo con el contenido requerido.", esSubnumeral: true),
+                CrearOrientacionPlantillaLvEae("2. Verificar indicaciones de aprobacion/aceptacion.", esSubnumeral: true),
+                CrearOrientacionPlantillaLvEae("3. Verificar que rutas y aerodromos contienen informacion de:", esSubnumeral: true),
+                CrearOrientacionPlantillaLvEae("a. comunicaciones.", esLiteral: true),
+                CrearOrientacionPlantillaLvEae("b. navegacion.", esLiteral: true),
+                CrearOrientacionPlantillaLvEae("c. aerodromos.", esLiteral: true),
+                CrearOrientacionPlantillaLvEae("d. aproximaciones.", esLiteral: true),
+                CrearOrientacionPlantillaLvEae("e. llegadas y salidas por instrumentos.", esLiteral: true),
+                CrearOrientacionPlantillaLvEae("4. Verificar procedimientos o entrenamientos para areas o aerodromos especiales.", esSubnumeral: true),
+                CrearOrientacionPlantillaLvEae("5. Verificar procedimientos especificos de despacho si el Estado los requiere.", esSubnumeral: true));
+
+            AgregarGrupoLvEae(items, ref orden, 7, "129.100 (b) (9)", "129-7",
+                "Ha presentado el explotador extranjero una copia del plan operacional de vuelo para cada ruta que pretende utilizar?",
+                null,
+                CrearOrientacionPlantillaLvEae("1. Verificar que los planes operacionales de vuelo contienen modelo, pesos, combustible, rutas y aerodromos de alternativa.", esSubnumeral: true),
+                CrearOrientacionPlantillaLvEae("2. Verificar que los planes son adecuados frente a la descripcion de la operacion propuesta y las autorizaciones OpSpecs.", esSubnumeral: true));
+
+            AgregarGrupoLvEae(items, ref orden, 8, "129.100 (b) (9)", "129-8",
+                "Ha presentado el explotador extranjero informacion sobre los servicios de mantenimiento que pretende utilizar?",
+                "Esta parte requiere coordinacion con los inspectores de aeronavegabilidad.",
+                CrearOrientacionPlantillaLvEae("1. Verificar extension y alcance del mantenimiento que pretende realizar.", esSubnumeral: true),
+                CrearOrientacionPlantillaLvEae("2. Verificar si usara estructura propia u OMA contratada.", esSubnumeral: true),
+                CrearOrientacionPlantillaLvEae("3. Verificar que la organizacion indicada esta autorizada y capacitada para los servicios pretendidos.", esSubnumeral: true));
+
+            AgregarGrupoLvEae(items, ref orden, 9, "129.100 (b) (9)", "129-9",
+                "Ha presentado el explotador extranjero los contratos o cartas de intencion de los servicios de tierra que pretende utilizar?",
+                null,
+                CrearOrientacionPlantillaLvEae("1. Verificar que los servicios de tierra incluyan, si aplica:", esSubnumeral: true),
+                CrearOrientacionPlantillaLvEae("a. manipulacion de equipaje y carga.", esLiteral: true),
+                CrearOrientacionPlantillaLvEae("b. despacho y atencion a pasajeros.", esLiteral: true),
+                CrearOrientacionPlantillaLvEae("c. combustible y aceite.", esLiteral: true),
+                CrearOrientacionPlantillaLvEae("d. deshielo y antihielo.", esLiteral: true),
+                CrearOrientacionPlantillaLvEae("e. limpieza.", esLiteral: true),
+                CrearOrientacionPlantillaLvEae("f. aprovisionamiento del servicio de a bordo.", esLiteral: true),
+                CrearOrientacionPlantillaLvEae("2. Verificar que las organizaciones de servicios de tierra garantizan capacitacion adecuada, incluyendo mercancias peligrosas si aplica.", esSubnumeral: true));
+
+            AgregarGrupoLvEae(items, ref orden, 10, "129.010 (b)\n129.100 (b) (9)", "129-10",
+                "Ha presentado el explotador extranjero informacion sobre su sistema de gestion de seguridad operacional (SMS), en cumplimiento del Anexo 19?",
+                null,
+                CrearOrientacionPlantillaLvEae("1. Verificar que el explotador tiene todos los elementos minimos presentes.", esSubnumeral: true),
+                CrearOrientacionPlantillaLvEae("2. Verificar que tiene implementado el programa de analisis de datos de vuelo como parte del SMS.", esSubnumeral: true),
+                CrearOrientacionPlantillaLvEae("3. De ser requerido por el Estado, verificar que el plan de respuesta ante emergencias es adecuado al pais y aeropuertos que pretende utilizar.", esSubnumeral: true));
+
+            AgregarGrupoLvEae(items, ref orden, 11, "129.010 (b)\n129.100 (b) (9)", "129-11",
+                "Ha presentado el explotador extranjero informacion sobre el cumplimiento del Anexo 1 por su tripulacion?",
+                null,
+                CrearOrientacionPlantillaLvEae("1. Verificar que las licencias de tripulacion de vuelo son expedidas o convalidadas por el Estado de matricula de las aeronaves.", esSubnumeral: true),
+                CrearOrientacionPlantillaLvEae("2. Verificar que la tripulacion puede hablar y comprender el idioma utilizado para comunicaciones radiotelefonicas en el Estado.", esSubnumeral: true));
+
+            AgregarGrupoLvEae(items, ref orden, 12, "129.010 (b)\n129.100 (b) (9)", "129-12",
+                "Ha presentado el explotador extranjero informacion sobre alguna exencion emitida por su AAC que se aplique a las operaciones solicitadas?",
+                null,
+                CrearOrientacionPlantillaLvEae("1. Verificar si la exencion no interfiere con el cumplimiento de los Anexos mencionados.", esSubnumeral: true),
+                CrearOrientacionPlantillaLvEae("2. Verificar anotaciones en certificados de aeronavegabilidad y/o licencias cuando hayan sido objeto de exencion.", esSubnumeral: true),
+                CrearOrientacionPlantillaLvEae("3. Verificar si la AAC del explotador solicito la aceptacion de la exencion a la AAC y si fue aceptada.", esSubnumeral: true));
+
+            AgregarGrupoLvEae(items, ref orden, 13, "129.100 (b) (6)", "129-13",
+                "Ha presentado el explotador extranjero una copia de su plan de seguridad de la aviacion?",
+                null,
+                CrearOrientacionPlantillaLvEae("1. Verificar que el plan de seguridad de la aviacion, por su calidad de restricto, haya sido presentado a las personas autorizadas en la AAC u organismo apropiado del Estado.", esSubnumeral: true));
+
+            AgregarGrupoLvEae(items, ref orden, 14, "129.100 (b) (4)", "129-14",
+                "Ha presentado el explotador extranjero una copia del documento que autoriza los derechos de transito especificos, expedidos por la autoridad del Estado en que pretende operar?",
+                null,
+                CrearOrientacionPlantillaLvEae("1. Verificar que existe una autorizacion de derecho de transito expedida por la AAC y otro organismo nacional competente.", esSubnumeral: true),
+                CrearOrientacionPlantillaLvEae("Nota. Si la autorizacion se emite despues de la evaluacion tecnica, puede considerarse no aplicable justificando en la Casilla 14.", esNotaOrientacion: true));
+
+            return items;
+        }
+
+        private static OrientacionPlantillaLvEae CrearOrientacionPlantillaLvEae(string texto, bool esSubnumeral = false, bool esLiteral = false, bool esNotaOrientacion = false)
+        {
+            return new OrientacionPlantillaLvEae
             {
-                CrearItemLvEae("129-1", 1, "129.010 (a)\n129.100 (b) (1)", "Ha presentado el explotador extranjero el formulario de solicitud de reconocimiento de su AOC?", "1. Verificar que el explotador haya completado los formularios de solicitud de la forma y manera que prescribe la AAC.\nNota: Revisar el formulario y asegurarse que este debidamente completado.\n2. Verificar que los datos coincidan con los registros presentados."),
-                CrearItemLvEae("129-2", 2, "129.100 (b) (5) y (7)", "Ha presentado el explotador extranjero una descripcion de la operacion propuesta?\nNota. Esta parte requiere coordinacion con los inspectores de aeronavegabilidad.", "1. Verificar que dentro de la descripcion se identifique si se trata de: a. operaciones regulares o no regulares; b. transporte de pasajeros/carga/otros.\n2. Verificar que en la descripcion del area de operaciones se identifiquen: a. los aeropuertos que se pretende utilizar; b. las areas especiales en que pretende operar; c. las aprobaciones especificas requeridas.\n3. Verificar que el explotador haya presentado los tipos y las matriculas de las aeronaves sujetas a la operacion."),
-                CrearItemLvEae("129-3", 3, "129.200 (a) (3) y (4)", "Ha presentado el explotador extranjero los contratos de las aeronaves?\nNota. Esta parte requiere coordinacion con los inspectores de aeronavegabilidad.", "1. Verificar que se presenten los contratos de las aeronaves afectadas a intercambio o arrendamiento de aeronave con tripulacion.\n2. En caso de arrendamiento de aeronave con tripulacion, verificar aprobacion de la AAC del Estado del explotador.\n3. Si existe acuerdo del Articulo 83 bis, verificar resumenes del acuerdo.\n4. Verificar certificados de cobertura de seguro para cada aeronave."),
-                CrearItemLvEae("129-4", 4, "129.100 (b) (8)", "Ha presentado el explotador extranjero los certificados de ruido de las aeronaves?\nNota. Esta parte requiere coordinacion con los inspectores de aeronavegabilidad.", "1. Verificar que el certificado de ruido y documentos tecnicos de respaldo esten de acuerdo al Anexo 16, Volumen 1.\n2. Verificar que la homologacion acustica fue otorgada o convalidada por el Estado de matricula y se encuentre vigente."),
-                CrearItemLvEae("129-5", 5, "129.100 (b) (2)", "Ha presentado el explotador extranjero una copia de su AOC y las OpSpecs actualizadas que autorizan las operaciones solicitadas?", "1. Verificar que el AOC contiene la informacion requerida y autoriza las operaciones solicitadas.\n2. Verificar que las OpSpecs contienen la informacion requerida y autorizan las operaciones solicitadas, incluyendo modelos de aeronave, transporte, area de operaciones, aprobaciones especificas, matriculas y aerodromos si aplica."),
-                CrearItemLvEae("129-6", 6, "129.100 (b) (3)", "Ha presentado el explotador extranjero una copia de su manual de operaciones vigente?", "1. Verificar que el manual de operaciones este completo con el contenido requerido.\n2. Verificar indicaciones de aprobacion/aceptacion.\n3. Verificar que rutas y aerodromos contienen informacion de comunicaciones, navegacion, aerodromos, aproximaciones, llegadas y salidas por instrumentos.\n4. Verificar procedimientos o entrenamientos para areas o aerodromos especiales.\n5. Verificar procedimientos especificos de despacho si el Estado los requiere."),
-                CrearItemLvEae("129-7", 7, "129.100 (b) (9)", "Ha presentado el explotador extranjero una copia del plan operacional de vuelo para cada ruta que pretende utilizar?", "1. Verificar que los planes operacionales de vuelo contienen modelo, pesos, combustible, rutas y aerodromos de alternativa.\n2. Verificar que los planes son adecuados frente a la descripcion de la operacion propuesta y las autorizaciones OpSpecs."),
-                CrearItemLvEae("129-8", 8, "129.100 (b) (9)", "Ha presentado el explotador extranjero informacion sobre los servicios de mantenimiento que pretende utilizar?\nNota. Esta parte requiere coordinacion con los inspectores de aeronavegabilidad.", "1. Verificar extension y alcance del mantenimiento que pretende realizar.\n2. Verificar si usara estructura propia u OMA contratada.\n3. Verificar que la organizacion indicada esta autorizada y capacitada para los servicios pretendidos."),
-                CrearItemLvEae("129-9", 9, "129.100 (b) (9)", "Ha presentado el explotador extranjero los contratos o cartas de intencion de los servicios de tierra que pretende utilizar?", "1. Verificar que los servicios de tierra incluyan, si aplica: manipulacion de equipaje y carga; despacho y atencion a pasajeros; combustible y aceite; deshielo y antihielo; limpieza; aprovisionamiento del servicio de a bordo.\n2. Verificar que las organizaciones de servicios de tierra garantizan capacitacion adecuada, incluyendo mercancias peligrosas si aplica."),
-                CrearItemLvEae("129-10", 10, "129.010 (b)\n129.100 (b) (9)", "Ha presentado el explotador extranjero informacion sobre su sistema de gestion de seguridad operacional (SMS), en cumplimiento del Anexo 19?", "1. Verificar que el explotador tiene todos los elementos minimos presentes.\n2. Verificar que tiene implementado el programa de analisis de datos de vuelo como parte del SMS.\n3. De ser requerido por el Estado, verificar que el plan de respuesta ante emergencias es adecuado al pais y aeropuertos que pretende utilizar."),
-                CrearItemLvEae("129-11", 11, "129.010 (b)\n129.100 (b) (9)", "Ha presentado el explotador extranjero informacion sobre el cumplimiento del Anexo 1 por su tripulacion?", "1. Verificar que las licencias de tripulacion de vuelo son expedidas o convalidadas por el Estado de matricula de las aeronaves.\n2. Verificar que la tripulacion puede hablar y comprender el idioma utilizado para comunicaciones radiotelefonicas en el Estado."),
-                CrearItemLvEae("129-12", 12, "129.010 (b)\n129.100 (b) (9)", "Ha presentado el explotador extranjero informacion sobre alguna exencion emitida por su AAC que se aplique a las operaciones solicitadas?", "1. Verificar si la exencion no interfiere con el cumplimiento de los Anexos mencionados.\n2. Verificar anotaciones en certificados de aeronavegabilidad y/o licencias cuando hayan sido objeto de exencion.\n3. Verificar si la AAC del explotador solicito la aceptacion de la exencion a la AAC y si fue aceptada."),
-                CrearItemLvEae("129-13", 13, "129.100 (b) (6)", "Ha presentado el explotador extranjero una copia de su plan de seguridad de la aviacion?", "1. Verificar que el plan de seguridad de la aviacion, por su calidad de restricto, haya sido presentado a las personas autorizadas en la AAC u organismo apropiado del Estado."),
-                CrearItemLvEae("129-14", 14, "129.100 (b) (4)", "Ha presentado el explotador extranjero una copia del documento que autoriza los derechos de transito especificos, expedidos por la autoridad del Estado en que pretende operar?", "1. Verificar que existe una autorizacion de derecho de transito expedida por la AAC y otro organismo nacional competente.\nNota. Si la autorizacion se emite despues de la evaluacion tecnica, puede considerarse no aplicable justificando en la Casilla 14.")
+                Texto = texto,
+                EsNotaOrientacion = esNotaOrientacion,
+                EsLiteral = esLiteral,
+                EsSubnumeral = esSubnumeral
             };
         }
 
-        private static ListaVerificacionOperacionalEaeItem CrearItemLvEae(string codigo, int orden, string referencia, string pregunta, string orientacion)
+        private static void AgregarGrupoLvEae(List<ListaVerificacionOperacionalEaeItem> items, ref int ordenGlobal, int grupoRequisitoId, string referencia, string codigoPregunta, string preguntaRequisito, string notaPregunta, params OrientacionPlantillaLvEae[] orientaciones)
         {
-            return new ListaVerificacionOperacionalEaeItem
+            if (items == null || orientaciones == null || orientaciones.Length == 0)
             {
-                Codigo = codigo,
-                Orden = orden,
-                Referencia = referencia,
-                PreguntaRequisito = pregunta,
-                OrientacionEvidencia = orientacion
-            };
+                return;
+            }
+
+            var codigoPreguntaNormalizado = (codigoPregunta ?? string.Empty).Trim();
+            var referenciaNormalizada = (referencia ?? string.Empty).Trim();
+            var preguntaNormalizada = (preguntaRequisito ?? string.Empty).Trim();
+            var notaNormalizada = (notaPregunta ?? string.Empty).Trim();
+            var indiceOrientacion = 1;
+
+            foreach (var orientacion in orientaciones.Where(item => item != null && !string.IsNullOrWhiteSpace(item.Texto)))
+            {
+                items.Add(new ListaVerificacionOperacionalEaeItem
+                {
+                    Codigo = codigoPreguntaNormalizado + "-" + indiceOrientacion.ToString("00"),
+                    CodigoPregunta = codigoPreguntaNormalizado,
+                    Orden = ordenGlobal++,
+                    GrupoRequisitoId = grupoRequisitoId,
+                    Referencia = referenciaNormalizada,
+                    PreguntaRequisito = preguntaNormalizada,
+                    NotaPregunta = notaNormalizada,
+                    OrientacionEvidencia = orientacion.Texto,
+                    EsOrientacionIndependiente = true,
+                    EsNotaOrientacion = orientacion.EsNotaOrientacion,
+                    EsLiteral = orientacion.EsLiteral,
+                    EsSubnumeral = orientacion.EsSubnumeral
+                });
+
+                indiceOrientacion++;
+            }
         }
 
         private List<ListaVerificacionOperacionalEaeItem> DeserializarItemsListaVerificacionOperacionalEae(string itemsJson)
@@ -3581,15 +3798,37 @@ namespace CapaPresentacion.Controllers
         private ListaVerificacionOperacionalEae ConstruirListaVerificacionOperacionalEaeDesdeFormulario(int codigoInspeccion, System.Collections.Specialized.NameValueCollection form, ListaVerificacionOperacionalEae listaActual, SolicitudAOCR solicitud)
         {
             var items = ObtenerPlantillaListaVerificacionOperacionalEae(solicitud);
-            foreach (var item in items)
+            foreach (var grupo in items
+                .Where(item => item != null)
+                .GroupBy(ObtenerClavePreguntaListaVerificacionOperacionalEae, StringComparer.OrdinalIgnoreCase))
             {
-                var keyCumplimiento = "lvItem_" + item.Codigo + "_cumplimiento";
-                var keyImplementacion = "lvItem_" + item.Codigo + "_implementacion";
-                var keyComentarios = "lvItem_" + item.Codigo + "_comentarios";
-                item.EstadoCumplimiento = NormalizarCumplimientoListaVerificacionOperacionalEae(form != null ? form[keyCumplimiento] : null);
-                item.EstadoImplementacion = NormalizarImplementacionListaVerificacionOperacionalEae(form != null ? form[keyImplementacion] : null);
-                item.PruebasNotasComentarios = TomarCampoTexto(form, keyComentarios, 3000, string.Empty);
+                ListaVerificacionOperacionalEaeItem itemBase = null;
+                foreach (var item in grupo.OrderBy(valor => valor.Orden))
+                {
+                    var itemCaptura = item;
+                    if (item.EsNotaOrientacion && itemBase != null)
+                    {
+                        itemCaptura = itemBase;
+                    }
+                    else
+                    {
+                        itemBase = item;
+                    }
+
+                    var keyCumplimiento = "lvItem_" + itemCaptura.Codigo + "_cumplimiento";
+                    var keyImplementacion = "lvItem_" + itemCaptura.Codigo + "_implementacion";
+                    var keyComentarios = "lvItem_" + itemCaptura.Codigo + "_comentarios";
+                    var cumplimiento = NormalizarCumplimientoListaVerificacionOperacionalEae(form != null ? form[keyCumplimiento] : null);
+                    var implementacion = NormalizarImplementacionListaVerificacionOperacionalEae(form != null ? form[keyImplementacion] : null);
+                    var comentarios = TomarCampoTexto(form, keyComentarios, 3000, string.Empty);
+
+                    item.EstadoCumplimiento = cumplimiento;
+                    item.EstadoImplementacion = implementacion;
+                    item.PruebasNotasComentarios = comentarios;
+                }
             }
+
+            UnificarNotasListaVerificacionOperacionalEae(items);
 
             var lista = new ListaVerificacionOperacionalEae
             {
@@ -3652,31 +3891,70 @@ namespace CapaPresentacion.Controllers
                 return false;
             }
 
-            var itemPendiente = lista.Items.FirstOrDefault(item => string.IsNullOrWhiteSpace(item.EstadoCumplimiento));
+            var itemsValidables = (lista.Items ?? new List<ListaVerificacionOperacionalEaeItem>())
+                .Where(item => item != null && !item.EsNotaOrientacion)
+                .ToList();
+            if (itemsValidables.Count == 0)
+            {
+                itemsValidables = (lista.Items ?? new List<ListaVerificacionOperacionalEaeItem>())
+                    .Where(item => item != null)
+                    .ToList();
+            }
+
+            var itemPendiente = itemsValidables.FirstOrDefault(item => string.IsNullOrWhiteSpace(item.EstadoCumplimiento));
             if (itemPendiente != null)
             {
-                mensaje = "Debe registrar el estado de cumplimiento para el item: " + itemPendiente.Codigo;
+                mensaje = "Debe registrar el estado de cumplimiento para la orientacion: " + ObtenerEtiquetaItemListaVerificacionOperacionalEae(itemPendiente);
                 return false;
             }
 
-            var itemImplementacionPendiente = lista.Items.FirstOrDefault(item => string.IsNullOrWhiteSpace(item.EstadoImplementacion));
+            var itemImplementacionPendiente = itemsValidables.FirstOrDefault(item => string.IsNullOrWhiteSpace(item.EstadoImplementacion));
             if (itemImplementacionPendiente != null)
             {
-                mensaje = "Debe registrar el estado de implementacion para el item: " + itemImplementacionPendiente.Codigo;
+                mensaje = "Debe registrar el estado de implementacion para la orientacion: " + ObtenerEtiquetaItemListaVerificacionOperacionalEae(itemImplementacionPendiente);
                 return false;
             }
 
-            var itemNoCumpleSinObservacion = lista.Items.FirstOrDefault(item =>
+            var itemNoCumpleSinObservacion = itemsValidables.FirstOrDefault(item =>
                 (string.Equals(item.EstadoCumplimiento, "NO_SATISFACTORIO", StringComparison.OrdinalIgnoreCase)
-                    || string.Equals(item.EstadoImplementacion, "NO_IMPLEMENTADO", StringComparison.OrdinalIgnoreCase))
+                || string.Equals(item.EstadoImplementacion, "NO_IMPLEMENTADO", StringComparison.OrdinalIgnoreCase))
                 && string.IsNullOrWhiteSpace(item.PruebasNotasComentarios));
             if (itemNoCumpleSinObservacion != null)
             {
-                mensaje = "Ingrese una observacion en Pruebas / Notas / Comentarios para el item: " + itemNoCumpleSinObservacion.Codigo;
+                mensaje = "Ingrese una observacion en Pruebas / Notas / Comentarios para la orientacion: " + ObtenerEtiquetaItemListaVerificacionOperacionalEae(itemNoCumpleSinObservacion);
                 return false;
             }
 
             return true;
+        }
+
+        private static string ObtenerEtiquetaItemListaVerificacionOperacionalEae(ListaVerificacionOperacionalEaeItem item)
+        {
+            if (item == null)
+            {
+                return string.Empty;
+            }
+
+            var codigo = !string.IsNullOrWhiteSpace(item.CodigoPregunta)
+                ? item.CodigoPregunta.Trim()
+                : (item.Codigo ?? string.Empty).Trim();
+            var orientacion = (item.OrientacionEvidencia ?? string.Empty).Replace("\r\n", " ").Replace("\n", " ").Trim();
+            if (orientacion.Length > 120)
+            {
+                orientacion = orientacion.Substring(0, 117).TrimEnd() + "...";
+            }
+
+            if (string.IsNullOrWhiteSpace(orientacion))
+            {
+                return codigo;
+            }
+
+            if (string.IsNullOrWhiteSpace(codigo))
+            {
+                return orientacion;
+            }
+
+            return codigo + " - " + orientacion;
         }
 
         private byte[] GenerarPdfListaVerificacionOperacionalEae(Inspeccion inspeccion, SolicitudAOCR solicitud, ListaVerificacionOperacionalEae lista)

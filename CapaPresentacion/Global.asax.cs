@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Diagnostics;
 using System.Linq;
 using System.Web;
 using System.Web.Mvc;
@@ -17,9 +18,15 @@ namespace CapaPresentacion
     public class MvcApplication : System.Web.HttpApplication
     {
         private static EmailQueueProcessor _emailProcessor;
+        private const string PerfStopwatchKey = "__AocrPerfStopwatch";
+        private const string PerfLabelKey = "__AocrPerfLabel";
+        private static readonly CapaDatos.Services.ILoggingService PerfLogger = CapaDatos.Services.LoggingServiceFactory.Create();
 
         protected void Application_Start()
         {
+            var totalStopwatch = Stopwatch.StartNew();
+            PerfLogger.LogInfo("[PERF][APP_START] Inicio Application_Start");
+
             // Dapper
             Dapper.DefaultTypeMap.MatchNamesWithUnderscores = true;
             // Evita colisiones de antiforgery con otras apps en localhost.
@@ -35,16 +42,39 @@ namespace CapaPresentacion
             BundleConfig.RegisterBundles(BundleTable.Bundles);
 
             // Configurar Dependency Injection con Unity
+            var unityStopwatch = Stopwatch.StartNew();
             UnityConfig.RegisterComponents();
+            PerfLogger.LogInfo(string.Format(
+                "[PERF][APP_START] UnityConfig.RegisterComponents completado en {0} ms",
+                unityStopwatch.ElapsedMilliseconds));
 
             // Iniciar procesador de cola de correos
+            var emailStopwatch = Stopwatch.StartNew();
             IniciarProcesadorEmail();
+            PerfLogger.LogInfo(string.Format(
+                "[PERF][APP_START] IniciarProcesadorEmail completado en {0} ms",
+                emailStopwatch.ElapsedMilliseconds));
+            PerfLogger.LogInfo(string.Format(
+                "[PERF][APP_START] Fin Application_Start. Total={0} ms",
+                totalStopwatch.ElapsedMilliseconds));
         }
 
         protected void Application_BeginRequest()
         {
             Response.ContentEncoding = System.Text.Encoding.UTF8;
             Request.ContentEncoding = System.Text.Encoding.UTF8;
+
+            string perfLabel;
+            if (TryResolvePerfLabel(Request, out perfLabel))
+            {
+                Context.Items[PerfStopwatchKey] = Stopwatch.StartNew();
+                Context.Items[PerfLabelKey] = perfLabel;
+                PerfLogger.LogInfo(string.Format(
+                    "{0} Request start {1} {2}",
+                    perfLabel,
+                    Request.HttpMethod,
+                    Request.RawUrl));
+            }
         }
 
         protected void Application_EndRequest()
@@ -62,6 +92,19 @@ namespace CapaPresentacion
                 if (response == null || request == null)
                 {
                     return;
+                }
+
+                var perfStopwatch = context.Items[PerfStopwatchKey] as Stopwatch;
+                var perfLabel = context.Items[PerfLabelKey] as string;
+                if (perfStopwatch != null && !string.IsNullOrWhiteSpace(perfLabel))
+                {
+                    PerfLogger.LogInfo(string.Format(
+                        "{0} Request end {1} {2} => {3} ({4} ms)",
+                        perfLabel,
+                        request.HttpMethod,
+                        request.RawUrl,
+                        response.StatusCode,
+                        perfStopwatch.ElapsedMilliseconds));
                 }
 
                 if (response.StatusCode != 400)
@@ -114,6 +157,8 @@ namespace CapaPresentacion
 
         protected void Application_AuthenticateRequest(object sender, EventArgs e)
         {
+            var mideLogin = IsLoginPath(Context != null ? Context.Request : null);
+            var authStopwatch = mideLogin ? Stopwatch.StartNew() : null;
             HttpCookie authCookie = Context.Request.Cookies[FormsAuthentication.FormsCookieName];
             if (authCookie == null || string.IsNullOrEmpty(authCookie.Value)) return;
 
@@ -123,7 +168,8 @@ namespace CapaPresentacion
 
             if (authTicket == null || authTicket.Expired) return;
 
-            string[] roles = (!string.IsNullOrEmpty(authTicket.UserData))
+            var rolesDesdeTicket = !string.IsNullOrEmpty(authTicket.UserData);
+            string[] roles = rolesDesdeTicket
                 ? authTicket.UserData.Split(new[] { ',' }, StringSplitOptions.RemoveEmptyEntries)
                 : GetRolesFromDB(authTicket.Name);
 
@@ -132,6 +178,16 @@ namespace CapaPresentacion
 
             Context.User = principal;
             System.Threading.Thread.CurrentPrincipal = principal;
+
+            if (mideLogin && authStopwatch != null)
+            {
+                PerfLogger.LogInfo(string.Format(
+                    "[PERF][LOGIN] AuthenticateRequest usuario={0}; rolesSource={1}; roles={2}; total={3} ms",
+                    authTicket.Name,
+                    rolesDesdeTicket ? "ticket" : "db",
+                    roles != null ? roles.Length : 0,
+                    authStopwatch.ElapsedMilliseconds));
+            }
         }
 
         private string[] GetRolesFromDB(string username)
@@ -207,12 +263,58 @@ namespace CapaPresentacion
                 _emailProcessor = new EmailQueueProcessor(queueService, emailService);
                 _emailProcessor.Start();
 
-                System.Diagnostics.Debug.WriteLine("Procesador de cola de correos iniciado");
+                PerfLogger.LogInfo("[PERF][APP_START] Procesador de cola de correos iniciado en modo no bloqueante");
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine("Error al iniciar procesador de correos: " + ex.Message);
+                PerfLogger.LogError(ex, new CapaDatos.Services.LogContext { ErrorCode = "EMAIL_QUEUE_START_ERROR" });
             }
+        }
+
+        private static bool TryResolvePerfLabel(HttpRequest request, out string perfLabel)
+        {
+            perfLabel = null;
+            if (request == null || request.Url == null)
+            {
+                return false;
+            }
+
+            var path = request.Url.AbsolutePath ?? string.Empty;
+            if (path.Equals("/Account/Login", StringComparison.OrdinalIgnoreCase))
+            {
+                perfLabel = "[PERF][LOGIN]";
+                return true;
+            }
+
+            if (path.Equals("/Empresa/ObtenerEmpresas", StringComparison.OrdinalIgnoreCase))
+            {
+                perfLabel = "[PERF][LOGIN][EMPRESAS]";
+                return true;
+            }
+
+            if (path.Equals("/Account/CuentasBancos", StringComparison.OrdinalIgnoreCase))
+            {
+                perfLabel = "[PERF][LOGIN][BANCOS]";
+                return true;
+            }
+
+            if (path.Equals("/Account/ModalCrearUsuario", StringComparison.OrdinalIgnoreCase))
+            {
+                perfLabel = "[PERF][LOGIN][REGISTRO]";
+                return true;
+            }
+
+            return false;
+        }
+
+        private static bool IsLoginPath(HttpRequest request)
+        {
+            if (request == null || request.Url == null)
+            {
+                return false;
+            }
+
+            return string.Equals(request.Url.AbsolutePath, "/Account/Login", StringComparison.OrdinalIgnoreCase);
         }
     }
 }

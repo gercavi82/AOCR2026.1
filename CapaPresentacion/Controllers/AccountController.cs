@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Configuration;
+using System.Diagnostics;
 using System.Linq;
 using System.Security.Principal;
 using System.Text.RegularExpressions;
@@ -21,6 +22,8 @@ namespace CapaPresentacion.Controllers
 {
     public class AccountController : Controller
     {
+        private static readonly ILoggingService _logger = LoggingServiceFactory.Create();
+
         private static readonly HashSet<string> RolesInternosNoBloqueoDesignacion = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
         {
             "Administrador",
@@ -42,8 +45,16 @@ namespace CapaPresentacion.Controllers
         [AllowAnonymous]
         public ActionResult Login(string returnUrl, string af = null)
         {
-            if (User != null && User.Identity != null && User.Identity.IsAuthenticated)
+            var totalStopwatch = Stopwatch.StartNew();
+            var usuarioAutenticado = User != null && User.Identity != null && User.Identity.IsAuthenticated;
+            _logger.LogInfo(string.Format(
+                "[PERF][LOGIN] Inicio Login GET. Authenticated={0}; ReturnUrl={1}",
+                usuarioAutenticado,
+                returnUrl ?? string.Empty));
+
+            if (usuarioAutenticado)
             {
+                var limpiezaStopwatch = Stopwatch.StartNew();
                 FormsAuthentication.SignOut();
                 Session.Clear();
                 Session.Abandon();
@@ -75,6 +86,10 @@ namespace CapaPresentacion.Controllers
                     System.Web.HttpContext.Current.User = anonymous;
                 }
                 Thread.CurrentPrincipal = anonymous;
+
+                _logger.LogInfo(string.Format(
+                    "[PERF][LOGIN] Limpieza de autenticacion previa completada en {0} ms",
+                    limpiezaStopwatch.ElapsedMilliseconds));
             }
 
             Response.Cache.SetCacheability(HttpCacheability.NoCache);
@@ -91,6 +106,9 @@ namespace CapaPresentacion.Controllers
             }
 
             ViewBag.ReturnUrl = returnUrl;
+            _logger.LogInfo(string.Format(
+                "[PERF][LOGIN] Fin Login GET pre-view. Total={0} ms",
+                totalStopwatch.ElapsedMilliseconds));
             return View(new LoginViewModel());
         }
 
@@ -99,14 +117,21 @@ namespace CapaPresentacion.Controllers
         [ValidateAntiForgeryToken]
         public ActionResult Login(LoginViewModel model, string returnUrl)
         {
+            var totalStopwatch = Stopwatch.StartNew();
+            _logger.LogInfo(string.Format(
+                "[PERF][LOGIN] Inicio Login POST. Usuario={0}; ReturnUrl={1}",
+                model != null ? (model.Usuario ?? string.Empty) : string.Empty,
+                returnUrl ?? string.Empty));
+
             if (!ModelState.IsValid)
-                return View(model);
+                return LogLoginResult(View(model), totalStopwatch, "Login POST rechazado por ModelState invalido");
 
             string mensaje;
             Usuario usuario;
             List<string> roles;
 
             bool ok;
+            var autenticacionStopwatch = Stopwatch.StartNew();
             try
             {
                 ok = UsuarioBL.Autenticar(
@@ -117,18 +142,25 @@ namespace CapaPresentacion.Controllers
                     out mensaje,
                     actualizarUltimaConexion: false
                 );
+
+                _logger.LogInfo(string.Format(
+                    "[PERF][LOGIN] UsuarioBL.Autenticar completado en {0} ms. Ok={1}; UsuarioEncontrado={2}; Roles={3}",
+                    autenticacionStopwatch.ElapsedMilliseconds,
+                    ok,
+                    usuario != null,
+                    roles != null ? roles.Count : 0));
             }
             catch (Exception ex) when (EsErrorConexionBaseDatos(ex))
             {
                 System.Diagnostics.Debug.WriteLine("Account/Login: error de conexión a base de datos: " + ex.Message);
                 ModelState.AddModelError("", "No se pudo conectar con la base de datos. Intente nuevamente en unos minutos.");
-                return View(model);
+                return LogLoginResult(View(model), totalStopwatch, "Login POST con error de conexion a base de datos");
             }
 
             if (!ok || usuario == null)
             {
                 ModelState.AddModelError("", string.IsNullOrWhiteSpace(mensaje) ? "Credenciales inválidas." : mensaje);
-                return View(model);
+                return LogLoginResult(View(model), totalStopwatch, "Login POST con credenciales invalidas");
             }
 
             // 🔐 BLOQUEO DE ACCESO PARA RT PENDIENTE / RECHAZADO
@@ -154,7 +186,7 @@ namespace CapaPresentacion.Controllers
                         ? "Su designación RT fue rechazada. Corrija y vuelva a subir el documento."
                         : "Su designación RT está en proceso de validación y aprobación por el Coordinador.";
                     ModelState.AddModelError("", msg);
-                    return View(model);
+                    return LogLoginResult(View(model), totalStopwatch, "Login POST bloqueado por estado RT=" + estado);
                 }
             }
 
@@ -230,18 +262,27 @@ namespace CapaPresentacion.Controllers
                 {
                     Session[CompaniaActivaSessionHelper.SessionCompaniaPendienteReturnUrl] = returnUrl;
                 }
-                return RedirectToAction("CambiarContrasena", "Account");
+                return LogLoginResult(
+                    RedirectToAction("CambiarContrasena", "Account"),
+                    totalStopwatch,
+                    "Login POST redirige a cambio de contrasena");
             }
 
             var esUsuarioRt = EsUsuarioRt(usuario) && !EsUsuarioAdministrador(usuario, roles);
             var companiasAsignadas = new List<UsuarioCompaniaRT>();
             if (esUsuarioRt)
             {
+                var companiasStopwatch = Stopwatch.StartNew();
                 companiasAsignadas = ObtenerCompaniasAsignadasConFallback(usuario);
+                _logger.LogInfo(string.Format(
+                    "[PERF][LOGIN] ObtenerCompaniasAsignadasConFallback completado en {0} ms. Total={1}",
+                    companiasStopwatch.ElapsedMilliseconds,
+                    companiasAsignadas.Count));
+
                 if (companiasAsignadas.Count == 0)
                 {
                     ModelState.AddModelError("", "Su usuario RT no tiene compañías asignadas. Solicite al administrador la asociación correspondiente.");
-                    return View(model);
+                    return LogLoginResult(View(model), totalStopwatch, "Login POST RT sin companias asignadas");
                 }
 
                 if (companiasAsignadas.Count == 1)
@@ -256,7 +297,10 @@ namespace CapaPresentacion.Controllers
                 else
                 {
                     Session[CompaniaActivaSessionHelper.SessionCompaniaPendienteReturnUrl] = returnUrl;
-                    return RedirectToAction("SeleccionarCompania");
+                    return LogLoginResult(
+                        RedirectToAction("SeleccionarCompania"),
+                        totalStopwatch,
+                        "Login POST redirige a seleccionar compania");
                 }
             }
             else if (!string.IsNullOrWhiteSpace(usuario.EmpresaCodigo))
@@ -267,7 +311,46 @@ namespace CapaPresentacion.Controllers
 
             // Actualizar última conexión después de autenticación normal.
             UsuarioDAO.ActualizarUltimaConexion(usuario.Id);
-            return RedireccionarDespuesLogin(usuario.Id, returnUrl);
+            return LogLoginResult(
+                RedireccionarDespuesLogin(usuario.Id, returnUrl),
+                totalStopwatch,
+                "Login POST autenticado correctamente");
+        }
+
+        [HttpGet]
+        [AllowAnonymous]
+        public PartialViewResult ModalCrearUsuario()
+        {
+            var totalStopwatch = Stopwatch.StartNew();
+
+            try
+            {
+                return PartialView("_ModalCrearUsuario");
+            }
+            finally
+            {
+                _logger.LogInfo(string.Format(
+                    "[PERF][LOGIN][REGISTRO] Controller ModalCrearUsuario completado en {0} ms",
+                    totalStopwatch.ElapsedMilliseconds));
+            }
+        }
+
+        [HttpGet]
+        [AllowAnonymous]
+        public PartialViewResult CuentasBancos()
+        {
+            var totalStopwatch = Stopwatch.StartNew();
+
+            try
+            {
+                return PartialView("_CuentasBancosPartial");
+            }
+            finally
+            {
+                _logger.LogInfo(string.Format(
+                    "[PERF][LOGIN][BANCOS] Controller CuentasBancos completado en {0} ms",
+                    totalStopwatch.ElapsedMilliseconds));
+            }
         }
 
         [Authorize]
@@ -1119,6 +1202,15 @@ namespace CapaPresentacion.Controllers
             }
 
             return RedirectToAction("Obligatoria", "OrdenRecaudacion");
+        }
+
+        private ActionResult LogLoginResult(ActionResult result, Stopwatch stopwatch, string mensaje)
+        {
+            _logger.LogInfo(string.Format(
+                "[PERF][LOGIN] {0}. Total={1} ms",
+                mensaje,
+                stopwatch.ElapsedMilliseconds));
+            return result;
         }
 
         private static bool EsErrorConexionBaseDatos(Exception ex)

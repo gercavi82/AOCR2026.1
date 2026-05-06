@@ -16,6 +16,12 @@
         border-radius: 0.5rem;
         box-shadow: 0 0.5rem 1.5rem rgba(0, 0, 0, 0.2);
     }
+    #modalRegistroUsuario .modal-content > form {
+        display: flex;
+        flex: 1 1 auto;
+        flex-direction: column;
+        min-height: 0;
+    }
     #modalRegistroUsuario .modal-header {
         border-bottom: 0;
         padding: 0;
@@ -82,12 +88,11 @@
         background-color: #f8f9fa;
         border-top: 2px solid #dee2e6;
         padding: 1rem 1.5rem;
-        position: sticky;
-        bottom: 0;
-        z-index: 3;
+        flex-shrink: 0;
     }
     #modalRegistroUsuario .modal-body {
-        max-height: calc(100vh - 250px);
+        min-height: 0;
+        flex: 1 1 auto;
         overflow-y: auto;
     }
     #modalRegistroUsuario .form-label {
@@ -643,8 +648,6 @@
 
     function inicializarModalUsuario() {
         logEmpresa('Modal listo: inicializando...');
-        // Cargar empresas operadoras
-        cargarEmpresasOperadoras();
 
         // Buscador de empresas integrado (datalist)
         $(document).off('input', '#EmpresaTexto');
@@ -708,23 +711,33 @@
         // Submit del formulario
         $('#crearForm').submit(registrarUsuario);
 
-        // Link de registro RT desde Login
-        $(document).on('click', '#linkRegistroRT', function () {
-            window.__abrirRTSeccion = true;
+        $('#modalRegistroUsuario').on('shown.bs.modal', function () {
+            asegurarEmpresasOperadorasCargadas();
+            var $modalBody = $('#modalRegistroUsuario .modal-body');
+            $modalBody.stop(true, true).scrollTop(0);
         });
 
-        $('#modalRegistroUsuario').on('shown.bs.modal', function () {
-            if (!window.__abrirRTSeccion) return;
-            window.__abrirRTSeccion = false;
-            var $seccion = $('#seccionRT');
-            if ($seccion.length === 0) return;
+        $('#modalRegistroUsuario').on('hidden.bs.modal', function () {
             var $modalBody = $('#modalRegistroUsuario .modal-body');
-            var offsetTop = $seccion.position().top + $modalBody.scrollTop() - 12;
-            $modalBody.animate({ scrollTop: offsetTop }, 220);
+            $modalBody.stop(true, true).scrollTop(0);
         });
     }
 
     var empresasCache = [];
+
+    function asegurarEmpresasOperadorasCargadas() {
+        if (window.__registroEmpresasOperadorasCargadas) {
+            renderEmpresasSelect($('#EmpresaTexto').val());
+            return;
+        }
+
+        if (window.__registroEmpresasOperadorasLoading) {
+            return;
+        }
+
+        window.__registroEmpresasOperadorasLoading = true;
+        cargarEmpresasOperadoras();
+    }
 
     function renderEmpresasSelect(filtro) {
         var $select = $('#EmpresaCodigo');
@@ -835,6 +848,7 @@
                 $select.empty().prop('disabled', false);
                 $select.append(AOCR.createOption('', 'No hay empresas disponibles'));
                 empresasCache = [];
+                window.__registroEmpresasOperadorasCargadas = false;
 
                 if (Array.isArray(data) && data.length > 0) {
                     $.each(data, function(i, empresa) {
@@ -856,6 +870,8 @@
                             texto: textoOpcion
                         });
                     });
+
+                    window.__registroEmpresasOperadorasCargadas = true;
 
                     console.log('? ' + data.length + ' empresas cargadas desde AS/400 (CIAARC)');
                     logEmpresa('OK: ' + data.length + ' empresas cargadas.');
@@ -896,6 +912,7 @@
                 actualizarDeclaracionResponsabilidad();
             },
             complete: function(xhr, status) {
+                window.__registroEmpresasOperadorasLoading = false;
                 var codigo = xhr ? xhr.status : 'N/A';
                 logEmpresa('AJAX: terminado (' + status + ') HTTP ' + codigo);
                 ocultarLogEmpresa(0);
