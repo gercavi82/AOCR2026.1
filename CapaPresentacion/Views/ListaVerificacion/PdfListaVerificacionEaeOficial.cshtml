@@ -1,4 +1,4 @@
-@model CapaPresentacion.Models.ViewModels.ListaVerificacionOperacionalEaePdfViewModel
+@inherits System.Web.Mvc.WebViewPage<CapaPresentacion.Models.ViewModels.ListaVerificacionOperacionalEaePdfViewModel>
 @using System
 @using System.Collections.Generic
 @using System.Globalization
@@ -620,27 +620,37 @@
     var pagina = paginas[indicePagina];
     <div class="pdf-page">
         <div class="pdf-eae-header">
-            <div class="pdf-eae-header-top">Parte II - Explotadores de servicios aéreos</div>
-            <div class="pdf-eae-header-center">Volumen VII – Vigilancia de explotadores extranjeros en operaciones de transporte aéreo comercial<br />Capítulo 2 – Solicitud, evaluación y aprobación de un explotador extranjero</div>
-            <div class="pdf-eae-header-bottom">Manual del Inspector de Operaciones Ecuador</div>
+            <table class="manual-top">
+                <tr>
+                    <td>Parte II - Explotadores de servicios aéreos<br />Volumen VII - Vigilancia de explotadores extranjeros en operaciones de transporte aéreo comercial</td>
+                    <td class="manual-right">Capítulo 2 - Solicitud, evaluación y aprobación de un explotador extranjero<br />Manual del Inspector de Operaciones Ecuador</td>
+                </tr>
+            </table>
         </div>
 
         @if (pagina.ShowTitleBox)
         {
-            <div class="title-box-main">SISTEMA REGIONAL DE COOPERACIÓN PARA LA VIGILANCIA<br />DE LA SEGURIDAD OPERACIONAL</div>
-            <div class="title-box-sub">Evaluación técnica de un explotador de servicios aéreos extranjero (EAE)<br />RDAC 129</div>
+            <div class="title-box">
+                <div>DIRECCIÓN GENERAL DE AVIACIÓN CIVIL</div>
+                <div class="title-box-main">Evaluación técnica de un explotador de servicios aéreos extranjero (EAE)</div>
+                <div class="title-box-rdac">RDAC 129</div>
+            </div>
         }
 
         @if (pagina.ShowFields)
         {
-            <div class="eae-field-row first">1. Nombre del EAE / Nombre comercial del EAE: <span class="eae-field-value">@texto(lista != null ? lista.NombreEae : null)</span></div>
-            <div class="eae-field-row">2. N° AOC / Fecha de expedición / Validez: <span class="eae-field-value">@texto(lista != null ? lista.NumeroAocFechaValidez : null)</span></div>
-            <div class="eae-field-row">3. Dirección del EAE y datos de contacto de la gerencia de operaciones en el Estado del explotador: <span class="eae-field-value">@texto(lista != null ? lista.DireccionEstadoExplotador : null)</span></div>
-            <div class="eae-field-row">4. Dirección del EAE y datos de contacto en el Estado que emite el reconocimiento: <span class="eae-field-value">@direccionReconocimiento</span></div>
-            <div class="eae-field-row">5. Tipo/s de aeronave/s (marca, modelo, número de serie): <span class="eae-field-value">@texto(lista != null ? lista.TiposAeronaves : null)</span></div>
-            <div class="eae-field-row">6. Tipo de operación: <span class="eae-field-value">@texto(lista != null ? lista.TipoOperacion : null)</span></div>
-            <div class="eae-field-row">7. Fecha: <span class="eae-field-value">@fechaLista</span></div>
-            <div class="eae-field-row">8. Inspector responsable de la aprobación: <span class="eae-field-value">@texto(lista != null ? lista.InspectorResponsable : null)</span></div>
+            <table class="field-table">
+                <tbody>
+                    <tr><td class="field-row"><span class="field-label">1. Nombre del EAE / Nombre comercial del EAE:</span> <span class="field-value">@texto(lista != null ? lista.NombreEae : null)</span></td></tr>
+                    <tr><td class="field-row"><span class="field-label">2. N° AOC / Fecha de expedición / Validez:</span> <span class="field-value">@texto(lista != null ? lista.NumeroAocFechaValidez : null)</span></td></tr>
+                    <tr><td class="field-row"><span class="field-label">3. Dirección del EAE y datos de contacto de la gerencia de operaciones en el Estado del explotador:</span> <span class="field-value">@texto(lista != null ? lista.DireccionEstadoExplotador : null)</span></td></tr>
+                    <tr><td class="field-row"><span class="field-label">4. Dirección del EAE y datos de contacto en el Estado que emite el reconocimiento:</span> <span class="field-value">@direccionReconocimiento</span></td></tr>
+                    <tr><td class="field-row"><span class="field-label">5. Tipo/s de aeronave/s (marca, modelo, número de serie):</span> <span class="field-value">@texto(lista != null ? lista.TiposAeronaves : null)</span></td></tr>
+                    <tr><td class="field-row"><span class="field-label">6. Tipo de operación:</span> <span class="field-value">@texto(lista != null ? lista.TipoOperacion : null)</span></td></tr>
+                    <tr><td class="field-row"><span class="field-label">7. Fecha:</span> <span class="field-value">@fechaLista</span></td></tr>
+                    <tr><td class="field-row"><span class="field-label">8. Inspector responsable de la aprobación:</span> <span class="field-value">@texto(lista != null ? lista.InspectorResponsable : null)</span></td></tr>
+                </tbody>
+            </table>
         }
 
         <table class="eae-table">
@@ -770,7 +780,7 @@
         <div class="eae-footer">
             <table>
                 <tr>
-                    <td class="left">31/07/2025</td>
+                    <td class="left">31/12/2025</td>
                     <td class="center">@pagina.FooterCode</td>
                     <td class="right">Tercera Edición</td>
                 </tr>

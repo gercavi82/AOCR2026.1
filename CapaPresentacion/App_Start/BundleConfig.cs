@@ -16,7 +16,7 @@ namespace CapaPresentacion
                 "~/Content/bootstrap.min.css",
                 "~/Content/adminlte.min.css",
                 "~/Content/site.css",
-                "~/Content/fontawesome-all.min.css",
+                "~/Content/plugins/fontawesome-free/css/all.min.css",
                 "~/Content/aocr-institucional.css"
             ));
 
@@ -32,7 +32,7 @@ namespace CapaPresentacion
 
             bundles.Add(new StyleBundle("~/Content/auth").Include(
                 "~/Content/bootstrap.min.css",
-                "~/Content/fontawesome-all.min.css",
+                "~/Content/plugins/fontawesome-free/css/all.min.css",
                 "~/Content/plugins/sweetalert2/sweetalert2.min.css"
             ));
 

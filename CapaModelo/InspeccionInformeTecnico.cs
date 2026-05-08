@@ -25,6 +25,7 @@ namespace CapaModelo
         public string DocumentosAdjuntosArchivos { get; set; }
         public string OtrosAdjuntos { get; set; }
         public string Resultado { get; set; }
+        public string TipoResultadoInsatisfactorio { get; set; }
         public string Observaciones { get; set; }
         public string Conclusiones { get; set; }
         public string Recomendaciones { get; set; }

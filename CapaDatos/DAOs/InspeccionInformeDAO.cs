@@ -49,6 +49,7 @@ namespace CapaDatos.DAOs
                            documentos_adjuntos_archivos,
                            otros_adjuntos,
                            resultado,
+                           tipo_resultado_insatisfactorio,
                            observaciones,
                            conclusiones,
                            recomendaciones,
@@ -120,6 +121,7 @@ namespace CapaDatos.DAOs
                            documentos_adjuntos_archivos,
                            otros_adjuntos,
                            resultado,
+                           tipo_resultado_insatisfactorio,
                            observaciones,
                            conclusiones,
                            recomendaciones,
@@ -166,6 +168,7 @@ namespace CapaDatos.DAOs
                           documentos_adjuntos_archivos,
                           otros_adjuntos,
                           resultado,
+                          tipo_resultado_insatisfactorio,
                           observaciones,
                           conclusiones,
                           recomendaciones,
@@ -243,6 +246,7 @@ namespace CapaDatos.DAOs
                             documentos_adjuntos_archivos = @documentos_adjuntos_archivos,
                             otros_adjuntos = @otros_adjuntos,
                             resultado = @resultado,
+                            tipo_resultado_insatisfactorio = @tipo_resultado_insatisfactorio,
                             observaciones = @observaciones,
                             conclusiones = @conclusiones,
                             recomendaciones = @recomendaciones,
@@ -284,6 +288,7 @@ namespace CapaDatos.DAOs
                         documentos_adjuntos_archivos,
                         otros_adjuntos,
                         resultado,
+                        tipo_resultado_insatisfactorio,
                         observaciones,
                         conclusiones,
                         recomendaciones,
@@ -316,6 +321,7 @@ namespace CapaDatos.DAOs
                         @documentos_adjuntos_archivos,
                         @otros_adjuntos,
                         @resultado,
+                        @tipo_resultado_insatisfactorio,
                         @observaciones,
                         @conclusiones,
                         @recomendaciones,
@@ -601,6 +607,7 @@ namespace CapaDatos.DAOs
             cmd.Parameters.AddWithValue("@documentos_adjuntos_archivos", (object)informe.DocumentosAdjuntosArchivos ?? DBNull.Value);
             cmd.Parameters.AddWithValue("@otros_adjuntos", (object)informe.OtrosAdjuntos ?? DBNull.Value);
             cmd.Parameters.AddWithValue("@resultado", (object)informe.Resultado ?? DBNull.Value);
+            cmd.Parameters.AddWithValue("@tipo_resultado_insatisfactorio", (object)informe.TipoResultadoInsatisfactorio ?? DBNull.Value);
             cmd.Parameters.AddWithValue("@observaciones", (object)informe.Observaciones ?? DBNull.Value);
             cmd.Parameters.AddWithValue("@conclusiones", (object)informe.Conclusiones ?? DBNull.Value);
             cmd.Parameters.AddWithValue("@recomendaciones", (object)informe.Recomendaciones ?? DBNull.Value);
@@ -656,6 +663,7 @@ namespace CapaDatos.DAOs
                 UpdatedBy = dr["updated_by"] == DBNull.Value ? null : (int?)Convert.ToInt32(dr["updated_by"])
             };
 
+            try { m.TipoResultadoInsatisfactorio = dr["tipo_resultado_insatisfactorio"] == DBNull.Value ? null : dr["tipo_resultado_insatisfactorio"].ToString(); } catch { }
             try { m.ObservacionDevolucion = dr["observacion_devolucion"] == DBNull.Value ? null : dr["observacion_devolucion"].ToString(); } catch { }
             try { m.FechaDevolucion = dr["fecha_devolucion"] == DBNull.Value ? null : (DateTime?)Convert.ToDateTime(dr["fecha_devolucion"]); } catch { }
             try { m.UsuarioDevolucion = dr["usuario_devolucion"] == DBNull.Value ? null : dr["usuario_devolucion"].ToString(); } catch { }
@@ -701,6 +709,7 @@ namespace CapaDatos.DAOs
                         documentos_adjuntos_archivos TEXT,
                         otros_adjuntos TEXT,
                         resultado VARCHAR(100),
+                        tipo_resultado_insatisfactorio VARCHAR(30),
                         observaciones TEXT,
                         conclusiones TEXT,
                         recomendaciones TEXT,
@@ -752,6 +761,7 @@ namespace CapaDatos.DAOs
                     ALTER TABLE public.aocr_tbinforme_inspeccion ADD COLUMN IF NOT EXISTS documentos_adjuntos TEXT;
                     ALTER TABLE public.aocr_tbinforme_inspeccion ADD COLUMN IF NOT EXISTS documentos_adjuntos_archivos TEXT;
                     ALTER TABLE public.aocr_tbinforme_inspeccion ADD COLUMN IF NOT EXISTS otros_adjuntos TEXT;
+                    ALTER TABLE public.aocr_tbinforme_inspeccion ADD COLUMN IF NOT EXISTS tipo_resultado_insatisfactorio VARCHAR(30);
                     ALTER TABLE public.aocr_tbinforme_inspeccion ADD COLUMN IF NOT EXISTS estado_informe VARCHAR(80);
                     ALTER TABLE public.aocr_tbinforme_inspeccion ADD COLUMN IF NOT EXISTS firmado_inspector BOOLEAN NOT NULL DEFAULT FALSE;
                     ALTER TABLE public.aocr_tbinforme_inspeccion ADD COLUMN IF NOT EXISTS firmado_dirdac BOOLEAN NOT NULL DEFAULT FALSE;
@@ -800,6 +810,7 @@ namespace CapaDatos.DAOs
                        documentos_adjuntos_archivos,
                        otros_adjuntos,
                        resultado,
+                       tipo_resultado_insatisfactorio,
                        observaciones,
                        conclusiones,
                        recomendaciones,
@@ -861,6 +872,7 @@ namespace CapaDatos.DAOs
                        documentos_adjuntos_archivos,
                        otros_adjuntos,
                        resultado,
+                       tipo_resultado_insatisfactorio,
                        observaciones,
                        conclusiones,
                        recomendaciones,

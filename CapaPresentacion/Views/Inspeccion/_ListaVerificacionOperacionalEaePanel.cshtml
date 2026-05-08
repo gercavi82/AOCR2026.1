@@ -623,6 +623,12 @@
         outline-offset: 2px;
     }
 
+    #bloqueListaVerificacionOperacionalEae .lv-missing-target {
+        background: #fff5f5;
+        box-shadow: 0 0 0 2px rgba(198, 40, 40, 0.28);
+        border-radius: 4px;
+    }
+
     #bloqueListaVerificacionOperacionalEae .aocr-lv-scroll-container {
         width: 100%;
         max-height: clamp(260px, 52vh, 680px);
@@ -989,11 +995,12 @@
 
         @if (vm.PuedeEditar && !firmada)
         {
-            using (Html.BeginForm("GuardarListaVerificacionOperacionalEae", "Inspeccion", FormMethod.Post, new { @class = "mt-4" }))
+            using (Html.BeginForm("GuardarListaVerificacionOperacionalEae", "Inspeccion", FormMethod.Post, new { @class = "mt-4", novalidate = "novalidate" }))
             {
                 @Html.AntiForgeryToken()
                 @Html.Hidden("id", vm.CodigoInspeccion)
                 <input type="hidden" name="lvSubmitAction" value="guardar" />
+                <div class="alert alert-warning alert-inline lv-validation-message d-none mb-3" data-lv-validation-message="true" role="alert"></div>
 
                 <div class="lv-hidden-sync-fields" style="display:none;">
                     @foreach (var itemSync in items.Where(item => item != null && !item.EsNotaOrientacion && !string.IsNullOrWhiteSpace(item.Codigo)))
@@ -1010,7 +1017,7 @@
                         <div class="aocr-lv-official-center">Volumen VII – Vigilancia de explotadores extranjeros en operaciones de transporte aéreo comercial<br />Capítulo 2 – Solicitud, evaluación y aprobación de un explotador extranjero</div>
                         <div class="aocr-lv-official-bottom">Manual del Inspector de Operaciones Ecuador</div>
                     </div>
-                    <div class="aocr-lv-title-box-main">SISTEMA REGIONAL DE COOPERACIÓN PARA LA VIGILANCIA<br />DE LA SEGURIDAD OPERACIONAL</div>
+                    <div class="aocr-lv-title-box-main">DIRECCIÓN GENERAL DE AVIACIÓN CIVIL</div>
                     <div class="aocr-lv-title-box-sub">Evaluación técnica de un explotador de servicios aéreos extranjero (EAE)<br />RDAC 129</div>
                     <div class="aocr-lv-field-stack mb-3">
                         <div class="aocr-lv-field-row first">
@@ -1126,17 +1133,17 @@
                                         {
                                             <div class="lv-check-group lv-visible-compliance-group" data-target-codes="@targetRequisito" data-requirement-code="@fila.RequirementCode">
                                                 <label class="lv-choice">
-                                                    <input type="radio" class="lv-visible-cumplimiento" name="@("lvVisible_" + fila.RequirementCode + "_cumplimiento")" value="SATISFACTORIO" @(string.Equals(estadoCumplimiento, "SATISFACTORIO", StringComparison.OrdinalIgnoreCase) ? "checked=\"checked\"" : null) />
+                                                    <input type="radio" class="lv-visible-cumplimiento lv-toggle-radio" name="@("lvVisible_" + fila.RequirementCode + "_cumplimiento")" value="SATISFACTORIO" @(string.Equals(estadoCumplimiento, "SATISFACTORIO", StringComparison.OrdinalIgnoreCase) ? "checked=\"checked\"" : null) />
                                                     <span class="lv-choice-box" aria-hidden="true"></span>
                                                     <span class="lv-choice-text">Satisfactorio</span>
                                                 </label>
                                                 <label class="lv-choice">
-                                                    <input type="radio" class="lv-visible-cumplimiento" name="@("lvVisible_" + fila.RequirementCode + "_cumplimiento")" value="NO_SATISFACTORIO" @(string.Equals(estadoCumplimiento, "NO_SATISFACTORIO", StringComparison.OrdinalIgnoreCase) ? "checked=\"checked\"" : null) />
+                                                    <input type="radio" class="lv-visible-cumplimiento lv-toggle-radio" name="@("lvVisible_" + fila.RequirementCode + "_cumplimiento")" value="NO_SATISFACTORIO" @(string.Equals(estadoCumplimiento, "NO_SATISFACTORIO", StringComparison.OrdinalIgnoreCase) ? "checked=\"checked\"" : null) />
                                                     <span class="lv-choice-box" aria-hidden="true"></span>
                                                     <span class="lv-choice-text">No satisfactorio</span>
                                                 </label>
                                                 <label class="lv-choice">
-                                                    <input type="radio" class="lv-visible-cumplimiento" name="@("lvVisible_" + fila.RequirementCode + "_cumplimiento")" value="NO_APLICABLE" @(string.Equals(estadoCumplimiento, "NO_APLICABLE", StringComparison.OrdinalIgnoreCase) ? "checked=\"checked\"" : null) />
+                                                    <input type="radio" class="lv-visible-cumplimiento lv-toggle-radio" name="@("lvVisible_" + fila.RequirementCode + "_cumplimiento")" value="NO_APLICABLE" @(string.Equals(estadoCumplimiento, "NO_APLICABLE", StringComparison.OrdinalIgnoreCase) ? "checked=\"checked\"" : null) />
                                                     <span class="lv-choice-box" aria-hidden="true"></span>
                                                     <span class="lv-choice-text">No aplicable</span>
                                                 </label>
@@ -1160,17 +1167,17 @@
                                         {
                                             <div class="lv-check-group lv-visible-implementation-group" data-target-codes="@targetFila" data-sync-key="@targetFila" data-row-label="@etiquetaFila">
                                                 <label class="lv-choice">
-                                                    <input type="radio" class="lv-visible-implementacion" name="@("lvVisible_" + fila.RowKey + "_implementacion")" value="IMPLEMENTADO" @(string.Equals(estadoImplementacion, "IMPLEMENTADO", StringComparison.OrdinalIgnoreCase) ? "checked=\"checked\"" : null) />
+                                                    <input type="radio" class="lv-visible-implementacion lv-toggle-radio" name="@("lvVisible_" + fila.RowKey + "_implementacion")" value="IMPLEMENTADO" @(string.Equals(estadoImplementacion, "IMPLEMENTADO", StringComparison.OrdinalIgnoreCase) ? "checked=\"checked\"" : null) />
                                                     <span class="lv-choice-box" aria-hidden="true"></span>
                                                     <span class="lv-choice-text">Implementado</span>
                                                 </label>
                                                 <label class="lv-choice">
-                                                    <input type="radio" class="lv-visible-implementacion" name="@("lvVisible_" + fila.RowKey + "_implementacion")" value="NO_IMPLEMENTADO" @(string.Equals(estadoImplementacion, "NO_IMPLEMENTADO", StringComparison.OrdinalIgnoreCase) ? "checked=\"checked\"" : null) />
+                                                    <input type="radio" class="lv-visible-implementacion lv-toggle-radio" name="@("lvVisible_" + fila.RowKey + "_implementacion")" value="NO_IMPLEMENTADO" @(string.Equals(estadoImplementacion, "NO_IMPLEMENTADO", StringComparison.OrdinalIgnoreCase) ? "checked=\"checked\"" : null) />
                                                     <span class="lv-choice-box" aria-hidden="true"></span>
                                                     <span class="lv-choice-text">No implementado</span>
                                                 </label>
                                                 <label class="lv-choice">
-                                                    <input type="radio" class="lv-visible-implementacion" name="@("lvVisible_" + fila.RowKey + "_implementacion")" value="NO_APLICABLE" @(string.Equals(estadoImplementacion, "NO_APLICABLE", StringComparison.OrdinalIgnoreCase) ? "checked=\"checked\"" : null) />
+                                                    <input type="radio" class="lv-visible-implementacion lv-toggle-radio" name="@("lvVisible_" + fila.RowKey + "_implementacion")" value="NO_APLICABLE" @(string.Equals(estadoImplementacion, "NO_APLICABLE", StringComparison.OrdinalIgnoreCase) ? "checked=\"checked\"" : null) />
                                                     <span class="lv-choice-box" aria-hidden="true"></span>
                                                     <span class="lv-choice-text">No aplicable</span>
                                                 </label>
@@ -1198,10 +1205,10 @@
                 </div>
 
                 <div class="d-flex flex-column flex-md-row gap-2 mt-3 lv-operacional-actions aocr-lv-actions">
-                    <button type="submit" class="btn btn-outline-primary" onclick="this.form.elements['lvSubmitAction'].value='guardar';">
+                    <button type="submit" class="btn btn-outline-primary" data-lv-submit-action="guardar">
                         <i class="fas fa-save me-1"></i> Guardar LV
                     </button>
-                    <button type="submit" class="btn btn-primary" name="finalizar" value="true" onclick="this.form.elements['lvSubmitAction'].value='finalizar'; return validarComentariosLvEae(this.form);">
+                    <button type="submit" class="btn btn-primary" name="finalizar" value="true" data-lv-submit-action="finalizar">
                         <i class="fas fa-file-pdf me-1"></i> Finalizar LV
                     </button>
                 </div>
@@ -1260,6 +1267,243 @@
         if (input) {
             input.value = value || '';
         }
+    }
+
+    function setSubmitAction(form, action) {
+        if (!form || !form.elements || !form.elements['lvSubmitAction']) {
+            return;
+        }
+
+        form.elements['lvSubmitAction'].value = action || 'guardar';
+    }
+
+    function clearValidationTarget(form) {
+        if (!form) {
+            return;
+        }
+
+        var highlighted = form.querySelectorAll('.lv-missing-target');
+        for (var index = 0; index < highlighted.length; index++) {
+            highlighted[index].classList.remove('lv-missing-target');
+        }
+    }
+
+    function normalizeValidationLabel(text) {
+        return (text || '')
+            .replace(/\s+/g, ' ')
+            .replace(/^\d+\.\s*/, '')
+            .replace(/\s*:\s*$/, '')
+            .trim();
+    }
+
+    function getHeaderFieldLabel(field) {
+        if (!field) {
+            return 'este campo';
+        }
+
+        var scope = field.form || document;
+        var label = field.id
+            ? scope.querySelector('label[for="' + escapeAttributeValue(field.id) + '"]')
+            : null;
+        var labelText = label ? normalizeValidationLabel(label.textContent) : '';
+        if (labelText) {
+            return labelText;
+        }
+
+        return normalizeValidationLabel(field.getAttribute('aria-label') || field.getAttribute('placeholder') || field.name || 'este campo');
+    }
+
+    function getMissingHeaderField(form) {
+        if (!form) {
+            return null;
+        }
+
+        var requiredFields = form.querySelectorAll('input[required], textarea[required], select[required]');
+        for (var index = 0; index < requiredFields.length; index++) {
+            var field = requiredFields[index];
+            if (!field || field.disabled || field.type === 'hidden') {
+                continue;
+            }
+
+            if (field.type === 'checkbox' && !field.checked) {
+                return field;
+            }
+
+            if (field.type === 'radio') {
+                if (field.name && !form.querySelector('input[type="radio"][name="' + escapeAttributeValue(field.name) + '"]:checked')) {
+                    return field;
+                }
+                continue;
+            }
+
+            if (!field.value || !field.value.trim()) {
+                return field;
+            }
+        }
+
+        return null;
+    }
+
+    function getValidationDisplayTarget(target) {
+        if (!target) {
+            return null;
+        }
+
+        if (target.classList && (target.classList.contains('lv-visible-cumplimiento') || target.classList.contains('lv-visible-implementacion'))) {
+            return target.closest('.lv-check-group') || target.closest('.lv-official-edit-row') || target;
+        }
+
+        return target.closest('.aocr-lv-field-row') || target.closest('.lv-official-edit-row') || target;
+    }
+
+    function scrollAndHighlightValidationTarget(form, target) {
+        var displayTarget = getValidationDisplayTarget(target);
+        if (!displayTarget) {
+            return;
+        }
+
+        clearValidationTarget(form);
+        displayTarget.classList.add('lv-missing-target');
+
+        if (typeof displayTarget.scrollIntoView === 'function') {
+            displayTarget.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'nearest' });
+        }
+    }
+
+    function focusValidationTarget(target) {
+        if (!target || typeof target.focus !== 'function') {
+            return;
+        }
+
+        try {
+            target.focus({ preventScroll: true });
+        } catch (error) {
+            target.focus();
+        }
+    }
+
+    function reportValidationAtField(target, message) {
+        if (!target
+            || target.type === 'radio'
+            || typeof target.setCustomValidity !== 'function'
+            || typeof target.reportValidity !== 'function') {
+            return false;
+        }
+
+        target.setCustomValidity(message || 'Campo requerido.');
+        target.reportValidity();
+        target.setCustomValidity('');
+        return true;
+    }
+
+    function clearValidationMessage(form) {
+        if (!form) {
+            return;
+        }
+
+        clearValidationTarget(form);
+
+        var box = form.querySelector('[data-lv-validation-message="true"]');
+        if (!box) {
+            return;
+        }
+
+        box.textContent = '';
+        box.classList.add('d-none');
+    }
+
+    function showValidationMessage(form, message, focusTarget) {
+        if (!form) {
+            return false;
+        }
+
+        var box = form.querySelector('[data-lv-validation-message="true"]');
+        if (box) {
+            box.textContent = message;
+            box.classList.remove('d-none');
+        }
+
+        var fieldReported = false;
+        if (focusTarget) {
+            scrollAndHighlightValidationTarget(form, focusTarget);
+            focusValidationTarget(focusTarget);
+            fieldReported = reportValidationAtField(focusTarget, message);
+        } else if (box && typeof box.scrollIntoView === 'function') {
+            box.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+
+        if (!fieldReported) {
+            if (window.Site && typeof window.Site.notify === 'function') {
+                window.Site.notify(message, 'warning');
+            } else if (!box && window.Swal) {
+                window.Swal.fire('Validación LV/EAE', message, 'warning');
+            }
+        }
+
+        return false;
+    }
+
+    function escapeAttributeValue(value) {
+        return (value || '').replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+    }
+
+    function obtenerCumplimientoSeleccionado(form, requirementCode) {
+        if (!form || !requirementCode) {
+            return null;
+        }
+
+        var selector = '.lv-visible-compliance-group[data-requirement-code="' + escapeAttributeValue(requirementCode) + '"]';
+        var group = form.querySelector(selector);
+        return group ? group.querySelector('.lv-visible-cumplimiento:checked') : null;
+    }
+
+    function obtenerComentariosRequisito(form, requirementCode) {
+        if (!form || !requirementCode) {
+            return [];
+        }
+
+        var selector = '.lv-official-edit-row[data-lv-requirement-code="' + escapeAttributeValue(requirementCode) + '"] .lv-visible-comentarios';
+        return Array.prototype.slice.call(form.querySelectorAll(selector));
+    }
+
+    function requisitoTieneComentario(form, requirementCode) {
+        var comentarios = obtenerComentariosRequisito(form, requirementCode);
+        for (var index = 0; index < comentarios.length; index++) {
+            if (comentarios[index].value && comentarios[index].value.trim()) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    function bindToggleableRadio(radio) {
+        if (!radio || radio.getAttribute('data-lv-toggle-bound') === 'true') {
+            return;
+        }
+
+        radio.setAttribute('data-lv-toggle-bound', 'true');
+
+        var rememberState = function () {
+            radio.setAttribute('data-lv-was-checked', radio.checked ? 'true' : 'false');
+        };
+
+        radio.addEventListener('pointerdown', rememberState);
+        radio.addEventListener('keydown', function (event) {
+            if (event.key === ' ' || event.key === 'Spacebar' || event.key === 'Enter') {
+                rememberState();
+            }
+        });
+
+        radio.addEventListener('click', function () {
+            if (radio.getAttribute('data-lv-was-checked') !== 'true') {
+                return;
+            }
+
+            radio.checked = false;
+            radio.setAttribute('data-lv-was-checked', 'false');
+            radio.dispatchEvent(new Event('change', { bubbles: true }));
+        });
     }
 
     function syncComplianceGroup(form, group) {
@@ -1362,75 +1606,61 @@
         }
     }
 
-    window.validarComentariosLvEae = function (form) {
+    window.validarComentariosLvEae = function (form, requiereConfirmacion) {
         if (!form) {
             return true;
         }
 
+        clearValidationMessage(form);
         sincronizarCamposLvEae(form);
 
-        var complianceGroups = form.querySelectorAll('.lv-visible-compliance-group');
-        for (var i = 0; i < complianceGroups.length; i++) {
-            var complianceGroup = complianceGroups[i];
-            var complianceSelected = complianceGroup.querySelector('.lv-visible-cumplimiento:checked');
-            var requirementCode = complianceGroup.getAttribute('data-requirement-code') || ('requisito ' + (i + 1));
-            if (!complianceSelected) {
-                alert('Seleccione el estado de cumplimiento para el requisito ' + requirementCode + '.');
-                var complianceRadio = complianceGroup.querySelector('.lv-visible-cumplimiento');
-                if (complianceRadio) {
-                    complianceRadio.focus();
-                }
-                return false;
-            }
+        if (!requiereConfirmacion) {
+            return true;
+        }
 
-            if (complianceSelected.value === 'NO_SATISFACTORIO') {
-                var requirementRows = form.querySelectorAll('.lv-official-edit-row[data-lv-requirement-code="' + requirementCode + '"] .lv-visible-comentarios');
-                var hasComment = false;
-                for (var j = 0; j < requirementRows.length; j++) {
-                    if (requirementRows[j].value && requirementRows[j].value.trim()) {
-                        hasComment = true;
-                        break;
-                    }
-                }
-
-                if (!hasComment) {
-                    alert('Ingrese Pruebas / Notas / Comentarios para el requisito ' + requirementCode + '.');
-                    if (requirementRows.length > 0) {
-                        requirementRows[0].focus();
-                    }
-                    return false;
-                }
-            }
+        var missingHeaderField = getMissingHeaderField(form);
+        if (missingHeaderField) {
+            return showValidationMessage(form, 'Falta completar el campo "' + getHeaderFieldLabel(missingHeaderField) + '" antes de finalizar la LV/EAE.', missingHeaderField);
         }
 
         var implementationGroups = form.querySelectorAll('.lv-visible-implementation-group');
-        for (var k = 0; k < implementationGroups.length; k++) {
-            var implementationGroup = implementationGroups[k];
-            var implementationSelected = implementationGroup.querySelector('.lv-visible-implementacion:checked');
-            var rowLabel = implementationGroup.getAttribute('data-row-label') || ('fila ' + (k + 1));
-            if (!implementationSelected) {
-                alert('Seleccione el estado de implementación para ' + rowLabel + '.');
-                var implementationRadio = implementationGroup.querySelector('.lv-visible-implementacion');
-                if (implementationRadio) {
-                    implementationRadio.focus();
-                }
-                return false;
+        for (var i = 0; i < implementationGroups.length; i++) {
+            var implementationGroup = implementationGroups[i];
+            var row = implementationGroup.closest('.lv-official-edit-row');
+            if (!row) {
+                continue;
             }
 
-            if (implementationSelected.value === 'NO_IMPLEMENTADO') {
-                var syncKey = implementationGroup.getAttribute('data-sync-key') || '';
-                var commentField = form.querySelector('.lv-visible-comentarios[data-sync-key="' + syncKey + '"]');
-                if (!commentField || !commentField.value || !commentField.value.trim()) {
-                    alert('Ingrese Pruebas / Notas / Comentarios para ' + rowLabel + '.');
-                    if (commentField) {
-                        commentField.focus();
-                    }
-                    return false;
-                }
+            var requirementCode = row.getAttribute('data-lv-requirement-code') || '';
+            var rowLabel = implementationGroup.getAttribute('data-row-label') || requirementCode || ('fila ' + (i + 1));
+            var complianceSelected = obtenerCumplimientoSeleccionado(form, requirementCode);
+            var implementationSelected = implementationGroup.querySelector('.lv-visible-implementacion:checked');
+            var commentField = row.querySelector('.lv-visible-comentarios');
+            var commentValue = commentField && commentField.value ? commentField.value.trim() : '';
+
+            if ((!complianceSelected || !implementationSelected) && !commentValue) {
+                var focusTarget = commentField || implementationGroup.querySelector('.lv-visible-implementacion') || (obtenerCumplimientoSeleccionado(form, requirementCode) ? null : form.querySelector('.lv-visible-compliance-group[data-requirement-code="' + escapeAttributeValue(requirementCode) + '"] .lv-visible-cumplimiento'));
+                return showValidationMessage(form, 'Debe seleccionar el estado de cumplimiento/implementación o registrar una observación en la columna 14 para ' + rowLabel + '.', focusTarget);
+            }
+
+            if (implementationSelected && implementationSelected.value === 'NO_IMPLEMENTADO' && !commentValue) {
+                return showValidationMessage(form, 'Debe registrar una observación en la columna 14 para ' + rowLabel + ' cuando el estado de implementación sea No implementado.', commentField || implementationGroup.querySelector('.lv-visible-implementacion'));
             }
         }
 
-        return confirm('Confirma que desea finalizar la Lista de Verificacion Operacional (LV) y generar el PDF?');
+        var complianceGroups = form.querySelectorAll('.lv-visible-compliance-group');
+        for (var j = 0; j < complianceGroups.length; j++) {
+            var complianceGroup = complianceGroups[j];
+            var complianceSelected = complianceGroup.querySelector('.lv-visible-cumplimiento:checked');
+            var requirementCode = complianceGroup.getAttribute('data-requirement-code') || ('requisito ' + (j + 1));
+            if (complianceSelected && complianceSelected.value === 'NO_SATISFACTORIO' && !requisitoTieneComentario(form, requirementCode)) {
+                var requirementRows = obtenerComentariosRequisito(form, requirementCode);
+                return showValidationMessage(form, 'Debe registrar una observación en la columna 14 para el requisito ' + requirementCode + ' cuando el estado de cumplimiento sea No satisfactorio.', requirementRows.length > 0 ? requirementRows[0] : complianceGroup.querySelector('.lv-visible-cumplimiento'));
+            }
+        }
+
+        clearValidationMessage(form);
+        return !requiereConfirmacion || confirm('Confirma que desea finalizar la Lista de Verificacion Operacional (LV) y generar el PDF?');
     };
 
     var forms = document.querySelectorAll('#bloqueListaVerificacionOperacionalEae form[action*="GuardarListaVerificacionOperacionalEae"]');
@@ -1442,13 +1672,51 @@
 
         form.setAttribute('data-lv-sync-bound', 'true');
 
-        form.addEventListener('submit', function () {
-            sincronizarCamposLvEae(this);
+        var submitButtons = form.querySelectorAll('[data-lv-submit-action]');
+        for (var buttonIndex = 0; buttonIndex < submitButtons.length; buttonIndex++) {
+            submitButtons[buttonIndex].addEventListener('click', function () {
+                var action = this.getAttribute('data-lv-submit-action') || 'guardar';
+                form.setAttribute('data-lv-last-action', action);
+                setSubmitAction(form, action);
+            });
+        }
+
+        form.addEventListener('pointerdown', function (event) {
+            if (!event.target || !event.target.closest) {
+                return;
+            }
+
+            var choice = event.target.closest('.lv-choice');
+            var radio = choice
+                ? choice.querySelector('.lv-toggle-radio')
+                : (event.target.matches('.lv-toggle-radio') ? event.target : null);
+
+            if (radio) {
+                radio.setAttribute('data-lv-was-checked', radio.checked ? 'true' : 'false');
+            }
         });
+
+        form.addEventListener('submit', function (event) {
+            var submitter = event && event.submitter ? event.submitter : null;
+            var action = submitter && submitter.getAttribute('data-lv-submit-action')
+                ? submitter.getAttribute('data-lv-submit-action')
+                : (form.getAttribute('data-lv-last-action') || (form.elements['lvSubmitAction'] ? form.elements['lvSubmitAction'].value : 'guardar') || 'guardar');
+
+            setSubmitAction(this, action);
+            if (!window.validarComentariosLvEae(this, action === 'finalizar')) {
+                event.preventDefault();
+            }
+        });
+
+        var toggleRadios = form.querySelectorAll('.lv-toggle-radio');
+        for (var radioIndex = 0; radioIndex < toggleRadios.length; radioIndex++) {
+            bindToggleableRadio(toggleRadios[radioIndex]);
+        }
 
         var complianceRadios = form.querySelectorAll('.lv-visible-cumplimiento');
         for (var c = 0; c < complianceRadios.length; c++) {
             complianceRadios[c].addEventListener('change', function () {
+                clearValidationMessage(form);
                 var group = this.closest('.lv-visible-compliance-group');
                 syncComplianceGroup(form, group);
             });
@@ -1457,6 +1725,7 @@
         var implementationRadios = form.querySelectorAll('.lv-visible-implementacion');
         for (var r = 0; r < implementationRadios.length; r++) {
             implementationRadios[r].addEventListener('change', function () {
+                clearValidationMessage(form);
                 var group = this.closest('.lv-visible-implementation-group');
                 mirrorImplementationRows(form, group);
                 syncImplementationGroup(form, group);
@@ -1466,8 +1735,20 @@
         var commentFields = form.querySelectorAll('.lv-visible-comentarios');
         for (var t = 0; t < commentFields.length; t++) {
             commentFields[t].addEventListener('input', function () {
+                clearValidationMessage(form);
                 mirrorCommentsFields(form, this);
                 syncCommentsField(form, this);
+            });
+        }
+
+        var requiredHeaderFields = form.querySelectorAll('input[required], textarea[required], select[required]');
+        for (var h = 0; h < requiredHeaderFields.length; h++) {
+            requiredHeaderFields[h].addEventListener('input', function () {
+                clearValidationMessage(form);
+            });
+
+            requiredHeaderFields[h].addEventListener('change', function () {
+                clearValidationMessage(form);
             });
         }
 

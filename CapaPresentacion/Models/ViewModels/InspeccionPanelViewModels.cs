@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using CapaModelo;
 
 namespace CapaPresentacion.Models.ViewModels
@@ -45,6 +46,46 @@ namespace CapaPresentacion.Models.ViewModels
             UrlDescarga = string.Empty;
             UrlDocumentosSolicitud = string.Empty;
             MensajeBloqueoEdicion = string.Empty;
+        }
+    }
+
+    public class InformeTecnicoModalVm
+    {
+        public int CodigoInspeccion { get; set; }
+        public Inspeccion Inspeccion { get; set; }
+        public SolicitudAOCR Solicitud { get; set; }
+        public InspeccionInformeTecnico InformeTecnico { get; set; }
+        public ListaVerificacionOperacionalEae ListaVerificacion { get; set; }
+        public IList<DocumentoInspeccion> DocumentosSolicitante { get; set; }
+        public bool UsaFlujoListaVerificacionOperacionalEae { get; set; }
+        public bool LvEaeFinalizada { get; set; }
+        public bool PuedeGestionarInformeTecnico { get; set; }
+        public bool PuedeEditarInformeTecnico { get; set; }
+        public bool ExisteInformeTecnico { get; set; }
+        public bool ExistePdfInformeTecnico { get; set; }
+        public string EstadoInformeTecnico { get; set; }
+        public string EstadoListaVerificacion { get; set; }
+        public int? CodigoInformeTecnico { get; set; }
+        public string MensajeBloqueo { get; set; }
+        public string UrlGuardar { get; set; }
+        public string UrlPrevisualizar { get; set; }
+        public string UrlVerPdf { get; set; }
+        public string UrlDescargarPdf { get; set; }
+
+        public InformeTecnicoModalVm()
+        {
+            Inspeccion = new Inspeccion();
+            Solicitud = new SolicitudAOCR();
+            InformeTecnico = new InspeccionInformeTecnico();
+            ListaVerificacion = new ListaVerificacionOperacionalEae();
+            DocumentosSolicitante = new List<DocumentoInspeccion>();
+            EstadoInformeTecnico = "BORRADOR_INFORME";
+            EstadoListaVerificacion = "LV_BORRADOR";
+            MensajeBloqueo = string.Empty;
+            UrlGuardar = string.Empty;
+            UrlPrevisualizar = string.Empty;
+            UrlVerPdf = string.Empty;
+            UrlDescargarPdf = string.Empty;
         }
     }
 

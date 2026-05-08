@@ -398,6 +398,7 @@
   <ItemGroup>
     <Content Include="Content\aocr-institucional.css" />
     <Content Include="Content\aocr-datatables.css" />
+    <Content Include="Content\aocr-informe-tecnico.css" />
     <Content Include="Content\aocr-responsive.css" />
     <Content Include="Content\aocr-pdf-viewer\aocr-pdf-viewer.css" />
     <Content Include="Content\pdf-eae-oficial.css" />
@@ -585,6 +586,7 @@
     <Content Include="Rotativa\wkhtmltopdf.exe" />
     <Content Include="Scripts\aocr-config.js" />
     <Content Include="Scripts\aocr-datatables.js" />
+    <Content Include="Scripts\aocr-informe-tecnico-modal.js" />
     <Content Include="Scripts\aocr-utils.js" />
     <Content Include="Scripts\app\global.js" />
     <Content Include="Content\dist\js\dgac.js" />
@@ -2878,6 +2880,7 @@
     <Content Include="Views\Inspeccion\Editar.cshtml" />
     <Content Include="Views\Inspeccion\InformeTecnicoPdf.cshtml" />
     <Content Include="Views\Inspeccion\InformeTecnicoFirmaPreview.cshtml" />
+    <Content Include="Views\InformeTecnico\_ModalInformeTecnico.cshtml" />
     <Content Include="Views\Inspeccion\ListaVerificacionOperacionalEaePdf.cshtml" />
     <Content Include="Views\Inspeccion\ListaVerificacionOperacionalEaePdfOficial.cshtml" />
     <Content Include="Views\ListaVerificacion\PdfListaVerificacionEaeOficial.cshtml" />

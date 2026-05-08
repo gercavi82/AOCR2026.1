@@ -43,67 +43,140 @@ body {
 
 .pdf-eae-header {
     width: 100%;
-    font-size: 10px;
-    font-weight: bold;
-    line-height: 1.1;
-    margin-bottom: 9mm;
+    margin-bottom: 4px;
 }
 
-.pdf-eae-header-top {
+.manual-top {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 8px;
+    font-size: 6.5pt;
+    color: #333;
+    border-bottom: 2px solid #000;
+}
+
+.manual-top td {
+    vertical-align: top;
+    border: none;
+    padding: 0 0 2px;
+}
+
+.manual-right {
+    width: 42%;
     text-align: right;
 }
 
-.pdf-eae-header-center {
-    text-align: center;
-    margin-top: 0;
-}
-
-.pdf-eae-header-bottom {
-    border-bottom: 1px solid #000;
-    padding-bottom: 1mm;
-    margin-top: 2mm;
-}
-
-.title-box-main {
+.title-box {
+    width: 100%;
     border: 1px solid #000;
-    background: #d9d9d9;
+    margin: 0 0 10px;
     text-align: center;
     font-weight: bold;
-    font-size: 13px;
-    line-height: 1.35;
-    padding: 4mm 2mm;
+    page-break-inside: avoid;
 }
 
-.title-box-sub {
-    border-left: 1px solid #000;
-    border-right: 1px solid #000;
-    border-bottom: 1px solid #000;
-    background: #d9d9d9;
-    text-align: center;
-    font-weight: bold;
-    font-size: 12px;
-    line-height: 1.35;
-    padding: 3mm 2mm;
+.title-box > div {
+    padding: 8px 10px;
 }
 
-.eae-field-row {
-    border-left: 1px solid #000;
-    border-right: 1px solid #000;
-    border-bottom: 1px solid #000;
-    min-height: 7.2mm;
-    padding: 2mm;
-    font-size: 10px;
-    font-weight: bold;
-    line-height: 1.15;
-}
-
-.eae-field-row.first {
+.title-box > div + div {
     border-top: 1px solid #000;
 }
 
-.eae-field-value {
+.title-box > div:first-child,
+.title-box-main {
+    background: #d9d9d9;
+}
+
+.title-box > div:first-child {
+    font-size: 10pt;
+    line-height: 1.2;
+    text-transform: uppercase;
+}
+
+.title-box-main {
+    font-size: 9.5pt;
+    line-height: 1.2;
+}
+
+.title-box-rdac {
+    background: #fff;
+    font-size: 9pt;
+    padding-top: 5px !important;
+    padding-bottom: 5px !important;
+}
+
+.field-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 0 0 8px;
+    table-layout: fixed;
+}
+
+.field-table td {
+    border: 1px solid #000;
+    padding: 5px 8px;
+    vertical-align: top;
+    line-height: 1.25;
+}
+
+.field-row {
+    font-size: 8.8pt;
+}
+
+.field-label {
+    font-weight: bold;
+}
+
+.field-value {
     font-weight: normal;
-    white-space: pre-line;
+}
+
+.institution {
+    text-align: center;
+    font-weight: bold;
+    text-transform: uppercase;
+    font-size: 10pt;
+    line-height: 1.25;
+    margin-top: 4px;
+}
+
+.title {
+    text-align: center;
+    font-weight: bold;
+    font-size: 9pt;
+    line-height: 1.25;
+    margin-top: 4px;
+}
+
+.rdac {
+    text-align: center;
+    font-weight: bold;
+    margin: 3px 0 6px;
+    font-size: 9pt;
+}
+
+.meta-list {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 0 0 4px;
+}
+
+.meta-list td {
+    border: none;
+    padding: 1.5px 2px;
+    vertical-align: top;
+    line-height: 1.25;
+}
+
+.meta-label {
+    width: 35%;
+    font-weight: bold;
+}
+
+.meta-value {
+    border-bottom: 1px solid #222 !important;
+    min-height: 12px;
 }
 
 table {

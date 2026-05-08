@@ -167,6 +167,53 @@ namespace CapaPresentacion.Controllers
             return User != null && User.IsInRole(ROL_INSPECTOR);
         }
 
+        private bool PuedeGestionarInformeTecnicoModal(Inspeccion inspeccion)
+        {
+            if (inspeccion == null || !PuedeAccederInspeccion(inspeccion))
+            {
+                return false;
+            }
+
+            return EsAdmin() || EsRolInspector() || EsRolDecisionCoordinacionJefatura();
+        }
+
+        private bool PuedeEditarInformeTecnicoModal(Inspeccion inspeccion)
+        {
+            if (inspeccion == null || !PuedeAccederInspeccion(inspeccion))
+            {
+                return false;
+            }
+
+            if (!EsAdmin() && !EsRolInspector())
+            {
+                return false;
+            }
+
+            return InspectorTieneRevisionDocumentalConfirmada(inspeccion);
+        }
+
+        private bool EsSolicitudAjaxInformeTecnico()
+        {
+            if (Request == null)
+            {
+                return false;
+            }
+
+            return Request.IsAjaxRequest()
+                || string.Equals(Request["modalRequest"], "true", StringComparison.OrdinalIgnoreCase);
+        }
+
+        private ActionResult DevolverResultadoModalInformeTecnico(int statusCode, string mensaje)
+        {
+            if (EsSolicitudAjaxInformeTecnico())
+            {
+                Response.StatusCode = statusCode;
+                return Json(new { success = false, message = mensaje }, JsonRequestBehavior.AllowGet);
+            }
+
+            return new HttpStatusCodeResult(statusCode, mensaje);
+        }
+
         private bool PuedeAccederInspeccion(Inspeccion ins)
         {
             if (ins == null) return false;
@@ -418,6 +465,65 @@ namespace CapaPresentacion.Controllers
             }
 
             return View("~/Views/Inspeccion/Detalle.cshtml", inspeccion);
+        }
+
+        [HttpGet]
+        [Authorize(Roles = ROLES_GESTION_INSPECCION_CON_SOLICITANTE)]
+        public ActionResult ModalInformeTecnico(int codigoInspeccion)
+        {
+            if (codigoInspeccion <= 0)
+            {
+                return DevolverResultadoModalInformeTecnico(400, "Código de inspección inválido para cargar el Informe Técnico.");
+            }
+
+            var inspeccion = _inspeccionDAO.ObtenerPorId(codigoInspeccion);
+            if (inspeccion == null)
+            {
+                return DevolverResultadoModalInformeTecnico(404, "La inspección solicitada no existe.");
+            }
+
+            if (!PuedeGestionarInformeTecnicoModal(inspeccion))
+            {
+                return DevolverResultadoModalInformeTecnico(403, "No autorizado para abrir el Informe Técnico de esta inspección.");
+            }
+
+            if ((EsRolInspector() || EsAdmin()) && !InspectorTieneRevisionDocumentalConfirmada(inspeccion))
+            {
+                return DevolverResultadoModalInformeTecnico(403, ObtenerMensajeBloqueoRevisionDocumentalInspector());
+            }
+
+            var solicitud = _solicitudDAO.ObtenerPorId(inspeccion.CodigoSolicitud);
+            NormalizarDatosOperadorSolicitud(solicitud);
+
+            ListaVerificacionOperacionalEae listaVerificacion;
+            string mensajeLista;
+            if (!ValidarPrecondicionInformeTecnico(inspeccion, solicitud, false, out listaVerificacion, out mensajeLista))
+            {
+                _logger.LogWarning("[GestionInspeccion] Apertura modal informe bloqueada. InspeccionId=" + codigoInspeccion + ", Mensaje=" + (mensajeLista ?? string.Empty));
+                return DevolverResultadoModalInformeTecnico(409, mensajeLista);
+            }
+
+            IList<DocumentoInspeccion> documentosSolicitante;
+            try
+            {
+                documentosSolicitante = _documentoDAO.ObtenerPorInspeccion(codigoInspeccion) ?? new List<DocumentoInspeccion>();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning("[GestionInspeccion] Error cargando documentos para modal informe. InspeccionId=" + codigoInspeccion + ", Error=" + ex.Message);
+                documentosSolicitante = new List<DocumentoInspeccion>();
+            }
+
+            var informe = _informeDAO.ObtenerUltimoPorInspeccion(codigoInspeccion);
+            EnriquecerInspectoresInformeTecnico(inspeccion, solicitud);
+
+            var vm = ConstruirInformeTecnicoModalViewModel(inspeccion, solicitud, informe, listaVerificacion, documentosSolicitante);
+            _logger.LogInfo("[GestionInspeccion] ModalInformeTecnico cargado. InspeccionId=" + codigoInspeccion
+                + ", InformeId=" + (vm.CodigoInformeTecnico.HasValue ? vm.CodigoInformeTecnico.Value.ToString() : "0")
+                + ", EstadoInforme=" + (vm.EstadoInformeTecnico ?? string.Empty)
+                + ", EstadoLv=" + (vm.EstadoListaVerificacion ?? string.Empty));
+
+            return PartialView("~/Views/InformeTecnico/_ModalInformeTecnico.cshtml", vm);
         }
 
         [Authorize(Roles = ROLES_GESTION_INSPECCION_CON_SOLICITANTE)]
@@ -1256,9 +1362,11 @@ namespace CapaPresentacion.Controllers
         public ActionResult GuardarInformeTecnico()
         {
             var id = 0;
+            var esSolicitudAjax = false;
             try
             {
                 var form = Request?.Unvalidated?.Form;
+                esSolicitudAjax = EsSolicitudAjaxInformeTecnico();
                 var idRaw = form?["id"] ?? Request?.Unvalidated?.QueryString["id"];
                 var finalizarRaw = form?["finalizar"] ?? Request?.Unvalidated?.QueryString["finalizar"];
                 var finalizar = false;
@@ -1271,22 +1379,27 @@ namespace CapaPresentacion.Controllers
 
                 if (id <= 0)
                 {
-                    return new HttpStatusCodeResult(400, "ID inválido.");
+                    return DevolverResultadoModalInformeTecnico(400, "ID inválido.");
                 }
 
                 var inspeccion = _inspeccionDAO.ObtenerPorId(id);
                 if (inspeccion == null)
                 {
-                    return HttpNotFound("Inspección no encontrada.");
+                    return DevolverResultadoModalInformeTecnico(404, "Inspección no encontrada.");
                 }
 
                 if (!PuedeAccederInspeccion(inspeccion))
                 {
-                    return new HttpStatusCodeResult(403, "No autorizado para editar el informe técnico.");
+                    return DevolverResultadoModalInformeTecnico(403, "No autorizado para editar el informe técnico.");
                 }
 
                 if (!InspectorTieneRevisionDocumentalConfirmada(inspeccion))
                 {
+                    if (esSolicitudAjax)
+                    {
+                        return DevolverResultadoModalInformeTecnico(403, ObtenerMensajeBloqueoRevisionDocumentalInspector());
+                    }
+
                     TempData["Error"] = ObtenerMensajeBloqueoRevisionDocumentalInspector();
                     return RedirectToAction("Detalle", new { id });
                 }
@@ -1296,28 +1409,60 @@ namespace CapaPresentacion.Controllers
 
                 ListaVerificacionOperacionalEae listaVerificacion;
                 string mensajeLista;
-                if (!ValidarPrecondicionListaVerificacionOperacionalEae(inspeccion, solicitud, out listaVerificacion, out mensajeLista))
+                if (!ValidarPrecondicionInformeTecnico(inspeccion, solicitud, false, out listaVerificacion, out mensajeLista))
                 {
+                    if (esSolicitudAjax)
+                    {
+                        return DevolverResultadoModalInformeTecnico(409, mensajeLista);
+                    }
+
                     TempData["Error"] = mensajeLista;
                     return RedirectToAction("Detalle", new { id });
                 }
 
                 var usuarioId = ObtenerCodigoUsuario();
                 var informeActual = _informeDAO.ObtenerUltimoPorInspeccion(id);
-                var informe = _informeDAO.GuardarBorrador(ConstruirInformeTecnicoDesdeFormulario(id, form, informeActual, true), usuarioId);
+                var informeFormulario = ConstruirInformeTecnicoDesdeFormulario(id, form, informeActual, true);
+                string mensajeInforme;
+                if (finalizar && !ValidarInformeTecnicoParaFinalizar(informeFormulario, out mensajeInforme))
+                {
+                    if (esSolicitudAjax)
+                    {
+                        return DevolverResultadoModalInformeTecnico(400, mensajeInforme);
+                    }
+
+                    TempData["Error"] = mensajeInforme;
+                    return RedirectToAction("Detalle", new { id });
+                }
+
+                var informe = _informeDAO.GuardarBorrador(informeFormulario, usuarioId);
 
                 if (!finalizar)
                 {
+                    if (esSolicitudAjax)
+                    {
+                        return Json(new
+                        {
+                            success = true,
+                            finalized = false,
+                            message = "Borrador del informe técnico guardado correctamente.",
+                            estado = FirstNonEmpty(informe != null ? informe.EstadoInforme : null, "BORRADOR_INFORME"),
+                            codigoInforme = informe != null ? informe.CodigoInforme : 0,
+                            version = informe != null ? informe.Version : 0
+                        });
+                    }
+
                     TempData["Success"] = "Borrador del informe técnico guardado correctamente.";
                     return RedirectToAction("Detalle", new { id });
                 }
 
                 var pdfBytes = GenerarPdfInformeTecnico(inspeccion, solicitud, informe);
                 var rutaPdf = GuardarInformeTecnicoPdf(id, informe.Version, pdfBytes);
+                var detalleAuditoriaInforme = ConstruirDetalleAuditoriaResultadoInforme("Informe técnico generado en PDF.", informe);
 
                 _informeDAO.MarcarFinalizado(informe.CodigoInforme, rutaPdf, false, UsaFlujoListaVerificacionOperacionalEae(solicitud) ? "INFORME_GENERADO" : "GENERADO", usuarioId);
                 _inspeccionBL.GuardarInforme(id, rutaPdf, usuarioId);
-                RegistrarAuditoriaInformeDigital(id, "BORRADOR", "GENERADO", rutaPdf, null, "Informe técnico generado en PDF. IP=" + ObtenerIpCliente(), usuarioId, ObtenerUsuarioActual(), "INFORME_GENERADO");
+                RegistrarAuditoriaInformeDigital(id, "BORRADOR", "GENERADO", rutaPdf, null, detalleAuditoriaInforme, usuarioId, ObtenerUsuarioActual(), "INFORME_GENERADO");
 
                 var estadoActual = CapaDatos.Constants.EstadosInspeccion.NormalizarEstado(inspeccion.Estado);
                 if (!string.Equals(estadoActual, CapaDatos.Constants.EstadosInspeccion.INFORME_ELABORADO, StringComparison.OrdinalIgnoreCase))
@@ -1337,11 +1482,38 @@ namespace CapaPresentacion.Controllers
 
                 TempData["Success"] = "Informe técnico finalizado y PDF generado. El documento quedó pendiente de firma del inspector.";
 
+                if (esSolicitudAjax)
+                {
+                    return Json(new
+                    {
+                        success = true,
+                        finalized = true,
+                        message = "Informe técnico finalizado y PDF generado. El documento quedó pendiente de firma del inspector.",
+                        estado = UsaFlujoListaVerificacionOperacionalEae(solicitud) ? "INFORME_GENERADO" : "GENERADO",
+                        codigoInforme = informe.CodigoInforme,
+                        version = informe.Version,
+                        pdfUrl = Url.Action("VerInforme", "Inspeccion", new { id }),
+                        downloadUrl = Url.Action("DescargarInforme", "Inspeccion", new { id }),
+                        redirectUrl = Url.Action("Detalle", "Inspeccion", new { id })
+                    });
+                }
+
                 return RedirectToAction("Detalle", new { id });
             }
             catch (Exception ex)
             {
                 _logger.LogError("[GestionInspeccion] Error en GuardarInformeTecnico: " + ex);
+
+                if (esSolicitudAjax)
+                {
+                    Response.StatusCode = 500;
+                    return Json(new
+                    {
+                        success = false,
+                        message = "No se pudo guardar el informe técnico. Verifique los datos ingresados e intente nuevamente."
+                    });
+                }
+
                 TempData["Error"] = "No se pudo guardar el informe técnico. Verifique los datos ingresados e intente nuevamente.";
                 return RedirectToAction("Detalle", new { id });
             }
@@ -1392,7 +1564,7 @@ namespace CapaPresentacion.Controllers
 
                 ListaVerificacionOperacionalEae listaVerificacion;
                 string mensajeLista;
-                if (!ValidarPrecondicionListaVerificacionOperacionalEae(inspeccion, solicitud, out listaVerificacion, out mensajeLista))
+                if (!ValidarPrecondicionInformeTecnico(inspeccion, solicitud, false, out listaVerificacion, out mensajeLista))
                 {
                     return Json(new { success = false, message = mensajeLista });
                 }
@@ -1530,7 +1702,7 @@ namespace CapaPresentacion.Controllers
 
                 ListaVerificacionOperacionalEae listaVerificacion;
                 string mensajeLista;
-                if (!ValidarPrecondicionListaVerificacionOperacionalEae(inspeccion, solicitud, out listaVerificacion, out mensajeLista))
+                if (!ValidarPrecondicionInformeTecnico(inspeccion, solicitud, false, out listaVerificacion, out mensajeLista))
                 {
                     TempData["Error"] = mensajeLista;
                     return RedirectToAction("Detalle", new { id });
@@ -1540,16 +1712,21 @@ namespace CapaPresentacion.Controllers
                 var informe = _informeDAO.ObtenerUltimoPorInspeccion(id);
                 if (informe == null)
                 {
-                    informe = _informeDAO.GuardarBorrador(new InspeccionInformeTecnico
-                    {
-                        CodigoInspeccion = id,
-                        Titulo = "Informe de inspeccion"
-                    }, usuarioId);
+                    TempData["Error"] = "Debe guardar un borrador del Informe Técnico antes de finalizarlo desde este panel.";
+                    return RedirectToAction("Detalle", new { id });
+                }
+
+                string mensajeInforme;
+                if (!ValidarInformeTecnicoParaFinalizar(informe, out mensajeInforme))
+                {
+                    TempData["Error"] = mensajeInforme;
+                    return RedirectToAction("Detalle", new { id });
                 }
 
                 var pdfBytes = GenerarPdfInformeTecnico(inspeccion, solicitud, informe);
                 var rutaPdf = GuardarInformeTecnicoPdf(id, informe.Version, pdfBytes);
                 var estadoAnterior = FirstNonEmpty(informe.EstadoInforme, informe.Finalizado ? "GENERADO" : "BORRADOR", "BORRADOR");
+                var detalleAuditoriaInforme = ConstruirDetalleAuditoriaResultadoInforme("Informe técnico finalizado desde panel de firma.", informe);
 
                 _informeDAO.MarcarFinalizado(informe.CodigoInforme, rutaPdf, informe.CorreoEnviado, UsaFlujoListaVerificacionOperacionalEae(solicitud) ? "INFORME_GENERADO" : "GENERADO", usuarioId);
                 _inspeccionBL.GuardarInforme(id, rutaPdf, usuarioId);
@@ -1559,7 +1736,7 @@ namespace CapaPresentacion.Controllers
                     "GENERADO",
                     rutaPdf,
                     null,
-                    "Informe técnico finalizado desde panel de firma. IP=" + ObtenerIpCliente(),
+                    detalleAuditoriaInforme,
                     usuarioId,
                     ObtenerUsuarioActual(),
                     "INFORME_GENERADO_DESDE_FIRMA");
@@ -3972,6 +4149,11 @@ namespace CapaPresentacion.Controllers
 
         private bool ValidarPrecondicionListaVerificacionOperacionalEae(Inspeccion inspeccion, SolicitudAOCR solicitud, out ListaVerificacionOperacionalEae lista, out string mensaje)
         {
+            return ValidarPrecondicionInformeTecnico(inspeccion, solicitud, true, out lista, out mensaje);
+        }
+
+        private bool ValidarPrecondicionInformeTecnico(Inspeccion inspeccion, SolicitudAOCR solicitud, bool requiereListaFirmada, out ListaVerificacionOperacionalEae lista, out string mensaje)
+        {
             lista = null;
             mensaje = string.Empty;
 
@@ -3982,13 +4164,88 @@ namespace CapaPresentacion.Controllers
 
             lista = _listaVerificacionOperacionalEaeDAO.ObtenerUltimaPorInspeccion(inspeccion.CodigoInspeccion);
             HidratarListaVerificacionOperacionalEae(lista, solicitud);
-            if (lista == null || !lista.Finalizado || !lista.FirmadoTecnico)
+            if (lista == null || !lista.Finalizado)
             {
-                mensaje = "Para generar el Informe Técnico primero debe completar y firmar la Lista de Verificación Operacional (LV).";
+                mensaje = "No se puede elaborar el Informe Técnico porque la Lista de Verificación Operacional LV/EAE aún no ha sido finalizada.";
+                return false;
+            }
+
+            if (requiereListaFirmada && !lista.FirmadoTecnico)
+            {
+                mensaje = "Para continuar con la firma del Informe Técnico primero debe completar y firmar la Lista de Verificación Operacional (LV).";
                 return false;
             }
 
             return true;
+        }
+
+        private bool ValidarInformeTecnicoParaFinalizar(InspeccionInformeTecnico informe, out string mensaje)
+        {
+            mensaje = string.Empty;
+            if (informe == null)
+            {
+                mensaje = "No existe un Informe Técnico registrado para finalizar.";
+                return false;
+            }
+
+            var camposObligatorios = new[]
+            {
+                new { Nombre = "Antecedentes", Valor = informe.Antecedentes },
+                new { Nombre = "Objetivo de la inspección", Valor = informe.Resumen },
+                new { Nombre = "Alcance", Valor = informe.Alcance },
+                new { Nombre = "Desarrollo técnico", Valor = informe.Desarrollo },
+                new { Nombre = "Fecha de inspección", Valor = informe.FechasInspeccionManual },
+                new { Nombre = "Estación o cobertura inspeccionada", Valor = informe.EstacionesInspeccionManual },
+                new { Nombre = "Conclusiones", Valor = informe.Conclusiones },
+                new { Nombre = "Recomendaciones", Valor = informe.Recomendaciones },
+                new { Nombre = "Resultado técnico final", Valor = informe.Resultado }
+            };
+
+            var campoPendiente = camposObligatorios.FirstOrDefault(campo => string.IsNullOrWhiteSpace(campo.Valor));
+            if (campoPendiente != null)
+            {
+                mensaje = "Complete el campo obligatorio del Informe Técnico: " + campoPendiente.Nombre + ".";
+                return false;
+            }
+
+            if (InformeTecnicoTemplateHelper.IsResultadoInsatisfactorio(informe.Resultado)
+                && string.IsNullOrWhiteSpace(InformeTecnicoTemplateHelper.NormalizeTipoResultadoInsatisfactorio(informe.TipoResultadoInsatisfactorio)))
+            {
+                mensaje = "Debe seleccionar si el resultado insatisfactorio requiere una nueva inspección o no requiere inspección.";
+                return false;
+            }
+
+            if (string.IsNullOrWhiteSpace(informe.NoConformidades) && string.IsNullOrWhiteSpace(informe.Observaciones))
+            {
+                mensaje = "Registre al menos un hallazgo técnico u observación antes de finalizar el Informe Técnico.";
+                return false;
+            }
+
+            return true;
+        }
+
+        private string ConstruirDetalleAuditoriaResultadoInforme(string mensajeBase, InspeccionInformeTecnico informe)
+        {
+            var detalle = string.IsNullOrWhiteSpace(mensajeBase)
+                ? "Informe técnico actualizado."
+                : mensajeBase.Trim();
+            var resultadoLabel = InformeTecnicoTemplateHelper.GetResultadoLabel(informe != null ? informe.Resultado : null);
+            if (!string.IsNullOrWhiteSpace(resultadoLabel) && !string.Equals(resultadoLabel, "Pendiente", StringComparison.OrdinalIgnoreCase))
+            {
+                detalle += " Resultado técnico final: " + resultadoLabel + ".";
+            }
+
+            if (informe != null && InformeTecnicoTemplateHelper.IsResultadoInsatisfactorio(informe.Resultado))
+            {
+                var tipoResultadoLabel = InformeTecnicoTemplateHelper.GetTipoResultadoInsatisfactorioLabel(informe.TipoResultadoInsatisfactorio);
+                if (!string.IsNullOrWhiteSpace(tipoResultadoLabel))
+                {
+                    detalle += " Tipo de resultado insatisfactorio: " + tipoResultadoLabel + ".";
+                }
+            }
+
+            detalle += " IP=" + ObtenerIpCliente();
+            return detalle;
         }
 
         private ListaVerificacionOperacionalEae ConstruirListaVerificacionOperacionalEaeDesdeFormulario(int codigoInspeccion, System.Collections.Specialized.NameValueCollection form, ListaVerificacionOperacionalEae listaActual, SolicitudAOCR solicitud)
@@ -4054,6 +4311,69 @@ namespace CapaPresentacion.Controllers
             return lista;
         }
 
+        private bool ValidarListaVerificacionOperacionalEaeSegunObservaciones(ListaVerificacionOperacionalEae lista, out string mensaje)
+        {
+            mensaje = string.Empty;
+            if (lista == null)
+            {
+                mensaje = "No existe una lista de verificación operacional EAE para procesar.";
+                return false;
+            }
+
+            if (lista.Items == null || lista.Items.Count == 0)
+            {
+                mensaje = "La lista de verificación operacional EAE no contiene ítems configurados.";
+                return false;
+            }
+
+            var itemsValidables = (lista.Items ?? new List<ListaVerificacionOperacionalEaeItem>())
+                .Where(item => item != null && !item.EsNotaOrientacion)
+                .ToList();
+            if (itemsValidables.Count == 0)
+            {
+                itemsValidables = (lista.Items ?? new List<ListaVerificacionOperacionalEaeItem>())
+                    .Where(item => item != null)
+                    .ToList();
+            }
+
+            var itemSinEstadosNiObservacion = itemsValidables.FirstOrDefault(item =>
+                (string.IsNullOrWhiteSpace(item.EstadoCumplimiento)
+                    || string.IsNullOrWhiteSpace(item.EstadoImplementacion))
+                && string.IsNullOrWhiteSpace(item.PruebasNotasComentarios));
+            if (itemSinEstadosNiObservacion != null)
+            {
+                mensaje = "Debe seleccionar el estado de cumplimiento/implementación o registrar una observación en la columna 14 para la orientación: " + ObtenerEtiquetaItemListaVerificacionOperacionalEae(itemSinEstadosNiObservacion);
+                return false;
+            }
+
+            foreach (var grupo in itemsValidables
+                .GroupBy(ObtenerClavePreguntaListaVerificacionOperacionalEae, StringComparer.OrdinalIgnoreCase))
+            {
+                var comentarioGrupo = grupo
+                    .Select(item => (item.PruebasNotasComentarios ?? string.Empty).Trim())
+                    .FirstOrDefault(valor => !string.IsNullOrWhiteSpace(valor)) ?? string.Empty;
+
+                var itemCumplimientoNoSatisfactorio = grupo.FirstOrDefault(item =>
+                    string.Equals(item.EstadoCumplimiento, "NO_SATISFACTORIO", StringComparison.OrdinalIgnoreCase));
+                if (itemCumplimientoNoSatisfactorio != null && string.IsNullOrWhiteSpace(comentarioGrupo))
+                {
+                    mensaje = "Ingrese una observación en Pruebas / Notas / Comentarios para el requisito: " + ObtenerEtiquetaItemListaVerificacionOperacionalEae(itemCumplimientoNoSatisfactorio);
+                    return false;
+                }
+            }
+
+            var itemNoImplementadoSinObservacion = itemsValidables.FirstOrDefault(item =>
+                string.Equals(item.EstadoImplementacion, "NO_IMPLEMENTADO", StringComparison.OrdinalIgnoreCase)
+                && string.IsNullOrWhiteSpace(item.PruebasNotasComentarios));
+            if (itemNoImplementadoSinObservacion != null)
+            {
+                mensaje = "Ingrese una observación en Pruebas / Notas / Comentarios para la orientación: " + ObtenerEtiquetaItemListaVerificacionOperacionalEae(itemNoImplementadoSinObservacion);
+                return false;
+            }
+
+            return true;
+        }
+
         private bool ValidarListaVerificacionOperacionalEaeParaFinalizar(ListaVerificacionOperacionalEae lista, out string mensaje)
         {
             mensaje = string.Empty;
@@ -4087,56 +4407,7 @@ namespace CapaPresentacion.Controllers
                 return false;
             }
 
-            var itemsValidables = (lista.Items ?? new List<ListaVerificacionOperacionalEaeItem>())
-                .Where(item => item != null && !item.EsNotaOrientacion)
-                .ToList();
-            if (itemsValidables.Count == 0)
-            {
-                itemsValidables = (lista.Items ?? new List<ListaVerificacionOperacionalEaeItem>())
-                    .Where(item => item != null)
-                    .ToList();
-            }
-
-            var itemPendiente = itemsValidables.FirstOrDefault(item => string.IsNullOrWhiteSpace(item.EstadoCumplimiento));
-            if (itemPendiente != null)
-            {
-                mensaje = "Debe registrar el estado de cumplimiento para la orientacion: " + ObtenerEtiquetaItemListaVerificacionOperacionalEae(itemPendiente);
-                return false;
-            }
-
-            var itemImplementacionPendiente = itemsValidables.FirstOrDefault(item => string.IsNullOrWhiteSpace(item.EstadoImplementacion));
-            if (itemImplementacionPendiente != null)
-            {
-                mensaje = "Debe registrar el estado de implementacion para la orientacion: " + ObtenerEtiquetaItemListaVerificacionOperacionalEae(itemImplementacionPendiente);
-                return false;
-            }
-
-            foreach (var grupo in itemsValidables
-                .GroupBy(ObtenerClavePreguntaListaVerificacionOperacionalEae, StringComparer.OrdinalIgnoreCase))
-            {
-                var comentarioGrupo = grupo
-                    .Select(item => (item.PruebasNotasComentarios ?? string.Empty).Trim())
-                    .FirstOrDefault(valor => !string.IsNullOrWhiteSpace(valor)) ?? string.Empty;
-
-                var itemCumplimientoNoSatisfactorio = grupo.FirstOrDefault(item =>
-                    string.Equals(item.EstadoCumplimiento, "NO_SATISFACTORIO", StringComparison.OrdinalIgnoreCase));
-                if (itemCumplimientoNoSatisfactorio != null && string.IsNullOrWhiteSpace(comentarioGrupo))
-                {
-                    mensaje = "Ingrese una observacion en Pruebas / Notas / Comentarios para el requisito: " + ObtenerEtiquetaItemListaVerificacionOperacionalEae(itemCumplimientoNoSatisfactorio);
-                    return false;
-                }
-
-                var itemNoImplementadoSinObservacion = grupo.FirstOrDefault(item =>
-                    string.Equals(item.EstadoImplementacion, "NO_IMPLEMENTADO", StringComparison.OrdinalIgnoreCase)
-                    && string.IsNullOrWhiteSpace(item.PruebasNotasComentarios));
-                if (itemNoImplementadoSinObservacion != null)
-                {
-                    mensaje = "Ingrese una observacion en Pruebas / Notas / Comentarios para la orientacion: " + ObtenerEtiquetaItemListaVerificacionOperacionalEae(itemNoImplementadoSinObservacion);
-                    return false;
-                }
-            }
-
-            return true;
+            return ValidarListaVerificacionOperacionalEaeSegunObservaciones(lista, out mensaje);
         }
 
         private static string ObtenerEtiquetaItemListaVerificacionOperacionalEae(ListaVerificacionOperacionalEaeItem item)
@@ -4337,7 +4608,7 @@ namespace CapaPresentacion.Controllers
 <body onload=""subst()"">
     <table class=""footer-table"">
         <tr>
-            <td class=""footer-left"">31/07/2025</td>
+            <td class=""footer-left"">31/12/2025</td>
             <td id=""page-code"" class=""footer-center"">PII-VVII-C2-9</td>
             <td class=""footer-right"">Tercera Edición</td>
         </tr>
@@ -4493,6 +4764,14 @@ namespace CapaPresentacion.Controllers
                 .Where(x => documentosAdjuntosNormalizados.Contains(x.Key) && !string.IsNullOrWhiteSpace(x.Value))
                 .ToDictionary(x => x.Key, x => x.Value, StringComparer.OrdinalIgnoreCase);
             var documentosAdjuntos = InformeTecnicoTemplateHelper.SerializeLines(documentosAdjuntosItems);
+            var resultadoInforme = InformeTecnicoTemplateHelper.NormalizeResultadoInformeTecnico(
+                TomarCampoTexto(form, "resultado", 120, informeActual != null ? informeActual.Resultado : null));
+            var tipoResultadoInsatisfactorio = InformeTecnicoTemplateHelper.NormalizeTipoResultadoInsatisfactorio(
+                TomarCampoTexto(form, "tipoResultadoInsatisfactorio", 30, null));
+            if (!string.Equals(resultadoInforme, "INSATISFACTORIO", StringComparison.OrdinalIgnoreCase))
+            {
+                tipoResultadoInsatisfactorio = null;
+            }
 
             return new InspeccionInformeTecnico
             {
@@ -4514,7 +4793,8 @@ namespace CapaPresentacion.Controllers
                 DocumentosAdjuntos = documentosAdjuntos,
                 DocumentosAdjuntosArchivos = InformeTecnicoTemplateHelper.SerializeDocumentosAdjuntosArchivos(documentosAdjuntosArchivos),
                 OtrosAdjuntos = otrosAdjuntos,
-                Resultado = TomarCampoTexto(form, "resultado", 120, informeActual != null ? informeActual.Resultado : null),
+                Resultado = resultadoInforme,
+                TipoResultadoInsatisfactorio = tipoResultadoInsatisfactorio,
                 Observaciones = TomarCampoTexto(form, "observaciones", 8000, informeActual != null ? informeActual.Observaciones : null),
                 Conclusiones = TomarCampoTexto(form, "conclusiones", 8000, informeActual != null ? informeActual.Conclusiones : null),
                 Recomendaciones = TomarCampoTexto(form, "recomendaciones", 8000, informeActual != null ? informeActual.Recomendaciones : null),
@@ -4522,6 +4802,60 @@ namespace CapaPresentacion.Controllers
                 EstadoInforme = informeActual != null ? informeActual.EstadoInforme : "BORRADOR_INFORME",
                 Finalizado = informeActual != null && informeActual.Finalizado,
                 CorreoEnviado = informeActual != null && informeActual.CorreoEnviado
+            };
+        }
+
+        private InformeTecnicoModalVm ConstruirInformeTecnicoModalViewModel(Inspeccion inspeccion, SolicitudAOCR solicitud, InspeccionInformeTecnico informe, ListaVerificacionOperacionalEae listaVerificacion, IList<DocumentoInspeccion> documentosSolicitante)
+        {
+            var usaFlujoLv = UsaFlujoListaVerificacionOperacionalEae(solicitud);
+            var rutaInformeDisponible = ResolverRutaRelativaInformeDisponible(
+                informe != null ? informe.RutaDocumentoFirmado : null,
+                inspeccion != null ? inspeccion.RutaInforme : null,
+                informe != null ? informe.RutaPdf : null);
+            var estadoInforme = !string.IsNullOrWhiteSpace(informe != null ? informe.EstadoInforme : null)
+                ? informe.EstadoInforme
+                : (informe != null && informe.Finalizado ? "GENERADO" : "BORRADOR_INFORME");
+            var estadoLista = !usaFlujoLv
+                ? "NO_APLICA"
+                : FirstNonEmpty(
+                    listaVerificacion != null ? listaVerificacion.EstadoLista : null,
+                    listaVerificacion != null && listaVerificacion.Finalizado ? "LV_FINALIZADA" : null,
+                    "LV_BORRADOR");
+
+            return new InformeTecnicoModalVm
+            {
+                CodigoInspeccion = inspeccion != null ? inspeccion.CodigoInspeccion : 0,
+                Inspeccion = inspeccion ?? new Inspeccion(),
+                Solicitud = solicitud ?? new SolicitudAOCR(),
+                InformeTecnico = informe ?? new InspeccionInformeTecnico
+                {
+                    CodigoInspeccion = inspeccion != null ? inspeccion.CodigoInspeccion : 0,
+                    Titulo = "INFORME TÉCNICO AOCR"
+                },
+                ListaVerificacion = listaVerificacion ?? new ListaVerificacionOperacionalEae
+                {
+                    CodigoInspeccion = inspeccion != null ? inspeccion.CodigoInspeccion : 0,
+                    EstadoLista = "LV_BORRADOR"
+                },
+                DocumentosSolicitante = documentosSolicitante ?? new List<DocumentoInspeccion>(),
+                UsaFlujoListaVerificacionOperacionalEae = usaFlujoLv,
+                LvEaeFinalizada = !usaFlujoLv || (listaVerificacion != null && listaVerificacion.Finalizado),
+                PuedeGestionarInformeTecnico = PuedeGestionarInformeTecnicoModal(inspeccion),
+                PuedeEditarInformeTecnico = PuedeEditarInformeTecnicoModal(inspeccion),
+                ExisteInformeTecnico = informe != null && informe.CodigoInforme > 0,
+                ExistePdfInformeTecnico = !string.IsNullOrWhiteSpace(rutaInformeDisponible),
+                EstadoInformeTecnico = estadoInforme,
+                EstadoListaVerificacion = estadoLista,
+                CodigoInformeTecnico = informe != null && informe.CodigoInforme > 0 ? (int?)informe.CodigoInforme : null,
+                MensajeBloqueo = string.Empty,
+                UrlGuardar = Url.Action("GuardarInformeTecnico", "Inspeccion"),
+                UrlPrevisualizar = Url.Action("PrevisualizarInformeTecnico", "Inspeccion"),
+                UrlVerPdf = inspeccion != null && inspeccion.CodigoInspeccion > 0
+                    ? Url.Action("VerInforme", "Inspeccion", new { id = inspeccion.CodigoInspeccion })
+                    : string.Empty,
+                UrlDescargarPdf = inspeccion != null && inspeccion.CodigoInspeccion > 0
+                    ? Url.Action("DescargarInforme", "Inspeccion", new { id = inspeccion.CodigoInspeccion })
+                    : string.Empty
             };
         }
 

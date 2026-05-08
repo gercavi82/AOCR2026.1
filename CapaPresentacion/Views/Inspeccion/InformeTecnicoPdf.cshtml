@@ -95,9 +95,10 @@
         }).ToList()
         : new List<string> { textoNoAplica };
 
-    var resultadoNormalizado = string.IsNullOrWhiteSpace(resultadoTecnico) ? string.Empty : resultadoTecnico.Trim().ToUpperInvariant();
-    var esResultadoSatisfactorio = resultadoNormalizado == "SATISFACTORIO" || resultadoNormalizado == "SAT";
-    var esResultadoInsatisfactorio = resultadoNormalizado == "NO_SATISFACTORIO" || resultadoNormalizado == "INSATISFACTORIO";
+    var resultadoTecnicoLabel = InformeTecnicoTemplateHelper.GetResultadoLabel(resultadoTecnico);
+    var esResultadoInsatisfactorio = InformeTecnicoTemplateHelper.IsResultadoInsatisfactorio(resultadoTecnico);
+    var tipoResultadoInsatisfactorioLabel = informe != null ? InformeTecnicoTemplateHelper.GetTipoResultadoInsatisfactorioLabel(informe.TipoResultadoInsatisfactorio) : string.Empty;
+    var mostrarTipoResultadoInsatisfactorio = esResultadoInsatisfactorio && !string.IsNullOrWhiteSpace(tipoResultadoInsatisfactorioLabel);
     var nombreInspectorFirma = firmadoInspector && !string.IsNullOrWhiteSpace(firmanteInspector) ? firmanteInspector : inspector;
     var nombreInspectorVisual = !string.IsNullOrWhiteSpace(nombreInspectorFirma) ? nombreInspectorFirma.Trim().ToUpperInvariant() : textoNoAplica.ToUpperInvariant();
     var licenciaInspectorVisual = !string.IsNullOrWhiteSpace(licenciaInspector) ? "No. LICENCIA " + licenciaInspector.Trim() : textoNoAplica.ToUpperInvariant();
@@ -214,11 +215,11 @@
         </ul>
 
         <div class="report-section-title">2. CONCLUSION</div>
-        <p class="report-paragraph compact">El resultado de la inspección es:</p>
-        <ul class="bullet-list result-list">
-            <li class="@(esResultadoSatisfactorio ? "selected" : string.Empty)">Satisfactorio</li>
-            <li class="@(esResultadoInsatisfactorio ? "selected" : string.Empty)">Insatisfactorio.</li>
-        </ul>
+        <p class="report-paragraph compact">Resultado técnico final: <strong>@resultadoTecnicoLabel</strong></p>
+        @if (mostrarTipoResultadoInsatisfactorio)
+        {
+            <p class="report-paragraph compact">Tipo de resultado insatisfactorio: <strong>@tipoResultadoInsatisfactorioLabel</strong></p>
+        }
 
         <div class="report-section-title">3. RECOMENDACIONES:</div>
         <ul class="bullet-list">

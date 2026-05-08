@@ -1,0 +1,405 @@
+@model CapaPresentacion.Models.ViewModels.InformeTecnicoModalVm
+@using System
+@using System.Collections.Generic
+@using System.Globalization
+@using System.Linq
+@using CapaModelo
+@using CapaPresentacion.Helpers
+@using CapaPresentacion.Models.ViewModels
+
+@{
+    var vm = Model ?? new InformeTecnicoModalVm();
+    var inspeccion = vm.Inspeccion ?? new Inspeccion();
+    var solicitud = vm.Solicitud ?? new SolicitudAOCR();
+    var informe = vm.InformeTecnico ?? new InspeccionInformeTecnico();
+    var lista = vm.ListaVerificacion ?? new ListaVerificacionOperacionalEae();
+    var documentos = vm.DocumentosSolicitante ?? new List<DocumentoInspeccion>();
+    var cultura = new CultureInfo("es-EC");
+
+    var numeroInspeccionVisual = !string.IsNullOrWhiteSpace(inspeccion.NumeroInspeccion)
+        ? inspeccion.NumeroInspeccion.Trim()
+        : (inspeccion.CodigoInspeccion > 0 ? inspeccion.CodigoInspeccion.ToString() : "-");
+    var numeroSolicitudVisual = !string.IsNullOrWhiteSpace(solicitud.NumeroSolicitud)
+        ? solicitud.NumeroSolicitud.Trim()
+        : (inspeccion.CodigoSolicitud > 0 ? inspeccion.CodigoSolicitud.ToString() : "-");
+    var operadorVisual = !string.IsNullOrWhiteSpace(solicitud.RazonSocial)
+        ? solicitud.RazonSocial.Trim()
+        : (!string.IsNullOrWhiteSpace(solicitud.NombreOperador) ? solicitud.NombreOperador.Trim() : "No registrado");
+    var fechaInspeccionVisual = inspeccion.FechaProgramada.HasValue
+        ? inspeccion.FechaProgramada.Value.ToString("dd/MM/yyyy", cultura)
+        : "No programada";
+    var inspectorNombre = !string.IsNullOrWhiteSpace(inspeccion.InspectorPrincipalNombre)
+        ? inspeccion.InspectorPrincipalNombre.Trim()
+        : (!string.IsNullOrWhiteSpace(solicitud.TecnicoResponsableNombre) ? solicitud.TecnicoResponsableNombre.Trim() : "Inspector no asignado");
+    var inspectorCedula = !string.IsNullOrWhiteSpace(inspeccion.InspectorPrincipalCedula)
+        ? inspeccion.InspectorPrincipalCedula.Trim()
+        : (!string.IsNullOrWhiteSpace(solicitud.TecnicoResponsableCedula) ? solicitud.TecnicoResponsableCedula.Trim() : string.Empty);
+    var inspectorVisual = !string.IsNullOrWhiteSpace(inspectorCedula)
+        ? inspectorNombre + " - " + inspectorCedula
+        : inspectorNombre;
+    var servicios = InformeTecnicoTemplateHelper.GetServicioRows(informe.ServiciosEstaciones);
+    var documentosAdjuntosBase = InformeTecnicoTemplateHelper.GetDocumentosAdjuntosBase();
+    var documentosAdjuntosSeleccionados = InformeTecnicoTemplateHelper.SplitLines(informe.DocumentosAdjuntos);
+    var documentosAdjuntosArchivos = InformeTecnicoTemplateHelper.ParseDocumentosAdjuntosArchivos(informe.DocumentosAdjuntosArchivos);
+    var documentosRevisadosTexto = !string.IsNullOrWhiteSpace(informe.Evidencias)
+        ? informe.Evidencias
+        : (documentos.Any()
+            ? (documentos.Count + " documento(s) vinculado(s) a la inspección y la LV/EAE finalizada.")
+            : "No se registran documentos adicionales vinculados a la inspección.");
+    var antecedentesTexto = !string.IsNullOrWhiteSpace(informe.Antecedentes)
+        ? informe.Antecedentes
+        : string.Format("La inspección AOCR #{0} se deriva de la solicitud {1}. La LV/EAE asociada se encuentra {2}.", numeroInspeccionVisual, numeroSolicitudVisual, vm.LvEaeFinalizada ? "finalizada" : "pendiente");
+    var objetivoTexto = informe.Resumen ?? string.Empty;
+    var alcanceTexto = informe.Alcance ?? string.Empty;
+    var desarrolloTexto = informe.Desarrollo ?? string.Empty;
+    var hallazgosTexto = informe.NoConformidades ?? string.Empty;
+    var observacionesTexto = informe.Observaciones ?? string.Empty;
+    var conclusionesTexto = informe.Conclusiones ?? string.Empty;
+    var recomendacionesTexto = informe.Recomendaciones ?? string.Empty;
+    var notasTexto = informe.Notas ?? string.Empty;
+    var otrosAdjuntosTexto = informe.OtrosAdjuntos ?? string.Empty;
+    var fechasInspeccionManual = informe.FechasInspeccionManual ?? string.Empty;
+    var estacionesInspeccionManual = informe.EstacionesInspeccionManual ?? string.Empty;
+    var numeroLicenciaInspector = !string.IsNullOrWhiteSpace(informe.NumeroLicenciaInspector)
+        ? informe.NumeroLicenciaInspector
+        : inspectorCedula;
+    var estadoInformeVisual = !string.IsNullOrWhiteSpace(vm.EstadoInformeTecnico)
+        ? vm.EstadoInformeTecnico
+        : "BORRADOR_INFORME";
+    var estadoLvVisual = !string.IsNullOrWhiteSpace(vm.EstadoListaVerificacion)
+        ? vm.EstadoListaVerificacion
+        : (vm.LvEaeFinalizada ? "LV_FINALIZADA" : "LV_BORRADOR");
+    var resultadoSeleccionado = InformeTecnicoTemplateHelper.NormalizeResultadoInformeTecnico(informe.Resultado);
+    var tipoResultadoInsatisfactorioSeleccionado = InformeTecnicoTemplateHelper.NormalizeTipoResultadoInsatisfactorio(informe.TipoResultadoInsatisfactorio);
+    var mostrarTipoResultadoInsatisfactorio = InformeTecnicoTemplateHelper.IsResultadoInsatisfactorio(resultadoSeleccionado);
+    var puedeEditar = vm.PuedeEditarInformeTecnico && string.IsNullOrWhiteSpace(vm.MensajeBloqueo);
+    var ayudaPdf = vm.ExistePdfInformeTecnico
+        ? "Documento disponible para revisión, descarga y trazabilidad del expediente técnico."
+        : "Aún no existe PDF definitivo. Use Guardar borrador o Previsualizar para revisar el contenido del informe antes de finalizar.";
+}
+
+<div class="modal fade modal-informe-tecnico" id="modalInformeTecnico" tabindex="-1" aria-labelledby="modalInformeTecnicoLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-scrollable">
+        <div class="modal-content aocr-modal-content" data-aocr-informe-modal="true">
+            <div class="modal-header aocr-modal-header">
+                <div>
+                    <h5 class="modal-title" id="modalInformeTecnicoLabel">Informe Técnico de Inspección</h5>
+                    <small>Elaboración del Informe Técnico posterior a la finalización de la LV/EAE.</small>
+                </div>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+            </div>
+
+            <div class="modal-body aocr-modal-body">
+                <div class="aocr-modal-badges">
+                    <span class="aocr-status-badge"><strong>Inspección N°</strong> @numeroInspeccionVisual</span>
+                    <span class="aocr-status-badge"><strong>Solicitud AOCR</strong> @numeroSolicitudVisual</span>
+                    <span class="aocr-status-badge"><strong>Estado LV/EAE</strong> @(vm.LvEaeFinalizada ? "Finalizada" : estadoLvVisual)</span>
+                    <span class="aocr-status-badge"><strong>Estado Informe</strong> @estadoInformeVisual</span>
+                </div>
+
+                @if (!string.IsNullOrWhiteSpace(vm.MensajeBloqueo))
+                {
+                    <div class="alert alert-warning aocr-inline-alert mt-3 mb-0">@vm.MensajeBloqueo</div>
+                }
+
+                <div class="aocr-modal-layout mt-3">
+                    <div class="aocr-modal-main">
+                        <div class="aocr-info-card">
+                            <h6 class="aocr-section-title">Datos generales</h6>
+                            <div class="aocr-form-grid aocr-form-grid-meta">
+                                <div class="aocr-data-field">
+                                    <label>Código de inspección</label>
+                                    <div>@inspeccion.CodigoInspeccion</div>
+                                </div>
+                                <div class="aocr-data-field">
+                                    <label>Solicitud vinculada</label>
+                                    <div>@numeroSolicitudVisual</div>
+                                </div>
+                                <div class="aocr-data-field">
+                                    <label>Nombre del EAE</label>
+                                    <div>@operadorVisual</div>
+                                </div>
+                                <div class="aocr-data-field">
+                                    <label>Fecha de inspección</label>
+                                    <div>@fechaInspeccionVisual</div>
+                                </div>
+                                <div class="aocr-data-field">
+                                    <label>Inspector responsable</label>
+                                    <div>@inspectorVisual</div>
+                                </div>
+                                <div class="aocr-data-field">
+                                    <label>Estado LV/EAE</label>
+                                    <div>@(vm.LvEaeFinalizada ? "Finalizada" : estadoLvVisual)</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <form action="@vm.UrlGuardar"
+                              method="post"
+                              enctype="multipart/form-data"
+                              id="formInformeTecnicoModal"
+                              class="aocr-informe-modal-form"
+                              data-aocr-informe-form="true"
+                              data-preview-url="@vm.UrlPrevisualizar"
+                              data-operador="@operadorVisual">
+                            @Html.AntiForgeryToken()
+                            @Html.Hidden("id", vm.CodigoInspeccion)
+                            @Html.Hidden("titulo", string.IsNullOrWhiteSpace(informe.Titulo) ? "INFORME TÉCNICO AOCR" : informe.Titulo)
+                            @Html.Hidden("modalRequest", "true")
+                            @Html.Hidden("trabajosRealizados", informe.TrabajosRealizados ?? string.Empty, new { id = "trabajosRealizadosFieldModal" })
+                            @Html.Hidden("operacionComercial", informe.OperacionComercial ?? operadorVisual)
+
+                            <fieldset class="aocr-modal-fieldset" @(puedeEditar ? null : "disabled=\"disabled\"")>
+                                <div class="aocr-info-card">
+                                    <h6 class="aocr-section-title">Antecedentes</h6>
+                                    <textarea name="antecedentes" class="form-control aocr-textarea-lg" placeholder="Detalle los antecedentes, la referencia de la solicitud y el estado de la LV/EAE.">@antecedentesTexto</textarea>
+                                    <div class="aocr-field-help">Incluya el contexto de la solicitud, el vínculo con la LV/EAE finalizada y la base documental revisada.</div>
+                                </div>
+
+                                <div class="aocr-form-grid aocr-form-grid-split">
+                                    <div class="aocr-info-card">
+                                        <h6 class="aocr-section-title">Objetivo de la inspección</h6>
+                                        <textarea name="resumen" class="form-control aocr-textarea-lg" placeholder="Describa el objetivo técnico de la inspección.">@objetivoTexto</textarea>
+                                    </div>
+                                    <div class="aocr-info-card">
+                                        <h6 class="aocr-section-title">Alcance</h6>
+                                        <textarea name="alcance" class="form-control aocr-textarea-lg" placeholder="Describa el alcance técnico, estaciones, operación o cobertura revisada.">@alcanceTexto</textarea>
+                                    </div>
+                                </div>
+
+                                <div class="aocr-info-card">
+                                    <h6 class="aocr-section-title">Cobertura operativa y datos base</h6>
+                                    <div class="aocr-form-grid aocr-form-grid-split">
+                                        <div class="aocr-form-field">
+                                            <label for="fechasInspeccionManualFieldModal">Fecha o rango de inspección</label>
+                                            <input type="text" id="fechasInspeccionManualFieldModal" name="fechasInspeccionManual" class="form-control" value="@fechasInspeccionManual" placeholder="dd/MM/yyyy o rango de fechas" />
+                                        </div>
+                                        <div class="aocr-form-field">
+                                            <label for="estacionesInspeccionManualFieldModal">Estación o cobertura</label>
+                                            <input type="text" id="estacionesInspeccionManualFieldModal" name="estacionesInspeccionManual" class="form-control" value="@estacionesInspeccionManual" placeholder="UIO, GYE, MEC, LTX u otra cobertura" />
+                                        </div>
+                                        <div class="aocr-form-field">
+                                            <label for="numeroLicenciaInspectorModal">Nro. licencia / identificación inspector</label>
+                                            <input type="text" id="numeroLicenciaInspectorModal" name="numeroLicenciaInspector" class="form-control" value="@numeroLicenciaInspector" placeholder="Licencia o identificación" />
+                                        </div>
+                                        <div class="aocr-form-field">
+                                            <label>Documentos revisados</label>
+                                            <textarea name="evidencias" class="form-control aocr-textarea-sm" placeholder="Documentos revisados, referencias técnicas y evidencias relevantes.">@documentosRevisadosTexto</textarea>
+                                        </div>
+                                    </div>
+
+                                    <div class="aocr-table-shell mt-3">
+                                        <table class="table table-bordered table-sm mb-0 aocr-services-table">
+                                            <thead>
+                                                <tr>
+                                                    <th>Servicio / responsabilidad</th>
+                                                    <th class="text-center">UIO</th>
+                                                    <th class="text-center">GYE</th>
+                                                    <th class="text-center">MEC</th>
+                                                    <th class="text-center">LTX</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                @foreach (var fila in servicios)
+                                                {
+                                                    <tr>
+                                                        <td>@fila.Label</td>
+                                                        <td><input type="text" class="form-control form-control-sm" name="@("servicio_" + fila.Key + "_uio")" value="@(fila.Uio ?? string.Empty)" /></td>
+                                                        <td><input type="text" class="form-control form-control-sm" name="@("servicio_" + fila.Key + "_gye")" value="@(fila.Gye ?? string.Empty)" /></td>
+                                                        <td><input type="text" class="form-control form-control-sm" name="@("servicio_" + fila.Key + "_mec")" value="@(fila.Mec ?? string.Empty)" /></td>
+                                                        <td><input type="text" class="form-control form-control-sm" name="@("servicio_" + fila.Key + "_ltx")" value="@(fila.Ltx ?? string.Empty)" /></td>
+                                                    </tr>
+                                                }
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+
+                                <div class="aocr-info-card">
+                                    <h6 class="aocr-section-title">Desarrollo técnico</h6>
+                                    <textarea name="desarrollo" class="form-control aocr-textarea-xl" placeholder="Describa el análisis técnico efectuado, verificaciones, contrastes, cumplimiento y criterios aplicados.">@desarrolloTexto</textarea>
+                                </div>
+
+                                <div class="aocr-form-grid aocr-form-grid-split">
+                                    <div class="aocr-info-card">
+                                        <h6 class="aocr-section-title">Resultado de la LV/EAE</h6>
+                                        <div class="aocr-state-box mb-3">
+                                            <div><strong>Estado actual:</strong> @(vm.LvEaeFinalizada ? "LV/EAE finalizada" : estadoLvVisual)</div>
+                                            <div><strong>Resultado general:</strong> @(string.IsNullOrWhiteSpace(lista.ResultadoGeneral) ? "Pendiente" : lista.ResultadoGeneral)</div>
+                                        </div>
+                                        <textarea name="notas" class="form-control aocr-textarea-lg" placeholder="Resuma cumplimiento, observaciones relevantes y resultado general de la LV/EAE.">@notasTexto</textarea>
+                                    </div>
+                                    <div class="aocr-info-card">
+                                        <h6 class="aocr-section-title">Hallazgos técnicos</h6>
+                                        <textarea name="noConformidades" class="form-control aocr-textarea-lg" placeholder="Registre los hallazgos técnicos. Puede usar una línea por hallazgo o bloque técnico.">@hallazgosTexto</textarea>
+                                        <div class="aocr-field-help">Puede registrar un hallazgo por línea para facilitar la lectura del borrador y del PDF.</div>
+                                    </div>
+                                </div>
+
+                                <div class="aocr-form-grid aocr-form-grid-split">
+                                    <div class="aocr-info-card">
+                                        <h6 class="aocr-section-title">Observaciones</h6>
+                                        <textarea name="observaciones" class="form-control aocr-textarea-lg" placeholder="Registre observaciones técnicas, restricciones o condiciones particulares.">@observacionesTexto</textarea>
+                                    </div>
+                                    <div class="aocr-info-card">
+                                        <h6 class="aocr-section-title">Conclusiones</h6>
+                                        <textarea name="conclusiones" class="form-control aocr-textarea-lg" placeholder="Emita la conclusión técnica del informe.">@conclusionesTexto</textarea>
+                                    </div>
+                                </div>
+
+                                <div class="aocr-form-grid aocr-form-grid-split">
+                                    <div class="aocr-info-card">
+                                        <h6 class="aocr-section-title">Recomendaciones</h6>
+                                        <textarea name="recomendaciones" class="form-control aocr-textarea-lg" placeholder="Indique recomendaciones, acciones correctivas o seguimiento posterior.">@recomendacionesTexto</textarea>
+                                    </div>
+                                    <div class="aocr-info-card">
+                                        <h6 class="aocr-section-title">Resultado técnico final</h6>
+                                        <p class="aocr-field-help">Seleccione el resultado técnico final institucional del informe.</p>
+                                        <div class="aocr-result-options aocr-radio-group">
+                                            <label class="aocr-result-option">
+                                                <input type="radio" name="resultado" value="SATISFACTORIO" class="resultado-tecnico-radio" @(string.Equals(resultadoSeleccionado, "SATISFACTORIO", StringComparison.OrdinalIgnoreCase) ? "checked=\"checked\"" : null) />
+                                                <span>Satisfactorio</span>
+                                            </label>
+                                            <label class="aocr-result-option">
+                                                <input type="radio" name="resultado" value="INSATISFACTORIO" class="resultado-tecnico-radio" @(string.Equals(resultadoSeleccionado, "INSATISFACTORIO", StringComparison.OrdinalIgnoreCase) ? "checked=\"checked\"" : null) />
+                                                <span>Insatisfactorio</span>
+                                            </label>
+                                            <label class="aocr-result-option">
+                                                <input type="radio" name="resultado" value="OBSERVADO" class="resultado-tecnico-radio" @(string.Equals(resultadoSeleccionado, "OBSERVADO", StringComparison.OrdinalIgnoreCase) ? "checked=\"checked\"" : null) />
+                                                <span>Observado</span>
+                                            </label>
+                                            <label class="aocr-result-option">
+                                                <input type="radio" name="resultado" value="REQUIERE_ACCION_CORRECTIVA" class="resultado-tecnico-radio" @(string.Equals(resultadoSeleccionado, "REQUIERE_ACCION_CORRECTIVA", StringComparison.OrdinalIgnoreCase) ? "checked=\"checked\"" : null) />
+                                                <span>Requiere acción correctiva</span>
+                                            </label>
+                                            <label class="aocr-result-option">
+                                                <input type="radio" name="resultado" value="NO_APLICA" class="resultado-tecnico-radio" @(string.Equals(resultadoSeleccionado, "NO_APLICA", StringComparison.OrdinalIgnoreCase) ? "checked=\"checked\"" : null) />
+                                                <span>No aplica</span>
+                                            </label>
+                                        </div>
+
+                                        <div id="bloqueTipoInsatisfactorio"
+                                             class="aocr-subsection aocr-collapsible-subsection @(mostrarTipoResultadoInsatisfactorio ? "is-visible" : string.Empty)"
+                                             aria-live="polite"
+                                             @(mostrarTipoResultadoInsatisfactorio ? null : "style=\"display:none;\"")>
+                                            <h6 class="aocr-section-title-sm">Tipo de resultado insatisfactorio</h6>
+                                            <p class="aocr-field-help">Seleccione si el resultado insatisfactorio requiere una nueva inspección o si puede continuar sin nueva inspección.</p>
+
+                                            <div class="aocr-result-options aocr-radio-group">
+                                                <label class="aocr-result-option">
+                                                    <input type="radio" name="tipoResultadoInsatisfactorio" value="CON_INSPECCION" class="tipo-insatisfactorio-radio" @(string.Equals(tipoResultadoInsatisfactorioSeleccionado, "CON_INSPECCION", StringComparison.OrdinalIgnoreCase) ? "checked=\"checked\"" : null) />
+                                                    <span>Con inspección</span>
+                                                </label>
+                                                <label class="aocr-result-option">
+                                                    <input type="radio" name="tipoResultadoInsatisfactorio" value="SIN_INSPECCION" class="tipo-insatisfactorio-radio" @(string.Equals(tipoResultadoInsatisfactorioSeleccionado, "SIN_INSPECCION", StringComparison.OrdinalIgnoreCase) ? "checked=\"checked\"" : null) />
+                                                    <span>Sin inspección</span>
+                                                </label>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="aocr-info-card">
+                                    <h6 class="aocr-section-title">Documentos y anexos</h6>
+                                    <input type="hidden" name="documentosAdjuntosPresent" value="true" />
+                                    <div class="aocr-document-grid">
+                                        @{ var idxAdj = 0; }
+                                        @foreach (var adjunto in documentosAdjuntosBase)
+                                        {
+                                            var estaSeleccionado = documentosAdjuntosSeleccionados.Any(item => string.Equals(item, adjunto, StringComparison.OrdinalIgnoreCase));
+                                            var archivoAdjuntoActual = documentosAdjuntosArchivos.ContainsKey(adjunto) ? documentosAdjuntosArchivos[adjunto] : string.Empty;
+                                            var resumenAdjuntoActual = !string.IsNullOrWhiteSpace(archivoAdjuntoActual)
+                                                ? "Archivo cargado: " + archivoAdjuntoActual
+                                                : (estaSeleccionado ? "Documento marcado en el informe. Sin archivo cargado." : string.Empty);
+                                            var adjFileKey = "archivoAdjunto_" + idxAdj;
+                                            var adjSummaryId = "adjuntoResumenModal_" + idxAdj;
+
+                                            <div class="aocr-document-item">
+                                                <label class="aocr-document-main">
+                                                    <input type="checkbox" name="documentosAdjuntos" value="@adjunto" @(estaSeleccionado ? "checked=\"checked\"" : null) />
+                                                    <span>@adjunto</span>
+                                                </label>
+                                                <div class="aocr-document-upload">
+                                                    <input type="file" name="@adjFileKey" class="form-control form-control-sm" accept=".pdf,.jpg,.jpeg,.png,.doc,.docx,.xls,.xlsx" data-file-summary-target="@adjSummaryId" />
+                                                    <small id="@adjSummaryId" class="aocr-document-note" data-existing-summary="@resumenAdjuntoActual">@resumenAdjuntoActual</small>
+                                                </div>
+                                            </div>
+
+                                            idxAdj++;
+                                        }
+                                    </div>
+
+                                    <div class="aocr-form-grid aocr-form-grid-split mt-3">
+                                        <div class="aocr-form-field">
+                                            <label>Otros adjuntos</label>
+                                            <textarea name="otrosAdjuntos" class="form-control aocr-textarea-sm" placeholder="Ingrese otros documentos adjuntos; puede usar una línea por documento.">@otrosAdjuntosTexto</textarea>
+                                        </div>
+                                        <div class="aocr-form-field">
+                                            <label>Cargar archivos adicionales</label>
+                                            <input type="file" name="otrosAdjuntosArchivo" class="form-control" multiple accept=".pdf,.jpg,.jpeg,.png,.doc,.docx,.xls,.xlsx" />
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="aocr-info-card">
+                                    <h6 class="aocr-section-title">Sección de firmas</h6>
+                                    <div class="aocr-signature-placeholder">
+                                        <div class="aocr-signature-line"></div>
+                                        <p>@inspectorVisual</p>
+                                        <small>La firma digital se gestiona fuera del modal y solo se habilita cuando el flujo documental corresponda.</small>
+                                    </div>
+                                </div>
+                            </fieldset>
+                        </form>
+                    </div>
+
+                    <div class="aocr-modal-side">
+                        <div class="aocr-info-card">
+                            <h6 class="aocr-section-title">Vista previa y PDF</h6>
+                            @Html.Partial("~/Views/Shared/_AocrPdfViewer.cshtml", new AocrPdfViewerViewModel
+                            {
+                                PdfUrl = vm.ExistePdfInformeTecnico ? vm.UrlVerPdf : string.Empty,
+                                DescargarUrl = vm.ExistePdfInformeTecnico ? vm.UrlDescargarPdf : string.Empty,
+                                Titulo = "Informe Técnico de Inspección",
+                                Subtitulo = "Inspección #" + numeroInspeccionVisual,
+                                EstadoDocumento = estadoInformeVisual,
+                                MensajeAyuda = ayudaPdf,
+                                PermitirDescarga = true,
+                                PermitirImpresion = true,
+                                MostrarToolbar = true,
+                                ContenedorId = "viewerInformeTecnicoModal",
+                                PantallaCompleta = false
+                            })
+                        </div>
+
+                        <div class="aocr-info-card">
+                            <h6 class="aocr-section-title">Resumen del expediente</h6>
+                            <div class="aocr-side-list">
+                                <div><strong>Operador:</strong> @operadorVisual</div>
+                                <div><strong>Tipo de operación:</strong> @(string.IsNullOrWhiteSpace(lista.TipoOperacion) ? "No registrado" : lista.TipoOperacion)</div>
+                                <div><strong>Documentos asociados:</strong> @documentos.Count</div>
+                                <div><strong>Informe existente:</strong> @(vm.ExisteInformeTecnico ? "Sí" : "No")</div>
+                                <div><strong>PDF definitivo:</strong> @(vm.ExistePdfInformeTecnico ? "Disponible" : "Pendiente")</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="modal-footer aocr-modal-footer">
+                <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cerrar</button>
+
+                @if (puedeEditar)
+                {
+                    <button type="button" class="btn btn-secondary" data-aocr-submit-mode="guardar">Guardar borrador</button>
+                    <button type="button" class="btn btn-info text-white" data-aocr-preview-button="true">Previsualizar</button>
+                    <button type="button" class="btn btn-primary" data-aocr-submit-mode="finalizar">Finalizar Informe Técnico</button>
+                }
+                else if (vm.ExistePdfInformeTecnico)
+                {
+                    <a href="@vm.UrlVerPdf" target="_blank" rel="noopener" class="btn btn-outline-primary">Ver PDF</a>
+                }
+            </div>
+        </div>
+    </div>
+</div>

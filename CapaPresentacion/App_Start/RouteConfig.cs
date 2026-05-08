@@ -26,6 +26,18 @@ namespace CapaPresentacion
                 defaults: new { controller = "Orden", action = "Detalle", id = UrlParameter.Optional }
             );
 
+            routes.MapRoute(
+                name: "LegacyLvEaeOficialPdf",
+                url: "ListaVerificacion/PdfListaVerificacionEaeOficial/{codigoInspeccion}",
+                defaults: new { controller = "Inspeccion", action = "VerLvEaeOficial", codigoInspeccion = UrlParameter.Optional }
+            );
+
+            routes.MapRoute(
+                name: "LegacyLvEaePdf",
+                url: "Inspeccion/ListaVerificacionOperacionalEaePdf/{id}",
+                defaults: new { controller = "Inspeccion", action = "VerListaVerificacionOperacionalEae", id = UrlParameter.Optional }
+            );
+
             // RUTA POR DEFECTO - debe ir ÚLTIMA
             routes.MapRoute(
                 name: "Default",

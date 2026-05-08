@@ -233,34 +233,89 @@ namespace CapaPresentacion.Helpers
 
         public static string GetResultadoLabel(string resultado)
         {
-            var normalized = NormalizeResultado(resultado);
+            var normalized = NormalizeResultadoInformeTecnico(resultado);
             if (normalized == "SATISFACTORIO")
             {
                 return "Satisfactorio";
             }
 
-            if (normalized == "NO_SATISFACTORIO" || normalized == "INSATISFACTORIO")
+            if (normalized == "INSATISFACTORIO")
             {
                 return "Insatisfactorio";
             }
 
-            if (normalized == "OBSERVACION_DOCUMENTAL")
+            if (normalized == "OBSERVADO")
             {
-                return "Observacion documental";
+                return "Observado";
             }
 
-            return string.IsNullOrWhiteSpace(resultado) ? "Pendiente" : resultado.Trim();
+            if (normalized == "REQUIERE_ACCION_CORRECTIVA")
+            {
+                return "Requiere acción correctiva";
+            }
+
+            if (normalized == "NO_APLICA")
+            {
+                return "No aplica";
+            }
+
+            return string.IsNullOrWhiteSpace(resultado) ? "Pendiente" : resultado.Trim().Replace("_", " ");
         }
 
         public static bool IsResultadoSatisfactorio(string resultado)
         {
-            return NormalizeResultado(resultado) == "SATISFACTORIO";
+            return NormalizeResultadoInformeTecnico(resultado) == "SATISFACTORIO";
         }
 
         public static bool IsResultadoInsatisfactorio(string resultado)
         {
+            return NormalizeResultadoInformeTecnico(resultado) == "INSATISFACTORIO";
+        }
+
+        public static string GetTipoResultadoInsatisfactorioLabel(string tipoResultadoInsatisfactorio)
+        {
+            var normalized = NormalizeTipoResultadoInsatisfactorio(tipoResultadoInsatisfactorio);
+            if (normalized == "CON_INSPECCION")
+            {
+                return "Con inspección";
+            }
+
+            if (normalized == "SIN_INSPECCION")
+            {
+                return "Sin inspección";
+            }
+
+            return string.Empty;
+        }
+
+        public static string NormalizeResultadoInformeTecnico(string resultado)
+        {
             var normalized = NormalizeResultado(resultado);
-            return normalized == "NO_SATISFACTORIO" || normalized == "INSATISFACTORIO";
+            switch (normalized)
+            {
+                case "NO_SATISFACTORIO":
+                    return "INSATISFACTORIO";
+                case "OBSERVACION_DOCUMENTAL":
+                    return "OBSERVADO";
+                case "NO_APLICABLE":
+                case "N/A":
+                    return "NO_APLICA";
+                default:
+                    return normalized;
+            }
+        }
+
+        public static string NormalizeTipoResultadoInsatisfactorio(string tipoResultadoInsatisfactorio)
+        {
+            var normalized = NormalizeResultado(tipoResultadoInsatisfactorio);
+            switch (normalized)
+            {
+                case "CON_INSPECCION":
+                case "SIN_INSPECCION":
+                    return normalized;
+                default:
+                    return string.Empty;
+            }
         }
 
         private static Dictionary<string, string[]> ParseServicioRows(string serialized)

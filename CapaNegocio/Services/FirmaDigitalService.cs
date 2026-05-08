@@ -160,7 +160,7 @@ namespace CapaNegocio.Services
 
             if (rol == "LV_EAE_INSPECTOR")
             {
-                return new Rectangle(120f, 72f, 472f, 156f);
+                return new Rectangle(162f, 80f, 430f, 148f);
             }
 
             // Informe Técnico — columna derecha (DIRDAC)
@@ -483,6 +483,7 @@ namespace CapaNegocio.Services
 
         private static void DibujarTarjetaInformeTecnico(PdfContentByte canvas, Rectangle rectTotal, string nombreFirmante, string rolFirmante, DateTime fechaFirma, string motivoFirma, string ubicacionFirma, string sujetoCertificado)
         {
+            var esLvEae = string.Equals((rolFirmante ?? string.Empty).Trim(), "LV_EAE_INSPECTOR", StringComparison.OrdinalIgnoreCase);
             var fondo = new BaseColor(249, 249, 249);
             var borde = new BaseColor(205, 205, 205);
             var divisor = new BaseColor(220, 220, 220);
@@ -498,10 +499,9 @@ namespace CapaNegocio.Services
             canvas.Stroke();
 
             var width = rectTotal.Right - rectTotal.Left;
-            var height = rectTotal.Top - rectTotal.Bottom;
-            var paddingX = 10f;
-            var paddingY = 8f;
-            var splitX = rectTotal.Left + (width * 0.43f);
+            var paddingX = esLvEae ? 8f : 10f;
+            var paddingY = esLvEae ? 6f : 8f;
+            var splitX = rectTotal.Left + (width * (esLvEae ? 0.46f : 0.43f));
 
             canvas.SetColorStroke(divisor);
             canvas.SetLineWidth(0.6f);
@@ -528,17 +528,17 @@ namespace CapaNegocio.Services
                 detalleCertificado = detalleCertificado.Substring(0, 89) + "...";
             }
 
-            var nameFont = new Font(Font.FontFamily.HELVETICA, 17f, Font.BOLD, BaseColor.BLACK);
-            var titleFont = new Font(Font.FontFamily.HELVETICA, 6.8f, Font.NORMAL, tituloColor);
-            var detailFont = new Font(Font.FontFamily.HELVETICA, 7.1f, Font.NORMAL, BaseColor.BLACK);
+            var nameFont = new Font(Font.FontFamily.HELVETICA, esLvEae ? 14.2f : 17f, Font.BOLD, BaseColor.BLACK);
+            var titleFont = new Font(Font.FontFamily.HELVETICA, esLvEae ? 6.0f : 6.8f, Font.NORMAL, tituloColor);
+            var detailFont = new Font(Font.FontFamily.HELVETICA, esLvEae ? 6.4f : 7.1f, Font.NORMAL, BaseColor.BLACK);
 
             var nameColumn = new ColumnText(canvas);
-            nameColumn.SetSimpleColumn(leftRect.Left, leftRect.Bottom, leftRect.Right, leftRect.Top, 18f, Element.ALIGN_LEFT);
+            nameColumn.SetSimpleColumn(leftRect.Left, leftRect.Bottom, leftRect.Right, leftRect.Top, esLvEae ? 14.8f : 18f, Element.ALIGN_LEFT);
             nameColumn.AddText(new Phrase(nombreMostrado, nameFont));
             nameColumn.Go();
 
             var detailColumn = new ColumnText(canvas);
-            detailColumn.SetSimpleColumn(rightRect.Left, rightRect.Bottom, rightRect.Right, rightRect.Top, 9.2f, Element.ALIGN_LEFT);
+            detailColumn.SetSimpleColumn(rightRect.Left, rightRect.Bottom, rightRect.Right, rightRect.Top, esLvEae ? 7.8f : 9.2f, Element.ALIGN_LEFT);
             detailColumn.AddText(new Phrase("Firmado digitalmente por\n", titleFont));
             detailColumn.AddText(new Phrase(nombreMostrado + "\n", detailFont));
             detailColumn.AddText(new Phrase("Rol: " + ObtenerEtiquetaRol(rolFirmante) + "\n", detailFont));

@@ -44,8 +44,11 @@ namespace CapaNegocio.Services
         // Dimensiones del rectángulo de firma según tipo de plantilla
         private const float AnchoInforme = 320f;   // tarjeta visual de firma del informe técnico
         private const float AltoInforme = 93f;
-        private const float AnchoLvEae = 352f;
-        private const float AltoLvEae = 84f;
+        // El slot visible de la firma LV/EAE mide aprox. 95mm x 24mm en la plantilla oficial.
+        // Mantener el rectangulo dentro de ese espacio evita que la tarjeta firmada invada las lineas
+        // de Nombre/Cargo/Fecha debajo del bloque.
+        private const float AnchoLvEae = 268f;
+        private const float AltoLvEae = 68f;
         private const float AnchoAocr = 160f;      // ~34% columna A4
         private const float AltoAocr = 96f;
         private const float AnchoCertificado = 188f; // ancho util reducido para dejar aire dentro del slot del certificado
