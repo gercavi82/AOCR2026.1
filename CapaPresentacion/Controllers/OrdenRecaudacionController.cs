@@ -1046,7 +1046,7 @@ namespace CapaPresentacion.Controllers
 
                 // Reutilizar la misma leyenda configurable/fallback en correo y PDF.
                 string leyendaBancos = pdfModel.LeyendaBancos;
-                var nombreArchivo = "Comprobante_Orden_" + (orden.NumeroOrden ?? orden.Id.ToString()) + ".pdf";
+                var nombreArchivo = ConstruirNombrePdfOrdenRecaudacion(orden);
                 byte[] pdfBytes = null;
 
                 try
@@ -1710,7 +1710,7 @@ namespace CapaPresentacion.Controllers
             try
             {
                 var pdfModel = BuildOrdenRecaudacionPdfModel(ordenModel);
-                var nombreArchivo = "Orden_" + (ordenModel.NumeroOrden ?? id.ToString()) + ".pdf";
+                var nombreArchivo = ConstruirNombrePdfOrdenRecaudacion(ordenModel);
 
                 var pdf = new PartialViewAsPdf("OrdenRecaudacionPDF", pdfModel)
                 {
@@ -1720,12 +1720,10 @@ namespace CapaPresentacion.Controllers
                     CustomSwitches = PdfBrandingHelper.StandardRotativaSwitches
                 };
 
-                if (!vistaPrevia)
-                {
-                    pdf.FileName = nombreArchivo;
-                }
-
-                return pdf;
+                var pdfBytes = pdf.BuildFile(ControllerContext);
+                Response.Headers["X-Content-Type-Options"] = "nosniff";
+                PdfFileNameHelper.AplicarContentDispositionPdf(Response, !vistaPrevia, nombreArchivo);
+                return File(pdfBytes, "application/pdf");
             }
             catch (Exception ex)
             {
@@ -1765,9 +1763,11 @@ namespace CapaPresentacion.Controllers
                     return RedirectToAction("Detalles", new { id });
                 }
 
-                var nombreArchivo = !string.IsNullOrWhiteSpace(factura.FileName)
-                    ? factura.FileName
-                    : Path.GetFileName(rutaFisica);
+                var nombreArchivo = EsPdfFactura(factura, rutaFisica)
+                    ? ConstruirNombrePdfFactura(ordenModel, factura)
+                    : (!string.IsNullOrWhiteSpace(factura.FileName)
+                        ? factura.FileName
+                        : Path.GetFileName(rutaFisica));
                 var contentType = !string.IsNullOrWhiteSpace(factura.ContentType)
                     ? factura.ContentType
                     : MimeMapping.GetMimeMapping(nombreArchivo);
@@ -1804,6 +1804,52 @@ namespace CapaPresentacion.Controllers
 
             var basePath = FileStorageHelper.GetPhysicalBasePath(FileStorageHelper.BasePathStorage);
             return Path.Combine(basePath, rutaArchivo.TrimStart('/', '\\').Replace('/', Path.DirectorySeparatorChar));
+        }
+
+        private string ConstruirNombrePdfOrdenRecaudacion(OrdenRecaudacionModel ordenModel)
+        {
+            var numeroOrden = ordenModel != null && !string.IsNullOrWhiteSpace(ordenModel.NumeroOrden)
+                ? ordenModel.NumeroOrden
+                : (ordenModel != null ? ordenModel.Id.ToString() : string.Empty);
+            var nombreOperador = ordenModel == null
+                ? string.Empty
+                : PdfFileNameHelper.PrimerValorNoVacio(
+                    PdfFileNameHelper.CombinarSegmentos(ordenModel.RucCedula, ordenModel.Compania),
+                    PdfFileNameHelper.CombinarSegmentos(ordenModel.RucCedula, ordenModel.NombreContribuyente),
+                    ordenModel.Compania,
+                    ordenModel.NombreContribuyente,
+                    ordenModel.RucCedula);
+
+            return PdfFileNameHelper.CrearNombreOrdenRecaudacion(numeroOrden, nombreOperador, ordenModel != null ? (DateTime?)ordenModel.FechaCreacion : (DateTime?)null);
+        }
+
+        private string ConstruirNombrePdfFactura(OrdenRecaudacionModel ordenModel, FacturaPagoRegistroModel factura)
+        {
+            var numeroFactura = factura != null && !string.IsNullOrWhiteSpace(factura.NumeroFactura)
+                ? factura.NumeroFactura
+                : (ordenModel != null && !string.IsNullOrWhiteSpace(ordenModel.NumeroOrden)
+                    ? ordenModel.NumeroOrden
+                    : (ordenModel != null ? ordenModel.Id.ToString() : string.Empty));
+            var nombreOperador = ordenModel == null
+                ? string.Empty
+                : PdfFileNameHelper.PrimerValorNoVacio(
+                    PdfFileNameHelper.CombinarSegmentos(ordenModel.RucCedula, ordenModel.Compania),
+                    PdfFileNameHelper.CombinarSegmentos(ordenModel.RucCedula, ordenModel.NombreContribuyente),
+                    ordenModel.Compania,
+                    ordenModel.NombreContribuyente,
+                    ordenModel.RucCedula);
+
+            return PdfFileNameHelper.CrearNombreFactura(numeroFactura, nombreOperador, factura != null ? (DateTime?)factura.FechaEmision : (DateTime?)ordenModel.FechaCreacion);
+        }
+
+        private bool EsPdfFactura(FacturaPagoRegistroModel factura, string rutaFisica)
+        {
+            if (factura != null && string.Equals(factura.ContentType, "application/pdf", StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+
+            return string.Equals(Path.GetExtension(rutaFisica), ".pdf", StringComparison.OrdinalIgnoreCase);
         }
 
 

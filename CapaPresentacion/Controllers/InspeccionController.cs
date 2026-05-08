@@ -829,6 +829,20 @@ namespace CapaPresentacion.Controllers
             return ServirListaVerificacionOperacionalEaePdf(id, true);
         }
 
+        [HttpGet]
+        [Authorize(Roles = ROLES_GESTION_INSPECCION_CON_SOLICITANTE)]
+        public ActionResult VerLvEaeOficial(int codigoInspeccion)
+        {
+            return GenerarResultadoPdfListaVerificacionOperacionalEaeOficial(codigoInspeccion, false);
+        }
+
+        [HttpGet]
+        [Authorize(Roles = ROLES_GESTION_INSPECCION_CON_SOLICITANTE)]
+        public ActionResult DescargarLvEaeOficial(int codigoInspeccion)
+        {
+            return GenerarResultadoPdfListaVerificacionOperacionalEaeOficial(codigoInspeccion, true);
+        }
+
         private ActionResult ServirInformePdf(int id, bool descargar)
         {
             if (id <= 0) return new HttpStatusCodeResult(400, "ID inválido.");
@@ -841,6 +855,8 @@ namespace CapaPresentacion.Controllers
                 return new HttpStatusCodeResult(403, "No autorizado para ver el informe.");
 
             var informeTecnico = _informeDAO.ObtenerUltimoPorInspeccion(id);
+            var solicitud = _solicitudDAO.ObtenerPorId(inspeccion.CodigoSolicitud);
+            NormalizarDatosOperadorSolicitud(solicitud);
             var rutasCandidatas = new[]
             {
                 informeTecnico != null ? informeTecnico.RutaDocumentoFirmado : null,
@@ -899,7 +915,7 @@ namespace CapaPresentacion.Controllers
             }
 
             Response.Headers["X-Content-Type-Options"] = "nosniff";
-            Response.AddHeader("Content-Disposition", (descargar ? "attachment" : "inline") + "; filename=InformeInspeccion_" + id + ".pdf");
+            PdfFileNameHelper.AplicarContentDispositionPdf(Response, descargar, ConstruirNombrePdfInformeTecnico(inspeccion, solicitud, informeTecnico));
 
             return File(fullPath, "application/pdf");
         }
@@ -923,6 +939,8 @@ namespace CapaPresentacion.Controllers
             }
 
             var lista = _listaVerificacionOperacionalEaeDAO.ObtenerUltimaPorInspeccion(id);
+            var solicitud = _solicitudDAO.ObtenerPorId(inspeccion.CodigoSolicitud);
+            NormalizarDatosOperadorSolicitud(solicitud);
             var rutasCandidatas = new[]
             {
                 lista != null ? lista.RutaDocumentoFirmado : null,
@@ -981,8 +999,170 @@ namespace CapaPresentacion.Controllers
             }
 
             Response.Headers["X-Content-Type-Options"] = "nosniff";
-            Response.AddHeader("Content-Disposition", (descargar ? "attachment" : "inline") + "; filename=ListaVerificacionEae_" + id + ".pdf");
+            PdfFileNameHelper.AplicarContentDispositionPdf(Response, descargar, ConstruirNombrePdfListaVerificacionOperacionalEae(inspeccion, solicitud, lista));
             return File(fullPath, "application/pdf");
+        }
+
+        private ActionResult GenerarResultadoPdfListaVerificacionOperacionalEaeOficial(int codigoInspeccion, bool descargar)
+        {
+            if (codigoInspeccion <= 0)
+            {
+                return new HttpStatusCodeResult(400, "ID inválido.");
+            }
+
+            var inspeccion = _inspeccionDAO.ObtenerPorId(codigoInspeccion);
+            if (inspeccion == null)
+            {
+                return HttpNotFound("Inspección no encontrada.");
+            }
+
+            if (!PuedeAccederInspeccion(inspeccion))
+            {
+                return new HttpStatusCodeResult(403, "No autorizado para generar la lista de verificación operacional oficial.");
+            }
+
+            var solicitud = _solicitudDAO.ObtenerPorId(inspeccion.CodigoSolicitud);
+            NormalizarDatosOperadorSolicitud(solicitud);
+            if (!UsaFlujoListaVerificacionOperacionalEae(solicitud))
+            {
+                return new HttpStatusCodeResult(409, "La lista de verificación operacional EAE no aplica para esta inspección.");
+            }
+
+            var lista = _listaVerificacionOperacionalEaeDAO.ObtenerUltimaPorInspeccion(codigoInspeccion);
+            if (lista == null)
+            {
+                return HttpNotFound("La inspección aún no tiene una lista de verificación operacional generada.");
+            }
+
+            var vm = ConstruirViewModelListaVerificacionOperacionalEaePdfOficial(inspeccion, solicitud, lista);
+            var pdf = CrearPdfListaVerificacionOperacionalEaeOficial(vm);
+            var pdfBytes = pdf.BuildFile(ControllerContext);
+            Response.Headers["X-Content-Type-Options"] = "nosniff";
+            PdfFileNameHelper.AplicarContentDispositionPdf(Response, descargar, ConstruirNombrePdfListaVerificacionOperacionalEae(inspeccion, solicitud, lista));
+            return File(pdfBytes, "application/pdf");
+        }
+
+        [HttpPost]
+        [Authorize(Roles = ROL_ADMIN)]
+        public ActionResult RegenerarHistoricosPdfLvEaeOficial()
+        {
+            if (Request == null || !Request.IsLocal)
+            {
+                return new HttpStatusCodeResult(403, "Esta operación solo está disponible localmente.");
+            }
+
+            var usuarioId = ObtenerCodigoUsuario();
+            var registros = _listaVerificacionOperacionalEaeDAO.ListarConPdfHistorico();
+            var items = new List<object>();
+            var pendientesRefirma = new List<object>();
+            var regenerados = 0;
+            var yaCorrectos = 0;
+            var errores = 0;
+
+            foreach (var lista in registros)
+            {
+                try
+                {
+                    var inspeccion = _inspeccionDAO.ObtenerPorId(lista.CodigoInspeccion);
+                    if (inspeccion == null)
+                    {
+                        errores++;
+                        items.Add(new
+                        {
+                            codigoInspeccion = lista.CodigoInspeccion,
+                            version = lista.Version,
+                            codigoLv = lista.CodigoListaVerificacion,
+                            error = "Inspección no encontrada."
+                        });
+                        continue;
+                    }
+
+                    var solicitud = _solicitudDAO.ObtenerPorId(inspeccion.CodigoSolicitud);
+                    NormalizarDatosOperadorSolicitud(solicitud);
+                    if (!UsaFlujoListaVerificacionOperacionalEae(solicitud))
+                    {
+                        items.Add(new
+                        {
+                            codigoInspeccion = lista.CodigoInspeccion,
+                            version = lista.Version,
+                            codigoLv = lista.CodigoListaVerificacion,
+                            omitido = true,
+                            motivo = "La inspección no usa flujo LV/EAE."
+                        });
+                        continue;
+                    }
+
+                    HidratarListaVerificacionOperacionalEae(lista, solicitud);
+
+                    var paginasAntes = ObtenerNumeroPaginasPdfArchivo(lista.RutaPdf);
+                    var paginasFirmadas = ObtenerNumeroPaginasPdfArchivo(lista.RutaDocumentoFirmado);
+                    var pdfBytes = GenerarPdfListaVerificacionOperacionalEae(inspeccion, solicitud, lista);
+                    var paginasGeneradas = ObtenerNumeroPaginasPdf(pdfBytes);
+                    var rutaPdfFinal = GuardarOReemplazarListaVerificacionOperacionalEaePdfHistorico(lista, pdfBytes, usuarioId);
+                    var paginasDespues = ObtenerNumeroPaginasPdfArchivo(rutaPdfFinal);
+                    var reemplazado = paginasAntes != 7 || paginasDespues != paginasAntes || string.IsNullOrWhiteSpace(lista.RutaPdf);
+
+                    if (reemplazado)
+                    {
+                        regenerados++;
+                    }
+                    else if (paginasDespues == 7)
+                    {
+                        yaCorrectos++;
+                    }
+
+                    if (lista.FirmadoTecnico && !string.IsNullOrWhiteSpace(lista.RutaDocumentoFirmado) && paginasFirmadas > 0 && paginasFirmadas != 7)
+                    {
+                        pendientesRefirma.Add(new
+                        {
+                            codigoInspeccion = lista.CodigoInspeccion,
+                            version = lista.Version,
+                            codigoLv = lista.CodigoListaVerificacion,
+                            rutaDocumentoFirmado = lista.RutaDocumentoFirmado,
+                            paginasDocumentoFirmado = paginasFirmadas,
+                            motivo = "El PDF firmado histórico conserva la versión previa y requiere re-firma manual con el certificado original."
+                        });
+                    }
+
+                    items.Add(new
+                    {
+                        codigoInspeccion = lista.CodigoInspeccion,
+                        version = lista.Version,
+                        codigoLv = lista.CodigoListaVerificacion,
+                        paginasAntes,
+                        paginasGeneradas,
+                        paginasDespues,
+                        rutaPdf = rutaPdfFinal,
+                        firmadoTecnico = lista.FirmadoTecnico,
+                        paginasDocumentoFirmado = paginasFirmadas,
+                        reemplazado
+                    });
+                }
+                catch (Exception ex)
+                {
+                    errores++;
+                    _logger.LogError("[GestionInspeccion] Error regenerando PDF histórico LV/EAE. CodigoLv=" + (lista != null ? lista.CodigoListaVerificacion.ToString() : "0") + ", Error=" + ex);
+                    items.Add(new
+                    {
+                        codigoInspeccion = lista != null ? lista.CodigoInspeccion : 0,
+                        version = lista != null ? lista.Version : 0,
+                        codigoLv = lista != null ? lista.CodigoListaVerificacion : 0,
+                        error = ex.Message
+                    });
+                }
+            }
+
+            return Json(new
+            {
+                ok = true,
+                total = registros.Count,
+                regenerados,
+                yaCorrectos,
+                pendientesRefirma = pendientesRefirma.Count,
+                errores,
+                items,
+                pendientesDocumentoFirmado = pendientesRefirma
+            });
         }
 
         [HttpGet]
@@ -1303,8 +1483,10 @@ namespace CapaPresentacion.Controllers
                     return HttpNotFound("La vista previa expiró o no se encuentra disponible. Vuelva a generarla.");
                 }
 
+                var solicitud = _solicitudDAO.ObtenerPorId(inspeccion.CodigoSolicitud);
+                NormalizarDatosOperadorSolicitud(solicitud);
                 Response.Headers["X-Content-Type-Options"] = "nosniff";
-                Response.AddHeader("Content-Disposition", "inline; filename=InformeTecnico_VistaPrevia.pdf");
+                PdfFileNameHelper.AplicarContentDispositionPdf(Response, false, ConstruirNombrePdfInformeTecnico(inspeccion, solicitud, null, "Vista_Previa"));
                 return File(fullPath, "application/pdf");
             }
             catch (Exception ex)
@@ -1420,14 +1602,15 @@ namespace CapaPresentacion.Controllers
             {
                 var form = Request?.Unvalidated?.Form;
                 var idRaw = form?["id"] ?? Request?.Unvalidated?.QueryString["id"];
+                var submitActionRaw = form?["lvSubmitAction"] ?? Request?.Unvalidated?.QueryString["lvSubmitAction"];
                 var finalizarRaw = form?["finalizar"] ?? Request?.Unvalidated?.QueryString["finalizar"];
-                var finalizar = false;
+                var finalizar = EsAccionFinalizarListaVerificacionOperacionalEae(submitActionRaw, finalizarRaw);
 
                 int.TryParse(idRaw, out id);
-                if (!string.IsNullOrWhiteSpace(finalizarRaw))
-                {
-                    bool.TryParse(finalizarRaw, out finalizar);
-                }
+                _logger.LogInfo("[GestionInspeccion] GuardarListaVerificacionOperacionalEae recibido. InspeccionId=" + id
+                    + ", SubmitAction=" + (submitActionRaw ?? string.Empty)
+                    + ", FinalizarRaw=" + (finalizarRaw ?? string.Empty)
+                    + ", Finalizar=" + finalizar);
 
                 if (id <= 0)
                 {
@@ -1467,12 +1650,18 @@ namespace CapaPresentacion.Controllers
                 string mensajeValidacion;
                 if (finalizar && !ValidarListaVerificacionOperacionalEaeParaFinalizar(lista, out mensajeValidacion))
                 {
+                    _logger.LogWarning("[GestionInspeccion] Finalizacion LV/EAE rechazada por validacion. InspeccionId=" + id + ", Mensaje=" + (mensajeValidacion ?? string.Empty));
                     TempData["Error"] = mensajeValidacion;
                     return RedirectToAction("Detalle", new { id });
                 }
 
                 var listaGuardada = _listaVerificacionOperacionalEaeDAO.GuardarBorrador(lista, usuarioId);
                 HidratarListaVerificacionOperacionalEae(listaGuardada, solicitud);
+                _logger.LogInfo("[GestionInspeccion] LV/EAE guardada. InspeccionId=" + id
+                    + ", CodigoLv=" + listaGuardada.CodigoListaVerificacion
+                    + ", Version=" + listaGuardada.Version
+                    + ", Estado=" + (listaGuardada.EstadoLista ?? string.Empty)
+                    + ", Finalizar=" + finalizar);
 
                 if (!finalizar)
                 {
@@ -1482,6 +1671,17 @@ namespace CapaPresentacion.Controllers
 
                 var pdfBytes = GenerarPdfListaVerificacionOperacionalEae(inspeccion, solicitud, listaGuardada);
                 var rutaPdf = GuardarListaVerificacionOperacionalEaePdf(id, listaGuardada.Version, pdfBytes);
+                var rutaPdfFisica = ResolverRutaAbsolutaInforme(rutaPdf);
+                var pdfExiste = !string.IsNullOrWhiteSpace(rutaPdfFisica) && System.IO.File.Exists(rutaPdfFisica);
+                var pdfTamano = pdfExiste ? new FileInfo(rutaPdfFisica).Length : 0L;
+                _logger.LogInfo("[GestionInspeccion] LV/EAE PDF generado. InspeccionId=" + id
+                    + ", CodigoLv=" + listaGuardada.CodigoListaVerificacion
+                    + ", Version=" + listaGuardada.Version
+                    + ", Bytes=" + (pdfBytes != null ? pdfBytes.Length : 0)
+                    + ", RutaPdf=" + (rutaPdf ?? string.Empty)
+                    + ", RutaPdfFisica=" + (rutaPdfFisica ?? string.Empty)
+                    + ", Existe=" + pdfExiste
+                    + ", Tamano=" + pdfTamano);
                 _listaVerificacionOperacionalEaeDAO.MarcarFinalizada(listaGuardada.CodigoListaVerificacion, rutaPdf, "LV_COMPLETADA", usuarioId);
 
                 TempData["Success"] = "Lista de verificación operacional EAE finalizada y PDF generado. Ya puede firmarla digitalmente.";
@@ -1626,18 +1826,6 @@ namespace CapaPresentacion.Controllers
                 return RedirectToAction("Detalle", new { id });
             }
 
-            var rutaFuente = FirstNonEmpty(lista.RutaPdf, lista.RutaDocumentoFirmado);
-            var pathFuente = ResolverRutaAbsolutaInforme(rutaFuente);
-            byte[] pdfFuente;
-            if (!string.IsNullOrWhiteSpace(pathFuente) && System.IO.File.Exists(pathFuente))
-            {
-                pdfFuente = System.IO.File.ReadAllBytes(pathFuente);
-            }
-            else
-            {
-                pdfFuente = GenerarPdfListaVerificacionOperacionalEae(inspeccion, solicitud, lista);
-            }
-
             byte[] certificadoBytes;
             using (var ms = new MemoryStream())
             {
@@ -1650,6 +1838,14 @@ namespace CapaPresentacion.Controllers
             {
                 TempData["Error"] = infoCertificado.Mensaje;
                 return RedirectToAction("Detalle", new { id });
+            }
+
+            var usuarioId = ObtenerCodigoUsuario();
+            var pdfFuente = GenerarPdfListaVerificacionOperacionalEae(inspeccion, solicitud, lista);
+            var rutaPdfActualizada = GuardarOReemplazarListaVerificacionOperacionalEaePdfHistorico(lista, pdfFuente, usuarioId);
+            if (!string.IsNullOrWhiteSpace(rutaPdfActualizada))
+            {
+                lista.RutaPdf = rutaPdfActualizada;
             }
 
             var nombreFirmanteCertificado = !string.IsNullOrWhiteSpace(infoCertificado.NombreTitular)
@@ -1681,7 +1877,7 @@ namespace CapaPresentacion.Controllers
                 DateTime.Now,
                 nombreFirmanteCertificado,
                 "LV_FIRMADA",
-                ObtenerCodigoUsuario());
+                usuarioId);
 
             TempData["Success"] = "Lista de verificación operacional EAE firmada correctamente. Ahora puede trabajar el informe técnico.";
             return RedirectToAction("Detalle", new { id });
@@ -3915,14 +4111,29 @@ namespace CapaPresentacion.Controllers
                 return false;
             }
 
-            var itemNoCumpleSinObservacion = itemsValidables.FirstOrDefault(item =>
-                (string.Equals(item.EstadoCumplimiento, "NO_SATISFACTORIO", StringComparison.OrdinalIgnoreCase)
-                || string.Equals(item.EstadoImplementacion, "NO_IMPLEMENTADO", StringComparison.OrdinalIgnoreCase))
-                && string.IsNullOrWhiteSpace(item.PruebasNotasComentarios));
-            if (itemNoCumpleSinObservacion != null)
+            foreach (var grupo in itemsValidables
+                .GroupBy(ObtenerClavePreguntaListaVerificacionOperacionalEae, StringComparer.OrdinalIgnoreCase))
             {
-                mensaje = "Ingrese una observacion en Pruebas / Notas / Comentarios para la orientacion: " + ObtenerEtiquetaItemListaVerificacionOperacionalEae(itemNoCumpleSinObservacion);
-                return false;
+                var comentarioGrupo = grupo
+                    .Select(item => (item.PruebasNotasComentarios ?? string.Empty).Trim())
+                    .FirstOrDefault(valor => !string.IsNullOrWhiteSpace(valor)) ?? string.Empty;
+
+                var itemCumplimientoNoSatisfactorio = grupo.FirstOrDefault(item =>
+                    string.Equals(item.EstadoCumplimiento, "NO_SATISFACTORIO", StringComparison.OrdinalIgnoreCase));
+                if (itemCumplimientoNoSatisfactorio != null && string.IsNullOrWhiteSpace(comentarioGrupo))
+                {
+                    mensaje = "Ingrese una observacion en Pruebas / Notas / Comentarios para el requisito: " + ObtenerEtiquetaItemListaVerificacionOperacionalEae(itemCumplimientoNoSatisfactorio);
+                    return false;
+                }
+
+                var itemNoImplementadoSinObservacion = grupo.FirstOrDefault(item =>
+                    string.Equals(item.EstadoImplementacion, "NO_IMPLEMENTADO", StringComparison.OrdinalIgnoreCase)
+                    && string.IsNullOrWhiteSpace(item.PruebasNotasComentarios));
+                if (itemNoImplementadoSinObservacion != null)
+                {
+                    mensaje = "Ingrese una observacion en Pruebas / Notas / Comentarios para la orientacion: " + ObtenerEtiquetaItemListaVerificacionOperacionalEae(itemNoImplementadoSinObservacion);
+                    return false;
+                }
             }
 
             return true;
@@ -3957,29 +4168,182 @@ namespace CapaPresentacion.Controllers
             return codigo + " - " + orientacion;
         }
 
-        private byte[] GenerarPdfListaVerificacionOperacionalEae(Inspeccion inspeccion, SolicitudAOCR solicitud, ListaVerificacionOperacionalEae lista)
+        private ListaVerificacionOperacionalEaePdfViewModel ConstruirViewModelListaVerificacionOperacionalEaePdfOficial(Inspeccion inspeccion, SolicitudAOCR solicitud, ListaVerificacionOperacionalEae lista)
         {
             EnriquecerInspectoresInformeTecnico(inspeccion, solicitud);
             HidratarListaVerificacionOperacionalEae(lista, solicitud);
 
-            var vm = new ListaVerificacionOperacionalEaePdfViewModel
+            return new ListaVerificacionOperacionalEaePdfViewModel
             {
                 Inspeccion = inspeccion,
                 Solicitud = solicitud,
                 ListaVerificacion = lista,
-                MostrarFirmas = true,
+                MostrarFirmas = false,
                 MostrarMarcaAguaBorrador = false,
                 EstadoDocumento = FirstNonEmpty(lista != null ? lista.EstadoLista : null, "BORRADOR")
             };
+        }
 
-            var pdf = new PartialViewAsPdf("ListaVerificacionOperacionalEaePdf", vm)
+        private string ConstruirNombrePdfInformeTecnico(Inspeccion inspeccion, SolicitudAOCR solicitud, InspeccionInformeTecnico informe, string sufijo = null)
+        {
+            var codigoInspeccion = inspeccion != null ? inspeccion.CodigoInspeccion : 0;
+            var numeroSolicitud = solicitud != null && !string.IsNullOrWhiteSpace(solicitud.NumeroSolicitud)
+                ? solicitud.NumeroSolicitud
+                : (inspeccion != null ? inspeccion.CodigoSolicitud.ToString(CultureInfo.InvariantCulture) : null);
+            var fecha = informe != null
+                ? (informe.FechaFirma1 ?? informe.FechaFinalizacion ?? informe.UpdatedAt ?? informe.CreatedAt)
+                : (DateTime?)null;
+
+            return PdfFileNameHelper.CrearNombreInformeTecnico(numeroSolicitud, codigoInspeccion, fecha, sufijo);
+        }
+
+        private string ConstruirNombrePdfListaVerificacionOperacionalEae(Inspeccion inspeccion, SolicitudAOCR solicitud, ListaVerificacionOperacionalEae lista)
+        {
+            var codigoInspeccion = inspeccion != null ? inspeccion.CodigoInspeccion : 0;
+            var nombreEae = PdfFileNameHelper.PrimerValorNoVacio(
+                lista != null ? lista.NombreEae : null,
+                PdfFileNameHelper.CombinarSegmentos(solicitud != null ? solicitud.Ruc : null, solicitud != null ? solicitud.NombreOperador : null),
+                PdfFileNameHelper.CombinarSegmentos(solicitud != null ? solicitud.Ruc : null, solicitud != null ? solicitud.NombreComercial : null),
+                PdfFileNameHelper.CombinarSegmentos(solicitud != null ? solicitud.Ruc : null, solicitud != null ? solicitud.RazonSocial : null),
+                solicitud != null ? solicitud.NombreOperador : null,
+                solicitud != null ? solicitud.NombreComercial : null,
+                solicitud != null ? solicitud.RazonSocial : null,
+                solicitud != null ? solicitud.Ruc : null);
+            var fecha = lista != null
+                ? (lista.FechaFirma ?? lista.FechaFinalizacion ?? lista.UpdatedAt ?? lista.FechaLista ?? lista.CreatedAt)
+                : (DateTime?)null;
+
+            return PdfFileNameHelper.CrearNombreListaVerificacionEae(nombreEae, codigoInspeccion, fecha);
+        }
+
+        private ViewAsPdf CrearPdfListaVerificacionOperacionalEaeOficial(ListaVerificacionOperacionalEaePdfViewModel vm, string fileName = null)
+        {
+            return new ViewAsPdf("~/Views/ListaVerificacion/PdfListaVerificacionEaeOficial.cshtml", vm)
             {
+                FileName = fileName,
                 PageSize = Rotativa.Options.Size.A4,
                 PageOrientation = Rotativa.Options.Orientation.Portrait,
-                CustomSwitches = ConstruirSwitchesPdfInformeTecnico()
+                PageMargins = new Rotativa.Options.Margins
+                {
+                    Top = 0,
+                    Bottom = 0,
+                    Left = 0,
+                    Right = 0
+                },
+                CustomSwitches = ConstruirSwitchesPdfListaVerificacionOperacionalEaeOficial()
             };
+        }
+
+        private byte[] GenerarPdfListaVerificacionOperacionalEae(Inspeccion inspeccion, SolicitudAOCR solicitud, ListaVerificacionOperacionalEae lista)
+        {
+            var vm = ConstruirViewModelListaVerificacionOperacionalEaePdfOficial(inspeccion, solicitud, lista);
+            var pdf = CrearPdfListaVerificacionOperacionalEaeOficial(vm);
 
             return pdf.BuildFile(ControllerContext);
+        }
+
+        private string ConstruirSwitchesPdfListaVerificacionOperacionalEaeOficial()
+        {
+            return "--print-media-type --enable-local-file-access --disable-smart-shrinking --background --dpi 96 --encoding utf-8";
+        }
+
+        private string CrearArchivoTemporalListaVerificacionOperacionalEaeOficial(bool esHeader)
+        {
+            if (Server == null)
+            {
+                return null;
+            }
+
+            var carpetaTemporal = Server.MapPath("~/App_Data/Temp/PdfBranding");
+            if (!Directory.Exists(carpetaTemporal))
+            {
+                Directory.CreateDirectory(carpetaTemporal);
+            }
+
+            var fileName = esHeader ? "lv_eae_oficial_header.html" : "lv_eae_oficial_footer.html";
+            var htmlPath = Path.Combine(carpetaTemporal, fileName);
+            var html = esHeader ? ConstruirHtmlHeaderListaVerificacionOperacionalEaeOficial() : ConstruirHtmlFooterListaVerificacionOperacionalEaeOficial();
+
+            if (string.IsNullOrWhiteSpace(html))
+            {
+                return null;
+            }
+
+            System.IO.File.WriteAllText(htmlPath, html, Encoding.UTF8);
+            return htmlPath;
+        }
+
+        private string ConstruirHtmlHeaderListaVerificacionOperacionalEaeOficial()
+        {
+            return @"<!DOCTYPE html>
+<html>
+<head>
+    <meta charset=""utf-8"" />
+    <style>
+        html, body { margin: 0; padding: 0; width: 100%; font-family: Arial, Helvetica, sans-serif; font-size: 8px; color: #000; }
+        .header-table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+        .header-table td { vertical-align: top; font-weight: bold; padding: 0; }
+        .header-left { width: 28%; text-align: left; }
+        .header-center { width: 44%; text-align: center; }
+        .header-right { width: 28%; text-align: right; }
+    </style>
+</head>
+<body>
+    <table class=""header-table"">
+        <tr>
+            <td class=""header-left"">Manual del Inspector de Operaciones Ecuador</td>
+            <td class=""header-center"">Volumen VII – Vigilancia de explotadores extranjeros en operaciones de transporte aéreo comercial<br />Capítulo 2 – Solicitud, evaluación y aprobación de un explotador extranjero</td>
+            <td class=""header-right"">Parte II - Explotadores de servicios aéreos</td>
+        </tr>
+    </table>
+</body>
+</html>";
+        }
+
+        private string ConstruirHtmlFooterListaVerificacionOperacionalEaeOficial()
+        {
+            return @"<!DOCTYPE html>
+<html>
+<head>
+    <meta charset=""utf-8"" />
+    <style>
+        html, body { margin: 0; padding: 0; width: 100%; font-family: Arial, Helvetica, sans-serif; font-size: 8px; color: #000; }
+        .footer-table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+        .footer-table td { vertical-align: top; font-weight: bold; padding: 0; }
+        .footer-left { width: 33%; text-align: left; }
+        .footer-center { width: 34%; text-align: center; }
+        .footer-right { width: 33%; text-align: right; }
+    </style>
+    <script>
+        function subst() {
+            var vars = {};
+            var query = document.location.search.substring(1).split('&');
+            for (var i = 0; i < query.length; i++) {
+                var pair = query[i].split('=', 2);
+                if (pair.length === 2) {
+                    vars[pair[0]] = decodeURIComponent(pair[1].replace(/\+/g, ' '));
+                }
+            }
+
+            var page = parseInt(vars.page || '1', 10);
+            if (isNaN(page) || page < 1) {
+                page = 1;
+            }
+
+            document.getElementById('page-code').textContent = 'PII-VVII-C2-' + (8 + page);
+        }
+    </script>
+</head>
+<body onload=""subst()"">
+    <table class=""footer-table"">
+        <tr>
+            <td class=""footer-left"">31/07/2025</td>
+            <td id=""page-code"" class=""footer-center"">PII-VVII-C2-9</td>
+            <td class=""footer-right"">Tercera Edición</td>
+        </tr>
+    </table>
+</body>
+</html>";
         }
 
         private string GuardarListaVerificacionOperacionalEaePdf(int codigoInspeccion, int version, byte[] pdfBytes)
@@ -3996,6 +4360,36 @@ namespace CapaPresentacion.Controllers
             return CARPETA_VIRTUAL_LV_EAE.TrimStart('~') + "/" + fileName;
         }
 
+        private string GuardarOReemplazarListaVerificacionOperacionalEaePdfHistorico(ListaVerificacionOperacionalEae lista, byte[] pdfBytes, int usuarioId)
+        {
+            var rutaRelativa = NormalizarRutaRelativaInforme(lista != null ? lista.RutaPdf : null);
+            var baseDir = Server.MapPath(CARPETA_VIRTUAL_LV_EAE);
+
+            if (!string.IsNullOrWhiteSpace(rutaRelativa))
+            {
+                var fullPath = ResolverRutaAbsolutaInforme(rutaRelativa);
+                if (!string.IsNullOrWhiteSpace(fullPath) && EsRutaDentroDeBase(fullPath, baseDir))
+                {
+                    var directory = Path.GetDirectoryName(fullPath);
+                    if (!string.IsNullOrWhiteSpace(directory) && !Directory.Exists(directory))
+                    {
+                        Directory.CreateDirectory(directory);
+                    }
+
+                    System.IO.File.WriteAllBytes(fullPath, pdfBytes ?? new byte[0]);
+                    return rutaRelativa;
+                }
+            }
+
+            var nuevaRuta = GuardarListaVerificacionOperacionalEaePdf(lista != null ? lista.CodigoInspeccion : 0, lista != null ? lista.Version : 0, pdfBytes);
+            if (lista != null && lista.CodigoListaVerificacion > 0)
+            {
+                _listaVerificacionOperacionalEaeDAO.ActualizarRutaPdf(lista.CodigoListaVerificacion, nuevaRuta, usuarioId);
+            }
+
+            return nuevaRuta;
+        }
+
         private string GuardarListaVerificacionOperacionalEaeFirmadaPdf(int codigoInspeccion, int version, byte[] pdfBytes)
         {
             var basePath = Server.MapPath(CARPETA_VIRTUAL_LV_EAE_FIRMADAS);
@@ -4008,6 +4402,44 @@ namespace CapaPresentacion.Controllers
             var fullPath = Path.Combine(basePath, fileName);
             System.IO.File.WriteAllBytes(fullPath, pdfBytes ?? new byte[0]);
             return CARPETA_VIRTUAL_LV_EAE_FIRMADAS.TrimStart('~') + "/" + fileName;
+        }
+
+        private int ObtenerNumeroPaginasPdf(byte[] pdfBytes)
+        {
+            if (pdfBytes == null || pdfBytes.Length == 0)
+            {
+                return 0;
+            }
+
+            try
+            {
+                using (var reader = new PdfReader(pdfBytes))
+                {
+                    return reader.NumberOfPages > 0 ? reader.NumberOfPages : 0;
+                }
+            }
+            catch
+            {
+                return 0;
+            }
+        }
+
+        private int ObtenerNumeroPaginasPdfArchivo(string rutaRelativa)
+        {
+            var fullPath = ResolverRutaAbsolutaInforme(rutaRelativa);
+            if (string.IsNullOrWhiteSpace(fullPath) || !System.IO.File.Exists(fullPath))
+            {
+                return 0;
+            }
+
+            try
+            {
+                return ObtenerNumeroPaginasPdf(System.IO.File.ReadAllBytes(fullPath));
+            }
+            catch
+            {
+                return 0;
+            }
         }
 
         private InspeccionInformeTecnico ConstruirInformeTecnicoDesdeFormulario(int codigoInspeccion, System.Collections.Specialized.NameValueCollection form, InspeccionInformeTecnico informeActual, bool guardarAdjuntos)
@@ -4984,6 +5416,41 @@ namespace CapaPresentacion.Controllers
             }
 
             return ruta;
+        }
+
+        private static bool EsAccionFinalizarListaVerificacionOperacionalEae(string submitActionRaw, string finalizarRaw)
+        {
+            if (string.Equals((submitActionRaw ?? string.Empty).Trim(), "finalizar", StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+
+            return ContieneValorVerdadero(finalizarRaw);
+        }
+
+        private static bool ContieneValorVerdadero(string rawValue)
+        {
+            if (string.IsNullOrWhiteSpace(rawValue))
+            {
+                return false;
+            }
+
+            var valores = rawValue
+                .Split(new[] { ',', ';' }, StringSplitOptions.RemoveEmptyEntries)
+                .Select(valor => valor.Trim());
+
+            foreach (var valor in valores)
+            {
+                if (string.Equals(valor, "true", StringComparison.OrdinalIgnoreCase)
+                    || string.Equals(valor, "1", StringComparison.OrdinalIgnoreCase)
+                    || string.Equals(valor, "on", StringComparison.OrdinalIgnoreCase)
+                    || string.Equals(valor, "yes", StringComparison.OrdinalIgnoreCase))
+                {
+                    return true;
+                }
+            }
+
+            return false;
         }
 
         private void RegistrarAuditoriaInformeDigital(int codigoInspeccion, string estadoAnterior, string estadoNuevo, string rutaDocumento, string hashDocumento, string detalle, int usuarioId, string usuarioNombre, string origen)

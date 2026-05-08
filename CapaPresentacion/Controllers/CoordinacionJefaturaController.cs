@@ -14,6 +14,7 @@ using CapaModelo;
 using CapaNegocio;
 using CapaNegocio.Helpers;
 using CapaNegocio.Services;
+using CapaPresentacion.Helpers;
 using CapaPresentacion.Models;
 using Npgsql;
 using Rotativa;
@@ -894,10 +895,10 @@ namespace CapaPresentacion.Controllers
                     var rutaFisica = ResolverRutaDocumento(rutaExistente);
                     if (!string.IsNullOrWhiteSpace(rutaFisica) && System.IO.File.Exists(rutaFisica))
                     {
-                        var nombreArchivoExistente = Path.GetFileName(rutaFisica);
-                        return descargar
-                            ? File(rutaFisica, "application/pdf", string.IsNullOrWhiteSpace(nombreArchivoExistente) ? "Reconocimiento_AOCR.pdf" : nombreArchivoExistente)
-                            : File(rutaFisica, "application/pdf");
+                        var nombreArchivoExistente = ConstruirNombrePdfDocumentoValidacion(item.Solicitud, tipoNormalizado, item.Certificado != null ? item.Certificado.FechaEmision : (DateTime?)null);
+                        Response.Headers["X-Content-Type-Options"] = "nosniff";
+                        PdfFileNameHelper.AplicarContentDispositionPdf(Response, descargar, nombreArchivoExistente);
+                        return File(rutaFisica, "application/pdf");
                     }
                 }
 
@@ -907,10 +908,10 @@ namespace CapaPresentacion.Controllers
                     var rutaFirmada = ResolverRutaDocumento(documentoFirmado != null ? documentoFirmado.RutaDocumento : null);
                     if (!string.IsNullOrWhiteSpace(rutaFirmada) && System.IO.File.Exists(rutaFirmada))
                     {
-                        var nombreArchivoFirmado = Path.GetFileName(rutaFirmada);
-                        return descargar
-                            ? File(rutaFirmada, "application/pdf", string.IsNullOrWhiteSpace(nombreArchivoFirmado) ? "Condiciones_Limitaciones_AOCR_" + item.Solicitud.CodigoSolicitud + "_firmado.pdf" : nombreArchivoFirmado)
-                            : File(rutaFirmada, "application/pdf");
+                        var nombreArchivoFirmado = ConstruirNombrePdfDocumentoValidacion(item.Solicitud, tipoNormalizado, documentoFirmado != null ? documentoFirmado.FechaFirma : (DateTime?)null);
+                        Response.Headers["X-Content-Type-Options"] = "nosniff";
+                        PdfFileNameHelper.AplicarContentDispositionPdf(Response, descargar, nombreArchivoFirmado);
+                        return File(rutaFirmada, "application/pdf");
                     }
                 }
 
@@ -918,22 +919,19 @@ namespace CapaPresentacion.Controllers
                 var viewName = tipoNormalizado == "RECONOCIMIENTO"
                     ? "~/Views/CoordinacionJefatura/AocrReconocimientoPdf.cshtml"
                     : "~/Views/CoordinacionJefatura/AocrCondicionesLimitacionesPdf.cshtml";
-                var nombreArchivo = tipoNormalizado == "RECONOCIMIENTO"
-                    ? "Reconocimiento_AOCR_" + item.Solicitud.CodigoSolicitud + ".pdf"
-                    : "Condiciones_Limitaciones_AOCR_" + item.Solicitud.CodigoSolicitud + ".pdf";
+                var nombreArchivo = ConstruirNombrePdfDocumentoValidacion(item.Solicitud, tipoNormalizado);
 
                 var pdf = new ViewAsPdf(viewName, documentoModel)
                 {
-                    FileName = nombreArchivo,
                     PageSize = Rotativa.Options.Size.A4,
                     PageOrientation = Rotativa.Options.Orientation.Portrait,
                     CustomSwitches = ConstruirSwitchesPdfValidacionAocr()
                 };
 
                 var pdfBytes = pdf.BuildFile(ControllerContext);
-                return descargar
-                    ? File(pdfBytes, "application/pdf", nombreArchivo)
-                    : File(pdfBytes, "application/pdf");
+                Response.Headers["X-Content-Type-Options"] = "nosniff";
+                PdfFileNameHelper.AplicarContentDispositionPdf(Response, descargar, nombreArchivo);
+                return File(pdfBytes, "application/pdf");
             }
             catch (PostgresException exPg)
             {
@@ -1094,9 +1092,7 @@ namespace CapaPresentacion.Controllers
                 var viewName = tipoNormalizado == "RECONOCIMIENTO"
                     ? "~/Views/CoordinacionJefatura/AocrReconocimientoPdf.cshtml"
                     : "~/Views/CoordinacionJefatura/AocrCondicionesLimitacionesPdf.cshtml";
-                var nombreArchivo = tipoNormalizado == "RECONOCIMIENTO"
-                    ? "Reconocimiento_AOCR_" + model.SolicitudId + ".pdf"
-                    : "Condiciones_Limitaciones_AOCR_" + model.SolicitudId + ".pdf";
+                var nombreArchivo = ConstruirNombrePdfDocumentoValidacion(item.Solicitud, tipoNormalizado);
                 var descargar = string.Equals(accion, "DESCARGAR", StringComparison.OrdinalIgnoreCase);
                 var firmarDigitalmente = string.Equals(accion, "FIRMAR_DESCARGAR", StringComparison.OrdinalIgnoreCase);
 
@@ -1109,7 +1105,6 @@ namespace CapaPresentacion.Controllers
 
                 var pdf = new ViewAsPdf(viewName, documentoModel)
                 {
-                    FileName = nombreArchivo,
                     PageSize = Rotativa.Options.Size.A4,
                     PageOrientation = Rotativa.Options.Orientation.Portrait,
                     CustomSwitches = ConstruirSwitchesPdfValidacionAocr()
@@ -1189,7 +1184,7 @@ namespace CapaPresentacion.Controllers
 
                         pdfBytes = resultadoFirma.PdfFirmado;
                         descargar = true;
-                        nombreArchivo = Path.GetFileNameWithoutExtension(nombreArchivo) + "_firmado.pdf";
+                        nombreArchivo = Path.GetFileNameWithoutExtension(nombreArchivo) + "_Firmado.pdf";
 
                         var rutaDocumentoFirmado = GuardarDocumentoFirmadoAocr(model.SolicitudId, tipoNormalizado, nombreArchivo, pdfBytes);
                         RegistrarFirmaDigitalAocr(
@@ -1226,9 +1221,9 @@ namespace CapaPresentacion.Controllers
                     }
                 }
 
-                return descargar
-                    ? File(pdfBytes, "application/pdf", nombreArchivo)
-                    : File(pdfBytes, "application/pdf");
+                Response.Headers["X-Content-Type-Options"] = "nosniff";
+                PdfFileNameHelper.AplicarContentDispositionPdf(Response, descargar, nombreArchivo);
+                return File(pdfBytes, "application/pdf");
             }
             catch (PostgresException exPg)
             {
@@ -1240,6 +1235,28 @@ namespace CapaPresentacion.Controllers
                 var referencia = RegistrarErrorValidacionAocr("GenerarDocumentoValidacionAocr", ex, model != null ? (int?)model.SolicitudId : null, model != null ? model.InspeccionId : null, model != null ? model.TipoDocumento : null);
                 return new HttpStatusCodeResult(500, "Error interno al generar documento AOCR. Ref: " + referencia);
             }
+        }
+
+        private string ConstruirNombrePdfDocumentoValidacion(SolicitudAOCR solicitud, string tipoDocumento, DateTime? fecha = null)
+        {
+            var numeroSolicitud = solicitud != null && !string.IsNullOrWhiteSpace(solicitud.NumeroSolicitud)
+                ? solicitud.NumeroSolicitud
+                : (solicitud != null ? solicitud.CodigoSolicitud.ToString(CultureInfo.InvariantCulture) : string.Empty);
+            var nombreOperador = solicitud == null
+                ? string.Empty
+                : PdfFileNameHelper.PrimerValorNoVacio(
+                    PdfFileNameHelper.CombinarSegmentos(solicitud.Ruc, solicitud.NombreOperador),
+                    PdfFileNameHelper.CombinarSegmentos(solicitud.Ruc, solicitud.NombreComercial),
+                    PdfFileNameHelper.CombinarSegmentos(solicitud.Ruc, solicitud.RazonSocial),
+                    solicitud.NombreOperador,
+                    solicitud.NombreComercial,
+                    solicitud.RazonSocial,
+                    solicitud.Ruc);
+            var fechaDocumento = fecha ?? (solicitud != null ? (solicitud.UpdatedAt ?? solicitud.FechaSolicitud ?? solicitud.CreatedAt) : (DateTime?)null);
+
+            return string.Equals(tipoDocumento, "RECONOCIMIENTO", StringComparison.OrdinalIgnoreCase)
+                ? PdfFileNameHelper.CrearNombreReconocimientoAocr(numeroSolicitud, nombreOperador, fechaDocumento)
+                : PdfFileNameHelper.CrearNombreCondicionesLimitaciones(numeroSolicitud, nombreOperador, fechaDocumento);
         }
 
         [HttpPost]

@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Configuration;
 using CapaModelo;
 using Npgsql;
@@ -36,6 +37,62 @@ namespace CapaDatos.DAOs
                 cn.Open();
                 EnsureSchema(cn);
                 return ObtenerPorIdInterno(cn, codigoListaVerificacion);
+            }
+        }
+
+        public IList<ListaVerificacionOperacionalEae> ListarConPdfHistorico()
+        {
+            using (var cn = new NpgsqlConnection(_cs))
+            {
+                cn.Open();
+                EnsureSchema(cn);
+
+                const string sql = @"
+                    SELECT codigo_lv,
+                           codigo_inspeccion,
+                           version,
+                           estado_lista,
+                           nombre_eae,
+                           numero_aoc_fecha_validez,
+                           direccion_estado_explotador,
+                           direccion_estado_reconocimiento,
+                           tipos_aeronaves,
+                           tipo_operacion,
+                           fecha_lista,
+                           inspector_responsable,
+                           cargo_inspector,
+                           resumen_verificacion,
+                           observaciones_generales,
+                           resultado_general,
+                           items_json,
+                           ruta_pdf,
+                           ruta_documento_firmado,
+                           hash_documento,
+                           finalizado,
+                           firmado_tecnico,
+                           fecha_finalizacion,
+                           fecha_firma,
+                           usuario_firma,
+                           created_at,
+                           created_by,
+                           updated_at,
+                           updated_by
+                      FROM public.aocr_tblv_operacional_eae
+                     WHERE COALESCE(ruta_pdf, '') <> ''
+                        OR COALESCE(ruta_documento_firmado, '') <> ''
+                  ORDER BY codigo_inspeccion ASC, version ASC;";
+
+                var resultados = new List<ListaVerificacionOperacionalEae>();
+                using (var cmd = new NpgsqlCommand(sql, cn))
+                using (var dr = cmd.ExecuteReader())
+                {
+                    while (dr.Read())
+                    {
+                        resultados.Add(Map(dr));
+                    }
+                }
+
+                return resultados;
             }
         }
 
@@ -202,6 +259,30 @@ namespace CapaDatos.DAOs
                     cmd.Parameters.AddWithValue("@fecha_firma", fechaFirma);
                     cmd.Parameters.AddWithValue("@usuario_firma", (object)(usuarioFirma ?? string.Empty));
                     cmd.Parameters.AddWithValue("@estado_lista", (object)(estadoLista ?? "FIRMADA"));
+                    cmd.Parameters.AddWithValue("@updated_by", usuarioId);
+                    cmd.Parameters.AddWithValue("@codigo_lv", codigoListaVerificacion);
+                    cmd.ExecuteNonQuery();
+                }
+            }
+        }
+
+        public void ActualizarRutaPdf(int codigoListaVerificacion, string rutaPdf, int usuarioId)
+        {
+            using (var cn = new NpgsqlConnection(_cs))
+            {
+                cn.Open();
+                EnsureSchema(cn);
+
+                const string sql = @"
+                    UPDATE public.aocr_tblv_operacional_eae
+                       SET ruta_pdf = @ruta_pdf,
+                           updated_at = NOW(),
+                           updated_by = @updated_by
+                     WHERE codigo_lv = @codigo_lv;";
+
+                using (var cmd = new NpgsqlCommand(sql, cn))
+                {
+                    cmd.Parameters.AddWithValue("@ruta_pdf", (object)(rutaPdf ?? string.Empty));
                     cmd.Parameters.AddWithValue("@updated_by", usuarioId);
                     cmd.Parameters.AddWithValue("@codigo_lv", codigoListaVerificacion);
                     cmd.ExecuteNonQuery();

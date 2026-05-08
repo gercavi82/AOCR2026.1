@@ -1,0 +1,453 @@
+@model CapaPresentacion.Models.ViewModels.ListaVerificacionOperacionalEaePdfViewModel
+@using System
+@using System.Collections.Generic
+@using System.Globalization
+@using System.IO
+@using System.Linq
+@using CapaModelo
+
+@functions {
+    private sealed class OficialTextoLinea
+    {
+        public OficialTextoLinea(string texto, string cssClass = null)
+        {
+            Texto = texto ?? string.Empty;
+            CssClass = cssClass ?? string.Empty;
+        }
+
+        public string Texto { get; private set; }
+        public string CssClass { get; private set; }
+    }
+
+    private sealed class OficialFila
+    {
+        public OficialFila(params OficialTextoLinea[] lineas)
+        {
+            Lineas = new List<OficialTextoLinea>(lineas ?? new OficialTextoLinea[0]);
+        }
+
+        public IList<OficialTextoLinea> Lineas { get; private set; }
+    }
+
+    private sealed class OficialRequisito
+    {
+        public OficialRequisito(string codigo, string[] referencias, string pregunta, string notaPregunta, params OficialFila[] filas)
+        {
+            Codigo = codigo ?? string.Empty;
+            Referencias = new List<string>(referencias ?? new string[0]);
+            Pregunta = pregunta ?? string.Empty;
+            NotaPregunta = notaPregunta ?? string.Empty;
+            Filas = new List<OficialFila>(filas ?? new OficialFila[0]);
+        }
+
+        public string Codigo { get; private set; }
+        public IList<string> Referencias { get; private set; }
+        public string Pregunta { get; private set; }
+        public string NotaPregunta { get; private set; }
+        public IList<OficialFila> Filas { get; private set; }
+    }
+
+    private sealed class RespuestaFila
+    {
+        public ListaVerificacionOperacionalEaeItem ItemPrincipal { get; set; }
+    }
+
+    private sealed class RequisitoRenderFila
+    {
+        public bool MostrarCabecera { get; set; }
+        public OficialFila FilaOficial { get; set; }
+        public string EstadoCumplimiento { get; set; }
+        public string EstadoImplementacion { get; set; }
+        public string Comentarios { get; set; }
+        public bool EsFilaLarga { get; set; }
+    }
+
+    private sealed class RequisitoRender
+    {
+        public OficialRequisito Requisito { get; set; }
+        public IList<RequisitoRenderFila> Filas { get; set; }
+    }
+
+    private static OficialTextoLinea Linea(string texto, string cssClass = null)
+    {
+        return new OficialTextoLinea(texto, cssClass);
+    }
+
+    private static OficialFila Fila(params OficialTextoLinea[] lineas)
+    {
+        return new OficialFila(lineas);
+    }
+
+    private static string ObtenerCodigoPreguntaPdf(ListaVerificacionOperacionalEaeItem item)
+    {
+        if (item == null)
+        {
+            return string.Empty;
+        }
+
+        var codigo = !string.IsNullOrWhiteSpace(item.CodigoPregunta)
+            ? item.CodigoPregunta.Trim()
+            : (item.Codigo ?? string.Empty).Trim();
+
+        if (string.IsNullOrWhiteSpace(codigo))
+        {
+            return string.Empty;
+        }
+
+        var indiceUltimoGuion = codigo.LastIndexOf('-');
+        if (indiceUltimoGuion > 0)
+        {
+            int sufijo;
+            if (int.TryParse(codigo.Substring(indiceUltimoGuion + 1), out sufijo))
+            {
+                return codigo.Substring(0, indiceUltimoGuion).Trim();
+            }
+        }
+
+        return codigo;
+    }
+
+    private static List<RespuestaFila> AgruparRespuestasFilas(IEnumerable<ListaVerificacionOperacionalEaeItem> items)
+    {
+        var filas = new List<RespuestaFila>();
+        RespuestaFila filaActual = null;
+
+        foreach (var item in (items ?? Enumerable.Empty<ListaVerificacionOperacionalEaeItem>()).OrderBy(valor => valor.Orden))
+        {
+            if (filaActual == null || !item.EsNotaOrientacion)
+            {
+                filaActual = new RespuestaFila
+                {
+                    ItemPrincipal = item
+                };
+                filas.Add(filaActual);
+            }
+        }
+
+        return filas;
+    }
+
+    private static List<OficialRequisito> ObtenerRequisitosOficiales()
+    {
+        return new List<OficialRequisito>
+        {
+            new OficialRequisito(
+                "129-1",
+                new[] { "129.010 (a)", "129.100 (b)(1)" },
+                "¿Ha presentado el explotador extranjero el formulario de solicitud de reconocimiento de su AOC?",
+                string.Empty,
+                Fila(
+                    Linea("1. Verificar que el explotador haya completado los formularios de solicitud de la forma y manera que prescribe la AAC."),
+                    Linea("Nota. Revisar el formulario y asegurarse que esté debidamente completado.", "nota")),
+                Fila(Linea("2. Verificar que los datos coincidan con los registros presentados."))),
+
+            new OficialRequisito(
+                "129-2",
+                new[] { "129.100 (b)(5) y (7)" },
+                "¿Ha presentado el explotador extranjero una descripción de la operación propuesta?",
+                "Nota. Esta parte requiere coordinación con los inspectores de aeronavegabilidad.",
+                Fila(Linea("1. Verificar que dentro de la descripción se identifique si se trata de:")),
+                Fila(Linea("a. operaciones regulares o no regulares.", "literal")),
+                Fila(Linea("b. transporte de pasajeros/carga/otros.", "literal")),
+                Fila(Linea("2. Verificar que en la descripción del área de operaciones se identifiquen:")),
+                Fila(Linea("a. los aeropuertos que se pretende utilizar.", "literal")),
+                Fila(Linea("b. las áreas especiales en que pretende operar; por ejemplo Cordillera de los Andes.", "literal")),
+                Fila(Linea("c. las aprobaciones específicas requeridas.", "literal")),
+                Fila(
+                    Linea("3. Verificar que el explotador haya presentado los tipos y las matrículas de las aeronaves sujetas a la operación."),
+                    Linea("Nota 1. Algunos Estados requieren que las aeronaves estén listadas en las OpSpecs. Si no están en las OpSpecs, el explotador debe presentarlas en otro documento, como una parte del manual de operaciones, o copias de los certificados de matrícula que atestigüen que el EAE es el explotador de dichas aeronaves.", "nota"),
+                    Linea("Nota 2. Verificar la nacionalidad de las aeronaves involucradas. Es posible que el Estado de matrícula sea diferente del Estado del explotador. En este caso, identificar los Estados de matrícula en la Casilla 14.", "nota"))),
+
+            new OficialRequisito(
+                "129-3",
+                new[] { "129.200 (a)(3) y (4)" },
+                "¿Ha presentado el explotador extranjero los contratos de las aeronaves?",
+                "Nota. Esta parte requiere coordinación con los inspectores de aeronavegabilidad.",
+                Fila(Linea("1. Verificar que se presenten los contratos de las aeronaves afectadas a intercambio o arrendamiento de aeronave con tripulación.")),
+                Fila(Linea("2. En caso de arrendamiento de aeronave con tripulación, verificar aprobación de la AAC del Estado del explotador.")),
+                Fila(Linea("3. Si existe acuerdo del Artículo 83 bis, verificar resúmenes del acuerdo.")),
+                Fila(Linea("4. Verificar certificados de cobertura de seguro para cada aeronave."))),
+
+            new OficialRequisito(
+                "129-4",
+                new[] { "129.100 (b)(8)" },
+                "¿Ha presentado el explotador extranjero los certificados de ruido de las aeronaves?",
+                "Nota. Esta parte requiere coordinación con los inspectores de aeronavegabilidad.",
+                Fila(Linea("1. Verificar que el certificado de ruido y documentos técnicos de respaldo estén de acuerdo al Anexo 16, Volumen 1.")),
+                Fila(Linea("2. Verificar que la homologación acústica fue otorgada o convalidada por el Estado de matrícula y se encuentre vigente."))),
+
+            new OficialRequisito(
+                "129-5",
+                new[] { "129.100 (b)(2)" },
+                "¿Ha presentado el explotador extranjero una copia de su AOC y las OpSpecs actualizadas que autorizan las operaciones solicitadas?",
+                string.Empty,
+                Fila(Linea("1. Verificar que el AOC contiene la información requerida y autoriza las operaciones solicitadas.")),
+                Fila(Linea("2. Verificar que las OpSpecs contienen la información requerida y autorizan las operaciones solicitadas.")),
+                Fila(Linea("a. modelos de aeronave.", "literal")),
+                Fila(Linea("b. tipo de transporte.", "literal")),
+                Fila(Linea("c. área de operaciones.", "literal")),
+                Fila(Linea("d. aprobaciones específicas.", "literal")),
+                Fila(Linea("e. matrículas y aeródromos, si aplica.", "literal"))),
+
+            new OficialRequisito(
+                "129-6",
+                new[] { "129.100 (b)(3)" },
+                "¿Ha presentado el explotador extranjero una copia de su manual de operaciones vigente?",
+                string.Empty,
+                Fila(Linea("1. Verificar que el manual de operaciones esté completo con el contenido requerido.")),
+                Fila(Linea("2. Verificar indicaciones de aprobación/aceptación.")),
+                Fila(Linea("3. Verificar que rutas y aeródromos contienen información de:")),
+                Fila(Linea("a. comunicaciones.", "literal")),
+                Fila(Linea("b. navegación.", "literal")),
+                Fila(Linea("c. aeródromos.", "literal")),
+                Fila(Linea("d. aproximaciones.", "literal")),
+                Fila(Linea("e. llegadas y salidas por instrumentos.", "literal")),
+                Fila(Linea("4. Verificar procedimientos o entrenamientos para áreas o aeródromos especiales.")),
+                Fila(Linea("5. Verificar procedimientos específicos de despacho si el Estado los requiere."))),
+
+            new OficialRequisito(
+                "129-7",
+                new[] { "129.100 (b)(9)" },
+                "¿Ha presentado el explotador extranjero una copia del plan operacional de vuelo para cada ruta que el explotador pretende utilizar?",
+                string.Empty,
+                Fila(Linea("1. Verificar que los planes operacionales de vuelo contienen modelo, pesos, combustible, rutas y aeródromos de alternativa.")),
+                Fila(Linea("2. Verificar que los planes son adecuados frente a la descripción de la operación propuesta y las autorizaciones OpSpecs."))),
+
+            new OficialRequisito(
+                "129-8",
+                new[] { "129.100 (b)(9)" },
+                "¿Ha presentado el explotador extranjero información sobre los servicios de mantenimiento que pretende utilizar?",
+                "Nota. Esta parte requiere coordinación con los inspectores de aeronavegabilidad.",
+                Fila(Linea("1. Verificar extensión y alcance del mantenimiento que pretende realizar.")),
+                Fila(Linea("2. Verificar si usará estructura propia u OMA contratada.")),
+                Fila(Linea("3. Verificar que la organización indicada está autorizada y capacitada para los servicios pretendidos."))),
+
+            new OficialRequisito(
+                "129-9",
+                new[] { "129.100 (b)(9)" },
+                "¿Ha presentado el explotador extranjero los contratos (o cartas de intención) de los servicios de tierra que pretende utilizar?",
+                string.Empty,
+                Fila(Linea("1. Verificar que los servicios de tierra incluyan, si aplica:")),
+                Fila(Linea("a. manipulación de equipaje y carga.", "literal")),
+                Fila(Linea("b. despacho y atención a pasajeros.", "literal")),
+                Fila(Linea("c. combustible y aceite.", "literal")),
+                Fila(Linea("d. deshielo y antihielo.", "literal")),
+                Fila(Linea("e. limpieza.", "literal")),
+                Fila(Linea("f. aprovisionamiento del servicio de a bordo.", "literal")),
+                Fila(Linea("2. Verificar que las organizaciones de servicios de tierra garantizan capacitación adecuada, incluyendo mercancías peligrosas si aplica."))),
+
+            new OficialRequisito(
+                "129-10",
+                new[] { "129.010 (b)", "129.100 (b)(9)" },
+                "¿Ha presentado el explotador extranjero información sobre su sistema de gestión de la seguridad operacional (SMS), en cumplimiento del Anexo 19?",
+                string.Empty,
+                Fila(Linea("1. Verificar que el explotador tiene todos los elementos mínimos presentes.")),
+                Fila(Linea("2. Verificar que tiene implementado el programa de análisis de datos de vuelo como parte del SMS.")),
+                Fila(Linea("3. De ser requerido por el Estado, verificar que el plan de respuesta ante emergencias es adecuado al país y aeropuertos que pretende utilizar."))),
+
+            new OficialRequisito(
+                "129-11",
+                new[] { "129.010 (b)", "129.100 (b)(9)" },
+                "¿Ha presentado el explotador extranjero información sobre el cumplimiento del Anexo 1 por su tripulación?",
+                string.Empty,
+                Fila(Linea("1. Verificar que las licencias de tripulación de vuelo son expedidas o convalidadas por el Estado de matrícula de las aeronaves.")),
+                Fila(Linea("2. Verificar que la tripulación puede hablar y comprender el idioma utilizado para comunicaciones radiotelefónicas en el Estado."))),
+
+            new OficialRequisito(
+                "129-12",
+                new[] { "129.010 (b)", "129.100 (b)(9)" },
+                "¿Ha presentado el explotador extranjero información sobre alguna exención emitida por su AAC que se aplique a las operaciones solicitadas?",
+                string.Empty,
+                Fila(Linea("1. Verificar si la exención no interfiere con el cumplimiento de los Anexos mencionados.")),
+                Fila(Linea("2. Verificar anotaciones en certificados de aeronavegabilidad y/o licencias cuando hayan sido objeto de exención.")),
+                Fila(Linea("3. Verificar si la AAC del explotador solicitó la aceptación de la exención a la AAC y si fue aceptada."))),
+
+            new OficialRequisito(
+                "129-13",
+                new[] { "129.100 (b)(6)" },
+                "¿Ha presentado el explotador extranjero una copia de su plan de seguridad de la aviación?",
+                string.Empty,
+                Fila(Linea("1. Verificar que el plan de seguridad de la aviación, por su calidad de restricto, haya sido presentado a las personas autorizadas en la AAC u organismo apropiado del Estado."))),
+
+            new OficialRequisito(
+                "129-14",
+                new[] { "129.100 (b)(4)" },
+                "¿Ha presentado el explotador extranjero una copia del documento que autoriza los derechos de tránsito específicos, expedidos por la autoridad del Estado en que pretende operar?",
+                string.Empty,
+                Fila(
+                    Linea("1. Verificar que existe una autorización de derecho de tránsito expedida por la AAC y otro organismo nacional competente."),
+                    Linea("Nota. Si la autorización se emite después de la evaluación técnica, puede considerarse no aplicable justificando en la Casilla 14.", "nota")))
+        };
+    }
+
+    private static List<RequisitoRender> ConstruirRequisitosRender(IEnumerable<ListaVerificacionOperacionalEaeItem> items)
+    {
+        var gruposRespuesta = (items ?? Enumerable.Empty<ListaVerificacionOperacionalEaeItem>())
+            .Where(item => item != null)
+            .GroupBy(ObtenerCodigoPreguntaPdf, StringComparer.OrdinalIgnoreCase)
+            .Where(group => !string.IsNullOrWhiteSpace(group.Key))
+            .ToDictionary(group => group.Key, group => AgruparRespuestasFilas(group), StringComparer.OrdinalIgnoreCase);
+
+        var requisitos = new List<RequisitoRender>();
+        foreach (var requisito in ObtenerRequisitosOficiales())
+        {
+            List<RespuestaFila> respuestas;
+            if (!gruposRespuesta.TryGetValue(requisito.Codigo, out respuestas))
+            {
+                respuestas = new List<RespuestaFila>();
+            }
+
+            var cumplimiento = respuestas
+                .Where(respuesta => respuesta != null && respuesta.ItemPrincipal != null)
+                .Select(respuesta => (respuesta.ItemPrincipal.EstadoCumplimiento ?? string.Empty).Trim())
+                .FirstOrDefault(valor => !string.IsNullOrWhiteSpace(valor)) ?? string.Empty;
+
+            var filas = new List<RequisitoRenderFila>();
+            for (var indice = 0; indice < requisito.Filas.Count; indice++)
+            {
+                var respuesta = indice < respuestas.Count ? respuestas[indice] : null;
+                var item = respuesta != null ? respuesta.ItemPrincipal : null;
+                var comentarios = item != null ? (item.PruebasNotasComentarios ?? string.Empty).Trim() : string.Empty;
+                var implementacion = item != null ? (item.EstadoImplementacion ?? string.Empty).Trim() : string.Empty;
+                var longitudTexto = requisito.Pregunta.Length
+                    + requisito.NotaPregunta.Length
+                    + comentarios.Length
+                    + string.Concat(requisito.Filas[indice].Lineas.Select(linea => linea.Texto ?? string.Empty)).Length;
+
+                filas.Add(new RequisitoRenderFila
+                {
+                    MostrarCabecera = indice == 0,
+                    FilaOficial = requisito.Filas[indice],
+                    EstadoCumplimiento = indice == 0 ? cumplimiento : string.Empty,
+                    EstadoImplementacion = implementacion,
+                    Comentarios = comentarios,
+                    EsFilaLarga = longitudTexto > 360
+                });
+            }
+
+            requisitos.Add(new RequisitoRender
+            {
+                Requisito = requisito,
+                Filas = filas
+            });
+        }
+
+        return requisitos;
+    }
+}
+
+@{
+    Layout = "~/Views/Shared/_PdfLayoutDGACAocr.cshtml";
+
+    var lista = Model != null ? Model.ListaVerificacion : null;
+    var cultura = new CultureInfo("es-EC");
+    var fechaLista = lista != null && lista.FechaLista.HasValue ? lista.FechaLista.Value.ToString("dd/MM/yyyy", cultura) : string.Empty;
+    var cssPath = Server != null ? Server.MapPath("~/Content/pdf-eae-oficial.css") : null;
+    var pdfCss = !string.IsNullOrWhiteSpace(cssPath) && File.Exists(cssPath)
+        ? File.ReadAllText(cssPath)
+        : string.Empty;
+    var requisitos = ConstruirRequisitosRender(lista != null ? lista.Items : null);
+    Func<string, string> texto = value => !string.IsNullOrWhiteSpace(value) ? value.Trim() : string.Empty;
+    Func<string, string, string> check = (actual, esperado) => string.Equals((actual ?? string.Empty).Trim(), esperado, StringComparison.OrdinalIgnoreCase) ? "☑" : "□";
+}
+
+@section PdfHead {
+    <style>
+        @Html.Raw(pdfCss)
+    </style>
+}
+
+<div class="pdf-eae-oficial">
+    <div class="title-box">
+        <div>SISTEMA REGIONAL DE COOPERACIÓN PARA LA VIGILANCIA<br />DE LA SEGURIDAD OPERACIONAL</div>
+        <div class="title-box-main">Evaluación técnica de un explotador de servicios aéreos extranjero (EAE)</div>
+        <div class="title-box-rdac">RDAC 129</div>
+    </div>
+
+    <table class="field-table">
+        <tbody>
+            <tr><td class="field-row"><span class="field-label">1. Nombre del EAE / Nombre comercial del EAE:</span> <span class="field-value">@texto(lista != null ? lista.NombreEae : null)</span></td></tr>
+            <tr><td class="field-row"><span class="field-label">2. N° AOC / Fecha de expedición / Validez:</span> <span class="field-value">@texto(lista != null ? lista.NumeroAocFechaValidez : null)</span></td></tr>
+            <tr><td class="field-row"><span class="field-label">3. Dirección del EAE y datos de contacto de la gerencia de operaciones en el Estado del explotador:</span> <span class="field-value">@texto(lista != null ? lista.DireccionEstadoExplotador : null)</span></td></tr>
+            <tr><td class="field-row"><span class="field-label">4. Dirección del EAE y datos de contacto en el Estado que emite el reconocimiento:</span> <span class="field-value">@texto(lista != null ? lista.DireccionEstadoReconocimiento : null)</span></td></tr>
+            <tr><td class="field-row"><span class="field-label">5. Tipo/s de aeronave/s (marca, modelo, número de serie):</span> <span class="field-value">@texto(lista != null ? lista.TiposAeronaves : null)</span></td></tr>
+            <tr><td class="field-row"><span class="field-label">6. Tipo de operación:</span> <span class="field-value">@texto(lista != null ? lista.TipoOperacion : null)</span></td></tr>
+            <tr><td class="field-row"><span class="field-label">7. Fecha:</span> <span class="field-value">@fechaLista</span></td></tr>
+            <tr><td class="field-row"><span class="field-label">8. Inspector responsable de la aprobación:</span> <span class="field-value">@texto(lista != null ? lista.InspectorResponsable : null)</span></td></tr>
+        </tbody>
+    </table>
+
+    <table class="official-table">
+        <colgroup>
+            <col class="col-ref" />
+            <col class="col-question" />
+            <col class="col-compliance" />
+            <col class="col-guidance" />
+            <col class="col-implementation" />
+            <col class="col-comments" />
+        </colgroup>
+        <thead>
+            <tr>
+                <th>9. Referencia</th>
+                <th>10. Pregunta del requisito</th>
+                <th>11. Estado de cumplimiento del requisito</th>
+                <th>12. Orientación para el examen de pruebas o evidencias</th>
+                <th>13. Estado de implementación</th>
+                <th>14. Pruebas / Notas/ Comentarios</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var requisito in requisitos)
+            {
+                for (var indice = 0; indice < requisito.Filas.Count; indice++)
+                {
+                    var fila = requisito.Filas[indice];
+                    <tr class="@(fila.EsFilaLarga ? "long-row" : string.Empty)">
+                        @if (fila.MostrarCabecera)
+                        {
+                            <td>
+                                @foreach (var referencia in requisito.Requisito.Referencias)
+                                {
+                                    <div class="reference-line">@referencia</div>
+                                }
+                            </td>
+                            <td>
+                                <span class="question-code">@requisito.Requisito.Codigo</span>
+                                <span class="question-text">@requisito.Requisito.Pregunta</span>
+                                @if (!string.IsNullOrWhiteSpace(requisito.Requisito.NotaPregunta))
+                                {
+                                    <span class="nota">@requisito.Requisito.NotaPregunta</span>
+                                }
+                            </td>
+                            <td>
+                                <span class="check-option">@check(fila.EstadoCumplimiento, "SATISFACTORIO") Satisfactorio</span>
+                                <span class="check-option">@check(fila.EstadoCumplimiento, "NO_SATISFACTORIO") No satisfactorio</span>
+                                <span class="check-option">@check(fila.EstadoCumplimiento, "NO_APLICABLE") No aplicable</span>
+                            </td>
+                        }
+                        else
+                        {
+                            <td class="empty-cell"></td>
+                            <td class="empty-cell"></td>
+                            <td class="empty-cell"></td>
+                        }
+                        <td>
+                            @foreach (var linea in fila.FilaOficial.Lineas)
+                            {
+                                <span class="orientation-line @(linea.CssClass)">@linea.Texto</span>
+                            }
+                        </td>
+                        <td>
+                            <span class="check-option-tight">@check(fila.EstadoImplementacion, "IMPLEMENTADO")Implementado</span>
+                            <span class="check-option-tight">@check(fila.EstadoImplementacion, "NO_IMPLEMENTADO")No implementado</span>
+                            <span class="check-option-tight">@check(fila.EstadoImplementacion, "NO_APLICABLE")No aplicable</span>
+                        </td>
+                        <td class="comments-cell">@fila.Comentarios</td>
+                    </tr>
+                }
+            }
+        </tbody>
+    </table>
+
+    <div class="closing-line">-----------------------</div>
+</div>

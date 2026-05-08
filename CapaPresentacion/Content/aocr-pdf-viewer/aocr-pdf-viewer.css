@@ -36,6 +36,13 @@
     line-height: 1.2;
 }
 
+.aocr-pdf-subtitle {
+    color: rgba(255, 255, 255, .92);
+    font-size: .82rem;
+    margin-top: 2px;
+    word-break: break-word;
+}
+
 .aocr-pdf-help {
     color: rgba(255, 255, 255, .82);
     font-size: .82rem;

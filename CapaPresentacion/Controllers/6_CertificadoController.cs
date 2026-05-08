@@ -9,6 +9,7 @@ using CapaUtilidades;
 using CapaModelo;
 using CapaDatos.DAOs;
 using CapaDatos.Constants;
+using CapaPresentacion.Helpers;
 using Rotativa;
 
 namespace CapaPresentacion.Controllers
@@ -23,6 +24,7 @@ namespace CapaPresentacion.Controllers
         private readonly FirmaDigitalService _firmaService = new FirmaDigitalService();
         private readonly AocrFirmaDocumentoDAO _firmaDocDao = new AocrFirmaDocumentoDAO();
         private readonly HistorialEstadoDAO _historialDao = new HistorialEstadoDAO();
+        private readonly SolicitudAOCRDAO _solicitudDao = new SolicitudAOCRDAO();
 
         private static string GenerarNumeroAOCR(int idSolicitud, DateTime? fecha = null)
         {
@@ -86,14 +88,17 @@ namespace CapaPresentacion.Controllers
             if (!System.IO.File.Exists(rutaFisica))
                 return Content("El archivo PDF no se encuentra en el servidor.");
 
+            var solicitud = _solicitudDao.ObtenerPorId(cert.CodigoSolicitud);
+            var nombreArchivo = ConstruirNombrePdfCertificado(solicitud, cert, null);
+
             if (vistaPrevia)
             {
                 DeshabilitarCacheRespuestaPdf();
             }
 
-            return vistaPrevia
-                ? File(rutaFisica, "application/pdf")
-                : File(rutaFisica, "application/pdf", "certificado.pdf");
+            Response.Headers["X-Content-Type-Options"] = "nosniff";
+            PdfFileNameHelper.AplicarContentDispositionPdf(Response, !vistaPrevia, nombreArchivo);
+            return File(rutaFisica, "application/pdf");
         }
 
         // ============================================================
@@ -109,6 +114,7 @@ namespace CapaPresentacion.Controllers
                 }
 
                 var modelo = ConstruirViewModel(solicitudId);
+                var nombreArchivo = ConstruirNombrePdfCertificado(modelo != null ? modelo.Solicitud : null, null, modelo);
 
                 var pdf = new ViewAsPdf("~/Views/Certificado/CertificadoAOCR.cshtml", modelo)
                 {
@@ -118,12 +124,10 @@ namespace CapaPresentacion.Controllers
                     CustomSwitches = "--enable-local-file-access --print-media-type --dpi 300 --zoom 1.0"
                 };
 
-                if (!vistaPrevia)
-                {
-                    pdf.FileName = "Certificado_AOCR_" + solicitudId + ".pdf";
-                }
-
-                return pdf;
+                var pdfBytes = pdf.BuildFile(ControllerContext);
+                Response.Headers["X-Content-Type-Options"] = "nosniff";
+                PdfFileNameHelper.AplicarContentDispositionPdf(Response, !vistaPrevia, nombreArchivo);
+                return File(pdfBytes, "application/pdf");
             }
             catch (Exception ex)
             {
@@ -492,7 +496,7 @@ namespace CapaPresentacion.Controllers
                         : "No se pudo aplicar la firma digital al certificado.");
             }
 
-            var rutaRelativa = GuardarCertificadoFirmado(solicitudId, resultado.PdfFirmado);
+            var rutaRelativa = GuardarCertificadoFirmado(solicitudId, resultado.PdfFirmado, ConstruirNombrePdfCertificado(modelo != null ? modelo.Solicitud : null, cert, modelo));
 
             cert.RutaDocumento = rutaRelativa;
             cert.Estado = "APROBADO";
@@ -594,7 +598,7 @@ namespace CapaPresentacion.Controllers
             }
         }
 
-        private string GuardarCertificadoFirmado(int solicitudId, byte[] contenido)
+        private string GuardarCertificadoFirmado(int solicitudId, byte[] contenido, string nombreArchivo = null)
         {
             var carpetaRelativa = "~/App_Data/Uploads/AOCR/Certificados/" + solicitudId;
             var carpetaAbsoluta = Server.MapPath(carpetaRelativa);
@@ -603,11 +607,42 @@ namespace CapaPresentacion.Controllers
                 Directory.CreateDirectory(carpetaAbsoluta);
             }
 
-            var nombreSeguro = "certificado_aocr_" + DateTime.Now.ToString("yyyyMMddHHmmss") + "_" + solicitudId + ".pdf";
+            var nombreSeguro = !string.IsNullOrWhiteSpace(nombreArchivo)
+                ? nombreArchivo
+                : ("certificado_aocr_" + DateTime.Now.ToString("yyyyMMddHHmmss") + "_" + solicitudId + ".pdf");
+            var rutaTentativa = Path.Combine(carpetaAbsoluta, nombreSeguro);
+            if (System.IO.File.Exists(rutaTentativa))
+            {
+                var baseName = Path.GetFileNameWithoutExtension(nombreSeguro);
+                var extension = Path.GetExtension(nombreSeguro);
+                nombreSeguro = baseName + "_" + DateTime.Now.ToString("HHmmss") + extension;
+            }
             var rutaAbsoluta = Path.Combine(carpetaAbsoluta, nombreSeguro);
             System.IO.File.WriteAllBytes(rutaAbsoluta, contenido ?? new byte[0]);
 
             return VirtualPathUtility.ToAbsolute(carpetaRelativa.TrimStart('~') + "/" + nombreSeguro);
+        }
+
+        private string ConstruirNombrePdfCertificado(SolicitudAOCR solicitud, Certificado cert, CertificadoAOCRViewModel modelo)
+        {
+            var numeroSolicitud = solicitud != null && !string.IsNullOrWhiteSpace(solicitud.NumeroSolicitud)
+                ? solicitud.NumeroSolicitud
+                : (cert != null ? cert.CodigoSolicitud.ToString() : string.Empty);
+            var nombreOperador = PdfFileNameHelper.PrimerValorNoVacio(
+                PdfFileNameHelper.CombinarSegmentos(modelo != null ? modelo.RUC : null, modelo != null ? modelo.NombreExplotador : null),
+                PdfFileNameHelper.CombinarSegmentos(solicitud != null ? solicitud.Ruc : null, solicitud != null ? solicitud.NombreOperador : null),
+                PdfFileNameHelper.CombinarSegmentos(solicitud != null ? solicitud.Ruc : null, solicitud != null ? solicitud.NombreComercial : null),
+                PdfFileNameHelper.CombinarSegmentos(solicitud != null ? solicitud.Ruc : null, solicitud != null ? solicitud.RazonSocial : null),
+                modelo != null ? modelo.NombreExplotador : null,
+                solicitud != null ? solicitud.NombreOperador : null,
+                solicitud != null ? solicitud.NombreComercial : null,
+                solicitud != null ? solicitud.RazonSocial : null,
+                solicitud != null ? solicitud.Ruc : null);
+            var fecha = cert != null
+                ? (cert.FechaEmision ?? cert.UpdatedAt ?? cert.CreatedAt)
+                : (modelo != null ? (DateTime?)modelo.FechaEmision : (solicitud != null ? (solicitud.UpdatedAt ?? solicitud.FechaSolicitud ?? solicitud.CreatedAt) : (DateTime?)null));
+
+            return PdfFileNameHelper.CrearNombreCertificadoAocr(numeroSolicitud, nombreOperador, fecha);
         }
 
         private static string ConstruirContenidoQrCertificado(int solicitudId, CertificadoAOCRViewModel modelo, InformacionCertificadoDigital infoCert, string nombreFirmante, string cargoFirmante)

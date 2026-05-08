@@ -169,11 +169,16 @@
     var informeDescargaUrl = Model != null && Model.CodigoInspeccion > 0
         ? Url.Action("DescargarInforme", "Inspeccion", new { id = Model.CodigoInspeccion })
         : string.Empty;
+    var usarDocumentoLvPersistido = listaVerificacionFirmada && tieneListaVerificacionOperacionalEae;
     var listaVerificacionOperacionalEaeUrl = Model != null && Model.CodigoInspeccion > 0
-        ? Url.Action("VerListaVerificacionOperacionalEae", "Inspeccion", new { id = Model.CodigoInspeccion })
+        ? (usarDocumentoLvPersistido
+            ? Url.Action("VerListaVerificacionOperacionalEae", "Inspeccion", new { id = Model.CodigoInspeccion })
+            : Url.Action("VerLvEaeOficial", "Inspeccion", new { codigoInspeccion = Model.CodigoInspeccion }))
         : string.Empty;
     var listaVerificacionOperacionalEaeDescargaUrl = Model != null && Model.CodigoInspeccion > 0
-        ? Url.Action("DescargarListaVerificacionOperacionalEae", "Inspeccion", new { id = Model.CodigoInspeccion })
+        ? (usarDocumentoLvPersistido
+            ? Url.Action("DescargarListaVerificacionOperacionalEae", "Inspeccion", new { id = Model.CodigoInspeccion })
+            : Url.Action("DescargarLvEaeOficial", "Inspeccion", new { codigoInspeccion = Model.CodigoInspeccion }))
         : string.Empty;
     var urlDocumentosSolicitud = Model != null && Model.CodigoSolicitud > 0
         ? Url.Action("Lista", "Documento", new { solicitudId = Model.CodigoSolicitud })
@@ -255,6 +260,12 @@
     var operadorInspeccionado = solicitud != null && !string.IsNullOrWhiteSpace(solicitud.NombreOperador)
         ? solicitud.NombreOperador
         : "-";
+    var nombreArchivoInformeTecnico = Model != null && Model.CodigoInspeccion > 0
+        ? PdfFileNameHelper.CrearNombreInformeTecnico(
+            numeroSolicitudVisual,
+            Model.CodigoInspeccion,
+            informeTecnico != null ? (informeTecnico.FechaFirma1 ?? informeTecnico.FechaFinalizacion ?? informeTecnico.UpdatedAt ?? informeTecnico.CreatedAt) : (System.DateTime?)null)
+        : string.Empty;
     var rucOperador = solicitud != null && !string.IsNullOrWhiteSpace(solicitud.Ruc) ? solicitud.Ruc : "-";
     var codigoOaciOperador = solicitud != null && !string.IsNullOrWhiteSpace(solicitud.CodigoOaci) ? solicitud.CodigoOaci : "-";
     var emailOperador = solicitud != null && !string.IsNullOrWhiteSpace(solicitud.Email) ? solicitud.Email : "-";
@@ -2836,6 +2847,9 @@
 
                 @if (usaFlujoListaVerificacionOperacionalEae)
                 {
+                    var tieneListaVerificacionVisualizable = listaVerificacionOperacionalEae != null
+                        && listaVerificacionOperacionalEae.Finalizado
+                        && !string.IsNullOrWhiteSpace(listaVerificacionOperacionalEaeUrl);
                     var listaVerificacionVm = new ListaVerificacionOperacionalEaePanelVm
                     {
                         CodigoInspeccion = Model.CodigoInspeccion,
@@ -2844,8 +2858,8 @@
                         PuedeEditar = puedeEditarInformeTecnico,
                         PuedeFirmar = puedeEditarInformeTecnico && listaVerificacionOperacionalEae != null && listaVerificacionOperacionalEae.Finalizado && !listaVerificacionFirmada,
                         EstaFirmada = listaVerificacionFirmada,
-                        UrlVisualizacion = tieneListaVerificacionOperacionalEae ? listaVerificacionOperacionalEaeUrl : string.Empty,
-                        UrlDescarga = tieneListaVerificacionOperacionalEae ? listaVerificacionOperacionalEaeDescargaUrl : string.Empty,
+                        UrlVisualizacion = tieneListaVerificacionVisualizable ? listaVerificacionOperacionalEaeUrl : string.Empty,
+                        UrlDescarga = tieneListaVerificacionVisualizable ? listaVerificacionOperacionalEaeDescargaUrl : string.Empty,
                         UrlDocumentosSolicitud = urlDocumentosSolicitud,
                         MensajeBloqueoEdicion = inspectorDebeRevisarDocumentos ? mensajeBloqueoRevisionDocumentalInspector : string.Empty,
                         PuedeConfirmarRevisionDocumental = inspectorDebeRevisarDocumentos && (esInspector || esAdministrador)
@@ -2941,7 +2955,7 @@
                                        data-pdf-url="@informeDefinitivoUrl"
                                        data-download-url="@informeDescargaUrl"
                                        data-title="Informe Técnico"
-                                       data-subtitle="Documento definitivo disponible para revisión / firma"
+                                       data-subtitle="@nombreArchivoInformeTecnico"
                                        data-status="@estadoInformeTecnico"
                                        rel="noopener">
                                         Ver PDF
@@ -2953,6 +2967,7 @@
                                 PdfUrl = tieneInforme ? informeDefinitivoUrl : string.Empty,
                                 DescargarUrl = tieneInforme ? informeDescargaUrl : string.Empty,
                                 Titulo = "Informe Técnico",
+                                Subtitulo = nombreArchivoInformeTecnico,
                                 EstadoDocumento = estadoViewer,
                                 MensajeAyuda = ayudaViewer,
                                 PermitirDescarga = true,

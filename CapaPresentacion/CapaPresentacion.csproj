@@ -343,6 +343,7 @@
     <Compile Include="Helpers\InformeTecnicoTemplateHelper.cs" />
     <Compile Include="Helpers\NotificacionCorreoHelper.cs" />
     <Compile Include="Helpers\OrdenRecaudacionPagoHelper.cs" />
+    <Compile Include="Helpers\PdfFileNameHelper.cs" />
     <Compile Include="Helpers\RevisionDocumentalDisplayHelper.cs" />
     <Compile Include="Helpers\SessionTimeoutHelper.cs" />
     <Compile Include="Infrastructure\OrdenRecaudacionFilters.cs" />
@@ -399,6 +400,7 @@
     <Content Include="Content\aocr-datatables.css" />
     <Content Include="Content\aocr-responsive.css" />
     <Content Include="Content\aocr-pdf-viewer\aocr-pdf-viewer.css" />
+    <Content Include="Content\pdf-eae-oficial.css" />
     <Content Include="Content\aocr-pdf-viewer\aocr-pdf-viewer.js" />
     <Content Include="Content\aocr-pdf-viewer\pdf.min.js" />
     <Content Include="Content\aocr-pdf-viewer\pdf.worker.min.js" />
@@ -2877,6 +2879,8 @@
     <Content Include="Views\Inspeccion\InformeTecnicoPdf.cshtml" />
     <Content Include="Views\Inspeccion\InformeTecnicoFirmaPreview.cshtml" />
     <Content Include="Views\Inspeccion\ListaVerificacionOperacionalEaePdf.cshtml" />
+    <Content Include="Views\Inspeccion\ListaVerificacionOperacionalEaePdfOficial.cshtml" />
+    <Content Include="Views\ListaVerificacion\PdfListaVerificacionEaeOficial.cshtml" />
     <Content Include="Views\Inspeccion\_ListaVerificacionOperacionalEaePanel.cshtml" />
     <Content Include="Views\Inspeccion\Index.cshtml" />
     <Content Include="Views\Hallazgo\Index.cshtml" />

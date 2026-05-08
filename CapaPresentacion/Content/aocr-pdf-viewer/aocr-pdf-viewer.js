@@ -354,7 +354,9 @@
         qs(modal, '.modal-title').textContent = title;
         qs(modal, '.aocr-pdf-modal-subtitle').textContent = subtitle;
         qs(viewerEl, '.aocr-pdf-title').textContent = title;
-        qs(viewerEl, '.aocr-pdf-help').textContent = subtitle || 'Documento cargado mediante visor institucional AOCR.';
+        var subtitleEl = qs(viewerEl, '.aocr-pdf-subtitle');
+        if (subtitleEl) subtitleEl.textContent = subtitle;
+        qs(viewerEl, '.aocr-pdf-help').textContent = 'Documento cargado mediante visor institucional AOCR.';
         qs(viewerEl, '.aocr-pdf-status').textContent = status;
         viewerEl.setAttribute('data-pdf-url', url);
         viewerEl.setAttribute('data-download-url', downloadUrl);

@@ -19,6 +19,58 @@ namespace CapaDatos.DAOs
             return ex != null && string.Equals(ex.SqlState, SQLSTATE_RELATION_DOES_NOT_EXIST, StringComparison.Ordinal);
         }
 
+        private static bool TryGetOrdinal(NpgsqlDataReader dr, string column, out int ordinal)
+        {
+            ordinal = -1;
+            if (dr == null || string.IsNullOrWhiteSpace(column))
+            {
+                return false;
+            }
+
+            try
+            {
+                ordinal = dr.GetOrdinal(column);
+                return ordinal >= 0;
+            }
+            catch (IndexOutOfRangeException)
+            {
+                return false;
+            }
+        }
+
+        private static string LeerTextoOpcional(NpgsqlDataReader dr, string column)
+        {
+            int ordinal;
+            if (!TryGetOrdinal(dr, column, out ordinal) || dr.IsDBNull(ordinal))
+            {
+                return null;
+            }
+
+            return dr.GetValue(ordinal).ToString();
+        }
+
+        private static DateTime? LeerFechaOpcional(NpgsqlDataReader dr, string column)
+        {
+            int ordinal;
+            if (!TryGetOrdinal(dr, column, out ordinal) || dr.IsDBNull(ordinal))
+            {
+                return null;
+            }
+
+            return Convert.ToDateTime(dr.GetValue(ordinal));
+        }
+
+        private static int LeerEnteroObligatorio(NpgsqlDataReader dr, string column)
+        {
+            int ordinal;
+            if (!TryGetOrdinal(dr, column, out ordinal) || dr.IsDBNull(ordinal))
+            {
+                return 0;
+            }
+
+            return Convert.ToInt32(dr.GetValue(ordinal));
+        }
+
         // ✅ Método auxiliar para mapeo
         private Hallazgo MapearDesdeDataReader(NpgsqlDataReader dr)
         {
@@ -26,19 +78,19 @@ namespace CapaDatos.DAOs
             {
                 return new Hallazgo
                 {
-                    CodigoHallazgo = dr.GetInt32(dr.GetOrdinal("codigo_hallazgo")),
-                    CodigoInspeccion = dr.GetInt32(dr.GetOrdinal("codigo_inspeccion")),
-                    Descripcion = dr.IsDBNull(dr.GetOrdinal("descripcion")) ? null : dr.GetString(dr.GetOrdinal("descripcion")),
-                    Criticidad = dr.IsDBNull(dr.GetOrdinal("criticidad")) ? null : dr.GetString(dr.GetOrdinal("criticidad")),
-                    Estado = dr.IsDBNull(dr.GetOrdinal("estado")) ? null : dr.GetString(dr.GetOrdinal("estado")),
-                    AccionCorrectiva = dr.IsDBNull(dr.GetOrdinal("accion_correctiva")) ? null : dr.GetString(dr.GetOrdinal("accion_correctiva")),
-                    FechaDeteccion = dr.IsDBNull(dr.GetOrdinal("fecha_deteccion")) ? (DateTime?)null : dr.GetDateTime(dr.GetOrdinal("fecha_deteccion")),
-                    FechaCierre = dr.IsDBNull(dr.GetOrdinal("fecha_cierre")) ? (DateTime?)null : dr.GetDateTime(dr.GetOrdinal("fecha_cierre")),
-                    Responsable = dr.IsDBNull(dr.GetOrdinal("responsable")) ? null : dr.GetString(dr.GetOrdinal("responsable")),
-                    CreatedAt = dr.IsDBNull(dr.GetOrdinal("created_at")) ? (DateTime?)null : dr.GetDateTime(dr.GetOrdinal("created_at")),
-                    CreatedBy = dr.IsDBNull(dr.GetOrdinal("created_by")) ? null : dr.GetString(dr.GetOrdinal("created_by")),
-                    UpdatedAt = dr.IsDBNull(dr.GetOrdinal("updated_at")) ? (DateTime?)null : dr.GetDateTime(dr.GetOrdinal("updated_at")),
-                    UpdatedBy = dr.IsDBNull(dr.GetOrdinal("updated_by")) ? null : dr.GetString(dr.GetOrdinal("updated_by"))
+                    CodigoHallazgo = LeerEnteroObligatorio(dr, "codigo_hallazgo"),
+                    CodigoInspeccion = LeerEnteroObligatorio(dr, "codigo_inspeccion"),
+                    Descripcion = LeerTextoOpcional(dr, "descripcion"),
+                    Criticidad = LeerTextoOpcional(dr, "criticidad"),
+                    Estado = LeerTextoOpcional(dr, "estado"),
+                    AccionCorrectiva = LeerTextoOpcional(dr, "accion_correctiva"),
+                    FechaDeteccion = LeerFechaOpcional(dr, "fecha_deteccion"),
+                    FechaCierre = LeerFechaOpcional(dr, "fecha_cierre"),
+                    Responsable = LeerTextoOpcional(dr, "responsable"),
+                    CreatedAt = LeerFechaOpcional(dr, "created_at"),
+                    CreatedBy = LeerTextoOpcional(dr, "created_by"),
+                    UpdatedAt = LeerFechaOpcional(dr, "updated_at"),
+                    UpdatedBy = LeerTextoOpcional(dr, "updated_by")
                 };
             }
             catch (Exception ex)

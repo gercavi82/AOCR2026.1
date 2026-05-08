@@ -4,6 +4,7 @@ namespace CapaPresentacion.Models.ViewModels
     {
         public string PdfUrl { get; set; }
         public string Titulo { get; set; }
+        public string Subtitulo { get; set; }
         public bool PermitirDescarga { get; set; }
         public bool PermitirImpresion { get; set; }
         public bool MostrarToolbar { get; set; }

@@ -8,6 +8,7 @@
     var titulo = !string.IsNullOrWhiteSpace(Model != null ? Model.Titulo : null)
         ? Model.Titulo
         : "Visor de documento";
+    var subtitulo = Model != null ? (Model.Subtitulo ?? string.Empty) : string.Empty;
     var pdfUrl = Model != null ? (Model.PdfUrl ?? string.Empty) : string.Empty;
     var descargarUrl = !string.IsNullOrWhiteSpace(Model != null ? Model.DescargarUrl : null)
         ? Model.DescargarUrl
@@ -30,6 +31,10 @@
     <div class="aocr-pdf-header">
         <div class="aocr-pdf-title-wrap">
             <div class="aocr-pdf-title">@titulo</div>
+            @if (!string.IsNullOrWhiteSpace(subtitulo))
+            {
+                <div class="aocr-pdf-subtitle">@subtitulo</div>
+            }
             @if (!string.IsNullOrWhiteSpace(mensaje))
             {
                 <div class="aocr-pdf-help">@mensaje</div>

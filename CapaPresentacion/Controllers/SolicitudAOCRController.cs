@@ -3052,6 +3052,7 @@ namespace CapaPresentacion.Controllers
             };
 
             var pdfBytes = pdf.BuildFile(ControllerContext);
+            var nombreArchivo = ConstruirNombrePdfAceptacionDocumental(solicitud, firmaCoordinacion != null ? firmaCoordinacion.FechaCambio : (DateTime?)null);
 
             if (!vistaPrevia && esPropietario && string.Equals(estadoActual, EstadoSolicitud.FirmadoCoordinador, StringComparison.OrdinalIgnoreCase))
             {
@@ -3062,9 +3063,9 @@ namespace CapaPresentacion.Controllers
                 }
             }
 
-            return vistaPrevia
-                ? File(pdfBytes, "application/pdf")
-                : File(pdfBytes, "application/pdf", "AceptacionDocumental_AOCR_" + id + ".pdf");
+            Response.Headers["X-Content-Type-Options"] = "nosniff";
+            PdfFileNameHelper.AplicarContentDispositionPdf(Response, !vistaPrevia, nombreArchivo);
+            return File(pdfBytes, "application/pdf");
         }
 
         [Authorize]
@@ -3127,13 +3128,10 @@ namespace CapaPresentacion.Controllers
                 }
             }
 
-            var nombreArchivo = !string.IsNullOrWhiteSpace(firma.NombreArchivo)
-                ? firma.NombreArchivo
-                : System.IO.Path.GetFileName(rutaFisica);
-
-            return vistaPrevia
-                ? File(rutaFisica, "application/pdf")
-                : File(rutaFisica, "application/pdf", nombreArchivo);
+            var nombreArchivo = ConstruirNombrePdfCondicionesLimitaciones(solicitud, firma.FechaFirma);
+            Response.Headers["X-Content-Type-Options"] = "nosniff";
+            PdfFileNameHelper.AplicarContentDispositionPdf(Response, !vistaPrevia, nombreArchivo);
+            return File(rutaFisica, "application/pdf");
         }
 
         // ==========================================================================
@@ -3206,8 +3204,9 @@ namespace CapaPresentacion.Controllers
                     Directory.CreateDirectory(carpetaFisica);
                 }
 
-                string nombreArchivo = numeroAOCR.Replace("/", "-").Replace("\\", "-") +
-                                       "_" + DateTime.Now.ToString("yyyyMMddHHmmss") + ".pdf";
+                string nombreArchivo = ObtenerNombreArchivoDisponible(
+                    carpetaFisica,
+                    ConstruirNombrePdfCertificadoAocr(solicitud, modelo != null ? (DateTime?)modelo.FechaEmision : null));
                 string rutaFisica = Path.Combine(carpetaFisica, nombreArchivo);
                 System.IO.File.WriteAllBytes(rutaFisica, pdfBytes);
 
@@ -3271,14 +3270,89 @@ namespace CapaPresentacion.Controllers
                 return RedirectToAction("Detalle", new { id });
             }
 
-            string nombreDescarga = !string.IsNullOrWhiteSpace(documento.NombreArchivo)
-                ? documento.NombreArchivo
-                : ("AOCR_" + id + ".pdf");
+            var solicitud = _solicitudDAO.ObtenerPorId(id);
+            string nombreDescarga = ConstruirNombrePdfCertificadoAocr(solicitud);
 
             var bytes = System.IO.File.ReadAllBytes(ruta);
-            return vistaPrevia
-                ? File(bytes, "application/pdf")
-                : File(bytes, "application/pdf", nombreDescarga);
+            Response.Headers["X-Content-Type-Options"] = "nosniff";
+            PdfFileNameHelper.AplicarContentDispositionPdf(Response, !vistaPrevia, nombreDescarga);
+            return File(bytes, "application/pdf");
+        }
+
+        private string ConstruirNombrePdfAceptacionDocumental(SolicitudAOCR solicitud, DateTime? fecha = null)
+        {
+            return PdfFileNameHelper.CrearNombreAceptacionDocumental(
+                ObtenerNumeroSolicitudPdf(solicitud),
+                ObtenerSegmentoOperadorPdf(solicitud),
+                fecha ?? ObtenerFechaDocumentoPdf(solicitud));
+        }
+
+        private string ConstruirNombrePdfCondicionesLimitaciones(SolicitudAOCR solicitud, DateTime? fecha = null)
+        {
+            return PdfFileNameHelper.CrearNombreCondicionesLimitaciones(
+                ObtenerNumeroSolicitudPdf(solicitud),
+                ObtenerSegmentoOperadorPdf(solicitud),
+                fecha ?? ObtenerFechaDocumentoPdf(solicitud));
+        }
+
+        private string ConstruirNombrePdfCertificadoAocr(SolicitudAOCR solicitud, DateTime? fecha = null)
+        {
+            return PdfFileNameHelper.CrearNombreCertificadoAocr(
+                ObtenerNumeroSolicitudPdf(solicitud),
+                ObtenerSegmentoOperadorPdf(solicitud),
+                fecha ?? ObtenerFechaDocumentoPdf(solicitud));
+        }
+
+        private string ObtenerNumeroSolicitudPdf(SolicitudAOCR solicitud)
+        {
+            if (solicitud == null)
+            {
+                return string.Empty;
+            }
+
+            return !string.IsNullOrWhiteSpace(solicitud.NumeroSolicitud)
+                ? solicitud.NumeroSolicitud
+                : solicitud.CodigoSolicitud.ToString();
+        }
+
+        private string ObtenerSegmentoOperadorPdf(SolicitudAOCR solicitud)
+        {
+            if (solicitud == null)
+            {
+                return string.Empty;
+            }
+
+            return PdfFileNameHelper.PrimerValorNoVacio(
+                PdfFileNameHelper.CombinarSegmentos(solicitud.Ruc, solicitud.NombreOperador),
+                PdfFileNameHelper.CombinarSegmentos(solicitud.Ruc, solicitud.NombreComercial),
+                PdfFileNameHelper.CombinarSegmentos(solicitud.Ruc, solicitud.RazonSocial),
+                solicitud.NombreOperador,
+                solicitud.NombreComercial,
+                solicitud.RazonSocial,
+                solicitud.Ruc);
+        }
+
+        private DateTime? ObtenerFechaDocumentoPdf(SolicitudAOCR solicitud)
+        {
+            return solicitud != null
+                ? (solicitud.UpdatedAt ?? solicitud.FechaSolicitud ?? solicitud.CreatedAt)
+                : (DateTime?)null;
+        }
+
+        private static string ObtenerNombreArchivoDisponible(string carpetaFisica, string nombreArchivoDeseado)
+        {
+            var nombreArchivo = string.IsNullOrWhiteSpace(nombreArchivoDeseado)
+                ? "Documento_AOCR.pdf"
+                : nombreArchivoDeseado;
+            var rutaFisica = Path.Combine(carpetaFisica, nombreArchivo);
+            if (!System.IO.File.Exists(rutaFisica))
+            {
+                return nombreArchivo;
+            }
+
+            var baseName = Path.GetFileNameWithoutExtension(nombreArchivo);
+            var extension = Path.GetExtension(nombreArchivo);
+            return baseName + "_" + DateTime.Now.ToString("HHmmss") + extension;
         }
 
         /// <summary>
