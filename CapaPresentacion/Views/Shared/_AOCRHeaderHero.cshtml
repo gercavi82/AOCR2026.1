@@ -1,5 +1,6 @@
 @inherits System.Web.Mvc.WebViewPage
 @using System
+@using CapaPresentacion.Helpers
 @{
     Func<string, string> getValue = key =>
     {
@@ -18,6 +19,7 @@
     {
         rolActual = ((Session["Rol"] as string) ?? "Perfil institucional").Trim();
     }
+    rolActual = RoleGroupingHelper.ToDisplayName(rolActual);
 
     var kicker = getValue("AocrHeaderKicker");
     if (string.IsNullOrWhiteSpace(kicker))

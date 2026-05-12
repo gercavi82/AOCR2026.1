@@ -49,9 +49,24 @@
             : inspectorPrincipalNombre + " - " + inspectorPrincipalCedula)
         : (!string.IsNullOrWhiteSpace(inspectorPrincipalCedula) ? inspectorPrincipalCedula : null);
 
-    var numeroInspeccion = inspeccion != null
-        ? (!string.IsNullOrWhiteSpace(inspeccion.NumeroInspeccion) ? inspeccion.NumeroInspeccion : inspeccion.CodigoInspeccion.ToString())
-        : null;
+    var numeroSolicitudInspeccionRaw = solicitud != null && !string.IsNullOrWhiteSpace(solicitud.NumeroSolicitud)
+        ? solicitud.NumeroSolicitud.Trim().ToUpperInvariant()
+        : string.Empty;
+    var coincidenciaSolicitudInspeccion = !string.IsNullOrWhiteSpace(numeroSolicitudInspeccionRaw)
+        ? System.Text.RegularExpressions.Regex.Match(numeroSolicitudInspeccionRaw, @"AOCR\d+")
+        : System.Text.RegularExpressions.Match.Empty;
+    var referenciaSolicitudInspeccion = coincidenciaSolicitudInspeccion.Success
+        ? coincidenciaSolicitudInspeccion.Value
+        : (inspeccion != null && inspeccion.CodigoSolicitud > 0 ? "AOCR" + inspeccion.CodigoSolicitud.ToString() : "AOCR");
+    var coincidenciaAnioInspeccion = !string.IsNullOrWhiteSpace(numeroSolicitudInspeccionRaw)
+        ? System.Text.RegularExpressions.Regex.Match(numeroSolicitudInspeccionRaw, @"20\d{2}")
+        : System.Text.RegularExpressions.Match.Empty;
+    var anioInspeccion = coincidenciaAnioInspeccion.Success
+        ? coincidenciaAnioInspeccion.Value
+        : ((inspeccion != null && inspeccion.FechaProgramada.HasValue)
+            ? inspeccion.FechaProgramada.Value.Year.ToString()
+            : DateTime.Now.Year.ToString());
+    var numeroInspeccion = string.Format("DGAC-INS-{0}-{1}", anioInspeccion, referenciaSolicitudInspeccion);
     var operador = solicitud != null ? solicitud.NombreOperador : null;
     var licenciaInspector = informe != null && !string.IsNullOrWhiteSpace(informe.NumeroLicenciaInspector)
         ? informe.NumeroLicenciaInspector
@@ -88,9 +103,9 @@
     var documentosAdjuntosItems = documentosAdjuntosSeleccionados.Any()
         ? documentosAdjuntosSeleccionados.Select(item =>
         {
-            string archivoAdjunto;
-            return documentosAdjuntosArchivos.TryGetValue(item, out archivoAdjunto) && !string.IsNullOrWhiteSpace(archivoAdjunto)
-                ? item + " (" + archivoAdjunto + ")"
+            List<string> archivosAdjuntos;
+            return documentosAdjuntosArchivos.TryGetValue(item, out archivosAdjuntos) && archivosAdjuntos != null && archivosAdjuntos.Any(x => !string.IsNullOrWhiteSpace(x))
+                ? item + " (" + string.Join(", ", archivosAdjuntos.Where(x => !string.IsNullOrWhiteSpace(x))) + ")"
                 : item;
         }).ToList()
         : new List<string> { textoNoAplica };

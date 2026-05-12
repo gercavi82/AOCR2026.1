@@ -1,9 +1,12 @@
 ﻿using System;
+using System.Collections;
 using System.IO;
 using System.Linq;
 using System.Security.Cryptography;
 using System.Web;
 using System.Web.Mvc;
+using System.Web.Security;
+using CapaDatos.Services;
 using CapaUtilidades;
 using System.Web.Routing;
 
@@ -85,6 +88,169 @@ namespace CapaPresentacion.Filters
             {
                 base.HandleUnauthorizedRequest(filterContext);
             }
+        }
+    }
+
+    [AttributeUsage(AttributeTargets.Class | AttributeTargets.Method, Inherited = true, AllowMultiple = true)]
+    public class AocrAuthorizeAttribute : AuthorizeAttribute
+    {
+        private static readonly ILoggingService Logger = LoggingServiceFactory.Create();
+
+        protected override void HandleUnauthorizedRequest(AuthorizationContext filterContext)
+        {
+            if (filterContext == null || filterContext.HttpContext == null)
+            {
+                base.HandleUnauthorizedRequest(filterContext);
+                return;
+            }
+
+            var httpContext = filterContext.HttpContext;
+            var request = httpContext.Request;
+            var response = httpContext.Response;
+            var isAuthenticated = httpContext.User != null
+                && httpContext.User.Identity != null
+                && httpContext.User.Identity.IsAuthenticated;
+            var isAjax = IsAjaxLikeRequest(request);
+            var returnUrl = request != null
+                ? (request.RawUrl ?? (request.Url != null ? request.Url.PathAndQuery : string.Empty))
+                : string.Empty;
+
+            LogUnauthorizedAttempt(httpContext, isAjax, isAuthenticated, returnUrl);
+
+            if (isAjax)
+            {
+                var statusCode = isAuthenticated ? 403 : 401;
+                response.StatusCode = statusCode;
+                response.TrySkipIisCustomErrors = true;
+                response.SuppressFormsAuthenticationRedirect = true;
+
+                filterContext.Result = new JsonResult
+                {
+                    Data = new
+                    {
+                        success = false,
+                        code = statusCode,
+                        requiresLogin = !isAuthenticated,
+                        redirectUrl = !isAuthenticated ? BuildLoginUrl(returnUrl) : null,
+                        message = isAuthenticated
+                            ? "No tiene permisos para acceder a este recurso."
+                            : "La sesión expiró o no ha iniciado sesión."
+                    },
+                    JsonRequestBehavior = JsonRequestBehavior.AllowGet
+                };
+                return;
+            }
+
+            if (isAuthenticated)
+            {
+                filterContext.Result = new RedirectToRouteResult(
+                    new RouteValueDictionary(
+                        new
+                        {
+                            controller = "Error",
+                            action = "AccessDenied"
+                        }));
+                return;
+            }
+
+            base.HandleUnauthorizedRequest(filterContext);
+        }
+
+        private static bool IsAjaxLikeRequest(HttpRequestBase request)
+        {
+            if (request == null)
+            {
+                return false;
+            }
+
+            if (request.IsAjaxRequest())
+            {
+                return true;
+            }
+
+            var requestedWith = request.Headers["X-Requested-With"];
+            if (string.Equals(requestedWith, "XMLHttpRequest", StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+
+            var acceptHeader = request.Headers["Accept"] ?? string.Empty;
+            return acceptHeader.IndexOf("application/json", StringComparison.OrdinalIgnoreCase) >= 0;
+        }
+
+        private static string BuildLoginUrl(string returnUrl)
+        {
+            var loginUrl = VirtualPathUtility.ToAbsolute(string.IsNullOrWhiteSpace(FormsAuthentication.LoginUrl)
+                ? "~/Account/Login"
+                : FormsAuthentication.LoginUrl);
+
+            if (string.IsNullOrWhiteSpace(returnUrl))
+            {
+                return loginUrl;
+            }
+
+            return loginUrl + (loginUrl.Contains("?") ? "&" : "?") + "ReturnUrl=" + HttpUtility.UrlEncode(returnUrl);
+        }
+
+        private void LogUnauthorizedAttempt(HttpContextBase httpContext, bool isAjax, bool isAuthenticated, string returnUrl)
+        {
+            try
+            {
+                var request = httpContext.Request;
+                var userName = httpContext.User != null && httpContext.User.Identity != null && httpContext.User.Identity.IsAuthenticated
+                    ? httpContext.User.Identity.Name
+                    : "ANON";
+                var path = request != null && request.Url != null
+                    ? request.Url.AbsolutePath
+                    : string.Empty;
+
+                Logger.LogWarning(string.Format(
+                    "[AUTH] Acceso bloqueado. Path={0}; Method={1}; Authenticated={2}; Ajax={3}; User={4}; ReturnUrl={5}; AttrRoles={6}; Rol={7}; Roles={8}; RolesRaw={9}",
+                    path,
+                    request != null ? request.HttpMethod : string.Empty,
+                    isAuthenticated,
+                    isAjax,
+                    userName,
+                    returnUrl ?? string.Empty,
+                    Roles ?? string.Empty,
+                    ReadSessionValue(httpContext, "Rol"),
+                    ReadSessionValue(httpContext, "Roles"),
+                    ReadSessionValue(httpContext, "RolesRaw")));
+            }
+            catch
+            {
+            }
+        }
+
+        private static string ReadSessionValue(HttpContextBase httpContext, string key)
+        {
+            if (httpContext == null || httpContext.Session == null)
+            {
+                return string.Empty;
+            }
+
+            var value = httpContext.Session[key];
+            if (value == null)
+            {
+                return string.Empty;
+            }
+
+            var raw = value as string;
+            if (raw != null)
+            {
+                return raw;
+            }
+
+            var enumerable = value as IEnumerable;
+            if (enumerable != null)
+            {
+                return string.Join(",",
+                    enumerable.Cast<object>()
+                        .Where(item => item != null)
+                        .Select(item => Convert.ToString(item)));
+            }
+
+            return Convert.ToString(value);
         }
     }
 

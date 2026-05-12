@@ -51,11 +51,14 @@ namespace CapaNegocio.Services
             var portStr = ConfigurationManager.AppSettings["SmtpPort"];
             var user = ConfigurationManager.AppSettings["SmtpUser"];
             var pass = ConfigurationManager.AppSettings["SmtpPass"]; // ideal: variable de entorno / secret manager
-            var from = ConfigurationManager.AppSettings["MailFrom"];
+            var from = ConfigurationManager.AppSettings["MailFrom"]
+                ?? ConfigurationManager.AppSettings["EmailFrom"]
+                ?? ConfigurationManager.AppSettings["Email:FromAddress"]
+                ?? "aocr@aviacioncivil.gob.ec";
             var enableSslStr = ConfigurationManager.AppSettings["SmtpEnableSsl"];
 
-            if (string.IsNullOrWhiteSpace(host) || string.IsNullOrWhiteSpace(from))
-                throw new Exception("SMTP no configurado (SmtpHost/MailFrom).");
+            if (string.IsNullOrWhiteSpace(host))
+                throw new Exception("SMTP no configurado (SmtpHost).");
 
             int port = 587;
             int.TryParse(portStr, out port);
@@ -112,11 +115,14 @@ namespace CapaNegocio.Services
                 var portStr = ConfigurationManager.AppSettings["SmtpPort"];
                 var user = ConfigurationManager.AppSettings["SmtpUser"];
                 var pass = ConfigurationManager.AppSettings["SmtpPass"];
-                var from = ConfigurationManager.AppSettings["MailFrom"];
+                var from = ConfigurationManager.AppSettings["MailFrom"]
+                    ?? ConfigurationManager.AppSettings["EmailFrom"]
+                    ?? ConfigurationManager.AppSettings["Email:FromAddress"]
+                    ?? "aocr@aviacioncivil.gob.ec";
                 var enableSslStr = ConfigurationManager.AppSettings["SmtpEnableSsl"];
 
-                if (string.IsNullOrWhiteSpace(host) || string.IsNullOrWhiteSpace(from))
-                    return Task.FromResult(EmailSendResult.Fail("SMTP no configurado (SmtpHost/MailFrom)."));
+                if (string.IsNullOrWhiteSpace(host))
+                    return Task.FromResult(EmailSendResult.Fail("SMTP no configurado (SmtpHost)."));
 
                 int port = 587;
                 int.TryParse(portStr, out port);

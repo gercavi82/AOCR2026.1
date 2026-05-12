@@ -1,11 +1,12 @@
 ﻿@inherits System.Web.Mvc.WebViewPage
 @using System.Collections.Generic
 @using System.Web
+@using CapaPresentacion.Helpers
 @{
     Layout = "~/Views/Shared/_LayoutAOCR.cshtml";
     ViewBag.Title = "Dashboard";
     var usuarioActual = ((Session["NombreUsuario"] as string) ?? "Usuario AOCR").Trim();
-    var rolActual = ((Session["Rol"] as string) ?? "Perfil institucional").Trim();
+    var rolActual = RoleGroupingHelper.ToDisplayName((Session["Rol"] as string) ?? "Perfil institucional");
     var fechaActual = DateTime.Now.ToString("dd/MM/yyyy");
     ViewBag.AocrHeaderSubtitle = "Panel ergonómico para seguimiento operativo, control de órdenes y accesos directos del ecosistema AOCR.";
     ViewBag.AocrHeaderContextBadge = "Dashboard operativo";

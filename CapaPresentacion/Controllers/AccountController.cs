@@ -250,8 +250,16 @@ namespace CapaPresentacion.Controllers
             Session["Correo"] = usuario.Email;
             CompaniaActivaSessionHelper.Limpiar(Session);
 
-            Session["Roles"] = roles;
-            Session["Rol"] = roles.Count > 0 ? roles[0] : null;
+            var rolesRaw = roles
+                .Where(r => !string.IsNullOrWhiteSpace(r))
+                .Select(r => r.Trim())
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
+            var rolesUnificados = RoleGroupingHelper.BuildUnifiedRoles(rolesRaw);
+
+            Session["RolesRaw"] = rolesRaw;
+            Session["Roles"] = rolesUnificados;
+            Session["Rol"] = rolesUnificados.Count > 0 ? rolesUnificados[0] : null;
             Session.Timeout = sessionTimeoutMinutes;
             Session["LastActivity"] = DateTime.Now;
 
@@ -637,13 +645,14 @@ namespace CapaPresentacion.Controllers
         [Authorize]
         public ActionResult CambiarRol(string rolSeleccionado)
         {
-            var roles = Session["Roles"] as List<string> ?? new List<string>();
+            var roles = RoleGroupingHelper.BuildUnifiedRoles(
+                RoleGroupingHelper.ExtractRoles(Session["RolesRaw"] ?? Session["Roles"], Session["Rol"] as string));
+            var rolUnificado = RoleGroupingHelper.NormalizeSelectedRole(rolSeleccionado);
 
-            if (!string.IsNullOrWhiteSpace(rolSeleccionado) &&
-                roles.Contains(rolSeleccionado, StringComparer.OrdinalIgnoreCase))
+            if (!string.IsNullOrWhiteSpace(rolUnificado) &&
+                roles.Contains(rolUnificado, StringComparer.OrdinalIgnoreCase))
             {
-                // set rol exacto como está en la lista
-                var match = roles.First(r => r.Equals(rolSeleccionado, StringComparison.OrdinalIgnoreCase));
+                var match = roles.First(r => r.Equals(rolUnificado, StringComparison.OrdinalIgnoreCase));
                 Session["Rol"] = match;
             }
 
@@ -866,19 +875,8 @@ namespace CapaPresentacion.Controllers
             var roles = new List<string>();
             try
             {
-                var rolesObj = Session["Roles"];
-                if (rolesObj is List<string>)
-                {
-                    roles.AddRange((List<string>)rolesObj);
-                }
-                else if (rolesObj is string[])
-                {
-                    roles.AddRange((string[])rolesObj);
-                }
-                else if (rolesObj is IEnumerable<string>)
-                {
-                    roles.AddRange((IEnumerable<string>)rolesObj);
-                }
+                roles.AddRange(RoleGroupingHelper.ExtractRoles(Session["RolesRaw"]));
+                roles.AddRange(RoleGroupingHelper.ExtractRoles(Session["Roles"]));
 
                 var rolUnico = Session["Rol"] as string;
                 if (!string.IsNullOrWhiteSpace(rolUnico))

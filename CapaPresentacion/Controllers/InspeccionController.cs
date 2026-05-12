@@ -17,6 +17,7 @@ using CapaDatos.Services;
 using CapaNegocio.Helpers;
 using CapaNegocio.Services;
 using CapaUtilidades;
+using CapaPresentacion.Filters;
 using CapaPresentacion.Helpers;
 using CapaPresentacion.Infrastructure;
 using CapaPresentacion.Models;
@@ -31,7 +32,7 @@ using ResultadoOperacion = CapaNegocio.Services.ResultadoOperacion;
 
 namespace CapaPresentacion.Controllers
 {
-    [Authorize]
+    [AocrAuthorize]
     public class InspeccionController : Controller
     {
         private readonly HallazgoBL _hallazgoBL;
@@ -208,10 +209,20 @@ namespace CapaPresentacion.Controllers
             if (EsSolicitudAjaxInformeTecnico())
             {
                 Response.StatusCode = statusCode;
+                Response.TrySkipIisCustomErrors = true;
+                Response.SuppressFormsAuthenticationRedirect = true;
                 return Json(new { success = false, message = mensaje }, JsonRequestBehavior.AllowGet);
             }
 
             return new HttpStatusCodeResult(statusCode, mensaje);
+        }
+
+        private JsonResult DevolverJsonErrorInformeTecnico(int statusCode, string mensaje)
+        {
+            Response.StatusCode = statusCode;
+            Response.TrySkipIisCustomErrors = true;
+            Response.SuppressFormsAuthenticationRedirect = true;
+            return Json(new { success = false, code = statusCode, message = mensaje }, JsonRequestBehavior.AllowGet);
         }
 
         private bool PuedeAccederInspeccion(Inspeccion ins)
@@ -286,7 +297,7 @@ namespace CapaPresentacion.Controllers
         // ============================================================
         // ✅ DETALLE
         // ============================================================
-        [Authorize(Roles = ROLES_GESTION_INSPECCION_CON_SOLICITANTE)]
+        [AocrAuthorize(Roles = ROLES_GESTION_INSPECCION_CON_SOLICITANTE)]
         public ActionResult Detalle(int id)
         {
             if (id <= 0) return new HttpStatusCodeResult(400, "ID inválido.");
@@ -468,7 +479,7 @@ namespace CapaPresentacion.Controllers
         }
 
         [HttpGet]
-        [Authorize(Roles = ROLES_GESTION_INSPECCION_CON_SOLICITANTE)]
+        [AocrAuthorize(Roles = ROLES_GESTION_INSPECCION_CON_SOLICITANTE)]
         public ActionResult ModalInformeTecnico(int codigoInspeccion)
         {
             if (codigoInspeccion <= 0)
@@ -1356,7 +1367,7 @@ namespace CapaPresentacion.Controllers
         }
 
         [HttpPost]
-        [Authorize(Roles = ROL_INSPECTOR + "," + ROL_ADMIN)]
+        [AocrAuthorize(Roles = ROL_INSPECTOR + "," + ROL_ADMIN)]
         [ValidateAntiForgeryToken]
         [ValidateInput(false)]
         public ActionResult GuardarInformeTecnico()
@@ -1520,7 +1531,7 @@ namespace CapaPresentacion.Controllers
         }
 
         [HttpPost]
-        [Authorize(Roles = ROL_INSPECTOR + "," + ROL_ADMIN)]
+        [AocrAuthorize(Roles = ROL_INSPECTOR + "," + ROL_ADMIN)]
         [ValidateAntiForgeryToken]
         [ValidateInput(false)]
         public JsonResult PrevisualizarInformeTecnico()
@@ -1540,23 +1551,23 @@ namespace CapaPresentacion.Controllers
 
                 if (id <= 0)
                 {
-                    return Json(new { success = false, message = "ID de inspección inválido." });
+                    return DevolverJsonErrorInformeTecnico(400, "ID de inspección inválido.");
                 }
 
                 var inspeccion = _inspeccionDAO.ObtenerPorId(id);
                 if (inspeccion == null)
                 {
-                    return Json(new { success = false, message = "Inspección no encontrada." });
+                    return DevolverJsonErrorInformeTecnico(404, "Inspección no encontrada.");
                 }
 
                 if (!PuedeAccederInspeccion(inspeccion))
                 {
-                    return Json(new { success = false, message = "No autorizado para previsualizar este informe técnico." });
+                    return DevolverJsonErrorInformeTecnico(403, "No autorizado para previsualizar este informe técnico.");
                 }
 
                 if (!InspectorTieneRevisionDocumentalConfirmada(inspeccion))
                 {
-                    return Json(new { success = false, message = ObtenerMensajeBloqueoRevisionDocumentalInspector() });
+                    return DevolverJsonErrorInformeTecnico(409, ObtenerMensajeBloqueoRevisionDocumentalInspector());
                 }
 
                 var solicitud = _solicitudDAO.ObtenerPorId(inspeccion.CodigoSolicitud);
@@ -1566,7 +1577,7 @@ namespace CapaPresentacion.Controllers
                 string mensajeLista;
                 if (!ValidarPrecondicionInformeTecnico(inspeccion, solicitud, false, out listaVerificacion, out mensajeLista))
                 {
-                    return Json(new { success = false, message = mensajeLista });
+                    return DevolverJsonErrorInformeTecnico(409, mensajeLista);
                 }
 
                 var usuarioId = ObtenerCodigoUsuario();
@@ -1607,7 +1618,7 @@ namespace CapaPresentacion.Controllers
             catch (Exception ex)
             {
                 _logger.LogError("[GestionInspeccion] Error en PrevisualizarInformeTecnico: " + ex);
-                return Json(new { success = false, message = "No se pudo generar la vista previa. Verifique los datos e intente nuevamente." });
+                return DevolverJsonErrorInformeTecnico(500, "No se pudo generar la vista previa. Verifique los datos e intente nuevamente.");
             }
         }
 
@@ -4720,17 +4731,31 @@ namespace CapaPresentacion.Controllers
             var otrosAdjuntos = TomarCampoTexto(form, "otrosAdjuntos", 4000, informeActual != null ? informeActual.OtrosAdjuntos : null);
             if (guardarAdjuntos)
             {
-                var adjuntosBaseGuardados = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+                var adjuntosBaseGuardados = new Dictionary<string, List<string>>(StringComparer.OrdinalIgnoreCase);
                 var archivosOtrosAdjuntos = GuardarArchivosAdjuntosInforme(codigoInspeccion, adjuntosBaseGuardados);
 
                 foreach (var adjuntoBase in adjuntosBaseGuardados)
                 {
-                    if (string.IsNullOrWhiteSpace(adjuntoBase.Key) || string.IsNullOrWhiteSpace(adjuntoBase.Value))
+                    if (string.IsNullOrWhiteSpace(adjuntoBase.Key) || adjuntoBase.Value == null || adjuntoBase.Value.Count == 0)
                     {
                         continue;
                     }
 
-                    documentosAdjuntosArchivos[adjuntoBase.Key] = adjuntoBase.Value;
+                    List<string> archivosRegistrados;
+                    if (!documentosAdjuntosArchivos.TryGetValue(adjuntoBase.Key, out archivosRegistrados) || archivosRegistrados == null)
+                    {
+                        archivosRegistrados = new List<string>();
+                        documentosAdjuntosArchivos[adjuntoBase.Key] = archivosRegistrados;
+                    }
+
+                    foreach (var nombreArchivo in adjuntoBase.Value.Where(x => !string.IsNullOrWhiteSpace(x)))
+                    {
+                        if (!archivosRegistrados.Any(x => string.Equals(x, nombreArchivo, StringComparison.OrdinalIgnoreCase)))
+                        {
+                            archivosRegistrados.Add(nombreArchivo);
+                        }
+                    }
+
                     if (!documentosAdjuntosItems.Any(x => string.Equals(x, adjuntoBase.Key, StringComparison.OrdinalIgnoreCase)))
                     {
                         documentosAdjuntosItems.Add(adjuntoBase.Key);
@@ -4761,8 +4786,17 @@ namespace CapaPresentacion.Controllers
                 documentosAdjuntosItems.Where(x => !string.IsNullOrWhiteSpace(x)),
                 StringComparer.OrdinalIgnoreCase);
             documentosAdjuntosArchivos = documentosAdjuntosArchivos
-                .Where(x => documentosAdjuntosNormalizados.Contains(x.Key) && !string.IsNullOrWhiteSpace(x.Value))
-                .ToDictionary(x => x.Key, x => x.Value, StringComparer.OrdinalIgnoreCase);
+                .Where(x => documentosAdjuntosNormalizados.Contains(x.Key)
+                    && x.Value != null
+                    && x.Value.Any(nombre => !string.IsNullOrWhiteSpace(nombre)))
+                .ToDictionary(
+                    x => x.Key,
+                    x => x.Value
+                        .Where(nombre => !string.IsNullOrWhiteSpace(nombre))
+                        .Select(nombre => nombre.Trim())
+                        .Distinct(StringComparer.OrdinalIgnoreCase)
+                        .ToList(),
+                    StringComparer.OrdinalIgnoreCase);
             var documentosAdjuntos = InformeTecnicoTemplateHelper.SerializeLines(documentosAdjuntosItems);
             var resultadoInforme = InformeTecnicoTemplateHelper.NormalizeResultadoInformeTecnico(
                 TomarCampoTexto(form, "resultado", 120, informeActual != null ? informeActual.Resultado : null));
@@ -4859,7 +4893,7 @@ namespace CapaPresentacion.Controllers
             };
         }
 
-        private List<string> GuardarArchivosAdjuntosInforme(int codigoInspeccion, IDictionary<string, string> adjuntosBaseGuardados)
+        private List<string> GuardarArchivosAdjuntosInforme(int codigoInspeccion, IDictionary<string, List<string>> adjuntosBaseGuardados)
         {
             var otrosAdjuntosGuardados = new List<string>();
             var documentosAdjuntosBase = InformeTecnicoTemplateHelper.GetDocumentosAdjuntosBase();
@@ -4885,8 +4919,8 @@ namespace CapaPresentacion.Controllers
                 var ext = Path.GetExtension(file.FileName);
                 if (string.IsNullOrWhiteSpace(ext) || !allowedExtensions.Contains(ext)) { continue; }
 
-                var safeFileName = string.Format("adj_{0}_{1}_{2}{3}",
-                    codigoInspeccion, key, DateTime.Now.ToString("yyyyMMddHHmmss"), ext);
+                var safeFileName = string.Format("adj_{0}_{1}_{2}_{3}{4}",
+                    codigoInspeccion, key, DateTime.Now.ToString("yyyyMMddHHmmssfff"), i, ext);
                 var fullPath = Path.Combine(basePath, safeFileName);
                 file.SaveAs(fullPath);
 
@@ -4898,7 +4932,18 @@ namespace CapaPresentacion.Controllers
                     int indiceAdjunto;
                     if (int.TryParse(rawIndex, out indiceAdjunto) && indiceAdjunto >= 0 && indiceAdjunto < documentosAdjuntosBase.Count && !string.IsNullOrWhiteSpace(nombreVisible))
                     {
-                        adjuntosBaseGuardados[documentosAdjuntosBase[indiceAdjunto]] = nombreVisible;
+                        var etiquetaAdjunto = documentosAdjuntosBase[indiceAdjunto];
+                        List<string> archivosAdjunto;
+                        if (!adjuntosBaseGuardados.TryGetValue(etiquetaAdjunto, out archivosAdjunto) || archivosAdjunto == null)
+                        {
+                            archivosAdjunto = new List<string>();
+                            adjuntosBaseGuardados[etiquetaAdjunto] = archivosAdjunto;
+                        }
+
+                        if (!archivosAdjunto.Any(x => string.Equals(x, nombreVisible, StringComparison.OrdinalIgnoreCase)))
+                        {
+                            archivosAdjunto.Add(nombreVisible);
+                        }
                     }
                 }
 

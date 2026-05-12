@@ -12,13 +12,12 @@ namespace CapaPresentacion
             // ======================
             // CSS
             // ======================
-            bundles.Add(new StyleBundle("~/bundles/css").Include(
-                "~/Content/bootstrap.min.css",
-                "~/Content/adminlte.min.css",
-                "~/Content/site.css",
-                "~/Content/plugins/fontawesome-free/css/all.min.css",
-                "~/Content/aocr-institucional.css"
-            ));
+            bundles.Add(new StyleBundle("~/bundles/css")
+                .Include("~/Content/bootstrap.min.css")
+                .Include("~/Content/adminlte.min.css")
+                .Include("~/Content/site.css")
+                .Include("~/Content/aocr-institucional.css")
+            );
 
             bundles.Add(new StyleBundle("~/bundles/plugins-css").Include(
                 // DataTables Bootstrap 5 (local)
@@ -30,11 +29,10 @@ namespace CapaPresentacion
                 "~/Content/toastr/toastr.min.css"
             ));
 
-            bundles.Add(new StyleBundle("~/Content/auth").Include(
-                "~/Content/bootstrap.min.css",
-                "~/Content/plugins/fontawesome-free/css/all.min.css",
-                "~/Content/plugins/sweetalert2/sweetalert2.min.css"
-            ));
+            bundles.Add(new StyleBundle("~/Content/auth")
+                .Include("~/Content/bootstrap.min.css")
+                .Include("~/Content/plugins/sweetalert2/sweetalert2.min.css")
+            );
 
             // ======================
             // JS (ORDEN CRÍTICO)

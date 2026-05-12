@@ -15,7 +15,7 @@ namespace CapaDatos.Services
 
         // Configuración por defecto (fallback)
         private const string DefaultSmtpServer = "172.20.16.21";
-        private const string DefaultFromAddress = "no_reply@aviacioncivil.gob.ec";
+        private const string DefaultFromAddress = "aocr@aviacioncivil.gob.ec";
         private const int DefaultTimeout = 30000; // 30 segundos
 
         #region Constructores

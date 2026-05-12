@@ -8,15 +8,16 @@
 @* ~/Views/Shared/_Sidebar.cshtml *@
 <div class="aocr-sidebar-shell text-white">
     @{
-        var rolHeader = (Session["Rol"] as string ?? string.Empty).Trim();
+        var rolHeader = RoleGroupingHelper.NormalizeSelectedRole(Session["Rol"] as string ?? string.Empty);
         var nombreHeader = (Session["NombreUsuario"] as string ?? string.Empty).Trim();
         var correoHeader = (Session["Correo"] as string ?? string.Empty).Trim();
+        var rolHeaderTexto = RoleGroupingHelper.ToDisplayName(rolHeader);
     }
 
     <div class="sidebar-header aocr-sidebar-panel text-center">
         <div class="mt-3 aocr-sidebar-user-card">
             <div class="aocr-sidebar-user-card__name">@(!string.IsNullOrWhiteSpace(nombreHeader) ? nombreHeader : "Usuario AOCR")</div>
-            <div class="aocr-sidebar-user-card__role">@(!string.IsNullOrWhiteSpace(rolHeader) ? rolHeader : "Perfil institucional")</div>
+            <div class="aocr-sidebar-user-card__role">@(!string.IsNullOrWhiteSpace(rolHeaderTexto) ? rolHeaderTexto : "Perfil institucional")</div>
             <span class="chip chip-info">USUARIO ACTIVO</span>
             <div class="user-mail">@(!string.IsNullOrWhiteSpace(correoHeader) ? correoHeader : "Sin correo registrado")</div>
             <div class="mt-2">
@@ -26,7 +27,9 @@
     </div>
 
     @{
-        var rolActual = (Session["Rol"] as string ?? string.Empty).Trim();
+        var rolActual = RoleGroupingHelper.NormalizeSelectedRole(Session["Rol"] as string ?? string.Empty);
+        var rolesRaw = RoleGroupingHelper.ExtractRoles(Session["RolesRaw"] ?? Session["Roles"], Session["Rol"] as string);
+        var sinRolesRaw = rolesRaw.Count == 0;
         int idUsuario = 0;
         var sessionUserId = Session["IdUsuario"] ?? Session["UserId"];
         if (sessionUserId != null)
@@ -79,26 +82,30 @@
             System.Diagnostics.Debug.WriteLine("_Sidebar: Error consultando estado de orden: " + ex.Message);
         }
 
-        // Visibilidad estricta por rol seleccionado en sesion (con aliases de roles)
-        var rolNormalizado = (rolActual ?? string.Empty).Trim();
-        Func<string, bool> esRol = rol => rolNormalizado.Equals(rol, StringComparison.OrdinalIgnoreCase);
-
-        bool esAdministrador = esRol("Administrador");
-        bool esSolicitanteRol = esRol("Operador") || esRol("Solicitante");
-        bool esRepresentanteRtRol = esRol("RepresentanteTecnico") || esRol("Representante Técnico") || esRol("RepresentanteLegal") || esRol("RT");
+        bool esAdministrador = RoleGroupingHelper.IsAdministrador(rolActual);
+        bool esSolicitanteRol = RoleGroupingHelper.IsSolicitante(rolActual)
+            && (sinRolesRaw || RoleGroupingHelper.HasAnyRawRole(rolesRaw, "Operador", "Solicitante"));
+        bool esRepresentanteRtRol = RoleGroupingHelper.IsSolicitante(rolActual)
+            && RoleGroupingHelper.HasAnyRawRole(rolesRaw, "RepresentanteTecnico", "Representante Técnico", "RepresentanteLegal", "RT");
         bool esSolicitanteORT = esSolicitanteRol || esRepresentanteRtRol;
 
         // ── Roles internos delimitados: Inspector · Coordinador · RT · DIRDAC · Financiero ──
-        bool esInspectorRol   = esRol("Inspector") || esRol("Tecnico") || esRol("EvaluadorTecnico");
-        bool esCoordinadorRol = esRol("Coordinador") || esRol("CoordinadorInspecciones");
-        bool esFinancieroRol  = esRol("Financiero") || esRol("CoordinadorFinanciero");
-        bool esLegalRol       = esRol("CoordinacionLegal") || esRol("CoordinadorLegal");
-        bool esDirectorGeneralRol = esRol("DirectorGeneral");
-        bool esDirdacRol      = esRol("DIRDAC") || esRol("Direccion") || esRol("JefaturaTecnica") || esDirectorGeneralRol || esRol("DirectorFinanciero");
+        bool esInspectorRol = RoleGroupingHelper.IsInspectorTecnico(rolActual)
+            && (sinRolesRaw || RoleGroupingHelper.HasAnyRawRole(rolesRaw, "Inspector", "Tecnico", "EvaluadorTecnico"));
+        bool esCoordinadorRol = RoleGroupingHelper.IsCoordinacion(rolActual)
+            && (sinRolesRaw || RoleGroupingHelper.HasAnyRawRole(rolesRaw, "Coordinador", "CoordinadorInspecciones"));
+        bool esFinancieroRol = RoleGroupingHelper.IsCoordinacion(rolActual)
+            && (sinRolesRaw || RoleGroupingHelper.HasAnyRawRole(rolesRaw, "Financiero", "CoordinadorFinanciero"));
+        bool esLegalRol = RoleGroupingHelper.IsCoordinacion(rolActual)
+            && (sinRolesRaw || RoleGroupingHelper.HasAnyRawRole(rolesRaw, "CoordinacionLegal", "CoordinadorLegal"));
+        bool esDirectorGeneralRol = RoleGroupingHelper.IsDireccionJefaturaTecnica(rolActual)
+            && (sinRolesRaw || RoleGroupingHelper.HasAnyRawRole(rolesRaw, "DirectorGeneral"));
+        bool esDirdacRol = RoleGroupingHelper.IsDireccionJefaturaTecnica(rolActual)
+            && (sinRolesRaw || RoleGroupingHelper.HasAnyRawRole(rolesRaw, "DIRDAC", "Direccion", "JefaturaTecnica", "DirectorFinanciero", "DirectorGeneral"));
         bool esDireccionRol   = esDirdacRol;  // alias compatibilidad
         bool esTecnicaRol     = esInspectorRol || esCoordinadorRol; // alias compatibilidad
         bool esCoordinacionJefaturaRol = esLegalRol || esDirdacRol;
-        bool esAprobadorUsuariosRol    = esLegalRol || esCoordinadorRol || esRol("JefaturaTecnica");
+        bool esAprobadorUsuariosRol    = esLegalRol || esCoordinadorRol || esDirdacRol;
 
         // Orden requerida solo para Solicitante/Operador externo
         // Administrador tambien la ve para gestion/visibilidad.
@@ -116,9 +123,9 @@
         bool puedeCoordinacionJefatura = esAdministrador || esCoordinacionJefaturaRol;
         bool puedeAprobarUsuarios  = esAdministrador || esAprobadorUsuariosRol;
         bool puedeAdministracion   = esAdministrador;
-        bool puedeValidarAocr      = esAdministrador || esRol("DIRDAC") || esRol("Direccion") || esRol("JefaturaTecnica") || esDirectorGeneralRol;
+        bool puedeValidarAocr      = esAdministrador || esDirdacRol || esDirectorGeneralRol;
         bool puedeLegalizarEmitirAocr = esAdministrador || esLegalRol || esDirectorGeneralRol;
-        bool puedeAprobacionFinalDirdac = esAdministrador || esRol("DIRDAC") || esRol("Direccion") || esRol("JefaturaTecnica") || esDirectorGeneralRol;
+        bool puedeAprobacionFinalDirdac = esAdministrador || esDirdacRol || esDirectorGeneralRol;
         bool puedeCoordinadorOperativo = esAdministrador || esCoordinadorRol;
 
         // Módulo de órdenes visible solo para Solicitante/Operador externo

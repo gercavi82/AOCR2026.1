@@ -624,9 +624,44 @@
     }
 
     #bloqueListaVerificacionOperacionalEae .lv-missing-target {
+        position: relative;
         background: #fff5f5;
         box-shadow: 0 0 0 2px rgba(198, 40, 40, 0.28);
         border-radius: 4px;
+        animation: lvValidationPulse 1.4s ease-in-out 2;
+    }
+
+    #bloqueListaVerificacionOperacionalEae .lv-missing-target::before {
+        content: attr(data-lv-missing-cue);
+        display: inline-flex;
+        align-items: center;
+        margin: 0 0 6px;
+        padding: 4px 10px;
+        border-radius: 999px;
+        background: #b42318;
+        color: #fff;
+        font-size: 10.5px;
+        font-weight: 700;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+    }
+
+    #bloqueListaVerificacionOperacionalEae .lv-missing-target[data-lv-missing-cue=""]::before {
+        display: none;
+    }
+
+    @@keyframes lvValidationPulse {
+        0% {
+            box-shadow: 0 0 0 0 rgba(198, 40, 40, 0.32);
+        }
+
+        60% {
+            box-shadow: 0 0 0 4px rgba(198, 40, 40, 0.18);
+        }
+
+        100% {
+            box-shadow: 0 0 0 2px rgba(198, 40, 40, 0.28);
+        }
     }
 
     #bloqueListaVerificacionOperacionalEae .aocr-lv-scroll-container {
@@ -1082,16 +1117,14 @@
                                 var codigosRequisito = fila.ShowCompliance
                                     ? ObtenerCodigosRequisitoOficialPanel(respuestasPorCodigoOficial, fila.RequirementCode)
                                     : new List<string>();
-                                var codigosFila = fila.ShowImplementation
-                                    ? ObtenerCodigosFilaOficialPanel(respuestasPorCodigoOficial, fila.RequirementCode, fila.ResponseIndices)
-                                    : new List<string>();
+                                var codigosFila = ObtenerCodigosFilaOficialPanel(respuestasPorCodigoOficial, fila.RequirementCode, fila.ResponseIndices);
                                 var estadoCumplimiento = fila.ShowCompliance
                                     ? ObtenerEstadoCumplimientoOficialPanel(respuestasPorCodigoOficial, fila.RequirementCode)
                                     : string.Empty;
                                 var estadoImplementacion = fila.ShowImplementation
                                     ? ObtenerEstadoImplementacionOficialPanel(respuestasPorCodigoOficial, fila.RequirementCode, fila.ResponseIndices)
                                     : string.Empty;
-                                var comentariosFila = fila.ShowImplementation
+                                var comentariosFila = codigosFila.Any()
                                     ? ObtenerComentariosOficialPanel(respuestasPorCodigoOficial, fila.RequirementCode, fila.ResponseIndices)
                                     : string.Empty;
                                 var targetRequisito = string.Join("|", codigosRequisito);
@@ -1188,8 +1221,8 @@
                                             @Html.Raw("&nbsp;")
                                         }
                                     </td>
-                                    <td class="aocr-lv-col-comentarios @(fila.ShowImplementation ? string.Empty : "lv-empty-cell")">
-                                        @if (fila.ShowImplementation)
+                                    <td class="aocr-lv-col-comentarios @(codigosFila.Any() ? string.Empty : "lv-empty-cell")">
+                                        @if (codigosFila.Any())
                                         {
                                             <textarea class="lv-visible-comentarios lv-observacion" data-target-codes="@targetFila" data-sync-key="@targetFila" data-row-label="@etiquetaFila" name="@("lvVisible_" + fila.RowKey + "_comentarios")" rows="4">@comentariosFila</textarea>
                                         }
@@ -1285,7 +1318,41 @@
         var highlighted = form.querySelectorAll('.lv-missing-target');
         for (var index = 0; index < highlighted.length; index++) {
             highlighted[index].classList.remove('lv-missing-target');
+            highlighted[index].removeAttribute('data-lv-missing-cue');
         }
+    }
+
+    function showFloatingValidationNotice(message) {
+        if (!message) {
+            return;
+        }
+
+        if (window.Site && typeof window.Site.notify === 'function') {
+            try {
+                window.Site.notify(message, 'warning');
+                return;
+            } catch (error) {
+            }
+        }
+
+        if (window.toastr && typeof window.toastr.warning === 'function') {
+            window.toastr.warning(message);
+            return;
+        }
+
+        if (window.Swal && typeof window.Swal.fire === 'function') {
+            window.Swal.fire({
+                icon: 'warning',
+                title: message,
+                toast: true,
+                position: 'top-end',
+                showConfirmButton: false,
+                timer: 3500
+            });
+            return;
+        }
+
+        window.alert(message);
     }
 
     function normalizeValidationLabel(text) {
@@ -1294,6 +1361,16 @@
             .replace(/^\d+\.\s*/, '')
             .replace(/\s*:\s*$/, '')
             .trim();
+    }
+
+    function truncateValidationCueText(text, maxLength) {
+        var normalized = normalizeValidationLabel(text);
+        var limit = typeof maxLength === 'number' && maxLength > 0 ? maxLength : 72;
+        if (normalized.length <= limit) {
+            return normalized;
+        }
+
+        return normalized.substring(0, limit - 3).trimEnd() + '...';
     }
 
     function getHeaderFieldLabel(field) {
@@ -1311,6 +1388,26 @@
         }
 
         return normalizeValidationLabel(field.getAttribute('aria-label') || field.getAttribute('placeholder') || field.name || 'este campo');
+    }
+
+    function getValidationCueText(target) {
+        if (!target || !target.classList) {
+            return 'Complete aqui';
+        }
+
+        if (target.classList.contains('lv-visible-cumplimiento')) {
+            return 'Seleccione cumplimiento aqui';
+        }
+
+        if (target.classList.contains('lv-visible-implementacion')) {
+            return 'Seleccione implementacion aqui';
+        }
+
+        if (target.classList.contains('lv-visible-comentarios')) {
+            return 'Complete la observacion aqui';
+        }
+
+        return 'Complete ' + truncateValidationCueText(getHeaderFieldLabel(target), 68);
     }
 
     function getMissingHeaderField(form) {
@@ -1349,8 +1446,16 @@
             return null;
         }
 
-        if (target.classList && (target.classList.contains('lv-visible-cumplimiento') || target.classList.contains('lv-visible-implementacion'))) {
-            return target.closest('.lv-check-group') || target.closest('.lv-official-edit-row') || target;
+        if (target.classList && target.classList.contains('lv-visible-cumplimiento')) {
+            return target.closest('.lv-check-group') || target.closest('.aocr-lv-col-cumplimiento') || target.closest('.lv-official-edit-row') || target;
+        }
+
+        if (target.classList && target.classList.contains('lv-visible-implementacion')) {
+            return target.closest('.lv-check-group') || target.closest('.aocr-lv-col-implementacion') || target.closest('.lv-official-edit-row') || target;
+        }
+
+        if (target.classList && target.classList.contains('lv-visible-comentarios')) {
+            return target.closest('.aocr-lv-col-comentarios') || target.closest('.lv-official-edit-row') || target;
         }
 
         return target.closest('.aocr-lv-field-row') || target.closest('.lv-official-edit-row') || target;
@@ -1364,6 +1469,7 @@
 
         clearValidationTarget(form);
         displayTarget.classList.add('lv-missing-target');
+        displayTarget.setAttribute('data-lv-missing-cue', getValidationCueText(target));
 
         if (typeof displayTarget.scrollIntoView === 'function') {
             displayTarget.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'nearest' });
@@ -1423,21 +1529,14 @@
             box.classList.remove('d-none');
         }
 
-        var fieldReported = false;
+        showFloatingValidationNotice(message);
+
         if (focusTarget) {
             scrollAndHighlightValidationTarget(form, focusTarget);
             focusValidationTarget(focusTarget);
-            fieldReported = reportValidationAtField(focusTarget, message);
+            reportValidationAtField(focusTarget, message);
         } else if (box && typeof box.scrollIntoView === 'function') {
             box.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        }
-
-        if (!fieldReported) {
-            if (window.Site && typeof window.Site.notify === 'function') {
-                window.Site.notify(message, 'warning');
-            } else if (!box && window.Swal) {
-                window.Swal.fire('Validación LV/EAE', message, 'warning');
-            }
         }
 
         return false;

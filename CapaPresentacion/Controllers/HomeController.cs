@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Web.Mvc;
 using System.Web.Security;
+using CapaPresentacion.Helpers;
 using CapaPresentacion.Models;
 
 namespace CapaPresentacion.Controllers
@@ -17,25 +18,30 @@ namespace CapaPresentacion.Controllers
                 return RedirectToAction("Login", "Account");
             }
 
-            var rolActual = Session["Rol"]?.ToString() ?? string.Empty;
-            Func<string, bool> esRol = rol => string.Equals((rolActual ?? string.Empty).Trim(), rol, StringComparison.OrdinalIgnoreCase);
+            var rolActual = RoleGroupingHelper.NormalizeSelectedRole(Session["Rol"]?.ToString());
+            var rolesRaw = RoleGroupingHelper.ExtractRoles(Session["RolesRaw"]);
+            var sinRolesRaw = rolesRaw.Count == 0;
 
-            var esAdministrador = esRol("Administrador");
-            var esSolicitanteRol = esRol("Operador") || esRol("Solicitante");
-            var esTecnicaRol = esRol("Inspector") || esRol("Tecnico") || esRol("EvaluadorTecnico") || esRol("CoordinadorInspecciones");
-            var esFinancieroRol = esRol("Financiero") || esRol("CoordinadorFinanciero");
-            var esLegalRol = esRol("CoordinacionLegal") || esRol("CoordinadorLegal");
-            var esDireccionRol = esRol("Direccion") || esRol("JefaturaTecnica") || esRol("DirectorFinanciero") || esRol("DirectorGeneral");
-            var puedeAdministracion = esAdministrador || esRol("Direccion") || esRol("JefaturaTecnica");
-            var puedeAprobarUsuarios = esAdministrador || esLegalRol || esRol("JefaturaTecnica");
+            var esAdministrador = RoleGroupingHelper.IsAdministrador(rolActual);
+            var esSolicitanteRol = RoleGroupingHelper.IsSolicitante(rolActual);
+            var esTecnicaRol = RoleGroupingHelper.IsInspectorTecnico(rolActual)
+                && (sinRolesRaw || RoleGroupingHelper.HasAnyRawRole(rolesRaw, "Inspector", "Tecnico", "EvaluadorTecnico"));
+            var esFinancieroRol = RoleGroupingHelper.IsCoordinacion(rolActual)
+                && (sinRolesRaw || RoleGroupingHelper.HasAnyRawRole(rolesRaw, "Financiero", "CoordinadorFinanciero"));
+            var esLegalRol = RoleGroupingHelper.IsCoordinacion(rolActual)
+                && (sinRolesRaw || RoleGroupingHelper.HasAnyRawRole(rolesRaw, "CoordinacionLegal", "CoordinadorLegal"));
+            var esDireccionRol = RoleGroupingHelper.IsDireccionJefaturaTecnica(rolActual);
+            var puedeAdministracion = esAdministrador || esDireccionRol;
+            var puedeAprobarUsuarios = esAdministrador || esLegalRol || esDireccionRol;
+            var rolVisible = RoleGroupingHelper.ToDisplayName(rolActual);
 
             ViewBag.Usuario = Session["NombreUsuario"];
-            ViewBag.Rol = Session["Rol"];
+            ViewBag.Rol = rolVisible;
 
             var model = new DashboardViewModel
             {
                 NombreUsuario = Session["NombreUsuario"]?.ToString() ?? "Usuario",
-                RolUsuario = rolActual ?? "Invitado",
+                RolUsuario = rolVisible,
 
                 // Inicialización de contadores en cero para nuevos usuarios
                 SolicitudesPendientes = 0,
@@ -46,10 +52,10 @@ namespace CapaPresentacion.Controllers
                 MostrarModuloOperador = esSolicitanteRol || esAdministrador,
                 MostrarModuloFinanciero = esAdministrador || esFinancieroRol,
                 MostrarModuloCertificacion = esAdministrador || esLegalRol || esDireccionRol,
-                MostrarModuloInspector = esAdministrador || esTecnicaRol || esRol("JefaturaTecnica"),
+                MostrarModuloInspector = esAdministrador || esTecnicaRol || esDireccionRol,
                 MostrarDashboardOrdenes = true,
                 MostrarDashboardFinanciero = esAdministrador || esFinancieroRol,
-                MostrarDashboardInspector = esAdministrador || esTecnicaRol || esRol("JefaturaTecnica"),
+                MostrarDashboardInspector = esAdministrador || esTecnicaRol || esDireccionRol,
                 MostrarDashboardGerencial = esAdministrador || esDireccionRol || esLegalRol,
                 MostrarDashboardAdministracion = puedeAdministracion,
                 MostrarSyncRt = esAdministrador,

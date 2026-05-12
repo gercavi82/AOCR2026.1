@@ -81,9 +81,9 @@ namespace CapaPresentacion.Helpers
             return new List<string>(DocumentosAdjuntosBase);
         }
 
-        public static IDictionary<string, string> ParseDocumentosAdjuntosArchivos(string serialized)
+        public static IDictionary<string, List<string>> ParseDocumentosAdjuntosArchivos(string serialized)
         {
-            var values = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+            var values = new Dictionary<string, List<string>>(StringComparer.OrdinalIgnoreCase);
             if (string.IsNullOrWhiteSpace(serialized))
             {
                 return values;
@@ -106,13 +106,23 @@ namespace CapaPresentacion.Helpers
                     continue;
                 }
 
-                values[key] = fileName;
+                List<string> fileNames;
+                if (!values.TryGetValue(key, out fileNames) || fileNames == null)
+                {
+                    fileNames = new List<string>();
+                    values[key] = fileNames;
+                }
+
+                if (!fileNames.Any(existing => string.Equals(existing, fileName, StringComparison.OrdinalIgnoreCase)))
+                {
+                    fileNames.Add(fileName);
+                }
             }
 
             return values;
         }
 
-        public static string SerializeDocumentosAdjuntosArchivos(IDictionary<string, string> values)
+        public static string SerializeDocumentosAdjuntosArchivos(IDictionary<string, List<string>> values)
         {
             if (values == null || values.Count == 0)
             {
@@ -123,31 +133,45 @@ namespace CapaPresentacion.Helpers
 
             foreach (var label in DocumentosAdjuntosBase)
             {
-                string fileName;
-                if (!values.TryGetValue(label, out fileName))
+                List<string> fileNames;
+                if (!values.TryGetValue(label, out fileNames) || fileNames == null)
                 {
                     continue;
                 }
 
-                var normalizedFileName = NormalizeFileName(fileName);
-                if (string.IsNullOrWhiteSpace(normalizedFileName))
+                var normalizedFileNames = fileNames
+                    .Select(NormalizeFileName)
+                    .Where(x => !string.IsNullOrWhiteSpace(x))
+                    .Distinct(StringComparer.OrdinalIgnoreCase)
+                    .ToList();
+                if (normalizedFileNames.Count == 0)
                 {
                     continue;
                 }
 
-                lines.Add(NormalizeCell(label) + "|" + normalizedFileName);
+                foreach (var normalizedFileName in normalizedFileNames)
+                {
+                    lines.Add(NormalizeCell(label) + "|" + normalizedFileName);
+                }
             }
 
             foreach (var pair in values.Where(x => !DocumentosAdjuntosBase.Contains(x.Key, StringComparer.OrdinalIgnoreCase)))
             {
                 var key = NormalizeCell(pair.Key);
-                var normalizedFileName = NormalizeFileName(pair.Value);
-                if (string.IsNullOrWhiteSpace(key) || string.IsNullOrWhiteSpace(normalizedFileName))
+                var normalizedFileNames = (pair.Value ?? new List<string>())
+                    .Select(NormalizeFileName)
+                    .Where(x => !string.IsNullOrWhiteSpace(x))
+                    .Distinct(StringComparer.OrdinalIgnoreCase)
+                    .ToList();
+                if (string.IsNullOrWhiteSpace(key) || normalizedFileNames.Count == 0)
                 {
                     continue;
                 }
 
-                lines.Add(key + "|" + normalizedFileName);
+                foreach (var normalizedFileName in normalizedFileNames)
+                {
+                    lines.Add(key + "|" + normalizedFileName);
+                }
             }
 
             return lines.Count == 0 ? null : string.Join("\n", lines);

@@ -16,12 +16,27 @@
     var documentos = vm.DocumentosSolicitante ?? new List<DocumentoInspeccion>();
     var cultura = new CultureInfo("es-EC");
 
-    var numeroInspeccionVisual = !string.IsNullOrWhiteSpace(inspeccion.NumeroInspeccion)
-        ? inspeccion.NumeroInspeccion.Trim()
-        : (inspeccion.CodigoInspeccion > 0 ? inspeccion.CodigoInspeccion.ToString() : "-");
     var numeroSolicitudVisual = !string.IsNullOrWhiteSpace(solicitud.NumeroSolicitud)
         ? solicitud.NumeroSolicitud.Trim()
         : (inspeccion.CodigoSolicitud > 0 ? inspeccion.CodigoSolicitud.ToString() : "-");
+    var numeroSolicitudInspeccionRaw = !string.IsNullOrWhiteSpace(numeroSolicitudVisual)
+        ? numeroSolicitudVisual.Trim().ToUpperInvariant()
+        : string.Empty;
+    var coincidenciaSolicitudInspeccion = !string.IsNullOrWhiteSpace(numeroSolicitudInspeccionRaw)
+        ? System.Text.RegularExpressions.Regex.Match(numeroSolicitudInspeccionRaw, @"AOCR\d+")
+        : System.Text.RegularExpressions.Match.Empty;
+    var referenciaSolicitudInspeccion = coincidenciaSolicitudInspeccion.Success
+        ? coincidenciaSolicitudInspeccion.Value
+        : (inspeccion.CodigoSolicitud > 0 ? "AOCR" + inspeccion.CodigoSolicitud.ToString() : "AOCR");
+    var coincidenciaAnioInspeccion = !string.IsNullOrWhiteSpace(numeroSolicitudInspeccionRaw)
+        ? System.Text.RegularExpressions.Regex.Match(numeroSolicitudInspeccionRaw, @"20\d{2}")
+        : System.Text.RegularExpressions.Match.Empty;
+    var anioInspeccionVisual = coincidenciaAnioInspeccion.Success
+        ? coincidenciaAnioInspeccion.Value
+        : (inspeccion.FechaProgramada.HasValue
+            ? inspeccion.FechaProgramada.Value.Year.ToString()
+            : DateTime.Now.Year.ToString());
+    var numeroInspeccionVisual = string.Format("DGAC-INS-{0}-{1}", anioInspeccionVisual, referenciaSolicitudInspeccion);
     var operadorVisual = !string.IsNullOrWhiteSpace(solicitud.RazonSocial)
         ? solicitud.RazonSocial.Trim()
         : (!string.IsNullOrWhiteSpace(solicitud.NombreOperador) ? solicitud.NombreOperador.Trim() : "No registrado");
@@ -254,7 +269,7 @@
                                     </div>
                                     <div class="aocr-info-card">
                                         <h6 class="aocr-section-title">Resultado técnico final</h6>
-                                        <p class="aocr-field-help">Seleccione el resultado técnico final institucional del informe.</p>
+                                        <p class="aocr-field-help">Seleccione el resultado técnico final institucional del informe. Si marca Insatisfactorio, se habilitarán las opciones Con inspección y Sin inspección.</p>
                                         <div class="aocr-result-options aocr-radio-group">
                                             <label class="aocr-result-option">
                                                 <input type="radio" name="resultado" value="SATISFACTORIO" class="resultado-tecnico-radio" @(string.Equals(resultadoSeleccionado, "SATISFACTORIO", StringComparison.OrdinalIgnoreCase) ? "checked=\"checked\"" : null) />
@@ -264,18 +279,6 @@
                                                 <input type="radio" name="resultado" value="INSATISFACTORIO" class="resultado-tecnico-radio" @(string.Equals(resultadoSeleccionado, "INSATISFACTORIO", StringComparison.OrdinalIgnoreCase) ? "checked=\"checked\"" : null) />
                                                 <span>Insatisfactorio</span>
                                             </label>
-                                            <label class="aocr-result-option">
-                                                <input type="radio" name="resultado" value="OBSERVADO" class="resultado-tecnico-radio" @(string.Equals(resultadoSeleccionado, "OBSERVADO", StringComparison.OrdinalIgnoreCase) ? "checked=\"checked\"" : null) />
-                                                <span>Observado</span>
-                                            </label>
-                                            <label class="aocr-result-option">
-                                                <input type="radio" name="resultado" value="REQUIERE_ACCION_CORRECTIVA" class="resultado-tecnico-radio" @(string.Equals(resultadoSeleccionado, "REQUIERE_ACCION_CORRECTIVA", StringComparison.OrdinalIgnoreCase) ? "checked=\"checked\"" : null) />
-                                                <span>Requiere acción correctiva</span>
-                                            </label>
-                                            <label class="aocr-result-option">
-                                                <input type="radio" name="resultado" value="NO_APLICA" class="resultado-tecnico-radio" @(string.Equals(resultadoSeleccionado, "NO_APLICA", StringComparison.OrdinalIgnoreCase) ? "checked=\"checked\"" : null) />
-                                                <span>No aplica</span>
-                                            </label>
                                         </div>
 
                                         <div id="bloqueTipoInsatisfactorio"
@@ -283,7 +286,7 @@
                                              aria-live="polite"
                                              @(mostrarTipoResultadoInsatisfactorio ? null : "style=\"display:none;\"")>
                                             <h6 class="aocr-section-title-sm">Tipo de resultado insatisfactorio</h6>
-                                            <p class="aocr-field-help">Seleccione si el resultado insatisfactorio requiere una nueva inspección o si puede continuar sin nueva inspección.</p>
+                                            <p class="aocr-field-help">Seleccione una de las dos opciones para el resultado insatisfactorio: Con inspección o Sin inspección.</p>
 
                                             <div class="aocr-result-options aocr-radio-group">
                                                 <label class="aocr-result-option">
@@ -307,9 +310,9 @@
                                         @foreach (var adjunto in documentosAdjuntosBase)
                                         {
                                             var estaSeleccionado = documentosAdjuntosSeleccionados.Any(item => string.Equals(item, adjunto, StringComparison.OrdinalIgnoreCase));
-                                            var archivoAdjuntoActual = documentosAdjuntosArchivos.ContainsKey(adjunto) ? documentosAdjuntosArchivos[adjunto] : string.Empty;
-                                            var resumenAdjuntoActual = !string.IsNullOrWhiteSpace(archivoAdjuntoActual)
-                                                ? "Archivo cargado: " + archivoAdjuntoActual
+                                            var archivosAdjuntoActual = documentosAdjuntosArchivos.ContainsKey(adjunto) ? documentosAdjuntosArchivos[adjunto] : new List<string>();
+                                            var resumenAdjuntoActual = archivosAdjuntoActual != null && archivosAdjuntoActual.Any()
+                                                ? "Archivos cargados: " + string.Join(", ", archivosAdjuntoActual)
                                                 : (estaSeleccionado ? "Documento marcado en el informe. Sin archivo cargado." : string.Empty);
                                             var adjFileKey = "archivoAdjunto_" + idxAdj;
                                             var adjSummaryId = "adjuntoResumenModal_" + idxAdj;
@@ -320,7 +323,7 @@
                                                     <span>@adjunto</span>
                                                 </label>
                                                 <div class="aocr-document-upload">
-                                                    <input type="file" name="@adjFileKey" class="form-control form-control-sm" accept=".pdf,.jpg,.jpeg,.png,.doc,.docx,.xls,.xlsx" data-file-summary-target="@adjSummaryId" />
+                                                    <input type="file" name="@adjFileKey" class="form-control form-control-sm" accept=".pdf,.jpg,.jpeg,.png,.doc,.docx,.xls,.xlsx" multiple data-file-summary-target="@adjSummaryId" />
                                                     <small id="@adjSummaryId" class="aocr-document-note" data-existing-summary="@resumenAdjuntoActual">@resumenAdjuntoActual</small>
                                                 </div>
                                             </div>

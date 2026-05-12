@@ -1,5 +1,6 @@
 ﻿@inherits System.Web.Mvc.WebViewPage
 @using CapaModelo
+@using CapaPresentacion.Helpers
 @using System.Web.Mvc.Html
 @using System.Web.Optimization
 <!DOCTYPE html>
@@ -257,18 +258,15 @@
                             var nombreUsuarioSidebar = (Session["NombreUsuario"] as string ?? string.Empty).Trim();
                             var avatarAlt = !string.IsNullOrWhiteSpace(nombreUsuarioSidebar) ? nombreUsuarioSidebar : "Usuario";
                             var defaultAvatar = Url.Content("~/Content/imganes/user.png");
-                            var rolSidebar = (Session["Rol"] as string ?? string.Empty).Trim();
-                            var rolUsuarioSidebar = !string.IsNullOrWhiteSpace(rolSidebar) ? rolSidebar : "Perfil institucional";
+                            var rolSidebar = RoleGroupingHelper.NormalizeSelectedRole(Session["Rol"] as string ?? string.Empty);
+                            var rolesSidebarRaw = RoleGroupingHelper.ExtractRoles(Session["RolesRaw"] ?? Session["Roles"], Session["Rol"] as string);
+                            var rolUsuarioSidebar = RoleGroupingHelper.ToDisplayName(rolSidebar);
                             var empresaNombreSidebar = (Session["EmpresaNombre"] as string ?? string.Empty).Trim();
                             var empresaCodigoSidebar = (Session["EmpresaCodigo"] as string ?? string.Empty).Trim();
-                            var mostrarEmpresaEnSidebar = rolSidebar.Equals("Solicitante", StringComparison.OrdinalIgnoreCase)
-                                                       || rolSidebar.Equals("Operador", StringComparison.OrdinalIgnoreCase);
+                            var mostrarEmpresaEnSidebar = RoleGroupingHelper.IsSolicitante(rolSidebar);
                             var esSidebarSolicitanteRt = mostrarEmpresaEnSidebar
-                                || rolSidebar.Equals("RepresentanteTecnico", StringComparison.OrdinalIgnoreCase)
-                                || rolSidebar.Equals("Representante Técnico", StringComparison.OrdinalIgnoreCase)
-                                || rolSidebar.Equals("RepresentanteLegal", StringComparison.OrdinalIgnoreCase)
-                                || rolSidebar.Equals("RT", StringComparison.OrdinalIgnoreCase);
-                            var subtituloSidebar = rolSidebar;
+                                || RoleGroupingHelper.HasAnyRawRole(rolesSidebarRaw, "RepresentanteTecnico", "Representante Técnico", "RepresentanteLegal", "RT");
+                            var subtituloSidebar = rolUsuarioSidebar;
                             if (mostrarEmpresaEnSidebar)
                             {
                                 subtituloSidebar = !string.IsNullOrWhiteSpace(empresaNombreSidebar)
@@ -319,13 +317,8 @@
         <aside class="main-sidebar sidebar-dark-primary elevation-4 aocr-sidebar">
                 <!-- Información usuario sidebar (fijo, no se desplaza) -->
                 @{
-                    var rolSidebarResumen = (Session["Rol"] as string ?? string.Empty).Trim();
-                    var ocultarResumenSidebar = rolSidebarResumen.Equals("Solicitante", StringComparison.OrdinalIgnoreCase)
-                        || rolSidebarResumen.Equals("Operador", StringComparison.OrdinalIgnoreCase)
-                        || rolSidebarResumen.Equals("RepresentanteTecnico", StringComparison.OrdinalIgnoreCase)
-                        || rolSidebarResumen.Equals("Representante Técnico", StringComparison.OrdinalIgnoreCase)
-                        || rolSidebarResumen.Equals("RepresentanteLegal", StringComparison.OrdinalIgnoreCase)
-                        || rolSidebarResumen.Equals("RT", StringComparison.OrdinalIgnoreCase);
+                    var rolSidebarResumen = RoleGroupingHelper.NormalizeSelectedRole(Session["Rol"] as string ?? string.Empty);
+                    var ocultarResumenSidebar = RoleGroupingHelper.IsSolicitante(rolSidebarResumen);
                 }
                 @if (!ocultarResumenSidebar)
                 {
@@ -749,15 +742,20 @@
                 // Configuración global
                 window.AOCR_CONFIG = {
                     apiBaseUrl: '@Url.Content("~/")',
+                    loginUrl: '@Url.Action("Login", "Account")',
                     debug: @(HttpContext.Current.IsDebuggingEnabled ? "true" : "false"),
                     uploadMaxSize: 10 * 1024 * 1024,
                     sessionTimeout: @(CapaPresentacion.Helpers.SessionTimeoutHelper.GetTimeoutMinutes()) * 60 * 1000,
                     user: {
                         id: '@(Session["UserId"] ?? "")',
                         name: '@(Session["NombreUsuario"] ?? "")',
-                        role: '@(Session["Rol"] ?? "")'
+                        role: '@(RoleGroupingHelper.NormalizeSelectedRole(Session["Rol"] as string ?? string.Empty))'
                     }
                 };
+
+                if (window.AOCR && typeof window.AOCR.installGlobalHttpHandlers === 'function') {
+                    window.AOCR.installGlobalHttpHandlers();
+                }
 
                 // Ocultar loader global
                 $('#global-loader').fadeOut(300, function () {
@@ -904,7 +902,9 @@
                     var message = 'Error en la comunicación con el servidor';
 
                     if (xhr.status === 401) {
-                        window.location.href = '@Url.Action("Login", "Account")';
+                        window.location.href = window.AOCR && typeof window.AOCR.buildLoginUrl === 'function'
+                            ? window.AOCR.buildLoginUrl()
+                            : '@Url.Action("Login", "Account")';
                         return;
                     }
                     if (xhr.status === 403) message = 'Acceso no autorizado';

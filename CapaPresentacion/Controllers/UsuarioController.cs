@@ -18,6 +18,7 @@ using CapaNegocio.Helpers;
 using CapaNegocio.Integraciones.As400Sync;
 using CapaNegocio.Services;
 using CapaPresentacion.Models.RT;
+using CapaPresentacion.Helpers;
 using CapaUtilidades;
 using DataSecureConfig = CapaDatos.Services.SecureConfigurationService;
 
@@ -35,7 +36,7 @@ namespace CapaPresentacion.Controllers
             }
 
             var usuarioId = ObtenerUsuarioSesionId();
-            var rolSesion = (Session["Rol"] as string ?? string.Empty).Trim();
+            var rolSesion = RoleGroupingHelper.NormalizeSelectedRole(Session["Rol"] as string ?? string.Empty);
             var usuario = usuarioId > 0 ? UsuarioDAO.ObtenerPorId(usuarioId) : null;
             var solicitudRt = usuarioId > 0 ? new RTService().GetSolicitudByUsuario(usuarioId) : null;
 
@@ -45,12 +46,7 @@ namespace CapaPresentacion.Controllers
                     || !string.IsNullOrWhiteSpace(usuario.RutaDocumentoLegal)
                     || !string.IsNullOrWhiteSpace(usuario.RutaConstanciaRT)));
 
-            var esPerfilRt = rolSesion.Equals("Solicitante", StringComparison.OrdinalIgnoreCase)
-                || rolSesion.Equals("Operador", StringComparison.OrdinalIgnoreCase)
-                || rolSesion.Equals("RT", StringComparison.OrdinalIgnoreCase)
-                || rolSesion.Equals("RepresentanteTecnico", StringComparison.OrdinalIgnoreCase)
-                || rolSesion.Equals("Representante Técnico", StringComparison.OrdinalIgnoreCase)
-                || rolSesion.Equals("RepresentanteLegal", StringComparison.OrdinalIgnoreCase);
+            var esPerfilRt = RoleGroupingHelper.IsSolicitante(rolSesion);
 
             if (tieneExpedienteRt || esPerfilRt)
             {

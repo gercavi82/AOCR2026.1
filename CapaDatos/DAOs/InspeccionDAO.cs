@@ -153,7 +153,7 @@ namespace CapaDatos.DAOs
                 var columnas = ObtenerColumnasTabla(cn, "aocr_tbinspeccion");
 
                 var numeroInspeccion = string.IsNullOrWhiteSpace(i.NumeroInspeccion)
-                    ? GenerarNumeroInspeccion(i.CodigoSolicitud)
+                    ? GenerarNumeroInspeccion(cn, i.CodigoSolicitud)
                     : i.NumeroInspeccion.Trim();
                 var tipoCodigo = ResolverTipoCodigo(i);
                 var estado = ResolverEstadoPersistencia(cn, i.Estado);
@@ -922,9 +922,85 @@ namespace CapaDatos.DAOs
             }
         }
 
-        private static string GenerarNumeroInspeccion(int codigoSolicitud)
+        private static string GenerarNumeroInspeccion(NpgsqlConnection cn, int codigoSolicitud)
         {
-            return "INS-" + codigoSolicitud.ToString("D6") + "-" + DateTime.Now.ToString("yyyyMMddHHmmssfff");
+            var referenciaSolicitud = ObtenerReferenciaSolicitudParaInspeccion(cn, codigoSolicitud);
+            var baseNumero = ConstruirNumeroInspeccionBase(referenciaSolicitud, DateTime.Now);
+            var candidato = baseNumero;
+
+            for (var intento = 0; intento < 20; intento++)
+            {
+                using (var cmd = new NpgsqlCommand("SELECT 1 FROM aocr_tbinspeccion WHERE numero_inspeccion=@numero LIMIT 1;", cn))
+                {
+                    cmd.Parameters.AddWithValue("@numero", candidato);
+                    var existe = cmd.ExecuteScalar();
+                    if (existe == null || existe == DBNull.Value)
+                    {
+                        return candidato;
+                    }
+                }
+
+                candidato = baseNumero + "-" + (intento + 2).ToString("D2");
+            }
+
+            return baseNumero + "-" + Guid.NewGuid().ToString("N").Substring(0, 6).ToUpperInvariant();
+        }
+
+        private static string ObtenerReferenciaSolicitudParaInspeccion(NpgsqlConnection cn, int codigoSolicitud)
+        {
+            if (cn == null || codigoSolicitud <= 0)
+            {
+                return codigoSolicitud > 0 ? "AOCR" + codigoSolicitud.ToString() : "AOCR";
+            }
+
+            try
+            {
+                const string sql = @"
+SELECT COALESCE(NULLIF(TRIM(numero_solicitud), ''), codigo_solicitud::text)
+FROM aocr_tbsolicitud
+WHERE codigo_solicitud = @codigoSolicitud
+LIMIT 1;";
+
+                using (var cmd = new NpgsqlCommand(sql, cn))
+                {
+                    cmd.Parameters.AddWithValue("@codigoSolicitud", codigoSolicitud);
+                    var numeroSolicitud = cmd.ExecuteScalar();
+                    return CompactarNumeroSolicitudParaInspeccion(
+                        numeroSolicitud != null && numeroSolicitud != DBNull.Value ? numeroSolicitud.ToString() : null,
+                        codigoSolicitud);
+                }
+            }
+            catch
+            {
+                return CompactarNumeroSolicitudParaInspeccion(null, codigoSolicitud);
+            }
+        }
+
+        private static string CompactarNumeroSolicitudParaInspeccion(string numeroSolicitud, int codigoSolicitud)
+        {
+            var normalizado = string.IsNullOrWhiteSpace(numeroSolicitud)
+                ? string.Empty
+                : Regex.Replace(numeroSolicitud.Trim().ToUpperInvariant(), @"\s+", string.Empty);
+
+            var coincidencia = !string.IsNullOrWhiteSpace(normalizado)
+                ? Regex.Match(normalizado, @"AOCR\d+")
+                : Match.Empty;
+
+            if (coincidencia.Success)
+            {
+                return coincidencia.Value;
+            }
+
+            return codigoSolicitud > 0 ? "AOCR" + codigoSolicitud.ToString() : "AOCR";
+        }
+
+        private static string ConstruirNumeroInspeccionBase(string referenciaSolicitud, DateTime fechaReferencia)
+        {
+            var referenciaNormalizada = string.IsNullOrWhiteSpace(referenciaSolicitud)
+                ? "AOCR"
+                : Regex.Replace(referenciaSolicitud.Trim().ToUpperInvariant(), @"[^A-Z0-9]+", string.Empty);
+
+            return "DGAC-INS-" + fechaReferencia.Year + "-" + referenciaNormalizada;
         }
 
         private static string FirstNonEmpty(string first, string second)

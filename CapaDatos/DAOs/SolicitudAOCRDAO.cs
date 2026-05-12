@@ -1791,7 +1791,7 @@ LIMIT 1;";
             return comentarios + " | " + principalTexto + apoyoTexto;
         }
 
-        private static string GenerarNumeroInspeccionUnico(
+        private string GenerarNumeroInspeccionUnico(
             NpgsqlConnection cn,
             NpgsqlTransaction tx,
             int codigoSolicitud,
@@ -1802,7 +1802,8 @@ LIMIT 1;";
                 return null;
             }
 
-            var baseNumero = "INS-" + codigoSolicitud.ToString("D6") + "-" + DateTime.Now.ToString("yyyyMMddHHmmssfff");
+            var referenciaSolicitud = ObtenerReferenciaSolicitudParaInspeccion(cn, codigoSolicitud);
+            var baseNumero = ConstruirNumeroInspeccionBase(referenciaSolicitud, DateTime.Now);
             var candidato = baseNumero;
 
             for (var intento = 0; intento < 20; intento++)
@@ -1817,10 +1818,44 @@ LIMIT 1;";
                     }
                 }
 
-                candidato = baseNumero + "-" + (intento + 1).ToString("D2");
+                candidato = baseNumero + "-" + (intento + 2).ToString("D2");
             }
 
             return baseNumero + "-" + Guid.NewGuid().ToString("N").Substring(0, 6).ToUpperInvariant();
+        }
+
+        private string ObtenerReferenciaSolicitudParaInspeccion(NpgsqlConnection cn, int codigoSolicitud)
+        {
+            return CompactarNumeroSolicitudParaInspeccion(
+                ObtenerNumeroSolicitudParaNotificacion(cn, codigoSolicitud),
+                codigoSolicitud);
+        }
+
+        private static string CompactarNumeroSolicitudParaInspeccion(string numeroSolicitud, int codigoSolicitud)
+        {
+            var normalizado = string.IsNullOrWhiteSpace(numeroSolicitud)
+                ? string.Empty
+                : Regex.Replace(numeroSolicitud.Trim().ToUpperInvariant(), @"\s+", string.Empty);
+
+            var coincidencia = !string.IsNullOrWhiteSpace(normalizado)
+                ? Regex.Match(normalizado, @"AOCR\d+")
+                : Match.Empty;
+
+            if (coincidencia.Success)
+            {
+                return coincidencia.Value;
+            }
+
+            return codigoSolicitud > 0 ? "AOCR" + codigoSolicitud.ToString() : "AOCR";
+        }
+
+        private static string ConstruirNumeroInspeccionBase(string referenciaSolicitud, DateTime fechaReferencia)
+        {
+            var referenciaNormalizada = string.IsNullOrWhiteSpace(referenciaSolicitud)
+                ? "AOCR"
+                : Regex.Replace(referenciaSolicitud.Trim().ToUpperInvariant(), @"[^A-Z0-9]+", string.Empty);
+
+            return "DGAC-INS-" + fechaReferencia.Year + "-" + referenciaNormalizada;
         }
 
         private static string ResolverEstadoInspeccionPersistencia(NpgsqlConnection cn, string estadoDeseado)

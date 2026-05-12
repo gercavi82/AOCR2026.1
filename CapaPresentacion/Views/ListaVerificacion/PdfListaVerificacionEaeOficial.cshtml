@@ -160,6 +160,37 @@
             .FirstOrDefault(valor => !string.IsNullOrWhiteSpace(valor)) ?? string.Empty;
     }
 
+    private static string ObtenerComentarios(IDictionary<string, List<ListaVerificacionOperacionalEaeItem>> respuestasPorCodigo, string codigoPregunta, IEnumerable<int> indicesPreferidos)
+    {
+        List<ListaVerificacionOperacionalEaeItem> respuestas;
+        if (respuestasPorCodigo == null
+            || string.IsNullOrWhiteSpace(codigoPregunta)
+            || !respuestasPorCodigo.TryGetValue(codigoPregunta, out respuestas)
+            || respuestas == null
+            || respuestas.Count == 0)
+        {
+            return string.Empty;
+        }
+
+        foreach (var indicePreferido in (indicesPreferidos ?? Enumerable.Empty<int>()).Where(indice => indice >= 0).Distinct())
+        {
+            if (indicePreferido >= respuestas.Count)
+            {
+                continue;
+            }
+
+            var valorPreferido = (respuestas[indicePreferido].PruebasNotasComentarios ?? string.Empty).Trim();
+            if (!string.IsNullOrWhiteSpace(valorPreferido))
+            {
+                return valorPreferido;
+            }
+        }
+
+        return respuestas
+            .Select(item => (item.PruebasNotasComentarios ?? string.Empty).Trim())
+            .FirstOrDefault(valor => !string.IsNullOrWhiteSpace(valor)) ?? string.Empty;
+    }
+
     private static IList<PdfPageDefinition> ObtenerPaginas()
     {
         return new List<PdfPageDefinition>
@@ -680,6 +711,7 @@
             {
                 var estadoCumplimiento = fila.ShowCompliance ? ObtenerEstadoCumplimiento(respuestasPorCodigo, fila.RequirementCode) : string.Empty;
                 var estadoImplementacion = fila.ShowImplementation ? ObtenerEstadoImplementacion(respuestasPorCodigo, fila.RequirementCode, fila.ResponseIndices) : string.Empty;
+                var comentarios = ObtenerComentarios(respuestasPorCodigo, fila.RequirementCode, fila.ResponseIndices);
                 <tr>
                     <td class="reference-cell">
                         @if (fila.ReferenceLines.Any())
@@ -744,7 +776,16 @@
                             @Html.Raw("&nbsp;")
                         }
                     </td>
-                    <td class="comments-cell">@Html.Raw("&nbsp;")</td>
+                    <td class="comments-cell">
+                        @if (!string.IsNullOrWhiteSpace(comentarios))
+                        {
+                            @comentarios
+                        }
+                        else
+                        {
+                            @Html.Raw("&nbsp;")
+                        }
+                    </td>
                 </tr>
             }
             </tbody>

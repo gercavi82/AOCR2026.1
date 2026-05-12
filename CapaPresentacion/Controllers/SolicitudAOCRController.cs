@@ -4625,9 +4625,7 @@ namespace CapaPresentacion.Controllers
 
         private bool EsAdmin()
         {
-            var rol = (Session["Rol"] ?? "").ToString();
-            return rol.Equals("ADMIN", StringComparison.OrdinalIgnoreCase) ||
-                   rol.Equals("Administrador", StringComparison.OrdinalIgnoreCase);
+            return RoleGroupingHelper.IsAdministrador((Session["Rol"] ?? "").ToString());
         }
     }
 }

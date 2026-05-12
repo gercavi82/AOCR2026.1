@@ -1,6 +1,7 @@
 using System;
 using System.Security.Principal;
 using System.Web;
+using CapaPresentacion.Helpers;
 
 namespace CapaPresentacion.Infrastructure
 {
@@ -90,7 +91,7 @@ namespace CapaPresentacion.Infrastructure
         public string GetRol(HttpSessionStateBase session)
         {
             var rol = session != null ? session["Rol"] as string : null;
-            return (rol ?? string.Empty).Trim();
+            return RoleGroupingHelper.NormalizeSelectedRole(rol);
         }
 
         public string GetCorreo(HttpSessionStateBase session)

@@ -1,10 +1,11 @@
 @model CapaPresentacion.Models.AdminUsuarios.AdminUsuariosIndexViewModel
+@using CapaPresentacion.Helpers
 
 @{
     ViewBag.Title = "Gestión de Inspectores";
-    var rolSesion = Session["Rol"] != null ? Session["Rol"].ToString() : string.Empty;
-    var esAdminSesion = string.Equals(rolSesion, "Administrador", System.StringComparison.OrdinalIgnoreCase);
-    var esJefaturaSesion = string.Equals(rolSesion, "JefaturaTecnica", System.StringComparison.OrdinalIgnoreCase);
+    var rolSesion = RoleGroupingHelper.NormalizeSelectedRole(Session["Rol"] != null ? Session["Rol"].ToString() : string.Empty);
+    var esAdminSesion = RoleGroupingHelper.IsAdministrador(rolSesion);
+    var esJefaturaSesion = RoleGroupingHelper.IsDireccionJefaturaTecnica(rolSesion);
     var totalUsuarios = Model.TotalUsuarios > 0 ? Model.TotalUsuarios : 1;
     var porcentajeActivos = Model.TotalUsuarios > 0 ? (int)System.Math.Round((Model.UsuariosActivos * 100m) / Model.TotalUsuarios) : 0;
     var porcentajeCoberturaRoles = Model.TotalUsuarios > 0 ? (int)System.Math.Round((Model.UsuariosConRoles * 100m) / Model.TotalUsuarios) : 0;

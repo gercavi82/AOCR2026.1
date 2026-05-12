@@ -12,7 +12,7 @@
 
         if (window.Site && typeof window.Site.notify === 'function') {
             try {
-                window.Site.notify(type, message);
+                window.Site.notify(message, type);
                 return;
             } catch (error) {
             }
@@ -42,14 +42,27 @@
     }
 
     function readResponsePayload(response) {
+        if (window.AOCR && typeof window.AOCR.readFetchPayload === 'function') {
+            return window.AOCR.readFetchPayload(response);
+        }
+
         var contentType = response.headers.get('content-type') || '';
         if (contentType.indexOf('application/json') >= 0) {
             return response.json();
         }
 
         return response.text().then(function (text) {
-            return { message: text };
+            return {
+                rawText: text,
+                message: text
+            };
         });
+    }
+
+    function handleUnauthorizedPayload(payload) {
+        return !!(window.AOCR
+            && typeof window.AOCR.handleUnauthorizedFetch === 'function'
+            && window.AOCR.handleUnauthorizedFetch(payload));
     }
 
     function syncGeneratedDocumentFields(form) {
@@ -96,7 +109,31 @@
         return normalizeResultado(value) === 'INSATISFACTORIO';
     }
 
-    function setInsatisfactorioSectionVisible(modal, visible) {
+    function guideInsatisfactorioSelection(block) {
+        if (!block) {
+            return;
+        }
+
+        if (typeof block.scrollIntoView === 'function') {
+            block.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'nearest' });
+        }
+
+        var selected = block.querySelector('input[name="tipoResultadoInsatisfactorio"]:checked');
+        var firstOption = selected || block.querySelector('input[name="tipoResultadoInsatisfactorio"]');
+        if (!firstOption || typeof firstOption.focus !== 'function') {
+            return;
+        }
+
+        window.setTimeout(function () {
+            try {
+                firstOption.focus({ preventScroll: true });
+            } catch (error) {
+                firstOption.focus();
+            }
+        }, 120);
+    }
+
+    function setInsatisfactorioSectionVisible(modal, visible, options) {
         if (!modal) {
             return;
         }
@@ -106,10 +143,15 @@
             return;
         }
 
+        var shouldGuideUser = !!(options && options.guideUser);
+
         if (visible) {
             block.style.display = 'block';
             window.requestAnimationFrame(function () {
                 block.classList.add('is-visible');
+                if (shouldGuideUser) {
+                    guideInsatisfactorioSelection(block);
+                }
             });
             return;
         }
@@ -122,7 +164,7 @@
         }, 190);
     }
 
-    function syncInsatisfactorioSection(modal) {
+    function syncInsatisfactorioSection(modal, options) {
         if (!modal) {
             return;
         }
@@ -142,7 +184,7 @@
             }
         });
 
-        setInsatisfactorioSectionVisible(modal, show);
+        setInsatisfactorioSectionVisible(modal, show, options);
     }
 
     function validateInsatisfactorioSelection(form, submitMode) {
@@ -185,7 +227,7 @@
             return;
         }
 
-        target.textContent = 'Archivo seleccionado: ' + files.map(function (file) {
+        target.textContent = (files.length > 1 ? 'Archivos seleccionados: ' : 'Archivo seleccionado: ') + files.map(function (file) {
             return file.name;
         }).join(', ');
     }
@@ -309,6 +351,10 @@
         })
         .then(function (response) {
             return readResponsePayload(response).then(function (payload) {
+                if (handleUnauthorizedPayload(payload)) {
+                    return null;
+                }
+
                 if (!response.ok || !payload || payload.success === false) {
                     throw new Error(payload && payload.message ? payload.message : 'No se pudo generar la vista previa del informe técnico.');
                 }
@@ -317,6 +363,10 @@
             });
         })
         .then(function (payload) {
+            if (!payload) {
+                return;
+            }
+
             updateViewer(modal, payload);
             updateInformeStatus(modal, payload);
             notify('success', payload.message || 'Vista previa generada correctamente.');
@@ -356,6 +406,10 @@
         })
         .then(function (response) {
             return readResponsePayload(response).then(function (payload) {
+                if (handleUnauthorizedPayload(payload)) {
+                    return null;
+                }
+
                 if (!response.ok || !payload || payload.success === false) {
                     throw new Error(payload && payload.message ? payload.message : 'No se pudo procesar el Informe Técnico.');
                 }
@@ -364,6 +418,10 @@
             });
         })
         .then(function (payload) {
+            if (!payload) {
+                return;
+            }
+
             updateInformeStatus(modal, payload);
             if (payload.pdfUrl) {
                 updateViewer(modal, payload);
@@ -401,7 +459,7 @@
 
         Array.prototype.forEach.call(modal.querySelectorAll('input[name="resultado"]'), function (radio) {
             radio.addEventListener('change', function () {
-                syncInsatisfactorioSection(modal);
+                syncInsatisfactorioSection(modal, { guideUser: isResultadoInsatisfactorio(radio.value) });
             });
         });
 
@@ -422,7 +480,7 @@
             window.AOCRPdfViewer.init(modal);
         }
 
-        syncInsatisfactorioSection(modal);
+        syncInsatisfactorioSection(modal, { guideUser: false });
     }
 
     function ensureHost() {
@@ -464,26 +522,31 @@
             headers: { 'X-Requested-With': 'XMLHttpRequest' }
         })
         .then(function (response) {
-            var contentType = response.headers.get('content-type') || '';
-            if (contentType.indexOf('application/json') >= 0) {
-                return response.json().then(function (payload) {
+            return readResponsePayload(response).then(function (payload) {
+                if (handleUnauthorizedPayload(payload)) {
+                    return null;
+                }
+
+                if (typeof payload === 'string') {
                     if (!response.ok) {
-                        throw new Error(payload && payload.message ? payload.message : 'No se pudo cargar el Informe Técnico.');
+                        throw new Error(payload || 'No se pudo cargar el Informe Técnico.');
                     }
 
                     return payload;
-                });
-            }
-
-            return response.text().then(function (html) {
-                if (!response.ok) {
-                    throw new Error(html || 'No se pudo cargar el Informe Técnico.');
                 }
 
-                return html;
+                if (!response.ok || !payload || payload.success === false) {
+                    throw new Error(payload && payload.message ? payload.message : 'No se pudo cargar el Informe Técnico.');
+                }
+
+                return payload && payload.rawText ? payload.rawText : payload;
             });
         })
         .then(function (html) {
+            if (!html) {
+                return;
+            }
+
             if (typeof html !== 'string') {
                 throw new Error(html && html.message ? html.message : 'No se pudo cargar el Informe Técnico.');
             }
