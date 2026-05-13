@@ -38,6 +38,12 @@ namespace CapaPresentacion
                 defaults: new { controller = "Inspeccion", action = "VerListaVerificacionOperacionalEae", id = UrlParameter.Optional }
             );
 
+            routes.MapRoute(
+                name: "InspeccionDetalleAmigable",
+                url: "Detalle/{id}",
+                defaults: new { controller = "Inspeccion", action = "Detalle", id = UrlParameter.Optional }
+            );
+
             // RUTA POR DEFECTO - debe ir ÚLTIMA
             routes.MapRoute(
                 name: "Default",

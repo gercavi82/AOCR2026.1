@@ -68,6 +68,12 @@ namespace CapaNegocio
                    ?? new Dictionary<int, Tuple<string, string>>();
         }
 
+        public Dictionary<int, RevisionDocumentalDetalle> ObtenerUltimosDetallesRevisionPorSolicitud(int codigoSolicitud)
+        {
+            return _revisionDocumentalDao.ObtenerUltimosDetallesPorSolicitud(codigoSolicitud)
+                   ?? new Dictionary<int, RevisionDocumentalDetalle>();
+        }
+
         public bool RegistrarRevisionDocumental(int codigoSolicitud, int codigoDocumento, string decision, string observacion, int usuarioId, string usuarioRegistro)
         {
             return _revisionDocumentalDao.RegistrarRevision(codigoSolicitud, codigoDocumento, decision, observacion, usuarioId, usuarioRegistro);
@@ -76,6 +82,12 @@ namespace CapaNegocio
         public bool RegistrarEventoHistorialRevision(int codigoSolicitud, int? codigoDocumento, string tipoEvento, string observacion, int usuarioId, string usuarioRegistro)
         {
             return _revisionDocumentalDao.RegistrarEventoHistorial(codigoSolicitud, codigoDocumento, tipoEvento, observacion, usuarioId, usuarioRegistro);
+        }
+
+        public HashSet<int> ObtenerDocumentosConEventoHistorial(int codigoSolicitud, string tipoEvento)
+        {
+            return _revisionDocumentalDao.ObtenerDocumentosConEventoHistorial(codigoSolicitud, tipoEvento)
+                   ?? new HashSet<int>();
         }
 
         public AsignacionRTRegistro ObtenerAsignacionActiva(int codigoSolicitud)

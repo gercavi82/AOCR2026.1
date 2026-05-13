@@ -104,6 +104,9 @@ namespace CapaNegocio
             documento.Estado = "APROBADO";
             documento.Observaciones = observaciones;
             documento.Validado = true;
+            documento.FechaValidacion = DateTime.Now;
+            documento.ValidadoPor = usuario;
+            documento.UsuarioRegistro = usuario;
 
             bool ok = _documentoDAO.Actualizar(documento);
 
@@ -126,6 +129,9 @@ namespace CapaNegocio
             documento.Estado = "RECHAZADO";
             documento.Observaciones = motivo;
             documento.Validado = false;
+            documento.FechaValidacion = DateTime.Now;
+            documento.ValidadoPor = usuario;
+            documento.UsuarioRegistro = usuario;
 
             return _documentoDAO.Actualizar(documento);
         }

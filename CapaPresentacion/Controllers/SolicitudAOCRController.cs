@@ -459,6 +459,19 @@ namespace CapaPresentacion.Controllers
 
                 System.Diagnostics.Debug.WriteLine($"[FormularioEmisionAOCR] Usuario final: {vm.Usuario.NombreCompleto}");
 
+                if ((!oid.HasValue || oid.Value <= 0) && !EsAdmin())
+                {
+                    var solicitudActiva = BuscarSolicitudActivaReutilizable(usuarioId, companiaActivaCodigo, tipoSolicitud);
+                    if (solicitudActiva != null)
+                    {
+                        oid = solicitudActiva.CodigoSolicitud;
+                        System.Diagnostics.Trace.TraceInformation(
+                            "[SOLICITUD_AOCR] Reutilizando solicitud activa existente " + solicitudActiva.CodigoSolicitud +
+                            " para usuario=" + usuarioId +
+                            "; compania=" + (companiaActivaCodigo ?? string.Empty));
+                    }
+                }
+
                 // 2) Si es edición
                 if (oid.HasValue && oid.Value > 0)
                 {
@@ -800,6 +813,7 @@ namespace CapaPresentacion.Controllers
                     ? vm.Solicitud.Email
                     : vm.Solicitud.CorreoRepresentanteTecnico;
                 vm.Solicitud.CompaniasSeleccionadas = companiaSeleccionadaCodigo;
+                vm.Solicitud.TipoSolicitud = NormalizarTipoSolicitud(vm.Solicitud.TipoSolicitud);
                 vm.Solicitud.CodigoOaci = NormalizarCodigoOaci(!string.IsNullOrWhiteSpace(vm.Solicitud.CodigoOaci)
                     ? vm.Solicitud.CodigoOaci
                     : companiaSeleccionadaCodigo);
@@ -867,6 +881,19 @@ namespace CapaPresentacion.Controllers
                     string.IsNullOrWhiteSpace(vm.Solicitud.AeropuertosEcuadorOtros))
                 {
                     return Json(new { success = false, mensaje = "Debe detallar el aeropuerto cuando selecciona OTROS." }, JsonRequestBehavior.AllowGet);
+                }
+
+                if (vm.Solicitud.CodigoSolicitud <= 0)
+                {
+                    var solicitudActiva = BuscarSolicitudActivaReutilizable(usuarioId, companiaSeleccionadaCodigo, vm.Solicitud.TipoSolicitud);
+                    if (solicitudActiva != null)
+                    {
+                        vm.Solicitud.CodigoSolicitud = solicitudActiva.CodigoSolicitud;
+                        System.Diagnostics.Trace.TraceInformation(
+                            "[SOLICITUD_AOCR] FormularioCompleto reutiliza solicitud=" + solicitudActiva.CodigoSolicitud +
+                            " para usuario=" + usuarioId +
+                            "; compania=" + (companiaSeleccionadaCodigo ?? string.Empty));
+                    }
                 }
 
                 // Dueño si es nuevo / seguridad si edita
@@ -1109,6 +1136,21 @@ namespace CapaPresentacion.Controllers
                 }
 
                 sol.CompaniasSeleccionadas = companiaFinal;
+                sol.TipoSolicitud = NormalizarTipoSolicitud(sol.TipoSolicitud);
+
+                if (sol.CodigoSolicitud <= 0)
+                {
+                    var solicitudActiva = BuscarSolicitudActivaReutilizable(usuarioId, companiaFinal, sol.TipoSolicitud);
+                    if (solicitudActiva != null)
+                    {
+                        sol.CodigoSolicitud = solicitudActiva.CodigoSolicitud;
+                        System.Diagnostics.Trace.TraceInformation(
+                            "[SOLICITUD_AOCR] GuardarProgreso reutiliza solicitud=" + solicitudActiva.CodigoSolicitud +
+                            " para usuario=" + usuarioId +
+                            "; seccion=" + seccion +
+                            "; compania=" + (companiaFinal ?? string.Empty));
+                    }
+                }
 
                 if (string.IsNullOrWhiteSpace(sol.NombreOperador))
                     sol.NombreOperador = !string.IsNullOrWhiteSpace(companiaActivaNombre) ? companiaActivaNombre : companiaFinal;
@@ -1968,6 +2010,69 @@ namespace CapaPresentacion.Controllers
             return ContieneValorLista(solicitud.CompaniasSeleccionadas, companiaActivaCodigo);
         }
 
+        private SolicitudAOCR BuscarSolicitudActivaReutilizable(int codigoUsuario, string companiaActivaCodigo, int? tipoSolicitud, int? excluirCodigoSolicitud = null)
+        {
+            if (codigoUsuario <= 0)
+            {
+                return null;
+            }
+
+            var tipoNormalizado = NormalizarTipoSolicitud(tipoSolicitud);
+            return FiltrarSolicitudesPorCompaniaActiva(_solicitudDAO.ObtenerPorUsuario(codigoUsuario), companiaActivaCodigo)
+                .Where(s => s != null && s.CodigoSolicitud > 0)
+                .Where(s => !excluirCodigoSolicitud.HasValue || s.CodigoSolicitud != excluirCodigoSolicitud.Value)
+                .Where(s => NormalizarTipoSolicitud(s.TipoSolicitud) == tipoNormalizado)
+                .Where(EsSolicitudActivaReutilizable)
+                .Select(s => new
+                {
+                    Solicitud = s,
+                    TieneInspeccion = (_solicitudAocrInfraBL.ListarInspeccionesPorSolicitud(s.CodigoSolicitud) ?? new List<Inspeccion>())
+                        .Any(i => i != null && i.CodigoInspeccion > 0)
+                })
+                .OrderByDescending(x => x.TieneInspeccion)
+                .ThenByDescending(x => x.Solicitud.CodigoSolicitud)
+                .Select(x => x.Solicitud)
+                .FirstOrDefault();
+        }
+
+        private static bool EsSolicitudActivaReutilizable(SolicitudAOCR solicitud)
+        {
+            if (solicitud == null || solicitud.CodigoSolicitud <= 0)
+            {
+                return false;
+            }
+
+            switch (EstadoSolicitud.Normalizar(solicitud.Estado ?? string.Empty))
+            {
+                case EstadoSolicitud.Pendiente:
+                case EstadoSolicitud.EnRevision:
+                case EstadoSolicitud.DocumentacionCompleta:
+                case EstadoSolicitud.DocumentacionPendiente:
+                case EstadoSolicitud.Observada:
+                case EstadoSolicitud.Subsanada:
+                case EstadoSolicitud.AceptacionDocumental:
+                case EstadoSolicitud.RequiereInspeccion:
+                case EstadoSolicitud.PagoPendiente:
+                case EstadoSolicitud.PagoValidado:
+                case EstadoSolicitud.PendienteAsignacionRT:
+                case EstadoSolicitud.InspeccionProgramada:
+                case EstadoSolicitud.InspeccionRealizada:
+                case EstadoSolicitud.EnInspeccion:
+                case EstadoSolicitud.GeneradoCondicionesLimitaciones:
+                case EstadoSolicitud.EnRevisionCoordinadorFinal:
+                case EstadoSolicitud.EnviadoDcav:
+                case EstadoSolicitud.FirmadoDcav:
+                case EstadoSolicitud.FirmadoCoordinador:
+                case EstadoSolicitud.AOCR_EnElaboracion:
+                case EstadoSolicitud.AOCR_EnRevision:
+                case EstadoSolicitud.AOCR_Validado:
+                case EstadoSolicitud.AOCR_Legalizado:
+                    return true;
+                default:
+                    return false;
+            }
+        }
+
         private static bool ContieneValorLista(string lista, string valor)
         {
             if (string.IsNullOrWhiteSpace(lista) || string.IsNullOrWhiteSpace(valor))
@@ -2377,7 +2482,15 @@ namespace CapaPresentacion.Controllers
             {
                 try
                 {
-                    EnviarCorreoRevisionDocumentalDevuelta(solicitud, documentosRevision, revisionesResumen);
+                    var documentosYaNotificados = _solicitudAocrInfraBL.ObtenerDocumentosConEventoHistorial(id, "CORREO_DOCUMENTO_DEVUELTO_ENVIADO");
+                    EnviarCorreoRevisionDocumentalDevuelta(solicitud, documentosRevision, revisionesResumen, documentosYaNotificados);
+                    _solicitudAocrInfraBL.RegistrarEventoHistorialRevision(
+                        id,
+                        null,
+                        "CORREO_REVISION_FINAL_RESUMEN_ENVIADO",
+                        "Correo final de resumen de revision documental con observaciones enviado.",
+                        usuarioId,
+                        usuarioRegistro);
                 }
                 catch
                 {
@@ -2493,7 +2606,15 @@ namespace CapaPresentacion.Controllers
             {
                 try
                 {
-                    EnviarCorreoRevisionDocumentalDevuelta(solicitud, documentosRevision, revisiones);
+                    var documentosYaNotificados = _solicitudAocrInfraBL.ObtenerDocumentosConEventoHistorial(id, "CORREO_DOCUMENTO_DEVUELTO_ENVIADO");
+                    EnviarCorreoRevisionDocumentalDevuelta(solicitud, documentosRevision, revisiones, documentosYaNotificados);
+                    _solicitudAocrInfraBL.RegistrarEventoHistorialRevision(
+                        id,
+                        null,
+                        "CORREO_REVISION_FINAL_RESUMEN_ENVIADO",
+                        "Correo final de resumen de revision documental con observaciones enviado.",
+                        usuarioId,
+                        usuarioRegistro);
                 }
                 catch
                 {
@@ -4242,22 +4363,35 @@ namespace CapaPresentacion.Controllers
         private static void EnviarCorreoRevisionDocumentalDevuelta(
             SolicitudAOCR solicitud,
             IEnumerable<Documento> documentos,
-            IDictionary<int, Tuple<string, string>> revisiones)
+            IDictionary<int, Tuple<string, string>> revisiones,
+            ISet<int> documentosYaNotificadosIndividualmente)
         {
             if (solicitud == null)
             {
                 return;
             }
 
-            var destinatario = FirstNonEmpty(solicitud.CorreoRepresentanteTecnico, solicitud.Email);
-            if (string.IsNullOrWhiteSpace(destinatario))
+            var destinatarios = new[]
+                {
+                    solicitud.CorreoRepresentanteTecnico,
+                    solicitud.Email
+                }
+                .Select(x => (x ?? string.Empty).Trim())
+                .Where(x => !string.IsNullOrWhiteSpace(x))
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
+
+            if (destinatarios.Count == 0)
             {
                 return;
             }
 
+            var documentosNotificados = documentosYaNotificadosIndividualmente ?? new HashSet<int>();
+
             var itemsDevueltos = (documentos ?? Enumerable.Empty<Documento>())
                 .Select(d => new
                 {
+                    CodigoDocumento = d.CodigoDocumento,
                     Documento = ObtenerEtiquetaDocumento(d),
                     Decision = ObtenerDecisionRevisionDocumental(d, revisiones),
                     Observacion = ObtenerObservacionRevisionDocumental(d, revisiones)
@@ -4270,27 +4404,51 @@ namespace CapaPresentacion.Controllers
                 return;
             }
 
-            var detalleHtml = string.Join(string.Empty, itemsDevueltos.Select(x =>
-                "<li><strong>" + HttpUtility.HtmlEncode(x.Documento) + "</strong>: " +
-                HttpUtility.HtmlEncode(RevisionDocumentalDisplayHelper.GetVisibleStateLabel(x.Decision)) +
-                " - " + HttpUtility.HtmlEncode(string.IsNullOrWhiteSpace(x.Observacion) ? "Sin observación registrada." : x.Observacion) +
-                " <em>(" + HttpUtility.HtmlEncode(RevisionDocumentalDisplayHelper.GetVisibleStateLabel(x.Decision)) + ")</em></li>"));
+            var itemsPendientesResumen = itemsDevueltos
+                .Where(x => x.CodigoDocumento <= 0 || !documentosNotificados.Contains(x.CodigoDocumento))
+                .ToList();
+
+            string bloqueDetalle;
+            if (itemsPendientesResumen.Count > 0)
+            {
+                var detalleHtml = string.Join(string.Empty, itemsPendientesResumen.Select(x =>
+                    "<li><strong>" + HttpUtility.HtmlEncode(x.Documento) + "</strong>: " +
+                    HttpUtility.HtmlEncode(RevisionDocumentalDisplayHelper.GetVisibleStateLabel(x.Decision)) +
+                    " - " + HttpUtility.HtmlEncode(string.IsNullOrWhiteSpace(x.Observacion) ? "Sin observación registrada." : x.Observacion) +
+                    " <em>(" + HttpUtility.HtmlEncode(RevisionDocumentalDisplayHelper.GetVisibleStateLabel(x.Decision)) + ")</em></li>"));
+
+                bloqueDetalle = "<strong>Documentos rechazados/devueltos pendientes de resumen:</strong><ul>" + detalleHtml + "</ul>";
+
+                if (itemsPendientesResumen.Count < itemsDevueltos.Count)
+                {
+                    bloqueDetalle += "Los demas documentos devueltos ya fueron notificados individualmente durante la revision.<br><br>";
+                }
+            }
+            else
+            {
+                bloqueDetalle = "Los documentos devueltos/observados ya fueron notificados individualmente durante la revision. " +
+                               "Este correo resume el cierre formal de la revision documental.<br><br>";
+            }
 
             var numeroSolicitud = FirstNonEmpty(solicitud.NumeroSolicitud, "#" + solicitud.CodigoSolicitud);
             var operador = FirstNonEmpty(solicitud.NombreComercial, solicitud.NombreOperador, solicitud.RazonSocial, "Operador");
             var inspector = FirstNonEmpty(solicitud.TecnicoResponsableNombre, "Inspector asignado");
-            var asunto = "Observaciones en documentos de la Solicitud AOCR";
-            var cuerpo = "Estimado/a solicitante:<br><br>" +
-                         "Se informa que, como resultado de la revisión documental realizada por el Inspector asignado, se han registrado observaciones en uno o más documentos de su Solicitud AOCR.<br><br>" +
+            var asunto = "AOCR - Resumen final de revision documental con observaciones";
+            var cuerpo = "Estimado/a usuario AOCR:<br><br>" +
+                         "Se informa que la revisión documental de su Solicitud AOCR fue finalizada con documentos devueltos/observados. " +
+                         "A continuación se detalla por qué fue rechazada la documentación y cuál documento requiere corrección.<br><br>" +
                          "<strong>Número de solicitud AOCR:</strong> " + HttpUtility.HtmlEncode(numeroSolicitud) + "<br>" +
                          "<strong>Solicitante / EAE:</strong> " + HttpUtility.HtmlEncode(operador) + "<br>" +
                          "<strong>Inspector:</strong> " + HttpUtility.HtmlEncode(inspector) + "<br>" +
                          "<strong>Fecha de revisión:</strong> " + DateTime.Now.ToString("dd/MM/yyyy HH:mm") + "<br><br>" +
-                         "<strong>Documentos observados:</strong><ul>" + detalleHtml + "</ul>" +
+                         bloqueDetalle +
                          "Por favor ingrese al sistema, revise las observaciones detalladas y cargue la documentación corregida para continuar con el proceso.<br><br>" +
                          "Saludos.";
 
-            EmailHelper.EnviarEmail(destinatario, asunto, cuerpo);
+            foreach (var destinatario in destinatarios)
+            {
+                EmailHelper.EnviarEmail(destinatario, asunto, cuerpo);
+            }
         }
 
         private static string NormalizarDecisionRevisionDocumental(string decision)

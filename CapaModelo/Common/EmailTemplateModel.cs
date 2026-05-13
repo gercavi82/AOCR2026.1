@@ -13,6 +13,7 @@ namespace CapaModelo.Common
         public string EnlaceTexto { get; set; }
         public string TextoCierre { get; set; }
         public string Footer { get; set; }
+        public bool MostrarSaludo { get; set; }
 
         /// <summary>
         /// Contenido HTML libre que se inserta despues del resumen y antes del cierre.
@@ -26,6 +27,7 @@ namespace CapaModelo.Common
             Resumen = new List<EmailFieldItem>();
             TextoCierre = "Puede revisar el detalle desde el sistema AOCR.";
             Footer = "Este es un mensaje automatico del sistema AOCR.";
+            MostrarSaludo = true;
         }
     }
 

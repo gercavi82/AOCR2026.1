@@ -1,5 +1,6 @@
 using System;
 using System.Net.Mail;
+using CapaModelo.Common;
 
 namespace CapaDatos.Services
 {
@@ -82,7 +83,11 @@ namespace CapaDatos.Services
                     correo.From = new MailAddress(coreoDesde ?? GetDefaultFromAddress());
                     correo.To.Add(coreoPara);
                     correo.Subject = asunto;
-                    correo.Body = mensajeDetalle;
+                    correo.Body = EmailTemplateRenderer.EnsureStandardLayout(
+                        asunto,
+                        mensajeDetalle,
+                        null,
+                        "Este es un mensaje automatico del workflow AOCR.");
                     correo.IsBodyHtml = true;
                     correo.Priority = MailPriority.Normal;
 
@@ -152,7 +157,11 @@ namespace CapaDatos.Services
                     correo.From = new MailAddress(coreoDesde ?? GetDefaultFromAddress());
                     correo.To.Add(coreoPara);
                     correo.Subject = asunto;
-                    correo.Body = mensajeDetalle;
+                    correo.Body = EmailTemplateRenderer.EnsureStandardLayout(
+                        asunto,
+                        mensajeDetalle,
+                        null,
+                        "Este es un mensaje automatico del workflow AOCR.");
                     correo.IsBodyHtml = true;
                     correo.Priority = MailPriority.Normal;
 

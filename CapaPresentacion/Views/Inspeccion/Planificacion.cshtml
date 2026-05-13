@@ -7,6 +7,8 @@
 @{
     ViewBag.Title = "Planificación de Inspección";
     Layout = "~/Views/Shared/_LayoutAOCR.cshtml";
+    var numeroInspeccionVisible = ViewBag.NumeroInspeccionVisible as string ?? (Model != null ? (!string.IsNullOrWhiteSpace(Model.NumeroInspeccion) ? Model.NumeroInspeccion.Trim() : Model.CodigoInspeccion.ToString()) : "-");
+    var numeroSolicitudVisible = ViewBag.NumeroSolicitudVisible as string ?? (Model != null ? Model.CodigoSolicitud.ToString() : "-");
 }
 
 @if (Model == null)
@@ -28,10 +30,10 @@
     <div class="panel-body">
         <dl class="dl-horizontal">
             <dt>Inspección N°:</dt>
-            <dd>@Model.CodigoInspeccion</dd>
+            <dd>@numeroInspeccionVisible</dd>
 
             <dt>Solicitud N°:</dt>
-            <dd>@Model.CodigoSolicitud</dd>
+            <dd>@numeroSolicitudVisible</dd>
 
             <dt>Inspector Asignado:</dt>
             <dd>@(Model.CodigoInspector.HasValue ? Model.CodigoInspector.Value.ToString() : "No asignado")</dd>

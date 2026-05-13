@@ -104,8 +104,8 @@ namespace CapaNegocio.Integraciones.As400Sync
             }
 
             const string sql = @"
-                SELECT u.usucod, u.usunom, u.usuape, u.usucor, u.usuest, u.usuco4, u.usuco5,
-                       a.usucar, a.usuno1, u._source_updated_at, u._mirror_synced_at
+                  SELECT u.usucod, u.usunom, u.usuape, u.usucor, u.usuest, u.usuco4, u.usuco5,
+                      a.usucar, a.usuno1, NULL::timestamp AS source_updated_at, u._mirror_synced_at
                   FROM mirror_raw.usuarc u
              LEFT JOIN mirror_raw.usuar1 a ON a.usuco8 = u.usucod
                  WHERE u.usucod = @codigo
@@ -358,7 +358,7 @@ namespace CapaNegocio.Integraciones.As400Sync
                     NULLIF(BTRIM(u.usucod), '') AS codigo_usuario,
                     NULLIF(BTRIM(u.usunum), '') AS ruc,
                     NULLIF(BTRIM(u.usuced), '') AS cedula,
-                    u._source_updated_at,
+                    NULL::timestamp AS source_updated_at,
                     u._mirror_synced_at
                 FROM mirror_raw.usuarc u
                WHERE COALESCE(u._is_deleted, false) = false

@@ -25,7 +25,6 @@ namespace CapaPresentacion.Models
         // Clase anidada para la nueva orden
         public class NuevaOrdenViewModel
         {
-            [Required(ErrorMessage = "La solicitud es requerida")]
             [Display(Name = "Solicitud")]
             public int? CodigoSolicitud { get; set; }
 

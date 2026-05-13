@@ -56,7 +56,7 @@
                                 }
                                 else
                                 {
-                                    <input type="text" class="form-control" value="No hay solicitud autogenerada" readonly />
+                                    <input type="text" class="form-control" value="Se generará al guardar la orden" readonly />
                                 }
                                 @Html.ValidationMessageFor(m => m.Orden.CodigoSolicitud, "", new { @class = "text-danger" })
                             </div>

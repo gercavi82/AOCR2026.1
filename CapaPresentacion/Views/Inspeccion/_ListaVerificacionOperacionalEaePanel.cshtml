@@ -675,7 +675,6 @@
     }
 
     #bloqueListaVerificacionOperacionalEae .aocr-lv-table {
-        min-width: 1220px;
         width: 100%;
         margin-bottom: 0;
         border-collapse: collapse;
@@ -886,10 +885,6 @@
             padding: 12px;
         }
 
-        #bloqueListaVerificacionOperacionalEae .aocr-lv-table {
-            min-width: 1160px;
-        }
-
         #bloqueListaVerificacionOperacionalEae .aocr-lv-table th,
         #bloqueListaVerificacionOperacionalEae .aocr-lv-table td {
             font-size: 11.5px;
@@ -898,13 +893,87 @@
         }
     }
 
+    @@media (max-width: 1400px) {
+        #bloqueListaVerificacionOperacionalEae .aocr-lv-scroll-container {
+            max-height: none;
+            overflow: visible;
+            background: transparent;
+        }
+
+        #bloqueListaVerificacionOperacionalEae .aocr-lv-table {
+            display: block;
+            min-width: 0;
+            border: 0;
+            border-collapse: separate;
+            table-layout: auto;
+            background: transparent;
+        }
+
+        #bloqueListaVerificacionOperacionalEae .aocr-lv-table colgroup,
+        #bloqueListaVerificacionOperacionalEae .aocr-lv-table thead {
+            display: none;
+        }
+
+        #bloqueListaVerificacionOperacionalEae .aocr-lv-table tbody {
+            display: block;
+        }
+
+        #bloqueListaVerificacionOperacionalEae .aocr-lv-table tr {
+            display: block;
+            border: 1px solid rgba(27, 79, 114, 0.14);
+            border-radius: 18px;
+            overflow: hidden;
+            background: #fff;
+            box-shadow: 0 10px 24px rgba(13, 40, 58, 0.08);
+            margin-bottom: 12px;
+        }
+
+        #bloqueListaVerificacionOperacionalEae .aocr-lv-table td {
+            display: grid;
+            grid-template-columns: minmax(150px, 32%) minmax(0, 1fr);
+            gap: 0.75rem;
+            align-items: start;
+            border: 0;
+            border-bottom: 1px solid rgba(27, 79, 114, 0.12);
+            padding: 0.8rem 0.9rem;
+        }
+
+        #bloqueListaVerificacionOperacionalEae .aocr-lv-table td:last-child {
+            border-bottom: 0;
+        }
+
+        #bloqueListaVerificacionOperacionalEae .aocr-lv-table td::before {
+            content: attr(data-column-label);
+            display: block;
+            color: #1b4f72;
+            font-size: 0.76rem;
+            font-weight: 700;
+            line-height: 1.3;
+        }
+
+        #bloqueListaVerificacionOperacionalEae .aocr-lv-col-ref,
+        #bloqueListaVerificacionOperacionalEae .aocr-lv-col-pregunta,
+        #bloqueListaVerificacionOperacionalEae .aocr-lv-col-cumplimiento,
+        #bloqueListaVerificacionOperacionalEae .aocr-lv-col-orientacion,
+        #bloqueListaVerificacionOperacionalEae .aocr-lv-col-implementacion,
+        #bloqueListaVerificacionOperacionalEae .aocr-lv-col-comentarios {
+            width: auto;
+        }
+
+        #bloqueListaVerificacionOperacionalEae .aocr-lv-table .lv-observacion {
+            min-height: 120px;
+        }
+    }
+
     @@media (max-width: 768px) {
         #bloqueListaVerificacionOperacionalEae .aocr-lv-wrapper {
             padding: 8px;
         }
 
-        #bloqueListaVerificacionOperacionalEae .aocr-lv-table {
-            min-width: 1080px;
+        #bloqueListaVerificacionOperacionalEae .aocr-lv-table td {
+            grid-template-columns: 1fr;
+            gap: 0.45rem;
+            padding: 0.75rem;
         }
 
         #bloqueListaVerificacionOperacionalEae .aocr-lv-actions .btn {
@@ -1135,7 +1204,7 @@
                                     etiquetaFila = etiquetaFila.Substring(0, 157).TrimEnd() + "...";
                                 }
                                 <tr class="lv-official-edit-row" data-lv-requirement-code="@fila.RequirementCode" data-lv-row-key="@fila.RowKey">
-                                    <td class="aocr-lv-col-ref @(fila.ReferenceLines.Any() ? string.Empty : "lv-empty-cell")">
+                                    <td class="aocr-lv-col-ref @(fila.ReferenceLines.Any() ? string.Empty : "lv-empty-cell")" data-column-label="Referencia">
                                         @if (fila.ReferenceLines.Any())
                                         {
                                             foreach (var lineaReferencia in fila.ReferenceLines)
@@ -1148,7 +1217,7 @@
                                             @Html.Raw("&nbsp;")
                                         }
                                     </td>
-                                    <td class="aocr-lv-col-pregunta @(fila.QuestionLines.Any() ? string.Empty : "lv-empty-cell")">
+                                    <td class="aocr-lv-col-pregunta @(fila.QuestionLines.Any() ? string.Empty : "lv-empty-cell")" data-column-label="Pregunta del requisito">
                                         @if (fila.QuestionLines.Any())
                                         {
                                             foreach (var lineaPregunta in fila.QuestionLines)
@@ -1161,7 +1230,7 @@
                                             @Html.Raw("&nbsp;")
                                         }
                                     </td>
-                                    <td class="aocr-lv-col-cumplimiento @(fila.ShowCompliance ? string.Empty : "lv-empty-cell")">
+                                    <td class="aocr-lv-col-cumplimiento @(fila.ShowCompliance ? string.Empty : "lv-empty-cell")" data-column-label="Estado de cumplimiento">
                                         @if (fila.ShowCompliance)
                                         {
                                             <div class="lv-check-group lv-visible-compliance-group" data-target-codes="@targetRequisito" data-requirement-code="@fila.RequirementCode">
@@ -1187,7 +1256,7 @@
                                             @Html.Raw("&nbsp;")
                                         }
                                     </td>
-                                    <td class="aocr-lv-col-orientacion">
+                                    <td class="aocr-lv-col-orientacion" data-column-label="Orientación para evidencias">
                                         <div class="lv-guidance-stack">
                                             @foreach (var lineaOrientacion in fila.OrientationLines)
                                             {
@@ -1195,7 +1264,7 @@
                                             }
                                         </div>
                                     </td>
-                                    <td class="aocr-lv-col-implementacion @(fila.ShowImplementation ? string.Empty : "lv-empty-cell")">
+                                    <td class="aocr-lv-col-implementacion @(fila.ShowImplementation ? string.Empty : "lv-empty-cell")" data-column-label="Estado de implementación">
                                         @if (fila.ShowImplementation)
                                         {
                                             <div class="lv-check-group lv-visible-implementation-group" data-target-codes="@targetFila" data-sync-key="@targetFila" data-row-label="@etiquetaFila">
@@ -1221,7 +1290,7 @@
                                             @Html.Raw("&nbsp;")
                                         }
                                     </td>
-                                    <td class="aocr-lv-col-comentarios @(codigosFila.Any() ? string.Empty : "lv-empty-cell")">
+                                    <td class="aocr-lv-col-comentarios @(codigosFila.Any() ? string.Empty : "lv-empty-cell")" data-column-label="Pruebas / Notas / Comentarios">
                                         @if (codigosFila.Any())
                                         {
                                             <textarea class="lv-visible-comentarios lv-observacion" data-target-codes="@targetFila" data-sync-key="@targetFila" data-row-label="@etiquetaFila" name="@("lvVisible_" + fila.RowKey + "_comentarios")" rows="4">@comentariosFila</textarea>

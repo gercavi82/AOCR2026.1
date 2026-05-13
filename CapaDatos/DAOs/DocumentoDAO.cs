@@ -298,6 +298,13 @@ namespace CapaDatos.DAOs
             {
                 cn.Open();
 
+                var selectFechaValidacion = ExisteColumna(cn, "aocr_tbdocumento", "fecha_validacion")
+                    ? "fecha_validacion"
+                    : "NULL::timestamp AS fecha_validacion";
+                var selectValidadoPor = ExisteColumna(cn, "aocr_tbdocumento", "validado_por")
+                    ? "validado_por"
+                    : "NULL::varchar AS validado_por";
+
                 string sql = @"
                     SELECT
                         codigo_documento,
@@ -310,6 +317,8 @@ namespace CapaDatos.DAOs
                         estado,
                         validado,
                         fecha_carga,
+                        " + selectFechaValidacion + @",
+                        " + selectValidadoPor + @",
                         observaciones,
                         version,
                         created_by
@@ -341,6 +350,13 @@ namespace CapaDatos.DAOs
             {
                 cn.Open();
 
+                var selectFechaValidacion = ExisteColumna(cn, "aocr_tbdocumento", "fecha_validacion")
+                    ? "fecha_validacion"
+                    : "NULL::timestamp AS fecha_validacion";
+                var selectValidadoPor = ExisteColumna(cn, "aocr_tbdocumento", "validado_por")
+                    ? "validado_por"
+                    : "NULL::varchar AS validado_por";
+
                 string sql = @"
                     SELECT
                         codigo_documento,
@@ -353,6 +369,8 @@ namespace CapaDatos.DAOs
                         estado,
                         validado,
                         fecha_carga,
+                        " + selectFechaValidacion + @",
+                        " + selectValidadoPor + @",
                         observaciones,
                         version,
                         created_by
@@ -382,6 +400,13 @@ namespace CapaDatos.DAOs
             {
                 cn.Open();
 
+                var selectFechaValidacion = ExisteColumna(cn, "aocr_tbdocumento", "fecha_validacion")
+                    ? "fecha_validacion"
+                    : "NULL::timestamp AS fecha_validacion";
+                var selectValidadoPor = ExisteColumna(cn, "aocr_tbdocumento", "validado_por")
+                    ? "validado_por"
+                    : "NULL::varchar AS validado_por";
+
                 string sql = @"
                     SELECT
                         codigo_documento,
@@ -394,6 +419,8 @@ namespace CapaDatos.DAOs
                         estado,
                         validado,
                         fecha_carga,
+                        " + selectFechaValidacion + @",
+                        " + selectValidadoPor + @",
                         observaciones,
                         version,
                         created_by
@@ -427,6 +454,8 @@ namespace CapaDatos.DAOs
                 var columnaUpdatedBy = ExisteColumna(cn, "aocr_tbdocumento", "updated_by")
                     ? "updated_by"
                     : (ExisteColumna(cn, "aocr_tbdocumento", "usuario_actualizacion") ? "usuario_actualizacion" : string.Empty);
+                var tieneFechaValidacion = ExisteColumna(cn, "aocr_tbdocumento", "fecha_validacion");
+                var tieneValidadoPor = ExisteColumna(cn, "aocr_tbdocumento", "validado_por");
 
                 var setParts = new List<string>
                 {
@@ -441,6 +470,16 @@ namespace CapaDatos.DAOs
                     "observaciones = @observaciones",
                     "version = @version"
                 };
+
+                if (tieneFechaValidacion)
+                {
+                    setParts.Add("fecha_validacion = @fecha_validacion");
+                }
+
+                if (tieneValidadoPor)
+                {
+                    setParts.Add("validado_por = @validado_por");
+                }
 
                 if (tieneUpdatedAt)
                 {
@@ -469,6 +508,14 @@ namespace CapaDatos.DAOs
                     cmd.Parameters.AddWithValue("@fecha_carga", (object)doc.FechaCarga ?? DBNull.Value);
                     cmd.Parameters.AddWithValue("@observaciones", (object)doc.Observaciones ?? DBNull.Value);
                     cmd.Parameters.AddWithValue("@version", (object)doc.Version ?? DBNull.Value);
+                    if (tieneFechaValidacion)
+                    {
+                        cmd.Parameters.AddWithValue("@fecha_validacion", (object)doc.FechaValidacion ?? DBNull.Value);
+                    }
+                    if (tieneValidadoPor)
+                    {
+                        cmd.Parameters.AddWithValue("@validado_por", (object)doc.ValidadoPor ?? DBNull.Value);
+                    }
                     if (!string.IsNullOrWhiteSpace(columnaUpdatedBy))
                     {
                         cmd.Parameters.AddWithValue("@updated_by", (object)doc.UsuarioRegistro ?? "sistema");
@@ -548,6 +595,8 @@ namespace CapaDatos.DAOs
                 Validado = rd["validado"] == DBNull.Value ? (bool?)null : Convert.ToBoolean(rd["validado"]),
 
                 FechaCarga = rd["fecha_carga"] == DBNull.Value ? (DateTime?)null : Convert.ToDateTime(rd["fecha_carga"]),
+                FechaValidacion = rd["fecha_validacion"] == DBNull.Value ? (DateTime?)null : Convert.ToDateTime(rd["fecha_validacion"]),
+                ValidadoPor = rd["validado_por"] == DBNull.Value ? null : rd["validado_por"].ToString(),
                 Observaciones = rd["observaciones"] == DBNull.Value ? null : rd["observaciones"].ToString(),
 
                 Version = rd["version"] == DBNull.Value ? (int?)null : Convert.ToInt32(rd["version"]),

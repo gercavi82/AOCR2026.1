@@ -51,6 +51,14 @@ namespace CapaModelo
         [DataType(DataType.DateTime)]
         public DateTime? FechaCarga { get; set; } = DateTime.Now; // Valor por defecto
 
+        [Display(Name = "Fecha de Validación")]
+        [DataType(DataType.DateTime)]
+        public DateTime? FechaValidacion { get; set; }
+
+        [StringLength(255, ErrorMessage = "El usuario validador no puede exceder 255 caracteres")]
+        [Display(Name = "Validado por")]
+        public string ValidadoPor { get; set; }
+
         [StringLength(1000, ErrorMessage = "Las observaciones no pueden exceder 1000 caracteres")]
         [DataType(DataType.MultilineText)]
         [Display(Name = "Observaciones")]
@@ -64,6 +72,27 @@ namespace CapaModelo
         [StringLength(100, ErrorMessage = "El usuario no puede exceder 100 caracteres")]
         [Display(Name = "Usuario Registro")]
         public string UsuarioRegistro { get; set; }
+
+        [NotMapped]
+        public string DecisionRevision { get; set; }
+
+        [NotMapped]
+        public string ObservacionRevision { get; set; }
+
+        [NotMapped]
+        public DateTime? FechaRevision { get; set; }
+
+        [NotMapped]
+        public int? CodigoUsuarioRevisor { get; set; }
+
+        [NotMapped]
+        public string NombreUsuarioRevisor { get; set; }
+
+        [NotMapped]
+        public string EstadoRevisionVisible { get; set; }
+
+        [NotMapped]
+        public string OperadoraEae { get; set; }
 
         // ====== PROPIEDADES DE NAVEGACIÓN ======
         [ForeignKey("CodigoSolicitud")]
@@ -177,6 +206,17 @@ namespace CapaModelo
         {
             return TamanoBytes.HasValue && TamanoBytes.Value > tamañoMaximoBytes;
         }
+    }
+
+    public class RevisionDocumentalDetalle
+    {
+        public int CodigoDocumento { get; set; }
+        public string Decision { get; set; }
+        public string Observacion { get; set; }
+        public int? CodigoUsuarioRevisor { get; set; }
+        public DateTime? FechaRevision { get; set; }
+        public string CreatedBy { get; set; }
+        public string NombreUsuarioRevisor { get; set; }
     }
 
     // ====== ENUMS PARA ESTADOS Y TIPOS ======

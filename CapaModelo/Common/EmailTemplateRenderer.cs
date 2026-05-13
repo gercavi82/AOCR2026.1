@@ -1,5 +1,7 @@
+using System;
 using System.Net;
 using System.Text;
+using System.Text.RegularExpressions;
 
 namespace CapaModelo.Common
 {
@@ -38,9 +40,12 @@ namespace CapaModelo.Common
             sb.Append("<tr><td style='padding:28px 28px 12px 28px;'>");
 
             // Saludo
-            sb.Append("<p style='margin:0 0 14px 0; font-size:14px; color:#243746;'>Estimado/a <strong>");
-            sb.Append(Encode(string.IsNullOrWhiteSpace(model.NombreDestinatario) ? "Usuario AOCR" : model.NombreDestinatario));
-            sb.Append("</strong>,</p>");
+            if (model.MostrarSaludo)
+            {
+                sb.Append("<p style='margin:0 0 14px 0; font-size:14px; color:#243746;'>Estimado/a <strong>");
+                sb.Append(Encode(string.IsNullOrWhiteSpace(model.NombreDestinatario) ? "Usuario AOCR" : model.NombreDestinatario));
+                sb.Append("</strong>,</p>");
+            }
 
             // Mensaje principal
             if (!string.IsNullOrWhiteSpace(model.MensajePrincipal))
@@ -122,9 +127,94 @@ namespace CapaModelo.Common
             return sb.ToString();
         }
 
+        public static string EnsureStandardLayout(string title, string bodyHtml, string recipientName = null, string footer = null)
+        {
+            if (IsStandardTemplate(bodyHtml))
+            {
+                return bodyHtml;
+            }
+
+            var contenidoNormalizado = NormalizarContenido(bodyHtml);
+            var nombreDestinatario = string.IsNullOrWhiteSpace(recipientName) ? "Usuario AOCR" : recipientName.Trim();
+            var contieneSaludo = Regex.IsMatch(
+                contenidoNormalizado ?? string.Empty,
+                @"\bEstimad(?:o|a|o/a|a/o)(?:/a)?\b",
+                RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
+
+            var model = new EmailTemplateModel
+            {
+                Titulo = string.IsNullOrWhiteSpace(title) ? "Notificacion AOCR" : title.Trim(),
+                NombreDestinatario = nombreDestinatario,
+                MostrarSaludo = !contieneSaludo,
+                ContenidoHtmlExtra = contenidoNormalizado,
+                Footer = string.IsNullOrWhiteSpace(footer)
+                    ? "Este es un mensaje automatico del workflow AOCR."
+                    : footer.Trim()
+            };
+
+            if (string.IsNullOrWhiteSpace(model.ContenidoHtmlExtra))
+            {
+                model.MensajePrincipal = "Tiene una nueva notificacion en el sistema AOCR.";
+            }
+
+            return Render(model);
+        }
+
+        public static bool IsStandardTemplate(string bodyHtml)
+        {
+            if (string.IsNullOrWhiteSpace(bodyHtml))
+            {
+                return false;
+            }
+
+            return bodyHtml.IndexOf("SISTEMA AOCR DGAC", StringComparison.OrdinalIgnoreCase) >= 0
+                && bodyHtml.IndexOf("max-width:680px", StringComparison.OrdinalIgnoreCase) >= 0
+                && bodyHtml.IndexOf("background:linear-gradient(135deg,#143b57 0%,#1b6f8a 100%)", StringComparison.OrdinalIgnoreCase) >= 0;
+        }
+
         private static string Encode(string value)
         {
             return WebUtility.HtmlEncode(value ?? string.Empty);
+        }
+
+        private static string NormalizarContenido(string bodyHtml)
+        {
+            if (string.IsNullOrWhiteSpace(bodyHtml))
+            {
+                return string.Empty;
+            }
+
+            var contenido = bodyHtml.Trim();
+            var bodyMatch = Regex.Match(contenido, @"<body[^>]*>(.*)</body>", RegexOptions.IgnoreCase | RegexOptions.Singleline);
+            if (bodyMatch.Success)
+            {
+                contenido = bodyMatch.Groups[1].Value.Trim();
+            }
+
+            var divUnico = Regex.Match(contenido, @"^\s*<div\b[^>]*>(.*)</div>\s*$", RegexOptions.IgnoreCase | RegexOptions.Singleline);
+            if (divUnico.Success)
+            {
+                contenido = divUnico.Groups[1].Value.Trim();
+            }
+
+            contenido = Regex.Replace(contenido, @"^\s*<h[1-6][^>]*>.*?</h[1-6]>\s*", string.Empty, RegexOptions.IgnoreCase | RegexOptions.Singleline);
+            contenido = Regex.Replace(contenido, @"<hr[^>]*>\s*<p[^>]*>.*?(mensaje automatico|mensaje automático|por favor no responda|workflow AOCR|sistema AOCR).*?</p>\s*$", string.Empty, RegexOptions.IgnoreCase | RegexOptions.Singleline);
+            contenido = Regex.Replace(contenido, @"<p[^>]*>.*?(mensaje automatico|mensaje automático|por favor no responda|workflow AOCR|sistema AOCR).*?</p>\s*$", string.Empty, RegexOptions.IgnoreCase | RegexOptions.Singleline);
+            contenido = contenido.Trim();
+
+            if (string.IsNullOrWhiteSpace(contenido))
+            {
+                return string.Empty;
+            }
+
+            if (!Regex.IsMatch(contenido, @"<[^>]+>", RegexOptions.Singleline))
+            {
+                return "<p style='margin:0 0 18px 0; font-size:14px; color:#3a4f5e; line-height:1.55;'>" +
+                       Encode(contenido).Replace(Environment.NewLine, "<br />").Replace("\n", "<br />") +
+                       "</p>";
+            }
+
+            return "<div style='margin:0 0 18px 0; font-size:14px; color:#3a4f5e; line-height:1.55;'>" + contenido + "</div>";
         }
     }
 }

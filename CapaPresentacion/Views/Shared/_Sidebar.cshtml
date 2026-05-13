@@ -127,6 +127,15 @@
         bool puedeLegalizarEmitirAocr = esAdministrador || esLegalRol || esDirectorGeneralRol;
         bool puedeAprobacionFinalDirdac = esAdministrador || esDirdacRol || esDirectorGeneralRol;
         bool puedeCoordinadorOperativo = esAdministrador || esCoordinadorRol;
+        bool tieneNavegacionRol = puedeSolicitante
+            || puedeRt
+            || puedeInspector
+            || puedeCoordinadorOperativo
+            || puedeFinanciero
+            || puedeDirdac
+            || puedeLegalizarEmitirAocr
+            || puedeAdministracion
+            || puedeAprobarUsuarios;
 
         // Módulo de órdenes visible solo para Solicitante/Operador externo
         bool mostrarModuloOrdenes = esSolicitanteRol;
@@ -301,6 +310,20 @@
 
     <div class="menu-container aocr-sidebar-sections">
         <div class="section-title aocr-sidebar-title">Navegación por Rol</div>
+
+        @if (!tieneNavegacionRol)
+        {
+            <div class="aocr-sidebar-panel aocr-sidebar-empty-state">
+                <div class="aocr-sidebar-empty-state__icon">
+                    <i class="fas fa-circle-info text-info"></i>
+                </div>
+                <div class="aocr-sidebar-empty-state__title">Sin navegación disponible</div>
+                <div class="aocr-sidebar-empty-state__copy">
+                    La sesión actual no tiene un rol con accesos cargados para este menú.
+                    Cambie de rol o vuelva a iniciar sesión para ver las opciones correspondientes.
+                </div>
+            </div>
+        }
 
         @* ════════════════════════════════════════
            BLOQUE 1: SOLICITANTE / RT

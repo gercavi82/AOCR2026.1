@@ -9,6 +9,7 @@ using NpgsqlTypes;
 using System.Web.Hosting;
 using CapaDatos.Infrastructure;
 using CapaDatos.Constants;
+using CapaModelo.Common;
 
 namespace CapaDatos.Services
 {
@@ -145,6 +146,12 @@ namespace CapaDatos.Services
             {
                 item.Para = "no-reply@invalid.local";
             }
+
+            item.Cuerpo = EmailTemplateRenderer.EnsureStandardLayout(
+                item.Asunto,
+                item.Cuerpo,
+                item.ParaNombre,
+                "Este es un mensaje automatico del workflow AOCR.");
 
             bool eventKeyColumnDisponible = true;
             var eventKeyNormalizado = string.IsNullOrWhiteSpace(item.EventKey) ? null : item.EventKey.Trim();

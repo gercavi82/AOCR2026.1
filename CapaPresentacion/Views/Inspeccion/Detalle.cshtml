@@ -1444,7 +1444,25 @@
         }
 
         .inspection-detail-page .lv-modal .modal-dialog {
-            max-width: min(1380px, calc(100vw - 2rem));
+            width: min(1240px, calc(100vw - 6rem));
+            max-width: min(1240px, calc(100vw - 6rem));
+            margin: 3rem auto;
+            transition: width 0.2s ease, max-width 0.2s ease, margin 0.2s ease;
+        }
+
+        .inspection-detail-page .lv-modal .modal-dialog.modal-dialog-scrollable {
+            height: calc(100vh - 6rem);
+            transition: height 0.2s ease;
+        }
+
+        .inspection-detail-page .lv-modal .modal-dialog.lv-modal-dialog-expanded {
+            width: 100vw;
+            max-width: 100vw;
+            margin: 0;
+        }
+
+        .inspection-detail-page .lv-modal .modal-dialog.lv-modal-dialog-expanded.modal-dialog-scrollable {
+            height: 100vh;
         }
 
         .inspection-detail-page .lv-modal .modal-content {
@@ -1453,16 +1471,31 @@
             overflow: hidden;
             box-shadow: 0 26px 54px rgba(13, 40, 58, 0.18);
             background: linear-gradient(180deg, #f7fbfd 0%, #eef5f8 100%);
+            min-height: 100%;
+            height: 100%;
+        }
+
+        .inspection-detail-page .lv-modal .modal-dialog.lv-modal-dialog-expanded .modal-content {
+            border-radius: 0;
         }
 
         .inspection-detail-page .lv-modal .modal-header {
             position: sticky;
             top: 0;
             z-index: 10;
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 0.85rem;
             padding: 1rem 1.25rem;
             border-bottom: 1px solid rgba(27, 79, 114, 0.1);
             background: linear-gradient(135deg, rgba(27, 79, 114, 0.96) 0%, rgba(15, 123, 132, 0.92) 100%);
             color: #fff;
+        }
+
+        .inspection-detail-page .lv-modal .modal-header > div:first-child {
+            min-width: 0;
+            flex: 1 1 auto;
         }
 
         .inspection-detail-page .lv-modal .modal-title {
@@ -1479,9 +1512,43 @@
             opacity: 0.92;
         }
 
+        .inspection-detail-page .lv-modal .lv-modal-header-actions {
+            display: flex;
+            align-items: center;
+            gap: 0.55rem;
+            margin-left: auto;
+            flex: 0 0 auto;
+        }
+
+        .inspection-detail-page .lv-modal .lv-modal-expand-toggle {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.45rem;
+            padding: 0.42rem 0.8rem;
+            border-radius: 999px;
+            border: 1px solid rgba(255, 255, 255, 0.4);
+            color: #fff;
+            background: rgba(255, 255, 255, 0.08);
+            font-weight: 700;
+            line-height: 1.1;
+            box-shadow: none;
+        }
+
+        .inspection-detail-page .lv-modal .lv-modal-expand-toggle:hover,
+        .inspection-detail-page .lv-modal .lv-modal-expand-toggle:focus {
+            color: #fff;
+            border-color: rgba(255, 255, 255, 0.72);
+            background: rgba(255, 255, 255, 0.16);
+        }
+
+        .inspection-detail-page .lv-modal .lv-modal-expand-toggle-label {
+            white-space: nowrap;
+        }
+
         .inspection-detail-page .lv-modal .modal-body {
-            padding: 1rem;
+            padding: clamp(0.85rem, 1.1vw, 1.15rem);
             background: linear-gradient(180deg, #f7fbfd 0%, #eef5f8 100%);
+            overflow: auto;
         }
 
         .inspection-detail-page .lv-modal #bloqueListaVerificacionOperacionalEae {
@@ -1512,6 +1579,22 @@
         .inspection-detail-page .lv-modal .lv-operacional-actions .btn,
         .inspection-detail-page .lv-modal .lv-signature-actions .btn {
             box-shadow: 0 12px 24px rgba(13, 40, 58, 0.08);
+        }
+
+        @@media (max-width: 767.98px) {
+            .inspection-detail-page .lv-modal .modal-dialog {
+                width: calc(100vw - 0.6rem);
+                max-width: calc(100vw - 0.6rem);
+                margin: 0.3rem auto;
+            }
+
+            .inspection-detail-page .lv-modal .modal-dialog.modal-dialog-scrollable {
+                height: calc(100vh - 0.6rem);
+            }
+
+            .inspection-detail-page .lv-modal .lv-modal-expand-toggle-label {
+                display: none;
+            }
         }
 
         .inspection-detail-page .hallazgos-table {
@@ -2052,11 +2135,11 @@
                         <div class="hero-metrics">
                             <div class="hero-metric">
                                 <span class="hero-metric-label">Código inspección</span>
-                                <span class="hero-metric-value">@Model.CodigoInspeccion</span>
+                                <span class="hero-metric-value">@numeroInspeccionVisual</span>
                             </div>
                             <div class="hero-metric">
                                 <span class="hero-metric-label">Solicitud vinculada</span>
-                                <span class="hero-metric-value">@Model.CodigoSolicitud</span>
+                                <span class="hero-metric-value">@numeroSolicitudVisual</span>
                             </div>
                             <div class="hero-metric">
                                 <span class="hero-metric-label">Estado actual</span>
@@ -2634,7 +2717,9 @@
                                         <h5 class="modal-title" id="modalListaVerificacionOperacionalEaeLabel">Lista de verificación operacional (LV/EAE)</h5>
                                         <small class="text-muted">Gestione la lista antes de elaborar o firmar el informe técnico.</small>
                                     </div>
-                                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+                                    <div class="lv-modal-header-actions">
+                                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+                                    </div>
                                 </div>
                                 <div class="modal-body bg-light">
                                     @Html.Partial("_ListaVerificacionOperacionalEaePanel", listaVerificacionVm)
@@ -2671,7 +2756,7 @@
                             <div class="d-flex flex-column flex-xl-row justify-content-between gap-3 align-items-xl-center">
                                 <div class="d-flex flex-wrap gap-2 align-items-center">
                                     <span class="status-pill @claseEstadoAccesoInforme"><i class="fas fa-layer-group"></i> @estadoAccesoInforme</span>
-                                    <span class="status-pill primary"><i class="fas fa-hashtag"></i> Inspección @Model.CodigoInspeccion</span>
+                                    <span class="status-pill primary"><i class="fas fa-hashtag"></i> Inspección @numeroInspeccionVisual</span>
                                     <span class="status-pill primary"><i class="fas fa-file-contract"></i> Solicitud @numeroSolicitudVisual</span>
                                     <span class="status-pill @(listaVerificacionFinalizada ? "success" : "warning")"><i class="fas fa-clipboard-check"></i> LV/EAE: @estadoLvModal</span>
                                 </div>
@@ -3235,6 +3320,61 @@
             if (!modalElement) {
                 return;
             }
+
+            var modalDialog = modalElement.querySelector('.modal-dialog');
+            var expandButton = modalElement.querySelector('[data-lv-modal-toggle="expand"]');
+            var expandButtonLabel = expandButton ? expandButton.querySelector('.lv-modal-expand-toggle-label') : null;
+            var expandButtonIcon = expandButton ? expandButton.querySelector('i') : null;
+
+            function updateExpandButton() {
+                if (!expandButton) {
+                    return;
+                }
+
+                var expanded = modalDialog && modalDialog.classList.contains('lv-modal-dialog-expanded');
+                expandButton.setAttribute('aria-pressed', expanded ? 'true' : 'false');
+                expandButton.setAttribute('title', expanded ? 'Restaurar tamaño' : 'Expandir a pantalla');
+
+                if (expandButtonLabel) {
+                    expandButtonLabel.textContent = expanded ? 'Restaurar' : 'Expandir';
+                }
+
+                if (expandButtonIcon) {
+                    expandButtonIcon.classList.toggle('fa-expand', !expanded);
+                    expandButtonIcon.classList.toggle('fa-compress', expanded);
+                }
+            }
+
+            function setExpanded(expanded) {
+                if (!modalDialog) {
+                    return;
+                }
+
+                modalDialog.classList.toggle('lv-modal-dialog-expanded', !!expanded);
+                modalElement.classList.toggle('lv-modal-expanded', !!expanded);
+                modalElement.setAttribute('data-lv-expanded', expanded ? 'true' : 'false');
+
+                if (window.bootstrap && window.bootstrap.Modal) {
+                    var modalInstance = window.bootstrap.Modal.getInstance(modalElement);
+                    if (modalInstance && typeof modalInstance.handleUpdate === 'function') {
+                        modalInstance.handleUpdate();
+                    }
+                }
+
+                updateExpandButton();
+            }
+
+            if (expandButton) {
+                expandButton.addEventListener('click', function () {
+                    var expanded = modalDialog && modalDialog.classList.contains('lv-modal-dialog-expanded');
+                    setExpanded(!expanded);
+                });
+                updateExpandButton();
+            }
+
+            modalElement.addEventListener('hidden.bs.modal', function () {
+                setExpanded(false);
+            });
 
             var debeAbrirse = (modalElement.getAttribute('data-auto-open') || 'false') === 'true';
             if (!debeAbrirse || !window.bootstrap || !window.bootstrap.Modal) {

@@ -393,42 +393,6 @@ namespace CapaPresentacion.Controllers
                 // ignorar prefill si falla
             }
 
-            try
-            {
-                var solicitudAuto = CrearSolicitudAuto(userId);
-                if (solicitudAuto != null && solicitudAuto.CodigoSolicitud > 0)
-                {
-                    if (string.IsNullOrWhiteSpace(solicitudAuto.Ruc))
-                    {
-                        solicitudAuto.Ruc = ExtraerRucCedula(ResolverRucCedulaDesdeFuentes(userId, usuario));
-                    }
-
-                    model.Solicitudes = new List<CapaPresentacion.Models.OrdenRecaudacionNuevaVM.SolicitudOptionVM>
-                    {
-                        new CapaPresentacion.Models.OrdenRecaudacionNuevaVM.SolicitudOptionVM
-                        {
-                            Id = solicitudAuto.CodigoSolicitud,
-                            Numero = solicitudAuto.NumeroSolicitud,
-                            Nombre = solicitudAuto.NombreOperador,
-                            Label = solicitudAuto.NumeroSolicitud,
-                            Ruc = solicitudAuto.Ruc,
-                            Correo = solicitudAuto.Email,
-                            Telefono = solicitudAuto.Telefono,
-                            Compania = string.IsNullOrWhiteSpace(solicitudAuto.RazonSocial) ? solicitudAuto.NombreOperador : solicitudAuto.RazonSocial
-                        }
-                    };
-                    model.Orden.CodigoSolicitud = solicitudAuto.CodigoSolicitud;
-                    // Compania siempre desde compania activa en sesion
-                    if (!string.IsNullOrWhiteSpace(solicitudAuto.Ruc)) model.Orden.RucCedula = ExtraerRucCedula(solicitudAuto.Ruc);
-                    if (!string.IsNullOrWhiteSpace(solicitudAuto.Email)) model.Orden.Correo = solicitudAuto.Email;
-                    if (!string.IsNullOrWhiteSpace(solicitudAuto.Telefono)) model.Orden.Telefono = solicitudAuto.Telefono;
-                }
-            }
-            catch
-            {
-                // Si falla la autogeneració, dejar el flujo normal con selecció
-            }
-
             // Completar campos faltantes con la última orden registrada del usuario.
             PrefillDesdeUltimaOrden(userId, model);
             if (string.IsNullOrWhiteSpace(model.Orden.RucCedula))
@@ -607,6 +571,25 @@ namespace CapaPresentacion.Controllers
                             TotalLinea = totalLinea
                         };
                         await _dao.CrearDetalleAsync(detalle);
+                    }
+
+                    if (!codigoSolicitud.HasValue || codigoSolicitud.Value <= 0)
+                    {
+                        var solicitudAuto = ConstruirSolicitudAuto(
+                            idUsuario,
+                            usuarioActual,
+                            nombreCompaniaActiva,
+                            model.Orden?.RucCedula,
+                            model.Orden?.Correo,
+                            model.Orden?.Telefono,
+                            lugarEmisionDb);
+
+                        var codigoSolicitudGenerado = _dao.CrearSolicitudYVincularOrden(ordenId, solicitudAuto);
+                        if (codigoSolicitudGenerado <= 0)
+                        {
+                            TempData["Error"] = "La orden se creó, pero no se pudo generar y vincular la solicitud asociada.";
+                            return RedirectToAction("Detalles", new { id = ordenId });
+                        }
                     }
 
                     TempData["OK"] = "Orden " + numeroOrden + " creada exitosamente.";
@@ -2826,34 +2809,46 @@ namespace CapaPresentacion.Controllers
             return columnas;
         }
 
-        private SolicitudAOCR CrearSolicitudAuto(int userId)
+        private SolicitudAOCR ConstruirSolicitudAuto(
+            int userId,
+            Usuario usuario = null,
+            string empresaNombreOverride = null,
+            string rucCedulaOverride = null,
+            string correoOverride = null,
+            string telefonoOverride = null,
+            string ciudadOverride = null)
         {
             if (userId <= 0) return null;
 
-            var usuario = UsuarioDAO.ObtenerPorId(userId);
+            usuario = usuario ?? UsuarioDAO.ObtenerPorId(userId);
             var blSolicitud = new SolicitudBL();
             var year = DateTime.Now.Year;
             var numero = blSolicitud.GenerarNumeroSolicitud(year);
-            var empresaNombre = "";
-            try
+            var empresaNombre = (empresaNombreOverride ?? string.Empty).Trim();
+            if (string.IsNullOrWhiteSpace(empresaNombre))
             {
-                var codigoCompaniaActiva = CompaniaActivaSessionHelper.ObtenerCodigo(Session);
-                if (string.IsNullOrWhiteSpace(codigoCompaniaActiva))
+                try
                 {
-                    codigoCompaniaActiva = usuario != null ? usuario.EmpresaCodigo : string.Empty;
-                }
+                    var codigoCompaniaActiva = CompaniaActivaSessionHelper.ObtenerCodigo(Session);
+                    if (string.IsNullOrWhiteSpace(codigoCompaniaActiva))
+                    {
+                        codigoCompaniaActiva = usuario != null ? usuario.EmpresaCodigo : string.Empty;
+                    }
 
-                if (!string.IsNullOrWhiteSpace(codigoCompaniaActiva))
+                    if (!string.IsNullOrWhiteSpace(codigoCompaniaActiva))
+                    {
+                        empresaNombre = ResolverNombreCompaniaDesdeFuentes(codigoCompaniaActiva);
+                    }
+                }
+                catch
                 {
-                    empresaNombre = ResolverNombreCompaniaDesdeFuentes(codigoCompaniaActiva);
+                    empresaNombre = "";
                 }
             }
-            catch
-            {
-                empresaNombre = "";
-            }
 
-            var rucCedula = ResolverRucCedulaDesdeFuentes(userId, usuario);
+            var rucCedula = string.IsNullOrWhiteSpace(rucCedulaOverride)
+                ? ResolverRucCedulaDesdeFuentes(userId, usuario)
+                : rucCedulaOverride.Trim();
             var codCiudad = FirstNonEmpty(
                 NormalizarCodigoCiudad(ObtenerCodCiudadUsuarioDesdePostgres(userId)),
                 NormalizarCodigoCiudad(ObtenerCodCiudadUsuarioDesdeMirror(userId)),
@@ -2864,11 +2859,13 @@ namespace CapaPresentacion.Controllers
             {
                 codCiudad = null;
             }
-            var ciudadResolvida = FirstNonEmpty(
-                ResolverEstacionDesdeMirror(codCiudad),
-                EnableAs400RuntimeFallback ? ResolverEstacionDesdeAs400(codCiudad) : null,
-                codCiudad,
-                "Quito");
+            var ciudadResolvida = string.IsNullOrWhiteSpace(ciudadOverride)
+                ? FirstNonEmpty(
+                    ResolverEstacionDesdeMirror(codCiudad),
+                    EnableAs400RuntimeFallback ? ResolverEstacionDesdeAs400(codCiudad) : null,
+                    codCiudad,
+                    "Quito")
+                : ciudadOverride.Trim();
 
             var solicitud = new SolicitudAOCR
             {
@@ -2882,21 +2879,14 @@ namespace CapaPresentacion.Controllers
                     : (usuario?.NombreCompleto ?? usuario?.NombreUsuario ?? ""),
                 Ruc = rucCedula,
                 RazonSocial = empresaNombre,
-                Email = usuario?.Email ?? "",
-                Telefono = "",
+                Email = !string.IsNullOrWhiteSpace(correoOverride) ? correoOverride.Trim() : (usuario?.Email ?? ""),
+                Telefono = !string.IsNullOrWhiteSpace(telefonoOverride) ? telefonoOverride.Trim() : "",
                 Direccion = "",
                 Ciudad = ciudadResolvida,
                 CodCiudad = codCiudad
             };
 
-            var id = _solicitudDao.InsertarConReturn(solicitud);
-            if (id > 0)
-            {
-                solicitud.CodigoSolicitud = id;
-                return solicitud;
-            }
-
-            return null;
+            return solicitud;
         }
 
         private string ResolverRucCedulaDesdeFuentes(int userId, Usuario usuario = null)

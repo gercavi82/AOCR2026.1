@@ -4,6 +4,7 @@ using System.Net;
 using System.Net.Mail;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
+using CapaModelo.Common;
 
 namespace CapaNegocio.Services
 {
@@ -72,7 +73,11 @@ namespace CapaNegocio.Services
                 msg.To.Add(para);
                 msg.Subject = asunto;
                 msg.IsBodyHtml = true;
-                msg.Body = html ?? "";
+                msg.Body = EmailTemplateRenderer.EnsureStandardLayout(
+                    asunto,
+                    html,
+                    null,
+                    "Este es un mensaje automatico del workflow AOCR.");
 
                 // Adjuntar PDF desde memoria (sin tocar disco)
                 using (var ms = new System.IO.MemoryStream(adjuntoBytes))
@@ -136,7 +141,11 @@ namespace CapaNegocio.Services
                     msg.To.Add(para);
                     msg.Subject = asunto;
                     msg.IsBodyHtml = true;
-                    msg.Body = html ?? "";
+                    msg.Body = EmailTemplateRenderer.EnsureStandardLayout(
+                        asunto,
+                        html,
+                        nombrePara,
+                        "Este es un mensaje automatico del workflow AOCR.");
 
                     using (var smtp = new SmtpClient(host, port))
                     {

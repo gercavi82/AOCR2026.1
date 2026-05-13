@@ -62,6 +62,78 @@ namespace CapaDatos.DAOs
             }
         }
 
+        public Inspeccion ObtenerPorReferenciaDetalle(string referencia)
+        {
+            if (string.IsNullOrWhiteSpace(referencia))
+            {
+                return null;
+            }
+
+            var referenciaNormalizada = Regex.Replace(referencia.Trim().ToUpperInvariant(), @"\s+", string.Empty);
+            if (string.IsNullOrWhiteSpace(referenciaNormalizada))
+            {
+                return null;
+            }
+
+            var coincidenciaReferencia = Regex.Match(
+                referenciaNormalizada,
+                @"AOCR\d+(?:-[A-Z0-9]+)?",
+                RegexOptions.IgnoreCase);
+            var referenciaCompacta = coincidenciaReferencia.Success
+                ? coincidenciaReferencia.Value.ToUpperInvariant()
+                : referenciaNormalizada;
+            var referenciaRegex = @"(^|-)" + Regex.Escape(referenciaCompacta) + @"($|-)";
+
+            using (var cn = new NpgsqlConnection(_cs))
+            {
+                cn.Open();
+                EnsureSchema(cn);
+
+                var columnasSolicitud = ObtenerColumnasTabla(cn, "aocr_tbsolicitud");
+                var columnasSelectSolicitud = new[]
+                {
+                    SelectSolicitudColumn(columnasSolicitud, "codigo_tecnico", "solicitud_codigo_tecnico", "integer"),
+                    SelectSolicitudColumn(columnasSolicitud, "tecnico_responsable_cedula", "solicitud_inspector_principal_cedula"),
+                    SelectSolicitudColumn(columnasSolicitud, "tecnico_responsable_nombre", "solicitud_inspector_principal_nombre"),
+                    SelectSolicitudColumn(columnasSolicitud, "tecnico_responsable_tipo", "solicitud_inspector_principal_tipo"),
+                    SelectSolicitudColumn(columnasSolicitud, "inspector_apoyo_cedula", "solicitud_inspector_apoyo_cedula"),
+                    SelectSolicitudColumn(columnasSolicitud, "inspector_apoyo_nombre", "solicitud_inspector_apoyo_nombre"),
+                    SelectSolicitudColumn(columnasSolicitud, "inspector_apoyo_tipo", "solicitud_inspector_apoyo_tipo")
+                };
+
+                var sql = @"
+                SELECT i.*, " + string.Join(", ", columnasSelectSolicitud) + @"
+                FROM public.aocr_tbinspeccion i
+                LEFT JOIN public.aocr_tbsolicitud s ON s.codigo_solicitud = i.codigo_solicitud
+                WHERE upper(coalesce(i.numero_inspeccion, '')) = @referenciaExacta
+                   OR upper(coalesce(s.numero_solicitud, '')) = @referenciaExacta
+                   OR upper(coalesce(i.numero_inspeccion, '')) ~ @referenciaRegex
+                   OR upper(coalesce(s.numero_solicitud, '')) ~ @referenciaRegex
+                ORDER BY
+                    CASE
+                        WHEN upper(coalesce(i.numero_inspeccion, '')) = @referenciaExacta THEN 0
+                        WHEN upper(coalesce(s.numero_solicitud, '')) = @referenciaExacta THEN 1
+                        WHEN upper(coalesce(i.numero_inspeccion, '')) ~ @referenciaRegex THEN 2
+                        WHEN upper(coalesce(s.numero_solicitud, '')) ~ @referenciaRegex THEN 3
+                        ELSE 4
+                    END,
+                    i.codigo_inspeccion DESC
+                LIMIT 1;";
+
+                using (var cmd = new NpgsqlCommand(sql, cn))
+                {
+                    cmd.Parameters.AddWithValue("@referenciaExacta", referenciaNormalizada);
+                    cmd.Parameters.AddWithValue("@referenciaRegex", referenciaRegex);
+
+                    using (var dr = cmd.ExecuteReader())
+                    {
+                        if (!dr.Read()) return null;
+                        return Map(dr);
+                    }
+                }
+            }
+        }
+
         public List<Inspeccion> ListarTodas()
         {
             var lista = new List<Inspeccion>();
@@ -440,6 +512,7 @@ namespace CapaDatos.DAOs
             using (var cmd = new NpgsqlCommand(sql, cn))
             {
                 cn.Open();
+                EnsureSchema(cn);
                 var estadoNormalizado = ResolverEstadoPersistencia(cn, estado);
 
                 cmd.Parameters.AddWithValue("@id", id);
@@ -593,7 +666,92 @@ namespace CapaDatos.DAOs
 
                 const string sql = @"
                     ALTER TABLE IF EXISTS public.aocr_tbinspeccion ADD COLUMN IF NOT EXISTS estado_documental VARCHAR(50);
-                    ALTER TABLE IF EXISTS public.aocr_tbinspeccion ADD COLUMN IF NOT EXISTS resultado_evaluacion VARCHAR(50);";
+                    ALTER TABLE IF EXISTS public.aocr_tbinspeccion ADD COLUMN IF NOT EXISTS resultado_evaluacion VARCHAR(50);
+
+                    DO $$
+                    DECLARE
+                        constraint_definition text;
+                        constraint_row record;
+                        requiere_actualizacion boolean;
+                    BEGIN
+                        SELECT pg_get_constraintdef(c.oid)
+                        INTO constraint_definition
+                        FROM pg_constraint c
+                        JOIN pg_class t ON t.oid = c.conrelid
+                        JOIN pg_namespace n ON n.oid = t.relnamespace
+                        WHERE n.nspname = 'public'
+                          AND t.relname = 'aocr_tbinspeccion'
+                          AND c.contype = 'c'
+                          AND (
+                                c.conname = 'chk_estado_inspeccion'
+                                OR c.conname = 'chk_aocr_tbinspeccion_estado'
+                                OR pg_get_constraintdef(c.oid) ILIKE '%(estado)::text%'
+                              )
+                        ORDER BY CASE
+                            WHEN c.conname = 'chk_estado_inspeccion' THEN 0
+                            WHEN c.conname = 'chk_aocr_tbinspeccion_estado' THEN 1
+                            ELSE 2
+                        END
+                        LIMIT 1;
+
+                        requiere_actualizacion := constraint_definition IS NULL
+                            OR constraint_definition NOT ILIKE '%VERIFICACION_SOLICITUD%'
+                            OR constraint_definition NOT ILIKE '%ACEPTADA%'
+                            OR constraint_definition NOT ILIKE '%EN_INSPECCION%'
+                            OR constraint_definition NOT ILIKE '%INFORME_ELABORADO%'
+                            OR constraint_definition NOT ILIKE '%RESULTADO_SATISFACTORIO%'
+                            OR constraint_definition NOT ILIKE '%RESULTADO_NO_SATISFACTORIO%'
+                            OR constraint_definition NOT ILIKE '%OBSERVACION_DOCUMENTAL%';
+
+                        IF requiere_actualizacion THEN
+                            FOR constraint_row IN
+                                SELECT c.conname
+                                FROM pg_constraint c
+                                JOIN pg_class t ON t.oid = c.conrelid
+                                JOIN pg_namespace n ON n.oid = t.relnamespace
+                                WHERE n.nspname = 'public'
+                                  AND t.relname = 'aocr_tbinspeccion'
+                                  AND c.contype = 'c'
+                                  AND (
+                                        c.conname = 'chk_estado_inspeccion'
+                                        OR c.conname = 'chk_aocr_tbinspeccion_estado'
+                                        OR pg_get_constraintdef(c.oid) ILIKE '%(estado)::text%'
+                                      )
+                            LOOP
+                                EXECUTE format('ALTER TABLE public.aocr_tbinspeccion DROP CONSTRAINT IF EXISTS %I', constraint_row.conname);
+                            END LOOP;
+
+                            EXECUTE $constraint$
+                                ALTER TABLE public.aocr_tbinspeccion
+                                ADD CONSTRAINT chk_estado_inspeccion
+                                CHECK (
+                                    (estado)::text = ANY ((ARRAY[
+                                        'CREADA'::character varying,
+                                        'PROGRAMADA'::character varying,
+                                        'EN_CURSO'::character varying,
+                                        'APLAZADA'::character varying,
+                                        'FINALIZADA'::character varying,
+                                        'APROBADA'::character varying,
+                                        'RECHAZADA'::character varying,
+                                        'CANCELADA'::character varying,
+                                        'CERRADA'::character varying,
+                                        'SOLICITUD_INSPECCION_CREADA'::character varying,
+                                        'VERIFICACION_SOLICITUD'::character varying,
+                                        'ACEPTADA'::character varying,
+                                        'OBSERVADA'::character varying,
+                                        'SUBSANADA'::character varying,
+                                        'VIATICOS_REQUERIDOS'::character varying,
+                                        'PAGO_VALIDADO'::character varying,
+                                        'EN_INSPECCION'::character varying,
+                                        'INFORME_ELABORADO'::character varying,
+                                        'RESULTADO_SATISFACTORIO'::character varying,
+                                        'RESULTADO_NO_SATISFACTORIO'::character varying,
+                                        'OBSERVACION_DOCUMENTAL'::character varying
+                                    ])::text[])
+                                )
+                            $constraint$;
+                        END IF;
+                    END $$;";
 
                 using (var cmd = new NpgsqlCommand(sql, cn))
                 {

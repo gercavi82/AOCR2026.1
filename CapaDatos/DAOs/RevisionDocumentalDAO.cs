@@ -1,7 +1,9 @@
 using System;
 using System.Collections.Generic;
 using System.Configuration;
+using System.Data;
 using Npgsql;
+using CapaModelo;
 
 namespace CapaDatos.DAOs
 {
@@ -125,6 +127,70 @@ namespace CapaDatos.DAOs
             return resultado;
         }
 
+        public Dictionary<int, RevisionDocumentalDetalle> ObtenerUltimosDetallesPorSolicitud(int codigoSolicitud)
+        {
+            var resultado = new Dictionary<int, RevisionDocumentalDetalle>();
+            if (codigoSolicitud <= 0)
+            {
+                return resultado;
+            }
+
+            using (var cn = new NpgsqlConnection(ConnectionString))
+            {
+                cn.Open();
+                EnsureSchema(cn);
+
+                const string sql = @"
+                    SELECT codigo_documento,
+                           decision,
+                           observacion,
+                           codigo_usuario_revisor,
+                           fecha_revision,
+                           created_by,
+                           nombre_usuario_revisor
+                    FROM
+                    (
+                        SELECT
+                            r.codigo_documento,
+                            r.decision,
+                            r.observacion,
+                            r.codigo_usuario_revisor,
+                            r.fecha_revision,
+                            r.created_by,
+                            COALESCE(NULLIF(TRIM(u.nombreusuario), ''), NULLIF(TRIM(r.created_by), '')) AS nombre_usuario_revisor,
+                            ROW_NUMBER() OVER
+                            (
+                                PARTITION BY r.codigo_documento
+                                ORDER BY COALESCE(r.fecha_revision, r.created_at) DESC, r.created_at DESC, r.id DESC
+                            ) AS rn
+                        FROM aocr_tbrevision_documental r
+                        LEFT JOIN usuario u ON u.idusuario = r.codigo_usuario_revisor
+                        WHERE r.codigo_solicitud = @codigo_solicitud
+                    ) q
+                    WHERE rn = 1;";
+
+                using (var cmd = new NpgsqlCommand(sql, cn))
+                {
+                    cmd.Parameters.AddWithValue("@codigo_solicitud", codigoSolicitud);
+                    using (var rd = cmd.ExecuteReader())
+                    {
+                        while (rd.Read())
+                        {
+                            var detalle = MapearDetalleRevision(rd);
+                            if (detalle == null || detalle.CodigoDocumento <= 0)
+                            {
+                                continue;
+                            }
+
+                            resultado[detalle.CodigoDocumento] = detalle;
+                        }
+                    }
+                }
+            }
+
+            return resultado;
+        }
+
         public bool RegistrarEventoHistorial(
             int codigoSolicitud,
             int? codigoDocumento,
@@ -178,6 +244,50 @@ namespace CapaDatos.DAOs
                     return cmd.ExecuteNonQuery() > 0;
                 }
             }
+        }
+
+        public HashSet<int> ObtenerDocumentosConEventoHistorial(int codigoSolicitud, string evento)
+        {
+            var resultado = new HashSet<int>();
+            if (codigoSolicitud <= 0 || string.IsNullOrWhiteSpace(evento))
+            {
+                return resultado;
+            }
+
+            using (var cn = new NpgsqlConnection(ConnectionString))
+            {
+                cn.Open();
+                EnsureSchema(cn);
+
+                const string sql = @"
+                    SELECT DISTINCT codigo_documento
+                    FROM aocr_tbhistorial_documental
+                    WHERE codigo_solicitud = @codigo_solicitud
+                      AND evento = @evento
+                      AND codigo_documento IS NOT NULL;";
+
+                using (var cmd = new NpgsqlCommand(sql, cn))
+                {
+                    cmd.Parameters.AddWithValue("@codigo_solicitud", codigoSolicitud);
+                    cmd.Parameters.AddWithValue("@evento", evento.Trim().ToUpperInvariant());
+                    using (var rd = cmd.ExecuteReader())
+                    {
+                        while (rd.Read())
+                        {
+                            var codigoDocumento = rd["codigo_documento"] == DBNull.Value
+                                ? 0
+                                : Convert.ToInt32(rd["codigo_documento"]);
+
+                            if (codigoDocumento > 0)
+                            {
+                                resultado.Add(codigoDocumento);
+                            }
+                        }
+                    }
+                }
+            }
+
+            return resultado;
         }
 
         private static void EnsureSchema(NpgsqlConnection cn)
@@ -234,6 +344,25 @@ namespace CapaDatos.DAOs
 
                 _schemaReady = true;
             }
+        }
+
+        private static RevisionDocumentalDetalle MapearDetalleRevision(IDataRecord rd)
+        {
+            if (rd == null)
+            {
+                return null;
+            }
+
+            return new RevisionDocumentalDetalle
+            {
+                CodigoDocumento = rd["codigo_documento"] == DBNull.Value ? 0 : Convert.ToInt32(rd["codigo_documento"]),
+                Decision = rd["decision"] == DBNull.Value ? null : rd["decision"].ToString(),
+                Observacion = rd["observacion"] == DBNull.Value ? null : rd["observacion"].ToString(),
+                CodigoUsuarioRevisor = rd["codigo_usuario_revisor"] == DBNull.Value ? (int?)null : Convert.ToInt32(rd["codigo_usuario_revisor"]),
+                FechaRevision = rd["fecha_revision"] == DBNull.Value ? (DateTime?)null : Convert.ToDateTime(rd["fecha_revision"]),
+                CreatedBy = rd["created_by"] == DBNull.Value ? null : rd["created_by"].ToString(),
+                NombreUsuarioRevisor = rd["nombre_usuario_revisor"] == DBNull.Value ? null : rd["nombre_usuario_revisor"].ToString()
+            };
         }
     }
 }

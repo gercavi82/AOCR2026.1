@@ -383,23 +383,57 @@
                 <div class="row">
                     <div class="col-md-6 text-md-start">
                         @{
+                            var appSettings = System.Configuration.ConfigurationManager.AppSettings;
+                            var nombreSistema = appSettings["AOCR:UI:NombreSistema"];
+                            var nombreOrganizacion = appSettings["AOCR:UI:NombreOrganizacion"];
+                            var versionSistema = appSettings["AOCR:UI:Version"];
+                            var ensambladoAplicacion = typeof(CapaPresentacion.MvcApplication).Assembly;
                             string fechaCompilacion;
+
+                            if (string.IsNullOrWhiteSpace(nombreSistema))
+                            {
+                                nombreSistema = "Sistema AOCR";
+                            }
+
+                            if (string.IsNullOrWhiteSpace(nombreOrganizacion))
+                            {
+                                nombreOrganizacion = "Dirección General de Aviación Civil - Ecuador";
+                            }
+
+                            if (string.IsNullOrWhiteSpace(versionSistema))
+                            {
+                                versionSistema = ensambladoAplicacion.GetName().Version.ToString();
+                            }
+
+                            versionSistema = versionSistema.Trim();
+                            if (versionSistema.StartsWith("v", StringComparison.OrdinalIgnoreCase))
+                            {
+                                versionSistema = versionSistema.Substring(1);
+                            }
+
                             try
                             {
-                                var ensamblado = System.Reflection.Assembly.GetExecutingAssembly().Location;
-                                fechaCompilacion = System.IO.File.GetLastWriteTime(ensamblado).ToString("dd/MM/yyyy HH:mm");
+                                var compilacionConfigurada = appSettings["AOCR:UI:Compilacion"];
+                                if (!string.IsNullOrWhiteSpace(compilacionConfigurada))
+                                {
+                                    fechaCompilacion = compilacionConfigurada.Trim();
+                                }
+                                else
+                                {
+                                    fechaCompilacion = System.IO.File.GetLastWriteTime(ensambladoAplicacion.Location).ToString("dd/MM/yyyy HH:mm");
+                                }
                             }
                             catch
                             {
                                 fechaCompilacion = DateTime.Now.ToString("dd/MM/yyyy HH:mm");
                             }
                         }
-                        <div class="footer-title">Sistema AOCR</div>
+                        <div class="footer-title">@nombreSistema</div>
                         <small class="d-block footer-subtitle">
-                            Dirección General de Aviación Civil - Ecuador
+                            @nombreOrganizacion
                         </small>
                         <small class="d-block footer-meta">
-                            Versión v@(System.Reflection.Assembly.GetExecutingAssembly().GetName().Version)
+                            Versión 1.0.0.0
                             · Compilación @fechaCompilacion
                         </small>
                     </div>

@@ -29,7 +29,11 @@ namespace CapaNegocio.Helpers
                 correo.From = new MailAddress(remitente, nombreRemitente);
                 correo.To.Add(destinatario);
                 correo.Subject = asunto;
-                correo.Body = cuerpoHtml;
+                correo.Body = EmailTemplateRenderer.EnsureStandardLayout(
+                    asunto,
+                    cuerpoHtml,
+                    null,
+                    "Este es un mensaje automatico del workflow AOCR.");
                 correo.IsBodyHtml = true;
 
                 var cliente = new SmtpClient(smtpServer, puerto);

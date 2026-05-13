@@ -331,12 +331,32 @@
                         CapaModelo.SolicitudAOCR _solFila;
                         solicitudesPorInspeccion.TryGetValue(inspeccion.CodigoInspeccion, out _solFila);
 
-                        var numeroInspeccion = !string.IsNullOrWhiteSpace(inspeccion.NumeroInspeccion)
-                            ? inspeccion.NumeroInspeccion
-                            : ("INS-" + inspeccion.CodigoInspeccion);
                         var numeroSolicitud = _solFila != null && !string.IsNullOrWhiteSpace(_solFila.NumeroSolicitud)
                             ? _solFila.NumeroSolicitud
                             : inspeccion.CodigoSolicitud.ToString();
+                        var numeroSolicitudRaw = !string.IsNullOrWhiteSpace(numeroSolicitud)
+                            ? numeroSolicitud.Trim().ToUpperInvariant()
+                            : string.Empty;
+                        var coincidenciaSolicitudInspeccion = !string.IsNullOrWhiteSpace(numeroSolicitudRaw)
+                            ? System.Text.RegularExpressions.Regex.Match(numeroSolicitudRaw, @"AOCR\d+")
+                            : System.Text.RegularExpressions.Match.Empty;
+                        var referenciaSolicitudInspeccion = coincidenciaSolicitudInspeccion.Success
+                            ? coincidenciaSolicitudInspeccion.Value
+                            : (inspeccion.CodigoSolicitud > 0 ? "AOCR" + inspeccion.CodigoSolicitud.ToString() : "AOCR");
+                        var coincidenciaAnioInspeccion = !string.IsNullOrWhiteSpace(numeroSolicitudRaw)
+                            ? System.Text.RegularExpressions.Regex.Match(numeroSolicitudRaw, @"20\d{2}")
+                            : System.Text.RegularExpressions.Match.Empty;
+                        var anioInspeccion = coincidenciaAnioInspeccion.Success
+                            ? coincidenciaAnioInspeccion.Value
+                            : (inspeccion.FechaProgramada.HasValue ? inspeccion.FechaProgramada.Value.Year.ToString() : System.DateTime.Now.Year.ToString());
+                        var usaNumeroInspeccionInstitucional = !string.IsNullOrWhiteSpace(inspeccion.NumeroInspeccion)
+                            && System.Text.RegularExpressions.Regex.IsMatch(
+                                inspeccion.NumeroInspeccion.Trim(),
+                                @"^DGAC-INS-20\d{2}-AOCR\d+(?:-[A-Z0-9]+)?$",
+                                System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+                        var numeroInspeccion = usaNumeroInspeccionInstitucional
+                            ? inspeccion.NumeroInspeccion
+                            : string.Format("DGAC-INS-{0}-{1}", anioInspeccion, referenciaSolicitudInspeccion);
                         var operadorNombre = _solFila == null
                             ? "No disponible"
                             : (!string.IsNullOrWhiteSpace(_solFila.RazonSocial) ? _solFila.RazonSocial
@@ -348,7 +368,7 @@
                                 <a href="@Url.Action("Detalle", "Inspeccion", new { id = inspeccion.CodigoInspeccion })" class="fw-semibold text-primary text-decoration-none">
                                     @numeroInspeccion
                                 </a>
-                                <div class="small text-muted">Código @inspeccion.CodigoInspeccion</div>
+                                <div class="small text-muted">ID interno @inspeccion.CodigoInspeccion</div>
                             </td>
                             <td>
                                 <div class="fw-semibold">@numeroSolicitud</div>

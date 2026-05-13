@@ -1954,20 +1954,70 @@ namespace CapaDatos.DAOs
                 using (var conn = new NpgsqlConnection(_connectionString))
                 {
                     conn.Open();
-                    var sql = "UPDATE aocr_or_orden SET codigo_solicitud = @codigoSolicitud WHERE id = @id";
-
-                    using (var cmd = new NpgsqlCommand(sql, conn))
-                    {
-                        cmd.Parameters.AddWithValue("@codigoSolicitud", codigoSolicitud.ToString());
-                        cmd.Parameters.AddWithValue("@id", ordenId);
-                        return cmd.ExecuteNonQuery() > 0;
-                    }
+                    return ActualizarCodigoSolicitudOrden(conn, null, ordenId, codigoSolicitud);
                 }
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error en ActualizarCodigoSolicitudOrden");
                 return false;
+            }
+        }
+
+        public int CrearSolicitudYVincularOrden(int ordenId, CapaModelo.SolicitudAOCR solicitud)
+        {
+            if (ordenId <= 0 || solicitud == null)
+            {
+                return 0;
+            }
+
+            try
+            {
+                using (var conn = new NpgsqlConnection(_connectionString))
+                {
+                    conn.Open();
+                    using (var tx = conn.BeginTransaction())
+                    {
+                        var solicitudDao = new SolicitudAOCRDAO();
+                        var codigoSolicitud = solicitudDao.InsertarConReturn(conn, tx, solicitud);
+                        if (codigoSolicitud <= 0)
+                        {
+                            tx.Rollback();
+                            return 0;
+                        }
+
+                        if (!ActualizarCodigoSolicitudOrden(conn, tx, ordenId, codigoSolicitud))
+                        {
+                            tx.Rollback();
+                            return 0;
+                        }
+
+                        tx.Commit();
+                        return codigoSolicitud;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error en CrearSolicitudYVincularOrden");
+                return 0;
+            }
+        }
+
+        private bool ActualizarCodigoSolicitudOrden(NpgsqlConnection conn, NpgsqlTransaction tx, int ordenId, int codigoSolicitud)
+        {
+            var sql = "UPDATE aocr_or_orden SET codigo_solicitud = @codigoSolicitud WHERE id = @id";
+
+            using (var cmd = new NpgsqlCommand(sql, conn))
+            {
+                if (tx != null)
+                {
+                    cmd.Transaction = tx;
+                }
+
+                cmd.Parameters.AddWithValue("@codigoSolicitud", codigoSolicitud.ToString());
+                cmd.Parameters.AddWithValue("@id", ordenId);
+                return cmd.ExecuteNonQuery() > 0;
             }
         }
 

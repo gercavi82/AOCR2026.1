@@ -298,68 +298,98 @@ namespace CapaPresentacion.Controllers
         // ✅ DETALLE
         // ============================================================
         [AocrAuthorize(Roles = ROLES_GESTION_INSPECCION_CON_SOLICITANTE)]
-        public ActionResult Detalle(int id)
+        public ActionResult Detalle(string id)
         {
-            if (id <= 0) return new HttpStatusCodeResult(400, "ID inválido.");
+            var referenciaDetalle = string.IsNullOrWhiteSpace(id) ? string.Empty : id.Trim();
+            if (string.IsNullOrWhiteSpace(referenciaDetalle))
+            {
+                return new HttpStatusCodeResult(400, "ID inválido.");
+            }
 
-            _logger.LogInfo("[GestionInspeccion] Inicio Detalle. InspeccionId=" + id + ", Usuario=" + ObtenerUsuarioActual() + ", Rol=" + ObtenerRolActual());
-
-            var inspeccion = _inspeccionDAO.ObtenerPorId(id);
+            var inspeccion = ResolverInspeccionDetalle(referenciaDetalle);
             if (inspeccion == null) return HttpNotFound("Inspección no encontrada.");
+
+            SolicitudAOCR solicitudDetalle = null;
+            try
+            {
+                if (inspeccion.CodigoSolicitud > 0)
+                {
+                    solicitudDetalle = _solicitudDAO.ObtenerPorId(inspeccion.CodigoSolicitud);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning("[GestionInspeccion] Error cargando solicitud para ruta amigable. Referencia="
+                    + referenciaDetalle + ", InspeccionId=" + inspeccion.CodigoInspeccion + ", Error=" + ex.Message);
+            }
+
+            var referenciaCanonica = ObtenerReferenciaDetalle(inspeccion, solicitudDetalle);
+            var rutaCanonica = ConstruirRutaDetalle(referenciaCanonica);
+            var rutaActual = Request != null && Request.Url != null ? Request.Url.AbsolutePath : string.Empty;
+            if (!string.IsNullOrWhiteSpace(rutaCanonica)
+                && (!string.Equals(referenciaDetalle, referenciaCanonica, StringComparison.OrdinalIgnoreCase)
+                    || !string.Equals(rutaActual, rutaCanonica, StringComparison.OrdinalIgnoreCase)))
+            {
+                return Redirect(rutaCanonica);
+            }
+
+            var codigoInspeccion = inspeccion.CodigoInspeccion;
+
+            _logger.LogInfo("[GestionInspeccion] Inicio Detalle. Referencia=" + referenciaCanonica + ", InspeccionId=" + codigoInspeccion + ", Usuario=" + ObtenerUsuarioActual() + ", Rol=" + ObtenerRolActual());
 
             _logger.LogInfo("[GestionInspeccion] InspeccionId=" + inspeccion.CodigoInspeccion + ", SolicitudId=" + inspeccion.CodigoSolicitud + ", EstadoActual=" + (inspeccion.Estado ?? "") + ", InspectorAsignado=" + (inspeccion.CodigoInspector.HasValue ? inspeccion.CodigoInspector.Value.ToString() : "null"));
 
             if (!PuedeAccederInspeccion(inspeccion))
             {
-                _logger.LogWarning("[GestionInspeccion] PuedeGestionar=False, Motivo=Rol sin permisos para detalle. Usuario=" + ObtenerUsuarioActual() + ", Rol=" + ObtenerRolActual() + ", InspeccionId=" + id);
+                _logger.LogWarning("[GestionInspeccion] PuedeGestionar=False, Motivo=Rol sin permisos para detalle. Usuario=" + ObtenerUsuarioActual() + ", Rol=" + ObtenerRolActual() + ", InspeccionId=" + codigoInspeccion);
                 return new HttpStatusCodeResult(403, "No autorizado para ver esta inspección.");
             }
 
-            _logger.LogInfo("[GestionInspeccion] PuedeGestionar=True para detalle. InspeccionId=" + id);
+            _logger.LogInfo("[GestionInspeccion] PuedeGestionar=True para detalle. InspeccionId=" + codigoInspeccion);
 
             try
             {
-                ViewBag.Hallazgos = _hallazgoBL.ObtenerPorInspeccion(id);
+                ViewBag.Hallazgos = _hallazgoBL.ObtenerPorInspeccion(codigoInspeccion);
             }
             catch (Exception ex)
             {
-                _logger.LogWarning("[GestionInspeccion] Error cargando hallazgos en Detalle. InspeccionId=" + id + ", Error=" + ex.Message);
+                _logger.LogWarning("[GestionInspeccion] Error cargando hallazgos en Detalle. InspeccionId=" + codigoInspeccion + ", Error=" + ex.Message);
                 ViewBag.Hallazgos = new List<Hallazgo>();
             }
 
             try
             {
-                ViewBag.HistorialEstados = _historialDAO.ObtenerPorInspeccion(id);
+                ViewBag.HistorialEstados = _historialDAO.ObtenerPorInspeccion(codigoInspeccion);
             }
             catch (Exception ex)
             {
-                _logger.LogWarning("[GestionInspeccion] Error cargando historial en Detalle. InspeccionId=" + id + ", Error=" + ex.Message);
+                _logger.LogWarning("[GestionInspeccion] Error cargando historial en Detalle. InspeccionId=" + codigoInspeccion + ", Error=" + ex.Message);
                 ViewBag.HistorialEstados = new List<InspeccionHistorialEstado>();
             }
 
             try
             {
-                ViewBag.InformeTecnico = _informeDAO.ObtenerUltimoPorInspeccion(id);
+                ViewBag.InformeTecnico = _informeDAO.ObtenerUltimoPorInspeccion(codigoInspeccion);
             }
             catch (Exception ex)
             {
-                _logger.LogWarning("[GestionInspeccion] Error cargando informe tecnico en Detalle. InspeccionId=" + id + ", Error=" + ex.Message);
+                _logger.LogWarning("[GestionInspeccion] Error cargando informe tecnico en Detalle. InspeccionId=" + codigoInspeccion + ", Error=" + ex.Message);
                 ViewBag.InformeTecnico = null;
             }
 
             try
             {
-                ViewBag.DocumentosSolicitante = _documentoDAO.ObtenerPorInspeccion(id);
+                ViewBag.DocumentosSolicitante = _documentoDAO.ObtenerPorInspeccion(codigoInspeccion);
             }
             catch (Exception ex)
             {
-                _logger.LogWarning("[GestionInspeccion] Error cargando documentos en Detalle. InspeccionId=" + id + ", Error=" + ex.Message);
+                _logger.LogWarning("[GestionInspeccion] Error cargando documentos en Detalle. InspeccionId=" + codigoInspeccion + ", Error=" + ex.Message);
                 ViewBag.DocumentosSolicitante = new List<DocumentoInspeccion>();
             }
 
             try
             {
-                ViewBag.Solicitud = _solicitudDAO.ObtenerPorId(inspeccion.CodigoSolicitud);
+                ViewBag.Solicitud = solicitudDetalle ?? _solicitudDAO.ObtenerPorId(inspeccion.CodigoSolicitud);
 
                 var solicitud = ViewBag.Solicitud as SolicitudAOCR;
                 if (solicitud != null)
@@ -404,7 +434,7 @@ namespace CapaPresentacion.Controllers
             }
             catch (Exception ex)
             {
-                _logger.LogWarning("[GestionInspeccion] Error cargando solicitud en Detalle. InspeccionId=" + id + ", SolicitudId=" + inspeccion.CodigoSolicitud + ", Error=" + ex.Message);
+                _logger.LogWarning("[GestionInspeccion] Error cargando solicitud en Detalle. InspeccionId=" + codigoInspeccion + ", SolicitudId=" + inspeccion.CodigoSolicitud + ", Error=" + ex.Message);
                 ViewBag.Solicitud = null;
             }
 
@@ -429,7 +459,7 @@ namespace CapaPresentacion.Controllers
                 catch (Exception ex)
                 {
                     _logger.LogWarning("[GestionInspeccion] No se pudo normalizar informe técnico para firma. InspeccionId="
-                        + id + ", Error=" + ex.Message);
+                        + codigoInspeccion + ", Error=" + ex.Message);
                 }
             }
 
@@ -445,12 +475,12 @@ namespace CapaPresentacion.Controllers
             try
             {
                 var solicitudLv = ViewBag.Solicitud as SolicitudAOCR;
-                var listaVerificacion = _listaVerificacionOperacionalEaeDAO.ObtenerUltimaPorInspeccion(id);
+                var listaVerificacion = _listaVerificacionOperacionalEaeDAO.ObtenerUltimaPorInspeccion(codigoInspeccion);
                 if (listaVerificacion == null && UsaFlujoListaVerificacionOperacionalEae(solicitudLv))
                 {
                     listaVerificacion = new ListaVerificacionOperacionalEae
                     {
-                        CodigoInspeccion = id,
+                        CodigoInspeccion = codigoInspeccion,
                         EstadoLista = "LV_BORRADOR"
                     };
                 }
@@ -463,10 +493,10 @@ namespace CapaPresentacion.Controllers
             }
             catch (Exception ex)
             {
-                _logger.LogWarning("[GestionInspeccion] Error cargando lista verificacion operacional EAE en Detalle. InspeccionId=" + id + ", Error=" + ex.Message);
+                _logger.LogWarning("[GestionInspeccion] Error cargando lista verificacion operacional EAE en Detalle. InspeccionId=" + codigoInspeccion + ", Error=" + ex.Message);
                 var listaFallback = new ListaVerificacionOperacionalEae
                 {
-                    CodigoInspeccion = id,
+                    CodigoInspeccion = codigoInspeccion,
                     EstadoLista = "LV_BORRADOR"
                 };
                 HidratarListaVerificacionOperacionalEae(listaFallback, ViewBag.Solicitud as SolicitudAOCR);
@@ -732,6 +762,8 @@ namespace CapaPresentacion.Controllers
             var inspeccion = _inspeccionDAO.ObtenerPorId(id);
             if (inspeccion == null) return HttpNotFound("Inspección no encontrada.");
 
+            CargarNumerosVisiblesInspeccion(inspeccion);
+
             return View("~/Views/Inspeccion/Editar.cshtml", inspeccion);
         }
 
@@ -746,11 +778,15 @@ namespace CapaPresentacion.Controllers
             if (model == null) return new HttpStatusCodeResult(400, "Modelo inválido.");
 
             if (!ModelState.IsValid)
+            {
+                CargarNumerosVisiblesInspeccion(model);
                 return View("~/Views/Inspeccion/Editar.cshtml", model);
+            }
 
             string mensajeInspector;
             if (!ResolverInspectoresAs400(model, tipoInspector, out mensajeInspector))
             {
+                CargarNumerosVisiblesInspeccion(model);
                 ViewBag.Error = mensajeInspector;
                 return View("~/Views/Inspeccion/Editar.cshtml", model);
             }
@@ -2706,6 +2742,8 @@ namespace CapaPresentacion.Controllers
 
             if (!PuedeAccederInspeccion(inspeccion))
                 return new HttpStatusCodeResult(403, "No autorizado para planificar esta inspección.");
+
+            CargarNumerosVisiblesInspeccion(inspeccion);
 
             return View("~/Views/Inspeccion/Planificacion.cshtml", inspeccion);
         }
@@ -5895,6 +5933,134 @@ namespace CapaPresentacion.Controllers
                 : solicitud.NumeroSolicitud.Trim();
         }
 
+        private void CargarNumerosVisiblesInspeccion(Inspeccion inspeccion)
+        {
+            if (inspeccion == null)
+            {
+                return;
+            }
+
+            SolicitudAOCR solicitud = null;
+            try
+            {
+                if (inspeccion.CodigoSolicitud > 0)
+                {
+                    solicitud = _solicitudDAO.ObtenerPorId(inspeccion.CodigoSolicitud);
+                }
+            }
+            catch
+            {
+            }
+
+            ViewBag.NumeroSolicitudVisible = ObtenerNumeroSolicitudVisible(solicitud);
+            ViewBag.NumeroInspeccionVisible = ObtenerNumeroInspeccionVisible(inspeccion, solicitud);
+        }
+
+        private string ObtenerNumeroInspeccionVisible(Inspeccion inspeccion, SolicitudAOCR solicitud)
+        {
+            if (inspeccion == null)
+            {
+                return "DGAC-INS-" + DateTime.Now.Year + "-AOCR0000";
+            }
+
+            if (EsNumeroInspeccionInstitucional(inspeccion.NumeroInspeccion))
+            {
+                return inspeccion.NumeroInspeccion.Trim();
+            }
+
+            var numeroSolicitudVisible = ObtenerNumeroSolicitudVisible(solicitud);
+            var numeroSolicitudRaw = string.IsNullOrWhiteSpace(numeroSolicitudVisible)
+                ? string.Empty
+                : numeroSolicitudVisible.Trim().ToUpperInvariant();
+            var coincidenciaSolicitud = !string.IsNullOrWhiteSpace(numeroSolicitudRaw)
+                ? System.Text.RegularExpressions.Regex.Match(numeroSolicitudRaw, @"AOCR\d+")
+                : System.Text.RegularExpressions.Match.Empty;
+            var referenciaSolicitud = coincidenciaSolicitud.Success
+                ? coincidenciaSolicitud.Value
+                : (inspeccion.CodigoSolicitud > 0 ? "AOCR" + inspeccion.CodigoSolicitud.ToString() : "AOCR");
+            var coincidenciaAnio = !string.IsNullOrWhiteSpace(numeroSolicitudRaw)
+                ? System.Text.RegularExpressions.Regex.Match(numeroSolicitudRaw, @"20\d{2}")
+                : System.Text.RegularExpressions.Match.Empty;
+            var anio = coincidenciaAnio.Success
+                ? coincidenciaAnio.Value
+                : (inspeccion.FechaProgramada.HasValue
+                    ? inspeccion.FechaProgramada.Value.Year.ToString()
+                    : DateTime.Now.Year.ToString());
+
+            return string.Format("DGAC-INS-{0}-{1}", anio, referenciaSolicitud);
+        }
+
+        private Inspeccion ResolverInspeccionDetalle(string referenciaDetalle)
+        {
+            if (string.IsNullOrWhiteSpace(referenciaDetalle))
+            {
+                return null;
+            }
+
+            int codigoInspeccion;
+            if (int.TryParse(referenciaDetalle.Trim(), out codigoInspeccion) && codigoInspeccion > 0)
+            {
+                return _inspeccionDAO.ObtenerPorId(codigoInspeccion);
+            }
+
+            return _inspeccionDAO.ObtenerPorReferenciaDetalle(referenciaDetalle);
+        }
+
+        private string ObtenerReferenciaDetalle(Inspeccion inspeccion, SolicitudAOCR solicitud)
+        {
+            if (inspeccion == null)
+            {
+                return string.Empty;
+            }
+
+            var referencia = ExtraerReferenciaDetalle(inspeccion.NumeroInspeccion);
+            if (!string.IsNullOrWhiteSpace(referencia))
+            {
+                return referencia;
+            }
+
+            referencia = ExtraerReferenciaDetalle(ObtenerNumeroInspeccionVisible(inspeccion, solicitud));
+            if (!string.IsNullOrWhiteSpace(referencia))
+            {
+                return referencia;
+            }
+
+            if (inspeccion.CodigoSolicitud > 0)
+            {
+                return "AOCR" + inspeccion.CodigoSolicitud.ToString(CultureInfo.InvariantCulture);
+            }
+
+            return inspeccion.CodigoInspeccion.ToString(CultureInfo.InvariantCulture);
+        }
+
+        private static string ExtraerReferenciaDetalle(string valor)
+        {
+            if (string.IsNullOrWhiteSpace(valor))
+            {
+                return null;
+            }
+
+            var coincidencia = System.Text.RegularExpressions.Regex.Match(
+                valor.Trim().ToUpperInvariant(),
+                @"AOCR\d+(?:-[A-Z0-9]+)?",
+                System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+
+            return coincidencia.Success ? coincidencia.Value.ToUpperInvariant() : null;
+        }
+
+        private static bool EsNumeroInspeccionInstitucional(string numeroInspeccion)
+        {
+            if (string.IsNullOrWhiteSpace(numeroInspeccion))
+            {
+                return false;
+            }
+
+            return System.Text.RegularExpressions.Regex.IsMatch(
+                numeroInspeccion.Trim(),
+                @"^DGAC-INS-20\d{2}-AOCR\d+(?:-[A-Z0-9]+)?$",
+                System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+        }
+
         private string ObtenerIpCliente()
         {
             try
@@ -5913,20 +6079,73 @@ namespace CapaPresentacion.Controllers
             }
         }
 
-        private string ConstruirUrlDetalle(int codigoInspeccion)
+        private string ConstruirRutaDetalle(string referenciaDetalle, string scheme = null)
         {
+            if (string.IsNullOrWhiteSpace(referenciaDetalle))
+            {
+                return string.Empty;
+            }
+
             try
             {
-                if (Request != null && Request.Url != null)
+                if (!string.IsNullOrWhiteSpace(scheme))
                 {
-                    return Url.Action("Detalle", "Inspeccion", new { id = codigoInspeccion }, Request.Url.Scheme);
+                    var rutaAbsoluta = Url.RouteUrl("InspeccionDetalleAmigable", new { id = referenciaDetalle }, scheme);
+                    if (!string.IsNullOrWhiteSpace(rutaAbsoluta))
+                    {
+                        return rutaAbsoluta;
+                    }
+
+                    return Url.Action("Detalle", "Inspeccion", new { id = referenciaDetalle }, scheme);
+                }
+
+                var ruta = Url.RouteUrl("InspeccionDetalleAmigable", new { id = referenciaDetalle });
+                if (!string.IsNullOrWhiteSpace(ruta))
+                {
+                    return ruta;
                 }
             }
             catch
             {
             }
 
-            return Url.Action("Detalle", "Inspeccion", new { id = codigoInspeccion }) ?? string.Empty;
+            return Url.Action("Detalle", "Inspeccion", new { id = referenciaDetalle }) ?? string.Empty;
+        }
+
+        private string ConstruirUrlDetalle(int codigoInspeccion)
+        {
+            var referenciaDetalle = codigoInspeccion.ToString(CultureInfo.InvariantCulture);
+
+            try
+            {
+                var inspeccion = _inspeccionDAO.ObtenerPorId(codigoInspeccion);
+                if (inspeccion != null)
+                {
+                    SolicitudAOCR solicitud = null;
+                    try
+                    {
+                        if (inspeccion.CodigoSolicitud > 0)
+                        {
+                            solicitud = _solicitudDAO.ObtenerPorId(inspeccion.CodigoSolicitud);
+                        }
+                    }
+                    catch
+                    {
+                    }
+
+                    referenciaDetalle = ObtenerReferenciaDetalle(inspeccion, solicitud);
+                }
+
+                if (Request != null && Request.Url != null)
+                {
+                    return ConstruirRutaDetalle(referenciaDetalle, Request.Url.Scheme);
+                }
+            }
+            catch
+            {
+            }
+
+            return ConstruirRutaDetalle(referenciaDetalle);
         }
 
         private static string LimpiarNombreArchivoVisible(string fileName)

@@ -543,166 +543,176 @@ namespace CapaDatos.DAOs
             using (var cn = new NpgsqlConnection(ConnectionString))
             {
                 cn.Open();
-                var columnas = ObtenerColumnasTabla(cn, "aocr_tbsolicitud");
-                var columnaCodCiudad = ResolverColumnaCodigoCiudad(columnas);
+                return InsertarConReturn(cn, null, solicitud);
+            }
+        }
 
-                var columnasInsert = new List<string>
-                {
-                    "numero_solicitud",
-                    "fecha_solicitud",
-                    "tipo_solicitud",
-                    "nombre_operador",
-                    "ruc",
-                    "razon_social",
-                    "email",
-                    "telefono",
-                    "direccion",
-                    "representante_legal",
-                    "cedula_representante",
-                    "tipo_operacion",
-                    "descripcion_operacion",
-                    "observaciones",
-                    "estado",
-                    "codigo_usuario"
-                };
-                var valoresInsert = new List<string>
-                {
-                    "@NumeroSolicitud",
-                    "@FechaSolicitud",
-                    "@TipoSolicitud",
-                    "@NombreOperador",
-                    "@Ruc",
-                    "@RazonSocial",
-                    "@Email",
-                    "@Telefono",
-                    "@Direccion",
-                    "@RepresentanteLegal",
-                    "@CedulaRepresentante",
-                    "@TipoOperacion",
-                    "@DescripcionOperacion",
-                    "@Observaciones",
-                    "@Estado",
-                    "@CodigoUsuario"
-                };
+        public int InsertarConReturn(NpgsqlConnection cn, NpgsqlTransaction tx, SolicitudAOCR solicitud)
+        {
+            var columnas = ObtenerColumnasTabla(cn, "aocr_tbsolicitud");
+            var columnaCodCiudad = ResolverColumnaCodigoCiudad(columnas);
 
-                if (columnas.Contains("ciudad"))
-                {
-                    columnasInsert.Add("ciudad");
-                    valoresInsert.Add("@Ciudad");
-                }
-                if (columnas.Contains("provincia"))
-                {
-                    columnasInsert.Add("provincia");
-                    valoresInsert.Add("@Provincia");
-                }
-                if (columnas.Contains("pais"))
-                {
-                    columnasInsert.Add("pais");
-                    valoresInsert.Add("@Pais");
-                }
-                if (!string.IsNullOrWhiteSpace(columnaCodCiudad))
-                {
-                    columnasInsert.Add(columnaCodCiudad);
-                    valoresInsert.Add("@CodCiudad");
-                }
-                if (columnas.Contains("correo_representante_tecnico"))
-                {
-                    columnasInsert.Add("correo_representante_tecnico");
-                    valoresInsert.Add("@CorreoRepresentanteTecnico");
-                }
-                if (columnas.Contains("nombre_comercial"))
-                {
-                    columnasInsert.Add("nombre_comercial");
-                    valoresInsert.Add("@NombreComercial");
-                }
-                if (columnas.Contains("resumen_operaciones_eae"))
-                {
-                    columnasInsert.Add("resumen_operaciones_eae");
-                    valoresInsert.Add("@ResumenOperacionesEae");
-                }
-                if (columnas.Contains("numero_aoc"))
-                {
-                    columnasInsert.Add("numero_aoc");
-                    valoresInsert.Add("@NumeroAOC");
-                }
-                if (columnas.Contains("aprobaciones_especiales"))
-                {
-                    columnasInsert.Add("aprobaciones_especiales");
-                    valoresInsert.Add("@AprobacionesEspeciales");
-                }
-                if (columnas.Contains("aprobaciones_especiales_otros"))
-                {
-                    columnasInsert.Add("aprobaciones_especiales_otros");
-                    valoresInsert.Add("@AprobacionesEspecialesOtros");
-                }
-                if (columnas.Contains("aeropuertos_ecuador"))
-                {
-                    columnasInsert.Add("aeropuertos_ecuador");
-                    valoresInsert.Add("@AeropuertosEcuador");
-                }
-                if (columnas.Contains("aeropuertos_ecuador_otros"))
-                {
-                    columnasInsert.Add("aeropuertos_ecuador_otros");
-                    valoresInsert.Add("@AeropuertosEcuadorOtros");
-                }
-                if (columnas.Contains("companias_seleccionadas"))
-                {
-                    columnasInsert.Add("companias_seleccionadas");
-                    valoresInsert.Add("@CompaniasSeleccionadas");
-                }
-                if (columnas.Contains("codigo_oaci"))
-                {
-                    columnasInsert.Add("codigo_oaci");
-                    valoresInsert.Add("@CodigoOaci");
-                }
+            var columnasInsert = new List<string>
+            {
+                "numero_solicitud",
+                "fecha_solicitud",
+                "tipo_solicitud",
+                "nombre_operador",
+                "ruc",
+                "razon_social",
+                "email",
+                "telefono",
+                "direccion",
+                "representante_legal",
+                "cedula_representante",
+                "tipo_operacion",
+                "descripcion_operacion",
+                "observaciones",
+                "estado",
+                "codigo_usuario"
+            };
+            var valoresInsert = new List<string>
+            {
+                "@NumeroSolicitud",
+                "@FechaSolicitud",
+                "@TipoSolicitud",
+                "@NombreOperador",
+                "@Ruc",
+                "@RazonSocial",
+                "@Email",
+                "@Telefono",
+                "@Direccion",
+                "@RepresentanteLegal",
+                "@CedulaRepresentante",
+                "@TipoOperacion",
+                "@DescripcionOperacion",
+                "@Observaciones",
+                "@Estado",
+                "@CodigoUsuario"
+            };
 
-                var sql = $@"
+            if (columnas.Contains("ciudad"))
+            {
+                columnasInsert.Add("ciudad");
+                valoresInsert.Add("@Ciudad");
+            }
+            if (columnas.Contains("provincia"))
+            {
+                columnasInsert.Add("provincia");
+                valoresInsert.Add("@Provincia");
+            }
+            if (columnas.Contains("pais"))
+            {
+                columnasInsert.Add("pais");
+                valoresInsert.Add("@Pais");
+            }
+            if (!string.IsNullOrWhiteSpace(columnaCodCiudad))
+            {
+                columnasInsert.Add(columnaCodCiudad);
+                valoresInsert.Add("@CodCiudad");
+            }
+            if (columnas.Contains("correo_representante_tecnico"))
+            {
+                columnasInsert.Add("correo_representante_tecnico");
+                valoresInsert.Add("@CorreoRepresentanteTecnico");
+            }
+            if (columnas.Contains("nombre_comercial"))
+            {
+                columnasInsert.Add("nombre_comercial");
+                valoresInsert.Add("@NombreComercial");
+            }
+            if (columnas.Contains("resumen_operaciones_eae"))
+            {
+                columnasInsert.Add("resumen_operaciones_eae");
+                valoresInsert.Add("@ResumenOperacionesEae");
+            }
+            if (columnas.Contains("numero_aoc"))
+            {
+                columnasInsert.Add("numero_aoc");
+                valoresInsert.Add("@NumeroAOC");
+            }
+            if (columnas.Contains("aprobaciones_especiales"))
+            {
+                columnasInsert.Add("aprobaciones_especiales");
+                valoresInsert.Add("@AprobacionesEspeciales");
+            }
+            if (columnas.Contains("aprobaciones_especiales_otros"))
+            {
+                columnasInsert.Add("aprobaciones_especiales_otros");
+                valoresInsert.Add("@AprobacionesEspecialesOtros");
+            }
+            if (columnas.Contains("aeropuertos_ecuador"))
+            {
+                columnasInsert.Add("aeropuertos_ecuador");
+                valoresInsert.Add("@AeropuertosEcuador");
+            }
+            if (columnas.Contains("aeropuertos_ecuador_otros"))
+            {
+                columnasInsert.Add("aeropuertos_ecuador_otros");
+                valoresInsert.Add("@AeropuertosEcuadorOtros");
+            }
+            if (columnas.Contains("companias_seleccionadas"))
+            {
+                columnasInsert.Add("companias_seleccionadas");
+                valoresInsert.Add("@CompaniasSeleccionadas");
+            }
+            if (columnas.Contains("codigo_oaci"))
+            {
+                columnasInsert.Add("codigo_oaci");
+                valoresInsert.Add("@CodigoOaci");
+            }
+
+            var sql = $@"
         INSERT INTO aocr_tbsolicitud (
             {string.Join("," + Environment.NewLine + "            ", columnasInsert)}
         ) VALUES (
             {string.Join("," + Environment.NewLine + "            ", valoresInsert)}
         ) RETURNING codigo_solicitud";
 
-                using (var cmd = new NpgsqlCommand(sql, cn))
+            using (var cmd = new NpgsqlCommand(sql, cn))
+            {
+                if (tx != null)
                 {
-                    cmd.Parameters.AddWithValue("@NumeroSolicitud", (object)(solicitud.NumeroSolicitud ?? ""));
-                    cmd.Parameters.AddWithValue("@FechaSolicitud", (object)solicitud.FechaSolicitud ?? DBNull.Value);
-                    cmd.Parameters.AddWithValue("@TipoSolicitud", (object)(solicitud.TipoSolicitud ?? 1));
-                    cmd.Parameters.AddWithValue("@NombreOperador", (object)(solicitud.NombreOperador ?? ""));
-                    cmd.Parameters.AddWithValue("@Ruc", (object)(solicitud.Ruc ?? ""));
-                    cmd.Parameters.AddWithValue("@RazonSocial", (object)(solicitud.RazonSocial ?? ""));
-
-                    cmd.Parameters.AddWithValue("@Email", (object)(solicitud.Email ?? ""));
-                    cmd.Parameters.AddWithValue("@Telefono", (object)(solicitud.Telefono ?? ""));
-                    cmd.Parameters.AddWithValue("@Direccion", (object)(solicitud.Direccion ?? ""));
-                    cmd.Parameters.AddWithValue("@Ciudad", (object)(solicitud.Ciudad ?? ""));
-                    cmd.Parameters.AddWithValue("@Provincia", (object)(solicitud.Provincia ?? ""));
-                    cmd.Parameters.AddWithValue("@Pais", (object)(solicitud.Pais ?? ""));
-                    cmd.Parameters.AddWithValue("@CodCiudad", (object)(solicitud.CodCiudad ?? ""));
-                    cmd.Parameters.AddWithValue("@RepresentanteLegal", (object)(solicitud.RepresentanteLegal ?? ""));
-                    cmd.Parameters.AddWithValue("@CedulaRepresentante", (object)(solicitud.CedulaRepresentante ?? ""));
-                    cmd.Parameters.AddWithValue("@CorreoRepresentanteTecnico", (object)(solicitud.CorreoRepresentanteTecnico ?? ""));
-                    cmd.Parameters.AddWithValue("@NombreComercial", (object)(solicitud.NombreComercial ?? ""));
-
-                    cmd.Parameters.AddWithValue("@TipoOperacion", (object)(solicitud.TipoOperacion ?? ""));
-                    cmd.Parameters.AddWithValue("@DescripcionOperacion", (object)(solicitud.DescripcionOperacion ?? ""));
-                    cmd.Parameters.AddWithValue("@Observaciones", (object)(solicitud.Observaciones ?? ""));
-                    cmd.Parameters.AddWithValue("@ResumenOperacionesEae", (object)(solicitud.ResumenOperacionesEae ?? ""));
-                    cmd.Parameters.AddWithValue("@NumeroAOC", (object)(solicitud.NumeroAOC ?? ""));
-                    cmd.Parameters.AddWithValue("@AprobacionesEspeciales", (object)(solicitud.AprobacionesEspeciales ?? ""));
-                    cmd.Parameters.AddWithValue("@AprobacionesEspecialesOtros", (object)(solicitud.AprobacionesEspecialesOtros ?? ""));
-                    cmd.Parameters.AddWithValue("@AeropuertosEcuador", (object)(solicitud.AeropuertosEcuador ?? ""));
-                    cmd.Parameters.AddWithValue("@AeropuertosEcuadorOtros", (object)(solicitud.AeropuertosEcuadorOtros ?? ""));
-                    cmd.Parameters.AddWithValue("@CompaniasSeleccionadas", (object)(solicitud.CompaniasSeleccionadas ?? ""));
-                    cmd.Parameters.AddWithValue("@CodigoOaci", (object)(solicitud.CodigoOaci ?? ""));
-
-                    var estadoNormalizado = EstadoSolicitud.Normalizar(solicitud.Estado);
-                    cmd.Parameters.AddWithValue("@Estado", estadoNormalizado);
-
-                    cmd.Parameters.AddWithValue("@CodigoUsuario", solicitud.CodigoUsuario);
-
-                    return Convert.ToInt32(cmd.ExecuteScalar());
+                    cmd.Transaction = tx;
                 }
+
+                cmd.Parameters.AddWithValue("@NumeroSolicitud", (object)(solicitud.NumeroSolicitud ?? ""));
+                cmd.Parameters.AddWithValue("@FechaSolicitud", (object)solicitud.FechaSolicitud ?? DBNull.Value);
+                cmd.Parameters.AddWithValue("@TipoSolicitud", (object)(solicitud.TipoSolicitud ?? 1));
+                cmd.Parameters.AddWithValue("@NombreOperador", (object)(solicitud.NombreOperador ?? ""));
+                cmd.Parameters.AddWithValue("@Ruc", (object)(solicitud.Ruc ?? ""));
+                cmd.Parameters.AddWithValue("@RazonSocial", (object)(solicitud.RazonSocial ?? ""));
+
+                cmd.Parameters.AddWithValue("@Email", (object)(solicitud.Email ?? ""));
+                cmd.Parameters.AddWithValue("@Telefono", (object)(solicitud.Telefono ?? ""));
+                cmd.Parameters.AddWithValue("@Direccion", (object)(solicitud.Direccion ?? ""));
+                cmd.Parameters.AddWithValue("@Ciudad", (object)(solicitud.Ciudad ?? ""));
+                cmd.Parameters.AddWithValue("@Provincia", (object)(solicitud.Provincia ?? ""));
+                cmd.Parameters.AddWithValue("@Pais", (object)(solicitud.Pais ?? ""));
+                cmd.Parameters.AddWithValue("@CodCiudad", (object)(solicitud.CodCiudad ?? ""));
+                cmd.Parameters.AddWithValue("@RepresentanteLegal", (object)(solicitud.RepresentanteLegal ?? ""));
+                cmd.Parameters.AddWithValue("@CedulaRepresentante", (object)(solicitud.CedulaRepresentante ?? ""));
+                cmd.Parameters.AddWithValue("@CorreoRepresentanteTecnico", (object)(solicitud.CorreoRepresentanteTecnico ?? ""));
+                cmd.Parameters.AddWithValue("@NombreComercial", (object)(solicitud.NombreComercial ?? ""));
+
+                cmd.Parameters.AddWithValue("@TipoOperacion", (object)(solicitud.TipoOperacion ?? ""));
+                cmd.Parameters.AddWithValue("@DescripcionOperacion", (object)(solicitud.DescripcionOperacion ?? ""));
+                cmd.Parameters.AddWithValue("@Observaciones", (object)(solicitud.Observaciones ?? ""));
+                cmd.Parameters.AddWithValue("@ResumenOperacionesEae", (object)(solicitud.ResumenOperacionesEae ?? ""));
+                cmd.Parameters.AddWithValue("@NumeroAOC", (object)(solicitud.NumeroAOC ?? ""));
+                cmd.Parameters.AddWithValue("@AprobacionesEspeciales", (object)(solicitud.AprobacionesEspeciales ?? ""));
+                cmd.Parameters.AddWithValue("@AprobacionesEspecialesOtros", (object)(solicitud.AprobacionesEspecialesOtros ?? ""));
+                cmd.Parameters.AddWithValue("@AeropuertosEcuador", (object)(solicitud.AeropuertosEcuador ?? ""));
+                cmd.Parameters.AddWithValue("@AeropuertosEcuadorOtros", (object)(solicitud.AeropuertosEcuadorOtros ?? ""));
+                cmd.Parameters.AddWithValue("@CompaniasSeleccionadas", (object)(solicitud.CompaniasSeleccionadas ?? ""));
+                cmd.Parameters.AddWithValue("@CodigoOaci", (object)(solicitud.CodigoOaci ?? ""));
+
+                var estadoNormalizado = EstadoSolicitud.Normalizar(solicitud.Estado);
+                cmd.Parameters.AddWithValue("@Estado", estadoNormalizado);
+
+                cmd.Parameters.AddWithValue("@CodigoUsuario", solicitud.CodigoUsuario);
+
+                return Convert.ToInt32(cmd.ExecuteScalar());
             }
         }
 

@@ -5,6 +5,8 @@
 @{
     ViewBag.Title = "Editar Inspeccion";
     Layout = "~/Views/Shared/_LayoutAOCR.cshtml";
+    var numeroInspeccionVisible = ViewBag.NumeroInspeccionVisible as string ?? (Model != null ? (!string.IsNullOrWhiteSpace(Model.NumeroInspeccion) ? Model.NumeroInspeccion.Trim() : Model.CodigoInspeccion.ToString()) : "-");
+    var numeroSolicitudVisible = ViewBag.NumeroSolicitudVisible as string ?? (Model != null ? Model.CodigoSolicitud.ToString() : "-");
     var tipoInspectorInicial = "TODOS";
     if (Model != null && !string.IsNullOrWhiteSpace(Model.InspectorPrincipalTipo))
     {
@@ -160,12 +162,12 @@
             <div class="section-body">
                 <div class="row">
                     <div class="col-md-3 col-sm-6">
-                        <label class="field-label">Codigo Inspeccion</label>
-                        <input type="text" class="form-control readonly-pill" value="@Model.CodigoInspeccion" readonly />
+                        <label class="field-label">Numero Inspeccion</label>
+                        <input type="text" class="form-control readonly-pill" value="@numeroInspeccionVisible" readonly />
                     </div>
                     <div class="col-md-3 col-sm-6">
-                        <label class="field-label">Codigo Solicitud</label>
-                        <input type="text" class="form-control readonly-pill" value="@Model.CodigoSolicitud" readonly />
+                        <label class="field-label">Numero Solicitud</label>
+                        <input type="text" class="form-control readonly-pill" value="@numeroSolicitudVisible" readonly />
                     </div>
                     <div class="col-md-3 col-sm-6">
                         <label class="field-label" for="tipoInspectorFiltro">Tipo Inspector</label>
