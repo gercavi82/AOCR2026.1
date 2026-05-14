@@ -67,6 +67,8 @@ namespace CapaDatos.DAOs
                               usuario_envio_dirdac,
                            finalizado,
                            correo_enviado,
+                           notificado_rt,
+                           fecha_notificacion_rt,
                            fecha_finalizacion,
                            created_at,
                            created_by,
@@ -139,6 +141,8 @@ namespace CapaDatos.DAOs
                            usuario_envio_dirdac,
                            finalizado,
                            correo_enviado,
+                           notificado_rt,
+                           fecha_notificacion_rt,
                            fecha_finalizacion,
                            created_at,
                            created_by,
@@ -186,6 +190,8 @@ namespace CapaDatos.DAOs
                           usuario_envio_dirdac,
                           finalizado,
                           correo_enviado,
+                          notificado_rt,
+                          fecha_notificacion_rt,
                           fecha_finalizacion,
                           created_at,
                           created_by,
@@ -194,7 +200,7 @@ namespace CapaDatos.DAOs
                       FROM ultimos
                       WHERE finalizado = TRUE
                      AND COALESCE(firmado_dirdac, FALSE) = FALSE
-                     AND regexp_replace(UPPER(COALESCE(estado_informe, '')), '[\s_-]+', '_', 'g') = 'ENVIADO_A_DIRDAC'
+                            AND regexp_replace(UPPER(COALESCE(estado_informe, '')), '[\s_-]+', '_', 'g') IN ('ENVIADO_A_DIRDAC', 'PENDIENTE_REVISION_DIRDAC', 'FIRMADO_INSPECTOR', 'FIRMADO_POR_INSPECTOR')
                       ORDER BY COALESCE(fecha_envio_dirdac, fecha_finalizacion, updated_at, created_at) DESC,
                          codigo_inspeccion DESC;";
 
@@ -557,6 +563,32 @@ namespace CapaDatos.DAOs
             }
         }
 
+        public void MarcarNotificadoRt(int codigoInforme, bool notificadoRt, DateTime? fechaNotificacionRt, int usuarioId)
+        {
+            using (var cn = new NpgsqlConnection(_cs))
+            {
+                cn.Open();
+                EnsureSchema(cn);
+
+                const string sql = @"
+                    UPDATE public.aocr_tbinforme_inspeccion
+                    SET notificado_rt = @notificado_rt,
+                        fecha_notificacion_rt = @fecha_notificacion_rt,
+                        updated_at = NOW(),
+                        updated_by = @updated_by
+                    WHERE codigo_informe = @codigo_informe;";
+
+                using (var cmd = new NpgsqlCommand(sql, cn))
+                {
+                    cmd.Parameters.AddWithValue("@codigo_informe", codigoInforme);
+                    cmd.Parameters.AddWithValue("@notificado_rt", notificadoRt);
+                    cmd.Parameters.AddWithValue("@fecha_notificacion_rt", (object)fechaNotificacionRt ?? DBNull.Value);
+                    cmd.Parameters.AddWithValue("@updated_by", usuarioId);
+                    cmd.ExecuteNonQuery();
+                }
+            }
+        }
+
         public void RegistrarDevolucionCoordinador(int codigoInforme, string observacion, string usuarioDevolucion, string estadoInforme, int usuarioId)
         {
             using (var cn = new NpgsqlConnection(_cs))
@@ -656,6 +688,8 @@ namespace CapaDatos.DAOs
                 UsuarioEnvioDirdac = dr["usuario_envio_dirdac"] == DBNull.Value ? null : dr["usuario_envio_dirdac"].ToString(),
                 Finalizado = dr["finalizado"] != DBNull.Value && Convert.ToBoolean(dr["finalizado"]),
                 CorreoEnviado = dr["correo_enviado"] != DBNull.Value && Convert.ToBoolean(dr["correo_enviado"]),
+                NotificadoRt = dr["notificado_rt"] != DBNull.Value && Convert.ToBoolean(dr["notificado_rt"]),
+                FechaNotificacionRt = dr["fecha_notificacion_rt"] == DBNull.Value ? null : (DateTime?)Convert.ToDateTime(dr["fecha_notificacion_rt"]),
                 FechaFinalizacion = dr["fecha_finalizacion"] == DBNull.Value ? null : (DateTime?)Convert.ToDateTime(dr["fecha_finalizacion"]),
                 CreatedAt = dr["created_at"] == DBNull.Value ? null : (DateTime?)Convert.ToDateTime(dr["created_at"]),
                 CreatedBy = dr["created_by"] == DBNull.Value ? null : (int?)Convert.ToInt32(dr["created_by"]),
@@ -727,6 +761,8 @@ namespace CapaDatos.DAOs
                         usuario_envio_dirdac VARCHAR(160),
                         finalizado BOOLEAN NOT NULL DEFAULT FALSE,
                         correo_enviado BOOLEAN NOT NULL DEFAULT FALSE,
+                        notificado_rt BOOLEAN NOT NULL DEFAULT FALSE,
+                        fecha_notificacion_rt TIMESTAMP,
                         fecha_finalizacion TIMESTAMP,
                         created_at TIMESTAMP NOT NULL DEFAULT NOW(),
                         created_by INTEGER,
@@ -775,7 +811,9 @@ namespace CapaDatos.DAOs
                     ALTER TABLE public.aocr_tbinforme_inspeccion ADD COLUMN IF NOT EXISTS usuario_envio_dirdac VARCHAR(160);
                     ALTER TABLE public.aocr_tbinforme_inspeccion ADD COLUMN IF NOT EXISTS observacion_devolucion TEXT;
                     ALTER TABLE public.aocr_tbinforme_inspeccion ADD COLUMN IF NOT EXISTS fecha_devolucion TIMESTAMP;
-                    ALTER TABLE public.aocr_tbinforme_inspeccion ADD COLUMN IF NOT EXISTS usuario_devolucion VARCHAR(160);";
+                    ALTER TABLE public.aocr_tbinforme_inspeccion ADD COLUMN IF NOT EXISTS usuario_devolucion VARCHAR(160);
+                    ALTER TABLE public.aocr_tbinforme_inspeccion ADD COLUMN IF NOT EXISTS notificado_rt BOOLEAN NOT NULL DEFAULT FALSE;
+                    ALTER TABLE public.aocr_tbinforme_inspeccion ADD COLUMN IF NOT EXISTS fecha_notificacion_rt TIMESTAMP;";
 
                 using (var cmd = new NpgsqlCommand(alterSql, cn))
                 {
@@ -828,6 +866,8 @@ namespace CapaDatos.DAOs
                       usuario_envio_dirdac,
                        finalizado,
                        correo_enviado,
+                       notificado_rt,
+                       fecha_notificacion_rt,
                        fecha_finalizacion,
                        created_at,
                        created_by,
@@ -890,6 +930,8 @@ namespace CapaDatos.DAOs
                       usuario_envio_dirdac,
                        finalizado,
                        correo_enviado,
+                       notificado_rt,
+                       fecha_notificacion_rt,
                        fecha_finalizacion,
                        created_at,
                        created_by,

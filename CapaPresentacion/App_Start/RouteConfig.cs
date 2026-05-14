@@ -39,6 +39,36 @@ namespace CapaPresentacion
             );
 
             routes.MapRoute(
+                name: "InformeTecnicoPendientesDireccion",
+                url: "InformeTecnico/PendientesDireccion",
+                defaults: new { controller = "Inspeccion", action = "PendientesDireccion" }
+            );
+
+            routes.MapRoute(
+                name: "InformeTecnicoRevisionDireccion",
+                url: "InformeTecnico/RevisionDireccion/{codigoInforme}",
+                defaults: new { controller = "Inspeccion", action = "RevisionDireccion", codigoInforme = UrlParameter.Optional }
+            );
+
+            routes.MapRoute(
+                name: "InformeTecnicoAprobarDireccion",
+                url: "InformeTecnico/AprobarDecisionFinalDireccion",
+                defaults: new { controller = "Inspeccion", action = "AprobarDecisionFinalDireccion" }
+            );
+
+            routes.MapRoute(
+                name: "InformeTecnicoDevolverDireccion",
+                url: "InformeTecnico/DevolverDecisionFinalDireccion",
+                defaults: new { controller = "Inspeccion", action = "DevolverDecisionFinalDireccion" }
+            );
+
+            routes.MapRoute(
+                name: "InformeTecnicoFirmarDireccion",
+                url: "InformeTecnico/FirmarDireccion",
+                defaults: new { controller = "Inspeccion", action = "FirmarDireccion" }
+            );
+
+            routes.MapRoute(
                 name: "InspeccionDetalleAmigable",
                 url: "Detalle/{id}",
                 defaults: new { controller = "Inspeccion", action = "Detalle", id = UrlParameter.Optional }

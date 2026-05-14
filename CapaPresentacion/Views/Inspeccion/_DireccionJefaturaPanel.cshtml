@@ -6,8 +6,10 @@
     var vm = Model ?? new CapaPresentacion.Models.ViewModels.DireccionJefaturaPanelVm();
     var informeTecnico = vm.InformeTecnico;
     var codigoInspeccion = vm.CodigoInspeccion;
-    var esDirdac = vm.EsDirdac;
-    var puedeAprobarDireccion = vm.PuedeFirmarDirdac;
+    var esRolDireccionOJefatura = vm.EsRolDireccionOJefatura || vm.EsDirdac;
+    var puedeEnviarADirdac = vm.PuedeEnviarADirdac;
+    var puedeReintentarNotificacionDirdac = vm.PuedeReintentarNotificacionDirdac;
+    var puedeTomarDecisionInstitucionalFinal = vm.PuedeTomarDecisionInstitucionalFinal || vm.PuedeFirmarDirdac;
     var informeEnviadoADirdac = vm.InformeEnviadoADirdac;
     var informeAprobadoDireccion = vm.InformeAprobadoDireccion;
     var informeDevueltoDireccion = vm.InformeDevueltoDireccion;
@@ -26,7 +28,7 @@
         <div>No hay contexto de inspecciÃ³n disponible para revisiÃ³n DIRDAC.</div>
     </div>
 }
-else if (esDirdac && informeTecnico != null)
+else if (esRolDireccionOJefatura && informeTecnico != null)
 {
     @Html.Partial("_InformeFirmaStyles")
 
@@ -34,7 +36,7 @@ else if (esDirdac && informeTecnico != null)
         <div class="it-hero-row">
             <div>
                 <h3><i class="fas fa-university"></i> DIRDAC / Dirección - Jefatura</h3>
-                <p class="sub">Revisión institucional del informe técnico. Remitir a Coordinación o devolver con observación.</p>
+                <p class="sub">Revisión institucional del informe técnico. Aprobar con decisión final o devolver con observación.</p>
             </div>
             <div>
                 @if (informeAprobadoDireccion)
@@ -53,14 +55,37 @@ else if (esDirdac && informeTecnico != null)
     {
         <div class="it-alert success">
             <i class="fas fa-check-circle"></i>
-            <div><strong>Revisión institucional completada.</strong> DIRDAC / Dirección - Jefatura remitió el informe a Coordinación para aprobación.</div>
+            <div><strong>Revisión institucional completada.</strong> DIRDAC / Dirección - Jefatura registró la decisión final del informe y habilitó la notificación al RT.</div>
         </div>
+
+        if (esRolDireccionOJefatura && !informeTecnico.NotificadoRt)
+        {
+            <div class="it-alert warn">
+                <i class="fas fa-envelope-open-text"></i>
+                <div>
+                    <strong>Notificación RT pendiente de confirmación.</strong> Puede reenviar manualmente el correo final sin generar duplicados.
+                    @using (Html.BeginForm("ReenviarNotificacionRt", "Inspeccion", FormMethod.Post, new { style = "display:inline-block; margin-left:12px;" }))
+                    {
+                        @Html.AntiForgeryToken()
+                        <input type="hidden" name="id" value="@codigoInspeccion" />
+                        <button type="submit" class="it-btn ghost"><i class="fas fa-redo"></i> Reenviar notificación RT</button>
+                    }
+                </div>
+            </div>
+        }
     }
     else if (informeDevueltoDireccion)
     {
         <div class="it-alert danger">
             <i class="fas fa-undo"></i>
             <div><strong>Informe devuelto al inspector.</strong> Fue devuelto con observaciones para corrección y reenvío.</div>
+        </div>
+    }
+    else if (puedeTomarDecisionInstitucionalFinal && !informeEnviadoADirdac)
+    {
+        <div class="it-alert info">
+            <i class="fas fa-file-signature"></i>
+            <div><strong>Listo para decisión institucional final.</strong> El informe técnico ya fue firmado por el inspector y puede ser aprobado o devuelto por DIRDAC / Dirección - Jefatura.</div>
         </div>
     }
     else if (informeEnviadoADirdac)
@@ -108,67 +133,30 @@ else if (esDirdac && informeTecnico != null)
         </div>
     }
 
-    if (puedeAprobarDireccion)
+    if (puedeEnviarADirdac || puedeReintentarNotificacionDirdac)
     {
         <div class="it-panel dirdac">
-            <h4><i class="fas fa-balance-scale"></i> Decisión institucional</h4>
-            <p class="hint">Revise el informe técnico y seleccione una acción.</p>
+            @if (puedeReintentarNotificacionDirdac)
+            {
+                <h4><i class="fas fa-envelope-open-text"></i> Reintentar notificación a DIRDAC</h4>
+                <p class="hint">El informe ya fue remitido a la bandeja DIRDAC, pero la notificación formal no quedó confirmada. Puede reenviarla sin duplicar el flujo.</p>
+            }
+            else
+            {
+                <h4><i class="fas fa-paper-plane"></i> Enviar informe a DIRDAC</h4>
+                <p class="hint">Registre el envío del informe técnico a la bandeja de DIRDAC / Dirección - Jefatura para habilitar la revisión institucional.</p>
+            }
 
-            <div id="dirdacDecisionBtns" class="it-btn-row">
-                <button type="button" class="it-btn success" onclick="itDirdacMostrar('dirdacFormAprob')">
-                    <i class="fas fa-check-circle"></i> Revisar y enviar a Coordinación
+            @using (Html.BeginForm("EnviarADirdac", "Inspeccion", FormMethod.Post))
+            {
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="id" value="@codigoInspeccion" />
+                <button type="submit" class="it-btn primary full">
+                    <i class="fas fa-@(puedeReintentarNotificacionDirdac ? "redo" : "paper-plane")"></i>
+                    @(puedeReintentarNotificacionDirdac ? "Reintentar notificación DIRDAC" : "Enviar a DIRDAC")
                 </button>
-                <button type="button" class="it-btn danger" onclick="itDirdacMostrar('dirdacFormDevol')">
-                    <i class="fas fa-undo"></i> Devolver con observación
-                </button>
-            </div>
-
-            <div id="dirdacFormAprob" style="display:none; margin-top: 14px;">
-                @using (Html.BeginForm("DireccionAprobar", "Inspeccion", FormMethod.Post))
-                {
-                    @Html.AntiForgeryToken()
-                    @Html.Hidden("id", codigoInspeccion)
-                    <div class="it-alert success" style="margin-bottom: 10px;">
-                        <i class="fas fa-question-circle"></i>
-                        <div>¿Confirma la revisión DIRDAC y el envío a Coordinación?</div>
-                    </div>
-                    <div class="it-btn-row">
-                        <button type="submit" class="it-btn success"><i class="fas fa-check"></i> Confirmar revisión</button>
-                        <button type="button" class="it-btn ghost" onclick="itDirdacCancelar()">Cancelar</button>
-                    </div>
-                }
-            </div>
-
-            <div id="dirdacFormDevol" style="display:none; margin-top: 14px;">
-                @using (Html.BeginForm("DireccionDevolver", "Inspeccion", FormMethod.Post))
-                {
-                    @Html.AntiForgeryToken()
-                    @Html.Hidden("id", codigoInspeccion)
-                    <div class="it-field">
-                        <label>Observación de devolución <span style="color:#d64545;">*</span></label>
-                        <textarea name="observacionRechazo" class="it-input" rows="3" required="required"
-                                  placeholder="Indique la observación para devolver el informe al inspector..."></textarea>
-                    </div>
-                    <div class="it-btn-row">
-                        <button type="submit" class="it-btn danger"><i class="fas fa-undo"></i> Confirmar devolución</button>
-                        <button type="button" class="it-btn ghost" onclick="itDirdacCancelar()">Cancelar</button>
-                    </div>
-                }
-            </div>
+            }
         </div>
-
-        <script>
-            function itDirdacMostrar(id) {
-                document.getElementById('dirdacDecisionBtns').style.display = 'none';
-                document.getElementById('dirdacFormAprob').style.display = id === 'dirdacFormAprob' ? 'block' : 'none';
-                document.getElementById('dirdacFormDevol').style.display = id === 'dirdacFormDevol' ? 'block' : 'none';
-            }
-            function itDirdacCancelar() {
-                document.getElementById('dirdacFormAprob').style.display = 'none';
-                document.getElementById('dirdacFormDevol').style.display = 'none';
-                document.getElementById('dirdacDecisionBtns').style.display = 'flex';
-            }
-        </script>
     }
 
     if (!string.IsNullOrWhiteSpace(informeTecnico.ObservacionDevolucion) && informeDevueltoDireccion)

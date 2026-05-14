@@ -43,6 +43,8 @@ namespace CapaModelo
         public string UsuarioEnvioDirdac { get; set; }
         public bool Finalizado { get; set; }
         public bool CorreoEnviado { get; set; }
+        public bool NotificadoRt { get; set; }
+        public DateTime? FechaNotificacionRt { get; set; }
         public DateTime? FechaFinalizacion { get; set; }
         public DateTime? CreatedAt { get; set; }
         public int? CreatedBy { get; set; }

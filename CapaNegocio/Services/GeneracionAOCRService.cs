@@ -196,13 +196,7 @@ namespace CapaNegocio.Services
             }
 
             var estadoInforme = (informe.EstadoInforme ?? string.Empty).Trim().ToUpperInvariant();
-            if (estadoInforme == "INFORME_FIRMADO_TECNICO")
-            {
-                return true;
-            }
-
             return estadoInforme == "APROBADO_DIRECCION"
-                || estadoInforme == "APROBADO_COORDINADOR"
                 || estadoInforme == "FIRMADO_FINAL";
         }
 

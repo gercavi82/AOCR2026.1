@@ -1039,6 +1039,37 @@
             </div>
         }
 
+        @if (finalizada && !firmada && vm.PuedeFirmar)
+        {
+            <div class="card mt-4 border-0 bg-light mb-3" data-lv-signature-section="true">
+                <div class="card-body">
+                    <h5 class="mb-3"><i class="fas fa-signature me-2"></i>Firma del Tecnico / Inspector responsable de la LV</h5>
+                    @using (Html.BeginForm("FirmarListaVerificacionOperacionalEae", "Inspeccion", FormMethod.Post, new { enctype = "multipart/form-data", data_lv_signature_form = "true" }))
+                    {
+                        @Html.AntiForgeryToken()
+                        <input type="hidden" name="id" value="@vm.CodigoInspeccion" />
+                        <input type="hidden" name="codigoInspeccion" value="@vm.CodigoInspeccion" />
+
+                        <div class="row g-3">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Certificado digital (.p12 / .pfx)</label>
+                                <input type="file" name="CertificadoInspector" class="form-control" accept=".p12,.pfx" required="required" />
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Contrasena del certificado</label>
+                                <input type="password" name="passwordCertificado" class="form-control" autocomplete="off" required="required" />
+                            </div>
+                        </div>
+                        <div class="lv-signature-actions">
+                            <button type="submit" class="btn btn-success">
+                                <i class="fas fa-shield-alt me-1"></i> Firmar Lista de Verificacion LV
+                            </button>
+                        </div>
+                    }
+                </div>
+            </div>
+        }
+
         @if (tienePdf)
         {
             @Html.Partial("~/Views/Shared/_AocrPdfViewer.cshtml", new AocrPdfViewerViewModel
@@ -1084,7 +1115,7 @@
                     using (Html.BeginForm("ConfirmarRevisionDocumentalInspector", "Inspeccion", FormMethod.Post, new { @class = "mb-0" }))
                     {
                         @Html.AntiForgeryToken()
-                        @Html.Hidden("id", vm.CodigoInspeccion)
+                        <input type="hidden" name="id" value="@vm.CodigoInspeccion" />
                         <button type="submit" class="btn btn-warning">
                             <i class="fas fa-check-double me-1"></i> Confirmar revisión documental
                         </button>
@@ -1102,7 +1133,8 @@
             using (Html.BeginForm("GuardarListaVerificacionOperacionalEae", "Inspeccion", FormMethod.Post, new { @class = "mt-4", novalidate = "novalidate" }))
             {
                 @Html.AntiForgeryToken()
-                @Html.Hidden("id", vm.CodigoInspeccion)
+                <input type="hidden" name="id" value="@vm.CodigoInspeccion" />
+                <input type="hidden" name="codigoInspeccion" value="@vm.CodigoInspeccion" />
                 <input type="hidden" name="lvSubmitAction" value="guardar" />
                 <div class="alert alert-warning alert-inline lv-validation-message d-none mb-3" data-lv-validation-message="true" role="alert"></div>
 
@@ -1317,35 +1349,6 @@
             }
         }
 
-        @if (finalizada && !firmada && vm.PuedeFirmar)
-        {
-            <div class="card mt-4 border-0 bg-light">
-                <div class="card-body">
-                    <h5 class="mb-3"><i class="fas fa-signature me-2"></i>Firma del Tecnico / Inspector responsable de la LV</h5>
-                    @using (Html.BeginForm("FirmarListaVerificacionOperacionalEae", "Inspeccion", FormMethod.Post, new { enctype = "multipart/form-data" }))
-                    {
-                        @Html.AntiForgeryToken()
-                        @Html.Hidden("id", vm.CodigoInspeccion)
-
-                        <div class="row g-3">
-                            <div class="col-md-6 mb-3">
-                                <label class="form-label">Certificado digital (.p12 / .pfx)</label>
-                                <input type="file" name="CertificadoInspector" class="form-control" accept=".p12,.pfx" required="required" />
-                            </div>
-                            <div class="col-md-6 mb-3">
-                                <label class="form-label">Contrasena del certificado</label>
-                                <input type="password" name="passwordCertificado" class="form-control" autocomplete="off" required="required" />
-                            </div>
-                        </div>
-                        <div class="lv-signature-actions">
-                            <button type="submit" class="btn btn-success">
-                                <i class="fas fa-shield-alt me-1"></i> Firmar Lista de Verificacion LV
-                            </button>
-                        </div>
-                    }
-                </div>
-            </div>
-        }
         </div>
     </div>
 </div>

@@ -37,6 +37,11 @@ namespace CapaPresentacion.Models.ViewModels
         public string UrlDocumentosSolicitud { get; set; }
         public string MensajeBloqueoEdicion { get; set; }
         public bool PuedeConfirmarRevisionDocumental { get; set; }
+        public bool TieneDocumentosObservados { get; set; }
+        public bool TieneDocumentosSubsanadosPendientes { get; set; }
+        public bool DocumentacionAprobada { get; set; }
+        public bool PuedeAbrirLvEae { get; set; }
+        public string MensajeBloqueoDocumental { get; set; }
 
         public ListaVerificacionOperacionalEaePanelVm()
         {
@@ -46,6 +51,7 @@ namespace CapaPresentacion.Models.ViewModels
             UrlDescarga = string.Empty;
             UrlDocumentosSolicitud = string.Empty;
             MensajeBloqueoEdicion = string.Empty;
+            MensajeBloqueoDocumental = string.Empty;
         }
     }
 
@@ -71,6 +77,13 @@ namespace CapaPresentacion.Models.ViewModels
         public string UrlPrevisualizar { get; set; }
         public string UrlVerPdf { get; set; }
         public string UrlDescargarPdf { get; set; }
+        public FirmaInspectorPanelVm FirmaInspectorPanel { get; set; }
+        public bool TieneDocumentosObservados { get; set; }
+        public bool TieneDocumentosSubsanadosPendientes { get; set; }
+        public bool DocumentacionAprobada { get; set; }
+        public bool PuedeAbrirLvEae { get; set; }
+        public bool PuedeAbrirInformeTecnico { get; set; }
+        public string MensajeBloqueoDocumental { get; set; }
 
         public InformeTecnicoModalVm()
         {
@@ -86,6 +99,8 @@ namespace CapaPresentacion.Models.ViewModels
             UrlPrevisualizar = string.Empty;
             UrlVerPdf = string.Empty;
             UrlDescargarPdf = string.Empty;
+            FirmaInspectorPanel = null;
+            MensajeBloqueoDocumental = string.Empty;
         }
     }
 
@@ -110,7 +125,13 @@ namespace CapaPresentacion.Models.ViewModels
         public int CodigoInspeccion { get; set; }
         public InspeccionInformeTecnico InformeTecnico { get; set; }
         public bool EsDirdac { get; set; }
+        public bool EsRolDireccionOJefatura { get; set; }
+        public bool EsInspectorTecnico { get; set; }
+        public string RolUsuarioActual { get; set; }
+        public bool PuedeEnviarADirdac { get; set; }
+        public bool PuedeReintentarNotificacionDirdac { get; set; }
         public bool PuedeFirmarDirdac { get; set; }
+        public bool PuedeTomarDecisionInstitucionalFinal { get; set; }
         public bool InformeEnviadoADirdac { get; set; }
         public bool InformeAprobadoDireccion { get; set; }
         public bool InformeDevueltoDireccion { get; set; }
@@ -121,7 +142,112 @@ namespace CapaPresentacion.Models.ViewModels
         {
             InformeTecnico = new InspeccionInformeTecnico();
             EstadoInformeTecnico = "BORRADOR";
+            RolUsuarioActual = string.Empty;
             RutaInformeVisual = string.Empty;
+        }
+    }
+
+    public class HistorialInformeViewModel
+    {
+        public string EstadoAnterior { get; set; }
+        public string EstadoNuevo { get; set; }
+        public string Observacion { get; set; }
+        public string Origen { get; set; }
+        public string UsuarioNombre { get; set; }
+        public System.DateTime FechaCambio { get; set; }
+
+        public HistorialInformeViewModel()
+        {
+            EstadoAnterior = string.Empty;
+            EstadoNuevo = string.Empty;
+            Observacion = string.Empty;
+            Origen = string.Empty;
+            UsuarioNombre = string.Empty;
+        }
+    }
+
+    public class PendienteRevisionDireccionItemViewModel
+    {
+        public int CodigoInforme { get; set; }
+        public int CodigoInspeccion { get; set; }
+        public int CodigoSolicitud { get; set; }
+        public string NumeroSolicitud { get; set; }
+        public string NombreOperadora { get; set; }
+        public string NombreInspector { get; set; }
+        public System.DateTime? FechaFirmaInspector { get; set; }
+        public string ResultadoTecnicoFinal { get; set; }
+        public string EstadoInforme { get; set; }
+        public bool NotificacionFormalEnviada { get; set; }
+        public string UrlRevision { get; set; }
+        public string UrlPdfInformeFirmadoInspector { get; set; }
+
+        public PendienteRevisionDireccionItemViewModel()
+        {
+            NumeroSolicitud = string.Empty;
+            NombreOperadora = string.Empty;
+            NombreInspector = string.Empty;
+            ResultadoTecnicoFinal = string.Empty;
+            EstadoInforme = string.Empty;
+            UrlRevision = string.Empty;
+            UrlPdfInformeFirmadoInspector = string.Empty;
+        }
+    }
+
+    public class RevisionInformeTecnicoDireccionViewModel
+    {
+        public int CodigoInforme { get; set; }
+        public int CodigoInspeccion { get; set; }
+        public int CodigoSolicitud { get; set; }
+        public string NumeroSolicitud { get; set; }
+        public string NombreOperadora { get; set; }
+        public string NombreInspector { get; set; }
+        public System.DateTime? FechaFirmaInspector { get; set; }
+        public string EstadoInforme { get; set; }
+        public string ResultadoTecnicoFinal { get; set; }
+        public string TipoResultadoInsatisfactorio { get; set; }
+        public string Antecedentes { get; set; }
+        public string Objetivo { get; set; }
+        public string Alcance { get; set; }
+        public string DesarrolloTecnico { get; set; }
+        public string Hallazgos { get; set; }
+        public string ObservacionesInspector { get; set; }
+        public string Conclusiones { get; set; }
+        public string Recomendaciones { get; set; }
+        public string UrlPdfInformeFirmadoInspector { get; set; }
+        public string UrlDescargarPdfInformeFirmadoInspector { get; set; }
+        public bool PuedeAprobarDecisionFinal { get; set; }
+        public bool PuedeDevolverConObservacion { get; set; }
+        public bool PuedeReenviarNotificacionRt { get; set; }
+        public bool RequiereFirmaDireccion { get; set; }
+        public bool NotificadoRt { get; set; }
+        public System.DateTime? FechaNotificacionRt { get; set; }
+        public string ObservacionDireccion { get; set; }
+        public string UrlVolverPendientes { get; set; }
+        public string RolUsuarioActual { get; set; }
+        public IList<HistorialInformeViewModel> Historial { get; set; }
+
+        public RevisionInformeTecnicoDireccionViewModel()
+        {
+            NumeroSolicitud = string.Empty;
+            NombreOperadora = string.Empty;
+            NombreInspector = string.Empty;
+            EstadoInforme = string.Empty;
+            ResultadoTecnicoFinal = string.Empty;
+            TipoResultadoInsatisfactorio = string.Empty;
+            Antecedentes = string.Empty;
+            Objetivo = string.Empty;
+            Alcance = string.Empty;
+            DesarrolloTecnico = string.Empty;
+            Hallazgos = string.Empty;
+            ObservacionesInspector = string.Empty;
+            Conclusiones = string.Empty;
+            Recomendaciones = string.Empty;
+            UrlPdfInformeFirmadoInspector = string.Empty;
+            UrlDescargarPdfInformeFirmadoInspector = string.Empty;
+            ObservacionDireccion = string.Empty;
+            UrlVolverPendientes = string.Empty;
+            RolUsuarioActual = string.Empty;
+            Historial = new List<HistorialInformeViewModel>();
         }
     }
 }

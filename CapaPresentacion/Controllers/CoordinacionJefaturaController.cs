@@ -152,10 +152,10 @@ namespace CapaPresentacion.Controllers
                     Estado = x.Estado,
                     FechaEnvio = x.FechaEnvio,
                     UrlAccion = string.Equals(x.FirmanteRequerido, "DIRDAC", StringComparison.OrdinalIgnoreCase) && puedeVerPendientesDirdac
-                        ? urlHelper.Action("PendientesFirmaDirdac", "Inspeccion")
+                        ? urlHelper.Action("PendientesDireccion", "Inspeccion")
                         : urlHelper.Action("Detalle", "Inspeccion", new { id = x.CodigoInspeccion }),
                     TextoAccion = string.Equals(x.FirmanteRequerido, "DIRDAC", StringComparison.OrdinalIgnoreCase) && puedeVerPendientesDirdac
-                        ? "Firmar"
+                        ? "Revisar informe"
                         : "Abrir detalle"
                 }).ToList(),
                 ObservacionesNc = noConformidades.Select(x => new DashboardInspeccionNcItemViewModel
@@ -244,7 +244,7 @@ namespace CapaPresentacion.Controllers
                     : null;
                 var urlRevisar = urlHelper.Action("RevisionVerificacion", "CoordinacionJefatura");
                 var urlFirmar = listoParaFirma && firmaInspector && !firmaDirdac && puedeVerPendientesDirdac
-                    ? urlHelper.Action("PendientesFirmaDirdac", "Inspeccion")
+                    ? urlHelper.Action("PendientesDireccion", "Inspeccion")
                     : null;
                 var urlValidarAocr = puedeValidarAocr
                     ? urlHelper.Action("ValidarAocr", "CoordinacionJefatura")

@@ -204,6 +204,7 @@
                                     </div>
 
                                     <div class="aocr-table-shell mt-3">
+                                        <input type="hidden" name="serviciosEstacionesPresent" value="true" />
                                         <table class="table table-bordered table-sm mb-0 aocr-services-table">
                                             <thead>
                                                 <tr>
@@ -344,16 +345,15 @@
                                     </div>
                                 </div>
 
-                                <div class="aocr-info-card">
-                                    <h6 class="aocr-section-title">Sección de firmas</h6>
-                                    <div class="aocr-signature-placeholder">
-                                        <div class="aocr-signature-line"></div>
-                                        <p>@inspectorVisual</p>
-                                        <small>La firma digital se gestiona fuera del modal y solo se habilita cuando el flujo documental corresponda.</small>
-                                    </div>
-                                </div>
                             </fieldset>
                         </form>
+
+                        @if (vm.FirmaInspectorPanel != null && vm.FirmaInspectorPanel.CodigoInspeccion > 0)
+                        {
+                            <div class="mt-3">
+                                @Html.Partial("~/Views/Inspeccion/_FirmaInspectorPanel.cshtml", vm.FirmaInspectorPanel)
+                            </div>
+                        }
                     </div>
 
                     <div class="aocr-modal-side">

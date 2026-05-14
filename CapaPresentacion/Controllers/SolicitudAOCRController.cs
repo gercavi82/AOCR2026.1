@@ -1,6 +1,7 @@
 ﻿using System;
 using System.IO;
 using System.Linq;
+using System.Text;
 using System.Text.RegularExpressions;
 using System.Transactions;
 using System.Web;
@@ -2716,13 +2717,17 @@ namespace CapaPresentacion.Controllers
                 return RedirectToAction("Detalle", new { id });
             }
 
-            var documentos = _documentoDAO.ObtenerPorSolicitud(id) ?? new List<Documento>();
+            var revisionesDocumentales = _solicitudAocrInfraBL.ObtenerUltimasRevisionesPorSolicitud(id);
+            var documentos = ObtenerDocumentosVigentesParaRevision(id)
+                .Where(d =>
+                {
+                    var decision = ObtenerDecisionRevisionDocumental(d, revisionesDocumentales);
+                    return decision == "DEVUELTO" || decision == "OBSERVADO";
+                })
+                .ToList();
             var historial = _solicitudAocrInfraBL.ObtenerHistorialEstadosPorSolicitud(id);
 
-            // Extraer nombre del inspector asignado
-            var inspectorNombre = !string.IsNullOrWhiteSpace(solicitud.TecnicoResponsableNombre)
-                ? solicitud.TecnicoResponsableNombre
-                : "Sin asignar";
+            var inspectorNombre = ObtenerNombreInspector(solicitud);
 
             // Historial de observaciones (cambios a estado Observada)
             var historialObs = historial
@@ -2754,8 +2759,8 @@ namespace CapaPresentacion.Controllers
                     CodigoDocumento = d.CodigoDocumento,
                     TipoDocumento = d.TipoDocumento,
                     NombreArchivo = d.NombreArchivo,
-                    Estado = d.Estado,
-                    Observaciones = d.Observaciones,
+                    Estado = ObtenerDecisionRevisionDocumental(d, revisionesDocumentales),
+                    Observaciones = ObtenerObservacionRevisionDocumental(d, revisionesDocumentales),
                     FechaCarga = d.FechaCarga
                 }).ToList()
             };
@@ -2802,6 +2807,7 @@ namespace CapaPresentacion.Controllers
             {
                 var archivosSubidos = 0;
                 var usuarioRegistro = (Session["CodigoUsuario"] ?? usuarioId.ToString()).ToString();
+                var documentosSubsanadosNotificacion = new List<Documento>();
 
                 var revisionesDocumentales = _solicitudAocrInfraBL.ObtenerUltimasRevisionesPorSolicitud(codigoSolicitud);
                 var documentosVigentes = ObtenerDocumentosVigentesParaRevision(codigoSolicitud);
@@ -2932,7 +2938,7 @@ namespace CapaPresentacion.Controllers
                             RutaGuardada = rutaRelativa,
                             Extension = extension,
                             TamanoBytes = file.ContentLength,
-                            Estado = "Subsanado",
+                            Estado = "PENDIENTE_REVISION_SUBSANACION",
                             Validado = false,
                             FechaCarga = DateTime.Now,
                             Observaciones = "Subsanación: " + (comentario ?? "").Trim(),
@@ -2940,7 +2946,23 @@ namespace CapaPresentacion.Controllers
                             UsuarioRegistro = usuarioRegistro
                         };
 
-                        _documentoDAO.Crear(nuevoDoc);
+                        var codigoNuevoDocumento = _documentoDAO.Crear(nuevoDoc);
+                        nuevoDoc.CodigoDocumento = codigoNuevoDocumento;
+                        documentosSubsanadosNotificacion.Add(nuevoDoc);
+                        _solicitudAocrInfraBL.RegistrarRevisionDocumental(
+                            codigoSolicitud,
+                            codigoNuevoDocumento,
+                            "PENDIENTE_REVISION_SUBSANACION",
+                            (comentario ?? string.Empty).Trim(),
+                            usuarioId,
+                            usuarioRegistro);
+                        _solicitudAocrInfraBL.RegistrarEventoHistorialRevision(
+                            codigoSolicitud,
+                            codigoNuevoDocumento,
+                            "DOCUMENTO_SUBSANADO_POR_RT",
+                            "Documento " + (tipoDoc ?? "N/A") + " subsanado por el RT. Documento original: " + docOriginal.CodigoDocumento + ".",
+                            usuarioId,
+                            usuarioRegistro);
                         archivosSubidos++;
                     }
                 }
@@ -2967,6 +2989,8 @@ namespace CapaPresentacion.Controllers
                     return RedirectToAction("Subsanar", new { id = codigoSolicitud });
                 }
 
+                NotificarInspectorDocumentacionSubsanada(solicitud, documentosSubsanadosNotificacion, comentario, usuarioId, usuarioRegistro);
+
                 TempData["NotificacionTipo"] = "success";
                 TempData["NotificacionMensaje"] = "Corrección enviada exitosamente. Se subieron " + archivosSubidos + " documento(s).";
                 return RedirectToAction("Detalle", new { id = codigoSolicitud });
@@ -2978,6 +3002,169 @@ namespace CapaPresentacion.Controllers
                 TempData["NotificacionMensaje"] = "Error al procesar la subsanación: " + ex.Message;
                 return RedirectToAction("Subsanar", new { id = codigoSolicitud });
             }
+        }
+
+        private void NotificarInspectorDocumentacionSubsanada(
+            SolicitudAOCR solicitud,
+            IList<Documento> documentosSubsanados,
+            string comentarioRt,
+            int usuarioId,
+            string usuarioRegistro)
+        {
+            if (solicitud == null || documentosSubsanados == null || documentosSubsanados.Count == 0)
+            {
+                return;
+            }
+
+            try
+            {
+                var inspeccion = ObtenerUltimaInspeccionVinculada(_solicitudAocrInfraBL.ListarInspeccionesPorSolicitud(solicitud.CodigoSolicitud));
+                var codigoInspector = inspeccion != null && inspeccion.CodigoInspector.HasValue
+                    ? inspeccion.CodigoInspector.Value
+                    : (solicitud.CodigoTecnico.HasValue ? solicitud.CodigoTecnico.Value : 0);
+
+                if (codigoInspector <= 0)
+                {
+                    _solicitudAocrInfraBL.RegistrarEventoHistorialRevision(
+                        solicitud.CodigoSolicitud,
+                        null,
+                        "NOTIFICACION_SUBSANACION_INSPECTOR_OMITIDA",
+                        "No se encontró inspector asignado para notificar la subsanación documental.",
+                        usuarioId,
+                        usuarioRegistro);
+                    return;
+                }
+
+                var inspector = UsuarioDAO.ObtenerPorId(codigoInspector);
+                var correoInspector = inspector != null ? (inspector.Email ?? string.Empty).Trim() : string.Empty;
+                var nombreInspector = inspector != null ? FirstNonEmpty(inspector.NombreCompleto, inspector.NombreUsuario, "Inspector asignado") : "Inspector asignado";
+                var numeroSolicitud = FirstNonEmpty(solicitud.NumeroSolicitud, "#" + solicitud.CodigoSolicitud);
+                var operadora = FirstNonEmpty(solicitud.NombreComercial, solicitud.NombreOperador, solicitud.RazonSocial, "Operadora");
+                var solicitante = UsuarioDAO.ObtenerPorId(solicitud.CodigoUsuario);
+                var nombreRt = FirstNonEmpty(
+                    solicitud.RepresentanteLegal,
+                    solicitante != null ? solicitante.NombreCompleto : null,
+                    solicitante != null ? solicitante.NombreUsuario : null,
+                    "Representante Técnico");
+                var fechaSubsanacion = DateTime.Now;
+                var documentosYaNotificados = _solicitudAocrInfraBL.ObtenerDocumentosConEventoHistorial(
+                    solicitud.CodigoSolicitud,
+                    "NOTIFICACION_SUBSANACION_DOCUMENTO_INSPECTOR");
+                var documentos = documentosSubsanados
+                    .Where(d => d != null)
+                    .GroupBy(d => d.CodigoDocumento)
+                    .Select(g => g.First())
+                    .Where(d => d.CodigoDocumento <= 0 || !documentosYaNotificados.Contains(d.CodigoDocumento))
+                    .ToList();
+                if (documentos.Count == 0)
+                {
+                    return;
+                }
+                var listaDocumentosTexto = string.Join(", ", documentos.Select(ObtenerEtiquetaDocumento));
+                var eventKey = "DOCUMENTACION_SUBSANADA_RT_" + solicitud.CodigoSolicitud + "_" + codigoInspector + "_" +
+                               string.Join("_", documentos.Select(d => d.CodigoDocumento + "V" + (d.Version ?? 0)));
+
+                NotificacionBL.EnviarNotificacion(
+                    codigoInspector,
+                    "Documentación subsanada",
+                    "El RT ha subsanado documentación observada de la Solicitud AOCR " + numeroSolicitud + ".",
+                    "INFO",
+                    Url.Action("Detalle", "SolicitudAOCR", new { id = solicitud.CodigoSolicitud }),
+                    "AOCR",
+                    solicitud.CodigoSolicitud,
+                    "SOLICITUD_AOCR");
+
+                if (!string.IsNullOrWhiteSpace(correoInspector))
+                {
+                    var asunto = "Solicitud AOCR " + numeroSolicitud + " - Documentación subsanada por el RT";
+                    var cuerpo = ConstruirHtmlCorreoDocumentacionSubsanadaInspector(
+                        nombreInspector,
+                        nombreRt,
+                        numeroSolicitud,
+                        operadora,
+                        documentos,
+                        fechaSubsanacion,
+                        comentarioRt);
+
+                    var queue = new EmailQueueService();
+                    queue.EncolarAsync(new EmailQueueItem
+                    {
+                        Para = correoInspector,
+                        ParaNombre = nombreInspector,
+                        Asunto = asunto,
+                        Cuerpo = cuerpo,
+                        EsHtml = true,
+                        TipoNotificacion = "DOCUMENTACION_SUBSANADA_RT",
+                        OrdenId = solicitud.CodigoSolicitud,
+                        EventKey = eventKey,
+                        MaxIntentos = 3
+                    }).Wait();
+                }
+
+                _solicitudAocrInfraBL.RegistrarEventoHistorialRevision(
+                    solicitud.CodigoSolicitud,
+                    null,
+                    "NOTIFICACION_SUBSANACION_ENVIADA_INSPECTOR",
+                    "Notificación de subsanación documental enviada al inspector asignado. Documentos: " + listaDocumentosTexto,
+                    usuarioId,
+                    usuarioRegistro);
+
+                foreach (var documento in documentos)
+                {
+                    _solicitudAocrInfraBL.RegistrarEventoHistorialRevision(
+                        solicitud.CodigoSolicitud,
+                        documento.CodigoDocumento,
+                        "NOTIFICACION_SUBSANACION_DOCUMENTO_INSPECTOR",
+                        "Documento subsanado incluido en notificación al inspector asignado.",
+                        usuarioId,
+                        usuarioRegistro);
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine("[SubsanarPost][NotificarInspector] " + ex.Message);
+                try
+                {
+                    _solicitudAocrInfraBL.RegistrarEventoHistorialRevision(
+                        solicitud.CodigoSolicitud,
+                        null,
+                        "NOTIFICACION_SUBSANACION_INSPECTOR_ERROR",
+                        "No se pudo encolar el correo al inspector. La subsanación no fue bloqueada. Error: " + ex.Message,
+                        usuarioId,
+                        usuarioRegistro);
+                }
+                catch
+                {
+                }
+            }
+        }
+
+        private static string ConstruirHtmlCorreoDocumentacionSubsanadaInspector(
+            string nombreInspector,
+            string nombreRt,
+            string numeroSolicitud,
+            string operadora,
+            IEnumerable<Documento> documentos,
+            DateTime fechaSubsanacion,
+            string comentarioRt)
+        {
+            var lista = string.Join(string.Empty, (documentos ?? Enumerable.Empty<Documento>())
+                .Select(d => "<li>" + HttpUtility.HtmlEncode(ObtenerEtiquetaDocumento(d)) + "</li>"));
+
+            if (string.IsNullOrWhiteSpace(lista))
+            {
+                lista = "<li>Documentación subsanada</li>";
+            }
+
+            return "Estimado/a " + HttpUtility.HtmlEncode(nombreInspector) + ",<br><br>" +
+                   "Se informa que el Representante Técnico " + HttpUtility.HtmlEncode(nombreRt) +
+                   " ha realizado la subsanación de documentación observada correspondiente a la Solicitud AOCR " +
+                   HttpUtility.HtmlEncode(numeroSolicitud) + " de la operadora " + HttpUtility.HtmlEncode(operadora) + ".<br><br>" +
+                   "<strong>Documentos subsanados:</strong><ul>" + lista + "</ul>" +
+                   "<strong>Fecha de subsanación:</strong> " + fechaSubsanacion.ToString("dd/MM/yyyy HH:mm") + "<br>" +
+                   "<strong>Observación del RT:</strong> " + HttpUtility.HtmlEncode(string.IsNullOrWhiteSpace(comentarioRt) ? "Sin comentario adicional." : comentarioRt.Trim()) + "<br><br>" +
+                   "Por favor, ingrese al sistema AOCR para revisar la documentación subsanada y continuar con el flujo correspondiente.<br><br>" +
+                   "Atentamente,<br>Sistema AOCR<br>Dirección General de Aviación Civil";
         }
 
         public ActionResult Detalle(int id)
@@ -3975,13 +4162,7 @@ namespace CapaPresentacion.Controllers
             }
 
             var estadoInforme = (informe.EstadoInforme ?? string.Empty).Trim().ToUpperInvariant();
-            if (estadoInforme == "INFORME_FIRMADO_TECNICO")
-            {
-                return true;
-            }
-
             return estadoInforme == "APROBADO_DIRECCION"
-                || estadoInforme == "APROBADO_COORDINADOR"
                 || estadoInforme == "FIRMADO_FINAL";
         }
 

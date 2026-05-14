@@ -86,6 +86,28 @@ body {
     max-width: 100%;
 }
 
+.row > [class*="col-"],
+.card-body > *,
+.panel-body > *,
+.modal-body > *,
+.modal-header > *,
+.aocr-actions > *,
+.aocr-actions-bar > *,
+.aocr-action-toolbar > *,
+.report-actions-buttons > * {
+    min-width: 0;
+}
+
+.card-title,
+.panel-title,
+.modal-title,
+.section-title,
+.alert,
+.badge {
+    overflow-wrap: anywhere;
+    word-break: break-word;
+}
+
 textarea.form-control {
     min-height: 88px;
 }
@@ -266,6 +288,16 @@ embed {
         min-height: 38px;
     }
 
+    .modal-header {
+        align-items: flex-start;
+        flex-wrap: wrap;
+        gap: .5rem;
+    }
+
+    .modal-header .btn-close {
+        margin-left: auto;
+    }
+
     .btn-group,
     .aocr-action-toolbar,
     .report-actions-buttons,
@@ -308,6 +340,12 @@ embed {
 
     .table {
         font-size: .86rem;
+    }
+
+    .table-responsive > .table,
+    .aocr-table-responsive > .table,
+    .dataTables_wrapper table.table {
+        min-width: 560px;
     }
 
     .w-md-auto {

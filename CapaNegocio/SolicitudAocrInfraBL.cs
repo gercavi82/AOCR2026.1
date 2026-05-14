@@ -16,6 +16,7 @@ namespace CapaNegocio
     public class SolicitudAocrInfraBL
     {
         private readonly InspeccionDAO _inspeccionDao = new InspeccionDAO();
+        private readonly DocumentoDAO _documentoDao = new DocumentoDAO();
         private readonly HistorialEstadoDAO _historialEstadoDao = new HistorialEstadoDAO();
         private readonly RevisionDocumentalDAO _revisionDocumentalDao = new RevisionDocumentalDAO();
         private readonly UsuarioInternoRTDAO _usuarioInternoRtDao = new UsuarioInternoRTDAO();
@@ -74,6 +75,83 @@ namespace CapaNegocio
                    ?? new Dictionary<int, RevisionDocumentalDetalle>();
         }
 
+        public EstadoRevisionDocumental ObtenerEstadoRevisionDocumental(int codigoSolicitud)
+        {
+            var estado = new EstadoRevisionDocumental
+            {
+                CodigoSolicitud = codigoSolicitud
+            };
+
+            if (codigoSolicitud <= 0)
+            {
+                estado.TienePendientes = true;
+                estado.MensajeBloqueoDocumental = "No se puede continuar porque la solicitud documental no es válida.";
+                return estado;
+            }
+
+            var documentos = (_documentoDao.ObtenerPorSolicitud(codigoSolicitud) ?? new List<Documento>())
+                .Where(d => d != null && d.CodigoDocumento > 0)
+                .GroupBy(ObtenerClaveDocumentoRevision, StringComparer.OrdinalIgnoreCase)
+                .Select(g => g
+                    .OrderByDescending(d => d.Version ?? 0)
+                    .ThenByDescending(d => d.FechaCarga ?? DateTime.MinValue)
+                    .ThenByDescending(d => d.CodigoDocumento)
+                    .First())
+                .ToList();
+
+            var revisiones = ObtenerUltimasRevisionesPorSolicitud(codigoSolicitud);
+            estado.TotalDocumentosVigentes = documentos.Count;
+
+            foreach (var documento in documentos)
+            {
+                var decision = ObtenerDecisionRevisionDocumental(documento, revisiones);
+                var estadoDocumento = NormalizarEstadoDocumento(documento.Estado);
+
+                if (decision == "ACEPTADO")
+                {
+                    estado.DocumentosAceptados++;
+                    continue;
+                }
+
+                if (decision == "OBSERVADO" || decision == "DEVUELTO")
+                {
+                    estado.DocumentosObservadosDevueltos++;
+                    continue;
+                }
+
+                if (decision == "SUBSANADO" || decision == "PENDIENTE_REVISION_SUBSANACION"
+                    || estadoDocumento == "SUBSANADO" || estadoDocumento == "PENDIENTE_REVISION_SUBSANACION")
+                {
+                    estado.DocumentosSubsanadosPendientes++;
+                    continue;
+                }
+
+                estado.DocumentosPendientesRevision++;
+            }
+
+            estado.TieneDocumentosObservados = estado.DocumentosObservadosDevueltos > 0;
+            estado.TieneDocumentosSubsanadosPendientes = estado.DocumentosSubsanadosPendientes > 0;
+            estado.TienePendientes = estado.DocumentosPendientesRevision > 0
+                || estado.TieneDocumentosObservados
+                || estado.TieneDocumentosSubsanadosPendientes;
+            estado.DocumentacionAprobada = estado.TotalDocumentosVigentes > 0 && !estado.TienePendientes;
+            estado.MensajeBloqueoDocumental = estado.TienePendientes
+                ? "No se puede continuar porque existen documentos observados o subsanados pendientes de revisión documental."
+                : string.Empty;
+
+            return estado;
+        }
+
+        public bool TieneDocumentacionPendienteOSubsanacion(int codigoSolicitud)
+        {
+            return ObtenerEstadoRevisionDocumental(codigoSolicitud).TienePendientes;
+        }
+
+        public bool TodosDocumentosAceptados(int codigoSolicitud)
+        {
+            return ObtenerEstadoRevisionDocumental(codigoSolicitud).DocumentacionAprobada;
+        }
+
         public bool RegistrarRevisionDocumental(int codigoSolicitud, int codigoDocumento, string decision, string observacion, int usuarioId, string usuarioRegistro)
         {
             return _revisionDocumentalDao.RegistrarRevision(codigoSolicitud, codigoDocumento, decision, observacion, usuarioId, usuarioRegistro);
@@ -88,6 +166,99 @@ namespace CapaNegocio
         {
             return _revisionDocumentalDao.ObtenerDocumentosConEventoHistorial(codigoSolicitud, tipoEvento)
                    ?? new HashSet<int>();
+        }
+
+        private static string ObtenerClaveDocumentoRevision(Documento documento)
+        {
+            if (documento == null)
+            {
+                return string.Empty;
+            }
+
+            var tipoDocumento = (documento.TipoDocumento ?? string.Empty).Trim();
+            return !string.IsNullOrWhiteSpace(tipoDocumento)
+                ? tipoDocumento.ToUpperInvariant()
+                : "__DOC_" + documento.CodigoDocumento;
+        }
+
+        private static string ObtenerDecisionRevisionDocumental(Documento documento, IDictionary<int, Tuple<string, string>> revisiones)
+        {
+            if (documento == null)
+            {
+                return string.Empty;
+            }
+
+            Tuple<string, string> revisionActual;
+            if (revisiones != null &&
+                revisiones.TryGetValue(documento.CodigoDocumento, out revisionActual) &&
+                revisionActual != null &&
+                !string.IsNullOrWhiteSpace(revisionActual.Item1))
+            {
+                return NormalizarDecisionRevisionDocumental(revisionActual.Item1);
+            }
+
+            var estadoDocumento = NormalizarEstadoDocumento(documento.Estado);
+            if (estadoDocumento == "APROBADO" || estadoDocumento == "VALIDADO" || estadoDocumento == "ACEPTADO")
+            {
+                return "ACEPTADO";
+            }
+
+            if (estadoDocumento == "OBSERVADO")
+            {
+                return "OBSERVADO";
+            }
+
+            if (estadoDocumento == "RECHAZADO" || estadoDocumento == "DEVUELTO")
+            {
+                return "DEVUELTO";
+            }
+
+            if (estadoDocumento == "SUBSANADO" || estadoDocumento == "PENDIENTE_REVISION_SUBSANACION")
+            {
+                return estadoDocumento;
+            }
+
+            return string.Empty;
+        }
+
+        private static string NormalizarDecisionRevisionDocumental(string decision)
+        {
+            var normalized = (decision ?? string.Empty).Trim().ToUpperInvariant();
+            switch (normalized)
+            {
+                case "ACEPTADO":
+                case "APROBADO":
+                case "VALIDADO":
+                    return "ACEPTADO";
+                case "RECHAZADO":
+                case "DEVUELTO":
+                    return "DEVUELTO";
+                case "OBSERVADO":
+                case "MODIFICACION_SOLICITADA":
+                case "MODIFICACION SOLICITADA":
+                case "SOLICITAR_MODIFICACION":
+                    return "OBSERVADO";
+                case "SUBSANADO":
+                case "PENDIENTE_REVISION_SUBSANACION":
+                    return normalized;
+                default:
+                    return normalized;
+            }
+        }
+
+        private static string NormalizarEstadoDocumento(string estado)
+        {
+            var normalized = (estado ?? string.Empty).Trim().ToUpperInvariant();
+            switch (normalized)
+            {
+                case "APROBADO":
+                case "VALIDADO":
+                    return "ACEPTADO";
+                case "RECHAZADO":
+                    return "DEVUELTO";
+                default:
+                    return normalized;
+            }
         }
 
         public AsignacionRTRegistro ObtenerAsignacionActiva(int codigoSolicitud)

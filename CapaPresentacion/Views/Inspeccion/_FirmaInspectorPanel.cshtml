@@ -31,10 +31,11 @@
         case "BORRADOR": estadoLabel = "Borrador"; estadoClass = ""; break;
         case "GENERADO": estadoLabel = "PDF generado"; estadoClass = "info"; break;
         case "FIRMADO_INSPECTOR": estadoLabel = "Firmado por inspector"; estadoClass = "ok"; break;
-        case "ENVIADO_A_COORDINADOR": estadoLabel = "En revisión · Coordinación"; estadoClass = "info"; break;
+        case "PENDIENTE_REVISION_DIRDAC": estadoLabel = "Pendiente revisión · DIRDAC"; estadoClass = "warn"; break;
+        case "ENVIADO_A_COORDINADOR": estadoLabel = "En revisión · Coordinación (legado)"; estadoClass = "info"; break;
         case "ENVIADO_A_DIRDAC": estadoLabel = "En revisión · DIRDAC"; estadoClass = "warn"; break;
-        case "APROBADO_COORDINADOR": estadoLabel = "Aprobado por Coordinación"; estadoClass = "ok"; break;
-        case "APROBADO_DIRECCION": estadoLabel = "Aprobado por Dirección"; estadoClass = "ok"; break;
+        case "APROBADO_COORDINADOR": estadoLabel = "Aprobado por Coordinación (legado)"; estadoClass = "ok"; break;
+        case "APROBADO_DIRECCION": estadoLabel = "Decisión final registrada"; estadoClass = "ok"; break;
         case "DEVUELTO_COORDINADOR": estadoLabel = "Devuelto · Coordinación"; estadoClass = "danger"; break;
         case "DEVUELTO_DIRECCION":
         case "RECHAZADO_DIRDAC": estadoLabel = "Devuelto · Dirección"; estadoClass = "danger"; break;
@@ -44,19 +45,13 @@
 
     // Cálculo de pasos
     var pasoGenerado = informeTecnico != null && informeTecnico.Finalizado && !string.IsNullOrWhiteSpace(informeTecnico.RutaPdf);
-    var pasoDirdac = !usaFlujoListaVerificacionEae && (informeEnviadoADirdac || informeAprobadoDireccion || informeDevueltoDireccion);
-    var pasoCoord = usaFlujoListaVerificacionEae
-        ? pasoGenerado
-        : (informeEnviadoACoordinador
-            || string.Equals(estadoInformeTecnico, "APROBADO_COORDINADOR", StringComparison.OrdinalIgnoreCase)
-            || informeDevueltoCoordinador
-            || string.Equals(estadoInformeTecnico, "FIRMADO_FINAL", StringComparison.OrdinalIgnoreCase)
-            || (informeTecnico != null && informeTecnico.FirmadoInspector));
     var pasoFirmado = informeTecnico != null && informeTecnico.FirmadoInspector;
+    var pasoDirdac = informeEnviadoADirdac || informeAprobadoDireccion || informeDevueltoDireccion;
+    var pasoDecisionFinal = informeAprobadoDireccion || informeDevueltoDireccion;
     var pasoActivo1 = !pasoGenerado;
-    var pasoActivo2 = pasoGenerado && !pasoDirdac;
-    var pasoActivo3 = pasoDirdac && !pasoCoord;
-    var pasoActivo4 = pasoCoord && !pasoFirmado;
+    var pasoActivo2 = pasoGenerado && !pasoFirmado;
+    var pasoActivo3 = pasoFirmado && !pasoDirdac;
+    var pasoActivo4 = pasoDirdac && !pasoDecisionFinal;
 }
 
 @if (codigoInspeccion <= 0)
@@ -78,7 +73,7 @@ else if (informeTecnico != null)
                     Versión <strong>@informeTecnico.Version</strong> · Inspección #@codigoInspeccion
                     @if (usaFlujoListaVerificacionEae)
                     {
-                        <text> · Flujo directo EAE sin Coordinación ni DIRDAC</text>
+                        <text> · Flujo EAE con revisión final DIRDAC</text>
                     }
                 </p>
             </div>
@@ -98,24 +93,15 @@ else if (informeTecnico != null)
             <div class="it-step @(pasoGenerado ? "done" : (pasoActivo1 ? "active" : ""))">
                 <span class="n">1</span> PDF generado
             </div>
-            @if (usaFlujoListaVerificacionEae)
-            {
-                <div class="it-step @(pasoFirmado ? "done" : (pasoActivo2 ? "active" : ""))">
-                    <span class="n">2</span> Firma final inspector
-                </div>
-            }
-            else
-            {
-                <div class="it-step @(pasoDirdac ? "done" : (pasoActivo2 ? "active" : ""))">
-                    <span class="n">2</span> Revisión DIRDAC
-                </div>
-                <div class="it-step @(pasoCoord ? "done" : (pasoActivo3 ? "active" : ""))">
-                    <span class="n">3</span> Aprobación Coord.
-                </div>
-                <div class="it-step @(pasoFirmado ? "done" : (pasoActivo4 ? "active" : ""))">
-                    <span class="n">4</span> Firma final
-                </div>
-            }
+            <div class="it-step @(pasoFirmado ? "done" : (pasoActivo2 ? "active" : ""))">
+                <span class="n">2</span> Firma inspector
+            </div>
+            <div class="it-step @(pasoDirdac ? "done" : (pasoActivo3 ? "active" : ""))">
+                <span class="n">3</span> Revisión DIRDAC
+            </div>
+            <div class="it-step @(pasoDecisionFinal ? "done" : (pasoActivo4 ? "active" : ""))">
+                <span class="n">4</span> Decisión final / RT
+            </div>
         </div>
     </div>
 
@@ -145,7 +131,8 @@ else if (informeTecnico != null)
             @using (Html.BeginForm("FirmarInformeInspector", "Inspeccion", FormMethod.Post, new { enctype = "multipart/form-data", id = "frmFirmaInspector" }))
             {
                 @Html.AntiForgeryToken()
-                @Html.Hidden("id", codigoInspeccion)
+                <input type="hidden" name="id" value="@codigoInspeccion" />
+                <input type="hidden" name="codigoInspeccion" value="@codigoInspeccion" />
 
                 <div class="it-field">
                     <label for="fileCertInspector">Certificado digital (.p12 / .pfx)</label>
@@ -203,15 +190,15 @@ else if (informeTecnico != null)
                     <strong>Falta finalizar el informe.</strong> Complete y finalice el informe técnico para generar el PDF; después podrá firmarlo digitalmente.
                 </div>
             }
-            else if (!usaFlujoListaVerificacionEae && (informeEnviadoADirdac || informeEnviadoACoordinador))
+            else if (informeEnviadoADirdac)
             {
                 <i class="fas fa-hourglass-half"></i>
-                <div>La firma digital se habilita luego de la revisión de DIRDAC y la aprobación de Coordinación.</div>
+                <div>El informe ya fue firmado por el inspector y se encuentra en revisión de DIRDAC / Dirección - Jefatura.</div>
             }
             else if (usaFlujoListaVerificacionEae)
             {
                 <i class="fas fa-info-circle"></i>
-                <div>En el flujo EAE la firma del inspector queda disponible apenas el PDF del informe ha sido generado.</div>
+                <div>En el flujo EAE la firma del inspector queda disponible cuando el PDF del informe ya fue generado y la LV/EAE está firmada. Después, el documento pasa a DIRDAC.</div>
             }
             else
             {
@@ -225,7 +212,7 @@ else if (informeTecnico != null)
             using (Html.BeginForm("FinalizarInformeTecnico", "Inspeccion", FormMethod.Post, new { @class = "mb-2" }))
             {
                 @Html.AntiForgeryToken()
-                @Html.Hidden("id", codigoInspeccion)
+                <input type="hidden" name="id" value="@codigoInspeccion" />
                 <button type="submit" class="it-btn primary">
                     <i class="fas fa-file-pdf"></i> Finalizar informe y generar PDF
                 </button>
@@ -234,7 +221,7 @@ else if (informeTecnico != null)
     }
 
     @* ── Enviar a DIRDAC ── *@
-    if (!usaFlujoListaVerificacionEae && (puedeEnviarADirdac || puedeReintentarNotificacionDirdac))
+    if (puedeEnviarADirdac || puedeReintentarNotificacionDirdac)
     {
         <div class="it-panel" style="padding: 14px 16px;">
             @if (puedeReintentarNotificacionDirdac)
@@ -253,7 +240,7 @@ else if (informeTecnico != null)
             @using (Html.BeginForm("EnviarADirdac", "Inspeccion", FormMethod.Post))
             {
                 @Html.AntiForgeryToken()
-                @Html.Hidden("id", codigoInspeccion)
+                <input type="hidden" name="id" value="@codigoInspeccion" />
                 <button type="submit" class="it-btn primary full">
                     <i class="fas fa-@(puedeReintentarNotificacionDirdac ? "redo" : "paper-plane")"></i>
                     @(puedeReintentarNotificacionDirdac ? "Reintentar notificación DIRDAC" : "Enviar a DIRDAC")
@@ -263,14 +250,14 @@ else if (informeTecnico != null)
     }
 
     @* ── Timeline de estados informativos ── *@
-    if (!usaFlujoListaVerificacionEae && informeEnviadoACoordinador)
+    if (informeEnviadoACoordinador)
     {
         <div class="it-alert info">
             <i class="fas fa-user-check"></i>
-            <div><strong>Informe en Coordinación.</strong> Coordinación revisará el documento y podrá aprobarlo o devolverlo con observaciones.</div>
+            <div><strong>Informe en Coordinación (legado).</strong> Este estado pertenece al flujo anterior y solo se mantiene para expedientes ya encaminados.</div>
         </div>
     }
-    else if (!usaFlujoListaVerificacionEae && informeEnviadoADirdac && !informeAprobadoDireccion)
+    else if (informeEnviadoADirdac && !informeAprobadoDireccion)
     {
         <div class="it-alert warn">
             <i class="fas fa-paper-plane"></i>
@@ -287,14 +274,14 @@ else if (informeTecnico != null)
     {
         <div class="it-alert success">
             <i class="fas fa-pen-nib"></i>
-            <div><strong>Aprobado por Coordinación.</strong> La revisión institucional concluyó; ahora corresponde la firma final del inspector.</div>
+            <div><strong>Aprobado por Coordinación (legado).</strong> Este estado solo se conserva para expedientes del flujo anterior.</div>
         </div>
     }
     else if (informeAprobadoDireccion && informeTecnico.FirmadoInspector)
     {
         <div class="it-alert success">
             <i class="fas fa-check-double"></i>
-            <div><strong>Informe finalizado.</strong> El informe técnico ya fue firmado por el inspector y pasó a la activación AOCR.</div>
+            <div><strong>Informe finalizado.</strong> La decisión institucional final ya fue registrada@(informeTecnico.NotificadoRt ? " y la notificación al RT fue encolada." : ".");</div>
         </div>
     }
 

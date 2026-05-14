@@ -495,28 +495,16 @@
         return host;
     }
 
-    document.addEventListener('click', function (event) {
-        var trigger = event.target.closest('.aocr-btn-informe-tecnico');
-        if (!trigger) {
-            return;
-        }
-
-        event.preventDefault();
-
-        if (trigger.disabled) {
-            return;
-        }
-
-        var url = trigger.getAttribute('data-url') || '';
+    function openInformeTecnicoModal(url) {
         if (!url) {
             notify('error', 'No se encontró la ruta del Informe Técnico.');
-            return;
+            return Promise.resolve(false);
         }
 
         var host = ensureHost();
         host.innerHTML = '<div class="aocr-loading-modal p-4 text-center text-muted">Cargando Informe Técnico...</div>';
 
-        fetch(url, {
+        return fetch(url, {
             method: 'GET',
             credentials: 'same-origin',
             headers: { 'X-Requested-With': 'XMLHttpRequest' }
@@ -544,7 +532,7 @@
         })
         .then(function (html) {
             if (!html) {
-                return;
+                return false;
             }
 
             if (typeof html !== 'string') {
@@ -562,11 +550,34 @@
             if (window.bootstrap && window.bootstrap.Modal) {
                 window.bootstrap.Modal.getOrCreateInstance(modal).show();
             }
+
+            return true;
         })
         .catch(function (error) {
             host.innerHTML = '';
             notify('error', error && error.message ? error.message : 'No se pudo cargar el Informe Técnico.');
+            return false;
         });
+    }
+
+    window.AOCRInformeTecnicoModal = {
+        open: openInformeTecnicoModal
+    };
+
+    document.addEventListener('click', function (event) {
+        var trigger = event.target.closest('.aocr-btn-informe-tecnico');
+        if (!trigger) {
+            return;
+        }
+
+        event.preventDefault();
+
+        if (trigger.disabled) {
+            return;
+        }
+
+        var url = trigger.getAttribute('data-url') || '';
+        openInformeTecnicoModal(url);
     });
 
     document.addEventListener('hidden.bs.modal', function (event) {

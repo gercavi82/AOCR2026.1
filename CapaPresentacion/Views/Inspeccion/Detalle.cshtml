@@ -24,6 +24,7 @@
     var historialLista = historialEstados != null ? historialEstados.ToList() : new List<InspeccionHistorialEstado>();
     var informeTecnico = ViewBag.InformeTecnico as InspeccionInformeTecnico;
     var documentosSolicitante = ViewBag.DocumentosSolicitante as IEnumerable<DocumentoInspeccion>;
+    var estadoRevisionDocumental = ViewBag.EstadoRevisionDocumental as EstadoRevisionDocumental ?? new EstadoRevisionDocumental();
     var documentosLista = documentosSolicitante != null ? documentosSolicitante.ToList() : new List<DocumentoInspeccion>();
     var documentoSolicitanteBase = documentosLista.OrderByDescending(d => d.CodigoDocumento).FirstOrDefault();
     var solicitud = ViewBag.Solicitud as SolicitudAOCR;
@@ -114,15 +115,17 @@
     var esAdministrador = usuarioTieneRol("Administrador");
     var esInspector = usuarioTieneRol("Inspector");
     var estadoDocumentalNormalizado = (estadoDocumental ?? string.Empty).Trim().ToUpperInvariant();
-    var revisionDocumentalInspectorConfirmada =
+    var revisionDocumentalBaseConfirmada =
         string.Equals(estadoDocumentalNormalizado, "EN_REVISION", System.StringComparison.OrdinalIgnoreCase)
         || string.Equals(estadoDocumentalNormalizado, "ACEPTADA", System.StringComparison.OrdinalIgnoreCase)
-        || string.Equals(estadoDocumentalNormalizado, "OBSERVACION_DOCUMENTAL", System.StringComparison.OrdinalIgnoreCase)
-        || string.Equals(estadoDocumentalNormalizado, "OBSERVADO", System.StringComparison.OrdinalIgnoreCase)
         || string.Equals(estadoDocumentalNormalizado, "APROBADO", System.StringComparison.OrdinalIgnoreCase);
+    var revisionDocumentalInspectorConfirmada = revisionDocumentalBaseConfirmada
+        && (estadoRevisionDocumental.TotalDocumentosVigentes == 0 || estadoRevisionDocumental.DocumentacionAprobada);
     var inspectorDebeRevisarDocumentos = (esInspector || esAdministrador) && !revisionDocumentalInspectorConfirmada;
     var mensajeBloqueoRevisionDocumentalInspector = inspectorDebeRevisarDocumentos
-        ? "Antes de ejecutar acciones del inspector debe revisar los documentos de la solicitud y confirmar esa revision documental."
+        ? (!string.IsNullOrWhiteSpace(estadoRevisionDocumental.MensajeBloqueoDocumental)
+            ? estadoRevisionDocumental.MensajeBloqueoDocumental
+            : "No se puede continuar porque existen documentos observados o subsanados pendientes de revision documental.")
         : string.Empty;
     var esCoordinadorRevision = esAdministrador || usuarioTieneAlgunRol(new[] { "CoordinadorInspecciones", "Coordinador" });
     var puedeGestionarCoordinacion = esAdministrador || usuarioTieneAlgunRol(rolesCoordinacionJefatura);
@@ -163,7 +166,7 @@
     var puedeEditarInformeTecnico = (esInspector || esAdministrador) && !inspectorDebeRevisarDocumentos;
     var puedeSubirCorreccionSolicitante = User.IsInRole("Solicitante") || User.IsInRole("Administrador");
     var esSolicitante = User.IsInRole("Solicitante");
-    var esDirdac = esAdministrador || usuarioTieneAlgunRol(new[] { "DIRDAC", "Direccion", "Director", "JefaturaTecnica", "Jefe" });
+    var esDirdac = usuarioTieneAlgunRol(new[] { "DIRDAC", "Direccion", "DirectorGeneral", "Director", "JefaturaTecnica", "Jefe" });
     var puedeAbrirModalInformeTecnico = puedeEditarInformeTecnico || esCoordinadorRevision || esDirdac;
     var estadoInformeTecnico = informeTecnico != null && !string.IsNullOrWhiteSpace(informeTecnico.EstadoInforme)
         ? informeTecnico.EstadoInforme
@@ -188,28 +191,47 @@
     var urlDocumentosSolicitud = Model != null && Model.CodigoSolicitud > 0
         ? Url.Action("Lista", "Documento", new { solicitudId = Model.CodigoSolicitud })
         : string.Empty;
+    var autoOpenLvFlow = Request != null && Request.QueryString != null
+        ? (Request.QueryString["lvAutoFlow"] ?? string.Empty)
+        : string.Empty;
+    var autoOpenLvSignature = string.Equals(autoOpenLvFlow, "sign", System.StringComparison.OrdinalIgnoreCase);
+    var autoOpenInformeTecnico = string.Equals(
+        Request != null && Request.QueryString != null ? Request.QueryString["autoOpenInformeTecnico"] : null,
+        "true",
+        System.StringComparison.OrdinalIgnoreCase);
     var urlModalInformeTecnico = Model != null && Model.CodigoInspeccion > 0
         ? Url.Action("ModalInformeTecnico", "Inspeccion", new { codigoInspeccion = Model.CodigoInspeccion })
         : string.Empty;
-    var informeTecnicoModalHabilitado = !usaFlujoListaVerificacionOperacionalEae || listaVerificacionFinalizada;
-    var mensajeBloqueoInformeTecnico = usaFlujoListaVerificacionOperacionalEae && !listaVerificacionFinalizada
-        ? "Debe finalizar la Lista de Verificacion Operacional LV/EAE antes de elaborar el Informe Tecnico."
-        : string.Empty;
-    var abrirModalListaVerificacionAlCargar = !string.IsNullOrWhiteSpace(mensajeBloqueoInformeTecnico);
-    var mostrarPanelVistaPrevia = (!usaFlujoListaVerificacionOperacionalEae || listaVerificacionFinalizada || tieneInforme)
+    var puedeAbrirLvEae = revisionDocumentalInspectorConfirmada && !estadoRevisionDocumental.TienePendientes;
+    var mensajeBloqueoLvEae = puedeAbrirLvEae
+        ? string.Empty
+        : (!string.IsNullOrWhiteSpace(estadoRevisionDocumental.MensajeBloqueoDocumental)
+            ? estadoRevisionDocumental.MensajeBloqueoDocumental
+            : "Debe completar la revision documental y aceptar los documentos subsanados antes de iniciar la LV/EAE.");
+    var informeTecnicoModalHabilitado = puedeAbrirLvEae && (!usaFlujoListaVerificacionOperacionalEae || listaVerificacionFirmada);
+    var mensajeBloqueoInformeTecnico = !puedeAbrirLvEae
+        ? "No se puede elaborar el Informe Tecnico hasta que la documentacion observada haya sido subsanada y aceptada."
+        : (usaFlujoListaVerificacionOperacionalEae && !listaVerificacionFirmada
+            ? (listaVerificacionFinalizada
+                ? "Debe firmar la Lista de Verificacion Operacional LV/EAE antes de elaborar el Informe Tecnico."
+                : "Debe finalizar y firmar la Lista de Verificacion Operacional LV/EAE antes de elaborar el Informe Tecnico.")
+            : string.Empty);
+    var abrirModalListaVerificacionAlCargar = autoOpenLvSignature
+        || (!string.IsNullOrWhiteSpace(mensajeBloqueoInformeTecnico) && !listaVerificacionFinalizada);
+    var mostrarPanelVistaPrevia = (!usaFlujoListaVerificacionOperacionalEae || listaVerificacionFirmada || tieneInforme)
         && (tieneInforme || puedeEditarInformeTecnico);
     var copyVistaPrevia = !string.IsNullOrWhiteSpace(mensajeBloqueoInformeTecnico) && !tieneInforme
-        ? "El informe tecnico quedara disponible cuando la LV/EAE este finalizada."
+        ? "El informe tecnico quedara disponible cuando la LV/EAE este finalizada y firmada."
         : (tieneInforme
             ? "Consulte el PDF consolidado debajo del flujo BPMN antes de continuar con la revision o firma."
             : "La vista previa del borrador se actualizara automaticamente mientras completa o corrige el informe tecnico.");
     var rutaVistaPreviaTexto = !string.IsNullOrWhiteSpace(mensajeBloqueoInformeTecnico) && !tieneInforme
-        ? "El flujo del informe tecnico esta bloqueado por la LV/EAE hasta que la lista quede finalizada."
+        ? "El flujo del informe tecnico esta bloqueado por la LV/EAE hasta que la lista quede finalizada y firmada."
         : (tieneInforme
             ? rutaInformeVisual
             : "La vista previa automatica aparecera aqui cuando empiece a ingresar o actualizar la informacion del informe.");
     var ayudaViewer = !string.IsNullOrWhiteSpace(mensajeBloqueoInformeTecnico) && !tieneInforme
-        ? "La vista del informe tecnico se habilitara cuando la lista operacional EAE este finalizada."
+        ? "La vista del informe tecnico se habilitara cuando la lista operacional EAE este finalizada y firmada."
         : (tieneInforme
             ? "Documento definitivo disponible para revision y firma."
             : "La vista previa automatica se actualizara mientras edita el informe tecnico.");
@@ -220,10 +242,7 @@
         && informeTecnico != null
         && informeTecnico.Finalizado
         && !informeTecnico.FirmadoInspector
-        && (usaFlujoListaVerificacionOperacionalEae
-            ? listaVerificacionFirmada
-            : (string.Equals(estadoInformeTecnico, "APROBADO_COORDINADOR", System.StringComparison.OrdinalIgnoreCase)
-                || string.Equals(estadoInformeTecnico, "APROBADO_DIRECCION", System.StringComparison.OrdinalIgnoreCase)));
+        && listaVerificacionFirmada;
     var informeEnviadoADirdac = informeTecnico != null && string.Equals(estadoInformeTecnico, "ENVIADO_A_DIRDAC", System.StringComparison.OrdinalIgnoreCase);
     var informeEnviadoACoordinador = informeTecnico != null && string.Equals(estadoInformeTecnico, "ENVIADO_A_COORDINADOR", System.StringComparison.OrdinalIgnoreCase);
     var informeDevueltoCoordinador = informeTecnico != null && string.Equals(estadoInformeTecnico, "DEVUELTO_COORDINADOR", System.StringComparison.OrdinalIgnoreCase);
@@ -234,29 +253,9 @@
         && (string.Equals(estadoInformeTecnico, "APROBADO_COORDINADOR", System.StringComparison.OrdinalIgnoreCase)
             || string.Equals(estadoInformeTecnico, "APROBADO_DIRECCION", System.StringComparison.OrdinalIgnoreCase)
             || string.Equals(estadoInformeTecnico, "FIRMADO_FINAL", System.StringComparison.OrdinalIgnoreCase)
+            || informeTecnico.NotificadoRt
             || informeTecnico.FirmadoDirdac);
     var notificacionFormalDirdac = informeTecnico != null && informeEnviadoADirdac && informeTecnico.CorreoEnviado;
-    var puedeEnviarADirdac = !usaFlujoListaVerificacionOperacionalEae
-        && puedeEditarInformeTecnico
-        && informeTecnico != null
-        && informeTecnico.Finalizado
-        && !informeTecnico.FirmadoInspector
-        && !informeEnviadoADirdac
-        && !informeEnviadoACoordinador
-        && !informeAprobadoDireccion;
-    var puedeReintentarNotificacionDirdac = !usaFlujoListaVerificacionOperacionalEae
-        && (puedeGestionarCoordinacion || esAdministrador)
-        && informeTecnico != null
-        && informeTecnico.Finalizado
-        && !informeTecnico.FirmadoInspector
-        && informeEnviadoADirdac
-        && !notificacionFormalDirdac
-        && !informeAprobadoDireccion;
-    var puedeFirmarDirdac = !usaFlujoListaVerificacionOperacionalEae
-        && esDirdac
-        && informeTecnico != null
-        && !informeAprobadoDireccion
-        && string.Equals(estadoInformeTecnico, "ENVIADO_A_DIRDAC", System.StringComparison.OrdinalIgnoreCase);
     var correoSolicitante = solicitud != null && !string.IsNullOrWhiteSpace(solicitud.CorreoRepresentanteTecnico)
         ? solicitud.CorreoRepresentanteTecnico
         : (solicitud != null ? solicitud.Email : "-");
@@ -386,7 +385,7 @@
     var estadoFirmaInspectorResumen = informeTecnico != null && informeTecnico.FirmadoInspector
         ? "La firma del inspector ya consta en el documento."
         : (puedeFirmarInspector
-            ? "La firma digital ya esta habilitada en el panel inferior."
+            ? "La firma digital ya esta disponible dentro de la ventana flotante del informe tecnico."
             : (usaFlujoListaVerificacionOperacionalEae && !listaVerificacionFirmada
                 ? "La firma se habilitara cuando la LV/EAE quede firmada."
                 : "La firma se habilitara cuando el flujo documental quede listo."));
@@ -566,6 +565,7 @@
             border-radius: 16px;
             background: rgba(255, 255, 255, 0.08);
             border: 1px solid rgba(255, 255, 255, 0.1);
+            min-width: 0;
         }
 
         .inspection-detail-page .hero-pill-item span {
@@ -574,12 +574,16 @@
             font-weight: 800;
             letter-spacing: 0.03em;
             text-transform: uppercase;
+            min-width: 0;
         }
 
         .inspection-detail-page .hero-pill-item strong {
             color: #fff;
             font-size: 0.9rem;
             text-align: right;
+            min-width: 0;
+            overflow-wrap: anywhere;
+            word-break: break-word;
         }
 
         .inspection-detail-page .hero-metric {
@@ -604,6 +608,8 @@
             font-size: 1rem;
             font-weight: 800;
             color: #fff;
+            overflow-wrap: anywhere;
+            word-break: break-word;
         }
 
         .inspection-detail-page .inspection-doc-note {
@@ -707,14 +713,8 @@
             gap: 1rem;
             margin-top: 1.25rem;
         }
-
         .inspection-detail-page .status-strip.status-strip-wide {
             grid-template-columns: repeat(6, minmax(0, 1fr));
-        }
-
-        .inspection-detail-page .status-tile.highlight {
-            background: linear-gradient(180deg, #f2f8fc 0%, #ffffff 100%);
-            border-color: rgba(27, 79, 114, 0.18);
         }
 
         .inspection-detail-page .status-tile {
@@ -723,8 +723,43 @@
             border-radius: 20px;
             padding: 1rem;
             box-shadow: 0 10px 24px rgba(15, 45, 64, 0.05);
+            min-width: 0;
+        }
+
+        .inspection-detail-page .status-tile small {
+            display: block;
+            margin-bottom: 0.22rem;
+            color: var(--inspection-muted);
+            font-size: 0.68rem;
+            font-weight: 800;
+            letter-spacing: 0.04em;
+            text-transform: uppercase;
+        }
+
+        .inspection-detail-page .status-tile strong {
+            display: block;
+            color: var(--inspection-primary-dark);
+            font-size: 0.96rem;
+            font-weight: 800;
+            line-height: 1.35;
+            overflow-wrap: anywhere;
+            word-break: break-word;
+        }
+
+        .inspection-detail-page .status-tile.highlight {
+            background: linear-gradient(180deg, #f2f8fc 0%, #ffffff 100%);
+            border-color: rgba(27, 79, 114, 0.18);
+        }
+
+        .inspection-detail-page .info-panel-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 1rem;
+        }
+
         .inspection-detail-page .info-panel {
             height: 100%;
+            min-width: 0;
             padding: 0.95rem;
             border-radius: 22px;
             border: 1px solid rgba(27, 79, 114, 0.12);
@@ -795,6 +830,7 @@
             border-radius: 18px;
             padding: 1rem 1.1rem;
             background: #fff;
+            min-width: 0;
         }
 
         .inspection-detail-page .detail-label {
@@ -2048,6 +2084,11 @@
     return;
 }
 
+<div id="aocrLvEaeAutoFlowState"
+     class="d-none"
+     data-auto-open-informe="@(autoOpenInformeTecnico ? "true" : "false")"
+     data-informe-url="@urlModalInformeTecnico"></div>
+
 <div class="inspection-detail-page">
     <div class="inspection-shell">
         <div class="card section-card soft-card mobile-summary-card d-md-none">
@@ -2496,7 +2537,7 @@
                                         using (Html.BeginForm("CambiarEstado", "Inspeccion", FormMethod.Post))
                                         {
                                             @Html.AntiForgeryToken()
-                                            @Html.Hidden("id", Model.CodigoInspeccion)
+                                            <input type="hidden" name="id" value="@Model.CodigoInspeccion" />
                                             @Html.Hidden("estado", EstadosInspeccion.VERIFICACION_SOLICITUD)
                                             <button type="submit" class="btn btn-outline-primary">Verificacion</button>
                                         }
@@ -2506,7 +2547,7 @@
                                         using (Html.BeginForm("CambiarEstado", "Inspeccion", FormMethod.Post))
                                         {
                                             @Html.AntiForgeryToken()
-                                            @Html.Hidden("id", Model.CodigoInspeccion)
+                                            <input type="hidden" name="id" value="@Model.CodigoInspeccion" />
                                             @Html.Hidden("estado", EstadosInspeccion.ACEPTADA)
                                             <button type="submit" class="btn btn-outline-success">Aceptar solicitud</button>
                                         }
@@ -2516,7 +2557,7 @@
                                         using (Html.BeginForm("CambiarEstado", "Inspeccion", FormMethod.Post))
                                         {
                                             @Html.AntiForgeryToken()
-                                            @Html.Hidden("id", Model.CodigoInspeccion)
+                                            <input type="hidden" name="id" value="@Model.CodigoInspeccion" />
                                             @Html.Hidden("estado", EstadosInspeccion.OBSERVADA)
                                             <button type="submit" class="btn btn-outline-danger">Observar</button>
                                         }
@@ -2526,7 +2567,7 @@
                                         using (Html.BeginForm("CambiarEstado", "Inspeccion", FormMethod.Post))
                                         {
                                             @Html.AntiForgeryToken()
-                                            @Html.Hidden("id", Model.CodigoInspeccion)
+                                            <input type="hidden" name="id" value="@Model.CodigoInspeccion" />
                                             @Html.Hidden("estado", EstadosInspeccion.SUBSANADA)
                                             <button type="submit" class="btn btn-outline-warning">Subsanada</button>
                                         }
@@ -2536,7 +2577,7 @@
                                         using (Html.BeginForm("CambiarEstado", "Inspeccion", FormMethod.Post))
                                         {
                                             @Html.AntiForgeryToken()
-                                            @Html.Hidden("id", Model.CodigoInspeccion)
+                                            <input type="hidden" name="id" value="@Model.CodigoInspeccion" />
                                             @Html.Hidden("estado", EstadosInspeccion.CERRADA)
                                             <button type="submit" class="btn btn-outline-dark">Cerrar</button>
                                         }
@@ -2571,7 +2612,7 @@
                                             using (Html.BeginForm("CambiarEstado", "Inspeccion", FormMethod.Post))
                                             {
                                                 @Html.AntiForgeryToken()
-                                                @Html.Hidden("id", Model.CodigoInspeccion)
+                                                <input type="hidden" name="id" value="@Model.CodigoInspeccion" />
                                                 @Html.Hidden("estado", EstadosInspeccion.EN_INSPECCION)
                                                 <button type="submit" class="btn btn-outline-warning">Iniciar inspeccion</button>
                                             }
@@ -2581,7 +2622,7 @@
                                             using (Html.BeginForm("CambiarEstado", "Inspeccion", FormMethod.Post))
                                             {
                                                 @Html.AntiForgeryToken()
-                                                @Html.Hidden("id", Model.CodigoInspeccion)
+                                                <input type="hidden" name="id" value="@Model.CodigoInspeccion" />
                                                 @Html.Hidden("estado", EstadosInspeccion.INFORME_ELABORADO)
                                                 <button type="submit" class="btn btn-outline-info">Informe elaborado</button>
                                             }
@@ -2591,7 +2632,7 @@
                                             using (Html.BeginForm("CambiarEstado", "Inspeccion", FormMethod.Post))
                                             {
                                                 @Html.AntiForgeryToken()
-                                                @Html.Hidden("id", Model.CodigoInspeccion)
+                                                <input type="hidden" name="id" value="@Model.CodigoInspeccion" />
                                                 @Html.Hidden("estado", EstadosInspeccion.OBSERVACION_DOCUMENTAL)
                                                 <button type="submit" class="btn btn-outline-danger">Observacion documental</button>
                                             }
@@ -2660,8 +2701,13 @@
                         UrlVisualizacion = tieneListaVerificacionVisualizable ? listaVerificacionOperacionalEaeUrl : string.Empty,
                         UrlDescarga = tieneListaVerificacionVisualizable ? listaVerificacionOperacionalEaeDescargaUrl : string.Empty,
                         UrlDocumentosSolicitud = urlDocumentosSolicitud,
-                        MensajeBloqueoEdicion = inspectorDebeRevisarDocumentos ? mensajeBloqueoRevisionDocumentalInspector : string.Empty,
-                        PuedeConfirmarRevisionDocumental = inspectorDebeRevisarDocumentos && (esInspector || esAdministrador)
+                        MensajeBloqueoEdicion = !puedeAbrirLvEae ? mensajeBloqueoLvEae : string.Empty,
+                        PuedeConfirmarRevisionDocumental = inspectorDebeRevisarDocumentos && (esInspector || esAdministrador),
+                        TieneDocumentosObservados = estadoRevisionDocumental.TieneDocumentosObservados,
+                        TieneDocumentosSubsanadosPendientes = estadoRevisionDocumental.TieneDocumentosSubsanadosPendientes,
+                        DocumentacionAprobada = estadoRevisionDocumental.DocumentacionAprobada,
+                        PuedeAbrirLvEae = puedeAbrirLvEae,
+                        MensajeBloqueoDocumental = mensajeBloqueoLvEae
                     };
 
                     var estadoListaVentana = listaVerificacionFirmada
@@ -2700,16 +2746,35 @@
                                     <p class="section-copy mb-0 mt-2">@resumenListaVentana</p>
                                 </div>
                                 <div class="button-flow">
-                                    <button type="button" class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#modalListaVerificacionOperacionalEae">
-                                        <i class="fas fa-external-link-alt me-1"></i>
-                                        @(listaVerificacionFirmada ? "Abrir ventana LV" : "Completar LV en ventana")
-                                    </button>
+                                    @if (puedeAbrirLvEae)
+                                    {
+                                        <button type="button" class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#modalListaVerificacionOperacionalEae">
+                                            <i class="fas fa-external-link-alt me-1"></i>
+                                            @(listaVerificacionFirmada ? "Abrir ventana LV" : "Completar LV en ventana")
+                                        </button>
+                                    }
+                                    else
+                                    {
+                                        <span class="aocr-disabled-button-wrapper"
+                                              tabindex="0"
+                                              data-bs-toggle="tooltip"
+                                              data-bs-placement="top"
+                                              title="@mensajeBloqueoLvEae">
+                                            <button type="button" class="btn btn-secondary" disabled>
+                                                <i class="fas fa-lock me-1"></i> Abrir LV/EAE
+                                            </button>
+                                        </span>
+                                    }
                                 </div>
                             </div>
+                            @if (!puedeAbrirLvEae)
+                            {
+                                <small class="text-muted d-block mt-3">@mensajeBloqueoLvEae</small>
+                            }
                         </div>
                     </div>
 
-                    <div class="modal fade lv-modal" id="modalListaVerificacionOperacionalEae" tabindex="-1" aria-labelledby="modalListaVerificacionOperacionalEaeLabel" aria-hidden="true" data-auto-open="@(abrirModalListaVerificacionAlCargar ? "true" : "false")">
+                    <div class="modal fade lv-modal" id="modalListaVerificacionOperacionalEae" tabindex="-1" aria-labelledby="modalListaVerificacionOperacionalEaeLabel" aria-hidden="true" data-auto-open="@(abrirModalListaVerificacionAlCargar ? "true" : "false")" data-auto-open-signature="@(autoOpenLvSignature ? "true" : "false")">
                         <div class="modal-dialog modal-xl modal-dialog-scrollable">
                             <div class="modal-content">
                                 <div class="modal-header">
@@ -2800,64 +2865,15 @@
                         </div>
                     </div>
 
-                    if (!inspectorDebeRevisarDocumentos && informeTecnico != null && (esInspector || esAdministrador) && (!usaFlujoListaVerificacionOperacionalEae || listaVerificacionFirmada || informeTecnico.FirmadoInspector))
-                    {
-                        var firmaInspectorVm = new FirmaInspectorPanelVm
-                        {
-                            CodigoInspeccion = Model.CodigoInspeccion,
-                            InformeTecnico = informeTecnico,
-                            UsaFlujoListaVerificacionEae = usaFlujoListaVerificacionOperacionalEae,
-                            PuedeFirmarInspector = puedeFirmarInspector,
-                            PuedeEnviarADirdac = puedeEnviarADirdac,
-                            PuedeReintentarNotificacionDirdac = puedeReintentarNotificacionDirdac,
-                            InformeEnviadoADirdac = informeEnviadoADirdac,
-                            InformeDevueltoCoordinador = informeDevueltoCoordinador,
-                            InformeDevueltoDireccion = informeDevueltoDireccion,
-                            InformeAprobadoDireccion = informeAprobadoDireccion,
-                            EstadoInformeTecnico = estadoInformeTecnico
-                        };
-
-                        <div class="card section-card soft-card" id="bloqueFirmaInformeTecnico">
-                            <div class="card-body">
-                                <div class="section-heading">
-                                    <div class="section-icon">
-                                        <i class="fas fa-file-signature"></i>
-                                    </div>
-                                    <div>
-                                        <h2 class="section-title">Firma y estado del informe</h2>
-                                        <p class="section-copy">El editor quedó concentrado en la vista parcial; este bloque conserva la firma digital y el seguimiento documental del informe técnico.</p>
-                                    </div>
-                                </div>
-
-                                @Html.Partial("_FirmaInspectorPanel", firmaInspectorVm)
-                            </div>
-                        </div>
-                    }
-                    else if (!inspectorDebeRevisarDocumentos && usaFlujoListaVerificacionOperacionalEae && (esInspector || esAdministrador))
-                    {
-                        <div class="card section-card soft-card" id="bloqueFirmaInformeTecnico">
-                            <div class="card-body">
-                                <div class="section-heading">
-                                    <div class="section-icon">
-                                        <i class="fas fa-file-signature"></i>
-                                    </div>
-                                    <div>
-                                        <h2 class="section-title">Firma y estado del informe</h2>
-                                        <p class="section-copy">La firma del informe sigue visible en Detalle, pero se habilita únicamente cuando la LV/EAE quede firmada.</p>
-                                    </div>
-                                </div>
-
-                                <div class="alert alert-warning alert-inline mb-0" style="font-size:0.88rem;">
-                                    El panel de firma del informe técnico se habilitara cuando la lista de verificación operacional EAE quede firmada.
-                                </div>
-                            </div>
-                        </div>
-                    }
                 }
             </div>
         </div>
 
-        @if (!usaFlujoListaVerificacionOperacionalEae)
+        @if (!usaFlujoListaVerificacionOperacionalEae
+            && (esCoordinadorRevision
+                || informeEnviadoACoordinador
+                || informeDevueltoCoordinador
+                || string.Equals(estadoInformeTecnico, "APROBADO_COORDINADOR", System.StringComparison.OrdinalIgnoreCase)))
         {
             @* ══════════════════════════════════════════════════════════════
                SECCIÓN: COORDINADOR
@@ -2872,26 +2888,21 @@
                 RutaInformeVisual = rutaInformeVisual
             };
             @Html.Partial("_CoordinadorPanel", coordinadorVm)
+          }
 
-            @* ══════════════════════════════════════════════════════════════
-               SECCIÓN: DIRECCIÓN / JEFATURA
-               Bloque dedicado a la revision institucional del informe tecnico.
-               Solo se muestra para roles de Direccion/Jefatura.
-               ══════════════════════════════════════════════════════════════ *@
-            var direccionVm = new DireccionJefaturaPanelVm
+        @* ══════════════════════════════════════════════════════════════
+           SECCIÓN: DIRECCIÓN / JEFATURA
+           Bloque dedicado a la revision institucional del informe tecnico.
+           Solo se muestra para roles de Direccion/Jefatura.
+           ══════════════════════════════════════════════════════════════ *@
+        @Html.Partial("_DireccionJefaturaPanel", ViewBag.DireccionJefaturaPanelVm as DireccionJefaturaPanelVm
+            ?? new DireccionJefaturaPanelVm
             {
                 CodigoInspeccion = Model.CodigoInspeccion,
                 InformeTecnico = informeTecnico,
-                EsDirdac = esDirdac,
-                PuedeFirmarDirdac = puedeFirmarDirdac,
-                InformeEnviadoADirdac = informeEnviadoADirdac,
-                InformeAprobadoDireccion = informeAprobadoDireccion,
-                InformeDevueltoDireccion = informeDevueltoDireccion,
                 EstadoInformeTecnico = estadoInformeTecnico,
                 RutaInformeVisual = rutaInformeVisual
-            };
-            @Html.Partial("_DireccionJefaturaPanel", direccionVm)
-        }
+            })
 
         <div class="aocr-mobile-collapse-shell">
             <button class="aocr-mobile-collapse-toggle d-md-none" type="button" data-bs-toggle="collapse" data-bs-target="#collapseDetalleGestion" aria-expanded="false" aria-controls="collapseDetalleGestion">
@@ -2920,7 +2931,7 @@
                         using (Html.BeginForm("SolicitarViaticos", "Inspeccion", FormMethod.Post, new { @class = "compact-form mb-3" }))
                         {
                             @Html.AntiForgeryToken()
-                            @Html.Hidden("id", Model.CodigoInspeccion)
+                            <input type="hidden" name="id" value="@Model.CodigoInspeccion" />
                             <div class="form-field">
                                 <label>Monto</label>
                                 <input type="number" step="0.01" min="0" name="monto" class="form-control" value="@(Model.ViaticosMonto.HasValue ? Model.ViaticosMonto.Value.ToString("0.00") : "")" />
@@ -2940,7 +2951,7 @@
                         using (Html.BeginForm("ValidarPagoViaticos", "Inspeccion", FormMethod.Post, new { @class = "compact-form" }))
                         {
                             @Html.AntiForgeryToken()
-                            @Html.Hidden("id", Model.CodigoInspeccion)
+                            <input type="hidden" name="id" value="@Model.CodigoInspeccion" />
                             <div class="form-field">
                                 <label>Observación de validación</label>
                                 <input type="text" name="observacion" class="form-control" placeholder="Observación de validación" />
@@ -2977,7 +2988,7 @@
                         using (Html.BeginForm("RegistrarResultado", "Inspeccion", FormMethod.Post, new { @class = "compact-form" }))
                         {
                             @Html.AntiForgeryToken()
-                            @Html.Hidden("id", Model.CodigoInspeccion)
+                            <input type="hidden" name="id" value="@Model.CodigoInspeccion" />
                             <div class="form-field">
                                 <label>Resultado</label>
                                 <select name="resultado" class="form-control result-select" required>
@@ -3080,7 +3091,7 @@
                             using (Html.BeginForm("ConfirmarRevisionDocumentalInspector", "Inspeccion", FormMethod.Post, new { @class = "mb-3" }))
                             {
                                 @Html.AntiForgeryToken()
-                                @Html.Hidden("id", Model.CodigoInspeccion)
+                                <input type="hidden" name="id" value="@Model.CodigoInspeccion" />
                                 <button type="submit" class="btn btn-warning w-100">
                                     <i class="fas fa-check-double me-2"></i>
                                     Confirmar revisión documental
@@ -3100,7 +3111,7 @@
                             using (Html.BeginForm("SubirDocumentoSolicitante", "Inspeccion", FormMethod.Post, new { enctype = "multipart/form-data", @class = "compact-form mb-3" }))
                             {
                                 @Html.AntiForgeryToken()
-                                @Html.Hidden("id", Model.CodigoInspeccion)
+                                <input type="hidden" name="id" value="@Model.CodigoInspeccion" />
                                 <div class="row g-3 align-items-end mb-3">
                                     <div class="col-md-4 mb-3">
                                         <label class="form-label fw-semibold" for="documentoBaseIdSolicitante">Documento observado</label>
@@ -3296,7 +3307,7 @@
                 using (Html.BeginForm("Cerrar", "Inspeccion", FormMethod.Post, new { @class = "button-flow" }))
                 {
                     @Html.AntiForgeryToken()
-                    @Html.Hidden("id", Model.CodigoInspeccion)
+                    <input type="hidden" name="id" value="@Model.CodigoInspeccion" />
                     <button type="submit" name="resultado" value="APROBADO" class="btn btn-success">Aprobar</button>
                     <button type="submit" name="resultado" value="RECHAZADO" class="btn btn-danger">Rechazar</button>
                 }
@@ -3391,6 +3402,7 @@
         })();
     </script>
     <script src="@Url.Content("~/Scripts/aocr-informe-tecnico-modal.js")"></script>
+    <script src="@Url.Content("~/Scripts/aocr-lv-eae-flujo-automatico.js")"></script>
 }
 
 

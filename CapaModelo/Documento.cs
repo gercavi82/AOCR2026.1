@@ -219,6 +219,26 @@ namespace CapaModelo
         public string NombreUsuarioRevisor { get; set; }
     }
 
+    public class EstadoRevisionDocumental
+    {
+        public int CodigoSolicitud { get; set; }
+        public int TotalDocumentosVigentes { get; set; }
+        public int DocumentosAceptados { get; set; }
+        public int DocumentosPendientesRevision { get; set; }
+        public int DocumentosObservadosDevueltos { get; set; }
+        public int DocumentosSubsanadosPendientes { get; set; }
+        public bool TieneDocumentosObservados { get; set; }
+        public bool TieneDocumentosSubsanadosPendientes { get; set; }
+        public bool TienePendientes { get; set; }
+        public bool DocumentacionAprobada { get; set; }
+        public string MensajeBloqueoDocumental { get; set; }
+
+        public EstadoRevisionDocumental()
+        {
+            MensajeBloqueoDocumental = string.Empty;
+        }
+    }
+
     // ====== ENUMS PARA ESTADOS Y TIPOS ======
     public enum EstadoDocumento
     {

@@ -1,0 +1,275 @@
+@model CapaPresentacion.Models.ViewModels.RevisionInformeTecnicoDireccionViewModel
+@using System.Web
+
+@{
+    Layout = "~/Views/Shared/_LayoutAOCR.cshtml";
+    ViewBag.Title = "Revisión institucional del Informe Técnico";
+    var vm = Model ?? new CapaPresentacion.Models.ViewModels.RevisionInformeTecnicoDireccionViewModel();
+    Func<string, IHtmlString> renderMultiline = value =>
+        new HtmlString(HttpUtility.HtmlEncode(value ?? string.Empty)
+            .Replace("\r\n", "<br />")
+            .Replace("\n", "<br />"));
+}
+
+<div class="container-fluid mt-4">
+    <nav aria-label="breadcrumb" class="mb-3">
+        <ol class="breadcrumb mb-0">
+            <li class="breadcrumb-item"><a href="@vm.UrlVolverPendientes">Informes Técnicos pendientes</a></li>
+            <li class="breadcrumb-item active" aria-current="page">Revisión institucional</li>
+        </ol>
+    </nav>
+
+    <div class="card border-0 shadow-sm mb-4">
+        <div class="card-body">
+            <div class="d-flex flex-column flex-xl-row justify-content-between gap-3">
+                <div>
+                    <span class="badge bg-primary-subtle text-primary mb-2">DIRDAC / Dirección - Jefatura</span>
+                    <h1 class="h3 mb-1">Revisión institucional del Informe Técnico</h1>
+                    <p class="text-muted mb-0">Revise el informe técnico firmado por el inspector y registre la decisión institucional correspondiente.</p>
+                </div>
+                <div class="text-xl-end">
+                    <div class="small text-muted">Estado actual</div>
+                    <div class="fs-5 fw-semibold">@vm.EstadoInforme</div>
+                    <div class="small text-muted mt-2">Solicitud @vm.NumeroSolicitud</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    @if (TempData["Success"] != null)
+    {
+        <div class="alert alert-success">@TempData["Success"]</div>
+    }
+    @if (TempData["Warning"] != null)
+    {
+        <div class="alert alert-warning">@TempData["Warning"]</div>
+    }
+    @if (TempData["Error"] != null)
+    {
+        <div class="alert alert-danger">@TempData["Error"]</div>
+    }
+
+    <div class="row g-4 mb-4">
+        <div class="col-12 col-lg-8">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body">
+                    <h2 class="h5 mb-3">Resumen ejecutivo</h2>
+                    <div class="row g-3">
+                        <div class="col-12 col-md-6">
+                            <div class="border rounded-3 p-3 h-100">
+                                <div class="small text-muted mb-1">Operadora / EAE</div>
+                                <div class="fw-semibold">@vm.NombreOperadora</div>
+                            </div>
+                        </div>
+                        <div class="col-12 col-md-6">
+                            <div class="border rounded-3 p-3 h-100">
+                                <div class="small text-muted mb-1">Inspector firmante</div>
+                                <div class="fw-semibold">@vm.NombreInspector</div>
+                                <div class="small text-muted">@(vm.FechaFirmaInspector.HasValue ? vm.FechaFirmaInspector.Value.ToString("dd/MM/yyyy HH:mm") : "Sin fecha de firma")</div>
+                            </div>
+                        </div>
+                        <div class="col-12 col-md-6">
+                            <div class="border rounded-3 p-3 h-100">
+                                <div class="small text-muted mb-1">Resultado técnico propuesto</div>
+                                <div class="fw-semibold">@vm.ResultadoTecnicoFinal</div>
+                            </div>
+                        </div>
+                        <div class="col-12 col-md-6">
+                            <div class="border rounded-3 p-3 h-100">
+                                <div class="small text-muted mb-1">Tipo de resultado insatisfactorio</div>
+                                <div class="fw-semibold">@vm.TipoResultadoInsatisfactorio</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-12 col-lg-4">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body d-flex flex-column gap-3">
+                    <h2 class="h5 mb-0">Acciones del informe</h2>
+                    <a class="btn btn-outline-primary" href="@vm.UrlVolverPendientes">
+                        <i class="fas fa-list"></i> Volver a bandeja de pendientes
+                    </a>
+                    @if (!string.IsNullOrWhiteSpace(vm.UrlPdfInformeFirmadoInspector))
+                    {
+                        <a class="btn btn-outline-secondary" href="@vm.UrlPdfInformeFirmadoInspector" target="_blank" rel="noopener">
+                            <i class="fas fa-eye"></i> Ver PDF
+                        </a>
+                    }
+                    @if (!string.IsNullOrWhiteSpace(vm.UrlDescargarPdfInformeFirmadoInspector))
+                    {
+                        <a class="btn btn-outline-secondary" href="@vm.UrlDescargarPdfInformeFirmadoInspector" target="_blank" rel="noopener">
+                            <i class="fas fa-download"></i> Descargar PDF
+                        </a>
+                    }
+                    @if (vm.PuedeReenviarNotificacionRt)
+                    {
+                        using (Html.BeginForm("ReenviarNotificacionRt", "Inspeccion", FormMethod.Post, new { @class = "d-grid gap-2" }))
+                        {
+                            @Html.AntiForgeryToken()
+                            <input type="hidden" name="id" value="@vm.CodigoInspeccion" />
+                            <button type="submit" class="btn btn-outline-warning">
+                                <i class="fas fa-envelope-open-text"></i> Reenviar notificación RT
+                            </button>
+                        }
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+
+    @if (!string.IsNullOrWhiteSpace(vm.UrlPdfInformeFirmadoInspector))
+    {
+        <div class="card border-0 shadow-sm mb-4">
+            <div class="card-body">
+                <h2 class="h5 mb-3">Vista previa del PDF firmado por Inspector</h2>
+                <iframe src="@vm.UrlPdfInformeFirmadoInspector" title="PDF del Informe Técnico" style="width:100%; min-height:70vh; border:1px solid #d7e1eb; border-radius:16px;"></iframe>
+            </div>
+        </div>
+    }
+
+    <div class="row g-4 mb-4">
+        <div class="col-12 col-xl-8">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body">
+                    <h2 class="h5 mb-3">Contenido del Informe Técnico</h2>
+                    <div class="accordion" id="accordionRevisionDireccion">
+                        <div class="accordion-item">
+                            <h2 class="accordion-header" id="headingAntecedentes"><button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#collapseAntecedentes" aria-expanded="true" aria-controls="collapseAntecedentes">Antecedentes y objetivo</button></h2>
+                            <div id="collapseAntecedentes" class="accordion-collapse collapse show" aria-labelledby="headingAntecedentes" data-bs-parent="#accordionRevisionDireccion">
+                                <div class="accordion-body">
+                                    <h3 class="h6">Antecedentes</h3>
+                                    <p>@renderMultiline(vm.Antecedentes)</p>
+                                    <h3 class="h6 mt-3">Objetivo</h3>
+                                    <p>@renderMultiline(vm.Objetivo)</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="accordion-item">
+                            <h2 class="accordion-header" id="headingDesarrollo"><button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseDesarrollo" aria-expanded="false" aria-controls="collapseDesarrollo">Alcance y desarrollo técnico</button></h2>
+                            <div id="collapseDesarrollo" class="accordion-collapse collapse" aria-labelledby="headingDesarrollo" data-bs-parent="#accordionRevisionDireccion">
+                                <div class="accordion-body">
+                                    <h3 class="h6">Alcance</h3>
+                                    <p>@renderMultiline(vm.Alcance)</p>
+                                    <h3 class="h6 mt-3">Desarrollo técnico</h3>
+                                    <p>@renderMultiline(vm.DesarrolloTecnico)</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="accordion-item">
+                            <h2 class="accordion-header" id="headingHallazgos"><button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseHallazgos" aria-expanded="false" aria-controls="collapseHallazgos">Hallazgos, observaciones y conclusiones</button></h2>
+                            <div id="collapseHallazgos" class="accordion-collapse collapse" aria-labelledby="headingHallazgos" data-bs-parent="#accordionRevisionDireccion">
+                                <div class="accordion-body">
+                                    <h3 class="h6">Hallazgos</h3>
+                                    <p>@renderMultiline(vm.Hallazgos)</p>
+                                    <h3 class="h6 mt-3">Observaciones del inspector</h3>
+                                    <p>@renderMultiline(vm.ObservacionesInspector)</p>
+                                    <h3 class="h6 mt-3">Conclusiones</h3>
+                                    <p>@renderMultiline(vm.Conclusiones)</p>
+                                    <h3 class="h6 mt-3">Recomendaciones</h3>
+                                    <p>@renderMultiline(vm.Recomendaciones)</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-12 col-xl-4">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body">
+                    <h2 class="h5 mb-3">Decisión institucional final</h2>
+                    @if (vm.PuedeAprobarDecisionFinal || vm.PuedeDevolverConObservacion)
+                    {
+                        using (Html.BeginForm("AprobarDecisionFinalDireccion", "Inspeccion", FormMethod.Post, new { @class = "d-grid gap-3 mb-3" }))
+                        {
+                            @Html.AntiForgeryToken()
+                            <input type="hidden" name="codigoInforme" value="@vm.CodigoInforme" />
+                            <div>
+                                <label class="form-label">Observación institucional opcional</label>
+                                <textarea name="observacionDireccion" class="form-control" rows="3" placeholder="Puede registrar una observación antes de aprobar."></textarea>
+                            </div>
+                            <button type="submit" class="btn btn-success">
+                                <i class="fas fa-check-circle"></i> Aprobar decisión final
+                            </button>
+                        }
+
+                        <button type="button" class="btn btn-outline-danger w-100" data-bs-toggle="modal" data-bs-target="#modalDevolucionDireccion">
+                            <i class="fas fa-undo"></i> Devolver con observación
+                        </button>
+                    }
+                    else
+                    {
+                        <div class="alert alert-info mb-0">La decisión institucional final no está disponible para el estado actual del informe.</div>
+                    }
+
+                    @if (vm.RequiereFirmaDireccion)
+                    {
+                        <div class="alert alert-warning mt-3 mb-0">Este flujo requiere firma adicional de Dirección/Jefatura antes de notificar al RT.</div>
+                    }
+                    else if (vm.NotificadoRt)
+                    {
+                        <div class="alert alert-success mt-3 mb-0">La notificación al RT ya fue encolada@(vm.FechaNotificacionRt.HasValue ? " el " + vm.FechaNotificacionRt.Value.ToString("dd/MM/yyyy HH:mm") : string.Empty).</div>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card border-0 shadow-sm">
+        <div class="card-body">
+            <h2 class="h5 mb-3">Historial resumido del Informe Técnico</h2>
+            @if (vm.Historial == null || vm.Historial.Count == 0)
+            {
+                <div class="alert alert-secondary mb-0">No existen eventos registrados para el informe técnico.</div>
+            }
+            else
+            {
+                <div class="list-group list-group-flush">
+                    @foreach (var evento in vm.Historial)
+                    {
+                        <div class="list-group-item px-0">
+                            <div class="d-flex flex-column flex-lg-row justify-content-between gap-2">
+                                <div>
+                                    <div class="fw-semibold">@evento.EstadoAnterior <i class="fas fa-arrow-right text-muted mx-1"></i> @evento.EstadoNuevo</div>
+                                    <div class="small text-muted">@evento.Origen · @evento.UsuarioNombre</div>
+                                    <div class="mt-2">@renderMultiline(evento.Observacion)</div>
+                                </div>
+                                <div class="small text-muted text-lg-end">@evento.FechaCambio.ToString("dd/MM/yyyy HH:mm")</div>
+                            </div>
+                        </div>
+                    }
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="modalDevolucionDireccion" tabindex="-1" aria-labelledby="modalDevolucionDireccionLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            @using (Html.BeginForm("DevolverDecisionFinalDireccion", "Inspeccion", FormMethod.Post))
+            {
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="codigoInforme" value="@vm.CodigoInforme" />
+                <div class="modal-header">
+                    <h2 class="modal-title fs-5" id="modalDevolucionDireccionLabel">Devolver Informe Técnico</h2>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+                </div>
+                <div class="modal-body">
+                    <label class="form-label">Observación de Dirección / Jefatura <span class="text-danger">*</span></label>
+                    <textarea name="observacionDireccion" class="form-control" rows="5" required="required" placeholder="Indique la observación para devolver el informe al inspector..."></textarea>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-danger">
+                        <i class="fas fa-undo"></i> Confirmar devolución
+                    </button>
+                </div>
+            }
+        </div>
+    </div>
+</div>

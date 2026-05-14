@@ -72,6 +72,7 @@
         // Cache-busting: forzar recarga cuando cambia el archivo CSS institucional
         string aocrCssInstVer = "0";
         string aocrCssDtVer = "0";
+        string aocrCssResponsiveVer = "0";
         try
         {
             var instPath = Server.MapPath("~/Content/aocr-institucional.css");
@@ -84,17 +85,23 @@
             {
                 aocrCssDtVer = System.IO.File.GetLastWriteTimeUtc(dtPath).Ticks.ToString();
             }
+            var responsivePath = Server.MapPath("~/Content/aocr-responsive.css");
+            if (System.IO.File.Exists(responsivePath))
+            {
+                aocrCssResponsiveVer = System.IO.File.GetLastWriteTimeUtc(responsivePath).Ticks.ToString();
+            }
         }
         catch
         {
         }
         var aocrCssInstHref = Url.Content("~/Content/aocr-institucional.css") + "?v=" + aocrCssInstVer;
         var aocrCssDtHref = Url.Content("~/Content/aocr-datatables.css") + "?v=" + aocrCssDtVer;
+        var aocrCssResponsiveHref = Url.Content("~/Content/aocr-responsive.css") + "?v=" + aocrCssResponsiveVer;
     }
     <link href="@Url.Content("~/Content/Site.css")" rel="stylesheet" />
     <link href="@aocrCssInstHref" rel="stylesheet" />
     <link href="@aocrCssDtHref" rel="stylesheet" />
-    <link href="@Url.Content("~/Content/aocr-responsive.css")" rel="stylesheet" />
+    <link href="@aocrCssResponsiveHref" rel="stylesheet" />
     <link href="@Url.Content("~/Content/aocr-pdf-viewer/aocr-pdf-viewer.css")" rel="stylesheet" />
 
     <!-- Estilos personalizados criticos (inline para performance) -->

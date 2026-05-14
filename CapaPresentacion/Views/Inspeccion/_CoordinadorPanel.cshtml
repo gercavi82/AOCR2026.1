@@ -38,7 +38,7 @@ else if ((puedeRevisarCoordinador || esCoordinador) && informeTecnico != null)
         <div class="it-hero-row">
             <div>
                 <h3><i class="fas fa-user-tie"></i> Revisión de Coordinación</h3>
-                <p class="sub">Aprobar para habilitar la firma final del inspector, o devolver con observación.</p>
+                <p class="sub">Panel heredado para expedientes del flujo anterior. La ruta vigente ya no requiere devolución al inspector para firma final.</p>
             </div>
             <div>
                 @if (aprobadoCoordinacion)
@@ -57,7 +57,7 @@ else if ((puedeRevisarCoordinador || esCoordinador) && informeTecnico != null)
     {
         <div class="it-alert info">
             <i class="fas fa-clipboard-check"></i>
-            <div><strong>Pendiente de revisión de Coordinación.</strong> El informe fue revisado por DIRDAC / Dirección y remitido a Coordinación. Solo se permite aprobar o devolver.</div>
+            <div><strong>Pendiente de revisión de Coordinación.</strong> Este estado corresponde a expedientes heredados que aún no han migrado al flujo institucional final directo con DIRDAC.</div>
         </div>
     }
     else if (devueltoCoordinador)
@@ -71,7 +71,7 @@ else if ((puedeRevisarCoordinador || esCoordinador) && informeTecnico != null)
     {
         <div class="it-alert success">
             <i class="fas fa-check-circle"></i>
-            <div><strong>Informe aprobado por Coordinación.</strong> Devuelto al inspector para aplicar la firma final.</div>
+            <div><strong>Informe aprobado por Coordinación.</strong> Estado heredado del flujo anterior.</div>
         </div>
     }
     else
@@ -95,12 +95,12 @@ else if ((puedeRevisarCoordinador || esCoordinador) && informeTecnico != null)
     {
         <div class="it-panel coord">
             <h4><i class="fas fa-balance-scale"></i> Decisión de Coordinación</h4>
-            <p class="hint">Revise el informe técnico y seleccione una acción. <strong>Coordinación no puede editar el informe.</strong></p>
+            <p class="hint">Revise el informe técnico y seleccione una acción. <strong>Este panel solo aplica a expedientes heredados.</strong></p>
 
             <div id="coordDecisionBtns" class="it-btn-row">
                 <button type="button" class="it-btn success"
                         onclick="itCoordMostrar('coordFormAprob')">
-                    <i class="fas fa-check-circle"></i> Aprobar y devolver al inspector
+                    <i class="fas fa-check-circle"></i> Aprobar y remitir a DIRDAC
                 </button>
                 <button type="button" class="it-btn warn"
                         onclick="itCoordMostrar('coordFormDevol')">
@@ -112,10 +112,10 @@ else if ((puedeRevisarCoordinador || esCoordinador) && informeTecnico != null)
                 @using (Html.BeginForm("CoordinadorAprobar", "Inspeccion", FormMethod.Post))
                 {
                     @Html.AntiForgeryToken()
-                    @Html.Hidden("id", codigoInspeccion)
+                    <input type="hidden" name="id" value="@codigoInspeccion" />
                     <div class="it-alert success" style="margin-bottom: 10px;">
                         <i class="fas fa-question-circle"></i>
-                        <div>¿Confirma aprobar el informe y habilitar la firma final del inspector?</div>
+                        <div>¿Confirma aprobar el informe y remitirlo a DIRDAC / Dirección - Jefatura?</div>
                     </div>
                     <div class="it-btn-row">
                         <button type="submit" class="it-btn success"><i class="fas fa-check"></i> Confirmar aprobación</button>
@@ -128,7 +128,7 @@ else if ((puedeRevisarCoordinador || esCoordinador) && informeTecnico != null)
                 @using (Html.BeginForm("CoordinadorDevolver", "Inspeccion", FormMethod.Post))
                 {
                     @Html.AntiForgeryToken()
-                    @Html.Hidden("id", codigoInspeccion)
+                    <input type="hidden" name="id" value="@codigoInspeccion" />
                     <div class="it-field">
                         <label>Observación de devolución <span style="color:#d64545;">*</span></label>
                         <textarea name="observacionDevolucion" class="it-input" rows="3" required="required"

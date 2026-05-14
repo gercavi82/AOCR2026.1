@@ -16,6 +16,7 @@ namespace CapaNegocio.Services
         public const string GrupoCoordinacionInspeccion = "COORDINACION_INSPECCION";
         public const string GrupoCoordinacionLegal = "COORDINACION_LEGAL";
         public const string GrupoDireccionFinal = "DIRECCION_FINAL";
+        public const string GrupoDireccionJefaturaRevisionInforme = "DIRECCION_JEFATURA_REVISION_INFORME";
         public const string GrupoFinanciero = "FINANCIERO";
 
         private readonly ILoggingService _logger;
@@ -46,7 +47,12 @@ namespace CapaNegocio.Services
                         break;
 
                     case GrupoRepresentanteTecnico:
-                        AgregarCorreo(destinatarios, solicitud.CorreoRepresentanteTecnico, solicitud.RepresentanteLegal);
+                        AgregarCorreo(
+                            destinatarios,
+                            !string.IsNullOrWhiteSpace(solicitud.CorreoRepresentanteTecnico)
+                                ? solicitud.CorreoRepresentanteTecnico
+                                : solicitud.Email,
+                            solicitud.RepresentanteLegal);
                         break;
 
                     case GrupoInspectorAsignado:
@@ -80,6 +86,16 @@ namespace CapaNegocio.Services
                             "DirectorGeneral",
                             RolesAOCR.JEFATURA_TECNICA,
                             RolesAOCR.ADMINISTRADOR);
+                        break;
+
+                    case GrupoDireccionJefaturaRevisionInforme:
+                        AgregarUsuariosPorRol(destinatarios,
+                            "DIRDAC",
+                            "Direccion",
+                            "DirectorGeneral",
+                            "Director",
+                            RolesAOCR.JEFATURA_TECNICA,
+                            "Jefe");
                         break;
 
                     case GrupoFinanciero:
