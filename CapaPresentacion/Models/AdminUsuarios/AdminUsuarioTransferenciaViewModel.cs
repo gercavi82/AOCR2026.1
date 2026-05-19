@@ -23,7 +23,7 @@ namespace CapaPresentacion.Models.AdminUsuarios
         [Display(Name = "Motivo")]
         public string Motivo { get; set; }
 
-        [Display(Name = "Confirmo la transferencia y desactivacion")]
+        [Display(Name = "Confirmo la transferencia y desactivación")]
         public bool ConfirmarTransferencia { get; set; }
 
         public IList<SelectListItem> UsuariosDestino { get; set; } = new List<SelectListItem>();

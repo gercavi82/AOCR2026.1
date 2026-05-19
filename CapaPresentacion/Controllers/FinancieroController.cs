@@ -113,6 +113,8 @@ namespace CapaPresentacion.Controllers
                     return RedirectToAction("Index");
                 }
 
+                new AocrPostPagoWorkflowService().ProcesarPagoAprobado(id, user);
+
                 try
                 {
                     // Generar PDF directamente desde la orden
@@ -167,6 +169,8 @@ namespace CapaPresentacion.Controllers
                     TempData["Error"] = "Error al aprobar el pago. " + (string.IsNullOrWhiteSpace(err) ? "" : ("Detalle: " + err));
                     return RedirectToAction("Index");
                 }
+
+                new AocrPostPagoWorkflowService().ProcesarPagoAprobado(id, user);
 
                 try
                 {
@@ -344,6 +348,8 @@ namespace CapaPresentacion.Controllers
                     ? "La orden ya estaba aprobada con factura. No se duplicaron registros."
                     : "Pago aprobado y factura registrada correctamente.";
 
+                new AocrPostPagoWorkflowService().ProcesarPagoAprobado(model.OrdenId, usuario);
+
                 string advertenciaAs400 = null;
                 if (!idempotente && FacturacionAS400Service.IsEnabled())
                 {
@@ -478,6 +484,8 @@ namespace CapaPresentacion.Controllers
                     }
                     else
                     {
+                        new AocrPostPagoWorkflowService().ProcesarPagoAprobado(ordenId, usuario);
+
                         try
                         {
                             var ordenActualizada = _ordenDAO.ObtenerOrdenPorId(ordenId) ?? orden;

@@ -198,6 +198,35 @@ namespace CapaDatos.DAOs
             }
         }
 
+        public static bool MarcarComoLeida(int codigoNotificacion, int codigoUsuario)
+        {
+            using (var cn = CrearConexion())
+            {
+                cn.Open();
+
+                var tieneFechaLectura = ExisteColumna(cn, "aocr_tbnotificacion", "fecha_lectura");
+                var sql = tieneFechaLectura
+                    ? @"
+                        UPDATE aocr_tbnotificacion
+                        SET leida = TRUE,
+                            fecha_lectura = COALESCE(fecha_lectura, NOW())
+                        WHERE codigonotificacion = @id
+                          AND codigousuario = @user;"
+                    : @"
+                        UPDATE aocr_tbnotificacion
+                        SET leida = TRUE
+                        WHERE codigonotificacion = @id
+                          AND codigousuario = @user;";
+
+                using (var cmd = new NpgsqlCommand(sql, cn))
+                {
+                    cmd.Parameters.AddWithValue("@id", codigoNotificacion);
+                    cmd.Parameters.AddWithValue("@user", codigoUsuario);
+                    return cmd.ExecuteNonQuery() > 0;
+                }
+            }
+        }
+
         public static bool MarcarTodasComoLeidas(int codigoUsuario)
         {
             using (var cn = CrearConexion())

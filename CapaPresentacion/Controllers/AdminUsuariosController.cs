@@ -261,13 +261,13 @@ namespace CapaPresentacion.Controllers
                     new
                     {
                         success = false,
-                        message = "Debe ingresar cedula o nombre para buscar."
+                        message = "Debe ingresar cédula o nombre para buscar."
                     },
                     JsonRequestBehavior.AllowGet);
             }
 
             var esNumerico = texto.All(char.IsDigit);
-            _logger.LogInfo("[AdminUsuariosController] BuscarUsuarioInternoRT criterio=" + (esNumerico ? "cedula" : "nombre"));
+            _logger.LogInfo("[AdminUsuariosController] BuscarUsuarioInternoRT criterio=" + (esNumerico ? "cédula" : "nombre"));
 
             var resultados = BuscarInspectoresInternosPreferMirror(texto);
 
@@ -279,7 +279,7 @@ namespace CapaPresentacion.Controllers
                     new
                     {
                         success = false,
-                        message = "No se encontro coincidencia por cedula o nombre en la base institucional."
+                        message = "No se encontró coincidencia por cédula o nombre en la base institucional."
                     },
                     JsonRequestBehavior.AllowGet);
             }
@@ -351,7 +351,7 @@ namespace CapaPresentacion.Controllers
 
             if (string.IsNullOrWhiteSpace(model.CodigoUsuarioBusqueda))
             {
-                ModelState.AddModelError("CodigoUsuarioBusqueda", "Debe ingresar la cedula del inspector.");
+                ModelState.AddModelError("CodigoUsuarioBusqueda", "Debe ingresar la cédula del inspector.");
             }
 
             if (!ModelState.IsValid)
@@ -363,7 +363,7 @@ namespace CapaPresentacion.Controllers
             var inspector = ObtenerInspectorActivoPreferMirror(model.CodigoUsuarioBusqueda);
             if (inspector == null)
             {
-                ModelState.AddModelError("CodigoUsuarioBusqueda", "No se encontro coincidencia por cedula o nombre en la base institucional.");
+                ModelState.AddModelError("CodigoUsuarioBusqueda", "No se encontró coincidencia por cédula o nombre en la base institucional.");
                 CargarRolesUsuarioInterno(model, model.RolInterno);
                 return View(model);
             }
@@ -443,7 +443,7 @@ namespace CapaPresentacion.Controllers
             var registro = UsuarioInternoRTBL.ObtenerPorId(id);
             if (registro == null)
             {
-                TempData["Error"] = "No se encontro el usuario interno RT solicitado.";
+                TempData["Error"] = "No se encontró el usuario interno RT solicitado.";
                 return RedirectToAction("ListarUsuariosInternosRT");
             }
 
@@ -466,13 +466,13 @@ namespace CapaPresentacion.Controllers
 
             if (model.Id <= 0)
             {
-                TempData["Error"] = "Identificador de usuario interno RT invalido.";
+                TempData["Error"] = "Identificador de usuario interno RT inválido.";
                 return RedirectToAction("ListarUsuariosInternosRT");
             }
 
             if (string.IsNullOrWhiteSpace(model.CodigoUsuario))
             {
-                ModelState.AddModelError("CodigoUsuarioBusqueda", "Debe mantener la cedula del inspector.");
+                ModelState.AddModelError("CodigoUsuarioBusqueda", "Debe mantener la cédula del inspector.");
             }
 
             if (!ModelState.IsValid)
@@ -995,7 +995,7 @@ namespace CapaPresentacion.Controllers
                 if (!string.IsNullOrWhiteSpace(passwordTemporal))
                 {
                     TempData["PasswordTemporal"] = string.Format(
-                        "Nueva contrasena temporal generada: {0}",
+                        "Nueva contraseña temporal generada: {0}",
                         passwordTemporal);
                 }
             }
@@ -1911,7 +1911,7 @@ namespace CapaPresentacion.Controllers
 
             if (!isEdit && !model.GenerarPassword && string.IsNullOrWhiteSpace(model.PasswordInicial))
             {
-                ModelState.AddModelError("PasswordInicial", "Debe ingresar una contrasena inicial o marcar generacion temporal.");
+                ModelState.AddModelError("PasswordInicial", "Debe ingresar una contraseña inicial o marcar generación temporal.");
             }
 
             if (model.RolesSeleccionados == null || !model.RolesSeleccionados.Any())
@@ -2090,7 +2090,7 @@ namespace CapaPresentacion.Controllers
             var registro = UsuarioInternoRTBL.ObtenerPorId(registroId);
             if (registro == null)
             {
-                mensajeError = "No se encontro el inspector solicitado.";
+                mensajeError = "No se encontró el inspector solicitado.";
                 return false;
             }
 
@@ -2110,7 +2110,7 @@ namespace CapaPresentacion.Controllers
             var rolInspectorId = ObtenerCodigoRolInspector();
             if (!rolInspectorId.HasValue || rolInspectorId.Value <= 0)
             {
-                mensajeError = "No se encontro un rol activo de tipo Inspector en la tabla de roles.";
+                mensajeError = "No se encontró un rol activo de tipo Inspector en la tabla de roles.";
                 return false;
             }
 
@@ -2179,7 +2179,7 @@ namespace CapaPresentacion.Controllers
                 var codigoUsuario = ConstruirCodigoUsuarioCuentaInspector(registro);
                 if (string.IsNullOrWhiteSpace(codigoUsuario))
                 {
-                    mensajeError = "No se pudo determinar un codigo de usuario valido para crear la cuenta AOCR del inspector.";
+                    mensajeError = "No se pudo determinar un código de usuario válido para crear la cuenta AOCR del inspector.";
                     return false;
                 }
 
@@ -2280,14 +2280,14 @@ namespace CapaPresentacion.Controllers
 
             if (usuarioId <= 0 || rolInspectorId <= 0)
             {
-                mensaje = "Datos invalidos para asignar rol Inspector.";
+                mensaje = "Datos inválidos para asignar rol Inspector.";
                 return false;
             }
 
             var usuario = AdminUsuariosBL.ObtenerUsuarioPorId(usuarioId);
             if (usuario == null)
             {
-                mensaje = "No se encontro la cuenta AOCR asociada al inspector.";
+                mensaje = "No se encontró la cuenta AOCR asociada al inspector.";
                 return false;
             }
 

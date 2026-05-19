@@ -64,6 +64,24 @@ namespace CapaPresentacion
             Response.ContentEncoding = System.Text.Encoding.UTF8;
             Request.ContentEncoding = System.Text.Encoding.UTF8;
 
+            if (IsWellKnownRequest(Request))
+            {
+                Context.SkipAuthorization = true;
+                Response.SuppressFormsAuthenticationRedirect = true;
+
+                var physicalPath = Request.PhysicalPath;
+                if (string.IsNullOrWhiteSpace(physicalPath) || !System.IO.File.Exists(physicalPath))
+                {
+                    Response.TrySkipIisCustomErrors = true;
+                    Response.StatusCode = 404;
+                    Response.StatusDescription = "Not Found";
+                    Response.ContentType = "text/plain";
+                    Response.Write("Not Found");
+                    CompleteRequest();
+                    return;
+                }
+            }
+
             string perfLabel;
             if (TryResolvePerfLabel(Request, out perfLabel))
             {
@@ -213,6 +231,25 @@ namespace CapaPresentacion
             {
                 return new string[] { };
             }
+        }
+
+        private static bool IsWellKnownRequest(HttpRequest request)
+        {
+            if (request == null)
+            {
+                return false;
+            }
+
+            var path = request.Url != null
+                ? request.Url.AbsolutePath
+                : request.Path;
+
+            if (string.IsNullOrWhiteSpace(path))
+            {
+                return false;
+            }
+
+            return path.IndexOf("/.well-known", StringComparison.OrdinalIgnoreCase) >= 0;
         }
 
         protected void Application_Error(object sender, EventArgs e)

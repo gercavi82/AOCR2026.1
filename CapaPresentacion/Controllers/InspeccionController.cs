@@ -545,6 +545,15 @@ namespace CapaPresentacion.Controllers
             }
 
             ViewBag.EstadoRevisionDocumental = ObtenerEstadoRevisionDocumentalSeguro(inspeccion.CodigoSolicitud);
+            try
+            {
+                ViewBag.PendienteCargaDocumentalRt = new AocrPostPagoWorkflowService()
+                    .SolicitudTienePendienteCargaDocumentalRt(inspeccion.CodigoSolicitud);
+            }
+            catch
+            {
+                ViewBag.PendienteCargaDocumentalRt = false;
+            }
 
             try
             {
@@ -694,6 +703,12 @@ namespace CapaPresentacion.Controllers
             if ((EsRolInspector() || EsAdmin()) && !InspectorTieneRevisionDocumentalConfirmada(inspeccion))
             {
                 return DevolverResultadoModalInformeTecnico(403, ObtenerMensajeBloqueoRevisionDocumentalInspector());
+            }
+
+            string mensajeBloqueoDocumentalRt;
+            if (!new AocrPostPagoWorkflowService().PuedeInspectorIniciarRevisionDocumental(codigoInspeccion, out mensajeBloqueoDocumentalRt))
+            {
+                return DevolverResultadoModalInformeTecnico(409, mensajeBloqueoDocumentalRt);
             }
 
             var solicitud = _solicitudDAO.ObtenerPorId(inspeccion.CodigoSolicitud);
@@ -1618,6 +1633,13 @@ namespace CapaPresentacion.Controllers
                 return RedirectToAction("Detalle", new { id });
             }
 
+            string mensajeBloqueoDocumentalRt;
+            if (!new AocrPostPagoWorkflowService().PuedeInspectorIniciarRevisionDocumental(id, out mensajeBloqueoDocumentalRt))
+            {
+                TempData["Error"] = mensajeBloqueoDocumentalRt;
+                return RedirectToAction("Detalle", new { id });
+            }
+
             var estadoRevisionDocumental = ObtenerEstadoRevisionDocumentalSeguro(inspeccion.CodigoSolicitud);
             if (estadoRevisionDocumental.TotalDocumentosVigentes > 0 && !estadoRevisionDocumental.DocumentacionAprobada)
             {
@@ -1677,6 +1699,12 @@ namespace CapaPresentacion.Controllers
                 if (!PuedeAccederInspeccion(inspeccion))
                 {
                     return DevolverResultadoModalInformeTecnico(403, "No autorizado para editar el informe técnico.");
+                }
+
+                string mensajeBloqueoDocumentalRt;
+                if (!new AocrPostPagoWorkflowService().PuedeInspectorIniciarRevisionDocumental(id, out mensajeBloqueoDocumentalRt))
+                {
+                    return DevolverResultadoModalInformeTecnico(409, mensajeBloqueoDocumentalRt);
                 }
 
                 if (!InspectorTieneRevisionDocumentalConfirmada(inspeccion))
@@ -1852,6 +1880,12 @@ namespace CapaPresentacion.Controllers
                     return DevolverJsonErrorInformeTecnico(403, "No autorizado para previsualizar este informe técnico.");
                 }
 
+                string mensajeBloqueoDocumentalRt;
+                if (!new AocrPostPagoWorkflowService().PuedeInspectorIniciarRevisionDocumental(id, out mensajeBloqueoDocumentalRt))
+                {
+                    return DevolverJsonErrorInformeTecnico(409, mensajeBloqueoDocumentalRt);
+                }
+
                 if (!InspectorTieneRevisionDocumentalConfirmada(inspeccion))
                 {
                     return DevolverJsonErrorInformeTecnico(409, ObtenerMensajeBloqueoRevisionDocumentalInspector());
@@ -1987,10 +2021,17 @@ namespace CapaPresentacion.Controllers
                 return HttpNotFound("Inspección no encontrada.");
             }
 
-            if (!PuedeAccederInspeccion(inspeccion))
-            {
-                return new HttpStatusCodeResult(403, "No autorizado para finalizar el informe técnico.");
-            }
+                if (!PuedeAccederInspeccion(inspeccion))
+                {
+                    return new HttpStatusCodeResult(403, "No autorizado para finalizar el informe técnico.");
+                }
+
+                string mensajeBloqueoDocumentalRt;
+                if (!new AocrPostPagoWorkflowService().PuedeInspectorIniciarRevisionDocumental(id, out mensajeBloqueoDocumentalRt))
+                {
+                    TempData["Error"] = mensajeBloqueoDocumentalRt;
+                    return RedirectToAction("Detalle", new { id });
+                }
 
             if (!InspectorTieneRevisionDocumentalConfirmada(inspeccion))
             {
@@ -2111,6 +2152,12 @@ namespace CapaPresentacion.Controllers
                 if (!PuedeAccederInspeccion(inspeccion))
                 {
                     return DevolverResultadoListaVerificacionOperacionalEae(403, "No autorizado para editar la lista de verificación operacional.");
+                }
+
+                string mensajeBloqueoDocumentalRt;
+                if (!new AocrPostPagoWorkflowService().PuedeInspectorIniciarRevisionDocumental(id, out mensajeBloqueoDocumentalRt))
+                {
+                    return DevolverResultadoListaVerificacionOperacionalEae(409, mensajeBloqueoDocumentalRt);
                 }
 
                 if (!InspectorTieneRevisionDocumentalConfirmada(inspeccion))
@@ -4616,7 +4663,7 @@ namespace CapaPresentacion.Controllers
                 CrearOrientacionPlantillaLvEae("b. las areas especiales en que pretende operar; por ejemplo Cordillera de los Andes.", esLiteral: true),
                 CrearOrientacionPlantillaLvEae("c. las aprobaciones especificas requeridas.", esLiteral: true),
                 CrearOrientacionPlantillaLvEae("3. Verificar que el explotador haya presentado los tipos y las matriculas de las aeronaves sujetas a la operacion.", esSubnumeral: true),
-                CrearOrientacionPlantillaLvEae("Nota 1. Algunos Estados requieren que las aeronaves esten listadas en las OpSpecs. Si no estan en las OpSpecs, el explotador debe presentarlas en otro documento, como una parte del manual de operaciones, o copias de los certificados de matricula que atestiguen que el EAE es el explotador de dichas aeronaves.", esNotaOrientacion: true),
+                CrearOrientacionPlantillaLvEae("Nota 1. Algunos Estados requieren que las aeronaves estén listadas en las OpSpecs. Si no están en las OpSpecs, el explotador debe presentarlas en otro documento, como una parte del manual de operaciones, o copias de los certificados de matrícula que atestigüen que el EAE es el explotador de dichas aeronaves.", esNotaOrientacion: true),
                 CrearOrientacionPlantillaLvEae("Nota 2. Verificar la nacionalidad de las aeronaves involucradas. Es posible que el Estado de matricula sea diferente del Estado del explotador. En este caso, identificar los Estados de matricula en la Casilla 14.", esNotaOrientacion: true));
 
             AgregarGrupoLvEae(items, ref orden, 3, "129.200 (a) (3) y (4)", "129-3",
@@ -5963,11 +6010,11 @@ namespace CapaPresentacion.Controllers
                 var enlace = ConstruirUrlDetalle(inspeccion.CodigoInspeccion);
                 var model = new EmailTemplateModel
                 {
-                    Titulo = "Informe tecnico de inspeccion",
-                    MensajePrincipal = "Se ha finalizado el informe tecnico de su inspeccion AOCR.",
+                    Titulo = "Informe técnico de inspección",
+                    MensajePrincipal = "Se ha finalizado el informe técnico de su inspección AOCR.",
                     Resumen = new System.Collections.Generic.List<EmailFieldItem>
                     {
-                        new EmailFieldItem("Inspeccion", inspeccion.CodigoInspeccion.ToString()),
+                        new EmailFieldItem("Inspección", inspeccion.CodigoInspeccion.ToString()),
                         new EmailFieldItem("Resultado", informe != null ? informe.Resultado : inspeccion.Resultado)
                     },
                     EnlaceUrl = enlace,

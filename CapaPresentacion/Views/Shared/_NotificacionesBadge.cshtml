@@ -169,7 +169,9 @@
         var currentLoadRequest = null;
 
         function getAntiForgeryToken() {
-            var token = $('input[name="__RequestVerificationToken"]').val();
+            var token = $('#__AjaxAntiForgeryForm input[name="__RequestVerificationToken"]').val()
+                || $('.notificaciones-dropdown input[name="__RequestVerificationToken"]').val()
+                || $('input[name="__RequestVerificationToken"]').first().val();
             return token || '';
         }
 
@@ -226,6 +228,7 @@
                 url: '@Url.Action("ContarNoLeidas", "Notificacion")',
                 type: 'GET',
                 dataType: 'json',
+                aocrSkipAuthRedirect: true,
                 timeout: 10000,
                 success: function (result) {
                     if (result && result.success && result.cantidad > 0) {
@@ -260,6 +263,7 @@
                 type: 'GET',
                 data: { cantidad: 10 },
                 dataType: 'json',
+                aocrSkipAuthRedirect: true,
                 success: function (result) {
                     if (result && result.success && result.notificaciones && result.notificaciones.length > 0) {
                         renderizarNotificaciones(result.notificaciones);
@@ -303,9 +307,22 @@
             $.ajax({
                 url: '@Url.Action("MarcarComoLeida", "Notificacion")',
                 type: 'POST',
-                data: { id: id },
+                aocrSkipAuthRedirect: true,
+                data: {
+                    id: id,
+                    __RequestVerificationToken: token
+                },
                 headers: { 'RequestVerificationToken': token },
-                success: function () {
+                success: function (result) {
+                    if (!result || result.success !== true) {
+                        Swal.fire({
+                            title: 'Error',
+                            text: (result && result.message) ? result.message : 'No se pudo marcar la notificación como leída. Intenta nuevamente.',
+                            icon: 'error'
+                        });
+                        return;
+                    }
+
                     $this.removeClass('no-leida');
                     cargarContador();
                     if (url && url !== '') {

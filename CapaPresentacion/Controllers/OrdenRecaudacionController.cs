@@ -1085,8 +1085,8 @@ namespace CapaPresentacion.Controllers
                     pdfBytes != null && pdfBytes.Length > 0 ? pdfBytes : null,
                     pdfBytes != null && pdfBytes.Length > 0 ? nombreArchivo : null,
                     pdfBytes != null && pdfBytes.Length > 0
-                        ? "Orden de recaudacion generada con comprobante adjunto."
-                        : "Orden de recaudacion generada sin adjunto por falla de PDF.");
+                        ? "Orden de recaudación generada con comprobante adjunto."
+                        : "Orden de recaudación generada sin adjunto por falla de PDF.");
                 System.Diagnostics.Debug.WriteLine($"Resultado notificación ORDEN_CREADA: Exitoso={resultadoCorreo.Exitoso}, Mensaje={resultadoCorreo.Mensaje}");
                 if (!resultadoCorreo.Exitoso)
                 {
@@ -1735,14 +1735,14 @@ namespace CapaPresentacion.Controllers
                 var factura = _dao.ObtenerFacturaPagoPorOrden(id);
                 if (factura == null || string.IsNullOrWhiteSpace(factura.FilePath))
                 {
-                    TempData["Error"] = "La factura aun no esta disponible para descarga.";
+                    TempData["Error"] = "La factura aún no está disponible para descarga.";
                     return RedirectToAction("Detalles", new { id });
                 }
 
                 var rutaFisica = ResolverRutaArchivoRegistrado(factura.FilePath);
                 if (string.IsNullOrWhiteSpace(rutaFisica) || !System.IO.File.Exists(rutaFisica))
                 {
-                    TempData["Error"] = "No se encontro el archivo de factura registrado.";
+                    TempData["Error"] = "No se encontró el archivo de factura registrado.";
                     return RedirectToAction("Detalles", new { id });
                 }
 
@@ -1928,8 +1928,8 @@ namespace CapaPresentacion.Controllers
                 Telefono = FirstNonEmpty(solicitud?.Telefono, ordenModel.Telefono, "No especificado"),
                 Banco = string.IsNullOrWhiteSpace(bancoPago) ? "No especificado" : bancoPago,
                 NumeroComprobante = string.IsNullOrWhiteSpace(numeroComp) ? "No registrado" : numeroComp,
-                ConceptoPrincipal = FirstNonEmpty(detallesPdf.FirstOrDefault()?.Concepto, solicitud?.DescripcionOperacion, "Inspeccion y Certificacion AOCR"),
-                Referencia = $"Orden de recaudacion {ordenModel.NumeroOrden} - Solicitud {referenciaSolicitud}",
+                ConceptoPrincipal = FirstNonEmpty(detallesPdf.FirstOrDefault()?.Concepto, solicitud?.DescripcionOperacion, "Inspección y Certificación AOCR"),
+                Referencia = $"Orden de recaudación {ordenModel.NumeroOrden} - Solicitud {referenciaSolicitud}",
                 Detalles = detallesPdf
             };
 

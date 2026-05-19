@@ -94,7 +94,7 @@
         <div class="card-body">
             <div class="form-check mb-3">
                 @Html.CheckBoxFor(m => m.GenerarPassword, new { @class = "form-check-input", id = "GenerarPassword" })
-                <label class="form-check-label" for="GenerarPassword">Generar contrasena temporal automaticamente</label>
+                <label class="form-check-label" for="GenerarPassword">Generar contraseña temporal automáticamente</label>
             </div>
             <div class="js-password-manual-block @(Model.GenerarPassword ? "d-none" : string.Empty)">
                 @Html.LabelFor(m => m.PasswordInicial, new { @class = "form-label" })

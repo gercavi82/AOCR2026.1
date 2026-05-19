@@ -62,7 +62,7 @@ namespace CapaNegocio.Helpers
         {
             if (string.IsNullOrWhiteSpace(password))
             {
-                throw new ArgumentException("La contrasena no puede estar vacia");
+                throw new ArgumentException("La contraseña no puede estar vacía");
             }
 
             var salt = new byte[SaltSize];
@@ -140,40 +140,40 @@ namespace CapaNegocio.Helpers
         {
             if (string.IsNullOrWhiteSpace(password))
             {
-                return (false, "La contrasena no puede estar vacia.");
+                return (false, "La contraseña no puede estar vacía.");
             }
 
             if (password.Length < 8)
             {
-                return (false, "La contrasena debe tener al menos 8 caracteres.");
+                return (false, "La contraseña debe tener al menos 8 caracteres.");
             }
 
             if (password.Length > 128)
             {
-                return (false, "La contrasena no puede exceder 128 caracteres.");
+                return (false, "La contraseña no puede exceder 128 caracteres.");
             }
 
             if (!password.Any(char.IsUpper))
             {
-                return (false, "La contrasena debe contener al menos una letra mayuscula.");
+                return (false, "La contraseña debe contener al menos una letra mayúscula.");
             }
 
             if (!password.Any(char.IsLower))
             {
-                return (false, "La contrasena debe contener al menos una letra minuscula.");
+                return (false, "La contraseña debe contener al menos una letra minúscula.");
             }
 
             if (!password.Any(char.IsDigit))
             {
-                return (false, "La contrasena debe contener al menos un numero.");
+                return (false, "La contraseña debe contener al menos un número.");
             }
 
             if (!password.Any(c => "!@#$%^&*()_+-=[]{}|;:,.<>?".Contains(c)))
             {
-                return (false, "La contrasena debe contener al menos un caracter especial.");
+                return (false, "La contraseña debe contener al menos un carácter especial.");
             }
 
-            return (true, "Contrasena valida.");
+            return (true, "Contraseña válida.");
         }
 
         public static int CalcularNivelFortaleza(string password)

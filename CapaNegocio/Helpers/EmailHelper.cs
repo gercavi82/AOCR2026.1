@@ -58,20 +58,20 @@ namespace CapaNegocio.Helpers
         // ============================================================
         public static bool EnviarRecordatorioVencimiento(string destinatario, string nombreOperador, string numeroCertificado, int diasRestantes)
         {
-            string asunto = "Recordatorio: Certificado " + numeroCertificado + " proximo a vencer";
+            string asunto = "Recordatorio: Certificado " + numeroCertificado + " próximo a vencer";
 
             var model = new EmailTemplateModel
             {
                 Titulo = "Recordatorio de vencimiento",
                 NombreDestinatario = nombreOperador,
-                MensajePrincipal = "Su certificado esta proximo a vencer. Le recomendamos iniciar el proceso de renovacion lo antes posible.",
+                MensajePrincipal = "Su certificado está próximo a vencer. Le recomendamos iniciar el proceso de renovación lo antes posible.",
                 Resumen = new List<EmailFieldItem>
                 {
-                    new EmailFieldItem("Numero de Certificado", numeroCertificado),
-                    new EmailFieldItem("Dias restantes", diasRestantes + " dias")
+                    new EmailFieldItem("Número de certificado", numeroCertificado),
+                    new EmailFieldItem("Días restantes", diasRestantes + " días")
                 },
-                TextoCierre = "Puede gestionar la renovacion desde el sistema AOCR.",
-                Footer = "Este es un correo automatico, por favor no responder."
+                TextoCierre = "Puede gestionar la renovación desde el sistema AOCR.",
+                Footer = "Este es un correo automático, por favor no responder."
             };
 
             string cuerpo = EmailTemplateRenderer.Render(model);

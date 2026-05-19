@@ -36,7 +36,7 @@ namespace CapaPresentacion.Controllers
         {
             int codigoUsuario = ObtenerCodigoUsuario();
             if (codigoUsuario == 0)
-                return RedirectToAction("Login", "Usuario");
+                return RedirectToAction("Login", "Account");
 
             var notificaciones = NotificacionBL.ObtenerPorUsuario(codigoUsuario);
             return View(notificaciones);
@@ -163,7 +163,7 @@ namespace CapaPresentacion.Controllers
                 }
 
                 string mensaje;
-                bool resultado = NotificacionBL.MarcarComoLeida(id, out mensaje);
+                bool resultado = NotificacionBL.MarcarComoLeida(id, codigoUsuario, out mensaje);
 
                 return Json(new
                 {

@@ -490,15 +490,14 @@ namespace CapaPresentacion.Controllers
                     // Guard: bloquear edición si el pago aún está pendiente de aprobación por Financiero
                     if (!EsAdmin() && !User.IsInRole("Financiero") && !User.IsInRole("CoordinadorFinanciero"))
                     {
-                        var estadoNormGuard = EstadoSolicitud.Normalizar(vm.Solicitud.Estado ?? string.Empty);
-                        if (estadoNormGuard == EstadoSolicitud.PagoPendiente)
+                        string mensajeBloqueo;
+                        if (!new AocrPostPagoWorkflowService().PuedeRtAccederModuloSolicitud(vm.Solicitud.CodigoSolicitud, usuarioId, out mensajeBloqueo))
                         {
                             return Content(
                                 "<div class='alert alert-warning m-3'>" +
                                 "<i class='fas fa-lock me-2'></i>" +
                                 "<strong>Solicitud bloqueada.</strong><br/>" +
-                                "La solicitud estará disponible cuando el pago sea aprobado por Financiero. " +
-                                "Una vez que Financiero valide el comprobante de pago, recibirá una notificación y podrá continuar con el llenado de la solicitud." +
+                                HttpUtility.HtmlEncode(mensajeBloqueo) +
                                 "</div>");
                         }
                     }
@@ -608,21 +607,30 @@ namespace CapaPresentacion.Controllers
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"[FormularioEmisionAOCR] Excepción: {ex.Message}");
-                System.Diagnostics.Debug.WriteLine($"[FormularioEmisionAOCR] StackTrace: {ex.StackTrace}");
-                
-                // En lugar de devolver Content HTML que causa errores de parsing,
-                // devolver un contenido HTML válido que no rompa el JavaScript
+                var cid = Guid.NewGuid().ToString("N").Substring(0, 12).ToUpperInvariant();
+                var usuarioActual = User != null && User.Identity != null && User.Identity.IsAuthenticated
+                    ? User.Identity.Name
+                    : "ANONIMO";
+                var postgresEx = ex as PostgresException;
+                var mensajeUsuario = "No se pudo cargar la información de la solicitud. Revise la configuración del formulario o contacte al administrador.";
+
+                System.Diagnostics.Trace.TraceError(
+                    "[FormularioEmisionAOCR][CID:{0}] Usuario={1}; Oid={2}; TipoSolicitud={3}; SqlState={4}; Mensaje={5}; Detalle={6}",
+                    cid,
+                    usuarioActual,
+                    oid.HasValue ? oid.Value.ToString() : "N/A",
+                    tipoSolicitud.HasValue ? tipoSolicitud.Value.ToString() : "N/A",
+                    postgresEx != null ? postgresEx.SqlState : "N/A",
+                    postgresEx != null ? ObtenerMensajeErrorBaseDatos(postgresEx) : ex.Message,
+                    ex.ToString());
+
                 return Content($@"
                     <div class='alert alert-danger m-3'>
                         <i class='fas fa-exclamation-triangle'></i> 
-                        <strong>Error al cargar formulario:</strong><br/>
-                        {HttpUtility.HtmlEncode(ex.Message)}
-                        <br/><small class='text-muted'>Revisar logs del servidor para más detalles.</small>
-                    </div>
-                    <script>
-                        console.error('Error en FormularioEmisionAOCR:', {HttpUtility.JavaScriptStringEncode(ex.Message)});
-                    </script>");
+                        <strong>Error al cargar el formulario:</strong><br/>
+                        {HttpUtility.HtmlEncode(mensajeUsuario)}
+                        <br/><small class='text-muted'>CID: {HttpUtility.HtmlEncode(cid)}. Revise los registros del servidor para más detalles.</small>
+                    </div>");
             }
         }
 
@@ -923,10 +931,10 @@ namespace CapaPresentacion.Controllers
                     // Guard POST: no permitir guardar si el pago está pendiente de aprobación
                     if (!EsAdmin() && !User.IsInRole("Financiero") && !User.IsInRole("CoordinadorFinanciero"))
                     {
-                        var estadoNormPost = EstadoSolicitud.Normalizar(actual.Estado ?? string.Empty);
-                        if (estadoNormPost == EstadoSolicitud.PagoPendiente)
+                        string mensajeBloqueo;
+                        if (!new AocrPostPagoWorkflowService().PuedeRtAccederModuloSolicitud(actual.CodigoSolicitud, usuarioId, out mensajeBloqueo))
                         {
-                            return Json(new { success = false, mensaje = "La solicitud está bloqueada. El pago debe ser aprobado por Financiero antes de continuar." }, JsonRequestBehavior.AllowGet);
+                            return Json(new { success = false, mensaje = mensajeBloqueo }, JsonRequestBehavior.AllowGet);
                         }
                     }
 

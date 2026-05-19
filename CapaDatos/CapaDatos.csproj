@@ -292,6 +292,7 @@
     <Compile Include="DAOs\SeguridadDAO.cs" />
     <Compile Include="DAOs\PermisoDAO.cs" />
     <Compile Include="DAOs\ParametroDAO.cs" />
+    <Compile Include="DAOs\CorreoInstitucionalDAO.cs" />
     <Compile Include="DAOs\ReportesFinancierosDAO.cs" />
     <Compile Include="DAOs\ObservacionDAO.cs" />
     <Compile Include="DAOs\NotificacionDAO.cs" />
@@ -357,6 +358,7 @@
     <Compile Include="Models\UsuarioInternoRTRegistro.cs" />
     <Compile Include="Models\InspectorAs400Record.cs" />
     <Compile Include="Models\UbicacionUsuarioRecord.cs" />
+    <Compile Include="Models\CorreoInstitucionalModel.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Repositories\DocumentoRepository.cs" />
     <Compile Include="Repositories\IDocumentoRepository.cs" />

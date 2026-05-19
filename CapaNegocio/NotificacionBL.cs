@@ -143,6 +143,34 @@ namespace CapaNegocio
             }
         }
 
+        public static bool MarcarComoLeida(int codigoNotificacion, int codigoUsuario, out string mensaje)
+        {
+            mensaje = string.Empty;
+
+            try
+            {
+                if (codigoNotificacion <= 0 || codigoUsuario <= 0)
+                {
+                    mensaje = "Notificación inválida.";
+                    return false;
+                }
+
+                bool resultado = NotificacionDAOType.MarcarComoLeida(codigoNotificacion, codigoUsuario);
+
+                mensaje = resultado
+                    ? "Notificación marcada como leída."
+                    : "La notificación no existe o no pertenece al usuario actual.";
+
+                return resultado;
+            }
+            catch (Exception ex)
+            {
+                mensaje = "Error: " + ex.Message;
+                LogBL.RegistrarError("Error al marcar notificación como leída", ex.ToString(), "Notificacion");
+                return false;
+            }
+        }
+
         public static bool MarcarTodasComoLeidas(int codigoUsuario, out string mensaje)
         {
             mensaje = string.Empty;

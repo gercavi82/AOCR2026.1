@@ -488,6 +488,20 @@
         var dtTable = null;
         var filtroActivo = 'all';
 
+        function esRespuestaLoginHtml(payload) {
+            return typeof payload === 'string'
+                && window.AOCR
+                && typeof window.AOCR.isLoginMarkup === 'function'
+                && window.AOCR.isLoginMarkup(payload);
+        }
+
+        function renderTablaMensaje(icono, mensaje) {
+            $('#tablaSolicitudes tbody').html(
+                '<tr><td colspan="8" class="sol-empty"><i class="' + icono + '"></i><p>' +
+                $('<span>').text(mensaje).html() + '</p></td></tr>'
+            );
+        }
+
         // Load data
         cargarSolicitudesDesdeDB();
 
@@ -496,6 +510,7 @@
                 url: '@Url.Action("ObtenerMisSolicitudes", "SolicitudAOCR")',
                 type: 'GET',
                 dataType: 'json',
+                aocrSkipAuthRedirect: true,
                 success: function(response) {
                     if (response.success) {
                         datosGlobales = response.data;
@@ -503,16 +518,16 @@
                         initDataTable(datosGlobales);
                     } else {
                         console.error('Error al cargar solicitudes:', response.message);
-                        $('#tablaSolicitudes tbody').html(
-                            '<tr><td colspan="8" class="sol-empty"><i class="fas fa-exclamation-triangle"></i><p>' +
-                            $('<span>').text(response.message || 'Error al cargar solicitudes').html() + '</p></td></tr>'
-                        );
+                        renderTablaMensaje('fas fa-exclamation-triangle', response.message || 'Error al cargar solicitudes');
                     }
                 },
-                error: function() {
-                    $('#tablaSolicitudes tbody').html(
-                        '<tr><td colspan="8" class="sol-empty"><i class="fas fa-times-circle"></i><p>Error de conexión. Recargue la página.</p></td></tr>'
-                    );
+                error: function(xhr) {
+                    if (xhr && esRespuestaLoginHtml(xhr.responseText)) {
+                        renderTablaMensaje('fas fa-user-clock', 'La sesión o autorización de la bandeja no está disponible. Recargue la página o vuelva a iniciar sesión si el problema persiste.');
+                        return;
+                    }
+
+                    renderTablaMensaje('fas fa-times-circle', 'Error de conexión. Recargue la página.');
                 }
             });
         }
@@ -701,10 +716,21 @@
                 url: '@Url.Action("FormularioEmisionAOCR", "SolicitudAOCR")',
                 type: 'GET',
                 data: { oid: idSolicitud, tipoSolicitud: tipoSolicitud },
+                aocrSkipAuthRedirect: true,
                 success: function(data) {
+                    if (esRespuestaLoginHtml(data)) {
+                        $('#contenidoModal').html('<div class="alert alert-warning m-3"><i class="fas fa-user-clock me-2"></i>La sesión o autorización del formulario no está disponible. Cierre este cuadro y vuelva a intentar.</div>');
+                        return;
+                    }
+
                     $('#contenidoModal').hide().html(data).fadeIn(200);
                 },
                 error: function(xhr) {
+                    if (xhr && esRespuestaLoginHtml(xhr.responseText)) {
+                        $('#contenidoModal').html('<div class="alert alert-warning m-3"><i class="fas fa-user-clock me-2"></i>La sesión o autorización del formulario no está disponible. Cierre este cuadro y vuelva a intentar.</div>');
+                        return;
+                    }
+
                     $('#contenidoModal').html('<div class="alert alert-danger m-3">Error de conexión</div>');
                     console.error(xhr.responseText);
                 }

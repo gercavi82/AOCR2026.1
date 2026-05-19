@@ -903,7 +903,7 @@
                                         </a>
                                     </div>
 
-                                    @using (Html.BeginForm("ReenviarCredenciales", "AdminUsuarios", FormMethod.Post, new { @class = "d-inline-block", data_confirm = "Se generara una nueva contrasena temporal y se reenviara por correo al usuario. Desea continuar?" }))
+                                    @using (Html.BeginForm("ReenviarCredenciales", "AdminUsuarios", FormMethod.Post, new { @class = "d-inline-block", data_confirm = "Se generará una nueva contraseña temporal y se reenviará por correo al usuario. ¿Desea continuar?" }))
                                     {
                                         @Html.AntiForgeryToken()
                                         <input type="hidden" name="id" value="@item.IdUsuario" />
@@ -912,7 +912,7 @@
                                         </button>
                                     }
 
-                                    @using (Html.BeginForm("ResetPassword", "AdminUsuarios", FormMethod.Post, new { @class = "d-inline-block", data_confirm = "Se generara una contrasena temporal para este usuario. Desea continuar?" }))
+                                    @using (Html.BeginForm("ResetPassword", "AdminUsuarios", FormMethod.Post, new { @class = "d-inline-block", data_confirm = "Se generará una contraseña temporal para este usuario. ¿Desea continuar?" }))
                                     {
                                         @Html.AntiForgeryToken()
                                         <input type="hidden" name="id" value="@item.IdUsuario" />

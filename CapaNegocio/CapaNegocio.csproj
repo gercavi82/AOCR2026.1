@@ -161,7 +161,9 @@
     <Compile Include="Services\LoggingService.cs" />
     <Compile Include="Services\NotificacionDestinatarioPolicyService.cs" />
     <Compile Include="Services\NotificacionService.cs" />
+    <Compile Include="Services\CorreoInstitucionalService.cs" />
     <Compile Include="Services\OrdenRecaudacionCorreoService.cs" />
+    <Compile Include="Services\AocrPostPagoWorkflowService.cs" />
     <Compile Include="Services\OrdenPdfService.cs" />
     <Compile Include="Services\ValidacionDocumentalService.cs" />
     <Compile Include="Services\SolicitudAocrCorreoService.cs" />

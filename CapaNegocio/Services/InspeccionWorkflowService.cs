@@ -58,17 +58,17 @@ namespace CapaNegocio.Services
                 var informe = _informeDAO.ObtenerUltimoPorInspeccion(inspeccionId);
                 if (informe == null)
                 {
-                    return ResultadoOperacion.Error("No se puede registrar el resultado sin informe tecnico.");
+                    return ResultadoOperacion.Error("No se puede registrar el resultado sin informe técnico.");
                 }
 
                 if (!informe.Finalizado)
                 {
-                    return ResultadoOperacion.Error("No se puede registrar el resultado mientras el informe tecnico no este finalizado.");
+                    return ResultadoOperacion.Error("No se puede registrar el resultado mientras el informe técnico no esté finalizado.");
                 }
 
                 if (!informe.FirmadoInspector)
                 {
-                    return ResultadoOperacion.Error("No se puede registrar el resultado hasta que el informe tecnico este firmado por el inspector.");
+                    return ResultadoOperacion.Error("No se puede registrar el resultado hasta que el informe técnico esté firmado por el inspector.");
                 }
 
                 var resultadoNormalizado = (resultado ?? string.Empty).Trim().ToUpperInvariant();

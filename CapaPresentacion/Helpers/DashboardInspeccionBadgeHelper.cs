@@ -22,7 +22,7 @@ namespace CapaPresentacion.Helpers
                 case "NC":
                     return MapearNc(value);
                 default:
-                    return new DashboardInspeccionBadgeInfo("dash-badge dash-badge-neutral", string.IsNullOrWhiteSpace(estado) ? "Pendiente" : estado.Trim());
+                    return new DashboardInspeccionBadgeInfo("dash-badge dash-badge-neutral", FormatearEstadoVisible(estado));
             }
         }
 
@@ -41,7 +41,7 @@ namespace CapaPresentacion.Helpers
                 case "FINALIZADO":
                     return new DashboardInspeccionBadgeInfo("dash-badge dash-badge-green", "Finalizado");
                 default:
-                    return new DashboardInspeccionBadgeInfo("dash-badge dash-badge-neutral", string.IsNullOrWhiteSpace(estado) ? "Pendiente" : estado.Replace("_", " "));
+                    return new DashboardInspeccionBadgeInfo("dash-badge dash-badge-neutral", FormatearEstadoVisible(estado));
             }
         }
 
@@ -60,7 +60,7 @@ namespace CapaPresentacion.Helpers
                 case "FINALIZADA":
                     return new DashboardInspeccionBadgeInfo("dash-badge dash-badge-green", "Finalizada");
                 default:
-                    return new DashboardInspeccionBadgeInfo("dash-badge dash-badge-neutral", string.IsNullOrWhiteSpace(estado) ? "Pendiente" : estado.Replace("_", " "));
+                    return new DashboardInspeccionBadgeInfo("dash-badge dash-badge-neutral", FormatearEstadoVisible(estado));
             }
         }
 
@@ -79,7 +79,7 @@ namespace CapaPresentacion.Helpers
                 case "FIRMADO":
                     return new DashboardInspeccionBadgeInfo("dash-badge dash-badge-green", "Firmado");
                 default:
-                    return new DashboardInspeccionBadgeInfo("dash-badge dash-badge-neutral", string.IsNullOrWhiteSpace(estado) ? "Pendiente" : estado.Replace("_", " "));
+                    return new DashboardInspeccionBadgeInfo("dash-badge dash-badge-neutral", FormatearEstadoVisible(estado));
             }
         }
 
@@ -91,9 +91,9 @@ namespace CapaPresentacion.Helpers
                     return new DashboardInspeccionBadgeInfo("dash-badge dash-badge-orange", "Pendiente firma inspector");
                 case "PENDIENTE_FIRMA_DIRDAC":
                 case "PENDIENTE_REVISION_DIRDAC":
-                    return new DashboardInspeccionBadgeInfo("dash-badge dash-badge-green", "Pendiente revision DIRDAC");
+                    return new DashboardInspeccionBadgeInfo("dash-badge dash-badge-green", "Pendiente de revisión DIRDAC");
                 default:
-                    return new DashboardInspeccionBadgeInfo("dash-badge dash-badge-neutral", string.IsNullOrWhiteSpace(estado) ? "Pendiente" : estado.Replace("_", " "));
+                    return new DashboardInspeccionBadgeInfo("dash-badge dash-badge-neutral", FormatearEstadoVisible(estado));
             }
         }
 
@@ -108,7 +108,7 @@ namespace CapaPresentacion.Helpers
                 case "CERRADA":
                     return new DashboardInspeccionBadgeInfo("dash-badge dash-badge-green", "Cerrada");
                 default:
-                    return new DashboardInspeccionBadgeInfo("dash-badge dash-badge-neutral", string.IsNullOrWhiteSpace(estado) ? "Pendiente" : estado.Replace("_", " "));
+                    return new DashboardInspeccionBadgeInfo("dash-badge dash-badge-neutral", FormatearEstadoVisible(estado));
             }
         }
 
@@ -117,6 +117,34 @@ namespace CapaPresentacion.Helpers
             return valor
                 ? new DashboardInspeccionBadgeInfo("dash-badge dash-badge-green-soft", "Sí")
                 : new DashboardInspeccionBadgeInfo("dash-badge dash-badge-gray", "No");
+        }
+
+        public static string FormatearEstadoVisible(string estado)
+        {
+            var value = (estado ?? string.Empty).Trim().ToUpperInvariant();
+            if (string.IsNullOrWhiteSpace(value))
+            {
+                return "Pendiente";
+            }
+
+            switch (value)
+            {
+                case "INFORME_ELABORADO":
+                    return "Informe elaborado";
+                case "PENDIENTE_REVISION_DIRDAC":
+                    return "Pendiente de revisión DIRDAC";
+                case "PENDIENTE_ASIGNACION_INSPECTOR":
+                    return "Pendiente de asignación de inspector";
+                case "DOCUMENTACION_APROBADA":
+                    return "Documentación aprobada";
+                case "PAGO_APROBADO":
+                    return "Pago aprobado";
+                case "PENDIENTE_CARGA_DOCUMENTAL_RT":
+                    return "Pendiente de carga documental por parte del RT";
+                default:
+                    var texto = value.Replace("_", " ").ToLowerInvariant();
+                    return char.ToUpper(texto[0]) + texto.Substring(1);
+            }
         }
     }
 

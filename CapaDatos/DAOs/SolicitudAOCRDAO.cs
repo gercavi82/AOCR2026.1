@@ -27,6 +27,61 @@ namespace CapaDatos.DAOs
         private string ConnectionString =>
             ConfigurationManager.ConnectionStrings["AOCRConnection"].ConnectionString;
 
+        private static readonly string[] EstadosAsignacionInicialCanonicos =
+        {
+            EstadoSolicitud.PendienteAsignacionRT,
+            EstadoSolicitud.Pendiente,
+            EstadoSolicitud.EnRevision,
+            EstadoSolicitud.DocumentacionPendiente,
+            EstadoSolicitud.Subsanada,
+            EstadoSolicitud.RequiereInspeccion,
+            EstadoSolicitud.AceptacionDocumental,
+            EstadoSolicitud.DocumentacionCompleta
+        };
+
+        private static readonly string[] EstadosAsignacionInicialSql =
+        {
+            "PENDIENTE_ASIGNACION_RT",
+            "PENDIENTE ASIGNACION RT",
+            "PENDIENTE_ASIGNACION_TECNICA",
+            "PENDIENTE ASIGNACION TECNICA",
+            "PENDIENTE_ASIGNACION",
+            "PENDIENTE",
+            "EN_REVISION",
+            "EN REVISION",
+            "ENVIADO_COORDINADOR",
+            "ENVIADO COORDINADOR",
+            "EN_REVISION_COORDINADOR",
+            "EN REVISION COORDINADOR",
+            "ENVIADO",
+            "PREPARANDO",
+            "DOCUMENTACION_PENDIENTE",
+            "DOCUMENTACION PENDIENTE",
+            "ACEPTACION_DOCUMENTAL",
+            "DOCUMENTACION_COMPLETA",
+            "DOCUMENTOS_COMPLETOS",
+            "SUBSANADA",
+            "REQUIERE_INSPECCION",
+            "REQUIERE INSPECCION"
+        };
+
+        private static List<string> ObtenerEstadosAsignacionInicialSql()
+        {
+            return EstadosAsignacionInicialSql
+                .Concat(EstadosAsignacionInicialCanonicos)
+                .Where(e => !string.IsNullOrWhiteSpace(e))
+                .Select(e => e.Trim().ToUpperInvariant())
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
+        }
+
+        private static bool EstadoPermiteAsignacionInicial(string estado)
+        {
+            var estadoNormalizado = EstadoSolicitud.Normalizar(estado);
+            return EstadosAsignacionInicialCanonicos.Any(e =>
+                string.Equals(e, estadoNormalizado, StringComparison.OrdinalIgnoreCase));
+        }
+
         // ============================
         // LISTADOS
         // ============================
@@ -359,26 +414,7 @@ namespace CapaDatos.DAOs
 
         public List<SolicitudAOCR> ObtenerPendientesAsignacion()
         {
-            var estadosPendientesAsignacion = new[]
-            {
-                "PENDIENTE_ASIGNACION_RT",
-                "PENDIENTE ASIGNACION RT",
-                "PENDIENTE",
-                "ACEPTACION_DOCUMENTAL",
-                "DOCUMENTACION_COMPLETA",
-                "DOCUMENTOS_COMPLETOS",
-                "PENDIENTE_ASIGNACION_TECNICA",
-                "PENDIENTE ASIGNACION TECNICA",
-                "PENDIENTE_ASIGNACION",
-                EstadoSolicitud.PendienteAsignacionRT,
-                EstadoSolicitud.Pendiente,
-                EstadoSolicitud.AceptacionDocumental,
-                EstadoSolicitud.DocumentacionCompleta
-            }
-            .Where(e => !string.IsNullOrWhiteSpace(e))
-            .Select(e => e.Trim().ToUpperInvariant())
-            .Distinct(StringComparer.OrdinalIgnoreCase)
-            .ToList();
+            var estadosPendientesAsignacion = ObtenerEstadosAsignacionInicialSql();
 
             _logger.LogInfo("[InspeccionesController] DAO.ObtenerPendientesAsignacion inicio. EstadosFiltro=" + string.Join(",", estadosPendientesAsignacion));
 
@@ -551,6 +587,8 @@ namespace CapaDatos.DAOs
         {
             var columnas = ObtenerColumnasTabla(cn, "aocr_tbsolicitud");
             var columnaCodCiudad = ResolverColumnaCodigoCiudad(columnas);
+            var correoRepresentanteTecnico = ResolverCorreoRepresentanteTecnicoCanonico(solicitud);
+            var emailSolicitud = ResolverEmailSolicitudCanonico(solicitud);
 
             var columnasInsert = new List<string>
             {
@@ -683,7 +721,7 @@ namespace CapaDatos.DAOs
                 cmd.Parameters.AddWithValue("@Ruc", (object)(solicitud.Ruc ?? ""));
                 cmd.Parameters.AddWithValue("@RazonSocial", (object)(solicitud.RazonSocial ?? ""));
 
-                cmd.Parameters.AddWithValue("@Email", (object)(solicitud.Email ?? ""));
+                cmd.Parameters.AddWithValue("@Email", (object)(emailSolicitud ?? ""));
                 cmd.Parameters.AddWithValue("@Telefono", (object)(solicitud.Telefono ?? ""));
                 cmd.Parameters.AddWithValue("@Direccion", (object)(solicitud.Direccion ?? ""));
                 cmd.Parameters.AddWithValue("@Ciudad", (object)(solicitud.Ciudad ?? ""));
@@ -692,7 +730,7 @@ namespace CapaDatos.DAOs
                 cmd.Parameters.AddWithValue("@CodCiudad", (object)(solicitud.CodCiudad ?? ""));
                 cmd.Parameters.AddWithValue("@RepresentanteLegal", (object)(solicitud.RepresentanteLegal ?? ""));
                 cmd.Parameters.AddWithValue("@CedulaRepresentante", (object)(solicitud.CedulaRepresentante ?? ""));
-                cmd.Parameters.AddWithValue("@CorreoRepresentanteTecnico", (object)(solicitud.CorreoRepresentanteTecnico ?? ""));
+                cmd.Parameters.AddWithValue("@CorreoRepresentanteTecnico", (object)(correoRepresentanteTecnico ?? ""));
                 cmd.Parameters.AddWithValue("@NombreComercial", (object)(solicitud.NombreComercial ?? ""));
 
                 cmd.Parameters.AddWithValue("@TipoOperacion", (object)(solicitud.TipoOperacion ?? ""));
@@ -726,6 +764,8 @@ namespace CapaDatos.DAOs
                 cn.Open();
                 var columnas = ObtenerColumnasTabla(cn, "aocr_tbsolicitud");
                 var columnaCodCiudad = ResolverColumnaCodigoCiudad(columnas);
+                var correoRepresentanteTecnico = ResolverCorreoRepresentanteTecnicoCanonico(s);
+                var emailSolicitud = ResolverEmailSolicitudCanonico(s);
                 var setClauses = new List<string>
                 {
                     "numero_solicitud=@numero",
@@ -828,7 +868,7 @@ WHERE codigo_solicitud=@id AND deleted_at IS NULL;";
                     cmd.Parameters.AddWithValue("@ruc", (object)(s.Ruc ?? ""));
                     cmd.Parameters.AddWithValue("@razon_social", (object)(s.RazonSocial ?? ""));
 
-                    cmd.Parameters.AddWithValue("@email", (object)(s.Email ?? ""));
+                    cmd.Parameters.AddWithValue("@email", (object)(emailSolicitud ?? ""));
                     cmd.Parameters.AddWithValue("@telefono", (object)(s.Telefono ?? ""));
                     cmd.Parameters.AddWithValue("@direccion", (object)(s.Direccion ?? ""));
                     if (columnas.Contains("ciudad"))
@@ -852,7 +892,7 @@ WHERE codigo_solicitud=@id AND deleted_at IS NULL;";
                     cmd.Parameters.AddWithValue("@cedula_representante", (object)(s.CedulaRepresentante ?? ""));
                     if (columnas.Contains("correo_representante_tecnico"))
                     {
-                        cmd.Parameters.AddWithValue("@correo_representante_tecnico", (object)(s.CorreoRepresentanteTecnico ?? ""));
+                        cmd.Parameters.AddWithValue("@correo_representante_tecnico", (object)(correoRepresentanteTecnico ?? ""));
                     }
                     if (columnas.Contains("nombre_comercial"))
                     {
@@ -1032,15 +1072,7 @@ WHERE codigo_solicitud=@id AND deleted_at IS NULL;";
                         var inspeccionExistente = ObtenerUltimaInspeccionPorSolicitud(cn, tx, codigoSolicitud);
                         var esReasignacion = inspeccionExistente != null && PermiteReasignacion(inspeccionExistente.Estado);
 
-                        var estadoPermiteAsignacionInicial =
-                            string.Equals(estadoActualNormalizado, EstadoSolicitud.PendienteAsignacionRT, StringComparison.OrdinalIgnoreCase) ||
-                            string.Equals(estadoActualNormalizado, EstadoSolicitud.Pendiente, StringComparison.OrdinalIgnoreCase) ||
-                            string.Equals(estadoActualNormalizado, EstadoSolicitud.EnRevision, StringComparison.OrdinalIgnoreCase) ||
-                            string.Equals(estadoActualNormalizado, EstadoSolicitud.DocumentacionPendiente, StringComparison.OrdinalIgnoreCase) ||
-                            string.Equals(estadoActualNormalizado, EstadoSolicitud.Subsanada, StringComparison.OrdinalIgnoreCase) ||
-                            string.Equals(estadoActualNormalizado, EstadoSolicitud.RequiereInspeccion, StringComparison.OrdinalIgnoreCase) ||
-                            string.Equals(estadoActualNormalizado, EstadoSolicitud.AceptacionDocumental, StringComparison.OrdinalIgnoreCase) ||
-                            string.Equals(estadoActualNormalizado, EstadoSolicitud.DocumentacionCompleta, StringComparison.OrdinalIgnoreCase);
+                        var estadoPermiteAsignacionInicial = EstadoPermiteAsignacionInicial(estadoAnterior);
 
                         var estadoPermiteReasignacion =
                             string.Equals(estadoActualNormalizado, EstadoSolicitud.EnInspeccion, StringComparison.OrdinalIgnoreCase) &&
@@ -1471,7 +1503,10 @@ WHERE codigo_solicitud=@id AND deleted_at IS NULL;";
                     GetString(rd, "correo_representante_tecnico"),
                     GetString(rd, "email_representante_tecnico"),
                     GetString(rd, "correo_representante"),
-                    GetString(rd, "email_representante")),
+                    GetString(rd, "email_representante"),
+                    GetString(rd, "email"),
+                    GetString(rd, "correo"),
+                    GetString(rd, "correo_electronico")),
                 NombreComercial = FirstNonEmpty(
                     GetString(rd, "nombre_comercial"),
                     GetString(rd, "nombre_comercial_compania")),
@@ -1609,6 +1644,26 @@ LIMIT 1;";
             }
 
             return null;
+        }
+
+        private static string ResolverEmailSolicitudCanonico(SolicitudAOCR solicitud)
+        {
+            if (solicitud == null)
+            {
+                return null;
+            }
+
+            return FirstNonEmpty(solicitud.CorreoRepresentanteTecnico, solicitud.Email);
+        }
+
+        private static string ResolverCorreoRepresentanteTecnicoCanonico(SolicitudAOCR solicitud)
+        {
+            if (solicitud == null)
+            {
+                return null;
+            }
+
+            return FirstNonEmpty(solicitud.CorreoRepresentanteTecnico, solicitud.Email);
         }
 
         private static HashSet<string> ObtenerColumnasTabla(NpgsqlConnection cn, string tabla)

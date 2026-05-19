@@ -39,7 +39,7 @@ namespace CapaNegocio.Services
             {
                 if (inspeccion == null || solicitud == null)
                 {
-                    return ResultadoOperacion.Error("No existe contexto suficiente para notificar el evento de inspeccion.");
+                    return ResultadoOperacion.Error("No existe contexto suficiente para notificar el evento de inspección.");
                 }
 
                 var plantilla = ConstruirPlantilla(inspeccion, solicitud, evento, observacion);
@@ -71,12 +71,12 @@ namespace CapaNegocio.Services
                     _emailQueueService.EncolarAsync(item).GetAwaiter().GetResult();
                 }
 
-                return ResultadoOperacion.Ok(destinatarios.Count, "Correos de inspeccion encolados correctamente.");
+                return ResultadoOperacion.Ok(destinatarios.Count, "Correos de inspección encolados correctamente.");
             }
             catch (Exception ex)
             {
                 _logger.LogWarning("InspeccionCorreoService.NotificarEvento: " + ex.Message);
-                return ResultadoOperacion.Error("No fue posible encolar correos del evento de inspeccion.");
+                return ResultadoOperacion.Error("No fue posible encolar correos del evento de inspección.");
             }
         }
 
@@ -336,7 +336,7 @@ namespace CapaNegocio.Services
             contexto.ResultadoTecnicoFinal = NormalizarResultadoTecnico(FirstNonEmpty(informe.Resultado, inspeccion.Resultado));
             if (string.IsNullOrWhiteSpace(contexto.ResultadoTecnicoFinal))
             {
-                contexto.MensajeError = "El informe fue aprobado, pero no se pudo notificar al RT porque el resultado tecnico final no esta definido.";
+                contexto.MensajeError = "El informe fue aprobado, pero no se pudo notificar al RT porque el resultado técnico final no está definido.";
                 _logger.LogWarning("InspeccionCorreoService.EnviarResultadoInformeTecnicoDesdeDireccion: resultado tecnico final vacio. InformeId=" + informe.CodigoInforme);
                 return contexto;
             }
@@ -403,13 +403,13 @@ namespace CapaNegocio.Services
             var resumen = new List<EmailFieldItem>
             {
                 new EmailFieldItem("Solicitud AOCR", contexto.NumeroSolicitud),
-                new EmailFieldItem("Codigo de inspeccion", contexto.CodigoInspeccionTexto),
-                new EmailFieldItem("Tipo de tramite", contexto.TipoTramite),
+                new EmailFieldItem("Código de inspección", contexto.CodigoInspeccionTexto),
+                new EmailFieldItem("Tipo de trámite", contexto.TipoTramite),
                 new EmailFieldItem("Operadora / EAE", contexto.Operadora),
-                new EmailFieldItem("Estacion inspeccionada", contexto.EstacionInspeccionada),
+                new EmailFieldItem("Estación inspeccionada", contexto.EstacionInspeccionada),
                 new EmailFieldItem("Ciudad", contexto.Ciudad),
-                new EmailFieldItem("Fecha de inspeccion", contexto.FechaInspeccionTexto),
-                new EmailFieldItem("Fecha de aprobacion institucional", contexto.FechaAprobacionInstitucionalTexto)
+                new EmailFieldItem("Fecha de inspección", contexto.FechaInspeccionTexto),
+                new EmailFieldItem("Fecha de aprobación institucional", contexto.FechaAprobacionInstitucionalTexto)
             };
 
             var contenido = new StringBuilder(4096);
@@ -885,9 +885,9 @@ namespace CapaNegocio.Services
                 case "INFORME_TECNICO_FIRMADO":
                     return new PlantillaCorreoInspeccion
                     {
-                        Asunto = "AOCR - Informe tecnico aprobado " + numeroSolicitud,
-                        Titulo = "Informe tecnico aprobado",
-                        Mensaje = "El informe tecnico ya cuenta con la aprobacion institucional requerida y queda habilitado para el expediente AOCR.",
+                        Asunto = "AOCR - Informe técnico aprobado " + numeroSolicitud,
+                        Titulo = "Informe técnico aprobado",
+                        Mensaje = "El informe técnico ya cuenta con la aprobación institucional requerida y queda habilitado para el expediente AOCR.",
                         GruposDestinatarios = new[]
                         {
                             NotificacionDestinatarioPolicyService.GrupoRepresentanteTecnico,

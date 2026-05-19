@@ -878,13 +878,13 @@ namespace CapaPresentacion.Controllers
                 var tipoNormalizado = NormalizarTipoDocumento(tipo);
                 if (tipoNormalizado == null)
                 {
-                    return new HttpStatusCodeResult(400, "Tipo de documento AOCR no valido.");
+                    return new HttpStatusCodeResult(400, "Tipo de documento AOCR no válido.");
                 }
 
                 var habilitadoPorModificacion = PuedeEditarCondicionesLimitacionesModificacion(item, tipoNormalizado);
                 if (!item.FirmaCompleta && !habilitadoPorModificacion)
                 {
-                    return new HttpStatusCodeResult(409, "La firma del informe tecnico aun no esta completa para habilitar este documento.");
+                    return new HttpStatusCodeResult(409, "La firma del informe técnico aún no está completa para habilitar este documento.");
                 }
 
                 RegistrarTrazabilidadDocumento(item.Solicitud, tipoNormalizado, descargar ? "DESCARGA" : "VISUALIZACION");
@@ -953,7 +953,7 @@ namespace CapaPresentacion.Controllers
                 var tipoNormalizado = NormalizarTipoDocumento(tipo);
                 if (tipoNormalizado == null)
                 {
-                    return new HttpStatusCodeResult(400, "Tipo de documento AOCR no valido.");
+                    return new HttpStatusCodeResult(400, "Tipo de documento AOCR no válido.");
                 }
 
                 var item = ObtenerContextoDocumentoValidacion(solicitudId);
@@ -964,7 +964,7 @@ namespace CapaPresentacion.Controllers
 
                 if (!item.FirmaCompleta && !PuedeEditarCondicionesLimitacionesModificacion(item, tipoNormalizado))
                 {
-                    return new HttpStatusCodeResult(409, "La firma del informe tecnico aun no esta completa para habilitar este documento.");
+                    return new HttpStatusCodeResult(409, "La firma del informe técnico aún no está completa para habilitar este documento.");
                 }
 
                 var model = ConstruirDocumentoEdicionModel(item, tipoNormalizado);
@@ -995,7 +995,7 @@ namespace CapaPresentacion.Controllers
                 var tipoNormalizado = NormalizarTipoDocumento(tipo);
                 if (tipoNormalizado == null)
                 {
-                    return new HttpStatusCodeResult(400, "Tipo de documento AOCR no valido.");
+                    return new HttpStatusCodeResult(400, "Tipo de documento AOCR no válido.");
                 }
 
                 var item = ObtenerContextoDocumentoValidacion(solicitudId);
@@ -1006,7 +1006,7 @@ namespace CapaPresentacion.Controllers
 
                 if (!item.FirmaCompleta && !PuedeEditarCondicionesLimitacionesModificacion(item, tipoNormalizado))
                 {
-                    return new HttpStatusCodeResult(409, "La firma del informe tecnico aun no esta completa para habilitar este documento.");
+                    return new HttpStatusCodeResult(409, "La firma del informe técnico aún no está completa para habilitar este documento.");
                 }
 
                 var modelEdicion = ConstruirDocumentoEdicionModel(item, tipoNormalizado);
@@ -1283,7 +1283,7 @@ namespace CapaPresentacion.Controllers
                 if (!item.FirmaCompleta)
                 {
                     Response.StatusCode = 409;
-                    return Json(new { ok = false, mensaje = "La firma del informe tecnico aun no esta completa para habilitar este documento." });
+                    return Json(new { ok = false, mensaje = "La firma del informe técnico aún no está completa para habilitar este documento." });
                 }
 
                 var posicionFirmaVisual = ConstruirPosicionFirmaVisualPdf(model);
@@ -1452,8 +1452,8 @@ namespace CapaPresentacion.Controllers
             }
             else if (!item.FirmaCompleta)
             {
-                item.MensajeEstado = "Pendiente de firma del informe tecnico";
-                item.MensajeAdvertencia = "La firma institucional del informe tecnico aun no esta completa; por eso los documentos AOCR no se habilitan todavia.";
+                item.MensajeEstado = "Pendiente de firma del informe técnico";
+                item.MensajeAdvertencia = "La firma institucional del informe técnico aún no está completa; por eso los documentos AOCR no se habilitan todavía.";
             }
             else if (item.Documentos.All(d => d.Disponible))
             {

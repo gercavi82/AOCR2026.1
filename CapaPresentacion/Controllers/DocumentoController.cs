@@ -160,6 +160,18 @@ namespace CapaPresentacion.Controllers
                 return RedirectToAction("Index", "SolicitudAOCR");
             }
 
+            var solicitud = _solicitudDAO.ObtenerPorId(solicitudId.Value);
+            int usuarioId;
+            if (solicitud != null && TryObtenerUsuarioActualId(out usuarioId) && solicitud.CodigoUsuario == usuarioId)
+            {
+                string mensajeBloqueo;
+                if (!new AocrPostPagoWorkflowService().PuedeRtAccederModuloSolicitud(solicitudId.Value, usuarioId, out mensajeBloqueo))
+                {
+                    TempData["Error"] = mensajeBloqueo;
+                    return RedirectToAction("Index", "SolicitudAOCR");
+                }
+            }
+
             ViewBag.SolicitudId = solicitudId.Value;
             ViewBag.TiposDocumento = ObtenerTiposDocumento();
             return View(new Documento { CodigoSolicitud = solicitudId.Value });
@@ -176,6 +188,18 @@ namespace CapaPresentacion.Controllers
                 {
                     TempData["Error"] = "Debe especificar una solicitud válida para subir documentos.";
                     return RedirectToAction("Index", "SolicitudAOCR");
+                }
+
+                var solicitud = _solicitudDAO.ObtenerPorId(solicitudId.Value);
+                int usuarioId;
+                if (solicitud != null && TryObtenerUsuarioActualId(out usuarioId) && solicitud.CodigoUsuario == usuarioId)
+                {
+                    string mensajeBloqueo;
+                    if (!new AocrPostPagoWorkflowService().PuedeRtAccederModuloSolicitud(solicitudId.Value, usuarioId, out mensajeBloqueo))
+                    {
+                        TempData["Error"] = mensajeBloqueo;
+                        return RedirectToAction("Index", "SolicitudAOCR");
+                    }
                 }
 
                 // Guard institucional: el "Borrador AOCR" y el "AOCR generado" nunca pueden
@@ -229,6 +253,10 @@ namespace CapaPresentacion.Controllers
                 // 3. La BL valida reglas de negocio y guarda en BD
                 if (_documentoBL.Crear(doc))
                 {
+                    new AocrPostPagoWorkflowService().MarcarDocumentosHabilitantesCargados(
+                        solicitudId.Value,
+                        User != null && User.Identity != null ? User.Identity.Name : "RT");
+
                     TempData["Exito"] = "Documento subido correctamente.";
                     return RedirectToAction("Lista", new { solicitudId = solicitudId.Value });
                 }
@@ -551,6 +579,15 @@ namespace CapaPresentacion.Controllers
                 if (!puedeVer || !PuedeRevisarDocumentosSolicitud(solicitud, usuarioId, inspeccionVinculada))
                 {
                     return JsonError(403, "No tiene permisos para revisar documentos de esta solicitud.");
+                }
+
+                if (inspeccionVinculada != null && inspeccionVinculada.CodigoInspeccion > 0)
+                {
+                    string mensajeBloqueo;
+                    if (!new AocrPostPagoWorkflowService().PuedeInspectorIniciarRevisionDocumental(inspeccionVinculada.CodigoInspeccion, out mensajeBloqueo))
+                    {
+                        return JsonError(409, mensajeBloqueo);
+                    }
                 }
 
                 if (codigoInspeccion.HasValue && inspeccionVinculada != null && inspeccionVinculada.CodigoInspeccion != codigoInspeccion.Value)

@@ -47,6 +47,9 @@ namespace CapaPresentacion.Controllers
         {
             var totalStopwatch = Stopwatch.StartNew();
             var usuarioAutenticado = User != null && User.Identity != null && User.Identity.IsAuthenticated;
+            var returnUrlSeguro = !string.IsNullOrWhiteSpace(returnUrl) && Url.IsLocalUrl(returnUrl)
+                ? returnUrl
+                : null;
             _logger.LogInfo(string.Format(
                 "[PERF][LOGIN] Inicio Login GET. Authenticated={0}; ReturnUrl={1}",
                 usuarioAutenticado,
@@ -54,42 +57,83 @@ namespace CapaPresentacion.Controllers
 
             if (usuarioAutenticado)
             {
-                var limpiezaStopwatch = Stopwatch.StartNew();
-                FormsAuthentication.SignOut();
-                Session.Clear();
-                Session.Abandon();
-
-                var authCookie = Request.Cookies[FormsAuthentication.FormsCookieName];
-                if (authCookie != null)
+                Usuario usuarioActual;
+                List<string> rolesActuales;
+                string loginRestaurado;
+                if (TryRestaurarSesionUsuarioActual(out usuarioActual, out rolesActuales, out loginRestaurado))
                 {
-                    var c = new HttpCookie(FormsAuthentication.FormsCookieName)
+                    _logger.LogInfo(string.Format(
+                        "[PERF][LOGIN] Sesion autenticada restaurada. UsuarioId={0}; Login={1}; Roles={2}",
+                        usuarioActual.Id,
+                        loginRestaurado ?? string.Empty,
+                        rolesActuales != null ? string.Join(",", rolesActuales) : string.Empty));
+
+                    if (usuarioActual.MustChangePassword || !usuarioActual.FechaUltimaConexion.HasValue)
                     {
-                        Value = string.Empty,
-                        Expires = DateTime.Now.AddDays(-1),
-                        HttpOnly = true,
-                        Secure = Request.IsSecureConnection,
-                        Path = FormsAuthentication.FormsCookiePath
-                    };
-                    CookieHelper.SetSameSiteLax(c);
-                    Response.Cookies.Add(c);
-                }
-                // Limpia token de sesión previa para evitar desalineación de antiforgery.
-                ExpirarCookieAntiForgery();
+                        if (!string.IsNullOrWhiteSpace(returnUrlSeguro))
+                        {
+                            Session[CompaniaActivaSessionHelper.SessionCompaniaPendienteReturnUrl] = returnUrlSeguro;
+                        }
 
-                // Importante: el request actual sigue teniendo el principal autenticado.
-                // Si renderizamos el Login así, @Html.AntiForgeryToken() se genera atado al usuario anterior
-                // y el siguiente POST falla con HttpAntiForgeryException.
-                var anonymous = new GenericPrincipal(new GenericIdentity(string.Empty), null);
-                HttpContext.User = anonymous;
-                if (System.Web.HttpContext.Current != null)
-                {
-                    System.Web.HttpContext.Current.User = anonymous;
-                }
-                Thread.CurrentPrincipal = anonymous;
+                        return LogLoginResult(
+                            RedirectToAction("CambiarContrasena", "Account"),
+                            totalStopwatch,
+                            "Login GET usuario autenticado redirige a cambio de contrasena");
+                    }
 
-                _logger.LogInfo(string.Format(
-                    "[PERF][LOGIN] Limpieza de autenticacion previa completada en {0} ms",
-                    limpiezaStopwatch.ElapsedMilliseconds));
+                    var esUsuarioRt = EsUsuarioRt(usuarioActual) && !EsUsuarioAdministrador(usuarioActual, rolesActuales);
+                    var companiasAsignadas = esUsuarioRt
+                        ? ObtenerCompaniasAsignadasConFallback(usuarioActual)
+                        : new List<UsuarioCompaniaRT>();
+
+                    if (esUsuarioRt)
+                    {
+                        if (companiasAsignadas.Count == 1)
+                        {
+                            EstablecerCompaniaActiva(companiasAsignadas[0]);
+                        }
+                        else if (companiasAsignadas.Count > 1)
+                        {
+                            var codigoActivo = CompaniaActivaSessionHelper.ObtenerCodigo(Session);
+                            var companiaActiva = companiasAsignadas.FirstOrDefault(c =>
+                                string.Equals((c.CompaniaCodigo ?? string.Empty).Trim(), codigoActivo, StringComparison.OrdinalIgnoreCase));
+
+                            if (companiaActiva == null)
+                            {
+                                if (!string.IsNullOrWhiteSpace(returnUrlSeguro))
+                                {
+                                    Session[CompaniaActivaSessionHelper.SessionCompaniaPendienteReturnUrl] = returnUrlSeguro;
+                                }
+
+                                return LogLoginResult(
+                                    RedirectToAction("SeleccionarCompania", new { returnUrl = returnUrlSeguro }),
+                                    totalStopwatch,
+                                    "Login GET usuario autenticado redirige a seleccionar compania");
+                            }
+
+                            if (string.IsNullOrWhiteSpace(CompaniaActivaSessionHelper.ObtenerNombre(Session)))
+                            {
+                                EstablecerCompaniaActiva(companiaActiva);
+                            }
+                        }
+                    }
+                    else if (string.IsNullOrWhiteSpace(CompaniaActivaSessionHelper.ObtenerCodigo(Session)) &&
+                             !string.IsNullOrWhiteSpace(usuarioActual.EmpresaCodigo))
+                    {
+                        var nombreEmpresa = ResolverNombreCompaniaPorCodigo(usuarioActual.EmpresaCodigo);
+                        CompaniaActivaSessionHelper.Establecer(Session, usuarioActual.EmpresaCodigo, nombreEmpresa);
+                    }
+
+                    return LogLoginResult(
+                        RedireccionarDespuesLogin(usuarioActual.Id, returnUrlSeguro),
+                        totalStopwatch,
+                        string.IsNullOrWhiteSpace(returnUrlSeguro)
+                            ? "Login GET usuario autenticado redirige a home"
+                            : "Login GET usuario autenticado redirige a returnUrl");
+                }
+
+                LimpiarAutenticacionParaMostrarLogin();
+                _logger.LogInfo("[PERF][LOGIN] No se pudo restaurar la sesion autenticada. Se mostrara Login anonimo.");
             }
 
             Response.Cache.SetCacheability(HttpCacheability.NoCache);
@@ -105,7 +149,7 @@ namespace CapaPresentacion.Controllers
                 ModelState.AddModelError("", TempData["LoginError"].ToString());
             }
 
-            ViewBag.ReturnUrl = returnUrl;
+            ViewBag.ReturnUrl = returnUrlSeguro;
             _logger.LogInfo(string.Format(
                 "[PERF][LOGIN] Fin Login GET pre-view. Total={0} ms",
                 totalStopwatch.ElapsedMilliseconds));
@@ -223,7 +267,8 @@ namespace CapaPresentacion.Controllers
             var cookie = new HttpCookie(FormsAuthentication.FormsCookieName, encrypted)
             {
                 HttpOnly = true,
-                Secure = Request.IsSecureConnection
+                Secure = Request.IsSecureConnection,
+                Path = FormsAuthentication.FormsCookiePath
             };
             CookieHelper.SetSameSiteLax(cookie);
 
@@ -234,34 +279,7 @@ namespace CapaPresentacion.Controllers
             // Forzar emisión de token antiforgery nuevo en la siguiente vista autenticada.
             ExpirarCookieAntiForgery();
 
-            // ============================
-            // SESIÓN UNIFICADA (NO TOCAR)
-            // ============================
-            Session["UserId"] = usuario.Id;
-            Session["IdUsuario"] = usuario.Id;
-            Session["CodigoUsuario"] = !string.IsNullOrWhiteSpace(usuario.CodigoUsuario)
-                ? usuario.CodigoUsuario
-                : usuario.NombreUsuario;
-
-            Session["NombreUsuario"] = !string.IsNullOrWhiteSpace(usuario.NombreCompleto)
-                ? usuario.NombreCompleto
-                : (usuario.NombreUsuario ?? "Usuario");
-
-            Session["Correo"] = usuario.Email;
-            CompaniaActivaSessionHelper.Limpiar(Session);
-
-            var rolesRaw = roles
-                .Where(r => !string.IsNullOrWhiteSpace(r))
-                .Select(r => r.Trim())
-                .Distinct(StringComparer.OrdinalIgnoreCase)
-                .ToList();
-            var rolesUnificados = RoleGroupingHelper.BuildUnifiedRoles(rolesRaw);
-
-            Session["RolesRaw"] = rolesRaw;
-            Session["Roles"] = rolesUnificados;
-            Session["Rol"] = rolesUnificados.Count > 0 ? rolesUnificados[0] : null;
-            Session.Timeout = sessionTimeoutMinutes;
-            Session["LastActivity"] = DateTime.Now;
+            SincronizarSesionAutenticada(usuario, roles, model.Usuario, limpiarCompaniaActiva: true);
 
             // Forzar cambio cuando hay marca explícita o cuando la última conexión fue limpiada (reset clave).
             if (usuario.MustChangePassword || !usuario.FechaUltimaConexion.HasValue)
@@ -362,19 +380,27 @@ namespace CapaPresentacion.Controllers
         }
 
         [Authorize]
-        public ActionResult SeleccionarCompania(string companiaSeleccionada = null)
+        public ActionResult SeleccionarCompania(string companiaSeleccionada = null, string returnUrl = null)
         {
+            var returnUrlSeguro = !string.IsNullOrWhiteSpace(returnUrl) && Url.IsLocalUrl(returnUrl)
+                ? returnUrl
+                : null;
+            if (!string.IsNullOrWhiteSpace(returnUrlSeguro))
+            {
+                Session[CompaniaActivaSessionHelper.SessionCompaniaPendienteReturnUrl] = returnUrlSeguro;
+            }
+
             var usuarioId = ObtenerUsuarioSesionId();
             if (usuarioId <= 0)
             {
-                return RedirectToAction("Login", "Account");
+                return RedirectToAction("Login", "Account", new { returnUrl = returnUrlSeguro });
             }
 
             var usuario = UsuarioDAO.ObtenerPorId(usuarioId);
             if (usuario == null)
             {
                 TempData["LoginError"] = "No se pudo cargar su perfil de usuario.";
-                return RedirectToAction("Login", "Account");
+                return RedirectToAction("Login", "Account", new { returnUrl = returnUrlSeguro });
             }
 
             var esUsuarioRt = EsUsuarioRt(usuario) && !EsAdministradorSesion(usuario);
@@ -391,7 +417,9 @@ namespace CapaPresentacion.Controllers
                     CompaniaActivaSessionHelper.Establecer(Session, unica.CompaniaCodigo, nombre);
                 }
 
-                var returnUrlUnica = Session[CompaniaActivaSessionHelper.SessionCompaniaPendienteReturnUrl] as string;
+                var returnUrlUnica = !string.IsNullOrWhiteSpace(returnUrlSeguro)
+                    ? returnUrlSeguro
+                    : Session[CompaniaActivaSessionHelper.SessionCompaniaPendienteReturnUrl] as string;
                 Session.Remove(CompaniaActivaSessionHelper.SessionCompaniaPendienteReturnUrl);
                 return RedireccionarDespuesLogin(usuarioId, returnUrlUnica);
             }
@@ -399,7 +427,9 @@ namespace CapaPresentacion.Controllers
             var codigoActivo = CompaniaActivaSessionHelper.ObtenerCodigo(Session);
             var vm = ConstruirSeleccionCompaniaViewModel(
                 companiasAsignadas,
-                Session[CompaniaActivaSessionHelper.SessionCompaniaPendienteReturnUrl] as string,
+                !string.IsNullOrWhiteSpace(returnUrlSeguro)
+                    ? returnUrlSeguro
+                    : Session[CompaniaActivaSessionHelper.SessionCompaniaPendienteReturnUrl] as string,
                 !string.IsNullOrWhiteSpace(companiaSeleccionada) ? companiaSeleccionada : codigoActivo);
 
             return View(vm);
@@ -410,22 +440,25 @@ namespace CapaPresentacion.Controllers
         [ValidateAntiForgeryToken]
         public ActionResult SeleccionarCompania(SeleccionCompaniaViewModel model)
         {
+            var returnUrlSeguro = model != null && !string.IsNullOrWhiteSpace(model.ReturnUrl) && Url.IsLocalUrl(model.ReturnUrl)
+                ? model.ReturnUrl
+                : null;
             var usuarioId = ObtenerUsuarioSesionId();
             if (usuarioId <= 0)
             {
-                return RedirectToAction("Login", "Account");
+                return RedirectToAction("Login", "Account", new { returnUrl = returnUrlSeguro });
             }
 
             var usuario = UsuarioDAO.ObtenerPorId(usuarioId);
             if (usuario == null)
             {
                 TempData["LoginError"] = "No se pudo cargar su perfil de usuario.";
-                return RedirectToAction("Login", "Account");
+                return RedirectToAction("Login", "Account", new { returnUrl = returnUrlSeguro });
             }
 
             if (EsAdministradorSesion(usuario))
             {
-                return RedireccionarDespuesLogin(usuarioId, model != null ? model.ReturnUrl : null);
+                return RedireccionarDespuesLogin(usuarioId, returnUrlSeguro);
             }
 
             var companiasAsignadas = ObtenerCompaniasAsignadasConFallback(usuario);
@@ -436,7 +469,7 @@ namespace CapaPresentacion.Controllers
             {
                 var vm = ConstruirSeleccionCompaniaViewModel(
                     companiasAsignadas,
-                    model != null ? model.ReturnUrl : null,
+                    returnUrlSeguro,
                     model != null ? model.CompaniaSeleccionada : null,
                     model != null ? model.NuevaCompaniaCodigo : null,
                     model != null && model.MostrarAgregarCompania);
@@ -450,7 +483,7 @@ namespace CapaPresentacion.Controllers
                 : ResolverNombreCompaniaPorCodigo(seleccion.CompaniaCodigo);
             CompaniaActivaSessionHelper.Establecer(Session, seleccion.CompaniaCodigo, nombreCompania);
 
-            var returnUrl = model != null ? model.ReturnUrl : null;
+            var returnUrl = returnUrlSeguro;
             if (string.IsNullOrWhiteSpace(returnUrl))
             {
                 returnUrl = Session[CompaniaActivaSessionHelper.SessionCompaniaPendienteReturnUrl] as string;
@@ -465,22 +498,25 @@ namespace CapaPresentacion.Controllers
         [ValidateAntiForgeryToken]
         public ActionResult AgregarCompaniaSeleccion(SeleccionCompaniaViewModel model)
         {
+            var returnUrlSeguro = model != null && !string.IsNullOrWhiteSpace(model.ReturnUrl) && Url.IsLocalUrl(model.ReturnUrl)
+                ? model.ReturnUrl
+                : null;
             var usuarioId = ObtenerUsuarioSesionId();
             if (usuarioId <= 0)
             {
-                return RedirectToAction("Login", "Account");
+                return RedirectToAction("Login", "Account", new { returnUrl = returnUrlSeguro });
             }
 
             var usuario = UsuarioDAO.ObtenerPorId(usuarioId);
             if (usuario == null)
             {
                 TempData["LoginError"] = "No se pudo cargar su perfil de usuario.";
-                return RedirectToAction("Login", "Account");
+                return RedirectToAction("Login", "Account", new { returnUrl = returnUrlSeguro });
             }
 
             if (EsAdministradorSesion(usuario))
             {
-                return RedireccionarDespuesLogin(usuarioId, model != null ? model.ReturnUrl : null);
+                return RedireccionarDespuesLogin(usuarioId, returnUrlSeguro);
             }
 
             var companiasAsignadas = ObtenerCompaniasAsignadasConFallback(usuario);
@@ -492,7 +528,7 @@ namespace CapaPresentacion.Controllers
                 ModelState.AddModelError("", "Seleccione una compañía adicional para agregar.");
                 return View("SeleccionarCompania", ConstruirSeleccionCompaniaViewModel(
                     companiasAsignadas,
-                    model != null ? model.ReturnUrl : null,
+                    returnUrlSeguro,
                     model != null ? model.CompaniaSeleccionada : null,
                     codigo,
                     true));
@@ -503,7 +539,7 @@ namespace CapaPresentacion.Controllers
                 ModelState.AddModelError("", "La compañía seleccionada ya está asignada a su usuario.");
                 return View("SeleccionarCompania", ConstruirSeleccionCompaniaViewModel(
                     companiasAsignadas,
-                    model != null ? model.ReturnUrl : null,
+                    returnUrlSeguro,
                     model != null ? model.CompaniaSeleccionada : null,
                     codigo,
                     true));
@@ -520,7 +556,7 @@ namespace CapaPresentacion.Controllers
                 ModelState.AddModelError("", "No se pudo validar la compañía seleccionada. Intente nuevamente.");
                 return View("SeleccionarCompania", ConstruirSeleccionCompaniaViewModel(
                     companiasAsignadas,
-                    model != null ? model.ReturnUrl : null,
+                    returnUrlSeguro,
                     model != null ? model.CompaniaSeleccionada : null,
                     codigo,
                     true));
@@ -546,14 +582,14 @@ namespace CapaPresentacion.Controllers
                 ModelState.AddModelError("", "No fue posible agregar la compañía seleccionada a su usuario.");
                 return View("SeleccionarCompania", ConstruirSeleccionCompaniaViewModel(
                     companiasAsignadas,
-                    model != null ? model.ReturnUrl : null,
+                    returnUrlSeguro,
                     model != null ? model.CompaniaSeleccionada : null,
                     codigo,
                     true));
             }
 
             TempData["SeleccionCompaniaSuccess"] = "La compañía se agregó correctamente. Ahora puede seleccionarla para continuar.";
-            return RedirectToAction("SeleccionarCompania", new { companiaSeleccionada = codigo });
+            return RedirectToAction("SeleccionarCompania", new { companiaSeleccionada = codigo, returnUrl = returnUrlSeguro });
         }
 
         [HttpPost]
@@ -564,7 +600,7 @@ namespace CapaPresentacion.Controllers
             var usuarioId = ObtenerUsuarioSesionId();
             if (usuarioId <= 0)
             {
-                return RedirectToAction("Login", "Account");
+                return RedirectToAction("Login", "Account", new { returnUrl });
             }
 
             var usuario = UsuarioDAO.ObtenerPorId(usuarioId);
@@ -672,7 +708,8 @@ namespace CapaPresentacion.Controllers
                 {
                     Expires = DateTime.Now.AddDays(-1),
                     HttpOnly = true,
-                    Secure = Request.IsSecureConnection
+                    Secure = Request.IsSecureConnection,
+                    Path = FormsAuthentication.FormsCookiePath
                 };
                 CookieHelper.SetSameSiteLax(c);
                 Response.Cookies.Add(c);
@@ -896,6 +933,281 @@ namespace CapaPresentacion.Controllers
                 .ToList();
         }
 
+        private void LimpiarAutenticacionParaMostrarLogin()
+        {
+            var limpiezaStopwatch = Stopwatch.StartNew();
+
+            FormsAuthentication.SignOut();
+            Session.Clear();
+            Session.Abandon();
+
+            var authCookie = Request.Cookies[FormsAuthentication.FormsCookieName];
+            if (authCookie != null)
+            {
+                var c = new HttpCookie(FormsAuthentication.FormsCookieName)
+                {
+                    Value = string.Empty,
+                    Expires = DateTime.Now.AddDays(-1),
+                    HttpOnly = true,
+                    Secure = Request.IsSecureConnection,
+                    Path = FormsAuthentication.FormsCookiePath
+                };
+                CookieHelper.SetSameSiteLax(c);
+                Response.Cookies.Add(c);
+            }
+
+            ExpirarCookieAntiForgery();
+
+            var anonymous = new GenericPrincipal(new GenericIdentity(string.Empty), null);
+            HttpContext.User = anonymous;
+            if (System.Web.HttpContext.Current != null)
+            {
+                System.Web.HttpContext.Current.User = anonymous;
+            }
+            Thread.CurrentPrincipal = anonymous;
+
+            _logger.LogInfo(string.Format(
+                "[PERF][LOGIN] Limpieza de autenticacion previa completada en {0} ms",
+                limpiezaStopwatch.ElapsedMilliseconds));
+        }
+
+        private bool TryRestaurarSesionUsuarioActual(out Usuario usuario, out List<string> roles, out string loginUsado)
+        {
+            usuario = null;
+            roles = ObtenerRolesSesion();
+            loginUsado = (Session["CodigoUsuario"] as string ?? string.Empty).Trim();
+
+            var usuarioIdActual = Session["UserId"] ?? Session["IdUsuario"];
+            int usuarioId;
+            if (usuarioIdActual != null && int.TryParse(usuarioIdActual.ToString(), out usuarioId) && usuarioId > 0)
+            {
+                try
+                {
+                    usuario = UsuarioDAO.ObtenerPorId(usuarioId);
+                }
+                catch (Exception ex)
+                {
+                    Debug.WriteLine("Account/Login: error restaurando usuario por id de sesion: " + ex.Message);
+                }
+
+                if (usuario != null && usuario.Id > 0)
+                {
+                    roles = CompletarRolesUsuario(usuario, roles);
+                    SincronizarSesionAutenticada(usuario, roles, loginUsado, limpiarCompaniaActiva: false);
+                    loginUsado = !string.IsNullOrWhiteSpace(usuario.CodigoUsuario) ? usuario.CodigoUsuario.Trim() : loginUsado;
+                    return true;
+                }
+            }
+
+            var identidades = new List<string>();
+            if (!string.IsNullOrWhiteSpace(loginUsado))
+            {
+                identidades.Add(loginUsado);
+            }
+
+            try
+            {
+                if (User != null && User.Identity != null && User.Identity.IsAuthenticated)
+                {
+                    identidades.Add(User.Identity.Name);
+
+                    if (HttpContext != null && HttpContext.User != null && HttpContext.User.Identity != null)
+                    {
+                        identidades.Add(HttpContext.User.Identity.Name);
+                    }
+
+                    if (Request != null && Request.LogonUserIdentity != null)
+                    {
+                        identidades.Add(Request.LogonUserIdentity.Name);
+                    }
+                }
+            }
+            catch (Exception exIdentity)
+            {
+                Debug.WriteLine("Account/Login: error obteniendo identidades autenticadas: " + exIdentity.Message);
+            }
+
+            foreach (var identidad in identidades.Where(x => !string.IsNullOrWhiteSpace(x)).Distinct(StringComparer.OrdinalIgnoreCase))
+            {
+                Usuario usuarioPorLogin;
+                if (!TryResolverUsuarioPorLogin(identidad, out usuarioPorLogin))
+                {
+                    continue;
+                }
+
+                usuario = usuarioPorLogin;
+                roles = CompletarRolesUsuario(usuario, roles);
+                SincronizarSesionAutenticada(usuario, roles, identidad, limpiarCompaniaActiva: false);
+                loginUsado = identidad;
+                return true;
+            }
+
+            return false;
+        }
+
+        private static List<string> ExpandirCandidatosLogin(string valor)
+        {
+            var candidatos = new List<string>();
+            var bruto = (valor ?? string.Empty).Trim();
+            if (string.IsNullOrWhiteSpace(bruto))
+            {
+                return candidatos;
+            }
+
+            candidatos.Add(bruto);
+
+            if (bruto.Contains("\\"))
+            {
+                var afterSlash = bruto.Substring(bruto.LastIndexOf("\\", StringComparison.Ordinal) + 1).Trim();
+                if (!string.IsNullOrWhiteSpace(afterSlash))
+                {
+                    candidatos.Add(afterSlash);
+                }
+            }
+
+            if (bruto.Contains("/"))
+            {
+                var afterForwardSlash = bruto.Substring(bruto.LastIndexOf("/", StringComparison.Ordinal) + 1).Trim();
+                if (!string.IsNullOrWhiteSpace(afterForwardSlash))
+                {
+                    candidatos.Add(afterForwardSlash);
+                }
+            }
+
+            if (bruto.Contains("@"))
+            {
+                var localPart = bruto.Split('@')[0].Trim();
+                if (!string.IsNullOrWhiteSpace(localPart))
+                {
+                    candidatos.Add(localPart);
+                }
+            }
+
+            return candidatos
+                .Where(x => !string.IsNullOrWhiteSpace(x))
+                .Select(x => x.Trim())
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
+        }
+
+        private bool TryResolverUsuarioPorLogin(string loginInput, out Usuario usuario)
+        {
+            usuario = null;
+
+            foreach (var candidato in ExpandirCandidatosLogin(loginInput))
+            {
+                try
+                {
+                    usuario = UsuarioDAO.ObtenerPorNombreUsuario(candidato);
+                    if (usuario != null && usuario.Id > 0)
+                    {
+                        return true;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Debug.WriteLine("Account/Login: error resolviendo usuario por login '" + candidato + "': " + ex.Message);
+                }
+            }
+
+            return false;
+        }
+
+        private List<string> CompletarRolesUsuario(Usuario usuario, IEnumerable<string> rolesBase)
+        {
+            var roles = (rolesBase ?? Enumerable.Empty<string>())
+                .Where(r => !string.IsNullOrWhiteSpace(r))
+                .Select(r => r.Trim())
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
+
+            if (roles.Count == 0 && usuario != null && usuario.Id > 0)
+            {
+                try
+                {
+                    roles = UsuarioDAO.ObtenerRoles(usuario.Id) ?? new List<string>();
+                }
+                catch (Exception ex)
+                {
+                    Debug.WriteLine("Account/Login: error obteniendo roles desde base: " + ex.Message);
+                    roles = new List<string>();
+                }
+            }
+
+            if (roles.Count == 0 && usuario != null && !string.IsNullOrWhiteSpace(usuario.Rol))
+            {
+                roles.Add(usuario.Rol.Trim());
+            }
+
+            return roles
+                .Where(r => !string.IsNullOrWhiteSpace(r))
+                .Select(r => r.Trim())
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
+        }
+
+        private void SincronizarSesionAutenticada(Usuario usuario, IEnumerable<string> roles, string loginFallback, bool limpiarCompaniaActiva)
+        {
+            if (usuario == null || usuario.Id <= 0)
+            {
+                return;
+            }
+
+            Session["UserId"] = usuario.Id;
+            Session["IdUsuario"] = usuario.Id;
+            Session["CodigoUsuario"] = !string.IsNullOrWhiteSpace(usuario.CodigoUsuario)
+                ? usuario.CodigoUsuario.Trim()
+                : (loginFallback ?? usuario.NombreUsuario ?? string.Empty).Trim();
+
+            Session["NombreUsuario"] = !string.IsNullOrWhiteSpace(usuario.NombreCompleto)
+                ? usuario.NombreCompleto.Trim()
+                : (!string.IsNullOrWhiteSpace(usuario.NombreUsuario)
+                    ? usuario.NombreUsuario.Trim()
+                    : "Usuario");
+
+            Session["Correo"] = !string.IsNullOrWhiteSpace(usuario.Email)
+                ? usuario.Email.Trim()
+                : (Session["Correo"] as string ?? string.Empty).Trim();
+
+            if (limpiarCompaniaActiva)
+            {
+                CompaniaActivaSessionHelper.Limpiar(Session);
+            }
+
+            var rolesRaw = (roles ?? Enumerable.Empty<string>())
+                .Where(r => !string.IsNullOrWhiteSpace(r))
+                .Select(r => r.Trim())
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
+            var rolesUnificados = RoleGroupingHelper.BuildUnifiedRoles(rolesRaw);
+            var rolActual = RoleGroupingHelper.NormalizeSelectedRole(Session["Rol"] as string ?? string.Empty);
+            var rolSeleccionado = rolesUnificados.FirstOrDefault(r =>
+                string.Equals(r, rolActual, StringComparison.OrdinalIgnoreCase));
+
+            Session["RolesRaw"] = rolesRaw;
+            Session["Roles"] = rolesUnificados;
+            Session["Rol"] = !string.IsNullOrWhiteSpace(rolSeleccionado)
+                ? rolSeleccionado
+                : (rolesUnificados.Count > 0 ? rolesUnificados[0] : null);
+            Session.Timeout = SessionTimeoutHelper.GetTimeoutMinutes();
+            Session["LastActivity"] = DateTime.Now;
+        }
+
+        private void EstablecerCompaniaActiva(UsuarioCompaniaRT compania)
+        {
+            if (compania == null || string.IsNullOrWhiteSpace(compania.CompaniaCodigo))
+            {
+                return;
+            }
+
+            var codigo = compania.CompaniaCodigo.Trim();
+            var nombre = !string.IsNullOrWhiteSpace(compania.CompaniaNombre)
+                ? compania.CompaniaNombre.Trim()
+                : ResolverNombreCompaniaPorCodigo(codigo);
+
+            CompaniaActivaSessionHelper.Establecer(Session, codigo, nombre);
+        }
+
         private static bool EsUsuarioAdministrador(Usuario usuario, IEnumerable<string> roles)
         {
             var rolesNorm = (roles ?? Enumerable.Empty<string>())
@@ -928,13 +1240,23 @@ namespace CapaPresentacion.Controllers
         private int ObtenerUsuarioSesionId()
         {
             var v = Session["UserId"] ?? Session["IdUsuario"];
-            if (v == null)
+            int id;
+            if (v != null && int.TryParse(v.ToString(), out id) && id > 0)
             {
-                return 0;
+                Session["UserId"] = id;
+                Session["IdUsuario"] = id;
+                return id;
             }
 
-            int id;
-            return int.TryParse(v.ToString(), out id) ? id : 0;
+            Usuario usuario;
+            List<string> roles;
+            string loginUsado;
+            if (TryRestaurarSesionUsuarioActual(out usuario, out roles, out loginUsado) && usuario != null)
+            {
+                return usuario.Id;
+            }
+
+            return 0;
         }
 
         private SeleccionCompaniaViewModel ConstruirSeleccionCompaniaViewModel(
@@ -1174,6 +1496,17 @@ namespace CapaPresentacion.Controllers
 
         private ActionResult RedireccionarDespuesLogin(int usuarioId, string returnUrl)
         {
+            if (!string.IsNullOrWhiteSpace(returnUrl) && Url.IsLocalUrl(returnUrl))
+            {
+                return Redirect(returnUrl);
+            }
+
+            var rolSesion = RoleGroupingHelper.NormalizeSelectedRole(Session["Rol"] as string ?? string.Empty);
+            if (!RoleGroupingHelper.IsSolicitante(rolSesion))
+            {
+                return RedirectToAction("Index", "Dashboard");
+            }
+
             // ============================
             // VERIFICACIÓN DE ORDEN
             // ============================

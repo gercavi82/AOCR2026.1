@@ -387,7 +387,7 @@ namespace CapaNegocio
             var ok = _dao.ResetPassword(idUsuario, hash, actorUsuarioId, actorCodigoUsuario, ip);
             if (!ok)
             {
-                mensaje = "No se pudo restablecer la contrasena.";
+                mensaje = "No se pudo restablecer la contraseña.";
                 return false;
             }
 
@@ -557,7 +557,7 @@ namespace CapaNegocio
 
             if (idUsuario <= 0)
             {
-                mensaje = "ID de usuario no valido.";
+                mensaje = "ID de usuario no válido.";
                 return false;
             }
 
@@ -600,7 +600,7 @@ namespace CapaNegocio
 
             if (usuario == null || string.IsNullOrWhiteSpace(usuario.Correo))
             {
-                mensaje = "el usuario no tiene correo registrado.";
+                mensaje = "El usuario no tiene correo registrado.";
                 detalleError = "No hay correo institucional configurado para el usuario.";
                 return false;
             }
@@ -615,7 +615,7 @@ namespace CapaNegocio
                 nombre = (usuario.CodigoUsuario ?? "Usuario").Trim();
             }
 
-            var asunto = "Cambio de contrasena - Sistema AOCR";
+            var asunto = "Cambio de contraseña - Sistema AOCR";
             var cuerpo = ConstruirPlantillaResetPassword(nombre, usuario.CodigoUsuario, passwordTemporal, actorCodigoUsuario);
 
             return EnviarCorreoCredenciales(usuario.Correo, asunto, cuerpo, out mensaje, out detalleError);
@@ -648,7 +648,7 @@ namespace CapaNegocio
 
             if (usuario == null || string.IsNullOrWhiteSpace(usuario.Correo))
             {
-                mensaje = "el usuario no tiene correo registrado.";
+                mensaje = "El usuario no tiene correo registrado.";
                 detalleError = "No hay correo institucional configurado para el usuario.";
                 return false;
             }
@@ -691,8 +691,8 @@ namespace CapaNegocio
 
             if (string.IsNullOrWhiteSpace(correoDestino))
             {
-                mensaje = "no se pudo enviar el correo de notificacion.";
-                detalleError = "Destino de correo vacio.";
+                mensaje = "No se pudo enviar el correo de notificación.";
+                detalleError = "Destino de correo vacío.";
                 _logger.LogWarning("AdminUsuariosBL.EnviarCorreoCredenciales sin destinatario.");
                 return false;
             }
@@ -705,18 +705,18 @@ namespace CapaNegocio
 
                 if (servicioCorreo.EnviarEncolado(correoDestino, asunto, cuerpo, null, "USER_CREDENTIALS"))
                 {
-                    mensaje = "se envio un correo con las credenciales temporales.";
+                    mensaje = "Se envió un correo con las credenciales temporales.";
                     return true;
                 }
 
                 if (servicioCorreo.enviaMensajeCorreo(correoDestino, asunto, cuerpo))
                 {
-                    mensaje = "la cola de correos fallo, pero se envio el correo directamente.";
+                    mensaje = "La cola de correos falló, pero se envió el correo directamente.";
                     return true;
                 }
 
-                mensaje = "no se pudo enviar el correo de notificacion.";
-                detalleError = "La cola y el envio directo retornaron false.";
+                mensaje = "No se pudo enviar el correo de notificación.";
+                detalleError = "La cola y el envío directo retornaron false.";
                 _logger.LogWarning(
                     "AdminUsuariosBL.EnviarCorreoCredenciales fallo sin excepcion. Destino=" + correoDestino
                     + ", Asunto=" + (asunto ?? string.Empty));
@@ -742,7 +742,7 @@ namespace CapaNegocio
                     var servicioCorreo = new EnviarCorreo();
                     if (servicioCorreo.enviaMensajeCorreo(correoDestino, asunto, cuerpo))
                     {
-                        mensaje = "la cola de correos fallo, pero se envio el correo directamente.";
+                        mensaje = "La cola de correos falló, pero se envió el correo directamente.";
                         return true;
                     }
                 }
@@ -766,7 +766,7 @@ namespace CapaNegocio
                         });
                 }
 
-                mensaje = "no se pudo enviar el correo de notificacion.";
+                mensaje = "No se pudo enviar el correo de notificación.";
                 return false;
             }
         }
@@ -785,18 +785,18 @@ namespace CapaNegocio
 
             var extraHtml = "<p style='margin:0 0 8px 0; font-size:14px; color:#3a4f5e;'><strong>Usuario:</strong> " + codigoSeguro + "</p>"
                 + "<div style='margin:16px 0; padding:12px 14px; background:#f8fbff; border:1px solid #d7e7ff; border-radius:6px; font-size:14px;'>"
-                + "<strong>Nueva contrasena temporal:</strong> " + passwordSegura + "</div>"
-                + "<p style='margin:0 0 8px 0; font-size:13px; color:#3a4f5e;'>Usuario que realizo el cambio: <strong>" + actorSeguro + "</strong></p>"
+                + "<strong>Nueva contraseña temporal:</strong> " + passwordSegura + "</div>"
+                + "<p style='margin:0 0 8px 0; font-size:13px; color:#3a4f5e;'>Usuario que realizó el cambio: <strong>" + actorSeguro + "</strong></p>"
                 + "<p style='margin:0 0 8px 0; font-size:13px; color:#3a4f5e;'>Fecha: " + fecha + "</p>";
 
             var model = new EmailTemplateModel
             {
-                Titulo = "Contrasena restablecida",
+                Titulo = "Contraseña restablecida",
                 NombreDestinatario = nombreSeguro,
-                MensajePrincipal = "Se registro un cambio de contrasena para su cuenta en AOCR.",
+                MensajePrincipal = "Se registró un cambio de contraseña para su cuenta en AOCR.",
                 ContenidoHtmlExtra = extraHtml,
-                TextoCierre = "Por seguridad, en el proximo inicio de sesion se le pedira cambiar su contrasena.",
-                Footer = "Mensaje automatico del sistema AOCR."
+                TextoCierre = "Por seguridad, en el próximo inicio de sesión se le pedirá cambiar su contraseña.",
+                Footer = "Mensaje automático del sistema AOCR."
             };
 
             return EmailTemplateRenderer.Render(model);
@@ -816,9 +816,9 @@ namespace CapaNegocio
 
                         var extraHtml = "<p style='margin:0 0 8px 0; font-size:14px; color:#3a4f5e;'><strong>Usuario:</strong> " + codigoSeguro + "</p>"
                             + "<div style='margin:16px 0; padding:12px 14px; background:#f8fbff; border:1px solid #d7e7ff; border-radius:6px; font-size:14px;'>"
-                            + "<strong>Contrasena temporal:</strong> " + passwordSegura + "</div>"
-                            + "<p style='margin:0 0 8px 0; font-size:13px; color:#3a4f5e;'>Usuario administrador que realizo el alta: <strong>" + actorSeguro + "</strong></p>"
-                            + "<p style='margin:0 0 8px 0; font-size:13px; color:#3a4f5e;'>Fecha de creacion: " + fecha + "</p>";
+                            + "<strong>Contraseña temporal:</strong> " + passwordSegura + "</div>"
+                            + "<p style='margin:0 0 8px 0; font-size:13px; color:#3a4f5e;'>Usuario administrador que realizó el alta: <strong>" + actorSeguro + "</strong></p>"
+                            + "<p style='margin:0 0 8px 0; font-size:13px; color:#3a4f5e;'>Fecha de creación: " + fecha + "</p>";
 
                         var model = new EmailTemplateModel
                         {
@@ -826,8 +826,8 @@ namespace CapaNegocio
                             NombreDestinatario = nombreSeguro,
                             MensajePrincipal = "Su cuenta de acceso fue creada correctamente.",
                             ContenidoHtmlExtra = extraHtml,
-                            TextoCierre = "Por seguridad, en el primer inicio de sesion se le solicitara cambiar su contrasena.",
-                            Footer = "Mensaje automatico del sistema AOCR."
+                            TextoCierre = "Por seguridad, en el primer inicio de sesión se le solicitará cambiar su contraseña.",
+                            Footer = "Mensaje automático del sistema AOCR."
                         };
 
                         return EmailTemplateRenderer.Render(model);

@@ -30,7 +30,7 @@ namespace CapaModelo.Common
 <table role='presentation' width='100%' cellpadding='0' cellspacing='0'>
 <tr><td style='font-size:11px; letter-spacing:0.1em; text-transform:uppercase; color:rgba(255,255,255,0.82); font-family:Arial,Helvetica,sans-serif;'>SISTEMA AOCR DGAC</td></tr>
 <tr><td style='padding-top:8px; font-size:20px; font-weight:bold; color:#ffffff; font-family:Arial,Helvetica,sans-serif;'>");
-            sb.Append(Encode(model.Titulo ?? "Notificacion AOCR"));
+            sb.Append(Encode(model.Titulo ?? "Notificación AOCR"));
             sb.Append(@"</td></tr>
 </table>
 </td></tr>
@@ -112,7 +112,7 @@ namespace CapaModelo.Common
             // ── FOOTER ──
             sb.Append(@"<tr><td style='padding:18px 28px; border-top:1px solid #e8ecf1;'>
 <p style='margin:0; font-size:11px; color:#8a96a3; font-family:Arial,Helvetica,sans-serif;'>");
-            sb.Append(Encode(string.IsNullOrWhiteSpace(model.Footer) ? "Este es un mensaje automatico del sistema AOCR." : model.Footer));
+            sb.Append(Encode(string.IsNullOrWhiteSpace(model.Footer) ? "Este es un mensaje automático del sistema AOCR." : model.Footer));
             sb.Append(@"</p>
 </td></tr>
 ");
@@ -143,18 +143,18 @@ namespace CapaModelo.Common
 
             var model = new EmailTemplateModel
             {
-                Titulo = string.IsNullOrWhiteSpace(title) ? "Notificacion AOCR" : title.Trim(),
+                Titulo = string.IsNullOrWhiteSpace(title) ? "Notificación AOCR" : title.Trim(),
                 NombreDestinatario = nombreDestinatario,
                 MostrarSaludo = !contieneSaludo,
                 ContenidoHtmlExtra = contenidoNormalizado,
                 Footer = string.IsNullOrWhiteSpace(footer)
-                    ? "Este es un mensaje automatico del workflow AOCR."
+                    ? "Este es un mensaje automático del workflow AOCR."
                     : footer.Trim()
             };
 
             if (string.IsNullOrWhiteSpace(model.ContenidoHtmlExtra))
             {
-                model.MensajePrincipal = "Tiene una nueva notificacion en el sistema AOCR.";
+                model.MensajePrincipal = "Tiene una nueva notificación en el sistema AOCR.";
             }
 
             return Render(model);

@@ -86,7 +86,7 @@ namespace CapaNegocio.Services
 
             if (!estadoValido)
             {
-                resultado.Motivo = "La AOCR estará disponible cuando la inspeccion sea satisfactoria y el informe tecnico quede firmado por el inspector.";
+                resultado.Motivo = "La AOCR estará disponible cuando la inspección sea satisfactoria y el informe técnico quede firmado por el inspector.";
                 return resultado;
             }
 
@@ -111,7 +111,7 @@ namespace CapaNegocio.Services
             }
             if (!InformeCompletaFaseTecnicaAocr(informe))
             {
-                resultado.Motivo = "El informe tecnico todavia no completa la fase tecnica que habilita la AOCR.";
+                resultado.Motivo = "El informe técnico todavía no completa la fase técnica que habilita la AOCR.";
                 return resultado;
             }
 

@@ -99,9 +99,9 @@ namespace CapaNegocio.Services
                 case "ORDEN_CREADA":
                     return new PlantillaOrdenCorreo
                     {
-                        Asunto = "Nueva Orden de recaudacion - " + (orden.NumeroOrden ?? ("#" + orden.Id)),
-                        Titulo = "Orden de recaudacion generada",
-                        Mensaje = "Se genero una nueva orden de recaudacion asociada a su tramite. Revise el detalle y proceda con el pago correspondiente.",
+                        Asunto = "Nueva Orden de recaudación - " + (orden.NumeroOrden ?? ("#" + orden.Id)),
+                        Titulo = "Orden de recaudación generada",
+                        Mensaje = "Se generó una nueva Orden de Recaudación asociada a su trámite. Revise el detalle y proceda con el pago correspondiente.",
                         GruposDestinatarios = new[] { NotificacionDestinatarioPolicyService.GrupoOperadorSolicitante }
                     };
                 case "PAGO_REGISTRADO":
@@ -109,7 +109,7 @@ namespace CapaNegocio.Services
                     {
                         Asunto = "Pago registrado - Orden " + (orden.NumeroOrden ?? ("#" + orden.Id)),
                         Titulo = "Pago registrado",
-                        Mensaje = "El pago de la orden fue registrado y queda pendiente de validacion por el area financiera.",
+                        Mensaje = "El pago de la orden fue registrado y queda pendiente de validación por el área financiera.",
                         GruposDestinatarios = new[]
                         {
                             NotificacionDestinatarioPolicyService.GrupoOperadorSolicitante,
@@ -121,7 +121,7 @@ namespace CapaNegocio.Services
                     {
                         Asunto = "Pago validado - Orden " + (orden.NumeroOrden ?? ("#" + orden.Id)),
                         Titulo = "Pago validado",
-                        Mensaje = "El pago de la orden fue validado correctamente y el tramite financiero puede continuar.",
+                        Mensaje = "El pago de la orden fue validado correctamente y el trámite financiero puede continuar.",
                         GruposDestinatarios = new[]
                         {
                             NotificacionDestinatarioPolicyService.GrupoOperadorSolicitante,

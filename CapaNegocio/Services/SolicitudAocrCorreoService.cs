@@ -80,9 +80,9 @@ namespace CapaNegocio.Services
                 case "AOCR_APROBADO_DIRECCION":
                     return new PlantillaSolicitudCorreo
                     {
-                        Asunto = "AOCR - Solicitud aprobada por Direccion #" + solicitud.CodigoSolicitud,
-                        Titulo = "Solicitud aprobada por Direccion",
-                        Mensaje = "La solicitud AOCR fue aprobada por Direccion y pasa al tramo de legalizacion institucional.",
+                        Asunto = "AOCR - Solicitud aprobada por Dirección #" + solicitud.CodigoSolicitud,
+                        Titulo = "Solicitud aprobada por Dirección",
+                        Mensaje = "La solicitud AOCR fue aprobada por Dirección y pasa al tramo de legalización institucional.",
                         GruposDestinatarios = new[]
                         {
                             NotificacionDestinatarioPolicyService.GrupoOperadorSolicitante,
@@ -95,7 +95,7 @@ namespace CapaNegocio.Services
                     {
                         Asunto = "AOCR - Solicitud legalizada #" + solicitud.CodigoSolicitud,
                         Titulo = "AOCR legalizado",
-                        Mensaje = "La solicitud AOCR fue legalizada y el certificado queda habilitado para su emision institucional.",
+                        Mensaje = "La solicitud AOCR fue legalizada y el certificado queda habilitado para su emisión institucional.",
                         GruposDestinatarios = new[]
                         {
                             NotificacionDestinatarioPolicyService.GrupoOperadorSolicitante,

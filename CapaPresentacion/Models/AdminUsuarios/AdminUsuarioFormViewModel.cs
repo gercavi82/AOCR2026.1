@@ -31,10 +31,10 @@ namespace CapaPresentacion.Models.AdminUsuarios
         [Display(Name = "Activo")]
         public bool Activo { get; set; } = true;
 
-        [Display(Name = "Generar contrasena temporal")]
+        [Display(Name = "Generar contraseña temporal")]
         public bool GenerarPassword { get; set; } = true;
 
-        [Display(Name = "Contrasena inicial")]
+        [Display(Name = "Contraseña inicial")]
         [DataType(DataType.Password)]
         public string PasswordInicial { get; set; }
 
@@ -42,7 +42,7 @@ namespace CapaPresentacion.Models.AdminUsuarios
 
         public IEnumerable<SelectListItem> RolesDisponibles { get; set; } = new List<SelectListItem>();
 
-        [Display(Name = "Companias RT")]
+        [Display(Name = "Compañías RT")]
         public IList<string> CompaniasSeleccionadas { get; set; } = new List<string>();
 
         public IEnumerable<SelectListItem> CatalogoCompanias { get; set; } = new List<SelectListItem>();

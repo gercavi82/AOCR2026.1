@@ -51,12 +51,12 @@ namespace CapaNegocio
             var asunto = "Recuperación de contraseña - Sistema AOCR";
             var model = new EmailTemplateModel
             {
-                Titulo = "Recuperacion de contrasena",
-                MensajePrincipal = "Se ha generado una contrasena temporal para su cuenta.",
-                ContenidoHtmlExtra = "<div style='margin:16px 0; padding:12px 14px; background:#f8fbff; border:1px solid #d7e7ff; border-radius:6px; font-size:14px;'><strong>Contrasena temporal:</strong> "
+                Titulo = "Recuperación de contraseña",
+                MensajePrincipal = "Se ha generado una contraseña temporal para su cuenta.",
+                ContenidoHtmlExtra = "<div style='margin:16px 0; padding:12px 14px; background:#f8fbff; border:1px solid #d7e7ff; border-radius:6px; font-size:14px;'><strong>Contraseña temporal:</strong> "
                     + System.Net.WebUtility.HtmlEncode(passwordTemporal) + "</div>",
-                TextoCierre = "Por seguridad, el sistema le pedira cambiar la contrasena en su proximo ingreso.",
-                Footer = "Este es un correo automatico, por favor no responder."
+                TextoCierre = "Por seguridad, el sistema le pedirá cambiar la contraseña en su próximo ingreso.",
+                Footer = "Este es un correo automático, por favor no responder."
             };
             var cuerpo = EmailTemplateRenderer.Render(model);
 
@@ -116,19 +116,19 @@ namespace CapaNegocio
             });
 
             var extraHtml = RtCorreoTextoHelper.ToHtmlParagraphs(textoAprobacion)
-                + "<p style='margin:0 0 8px 0; font-size:14px; color:#3a4f5e;'>A continuacion sus credenciales de acceso al <strong>Sistema AOCR</strong>:</p>"
+                + "<p style='margin:0 0 8px 0; font-size:14px; color:#3a4f5e;'>A continuación, sus credenciales de acceso al <strong>Sistema AOCR</strong>:</p>"
                 + "<div style='margin:16px 0; padding:12px 14px; background:#f8fbff; border:1px solid #d7e7ff; border-radius:6px; font-size:14px;'>"
                 + "<strong>Usuario:</strong> " + System.Net.WebUtility.HtmlEncode(codigoUsuario) + "<br/>"
-                + "<strong>Contrasena temporal:</strong> " + System.Net.WebUtility.HtmlEncode(passwordTemporal)
+                + "<strong>Contraseña temporal:</strong> " + System.Net.WebUtility.HtmlEncode(passwordTemporal)
                 + "</div>";
 
             var model = new EmailTemplateModel
             {
-                Titulo = "Designacion RT aprobada",
+                Titulo = "Designación RT aprobada",
                 NombreDestinatario = nombreCompleto,
                 ContenidoHtmlExtra = extraHtml,
-                TextoCierre = "Por seguridad, el sistema le pedira cambiar la contrasena en su primer ingreso. Si usted no solicito este registro, por favor comuniquese con la DGAC de inmediato.",
-                Footer = "Este es un correo automatico, por favor no responder."
+                TextoCierre = "Por seguridad, el sistema le pedirá cambiar la contraseña en su primer ingreso. Si usted no solicitó este registro, por favor comuníquese con la DGAC de inmediato.",
+                Footer = "Este es un correo automático, por favor no responder."
             };
             var cuerpo = EmailTemplateRenderer.Render(model);
 

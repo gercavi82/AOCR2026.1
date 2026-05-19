@@ -319,6 +319,7 @@
     <Compile Include="Controllers\LogController.cs" />
     <Compile Include="Controllers\ParametroController.cs" />
     <Compile Include="Controllers\CoordinacionJefaturaController.cs" />
+    <Compile Include="Controllers\CorreoInstitucionalController.cs" />
     <Compile Include="Controllers\CoordinacionLegalController.cs" />
     <Compile Include="Controllers\AdministradorController.cs" />
     <Compile Include="Controllers\AdminUsuariosController.cs" />
@@ -3011,6 +3012,9 @@
     <Content Include="Views\AdminUsuarios\TransferirEliminar.cshtml" />
     <Content Include="Views\AdminUsuarios\_RolesModal.cshtml" />
     <Content Include="Views\AdminUsuarios\_UserForm.cshtml" />
+    <Content Include="Views\CorreoInstitucional\Editar.cshtml" />
+    <Content Include="Views\CorreoInstitucional\Historial.cshtml" />
+    <Content Include="Views\CorreoInstitucional\Index.cshtml" />
     <Content Include="Views\Usuario\RevisarDesignaciones.cshtml" />
     <Content Include="Views\Health\Dashboard.cshtml" />
     <Content Include="Views\Shared\_PageHeader.cshtml" />

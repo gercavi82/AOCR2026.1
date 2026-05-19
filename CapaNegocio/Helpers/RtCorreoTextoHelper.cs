@@ -10,29 +10,29 @@ namespace CapaNegocio.Helpers
     {
         public static string GetAsuntoDesignacionPendiente()
         {
-            return GetAppSetting("Email:RT:AsuntoDesignacion", "Cuenta creada - Sistema AOCR (pendiente de aprobacion)");
+            return GetAppSetting("Email:RT:AsuntoDesignacion", "Cuenta creada - Sistema AOCR (pendiente de aprobación)");
         }
 
         public static string GetAsuntoDeclaracionAceptada()
         {
-            return GetAppSetting("Email:RT:AsuntoDeclaracion", "Declaracion de responsabilidad aceptada - Sistema AOCR");
+            return GetAppSetting("Email:RT:AsuntoDeclaracion", "Declaración de responsabilidad aceptada - Sistema AOCR");
         }
 
         public static string GetAsuntoAceptacionRt()
         {
-            return GetAppSetting("Email:RT:AsuntoAceptacion", "Designacion RT aprobada - Sus credenciales de acceso - Sistema AOCR");
+            return GetAppSetting("Email:RT:AsuntoAceptacion", "Designación RT aprobada - Sus credenciales de acceso - Sistema AOCR");
         }
 
         public static string GetAsuntoDevolucionRt()
         {
-            return GetAppSetting("Email:RT:AsuntoDevolucion", "Designacion RT devuelta - Sistema AOCR");
+            return GetAppSetting("Email:RT:AsuntoDevolucion", "Designación RT devuelta - Sistema AOCR");
         }
 
         public static string GetTextoDesignacionPendiente(IDictionary<string, string> tokens = null)
         {
             var texto = GetAppSetting(
                 "Email:RT:TextoDesignacion",
-                "Su cuenta en el Sistema AOCR ha sido creada exitosamente. Su solicitud de designacion como Responsable Tecnico (RT) se encuentra en proceso de revision y aprobacion por la DGAC.");
+                "Su cuenta en el Sistema AOCR ha sido creada exitosamente. Su solicitud de designación como Responsable Técnico (RT) se encuentra en proceso de revisión y aprobación por la DGAC.");
 
             return ReplaceTokens(texto, tokens);
         }
@@ -41,7 +41,7 @@ namespace CapaNegocio.Helpers
         {
             var texto = GetAppSetting(
                 "Email:RT:TextoDeclaracion",
-                "Hemos registrado la aceptacion de su declaracion de responsabilidad RT.");
+                "Hemos registrado la aceptación de su declaración de responsabilidad RT.");
 
             return ReplaceTokens(texto, tokens);
         }
@@ -50,7 +50,7 @@ namespace CapaNegocio.Helpers
         {
             var texto = GetAppSetting(
                 "Email:RT:TextoAceptacion",
-                "Nos complace informarle que su designacion como Responsable Tecnico (RT) de la compania {COMPANIA} ha sido aprobada por la DGAC. En tal virtud, con su usuario podra continuar con los tramites en el Sistema AOCR.");
+                "Nos complace informarle que su designación como Responsable Técnico (RT) de la compañía {COMPANIA} ha sido aprobada por la DGAC. En tal virtud, con su usuario podrá continuar con los trámites en el Sistema AOCR.");
 
             return ReplaceTokens(texto, tokens);
         }
@@ -59,7 +59,7 @@ namespace CapaNegocio.Helpers
         {
             var texto = GetAppSetting(
                 "Email:RT:TextoDevolucion",
-                "Su designacion como Responsable Tecnico (RT) ha sido devuelta para correccion. Por favor revise los requisitos y vuelva a cargar la documentacion correspondiente en el Sistema AOCR.");
+                "Su designación como Responsable Técnico (RT) ha sido devuelta para corrección. Por favor revise los requisitos y vuelva a cargar la documentación correspondiente en el Sistema AOCR.");
 
             return ReplaceTokens(texto, tokens);
         }

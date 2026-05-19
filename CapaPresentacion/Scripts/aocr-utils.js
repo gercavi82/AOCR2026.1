@@ -89,11 +89,43 @@
         }
 
         var normalized = String(text).toLowerCase();
-        return normalized.indexOf('<form') >= 0 && (
-            normalized.indexOf('account/login') >= 0 ||
-            normalized.indexOf('ingreso aocr') >= 0 ||
-            (normalized.indexOf('__requestverificationtoken') >= 0 && normalized.indexOf('contrasena') >= 0)
-        );
+        var isHtmlDocument = normalized.indexOf('<!doctype html') >= 0 || normalized.indexOf('<html') >= 0;
+        if (!isHtmlDocument || normalized.indexOf('<form') < 0) {
+            return false;
+        }
+
+        var loginMarkers = 0;
+
+        if (normalized.indexOf('id="loginform"') >= 0 || normalized.indexOf("id='loginform'") >= 0) {
+            loginMarkers++;
+        }
+
+        if (normalized.indexOf('name="usuario"') >= 0 || normalized.indexOf("name='usuario'") >= 0) {
+            loginMarkers++;
+        }
+
+        if (
+            normalized.indexOf('name="contrasena"') >= 0 ||
+            normalized.indexOf("name='contrasena'") >= 0 ||
+            normalized.indexOf('id="clave"') >= 0 ||
+            normalized.indexOf("id='clave'") >= 0
+        ) {
+            loginMarkers++;
+        }
+
+        if (
+            normalized.indexOf('login-card') >= 0 ||
+            normalized.indexOf('acceso sistema aocr') >= 0 ||
+            normalized.indexOf('ingreso aocr') >= 0
+        ) {
+            loginMarkers++;
+        }
+
+        return loginMarkers >= 2;
+    };
+
+    window.AOCR.shouldSkipGlobalAuthRedirect = function(settings){
+        return !!(settings && settings.aocrSkipAuthRedirect === true);
     };
 
     window.AOCR.readFetchPayload = function(response){
@@ -210,7 +242,11 @@
         if (window.jQuery && !window.__aocrJQueryAuthHandlersInstalled) {
             window.jQuery(document)
                 .off('ajaxError.aocrAuth')
-                .on('ajaxError.aocrAuth', function (event, xhr) {
+                .on('ajaxError.aocrAuth', function (event, xhr, settings) {
+                    if (window.AOCR.shouldSkipGlobalAuthRedirect(settings)) {
+                        return;
+                    }
+
                     if (!xhr) {
                         return;
                     }
@@ -225,7 +261,11 @@
                     }
                 })
                 .off('ajaxComplete.aocrAuth')
-                .on('ajaxComplete.aocrAuth', function (event, xhr) {
+                .on('ajaxComplete.aocrAuth', function (event, xhr, settings) {
+                    if (window.AOCR.shouldSkipGlobalAuthRedirect(settings)) {
+                        return;
+                    }
+
                     if (!xhr || xhr.status !== 200 || typeof xhr.responseText !== 'string') {
                         return;
                     }

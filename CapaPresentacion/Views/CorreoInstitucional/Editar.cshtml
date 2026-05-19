@@ -1,0 +1,84 @@
+@model CapaDatos.Models.CorreoInstitucionalModel
+
+@{
+    var esEdicion = Model != null && Model.CodigoCorreo > 0;
+    ViewBag.Title = esEdicion ? "Editar correo institucional" : "Nuevo correo institucional";
+}
+
+@Html.Partial("_PageHeader", null, new ViewDataDictionary {
+    { "Title", ViewBag.Title },
+    { "Subtitle", "Configure destinatarios institucionales del flujo AOCR" }
+})
+
+@using (Html.BeginForm(esEdicion ? "Editar" : "Crear", "CorreoInstitucional", FormMethod.Post))
+{
+    @Html.AntiForgeryToken()
+    @Html.HiddenFor(m => m.CodigoCorreo)
+    @Html.ValidationSummary(true, "", new { @class = "alert alert-danger" })
+
+    <div class="card">
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-4 mb-3">
+                    <label class="form-label">Código de área</label>
+                    @if (esEdicion)
+                    {
+                        @Html.TextBoxFor(m => m.CodigoArea, new { @class = "form-control", @readonly = "readonly" })
+                    }
+                    else
+                    {
+                        @Html.TextBoxFor(m => m.CodigoArea, new { @class = "form-control", maxlength = "80", placeholder = "COORDINADOR_AOCR", required = "required" })
+                    }
+                    @Html.ValidationMessageFor(m => m.CodigoArea, "", new { @class = "text-danger" })
+                </div>
+                <div class="col-md-8 mb-3">
+                    <label class="form-label">Nombre del área</label>
+                    @Html.TextBoxFor(m => m.NombreArea, new { @class = "form-control", maxlength = "150", required = "required" })
+                    @Html.ValidationMessageFor(m => m.NombreArea, "", new { @class = "text-danger" })
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <label class="form-label">Correo principal</label>
+                    @Html.TextBoxFor(m => m.CorreoPrincipal, new { @class = "form-control", type = "email", maxlength = "250", placeholder = "nombre@aviacioncivil.gob.ec", required = "required" })
+                    @Html.ValidationMessageFor(m => m.CorreoPrincipal, "", new { @class = "text-danger" })
+                </div>
+                <div class="col-md-3 mb-3">
+                    <label class="form-label">Activo</label>
+                    <div class="form-check mt-2">
+                        @Html.CheckBoxFor(m => m.Activo, new { @class = "form-check-input" })
+                        <label class="form-check-label" for="Activo">Disponible para envíos</label>
+                    </div>
+                </div>
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label">Correos CC</label>
+                @Html.TextBoxFor(m => m.CorreosCc, new { @class = "form-control", placeholder = "correo1@dominio.gob.ec; correo2@dominio.gob.ec" })
+                @Html.ValidationMessageFor(m => m.CorreosCc, "", new { @class = "text-danger" })
+                <small class="text-muted">Separe varios correos con coma o punto y coma.</small>
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label">Correos BCC</label>
+                @Html.TextBoxFor(m => m.CorreosBcc, new { @class = "form-control", placeholder = "correo1@dominio.gob.ec; correo2@dominio.gob.ec" })
+                @Html.ValidationMessageFor(m => m.CorreosBcc, "", new { @class = "text-danger" })
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label">Descripción</label>
+                @Html.TextAreaFor(m => m.Descripcion, new { @class = "form-control", rows = "3" })
+            </div>
+        </div>
+    </div>
+
+    <div class="d-flex justify-content-end mt-3">
+        <a class="btn btn-outline-secondary mr-2" href="@Url.Action("Index")">Cancelar</a>
+        <button type="submit" class="btn btn-primary">Guardar</button>
+    </div>
+}
+
+@section Scripts {
+    @Scripts.Render("~/bundles/jqueryval")
+}

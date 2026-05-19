@@ -9,15 +9,15 @@ namespace CapaPresentacion.Models.AdminUsuarios
         public int Id { get; set; }
 
         [Required]
-        [Display(Name = "Buscar por cedula o nombre")]
+        [Display(Name = "Buscar por cédula o nombre")]
         [StringLength(64)]
         public string CodigoUsuarioBusqueda { get; set; }
 
-        [Display(Name = "Codigo usuario")]
+        [Display(Name = "Código de usuario")]
         [StringLength(64)]
         public string CodigoUsuario { get; set; }
 
-        [Display(Name = "Cedula")]
+        [Display(Name = "Cédula")]
         [StringLength(20)]
         public string Cedula { get; set; }
 
@@ -33,7 +33,7 @@ namespace CapaPresentacion.Models.AdminUsuarios
         [StringLength(10)]
         public string CiudadCodigo { get; set; }
 
-        [Display(Name = "Codigo financiero (usuoid)")]
+        [Display(Name = "Código financiero (usuoid)")]
         public decimal? CodigoFinanciero { get; set; }
 
         [Display(Name = "OPCOI3 (= usuoid)")]

@@ -16,7 +16,7 @@
         TempData["Warning"] = "Se detectÃ³ un detalle de inspecciÃ³n sin modelo completo. Se cargÃ³ contexto mÃ­nimo para evitar errores.";
     }
 
-    ViewBag.Title = "Detalle Inspeccion";
+    ViewBag.Title = "Detalle de inspección";
     Layout = "~/Views/Shared/_LayoutAOCR.cshtml";
     var hallazgos = ViewBag.Hallazgos as IEnumerable<Hallazgo>;
     var hallazgosLista = hallazgos != null ? hallazgos.ToList() : new List<Hallazgo>();
@@ -25,6 +25,7 @@
     var informeTecnico = ViewBag.InformeTecnico as InspeccionInformeTecnico;
     var documentosSolicitante = ViewBag.DocumentosSolicitante as IEnumerable<DocumentoInspeccion>;
     var estadoRevisionDocumental = ViewBag.EstadoRevisionDocumental as EstadoRevisionDocumental ?? new EstadoRevisionDocumental();
+    var pendienteCargaDocumentalRt = ViewBag.PendienteCargaDocumentalRt != null && (bool)ViewBag.PendienteCargaDocumentalRt;
     var documentosLista = documentosSolicitante != null ? documentosSolicitante.ToList() : new List<DocumentoInspeccion>();
     var documentoSolicitanteBase = documentosLista.OrderByDescending(d => d.CodigoDocumento).FirstOrDefault();
     var solicitud = ViewBag.Solicitud as SolicitudAOCR;
@@ -121,11 +122,13 @@
         || string.Equals(estadoDocumentalNormalizado, "APROBADO", System.StringComparison.OrdinalIgnoreCase);
     var revisionDocumentalInspectorConfirmada = revisionDocumentalBaseConfirmada
         && (estadoRevisionDocumental.TotalDocumentosVigentes == 0 || estadoRevisionDocumental.DocumentacionAprobada);
-    var inspectorDebeRevisarDocumentos = (esInspector || esAdministrador) && !revisionDocumentalInspectorConfirmada;
+    var inspectorDebeRevisarDocumentos = (esInspector || esAdministrador) && (!revisionDocumentalInspectorConfirmada || pendienteCargaDocumentalRt);
     var mensajeBloqueoRevisionDocumentalInspector = inspectorDebeRevisarDocumentos
-        ? (!string.IsNullOrWhiteSpace(estadoRevisionDocumental.MensajeBloqueoDocumental)
+        ? (pendienteCargaDocumentalRt
+            ? "Inspector asignado. El proceso se encuentra pendiente porque el RT aún no ha cargado los documentos habilitantes requeridos."
+            : (!string.IsNullOrWhiteSpace(estadoRevisionDocumental.MensajeBloqueoDocumental)
             ? estadoRevisionDocumental.MensajeBloqueoDocumental
-            : "No se puede continuar porque existen documentos observados o subsanados pendientes de revision documental.")
+            : "No se puede continuar porque existen documentos observados o subsanados pendientes de revisión documental."))
         : string.Empty;
     var esCoordinadorRevision = esAdministrador || usuarioTieneAlgunRol(new[] { "CoordinadorInspecciones", "Coordinador" });
     var puedeGestionarCoordinacion = esAdministrador || usuarioTieneAlgunRol(rolesCoordinacionJefatura);
@@ -146,15 +149,15 @@
     var mostrarAccionesCierreDetalle = false;
     var urlRevisionVerificacion = Url.Action("RevisionVerificacion", "CoordinacionJefatura");
     var mensajeCoordinacionDetalle = string.Equals(estadoActualNormalizado, EstadosInspeccion.VERIFICACION_SOLICITUD, System.StringComparison.OrdinalIgnoreCase)
-        ? "La verificacion institucional de esta solicitud se ejecuta desde la bandeja de Direccion / Jefatura. Alli se concentran las decisiones de aceptar, observar o cerrar sin duplicar acciones en la pantalla operativa de inspeccion."
+        ? "La verificación institucional de esta solicitud se ejecuta desde la bandeja de Dirección / Jefatura. Allí se concentran las decisiones de aceptar, observar o cerrar sin duplicar acciones en la pantalla operativa de inspección."
         : (string.Equals(estadoActualNormalizado, EstadosInspeccion.ACEPTADA, System.StringComparison.OrdinalIgnoreCase)
-            ? "La solicitud ya fue aceptada. El siguiente paso institucional es gestionar la asignacion desde el modulo Asignacion de Inspectores del menu Coordinador o revisar el avance desde Direccion / Jefatura."
-            : "Las decisiones institucionales de este tramite se controlan desde Direccion / Jefatura para mantener una sola trazabilidad operativa por rol y estado.");
+            ? "La solicitud ya fue aceptada. El siguiente paso institucional es gestionar la asignación desde el módulo Asignación de Inspectores del menú Coordinador o revisar el avance desde Dirección / Jefatura."
+            : "Las decisiones institucionales de este trámite se controlan desde Dirección / Jefatura para mantener una sola trazabilidad operativa por rol y estado.");
     var mensajeInspectorSinAcciones = inspectorDebeRevisarDocumentos
         ? mensajeBloqueoRevisionDocumentalInspector
         : (EstadosInspeccion.EsEstadoBloqueCoordinacionJefatura(estadoActualNormalizado)
-            ? "El tramite se encuentra en etapa de verificacion por Direccion / Jefatura. Aun no existen acciones disponibles para el Inspector."
-            : "No existen acciones operativas disponibles para el Inspector en la etapa actual del tramite.");
+            ? "El trámite se encuentra en etapa de verificación por Dirección / Jefatura. Aún no existen acciones disponibles para el Inspector."
+            : "No existen acciones operativas disponibles para el Inspector en la etapa actual del trámite.");
     var puedePlanificar = esAdministrador || usuarioTieneRol("CoordinadorInspecciones");
     var puedeSubirInforme = (User.IsInRole("Inspector") || User.IsInRole("Administrador")) && !inspectorDebeRevisarDocumentos;
     var puedeSolicitarViaticos = ((esInspector || esAdministrador) && !inspectorDebeRevisarDocumentos)
@@ -202,42 +205,44 @@
     var urlModalInformeTecnico = Model != null && Model.CodigoInspeccion > 0
         ? Url.Action("ModalInformeTecnico", "Inspeccion", new { codigoInspeccion = Model.CodigoInspeccion })
         : string.Empty;
-    var puedeAbrirLvEae = revisionDocumentalInspectorConfirmada && !estadoRevisionDocumental.TienePendientes;
+    var puedeAbrirLvEae = !pendienteCargaDocumentalRt && revisionDocumentalInspectorConfirmada && !estadoRevisionDocumental.TienePendientes;
     var mensajeBloqueoLvEae = puedeAbrirLvEae
         ? string.Empty
-        : (!string.IsNullOrWhiteSpace(estadoRevisionDocumental.MensajeBloqueoDocumental)
+        : (pendienteCargaDocumentalRt
+            ? "Pendiente de carga de documentos habilitantes por parte del RT."
+            : (!string.IsNullOrWhiteSpace(estadoRevisionDocumental.MensajeBloqueoDocumental)
             ? estadoRevisionDocumental.MensajeBloqueoDocumental
-            : "Debe completar la revision documental y aceptar los documentos subsanados antes de iniciar la LV/EAE.");
+            : "Debe completar la revisión documental y aceptar los documentos subsanados antes de iniciar la LV/EAE."));
     var informeTecnicoModalHabilitado = puedeAbrirLvEae && (!usaFlujoListaVerificacionOperacionalEae || listaVerificacionFirmada);
     var mensajeBloqueoInformeTecnico = !puedeAbrirLvEae
-        ? "No se puede elaborar el Informe Tecnico hasta que la documentacion observada haya sido subsanada y aceptada."
+        ? "No se puede elaborar el informe técnico hasta que la documentación observada haya sido subsanada y aceptada."
         : (usaFlujoListaVerificacionOperacionalEae && !listaVerificacionFirmada
             ? (listaVerificacionFinalizada
-                ? "Debe firmar la Lista de Verificacion Operacional LV/EAE antes de elaborar el Informe Tecnico."
-                : "Debe finalizar y firmar la Lista de Verificacion Operacional LV/EAE antes de elaborar el Informe Tecnico.")
+                ? "Debe firmar la Lista de Verificación Operacional LV/EAE antes de elaborar el informe técnico."
+                : "Debe finalizar y firmar la Lista de Verificación Operacional LV/EAE antes de elaborar el informe técnico.")
             : string.Empty);
     var abrirModalListaVerificacionAlCargar = autoOpenLvSignature
         || (!string.IsNullOrWhiteSpace(mensajeBloqueoInformeTecnico) && !listaVerificacionFinalizada);
     var mostrarPanelVistaPrevia = (!usaFlujoListaVerificacionOperacionalEae || listaVerificacionFirmada || tieneInforme)
         && (tieneInforme || puedeEditarInformeTecnico);
     var copyVistaPrevia = !string.IsNullOrWhiteSpace(mensajeBloqueoInformeTecnico) && !tieneInforme
-        ? "El informe tecnico quedara disponible cuando la LV/EAE este finalizada y firmada."
+        ? "El informe técnico quedará disponible cuando la LV/EAE esté finalizada y firmada."
         : (tieneInforme
-            ? "Consulte el PDF consolidado debajo del flujo BPMN antes de continuar con la revision o firma."
-            : "La vista previa del borrador se actualizara automaticamente mientras completa o corrige el informe tecnico.");
+            ? "Consulte el PDF consolidado debajo del flujo BPMN antes de continuar con la revisión o firma."
+            : "La vista previa del borrador se actualizará automáticamente mientras completa o corrige el informe técnico.");
     var rutaVistaPreviaTexto = !string.IsNullOrWhiteSpace(mensajeBloqueoInformeTecnico) && !tieneInforme
-        ? "El flujo del informe tecnico esta bloqueado por la LV/EAE hasta que la lista quede finalizada y firmada."
+        ? "El flujo del informe técnico está bloqueado por la LV/EAE hasta que la lista quede finalizada y firmada."
         : (tieneInforme
             ? rutaInformeVisual
-            : "La vista previa automatica aparecera aqui cuando empiece a ingresar o actualizar la informacion del informe.");
+            : "La vista previa automática aparecerá aquí cuando empiece a ingresar o actualizar la información del informe.");
     var ayudaViewer = !string.IsNullOrWhiteSpace(mensajeBloqueoInformeTecnico) && !tieneInforme
-        ? "La vista del informe tecnico se habilitara cuando la lista operacional EAE este finalizada y firmada."
+        ? "La vista del informe técnico se habilitará cuando la lista operacional EAE esté finalizada y firmada."
         : (tieneInforme
-            ? "Documento definitivo disponible para revision y firma."
-            : "La vista previa automatica se actualizara mientras edita el informe tecnico.");
+            ? "Documento definitivo disponible para revisión y firma."
+            : "La vista previa automática se actualizará mientras edita el informe técnico.");
     var estadoViewer = !string.IsNullOrWhiteSpace(mensajeBloqueoInformeTecnico) && !tieneInforme
         ? "BLOQUEADO POR LV/EAE"
-        : (tieneInforme ? estadoInformeTecnico : "VISTA PREVIA AUTOMATICA");
+        : (tieneInforme ? estadoInformeTecnico : "VISTA PREVIA AUTOMÁTICA");
     var puedeFirmarInspector = puedeEditarInformeTecnico
         && informeTecnico != null
         && informeTecnico.Finalizado
@@ -305,7 +310,7 @@
         : (solicitud != null && !string.IsNullOrWhiteSpace(solicitud.InspectorApoyoTipo) ? solicitud.InspectorApoyoTipo : "-");
     var estadoFinanciero = Model.PagoViaticosValidado
         ? "Viaticos validados"
-        : (Model.ViaticosRequeridos ? "Pendiente validacion financiera" : "Sin requerimiento financiero");
+        : (Model.ViaticosRequeridos ? "Pendiente de validación financiera" : "Sin requerimiento financiero");
     var horaProgramadaVisual = Model != null && Model.HoraProgramada.HasValue ? Model.HoraProgramada.Value.ToString(@"hh\:mm") : "";
     var fechaHoraProgramada = fechaProgramada + (!string.IsNullOrWhiteSpace(horaProgramadaVisual) ? " " + horaProgramadaVisual : "");
     var duracionEstimada = Model != null && Model.DuracionEstimada.HasValue ? Model.DuracionEstimada.Value + " h" : "-";
@@ -365,7 +370,7 @@
     var otrosAdjuntosLineas = InformeTecnicoTemplateHelper.SplitLines(otrosAdjuntosInforme).Take(4).ToList();
     if (!otrosAdjuntosLineas.Any())
     {
-        otrosAdjuntosLineas.Add("Orden de Inspeccion.");
+        otrosAdjuntosLineas.Add("Orden de inspección.");
     }
     while (otrosAdjuntosLineas.Count < 2)
     {
@@ -374,24 +379,24 @@
 
     var puedeRenderizarEditorInforme = puedeEditarInformeTecnico && string.IsNullOrWhiteSpace(mensajeBloqueoInformeTecnico);
     var estadoListaVerificacionResumen = !usaFlujoListaVerificacionOperacionalEae
-        ? "No aplica para este tipo de inspeccion."
+        ? "No aplica para este tipo de inspección."
         : (listaVerificacionFirmada
-            ? "LV/EAE finalizada y firmada por el tecnico responsable."
+            ? "LV/EAE finalizada y firmada por el técnico responsable."
             : (listaVerificacionOperacionalEae != null && listaVerificacionOperacionalEae.Finalizado
                 ? "LV/EAE finalizada y pendiente de firma."
                 : (listaVerificacionOperacionalEae != null
-                    ? "LV/EAE en elaboracion."
-                    : "LV/EAE pendiente de elaboracion.")));
+                    ? "LV/EAE en elaboración."
+                    : "LV/EAE pendiente de elaboración.")));
     var estadoFirmaInspectorResumen = informeTecnico != null && informeTecnico.FirmadoInspector
         ? "La firma del inspector ya consta en el documento."
         : (puedeFirmarInspector
-            ? "La firma digital ya esta disponible dentro de la ventana flotante del informe tecnico."
+            ? "La firma digital ya está disponible dentro de la ventana flotante del informe técnico."
             : (usaFlujoListaVerificacionOperacionalEae && !listaVerificacionFirmada
-                ? "La firma se habilitara cuando la LV/EAE quede firmada."
-                : "La firma se habilitara cuando el flujo documental quede listo."));
+                ? "La firma se habilitará cuando la LV/EAE quede firmada."
+                : "La firma se habilitará cuando el flujo documental quede listo."));
     var estadoWorkspaceInforme = !string.IsNullOrWhiteSpace(mensajeBloqueoInformeTecnico) && !tieneInforme
         ? "Bloqueado por LV/EAE"
-        : (tieneInforme ? estadoInformeTecnico : "Borrador en edicion");
+        : (tieneInforme ? estadoInformeTecnico : "Borrador en edición");
     var claseEstadoWorkspaceInforme = !string.IsNullOrWhiteSpace(mensajeBloqueoInformeTecnico) && !tieneInforme
         ? "warning"
         : (tieneInforme ? string.Empty : "neutral");
@@ -399,20 +404,20 @@
         ? "fa-lock"
         : (tieneInforme ? "fa-check-circle" : "fa-edit");
     var copyWorkspaceInforme = usaFlujoListaVerificacionOperacionalEae
-        ? "Concentre la redaccion, los adjuntos, la vista previa y la firma del expediente EAE en un solo workspace tecnico."
-        : "Consolide el borrador, controle el PDF definitivo y deje listo el expediente para revision institucional sin pasos dispersos.";
+        ? "Concentre la redacción, los adjuntos, la vista previa y la firma del expediente EAE en un solo espacio técnico de trabajo."
+        : "Consolide el borrador, controle el PDF definitivo y deje listo el expediente para revisión institucional sin pasos dispersos.";
     var ayudaWorkspaceInforme = !string.IsNullOrWhiteSpace(mensajeBloqueoInformeTecnico)
         ? mensajeBloqueoInformeTecnico
         : (tieneInforme
             ? "El PDF definitivo ya existe y puede revisarse en paralelo mientras ajusta o valida el expediente."
-            : "Trabaje por modulos: contexto, observaciones, resultado y anexos; luego use la vista previa antes de finalizar.");
+            : "Trabaje por módulos: contexto, observaciones, resultado y anexos; luego use la vista previa antes de finalizar.");
     var documentosAdjuntosSeleccionadosTotal = documentosAdjuntosSeleccionados.Count;
     var otrosAdjuntosRegistradosTotal = InformeTecnicoTemplateHelper.SplitLines(otrosAdjuntosInforme).Count(x => !string.IsNullOrWhiteSpace(x));
     var totalAdjuntosInforme = documentosAdjuntosSeleccionadosTotal + otrosAdjuntosRegistradosTotal;
     var resultadoInformeVisual = InformeTecnicoTemplateHelper.GetResultadoLabel(resultadoInforme);
     var modoConsultaInformeCopy = puedeEditarInformeTecnico && !string.IsNullOrWhiteSpace(mensajeBloqueoInformeTecnico)
-        ? "Existe un documento consultable, pero la edicion y la firma siguen condicionadas a la LV/EAE."
-        : "Su rol puede revisar el documento y su estado, pero la redaccion operativa sigue bajo control del inspector.";
+        ? "Existe un documento consultable, pero la edición y la firma siguen condicionadas a la LV/EAE."
+        : "Su rol puede revisar el documento y su estado, pero la redacción operativa sigue bajo control del inspector.";
 }
 
 @section Styles {
@@ -2080,7 +2085,7 @@
 
 @if (Model == null)
 {
-    <div class="alert alert-danger">No se recibio el modelo de inspeccion.</div>
+    <div class="alert alert-danger">No se recibió el modelo de inspección.</div>
     return;
 }
 
@@ -2091,6 +2096,14 @@
 
 <div class="inspection-detail-page">
     <div class="inspection-shell">
+        @if (pendienteCargaDocumentalRt)
+        {
+            <div class="alert alert-warning mb-4" role="alert">
+                <strong>Inspector asignado.</strong>
+                El proceso se encuentra pendiente porque el RT aún no ha cargado los documentos habilitantes requeridos.
+            </div>
+        }
+
         <div class="card section-card soft-card mobile-summary-card d-md-none">
             <div class="card-body">
                 <div class="mobile-summary-top">
@@ -2187,7 +2200,7 @@
                                 <span class="hero-metric-value">@estadoActual</span>
                             </div>
                             <div class="hero-metric">
-                                <span class="hero-metric-label">Fechas de inspeccion</span>
+                                <span class="hero-metric-label">Fechas de inspección</span>
                                 <span class="hero-metric-value">@fechaProgramada</span>
                             </div>
                         </div>
@@ -2505,11 +2518,11 @@
                         @if (mostrarAvisoCoordinacionDetalle)
                         {
                             <div class="alert alert-info mb-3" role="alert">
-                                <strong>Gestion institucional centralizada en Direccion / Jefatura.</strong>
+                                <strong>Gestión institucional centralizada en Dirección / Jefatura.</strong>
                                 <div class="mt-2">@mensajeCoordinacionDetalle</div>
                                 <div class="d-flex flex-wrap gap-3 mt-3 small">
                                     <span><strong>Solicitud:</strong> @(solicitud != null && !string.IsNullOrWhiteSpace(solicitud.NumeroSolicitud) ? solicitud.NumeroSolicitud : (Model != null ? Model.CodigoSolicitud.ToString() : "-"))</span>
-                                    <span><strong>Compania:</strong> @operadorInspeccionado</span>
+                                    <span><strong>Compañía:</strong> @operadorInspeccionado</span>
                                     <span><strong>Estado actual:</strong> @estadoActualNormalizado</span>
                                     <span><strong>Inspector:</strong> @inspectorPrincipal</span>
                                 </div>
@@ -2539,7 +2552,7 @@
                                             @Html.AntiForgeryToken()
                                             <input type="hidden" name="id" value="@Model.CodigoInspeccion" />
                                             @Html.Hidden("estado", EstadosInspeccion.VERIFICACION_SOLICITUD)
-                                            <button type="submit" class="btn btn-outline-primary">Verificacion</button>
+                                            <button type="submit" class="btn btn-outline-primary">Verificación</button>
                                         }
                                     }
                                     @if (puedeAceptarSolicitud)
@@ -2614,7 +2627,7 @@
                                                 @Html.AntiForgeryToken()
                                                 <input type="hidden" name="id" value="@Model.CodigoInspeccion" />
                                                 @Html.Hidden("estado", EstadosInspeccion.EN_INSPECCION)
-                                                <button type="submit" class="btn btn-outline-warning">Iniciar inspeccion</button>
+                                                <button type="submit" class="btn btn-outline-warning">Iniciar inspección</button>
                                             }
                                         }
                                         @if (puedeInformeElaborado)
@@ -2634,7 +2647,7 @@
                                                 @Html.AntiForgeryToken()
                                                 <input type="hidden" name="id" value="@Model.CodigoInspeccion" />
                                                 @Html.Hidden("estado", EstadosInspeccion.OBSERVACION_DOCUMENTAL)
-                                                <button type="submit" class="btn btn-outline-danger">Observacion documental</button>
+                                                <button type="submit" class="btn btn-outline-danger">Observación documental</button>
                                             }
                                         }
                                         @if (usaFlujoListaVerificacionOperacionalEae)
@@ -2979,7 +2992,7 @@
                     @if (!inspectorDebeRevisarDocumentos && (esInspector || esAdministrador) && !informeTecnicoFirmadoInspector)
                     {
                         <div class="alert alert-warning alert-inline mb-3">
-                            Debe finalizar y firmar el informe tecnico antes de registrar el resultado de la inspeccion.
+                            Debe finalizar y firmar el informe técnico antes de registrar el resultado de la inspección.
                         </div>
                     }
 
@@ -3315,9 +3328,9 @@
             else if (puedeGestionarCoordinacion && !esInspector && puedeCerrar)
             {
                 <div class="alert alert-info mb-0" role="alert">
-                    El cierre institucional de esta inspeccion se ejecuta desde
-                    <a href="@Url.Action("RevisionVerificacion", "CoordinacionJefatura")" class="alert-link">Direccion / Jefatura</a>
-                    para mantener una sola bandeja de decision y trazabilidad.
+                    El cierre institucional de esta inspección se ejecuta desde
+                    <a href="@Url.Action("RevisionVerificacion", "CoordinacionJefatura")" class="alert-link">Dirección / Jefatura</a>
+                    para mantener una sola bandeja de decisión y trazabilidad.
                 </div>
             }
         </div>

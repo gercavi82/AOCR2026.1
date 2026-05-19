@@ -1016,26 +1016,26 @@
         @if (!tieneLv)
         {
             <div class="alert alert-warning alert-inline mb-3">
-                Antes de generar el Informe Tecnico debe completar la Lista de Verificacion Operacional (LV).
+                Antes de generar el informe técnico debe completar la Lista de Verificación Operacional (LV).
             </div>
         }
         else if (firmada)
         {
             <div class="alert alert-success alert-inline mb-3">
-                La Lista de Verificacion Operacional ya fue firmada. Ahora puede generar el Informe Tecnico.
-                Flujo simplificado activo: LV firmada + Informe Tecnico firmado por Tecnico / Inspector.
+                La Lista de Verificación Operacional ya fue firmada. Ahora puede generar el informe técnico.
+                Flujo simplificado activo: LV firmada + informe técnico firmado por técnico / inspector.
             </div>
         }
         else if (finalizada)
         {
             <div class="alert alert-info alert-inline mb-3">
-                La Lista de Verificacion Operacional fue completada correctamente. Proceda con la firma del Tecnico / Inspector.
+                La Lista de Verificación Operacional fue completada correctamente. Proceda con la firma del técnico / inspector.
             </div>
         }
         else
         {
             <div class="alert alert-warning alert-inline mb-3">
-                Informe Tecnico bloqueado. Primero complete y firme la Lista de Verificacion Operacional (LV).
+                Informe técnico bloqueado. Primero complete y firme la Lista de Verificación Operacional (LV).
             </div>
         }
 
@@ -1043,7 +1043,7 @@
         {
             <div class="card mt-4 border-0 bg-light mb-3" data-lv-signature-section="true">
                 <div class="card-body">
-                    <h5 class="mb-3"><i class="fas fa-signature me-2"></i>Firma del Tecnico / Inspector responsable de la LV</h5>
+                    <h5 class="mb-3"><i class="fas fa-signature me-2"></i>Firma del técnico / inspector responsable de la LV</h5>
                     @using (Html.BeginForm("FirmarListaVerificacionOperacionalEae", "Inspeccion", FormMethod.Post, new { enctype = "multipart/form-data", data_lv_signature_form = "true" }))
                     {
                         @Html.AntiForgeryToken()
@@ -1076,10 +1076,10 @@
             {
                 PdfUrl = vm.UrlVisualizacion,
                 DescargarUrl = vm.UrlDescarga,
-                Titulo = "Lista de Verificacion Operacional (LV)",
+                Titulo = "Lista de Verificación Operacional (LV)",
                 Subtitulo = nombreArchivoLvPdf,
                 EstadoDocumento = lista.EstadoLista ?? "LV_BORRADOR",
-                MensajeAyuda = firmada ? "LV firmada por el Tecnico / Inspector responsable." : "Revise el PDF generado antes de aplicar la firma digital.",
+                MensajeAyuda = firmada ? "LV firmada por el técnico / inspector responsable." : "Revise el PDF generado antes de aplicar la firma digital.",
                 PermitirDescarga = true,
                 PermitirImpresion = true,
                 MostrarToolbar = true,
@@ -1472,11 +1472,11 @@
         }
 
         if (target.classList.contains('lv-visible-implementacion')) {
-            return 'Seleccione implementacion aqui';
+            return 'Seleccione implementación aquí';
         }
 
         if (target.classList.contains('lv-visible-comentarios')) {
-            return 'Complete la observacion aqui';
+            return 'Complete la observación aquí';
         }
 
         return 'Complete ' + truncateValidationCueText(getHeaderFieldLabel(target), 68);

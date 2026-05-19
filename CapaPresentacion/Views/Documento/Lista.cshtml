@@ -187,6 +187,10 @@
         min-width: 180px;
     }
 
+    .documentos-review-tools__field {
+        min-width: 0;
+    }
+
     .documentos-review-tools__label {
         display: block;
         font-size: 0.74rem;
@@ -199,6 +203,19 @@
     .documentos-table-wrapper {
         width: 100%;
         overflow-x: auto;
+    }
+
+    .documentos-table {
+        min-width: 960px;
+    }
+
+    .documentos-table td {
+        vertical-align: top;
+    }
+
+    .documentos-table__cell {
+        overflow-wrap: anywhere;
+        word-break: break-word;
     }
 
     .documentos-actions {
@@ -234,20 +251,156 @@
         margin-bottom: 1rem;
     }
 
+    @@media (max-width: 991.98px) {
+        .documentos-review-tools {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+
+        .documentos-review-tools__context {
+            padding: 12px;
+        }
+
+        .documentos-review-tools__context-item {
+            flex: 1 1 calc(50% - 12px);
+            min-width: 0;
+        }
+
+        .documentos-table-wrapper {
+            overflow-x: visible;
+            padding: 0.85rem;
+        }
+
+        .documentos-table {
+            min-width: 0;
+            border-collapse: separate;
+        }
+
+        .documentos-table,
+        .documentos-table thead,
+        .documentos-table tbody,
+        .documentos-table tr,
+        .documentos-table th,
+        .documentos-table td {
+            display: block;
+            width: 100%;
+        }
+
+        .documentos-table thead {
+            display: none;
+        }
+
+        .documentos-table tbody {
+            display: grid;
+            gap: 14px;
+        }
+
+        .documentos-table tbody tr {
+            padding: 14px 16px;
+            border: 1px solid rgba(18, 92, 146, 0.12);
+            border-radius: 16px;
+            background: #fff;
+            box-shadow: 0 8px 24px rgba(14, 63, 102, 0.08);
+        }
+
+        .documentos-table tbody td {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 14px;
+            padding: 8px 0;
+            border: 0;
+            text-align: left !important;
+        }
+
+        .documentos-table tbody td::before {
+            content: attr(data-column-label);
+            flex: 0 0 118px;
+            max-width: 118px;
+            font-size: 0.72rem;
+            font-weight: 800;
+            line-height: 1.35;
+            letter-spacing: 0.06em;
+            text-transform: uppercase;
+            color: #5b7083;
+        }
+
+        .documentos-table tbody td[data-column-label="Acciones"] {
+            margin-top: 6px;
+            padding-top: 12px;
+            border-top: 1px dashed rgba(18, 92, 146, 0.16);
+        }
+
+        .documentos-table tbody td[data-column-label="Acciones"]::before {
+            padding-top: 10px;
+        }
+
+        .documentos-table tbody td[colspan] {
+            display: block;
+            padding: 0;
+        }
+
+        .documentos-table tbody td[colspan]::before {
+            content: none;
+        }
+
+        .documentos-table .documentos-observacion {
+            min-width: 0;
+            max-width: none;
+        }
+
+        .documentos-table .documentos-actions {
+            width: 100%;
+            justify-content: stretch;
+        }
+
+        .documentos-table .documentos-actions .btn {
+            flex: 1 1 calc(50% - 6px);
+            justify-content: center;
+        }
+    }
+
     @@media (max-width: 768px) {
+        .documentos-review-tools {
+            grid-template-columns: 1fr;
+        }
+
+        .documentos-review-tools__context-item {
+            flex-basis: 100%;
+        }
+
+        .documentos-table-wrapper {
+            padding: 0.75rem;
+        }
+
+        .documentos-table tbody tr {
+            padding: 12px 14px;
+        }
+
+        .documentos-table tbody td {
+            flex-direction: column;
+            gap: 6px;
+            padding: 9px 0;
+        }
+
+        .documentos-table tbody td::before {
+            flex: none;
+            max-width: none;
+        }
+
         .documentos-actions {
             flex-direction: column;
         }
 
         .documentos-actions .btn {
             width: 100%;
+            flex-basis: auto;
         }
     }
 </style>
 
 @Html.Partial("_PageHeader", null, new ViewDataDictionary {
     { "Title", string.IsNullOrWhiteSpace(solicitudIdTexto) ? "Documentos de la Solicitud" : "Documentos de la Solicitud (#" + solicitudIdTexto + ")" },
-    { "Subtitle", puedeRevisarDocumentos ? "Revision documental de archivos cargados para esta solicitud AOCR" : "Archivos cargados para esta solicitud AOCR" }
+    { "Subtitle", puedeRevisarDocumentos ? "Revisión documental de archivos cargados para esta solicitud AOCR" : "Archivos cargados para esta solicitud AOCR" }
 })
 
 @if (TempData["Error"] != null)
@@ -300,7 +453,7 @@
         </div>
     </div>
 
-    <div>
+    <div class="documentos-review-tools__field">
         <label for="filtroTipo" class="aocr-field-label">Filtrar por tipo</label>
         <select id="filtroTipo" class="form-select form-select-sm">
             <option value="">-- Todos --</option>
@@ -311,7 +464,7 @@
         </select>
     </div>
 
-    <div>
+    <div class="documentos-review-tools__field">
         <label for="filtroOperadora" class="aocr-field-label">Operadora / EAE</label>
         <select id="filtroOperadora" class="form-select form-select-sm">
             <option value="">-- Todas --</option>
@@ -322,7 +475,7 @@
         </select>
     </div>
 
-    <div>
+    <div class="documentos-review-tools__field">
         <label for="filtroFechaRapida" class="aocr-field-label">Fecha de carga</label>
         <select id="filtroFechaRapida" class="form-select form-select-sm">
             <option value="">-- Todas --</option>
@@ -332,12 +485,12 @@
         </select>
     </div>
 
-    <div>
+    <div class="documentos-review-tools__field">
         <label for="filtroFechaDesde" class="aocr-field-label">Desde</label>
         <input type="date" id="filtroFechaDesde" class="form-control form-control-sm" />
     </div>
 
-    <div>
+    <div class="documentos-review-tools__field">
         <label for="filtroFechaHasta" class="aocr-field-label">Hasta</label>
         <input type="date" id="filtroFechaHasta" class="form-control form-control-sm" />
     </div>
@@ -346,7 +499,7 @@
 <div class="card aocr-table-card">
     <div class="card-body p-0">
         <div class="documentos-table-wrapper">
-            <table class="table table-dgac mb-0" id="tablaDocumentos">
+            <table class="table table-dgac mb-0 documentos-table" id="tablaDocumentos">
                 <thead>
                     <tr>
                         <th>Tipo</th>
@@ -378,12 +531,12 @@
                                 data-operadora="@Html.AttributeEncode(operadoraFila ?? string.Empty)"
                                 data-fecha="@(doc.FechaCarga.HasValue ? doc.FechaCarga.Value.ToString("yyyy-MM-dd") : string.Empty)"
                                 data-estado="@estadoFilaNormalizado">
-                                <td>@Html.Encode(doc.TipoDocumento)</td>
-                                <td>@Html.Encode(doc.NombreArchivo)</td>
-                                <td>@(string.IsNullOrWhiteSpace(operadoraFila) ? "-" : Html.Encode(operadoraFila))</td>
-                                <td>@(doc.FechaCarga.HasValue ? doc.FechaCarga.Value.ToString("dd/MM/yyyy HH:mm") : "-")</td>
-                                <td class="js-doc-state"><span class="@badgeFila">@estadoFilaVisible</span></td>
-                                <td class="documentos-observacion js-doc-observacion">
+                                <td class="documentos-table__cell" data-column-label="Tipo">@Html.Encode(doc.TipoDocumento)</td>
+                                <td class="documentos-table__cell" data-column-label="Archivo">@Html.Encode(doc.NombreArchivo)</td>
+                                <td class="documentos-table__cell" data-column-label="Operadora / EAE">@(string.IsNullOrWhiteSpace(operadoraFila) ? "-" : Html.Encode(operadoraFila))</td>
+                                <td class="documentos-table__cell" data-column-label="Fecha de carga">@(doc.FechaCarga.HasValue ? doc.FechaCarga.Value.ToString("dd/MM/yyyy HH:mm") : "-")</td>
+                                <td class="documentos-table__cell js-doc-state" data-column-label="Estado"><span class="@badgeFila">@estadoFilaVisible</span></td>
+                                <td class="documentos-table__cell documentos-observacion js-doc-observacion" data-column-label="Observacion / motivo">
                                     @if (!string.IsNullOrWhiteSpace(observacionFila))
                                     {
                                         @Html.Encode(observacionFila)
@@ -393,7 +546,7 @@
                                         <span class="documentos-muted">-</span>
                                     }
                                 </td>
-                                <td class="js-doc-reviewer">
+                                <td class="documentos-table__cell js-doc-reviewer" data-column-label="Revisado por">
                                     @if (!string.IsNullOrWhiteSpace(revisorFila))
                                     {
                                         @Html.Encode(revisorFila)
@@ -403,8 +556,8 @@
                                         <span class="documentos-muted">-</span>
                                     }
                                 </td>
-                                <td class="js-doc-review-date">@(doc.FechaRevision.HasValue ? doc.FechaRevision.Value.ToString("dd/MM/yyyy HH:mm") : "-")</td>
-                                <td class="text-center js-doc-actions">
+                                <td class="documentos-table__cell js-doc-review-date" data-column-label="Fecha revision">@(doc.FechaRevision.HasValue ? doc.FechaRevision.Value.ToString("dd/MM/yyyy HH:mm") : "-")</td>
+                                <td class="documentos-table__cell text-center js-doc-actions" data-column-label="Acciones">
                                     <div class="documentos-actions">
                                         @if (esPdf)
                                         {
@@ -795,7 +948,7 @@
 
             async function postForm(url, payload) {
                 if (!tokenInput) {
-                    throw new Error('No se encontro el token antiforgery.');
+                    throw new Error('No se encontró el token antiforgery.');
                 }
 
                 var body = new URLSearchParams();
@@ -820,7 +973,7 @@
                 try {
                     result = await response.json();
                 } catch (error) {
-                    throw new Error('La respuesta del servidor no es valida.');
+                    throw new Error('La respuesta del servidor no es válida.');
                 }
 
                 if (!response.ok || !result.success) {
@@ -835,7 +988,7 @@
                 if (aceptarBtn) {
                     var idDocumentoAceptar = aceptarBtn.getAttribute('data-id');
                     if (!idDocumentoAceptar) {
-                        showAlert('danger', 'No se encontro el documento seleccionado.');
+                        showAlert('danger', 'No se encontró el documento seleccionado.');
                         return;
                     }
 
@@ -876,7 +1029,7 @@
                 if (reabrirBtn) {
                     var idDocumentoReabrir = reabrirBtn.getAttribute('data-id');
                     if (!idDocumentoReabrir) {
-                        showAlert('danger', 'No se encontro el documento seleccionado.');
+                        showAlert('danger', 'No se encontró el documento seleccionado.');
                         return;
                     }
 
@@ -908,12 +1061,12 @@
                     var motivo = (motivoInput.value || '').trim();
 
                     if (!idDocumento) {
-                        showAlert('danger', 'No se encontro el documento seleccionado.');
+                        showAlert('danger', 'No se encontró el documento seleccionado.');
                         return;
                     }
 
                     if (motivo.length < 10) {
-                        showAlert('danger', 'Debe ingresar el motivo por el cual se devuelve el documento. Minimo 10 caracteres.');
+                        showAlert('danger', 'Debe ingresar el motivo por el cual se devuelve el documento. Mínimo 10 caracteres.');
                         motivoInput.focus();
                         return;
                     }
@@ -951,4 +1104,3 @@
         })();
     </script>
 }
-

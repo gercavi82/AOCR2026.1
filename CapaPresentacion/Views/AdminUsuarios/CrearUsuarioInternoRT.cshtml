@@ -48,7 +48,7 @@
                         {
                             @class = "form-control",
                             maxlength = "64",
-                            placeholder = "Ingrese cedula o nombre del inspector",
+                            placeholder = "Ingrese cédula o nombre del inspector",
                             id = "CodigoUsuarioBusqueda"
                         })
                         <button class="btn btn-primary" type="button" id="btnBuscarUsuarioInternoRT">
@@ -303,7 +303,7 @@
 
                 var codigo = (txtBusqueda && txtBusqueda.value ? txtBusqueda.value : "").trim();
                 if (!codigo) {
-                    mostrarMensaje("Debe ingresar cedula o nombre para buscar.", true);
+                    mostrarMensaje("Debe ingresar cédula o nombre para buscar.", true);
                     if (txtBusqueda) { txtBusqueda.focus(); }
                     return;
                 }
@@ -317,12 +317,12 @@
                     dataType: "json"
                 }).done(function (data) {
                     if (!data || !data.success) {
-                        mostrarMensaje((data && data.message) ? data.message : "No se encontro coincidencia por cedula o nombre en la base institucional.", true);
+                        mostrarMensaje((data && data.message) ? data.message : "No se encontró coincidencia por cédula o nombre en la base institucional.", true);
                         return;
                     }
 
                     if (data.multiple) {
-                        mostrarMensaje(data.message || "Multiples resultados encontrados.", false);
+                        mostrarMensaje(data.message || "Múltiples resultados encontrados.", false);
                         mostrarTabla(data.resultados || []);
                         return;
                     }

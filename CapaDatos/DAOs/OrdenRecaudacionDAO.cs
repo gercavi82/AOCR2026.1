@@ -3487,23 +3487,23 @@ namespace CapaDatos.DAOs
             try
             {
                 var destinatarios = new List<string>();
+                var correosInstitucionales = new CorreoInstitucionalDAO(_connectionString)
+                    .ObtenerDestinatarios("NOTIFICACIONES_AOCR");
 
                 if (!string.IsNullOrWhiteSpace(correoSolicitante))
                 {
                     destinatarios.Add(correoSolicitante.Trim());
                 }
 
-                var adminEmailsRaw = System.Configuration.ConfigurationManager.AppSettings["AdminEmails"];
-                if (!string.IsNullOrWhiteSpace(adminEmailsRaw))
+                if (correosInstitucionales != null && correosInstitucionales.Activo)
                 {
-                    foreach (var email in adminEmailsRaw.Split(new[] { ';', ',' }, StringSplitOptions.RemoveEmptyEntries))
+                    if (!string.IsNullOrWhiteSpace(correosInstitucionales.CorreoPrincipal))
                     {
-                        var clean = email.Trim();
-                        if (!string.IsNullOrWhiteSpace(clean))
-                        {
-                            destinatarios.Add(clean);
-                        }
+                        destinatarios.Add(correosInstitucionales.CorreoPrincipal.Trim());
                     }
+
+                    destinatarios.AddRange(SepararCorreosInstitucionales(correosInstitucionales.CorreosCc));
+                    destinatarios.AddRange(SepararCorreosInstitucionales(correosInstitucionales.CorreosBcc));
                 }
 
                 destinatarios = destinatarios
@@ -3543,7 +3543,10 @@ namespace CapaDatos.DAOs
                         Cuerpo = cuerpo,
                         Estado = "PENDIENTE",
                         OrdenId = codigoSolicitud > 0 ? (int?)codigoSolicitud : ordenId,
-                        EventKey = eventKey
+                        EventKey = eventKey,
+                        TipoNotificacion = string.Equals(estado, "FR3_GENERADO", StringComparison.OrdinalIgnoreCase)
+                            ? "FR3_GENERADO"
+                            : "FR3_ERROR"
                     };
 
                     queueService.EncolarConAdjuntosEnTransaccion(conn, tx, item, null, out duplicateEvent);
@@ -3624,6 +3627,19 @@ namespace CapaDatos.DAOs
             return normalized.Length <= 60
                 ? normalized
                 : normalized.Substring(0, 60);
+        }
+
+        private static IEnumerable<string> SepararCorreosInstitucionales(string correos)
+        {
+            if (string.IsNullOrWhiteSpace(correos))
+            {
+                return Enumerable.Empty<string>();
+            }
+
+            return correos
+                .Split(new[] { ';', ',' }, StringSplitOptions.RemoveEmptyEntries)
+                .Select(email => (email ?? string.Empty).Trim())
+                .Where(email => !string.IsNullOrWhiteSpace(email));
         }
 
         private static void EnsureFacturacionSchema(NpgsqlConnection conn, NpgsqlTransaction tx)

@@ -584,7 +584,7 @@ namespace CapaPresentacion.Controllers
                 // 7. Notificar al Director que hay un usuario RT pendiente de aprobación
                 try
                 {
-                    const string correoDirector = "german.cajas@aviacioncivil.gob.ec";
+                    var destinatarioDireccion = new CorreoInstitucionalService().ObtenerDestinatariosPorArea(CorreoInstitucionalService.DireccionJefatura);
                     var asuntoDirector = "Usuario RT pendiente de aprobación - Sistema AOCR";
                     var cuerpoDirector = EmailTemplateRenderer.Render(new EmailTemplateModel
                     {
@@ -602,8 +602,20 @@ namespace CapaPresentacion.Controllers
                         TextoCierre = "Este es un correo automático del Sistema AOCR."
                     });
 
-                    var servicioCorreoDirector = new EnviarCorreo();
-                    servicioCorreoDirector.enviaMensajeCorreo(correoDirector, asuntoDirector, cuerpoDirector);
+                    if (destinatarioDireccion != null)
+                    {
+                        var servicioCorreoDirector = new EnviarCorreo();
+                        foreach (var correoDestino in destinatarioDireccion.ObtenerTodosLosCorreos().Distinct(StringComparer.OrdinalIgnoreCase))
+                        {
+                            servicioCorreoDirector.enviaMensajeCorreo(correoDestino, asuntoDirector, cuerpoDirector);
+                        }
+                    }
+                    else
+                    {
+                        LogBL.RegistrarInfo(
+                            "No se encontró correo institucional activo para DIRECCION_JEFATURA. Revise Administración > Configuración de correos institucionales.",
+                            "UsuarioController");
+                    }
                 }
                 catch (Exception exCorreoDirector)
                 {

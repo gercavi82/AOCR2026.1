@@ -352,13 +352,24 @@
                             </a>
                         </li>
                     }
-                    @* Solicitudes: RT accede siempre; Solicitante solo con orden generada *@
-                    @if (esRepresentanteRtRol || tieneOrdenGenerada)
+                    @* Solicitudes AOCR: se habilitan solo con pago aprobado / orden habilitante. *@
+                    @if (tieneOrdenGenerada)
                     {
                         <li>
                             <a class="aocr-link aocr-sidebar-item" href="@Url.Action("Index", "SolicitudAOCR", new { abrir = "nueva" })">
                                 <i class="fas fa-plus text-success mr-2"></i> Nueva Solicitud AOCR
+                                <span class="badge badge-success ml-2">Habilitado</span>
                             </a>
+                        </li>
+                    }
+                    else if (esRepresentanteRtRol)
+                    {
+                        <li>
+                            <span class="aocr-link aocr-sidebar-item disabled text-muted"
+                                  data-bs-toggle="tooltip"
+                                  title="Pendiente de aprobación de pago por Financiero.">
+                                <i class="fas fa-lock text-warning mr-2"></i> Nueva Solicitud AOCR
+                            </span>
                         </li>
                     }
                     <li>
@@ -584,6 +595,11 @@
                                 <li>
                                     <a class="aocr-link aocr-sidebar-item" href="@Url.Action("ConfiguracionSistema", "Direccion")">
                                         <i class="fas fa-cogs text-white-50 mr-2"></i> Configuración Sistema
+                                    </a>
+                                </li>
+                                <li>
+                                    <a class="aocr-link aocr-sidebar-item" href="@Url.Action("Index", "CorreoInstitucional")">
+                                        <i class="fas fa-envelope-open-text text-white-50 mr-2"></i> Correos institucionales
                                     </a>
                                 </li>
                                 @if (esAdministrador)
