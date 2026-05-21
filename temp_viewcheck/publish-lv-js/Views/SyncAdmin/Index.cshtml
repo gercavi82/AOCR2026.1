@@ -1,0 +1,222 @@
+@model CapaPresentacion.Controllers.SyncAdminVM
+@{
+    ViewBag.Title = "AS400 Mirror Sync - Estado";
+    Layout = "~/Views/Shared/_LayoutAOCR.cshtml";
+}
+
+<div class="container-fluid">
+    <h2><span class="glyphicon glyphicon-refresh"></span> AS400 Mirror Sync - Panel de Administracion</h2>
+    <hr />
+
+    @if (TempData["SyncOK"] != null)
+    {
+        <div class="alert alert-success alert-dismissible">
+            <button type="button" class="close" data-dismiss="alert">&times;</button>
+            <strong>OK:</strong> @TempData["SyncOK"]
+        </div>
+    }
+    @if (TempData["SyncError"] != null)
+    {
+        <div class="alert alert-danger alert-dismissible">
+            <button type="button" class="close" data-dismiss="alert">&times;</button>
+            <strong>Error:</strong> @TempData["SyncError"]
+        </div>
+    }
+
+    <div class="panel panel-default">
+        <div class="panel-heading"><b>Configuracion actual (web.config)</b></div>
+        <div class="panel-body">
+            <table class="table table-condensed table-bordered" style="max-width:560px;">
+                <tr>
+                    <th>Sync:Enabled</th>
+                    <td>
+                        @if (Model.SyncHabilitado)
+                        {
+                            <span class="label label-success">true</span>
+                        }
+                        else
+                        {
+                            <span class="label label-warning">false - cambiar a true para ejecutar</span>
+                        }
+                    </td>
+                </tr>
+                <tr><th>Sync:DryRun</th><td>@(Model.DryRun ? "true (solo lectura)" : "false")</td></tr>
+                <tr><th>Sync:BatchSize</th><td>@Model.BatchSize</td></tr>
+                <tr><th>Sync:Schedule</th><td>@Model.Schedule</td></tr>
+            </table>
+        </div>
+    </div>
+
+    <div class="panel panel-info">
+        <div class="panel-heading"><b>Ejecucion manual</b></div>
+        <div class="panel-body">
+            <div class="row">
+                <div class="col-md-4">
+                    @using (Html.BeginForm("RunAll", "SyncAdmin", FormMethod.Post))
+                    {
+                        @Html.AntiForgeryToken()
+                        <button type="submit" class="btn btn-primary btn-block" onclick="return confirm('Ejecutar sync de todas las tablas habilitadas?')">
+                            <span class="glyphicon glyphicon-play"></span> Ejecutar TODAS las tablas
+                        </button>
+                    }
+                </div>
+                <div class="col-md-5">
+                    @using (Html.BeginForm("RunTable", "SyncAdmin", FormMethod.Post))
+                    {
+                        @Html.AntiForgeryToken()
+                        <div class="input-group">
+                            <input type="text" name="tableName" class="form-control" placeholder="Ej: USUARC, OPCAR5..." />
+                            <span class="input-group-btn">
+                                <button type="submit" class="btn btn-warning">
+                                    <span class="glyphicon glyphicon-flash"></span> Tabla especifica
+                                </button>
+                            </span>
+                        </div>
+                        <small class="text-muted">Tablas disponibles: USUARC - USUAR1 - CIAARC - OPUARC01 - OIDAR2 - OPIAR2 - TXDGAC - OPSARC - OPCAR5 - OPCAR6</small>
+                    }
+                </div>
+                <div class="col-md-3">
+                    @using (Html.BeginForm("RunInspectoresRt", "SyncAdmin", FormMethod.Post))
+                    {
+                        @Html.AntiForgeryToken()
+                        <button type="submit" class="btn btn-success btn-block" onclick="return confirm('Ejecutar sync de inspectores RT desde DB2?')">
+                            <span class="glyphicon glyphicon-transfer"></span> Sync RT DB2
+                        </button>
+                    }
+                    <div style="height:8px;"></div>
+                    @Html.ActionLink("Ver FR3 espejo", "Fr3", "SyncAdmin", null, new { @class = "btn btn-default btn-block" })
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="panel panel-default">
+        <div class="panel-heading">
+            <b>Estado de Watermarks (sync.watermark)</b>
+            <span class="pull-right">
+                <small id="syncStatusRefreshTime"></small>
+                <button class="btn btn-xs btn-default" onclick="refreshStatus()">
+                    <span class="glyphicon glyphicon-refresh"></span> Refrescar
+                </button>
+            </span>
+        </div>
+        <div class="panel-body">
+            @if (Model.Watermarks == null || !Model.Watermarks.Any())
+            {
+                <div class="alert alert-warning">
+                    No hay registros en <code>sync.watermark</code>. Ejecute primero scripts SQL y habilite <code>Sync:Enabled=true</code>.
+                </div>
+            }
+            else
+            {
+                <table class="table table-bordered table-hover table-condensed">
+                    <thead>
+                        <tr>
+                            <th>Tabla</th>
+                            <th>Estado</th>
+                            <th>Ultima Sync</th>
+                            <th>Ultima Clave</th>
+                            <th>Actualizado</th>
+                            <th>Ultimo Error</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var w in Model.Watermarks)
+                        {
+                            var rowCss = w.Estado == "OK" ? "" : (w.Estado == "ERROR" ? "danger" : "warning");
+                            <tr class="@rowCss">
+                                <td><code>@w.Tabla</code></td>
+                                <td>
+                                    @if (w.Estado == "OK")
+                                    { <span class="label label-success">OK</span> }
+                                    else if (w.Estado == "RUNNING")
+                                    { <span class="label label-info">RUNNING</span> }
+                                    else
+                                    { <span class="label label-danger">@w.Estado</span> }
+                                </td>
+                                <td>@(w.UltimaSync.HasValue ? w.UltimaSync.Value.ToString("dd/MM/yyyy HH:mm:ss") : "-")</td>
+                                <td><small>@(w.UltimaClaveSync ?? "-")</small></td>
+                                <td><small>@w.ActualizadoEn.ToString("dd/MM/yyyy HH:mm:ss")</small></td>
+                                <td>
+                                    @if (!string.IsNullOrWhiteSpace(w.UltimoError))
+                                    { <span class="text-danger"><small>@w.UltimoError</small></span> }
+                                    else
+                                    { <span class="text-muted">-</span> }
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            }
+        </div>
+    </div>
+
+    <div class="panel panel-default">
+        <div class="panel-heading"><b>Ultimos 30 lotes (sync.batch_log)</b></div>
+        <div class="panel-body">
+            @if (Model.UltimosLotes == null || !Model.UltimosLotes.Any())
+            {
+                <p class="text-muted">Sin lotes registrados aun.</p>
+            }
+            else
+            {
+                <table class="table table-bordered table-hover table-condensed small">
+                    <thead>
+                        <tr>
+                            <th>Tabla</th>
+                            <th>Estado</th>
+                            <th>Leidas</th>
+                            <th>Aplicadas</th>
+                            <th>Rechazadas</th>
+                            <th>Eliminadas</th>
+                            <th>Duracion</th>
+                            <th>Error</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var l in Model.UltimosLotes)
+                        {
+                            var css = l.Status == "OK" || l.Status == "OK_WITH_REJECTIONS" ? "" :
+                                      l.Status == "ERROR" ? "danger" : "warning";
+                            <tr class="@css">
+                                <td><code>@l.TableName</code></td>
+                                <td>
+                                    @if (l.Status == "OK")
+                                    { <span class="label label-success">OK</span> }
+                                    else if (l.Status == "OK_WITH_REJECTIONS")
+                                    { <span class="label label-warning">OK (con rechazos)</span> }
+                                    else if (l.Status == "ERROR")
+                                    { <span class="label label-danger">ERROR</span> }
+                                    else
+                                    { <span class="label label-default">@l.Status</span> }
+                                </td>
+                                <td>@l.RowsRead</td>
+                                <td>@l.RowsApplied</td>
+                                <td>@(l.RowsRejected > 0 ? l.RowsRejected.ToString() : "-")</td>
+                                <td>@(l.RowsDeleted > 0 ? l.RowsDeleted.ToString() : "-")</td>
+                                <td><small>@string.Format("{0:N0} ms", l.Duration.TotalMilliseconds)</small></td>
+                                <td><small class="text-danger">@(string.IsNullOrWhiteSpace(l.Error) ? "" : l.Error)</small></td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            }
+        </div>
+    </div>
+</div>
+
+@section scripts {
+<script>
+function refreshStatus() {
+    fetch('@Url.Action("Status", "SyncAdmin")')
+        .then(function (r) { return r.json(); })
+        .then(function (data) {
+            if (data.ok) {
+                document.getElementById('syncStatusRefreshTime').textContent =
+                    'Actualizado: ' + new Date().toLocaleTimeString();
+            }
+        })
+        .catch(function () { });
+}
+</script>
+}

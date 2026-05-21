@@ -1,0 +1,101 @@
+@model CapaPresentacion.Models.ViewModels.AocrPdfViewerViewModel
+@using System
+
+@{
+    var contenedorId = !string.IsNullOrWhiteSpace(Model != null ? Model.ContenedorId : null)
+        ? Model.ContenedorId
+        : "aocrPdfViewer_" + Guid.NewGuid().ToString("N");
+    var titulo = !string.IsNullOrWhiteSpace(Model != null ? Model.Titulo : null)
+        ? Model.Titulo
+        : "Visor de documento";
+    var subtitulo = Model != null ? (Model.Subtitulo ?? string.Empty) : string.Empty;
+    var pdfUrl = Model != null ? (Model.PdfUrl ?? string.Empty) : string.Empty;
+    var descargarUrl = !string.IsNullOrWhiteSpace(Model != null ? Model.DescargarUrl : null)
+        ? Model.DescargarUrl
+        : pdfUrl;
+    var estado = Model != null ? (Model.EstadoDocumento ?? string.Empty) : string.Empty;
+    var mensaje = Model != null ? (Model.MensajeAyuda ?? string.Empty) : string.Empty;
+    var mostrarToolbar = Model == null || Model.MostrarToolbar;
+    var permitirDescarga = Model != null && Model.PermitirDescarga;
+    var permitirImpresion = Model != null && Model.PermitirImpresion;
+    var pantallaCompleta = Model != null && Model.PantallaCompleta;
+}
+
+<div id="@contenedorId"
+     class="aocr-pdf-viewer @(pantallaCompleta ? "aocr-pdf-viewer-full" : "")"
+     data-aocr-pdf-viewer="true"
+     data-pdf-url="@pdfUrl"
+     data-download-url="@descargarUrl"
+     data-allow-download="@(permitirDescarga ? "true" : "false")"
+     data-allow-print="@(permitirImpresion ? "true" : "false")">
+    <div class="aocr-pdf-header">
+        <div class="aocr-pdf-title-wrap">
+            <div class="aocr-pdf-title">@titulo</div>
+            @if (!string.IsNullOrWhiteSpace(subtitulo))
+            {
+                <div class="aocr-pdf-subtitle">@subtitulo</div>
+            }
+            @if (!string.IsNullOrWhiteSpace(mensaje))
+            {
+                <div class="aocr-pdf-help">@mensaje</div>
+            }
+        </div>
+        @if (!string.IsNullOrWhiteSpace(estado))
+        {
+            <span class="aocr-pdf-status">@estado</span>
+        }
+    </div>
+
+    @if (mostrarToolbar)
+    {
+        <div class="aocr-pdf-toolbar" role="toolbar" aria-label="Controles del visor PDF">
+            <button type="button" class="aocr-pdf-btn" data-aocr-pdf-action="prev" title="Pagina anterior">
+                <i class="fas fa-chevron-left"></i>
+            </button>
+            <span class="aocr-pdf-page-state">
+                <input type="number" min="1" value="1" class="aocr-pdf-page-input" aria-label="Pagina actual" />
+                <span>/</span>
+                <span class="aocr-pdf-page-total">0</span>
+            </span>
+            <button type="button" class="aocr-pdf-btn" data-aocr-pdf-action="next" title="Pagina siguiente">
+                <i class="fas fa-chevron-right"></i>
+            </button>
+            <span class="aocr-pdf-toolbar-sep"></span>
+            <button type="button" class="aocr-pdf-btn" data-aocr-pdf-action="zoom-out" title="Reducir zoom">
+                <i class="fas fa-search-minus"></i>
+            </button>
+            <button type="button" class="aocr-pdf-btn" data-aocr-pdf-action="fit-width" title="Ajustar al ancho">
+                <i class="fas fa-arrows-alt-h"></i>
+            </button>
+            <button type="button" class="aocr-pdf-btn" data-aocr-pdf-action="zoom-in" title="Aumentar zoom">
+                <i class="fas fa-search-plus"></i>
+            </button>
+            <span class="aocr-pdf-zoom-label">100%</span>
+            <span class="aocr-pdf-toolbar-spacer"></span>
+            <button type="button" class="aocr-pdf-btn" data-aocr-pdf-action="reload" title="Recargar documento">
+                <i class="fas fa-sync-alt"></i>
+            </button>
+            <a class="aocr-pdf-btn aocr-pdf-download @(permitirDescarga ? "" : "d-none")" href="@descargarUrl" target="_blank" rel="noopener" title="Descargar PDF">
+                <i class="fas fa-download"></i>
+            </a>
+            <button type="button" class="aocr-pdf-btn aocr-pdf-print @(permitirImpresion ? "" : "d-none")" data-aocr-pdf-action="print" title="Imprimir PDF">
+                <i class="fas fa-print"></i>
+            </button>
+        </div>
+    }
+
+    <div class="aocr-pdf-body">
+        <div class="aocr-pdf-loading">
+            <div class="aocr-pdf-spinner"></div>
+            <span>Cargando documento...</span>
+        </div>
+        <div class="aocr-pdf-error d-none">
+            <i class="fas fa-exclamation-triangle"></i>
+            <span class="aocr-pdf-error-message">No se pudo cargar el documento. Verifique que el archivo exista o vuelva a generar la vista previa.</span>
+        </div>
+        <div class="aocr-pdf-canvas-wrap">
+            <canvas class="aocr-pdf-canvas"></canvas>
+        </div>
+        <iframe class="aocr-pdf-fallback d-none" title="@titulo"></iframe>
+    </div>
+</div>

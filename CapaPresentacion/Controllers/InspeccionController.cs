@@ -51,6 +51,7 @@ namespace CapaPresentacion.Controllers
         private readonly InspeccionService _inspeccionService;
         private readonly InspeccionCorreoService _inspeccionCorreoService;
         private readonly FirmaDigitalService _firmaDigitalService;
+        private readonly RevisionDocumentalService _revisionDocumentalService;
         private readonly SolicitudEstadoTransitionBL _solicitudEstadoTransitionBL;
         private readonly SolicitudAocrInfraBL _solicitudAocrInfraBL;
 
@@ -107,6 +108,7 @@ namespace CapaPresentacion.Controllers
             _inspeccionService = new InspeccionService();
             _inspeccionCorreoService = new InspeccionCorreoService();
             _firmaDigitalService = new FirmaDigitalService();
+            _revisionDocumentalService = new RevisionDocumentalService();
             _solicitudEstadoTransitionBL = new SolicitudEstadoTransitionBL();
             _solicitudAocrInfraBL = new SolicitudAocrInfraBL();
             _logger = LoggingFactoryType.Create();
@@ -116,6 +118,31 @@ namespace CapaPresentacion.Controllers
         {
             int id;
             return _userContext.TryGetCodigoUsuario(Session, out id) ? id : 0;
+        }
+
+        private int ObtenerIdUsuarioActual()
+        {
+            int id;
+            return _userContext.TryGetUserId(Session, out id) ? id : 0;
+        }
+
+        private string ObtenerCodigoUsuarioSesion()
+        {
+            var codigoUsuario = Session != null ? Session["CodigoUsuario"] as string : null;
+            if (!string.IsNullOrWhiteSpace(codigoUsuario))
+            {
+                return codigoUsuario.Trim();
+            }
+
+            if (User != null &&
+                User.Identity != null &&
+                User.Identity.IsAuthenticated &&
+                !string.IsNullOrWhiteSpace(User.Identity.Name))
+            {
+                return User.Identity.Name.Trim();
+            }
+
+            return string.Empty;
         }
 
         private bool EsAdmin() => User != null && User.IsInRole(ROL_ADMIN);
@@ -371,6 +398,74 @@ namespace CapaPresentacion.Controllers
             return Json(new { success = false, code = statusCode, message = mensaje }, JsonRequestBehavior.AllowGet);
         }
 
+        private HashSet<int> ObtenerIdsInspectorActual()
+        {
+            var ids = new HashSet<int>();
+            var usuarioIdActual = ObtenerIdUsuarioActual();
+            var codigoUsuarioTexto = ObtenerCodigoUsuarioSesion();
+            var codigoUsuarioNumerico = ObtenerCodigoUsuario();
+
+            if (usuarioIdActual > 0)
+            {
+                ids.Add(usuarioIdActual);
+            }
+
+            if (!EsRolInspector())
+            {
+                if (codigoUsuarioNumerico > 0)
+                {
+                    ids.Add(codigoUsuarioNumerico);
+                }
+
+                return ids;
+            }
+
+            try
+            {
+                UsuarioInternoRTRegistro inspectorActual = null;
+
+                if (usuarioIdActual > 0)
+                {
+                    inspectorActual = _usuarioInternoRTDAO.ObtenerInspectorActivoPorTecnicoIdOUsuarioId(usuarioIdActual);
+                }
+
+                if (inspectorActual == null && !string.IsNullOrWhiteSpace(codigoUsuarioTexto))
+                {
+                    inspectorActual = _usuarioInternoRTDAO.ObtenerActivoPorCodigoUsuario(codigoUsuarioTexto)
+                        ?? _usuarioInternoRTDAO.ObtenerInspectorAsignableActivo(codigoUsuarioTexto);
+                }
+
+                if (inspectorActual == null && codigoUsuarioNumerico > 0)
+                {
+                    inspectorActual = _usuarioInternoRTDAO.ObtenerInspectorActivoPorTecnicoIdOUsuarioId(codigoUsuarioNumerico);
+                }
+
+                if (inspectorActual != null)
+                {
+                    if (inspectorActual.UsuarioId.HasValue && inspectorActual.UsuarioId.Value > 0)
+                    {
+                        ids.Add(inspectorActual.UsuarioId.Value);
+                    }
+
+                    if (inspectorActual.TecnicoId.HasValue && inspectorActual.TecnicoId.Value > 0)
+                    {
+                        ids.Add(inspectorActual.TecnicoId.Value);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning("[InspeccionesController] No se pudieron resolver ids equivalentes del inspector actual. Usuario=" + ObtenerUsuarioActual() + ", UserIdSesion=" + usuarioIdActual + ", CodigoUsuarioSesion=" + (string.IsNullOrWhiteSpace(codigoUsuarioTexto) ? "N/D" : codigoUsuarioTexto) + ", Error=" + ex.Message);
+            }
+
+            if (codigoUsuarioNumerico > 0)
+            {
+                ids.Add(codigoUsuarioNumerico);
+            }
+
+            return ids;
+        }
+
         private bool PuedeAccederInspeccion(Inspeccion ins)
         {
             if (ins == null) return false;
@@ -384,9 +479,11 @@ namespace CapaPresentacion.Controllers
             if (EsRolCoordinacionYJefatura())
                 return true;
 
-            var codigoUsuario = ObtenerCodigoUsuario();
             if (EsRolInspector())
-                return ins.CodigoInspector.HasValue && ins.CodigoInspector.Value == codigoUsuario;
+            {
+                var inspectorIds = ObtenerIdsInspectorActual();
+                return ins.CodigoInspector.HasValue && inspectorIds.Contains(ins.CodigoInspector.Value);
+            }
 
             return false;
         }
@@ -397,14 +494,56 @@ namespace CapaPresentacion.Controllers
         [Authorize(Roles = ROLES_GESTION_INSPECCION)]
         public ActionResult Index(string vista = null)
         {
+            var esBandejaInspector = EsRolInspector();
+            if (string.Equals((vista ?? string.Empty).Trim(), "revision-documental", StringComparison.OrdinalIgnoreCase))
+            {
+                return RedirectToAction("Index", "RevisionDocumental");
+            }
+
             _logger.LogInfo("[InspeccionesController] Inicio pantalla gestion inspecciones. Usuario=" + ObtenerUsuarioActual() + ", Rol=" + ObtenerRolActual());
 
             List<Inspeccion> lista;
 
             if (EsRolCoordinacionYJefatura())
+            {
                 lista = _inspeccionBL.ListarTodas();
+            }
             else
-                lista = _inspeccionBL.ListarPorInspector(ObtenerCodigoUsuario());
+            {
+                var inspectorIds = ObtenerIdsInspectorActual().Where(id => id > 0).ToList();
+                var inspeccionesNoHabilitadas = 0;
+                _logger.LogInfo("[InspeccionesController] Inspector actual. UserIdSesion=" + ObtenerIdUsuarioActual() + ", CodigoUsuarioSesion=" + (string.IsNullOrWhiteSpace(ObtenerCodigoUsuarioSesion()) ? "N/D" : ObtenerCodigoUsuarioSesion()) + ", IdsFiltro=" + string.Join(",", inspectorIds));
+
+                var inspeccionesAsignadas = inspectorIds
+                    .SelectMany(id => _inspeccionBL.ListarPorInspector(id) ?? new List<Inspeccion>())
+                    .GroupBy(ins => ins.CodigoInspeccion)
+                    .Select(group => group.OrderByDescending(ins => ins.UpdatedAt ?? DateTime.MinValue).First())
+                    .ToList();
+
+                if (esBandejaInspector)
+                {
+                    var inspeccionesHabilitadas = new List<Inspeccion>();
+                    foreach (var inspeccion in inspeccionesAsignadas)
+                    {
+                        if (inspeccion != null && _revisionDocumentalService.EstaInspeccionHabilitadaParaEjecucion(inspeccion))
+                        {
+                            inspeccionesHabilitadas.Add(inspeccion);
+                        }
+                        else
+                        {
+                            inspeccionesNoHabilitadas++;
+                        }
+                    }
+
+                    lista = inspeccionesHabilitadas;
+                }
+                else
+                {
+                    lista = inspeccionesAsignadas;
+                }
+
+                ViewBag.CantidadInspeccionesNoHabilitadas = inspeccionesNoHabilitadas;
+            }
 
             if (lista == null)
             {
@@ -433,8 +572,23 @@ namespace CapaPresentacion.Controllers
                     if (solicitudFila != null) { solicitudesPorInspeccion[insp.CodigoInspeccion] = solicitudFila; }
                 }
             }
+            var estadosRevisionPorInspeccion = new Dictionary<int, EstadoRevisionDocumental>();
+            if (lista != null)
+            {
+                foreach (var insp in lista)
+                {
+                    if (insp == null || insp.CodigoInspeccion <= 0)
+                    {
+                        continue;
+                    }
+
+                    estadosRevisionPorInspeccion[insp.CodigoInspeccion] = ObtenerEstadoRevisionDocumentalSeguro(insp.CodigoSolicitud);
+                }
+            }
             ViewBag.InspectoresNombres = nombresInspector;
             ViewBag.SolicitudesPorInspeccion = solicitudesPorInspeccion;
+            ViewBag.EstadosRevisionDocumentalPorInspeccion = estadosRevisionPorInspeccion;
+            ViewBag.EsBandejaInspector = esBandejaInspector;
             ViewBag.VistaActualInspeccion = vista ?? string.Empty;
 
             return View("~/Views/Inspeccion/Index.cshtml", lista);
@@ -467,6 +621,11 @@ namespace CapaPresentacion.Controllers
             {
                 _logger.LogWarning("[GestionInspeccion] Error cargando solicitud para ruta amigable. Referencia="
                     + referenciaDetalle + ", InspeccionId=" + inspeccion.CodigoInspeccion + ", Error=" + ex.Message);
+            }
+
+            if ((EsRolInspector() || EsAdmin()) && !_revisionDocumentalService.EstaInspeccionHabilitadaParaEjecucion(inspeccion, solicitudDetalle))
+            {
+                return new HttpStatusCodeResult(403, _revisionDocumentalService.ObtenerMensajeInspeccionNoHabilitada(inspeccion, solicitudDetalle));
             }
 
             var referenciaCanonica = ObtenerReferenciaDetalle(inspeccion, solicitudDetalle);
@@ -640,9 +799,13 @@ namespace CapaPresentacion.Controllers
             EnriquecerInspectoresInformeTecnico(inspeccion, ViewBag.Solicitud as SolicitudAOCR);
             ViewBag.InspectorAsignadoNombre = ResolverInspectorAsignadoNombre(inspeccion, ViewBag.Solicitud as SolicitudAOCR);
 
+            solicitudDetalle = ViewBag.Solicitud as SolicitudAOCR;
+            ViewBag.RevisionDocumentalInspectorConfirmada = _revisionDocumentalService.EstaInspeccionHabilitadaParaEjecucion(inspeccion, solicitudDetalle);
+            ViewBag.MensajeBloqueoRevisionDocumentalInspector = _revisionDocumentalService.ObtenerMensajeInspeccionNoHabilitada(inspeccion, solicitudDetalle);
+
             try
             {
-                var solicitudLv = ViewBag.Solicitud as SolicitudAOCR;
+                var solicitudLv = solicitudDetalle;
                 var listaVerificacion = _listaVerificacionOperacionalEaeDAO.ObtenerUltimaPorInspeccion(codigoInspeccion);
                 if (listaVerificacion == null && UsaFlujoListaVerificacionOperacionalEae(solicitudLv))
                 {
@@ -1252,6 +1415,9 @@ namespace CapaPresentacion.Controllers
             if (!PuedeAccederInspeccion(inspeccion))
                 return new HttpStatusCodeResult(403, "No autorizado para ver el informe.");
 
+            if ((EsRolInspector() || EsAdmin()) && !InspectorTieneRevisionDocumentalConfirmada(inspeccion))
+                return new HttpStatusCodeResult(403, ObtenerMensajeBloqueoRevisionDocumentalInspector());
+
             var informeTecnico = _informeDAO.ObtenerUltimoPorInspeccion(id);
             var solicitud = _solicitudDAO.ObtenerPorId(inspeccion.CodigoSolicitud);
             NormalizarDatosOperadorSolicitud(solicitud);
@@ -1336,6 +1502,11 @@ namespace CapaPresentacion.Controllers
                 return new HttpStatusCodeResult(403, "No autorizado para ver la lista de verificación operacional.");
             }
 
+            if ((EsRolInspector() || EsAdmin()) && !InspectorTieneRevisionDocumentalConfirmada(inspeccion))
+            {
+                return new HttpStatusCodeResult(403, ObtenerMensajeBloqueoRevisionDocumentalInspector());
+            }
+
             var lista = _listaVerificacionOperacionalEaeDAO.ObtenerUltimaPorInspeccion(id);
             var solicitud = _solicitudDAO.ObtenerPorId(inspeccion.CodigoSolicitud);
             NormalizarDatosOperadorSolicitud(solicitud);
@@ -1417,6 +1588,11 @@ namespace CapaPresentacion.Controllers
             if (!PuedeAccederInspeccion(inspeccion))
             {
                 return new HttpStatusCodeResult(403, "No autorizado para generar la lista de verificación operacional oficial.");
+            }
+
+            if ((EsRolInspector() || EsAdmin()) && !InspectorTieneRevisionDocumentalConfirmada(inspeccion))
+            {
+                return new HttpStatusCodeResult(403, ObtenerMensajeBloqueoRevisionDocumentalInspector());
             }
 
             var solicitud = _solicitudDAO.ObtenerPorId(inspeccion.CodigoSolicitud);
@@ -3632,23 +3808,12 @@ namespace CapaPresentacion.Controllers
 
         private bool InspectorTieneRevisionDocumentalConfirmada(Inspeccion inspeccion)
         {
-            if (inspeccion == null || !EstadoDocumentalHabilitaAccionesInspector(inspeccion.EstadoDocumental))
-            {
-                return false;
-            }
-
-            var estadoRevision = ObtenerEstadoRevisionDocumentalSeguro(inspeccion.CodigoSolicitud);
-            if (estadoRevision.TotalDocumentosVigentes == 0)
-            {
-                return true;
-            }
-
-            return estadoRevision.DocumentacionAprobada;
+            return _revisionDocumentalService.EstaInspeccionHabilitadaParaEjecucion(inspeccion);
         }
 
         private string ObtenerMensajeBloqueoRevisionDocumentalInspector()
         {
-            return "No se puede continuar porque existen documentos observados o subsanados pendientes de revisión documental.";
+            return "No se puede iniciar la inspección porque la fase documental aún no ha sido finalizada.";
         }
 
         private EstadoRevisionDocumental ObtenerEstadoRevisionDocumentalSeguro(int codigoSolicitud)
@@ -5583,9 +5748,7 @@ namespace CapaPresentacion.Controllers
                     "LV_BORRADOR");
             var puedeEditarInformeTecnico = PuedeEditarInformeTecnicoModal(inspeccion) && InformePuedeEditarsePorInspector(informe);
             var estadoRevisionDocumental = ObtenerEstadoRevisionDocumentalSeguro(inspeccion != null ? inspeccion.CodigoSolicitud : 0);
-            var puedeAbrirLvEae = estadoRevisionDocumental.TotalDocumentosVigentes == 0
-                ? PuedeEditarInformeTecnicoModal(inspeccion)
-                : estadoRevisionDocumental.DocumentacionAprobada;
+            var puedeAbrirLvEae = estadoRevisionDocumental.DocumentacionAprobada;
             var puedeAbrirInformeTecnico = puedeAbrirLvEae
                 && (!usaFlujoLv || (listaVerificacion != null && listaVerificacion.Finalizado && listaVerificacion.FirmadoTecnico));
             var mensajeBloqueo = (EsRolInspector() || EsAdmin()) && !puedeEditarInformeTecnico

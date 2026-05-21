@@ -1,0 +1,32 @@
+﻿@inherits System.Web.Mvc.WebViewPage
+@using CapaModelo
+@using System.Web.Mvc
+@using System.Web.Mvc.Html
+@using CapaPresentacion.Helpers
+@{
+    var roles = RoleGroupingHelper.BuildUnifiedRoles(
+        RoleGroupingHelper.ExtractRoles(Session["RolesRaw"] ?? Session["Roles"], Session["Rol"] as string));
+    var rolActual = RoleGroupingHelper.NormalizeSelectedRole(Session["Rol"] as string);
+}
+
+@if (roles != null && roles.Count > 1)
+{
+    <div class="aocr-role-switch mt-2">
+        <label class="aocr-role-switch__label">Cambiar de Rol:</label>
+
+        <select class="form-control form-control-sm aocr-role-switch__select"
+                onchange="location.href = this.value;">
+
+            @foreach (var rol in roles)
+            {
+                var url = Url.Action("CambiarRol", "Account", new { rolSeleccionado = rol });
+                var estaSeleccionado = string.Equals(rol, rolActual, StringComparison.OrdinalIgnoreCase) ? "selected" : "";
+
+                <option value="@url" @estaSeleccionado>
+                    @RoleGroupingHelper.ToDisplayName(rol)
+                </option>
+            }
+        </select>
+    </div>
+}
+

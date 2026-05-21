@@ -127,6 +127,54 @@ namespace CapaDatos.DAOs
             return resultado;
         }
 
+        public List<int> ObtenerPendientesRevisionInspector(int codigoInspector)
+        {
+            var resultado = new List<int>();
+            if (codigoInspector <= 0)
+            {
+                return resultado;
+            }
+
+            using (var cn = new NpgsqlConnection(ConnectionString))
+            {
+                cn.Open();
+                EnsureSchema(cn);
+
+                const string sql = @"
+                    SELECT DISTINCT s.codigo_solicitud
+                    FROM aocr_tbsolicitud s
+                    LEFT JOIN aocr_tbinspeccion i ON i.codigo_solicitud = s.codigo_solicitud
+                    WHERE s.codigo_solicitud IS NOT NULL
+                      AND s.deleted_at IS NULL
+                      AND (
+                            COALESCE(i.codigo_inspector, 0) = @codigo_inspector
+                         OR COALESCE(s.codigo_tecnico, 0) = @codigo_inspector
+                      )
+                      AND UPPER(COALESCE(s.estado, '')) NOT IN ('ANULADA', 'CANCELADA')
+                    ORDER BY s.codigo_solicitud DESC;";
+
+                using (var cmd = new NpgsqlCommand(sql, cn))
+                {
+                    cmd.Parameters.AddWithValue("@codigo_inspector", codigoInspector);
+                    using (var rd = cmd.ExecuteReader())
+                    {
+                        while (rd.Read())
+                        {
+                            var codigoSolicitud = rd["codigo_solicitud"] == DBNull.Value
+                                ? 0
+                                : Convert.ToInt32(rd["codigo_solicitud"]);
+                            if (codigoSolicitud > 0)
+                            {
+                                resultado.Add(codigoSolicitud);
+                            }
+                        }
+                    }
+                }
+            }
+
+            return resultado;
+        }
+
         public Dictionary<int, RevisionDocumentalDetalle> ObtenerUltimosDetallesPorSolicitud(int codigoSolicitud)
         {
             var resultado = new Dictionary<int, RevisionDocumentalDetalle>();

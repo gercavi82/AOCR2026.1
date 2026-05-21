@@ -33,20 +33,30 @@
         var pageTitle = ViewBag.Title != null
             ? System.Web.HttpUtility.HtmlDecode(System.Web.HttpUtility.HtmlDecode(Convert.ToString(ViewBag.Title)))
             : "";
+        var frontVersion = AssetVersionHelper.GetFrontVersion();
         var faviconVersion = "1";
-        var aocrUtilsVer = "0";
+        var siteCssHref = AssetVersionHelper.VersionedContent(Url, "~/Content/Site.css");
+        var aocrCssInstHref = AssetVersionHelper.VersionedContent(Url, "~/Content/aocr-institucional.css");
+        var aocrCssDtHref = AssetVersionHelper.VersionedContent(Url, "~/Content/aocr-datatables.css");
+        var aocrCssResponsiveHref = AssetVersionHelper.VersionedContent(Url, "~/Content/aocr-responsive.css");
+        var aocrPdfViewerCssHref = AssetVersionHelper.VersionedContent(Url, "~/Content/aocr-pdf-viewer/aocr-pdf-viewer.css");
+        var jqueryLocalUrl = AssetVersionHelper.VersionedContent(Url, "~/Scripts/jquery-3.6.4.min.js");
+        var dataTablesInitUrl = AssetVersionHelper.VersionedContent(Url, "~/Scripts/aocr-datatables.js");
+        var jqueryValidateUrl = AssetVersionHelper.VersionedContent(Url, "~/Scripts/jquery.validate.min.js");
+        var jqueryValidateUnobtrusiveUrl = AssetVersionHelper.VersionedContent(Url, "~/Scripts/jquery.validate.unobtrusive.min.js");
+        var aocrUtilsUrl = AssetVersionHelper.VersionedContent(Url, "~/Scripts/aocr-utils.js");
+        var adminLteLocalUrl = AssetVersionHelper.VersionedContent(Url, "~/Content/dist/js/adminlte.js");
+        var siteJsUrl = AssetVersionHelper.VersionedContent(Url, "~/Scripts/site.js");
+        var appJsUrl = AssetVersionHelper.VersionedContent(Url, "~/Scripts/app.js");
+        var pdfViewerJsUrl = AssetVersionHelper.VersionedContent(Url, "~/Content/aocr-pdf-viewer/aocr-pdf-viewer.js");
+        var pdfLibUrl = AssetVersionHelper.VersionedContent(Url, "~/Content/aocr-pdf-viewer/pdf.min.js");
+        var pdfWorkerUrl = AssetVersionHelper.VersionedContent(Url, "~/Content/aocr-pdf-viewer/pdf.worker.min.js");
         try
         {
             var faviconPath = Server.MapPath("~/Content/imganes/logo1.png");
             if (System.IO.File.Exists(faviconPath))
             {
                 faviconVersion = System.IO.File.GetLastWriteTimeUtc(faviconPath).Ticks.ToString();
-            }
-
-            var aocrUtilsPath = Server.MapPath("~/Scripts/aocr-utils.js");
-            if (System.IO.File.Exists(aocrUtilsPath))
-            {
-                aocrUtilsVer = System.IO.File.GetLastWriteTimeUtc(aocrUtilsPath).Ticks.ToString();
             }
         }
         catch
@@ -75,41 +85,12 @@
     <link rel="stylesheet" href="https://cdn.datatables.net/responsive/2.4.1/css/responsive.bootstrap5.min.css">
 
     <!-- CSS Personalizado -->
-    @{
-        // Cache-busting: forzar recarga cuando cambia el archivo CSS institucional
-        string aocrCssInstVer = "0";
-        string aocrCssDtVer = "0";
-        string aocrCssResponsiveVer = "0";
-        try
-        {
-            var instPath = Server.MapPath("~/Content/aocr-institucional.css");
-            if (System.IO.File.Exists(instPath))
-            {
-                aocrCssInstVer = System.IO.File.GetLastWriteTimeUtc(instPath).Ticks.ToString();
-            }
-            var dtPath = Server.MapPath("~/Content/aocr-datatables.css");
-            if (System.IO.File.Exists(dtPath))
-            {
-                aocrCssDtVer = System.IO.File.GetLastWriteTimeUtc(dtPath).Ticks.ToString();
-            }
-            var responsivePath = Server.MapPath("~/Content/aocr-responsive.css");
-            if (System.IO.File.Exists(responsivePath))
-            {
-                aocrCssResponsiveVer = System.IO.File.GetLastWriteTimeUtc(responsivePath).Ticks.ToString();
-            }
-        }
-        catch
-        {
-        }
-        var aocrCssInstHref = Url.Content("~/Content/aocr-institucional.css") + "?v=" + aocrCssInstVer;
-        var aocrCssDtHref = Url.Content("~/Content/aocr-datatables.css") + "?v=" + aocrCssDtVer;
-        var aocrCssResponsiveHref = Url.Content("~/Content/aocr-responsive.css") + "?v=" + aocrCssResponsiveVer;
-    }
-    <link href="@Url.Content("~/Content/Site.css")" rel="stylesheet" />
+    <meta name="aocr-front-version" content="@frontVersion" />
+    <link href="@siteCssHref" rel="stylesheet" />
     <link href="@aocrCssInstHref" rel="stylesheet" />
     <link href="@aocrCssDtHref" rel="stylesheet" />
     <link href="@aocrCssResponsiveHref" rel="stylesheet" />
-    <link href="@Url.Content("~/Content/aocr-pdf-viewer/aocr-pdf-viewer.css")" rel="stylesheet" />
+    <link href="@aocrPdfViewerCssHref" rel="stylesheet" />
 
     <!-- Estilos personalizados criticos (inline para performance) -->
     <style>
@@ -467,6 +448,29 @@
     <script>
     window.addEventListener('unhandledrejection', function(e) {
         var r = e.reason;
+        if (r && typeof r === 'object') {
+            var details = {
+                name: typeof r.name === 'string' ? r.name : '',
+                message: typeof r.message === 'string' ? r.message : '',
+                code: Object.prototype.hasOwnProperty.call(r, 'code') ? r.code : null,
+                stack: typeof r.stack === 'string' ? r.stack : '',
+                keys: []
+            };
+
+            try {
+                details.keys = Object.keys(r).slice(0, 12);
+            } catch (ignore) {
+            }
+
+            window.__AOCR_LAST_UNHANDLED_REJECTION__ = details;
+
+            if ((details.message || details.stack || details.code !== null || details.keys.length)
+                && window.console
+                && typeof window.console.warn === 'function') {
+                window.console.warn('[AOCR] Unhandled promise rejection', details);
+            }
+        }
+
         if (r && typeof r === 'object' && typeof r.name === 'string' && r.name.length <= 2 && 'code' in r) {
             e.preventDefault();
         }
@@ -476,7 +480,7 @@
     <!-- ========== SCRIPTS EN ORDEN CORRECTO ========== -->
     <!-- ✅ CORRECCIÓN: jQuery PRIMERO, luego dependencias -->
     <!-- 1. jQuery local (3.6.4) con fallback seguro sin document.write -->
-    <script src="@Url.Content("~/Scripts/jquery-3.6.4.min.js")"></script>
+    <script src="@jqueryLocalUrl"></script>
     <script>
         (function () {
             if (window.jQuery) return;
@@ -498,11 +502,12 @@
     <script src="https://cdn.datatables.net/responsive/2.4.1/js/dataTables.responsive.min.js"></script>
     <script src="https://cdn.datatables.net/responsive/2.4.1/js/responsive.bootstrap5.min.js"></script>
     <script>
-        window.AOCR_PDF_LIB_URL = '@Url.Content("~/Content/aocr-pdf-viewer/pdf.min.js")';
-        window.AOCR_PDF_WORKER_URL = '@Url.Content("~/Content/aocr-pdf-viewer/pdf.worker.min.js")';
+        window.AOCR_FRONT_VERSION = '@frontVersion';
+        window.AOCR_PDF_LIB_URL = '@pdfLibUrl';
+        window.AOCR_PDF_WORKER_URL = '@pdfWorkerUrl';
     </script>
-    <script src="@Url.Content("~/Content/aocr-pdf-viewer/aocr-pdf-viewer.js")"></script>
-    <script src="@Url.Content("~/Scripts/aocr-datatables.js")"></script>
+    <script src="@pdfViewerJsUrl"></script>
+    <script src="@dataTablesInitUrl"></script>
 
     <!-- 1.1b DataTables: defaults institucionales AOCR (aplicados a todas las tablas del proyecto) -->
     <!--     Paginacion global fija: 5 registros por pagina. -->
@@ -590,8 +595,8 @@
     </script>
 
     <!-- 1.2 jQuery Validate (necesario para validación cliente en vistas MVC) -->
-    <script src="@Url.Content("~/Scripts/jquery.validate.min.js")"></script>
-    <script src="@Url.Content("~/Scripts/jquery.validate.unobtrusive.min.js")"></script>
+    <script src="@jqueryValidateUrl"></script>
+    <script src="@jqueryValidateUnobtrusiveUrl"></script>
     <script>
         (function () {
             function loadScript(src) {
@@ -672,7 +677,7 @@
         // Utilidades AOCR (escape helpers) - cargadas localmente para evitar depender de CDN en páginas que usan Layout=null
         (function(){
             var s = document.createElement('script');
-            s.src = '@(Url.Content("~/Scripts/aocr-utils.js") + "?v=" + aocrUtilsVer)';
+            s.src = '@aocrUtilsUrl';
             s.async = false;
             document.head.appendChild(s);
         })();
@@ -732,7 +737,7 @@
 
         function loadAdminLTE() {
             var script = document.createElement('script');
-            script.src = '@Url.Content("~/Content/dist/js/adminlte.js")';
+            script.src = '@adminLteLocalUrl';
             script.async = false;
 
             script.onload = function () {
@@ -752,7 +757,7 @@
         function loadLocalScripts() {
             // Cargar site.js
             var siteScript = document.createElement('script');
-            siteScript.src = '@Url.Content("~/Scripts/site.js")';
+            siteScript.src = '@siteJsUrl';
             siteScript.async = false;
             siteScript.onload = function() {
                 loadAppJS();
@@ -767,7 +772,7 @@
         function loadAppJS() {
             // Cargar app.js
             var appScript = document.createElement('script');
-            appScript.src = '@Url.Content("~/Scripts/app.js")';
+            appScript.src = '@appJsUrl';
             appScript.async = false;
             appScript.onload = function() {
                 initializeAOCRSystem();

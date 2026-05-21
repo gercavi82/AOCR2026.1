@@ -8,6 +8,8 @@ using System.Web.Mvc;
 using System.Web.Security;
 using CapaDatos.Services;
 using CapaUtilidades;
+using CapaPresentacion.Helpers;
+using CapaPresentacion.Infrastructure;
 using System.Web.Routing;
 
 namespace CapaPresentacion.Filters
@@ -280,6 +282,115 @@ namespace CapaPresentacion.Filters
             }
 
             base.OnActionExecuting(filterContext);
+        }
+    }
+
+    public class RestoreAuthenticatedSessionAttribute : ActionFilterAttribute
+    {
+        public override void OnActionExecuting(ActionExecutingContext filterContext)
+        {
+            if (filterContext == null || filterContext.HttpContext == null || filterContext.IsChildAction)
+            {
+                base.OnActionExecuting(filterContext);
+                return;
+            }
+
+            if (ShouldSkip(filterContext))
+            {
+                base.OnActionExecuting(filterContext);
+                return;
+            }
+
+            var status = AuthenticatedSessionBootstrapper.EnsureSession(filterContext.HttpContext);
+            if (status == AuthenticatedSessionBootstrapStatus.RequiresCompanySelection &&
+                ShouldRedirectToCompanySelection(filterContext.HttpContext.Request))
+            {
+                var returnUrl = BuildReturnUrl(filterContext.HttpContext.Request);
+                if (!string.IsNullOrWhiteSpace(returnUrl) && filterContext.HttpContext.Session != null)
+                {
+                    filterContext.HttpContext.Session[CompaniaActivaSessionHelper.SessionCompaniaPendienteReturnUrl] = returnUrl;
+                }
+
+                filterContext.Result = new RedirectToRouteResult(
+                    new RouteValueDictionary(new
+                    {
+                        controller = "Account",
+                        action = "SeleccionarCompania",
+                        returnUrl
+                    }));
+                return;
+            }
+
+            base.OnActionExecuting(filterContext);
+        }
+
+        private static bool ShouldSkip(ActionExecutingContext filterContext)
+        {
+            var request = filterContext.HttpContext.Request;
+            if (request == null || !request.IsAuthenticated)
+            {
+                return true;
+            }
+
+            var controller = Convert.ToString(filterContext.RouteData.Values["controller"]);
+            if (string.Equals(controller, "Account", StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(controller, "Error", StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+
+            return false;
+        }
+
+        private static bool ShouldRedirectToCompanySelection(HttpRequestBase request)
+        {
+            if (request == null || !string.Equals(request.HttpMethod, "GET", StringComparison.OrdinalIgnoreCase))
+            {
+                return false;
+            }
+
+            if (IsAjaxLikeRequest(request))
+            {
+                return false;
+            }
+
+            var acceptHeader = request.Headers["Accept"] ?? string.Empty;
+            return string.IsNullOrWhiteSpace(acceptHeader) ||
+                   acceptHeader.IndexOf("text/html", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                   acceptHeader.IndexOf("*/*", StringComparison.OrdinalIgnoreCase) >= 0;
+        }
+
+        private static bool IsAjaxLikeRequest(HttpRequestBase request)
+        {
+            if (request == null)
+            {
+                return false;
+            }
+
+            if (request.IsAjaxRequest())
+            {
+                return true;
+            }
+
+            var requestedWith = request.Headers["X-Requested-With"];
+            if (string.Equals(requestedWith, "XMLHttpRequest", StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+
+            var acceptHeader = request.Headers["Accept"] ?? string.Empty;
+            return acceptHeader.IndexOf("application/json", StringComparison.OrdinalIgnoreCase) >= 0;
+        }
+
+        private static string BuildReturnUrl(HttpRequestBase request)
+        {
+            if (request == null)
+            {
+                return null;
+            }
+
+            var rawUrl = request.RawUrl ?? (request.Url != null ? request.Url.PathAndQuery : string.Empty);
+            return string.IsNullOrWhiteSpace(rawUrl) ? null : rawUrl;
         }
     }
 

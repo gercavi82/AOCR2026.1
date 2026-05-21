@@ -165,6 +165,7 @@
     <Compile Include="Services\OrdenRecaudacionCorreoService.cs" />
     <Compile Include="Services\AocrPostPagoWorkflowService.cs" />
     <Compile Include="Services\OrdenPdfService.cs" />
+    <Compile Include="Services\RevisionDocumentalService.cs" />
     <Compile Include="Services\ValidacionDocumentalService.cs" />
     <Compile Include="Services\SolicitudAocrCorreoService.cs" />
     <Compile Include="Services\CertificacionService.cs" />

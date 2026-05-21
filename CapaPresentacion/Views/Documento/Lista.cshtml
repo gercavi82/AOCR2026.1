@@ -8,7 +8,6 @@
 @using System.Web
 
 @{
-    ViewBag.Title = "Documentos de la Solicitud AOCR";
     Layout = "~/Views/Shared/_LayoutAOCR.cshtml";
 
     var solicitudIdRaw = ViewData["SolicitudId"] ?? ViewBag.SolicitudId;
@@ -22,8 +21,48 @@
         : null;
     var puedeRevisarDocumentos = ViewBag.PuedeRevisarDocumentos as bool? ?? false;
     var puedeReabrirDocumentos = ViewBag.PuedeReabrirDocumentos as bool? ?? false;
+    var modoDocumentos = (ViewBag.ModoDocumentos ?? string.Empty).ToString().Trim();
+    var esModoVerDocumentacion = string.Equals(modoDocumentos, "ver", System.StringComparison.OrdinalIgnoreCase);
+    var esModoRevisionDocumental = !esModoVerDocumentacion;
     var operadoraContexto = (ViewBag.OperadoraEae ?? string.Empty).ToString().Trim();
     var documentos = Model ?? new List<Documento>();
+    var tituloPaginaModulo = string.IsNullOrWhiteSpace(solicitudIdTexto)
+        ? (esModoVerDocumentacion ? "Ver documentación de la solicitud" : "Revisión documental de la solicitud")
+        : (esModoVerDocumentacion
+            ? "Ver documentación de la solicitud (#" + solicitudIdTexto + ")"
+            : "Revisión documental de la solicitud (#" + solicitudIdTexto + ")");
+    var subtituloPaginaModulo = esModoVerDocumentacion
+        ? "Consulta documental del expediente en modo solo lectura, con trazabilidad y descarga disponible."
+        : (puedeRevisarDocumentos
+            ? "Gestión documental operativa para aceptar, devolver y cerrar la fase previa a inspección."
+            : "Seguimiento documental del expediente sin acciones operativas habilitadas.");
+    var bannerEyebrow = esModoVerDocumentacion ? "Consulta del expediente" : "Gestión documental";
+    var bannerTitulo = esModoVerDocumentacion ? "Visualización sincronizada del expediente" : "Revisión documental sincronizada";
+    var bannerDescripcion = esModoVerDocumentacion
+        ? "Todos los archivos de la solicitud se presentan en un formato de consulta estable, con vista previa y descarga, sin habilitar decisiones operativas."
+        : (puedeRevisarDocumentos
+            ? "Este espacio concentra la revisión documental del expediente con el mismo contexto visual del módulo de consulta, pero habilitando decisiones de aceptación y devolución."
+            : "El expediente se mantiene visible con el mismo contexto documental, aunque las decisiones operativas no están disponibles para el usuario actual.");
+    var modoVisible = esModoVerDocumentacion
+        ? "Ver documentación"
+        : (puedeRevisarDocumentos ? "Revisión documental activa" : "Revisión documental bloqueada");
+    var estadoTarjetaTitulo = esModoVerDocumentacion ? "Estado de consulta" : "Capacidad operativa";
+    var estadoTarjetaValor = esModoVerDocumentacion
+        ? "Solo lectura"
+        : (puedeRevisarDocumentos ? "Aceptar y devolver documentos" : "Seguimiento sin decisiones");
+    var estadoTarjetaNota = esModoVerDocumentacion
+        ? "La consulta usa el mismo expediente documental, pero sin habilitar aceptación ni devolución."
+        : (puedeRevisarDocumentos
+            ? "La revisión utiliza el mismo expediente y habilita decisiones documentales antes de la inspección."
+            : "La revisión conserva el contexto documental, pero no habilita acciones para este usuario.");
+    var tablaTitulo = esModoVerDocumentacion ? "Archivos del expediente" : "Bandeja de revisión documental";
+    var tablaSubtitulo = esModoVerDocumentacion
+        ? "Consulta histórica y descarga de documentos vigentes asociados a la solicitud."
+        : (puedeRevisarDocumentos
+            ? "Documentos listos para decisión documental con trazabilidad de revisión."
+            : "Consulta documental del expediente sin acciones operativas habilitadas.");
+    var tablaBadge = esModoVerDocumentacion ? "Solo lectura" : (puedeRevisarDocumentos ? "Revisión activa" : "Seguimiento");
+    ViewBag.Title = tituloPaginaModulo + " AOCR";
 
     var stats = (ViewBag.Stats as IDictionary<string, object>)
                 ?? (ViewBag.Estadisticas as IDictionary<string, object>)
@@ -73,6 +112,23 @@
     var operadorasDisponibles = operadorasDisponiblesSet
         .OrderBy(x => x, System.StringComparer.OrdinalIgnoreCase)
         .ToList();
+
+    Func<string, string> normalizarTextoVisible = value =>
+    {
+        var actual = (value ?? string.Empty).Trim();
+        for (var i = 0; i < 3; i++)
+        {
+            var decodificado = HttpUtility.HtmlDecode(actual) ?? string.Empty;
+            if (string.Equals(decodificado, actual, System.StringComparison.Ordinal))
+            {
+                break;
+            }
+
+            actual = decodificado;
+        }
+
+        return actual;
+    };
 
     Func<Documento, string> estadoVisible = doc =>
     {
@@ -137,8 +193,8 @@
             return string.Empty;
         }
 
-        var observacion = (doc.ObservacionRevision ?? doc.Observaciones ?? string.Empty).Trim();
-        return observacion;
+        var observacion = doc.ObservacionRevision ?? doc.Observaciones ?? string.Empty;
+        return normalizarTextoVisible(observacion);
     };
 
     Func<Documento, string> revisorVisible = doc =>
@@ -164,6 +220,214 @@
 }
 
 <style>
+    .documentos-view-banner {
+        display: grid;
+        grid-template-columns: minmax(0, 1.6fr) minmax(280px, .9fr);
+        gap: 16px;
+        padding: 18px 20px;
+        border: 1px solid rgba(15, 97, 122, 0.14);
+        border-radius: 18px;
+        background: linear-gradient(135deg, #eef8fb 0%, #f9fcfe 55%, #fff7eb 100%);
+        box-shadow: 0 12px 28px rgba(15, 97, 122, 0.08);
+        margin-bottom: 1rem;
+    }
+
+    .documentos-view-banner--review {
+        border-color: rgba(18, 92, 146, 0.16);
+        background: linear-gradient(135deg, #eef5ff 0%, #f9fbff 55%, #ecf7ff 100%);
+        box-shadow: 0 12px 28px rgba(18, 92, 146, 0.08);
+    }
+
+    .documentos-view-banner--review .documentos-view-banner__eyebrow,
+    .documentos-view-banner--review .documentos-view-chip {
+        color: #125c92;
+    }
+
+    .documentos-view-banner--review .documentos-view-chip,
+    .documentos-view-banner--review .documentos-view-highlight__card {
+        border-color: rgba(18, 92, 146, 0.16);
+    }
+
+    .documentos-view-banner__eyebrow {
+        display: inline-block;
+        margin-bottom: 6px;
+        font-size: 0.76rem;
+        font-weight: 800;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: #0f617a;
+    }
+
+    .documentos-view-banner__title {
+        margin: 0;
+        font-size: 1.5rem;
+        font-weight: 800;
+        color: #16354b;
+        letter-spacing: -0.02em;
+    }
+
+    .documentos-view-banner__copy {
+        margin: 8px 0 0;
+        color: #516b7d;
+        line-height: 1.6;
+        max-width: 62ch;
+    }
+
+    .documentos-view-banner__chips {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-top: 14px;
+    }
+
+    .documentos-view-chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 0.45rem 0.75rem;
+        border-radius: 999px;
+        border: 1px solid rgba(15, 97, 122, 0.14);
+        background: rgba(255, 255, 255, 0.9);
+        color: #245168;
+        font-size: 0.82rem;
+        font-weight: 700;
+    }
+
+    .documentos-view-highlight {
+        display: grid;
+        gap: 12px;
+        align-content: start;
+    }
+
+    .documentos-view-highlight__card {
+        padding: 14px 16px;
+        border-radius: 16px;
+        border: 1px solid rgba(22, 53, 75, 0.1);
+        background: rgba(255, 255, 255, 0.92);
+    }
+
+    .documentos-view-highlight__label {
+        display: block;
+        font-size: 0.74rem;
+        font-weight: 800;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        color: #6b8292;
+        margin-bottom: 4px;
+    }
+
+    .documentos-view-highlight__value {
+        display: block;
+        color: #16354b;
+        font-size: 1.15rem;
+        font-weight: 800;
+    }
+
+    .documentos-view-highlight__note {
+        display: block;
+        margin-top: 4px;
+        color: #607889;
+        font-size: 0.84rem;
+        line-height: 1.45;
+    }
+
+    .documentos-view-summary {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 14px;
+        margin-bottom: 1rem;
+    }
+
+    .documentos-view-summary__card {
+        padding: 16px 18px;
+        border-radius: 16px;
+        background: #fff;
+        border: 1px solid rgba(18, 92, 146, 0.12);
+        box-shadow: 0 10px 24px rgba(14, 63, 102, 0.06);
+    }
+
+    .documentos-view-summary__label {
+        display: block;
+        font-size: 0.76rem;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        color: #647d8f;
+        font-weight: 800;
+        margin-bottom: 8px;
+    }
+
+    .documentos-view-summary__value {
+        display: block;
+        color: #16354b;
+        font-size: 1.85rem;
+        line-height: 1;
+        font-weight: 800;
+    }
+
+    .documentos-view-summary__list {
+        margin: 0;
+        padding-left: 18px;
+        color: #5a7182;
+    }
+
+    .documentos-view-summary__list li + li {
+        margin-top: 4px;
+    }
+
+    .documentos-review-tools--view .documentos-review-tools__context {
+        border-color: rgba(15, 97, 122, 0.14);
+        background: linear-gradient(135deg, rgba(15, 97, 122, 0.06), rgba(255, 247, 235, 0.7));
+    }
+
+    .documentos-review-tools--review .documentos-review-tools__context {
+        border-color: rgba(18, 92, 146, 0.16);
+        background: linear-gradient(135deg, rgba(18, 92, 146, 0.08), rgba(236, 247, 255, 0.9));
+    }
+
+    .documentos-table-card__header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        padding: 14px 18px;
+        border-bottom: 1px solid rgba(18, 92, 146, 0.12);
+        background: linear-gradient(180deg, rgba(248, 251, 253, 0.95), rgba(255, 255, 255, 0.98));
+    }
+
+    .documentos-table-card__title {
+        margin: 0;
+        color: #16354b;
+        font-size: 1rem;
+        font-weight: 800;
+    }
+
+    .documentos-table-card__subtitle {
+        display: block;
+        margin-top: 3px;
+        color: #607889;
+        font-size: 0.84rem;
+    }
+
+    .documentos-table-card__badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        border-radius: 999px;
+        padding: 0.48rem 0.78rem;
+        border: 1px solid rgba(15, 97, 122, 0.14);
+        background: rgba(15, 97, 122, 0.08);
+        color: #0f617a;
+        font-size: 0.8rem;
+        font-weight: 800;
+        white-space: nowrap;
+    }
+
+    .documentos-table-card__badge--review {
+        border-color: rgba(18, 92, 146, 0.16);
+        background: rgba(18, 92, 146, 0.08);
+        color: #125c92;
+    }
+
     .documentos-review-tools {
         display: grid;
         grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
@@ -252,6 +516,14 @@
     }
 
     @@media (max-width: 991.98px) {
+        .documentos-view-banner {
+            grid-template-columns: 1fr;
+        }
+
+        .documentos-view-summary {
+            grid-template-columns: 1fr;
+        }
+
         .documentos-review-tools {
             grid-template-columns: repeat(2, minmax(0, 1fr));
         }
@@ -364,6 +636,11 @@
             grid-template-columns: 1fr;
         }
 
+        .documentos-table-card__header {
+            flex-direction: column;
+            align-items: flex-start;
+        }
+
         .documentos-review-tools__context-item {
             flex-basis: 100%;
         }
@@ -399,8 +676,8 @@
 </style>
 
 @Html.Partial("_PageHeader", null, new ViewDataDictionary {
-    { "Title", string.IsNullOrWhiteSpace(solicitudIdTexto) ? "Documentos de la Solicitud" : "Documentos de la Solicitud (#" + solicitudIdTexto + ")" },
-    { "Subtitle", puedeRevisarDocumentos ? "Revisión documental de archivos cargados para esta solicitud AOCR" : "Archivos cargados para esta solicitud AOCR" }
+    { "Title", tituloPaginaModulo },
+    { "Subtitle", subtituloPaginaModulo }
 })
 
 @if (TempData["Error"] != null)
@@ -411,6 +688,40 @@
 {
     <div class="alert alert-aocr alert-success mb-3"><i class="fas fa-check-circle me-1"></i> @TempData["Exito"]</div>
 }
+
+<section class="documentos-view-banner @(esModoRevisionDocumental ? "documentos-view-banner--review" : string.Empty)">
+    <div>
+        <span class="documentos-view-banner__eyebrow">@bannerEyebrow</span>
+        <h2 class="documentos-view-banner__title">@bannerTitulo</h2>
+        <p class="documentos-view-banner__copy">@bannerDescripcion</p>
+        <div class="documentos-view-banner__chips">
+            @if (esModoVerDocumentacion)
+            {
+                <span class="documentos-view-chip"><i class="fas fa-eye"></i> Solo lectura</span>
+                <span class="documentos-view-chip"><i class="fas fa-download"></i> Descarga habilitada</span>
+                <span class="documentos-view-chip"><i class="fas fa-shield-halved"></i> Sin decisiones operativas</span>
+            }
+            else
+            {
+                <span class="documentos-view-chip"><i class="fas fa-clipboard-check"></i> Expediente sincronizado</span>
+                <span class="documentos-view-chip"><i class="fas fa-download"></i> Descarga habilitada</span>
+                <span class="documentos-view-chip"><i class="fas fa-file-circle-check"></i> @(puedeRevisarDocumentos ? "Aceptar y devolver habilitado" : "Acciones restringidas")</span>
+            }
+        </div>
+    </div>
+    <div class="documentos-view-highlight">
+        <div class="documentos-view-highlight__card">
+            <span class="documentos-view-highlight__label">@estadoTarjetaTitulo</span>
+            <span class="documentos-view-highlight__value">@estadoTarjetaValor</span>
+            <span class="documentos-view-highlight__note">@estadoTarjetaNota</span>
+        </div>
+        <div class="documentos-view-highlight__card">
+            <span class="documentos-view-highlight__label">Solicitud activa</span>
+            <span class="documentos-view-highlight__value">@(tieneSolicitudId ? ("#" + solicitudIdNumero) : "N/D")</span>
+            <span class="documentos-view-highlight__note">@(string.IsNullOrWhiteSpace(operadoraContexto) ? "Expediente documental asociado a la solicitud activa." : operadoraContexto)</span>
+        </div>
+    </div>
+</section>
 
 <div class="aocr-summary-strip mb-3">
     @Html.Partial("_MetricCard", null, new ViewDataDictionary { { "Label", "Total" }, { "Value", totalDocs }, { "Icon", "fas fa-folder-open" }, { "ValueId", "metricTotalDocs" } })
@@ -427,7 +738,7 @@
 
 <div id="documentoRevisionAlerts"></div>
 
-<div class="documentos-review-tools">
+<div class="documentos-review-tools @(esModoVerDocumentacion ? "documentos-review-tools--view" : "documentos-review-tools--review")">
     <div class="documentos-review-tools__context">
         <div class="documentos-review-tools__context-item">
             <span class="documentos-review-tools__label">Solicitud</span>
@@ -449,7 +760,7 @@
         }
         <div class="documentos-review-tools__context-item">
             <span class="documentos-review-tools__label">Modo</span>
-            <strong>@(puedeRevisarDocumentos ? "Revision habilitada" : "Solo lectura")</strong>
+            <strong>@modoVisible</strong>
         </div>
     </div>
 
@@ -497,6 +808,13 @@
 </div>
 
 <div class="card aocr-table-card">
+    <div class="documentos-table-card__header">
+        <div>
+            <h3 class="documentos-table-card__title">@tablaTitulo</h3>
+            <span class="documentos-table-card__subtitle">@tablaSubtitulo</span>
+        </div>
+        <span class="documentos-table-card__badge @(esModoRevisionDocumental ? "documentos-table-card__badge--review" : string.Empty)"><i class="fas @(esModoVerDocumentacion ? "fa-eye" : "fa-file-circle-check")"></i> @tablaBadge</span>
+    </div>
     <div class="card-body p-0">
         <div class="documentos-table-wrapper">
             <table class="table table-dgac mb-0 documentos-table" id="tablaDocumentos">
@@ -700,6 +1018,34 @@
                 var div = document.createElement('div');
                 div.textContent = value == null ? '' : String(value);
                 return div.innerHTML;
+            }
+
+            function decodeHtmlEntities(value) {
+                var actual = value == null ? '' : String(value);
+                var textarea = document.createElement('textarea');
+
+                for (var i = 0; i < 3; i++) {
+                    textarea.innerHTML = actual;
+                    var decodificado = textarea.value;
+                    if (decodificado === actual) {
+                        break;
+                    }
+
+                    actual = decodificado;
+                }
+
+                return actual;
+            }
+
+            function normalizeObservationCell(element) {
+                if (!element) {
+                    return;
+                }
+
+                var texto = decodeHtmlEntities(element.textContent || '').trim();
+                if (texto) {
+                    element.textContent = texto;
+                }
             }
 
             function showAlert(type, message) {
@@ -940,11 +1286,13 @@
                 fila.setAttribute('data-operadora', doc.operadora || '');
                 fila.setAttribute('data-fecha', doc.fechaCargaIso || '');
                 fila.querySelector('.js-doc-state').innerHTML = '<span class="' + escapeHtml(doc.badgeClass || 'badge bg-secondary') + '">' + escapeHtml(doc.estado || 'PENDIENTE') + '</span>';
-                fila.querySelector('.js-doc-observacion').innerHTML = doc.observacion ? escapeHtml(doc.observacion) : '<span class="documentos-muted">-</span>';
+                fila.querySelector('.js-doc-observacion').innerHTML = doc.observacion ? escapeHtml(decodeHtmlEntities(doc.observacion)) : '<span class="documentos-muted">-</span>';
                 fila.querySelector('.js-doc-reviewer').innerHTML = doc.revisadoPor ? escapeHtml(doc.revisadoPor) : '<span class="documentos-muted">-</span>';
                 fila.querySelector('.js-doc-review-date').textContent = doc.fechaRevision || '-';
                 fila.querySelector('.js-doc-actions').innerHTML = buildActionsHtml(doc);
             }
+
+            tabla.querySelectorAll('.js-doc-observacion').forEach(normalizeObservationCell);
 
             async function postForm(url, payload) {
                 if (!tokenInput) {
@@ -1006,6 +1354,11 @@
                         updateRow(resultadoAceptar.documento);
                         showAlert('success', resultadoAceptar.message || 'Documento aceptado correctamente.');
                         applyFilters();
+                        if (resultadoAceptar.redirectUrl) {
+                            window.setTimeout(function () {
+                                window.location.assign(resultadoAceptar.redirectUrl);
+                            }, 280);
+                        }
                     } catch (error) {
                         showAlert('danger', error.message || 'No se pudo aceptar el documento.');
                     } finally {

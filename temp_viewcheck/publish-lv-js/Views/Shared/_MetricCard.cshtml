@@ -1,0 +1,29 @@
+﻿@using System.Web
+@{
+    var label = ViewData["Label"] as string ?? string.Empty;
+    var value = ViewData["Value"] ?? 0;
+    var modifier = (ViewData["Modifier"] as string ?? ViewData["Class"] as string ?? string.Empty).Trim().ToLowerInvariant();
+    var icon = ViewData["Icon"] as string ?? string.Empty;
+    var caption = ViewData["Caption"] as string ?? string.Empty;
+    var cardId = ViewData["CardId"] as string ?? string.Empty;
+    var valueId = ViewData["ValueId"] as string ?? string.Empty;
+    var modifierClass = string.IsNullOrWhiteSpace(modifier) ? string.Empty : "metric-" + modifier;
+}
+<div class="card aocr-metric-card @modifierClass"@(string.IsNullOrWhiteSpace(cardId) ? null : Html.Raw(" id=\"" + HttpUtility.HtmlAttributeEncode(cardId) + "\""))>
+    <div class="card-body">
+        <div class="aocr-metric-card__layout">
+            <div>
+                <div class="aocr-metric-label">@Html.Raw(HttpUtility.HtmlEncode(label))</div>
+                <div class="aocr-metric-value"@(string.IsNullOrWhiteSpace(valueId) ? null : Html.Raw(" id=\"" + HttpUtility.HtmlAttributeEncode(valueId) + "\""))>@value</div>
+                @if (!string.IsNullOrWhiteSpace(caption))
+                {
+                    <p class="aocr-metric-caption">@Html.Raw(HttpUtility.HtmlEncode(caption))</p>
+                }
+            </div>
+            @if (!string.IsNullOrWhiteSpace(icon))
+            {
+                <span class="aocr-metric-icon"><i class="@icon"></i></span>
+            }
+        </div>
+    </div>
+</div>

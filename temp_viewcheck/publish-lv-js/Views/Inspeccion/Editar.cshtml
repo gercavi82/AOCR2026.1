@@ -1,0 +1,359 @@
+@model CapaModelo.Inspeccion
+@using System.Web.Mvc
+@using System.Web.Mvc.Html
+
+@{
+    ViewBag.Title = "Editar Inspeccion";
+    Layout = "~/Views/Shared/_LayoutAOCR.cshtml";
+    var numeroInspeccionVisible = ViewBag.NumeroInspeccionVisible as string ?? (Model != null ? (!string.IsNullOrWhiteSpace(Model.NumeroInspeccion) ? Model.NumeroInspeccion.Trim() : Model.CodigoInspeccion.ToString()) : "-");
+    var numeroSolicitudVisible = ViewBag.NumeroSolicitudVisible as string ?? (Model != null ? Model.CodigoSolicitud.ToString() : "-");
+    var tipoInspectorInicial = "TODOS";
+    if (Model != null && !string.IsNullOrWhiteSpace(Model.InspectorPrincipalTipo))
+    {
+        tipoInspectorInicial = Model.InspectorPrincipalTipo.Trim().ToUpperInvariant();
+    }
+    if (tipoInspectorInicial != "OPS" && tipoInspectorInicial != "AIR" && tipoInspectorInicial != "TODOS")
+    {
+        tipoInspectorInicial = "TODOS";
+    }
+}
+
+@section Styles {
+    <style>
+        .inspection-edit-page {
+            --edit-primary: #1b4f72;
+            --edit-primary-soft: #eef5fa;
+            --edit-border: rgba(27, 79, 114, 0.16);
+            --edit-text: #1f2d3a;
+            --edit-muted: #667684;
+            --edit-shadow: 0 14px 30px rgba(15, 45, 64, 0.07);
+            color: var(--edit-text);
+        }
+
+        .inspection-edit-page .hero-box {
+            background: linear-gradient(135deg, #1b4f72 0%, #1f6a8f 100%);
+            border-radius: 20px;
+            color: #fff;
+            padding: 1.25rem 1.5rem;
+            box-shadow: var(--edit-shadow);
+            margin-bottom: 1rem;
+        }
+
+        .inspection-edit-page .hero-box h2 {
+            margin: 0;
+            font-size: 1.75rem;
+            font-weight: 700;
+        }
+
+        .inspection-edit-page .hero-box p {
+            margin: 0.35rem 0 0;
+            color: rgba(255, 255, 255, 0.84);
+        }
+
+        .inspection-edit-page .section-card {
+            border: 1px solid var(--edit-border);
+            border-radius: 18px;
+            box-shadow: var(--edit-shadow);
+            background: #fff;
+            margin-bottom: 1rem;
+            overflow: hidden;
+        }
+
+        .inspection-edit-page .section-head {
+            background: var(--edit-primary-soft);
+            border-bottom: 1px solid var(--edit-border);
+            padding: 0.8rem 1rem;
+            font-weight: 700;
+            color: var(--edit-primary);
+        }
+
+        .inspection-edit-page .section-body {
+            padding: 1rem;
+        }
+
+        .inspection-edit-page .field-label {
+            display: block;
+            margin-bottom: 0.3rem;
+            font-size: 0.85rem;
+            font-weight: 700;
+            color: var(--edit-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.03em;
+        }
+
+        .inspection-edit-page .field-hint {
+            margin-top: 0.25rem;
+            font-size: 0.78rem;
+            color: var(--edit-muted);
+        }
+
+        .inspection-edit-page .sticky-actions {
+            position: sticky;
+            bottom: 0;
+            z-index: 3;
+            background: #fff;
+            border-top: 1px solid var(--edit-border);
+            padding: 0.85rem 1rem;
+            display: flex;
+            gap: 0.6rem;
+            justify-content: flex-end;
+            border-radius: 0 0 18px 18px;
+        }
+
+        .inspection-edit-page .btn-save {
+            background: #0d6efd;
+            color: #fff;
+            border: 1px solid #0d6efd;
+        }
+
+        .inspection-edit-page .btn-save:hover,
+        .inspection-edit-page .btn-save:focus {
+            color: #fff;
+            background: #0b5ed7;
+            border-color: #0a58ca;
+        }
+
+        .inspection-edit-page .readonly-pill {
+            background: #f8fafc;
+        }
+
+        @@media (max-width: 767px) {
+            .inspection-edit-page .hero-box {
+                padding: 1rem;
+            }
+
+            .inspection-edit-page .hero-box h2 {
+                font-size: 1.35rem;
+            }
+
+            .inspection-edit-page .sticky-actions {
+                flex-direction: column;
+            }
+
+            .inspection-edit-page .sticky-actions .btn {
+                width: 100%;
+            }
+        }
+    </style>
+}
+
+@if (Model == null)
+{
+    <div class="alert alert-danger">No se pudo cargar la inspeccion.</div>
+    return;
+}
+
+@using (Html.BeginForm("Editar", "Inspeccion", FormMethod.Post, new { @class = "form-horizontal" }))
+{
+    @Html.AntiForgeryToken()
+    @Html.HiddenFor(m => m.CodigoInspeccion)
+    @Html.HiddenFor(m => m.CodigoSolicitud)
+    @Html.HiddenFor(m => m.InspectorPrincipalNombre, new { id = "inspectorPrincipalNombre" })
+    @Html.HiddenFor(m => m.InspectorApoyoNombre, new { id = "inspectorApoyoNombre" })
+
+    <div class="inspection-edit-page container-fluid">
+        <div class="hero-box">
+            <h2>Editar Inspeccion</h2>
+            <p>Actualice la programacion, asignacion y resultado tecnico de la inspeccion seleccionada.</p>
+        </div>
+
+        <div class="section-card">
+            <div class="section-head">Datos base y asignacion</div>
+            <div class="section-body">
+                <div class="row">
+                    <div class="col-md-3 col-sm-6">
+                        <label class="field-label">Numero Inspeccion</label>
+                        <input type="text" class="form-control readonly-pill" value="@numeroInspeccionVisible" readonly />
+                    </div>
+                    <div class="col-md-3 col-sm-6">
+                        <label class="field-label">Numero Solicitud</label>
+                        <input type="text" class="form-control readonly-pill" value="@numeroSolicitudVisible" readonly />
+                    </div>
+                    <div class="col-md-3 col-sm-6">
+                        <label class="field-label" for="tipoInspectorFiltro">Tipo Inspector</label>
+                        <select id="tipoInspectorFiltro" name="tipoInspector" class="form-control">
+                            <option value="OPS" @(tipoInspectorInicial == "OPS" ? "selected" : "")>Operaciones (OPS)</option>
+                            <option value="AIR" @(tipoInspectorInicial == "AIR" ? "selected" : "")>Aeronavegabilidad (AIR)</option>
+                            <option value="TODOS" @(tipoInspectorInicial == "TODOS" ? "selected" : "")>Todos (OPS + AIR)</option>
+                        </select>
+                        <div class="field-hint">Fuente: OPINSPECTORES/OPIAR2 (solo activos).</div>
+                    </div>
+                    <div class="col-md-3 col-sm-6">
+                        <label class="field-label" for="codigoInspector">Codigo Inspector (legacy)</label>
+                        @Html.TextBoxFor(m => m.CodigoInspector, new { @class = "form-control", type = "number", min = "1", id = "codigoInspector" })
+                    </div>
+                </div>
+
+                <div class="row" style="margin-top:10px;">
+                    <div class="col-md-6">
+                        <label class="field-label" for="inspectorPrincipalCedula">Inspector Principal (AS400)</label>
+                        <select id="inspectorPrincipalCedula"
+                                name="InspectorPrincipalCedula"
+                                class="form-control"
+                                data-selected="@Model.InspectorPrincipalCedula">
+                            <option value="">-- Seleccione --</option>
+                        </select>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="field-label" for="inspectorApoyoCedula">Inspector Apoyo (AS400)</label>
+                        <select id="inspectorApoyoCedula"
+                                name="InspectorApoyoCedula"
+                                class="form-control"
+                                data-selected="@Model.InspectorApoyoCedula">
+                            <option value="">-- Opcional --</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="section-card">
+            <div class="section-head">Programacion y estado</div>
+            <div class="section-body">
+                <div class="row">
+                    <div class="col-md-3 col-sm-6">
+                        <label class="field-label">Fecha Programada</label>
+                        @Html.TextBoxFor(m => m.FechaProgramada, "{0:yyyy-MM-dd}", new { @class = "form-control", type = "date" })
+                    </div>
+                    <div class="col-md-3 col-sm-6">
+                        <label class="field-label">Hora Programada</label>
+                        @Html.TextBoxFor(m => m.HoraProgramada, "{0:hh\\:mm}", new { @class = "form-control", type = "time" })
+                    </div>
+                    <div class="col-md-3 col-sm-6">
+                        <label class="field-label">Estado</label>
+                        @Html.DropDownListFor(m => m.Estado, new SelectList(new[]
+                        {
+                            "SOLICITUD_INSPECCION_CREADA",
+                            "VERIFICACION_SOLICITUD",
+                            "ACEPTADA",
+                            "OBSERVADA",
+                            "SUBSANADA",
+                            "VIATICOS_REQUERIDOS",
+                            "PAGO_VALIDADO",
+                            "EN_INSPECCION",
+                            "INFORME_ELABORADO",
+                            "RESULTADO_SATISFACTORIO",
+                            "RESULTADO_NO_SATISFACTORIO",
+                            "OBSERVACION_DOCUMENTAL",
+                            "CERRADA"
+                        }, Model.Estado), new { @class = "form-control" })
+                    </div>
+                    <div class="col-md-3 col-sm-6">
+                        <label class="field-label">Resultado</label>
+                        @Html.TextBoxFor(m => m.Resultado, new { @class = "form-control" })
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="section-card">
+            <div class="section-head">Observaciones tecnicas</div>
+            <div class="section-body">
+                <div class="row">
+                    <div class="col-md-12">
+                        <label class="field-label">Observaciones</label>
+                        @Html.TextAreaFor(m => m.ObservacionesGenerales, new { @class = "form-control", rows = "4" })
+                    </div>
+                </div>
+                <div class="row" style="margin-top:10px;">
+                    <div class="col-md-6">
+                        <label class="field-label">Hallazgos Principales</label>
+                        @Html.TextAreaFor(m => m.HallazgosPrincipales, new { @class = "form-control", rows = "4" })
+                    </div>
+                    <div class="col-md-6">
+                        <label class="field-label">Comentarios</label>
+                        @Html.TextAreaFor(m => m.Comentarios, new { @class = "form-control", rows = "4" })
+                    </div>
+                </div>
+            </div>
+
+            <div class="sticky-actions">
+                <a href="@Url.Action("Detalle", "Inspeccion", new { id = Model.CodigoInspeccion })" class="btn btn-default">Cancelar</a>
+                <button type="submit" class="btn btn-save">Guardar Cambios</button>
+            </div>
+        </div>
+    </div>
+}
+
+@section Scripts {
+    <script>
+        (function waitForJQuery() {
+            if (typeof window.jQuery === 'undefined') {
+                setTimeout(waitForJQuery, 50);
+                return;
+            }
+
+            window.jQuery(function ($) {
+                var endpoint = '@Url.Action("ListarInspectoresActivos", "Tecnico")';
+                var $tipo = $('#tipoInspectorFiltro');
+                var $principal = $('#inspectorPrincipalCedula');
+                var $apoyo = $('#inspectorApoyoCedula');
+                var $principalNombre = $('#inspectorPrincipalNombre');
+                var $apoyoNombre = $('#inspectorApoyoNombre');
+                var $codigoInspector = $('#codigoInspector');
+
+                function optionTemplate(item) {
+                    return $('<option/>')
+                        .val(item.cedula || '')
+                        .text(item.etiqueta || ((item.nombre || '') + ' - ' + (item.cedula || '')))
+                        .attr('data-nombre', item.nombre || '')
+                        .attr('data-tipo', item.tipo || '');
+                }
+
+                function setSelected($select, value) {
+                    var normalized = (value || '').trim();
+                    if (!normalized) {
+                        return;
+                    }
+
+                    $select.val(normalized);
+                }
+
+                function updateHiddenNames() {
+                    var principalName = $principal.find('option:selected').data('nombre') || '';
+                    var apoyoName = $apoyo.find('option:selected').data('nombre') || '';
+                    $principalNombre.val(principalName);
+                    $apoyoNombre.val(apoyoName);
+
+                    var cedula = ($principal.val() || '').trim();
+                    if (/^\d{1,9}$/.test(cedula)) {
+                        $codigoInspector.val(cedula);
+                    }
+                }
+
+                function populateSelects(items) {
+                    var selectedPrincipal = $principal.data('selected') || '';
+                    var selectedApoyo = $apoyo.data('selected') || '';
+
+                    $principal.empty().append($('<option/>').val('').text('-- Seleccione --'));
+                    $apoyo.empty().append($('<option/>').val('').text('-- Opcional --'));
+
+                    (items || []).forEach(function (item) {
+                        $principal.append(optionTemplate(item));
+                        $apoyo.append(optionTemplate(item));
+                    });
+
+                    setSelected($principal, selectedPrincipal);
+                    setSelected($apoyo, selectedApoyo);
+                    updateHiddenNames();
+                }
+
+                function loadInspectores() {
+                    $.getJSON(endpoint, { tipoInspector: $tipo.val() || 'TODOS' })
+                        .done(function (resp) {
+                            populateSelects(resp && resp.success ? resp.items : []);
+                        })
+                        .fail(function () {
+                            populateSelects([]);
+                        });
+                }
+
+                $tipo.on('change', loadInspectores);
+                $principal.on('change', updateHiddenNames);
+                $apoyo.on('change', updateHiddenNames);
+
+                loadInspectores();
+            });
+        })();
+    </script>
+}

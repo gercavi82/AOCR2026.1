@@ -125,6 +125,11 @@ namespace CapaPresentacion
                         perfStopwatch.ElapsedMilliseconds));
                 }
 
+                if (TryNormalizeAuthenticatedUnauthorizedResponse(context, request, response))
+                {
+                    return;
+                }
+
                 if (response.StatusCode != 400)
                 {
                     return;
@@ -171,6 +176,66 @@ namespace CapaPresentacion
             {
                 // Evitar fallos en pipeline
             }
+        }
+
+        private static bool TryNormalizeAuthenticatedUnauthorizedResponse(HttpContext context, HttpRequest request, HttpResponse response)
+        {
+            if (context == null || request == null || response == null)
+            {
+                return false;
+            }
+
+            if (response.StatusCode != 401)
+            {
+                return false;
+            }
+
+            var identity = context.User != null ? context.User.Identity : null;
+            if (identity == null || !identity.IsAuthenticated)
+            {
+                return false;
+            }
+
+            var path = request.Url != null ? request.Url.AbsolutePath : request.Path;
+            if (string.IsNullOrWhiteSpace(path) ||
+                path.StartsWith(VirtualPathUtility.ToAbsolute("~/Error"), StringComparison.OrdinalIgnoreCase))
+            {
+                return false;
+            }
+
+            response.SuppressFormsAuthenticationRedirect = true;
+            response.StatusCode = 403;
+
+            if (IsAjaxLikeRequest(request))
+            {
+                response.TrySkipIisCustomErrors = true;
+            }
+
+            PerfLogger.LogWarning(string.Format(
+                "[AUTH] 401 autenticado normalizado a 403. Path={0}; Method={1}; User={2}; Ajax={3}",
+                path,
+                request.HttpMethod,
+                identity.Name ?? string.Empty,
+                IsAjaxLikeRequest(request)));
+
+            return true;
+        }
+
+        private static bool IsAjaxLikeRequest(HttpRequest request)
+        {
+            if (request == null)
+            {
+                return false;
+            }
+
+            var requestedWith = request.Headers["X-Requested-With"];
+            if (string.Equals(requestedWith, "XMLHttpRequest", StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+
+            var acceptHeader = request.Headers["Accept"] ?? string.Empty;
+            return acceptHeader.IndexOf("application/json", StringComparison.OrdinalIgnoreCase) >= 0;
         }
 
         protected void Application_AuthenticateRequest(object sender, EventArgs e)

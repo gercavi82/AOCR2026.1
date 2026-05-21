@@ -1,0 +1,64 @@
+﻿@inherits System.Web.Mvc.WebViewPage<Rol>
+@using CapaModelo
+@using System.Web.Mvc
+@using System.Web.Mvc.Html
+@{
+    ViewBag.Title = "Crear Rol";
+}
+
+<div class="container">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card shadow">
+                <div class="card-header bg-primary text-white">
+                    <h4 class="mb-0"><i class="fas fa-shield-alt"></i> Crear Nuevo Rol</h4>
+                </div>
+                <div class="card-body">
+                    @using (Html.BeginForm("Crear", "Rol", FormMethod.Post))
+                    {
+                        @Html.AntiForgeryToken()
+                        <div class="mb-3">
+                            <label class="form-label" for="Nombre">Nombre del Rol *</label>
+                            @Html.TextBoxFor(m => m.Nombre, new { @class = "form-control", required = "required", placeholder = "Ej: Administrador, Auditor, etc." })
+                            @Html.ValidationMessageFor(m => m.Nombre, "", new { @class = "text-danger" })
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label" for="Descripcion">Descripción</label>
+                            @Html.TextAreaFor(m => m.Descripcion, new { @class = "form-control", rows = 4, placeholder = "Descripción detallada del rol y sus responsabilidades" })
+                            @Html.ValidationMessageFor(m => m.Descripcion, "", new { @class = "text-danger" })
+                        </div>
+
+                        <div class="mb-3">
+                            <div class="form-check">
+                                @Html.CheckBoxFor(m => m.Activo, new { @class = "form-check-input" })
+                                <label class="form-check-label" for="Activo">Rol Activo</label>
+                            </div>
+                        </div>
+
+                        <div class="alert alert-info">
+                            <i class="fas fa-info-circle"></i>
+                            Después de crear el rol, podrá asignar permisos específicos desde la lista de roles.
+                        </div>
+
+                        <hr />
+
+                        <div class="d-flex justify-content-between">
+                            <a href="@Url.Action("Index", "Rol")" class="btn btn-secondary">
+                                <i class="fas fa-arrow-left"></i> Cancelar
+                            </a>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-save"></i> Guardar Rol
+                            </button>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    @Html.Partial("_ValidationScriptsPartial")
+}
+

@@ -45,7 +45,7 @@ namespace CapaPresentacion.Controllers
         #region Vistas Principales
 
         // GET: Documento/Lista/5
-        public ActionResult Lista(int solicitudId)
+        public ActionResult Lista(int solicitudId, string modo = null)
         {
             try
             {
@@ -60,11 +60,14 @@ namespace CapaPresentacion.Controllers
 
                 var documentos = ObtenerDocumentosVigentesParaListado(_documentoBL.ObtenerPorSolicitud(solicitudId), solicitud);
                 AplicarContextoRevisionDocumental(documentos, solicitud);
-                var puedeRevisar = PuedeRevisarDocumentosSolicitud(solicitud, tieneUsuario ? usuarioId : 0, inspeccionVinculada);
-                var puedeReabrir = PuedeReabrirRevisionDocumental(solicitud, tieneUsuario ? usuarioId : 0);
+                var esModoRevisionDocumental = EsModoRevisionDocumental(modo);
+                var esModoVerDocumentacion = !esModoRevisionDocumental;
+                var puedeRevisar = esModoRevisionDocumental && PuedeRevisarDocumentosSolicitud(solicitud, tieneUsuario ? usuarioId : 0, inspeccionVinculada);
+                var puedeReabrir = esModoRevisionDocumental && PuedeReabrirRevisionDocumental(solicitud, tieneUsuario ? usuarioId : 0);
 
                 System.Diagnostics.Trace.TraceInformation(
                     "[DOC_SOLICITUD] solicitudId=" + solicitudId +
+                    "; modo=" + (string.IsNullOrWhiteSpace(modo) ? "auto" : modo.Trim()) +
                     "; usuarioId=" + (tieneUsuario ? usuarioId.ToString() : "0") +
                     "; roles=" + rolesActuales +
                     "; documentos=" + documentos.Count +
@@ -90,6 +93,7 @@ namespace CapaPresentacion.Controllers
                 ViewBag.CodigoInspeccion = inspeccionVinculada != null ? (int?)inspeccionVinculada.CodigoInspeccion : null;
                 ViewBag.PuedeRevisarDocumentos = puedeRevisar;
                 ViewBag.PuedeReabrirDocumentos = puedeReabrir;
+                ViewBag.ModoDocumentos = esModoRevisionDocumental ? "revision" : "ver";
                 ViewBag.OperadoraEae = ObtenerOperadoraEaeVisible(solicitud);
                 ViewData["SolicitudId"] = solicitudId;
 
@@ -666,16 +670,33 @@ namespace CapaPresentacion.Controllers
                 AplicarContextoRevisionDocumental(documentosActualizados, solicitud);
                 var documentoActualizado = documentosActualizados.FirstOrDefault(d => d != null && d.CodigoDocumento == idDocumento) ?? documento;
                 var puedeReabrir = PuedeReabrirRevisionDocumental(solicitud, usuarioId);
+                var contadores = CalcularEstadisticasDocumentos(documentosActualizados);
+                var totalDocumentos = Convert.ToInt32(contadores["Total"]);
+                var pendientesDocumentos = Convert.ToInt32(contadores["Pendientes"]);
+                var rechazadosDocumentos = Convert.ToInt32(contadores["Rechazados"]);
+                var autoAbrirLvEae = decisionNormalizada == "ACEPTADO"
+                    && inspeccionVinculada != null
+                    && inspeccionVinculada.CodigoInspeccion > 0
+                    && totalDocumentos > 0
+                    && pendientesDocumentos == 0
+                    && rechazadosDocumentos == 0;
+                var redirectUrl = autoAbrirLvEae
+                    ? Url.Action("Detalle", "Inspeccion", new { id = inspeccionVinculada.CodigoInspeccion, lvAutoFlow = "open" })
+                    : string.Empty;
 
                 return Json(new
                 {
                     success = true,
                     message = decisionNormalizada == "ACEPTADO"
-                        ? "Documento aceptado correctamente."
+                        ? (autoAbrirLvEae
+                            ? "Documentación completada. Abriendo automáticamente la LV/EAE."
+                            : "Documento aceptado correctamente.")
                         : "Documento devuelto correctamente.",
                     estado = documentoActualizado.EstadoRevisionVisible ?? ObtenerEstadoDocumentoVisible(documentoActualizado),
                     documento = ConstruirDocumentoResponse(documentoActualizado, true, puedeReabrir),
-                    contadores = CalcularEstadisticasDocumentos(documentosActualizados)
+                    contadores = contadores,
+                    redirectUrl = redirectUrl,
+                    autoAbrirLvEae = autoAbrirLvEae
                 });
             }
             catch (Exception ex)
@@ -736,6 +757,14 @@ namespace CapaPresentacion.Controllers
                    || (User != null && User.IsInRole("CoordinadorInspecciones"));
         }
 
+        private static bool EsModoRevisionDocumental(string modo)
+        {
+            var valor = (modo ?? string.Empty).Trim();
+            return string.Equals(valor, "revision", StringComparison.OrdinalIgnoreCase)
+                   || string.Equals(valor, "revisar", StringComparison.OrdinalIgnoreCase)
+                   || string.Equals(valor, "revision-documental", StringComparison.OrdinalIgnoreCase);
+        }
+
         private IList<string> ObtenerRolesActuales()
         {
             var rolesCrudos = new List<string>();
@@ -789,6 +818,11 @@ namespace CapaPresentacion.Controllers
             }
 
             return NormalizarEstadoDocumento(documento != null ? documento.Estado : null);
+        }
+
+        private static string NormalizarTextoVisible(string value)
+        {
+            return CapaPresentacion.Helpers.VisibleTextHelper.Normalize(value);
         }
 
         private static bool EsEstadoDocumentoPendiente(string estado)
@@ -952,9 +986,9 @@ namespace CapaPresentacion.Controllers
                 if (revisiones != null && revisiones.TryGetValue(documento.CodigoDocumento, out revision) && revision != null)
                 {
                     documento.DecisionRevision = NormalizarDecisionRevision(revision.Decision);
-                    documento.ObservacionRevision = string.IsNullOrWhiteSpace(revision.Observacion)
-                        ? (documento.Observaciones ?? string.Empty).Trim()
-                        : revision.Observacion.Trim();
+                    documento.ObservacionRevision = NormalizarTextoVisible(string.IsNullOrWhiteSpace(revision.Observacion)
+                        ? documento.Observaciones
+                        : revision.Observacion);
                     documento.FechaRevision = revision.FechaRevision ?? documento.FechaValidacion;
                     documento.CodigoUsuarioRevisor = revision.CodigoUsuarioRevisor;
                     documento.NombreUsuarioRevisor = !string.IsNullOrWhiteSpace(revision.NombreUsuarioRevisor)
@@ -964,7 +998,7 @@ namespace CapaPresentacion.Controllers
                 else
                 {
                     documento.DecisionRevision = NormalizarDecisionRevision(documento.Estado);
-                    documento.ObservacionRevision = (documento.Observaciones ?? string.Empty).Trim();
+                    documento.ObservacionRevision = NormalizarTextoVisible(documento.Observaciones);
                     documento.FechaRevision = documento.FechaValidacion;
                     documento.NombreUsuarioRevisor = (documento.ValidadoPor ?? string.Empty).Trim();
                 }
@@ -1207,7 +1241,7 @@ namespace CapaPresentacion.Controllers
                 estado = estadoVisible,
                 estadoNormalizado = estadoNormalizado,
                 badgeClass = ObtenerBadgeDocumentoCss(documento),
-                observacion = documento.ObservacionRevision ?? string.Empty,
+                observacion = NormalizarTextoVisible(documento.ObservacionRevision),
                 revisadoPor = documento.NombreUsuarioRevisor ?? string.Empty,
                 fechaRevision = documento.FechaRevision.HasValue ? documento.FechaRevision.Value.ToString("dd/MM/yyyy HH:mm") : string.Empty,
                 previewUrl = esPdf ? Url.Action("Descargar", "Documento", new { id = documento.CodigoDocumento, vistaPrevia = true }) : string.Empty,
@@ -1224,6 +1258,7 @@ namespace CapaPresentacion.Controllers
             Response.StatusCode = statusCode;
             Response.TrySkipIisCustomErrors = true;
             Response.SuppressFormsAuthenticationRedirect = true;
+
             return Json(new { success = false, message = mensaje });
         }
 

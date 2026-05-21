@@ -303,6 +303,7 @@
     <Compile Include="Controllers\ControlFR3Controller.cs" />
     <Compile Include="Controllers\OrdenRecaudacionDashboardController.cs" />
     <Compile Include="Controllers\OrdenRecaudacionDashboardEmpresarialController.cs" />
+    <Compile Include="Controllers\RevisionDocumentalController.cs" />
     <Compile Include="Controllers\SolicitudAOCRController.cs" />
     <Compile Include="Controllers\SolicitudController.cs" />
     <Compile Include="Controllers\SyncAdminController.cs" />
@@ -339,6 +340,7 @@
       <DependentUpon>Global.asax</DependentUpon>
     </Compile>
     <Compile Include="Helpers\CompaniaActivaSessionHelper.cs" />
+    <Compile Include="Helpers\AssetVersionHelper.cs" />
     <Compile Include="Helpers\CookieHelper.cs" />
     <Compile Include="Helpers\DashboardInspeccionBadgeHelper.cs" />
     <Compile Include="Helpers\InformeTecnicoTemplateHelper.cs" />
@@ -347,6 +349,7 @@
     <Compile Include="Helpers\PdfFileNameHelper.cs" />
     <Compile Include="Helpers\RoleGroupingHelper.cs" />
     <Compile Include="Helpers\RevisionDocumentalDisplayHelper.cs" />
+    <Compile Include="Helpers\VisibleTextHelper.cs" />
     <Compile Include="Helpers\SessionTimeoutHelper.cs" />
     <Compile Include="Infrastructure\OrdenRecaudacionFilters.cs" />
     <Compile Include="Infrastructure\OrdenRecaudacionRoutes.cs" />
@@ -366,6 +369,7 @@
     <Compile Include="Models\RT\GestionCompaniasRTViewModel.cs" />
     <Compile Include="Models\RT\RegistroRTVM.cs" />
     <Compile Include="Models\Validation\RucCedulaValidationAttribute.cs" />
+    <Compile Include="Models\ViewModels\RevisionDocumentalIndexViewModel.cs" />
     <Compile Include="Models\ViewModels\InspectorDashboardViewModel.cs" />
     <Compile Include="Models\ViewModels\InspeccionPanelViewModels.cs" />
     <Compile Include="Models\ViewModels\AocrPdfViewerViewModel.cs" />
@@ -604,6 +608,7 @@
     <Content Include="Scripts\aocr-config.js" />
     <Content Include="Scripts\aocr-datatables.js" />
     <Content Include="Scripts\aocr-informe-tecnico-modal.js" />
+      <Content Include="Scripts\aocr-lv-eae-flujo-automatico.js" />
     <Content Include="Scripts\aocr-utils.js" />
     <Content Include="Scripts\app\global.js" />
     <Content Include="Content\dist\js\dgac.js" />
@@ -2903,6 +2908,7 @@
     <Content Include="Views\ListaVerificacion\PdfListaVerificacionEaeOficial.cshtml" />
     <Content Include="Views\Inspeccion\_ListaVerificacionOperacionalEaePanel.cshtml" />
     <Content Include="Views\Inspeccion\Index.cshtml" />
+    <Content Include="Views\RevisionDocumental\Index.cshtml" />
     <Content Include="Views\Hallazgo\Index.cshtml" />
     <Content Include="Views\Hallazgo\Crear.cshtml" />
     <Content Include="Views\Hallazgo\Editar.cshtml" />

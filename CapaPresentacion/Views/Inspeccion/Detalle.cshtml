@@ -13,7 +13,7 @@
     <div id="modalInformeTecnicoHost"></div>
 
         ViewData.Model = new Inspeccion();
-        TempData["Warning"] = "Se detectÃ³ un detalle de inspecciÃ³n sin modelo completo. Se cargÃ³ contexto mÃ­nimo para evitar errores.";
+        TempData["Warning"] = "Se detectó un detalle de inspección sin modelo completo. Se cargó contexto mínimo para evitar errores.";
     }
 
     ViewBag.Title = "Detalle de inspección";
@@ -27,6 +27,7 @@
     var estadoRevisionDocumental = ViewBag.EstadoRevisionDocumental as EstadoRevisionDocumental ?? new EstadoRevisionDocumental();
     var pendienteCargaDocumentalRt = ViewBag.PendienteCargaDocumentalRt != null && (bool)ViewBag.PendienteCargaDocumentalRt;
     var documentosLista = documentosSolicitante != null ? documentosSolicitante.ToList() : new List<DocumentoInspeccion>();
+    var normalizeVisibleText = new Func<string, string>(VisibleTextHelper.Normalize);
     var documentoSolicitanteBase = documentosLista.OrderByDescending(d => d.CodigoDocumento).FirstOrDefault();
     var solicitud = ViewBag.Solicitud as SolicitudAOCR;
     var listaVerificacionOperacionalEae = ViewBag.ListaVerificacionOperacionalEae as ListaVerificacionOperacionalEae;
@@ -115,21 +116,30 @@
     };
     var esAdministrador = usuarioTieneRol("Administrador");
     var esInspector = usuarioTieneRol("Inspector");
-    var estadoDocumentalNormalizado = (estadoDocumental ?? string.Empty).Trim().ToUpperInvariant();
-    var revisionDocumentalBaseConfirmada =
-        string.Equals(estadoDocumentalNormalizado, "EN_REVISION", System.StringComparison.OrdinalIgnoreCase)
-        || string.Equals(estadoDocumentalNormalizado, "ACEPTADA", System.StringComparison.OrdinalIgnoreCase)
-        || string.Equals(estadoDocumentalNormalizado, "APROBADO", System.StringComparison.OrdinalIgnoreCase);
-    var revisionDocumentalInspectorConfirmada = revisionDocumentalBaseConfirmada
-        && (estadoRevisionDocumental.TotalDocumentosVigentes == 0 || estadoRevisionDocumental.DocumentacionAprobada);
+    var revisionDocumentalInspectorConfirmada = ViewBag.RevisionDocumentalInspectorConfirmada != null
+        && (bool)ViewBag.RevisionDocumentalInspectorConfirmada;
+    var mensajeBloqueoRevisionDocumentalInspectorBase = (ViewBag.MensajeBloqueoRevisionDocumentalInspector as string ?? string.Empty).Trim();
     var inspectorDebeRevisarDocumentos = (esInspector || esAdministrador) && (!revisionDocumentalInspectorConfirmada || pendienteCargaDocumentalRt);
-    var mensajeBloqueoRevisionDocumentalInspector = inspectorDebeRevisarDocumentos
-        ? (pendienteCargaDocumentalRt
-            ? "Inspector asignado. El proceso se encuentra pendiente porque el RT aún no ha cargado los documentos habilitantes requeridos."
-            : (!string.IsNullOrWhiteSpace(estadoRevisionDocumental.MensajeBloqueoDocumental)
-            ? estadoRevisionDocumental.MensajeBloqueoDocumental
-            : "No se puede continuar porque existen documentos observados o subsanados pendientes de revisión documental."))
-        : string.Empty;
+    var mensajeBloqueoRevisionDocumentalInspector = string.Empty;
+    if (inspectorDebeRevisarDocumentos)
+    {
+        if (pendienteCargaDocumentalRt)
+        {
+            mensajeBloqueoRevisionDocumentalInspector = "Inspector asignado. El proceso se encuentra pendiente porque el RT aún no ha cargado los documentos habilitantes requeridos.";
+        }
+        else if (!string.IsNullOrWhiteSpace(mensajeBloqueoRevisionDocumentalInspectorBase))
+        {
+            mensajeBloqueoRevisionDocumentalInspector = mensajeBloqueoRevisionDocumentalInspectorBase;
+        }
+        else if (!string.IsNullOrWhiteSpace(estadoRevisionDocumental.MensajeBloqueoDocumental))
+        {
+            mensajeBloqueoRevisionDocumentalInspector = estadoRevisionDocumental.MensajeBloqueoDocumental;
+        }
+        else
+        {
+            mensajeBloqueoRevisionDocumentalInspector = "No se puede continuar porque existen documentos observados o subsanados pendientes de revisión documental.";
+        }
+    }
     var esCoordinadorRevision = esAdministrador || usuarioTieneAlgunRol(new[] { "CoordinadorInspecciones", "Coordinador" });
     var puedeGestionarCoordinacion = esAdministrador || usuarioTieneAlgunRol(rolesCoordinacionJefatura);
     var puedeGestionarInspector = (esAdministrador || esInspector) && !inspectorDebeRevisarDocumentos;
@@ -191,12 +201,26 @@
             ? Url.Action("DescargarListaVerificacionOperacionalEae", "Inspeccion", new { id = Model.CodigoInspeccion })
             : Url.Action("DescargarLvEaeOficial", "Inspeccion", new { codigoInspeccion = Model.CodigoInspeccion }))
         : string.Empty;
-    var urlDocumentosSolicitud = Model != null && Model.CodigoSolicitud > 0
-        ? Url.Action("Lista", "Documento", new { solicitudId = Model.CodigoSolicitud })
+    var urlVerDocumentacionSolicitud = Model != null && Model.CodigoSolicitud > 0
+        ? Url.Action("Lista", "Documento", new { solicitudId = Model.CodigoSolicitud, modo = "ver" })
         : string.Empty;
+    var urlRevisionDocumentalSolicitud = Model != null && Model.CodigoSolicitud > 0
+        ? Url.Action("Lista", "Documento", new { solicitudId = Model.CodigoSolicitud, modo = "revision" })
+        : string.Empty;
+    var accesosDocumentalesInspeccionVm = new CapaPresentacion.Models.ViewModels.DocumentoWorkflowActionsVm
+    {
+        UrlVerDocumentacion = urlVerDocumentacionSolicitud,
+        UrlRevisionDocumental = urlRevisionDocumentalSolicitud,
+        MostrarRevisionDocumental = esInspector || esAdministrador,
+        PuedeAbrirRevisionDocumental = (esInspector || esAdministrador) && !string.IsNullOrWhiteSpace(urlRevisionDocumentalSolicitud),
+        TituloBloqueoRevisionDocumental = "La revisión documental requiere una solicitud asociada y un rol Inspector o Administrador.",
+        TextoAyudaRevision = "Aceptar, devolver y gestionar la fase documental previa a la LV/EAE y al informe técnico."
+    };
     var autoOpenLvFlow = Request != null && Request.QueryString != null
         ? (Request.QueryString["lvAutoFlow"] ?? string.Empty)
         : string.Empty;
+    var autoOpenLvEditor = string.Equals(autoOpenLvFlow, "open", System.StringComparison.OrdinalIgnoreCase)
+        || string.Equals(autoOpenLvFlow, "start", System.StringComparison.OrdinalIgnoreCase);
     var autoOpenLvSignature = string.Equals(autoOpenLvFlow, "sign", System.StringComparison.OrdinalIgnoreCase);
     var autoOpenInformeTecnico = string.Equals(
         Request != null && Request.QueryString != null ? Request.QueryString["autoOpenInformeTecnico"] : null,
@@ -205,7 +229,7 @@
     var urlModalInformeTecnico = Model != null && Model.CodigoInspeccion > 0
         ? Url.Action("ModalInformeTecnico", "Inspeccion", new { codigoInspeccion = Model.CodigoInspeccion })
         : string.Empty;
-    var puedeAbrirLvEae = !pendienteCargaDocumentalRt && revisionDocumentalInspectorConfirmada && !estadoRevisionDocumental.TienePendientes;
+    var puedeAbrirLvEae = !pendienteCargaDocumentalRt && revisionDocumentalInspectorConfirmada;
     var mensajeBloqueoLvEae = puedeAbrirLvEae
         ? string.Empty
         : (pendienteCargaDocumentalRt
@@ -221,7 +245,8 @@
                 ? "Debe firmar la Lista de Verificación Operacional LV/EAE antes de elaborar el informe técnico."
                 : "Debe finalizar y firmar la Lista de Verificación Operacional LV/EAE antes de elaborar el informe técnico.")
             : string.Empty);
-    var abrirModalListaVerificacionAlCargar = autoOpenLvSignature
+    var abrirModalListaVerificacionAlCargar = autoOpenLvEditor
+        || autoOpenLvSignature
         || (!string.IsNullOrWhiteSpace(mensajeBloqueoInformeTecnico) && !listaVerificacionFinalizada);
     var mostrarPanelVistaPrevia = (!usaFlujoListaVerificacionOperacionalEae || listaVerificacionFirmada || tieneInforme)
         && (tieneInforme || puedeEditarInformeTecnico);
@@ -330,24 +355,24 @@
     var numeroLicenciaInspector = informeTecnico != null && !string.IsNullOrWhiteSpace(informeTecnico.NumeroLicenciaInspector)
         ? informeTecnico.NumeroLicenciaInspector
         : (!string.IsNullOrWhiteSpace(inspectorPrincipalCedula) ? inspectorPrincipalCedula : string.Empty);
-    var trabajosRealizadosInforme = informeTecnico != null && !string.IsNullOrWhiteSpace(informeTecnico.TrabajosRealizados)
+    var trabajosRealizadosInforme = normalizeVisibleText(informeTecnico != null && !string.IsNullOrWhiteSpace(informeTecnico.TrabajosRealizados)
         ? informeTecnico.TrabajosRealizados
-        : (informeTecnico != null ? informeTecnico.Resumen : string.Empty);
-    var operacionComercialInforme = informeTecnico != null ? informeTecnico.OperacionComercial : string.Empty;
-    var notasInforme = informeTecnico != null ? informeTecnico.Notas : string.Empty;
-    var noConformidadesInforme = informeTecnico != null && !string.IsNullOrWhiteSpace(informeTecnico.NoConformidades)
+        : (informeTecnico != null ? informeTecnico.Resumen : string.Empty));
+    var operacionComercialInforme = normalizeVisibleText(informeTecnico != null ? informeTecnico.OperacionComercial : string.Empty);
+    var notasInforme = normalizeVisibleText(informeTecnico != null ? informeTecnico.Notas : string.Empty);
+    var noConformidadesInforme = normalizeVisibleText(informeTecnico != null && !string.IsNullOrWhiteSpace(informeTecnico.NoConformidades)
         ? informeTecnico.NoConformidades
-        : (informeTecnico != null ? informeTecnico.Observaciones : string.Empty);
-    var otrosAdjuntosInforme = informeTecnico != null ? informeTecnico.OtrosAdjuntos : string.Empty;
+        : (informeTecnico != null ? informeTecnico.Observaciones : string.Empty));
+    var otrosAdjuntosInforme = normalizeVisibleText(informeTecnico != null ? informeTecnico.OtrosAdjuntos : string.Empty);
     var resultadoInforme = !string.IsNullOrWhiteSpace(informeTecnico != null ? informeTecnico.Resultado : null)
         ? informeTecnico.Resultado
         : (Model != null ? Model.Resultado : string.Empty);
     var resultadoInformeNormalizado = InformeTecnicoTemplateHelper.NormalizeResultadoInformeTecnico(resultadoInforme);
     var tipoResultadoInsatisfactorioInforme = InformeTecnicoTemplateHelper.NormalizeTipoResultadoInsatisfactorio(informeTecnico != null ? informeTecnico.TipoResultadoInsatisfactorio : null);
     var mostrarTipoResultadoInsatisfactorioInforme = string.Equals(resultadoInformeNormalizado, "INSATISFACTORIO", System.StringComparison.OrdinalIgnoreCase);
-    var observacionCriticaMovil = !string.IsNullOrWhiteSpace(informeTecnico != null ? informeTecnico.ObservacionDevolucion : null)
+    var observacionCriticaMovil = normalizeVisibleText(!string.IsNullOrWhiteSpace(informeTecnico != null ? informeTecnico.ObservacionDevolucion : null)
         ? informeTecnico.ObservacionDevolucion
-        : documentosLista.Where(d => !string.IsNullOrWhiteSpace(d.Observacion)).Select(d => d.Observacion).FirstOrDefault();
+        : documentosLista.Where(d => !string.IsNullOrWhiteSpace(d.Observacion)).Select(d => d.Observacion).FirstOrDefault());
     var hayObservacionCriticaMovil = !string.IsNullOrWhiteSpace(observacionCriticaMovil);
     var notasLineas = InformeTecnicoTemplateHelper.SplitLines(notasInforme).Take(5).ToList();
     while (notasLineas.Count < 5)
@@ -421,7 +446,7 @@
 }
 
 @section Styles {
-    <link rel="stylesheet" href="@Url.Content("~/Content/aocr-informe-tecnico.css")" />
+    <link rel="stylesheet" href="@AssetVersionHelper.VersionedContent(Url, "~/Content/aocr-informe-tecnico.css")" />
 }
 
 <style>
@@ -2713,7 +2738,8 @@
                         EstaFirmada = listaVerificacionFirmada,
                         UrlVisualizacion = tieneListaVerificacionVisualizable ? listaVerificacionOperacionalEaeUrl : string.Empty,
                         UrlDescarga = tieneListaVerificacionVisualizable ? listaVerificacionOperacionalEaeDescargaUrl : string.Empty,
-                        UrlDocumentosSolicitud = urlDocumentosSolicitud,
+                        UrlDocumentosSolicitud = urlRevisionDocumentalSolicitud,
+                        AccesosDocumentales = accesosDocumentalesInspeccionVm,
                         MensajeBloqueoEdicion = !puedeAbrirLvEae ? mensajeBloqueoLvEae : string.Empty,
                         PuedeConfirmarRevisionDocumental = inspectorDebeRevisarDocumentos && (esInspector || esAdministrador),
                         TieneDocumentosObservados = estadoRevisionDocumental.TieneDocumentosObservados,
@@ -3061,7 +3087,7 @@
                                     <div class="detail-value">@(!string.IsNullOrWhiteSpace(item.EstadoAnterior) ? item.EstadoAnterior : "SIN ESTADO") <i class="fas fa-arrow-right text-muted mx-1"></i> @item.EstadoNuevo</div>
                                     @if (!string.IsNullOrWhiteSpace(item.Observacion))
                                     {
-                                        <div class="text-muted mt-2">@item.Observacion</div>
+                                        <div class="text-muted mt-2">@normalizeVisibleText(item.Observacion)</div>
                                     }
                                 </div>
                             }
@@ -3086,15 +3112,7 @@
                         </div>
                     </div>
 
-                    @if (!string.IsNullOrWhiteSpace(urlDocumentosSolicitud))
-                    {
-                        <div class="mb-3">
-                            <a href="@urlDocumentosSolicitud" class="btn btn-outline-primary w-100" target="_blank" rel="noopener">
-                                <i class="fas fa-file-alt me-2"></i>
-                                Ver Documentos de la Solicitud
-                            </a>
-                        </div>
-                    }
+                    @Html.Partial("_DocumentoWorkflowActions", accesosDocumentalesInspeccionVm)
 
                     @if (esInspector || esAdministrador)
                     {
@@ -3107,7 +3125,7 @@
                                 <input type="hidden" name="id" value="@Model.CodigoInspeccion" />
                                 <button type="submit" class="btn btn-warning w-100">
                                     <i class="fas fa-check-double me-2"></i>
-                                    Confirmar revisión documental
+                                    Confirmar cierre documental
                                 </button>
                             }
                         }
@@ -3132,7 +3150,7 @@
                                             <option value="">Seleccione si corrige un documento existente</option>
                                             @foreach (var docBase in documentosLista.OrderByDescending(d => d.CodigoDocumento))
                                             {
-                                                <option value="@docBase.CodigoDocumento">@((docBase.TipoDocumento ?? "DOCUMENTO") + " · v" + docBase.Version + (!string.IsNullOrWhiteSpace(docBase.Observacion) ? " · " + docBase.Observacion : string.Empty))</option>
+                                                <option value="@docBase.CodigoDocumento">@((docBase.TipoDocumento ?? "DOCUMENTO") + " · v" + docBase.Version + (!string.IsNullOrWhiteSpace(docBase.Observacion) ? " · " + normalizeVisibleText(docBase.Observacion) : string.Empty))</option>
                                             }
                                         </select>
                                     </div>
@@ -3199,7 +3217,7 @@
                                                 }
                                             </td>
                                             <td>@(doc.SubidoPorRol ?? "-")</td>
-                                            <td>@(doc.Observacion ?? "-")</td>
+                                            <td>@(string.IsNullOrWhiteSpace(doc.Observacion) ? "-" : normalizeVisibleText(doc.Observacion))</td>
                                         </tr>
                                     }
                                 </tbody>
@@ -3273,7 +3291,7 @@
                                 {
                                     <tr>
                                         <td>@(h.Criticidad ?? "-")</td>
-                                        <td>@(h.Descripcion ?? "-")</td>
+                                        <td>@(string.IsNullOrWhiteSpace(h.Descripcion) ? "-" : normalizeVisibleText(h.Descripcion))</td>
                                         <td>@(h.Estado ?? "-")</td>
                                     </tr>
                                 }
@@ -3414,8 +3432,8 @@
             }, 320);
         })();
     </script>
-    <script src="@Url.Content("~/Scripts/aocr-informe-tecnico-modal.js")"></script>
-    <script src="@Url.Content("~/Scripts/aocr-lv-eae-flujo-automatico.js")"></script>
+    <script src="@AssetVersionHelper.VersionedContent(Url, "~/Scripts/aocr-informe-tecnico-modal.js")"></script>
+    <script src="@AssetVersionHelper.VersionedContent(Url, "~/Scripts/aocr-lv-eae-flujo-automatico.js")"></script>
 }
 
 

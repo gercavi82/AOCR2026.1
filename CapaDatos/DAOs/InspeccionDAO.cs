@@ -163,23 +163,69 @@ namespace CapaDatos.DAOs
         {
             var lista = new List<Inspeccion>();
 
-            const string sql = @"
-                SELECT *
-                FROM public.aocr_tbinspeccion
-                WHERE codigo_inspector = @ci
-                ORDER BY fecha_programada DESC NULLS LAST, codigo_inspeccion DESC;";
-
             using (var cn = new NpgsqlConnection(_cs))
-            using (var cmd = new NpgsqlCommand(sql, cn))
             {
-                cmd.Parameters.AddWithValue("@ci", codigoInspector);
                 cn.Open();
+                EnsureSchema(cn);
 
-                using (var dr = cmd.ExecuteReader())
+                var columnasSolicitud = ObtenerColumnasTabla(cn, "aocr_tbsolicitud");
+                var columnasSelectSolicitud = new[]
                 {
-                    while (dr.Read())
+                    SelectSolicitudColumn(columnasSolicitud, "codigo_tecnico", "solicitud_codigo_tecnico", "integer"),
+                    SelectSolicitudColumn(columnasSolicitud, "tecnico_responsable_cedula", "solicitud_inspector_principal_cedula"),
+                    SelectSolicitudColumn(columnasSolicitud, "tecnico_responsable_nombre", "solicitud_inspector_principal_nombre"),
+                    SelectSolicitudColumn(columnasSolicitud, "tecnico_responsable_tipo", "solicitud_inspector_principal_tipo"),
+                    SelectSolicitudColumn(columnasSolicitud, "inspector_apoyo_cedula", "solicitud_inspector_apoyo_cedula"),
+                    SelectSolicitudColumn(columnasSolicitud, "inspector_apoyo_nombre", "solicitud_inspector_apoyo_nombre"),
+                    SelectSolicitudColumn(columnasSolicitud, "inspector_apoyo_tipo", "solicitud_inspector_apoyo_tipo")
+                };
+                var filtroAsignacionTecnico = columnasSolicitud.Contains("codigo_tecnico")
+                    ? "(i.codigo_inspector IS NULL AND s.codigo_tecnico = @ci)"
+                    : "FALSE";
+                var filtroSolicitudNoEliminada = columnasSolicitud.Contains("deleted_at")
+                    ? "s.deleted_at IS NULL"
+                    : "TRUE";
+                var filtroPagoAprobado = columnasSolicitud.Contains("pago_aprobado")
+                    ? "COALESCE(s.pago_aprobado, FALSE) = TRUE"
+                    : "TRUE";
+                var filtroModuloRtHabilitado = columnasSolicitud.Contains("modulo_solicitud_rt_habilitado")
+                    ? "COALESCE(s.modulo_solicitud_rt_habilitado, FALSE) = TRUE"
+                    : "TRUE";
+                var filtroPendienteCargaDocumentalRt = columnasSolicitud.Contains("pendiente_carga_documental_rt")
+                    ? "COALESCE(s.pendiente_carga_documental_rt, FALSE) = FALSE"
+                    : "TRUE";
+                var expresionEstadoSolicitud = columnasSolicitud.Contains("estado")
+                    ? "UPPER(COALESCE(s.estado, ''))"
+                    : "''";
+
+                var sql = @"
+                    SELECT i.*, " + string.Join(", ", columnasSelectSolicitud) + @"
+                    FROM public.aocr_tbinspeccion i
+                    LEFT JOIN public.aocr_tbsolicitud s ON s.codigo_solicitud = i.codigo_solicitud
+                    WHERE (
+                            i.codigo_inspector = @ci
+                         OR " + filtroAsignacionTecnico + @"
+                    )
+                      AND " + filtroSolicitudNoEliminada + @"
+                      AND " + filtroPagoAprobado + @"
+                      AND " + filtroModuloRtHabilitado + @"
+                      AND " + filtroPendienteCargaDocumentalRt + @"
+                      AND " + expresionEstadoSolicitud + @" NOT IN (
+                            'ANULADA',
+                            'CANCELADA'
+                      )
+                    ORDER BY i.fecha_programada DESC NULLS LAST, i.codigo_inspeccion DESC;";
+
+                using (var cmd = new NpgsqlCommand(sql, cn))
+                {
+                    cmd.Parameters.AddWithValue("@ci", codigoInspector);
+
+                    using (var dr = cmd.ExecuteReader())
                     {
-                        lista.Add(Map(dr));
+                        while (dr.Read())
+                        {
+                            lista.Add(Map(dr));
+                        }
                     }
                 }
             }

@@ -85,7 +85,7 @@ namespace CapaNegocio
             if (codigoSolicitud <= 0)
             {
                 estado.TienePendientes = true;
-                estado.MensajeBloqueoDocumental = "No se puede continuar porque la solicitud documental no es válida.";
+                estado.MensajeBloqueoDocumental = "Fase documental pendiente. No se puede continuar porque la solicitud documental no es válida.";
                 return estado;
             }
 
@@ -135,9 +135,7 @@ namespace CapaNegocio
                 || estado.TieneDocumentosObservados
                 || estado.TieneDocumentosSubsanadosPendientes;
             estado.DocumentacionAprobada = estado.TotalDocumentosVigentes > 0 && !estado.TienePendientes;
-            estado.MensajeBloqueoDocumental = estado.TienePendientes
-                ? "No se puede continuar porque existen documentos observados o subsanados pendientes de revisión documental."
-                : string.Empty;
+            estado.MensajeBloqueoDocumental = ConstruirMensajeBloqueoDocumental(estado);
 
             return estado;
         }
@@ -179,6 +177,36 @@ namespace CapaNegocio
             return !string.IsNullOrWhiteSpace(tipoDocumento)
                 ? tipoDocumento.ToUpperInvariant()
                 : "__DOC_" + documento.CodigoDocumento;
+        }
+
+        private static string ConstruirMensajeBloqueoDocumental(EstadoRevisionDocumental estado)
+        {
+            if (estado == null)
+            {
+                return "Fase documental pendiente. La inspección no puede iniciar porque la fase documental aún no ha sido finalizada.";
+            }
+
+            if (estado.TotalDocumentosVigentes <= 0)
+            {
+                return "Fase documental pendiente. La inspección no puede iniciar porque el RT aún no ha cargado o completado los documentos habilitantes para revisión.";
+            }
+
+            if (estado.TieneDocumentosObservados)
+            {
+                return "Fase documental pendiente. La inspección no puede iniciar porque existen documentos observados pendientes de subsanación y nueva revisión.";
+            }
+
+            if (estado.TieneDocumentosSubsanadosPendientes)
+            {
+                return "Fase documental pendiente. La inspección no puede iniciar porque existen documentos subsanados pendientes de revisión por parte del Inspector.";
+            }
+
+            if (estado.DocumentosPendientesRevision > 0)
+            {
+                return "Fase documental pendiente. La inspección no puede iniciar porque todavía hay documentos habilitantes pendientes de revisión documental.";
+            }
+
+            return string.Empty;
         }
 
         private static string ObtenerDecisionRevisionDocumental(Documento documento, IDictionary<int, Tuple<string, string>> revisiones)

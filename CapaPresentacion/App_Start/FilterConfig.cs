@@ -15,8 +15,11 @@ namespace CapaPresentacion
             // Filtro de seguridad
             filters.Add(new GlobalSecurityFilter(), 2);
 
+            // Rehidrata sesion cuando existe cookie valida y fuerza seleccion de compania RT.
+            filters.Add(new RestoreAuthenticatedSessionAttribute(), 3);
+
             // Filtro de auditoría
-            filters.Add(new AuditActionFilter(), 3);
+            filters.Add(new AuditActionFilter(), 4);
 
             // HandleError removido: pasaba HandleErrorInfo a Error.cshtml que espera
             // ErrorViewModel, causando doble-falla (InvalidOperationException).

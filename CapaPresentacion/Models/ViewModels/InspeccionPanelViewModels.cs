@@ -3,6 +3,38 @@ using CapaModelo;
 
 namespace CapaPresentacion.Models.ViewModels
 {
+    public class DocumentoWorkflowActionsVm
+    {
+        public string UrlVerDocumentacion { get; set; }
+        public string UrlRevisionDocumental { get; set; }
+        public bool MostrarRevisionDocumental { get; set; }
+        public bool PuedeAbrirRevisionDocumental { get; set; }
+        public string TituloBloqueoRevisionDocumental { get; set; }
+        public string TextoAccesoConsulta { get; set; }
+        public string TextoAyudaConsulta { get; set; }
+        public string TextoAccesoRevision { get; set; }
+        public string TextoAyudaRevision { get; set; }
+        public string TextoAccesoRevisionBloqueada { get; set; }
+        public string TextoAyudaRevisionBloqueada { get; set; }
+        public string ContainerClass { get; set; }
+        public bool AbrirEnNuevaPestana { get; set; }
+
+        public DocumentoWorkflowActionsVm()
+        {
+            UrlVerDocumentacion = string.Empty;
+            UrlRevisionDocumental = string.Empty;
+            TituloBloqueoRevisionDocumental = string.Empty;
+            TextoAccesoConsulta = "Ver documentación cargada";
+            TextoAyudaConsulta = "Consulta del expediente en solo lectura, con vista previa y descarga.";
+            TextoAccesoRevision = "Abrir revisión documental";
+            TextoAyudaRevision = "Aceptar, devolver y cerrar la fase documental antes de continuar con la fase operativa.";
+            TextoAccesoRevisionBloqueada = "Revisión documental";
+            TextoAyudaRevisionBloqueada = "Habilitada únicamente cuando el expediente esté en una etapa documental previa a inspección.";
+            ContainerClass = string.Empty;
+            AbrirEnNuevaPestana = true;
+        }
+    }
+
     public class FirmaInspectorPanelVm
     {
         public int CodigoInspeccion { get; set; }
@@ -35,6 +67,7 @@ namespace CapaPresentacion.Models.ViewModels
         public string UrlVisualizacion { get; set; }
         public string UrlDescarga { get; set; }
         public string UrlDocumentosSolicitud { get; set; }
+        public DocumentoWorkflowActionsVm AccesosDocumentales { get; set; }
         public string MensajeBloqueoEdicion { get; set; }
         public bool PuedeConfirmarRevisionDocumental { get; set; }
         public bool TieneDocumentosObservados { get; set; }
@@ -50,6 +83,7 @@ namespace CapaPresentacion.Models.ViewModels
             UrlVisualizacion = string.Empty;
             UrlDescarga = string.Empty;
             UrlDocumentosSolicitud = string.Empty;
+            AccesosDocumentales = new DocumentoWorkflowActionsVm();
             MensajeBloqueoEdicion = string.Empty;
             MensajeBloqueoDocumental = string.Empty;
         }

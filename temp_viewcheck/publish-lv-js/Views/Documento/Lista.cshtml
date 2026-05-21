@@ -1,0 +1,1454 @@
+﻿@inherits System.Web.Mvc.WebViewPage<List<CapaModelo.Documento>>
+@using CapaModelo
+@using CapaPresentacion.Helpers
+@using System.Web.Mvc
+@using System.Web.Mvc.Html
+@using System.Collections.Generic
+@using System.Linq
+@using System.Web
+
+@{
+    Layout = "~/Views/Shared/_LayoutAOCR.cshtml";
+
+    var solicitudIdRaw = ViewData["SolicitudId"] ?? ViewBag.SolicitudId;
+    var solicitudIdTexto = solicitudIdRaw != null ? solicitudIdRaw.ToString() : string.Empty;
+    int solicitudIdNumero;
+    var tieneSolicitudId = int.TryParse(solicitudIdTexto, out solicitudIdNumero);
+    var codigoInspeccionRaw = ViewBag.CodigoInspeccion;
+    int codigoInspeccionValor = 0;
+    var codigoInspeccion = codigoInspeccionRaw != null && int.TryParse(codigoInspeccionRaw.ToString(), out codigoInspeccionValor)
+        ? (int?)codigoInspeccionValor
+        : null;
+    var puedeRevisarDocumentos = ViewBag.PuedeRevisarDocumentos as bool? ?? false;
+    var puedeReabrirDocumentos = ViewBag.PuedeReabrirDocumentos as bool? ?? false;
+    var modoDocumentos = (ViewBag.ModoDocumentos ?? string.Empty).ToString().Trim();
+    var esModoVerDocumentacion = string.Equals(modoDocumentos, "ver", System.StringComparison.OrdinalIgnoreCase);
+    var esModoRevisionDocumental = !esModoVerDocumentacion;
+    var operadoraContexto = (ViewBag.OperadoraEae ?? string.Empty).ToString().Trim();
+    var documentos = Model ?? new List<Documento>();
+    var tituloPaginaModulo = string.IsNullOrWhiteSpace(solicitudIdTexto)
+        ? (esModoVerDocumentacion ? "Ver documentación de la solicitud" : "Revisión documental de la solicitud")
+        : (esModoVerDocumentacion
+            ? "Ver documentación de la solicitud (#" + solicitudIdTexto + ")"
+            : "Revisión documental de la solicitud (#" + solicitudIdTexto + ")");
+    var subtituloPaginaModulo = esModoVerDocumentacion
+        ? "Consulta documental del expediente en modo solo lectura, con trazabilidad y descarga disponible."
+        : (puedeRevisarDocumentos
+            ? "Gestión documental operativa para aceptar, devolver y cerrar la fase previa a inspección."
+            : "Seguimiento documental del expediente sin acciones operativas habilitadas.");
+    var bannerEyebrow = esModoVerDocumentacion ? "Consulta del expediente" : "Gestión documental";
+    var bannerTitulo = esModoVerDocumentacion ? "Visualización sincronizada del expediente" : "Revisión documental sincronizada";
+    var bannerDescripcion = esModoVerDocumentacion
+        ? "Todos los archivos de la solicitud se presentan en un formato de consulta estable, con vista previa y descarga, sin habilitar decisiones operativas."
+        : (puedeRevisarDocumentos
+            ? "Este espacio concentra la revisión documental del expediente con el mismo contexto visual del módulo de consulta, pero habilitando decisiones de aceptación y devolución."
+            : "El expediente se mantiene visible con el mismo contexto documental, aunque las decisiones operativas no están disponibles para el usuario actual.");
+    var modoVisible = esModoVerDocumentacion
+        ? "Ver documentación"
+        : (puedeRevisarDocumentos ? "Revisión documental activa" : "Revisión documental bloqueada");
+    var estadoTarjetaTitulo = esModoVerDocumentacion ? "Estado de consulta" : "Capacidad operativa";
+    var estadoTarjetaValor = esModoVerDocumentacion
+        ? "Solo lectura"
+        : (puedeRevisarDocumentos ? "Aceptar y devolver documentos" : "Seguimiento sin decisiones");
+    var estadoTarjetaNota = esModoVerDocumentacion
+        ? "La consulta usa el mismo expediente documental, pero sin habilitar aceptación ni devolución."
+        : (puedeRevisarDocumentos
+            ? "La revisión utiliza el mismo expediente y habilita decisiones documentales antes de la inspección."
+            : "La revisión conserva el contexto documental, pero no habilita acciones para este usuario.");
+    var tablaTitulo = esModoVerDocumentacion ? "Archivos del expediente" : "Bandeja de revisión documental";
+    var tablaSubtitulo = esModoVerDocumentacion
+        ? "Consulta histórica y descarga de documentos vigentes asociados a la solicitud."
+        : (puedeRevisarDocumentos
+            ? "Documentos listos para decisión documental con trazabilidad de revisión."
+            : "Consulta documental del expediente sin acciones operativas habilitadas.");
+    var tablaBadge = esModoVerDocumentacion ? "Solo lectura" : (puedeRevisarDocumentos ? "Revisión activa" : "Seguimiento");
+    ViewBag.Title = tituloPaginaModulo + " AOCR";
+
+    var stats = (ViewBag.Stats as IDictionary<string, object>)
+                ?? (ViewBag.Estadisticas as IDictionary<string, object>)
+                ?? new Dictionary<string, object>();
+
+    Func<string, int> statInt = key =>
+    {
+        object value;
+        if (!stats.TryGetValue(key, out value) || value == null)
+        {
+            return 0;
+        }
+
+        int parsed;
+        return int.TryParse(value.ToString(), out parsed) ? parsed : 0;
+    };
+
+    var totalDocs = statInt("Total");
+    var pendientesDocs = statInt("Pendientes");
+    var aprobadosDocs = statInt("Aprobados");
+    var rechazadosDocs = statInt("Rechazados");
+    var tiposDisponiblesSet = new HashSet<string>(System.StringComparer.OrdinalIgnoreCase);
+    var operadorasDisponiblesSet = new HashSet<string>(System.StringComparer.OrdinalIgnoreCase);
+    foreach (var documento in documentos)
+    {
+        var tipoDocumento = documento != null ? (documento.TipoDocumento ?? string.Empty).Trim() : string.Empty;
+        if (!string.IsNullOrWhiteSpace(tipoDocumento))
+        {
+            tiposDisponiblesSet.Add(tipoDocumento);
+        }
+
+        var operadoraDocumento = documento != null ? (documento.OperadoraEae ?? string.Empty).Trim() : string.Empty;
+        if (string.IsNullOrWhiteSpace(operadoraDocumento))
+        {
+            operadoraDocumento = operadoraContexto;
+        }
+
+        if (!string.IsNullOrWhiteSpace(operadoraDocumento))
+        {
+            operadorasDisponiblesSet.Add(operadoraDocumento);
+        }
+    }
+
+    var tiposDisponibles = tiposDisponiblesSet
+        .OrderBy(x => x, System.StringComparer.OrdinalIgnoreCase)
+        .ToList();
+    var operadorasDisponibles = operadorasDisponiblesSet
+        .OrderBy(x => x, System.StringComparer.OrdinalIgnoreCase)
+        .ToList();
+
+    Func<string, string> normalizarTextoVisible = value =>
+    {
+        var actual = (value ?? string.Empty).Trim();
+        for (var i = 0; i < 3; i++)
+        {
+            var decodificado = HttpUtility.HtmlDecode(actual) ?? string.Empty;
+            if (string.Equals(decodificado, actual, System.StringComparison.Ordinal))
+            {
+                break;
+            }
+
+            actual = decodificado;
+        }
+
+        return actual;
+    };
+
+    Func<Documento, string> estadoVisible = doc =>
+    {
+        var visible = doc != null ? (doc.EstadoRevisionVisible ?? string.Empty).Trim() : string.Empty;
+        if (!string.IsNullOrWhiteSpace(visible))
+        {
+            return visible;
+        }
+
+        var estado = doc != null ? (doc.Estado ?? string.Empty).Trim().ToUpperInvariant() : string.Empty;
+        switch (estado)
+        {
+            case "APROBADO":
+            case "ACEPTADO":
+            case "VALIDADO":
+                return "ACEPTADO";
+            case "OBSERVADO":
+                return "OBSERVADO";
+            case "DEVUELTO":
+            case "RECHAZADO":
+                return "DEVUELTO";
+            default:
+                return "PENDIENTE";
+        }
+    };
+
+    Func<Documento, string> estadoNormalizado = doc =>
+    {
+        var visible = estadoVisible(doc);
+        switch (visible)
+        {
+            case "ACEPTADO":
+                return "APROBADO";
+            case "DEVUELTO":
+                return "RECHAZADO";
+            case "OBSERVADO":
+                return "OBSERVADO";
+            default:
+                return "PENDIENTE";
+        }
+    };
+
+    Func<Documento, string> badgeClass = doc =>
+    {
+        switch (estadoVisible(doc))
+        {
+            case "ACEPTADO":
+                return "badge bg-success";
+            case "DEVUELTO":
+                return "badge bg-danger";
+            case "OBSERVADO":
+                return "badge bg-warning text-dark";
+            default:
+                return "badge bg-secondary";
+        }
+    };
+
+    Func<Documento, string> observacionVisible = doc =>
+    {
+        if (doc == null)
+        {
+            return string.Empty;
+        }
+
+        var observacion = doc.ObservacionRevision ?? doc.Observaciones ?? string.Empty;
+        return normalizarTextoVisible(observacion);
+    };
+
+    Func<Documento, string> revisorVisible = doc =>
+    {
+        if (doc == null)
+        {
+            return string.Empty;
+        }
+
+        return (doc.NombreUsuarioRevisor ?? doc.ValidadoPor ?? string.Empty).Trim();
+    };
+
+    Func<Documento, string> operadoraVisible = doc =>
+    {
+        if (doc == null)
+        {
+            return operadoraContexto;
+        }
+
+        var operadora = (doc.OperadoraEae ?? string.Empty).Trim();
+        return string.IsNullOrWhiteSpace(operadora) ? operadoraContexto : operadora;
+    };
+}
+
+<style>
+    .documentos-view-banner {
+        display: grid;
+        grid-template-columns: minmax(0, 1.6fr) minmax(280px, .9fr);
+        gap: 16px;
+        padding: 18px 20px;
+        border: 1px solid rgba(15, 97, 122, 0.14);
+        border-radius: 18px;
+        background: linear-gradient(135deg, #eef8fb 0%, #f9fcfe 55%, #fff7eb 100%);
+        box-shadow: 0 12px 28px rgba(15, 97, 122, 0.08);
+        margin-bottom: 1rem;
+    }
+
+    .documentos-view-banner--review {
+        border-color: rgba(18, 92, 146, 0.16);
+        background: linear-gradient(135deg, #eef5ff 0%, #f9fbff 55%, #ecf7ff 100%);
+        box-shadow: 0 12px 28px rgba(18, 92, 146, 0.08);
+    }
+
+    .documentos-view-banner--review .documentos-view-banner__eyebrow,
+    .documentos-view-banner--review .documentos-view-chip {
+        color: #125c92;
+    }
+
+    .documentos-view-banner--review .documentos-view-chip,
+    .documentos-view-banner--review .documentos-view-highlight__card {
+        border-color: rgba(18, 92, 146, 0.16);
+    }
+
+    .documentos-view-banner__eyebrow {
+        display: inline-block;
+        margin-bottom: 6px;
+        font-size: 0.76rem;
+        font-weight: 800;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: #0f617a;
+    }
+
+    .documentos-view-banner__title {
+        margin: 0;
+        font-size: 1.5rem;
+        font-weight: 800;
+        color: #16354b;
+        letter-spacing: -0.02em;
+    }
+
+    .documentos-view-banner__copy {
+        margin: 8px 0 0;
+        color: #516b7d;
+        line-height: 1.6;
+        max-width: 62ch;
+    }
+
+    .documentos-view-banner__chips {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-top: 14px;
+    }
+
+    .documentos-view-chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 0.45rem 0.75rem;
+        border-radius: 999px;
+        border: 1px solid rgba(15, 97, 122, 0.14);
+        background: rgba(255, 255, 255, 0.9);
+        color: #245168;
+        font-size: 0.82rem;
+        font-weight: 700;
+    }
+
+    .documentos-view-highlight {
+        display: grid;
+        gap: 12px;
+        align-content: start;
+    }
+
+    .documentos-view-highlight__card {
+        padding: 14px 16px;
+        border-radius: 16px;
+        border: 1px solid rgba(22, 53, 75, 0.1);
+        background: rgba(255, 255, 255, 0.92);
+    }
+
+    .documentos-view-highlight__label {
+        display: block;
+        font-size: 0.74rem;
+        font-weight: 800;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        color: #6b8292;
+        margin-bottom: 4px;
+    }
+
+    .documentos-view-highlight__value {
+        display: block;
+        color: #16354b;
+        font-size: 1.15rem;
+        font-weight: 800;
+    }
+
+    .documentos-view-highlight__note {
+        display: block;
+        margin-top: 4px;
+        color: #607889;
+        font-size: 0.84rem;
+        line-height: 1.45;
+    }
+
+    .documentos-view-summary {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 14px;
+        margin-bottom: 1rem;
+    }
+
+    .documentos-view-summary__card {
+        padding: 16px 18px;
+        border-radius: 16px;
+        background: #fff;
+        border: 1px solid rgba(18, 92, 146, 0.12);
+        box-shadow: 0 10px 24px rgba(14, 63, 102, 0.06);
+    }
+
+    .documentos-view-summary__label {
+        display: block;
+        font-size: 0.76rem;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        color: #647d8f;
+        font-weight: 800;
+        margin-bottom: 8px;
+    }
+
+    .documentos-view-summary__value {
+        display: block;
+        color: #16354b;
+        font-size: 1.85rem;
+        line-height: 1;
+        font-weight: 800;
+    }
+
+    .documentos-view-summary__list {
+        margin: 0;
+        padding-left: 18px;
+        color: #5a7182;
+    }
+
+    .documentos-view-summary__list li + li {
+        margin-top: 4px;
+    }
+
+    .documentos-review-tools--view .documentos-review-tools__context {
+        border-color: rgba(15, 97, 122, 0.14);
+        background: linear-gradient(135deg, rgba(15, 97, 122, 0.06), rgba(255, 247, 235, 0.7));
+    }
+
+    .documentos-review-tools--review .documentos-review-tools__context {
+        border-color: rgba(18, 92, 146, 0.16);
+        background: linear-gradient(135deg, rgba(18, 92, 146, 0.08), rgba(236, 247, 255, 0.9));
+    }
+
+    .documentos-table-card__header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        padding: 14px 18px;
+        border-bottom: 1px solid rgba(18, 92, 146, 0.12);
+        background: linear-gradient(180deg, rgba(248, 251, 253, 0.95), rgba(255, 255, 255, 0.98));
+    }
+
+    .documentos-table-card__title {
+        margin: 0;
+        color: #16354b;
+        font-size: 1rem;
+        font-weight: 800;
+    }
+
+    .documentos-table-card__subtitle {
+        display: block;
+        margin-top: 3px;
+        color: #607889;
+        font-size: 0.84rem;
+    }
+
+    .documentos-table-card__badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        border-radius: 999px;
+        padding: 0.48rem 0.78rem;
+        border: 1px solid rgba(15, 97, 122, 0.14);
+        background: rgba(15, 97, 122, 0.08);
+        color: #0f617a;
+        font-size: 0.8rem;
+        font-weight: 800;
+        white-space: nowrap;
+    }
+
+    .documentos-table-card__badge--review {
+        border-color: rgba(18, 92, 146, 0.16);
+        background: rgba(18, 92, 146, 0.08);
+        color: #125c92;
+    }
+
+    .documentos-review-tools {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+        gap: 12px;
+        margin-bottom: 1rem;
+        align-items: end;
+    }
+
+    .documentos-review-tools__context {
+        grid-column: 1 / -1;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+        padding: 14px 16px;
+        border: 1px solid rgba(18, 92, 146, 0.12);
+        border-radius: 14px;
+        background: linear-gradient(135deg, rgba(18, 92, 146, 0.06), rgba(18, 92, 146, 0.015));
+    }
+
+    .documentos-review-tools__context-item {
+        min-width: 180px;
+    }
+
+    .documentos-review-tools__field {
+        min-width: 0;
+    }
+
+    .documentos-review-tools__label {
+        display: block;
+        font-size: 0.74rem;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        color: #5b7083;
+        margin-bottom: 2px;
+    }
+
+    .documentos-table-wrapper {
+        width: 100%;
+        overflow-x: auto;
+    }
+
+    .documentos-table {
+        min-width: 960px;
+    }
+
+    .documentos-table td {
+        vertical-align: top;
+    }
+
+    .documentos-table__cell {
+        overflow-wrap: anywhere;
+        word-break: break-word;
+    }
+
+    .documentos-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        justify-content: center;
+    }
+
+    .documentos-actions .btn {
+        white-space: nowrap;
+    }
+
+    .documentos-observacion {
+        min-width: 240px;
+        max-width: 340px;
+        white-space: normal;
+    }
+
+    .documentos-muted {
+        color: #6c7a86;
+    }
+
+    .aocr-modal-content .modal-body {
+        padding-top: 1.25rem;
+    }
+
+    .aocr-info-card {
+        padding: 0.9rem 1rem;
+        border-radius: 12px;
+        background: #f6fafc;
+        border: 1px solid rgba(18, 92, 146, 0.12);
+        margin-bottom: 1rem;
+    }
+
+    @@media (max-width: 991.98px) {
+        .documentos-view-banner {
+            grid-template-columns: 1fr;
+        }
+
+        .documentos-view-summary {
+            grid-template-columns: 1fr;
+        }
+
+        .documentos-review-tools {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+
+        .documentos-review-tools__context {
+            padding: 12px;
+        }
+
+        .documentos-review-tools__context-item {
+            flex: 1 1 calc(50% - 12px);
+            min-width: 0;
+        }
+
+        .documentos-table-wrapper {
+            overflow-x: visible;
+            padding: 0.85rem;
+        }
+
+        .documentos-table {
+            min-width: 0;
+            border-collapse: separate;
+        }
+
+        .documentos-table,
+        .documentos-table thead,
+        .documentos-table tbody,
+        .documentos-table tr,
+        .documentos-table th,
+        .documentos-table td {
+            display: block;
+            width: 100%;
+        }
+
+        .documentos-table thead {
+            display: none;
+        }
+
+        .documentos-table tbody {
+            display: grid;
+            gap: 14px;
+        }
+
+        .documentos-table tbody tr {
+            padding: 14px 16px;
+            border: 1px solid rgba(18, 92, 146, 0.12);
+            border-radius: 16px;
+            background: #fff;
+            box-shadow: 0 8px 24px rgba(14, 63, 102, 0.08);
+        }
+
+        .documentos-table tbody td {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 14px;
+            padding: 8px 0;
+            border: 0;
+            text-align: left !important;
+        }
+
+        .documentos-table tbody td::before {
+            content: attr(data-column-label);
+            flex: 0 0 118px;
+            max-width: 118px;
+            font-size: 0.72rem;
+            font-weight: 800;
+            line-height: 1.35;
+            letter-spacing: 0.06em;
+            text-transform: uppercase;
+            color: #5b7083;
+        }
+
+        .documentos-table tbody td[data-column-label="Acciones"] {
+            margin-top: 6px;
+            padding-top: 12px;
+            border-top: 1px dashed rgba(18, 92, 146, 0.16);
+        }
+
+        .documentos-table tbody td[data-column-label="Acciones"]::before {
+            padding-top: 10px;
+        }
+
+        .documentos-table tbody td[colspan] {
+            display: block;
+            padding: 0;
+        }
+
+        .documentos-table tbody td[colspan]::before {
+            content: none;
+        }
+
+        .documentos-table .documentos-observacion {
+            min-width: 0;
+            max-width: none;
+        }
+
+        .documentos-table .documentos-actions {
+            width: 100%;
+            justify-content: stretch;
+        }
+
+        .documentos-table .documentos-actions .btn {
+            flex: 1 1 calc(50% - 6px);
+            justify-content: center;
+        }
+    }
+
+    @@media (max-width: 768px) {
+        .documentos-review-tools {
+            grid-template-columns: 1fr;
+        }
+
+        .documentos-table-card__header {
+            flex-direction: column;
+            align-items: flex-start;
+        }
+
+        .documentos-review-tools__context-item {
+            flex-basis: 100%;
+        }
+
+        .documentos-table-wrapper {
+            padding: 0.75rem;
+        }
+
+        .documentos-table tbody tr {
+            padding: 12px 14px;
+        }
+
+        .documentos-table tbody td {
+            flex-direction: column;
+            gap: 6px;
+            padding: 9px 0;
+        }
+
+        .documentos-table tbody td::before {
+            flex: none;
+            max-width: none;
+        }
+
+        .documentos-actions {
+            flex-direction: column;
+        }
+
+        .documentos-actions .btn {
+            width: 100%;
+            flex-basis: auto;
+        }
+    }
+</style>
+
+@Html.Partial("_PageHeader", null, new ViewDataDictionary {
+    { "Title", tituloPaginaModulo },
+    { "Subtitle", subtituloPaginaModulo }
+})
+
+@if (TempData["Error"] != null)
+{
+    <div class="alert alert-aocr alert-danger mb-3"><i class="fas fa-exclamation-circle me-1"></i> @TempData["Error"]</div>
+}
+@if (TempData["Exito"] != null)
+{
+    <div class="alert alert-aocr alert-success mb-3"><i class="fas fa-check-circle me-1"></i> @TempData["Exito"]</div>
+}
+
+<section class="documentos-view-banner @(esModoRevisionDocumental ? "documentos-view-banner--review" : string.Empty)">
+    <div>
+        <span class="documentos-view-banner__eyebrow">@bannerEyebrow</span>
+        <h2 class="documentos-view-banner__title">@bannerTitulo</h2>
+        <p class="documentos-view-banner__copy">@bannerDescripcion</p>
+        <div class="documentos-view-banner__chips">
+            @if (esModoVerDocumentacion)
+            {
+                <span class="documentos-view-chip"><i class="fas fa-eye"></i> Solo lectura</span>
+                <span class="documentos-view-chip"><i class="fas fa-download"></i> Descarga habilitada</span>
+                <span class="documentos-view-chip"><i class="fas fa-shield-halved"></i> Sin decisiones operativas</span>
+            }
+            else
+            {
+                <span class="documentos-view-chip"><i class="fas fa-clipboard-check"></i> Expediente sincronizado</span>
+                <span class="documentos-view-chip"><i class="fas fa-download"></i> Descarga habilitada</span>
+                <span class="documentos-view-chip"><i class="fas fa-file-circle-check"></i> @(puedeRevisarDocumentos ? "Aceptar y devolver habilitado" : "Acciones restringidas")</span>
+            }
+        </div>
+    </div>
+    <div class="documentos-view-highlight">
+        <div class="documentos-view-highlight__card">
+            <span class="documentos-view-highlight__label">@estadoTarjetaTitulo</span>
+            <span class="documentos-view-highlight__value">@estadoTarjetaValor</span>
+            <span class="documentos-view-highlight__note">@estadoTarjetaNota</span>
+        </div>
+        <div class="documentos-view-highlight__card">
+            <span class="documentos-view-highlight__label">Solicitud activa</span>
+            <span class="documentos-view-highlight__value">@(tieneSolicitudId ? ("#" + solicitudIdNumero) : "N/D")</span>
+            <span class="documentos-view-highlight__note">@(string.IsNullOrWhiteSpace(operadoraContexto) ? "Expediente documental asociado a la solicitud activa." : operadoraContexto)</span>
+        </div>
+    </div>
+</section>
+
+<div class="aocr-summary-strip mb-3">
+    @Html.Partial("_MetricCard", null, new ViewDataDictionary { { "Label", "Total" }, { "Value", totalDocs }, { "Icon", "fas fa-folder-open" }, { "ValueId", "metricTotalDocs" } })
+    @Html.Partial("_MetricCard", null, new ViewDataDictionary { { "Label", "Pendientes" }, { "Value", pendientesDocs }, { "Modifier", "warning" }, { "Icon", "fas fa-clock" }, { "ValueId", "metricPendientesDocs" } })
+    @Html.Partial("_MetricCard", null, new ViewDataDictionary { { "Label", "Aceptados" }, { "Value", aprobadosDocs }, { "Modifier", "success" }, { "Icon", "fas fa-check" }, { "ValueId", "metricAceptadosDocs" } })
+    @Html.Partial("_MetricCard", null, new ViewDataDictionary { { "Label", "Devueltos" }, { "Value", rechazadosDocs }, { "Modifier", "danger" }, { "Icon", "fas fa-times" }, { "ValueId", "metricDevueltosDocs" } })
+</div>
+
+@Html.Partial("_ActionToolbar", null, new ViewDataDictionary {
+    { "VolverUrl", string.IsNullOrWhiteSpace(solicitudIdTexto) ? Url.Action("Index", "SolicitudAOCR") : Url.Action("Detalle", "SolicitudAOCR", new { id = solicitudIdTexto }) }
+})
+
+<div id="frmRevisionToken" class="d-none">@Html.AntiForgeryToken()</div>
+
+<div id="documentoRevisionAlerts"></div>
+
+<div class="documentos-review-tools @(esModoVerDocumentacion ? "documentos-review-tools--view" : "documentos-review-tools--review")">
+    <div class="documentos-review-tools__context">
+        <div class="documentos-review-tools__context-item">
+            <span class="documentos-review-tools__label">Solicitud</span>
+            <strong>@(tieneSolicitudId ? ("#" + solicitudIdNumero) : "N/D")</strong>
+        </div>
+        @if (!string.IsNullOrWhiteSpace(operadoraContexto))
+        {
+            <div class="documentos-review-tools__context-item">
+                <span class="documentos-review-tools__label">Operadora / EAE</span>
+                <strong>@Html.Encode(operadoraContexto)</strong>
+            </div>
+        }
+        @if (codigoInspeccion.HasValue)
+        {
+            <div class="documentos-review-tools__context-item">
+                <span class="documentos-review-tools__label">Inspeccion vinculada</span>
+                <strong>#@codigoInspeccion.Value</strong>
+            </div>
+        }
+        <div class="documentos-review-tools__context-item">
+            <span class="documentos-review-tools__label">Modo</span>
+            <strong>@modoVisible</strong>
+        </div>
+    </div>
+
+    <div class="documentos-review-tools__field">
+        <label for="filtroTipo" class="aocr-field-label">Filtrar por tipo</label>
+        <select id="filtroTipo" class="form-select form-select-sm">
+            <option value="">-- Todos --</option>
+            @foreach (var tipo in tiposDisponibles)
+            {
+                <option value="@tipo">@tipo</option>
+            }
+        </select>
+    </div>
+
+    <div class="documentos-review-tools__field">
+        <label for="filtroOperadora" class="aocr-field-label">Operadora / EAE</label>
+        <select id="filtroOperadora" class="form-select form-select-sm">
+            <option value="">-- Todas --</option>
+            @foreach (var operadora in operadorasDisponibles)
+            {
+                <option value="@operadora">@operadora</option>
+            }
+        </select>
+    </div>
+
+    <div class="documentos-review-tools__field">
+        <label for="filtroFechaRapida" class="aocr-field-label">Fecha de carga</label>
+        <select id="filtroFechaRapida" class="form-select form-select-sm">
+            <option value="">-- Todas --</option>
+            <option value="hoy">Hoy</option>
+            <option value="7dias">Ultimos 7 dias</option>
+            <option value="30dias">Ultimos 30 dias</option>
+        </select>
+    </div>
+
+    <div class="documentos-review-tools__field">
+        <label for="filtroFechaDesde" class="aocr-field-label">Desde</label>
+        <input type="date" id="filtroFechaDesde" class="form-control form-control-sm" />
+    </div>
+
+    <div class="documentos-review-tools__field">
+        <label for="filtroFechaHasta" class="aocr-field-label">Hasta</label>
+        <input type="date" id="filtroFechaHasta" class="form-control form-control-sm" />
+    </div>
+</div>
+
+<div class="card aocr-table-card">
+    <div class="documentos-table-card__header">
+        <div>
+            <h3 class="documentos-table-card__title">@tablaTitulo</h3>
+            <span class="documentos-table-card__subtitle">@tablaSubtitulo</span>
+        </div>
+        <span class="documentos-table-card__badge @(esModoRevisionDocumental ? "documentos-table-card__badge--review" : string.Empty)"><i class="fas @(esModoVerDocumentacion ? "fa-eye" : "fa-file-circle-check")"></i> @tablaBadge</span>
+    </div>
+    <div class="card-body p-0">
+        <div class="documentos-table-wrapper">
+            <table class="table table-dgac mb-0 documentos-table" id="tablaDocumentos">
+                <thead>
+                    <tr>
+                        <th>Tipo</th>
+                        <th>Archivo</th>
+                        <th>Operadora / EAE</th>
+                        <th>Fecha de carga</th>
+                        <th>Estado</th>
+                        <th>Observacion / motivo</th>
+                        <th>Revisado por</th>
+                        <th>Fecha revision</th>
+                        <th class="text-center">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (documentos.Any())
+                    {
+                        foreach (var doc in documentos)
+                        {
+                            var estadoFilaVisible = estadoVisible(doc);
+                            var estadoFilaNormalizado = estadoNormalizado(doc);
+                            var badgeFila = badgeClass(doc);
+                            var observacionFila = observacionVisible(doc);
+                            var revisorFila = revisorVisible(doc);
+                            var operadoraFila = operadoraVisible(doc);
+                            var esPdf = string.Equals(System.IO.Path.GetExtension(doc.NombreArchivo ?? string.Empty), ".pdf", System.StringComparison.OrdinalIgnoreCase);
+                            <tr id="doc-row-@doc.CodigoDocumento"
+                                data-document-id="@doc.CodigoDocumento"
+                                data-tipo="@Html.AttributeEncode(doc.TipoDocumento ?? string.Empty)"
+                                data-operadora="@Html.AttributeEncode(operadoraFila ?? string.Empty)"
+                                data-fecha="@(doc.FechaCarga.HasValue ? doc.FechaCarga.Value.ToString("yyyy-MM-dd") : string.Empty)"
+                                data-estado="@estadoFilaNormalizado">
+                                <td class="documentos-table__cell" data-column-label="Tipo">@Html.Encode(doc.TipoDocumento)</td>
+                                <td class="documentos-table__cell" data-column-label="Archivo">@Html.Encode(doc.NombreArchivo)</td>
+                                <td class="documentos-table__cell" data-column-label="Operadora / EAE">@(string.IsNullOrWhiteSpace(operadoraFila) ? "-" : Html.Encode(operadoraFila))</td>
+                                <td class="documentos-table__cell" data-column-label="Fecha de carga">@(doc.FechaCarga.HasValue ? doc.FechaCarga.Value.ToString("dd/MM/yyyy HH:mm") : "-")</td>
+                                <td class="documentos-table__cell js-doc-state" data-column-label="Estado"><span class="@badgeFila">@estadoFilaVisible</span></td>
+                                <td class="documentos-table__cell documentos-observacion js-doc-observacion" data-column-label="Observacion / motivo">
+                                    @if (!string.IsNullOrWhiteSpace(observacionFila))
+                                    {
+                                        @Html.Encode(observacionFila)
+                                    }
+                                    else
+                                    {
+                                        <span class="documentos-muted">-</span>
+                                    }
+                                </td>
+                                <td class="documentos-table__cell js-doc-reviewer" data-column-label="Revisado por">
+                                    @if (!string.IsNullOrWhiteSpace(revisorFila))
+                                    {
+                                        @Html.Encode(revisorFila)
+                                    }
+                                    else
+                                    {
+                                        <span class="documentos-muted">-</span>
+                                    }
+                                </td>
+                                <td class="documentos-table__cell js-doc-review-date" data-column-label="Fecha revision">@(doc.FechaRevision.HasValue ? doc.FechaRevision.Value.ToString("dd/MM/yyyy HH:mm") : "-")</td>
+                                <td class="documentos-table__cell text-center js-doc-actions" data-column-label="Acciones">
+                                    <div class="documentos-actions">
+                                        @if (esPdf)
+                                        {
+                                            <a href="@Url.Action("Descargar", "Documento", new { id = doc.CodigoDocumento, vistaPrevia = true })"
+                                               class="btn btn-sm btn-outline-secondary aocr-pdf-open"
+                                               data-pdf-url="@Url.Action("Descargar", "Documento", new { id = doc.CodigoDocumento, vistaPrevia = true })"
+                                               data-download-url="@Url.Action("Descargar", "Documento", new { id = doc.CodigoDocumento })"
+                                               data-title="@doc.NombreArchivo"
+                                               data-status="@estadoFilaVisible">
+                                                <i class="fas fa-eye"></i> Vista previa
+                                            </a>
+                                        }
+                                        <a href="@Url.Action("Descargar", "Documento", new { id = doc.CodigoDocumento })" class="btn btn-sm btn-aocr-primary">
+                                            <i class="fas fa-download"></i> Descargar
+                                        </a>
+                                        @if (puedeRevisarDocumentos && estadoFilaNormalizado == "PENDIENTE")
+                                        {
+                                            <button type="button"
+                                                    class="btn btn-sm btn-success btn-aceptar-documento"
+                                                    data-id="@doc.CodigoDocumento">
+                                                <i class="fas fa-check"></i> Aceptar
+                                            </button>
+                                            <button type="button"
+                                                    class="btn btn-sm btn-outline-danger btn-devolver-documento"
+                                                    data-id="@doc.CodigoDocumento"
+                                                    data-tipo="@Html.AttributeEncode(doc.TipoDocumento ?? string.Empty)"
+                                                    data-nombre="@Html.AttributeEncode(doc.NombreArchivo ?? string.Empty)"
+                                                    data-operadora="@Html.AttributeEncode(operadoraFila ?? string.Empty)">
+                                                <i class="fas fa-undo"></i> Devolver
+                                            </button>
+                                        }
+                                        @if (puedeReabrirDocumentos && estadoFilaNormalizado != "PENDIENTE")
+                                        {
+                                            <button type="button"
+                                                    class="btn btn-sm btn-outline-warning btn-reabrir-documento"
+                                                    data-id="@doc.CodigoDocumento">
+                                                <i class="fas fa-rotate-left"></i> Reabrir
+                                            </button>
+                                        }
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+
+                        <tr id="filaSinResultados" style="display:none;">
+                            <td colspan="9">
+                                @Html.Partial("_EmptyState", null, new ViewDataDictionary {
+                                    { "Icon", "fas fa-filter" },
+                                    { "Title", "Sin coincidencias" },
+                                    { "Description", "No hay documentos que coincidan con los filtros seleccionados." }
+                                })
+                            </td>
+                        </tr>
+                    }
+                    else
+                    {
+                        <tr><td colspan="9">
+                            @Html.Partial("_EmptyState", null, new ViewDataDictionary {
+                                { "Icon", "fas fa-folder-open" },
+                                { "Title", "Sin documentos" },
+                                { "Description", "No hay documentos cargados para esta solicitud." }
+                            })
+                        </td></tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="modalDevolverDocumento" tabindex="-1" aria-labelledby="modalDevolverDocumentoTitulo" aria-hidden="true" data-bs-backdrop="static" data-bs-keyboard="false">
+    <div class="modal-dialog modal-dialog-centered" role="document">
+        <div class="modal-content aocr-modal-content">
+            <div class="modal-header aocr-modal-header">
+                <h5 class="modal-title" id="modalDevolverDocumentoTitulo">Devolver documento</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="DocumentoDevolverId" />
+
+                <div class="aocr-info-card">
+                    <div><strong>Documento:</strong> <span id="DocumentoDevolverTipo"></span></div>
+                    <div><strong>Archivo:</strong> <span id="DocumentoDevolverNombre"></span></div>
+                    <div><strong>Operadora / EAE:</strong> <span id="DocumentoDevolverOperadora"></span></div>
+                </div>
+
+                <div class="form-group mb-0">
+                    <label for="MotivoDevolucion">
+                        Motivo de devolucion <span class="text-danger">*</span>
+                    </label>
+                    <textarea id="MotivoDevolucion"
+                              class="form-control"
+                              rows="5"
+                              maxlength="1000"
+                              placeholder="Describa claramente por que se devuelve el documento..."></textarea>
+                    <small class="text-muted">Esta observacion sera visible para el RT.</small>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-danger" id="btnConfirmarDevolucion">Confirmar devolucion</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        (function () {
+            var tabla = document.getElementById('tablaDocumentos');
+            if (!tabla) {
+                return;
+            }
+
+            var urls = {
+                aceptar: '@Url.Action("AceptarDocumentoSolicitud", "Documento")',
+                devolver: '@Url.Action("DevolverDocumentoSolicitud", "Documento")',
+                reabrir: '@Url.Action("ReabrirDocumentoSolicitud", "Documento")'
+            };
+            var solicitudId = parseInt('@(tieneSolicitudId ? solicitudIdNumero.ToString() : "0")', 10) || 0;
+            var codigoInspeccionTexto = '@(codigoInspeccion.HasValue ? codigoInspeccion.Value.ToString() : string.Empty)';
+            var codigoInspeccion = codigoInspeccionTexto ? parseInt(codigoInspeccionTexto, 10) : null;
+            var tokenInput = document.querySelector('#frmRevisionToken input[name="__RequestVerificationToken"]');
+            var alertContainer = document.getElementById('documentoRevisionAlerts');
+            var filtroTipo = document.getElementById('filtroTipo');
+            var filtroOperadora = document.getElementById('filtroOperadora');
+            var filtroFechaRapida = document.getElementById('filtroFechaRapida');
+            var filtroFechaDesde = document.getElementById('filtroFechaDesde');
+            var filtroFechaHasta = document.getElementById('filtroFechaHasta');
+            var filaSinResultados = document.getElementById('filaSinResultados');
+            var modalElemento = document.getElementById('modalDevolverDocumento');
+            var motivoInput = document.getElementById('MotivoDevolucion');
+            var documentoDevolverId = document.getElementById('DocumentoDevolverId');
+            var documentoDevolverTipo = document.getElementById('DocumentoDevolverTipo');
+            var documentoDevolverNombre = document.getElementById('DocumentoDevolverNombre');
+            var documentoDevolverOperadora = document.getElementById('DocumentoDevolverOperadora');
+            var btnConfirmarDevolucion = document.getElementById('btnConfirmarDevolucion');
+
+            function escapeHtml(value) {
+                var div = document.createElement('div');
+                div.textContent = value == null ? '' : String(value);
+                return div.innerHTML;
+            }
+
+            function decodeHtmlEntities(value) {
+                var actual = value == null ? '' : String(value);
+                var textarea = document.createElement('textarea');
+
+                for (var i = 0; i < 3; i++) {
+                    textarea.innerHTML = actual;
+                    var decodificado = textarea.value;
+                    if (decodificado === actual) {
+                        break;
+                    }
+
+                    actual = decodificado;
+                }
+
+                return actual;
+            }
+
+            function normalizeObservationCell(element) {
+                if (!element) {
+                    return;
+                }
+
+                var texto = decodeHtmlEntities(element.textContent || '').trim();
+                if (texto) {
+                    element.textContent = texto;
+                }
+            }
+
+            function showAlert(type, message) {
+                if (!alertContainer) {
+                    return;
+                }
+
+                alertContainer.innerHTML = [
+                    '<div class="alert alert-', escapeHtml(type), ' alert-dismissible fade show mb-3" role="alert">',
+                    escapeHtml(message || ''),
+                    '<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>',
+                    '</div>'
+                ].join('');
+            }
+
+            function getModalInstance() {
+                if (!modalElemento) {
+                    return null;
+                }
+
+                if (window.bootstrap && typeof window.bootstrap.Modal === 'function') {
+                    return window.bootstrap.Modal.getOrCreateInstance(modalElemento, {
+                        backdrop: 'static',
+                        keyboard: false
+                    });
+                }
+
+                return null;
+            }
+
+            function showModal() {
+                var modal = getModalInstance();
+                if (modal) {
+                    modal.show();
+                    return;
+                }
+
+                if (window.jQuery && window.jQuery.fn && window.jQuery.fn.modal) {
+                    window.jQuery(modalElemento).modal('show');
+                }
+            }
+
+            function hideModal() {
+                var modal = getModalInstance();
+                if (modal) {
+                    modal.hide();
+                    return;
+                }
+
+                if (window.jQuery && window.jQuery.fn && window.jQuery.fn.modal) {
+                    window.jQuery(modalElemento).modal('hide');
+                }
+            }
+
+            function buildActionsHtml(doc) {
+                var html = ['<div class="documentos-actions">'];
+
+                if (doc.esPdf && doc.previewUrl) {
+                    html.push(
+                        '<a href="', escapeHtml(doc.previewUrl), '" class="btn btn-sm btn-outline-secondary aocr-pdf-open"',
+                        ' data-pdf-url="', escapeHtml(doc.previewUrl), '"',
+                        ' data-download-url="', escapeHtml(doc.downloadUrl || ''), '"',
+                        ' data-title="', escapeHtml(doc.archivo || ''), '"',
+                        ' data-status="', escapeHtml(doc.estado || ''), '">',
+                        '<i class="fas fa-eye"></i> Vista previa</a>'
+                    );
+                }
+
+                html.push(
+                    '<a href="', escapeHtml(doc.downloadUrl || ''), '" class="btn btn-sm btn-aocr-primary">',
+                    '<i class="fas fa-download"></i> Descargar</a>'
+                );
+
+                if (doc.puedeAceptar) {
+                    html.push(
+                        '<button type="button" class="btn btn-sm btn-success btn-aceptar-documento" data-id="', escapeHtml(doc.id), '">',
+                        '<i class="fas fa-check"></i> Aceptar</button>'
+                    );
+                }
+
+                if (doc.puedeDevolver) {
+                    html.push(
+                        '<button type="button" class="btn btn-sm btn-outline-danger btn-devolver-documento"',
+                        ' data-id="', escapeHtml(doc.id), '"',
+                        ' data-tipo="', escapeHtml(doc.tipo || ''), '"',
+                        ' data-nombre="', escapeHtml(doc.archivo || ''), '"',
+                        ' data-operadora="', escapeHtml(doc.operadora || ''), '">',
+                        '<i class="fas fa-undo"></i> Devolver</button>'
+                    );
+                }
+
+                if (doc.puedeReabrir) {
+                    html.push(
+                        '<button type="button" class="btn btn-sm btn-outline-warning btn-reabrir-documento" data-id="', escapeHtml(doc.id), '">',
+                        '<i class="fas fa-rotate-left"></i> Reabrir</button>'
+                    );
+                }
+
+                html.push('</div>');
+                return html.join('');
+            }
+
+            function setMetricValue(id, value) {
+                var elemento = document.getElementById(id);
+                if (elemento) {
+                    elemento.textContent = value;
+                }
+            }
+
+            function recalculateMetrics() {
+                var filas = tabla.querySelectorAll('tbody tr[data-document-id]');
+                var total = 0;
+                var pendientes = 0;
+                var aceptados = 0;
+                var devueltos = 0;
+
+                filas.forEach(function (fila) {
+                    if (fila.style.display === 'none') {
+                        return;
+                    }
+
+                    total += 1;
+                    var estado = (fila.getAttribute('data-estado') || '').toUpperCase();
+                    if (estado === 'APROBADO') {
+                        aceptados += 1;
+                    } else if (estado === 'RECHAZADO' || estado === 'OBSERVADO') {
+                        devueltos += 1;
+                    } else {
+                        pendientes += 1;
+                    }
+                });
+
+                setMetricValue('metricTotalDocs', total);
+                setMetricValue('metricPendientesDocs', pendientes);
+                setMetricValue('metricAceptadosDocs', aceptados);
+                setMetricValue('metricDevueltosDocs', devueltos);
+
+                if (filaSinResultados) {
+                    filaSinResultados.style.display = total === 0 ? '' : 'none';
+                }
+            }
+
+            function parseDateOnly(value) {
+                if (!value) {
+                    return null;
+                }
+
+                var parsed = new Date(value + 'T00:00:00');
+                return isNaN(parsed.getTime()) ? null : parsed;
+            }
+
+            function matchesQuickDate(rowDateValue, quickFilterValue) {
+                if (!quickFilterValue) {
+                    return true;
+                }
+
+                var rowDate = parseDateOnly(rowDateValue);
+                if (!rowDate) {
+                    return false;
+                }
+
+                var today = new Date();
+                today.setHours(0, 0, 0, 0);
+
+                if (quickFilterValue === 'hoy') {
+                    return rowDate.getTime() === today.getTime();
+                }
+
+                if (quickFilterValue === '7dias' || quickFilterValue === '30dias') {
+                    var days = quickFilterValue === '7dias' ? 7 : 30;
+                    var start = new Date(today.getTime());
+                    start.setDate(start.getDate() - (days - 1));
+                    return rowDate >= start && rowDate <= today;
+                }
+
+                return true;
+            }
+
+            function matchesRange(rowDateValue, desdeValue, hastaValue) {
+                if (!desdeValue && !hastaValue) {
+                    return true;
+                }
+
+                var rowDate = parseDateOnly(rowDateValue);
+                if (!rowDate) {
+                    return false;
+                }
+
+                var desde = parseDateOnly(desdeValue);
+                var hasta = parseDateOnly(hastaValue);
+
+                if (desde && rowDate < desde) {
+                    return false;
+                }
+
+                if (hasta && rowDate > hasta) {
+                    return false;
+                }
+
+                return true;
+            }
+
+            function applyFilters() {
+                var filas = tabla.querySelectorAll('tbody tr[data-document-id]');
+                var tipo = filtroTipo ? filtroTipo.value : '';
+                var operadora = filtroOperadora ? filtroOperadora.value : '';
+                var quickDate = filtroFechaRapida ? filtroFechaRapida.value : '';
+                var desde = filtroFechaDesde ? filtroFechaDesde.value : '';
+                var hasta = filtroFechaHasta ? filtroFechaHasta.value : '';
+
+                filas.forEach(function (fila) {
+                    var filaTipo = fila.getAttribute('data-tipo') || '';
+                    var filaOperadora = fila.getAttribute('data-operadora') || '';
+                    var filaFecha = fila.getAttribute('data-fecha') || '';
+
+                    var visible = (!tipo || filaTipo === tipo)
+                        && (!operadora || filaOperadora === operadora)
+                        && matchesQuickDate(filaFecha, quickDate)
+                        && matchesRange(filaFecha, desde, hasta);
+
+                    fila.style.display = visible ? '' : 'none';
+                });
+
+                recalculateMetrics();
+            }
+
+            function updateRow(doc) {
+                if (!doc || !doc.id) {
+                    return;
+                }
+
+                var fila = document.getElementById('doc-row-' + doc.id);
+                if (!fila) {
+                    return;
+                }
+
+                fila.setAttribute('data-estado', doc.estadoNormalizado || 'PENDIENTE');
+                fila.setAttribute('data-operadora', doc.operadora || '');
+                fila.setAttribute('data-fecha', doc.fechaCargaIso || '');
+                fila.querySelector('.js-doc-state').innerHTML = '<span class="' + escapeHtml(doc.badgeClass || 'badge bg-secondary') + '">' + escapeHtml(doc.estado || 'PENDIENTE') + '</span>';
+                fila.querySelector('.js-doc-observacion').innerHTML = doc.observacion ? escapeHtml(decodeHtmlEntities(doc.observacion)) : '<span class="documentos-muted">-</span>';
+                fila.querySelector('.js-doc-reviewer').innerHTML = doc.revisadoPor ? escapeHtml(doc.revisadoPor) : '<span class="documentos-muted">-</span>';
+                fila.querySelector('.js-doc-review-date').textContent = doc.fechaRevision || '-';
+                fila.querySelector('.js-doc-actions').innerHTML = buildActionsHtml(doc);
+            }
+
+            tabla.querySelectorAll('.js-doc-observacion').forEach(normalizeObservationCell);
+
+            async function postForm(url, payload) {
+                if (!tokenInput) {
+                    throw new Error('No se encontró el token antiforgery.');
+                }
+
+                var body = new URLSearchParams();
+                Object.keys(payload || {}).forEach(function (key) {
+                    var value = payload[key];
+                    if (value !== undefined && value !== null) {
+                        body.append(key, value);
+                    }
+                });
+                body.append('__RequestVerificationToken', tokenInput.value);
+
+                var response = await fetch(url, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8'
+                    },
+                    credentials: 'same-origin',
+                    body: body.toString()
+                });
+
+                var result;
+                try {
+                    result = await response.json();
+                } catch (error) {
+                    throw new Error('La respuesta del servidor no es válida.');
+                }
+
+                if (!response.ok || !result.success) {
+                    throw new Error(result && result.message ? result.message : 'No se pudo procesar la solicitud.');
+                }
+
+                return result;
+            }
+
+            document.addEventListener('click', async function (event) {
+                var aceptarBtn = event.target.closest('.btn-aceptar-documento');
+                if (aceptarBtn) {
+                    var idDocumentoAceptar = aceptarBtn.getAttribute('data-id');
+                    if (!idDocumentoAceptar) {
+                        showAlert('danger', 'No se encontró el documento seleccionado.');
+                        return;
+                    }
+
+                    if (!window.confirm('¿Desea aceptar este documento?')) {
+                        return;
+                    }
+
+                    try {
+                        aceptarBtn.disabled = true;
+                        var resultadoAceptar = await postForm(urls.aceptar, {
+                            idDocumento: idDocumentoAceptar,
+                            codigoSolicitud: solicitudId,
+                            codigoInspeccion: codigoInspeccion
+                        });
+                        updateRow(resultadoAceptar.documento);
+                        showAlert('success', resultadoAceptar.message || 'Documento aceptado correctamente.');
+                        applyFilters();
+                    } catch (error) {
+                        showAlert('danger', error.message || 'No se pudo aceptar el documento.');
+                    } finally {
+                        aceptarBtn.disabled = false;
+                    }
+                    return;
+                }
+
+                var devolverBtn = event.target.closest('.btn-devolver-documento');
+                if (devolverBtn) {
+                    documentoDevolverId.value = devolverBtn.getAttribute('data-id') || '';
+                    documentoDevolverTipo.textContent = devolverBtn.getAttribute('data-tipo') || '-';
+                    documentoDevolverNombre.textContent = devolverBtn.getAttribute('data-nombre') || '-';
+                    documentoDevolverOperadora.textContent = devolverBtn.getAttribute('data-operadora') || '-';
+                    motivoInput.value = '';
+                    showModal();
+                    return;
+                }
+
+                var reabrirBtn = event.target.closest('.btn-reabrir-documento');
+                if (reabrirBtn) {
+                    var idDocumentoReabrir = reabrirBtn.getAttribute('data-id');
+                    if (!idDocumentoReabrir) {
+                        showAlert('danger', 'No se encontró el documento seleccionado.');
+                        return;
+                    }
+
+                    if (!window.confirm('¿Desea reabrir este documento para una nueva revisión?')) {
+                        return;
+                    }
+
+                    try {
+                        reabrirBtn.disabled = true;
+                        var resultadoReabrir = await postForm(urls.reabrir, {
+                            idDocumento: idDocumentoReabrir,
+                            codigoSolicitud: solicitudId,
+                            codigoInspeccion: codigoInspeccion
+                        });
+                        updateRow(resultadoReabrir.documento);
+                        showAlert('success', resultadoReabrir.message || 'Documento reabierto correctamente.');
+                        applyFilters();
+                    } catch (error) {
+                        showAlert('danger', error.message || 'No se pudo reabrir el documento.');
+                    } finally {
+                        reabrirBtn.disabled = false;
+                    }
+                }
+            });
+
+            if (btnConfirmarDevolucion) {
+                btnConfirmarDevolucion.addEventListener('click', async function () {
+                    var idDocumento = documentoDevolverId.value;
+                    var motivo = (motivoInput.value || '').trim();
+
+                    if (!idDocumento) {
+                        showAlert('danger', 'No se encontró el documento seleccionado.');
+                        return;
+                    }
+
+                    if (motivo.length < 10) {
+                        showAlert('danger', 'Debe ingresar el motivo por el cual se devuelve el documento. Mínimo 10 caracteres.');
+                        motivoInput.focus();
+                        return;
+                    }
+
+                    try {
+                        btnConfirmarDevolucion.disabled = true;
+                        var resultadoDevolucion = await postForm(urls.devolver, {
+                            idDocumento: idDocumento,
+                            codigoSolicitud: solicitudId,
+                            codigoInspeccion: codigoInspeccion,
+                            motivoDevolucion: motivo
+                        });
+                        updateRow(resultadoDevolucion.documento);
+                        hideModal();
+                        showAlert('success', resultadoDevolucion.message || 'Documento devuelto correctamente.');
+                        applyFilters();
+                    } catch (error) {
+                        showAlert('danger', error.message || 'No se pudo devolver el documento.');
+                    } finally {
+                        btnConfirmarDevolucion.disabled = false;
+                    }
+                });
+            }
+
+            [filtroTipo, filtroOperadora, filtroFechaRapida, filtroFechaDesde, filtroFechaHasta].forEach(function (control) {
+                if (!control) {
+                    return;
+                }
+
+                control.addEventListener('change', applyFilters);
+                control.addEventListener('input', applyFilters);
+            });
+
+            applyFilters();
+        })();
+    </script>
+}

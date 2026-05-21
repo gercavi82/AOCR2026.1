@@ -25,22 +25,7 @@ namespace CapaPresentacion.Infrastructure
             }
 
             var value = session["UserId"] ?? session["IdUsuario"];
-            if (value != null && int.TryParse(value.ToString(), out userId) && userId > 0)
-            {
-                return true;
-            }
-
-            if (session["CodigoUsuario"] != null &&
-                int.TryParse(session["CodigoUsuario"].ToString(), out userId) &&
-                userId > 0)
-            {
-                session["UserId"] = userId;
-                session["IdUsuario"] = userId;
-                return true;
-            }
-
-            userId = 0;
-            return false;
+            return value != null && int.TryParse(value.ToString(), out userId) && userId > 0;
         }
 
         public bool TryGetCodigoUsuario(HttpSessionStateBase session, out int codigoUsuario)
@@ -51,21 +36,9 @@ namespace CapaPresentacion.Infrastructure
                 return false;
             }
 
-            if (session["CodigoUsuario"] != null &&
+            return session["CodigoUsuario"] != null &&
                 int.TryParse(session["CodigoUsuario"].ToString(), out codigoUsuario) &&
-                codigoUsuario > 0)
-            {
-                return true;
-            }
-
-            if (TryGetUserId(session, out codigoUsuario))
-            {
-                session["CodigoUsuario"] = codigoUsuario.ToString();
-                return true;
-            }
-
-            codigoUsuario = 0;
-            return false;
+                codigoUsuario > 0;
         }
 
         public string GetNombreUsuario(HttpSessionStateBase session, IPrincipal principal)

@@ -1,0 +1,91 @@
+@inherits System.Web.Mvc.WebViewPage<CapaPresentacion.Models.ViewModels.ReportesFinancierosViewModel>
+@using System.Web.Mvc.Html
+
+@{
+    var f = (Model != null && Model.Filtros != null)
+        ? Model.Filtros
+        : new CapaModelo.ReportesFinancieros.FiltroReporteDTO();
+    var routeValues = new
+    {
+        FechaDesde = f.FechaDesde.HasValue ? f.FechaDesde.Value.ToString("yyyy-MM-dd") : null,
+        FechaHasta = f.FechaHasta.HasValue ? f.FechaHasta.Value.ToString("yyyy-MM-dd") : null,
+        Estado = f.Estado,
+        UsuarioSolicitanteId = f.UsuarioSolicitanteId,
+        TipoTramiteId = f.TipoTramiteId,
+        RolGestion = f.RolGestion,
+        Unidad = f.Unidad
+    };
+    var routeValuesVistaPrevia = new
+    {
+        FechaDesde = f.FechaDesde.HasValue ? f.FechaDesde.Value.ToString("yyyy-MM-dd") : null,
+        FechaHasta = f.FechaHasta.HasValue ? f.FechaHasta.Value.ToString("yyyy-MM-dd") : null,
+        Estado = f.Estado,
+        UsuarioSolicitanteId = f.UsuarioSolicitanteId,
+        TipoTramiteId = f.TipoTramiteId,
+        RolGestion = f.RolGestion,
+        Unidad = f.Unidad,
+        vistaPrevia = true
+    };
+}
+
+<div class="card dashboard-card shadow-sm mb-3">
+    <div class="card-header bg-white">
+        <strong>Filtros avanzados</strong>
+    </div>
+    <div class="card-body">
+        <form method="get" action="@Url.Action("Index", "ReportesFinancieros")">
+            <div class="row g-2 align-items-end">
+                <div class="col-md-2">
+                    <label class="form-label">Fecha desde</label>
+                    <input type="date" name="FechaDesde" class="form-control"
+                           value="@(f.FechaDesde.HasValue ? f.FechaDesde.Value.ToString("yyyy-MM-dd") : "")" />
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">Fecha hasta</label>
+                    <input type="date" name="FechaHasta" class="form-control"
+                           value="@(f.FechaHasta.HasValue ? f.FechaHasta.Value.ToString("yyyy-MM-dd") : "")" />
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">Estado</label>
+                    @Html.DropDownList("Estado", Model.EstadosDisponibles, new { @class = "form-select" })
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">Solicitante</label>
+                    @Html.DropDownList("UsuarioSolicitanteId", Model.UsuariosDisponibles, new { @class = "form-select" })
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">Tipo tramite</label>
+                    @Html.DropDownList("TipoTramiteId", Model.TramitesDisponibles, new { @class = "form-select" })
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">Rol gestion</label>
+                    @Html.DropDownList("RolGestion", Model.RolesGestionDisponibles, new { @class = "form-select" })
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Unidad</label>
+                    @Html.DropDownList("Unidad", Model.UnidadesDisponibles, new { @class = "form-select" })
+                </div>
+                <div class="col-md-9 text-end">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-filter me-1"></i> Aplicar
+                    </button>
+                    <a class="btn btn-outline-secondary" href="@Url.Action("Index", "ReportesFinancieros")">
+                        <i class="fas fa-eraser me-1"></i> Limpiar
+                    </a>
+                    <a class="btn btn-success" href="@Url.Action("ExportarExcel", "ReportesFinancieros", routeValues)">
+                        <i class="fas fa-file-excel me-1"></i> Exportar Excel
+                    </a>
+                    <a class="btn btn-outline-danger" target="_blank" href="@Url.Action("ExportarPdf", "ReportesFinancieros", routeValuesVistaPrevia)">
+                        <i class="fas fa-eye me-1"></i> Vista previa PDF
+                    </a>
+                    <a class="btn btn-danger" href="@Url.Action("ExportarPdf", "ReportesFinancieros", routeValues)">
+                        <i class="fas fa-file-pdf me-1"></i> Descargar PDF
+                    </a>
+                    <a class="btn btn-dark" target="_blank" href="@Url.Action("Imprimir", "ReportesFinancieros", routeValues)">
+                        <i class="fas fa-print me-1"></i> Imprimir
+                    </a>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
