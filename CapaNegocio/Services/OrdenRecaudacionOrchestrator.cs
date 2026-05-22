@@ -27,6 +27,7 @@ namespace CapaNegocio.Services
         private readonly DataEmailService _emailService;
         private readonly IFileStorageService _fileService;
         private readonly OrdenRecaudacionCorreoService _ordenCorreoService;
+        private readonly OrdenRecaudacionService _ordenRecaudacionService;
 
         #endregion
 
@@ -55,6 +56,7 @@ namespace CapaNegocio.Services
             _emailService = emailService ?? new NoOpDataEmailService();
             _fileService = fileService;
             _ordenCorreoService = new OrdenRecaudacionCorreoService();
+            _ordenRecaudacionService = new OrdenRecaudacionService();
         }
 
         #endregion
@@ -668,11 +670,7 @@ namespace CapaNegocio.Services
 
         private async Task<string> GenerarNumeroOrdenAsync()
         {
-            var fecha = DateTime.Now;
-            // Generar número único con timestamp para evitar duplicados
-            var timestamp = fecha.ToString("yyyyMMddHHmmss");
-            var consecutivo = await _ordenRepository.ObtenerConsecutivoDiarioAsync(fecha);
-            return string.Format("OR-{0}-{1}", timestamp, consecutivo + 1);
+            return await Task.FromResult(_ordenRecaudacionService.GenerarNumeroOrdenInstitucional(DateTime.Now.Year));
         }
 
         private async Task<string> GuardarArchivoComprobanteAsync(int ordenId, string nombreArchivo, byte[] contenido)

@@ -71,6 +71,7 @@ namespace CapaNegocio.Services
                             "Coordinador",
                             RolesAOCR.JEFATURA_TECNICA,
                             RolesAOCR.ADMINISTRADOR);
+                        AgregarCorreosInstitucionales(destinatarios, CorreoInstitucionalService.CoordinadorAocr);
                         break;
 
                     case GrupoCoordinacionLegal:
@@ -206,6 +207,32 @@ namespace CapaNegocio.Services
             catch (Exception ex)
             {
                 _logger.LogWarning("NotificacionDestinatarioPolicyService.AgregarInspectorRt: " + ex.Message);
+            }
+        }
+
+        private void AgregarCorreosInstitucionales(IDictionary<string, NotificacionDestinatario> destinatarios, string codigoArea)
+        {
+            if (string.IsNullOrWhiteSpace(codigoArea))
+            {
+                return;
+            }
+
+            try
+            {
+                var destinatariosInstitucionales = new CorreoInstitucionalService().ObtenerDestinatariosPorArea(codigoArea);
+                if (destinatariosInstitucionales == null)
+                {
+                    return;
+                }
+
+                foreach (var correo in destinatariosInstitucionales.ObtenerTodosLosCorreos())
+                {
+                    AgregarCorreo(destinatarios, correo, destinatariosInstitucionales.NombreArea);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning("NotificacionDestinatarioPolicyService.AgregarCorreosInstitucionales(" + codigoArea + "): " + ex.Message);
             }
         }
 

@@ -75,6 +75,7 @@
         }
     };
     var usuarioActualId = (int)(ViewBag.UsuarioActualId ?? 0);
+    var esAdministradorVisualizacion = User.IsInRole("Administrador");
     var esPropietario = usuarioActualId > 0 && Model.CodigoUsuario == usuarioActualId;
     var puedeAbrirInspeccionVinculada = inspeccionVinculada != null &&
         (esPropietario
@@ -82,14 +83,17 @@
          || User.IsInRole("Coordinador")
          || User.IsInRole("CoordinadorInspecciones")
          || User.IsInRole("Administrador"));
-    var urlVerDocumentacionSolicitud = Url.Action("Lista", "Documento", new { solicitudId = Model.CodigoSolicitud, modo = "ver" });
+    var urlDetalleSolicitudBase = Url.Action("Detalle", "SolicitudAOCR", new { id = Model.CodigoSolicitud });
+    var urlVerDocumentacionSolicitud = string.IsNullOrWhiteSpace(urlDetalleSolicitudBase)
+        ? string.Empty
+        : urlDetalleSolicitudBase + "#documentos-rt-historial";
     var mostrarAccesoRevisionDocumental = User.IsInRole("Inspector") || User.IsInRole("Administrador");
     var puedeAbrirRevisionDocumentalDirecta =
         mostrarAccesoRevisionDocumental &&
         !procesoCerradoOperativamente &&
         (puedeInspectorDocumental || User.IsInRole("Administrador"));
-    var urlRevisionDocumentalSolicitud = puedeAbrirRevisionDocumentalDirecta
-        ? Url.Action("Detalle", "RevisionDocumental", new { id = Model.CodigoSolicitud })
+    var urlRevisionDocumentalSolicitud = puedeAbrirRevisionDocumentalDirecta && !string.IsNullOrWhiteSpace(urlDetalleSolicitudBase)
+        ? urlDetalleSolicitudBase + "#revision-documental"
         : string.Empty;
     var tituloBloqueoRevisionDocumental = procesoCerradoOperativamente
         ? "La revisión documental ya no está disponible porque el expediente cerró operativamente."
@@ -108,19 +112,13 @@
     Func<string, string, string> resolverInspectorDetalle = (nombre, identificador) =>
     {
         var nombreLimpio = string.IsNullOrWhiteSpace(nombre) ? string.Empty : nombre.Trim();
-        var identificadorLimpio = string.IsNullOrWhiteSpace(identificador) ? string.Empty : identificador.Trim();
 
         if (!string.IsNullOrWhiteSpace(nombreLimpio))
         {
-            return string.IsNullOrWhiteSpace(identificadorLimpio)
-                || string.Equals(nombreLimpio, identificadorLimpio, StringComparison.OrdinalIgnoreCase)
-                ? nombreLimpio
-                : nombreLimpio + " - " + identificadorLimpio;
+            return nombreLimpio;
         }
 
-        return !string.IsNullOrWhiteSpace(identificadorLimpio)
-            ? identificadorLimpio
-            : "Sin asignar";
+        return "Sin asignar";
     };
     var inspectorPrincipalNombre = !string.IsNullOrWhiteSpace(Model.TecnicoResponsableNombre)
         ? Model.TecnicoResponsableNombre
@@ -534,6 +532,149 @@
         border-left-color: #166534;
     }
 
+    .aocr-linked-inspection-card {
+        border-left-width: 6px;
+        background: linear-gradient(135deg, #fffaf0 0%, #ffffff 55%, #f6f9ff 100%);
+        box-shadow: 0 18px 36px -28px rgba(30, 90, 168, 0.45);
+    }
+
+    .aocr-linked-inspection-layout {
+        display: grid;
+        gap: 1.5rem;
+        grid-template-columns: minmax(0, 1.65fr) minmax(260px, 0.95fr);
+        align-items: stretch;
+    }
+
+    .aocr-linked-inspection-header {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 0.85rem;
+        margin-bottom: 0.9rem;
+    }
+
+    .aocr-linked-inspection-kicker {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.45rem;
+        padding: 0.35rem 0.75rem;
+        border-radius: 999px;
+        background: rgba(217, 119, 6, 0.12);
+        color: #9a3412;
+        font-size: 0.78rem;
+        font-weight: 700;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+    }
+
+    .aocr-linked-inspection-title {
+        display: flex;
+        align-items: center;
+        gap: 0.85rem;
+        color: #153e75;
+    }
+
+    .aocr-linked-inspection-icon {
+        width: 3rem;
+        height: 3rem;
+        border-radius: 1rem;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        background: linear-gradient(135deg, #eff6ff 0%, #e0ecff 100%);
+        color: #2563eb;
+        font-size: 1.15rem;
+        box-shadow: inset 0 0 0 1px rgba(37, 99, 235, 0.08);
+    }
+
+    .aocr-linked-inspection-status {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        padding: 0.5rem 0.95rem;
+        border-radius: 999px;
+        background: rgba(21, 94, 117, 0.1);
+        color: #155e75;
+        font-size: 0.82rem;
+        font-weight: 800;
+        text-transform: uppercase;
+        letter-spacing: 0.03em;
+    }
+
+    .aocr-linked-inspection-copy {
+        color: #4a5d75;
+        line-height: 1.7;
+        margin-bottom: 1rem;
+    }
+
+    .aocr-linked-inspection-summary {
+        display: grid;
+        gap: 0.85rem;
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    }
+
+    .aocr-linked-inspection-meta {
+        border: 1px solid rgba(15, 23, 42, 0.08);
+        border-radius: 1rem;
+        background: rgba(255, 255, 255, 0.88);
+        padding: 0.95rem 1rem;
+    }
+
+    .aocr-linked-inspection-meta-label {
+        display: block;
+        color: #6b7280;
+        font-size: 0.76rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        margin-bottom: 0.35rem;
+    }
+
+    .aocr-linked-inspection-meta-value {
+        color: #153e75;
+        font-weight: 700;
+        line-height: 1.45;
+    }
+
+    .aocr-linked-inspection-note {
+        margin-top: 1rem;
+        padding: 0.9rem 1rem;
+        border-radius: 0.95rem;
+        background: rgba(30, 90, 168, 0.06);
+        color: #234a83;
+        font-size: 0.92rem;
+        line-height: 1.6;
+    }
+
+    .aocr-linked-inspection-actions {
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        gap: 1rem;
+        border: 1px solid rgba(37, 99, 235, 0.14);
+        border-radius: 1.15rem;
+        background: rgba(255, 255, 255, 0.94);
+        padding: 1.2rem;
+    }
+
+    .aocr-linked-inspection-actions-copy {
+        color: #4a5d75;
+        line-height: 1.65;
+        margin: 0;
+    }
+
+    .aocr-linked-inspection-actions .btn {
+        min-height: 3rem;
+        font-weight: 700;
+        justify-content: center;
+    }
+
+    @@media (max-width: 991.98px) {
+        .aocr-linked-inspection-layout {
+            grid-template-columns: 1fr;
+        }
+    }
+
     .aocr-form-actions {
         display: flex;
         flex-wrap: wrap;
@@ -546,6 +687,317 @@
         font-size: 0.82rem;
         text-transform: uppercase;
         letter-spacing: 0.03em;
+    }
+
+    .aocr-responsive-table td,
+    .aocr-responsive-table th {
+        vertical-align: top;
+    }
+
+    .aocr-responsive-table {
+        width: 100%;
+        table-layout: fixed;
+    }
+
+    .aocr-responsive-table td {
+        overflow-wrap: anywhere;
+        word-break: break-word;
+    }
+
+    .aocr-responsive-table td[data-label="Acción"] {
+        white-space: nowrap;
+    }
+
+    .aocr-responsive-table td[data-label="Acción"] .btn {
+        margin-right: 0.35rem;
+    }
+
+    .aocr-responsive-table td.aocr-cell-empty {
+        display: none;
+    }
+
+    .aocr-rt-summary-badges {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.35rem;
+        margin-bottom: 0.2rem;
+    }
+
+    .aocr-rt-summary-badges .badge {
+        font-size: 0.72rem;
+    }
+
+    .aocr-rt-summary-meta {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.35rem 0.75rem;
+        color: #52657d;
+        font-size: 0.84rem;
+        line-height: 1.35;
+    }
+
+    .aocr-rt-summary-note {
+        margin-top: 0.35rem;
+        color: #6a7d94;
+        font-size: 0.8rem;
+        line-height: 1.35;
+    }
+
+    @@media (max-width: 1399.98px) and (min-width: 768px) {
+        .aocr-responsive-table thead {
+            display: none;
+        }
+
+        .aocr-responsive-table,
+        .aocr-responsive-table tbody,
+        .aocr-responsive-table td {
+            display: block;
+            width: 100%;
+        }
+
+        .aocr-responsive-table {
+            table-layout: auto;
+        }
+
+        .aocr-responsive-table tr {
+            display: grid;
+            grid-template-columns: minmax(0, 1.55fr) minmax(240px, 1fr) auto;
+            gap: 0.75rem;
+            padding: 1rem;
+            border-bottom: 1px solid #e4edf7;
+            background: #fff;
+        }
+
+        .aocr-responsive-table tr:last-child {
+            border-bottom: 0;
+        }
+
+        .aocr-responsive-table td {
+            min-width: 0;
+            border: 1px solid #eef3f9;
+            border-radius: 12px;
+            padding: 0.7rem 0.8rem;
+            background: #f8fbff;
+            white-space: normal;
+        }
+
+        .aocr-responsive-table td::before {
+            content: attr(data-label);
+            display: block;
+            margin-bottom: 0.25rem;
+            color: #5f738c;
+            font-size: 0.74rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+        }
+
+        .aocr-responsive-table td:nth-child(1) {
+            grid-column: 1;
+            grid-row: 1;
+        }
+
+        .aocr-responsive-table td:nth-child(2) {
+            grid-column: 1;
+            grid-row: 2;
+        }
+
+        .aocr-responsive-table td:nth-child(3) {
+            grid-column: 2;
+            grid-row: 1;
+        }
+
+        .aocr-responsive-table td:nth-child(4) {
+            grid-column: 2;
+            grid-row: 2;
+        }
+
+        .aocr-responsive-table td:nth-child(5) {
+            grid-column: 1;
+            grid-row: 3;
+        }
+
+        .aocr-responsive-table td:nth-child(6) {
+            grid-column: 1 / span 2;
+            grid-row: 4;
+        }
+
+        .aocr-responsive-table td:nth-child(7) {
+            grid-column: 2;
+            grid-row: 3;
+        }
+
+        .aocr-responsive-table td:nth-child(8) {
+            grid-column: 1 / span 3;
+            grid-row: 5;
+        }
+
+        .aocr-responsive-table td[data-label="Acción"] {
+            grid-column: 3;
+            grid-row: 1;
+            display: flex;
+            flex-wrap: wrap;
+            align-content: flex-start;
+            align-self: start;
+            justify-content: flex-end;
+            gap: 0.35rem;
+            min-width: 88px;
+            padding: 0.1rem 0 0 0;
+            background: transparent;
+            border-color: transparent;
+            box-shadow: none;
+        }
+
+        .aocr-responsive-table td[data-label="Acción"]::before {
+            display: none;
+        }
+
+        .aocr-responsive-table td[data-label="Acción"] .btn {
+            margin-right: 0;
+            margin-bottom: 0;
+        }
+
+        .aocr-rt-latest-table tr {
+            grid-template-columns: minmax(180px, 0.95fr) minmax(240px, 1.2fr) minmax(260px, 1fr) auto;
+            gap: 0.75rem;
+            padding: 0.55rem 0.9rem;
+            align-items: center;
+        }
+
+        .aocr-rt-latest-table td {
+            border: 0;
+            border-radius: 0;
+            padding: 0.15rem 0;
+            background: transparent;
+            box-shadow: none;
+        }
+
+        .aocr-rt-latest-table td::before {
+            display: none;
+        }
+
+        .aocr-rt-latest-table td:nth-child(1) {
+            grid-column: 1;
+            grid-row: 1;
+        }
+
+        .aocr-rt-latest-table td:nth-child(2) {
+            grid-column: 2;
+            grid-row: 1;
+        }
+
+        .aocr-rt-latest-table td:nth-child(3) {
+            grid-column: 3;
+            grid-row: 1;
+        }
+
+        .aocr-rt-latest-table td[data-label="Acción"] {
+            grid-column: 4;
+            grid-row: 1;
+            align-self: center;
+            padding-top: 0;
+            justify-content: flex-start;
+        }
+
+        .aocr-rt-latest-table td[data-label="Tipo documental"] strong,
+        .aocr-rt-latest-table td[data-label="Archivo"] {
+            display: block;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .aocr-rt-latest-table td[data-label="Archivo"] {
+            color: #33475b;
+        }
+
+        .aocr-rt-latest-table .aocr-rt-summary-badges,
+        .aocr-rt-latest-table .aocr-rt-summary-meta {
+            display: inline-flex;
+            align-items: center;
+            vertical-align: middle;
+        }
+
+        .aocr-rt-latest-table .aocr-rt-summary-badges {
+            margin: 0 0.5rem 0 0;
+        }
+
+        .aocr-rt-latest-table .aocr-rt-summary-meta {
+            gap: 0.25rem 0.65rem;
+            font-size: 0.8rem;
+        }
+
+        .aocr-rt-latest-table .aocr-rt-summary-note {
+            display: inline;
+            margin-top: 0;
+            margin-left: 0.5rem;
+            font-size: 0.78rem;
+        }
+
+        .aocr-rt-latest-table .aocr-rt-summary-note strong,
+        .aocr-rt-latest-table .aocr-rt-summary-meta strong {
+            font-weight: 600;
+        }
+    }
+
+    @@media (max-width: 767.98px) {
+        .aocr-rt-summary-meta {
+            flex-direction: column;
+            gap: 0.2rem;
+        }
+    }
+
+    @@media (max-width: 767.98px) {
+        .aocr-responsive-table thead {
+            display: none;
+        }
+
+        .aocr-responsive-table,
+        .aocr-responsive-table tbody,
+        .aocr-responsive-table tr,
+        .aocr-responsive-table td {
+            display: block;
+            width: 100%;
+        }
+
+        .aocr-responsive-table {
+            table-layout: auto;
+        }
+
+        .aocr-responsive-table tr {
+            padding: 0.95rem 1rem;
+            border-bottom: 1px solid #e4edf7;
+        }
+
+        .aocr-responsive-table tr:last-child {
+            border-bottom: 0;
+        }
+
+        .aocr-responsive-table td {
+            border: 0;
+            padding: 0.3rem 0;
+            white-space: normal;
+            background: transparent;
+        }
+
+        .aocr-responsive-table td::before {
+            content: attr(data-label);
+            display: block;
+            margin-bottom: 0.15rem;
+            color: #5f738c;
+            font-size: 0.74rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+        }
+
+        .aocr-responsive-table td[data-label="Acción"] {
+            padding-top: 0.55rem;
+        }
+
+        .aocr-responsive-table td[data-label="Acción"] .btn {
+            margin-bottom: 0.35rem;
+        }
     }
 
 </style>
@@ -735,6 +1187,99 @@
         </div>
     }
 
+    @if (inspeccionVinculada != null
+        && (estadoActual == EstadoSolicitud.DocumentacionCompleta
+            || estadoActual == EstadoSolicitud.AceptacionDocumental
+            || estadoActual == EstadoSolicitud.RequiereInspeccion
+            || estadoActual == EstadoSolicitud.EnInspeccion
+            || estadoActual == EstadoSolicitud.PendienteAsignacionRT))
+    {
+        <div class="card aocr-detail-card aocr-review-card warning aocr-linked-inspection-card mb-4">
+            <div class="card-body p-4 p-xl-4">
+                <div class="aocr-linked-inspection-layout">
+                    <div>
+                        <div class="aocr-linked-inspection-header">
+                            <span class="aocr-linked-inspection-kicker">
+                                <i class="fas fa-route"></i>
+                                Continuar desde inspeccion
+                            </span>
+                            <span class="aocr-linked-inspection-status">@textoEstadoInspeccion(estadoInspeccionVinculada)</span>
+                        </div>
+
+                        <div class="aocr-linked-inspection-title mb-3">
+                            <span class="aocr-linked-inspection-icon">
+                                <i class="fas fa-clipboard-check"></i>
+                            </span>
+                            <div>
+                                <div class="aocr-section-title mb-1">
+                                    <span>Solicitud de inspeccion vinculada</span>
+                                </div>
+                                <div class="text-secondary small">El expediente AOCR ya migró a su bandeja operativa de inspección.</div>
+                            </div>
+                        </div>
+
+                        <p class="aocr-linked-inspection-copy">
+                            Este trámite ya tiene una inspección asociada. La revisión documental, observaciones, pago, LV/EAE e inicio operativo deben gestionarse desde el módulo de inspección para mantener la trazabilidad completa del proceso.
+                        </p>
+
+                        <div class="aocr-linked-inspection-summary">
+                            <div class="aocr-linked-inspection-meta">
+                                <span class="aocr-linked-inspection-meta-label">Inspeccion vinculada</span>
+                                <div class="aocr-linked-inspection-meta-value">#@inspeccionVinculada.CodigoInspeccion</div>
+                            </div>
+                            <div class="aocr-linked-inspection-meta">
+                                <span class="aocr-linked-inspection-meta-label">Inspector principal</span>
+                                <div class="aocr-linked-inspection-meta-value">@inspectorAsignadoDetalle</div>
+                            </div>
+                            <div class="aocr-linked-inspection-meta">
+                                <span class="aocr-linked-inspection-meta-label">Inspector de apoyo</span>
+                                <div class="aocr-linked-inspection-meta-value">@inspectorApoyoDetalle</div>
+                            </div>
+                        </div>
+
+                        <div class="aocr-linked-inspection-note">
+                            @if (User.IsInRole("Inspector"))
+                            {
+                                <strong>Accion requerida:</strong><span> continúe su revisión técnica desde la inspección vinculada para ver las opciones operativas y los documentos del expediente.</span>
+                            }
+                            else
+                            {
+                                <strong>Referencia operativa:</strong><span> a partir de este punto el seguimiento principal del trámite continúa dentro del módulo de inspección.</span>
+                            }
+                        </div>
+                    </div>
+
+                    <div class="aocr-linked-inspection-actions">
+                        <div>
+                            <div class="aocr-section-title mb-2">
+                                <i class="fas fa-arrow-right"></i>
+                                <span>Siguiente paso</span>
+                            </div>
+                            <p class="aocr-linked-inspection-actions-copy">
+                                Abra la inspección vinculada para continuar con la gestión del expediente y usar las acciones habilitadas para su rol actual.
+                            </p>
+                        </div>
+
+                        @if (puedeAbrirInspeccionVinculada)
+                        {
+                            <a href="@urlInspeccionVinculada" class="btn btn-primary aocr-action-btn w-100">
+                                <i class="fas fa-external-link-alt"></i>
+                                Abrir inspeccion vinculada
+                            </a>
+                        }
+                        else
+                        {
+                            <span class="btn btn-outline-secondary aocr-action-btn disabled w-100" aria-disabled="true">
+                                <i class="fas fa-lock"></i>
+                                Inspeccion vinculada disponible segun permisos
+                            </span>
+                        }
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+
     @if (puedeSubsanar)
     {
         <div class="card border-info mb-4" style="border-left: 5px solid #17a2b8 !important;">
@@ -907,7 +1452,7 @@
             return decisionActual == "DEVUELTO" || decisionActual == "OBSERVADO";
         });
 
-        <div class="card aocr-detail-card aocr-review-card success mb-4">
+        <div id="revision-documental" class="card aocr-detail-card aocr-review-card success mb-4">
             <div class="card-body p-4">
                 <div class="aocr-section-title mb-3">
                     <i class="fas fa-clipboard-check"></i>
@@ -1162,29 +1707,6 @@
                         PDF directo
                     </a>
                 </div>
-            </div>
-        </div>
-    }
-
-    @if (inspeccionVinculada != null && (estadoActual == EstadoSolicitud.RequiereInspeccion || estadoActual == EstadoSolicitud.EnInspeccion || estadoActual == EstadoSolicitud.PendienteAsignacionRT))
-    {
-        <div class="card aocr-detail-card aocr-review-card warning mb-4">
-            <div class="card-body p-4 d-flex flex-column flex-lg-row justify-content-between align-items-lg-center gap-3">
-                <div>
-                    <div class="aocr-section-title mb-2">
-                        <i class="fas fa-clipboard-check"></i>
-                        <span>Solicitud de inspeccion vinculada</span>
-                    </div>
-                    <p class="text-muted mb-2">Este trámite ya tiene una inspección asociada. La revisión, observación, pago e inicio operativo deben continuar dentro del módulo de inspección para mantener la trazabilidad del flujo AOCR.</p>
-                    <div class="small text-secondary">Inspeccion #@inspeccionVinculada.CodigoInspeccion - Estado actual: <strong>@textoEstadoInspeccion(estadoInspeccionVinculada)</strong></div>
-                </div>
-                @if (puedeAbrirInspeccionVinculada)
-                {
-                    <a href="@urlInspeccionVinculada" class="btn btn-outline-primary aocr-action-btn flex-shrink-0">
-                        <i class="fas fa-external-link-alt"></i>
-                        Abrir inspeccion vinculada
-                    </a>
-                }
             </div>
         </div>
     }
@@ -1455,91 +1977,96 @@
 
     @if (documentosHistorialCompleto.Count > 0)
     {
-        var grupos = documentosHistorialCompleto
+        var documentosRtPorTipo = documentosHistorialCompleto
             .GroupBy(d => (d.TipoDocumento ?? "Documento").Trim(), StringComparer.OrdinalIgnoreCase)
-            .OrderBy(g => g.Key, StringComparer.OrdinalIgnoreCase)
+            .Select(g => new
+            {
+                TipoDocumental = g.Key,
+                Documento = g.OrderByDescending(d => d.Version ?? 0)
+                    .ThenByDescending(d => d.FechaCarga ?? DateTime.MinValue)
+                    .ThenByDescending(d => d.CodigoDocumento)
+                    .First()
+            })
+            .OrderBy(x => x.TipoDocumental, StringComparer.OrdinalIgnoreCase)
             .ToList();
 
-        <div class="card aocr-detail-card mt-4">
-            <div class="card-header bg-white border-0 pt-4 px-4">
-                <div class="aocr-section-title mb-0">
-                    <i class="fas fa-layer-group"></i>
-                    <span>Documentos del RT — Historial de versiones</span>
+        <div id="documentos-rt-historial" class="card aocr-detail-card mt-4">
+            <div class="card-header bg-white border-0 pt-4 px-4 pb-3">
+                <div class="d-flex flex-column flex-lg-row justify-content-between align-items-lg-center gap-2">
+                    <div class="aocr-section-title mb-0">
+                        <i class="fas fa-layer-group"></i>
+                        <span>Documentos RT</span>
+                    </div>
+                    <span class="badge bg-light text-dark border align-self-start align-self-lg-center">@documentosRtPorTipo.Count tipo(s)</span>
                 </div>
-                <p class="text-muted small mb-0 mt-2">
-                    Se listan todos los documentos cargados por el Representante Técnico, incluyendo versiones iniciales y cargas posteriores realizadas como respuesta a observaciones.
-                </p>
             </div>
             <div class="card-body p-0">
                 <div class="table-responsive">
-                    <table class="table table-sm mb-0">
+                    <table class="table table-sm mb-0 aocr-responsive-table aocr-rt-latest-table">
                         <thead class="table-light">
                             <tr>
                                 <th>Tipo documental</th>
-                                <th>Versión</th>
                                 <th>Archivo</th>
-                                <th>Origen</th>
-                                <th>Fecha carga</th>
-                                <th>Cargado por</th>
-                                <th>Estado</th>
-                                <th>Observación</th>
+                                <th>Resumen</th>
                                 <th>Acción</th>
                             </tr>
                         </thead>
                         <tbody>
-                            @foreach (var grupo in grupos)
+                            @foreach (var item in documentosRtPorTipo)
                             {
-                                var items = grupo
-                                    .OrderByDescending(d => d.Version ?? 0)
-                                    .ThenByDescending(d => d.FechaCarga ?? DateTime.MinValue)
-                                    .ThenByDescending(d => d.CodigoDocumento)
-                                    .ToList();
-                                var idx = 0;
-                                foreach (var doc in items)
-                                {
-                                    var esVigente = (idx == 0);
-                                    var version = doc.Version ?? 1;
-                                    var esSubsanacion = version > 1 || !esVigente;
-                                    var etiquetaOrigen = esSubsanacion
-                                        ? "<span class=\"badge bg-warning text-dark\">Subsanación</span>"
-                                        : "<span class=\"badge bg-primary\">Inicial</span>";
-                                    var etiquetaVigencia = esVigente
-                                        ? "<span class=\"badge bg-success ms-1\">Vigente</span>"
-                                        : "<span class=\"badge bg-secondary ms-1\">Histórica</span>";
-                                    var rowClass = esVigente ? "table-light" : "";
-                                    <tr class="@rowClass">
-                                        <td><strong>@Html.Encode(grupo.Key)</strong></td>
-                                        <td>v@(version) @Html.Raw(etiquetaVigencia)</td>
-                                        <td>@Html.Encode(doc.NombreArchivo)</td>
-                                        <td>@Html.Raw(etiquetaOrigen)</td>
-                                        <td>@(doc.FechaCarga.HasValue ? doc.FechaCarga.Value.ToString("yyyy-MM-dd HH:mm") : "—")</td>
-                                        <td>@Html.Encode(doc.UsuarioRegistro ?? "—")</td>
-                                        <td><span class="badge bg-light text-dark border">@Html.Encode(doc.Estado ?? "—")</span></td>
-                                        <td class="text-muted small" style="max-width:220px;">@Html.Encode(normalizeVisibleText(doc.Observaciones ?? string.Empty))</td>
-                                        <td>
-                                            @if (!string.IsNullOrWhiteSpace(doc.RutaGuardada))
+                                var doc = item.Documento;
+                                var version = doc.Version ?? 1;
+                                var esSubsanacion = version > 1;
+                                var etiquetaOrigen = esSubsanacion
+                                    ? "<span class=\"badge bg-warning text-dark\">Subsanación</span>"
+                                    : "<span class=\"badge bg-primary\">Inicial</span>";
+                                var vistaPreviaUrl = Url.Action("Descargar", "Documento", new { id = doc.CodigoDocumento, vistaPrevia = true });
+                                var descargaUrl = Url.Action("Descargar", "Documento", new { id = doc.CodigoDocumento });
+                                var esPdfSolicitud = string.Equals(System.IO.Path.GetExtension(doc.NombreArchivo ?? string.Empty), ".pdf", System.StringComparison.OrdinalIgnoreCase);
+                                var observacionTexto = normalizeVisibleText(doc.Observaciones ?? string.Empty);
+                                var fechaCargaTexto = doc.FechaCarga.HasValue ? doc.FechaCarga.Value.ToString("yyyy-MM-dd HH:mm") : "—";
+                                var usuarioRegistroTexto = normalizeVisibleText(doc.UsuarioRegistro ?? "—");
+                                var estadoTexto = normalizeVisibleText(doc.Estado ?? "—");
+
+                                <tr class="table-light">
+                                    <td data-label="Tipo documental"><strong>@Html.Encode(item.TipoDocumental)</strong></td>
+                                    <td data-label="Archivo">@Html.Encode(doc.NombreArchivo)</td>
+                                    <td data-label="Resumen">
+                                        <div class="aocr-rt-summary-badges">
+                                            <span class="badge bg-success">v@(version)</span>
+                                            @Html.Raw(etiquetaOrigen)
+                                            <span class="badge bg-light text-dark border">@Html.Encode(estadoTexto)</span>
+                                        </div>
+                                        <div class="aocr-rt-summary-meta">
+                                            <span><strong>Fecha:</strong> @fechaCargaTexto</span>
+                                            <span><strong>Por:</strong> @Html.Encode(usuarioRegistroTexto)</span>
+                                        </div>
+                                        @if (!string.IsNullOrWhiteSpace(observacionTexto))
+                                        {
+                                            <div class="aocr-rt-summary-note"><strong>Obs.:</strong> @Html.Encode(observacionTexto)</div>
+                                        }
+                                    </td>
+                                    <td data-label="Acción">
+                                        @if (!string.IsNullOrWhiteSpace(doc.RutaGuardada))
+                                        {
+                                            if (esPdfSolicitud)
                                             {
-                                                var esPdfSolicitud = string.Equals(System.IO.Path.GetExtension(doc.NombreArchivo ?? string.Empty), ".pdf", System.StringComparison.OrdinalIgnoreCase);
-                                                if (esPdfSolicitud)
-                                                {
-                                                    <a href="@Url.Action("Descargar", "Documento", new { id = doc.CodigoDocumento, vistaPrevia = true })"
-                                                       class="btn btn-sm btn-outline-secondary aocr-pdf-open"
-                                                       data-pdf-url="@Url.Action("Descargar", "Documento", new { id = doc.CodigoDocumento, vistaPrevia = true })"
-                                                       data-download-url="@Url.Action("Descargar", "Documento", new { id = doc.CodigoDocumento })"
-                                                       data-title="@doc.NombreArchivo"
-                                                       data-status="@doc.Estado"
-                                                       title="Vista previa">
-                                                        <i class="fas fa-eye"></i>
-                                                    </a>
-                                                }
-                                                <a href="@Url.Action("Descargar", "Documento", new { id = doc.CodigoDocumento })" class="btn btn-sm btn-outline-primary" title="Descargar">
-                                                    <i class="fas fa-download"></i>
+                                                <a href="@vistaPreviaUrl"
+                                                   class="btn btn-sm btn-outline-secondary aocr-pdf-open"
+                                                   data-pdf-url="@vistaPreviaUrl"
+                                                   data-download-url="@descargaUrl"
+                                                   data-title="@doc.NombreArchivo"
+                                                   data-status="@doc.Estado"
+                                                   title="Vista previa">
+                                                    <i class="fas fa-eye"></i>
                                                 </a>
                                             }
-                                        </td>
-                                    </tr>
-                                    idx++;
-                                }
+                                            <a href="@descargaUrl" class="btn btn-sm btn-outline-primary" title="Descargar">
+                                                <i class="fas fa-download"></i>
+                                            </a>
+                                        }
+                                    </td>
+                                </tr>
                             }
                         </tbody>
                     </table>
@@ -1562,7 +2089,7 @@
             </div>
             <div class="card-body p-0">
                 <div class="table-responsive">
-                    <table class="table table-sm mb-0">
+                    <table class="table table-sm mb-0 aocr-responsive-table">
                         <thead class="table-light">
                             <tr>
                                 <th>Fecha carga</th>
@@ -1601,7 +2128,7 @@
         </div>
     }
 
-    @if (trazabilidadCompleta.Count > 0)
+    @if (esAdministradorVisualizacion && trazabilidadCompleta.Count > 0)
     {
         <div class="card aocr-detail-card mt-4">
             <div class="card-header bg-white border-0 pt-4 px-4">
@@ -1654,7 +2181,7 @@
         </div>
     }
 
-    @if (ViewBag.HistorialEstados != null)
+    @if (esAdministradorVisualizacion && ViewBag.HistorialEstados != null)
     {
         var historial = (List<HistorialEstado>)ViewBag.HistorialEstados;
         if (historial.Count > 0)

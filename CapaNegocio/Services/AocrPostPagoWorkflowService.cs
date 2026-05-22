@@ -14,7 +14,7 @@ namespace CapaNegocio.Services
     public class AocrPostPagoWorkflowService
     {
         public const string TipoCorreoCoordinador = "PAGO_APROBADO_COORDINADOR_ASIGNACION_INSPECTOR";
-        public const string TipoCorreoRt = "PAGO_APROBADO_RT_MODULO_SOLICITUD_HABILITADO";
+        public const string TipoCorreoRt = "PAGO_APROBADO_RT_SOLICITUD_AOCR_HABILITADA";
         public const string EstadoPendienteCargaDocumentalRt = "PENDIENTE_CARGA_DOCUMENTAL_RT";
         public const string EstadoPendienteRevisionDocumental = "PENDIENTE_REVISION_DOCUMENTAL";
 
@@ -62,9 +62,12 @@ namespace CapaNegocio.Services
                     var tieneDocumentos = TieneDocumentosHabilitantes(cn, ctx.CodigoSolicitud);
                     MarcarSolicitudPagoAprobado(cn, ctx, tieneDocumentos, usuarioFinanciero);
 
-                    NotificarRtModuloHabilitado(ctx, usuarioFinanciero);
+                    if (!ctx.NotificadoRtModuloHabilitado)
+                    {
+                        NotificarRtModuloHabilitado(ctx, usuarioFinanciero);
+                    }
 
-                    if (!ctx.TieneInspectorAsignado)
+                    if (!ctx.TieneInspectorAsignado && !ctx.NotificadoCoordinadorPagoAprobado)
                     {
                         NotificarCoordinadoresAsignacionPendiente(ctx, usuarioFinanciero);
                     }
@@ -85,75 +88,7 @@ namespace CapaNegocio.Services
 
         public bool PuedeRtAccederModuloSolicitud(int codigoSolicitud, int codigoUsuarioRt, out string mensaje)
         {
-            mensaje = string.Empty;
-            if (codigoSolicitud <= 0 || codigoUsuarioRt <= 0)
-            {
-                mensaje = "Solicitud inválida.";
-                return false;
-            }
-
-            using (var cn = new NpgsqlConnection(_connectionString))
-            {
-                cn.Open();
-                EnsureSolicitudControlColumns(cn);
-
-                const string sql = @"
-                    SELECT
-                        s.codigo_usuario,
-                        COALESCE(s.pago_aprobado, FALSE) AS pago_aprobado,
-                        COALESCE(s.modulo_solicitud_rt_habilitado, FALSE) AS modulo_habilitado,
-                        COALESCE(o.estado, '') AS estado_orden
-                    FROM aocr_tbsolicitud s
-                    LEFT JOIN aocr_or_orden o ON o.codigo_solicitud::text = s.codigo_solicitud::text
-                    WHERE s.codigo_solicitud = @codigo_solicitud
-                      AND s.deleted_at IS NULL
-                    ORDER BY o.fecha_creacion DESC NULLS LAST, o.id DESC
-                    LIMIT 1";
-
-                bool pagoAprobado = false;
-                bool moduloHabilitado = false;
-                string estadoOrden = string.Empty;
-
-                using (var cmd = new NpgsqlCommand(sql, cn))
-                {
-                    cmd.Parameters.AddWithValue("@codigo_solicitud", codigoSolicitud);
-                    using (var rd = cmd.ExecuteReader())
-                    {
-                        if (!rd.Read())
-                        {
-                            mensaje = "La solicitud no existe.";
-                            return false;
-                        }
-
-                        var propietario = rd["codigo_usuario"] == DBNull.Value ? 0 : Convert.ToInt32(rd["codigo_usuario"]);
-                        if (propietario != codigoUsuarioRt)
-                        {
-                            mensaje = "No tiene permisos sobre esta solicitud.";
-                            return false;
-                        }
-
-                        pagoAprobado = rd["pago_aprobado"] != DBNull.Value && Convert.ToBoolean(rd["pago_aprobado"]);
-                        moduloHabilitado = rd["modulo_habilitado"] != DBNull.Value && Convert.ToBoolean(rd["modulo_habilitado"]);
-                        estadoOrden = rd["estado_orden"] == DBNull.Value ? string.Empty : rd["estado_orden"].ToString();
-                    }
-                }
-
-                var ordenPagada = EstadoOrden.EsPagado(estadoOrden);
-                if (ordenPagada && (!pagoAprobado || !moduloHabilitado))
-                {
-                    SincronizarSolicitudPagadaDesdeOrden(cn, codigoSolicitud);
-                    pagoAprobado = true;
-                    moduloHabilitado = true;
-                }
-
-                if (!pagoAprobado || !moduloHabilitado || !ordenPagada)
-                {
-                    mensaje = "El módulo de Solicitud AOCR se habilitará cuando Financiero apruebe el pago.";
-                    return false;
-                }
-
-                return true;
-            }
+            return new SolicitudAocrService(_connectionString).PuedeRtEditarSolicitud(codigoSolicitud, codigoUsuarioRt, out mensaje);
         }
 
         public bool PuedeInspectorIniciarRevisionDocumental(int codigoInspeccion, out string mensaje)
@@ -316,7 +251,30 @@ namespace CapaNegocio.Services
                 {
                     cmd.Parameters.AddWithValue("@codigo_solicitud", codigoSolicitud);
                     var value = cmd.ExecuteScalar();
-                    return value == null || value == DBNull.Value || Convert.ToBoolean(value);
+                    var pendienteDocumentos = value == null || value == DBNull.Value || Convert.ToBoolean(value);
+                    if (!pendienteDocumentos)
+                    {
+                        return false;
+                    }
+
+                    if (TieneDocumentosHabilitantes(cn, codigoSolicitud))
+                    {
+                        using (var syncCmd = new NpgsqlCommand(@"
+                            UPDATE aocr_tbsolicitud
+                            SET pendiente_carga_documental_rt = FALSE,
+                                updated_at = NOW(),
+                                updated_by = @usuario
+                            WHERE codigo_solicitud = @codigo_solicitud", cn))
+                        {
+                            syncCmd.Parameters.AddWithValue("@codigo_solicitud", codigoSolicitud);
+                            syncCmd.Parameters.AddWithValue("@usuario", "SYSTEM_SYNC");
+                            syncCmd.ExecuteNonQuery();
+                        }
+
+                        return false;
+                    }
+
+                    return true;
                 }
             }
         }
@@ -345,6 +303,8 @@ namespace CapaNegocio.Services
                     s.numero_solicitud,
                     s.estado AS estado_solicitud,
                     s.codigo_usuario,
+                    COALESCE(s.notificado_rt_modulo_habilitado, FALSE) AS notificado_rt_modulo_habilitado,
+                    COALESCE(s.notificado_coordinador_pago_aprobado, FALSE) AS notificado_coordinador_pago_aprobado,
                     " + selectCodigoTecnico + @",
                     CASE
                         WHEN " + exprCodigoTecnico + @" > 0
@@ -387,6 +347,8 @@ namespace CapaNegocio.Services
                     s.numero_solicitud,
                     s.estado AS estado_solicitud,
                     s.codigo_usuario,
+                    COALESCE(s.notificado_rt_modulo_habilitado, FALSE) AS notificado_rt_modulo_habilitado,
+                    COALESCE(s.notificado_coordinador_pago_aprobado, FALSE) AS notificado_coordinador_pago_aprobado,
                     " + selectCodigoTecnico + @",
                     CASE
                         WHEN " + exprCodigoTecnico + @" > 0
@@ -433,6 +395,8 @@ namespace CapaNegocio.Services
                         NumeroSolicitud = GetString(rd, "numero_solicitud"),
                         EstadoSolicitud = GetString(rd, "estado_solicitud"),
                         CodigoUsuarioRt = GetInt(rd, "codigo_usuario"),
+                        NotificadoRtModuloHabilitado = GetBool(rd, "notificado_rt_modulo_habilitado"),
+                        NotificadoCoordinadorPagoAprobado = GetBool(rd, "notificado_coordinador_pago_aprobado"),
                         CodigoTecnico = GetNullableInt(rd, "codigo_tecnico"),
                         TieneInspectorAsignado = GetBool(rd, "tiene_inspector_asignado"),
                         NombreOperadora = GetString(rd, "nombre_operadora"),
@@ -517,6 +481,9 @@ namespace CapaNegocio.Services
             const string sql = @"
                 ALTER TABLE public.aocr_tbsolicitud ADD COLUMN IF NOT EXISTS pago_aprobado BOOLEAN DEFAULT FALSE;
                 ALTER TABLE public.aocr_tbsolicitud ADD COLUMN IF NOT EXISTS fecha_aprobacion_pago TIMESTAMP NULL;
+                ALTER TABLE public.aocr_tbsolicitud ADD COLUMN IF NOT EXISTS solicitud_finalizada_rt BOOLEAN DEFAULT FALSE;
+                ALTER TABLE public.aocr_tbsolicitud ADD COLUMN IF NOT EXISTS fecha_finalizacion_rt TIMESTAMP NULL;
+                ALTER TABLE public.aocr_tbsolicitud ADD COLUMN IF NOT EXISTS requiere_nueva_orden BOOLEAN DEFAULT FALSE;
                 ALTER TABLE public.aocr_tbsolicitud ADD COLUMN IF NOT EXISTS modulo_solicitud_rt_habilitado BOOLEAN DEFAULT FALSE;
                 ALTER TABLE public.aocr_tbsolicitud ADD COLUMN IF NOT EXISTS notificado_coordinador_pago_aprobado BOOLEAN DEFAULT FALSE;
                 ALTER TABLE public.aocr_tbsolicitud ADD COLUMN IF NOT EXISTS fecha_notificacion_coordinador_pago TIMESTAMP NULL;
@@ -563,9 +530,20 @@ namespace CapaNegocio.Services
         {
             const string sql = @"
                 UPDATE aocr_tbsolicitud
-                SET estado = @estado,
+                SET estado = CASE
+                                WHEN UPPER(COALESCE(estado, '')) IN (
+                                    '',
+                                    'PENDIENTE_CARGA_DOCUMENTAL_RT',
+                                    'EN_REVISION_DOCUMENTAL',
+                                    'PENDIENTE_REVISION_DOCUMENTAL'
+                                ) THEN @estado
+                                ELSE estado
+                             END,
                     pago_aprobado = TRUE,
                     fecha_aprobacion_pago = COALESCE(fecha_aprobacion_pago, NOW()),
+                    solicitud_finalizada_rt = FALSE,
+                    fecha_finalizacion_rt = NULL,
+                    requiere_nueva_orden = FALSE,
                     modulo_solicitud_rt_habilitado = TRUE,
                     pendiente_asignacion_inspector = @pendiente_asignacion,
                     pendiente_carga_documental_rt = @pendiente_documentos,
@@ -592,10 +570,10 @@ namespace CapaNegocio.Services
                 return;
             }
 
-            var asunto = string.Format("Solicitud AOCR {0} - Módulo habilitado para iniciar el proceso", NumeroSolicitud(ctx));
+            var asunto = string.Format("Pago aprobado para Solicitud AOCR #{0} - ya puede continuar el proceso", NumeroSolicitud(ctx));
             var cuerpo = ConstruirCorreoRt(ctx);
             var eventKey = string.Format("{0}_{1}_{2}", TipoCorreoRt, ctx.CodigoSolicitud, ctx.CorreoRt.Trim().ToUpperInvariant());
-            EncolarCorreo(ctx.CodigoSolicitud, ctx.CorreoRt, ctx.NombreRt, asunto, cuerpo, TipoCorreoRt, eventKey);
+            EncolarCorreo(ctx.CodigoSolicitud, ctx.OrdenId, ctx.CorreoRt, ctx.NombreRt, asunto, cuerpo, TipoCorreoRt, eventKey);
             MarcarNotificacionRt(ctx.CodigoSolicitud);
             NotificacionBL.EnviarNotificacion(ctx.CodigoUsuarioRt, "Solicitud AOCR habilitada", "El pago fue aprobado. Ya puede completar la Solicitud AOCR y cargar documentos habilitantes.", "PAGO_APROBADO", "/SolicitudAOCR/Index", "SolicitudAOCR", ctx.CodigoSolicitud, "SolicitudAOCR");
             RegistrarHistorial(ctx, usuarioFinanciero, "NOTIFICACION_RT_MODULO_HABILITADO", null, null, "Notificación enviada/encolada al RT: " + ctx.CorreoRt);
@@ -603,15 +581,20 @@ namespace CapaNegocio.Services
 
         private void NotificarCoordinadoresAsignacionPendiente(PagoAprobadoContext ctx, string usuarioFinanciero)
         {
+            if (EstadoSolicitudNoNotificable(ctx.EstadoSolicitud))
+            {
+                _logger.LogInfo("AocrPostPagoWorkflowService.NotificarCoordinadoresAsignacionPendiente: omite notificacion por estado final/anulado. Solicitud=" + ctx.CodigoSolicitud);
+                return;
+            }
             var correoInstitucional = new CorreoInstitucionalService().ObtenerDestinatariosPorArea(CorreoInstitucionalService.CoordinadorAocr);
             if (correoInstitucional != null)
             {
-                var asunto = string.Format("Solicitud AOCR {0} - Pago aprobado, pendiente asignación de Inspector", NumeroSolicitud(ctx));
+                var asunto = string.Format("Pago aprobado para Solicitud AOCR #{0} - pendiente asignación de inspector", NumeroSolicitud(ctx));
                 var cuerpo = ConstruirCorreoCoordinador(ctx, correoInstitucional.NombreArea);
                 foreach (var correo in correoInstitucional.ObtenerTodosLosCorreos().Distinct(StringComparer.OrdinalIgnoreCase))
                 {
                     var eventKey = string.Format("{0}_{1}_{2}", TipoCorreoCoordinador, ctx.CodigoSolicitud, correo.Trim().ToUpperInvariant());
-                    EncolarCorreo(ctx.CodigoSolicitud, correo, correoInstitucional.NombreArea, asunto, cuerpo, TipoCorreoCoordinador, eventKey);
+                    EncolarCorreo(ctx.CodigoSolicitud, ctx.OrdenId, correo, correoInstitucional.NombreArea, asunto, cuerpo, TipoCorreoCoordinador, eventKey);
                 }
             }
             else
@@ -629,10 +612,10 @@ namespace CapaNegocio.Services
 
                 if (correoInstitucional == null && !string.IsNullOrWhiteSpace(coordinador.Email))
                 {
-                    var asunto = string.Format("Solicitud AOCR {0} - Pago aprobado, pendiente asignación de Inspector", NumeroSolicitud(ctx));
+                    var asunto = string.Format("Pago aprobado para Solicitud AOCR #{0} - pendiente asignación de inspector", NumeroSolicitud(ctx));
                     var cuerpo = ConstruirCorreoCoordinador(ctx, coordinador);
                     var eventKey = string.Format("{0}_{1}_{2}", TipoCorreoCoordinador, ctx.CodigoSolicitud, coordinador.Email.Trim().ToUpperInvariant());
-                    EncolarCorreo(ctx.CodigoSolicitud, coordinador.Email, NombreUsuario(coordinador), asunto, cuerpo, TipoCorreoCoordinador, eventKey);
+                    EncolarCorreo(ctx.CodigoSolicitud, ctx.OrdenId, coordinador.Email, NombreUsuario(coordinador), asunto, cuerpo, TipoCorreoCoordinador, eventKey);
                 }
 
                 if (coordinador.Id > 0)
@@ -671,7 +654,7 @@ namespace CapaNegocio.Services
                 "SolicitudAOCR");
         }
 
-        private void EncolarCorreo(int codigoSolicitud, string para, string nombre, string asunto, string cuerpo, string tipo, string eventKey)
+        private void EncolarCorreo(int codigoSolicitud, int ordenId, string para, string nombre, string asunto, string cuerpo, string tipo, string eventKey)
         {
             try
             {
@@ -682,7 +665,8 @@ namespace CapaNegocio.Services
                     Asunto = asunto,
                     Cuerpo = cuerpo,
                     Estado = "PENDIENTE",
-                    OrdenId = codigoSolicitud,
+                    SolicitudId = codigoSolicitud,
+                    OrdenId = ordenId > 0 ? (int?)ordenId : null,
                     TipoNotificacion = tipo,
                     EventKey = eventKey
                 };
@@ -777,7 +761,7 @@ namespace CapaNegocio.Services
                     Pair("Fecha de aprobación del pago", DateTime.Now.ToString("dd/MM/yyyy HH:mm")),
                     Pair("Estado actual", "Pendiente de asignación de Inspector")
                 },
-                "Ingrese al sistema AOCR y asigne el Inspector responsable para continuar con el flujo.");
+                "Ingrese al sistema AOCR y asigne el inspector responsable para continuar con el proceso.");
         }
 
         private static string ConstruirCorreoRt(PagoAprobadoContext ctx)
@@ -826,6 +810,21 @@ namespace CapaNegocio.Services
             return string.IsNullOrWhiteSpace(ctx.NumeroSolicitud) ? ctx.CodigoSolicitud.ToString() : ctx.NumeroSolicitud.Trim();
         }
 
+        private static bool EstadoSolicitudNoNotificable(string estadoSolicitud)
+        {
+            var estado = (estadoSolicitud ?? string.Empty).Trim().ToUpperInvariant();
+            if (string.IsNullOrWhiteSpace(estado))
+            {
+                return false;
+            }
+
+            return estado.Contains("ANUL")
+                || estado.Contains("FINAL")
+                || estado.Contains("EMITIDO")
+                || estado.Contains("ENTREG")
+                || estado.Contains("RECIBID");
+        }
+
         private static string NombreUsuario(Usuario usuario)
         {
             if (usuario == null)
@@ -870,6 +869,8 @@ namespace CapaNegocio.Services
             public string NumeroSolicitud { get; set; }
             public string EstadoSolicitud { get; set; }
             public int CodigoUsuarioRt { get; set; }
+            public bool NotificadoRtModuloHabilitado { get; set; }
+            public bool NotificadoCoordinadorPagoAprobado { get; set; }
             public int? CodigoTecnico { get; set; }
             public string TecnicoResponsableCedula { get; set; }
             public bool TieneInspectorAsignado { get; set; }

@@ -1,5 +1,7 @@
 using System;
 using System.Collections.Generic;
+using System.Text;
+using CapaDatos.Infrastructure;
 using Npgsql;
 
 namespace CapaDatos.Services
@@ -232,9 +234,73 @@ namespace CapaDatos.Services
             catch (Exception ex)
             {
                 // NUNCA lanzar — la auditoría no debe interrumpir operaciones de negocio
-                try { _logger.LogWarning("AuditTrail error: " + ex.Message); }
+                try
+                {
+                    _logger.LogWarning(
+                        string.Format(
+                            "AuditTrail error [Tabla={0}, RegistroId={1}, Accion={2}, Modulo={3}]: {4}",
+                            tabla ?? "N/D",
+                            registroId.HasValue ? registroId.Value.ToString() : "N/D",
+                            accion ?? "N/D",
+                            modulo ?? "N/D",
+                            ConstruirDetalleTecnico(ex)));
+                }
                 catch { /* silenciar completamente */ }
             }
+        }
+
+        private static string ConstruirDetalleTecnico(Exception ex)
+        {
+            if (ex == null)
+            {
+                return "Sin detalle técnico.";
+            }
+
+            var sb = new StringBuilder();
+            var actual = ex;
+            var nivel = 0;
+            while (actual != null && nivel < 5)
+            {
+                if (sb.Length > 0)
+                {
+                    sb.Append(" | ");
+                }
+
+                sb.Append(actual.GetType().Name);
+                sb.Append(": ");
+                sb.Append(actual.Message);
+
+                var dataAccess = actual as DataAccessException;
+                if (dataAccess != null && !string.IsNullOrWhiteSpace(dataAccess.ErrorCode))
+                {
+                    sb.Append(" [ErrorCode=");
+                    sb.Append(dataAccess.ErrorCode);
+                    sb.Append("]");
+                }
+
+                var postgres = actual as PostgresException;
+                if (postgres != null)
+                {
+                    if (!string.IsNullOrWhiteSpace(postgres.SqlState))
+                    {
+                        sb.Append(" [SqlState=");
+                        sb.Append(postgres.SqlState);
+                        sb.Append("]");
+                    }
+
+                    if (!string.IsNullOrWhiteSpace(postgres.ConstraintName))
+                    {
+                        sb.Append(" [Constraint=");
+                        sb.Append(postgres.ConstraintName);
+                        sb.Append("]");
+                    }
+                }
+
+                actual = actual.InnerException;
+                nivel++;
+            }
+
+            return sb.ToString();
         }
 
         private void EnsureSchema()

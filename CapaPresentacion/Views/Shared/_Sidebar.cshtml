@@ -1,6 +1,8 @@
 ﻿@inherits System.Web.Mvc.WebViewPage
 @using System
 @using System.Collections.Generic
+@using System.Linq
+@using CapaNegocio.Services
 @using CapaModelo
 @using System.Web.Mvc.Html
 @using CapaDatos.DAOs
@@ -94,14 +96,14 @@
             && (sinRolesRaw || RoleGroupingHelper.HasAnyRawRole(rolesRaw, "Inspector", "Tecnico", "EvaluadorTecnico"));
         bool esCoordinadorRol = RoleGroupingHelper.IsCoordinacion(rolActual)
             && (sinRolesRaw || RoleGroupingHelper.HasAnyRawRole(rolesRaw, "Coordinador", "CoordinadorInspecciones"));
-        bool esFinancieroRol = RoleGroupingHelper.IsCoordinacion(rolActual)
-            && (sinRolesRaw || RoleGroupingHelper.HasAnyRawRole(rolesRaw, "Financiero", "CoordinadorFinanciero"));
+        bool esFinancieroRol = RoleGroupingHelper.IsFinanciero(rolActual)
+            && (sinRolesRaw || RoleGroupingHelper.HasAnyRawRole(rolesRaw, "Financiero", "CoordinadorFinanciero", "DirectorFinanciero"));
         bool esLegalRol = RoleGroupingHelper.IsCoordinacion(rolActual)
             && (sinRolesRaw || RoleGroupingHelper.HasAnyRawRole(rolesRaw, "CoordinacionLegal", "CoordinadorLegal"));
         bool esDirectorGeneralRol = RoleGroupingHelper.IsDireccionJefaturaTecnica(rolActual)
             && (sinRolesRaw || RoleGroupingHelper.HasAnyRawRole(rolesRaw, "DirectorGeneral"));
         bool esDirdacRol = RoleGroupingHelper.IsDireccionJefaturaTecnica(rolActual)
-            && (sinRolesRaw || RoleGroupingHelper.HasAnyRawRole(rolesRaw, "DIRDAC", "Direccion", "JefaturaTecnica", "DirectorFinanciero", "DirectorGeneral"));
+            && (sinRolesRaw || RoleGroupingHelper.HasAnyRawRole(rolesRaw, "DIRDAC", "Direccion", "JefaturaTecnica", "DirectorGeneral"));
         bool esDireccionRol   = esDirdacRol;  // alias compatibilidad
         bool esTecnicaRol     = esInspectorRol || esCoordinadorRol; // alias compatibilidad
         bool esCoordinacionJefaturaRol = esLegalRol || esDirdacRol;
@@ -110,6 +112,9 @@
         // Orden requerida solo para Solicitante/Operador externo
         // Administrador tambien la ve para gestion/visibilidad.
         bool requiereOrden = esSolicitanteRol || esAdministrador;
+        var mensajeBloqueoRtSidebar = (!tieneOrdenBorrador && !tieneOrdenPendienteProceso && !tieneOrdenPendienteComprobante)
+            ? "Debe generar la Orden de Recaudación para continuar con el proceso AOCR."
+            : "El módulo de Solicitud AOCR se habilitará cuando Financiero apruebe el pago correspondiente.";
 
         bool puedeSolicitante      = esAdministrador || esSolicitanteRol;
         bool puedeRt               = esAdministrador || esRepresentanteRtRol;
@@ -144,6 +149,7 @@
         var codigoCompaniaActiva = CompaniaActivaSessionHelper.ObtenerCodigo(Session);
         var nombreCompaniaActiva = CompaniaActivaSessionHelper.ObtenerNombre(Session);
         var mostrarSelectorCompaniaRt = false;
+        var tieneSolicitudRtHabilitada = false;
         Func<string, List<string>> parsearCompaniasLegacy = raw =>
         {
             if (string.IsNullOrWhiteSpace(raw))
@@ -217,18 +223,46 @@
                 {
                     nombreCompaniaActiva = codigoCompaniaActiva;
                 }
+
+                if (esSolicitanteORT)
+                {
+                    var workflow = new AocrPostPagoWorkflowService();
+                    var solicitudDao = new SolicitudAOCRDAO();
+                    var solicitudesUsuario = (solicitudDao.ObtenerPorUsuario(idUsuario) ?? new List<SolicitudAOCR>())
+                        .Where(s => s != null && s.CodigoSolicitud > 0)
+                        .Where(s => string.IsNullOrWhiteSpace(codigoCompaniaActiva)
+                            || string.IsNullOrWhiteSpace(s.CompaniasSeleccionadas)
+                            || s.CompaniasSeleccionadas
+                                .Split(',')
+                                .Select(x => (x ?? string.Empty).Trim())
+                                .Any(x => x.Equals(codigoCompaniaActiva, StringComparison.OrdinalIgnoreCase)))
+                        .OrderByDescending(s => s.CodigoSolicitud)
+                        .ToList();
+
+                    foreach (var solicitudUsuario in solicitudesUsuario)
+                    {
+                        string mensajeBloqueoSidebar;
+                        if (workflow.PuedeRtAccederModuloSolicitud(solicitudUsuario.CodigoSolicitud, idUsuario, out mensajeBloqueoSidebar))
+                        {
+                            tieneSolicitudRtHabilitada = true;
+                            break;
+                        }
+                    }
+                }
             }
         }
         catch (Exception ex)
         {
             System.Diagnostics.Debug.WriteLine("_Sidebar: Error consultando companias RT: " + ex.Message);
         }
+
+        var tieneAccesoSolicitudRt = tieneOrdenGenerada || (esSolicitanteORT && tieneSolicitudRtHabilitada);
     }
 
     @if (!esAdministrador)
     {
         <!-- Indicador de estado de orden fijo en el sidebar -->
-        var mostrarOrdenComoHabilitada = !requiereOrden || tieneOrdenGenerada;
+        var mostrarOrdenComoHabilitada = !requiereOrden || tieneAccesoSolicitudRt;
         var claseAlertaOrden = mostrarOrdenComoHabilitada
             ? "alert-success"
             : (tieneOrdenPendienteProceso ? "alert-warning" : (tieneOrdenBorrador ? "alert-warning" : "alert-danger"));
@@ -241,12 +275,12 @@
                 <div>
                     @if (mostrarOrdenComoHabilitada)
                     {
-                        <strong>Orden validada ✓</strong>
-                        <div class="text-success small">El pago ya habilita el flujo AOCR.</div>
+                        <strong>Pago aprobado ✓</strong>
+                        <div class="text-success small">La Solicitud AOCR y la carga documental ya están habilitadas.</div>
                     }
                     else if (tieneOrdenPendienteProceso)
                     {
-                        <strong>Orden en proceso ⚠</strong>
+                        <strong>Orden generada / pago pendiente ⚠</strong>
                         <div class="text-warning small">
                             <a href="@Url.Action("Index", "OrdenRecaudacion")" class="text-warning">
                                 @(tieneOrdenPendienteComprobante ? "Cargar comprobante desde Mis Órdenes" : "Revisar estado en Mis Órdenes")
@@ -255,16 +289,16 @@
                     }
                     else if (tieneOrdenBorrador)
                     {
-                        <strong>Orden en Borrador ⚠</strong>
+                        <strong>Orden pendiente de generación ⚠</strong>
                         <div class="text-warning small">
-                            <a href="@Url.Action("Obligatoria", "OrdenRecaudacion")" class="text-warning">Completar orden</a>
+                            <a href="@Url.Action("Obligatoria", "OrdenRecaudacion")" class="text-warning">Completar y generar orden</a>
                         </div>
                     }
                     else
                     {
-                        <strong>Orden Requerida!</strong>
+                        <strong>Orden requerida</strong>
                         <div class="text-danger small">
-                            <a href="@Url.Action("Obligatoria", "OrdenRecaudacion")" class="text-danger">Crear orden primero</a>
+                            <a href="@Url.Action("Obligatoria", "OrdenRecaudacion")" class="text-danger">Generar orden primero</a>
                         </div>
                     }
                 </div>
@@ -353,7 +387,7 @@
                         </li>
                     }
                     @* Solicitudes AOCR: se habilitan solo con pago aprobado / orden habilitante. *@
-                    @if (tieneOrdenGenerada)
+                    @if (tieneAccesoSolicitudRt)
                     {
                         <li>
                             <a class="aocr-link aocr-sidebar-item" href="@Url.Action("Index", "SolicitudAOCR", new { abrir = "nueva" })">
@@ -367,27 +401,50 @@
                         <li>
                             <span class="aocr-link aocr-sidebar-item disabled text-muted"
                                   data-bs-toggle="tooltip"
-                                  title="Pendiente de aprobación de pago por Financiero.">
+                                  title="@mensajeBloqueoRtSidebar">
                                 <i class="fas fa-lock text-warning mr-2"></i> Nueva Solicitud AOCR
                             </span>
                         </li>
                     }
-                    <li>
-                        <a class="aocr-link aocr-sidebar-item" href="@Url.Action("Index", "SolicitudAOCR")">
-                            <i class="fas fa-folder-open text-white-50 mr-2"></i> Mis Solicitudes
-                        </a>
-                    </li>
+                    @if (esRepresentanteRtRol && !tieneAccesoSolicitudRt)
+                    {
+                        <li>
+                            <span class="aocr-link aocr-sidebar-item disabled text-muted"
+                                  data-bs-toggle="tooltip"
+                                  title="@mensajeBloqueoRtSidebar">
+                                <i class="fas fa-folder-open text-warning mr-2"></i> Mis Solicitudes
+                            </span>
+                        </li>
+                    }
+                    else
+                    {
+                        <li>
+                            <a class="aocr-link aocr-sidebar-item" href="@Url.Action("Index", "SolicitudAOCR")">
+                                <i class="fas fa-folder-open text-white-50 mr-2"></i> Mis Solicitudes
+                            </a>
+                        </li>
+                    }
                     <li>
                         <a class="aocr-link aocr-sidebar-item" href="@Url.Action("Registro", "RT")">
                             <i class="fas fa-id-card text-white-50 mr-2"></i> Mi Expediente RT
                         </a>
                     </li>
-                    @if (esRepresentanteRtRol || tieneOrdenGenerada)
+                    @if (tieneAccesoSolicitudRt)
                     {
                         <li>
                             <a class="aocr-link aocr-sidebar-item" href="@Url.Action("Index", "SolicitudAOCR")">
                                 <i class="fas fa-file-upload text-info mr-2"></i> Cargar Documentos
                             </a>
+                        </li>
+                    }
+                    else if (esRepresentanteRtRol)
+                    {
+                        <li>
+                            <span class="aocr-link aocr-sidebar-item disabled text-muted"
+                                  data-bs-toggle="tooltip"
+                                  title="@mensajeBloqueoRtSidebar">
+                                <i class="fas fa-file-upload text-warning mr-2"></i> Cargar Documentos
+                            </span>
                         </li>
                     }
                 </ul>
@@ -628,7 +685,7 @@
                 </a>
             </li>
 
-            @if (!tieneOrdenGenerada && requiereOrden)
+            @if (!tieneAccesoSolicitudRt && requiereOrden)
             {
                 <li>
                     <a class="aocr-link aocr-sidebar-item text-warning fw-bold" href="@Url.Action("Obligatoria", "OrdenRecaudacion")">

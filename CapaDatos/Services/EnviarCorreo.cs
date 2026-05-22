@@ -13,6 +13,7 @@ namespace CapaDatos.Services
         private readonly ISecureConfigurationService _config;
         private readonly ILoggingService _logger;
         private readonly IEmailQueueService _queueService;
+        public string LastError { get; private set; }
 
         // Configuración por defecto (fallback)
         private const string DefaultSmtpServer = "172.20.16.21";
@@ -58,12 +59,14 @@ namespace CapaDatos.Services
         public bool enviaMensajeCorreoDesde(string coreoDesde, string coreoPara, string asunto, string mensajeDetalle)
         {
             var correlationId = Guid.NewGuid().ToString("N").Substring(0, 12);
+            LastError = null;
 
             try
             {
                 // Validar parámetros
                 if (string.IsNullOrWhiteSpace(coreoPara))
                 {
+                    LastError = "No se puede enviar el correo sin destinatario.";
                     _logger.LogWarning("Intento de envío sin destinatario", 
                         new LogContext { CorrelationId = correlationId });
                     return false;
@@ -105,6 +108,7 @@ namespace CapaDatos.Services
             }
             catch (SmtpException ex)
             {
+                LastError = string.Format("SMTP {0}: {1}", ex.StatusCode, ex.Message);
                 _logger.LogError(ex, new LogContext
                 {
                     CorrelationId = correlationId,
@@ -115,6 +119,7 @@ namespace CapaDatos.Services
             }
             catch (Exception ex)
             {
+                LastError = ex.Message;
                 _logger.LogError(ex, new LogContext
                 {
                     CorrelationId = correlationId,
@@ -139,11 +144,13 @@ namespace CapaDatos.Services
         public bool enviaMensajeCorreoConAdjuntoDesde(string coreoDesde, string coreoPara, string asunto, string mensajeDetalle, byte[] adjuntoBytes, string adjuntoNombre, string mimeType = "application/pdf")
         {
             var correlationId = Guid.NewGuid().ToString("N").Substring(0, 12);
+            LastError = null;
 
             try
             {
                 if (string.IsNullOrWhiteSpace(coreoPara))
                 {
+                    LastError = "No se puede enviar el correo sin destinatario.";
                     _logger.LogWarning("Intento de envío con adjunto sin destinatario",
                         new LogContext { CorrelationId = correlationId });
                     return false;
@@ -187,6 +194,7 @@ namespace CapaDatos.Services
             }
             catch (SmtpException ex)
             {
+                LastError = string.Format("SMTP {0}: {1}", ex.StatusCode, ex.Message);
                 _logger.LogError(ex, new LogContext
                 {
                     CorrelationId = correlationId,
@@ -197,6 +205,7 @@ namespace CapaDatos.Services
             }
             catch (Exception ex)
             {
+                LastError = ex.Message;
                 _logger.LogError(ex, new LogContext
                 {
                     CorrelationId = correlationId,

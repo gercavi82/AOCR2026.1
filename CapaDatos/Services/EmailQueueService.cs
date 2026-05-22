@@ -23,12 +23,12 @@ namespace CapaDatos.Services
     /// Estas propiedades se usan solo en memoria para pasar datos al procesador de emails:
     /// - ParaNombre, EsHtml: Para formateo de emails
     /// - AdjuntoNombre, AdjuntoContenido, AdjuntoMimeType: Para adjuntos (no se persisten en BD)
-    /// - CorrelationId, NumeroOrden: Para logging y trazabilidad
+    /// - NumeroOrden: Para logging y trazabilidad
     /// - MaxIntentos: Para lógica de reintentos
     /// 
     /// Columnas en la base de datos real:
-    /// - id, to_address, subject, body, status, solicitud_id, created_at, proximo_intento,
-    ///   event_key, error_message, intentos, updated_at, tipo_notificacion
+    /// - id, to_address, subject, body, status, solicitud_id, orden_id, created_at, proximo_intento,
+    ///   event_key, error_message, intentos, updated_at, tipo_notificacion, correlation_id
     /// </remarks>
     public class EmailQueueItem
     {
@@ -40,7 +40,8 @@ namespace CapaDatos.Services
         public string Estado { get; set; } // PENDIENTE, ENVIANDO, ENVIADO, ERROR, CANCELADO
         public DateTime FechaCreacion { get; set; }
         public DateTime? ProximoIntento { get; set; }
-        public int? OrdenId { get; set; } // Columna: solicitud_id (FK a aocr_tbsolicitud)
+        public int? SolicitudId { get; set; } // Columna: solicitud_id (FK a aocr_tbsolicitud)
+        public int? OrdenId { get; set; } // Columna: orden_id (FK a aocr_or_orden)
         public string EventKey { get; set; } // Idempotencia (si existe en BD)
         public string ErrorDetalle { get; set; }
         
@@ -166,6 +167,8 @@ namespace CapaDatos.Services
         {
             duplicateEvent = false;
 
+            EnsureEmailQueueSchema(conn);
+
             if (item == null)
             {
                 throw new ArgumentNullException("item");
@@ -218,19 +221,19 @@ namespace CapaDatos.Services
             var sqlInsertConEventKey = @"
                 INSERT INTO email_queue (
                     to_address, subject, body, status,
-                    solicitud_id, created_at, proximo_intento, event_key, tipo_notificacion
+                    solicitud_id, orden_id, created_at, proximo_intento, event_key, tipo_notificacion, correlation_id
                 ) VALUES (
                     @to_address, @subject, @body, @status,
-                    @solicitud_id, @created_at, @proximo_intento, @event_key, @tipo_notificacion
+                    @solicitud_id, @orden_id, @created_at, @proximo_intento, @event_key, @tipo_notificacion, @correlation_id
                 ) RETURNING id";
 
             var sqlInsertSimple = @"
                 INSERT INTO email_queue (
                     to_address, subject, body, status,
-                    solicitud_id, created_at, proximo_intento, tipo_notificacion
+                    solicitud_id, orden_id, created_at, proximo_intento, tipo_notificacion, correlation_id
                 ) VALUES (
                     @to_address, @subject, @body, @status,
-                    @solicitud_id, @created_at, @proximo_intento, @tipo_notificacion
+                    @solicitud_id, @orden_id, @created_at, @proximo_intento, @tipo_notificacion, @correlation_id
                 ) RETURNING id";
 
             int emailQueueId;
@@ -244,11 +247,13 @@ namespace CapaDatos.Services
                         AddParameter(cmd, "@subject", item.Asunto ?? string.Empty, NpgsqlDbType.Varchar);
                         AddParameter(cmd, "@body", item.Cuerpo ?? string.Empty, NpgsqlDbType.Text);
                         AddParameter(cmd, "@status", estadoInicial, NpgsqlDbType.Varchar);
-                        AddParameter(cmd, "@solicitud_id", item.OrdenId ?? (object)DBNull.Value, NpgsqlDbType.Integer);
+                        AddParameter(cmd, "@solicitud_id", item.SolicitudId ?? (object)DBNull.Value, NpgsqlDbType.Integer);
+                        AddParameter(cmd, "@orden_id", item.OrdenId ?? (object)DBNull.Value, NpgsqlDbType.Integer);
                         AddParameter(cmd, "@created_at", now, NpgsqlDbType.Timestamp);
                         AddParameter(cmd, "@proximo_intento", now, NpgsqlDbType.Timestamp);
                         AddParameter(cmd, "@event_key", eventKeyNormalizado, NpgsqlDbType.Varchar);
                         AddParameter(cmd, "@tipo_notificacion", (object)tipoNotificacionNormalizado ?? DBNull.Value, NpgsqlDbType.Varchar);
+                        AddParameter(cmd, "@correlation_id", (object)(string.IsNullOrWhiteSpace(item.CorrelationId) ? null : item.CorrelationId.Trim()) ?? DBNull.Value, NpgsqlDbType.Varchar);
                     }, tx);
                 }
                 else
@@ -259,10 +264,12 @@ namespace CapaDatos.Services
                         AddParameter(cmd, "@subject", item.Asunto ?? string.Empty, NpgsqlDbType.Varchar);
                         AddParameter(cmd, "@body", item.Cuerpo ?? string.Empty, NpgsqlDbType.Text);
                         AddParameter(cmd, "@status", estadoInicial, NpgsqlDbType.Varchar);
-                        AddParameter(cmd, "@solicitud_id", item.OrdenId ?? (object)DBNull.Value, NpgsqlDbType.Integer);
+                        AddParameter(cmd, "@solicitud_id", item.SolicitudId ?? (object)DBNull.Value, NpgsqlDbType.Integer);
+                        AddParameter(cmd, "@orden_id", item.OrdenId ?? (object)DBNull.Value, NpgsqlDbType.Integer);
                         AddParameter(cmd, "@created_at", now, NpgsqlDbType.Timestamp);
                         AddParameter(cmd, "@proximo_intento", now, NpgsqlDbType.Timestamp);
                         AddParameter(cmd, "@tipo_notificacion", (object)tipoNotificacionNormalizado ?? DBNull.Value, NpgsqlDbType.Varchar);
+                        AddParameter(cmd, "@correlation_id", (object)(string.IsNullOrWhiteSpace(item.CorrelationId) ? null : item.CorrelationId.Trim()) ?? DBNull.Value, NpgsqlDbType.Varchar);
                     }, tx);
                 }
             }
@@ -360,6 +367,7 @@ namespace CapaDatos.Services
                         body TEXT NOT NULL,
                         status VARCHAR(20) NOT NULL,
                         solicitud_id INTEGER NULL,
+                        orden_id INTEGER NULL,
                         created_at TIMESTAMP NOT NULL DEFAULT NOW(),
                         proximo_intento TIMESTAMP NOT NULL DEFAULT NOW()
                     );
@@ -369,9 +377,16 @@ namespace CapaDatos.Services
                     ALTER TABLE public.email_queue ADD COLUMN IF NOT EXISTS intentos INTEGER NOT NULL DEFAULT 0;
                     ALTER TABLE public.email_queue ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP;
                     ALTER TABLE public.email_queue ADD COLUMN IF NOT EXISTS tipo_notificacion VARCHAR(120);
+                    ALTER TABLE public.email_queue ADD COLUMN IF NOT EXISTS correlation_id VARCHAR(64);
 
                     CREATE INDEX IF NOT EXISTS idx_email_queue_status_next
                         ON public.email_queue(status, proximo_intento);
+
+                    CREATE INDEX IF NOT EXISTS idx_email_queue_solicitud
+                        ON public.email_queue(solicitud_id);
+
+                    CREATE INDEX IF NOT EXISTS idx_email_queue_orden
+                        ON public.email_queue(orden_id);
 
                     CREATE UNIQUE INDEX IF NOT EXISTS uq_email_queue_event_key
                         ON public.email_queue(event_key)
@@ -610,10 +625,12 @@ namespace CapaDatos.Services
                 Estado = GetString(reader, "status"),
                 FechaCreacion = GetDateTime(reader, "created_at"),
                 ProximoIntento = GetNullableDateTime(reader, "proximo_intento"),
-                OrdenId = GetValue<int?>(reader, "solicitud_id"),
+                SolicitudId = GetValue<int?>(reader, "solicitud_id"),
+                OrdenId = GetValue<int?>(reader, "orden_id"),
                 EventKey = GetString(reader, "event_key"),
                 TipoNotificacion = GetString(reader, "tipo_notificacion"),
                 ErrorDetalle = GetString(reader, "error_message"),
+                CorrelationId = GetString(reader, "correlation_id"),
                 Adjuntos = new List<EmailAttachmentItem>()
             };
         }
@@ -843,6 +860,13 @@ namespace CapaDatos.Services
         {
             _logger.LogWarning(string.Format("Error enviando email {0}: {1}", item.Id, error), context);
 
+            if (EsErrorNoReintentable(error))
+            {
+                await _queueService.ActualizarEstadoAsync(item.Id, "ERROR_NO_REINTENTABLE", error);
+                _logger.LogError(string.Format("Email {0} marcado como ERROR_NO_REINTENTABLE", item.Id), context);
+                return;
+            }
+
             // Calcular cuántos intentos se han hecho basándose en ProximoIntento
             int intentosEstimados = CalcularIntentosDesdeProximoIntento(item);
 
@@ -860,6 +884,19 @@ namespace CapaDatos.Services
                 var delay = RetryDelays[delayIndex];
                 await _queueService.ReprogramarReintentoAsync(item.Id, delay);
             }
+        }
+
+        private static bool EsErrorNoReintentable(string error)
+        {
+            var detalle = (error ?? string.Empty).Trim();
+            if (string.IsNullOrWhiteSpace(detalle))
+            {
+                return false;
+            }
+
+            return detalle.IndexOf("5.1.1", StringComparison.OrdinalIgnoreCase) >= 0
+                || detalle.IndexOf("user unknown", StringComparison.OrdinalIgnoreCase) >= 0
+                || detalle.IndexOf("recipient address rejected", StringComparison.OrdinalIgnoreCase) >= 0;
         }
 
         private int CalcularIntentosDesdeProximoIntento(EmailQueueItem item)

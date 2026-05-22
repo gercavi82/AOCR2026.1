@@ -67,7 +67,9 @@ namespace CapaDatos.Services
                 return Task.FromResult(new EmailSendResult
                 {
                     Success = false,
-                    Error = "No fue posible enviar el correo."
+                    Error = string.IsNullOrWhiteSpace(correoDirecto.LastError)
+                        ? "No fue posible enviar el correo."
+                        : correoDirecto.LastError
                 });
             }
             catch (Exception ex)

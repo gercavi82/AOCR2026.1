@@ -216,7 +216,7 @@ namespace CapaPresentacion.Controllers
                         ? FirstNonEmpty(solicitudActualizada.NombreOperador, solicitudActualizada.RazonSocial, "No disponible")
                         : "No disponible";
                     var detalleNotificacion = string.Format(
-                        "Inspector principal asignado: {0}. Inspector de apoyo: {1}. Fecha programada: {2:dd/MM/yyyy HH:mm}. Operador/compañia: {3}. Asignado por: {4}.{5}",
+                        "Inspector principal asignado: {0}. Inspector de apoyo: {1}. Fecha programada: {2:dd/MM/yyyy HH:mm}. Operador/compania: {3}. Asignado por: {4}.{5}",
                         nombreTecnico,
                         inspectorApoyoRegistro != null ? inspectorApoyoRegistro.NombreVisual : "No aplica",
                         fechaHoraInspeccion,

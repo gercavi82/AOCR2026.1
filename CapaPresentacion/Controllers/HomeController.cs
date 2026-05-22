@@ -26,8 +26,8 @@ namespace CapaPresentacion.Controllers
             var esSolicitanteRol = RoleGroupingHelper.IsSolicitante(rolActual);
             var esTecnicaRol = RoleGroupingHelper.IsInspectorTecnico(rolActual)
                 && (sinRolesRaw || RoleGroupingHelper.HasAnyRawRole(rolesRaw, "Inspector", "Tecnico", "EvaluadorTecnico"));
-            var esFinancieroRol = RoleGroupingHelper.IsCoordinacion(rolActual)
-                && (sinRolesRaw || RoleGroupingHelper.HasAnyRawRole(rolesRaw, "Financiero", "CoordinadorFinanciero"));
+            var esFinancieroRol = RoleGroupingHelper.IsFinanciero(rolActual)
+                && (sinRolesRaw || RoleGroupingHelper.HasAnyRawRole(rolesRaw, "Financiero", "CoordinadorFinanciero", "DirectorFinanciero"));
             var esLegalRol = RoleGroupingHelper.IsCoordinacion(rolActual)
                 && (sinRolesRaw || RoleGroupingHelper.HasAnyRawRole(rolesRaw, "CoordinacionLegal", "CoordinadorLegal"));
             var esDireccionRol = RoleGroupingHelper.IsDireccionJefaturaTecnica(rolActual);

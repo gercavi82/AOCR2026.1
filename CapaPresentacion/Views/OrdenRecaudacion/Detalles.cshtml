@@ -352,69 +352,74 @@
                                         <tbody>
                                             @foreach (var pago in pagos)
                                             {
-            var fechaPago = pago.FechaPago.HasValue
-                ? pago.FechaPago.Value.ToString("dd/MM/yyyy HH:mm")
-                : "N/A";
-            var numeroFactura = !string.IsNullOrEmpty(pago.NumeroFactura) ? pago.NumeroFactura : "N/A";
-            var metodoPago = !string.IsNullOrEmpty(pago.MetodoPago) ? pago.MetodoPago : "N/A";
-            var banco = !string.IsNullOrEmpty(pago.Banco) ? pago.Banco : 
-                (!string.IsNullOrEmpty(pago.MetodoPago) ? "Método: " + pago.MetodoPago : "No especificado");
-            var validadoPor = !string.IsNullOrEmpty(pago.ValidadoPor) ? pago.ValidadoPor : "N/A";
-            var estadoPago = (pago.Estado ?? "Pendiente").Trim();
-            var estadoMostrar = estadoPago.Equals("APROBADO", System.StringComparison.OrdinalIgnoreCase) ? "Validado" : estadoPago;
-            var badgeClass = estadoPago.Equals("APROBADO", System.StringComparison.OrdinalIgnoreCase) ? "success"
-                : estadoPago.Equals("RECHAZADO", System.StringComparison.OrdinalIgnoreCase) ? "danger"
-                : estadoPago.Equals("En Validación", System.StringComparison.OrdinalIgnoreCase) ? "info"
-                : "warning";
+                                                var fechaPago = pago.FechaPago.HasValue
+                                                    ? pago.FechaPago.Value.ToString("dd/MM/yyyy HH:mm")
+                                                    : "N/A";
+                                                var numeroFactura = !string.IsNullOrEmpty(pago.NumeroFactura) ? pago.NumeroFactura : "N/A";
+                                                var metodoPago = !string.IsNullOrEmpty(pago.MetodoPago) ? pago.MetodoPago : "N/A";
+                                                var banco = !string.IsNullOrEmpty(pago.Banco)
+                                                    ? pago.Banco
+                                                    : (!string.IsNullOrEmpty(pago.MetodoPago) ? "Método: " + pago.MetodoPago : "No especificado");
+                                                var validadoPor = !string.IsNullOrEmpty(pago.ValidadoPor) ? pago.ValidadoPor : "N/A";
+                                                var estadoPago = (pago.Estado ?? "Pendiente").Trim();
+                                                var estadoPagoNormalizado = estadoPago.Replace("_", " ").Trim().ToUpperInvariant();
+                                                var estadoMostrar = estadoPago.Equals("APROBADO", System.StringComparison.OrdinalIgnoreCase) ? "Validado" : estadoPago;
+                                                var badgeClass = estadoPago.Equals("APROBADO", System.StringComparison.OrdinalIgnoreCase) ? "success"
+                                                    : estadoPago.Equals("RECHAZADO", System.StringComparison.OrdinalIgnoreCase) ? "danger"
+                                                    : estadoPago.Equals("En Validación", System.StringComparison.OrdinalIgnoreCase) ? "info"
+                                                    : "warning";
+                                                var puedeGestionarPago = estadoPagoNormalizado == "PENDIENTE"
+                                                    || estadoPagoNormalizado == "PENDIENTE VALIDACION"
+                                                    || estadoPagoNormalizado == "EN VALIDACION";
 
-            // Ajuste defensivo: si el monto parece venir en centavos (mucho mayor que el total), dividir por 100 solo para mostrar
-            var montoMostrar = pago.Monto;
-            if (orden.Total > 0 && montoMostrar > orden.Total * 10)
-            {
-                montoMostrar = montoMostrar / 100m;
-            }
-            <tr>
-                <td>@fechaPago</td>
-                <td>@numeroFactura</td>
-                <td>@metodoPago</td>
-                <td>@banco</td>
-                <td class="text-end">@string.Format(culturaEsEc, "{0:C}", montoMostrar)</td>
-                <td>
-                    <span class="badge bg-@badgeClass">
-                        @estadoMostrar
-                    </span>
-                </td>
-                <td>@validadoPor</td>
-                @if (User.IsInRole("Administrador") || User.IsInRole("Financiero"))
-                {
-                    <td>
-                        if (estadoPago.Equals("Pendiente", System.StringComparison.OrdinalIgnoreCase))
-                        {
-                            <div class="btn-group btn-group-sm" role="group">
-                                @Html.Hidden("PagoId_" + pago.CodigoPago, pago.CodigoPago, new { @class = "js-pago-id" })
-                                @Html.Hidden("NumeroFactura_" + pago.CodigoPago, numeroFactura, new { @class = "js-numero-factura" })
-                                <button type="button"
-                                        class="btn btn-success btn-sm"
-                                        onclick="validarPagoDesdeFila(this)"
-                                        title="Validar pago">
-                                    <i class="fas fa-check"></i>
-                                </button>
-                                <button type="button"
-                                        class="btn btn-danger btn-sm"
-                                        onclick="rechazarPagoDesdeFila(this)"
-                                        title="Rechazar pago">
-                                    <i class="fas fa-times"></i>
-                                </button>
-                            </div>
-                        }
-                        else
-                        {
-                            <span class="text-muted">-</span>
-                        }
-                    </td>
-                }
-            </tr>
-        }
+                                                var montoMostrar = pago.Monto;
+                                                if (orden.Total > 0 && montoMostrar > orden.Total * 10)
+                                                {
+                                                    montoMostrar = montoMostrar / 100m;
+                                                }
+
+                                                <tr>
+                                                    <td>@fechaPago</td>
+                                                    <td>@numeroFactura</td>
+                                                    <td>@metodoPago</td>
+                                                    <td>@banco</td>
+                                                    <td class="text-end">@string.Format(culturaEsEc, "{0:C}", montoMostrar)</td>
+                                                    <td>
+                                                        <span class="badge bg-@badgeClass">
+                                                            @estadoMostrar
+                                                        </span>
+                                                    </td>
+                                                    <td>@validadoPor</td>
+                                                    @if (User.IsInRole("Administrador") || User.IsInRole("Financiero"))
+                                                    {
+                                                        <td>
+                                                            @if (puedeGestionarPago)
+                                                            {
+                                                                <div class="btn-group btn-group-sm" role="group">
+                                                                    @Html.Hidden("PagoId_" + pago.CodigoPago, pago.CodigoPago, new { @class = "js-pago-id" })
+                                                                    @Html.Hidden("NumeroFactura_" + pago.CodigoPago, numeroFactura, new { @class = "js-numero-factura" })
+                                                                    <button type="button"
+                                                                            class="btn btn-success btn-sm"
+                                                                            onclick="validarPagoDesdeFila(this)"
+                                                                            title="Validar pago">
+                                                                        <i class="fas fa-check"></i>
+                                                                    </button>
+                                                                    <button type="button"
+                                                                            class="btn btn-danger btn-sm"
+                                                                            onclick="rechazarPagoDesdeFila(this)"
+                                                                            title="Rechazar pago">
+                                                                        <i class="fas fa-times"></i>
+                                                                    </button>
+                                                                </div>
+                                                            }
+                                                            else
+                                                            {
+                                                                <span class="text-muted">-</span>
+                                                            }
+                                                        </td>
+                                                    }
+                                                </tr>
+                                            }
                                         </tbody>
                                     </table>
                                 </div>

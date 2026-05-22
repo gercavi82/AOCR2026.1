@@ -56,7 +56,7 @@ namespace CapaNegocio.Services
                         Asunto = plantilla.Asunto,
                         Cuerpo = ConstruirCuerpoHtml(destinatario.Nombre, plantilla, solicitud, observacion),
                         Estado = "PENDIENTE",
-                        OrdenId = solicitud.CodigoSolicitud,
+                        SolicitudId = solicitud.CodigoSolicitud,
                         TipoNotificacion = "SOLICITUD_" + (evento ?? string.Empty).Trim().ToUpperInvariant(),
                         EsHtml = true
                     };

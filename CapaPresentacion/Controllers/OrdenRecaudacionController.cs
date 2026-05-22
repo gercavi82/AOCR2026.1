@@ -33,6 +33,7 @@ namespace CapaPresentacion.Controllers
     public class OrdenRecaudacionController : Controller
     {
         private readonly OrdenRecaudacionCorreoService _ordenCorreoService = new OrdenRecaudacionCorreoService();
+        private readonly CapaNegocio.Services.OrdenRecaudacionService _ordenRecaudacionService = new CapaNegocio.Services.OrdenRecaudacionService();
 
         private static readonly Dictionary<string, string> TablasCiudadPermitidas =
             new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
@@ -611,31 +612,7 @@ namespace CapaPresentacion.Controllers
 
         private async Task<string> GenerarNumeroOrdenAsync()
         {
-            var fecha = DateTime.Now;
-            // Generar número único con timestamp de microsegundos para evitar duplicados
-            var timestamp = fecha.ToString("yyyyMMddHHmmssfff"); // Agregamos milisegundos (fff)
-            var consecutivo = await _dao.ObtenerConsecutivoDiarioAsync(fecha) + 1;
-            var numeroOrden = string.Format("OR-{0}-{1}", timestamp, consecutivo);
-            
-            System.Diagnostics.Debug.WriteLine($"GenerarNumeroOrdenAsync: timestamp={timestamp}, consecutivo={consecutivo}, resultado={numeroOrden}");
-            
-            // Verificar que no exista ya este número (medida de seguridad adicional)
-            int intentos = 0;
-            var numeroFinal = numeroOrden;
-            while (intentos < 10) // máximo 10 intentos
-            {
-                if (!_dao.ExisteNumeroOrden(numeroFinal))
-                {
-                    break;
-                }
-                
-                // Si existe, agregar un sufijo adicional
-                intentos++;
-                numeroFinal = string.Format("OR-{0}-{1}-{2}", timestamp, consecutivo, intentos);
-                System.Diagnostics.Debug.WriteLine($"GenerarNumeroOrdenAsync: Número duplicado, intentando={numeroFinal}");
-            }
-            
-            return numeroFinal;
+            return await Task.FromResult(_ordenRecaudacionService.GenerarNumeroOrdenAocr(DateTime.Now.Year));
         }
 
         // GET: /OrdenRecaudacion/Detalles/5
@@ -995,40 +972,8 @@ namespace CapaPresentacion.Controllers
             {
                 if (orden == null) return Task.CompletedTask;
 
-                var emailDestino = orden.Correo;
-                if (string.IsNullOrWhiteSpace(emailDestino))
-                {
-                    CapaModelo.SolicitudAOCR solicitud = null;
-                    int codigoSolicitudInt = 0;
-                    if (!string.IsNullOrEmpty(orden.CodigoSolicitud) && int.TryParse(orden.CodigoSolicitud, out codigoSolicitudInt) && codigoSolicitudInt > 0)
-                    {
-                        var solicitudDAO = new CapaDatos.DAOs.SolicitudDAO();
-                        solicitud = solicitudDAO.ObtenerPorId(codigoSolicitudInt);
-                    }
-                    else if (!string.IsNullOrWhiteSpace(orden.RucCedula))
-                    {
-                        codigoSolicitudInt = _dao.ObtenerCodigoSolicitudPorRuc(orden.RucCedula);
-                        if (codigoSolicitudInt > 0)
-                        {
-                            var solicitudDAO = new CapaDatos.DAOs.SolicitudDAO();
-                            solicitud = solicitudDAO.ObtenerPorId(codigoSolicitudInt);
-                        }
-                    }
-
-                    emailDestino = solicitud?.Email;
-                }
-
-                if (string.IsNullOrWhiteSpace(emailDestino))
-                {
-                    TempData["Warning"] = "La orden fue generada, pero no se pudo notificar por correo porque no existe un destinatario configurado.";
-                    return Task.CompletedTask;
-                }
-
                 var pdfModel = BuildOrdenRecaudacionPdfModel(orden);
                 pdfModel.LeyendaBancos = OrdenRecaudacionPagoHelper.ConstruirLeyendaHtml();
-
-                // Reutilizar la misma leyenda configurable/fallback en correo y PDF.
-                string leyendaBancos = pdfModel.LeyendaBancos;
                 var nombreArchivo = ConstruirNombrePdfOrdenRecaudacion(orden);
                 byte[] pdfBytes = null;
 
@@ -1049,49 +994,68 @@ namespace CapaPresentacion.Controllers
                     System.Diagnostics.Debug.WriteLine("Error al generar PDF para notificación: " + ex.Message);
                 }
 
-                var asunto = $"Orden de recaudación generada - {orden.NumeroOrden}";
-                var contribuyente = orden.NombreContribuyente ?? orden.Compania ?? "Contribuyente";
-                var cuerpo = $@"
-                    <h2>Orden de recaudación generada</h2>
-                    <p>Estimado/a <strong>{contribuyente}</strong>,</p>
-                    <p>Su orden de recaudación ha sido generada correctamente.</p>
-                    <p><strong>Número de Orden:</strong> {orden.NumeroOrden}</p>
-                    <p><strong>Monto Total:</strong> ${orden.Total:N2}</p>
-                    <p>Se adjunta el comprobante en PDF.</p>
-                    {leyendaBancos}
-                ";
-
                 if (pdfBytes == null || pdfBytes.Length == 0)
                 {
                     System.Diagnostics.Debug.WriteLine($"ADVERTENCIA: El PDF de la orden no se generó correctamente, el correo se enviará sin adjunto. Orden: {orden.NumeroOrden}");
                 }
 
+                int codigoSolicitudInt;
+                if (!string.IsNullOrWhiteSpace(orden.CodigoSolicitud) && int.TryParse(orden.CodigoSolicitud, out codigoSolicitudInt) && codigoSolicitudInt > 0)
+                {
+                }
+                else if (!string.IsNullOrWhiteSpace(orden.RucCedula))
+                {
+                    codigoSolicitudInt = _dao.ObtenerCodigoSolicitudPorRuc(orden.RucCedula);
+                }
+                else
+                {
+                    codigoSolicitudInt = 0;
+                }
+
                 var ordenEntidad = new OrdenRecaudacion
                 {
                     Id = orden.Id,
+                    CodigoSolicitud = codigoSolicitudInt > 0 ? (int?)codigoSolicitudInt : null,
                     NumeroOrden = orden.NumeroOrden,
                     Estado = orden.Estado,
                     Total = orden.Total,
-                    Correo = emailDestino,
+                    Correo = orden.Correo,
+                    RucCedula = orden.RucCedula,
                     Compania = orden.Compania,
                     NombreContribuyente = orden.NombreContribuyente
                 };
 
-                var resultadoCorreo = _ordenCorreoService.NotificarEvento(
+                var instruccionesPagoHtml = ConstruirInstruccionesPagoCorreoHtml(orden);
+                var resultadoCorreoRt = _ordenCorreoService.NotificarEvento(
                     ordenEntidad,
                     "ORDEN_CREADA",
-                    emailDestino,
-                    contribuyente,
+                    string.IsNullOrWhiteSpace(orden.Correo) ? null : orden.Correo,
+                    string.IsNullOrWhiteSpace(orden.NombreContribuyente) ? orden.Compania : orden.NombreContribuyente,
+                    pdfBytes != null && pdfBytes.Length > 0 ? pdfBytes : null,
+                    pdfBytes != null && pdfBytes.Length > 0 ? nombreArchivo : null,
+                    instruccionesPagoHtml);
+                System.Diagnostics.Debug.WriteLine($"Resultado notificación ORDEN_CREADA: Exitoso={resultadoCorreoRt.Exitoso}, Mensaje={resultadoCorreoRt.Mensaje}");
+
+                var resultadoCorreo = _ordenCorreoService.NotificarEvento(
+                    ordenEntidad,
+                    "ORDEN_RECAUDACION_GENERADA_FINANCIERO",
+                    null,
+                    null,
                     pdfBytes != null && pdfBytes.Length > 0 ? pdfBytes : null,
                     pdfBytes != null && pdfBytes.Length > 0 ? nombreArchivo : null,
                     pdfBytes != null && pdfBytes.Length > 0
-                        ? "Orden de recaudación generada con comprobante adjunto."
-                        : "Orden de recaudación generada sin adjunto por falla de PDF.");
-                System.Diagnostics.Debug.WriteLine($"Resultado notificación ORDEN_CREADA: Exitoso={resultadoCorreo.Exitoso}, Mensaje={resultadoCorreo.Mensaje}");
+                        ? "Orden de recaudación generada y remitida a Financiero con comprobante adjunto."
+                        : "Orden de recaudación generada y remitida a Financiero sin adjunto por falla de PDF.");
+                System.Diagnostics.Debug.WriteLine($"Resultado notificación ORDEN_RECAUDACION_GENERADA_FINANCIERO: Exitoso={resultadoCorreo.Exitoso}, Mensaje={resultadoCorreo.Mensaje}");
                 if (!resultadoCorreo.Exitoso)
                 {
-                    TempData["Warning"] = "La orden fue generada, pero la notificación por correo no se pudo encolar: "
+                    TempData["Warning"] = "La orden fue generada, pero la notificación al área Financiera no se pudo encolar: "
                         + (resultadoCorreo.Mensaje ?? "Error no especificado.");
+                }
+                else if (!resultadoCorreoRt.Exitoso)
+                {
+                    TempData["Warning"] = "La orden fue generada, pero la notificación al RT no se pudo encolar: "
+                        + (resultadoCorreoRt.Mensaje ?? "Error no especificado.");
                 }
             }
             catch (Exception ex)
@@ -1099,6 +1063,17 @@ namespace CapaPresentacion.Controllers
                 System.Diagnostics.Debug.WriteLine("Error enviando notificación de orden generada: " + ex.Message);
             }
             return Task.CompletedTask;
+        }
+
+        private static string ConstruirInstruccionesPagoCorreoHtml(OrdenRecaudacionModel orden)
+        {
+            var monto = orden != null ? orden.Total : 0m;
+            return @"<div style='margin:0 0 18px 0; padding:16px 18px; background-color:#f8fbfd; border:1px solid #d9e7f1; border-radius:8px;'>"
+                + "<p style='margin:0 0 12px 0; font-size:14px; color:#16364a; line-height:1.55;'><strong>Instrucciones para el pago</strong><br>"
+                + "El valor a cancelar para esta orden es <strong>$" + monto.ToString("N2") + "</strong>. Realice el pago en una de las cuentas habilitadas por la DGAC y luego registre el comprobante en el módulo de Orden de Recaudación.</p>"
+                + OrdenRecaudacionPagoHelper.ConstruirLeyendaHtml()
+                + "<p style='margin:12px 0 0 0; font-size:13px; color:#3a4f5e; line-height:1.55;'>El trámite continuará únicamente cuando el pago sea validado por el área Financiera.</p>"
+                + "</div>";
         }
 
         // POST: /OrdenRecaudacion/Enviar/5
@@ -1592,16 +1567,50 @@ namespace CapaPresentacion.Controllers
 
                 try
                 {
-                    var financieroEmail = ConfigurationManager.AppSettings["FinancieroEmail"];
-                    if (!string.IsNullOrWhiteSpace(financieroEmail))
+                    byte[] comprobanteAdjunto = null;
+                    string nombreAdjunto = null;
+                    if (!string.IsNullOrWhiteSpace(comprobanteRuta))
                     {
-                        EnviarNotificacionAFinanciero(orden, pago, financieroEmail, comprobanteRuta);
+                        var rutaFisica = Server.MapPath(comprobanteRuta);
+                        if (System.IO.File.Exists(rutaFisica))
+                        {
+                            comprobanteAdjunto = System.IO.File.ReadAllBytes(rutaFisica);
+                            nombreAdjunto = Path.GetFileName(rutaFisica);
+                        }
+                    }
+
+                    var ordenEntidad = new OrdenRecaudacion
+                    {
+                        Id = orden.Id,
+                        CodigoSolicitud = codigoSolicitud > 0 ? (int?)codigoSolicitud : null,
+                        NumeroOrden = orden.NumeroOrden,
+                        Estado = "PROCESADA",
+                        Total = orden.Total,
+                        Correo = orden.Correo,
+                        RucCedula = orden.RucCedula,
+                        Compania = orden.Compania,
+                        NombreContribuyente = orden.NombreContribuyente
+                    };
+
+                    var resultadoCorreoPago = _ordenCorreoService.NotificarEvento(
+                        ordenEntidad,
+                        "PAGO_REGISTRADO",
+                        string.IsNullOrWhiteSpace(orden.Correo) ? null : orden.Correo,
+                        string.IsNullOrWhiteSpace(orden.NombreContribuyente) ? orden.Compania : orden.NombreContribuyente,
+                        comprobanteAdjunto,
+                        nombreAdjunto,
+                        "Se registró un comprobante de pago para la orden y queda pendiente la validación del área Financiera.");
+
+                    if (!resultadoCorreoPago.Exitoso)
+                    {
+                        TempData["Warning"] = "El pago fue registrado, pero la notificación no se pudo encolar: "
+                            + (resultadoCorreoPago.Mensaje ?? "Error no especificado.");
                     }
                 }
-                    catch
-                    {
-                        // No bloquear el flujo si el email falla
-                    }
+                catch
+                {
+                    // No bloquear el flujo si la notificación falla
+                }
 
                     TempData["OK"] = estadoOrden.Equals(CapaDatos.Constants.EstadoOrden.Devuelta, StringComparison.OrdinalIgnoreCase)
                         ? "Respaldo actualizado reenviado. La orden vuelve a revisión financiera."
@@ -2073,14 +2082,10 @@ namespace CapaPresentacion.Controllers
             
             try
             {
-                var fecha = DateTime.Now;
-                var timestamp = fecha.ToString("yyyyMMddHHmmss");
-                var consecutivo = await _dao.ObtenerConsecutivoDiarioAsync(fecha) + 1;
-                var numeroOrden = string.Format("OR-{0}-{1}", timestamp, consecutivo);
+                var numeroOrden = _ordenRecaudacionService.GenerarNumeroOrdenInstitucional(DateTime.Now.Year);
                 
                 result.AppendLine($"Generated: {numeroOrden}");
-                result.AppendLine($"Timestamp: {timestamp}");
-                result.AppendLine($"Consecutivo: {consecutivo}");
+                result.AppendLine($"Anio: {DateTime.Now.Year}");
                 
                 // Test basic insertion and retrieval
                 var testOrden = new OrdenRecaudacion 
@@ -3380,6 +3385,7 @@ namespace CapaPresentacion.Controllers
 
                 if (resultado)
                 {
+                    new AocrPostPagoWorkflowService().ProcesarPagoAprobado(ordenId, usuario);
                     TempData["Success"] = "Pago validado correctamente. Orden actualizada a FACTURADA.";
 
                     // Intentar notificación por email (no bloqueante)

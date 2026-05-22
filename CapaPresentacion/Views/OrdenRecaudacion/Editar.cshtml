@@ -40,8 +40,8 @@
                             </div>
 
                             <div class="mb-3">
-                                <label class="form-label">Compañia</label>
-                                @Html.TextBoxFor(m => m.Compania, new { @class = "form-control", placeholder = "Nombre de la compañia" })
+                                <label class="form-label">compania</label>
+                                @Html.TextBoxFor(m => m.Compania, new { @class = "form-control", placeholder = "Nombre de la compania" })
                                 @Html.ValidationMessageFor(m => m.Compania, "", new { @class = "text-danger" })
                             </div>
 
@@ -208,7 +208,7 @@
                         },
                         messages: {
                             Compania: {
-                                required: "La compañia es obligatoria",
+                                required: "La compania es obligatoria",
                                 maxlength: "Máximo 100 caracteres"
                             },
                             RucCedula: {

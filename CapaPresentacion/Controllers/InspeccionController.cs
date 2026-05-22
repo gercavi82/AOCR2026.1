@@ -623,9 +623,10 @@ namespace CapaPresentacion.Controllers
                     + referenciaDetalle + ", InspeccionId=" + inspeccion.CodigoInspeccion + ", Error=" + ex.Message);
             }
 
-            if ((EsRolInspector() || EsAdmin()) && !_revisionDocumentalService.EstaInspeccionHabilitadaParaEjecucion(inspeccion, solicitudDetalle))
+            if ((EsRolInspector() || EsAdmin())
+                && !PuedeInspectorAccederDetalleDocumental(inspeccion, solicitudDetalle, out var mensajeAccesoDetalleDocumental))
             {
-                return new HttpStatusCodeResult(403, _revisionDocumentalService.ObtenerMensajeInspeccionNoHabilitada(inspeccion, solicitudDetalle));
+                return new HttpStatusCodeResult(403, mensajeAccesoDetalleDocumental);
             }
 
             var referenciaCanonica = ObtenerReferenciaDetalle(inspeccion, solicitudDetalle);
@@ -3809,6 +3810,30 @@ namespace CapaPresentacion.Controllers
         private bool InspectorTieneRevisionDocumentalConfirmada(Inspeccion inspeccion)
         {
             return _revisionDocumentalService.EstaInspeccionHabilitadaParaEjecucion(inspeccion);
+        }
+
+        private bool PuedeInspectorAccederDetalleDocumental(Inspeccion inspeccion, SolicitudAOCR solicitudDetalle, out string mensaje)
+        {
+            mensaje = string.Empty;
+
+            if (inspeccion == null)
+            {
+                mensaje = ObtenerMensajeBloqueoRevisionDocumentalInspector();
+                return false;
+            }
+
+            if (!_revisionDocumentalService.EsEstadoSolicitudCompatibleInspeccion(solicitudDetalle != null ? solicitudDetalle.Estado : null))
+            {
+                mensaje = _revisionDocumentalService.ObtenerMensajeInspeccionNoHabilitada(inspeccion, solicitudDetalle);
+                return false;
+            }
+
+            if (!new AocrPostPagoWorkflowService().PuedeInspectorIniciarRevisionDocumental(inspeccion.CodigoInspeccion, out mensaje))
+            {
+                return false;
+            }
+
+            return true;
         }
 
         private string ObtenerMensajeBloqueoRevisionDocumentalInspector()
@@ -7298,15 +7323,10 @@ namespace CapaPresentacion.Controllers
                 return referencia;
             }
 
-            referencia = ExtraerReferenciaDetalle(ObtenerNumeroInspeccionVisible(inspeccion, solicitud));
+            referencia = ExtraerReferenciaDetalle(solicitud != null ? solicitud.NumeroSolicitud : null);
             if (!string.IsNullOrWhiteSpace(referencia))
             {
                 return referencia;
-            }
-
-            if (inspeccion.CodigoSolicitud > 0)
-            {
-                return "AOCR" + inspeccion.CodigoSolicitud.ToString(CultureInfo.InvariantCulture);
             }
 
             return inspeccion.CodigoInspeccion.ToString(CultureInfo.InvariantCulture);

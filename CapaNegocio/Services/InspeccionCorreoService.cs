@@ -63,7 +63,7 @@ namespace CapaNegocio.Services
                         Asunto = plantilla.Asunto,
                         Cuerpo = ConstruirCuerpoHtml(destinatario.Nombre, plantilla, inspeccion, solicitud, observacion),
                         Estado = "PENDIENTE",
-                        OrdenId = solicitud.CodigoSolicitud,
+                        SolicitudId = solicitud.CodigoSolicitud,
                         TipoNotificacion = "INSPECCION_" + (evento ?? string.Empty).Trim().ToUpperInvariant(),
                         EsHtml = true
                     };
@@ -226,7 +226,7 @@ namespace CapaNegocio.Services
                     Asunto = asunto,
                     Cuerpo = html,
                     Estado = "PENDIENTE",
-                    OrdenId = solicitud.CodigoSolicitud,
+                    SolicitudId = solicitud.CodigoSolicitud,
                     TipoNotificacion = TipoNotificacionResultadoInformeTecnicoDireccion,
                     EsHtml = true,
                     EventKey = eventKey

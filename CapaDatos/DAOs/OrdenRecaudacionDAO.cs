@@ -2742,7 +2742,8 @@ namespace CapaDatos.DAOs
                                 Asunto = asuntoCorreo,
                                 Cuerpo = cuerpoCorreo,
                                 Estado = "ERROR",
-                                OrdenId = codigoSolicitud,
+                                SolicitudId = codigoSolicitud,
+                                OrdenId = ordenId,
                                 EventKey = eventKey
                             };
 
@@ -2762,7 +2763,8 @@ namespace CapaDatos.DAOs
                                 Asunto = asuntoCorreo,
                                 Cuerpo = cuerpoCorreo,
                                 Estado = "PENDIENTE",
-                                OrdenId = codigoSolicitud,
+                                SolicitudId = codigoSolicitud,
+                                OrdenId = ordenId,
                                 EventKey = eventKey
                             };
 
@@ -3542,7 +3544,8 @@ namespace CapaDatos.DAOs
                         Asunto = asunto,
                         Cuerpo = cuerpo,
                         Estado = "PENDIENTE",
-                        OrdenId = codigoSolicitud > 0 ? (int?)codigoSolicitud : ordenId,
+                        SolicitudId = codigoSolicitud > 0 ? (int?)codigoSolicitud : null,
+                        OrdenId = ordenId,
                         EventKey = eventKey,
                         TipoNotificacion = string.Equals(estado, "FR3_GENERADO", StringComparison.OrdinalIgnoreCase)
                             ? "FR3_GENERADO"
@@ -4003,15 +4006,44 @@ namespace CapaDatos.DAOs
                 using (var conn = new NpgsqlConnection(_connectionString))
                 {
                     conn.Open();
-                    const string sql = @"SELECT COUNT(*)
-                                         FROM aocr_or_orden
-                                         WHERE codigo_usuario::text = @codigoUsuario
-                                           AND UPPER(TRIM(COALESCE(estado, ''))) IN ('FACTURADA', 'PAGADA', 'COMPLETADA')";
+                    const string sql = @"
+                        SELECT
+                            EXISTS (
+                                SELECT 1
+                                FROM aocr_or_orden o
+                                WHERE o.codigo_usuario::text = @codigoUsuario
+                                  AND UPPER(TRIM(COALESCE(o.estado, ''))) IN ('FACTURADA', 'PAGADA', 'COMPLETADA')
+                            )
+                            OR EXISTS (
+                                SELECT 1
+                                FROM aocr_tbpago p
+                                WHERE UPPER(TRIM(COALESCE(p.estado, ''))) IN ('VALIDADO', 'APROBADO')
+                                  AND (
+                                      p.codigo_solicitud IN (
+                                          SELECT o.id
+                                          FROM aocr_or_orden o
+                                          WHERE o.codigo_usuario::text = @codigoUsuario
+                                      )
+                                      OR p.codigo_solicitud IN (
+                                          SELECT s.codigo_solicitud
+                                          FROM aocr_tbsolicitud s
+                                          WHERE s.codigo_usuario = @codigoUsuarioInt
+                                      )
+                                      OR p.codigo_solicitud IN (
+                                          SELECT o.codigo_solicitud
+                                          FROM aocr_or_orden o
+                                          WHERE o.codigo_usuario::text = @codigoUsuario
+                                            AND o.codigo_solicitud IS NOT NULL
+                                      )
+                                  )
+                            );";
 
                     using (var cmd = new NpgsqlCommand(sql, conn))
                     {
                         cmd.Parameters.AddWithValue("@codigoUsuario", codigoUsuario.ToString());
-                        return Convert.ToInt32(cmd.ExecuteScalar()) > 0;
+                        cmd.Parameters.AddWithValue("@codigoUsuarioInt", codigoUsuario);
+                        var result = cmd.ExecuteScalar();
+                        return result != null && result != DBNull.Value && Convert.ToBoolean(result);
                     }
                 }
             }

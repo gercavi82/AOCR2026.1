@@ -38,6 +38,7 @@ namespace CapaPresentacion.Controllers
         private readonly DocumentoDAO _documentoDAO = new DocumentoDAO();
         private readonly AocrFirmaDocumentoDAO _aocrFirmaDocumentoDao = new AocrFirmaDocumentoDAO();
         private readonly SolicitudAocrCorreoService _solicitudAocrCorreoService = new SolicitudAocrCorreoService();
+        private readonly SolicitudAocrService _solicitudAocrService = new SolicitudAocrService();
         private readonly GeneracionAOCRService _generacionAocrService = new GeneracionAOCRService();
 
         private readonly AeronaveSolicitudDAO _aeronaveSolDAO = new AeronaveSolicitudDAO();
@@ -87,8 +88,66 @@ namespace CapaPresentacion.Controllers
         private const int TamanoMaximoDocumentoMb = 10;
     private const string DocumentoTipoCondicionesLimitaciones = "CONDICIONES_LIMITACIONES";
 
+        private bool UsuarioActualEsRt()
+        {
+            var rolActual = RoleGroupingHelper.NormalizeSelectedRole(Session["Rol"] as string ?? string.Empty);
+            var rolesRaw = RoleGroupingHelper.ExtractRoles(Session["RolesRaw"] ?? Session["Roles"], Session["Rol"] as string);
+
+            return RoleGroupingHelper.IsSolicitante(rolActual)
+                && RoleGroupingHelper.HasAnyRawRole(rolesRaw, "RepresentanteTecnico", "Representante Técnico", "RepresentanteLegal", "RT");
+        }
+
+        private bool TryObtenerBloqueoModuloSolicitudRt(out string mensaje)
+        {
+            mensaje = string.Empty;
+
+            int codigoUsuario;
+            if (!TryObtenerUsuarioActualId(out codigoUsuario) || codigoUsuario <= 0)
+            {
+                return false;
+            }
+
+            return TryObtenerBloqueoModuloSolicitudRt(codigoUsuario, out mensaje);
+        }
+
+        private bool TryObtenerBloqueoModuloSolicitudRt(int codigoUsuario, out string mensaje)
+        {
+            mensaje = string.Empty;
+            if (codigoUsuario <= 0 || EsAdmin() || !UsuarioActualEsRt())
+            {
+                return false;
+            }
+
+            if (BuscarSolicitudRtHabilitadaReutilizable(codigoUsuario, ObtenerCompaniaActivaCodigo(), null) != null)
+            {
+                return false;
+            }
+
+            if (_ordenRecaudacionDAO.TieneOrdenHabilitanteAOCR(codigoUsuario))
+            {
+                return false;
+            }
+
+            if (_ordenRecaudacionDAO.TieneOrdenActivaEnProceso(codigoUsuario)
+                || _ordenRecaudacionDAO.TieneOrdenPendienteComprobante(codigoUsuario))
+            {
+                mensaje = "El módulo de Solicitud AOCR se habilitará cuando Financiero apruebe el pago correspondiente.";
+                return true;
+            }
+
+            mensaje = "Debe generar la Orden de Recaudación para continuar con el proceso AOCR.";
+            return true;
+        }
+
         public ActionResult Index(int? tipoSolicitud = null, bool abrirModal = false)
         {
+            string mensajeBloqueo;
+            if (TryObtenerBloqueoModuloSolicitudRt(out mensajeBloqueo))
+            {
+                TempData["Warning"] = mensajeBloqueo;
+                return RedirectToAction("Index", "OrdenRecaudacion");
+            }
+
             ViewBag.TipoSolicitudInicial = NormalizarTipoSolicitud(tipoSolicitud);
             ViewBag.AbrirModalInicial = abrirModal;
             return View();
@@ -110,6 +169,12 @@ namespace CapaPresentacion.Controllers
                 int codigoUsuario;
                 if (!TryObtenerUsuarioActualId(out codigoUsuario))
                     return Json(new { success = true, data = new List<object>(), message = "Sesion expirada" }, JsonRequestBehavior.AllowGet);
+
+                string mensajeBloqueo;
+                if (TryObtenerBloqueoModuloSolicitudRt(codigoUsuario, out mensajeBloqueo))
+                {
+                    return Json(new { success = true, data = new List<object>(), message = mensajeBloqueo }, JsonRequestBehavior.AllowGet);
+                }
 
                 var solicitudes = _solicitudDAO.ObtenerPorUsuario(codigoUsuario);
                 var companiaActiva = ObtenerCompaniaActivaCodigo();
@@ -156,7 +221,7 @@ namespace CapaPresentacion.Controllers
         }
 
         [HttpPost]
-        [ValidateAntiForgeryToken]
+        [ValidateAntiForgeryTokenFromHeader]
         public JsonResult GuardarFlota(GuardarFlotaRequest request)
         {
             try
@@ -462,7 +527,8 @@ namespace CapaPresentacion.Controllers
 
                 if ((!oid.HasValue || oid.Value <= 0) && !EsAdmin())
                 {
-                    var solicitudActiva = BuscarSolicitudActivaReutilizable(usuarioId, companiaActivaCodigo, tipoSolicitud);
+                    var solicitudActiva = BuscarSolicitudRtHabilitadaReutilizable(usuarioId, companiaActivaCodigo, tipoSolicitud)
+                        ?? BuscarSolicitudActivaReutilizable(usuarioId, companiaActivaCodigo, tipoSolicitud);
                     if (solicitudActiva != null)
                     {
                         oid = solicitudActiva.CodigoSolicitud;
@@ -491,7 +557,7 @@ namespace CapaPresentacion.Controllers
                     if (!EsAdmin() && !User.IsInRole("Financiero") && !User.IsInRole("CoordinadorFinanciero"))
                     {
                         string mensajeBloqueo;
-                        if (!new AocrPostPagoWorkflowService().PuedeRtAccederModuloSolicitud(vm.Solicitud.CodigoSolicitud, usuarioId, out mensajeBloqueo))
+                        if (!_solicitudAocrService.PuedeRtEditarSolicitud(vm.Solicitud.CodigoSolicitud, usuarioId, out mensajeBloqueo))
                         {
                             return Content(
                                 "<div class='alert alert-warning m-3'>" +
@@ -894,7 +960,8 @@ namespace CapaPresentacion.Controllers
 
                 if (vm.Solicitud.CodigoSolicitud <= 0)
                 {
-                    var solicitudActiva = BuscarSolicitudActivaReutilizable(usuarioId, companiaSeleccionadaCodigo, vm.Solicitud.TipoSolicitud);
+                    var solicitudActiva = BuscarSolicitudRtHabilitadaReutilizable(usuarioId, companiaSeleccionadaCodigo, vm.Solicitud.TipoSolicitud)
+                        ?? BuscarSolicitudActivaReutilizable(usuarioId, companiaSeleccionadaCodigo, vm.Solicitud.TipoSolicitud);
                     if (solicitudActiva != null)
                     {
                         vm.Solicitud.CodigoSolicitud = solicitudActiva.CodigoSolicitud;
@@ -932,7 +999,7 @@ namespace CapaPresentacion.Controllers
                     if (!EsAdmin() && !User.IsInRole("Financiero") && !User.IsInRole("CoordinadorFinanciero"))
                     {
                         string mensajeBloqueo;
-                        if (!new AocrPostPagoWorkflowService().PuedeRtAccederModuloSolicitud(actual.CodigoSolicitud, usuarioId, out mensajeBloqueo))
+                        if (!_solicitudAocrService.PuedeRtEditarSolicitud(actual.CodigoSolicitud, usuarioId, out mensajeBloqueo))
                         {
                             return Json(new { success = false, mensaje = mensajeBloqueo }, JsonRequestBehavior.AllowGet);
                         }
@@ -1006,7 +1073,11 @@ namespace CapaPresentacion.Controllers
                 int idFinal;
                 try
                 {
-                    idFinal = GuardarFormularioCompletoAtomico(vm, usuarioId, usuarioCorreo);
+                    idFinal = GuardarFormularioCompletoAtomico(
+                        vm,
+                        usuarioId,
+                        usuarioCorreo,
+                        requiereEnvioCoordinador && !EsAdmin() && UsuarioActualEsRt());
                 }
                 catch (ApplicationException exApp)
                 {
@@ -1072,7 +1143,10 @@ namespace CapaPresentacion.Controllers
                 }
 
                 System.Diagnostics.Debug.WriteLine($"[FormularioCompleto] Exito total. Retornando JSON con ID: {idFinal}");
-                return Json(new { success = true, mensaje = "Solicitud AOCR registrada correctamente.", id = idFinal }, JsonRequestBehavior.AllowGet);
+                var mensajeExito = requiereEnvioCoordinador && !EsAdmin() && UsuarioActualEsRt()
+                    ? SolicitudAocrService.MensajeNuevaOrdenRequerida
+                    : "Solicitud AOCR registrada correctamente.";
+                return Json(new { success = true, mensaje = mensajeExito, id = idFinal }, JsonRequestBehavior.AllowGet);
             }
             catch (Exception ex)
             {
@@ -1149,7 +1223,8 @@ namespace CapaPresentacion.Controllers
 
                 if (sol.CodigoSolicitud <= 0)
                 {
-                    var solicitudActiva = BuscarSolicitudActivaReutilizable(usuarioId, companiaFinal, sol.TipoSolicitud);
+                    var solicitudActiva = BuscarSolicitudRtHabilitadaReutilizable(usuarioId, companiaFinal, sol.TipoSolicitud)
+                        ?? BuscarSolicitudActivaReutilizable(usuarioId, companiaFinal, sol.TipoSolicitud);
                     if (solicitudActiva != null)
                     {
                         sol.CodigoSolicitud = solicitudActiva.CodigoSolicitud;
@@ -1200,6 +1275,15 @@ namespace CapaPresentacion.Controllers
                     if (!EsAdmin() && actual.CodigoUsuario != usuarioId)
                     {
                         return JsonEnvelope(false, "FORBIDDEN", "Sin permisos para modificar esta solicitud.", data: null);
+                    }
+
+                    if (!EsAdmin() && !User.IsInRole("Financiero") && !User.IsInRole("CoordinadorFinanciero"))
+                    {
+                        string mensajeBloqueo;
+                        if (!_solicitudAocrService.PuedeRtEditarSolicitud(actual.CodigoSolicitud, usuarioId, out mensajeBloqueo))
+                        {
+                            return JsonEnvelope(false, "FORBIDDEN", mensajeBloqueo, data: null);
+                        }
                     }
 
                     AplicarCambiosGuardarProgreso(actual, sol, seccion);
@@ -1283,7 +1367,7 @@ namespace CapaPresentacion.Controllers
             }
         }
 
-        private int GuardarFormularioCompletoAtomico(SolicitudAOCRViewModel vm, int usuarioId, string usuarioCorreo)
+        private int GuardarFormularioCompletoAtomico(SolicitudAOCRViewModel vm, int usuarioId, string usuarioCorreo, bool bloquearModuloRtAlFinalizar)
         {
             var opciones = new TransactionOptions
             {
@@ -1332,19 +1416,13 @@ namespace CapaPresentacion.Controllers
                         ProcesarArchivos(vm.ArchivosSubidos, idFinal, rutasFisicasCreadas);
                     }
 
-                    if (!string.IsNullOrWhiteSpace(vm.Banco) || !string.IsNullOrWhiteSpace(vm.NumeroComprobante))
+                    if (bloquearModuloRtAlFinalizar)
                     {
-                        var pagoEnt = new CapaDatos.Entidades.Pago
+                        string mensajeBloqueoRt;
+                        if (!_solicitudAocrService.FinalizarSolicitudRt(idFinal, usuarioId, usuarioId.ToString(), out mensajeBloqueoRt))
                         {
-                            CodigoSolicitud = idFinal,
-                            MetodoPago = vm.Banco,
-                            NumeroComprobante = vm.NumeroComprobante,
-                            Estado = "REGISTRADO",
-                            FechaPago = DateTime.Now
-                        };
-
-                        System.Diagnostics.Debug.WriteLine("[FormularioCompleto] Guardando pago");
-                        _pagoDAO.Insertar(pagoEnt, usuarioCorreo);
+                            throw new ApplicationException(mensajeBloqueoRt);
+                        }
                     }
 
                     scope.Complete();
@@ -2044,6 +2122,33 @@ namespace CapaPresentacion.Controllers
                 .FirstOrDefault();
         }
 
+        private SolicitudAOCR BuscarSolicitudRtHabilitadaReutilizable(int codigoUsuario, string companiaActivaCodigo, int? tipoSolicitud, int? excluirCodigoSolicitud = null)
+        {
+            if (codigoUsuario <= 0)
+            {
+                return null;
+            }
+
+            var tipoNormalizado = NormalizarTipoSolicitud(tipoSolicitud);
+            var workflow = _solicitudAocrService;
+
+            foreach (var solicitud in FiltrarSolicitudesPorCompaniaActiva(_solicitudDAO.ObtenerPorUsuario(codigoUsuario), companiaActivaCodigo)
+                .Where(s => s != null && s.CodigoSolicitud > 0)
+                .Where(s => !excluirCodigoSolicitud.HasValue || s.CodigoSolicitud != excluirCodigoSolicitud.Value)
+                .Where(s => NormalizarTipoSolicitud(s.TipoSolicitud) == tipoNormalizado)
+                .Where(EsSolicitudActivaReutilizable)
+                .OrderByDescending(s => s.CodigoSolicitud))
+            {
+                string mensajeBloqueo;
+                if (workflow.PuedeRtEditarSolicitud(solicitud.CodigoSolicitud, codigoUsuario, out mensajeBloqueo))
+                {
+                    return solicitud;
+                }
+            }
+
+            return null;
+        }
+
         private static bool EsSolicitudActivaReutilizable(SolicitudAOCR solicitud)
         {
             if (solicitud == null || solicitud.CodigoSolicitud <= 0)
@@ -2051,35 +2156,7 @@ namespace CapaPresentacion.Controllers
                 return false;
             }
 
-            switch (EstadoSolicitud.Normalizar(solicitud.Estado ?? string.Empty))
-            {
-                case EstadoSolicitud.Pendiente:
-                case EstadoSolicitud.EnRevision:
-                case EstadoSolicitud.DocumentacionCompleta:
-                case EstadoSolicitud.DocumentacionPendiente:
-                case EstadoSolicitud.Observada:
-                case EstadoSolicitud.Subsanada:
-                case EstadoSolicitud.AceptacionDocumental:
-                case EstadoSolicitud.RequiereInspeccion:
-                case EstadoSolicitud.PagoPendiente:
-                case EstadoSolicitud.PagoValidado:
-                case EstadoSolicitud.PendienteAsignacionRT:
-                case EstadoSolicitud.InspeccionProgramada:
-                case EstadoSolicitud.InspeccionRealizada:
-                case EstadoSolicitud.EnInspeccion:
-                case EstadoSolicitud.GeneradoCondicionesLimitaciones:
-                case EstadoSolicitud.EnRevisionCoordinadorFinal:
-                case EstadoSolicitud.EnviadoDcav:
-                case EstadoSolicitud.FirmadoDcav:
-                case EstadoSolicitud.FirmadoCoordinador:
-                case EstadoSolicitud.AOCR_EnElaboracion:
-                case EstadoSolicitud.AOCR_EnRevision:
-                case EstadoSolicitud.AOCR_Validado:
-                case EstadoSolicitud.AOCR_Legalizado:
-                    return true;
-                default:
-                    return false;
-            }
+            return EstadoSolicitud.PermiteEdicion(solicitud.Estado);
         }
 
         private static bool ContieneValorLista(string lista, string valor)
@@ -3103,7 +3180,7 @@ namespace CapaPresentacion.Controllers
                         Cuerpo = cuerpo,
                         EsHtml = true,
                         TipoNotificacion = "DOCUMENTACION_SUBSANADA_RT",
-                        OrdenId = solicitud.CodigoSolicitud,
+                        SolicitudId = solicitud.CodigoSolicitud,
                         EventKey = eventKey,
                         MaxIntentos = 3
                     }).Wait();

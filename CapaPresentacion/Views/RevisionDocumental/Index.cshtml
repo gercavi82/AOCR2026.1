@@ -423,7 +423,7 @@
                                 </td>
                                 <td data-column-label="Acción">
                                     <div class="rd-actions">
-                                        <a href="@Url.Action("Detalle", "RevisionDocumental", new { id = item.CodigoSolicitud })" class="btn btn-outline-primary btn-sm">
+                                        <a href="@(Url.Action("Detalle", "SolicitudAOCR", new { id = item.CodigoSolicitud }) + "#revision-documental")" class="btn btn-outline-primary btn-sm">
                                             <i class="fas fa-folder-open"></i> Revisar documentación
                                         </a>
                                     </div>

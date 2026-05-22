@@ -11,6 +11,7 @@ namespace CapaPresentacion.Helpers
         public const string Solicitante = "Solicitante";
         public const string InspectorTecnico = "InspectorTecnico";
         public const string DireccionJefaturaTecnica = "DireccionJefaturaTecnica";
+        public const string Financiero = "Financiero";
         public const string Coordinacion = "Coordinacion";
 
         private static readonly string[] UnifiedRoleOrder =
@@ -19,7 +20,13 @@ namespace CapaPresentacion.Helpers
             Solicitante,
             InspectorTecnico,
             DireccionJefaturaTecnica,
+            Financiero,
             Coordinacion
+        };
+
+        private static readonly HashSet<string> HiddenRawRoles = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+        {
+            "RECEPCION"
         };
 
         public static IList<string> ExtractRoles(object rolesObject, string extraRole = null)
@@ -58,6 +65,7 @@ namespace CapaPresentacion.Helpers
         public static IList<string> BuildUnifiedRoles(IEnumerable<string> rawRoles)
         {
             var mappedRoles = (rawRoles ?? Enumerable.Empty<string>())
+                .Where(role => !HiddenRawRoles.Contains(Simplify(role)))
                 .Select(NormalizeSelectedRole)
                 .Where(role => !string.IsNullOrWhiteSpace(role))
                 .Distinct(StringComparer.OrdinalIgnoreCase)
@@ -120,10 +128,17 @@ namespace CapaPresentacion.Helpers
                 "JEFATURATECNICA",
                 "DIRDAC",
                 "DIRECTORGENERAL",
-                "DIRECTORFINANCIERO",
                 "DIRECCIONJEFATURATECNICA"))
             {
                 return DireccionJefaturaTecnica;
+            }
+
+            if (Matches(normalized,
+                "FINANCIERO",
+                "COORDINADORFINANCIERO",
+                "DIRECTORFINANCIERO"))
+            {
+                return Financiero;
             }
 
             if (Matches(normalized,
@@ -131,9 +146,7 @@ namespace CapaPresentacion.Helpers
                 "COORDINADOR",
                 "COORDINADORINSPECCIONES",
                 "COORDINACIONLEGAL",
-                "COORDINADORLEGAL",
-                "FINANCIERO",
-                "COORDINADORFINANCIERO"))
+                "COORDINADORLEGAL"))
             {
                 return Coordinacion;
             }
@@ -153,6 +166,8 @@ namespace CapaPresentacion.Helpers
                     return "Inspector / Técnico";
                 case DireccionJefaturaTecnica:
                     return "Dirección / Jefatura técnica";
+                case Financiero:
+                    return "Financiero";
                 case Coordinacion:
                     return "Coordinación";
                 default:
@@ -178,6 +193,11 @@ namespace CapaPresentacion.Helpers
         public static bool IsDireccionJefaturaTecnica(string role)
         {
             return NormalizeSelectedRole(role).Equals(DireccionJefaturaTecnica, StringComparison.OrdinalIgnoreCase);
+        }
+
+        public static bool IsFinanciero(string role)
+        {
+            return NormalizeSelectedRole(role).Equals(Financiero, StringComparison.OrdinalIgnoreCase);
         }
 
         public static bool IsCoordinacion(string role)

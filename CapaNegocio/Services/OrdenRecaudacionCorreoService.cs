@@ -1,7 +1,11 @@
 using System;
 using System.Collections.Generic;
+using System.Globalization;
+using System.Linq;
+using CapaDatos.DAOs;
 using CapaDatos.Entidades;
 using CapaDatos.Services;
+using CapaModelo;
 using CapaModelo.Common;
 
 namespace CapaNegocio.Services
@@ -46,34 +50,52 @@ namespace CapaNegocio.Services
                     return ResultadoOperacion.Ok(null, "Evento de orden sin plantilla de correo configurada.");
                 }
 
-                if (!string.IsNullOrWhiteSpace(emailDestino))
-                {
-                    orden.Correo = emailDestino;
-                }
-
-                if (!string.IsNullOrWhiteSpace(nombreDestino))
-                {
-                    orden.NombreContribuyente = nombreDestino;
-                    orden.Compania = nombreDestino;
-                }
-
-                var destinatarios = _policyService.ResolverDestinatarios(orden, plantilla.GruposDestinatarios);
+                var destinatarios = ResolverDestinatarios(orden, plantilla, emailDestino, nombreDestino);
                 if (destinatarios.Count == 0)
                 {
+                    if (string.Equals((evento ?? string.Empty).Trim(), "ORDEN_RECAUDACION_GENERADA_FINANCIERO", StringComparison.OrdinalIgnoreCase))
+                    {
+                        return ResultadoOperacion.Error("No existe un correo institucional activo para FINANCIERO_AOCR.");
+                    }
+
                     return ResultadoOperacion.Ok(null, "Evento de orden sin destinatarios resolubles.");
                 }
 
+                var solicitudId = orden.CodigoSolicitud.HasValue && orden.CodigoSolicitud.Value > 0
+                    ? (int?)orden.CodigoSolicitud.Value
+                    : null;
+                if (!solicitudId.HasValue)
+                {
+                    return ResultadoOperacion.Error("La orden no tiene una solicitud AOCR asociada para registrar la notificación.");
+                }
+
+                var tipoNotificacion = (evento ?? string.Empty).Trim().ToUpperInvariant();
+
                 foreach (var destinatario in destinatarios)
                 {
+                    var correoDestinoNormalizado = (destinatario.Email ?? string.Empty).Trim();
+                    if (!CorreoInstitucionalService.EsCorreoValido(correoDestinoNormalizado))
+                    {
+                        _logger.LogWarning("OrdenRecaudacionCorreoService.NotificarEvento: correo omitido por formato inválido: " + correoDestinoNormalizado);
+                        continue;
+                    }
+
                     var item = new EmailQueueItem
                     {
-                        Para = destinatario.Email,
+                        Para = correoDestinoNormalizado,
                         ParaNombre = destinatario.Nombre,
                         Asunto = plantilla.Asunto,
                         Cuerpo = ConstruirCuerpoHtml(destinatario.Nombre, plantilla, orden, observacion),
                         Estado = "PENDIENTE",
-                        OrdenId = orden.Id,
-                        TipoNotificacion = "OR_" + (evento ?? string.Empty).Trim().ToUpperInvariant(),
+                        SolicitudId = solicitudId.Value,
+                        OrdenId = orden.Id > 0 ? (int?)orden.Id : null,
+                        TipoNotificacion = tipoNotificacion,
+                        EventKey = string.Format(
+                            CultureInfo.InvariantCulture,
+                            "{0}_{1}_{2}",
+                            tipoNotificacion,
+                            solicitudId.Value,
+                            correoDestinoNormalizado.ToUpperInvariant()),
                         EsHtml = true,
                         AdjuntoContenido = adjuntoPdf,
                         AdjuntoNombre = adjuntoPdf != null ? (nombreAdjunto ?? (orden.NumeroOrden ?? "orden") + ".pdf") : null,
@@ -87,7 +109,12 @@ namespace CapaNegocio.Services
             }
             catch (Exception ex)
             {
-                _logger.LogWarning("OrdenRecaudacionCorreoService.NotificarEvento: " + ex.Message);
+                _logger.LogError(ex, new LogContext
+                {
+                    ErrorCode = "OR_CORREO_QUEUE_ERROR",
+                    CodigoSolicitud = orden != null && orden.CodigoSolicitud.HasValue ? orden.CodigoSolicitud.Value.ToString(CultureInfo.InvariantCulture) : null,
+                    NumeroOrden = orden != null ? orden.NumeroOrden : null
+                });
                 return ResultadoOperacion.Error("No fue posible encolar correos del evento de orden.");
             }
         }
@@ -96,6 +123,14 @@ namespace CapaNegocio.Services
         {
             switch ((evento ?? string.Empty).Trim().ToUpperInvariant())
             {
+                case "ORDEN_RECAUDACION_GENERADA_FINANCIERO":
+                    return new PlantillaOrdenCorreo
+                    {
+                        Asunto = "Nueva Orden de Recaudación generada para solicitud AOCR #" + (orden.CodigoSolicitud.HasValue ? orden.CodigoSolicitud.Value.ToString(CultureInfo.InvariantCulture) : "N/D"),
+                        Titulo = "Orden de Recaudación generada",
+                        Mensaje = "Se ha generado una nueva Orden de Recaudación asociada a una Solicitud AOCR y queda pendiente la revisión del pago por el área financiera.",
+                        GruposDestinatarios = new[] { CorreoInstitucionalService.FinancieroAocr }
+                    };
                 case "ORDEN_CREADA":
                     return new PlantillaOrdenCorreo
                     {
@@ -145,8 +180,64 @@ namespace CapaNegocio.Services
             }
         }
 
+        private List<NotificacionDestinatario> ResolverDestinatarios(OrdenRecaudacion orden, PlantillaOrdenCorreo plantilla, string emailDestino, string nombreDestino)
+        {
+            if (!string.IsNullOrWhiteSpace(emailDestino))
+            {
+                orden.Correo = emailDestino;
+            }
+
+            if (!string.IsNullOrWhiteSpace(nombreDestino))
+            {
+                orden.NombreContribuyente = nombreDestino;
+                orden.Compania = nombreDestino;
+            }
+
+            var grupos = plantilla.GruposDestinatarios ?? new string[0];
+            if (grupos.Any(g => string.Equals(g, CorreoInstitucionalService.FinancieroAocr, StringComparison.OrdinalIgnoreCase)))
+            {
+                var institucional = new CorreoInstitucionalService().ObtenerDestinatariosPorArea(CorreoInstitucionalService.FinancieroAocr);
+                if (institucional == null)
+                {
+                    _logger.LogWarning("OrdenRecaudacionCorreoService.NotificarEvento: no existe correo institucional activo para FINANCIERO_AOCR.");
+                    return new List<NotificacionDestinatario>();
+                }
+
+                return institucional.ObtenerTodosLosCorreos()
+                    .Where(CorreoInstitucionalService.EsCorreoValido)
+                    .Distinct(StringComparer.OrdinalIgnoreCase)
+                    .Select(correo => new NotificacionDestinatario
+                    {
+                        Email = correo,
+                        Nombre = string.IsNullOrWhiteSpace(institucional.NombreArea) ? "Financiero AOCR" : institucional.NombreArea
+                    })
+                    .ToList();
+            }
+
+            return _policyService.ResolverDestinatarios(orden, grupos);
+        }
+
         private static string ConstruirCuerpoHtml(string nombreDestino, PlantillaOrdenCorreo plantilla, OrdenRecaudacion orden, string observacion)
         {
+            var observacionEsHtml = !string.IsNullOrWhiteSpace(observacion)
+                && observacion.IndexOf('<') >= 0
+                && observacion.IndexOf('>') > observacion.IndexOf('<');
+            var solicitud = ObtenerSolicitud(orden);
+            var numeroSolicitud = solicitud != null && !string.IsNullOrWhiteSpace(solicitud.NumeroSolicitud)
+                ? solicitud.NumeroSolicitud.Trim()
+                : (orden.CodigoSolicitud.HasValue ? orden.CodigoSolicitud.Value.ToString() : "N/D");
+            var nombreOperadora = solicitud != null && !string.IsNullOrWhiteSpace(solicitud.NombreOperador)
+                ? solicitud.NombreOperador.Trim()
+                : (!string.IsNullOrWhiteSpace(solicitud != null ? solicitud.RazonSocial : null)
+                    ? solicitud.RazonSocial.Trim()
+                    : (orden.Compania ?? "Contribuyente"));
+            var ruc = solicitud != null && !string.IsNullOrWhiteSpace(solicitud.Ruc)
+                ? solicitud.Ruc.Trim()
+                : (orden.RucCedula ?? string.Empty);
+            var nombreRt = solicitud != null && !string.IsNullOrWhiteSpace(solicitud.RepresentanteLegal)
+                ? solicitud.RepresentanteLegal.Trim()
+                : "Representante Técnico";
+
             var model = new EmailTemplateModel
             {
                 Titulo = plantilla.Titulo,
@@ -154,17 +245,39 @@ namespace CapaNegocio.Services
                 MensajePrincipal = plantilla.Mensaje,
                 Resumen = new List<EmailFieldItem>
                 {
-                    new EmailFieldItem("Orden", orden.NumeroOrden ?? ("#" + orden.Id)),
-                    new EmailFieldItem("Contribuyente", orden.NombreContribuyente ?? orden.Compania ?? "Contribuyente"),
-                    new EmailFieldItem("Estado", orden.Estado ?? "PENDIENTE"),
-                    new EmailFieldItem("Total", "$" + string.Format("{0:N2}", orden.Total ?? 0m))
+                    new EmailFieldItem("Número de Orden de Recaudación", orden.NumeroOrden ?? ("#" + orden.Id)),
+                    new EmailFieldItem("Número de Solicitud AOCR", numeroSolicitud),
+                    new EmailFieldItem("Operadora / Compañía", nombreOperadora),
+                    new EmailFieldItem("RUC", ruc),
+                    new EmailFieldItem("Representante Técnico", nombreRt),
+                    new EmailFieldItem("Monto", "$" + string.Format(CultureInfo.InvariantCulture, "{0:N2}", orden.Total ?? 0m)),
+                    new EmailFieldItem("Fecha de generación", DateTime.Now.ToString("dd/MM/yyyy HH:mm")),
+                    new EmailFieldItem("Estado actual", "Orden generada / Pendiente de pago")
                 },
-                Observaciones = observacion,
+                Observaciones = observacionEsHtml ? null : observacion,
+                ContenidoHtmlExtra = observacionEsHtml ? observacion : null,
                 TextoCierre = "Puede revisar el detalle desde el sistema AOCR.",
                 Footer = "Este es un mensaje automatico del workflow financiero AOCR."
             };
 
             return EmailTemplateRenderer.Render(model);
+        }
+
+        private static SolicitudAOCR ObtenerSolicitud(OrdenRecaudacion orden)
+        {
+            if (orden == null || !orden.CodigoSolicitud.HasValue || orden.CodigoSolicitud.Value <= 0)
+            {
+                return null;
+            }
+
+            try
+            {
+                return new SolicitudDAO().ObtenerPorId(orden.CodigoSolicitud.Value);
+            }
+            catch
+            {
+                return null;
+            }
         }
 
         private sealed class PlantillaOrdenCorreo

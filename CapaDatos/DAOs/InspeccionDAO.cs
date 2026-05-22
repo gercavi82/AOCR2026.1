@@ -192,7 +192,18 @@ namespace CapaDatos.DAOs
                     ? "COALESCE(s.modulo_solicitud_rt_habilitado, FALSE) = TRUE"
                     : "TRUE";
                 var filtroPendienteCargaDocumentalRt = columnasSolicitud.Contains("pendiente_carga_documental_rt")
-                    ? "COALESCE(s.pendiente_carga_documental_rt, FALSE) = FALSE"
+                    ? @"(
+                            COALESCE(s.pendiente_carga_documental_rt, FALSE) = FALSE
+                            OR EXISTS (
+                                SELECT 1
+                                FROM public.aocr_tbdocumento d
+                                WHERE d.codigo_solicitud = s.codigo_solicitud
+                                  AND COALESCE(d.tamano_bytes, 0) > 0
+                                  AND NULLIF(TRIM(COALESCE(d.nombre_archivo, '')), '') IS NOT NULL
+                                  AND NULLIF(TRIM(COALESCE(d.ruta_guardada, '')), '') IS NOT NULL
+                                  AND UPPER(TRIM(COALESCE(d.tipo_documento, ''))) NOT IN ('BORRADOR_AOCR', 'AOCR_GENERADO', 'AOCR')
+                            )
+                       )"
                     : "TRUE";
                 var expresionEstadoSolicitud = columnasSolicitud.Contains("estado")
                     ? "UPPER(COALESCE(s.estado, ''))"

@@ -406,7 +406,7 @@ namespace CapaNegocio
                     Cuerpo = ConstruirCuerpoCorreoCambioEstado(nombreDestino, codigoSolicitud, estadoNormalizado, tipo),
                     EsHtml = true,
                     Estado = "PENDIENTE",
-                    OrdenId = codigoSolicitud,
+                    SolicitudId = codigoSolicitud,
                     TipoNotificacion = "AOCR_CAMBIO_ESTADO",
                     EventKey = eventKey,
                     CorrelationId = Guid.NewGuid().ToString("N").Substring(0, 12),

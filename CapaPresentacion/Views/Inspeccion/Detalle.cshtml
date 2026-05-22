@@ -201,11 +201,14 @@
             ? Url.Action("DescargarListaVerificacionOperacionalEae", "Inspeccion", new { id = Model.CodigoInspeccion })
             : Url.Action("DescargarLvEaeOficial", "Inspeccion", new { codigoInspeccion = Model.CodigoInspeccion }))
         : string.Empty;
-    var urlVerDocumentacionSolicitud = Model != null && Model.CodigoSolicitud > 0
-        ? Url.Action("Lista", "Documento", new { solicitudId = Model.CodigoSolicitud, modo = "ver" })
+    var urlDetalleSolicitudBase = Model != null && Model.CodigoSolicitud > 0
+        ? Url.Action("Detalle", "SolicitudAOCR", new { id = Model.CodigoSolicitud })
         : string.Empty;
-    var urlRevisionDocumentalSolicitud = Model != null && Model.CodigoSolicitud > 0
-        ? Url.Action("Lista", "Documento", new { solicitudId = Model.CodigoSolicitud, modo = "revision" })
+    var urlVerDocumentacionSolicitud = !string.IsNullOrWhiteSpace(urlDetalleSolicitudBase)
+        ? urlDetalleSolicitudBase + "#documentos-rt-historial"
+        : string.Empty;
+    var urlRevisionDocumentalSolicitud = !string.IsNullOrWhiteSpace(urlDetalleSolicitudBase)
+        ? urlDetalleSolicitudBase + "#revision-documental"
         : string.Empty;
     var accesosDocumentalesInspeccionVm = new CapaPresentacion.Models.ViewModels.DocumentoWorkflowActionsVm
     {
@@ -747,6 +750,15 @@
             grid-template-columns: repeat(6, minmax(0, 1fr));
         }
 
+        .inspection-detail-page .status-strip.aocr-desktop-rich {
+            gap: 0;
+            overflow: hidden;
+            border: 1px solid var(--inspection-border);
+            border-radius: 24px;
+            background: linear-gradient(180deg, #f7fbfd 0%, #ffffff 100%);
+            box-shadow: 0 12px 28px rgba(15, 45, 64, 0.06);
+        }
+
         .inspection-detail-page .status-tile {
             background: #fff;
             border: 1px solid var(--inspection-border);
@@ -776,9 +788,27 @@
             word-break: break-word;
         }
 
+        .inspection-detail-page .status-strip.aocr-desktop-rich .status-tile {
+            background: transparent;
+            border: 0;
+            border-right: 1px solid rgba(27, 79, 114, 0.1);
+            border-radius: 0;
+            padding: 1rem 1.1rem;
+            box-shadow: none;
+        }
+
+        .inspection-detail-page .status-strip.aocr-desktop-rich .status-tile:last-child {
+            border-right: 0;
+        }
+
         .inspection-detail-page .status-tile.highlight {
             background: linear-gradient(180deg, #f2f8fc 0%, #ffffff 100%);
             border-color: rgba(27, 79, 114, 0.18);
+        }
+
+        .inspection-detail-page .status-strip.aocr-desktop-rich .status-tile.highlight {
+            background: linear-gradient(180deg, rgba(27, 79, 114, 0.07) 0%, rgba(255, 255, 255, 0) 100%);
+            border-color: transparent;
         }
 
         .inspection-detail-page .info-panel-grid {
@@ -1691,6 +1721,149 @@
             color: var(--inspection-muted);
         }
 
+        .inspection-detail-page .hallazgos-list {
+            display: grid;
+            gap: 0.7rem;
+        }
+
+        .inspection-detail-page .hallazgo-row {
+            display: grid;
+            grid-template-columns: minmax(150px, 180px) minmax(0, 1fr) auto;
+            gap: 0.9rem;
+            align-items: center;
+            padding: 0.95rem 1rem;
+            border: 1px solid rgba(27, 79, 114, 0.12);
+            border-left: 5px solid rgba(27, 79, 114, 0.18);
+            border-radius: 18px;
+            background: linear-gradient(180deg, #f8fbfd 0%, #ffffff 100%);
+            box-shadow: 0 10px 24px rgba(15, 45, 64, 0.05);
+        }
+
+        .inspection-detail-page .hallazgo-row.is-critical {
+            border-left-color: rgba(166, 30, 47, 0.7);
+        }
+
+        .inspection-detail-page .hallazgo-row.is-medium {
+            border-left-color: rgba(212, 161, 31, 0.78);
+        }
+
+        .inspection-detail-page .hallazgo-row.is-low {
+            border-left-color: rgba(15, 123, 132, 0.72);
+        }
+
+        .inspection-detail-page .hallazgo-row-main {
+            min-width: 0;
+        }
+
+        .inspection-detail-page .hallazgo-row-label {
+            display: block;
+            margin-bottom: 0.18rem;
+            color: var(--inspection-muted);
+            font-size: 0.68rem;
+            font-weight: 800;
+            letter-spacing: 0.04em;
+            text-transform: uppercase;
+        }
+
+        .inspection-detail-page .hallazgo-row-title {
+            color: var(--inspection-primary-dark);
+            font-size: 0.9rem;
+            font-weight: 800;
+            line-height: 1.35;
+        }
+
+        .inspection-detail-page .hallazgo-row-copy {
+            color: var(--inspection-muted);
+            font-size: 0.84rem;
+            line-height: 1.5;
+            min-width: 0;
+        }
+
+        .inspection-detail-page .hallazgo-row-side {
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+        }
+
+        .inspection-detail-page .hallazgo-pill {
+            display: inline-flex;
+            align-items: center;
+            padding: 0.32rem 0.65rem;
+            border-radius: 999px;
+            font-size: 0.72rem;
+            font-weight: 800;
+            line-height: 1;
+            white-space: nowrap;
+            border: 1px solid transparent;
+        }
+
+        .inspection-detail-page .hallazgo-pill.is-critical {
+            background: rgba(166, 30, 47, 0.12);
+            border-color: rgba(166, 30, 47, 0.18);
+            color: #8d1c2e;
+        }
+
+        .inspection-detail-page .hallazgo-pill.is-medium {
+            background: rgba(212, 161, 31, 0.16);
+            border-color: rgba(212, 161, 31, 0.2);
+            color: #7a5a08;
+        }
+
+        .inspection-detail-page .hallazgo-pill.is-low {
+            background: rgba(15, 123, 132, 0.12);
+            border-color: rgba(15, 123, 132, 0.18);
+            color: #0f6f79;
+        }
+
+        .inspection-detail-page .hallazgo-pill.is-state-open {
+            background: rgba(27, 79, 114, 0.1);
+            border-color: rgba(27, 79, 114, 0.16);
+            color: var(--inspection-primary-dark);
+        }
+
+        .inspection-detail-page .hallazgo-pill.is-state-progress {
+            background: rgba(212, 161, 31, 0.16);
+            border-color: rgba(212, 161, 31, 0.2);
+            color: #7a5a08;
+        }
+
+        .inspection-detail-page .hallazgo-pill.is-state-closed {
+            background: rgba(38, 126, 74, 0.12);
+            border-color: rgba(38, 126, 74, 0.18);
+            color: #1f6a3f;
+        }
+
+        .inspection-detail-page .hallazgo-pill.is-neutral {
+            background: rgba(95, 115, 140, 0.12);
+            border-color: rgba(95, 115, 140, 0.16);
+            color: #55697f;
+        }
+
+        .inspection-detail-page .hallazgo-empty-inline {
+            color: var(--inspection-muted);
+            font-size: 0.84rem;
+            line-height: 1.45;
+        }
+
+        @@media (max-width: 767.98px) {
+            .inspection-detail-page .hallazgo-row {
+                grid-template-columns: 1fr;
+                align-items: flex-start;
+            }
+
+            .inspection-detail-page .hallazgo-row-side {
+                justify-content: flex-start;
+            }
+        }
+
+        .inspection-detail-page .hallazgos-empty-card {
+            padding: 1.35rem 1rem;
+            border: 1px dashed rgba(27, 79, 114, 0.2);
+            border-radius: 18px;
+            background: linear-gradient(180deg, #fbfdff 0%, #ffffff 100%);
+            text-align: center;
+        }
+
         .inspection-detail-page .timeline-list {
             display: grid;
             gap: 0.85rem;
@@ -1737,6 +1910,78 @@
             border-radius: 22px;
             border: 1px solid rgba(27, 79, 114, 0.1);
             background: linear-gradient(180deg, #fbfdff 0%, #f3f8fb 100%);
+        }
+
+        .inspection-detail-page .inspection-ops-grid {
+            display: block;
+        }
+
+        .inspection-detail-page .inspection-ops-card {
+            min-width: 0;
+        }
+
+        @@media (min-width: 992px) {
+            .inspection-detail-page .inspection-ops-grid {
+                display: grid;
+                grid-template-columns: repeat(3, minmax(0, 1fr));
+                gap: 1rem;
+                align-items: start;
+                margin-top: 1.25rem;
+            }
+
+            .inspection-detail-page .inspection-ops-grid .aocr-mobile-collapse-shell,
+            .inspection-detail-page .inspection-ops-grid .utility-grid,
+            .inspection-detail-page .inspection-ops-grid .aocr-mobile-collapse-section {
+                display: contents !important;
+            }
+
+            .inspection-detail-page .inspection-ops-grid .inspection-ops-card {
+                height: 100%;
+            }
+
+            .inspection-detail-page .inspection-ops-grid .inspection-ops-card .card-body {
+                display: grid;
+                gap: 0.85rem;
+                height: 100%;
+                padding: 1rem 1.05rem;
+            }
+
+            .inspection-detail-page .inspection-ops-grid .inspection-ops-card .section-heading {
+                margin-bottom: 0;
+            }
+
+            .inspection-detail-page .inspection-ops-grid .inspection-ops-card .section-copy {
+                margin-top: 0.2rem;
+            }
+
+            .inspection-detail-page .inspection-ops-grid .ops-card-documentos {
+                grid-column: span 2;
+            }
+
+            .inspection-detail-page .inspection-ops-grid .timeline-list {
+                gap: 0.65rem;
+            }
+
+            .inspection-detail-page .inspection-ops-grid .timeline-item {
+                padding: 0.85rem 0.9rem;
+                border-radius: 16px;
+            }
+
+            .inspection-detail-page .inspection-ops-grid .doc-table td,
+            .inspection-detail-page .inspection-ops-grid .doc-table th,
+            .inspection-detail-page .inspection-ops-grid .hallazgos-table td,
+            .inspection-detail-page .inspection-ops-grid .hallazgos-table th {
+                padding: 0.72rem 0.7rem;
+            }
+
+            .inspection-detail-page .inspection-ops-grid .table-card-header {
+                gap: 0.85rem;
+                align-items: flex-start;
+            }
+
+            .inspection-detail-page .inspection-ops-grid .hallazgos-summary {
+                margin-top: 0.45rem;
+            }
         }
 
         .inspection-detail-page .mobile-summary-card,
@@ -1937,6 +2182,15 @@
             .inspection-detail-page .utility-grid,
             .inspection-detail-page .info-panel-grid {
                 grid-template-columns: 1fr;
+            }
+
+            .inspection-detail-page .status-strip.aocr-desktop-rich .status-tile {
+                border-right: 0;
+                border-bottom: 1px solid rgba(27, 79, 114, 0.1);
+            }
+
+            .inspection-detail-page .status-strip.aocr-desktop-rich .status-tile:last-child {
+                border-bottom: 0;
             }
 
             .inspection-detail-page .signature-panel .compact-form {
@@ -2325,6 +2579,187 @@
             </div>
         </div>
 
+        @if (usaFlujoListaVerificacionOperacionalEae)
+        {
+            var tieneListaVerificacionVisualizable = listaVerificacionOperacionalEae != null
+                && listaVerificacionOperacionalEae.Finalizado
+                && !string.IsNullOrWhiteSpace(listaVerificacionOperacionalEaeUrl);
+            var listaVerificacionVm = new ListaVerificacionOperacionalEaePanelVm
+            {
+                CodigoInspeccion = Model.CodigoInspeccion,
+                Solicitud = solicitud,
+                ListaVerificacion = listaVerificacionOperacionalEae,
+                PuedeEditar = puedeEditarInformeTecnico,
+                PuedeFirmar = puedeEditarInformeTecnico && listaVerificacionOperacionalEae != null && listaVerificacionOperacionalEae.Finalizado && !listaVerificacionFirmada,
+                EstaFirmada = listaVerificacionFirmada,
+                UrlVisualizacion = tieneListaVerificacionVisualizable ? listaVerificacionOperacionalEaeUrl : string.Empty,
+                UrlDescarga = tieneListaVerificacionVisualizable ? listaVerificacionOperacionalEaeDescargaUrl : string.Empty,
+                UrlDocumentosSolicitud = urlRevisionDocumentalSolicitud,
+                AccesosDocumentales = accesosDocumentalesInspeccionVm,
+                MensajeBloqueoEdicion = !puedeAbrirLvEae ? mensajeBloqueoLvEae : string.Empty,
+                PuedeConfirmarRevisionDocumental = inspectorDebeRevisarDocumentos && (esInspector || esAdministrador),
+                TieneDocumentosObservados = estadoRevisionDocumental.TieneDocumentosObservados,
+                TieneDocumentosSubsanadosPendientes = estadoRevisionDocumental.TieneDocumentosSubsanadosPendientes,
+                DocumentacionAprobada = estadoRevisionDocumental.DocumentacionAprobada,
+                PuedeAbrirLvEae = puedeAbrirLvEae,
+                MensajeBloqueoDocumental = mensajeBloqueoLvEae
+            };
+            var estadoListaVentana = listaVerificacionFirmada
+                ? "LV firmada"
+                : (listaVerificacionOperacionalEae != null && listaVerificacionOperacionalEae.Finalizado
+                    ? "LV completada"
+                    : (listaVerificacionOperacionalEae != null && listaVerificacionOperacionalEae.CodigoListaVerificacion > 0
+                        ? "LV en borrador"
+                        : "LV pendiente"));
+            var claseListaVentana = listaVerificacionFirmada
+                ? "success"
+                : (listaVerificacionOperacionalEae != null && listaVerificacionOperacionalEae.Finalizado
+                    ? "primary"
+                    : "warning");
+            var resumenListaVentana = listaVerificacionFirmada
+                ? "La lista ya fue firmada y queda como prerequisito cumplido para continuar con el informe técnico."
+                : (listaVerificacionOperacionalEae != null && listaVerificacionOperacionalEae.Finalizado
+                    ? "La lista ya fue completada. Revísela en la ventana dedicada y continúe con la firma del técnico responsable."
+                    : "Complete la LV/EAE en una ventana dedicada antes de pasar a la elaboración del informe técnico.");
+
+            <div class="card section-card soft-card mb-4" id="bloqueListaVerificacionOperacionalEaeResumen">
+                <div class="card-body">
+                    <div class="section-heading">
+                        <div class="section-icon">
+                            <i class="fas fa-clipboard-check"></i>
+                        </div>
+                        <div>
+                            <h2 class="section-title">Lista de verificación operacional (LV)</h2>
+                            <p class="section-copy">La LV/EAE ahora se gestiona en una ventana dedicada para no mezclar su captura con el editor del informe técnico.</p>
+                        </div>
+                    </div>
+
+                    <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3">
+                        <div>
+                            <span class="status-pill @claseListaVentana"><i class="fas fa-window-maximize"></i> @estadoListaVentana</span>
+                            <p class="section-copy mb-0 mt-2">@resumenListaVentana</p>
+                        </div>
+                        <div class="button-flow">
+                            @if (puedeAbrirLvEae)
+                            {
+                                <button type="button" class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#modalListaVerificacionOperacionalEae">
+                                    <i class="fas fa-external-link-alt me-1"></i>
+                                    @(listaVerificacionFirmada ? "Abrir ventana LV" : "Completar LV en ventana")
+                                </button>
+                            }
+                            else
+                            {
+                                <span class="aocr-disabled-button-wrapper"
+                                      tabindex="0"
+                                      data-bs-toggle="tooltip"
+                                      data-bs-placement="top"
+                                      title="@mensajeBloqueoLvEae">
+                                    <button type="button" class="btn btn-secondary" disabled>
+                                        <i class="fas fa-lock me-1"></i> Abrir LV/EAE
+                                    </button>
+                                </span>
+                            }
+                        </div>
+                    </div>
+                    @if (!puedeAbrirLvEae)
+                    {
+                        <small class="text-muted d-block mt-3">@mensajeBloqueoLvEae</small>
+                    }
+                </div>
+            </div>
+
+            <div class="modal fade lv-modal" id="modalListaVerificacionOperacionalEae" tabindex="-1" aria-labelledby="modalListaVerificacionOperacionalEaeLabel" aria-hidden="true" data-auto-open="@(abrirModalListaVerificacionAlCargar ? "true" : "false")" data-auto-open-signature="@(autoOpenLvSignature ? "true" : "false")">
+                <div class="modal-dialog modal-xl modal-dialog-scrollable">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <div>
+                                <h5 class="modal-title" id="modalListaVerificacionOperacionalEaeLabel">Lista de verificación operacional (LV/EAE)</h5>
+                                <small class="text-muted">Gestione la lista antes de elaborar o firmar el informe técnico.</small>
+                            </div>
+                            <div class="lv-modal-header-actions">
+                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+                            </div>
+                        </div>
+                        <div class="modal-body bg-light">
+                            @Html.Partial("_ListaVerificacionOperacionalEaePanel", listaVerificacionVm)
+                        </div>
+                    </div>
+                </div>
+            </div>
+        }
+
+        @if (puedeAbrirModalInformeTecnico)
+        {
+            var estadoAccesoInforme = !informeTecnicoModalHabilitado
+                ? "Bloqueado por LV/EAE"
+                : (tieneInforme ? estadoInformeTecnico : "Disponible para elaboración");
+            var claseEstadoAccesoInforme = !informeTecnicoModalHabilitado
+                ? "warning"
+                : (tieneInforme ? "primary" : "success");
+            var estadoLvModal = !usaFlujoListaVerificacionOperacionalEae
+                ? "No aplica"
+                : (listaVerificacionFinalizada ? "Finalizada" : "Pendiente");
+
+            <div class="card section-card soft-card aocr-informe-entry-card mb-4" id="bloqueAccesoInformeTecnico">
+                <div class="card-body">
+                    <div class="section-heading">
+                        <div class="section-icon">
+                            <i class="fas fa-file-alt"></i>
+                        </div>
+                        <div>
+                            <h2 class="section-title">Centro de informe técnico</h2>
+                            <p class="section-copy">El informe técnico se gestiona únicamente desde la vista parcial en ventana flotante para evitar duplicidad dentro del detalle de inspección.</p>
+                        </div>
+                    </div>
+
+                    <div class="d-flex flex-column flex-xl-row justify-content-between gap-3 align-items-xl-center">
+                        <div class="d-flex flex-wrap gap-2 align-items-center">
+                            <span class="status-pill @claseEstadoAccesoInforme"><i class="fas fa-layer-group"></i> @estadoAccesoInforme</span>
+                            <span class="status-pill primary"><i class="fas fa-hashtag"></i> Inspección @numeroInspeccionVisual</span>
+                            <span class="status-pill primary"><i class="fas fa-file-contract"></i> Solicitud @numeroSolicitudVisual</span>
+                            <span class="status-pill @(listaVerificacionFinalizada ? "success" : "warning")"><i class="fas fa-clipboard-check"></i> LV/EAE: @estadoLvModal</span>
+                        </div>
+
+                        <div class="button-flow justify-content-xl-end">
+                            @if (informeTecnicoModalHabilitado)
+                            {
+                                <button type="button"
+                                        class="btn btn-primary aocr-btn-informe-tecnico"
+                                        data-url="@urlModalInformeTecnico"
+                                        data-codigo-inspeccion="@Model.CodigoInspeccion">
+                                    <i class="fas fa-file-alt me-1"></i> Informe Técnico
+                                </button>
+                            }
+                            else
+                            {
+                                <span class="aocr-disabled-button-wrapper"
+                                      tabindex="0"
+                                      data-bs-toggle="tooltip"
+                                      data-bs-placement="top"
+                                      title="@mensajeBloqueoInformeTecnico">
+                                    <button type="button" class="btn btn-secondary" disabled>
+                                        <i class="fas fa-lock me-1"></i> Informe Técnico
+                                    </button>
+                                </span>
+                            }
+
+                            @if (tieneInforme)
+                            {
+                                <a class="btn btn-outline-primary" href="@informeDefinitivoUrl" target="_blank" rel="noopener">
+                                    <i class="fas fa-file-pdf me-1"></i> Ver PDF
+                                </a>
+                            }
+                        </div>
+                    </div>
+
+                    @if (!informeTecnicoModalHabilitado)
+                    {
+                        <small class="text-muted d-block mt-3">Disponible cuando la LV/EAE esté finalizada.</small>
+                    }
+                </div>
+            </div>
+        }
+
         <div class="aocr-mobile-collapse-shell mt-4">
             <button class="aocr-mobile-collapse-toggle d-md-none" type="button" data-bs-toggle="collapse" data-bs-target="#collapseDetalleGeneral" aria-expanded="false" aria-controls="collapseDetalleGeneral">
                 <span class="aocr-mobile-collapse-summary">
@@ -2379,162 +2814,6 @@
                             </div>
                             <div class="detail-item" style="grid-column: 1 / -1;">
                                 <span class="detail-label">Representante legal</span>
-                                <div class="detail-value">@representanteLegalCompleto</div>
-                            </div>
-                        </div>
-                    </div>
-
-                    @* ── Panel 2: Clasificación técnica ── *@
-                    <div class="info-panel">
-                        <div class="info-panel-head">
-                            <div>
-                                <h3 class="info-panel-title">Clasificación técnica</h3>
-                                <p class="info-panel-copy">Datos técnicos de la inspección, agenda programada y estado documental.</p>
-                            </div>
-                            <span class="info-panel-badge">Técnico</span>
-                        </div>
-                        <div class="info-panel-stack two-col compact">
-                            <div class="detail-item">
-                                <span class="detail-label">Tipo de inspección</span>
-                                <div class="detail-value">@tipoInspeccion</div>
-                            </div>
-                            <div class="detail-item">
-                                <span class="detail-label">Estado documental</span>
-                                <div class="detail-value">@estadoDocumental</div>
-                            </div>
-                            <div class="detail-item">
-                                <span class="detail-label">Resultado evaluación</span>
-                                <div class="detail-value">@resultadoEvaluacion</div>
-                            </div>
-                            <div class="detail-item">
-                                <span class="detail-label">Fecha / hora programada</span>
-                                <div class="detail-value">@fechaHoraProgramada</div>
-                            </div>
-                            <div class="detail-item">
-                                <span class="detail-label">Duración estimada</span>
-                                <div class="detail-value">@duracionEstimada</div>
-                            </div>
-                            <div class="detail-item">
-                                <span class="detail-label">Lugar de inspección</span>
-                                <div class="detail-value">@lugarInspeccion</div>
-                            </div>
-                        </div>
-                    </div>
-
-                    @* ── Panel 3: Operador inspeccionado ── *@
-                    <div class="info-panel">
-                        <div class="info-panel-head">
-                            <div>
-                                <h3 class="info-panel-title">Operador inspeccionado</h3>
-                                <p class="info-panel-copy">Datos del operador asociado a la solicitud de inspección.</p>
-                            </div>
-                            <span class="info-panel-badge">Operador</span>
-                        </div>
-                        <div class="info-panel-stack two-col compact">
-                            <div class="detail-item">
-                                <span class="detail-label">Operador</span>
-                                <div class="detail-value">@operadorInspeccionado</div>
-                            </div>
-                            <div class="detail-item">
-                                <span class="detail-label">RUC</span>
-                                <div class="detail-value">@rucOperador</div>
-                            </div>
-                            <div class="detail-item">
-                                <span class="detail-label">Código OACI</span>
-                                <div class="detail-value">@codigoOaciOperador</div>
-                            </div>
-                            <div class="detail-item">
-                                <span class="detail-label">Tipo operación</span>
-                                <div class="detail-value">@tipoOperacion</div>
-                            </div>
-                            <div class="detail-item">
-                                <span class="detail-label">Email</span>
-                                <div class="detail-value">@emailOperador</div>
-                            </div>
-                            <div class="detail-item">
-                                <span class="detail-label">Teléfono</span>
-                                <div class="detail-value">@telefonoOperador</div>
-                            </div>
-                            <div class="detail-item">
-                                <span class="detail-label">Dirección</span>
-                                <div class="detail-value">@direccionOperador</div>
-                            </div>
-                            <div class="detail-item">
-                                <span class="detail-label">Ubicación</span>
-                                <div class="detail-value">@ubicacionOperador</div>
-                            </div>
-                        </div>
-                    </div>
-
-                    @* ── Panel 4: Control financiero ── *@
-                    <div class="info-panel">
-                        <div class="info-panel-head">
-                            <div>
-                                <h3 class="info-panel-title">Control financiero</h3>
-                                <p class="info-panel-copy">Seguimiento de viáticos, validación financiera y coherencia administrativa.</p>
-                            </div>
-                            <span class="info-panel-badge">Finanzas</span>
-                        </div>
-                        <div class="info-panel-stack two-col compact">
-                            <div class="detail-item">
-                                <span class="detail-label">Viáticos requeridos</span>
-                                <div class="detail-value">@(Model.ViaticosRequeridos ? "SÍ" : "NO")</div>
-                            </div>
-                            <div class="detail-item">
-                                <span class="detail-label">Monto viáticos</span>
-                                <div class="detail-value">@(montoViaticos != "-" ? "$ " + montoViaticos : "-")</div>
-                            </div>
-                            <div class="detail-item">
-                                <span class="detail-label">Pago validado</span>
-                                <div class="detail-value">@(Model.PagoViaticosValidado ? "SÍ" : "NO")</div>
-                            </div>
-                            <div class="detail-item">
-                                <span class="detail-label">Fecha pago viáticos</span>
-                                <div class="detail-value">@fechaPagoViaticos</div>
-                            </div>
-                            <div class="detail-item" style="grid-column: 1 / -1;">
-                                <span class="detail-label">Estado financiero</span>
-                                <div class="detail-value">@estadoFinanciero</div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-            </div>
-        </div>
-
-        <div class="central-grid informe-tecnico-page">
-            <div class="central-side-stack">
-                <div class="card section-card" id="bloqueAccionesInspeccion">
-                    <div class="card-body">
-                        <div class="section-heading">
-                            <div class="section-icon">
-                                <i class="fas fa-project-diagram"></i>
-                            </div>
-                            <div>
-                                <h2 class="section-title">Flujo BPMN de inspección</h2>
-                                <p class="section-copy">Transiciones, lectura operativa del estado y decisiones disponibles según el rol autenticado.</p>
-                            </div>
-                        </div>
-
-                        <div class="stack-grid">
-                            <div class="bpmn-panel aocr-desktop-rich">
-                                <div class="bpmn-mini-grid">
-                                    <div class="bpmn-mini-card">
-                                        <small>Estado actual</small>
-                                        <strong>@estadoActualNormalizado</strong>
-                                    </div>
-                                    <div class="bpmn-mini-card">
-                                        <small>Resultado</small>
-                                        <strong>@resultadoActual</strong>
-                                    </div>
-                                    <div class="bpmn-mini-card">
-                                        <small>Operador</small>
-                                        <strong>@operadorInspeccionado</strong>
-                                    </div>
-                                    <div class="bpmn-mini-card">
-                                        <small>Inspector principal</small>
                                         <strong>@inspectorPrincipal</strong>
                                     </div>
                                 </div>
@@ -2723,188 +3002,6 @@
                     </div>
                 </div>
 
-                @if (usaFlujoListaVerificacionOperacionalEae)
-                {
-                    var tieneListaVerificacionVisualizable = listaVerificacionOperacionalEae != null
-                        && listaVerificacionOperacionalEae.Finalizado
-                        && !string.IsNullOrWhiteSpace(listaVerificacionOperacionalEaeUrl);
-                    var listaVerificacionVm = new ListaVerificacionOperacionalEaePanelVm
-                    {
-                        CodigoInspeccion = Model.CodigoInspeccion,
-                        Solicitud = solicitud,
-                        ListaVerificacion = listaVerificacionOperacionalEae,
-                        PuedeEditar = puedeEditarInformeTecnico,
-                        PuedeFirmar = puedeEditarInformeTecnico && listaVerificacionOperacionalEae != null && listaVerificacionOperacionalEae.Finalizado && !listaVerificacionFirmada,
-                        EstaFirmada = listaVerificacionFirmada,
-                        UrlVisualizacion = tieneListaVerificacionVisualizable ? listaVerificacionOperacionalEaeUrl : string.Empty,
-                        UrlDescarga = tieneListaVerificacionVisualizable ? listaVerificacionOperacionalEaeDescargaUrl : string.Empty,
-                        UrlDocumentosSolicitud = urlRevisionDocumentalSolicitud,
-                        AccesosDocumentales = accesosDocumentalesInspeccionVm,
-                        MensajeBloqueoEdicion = !puedeAbrirLvEae ? mensajeBloqueoLvEae : string.Empty,
-                        PuedeConfirmarRevisionDocumental = inspectorDebeRevisarDocumentos && (esInspector || esAdministrador),
-                        TieneDocumentosObservados = estadoRevisionDocumental.TieneDocumentosObservados,
-                        TieneDocumentosSubsanadosPendientes = estadoRevisionDocumental.TieneDocumentosSubsanadosPendientes,
-                        DocumentacionAprobada = estadoRevisionDocumental.DocumentacionAprobada,
-                        PuedeAbrirLvEae = puedeAbrirLvEae,
-                        MensajeBloqueoDocumental = mensajeBloqueoLvEae
-                    };
-
-                    var estadoListaVentana = listaVerificacionFirmada
-                        ? "LV firmada"
-                        : (listaVerificacionOperacionalEae != null && listaVerificacionOperacionalEae.Finalizado
-                            ? "LV completada"
-                            : (listaVerificacionOperacionalEae != null && listaVerificacionOperacionalEae.CodigoListaVerificacion > 0
-                                ? "LV en borrador"
-                                : "LV pendiente"));
-                    var claseListaVentana = listaVerificacionFirmada
-                        ? "success"
-                        : (listaVerificacionOperacionalEae != null && listaVerificacionOperacionalEae.Finalizado
-                            ? "primary"
-                            : "warning");
-                    var resumenListaVentana = listaVerificacionFirmada
-                        ? "La lista ya fue firmada y queda como prerequisito cumplido para continuar con el informe técnico."
-                        : (listaVerificacionOperacionalEae != null && listaVerificacionOperacionalEae.Finalizado
-                            ? "La lista ya fue completada. Revísela en la ventana dedicada y continúe con la firma del técnico responsable."
-                            : "Complete la LV/EAE en una ventana dedicada antes de pasar a la elaboración del informe técnico.");
-
-                    <div class="card section-card soft-card" id="bloqueListaVerificacionOperacionalEaeResumen">
-                        <div class="card-body">
-                            <div class="section-heading">
-                                <div class="section-icon">
-                                    <i class="fas fa-clipboard-check"></i>
-                                </div>
-                                <div>
-                                    <h2 class="section-title">Lista de verificación operacional (LV)</h2>
-                                    <p class="section-copy">La LV/EAE ahora se gestiona en una ventana dedicada para no mezclar su captura con el editor del informe técnico.</p>
-                                </div>
-                            </div>
-
-                            <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3">
-                                <div>
-                                    <span class="status-pill @claseListaVentana"><i class="fas fa-window-maximize"></i> @estadoListaVentana</span>
-                                    <p class="section-copy mb-0 mt-2">@resumenListaVentana</p>
-                                </div>
-                                <div class="button-flow">
-                                    @if (puedeAbrirLvEae)
-                                    {
-                                        <button type="button" class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#modalListaVerificacionOperacionalEae">
-                                            <i class="fas fa-external-link-alt me-1"></i>
-                                            @(listaVerificacionFirmada ? "Abrir ventana LV" : "Completar LV en ventana")
-                                        </button>
-                                    }
-                                    else
-                                    {
-                                        <span class="aocr-disabled-button-wrapper"
-                                              tabindex="0"
-                                              data-bs-toggle="tooltip"
-                                              data-bs-placement="top"
-                                              title="@mensajeBloqueoLvEae">
-                                            <button type="button" class="btn btn-secondary" disabled>
-                                                <i class="fas fa-lock me-1"></i> Abrir LV/EAE
-                                            </button>
-                                        </span>
-                                    }
-                                </div>
-                            </div>
-                            @if (!puedeAbrirLvEae)
-                            {
-                                <small class="text-muted d-block mt-3">@mensajeBloqueoLvEae</small>
-                            }
-                        </div>
-                    </div>
-
-                    <div class="modal fade lv-modal" id="modalListaVerificacionOperacionalEae" tabindex="-1" aria-labelledby="modalListaVerificacionOperacionalEaeLabel" aria-hidden="true" data-auto-open="@(abrirModalListaVerificacionAlCargar ? "true" : "false")" data-auto-open-signature="@(autoOpenLvSignature ? "true" : "false")">
-                        <div class="modal-dialog modal-xl modal-dialog-scrollable">
-                            <div class="modal-content">
-                                <div class="modal-header">
-                                    <div>
-                                        <h5 class="modal-title" id="modalListaVerificacionOperacionalEaeLabel">Lista de verificación operacional (LV/EAE)</h5>
-                                        <small class="text-muted">Gestione la lista antes de elaborar o firmar el informe técnico.</small>
-                                    </div>
-                                    <div class="lv-modal-header-actions">
-                                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
-                                    </div>
-                                </div>
-                                <div class="modal-body bg-light">
-                                    @Html.Partial("_ListaVerificacionOperacionalEaePanel", listaVerificacionVm)
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                }
-
-                @if (puedeAbrirModalInformeTecnico)
-                {
-                    var estadoAccesoInforme = !informeTecnicoModalHabilitado
-                        ? "Bloqueado por LV/EAE"
-                        : (tieneInforme ? estadoInformeTecnico : "Disponible para elaboración");
-                    var claseEstadoAccesoInforme = !informeTecnicoModalHabilitado
-                        ? "warning"
-                        : (tieneInforme ? "primary" : "success");
-                    var estadoLvModal = !usaFlujoListaVerificacionOperacionalEae
-                        ? "No aplica"
-                        : (listaVerificacionFinalizada ? "Finalizada" : "Pendiente");
-
-                    <div class="card section-card soft-card aocr-informe-entry-card" id="bloqueAccesoInformeTecnico">
-                        <div class="card-body">
-                            <div class="section-heading">
-                                <div class="section-icon">
-                                    <i class="fas fa-file-alt"></i>
-                                </div>
-                                <div>
-                                    <h2 class="section-title">Centro de informe técnico</h2>
-                                    <p class="section-copy">El informe técnico se gestiona únicamente desde la vista parcial en ventana flotante para evitar duplicidad dentro del detalle de inspección.</p>
-                                </div>
-                            </div>
-
-                            <div class="d-flex flex-column flex-xl-row justify-content-between gap-3 align-items-xl-center">
-                                <div class="d-flex flex-wrap gap-2 align-items-center">
-                                    <span class="status-pill @claseEstadoAccesoInforme"><i class="fas fa-layer-group"></i> @estadoAccesoInforme</span>
-                                    <span class="status-pill primary"><i class="fas fa-hashtag"></i> Inspección @numeroInspeccionVisual</span>
-                                    <span class="status-pill primary"><i class="fas fa-file-contract"></i> Solicitud @numeroSolicitudVisual</span>
-                                    <span class="status-pill @(listaVerificacionFinalizada ? "success" : "warning")"><i class="fas fa-clipboard-check"></i> LV/EAE: @estadoLvModal</span>
-                                </div>
-
-                                <div class="button-flow justify-content-xl-end">
-                                    @if (informeTecnicoModalHabilitado)
-                                    {
-                                        <button type="button"
-                                                class="btn btn-primary aocr-btn-informe-tecnico"
-                                                data-url="@urlModalInformeTecnico"
-                                                data-codigo-inspeccion="@Model.CodigoInspeccion">
-                                            <i class="fas fa-file-alt me-1"></i> Informe Técnico
-                                        </button>
-                                    }
-                                    else
-                                    {
-                                        <span class="aocr-disabled-button-wrapper"
-                                              tabindex="0"
-                                              data-bs-toggle="tooltip"
-                                              data-bs-placement="top"
-                                              title="@mensajeBloqueoInformeTecnico">
-                                            <button type="button" class="btn btn-secondary" disabled>
-                                                <i class="fas fa-lock me-1"></i> Informe Técnico
-                                            </button>
-                                        </span>
-                                    }
-
-                                    @if (tieneInforme)
-                                    {
-                                        <a class="btn btn-outline-primary" href="@informeDefinitivoUrl" target="_blank" rel="noopener">
-                                            <i class="fas fa-file-pdf me-1"></i> Ver PDF
-                                        </a>
-                                    }
-                                </div>
-                            </div>
-
-                            @if (!informeTecnicoModalHabilitado)
-                            {
-                                <small class="text-muted d-block mt-3">Disponible cuando la LV/EAE esté finalizada.</small>
-                            }
-                        </div>
-                    </div>
-
-                }
             </div>
         </div>
 
@@ -2943,6 +3040,7 @@
                 RutaInformeVisual = rutaInformeVisual
             })
 
+        <div class="inspection-ops-grid">
         <div class="aocr-mobile-collapse-shell">
             <button class="aocr-mobile-collapse-toggle d-md-none" type="button" data-bs-toggle="collapse" data-bs-target="#collapseDetalleGestion" aria-expanded="false" aria-controls="collapseDetalleGestion">
                 <span class="aocr-mobile-collapse-summary">
@@ -2953,7 +3051,7 @@
             </button>
             <div id="collapseDetalleGestion" class="aocr-mobile-collapse-section collapse">
         <div class="utility-grid">
-            <div class="card section-card">
+            <div class="card section-card inspection-ops-card ops-card-viaticos">
                 <div class="card-body">
                     <div class="section-heading">
                         <div class="section-icon">
@@ -3003,7 +3101,7 @@
                 </div>
             </div>
 
-            <div class="card section-card soft-card">
+            <div class="card section-card soft-card inspection-ops-card ops-card-resultado">
                 <div class="card-body">
                     <div class="section-heading">
                         <div class="section-icon">
@@ -3061,7 +3159,7 @@
             </button>
             <div id="collapseDetalleSoporte" class="aocr-mobile-collapse-section collapse">
         <div class="utility-grid">
-            <div class="card section-card soft-card">
+            <div class="card section-card soft-card inspection-ops-card ops-card-historial">
                 <div class="card-body">
                     <div class="section-heading">
                         <div class="section-icon">
@@ -3100,7 +3198,7 @@
                 </div>
             </div>
 
-            <div class="card section-card">
+            <div class="card section-card inspection-ops-card ops-card-documentos">
                 <div class="card-body">
                     <div class="section-heading">
                         <div class="section-icon">
@@ -3247,7 +3345,7 @@
                 <span class="aocr-mobile-collapse-badge">@hallazgosLista.Count</span>
             </button>
             <div id="collapseDetalleHallazgos" class="aocr-mobile-collapse-section collapse">
-        <div class="card section-card">
+        <div class="card section-card inspection-ops-card ops-card-hallazgos">
             <div class="card-body">
                 <div class="table-card-header flex-column flex-md-row">
                     <div>
@@ -3275,39 +3373,55 @@
                     }
                 </div>
 
-                <div class="table-responsive hallazgos-table">
-                    <table class="table table-hover mb-0">
-                        <thead>
-                            <tr>
-                                <th>Severidad</th>
-                                <th>Descripción</th>
-                                <th>Estado</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @if (hallazgosLista.Any())
-                            {
-                                foreach (var h in hallazgosLista)
-                                {
-                                    <tr>
-                                        <td>@(h.Criticidad ?? "-")</td>
-                                        <td>@(string.IsNullOrWhiteSpace(h.Descripcion) ? "-" : normalizeVisibleText(h.Descripcion))</td>
-                                        <td>@(h.Estado ?? "-")</td>
-                                    </tr>
-                                }
-                            }
-                            else
-                            {
-                                <tr>
-                                    <td colspan="3" class="hallazgos-empty hallazgos-empty-card">No hay hallazgos registrados para esta inspección.</td>
-                                </tr>
-                            }
-                        </tbody>
-                    </table>
-                </div>
+                @if (hallazgosLista.Any())
+                {
+                    <div class="hallazgos-list">
+                        @for (var hallazgoIndex = 0; hallazgoIndex < hallazgosLista.Count; hallazgoIndex++)
+                        {
+                            var h = hallazgosLista[hallazgoIndex];
+                            var criticidadTexto = normalizeVisibleText(h.Criticidad ?? "Sin severidad");
+                            var estadoHallazgoTexto = normalizeVisibleText(h.Estado ?? "Sin estado");
+                            var descripcionHallazgo = string.IsNullOrWhiteSpace(h.Descripcion) ? "Sin descripción registrada." : normalizeVisibleText(h.Descripcion);
+                            var criticidadNormalizada = (criticidadTexto ?? string.Empty).Trim().ToUpperInvariant();
+                            var estadoNormalizado = (estadoHallazgoTexto ?? string.Empty).Trim().ToUpperInvariant();
+                            var criticidadClase = criticidadNormalizada.Contains("ALTA") || criticidadNormalizada.Contains("CRIT") || criticidadNormalizada.Contains("MAYOR")
+                                ? "is-critical"
+                                : (criticidadNormalizada.Contains("MEDIA") || criticidadNormalizada.Contains("MODER")
+                                    ? "is-medium"
+                                    : (criticidadNormalizada.Contains("BAJA") || criticidadNormalizada.Contains("MENOR")
+                                        ? "is-low"
+                                        : "is-neutral"));
+                            var estadoClase = estadoNormalizado.Contains("CERR") || estadoNormalizado.Contains("SOLUC") || estadoNormalizado.Contains("RESUEL")
+                                ? "is-state-closed"
+                                : (estadoNormalizado.Contains("PROCES") || estadoNormalizado.Contains("REVISION") || estadoNormalizado.Contains("SEGUIMIENTO")
+                                    ? "is-state-progress"
+                                    : (estadoNormalizado.Contains("ABIER") || estadoNormalizado.Contains("PEND")
+                                        ? "is-state-open"
+                                        : "is-neutral"));
+
+                            <article class="hallazgo-row @criticidadClase">
+                                <div class="hallazgo-row-main">
+                                    <span class="hallazgo-row-label">Hallazgo @(hallazgoIndex + 1)</span>
+                                    <div class="hallazgo-row-title">@criticidadTexto</div>
+                                </div>
+                                <div class="hallazgo-row-copy">@descripcionHallazgo</div>
+                                <div class="hallazgo-row-side">
+                                    <span class="hallazgo-pill @estadoClase">@estadoHallazgoTexto</span>
+                                </div>
+                            </article>
+                        }
+                    </div>
+                }
+                else
+                {
+                    <div class="hallazgos-empty hallazgos-empty-card">
+                        <div class="hallazgo-empty-inline">No hay hallazgos registrados para esta inspección.</div>
+                    </div>
+                }
             </div>
         </div>
             </div>
+        </div>
         </div>
 
         <div class="aocr-mobile-collapse-shell">
