@@ -33,12 +33,18 @@ namespace CapaPresentacion.Controllers
         // GET: /Error/AccessDenied
         public ActionResult AccessDenied()
         {
+            return NoAutorizado();
+        }
+
+        // GET: /Error/NoAutorizado
+        public ActionResult NoAutorizado()
+        {
             Response.StatusCode = 403;
             Response.TrySkipIisCustomErrors = true;
             ViewBag.ErrorCode = 403;
             ViewBag.ErrorMessage = "Acceso denegado";
             ViewBag.ErrorDescription = "No tiene permisos para acceder a este recurso.";
-            return View("Error");
+            return View("~/Views/Shared/NoAutorizado.cshtml");
         }
 
         // GET: /Error/BadRequest

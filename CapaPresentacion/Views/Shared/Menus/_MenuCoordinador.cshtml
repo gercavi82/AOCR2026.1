@@ -1,0 +1,12 @@
+@model CapaPresentacion.Models.ViewModels.SidebarMenuContextViewModel
+<div class="nav-group aocr-sidebar-section mb-4">
+    <div class="group-title aocr-sidebar-section__title" style="color:#a78bfa;">
+        <i class="fas fa-sitemap mr-1"></i> Coordinador
+    </div>
+    <ul class="aocr-nav">
+        <li><a class="aocr-link aocr-sidebar-item" href="@Url.Action("DashboardInspeccion", "CoordinacionJefatura")"><i class="fas fa-table-columns text-white-50 mr-2"></i> Dashboard Inspección</a></li>
+        <li><a class="aocr-link aocr-sidebar-item" href="@Url.Action("RevisionVerificacion", "CoordinacionJefatura")"><i class="fas fa-search text-white-50 mr-2"></i> Bandeja Documental</a></li>
+        <li><a class="aocr-link aocr-sidebar-item" href="@Url.Action("Index", "Tecnico")"><i class="fas fa-user-plus text-white-50 mr-2"></i> Asignación de Inspectores</a></li>
+        <li><a class="aocr-link aocr-sidebar-item" href="@Url.Action("Index", "Inspeccion")"><i class="fas fa-clipboard-check text-white-50 mr-2"></i> Gestión / Seguimiento de Inspección</a></li>
+    </ul>
+</div>

@@ -1,0 +1,23 @@
+@model CapaPresentacion.Models.ViewModels.SidebarMenuContextViewModel
+<div class="nav-group aocr-sidebar-section mb-4">
+    <div class="group-title aocr-sidebar-section__title text-info">
+        <i class="fas fa-search mr-1"></i> Inspector
+    </div>
+    <ul class="aocr-nav">
+        <li>
+            <a class="aocr-link aocr-sidebar-item" href="@Url.Action("Inspector", "Dashboard")">
+                <i class="fas fa-gauge-high text-warning mr-2"></i> Dashboard
+            </a>
+        </li>
+        <li>
+            <a class="aocr-link aocr-sidebar-item" href="@Url.Action("Index", "RevisionDocumental")">
+                <i class="fas fa-file-alt text-success mr-2"></i> Bandeja Documental
+            </a>
+        </li>
+        <li>
+            <a class="aocr-link aocr-sidebar-item" href="@Url.Action("Index", "Inspeccion")">
+                <i class="fas fa-clipboard-list text-white-50 mr-2"></i> Mis Inspecciones Asignadas
+            </a>
+        </li>
+    </ul>
+</div>

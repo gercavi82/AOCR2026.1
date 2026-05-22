@@ -11,6 +11,9 @@ using CapaUtilidades;
 using CapaPresentacion.Helpers;
 using CapaPresentacion.Infrastructure;
 using System.Web.Routing;
+using AocrAuthorizationContextType = CapaNegocio.Services.AocrAuthorizationContext;
+using AocrAuthorizationResultType = CapaNegocio.Services.AocrAuthorizationResult;
+using AocrAuthorizationServiceType = CapaNegocio.Services.AocrAuthorizationService;
 
 namespace CapaPresentacion.Filters
 {
@@ -97,6 +100,39 @@ namespace CapaPresentacion.Filters
     public class AocrAuthorizeAttribute : AuthorizeAttribute
     {
         private static readonly ILoggingService Logger = LoggingServiceFactory.Create();
+        private static readonly IUserContextAccessor UserContextAccessor = new UserContextAccessor();
+
+        public string Modulo { get; set; }
+        public string Accion { get; set; }
+        public bool RequireCompanySelection { get; set; }
+        public string CodigoSolicitudParameter { get; set; }
+        public string CodigoInspeccionParameter { get; set; }
+        public string CodigoOrdenParameter { get; set; }
+        public string CodigoInformeParameter { get; set; }
+
+        protected override bool AuthorizeCore(HttpContextBase httpContext)
+        {
+            if (httpContext == null)
+            {
+                return false;
+            }
+
+            if (httpContext.User == null || httpContext.User.Identity == null || !httpContext.User.Identity.IsAuthenticated)
+            {
+                httpContext.Items["AOCR_AUTH_RESULT"] = AocrAuthorizationResultType.Denied(Modulo ?? string.Empty, Accion ?? string.Empty, "La sesión expiró o no ha iniciado sesión.");
+                return false;
+            }
+
+            if (!base.AuthorizeCore(httpContext))
+            {
+                httpContext.Items["AOCR_AUTH_RESULT"] = AocrAuthorizationResultType.Denied(Modulo ?? string.Empty, Accion ?? string.Empty, "No tiene permisos para acceder a este módulo.");
+                return false;
+            }
+
+            var authResult = EvaluarAutorizacion(httpContext);
+            httpContext.Items["AOCR_AUTH_RESULT"] = authResult;
+            return authResult.Permitido;
+        }
 
         protected override void HandleUnauthorizedRequest(AuthorizationContext filterContext)
         {
@@ -113,11 +149,24 @@ namespace CapaPresentacion.Filters
                 && httpContext.User.Identity != null
                 && httpContext.User.Identity.IsAuthenticated;
             var isAjax = IsAjaxLikeRequest(request);
+            var authResult = httpContext.Items["AOCR_AUTH_RESULT"] as AocrAuthorizationResultType;
             var returnUrl = request != null
                 ? (request.RawUrl ?? (request.Url != null ? request.Url.PathAndQuery : string.Empty))
                 : string.Empty;
 
-            LogUnauthorizedAttempt(httpContext, isAjax, isAuthenticated, returnUrl);
+            LogUnauthorizedAttempt(httpContext, isAjax, isAuthenticated, returnUrl, authResult);
+
+            if (authResult != null && authResult.RequiereSeleccionCompania && isAuthenticated)
+            {
+                filterContext.Result = new RedirectToRouteResult(
+                    new RouteValueDictionary(new
+                    {
+                        controller = "Account",
+                        action = "SeleccionarCompania",
+                        returnUrl
+                    }));
+                return;
+            }
 
             if (isAjax)
             {
@@ -134,8 +183,11 @@ namespace CapaPresentacion.Filters
                         code = statusCode,
                         requiresLogin = !isAuthenticated,
                         redirectUrl = !isAuthenticated ? BuildLoginUrl(returnUrl) : null,
+                        requiresCompanySelection = authResult != null && authResult.RequiereSeleccionCompania,
                         message = isAuthenticated
-                            ? "No tiene permisos para acceder a este recurso."
+                            ? (authResult != null && !string.IsNullOrWhiteSpace(authResult.Motivo)
+                                ? authResult.Motivo
+                                : "No tiene permisos para acceder a este recurso.")
                             : "La sesión expiró o no ha iniciado sesión."
                     },
                     JsonRequestBehavior = JsonRequestBehavior.AllowGet
@@ -150,12 +202,62 @@ namespace CapaPresentacion.Filters
                         new
                         {
                             controller = "Error",
-                            action = "AccessDenied"
+                            action = "NoAutorizado"
                         }));
                 return;
             }
 
             base.HandleUnauthorizedRequest(filterContext);
+        }
+
+        private AocrAuthorizationResultType EvaluarAutorizacion(HttpContextBase httpContext)
+        {
+            var context = BuildAuthorizationContext(httpContext);
+            var service = new AocrAuthorizationServiceType();
+            var controller = ResolveController(httpContext);
+            var action = ResolveAction(httpContext);
+            var codigoSolicitud = ResolveIntParameter(httpContext, CodigoSolicitudParameter, "codigoSolicitud", "solicitudId", "oid");
+            var codigoInspeccion = ResolveIntParameter(httpContext, CodigoInspeccionParameter, "codigoInspeccion", "inspeccionId");
+            var codigoOrden = ResolveIntParameter(httpContext, CodigoOrdenParameter, "codigoOrden", "ordenId");
+            var codigoInforme = ResolveIntParameter(httpContext, CodigoInformeParameter, "codigoInforme", "informeId");
+
+            if (string.Equals(controller, "SolicitudAOCR", StringComparison.OrdinalIgnoreCase) && !codigoSolicitud.HasValue)
+            {
+                var idGenerico = ResolveIntParameter(httpContext, null, "id");
+                codigoSolicitud = idGenerico;
+            }
+
+            if (string.Equals(controller, "Inspeccion", StringComparison.OrdinalIgnoreCase) && !codigoInspeccion.HasValue)
+            {
+                codigoInspeccion = ResolveIntParameter(httpContext, null, "id");
+            }
+
+            if ((string.Equals(controller, "OrdenRecaudacion", StringComparison.OrdinalIgnoreCase) || string.Equals(controller, "Financiero", StringComparison.OrdinalIgnoreCase)) && !codigoOrden.HasValue)
+            {
+                codigoOrden = ResolveIntParameter(httpContext, null, "id", "ordenId");
+            }
+
+            var result = service.PuedeEjecutarAccion(
+                accion: (Accion ?? action).Trim(),
+                usuario: context,
+                codigoSolicitud: codigoSolicitud,
+                codigoInspeccion: codigoInspeccion,
+                codigoOrden: codigoOrden,
+                codigoInforme: codigoInforme,
+                modulo: (Modulo ?? controller).Trim());
+
+            if (RequireCompanySelection
+                && string.IsNullOrWhiteSpace(context.CompanyCode)
+                && string.Equals(RoleGroupingHelper.NormalizeSelectedRole(context.SelectedRole), RoleGroupingHelper.Solicitante, StringComparison.OrdinalIgnoreCase))
+            {
+                result = AocrAuthorizationResultType.Denied(Modulo ?? controller, Accion ?? action, "Debe seleccionar una compañía activa antes de continuar.", true);
+            }
+
+            result.CodigoSolicitud = codigoSolicitud;
+            result.CodigoInspeccion = codigoInspeccion;
+            result.CodigoOrden = codigoOrden;
+            result.CodigoInforme = codigoInforme;
+            return result;
         }
 
         private static bool IsAjaxLikeRequest(HttpRequestBase request)
@@ -194,7 +296,7 @@ namespace CapaPresentacion.Filters
             return loginUrl + (loginUrl.Contains("?") ? "&" : "?") + "ReturnUrl=" + HttpUtility.UrlEncode(returnUrl);
         }
 
-        private void LogUnauthorizedAttempt(HttpContextBase httpContext, bool isAjax, bool isAuthenticated, string returnUrl)
+        private void LogUnauthorizedAttempt(HttpContextBase httpContext, bool isAjax, bool isAuthenticated, string returnUrl, AocrAuthorizationResultType authResult)
         {
             try
             {
@@ -218,10 +320,107 @@ namespace CapaPresentacion.Filters
                     ReadSessionValue(httpContext, "Rol"),
                     ReadSessionValue(httpContext, "Roles"),
                     ReadSessionValue(httpContext, "RolesRaw")));
+
+                int userId;
+                UserContextAccessor.TryGetUserId(httpContext.Session, out userId);
+                new AuditTrailService().RegistrarAuditoria(
+                    tabla: path,
+                    registroId: authResult != null ? (authResult.CodigoSolicitud ?? authResult.CodigoInspeccion ?? authResult.CodigoOrden ?? authResult.CodigoInforme) : null,
+                    accion: "DENEGADO",
+                    campoModificado: authResult != null ? (authResult.Modulo + "/" + authResult.Accion) : "SEGURIDAD",
+                    valorAnterior: null,
+                    valorNuevo: "Intento de acceso denegado.",
+                    usuarioId: userId > 0 ? (int?)userId : null,
+                    usuarioNombre: userName,
+                    ipOrigen: request != null ? request.UserHostAddress : null,
+                    modulo: authResult != null ? authResult.Modulo : "Seguridad",
+                    metadata: string.Format(
+                        "Rol={0}; Roles={1}; Url={2}; Motivo={3}; Resultado=DENEGADO",
+                        ReadSessionValue(httpContext, "Rol"),
+                        ReadSessionValue(httpContext, "RolesRaw"),
+                        returnUrl ?? string.Empty,
+                        authResult != null ? (authResult.Motivo ?? string.Empty) : string.Empty),
+                    userAgent: request != null ? request.UserAgent : null);
             }
             catch
             {
             }
+        }
+
+        private static AocrAuthorizationContextType BuildAuthorizationContext(HttpContextBase httpContext)
+        {
+            int userId;
+            UserContextAccessor.TryGetUserId(httpContext.Session, out userId);
+
+            int codigoUsuario;
+            UserContextAccessor.TryGetCodigoUsuario(httpContext.Session, out codigoUsuario);
+
+            return new AocrAuthorizationContextType
+            {
+                IsAuthenticated = httpContext.User != null && httpContext.User.Identity != null && httpContext.User.Identity.IsAuthenticated,
+                UserId = userId,
+                CodigoUsuario = codigoUsuario > 0
+                    ? codigoUsuario.ToString()
+                    : Convert.ToString(httpContext.Session != null ? httpContext.Session["CodigoUsuario"] : null),
+                UserName = UserContextAccessor.GetNombreUsuario(httpContext.Session, httpContext.User),
+                SelectedRole = UserContextAccessor.GetRol(httpContext.Session),
+                Roles = RoleGroupingHelper.ExtractRoles(
+                    httpContext.Session != null ? (httpContext.Session["RolesRaw"] ?? httpContext.Session["Roles"]) : null,
+                    httpContext.Session != null ? httpContext.Session["Rol"] as string : null),
+                CompanyCode = CompaniaActivaSessionHelper.ObtenerCodigo(httpContext.Session),
+                CompanyName = CompaniaActivaSessionHelper.ObtenerNombre(httpContext.Session)
+            };
+        }
+
+        private static string ResolveController(HttpContextBase httpContext)
+        {
+            return Convert.ToString(httpContext.Request.RequestContext.RouteData.Values["controller"] ?? string.Empty);
+        }
+
+        private static string ResolveAction(HttpContextBase httpContext)
+        {
+            return Convert.ToString(httpContext.Request.RequestContext.RouteData.Values["action"] ?? string.Empty);
+        }
+
+        private static int? ResolveIntParameter(HttpContextBase httpContext, string explicitName, params string[] fallbackNames)
+        {
+            var request = httpContext.Request;
+            var names = new[] { explicitName }
+                .Concat(fallbackNames ?? new string[0])
+                .Where(x => !string.IsNullOrWhiteSpace(x))
+                .Distinct(StringComparer.OrdinalIgnoreCase);
+
+            foreach (var name in names)
+            {
+                int parsed;
+                if (TryParseInt(request.RequestContext.RouteData.Values[name], out parsed))
+                {
+                    return parsed;
+                }
+
+                if (TryParseInt(request.QueryString[name], out parsed))
+                {
+                    return parsed;
+                }
+
+                if (TryParseInt(request.Form[name], out parsed))
+                {
+                    return parsed;
+                }
+            }
+
+            return null;
+        }
+
+        private static bool TryParseInt(object value, out int parsed)
+        {
+            parsed = 0;
+            if (value == null)
+            {
+                return false;
+            }
+
+            return int.TryParse(Convert.ToString(value), out parsed) && parsed > 0;
         }
 
         private static string ReadSessionValue(HttpContextBase httpContext, string key)

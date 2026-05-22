@@ -377,6 +377,7 @@
     <Compile Include="Models\ViewModels\ListaVerificacionOperacionalEaePdfViewModel.cs" />
     <Compile Include="Models\ViewModels\OrdenRecaudacionPDFModel.cs" />
     <Compile Include="Models\ViewModels\ReportesFinancierosViewModel.cs" />
+    <Compile Include="Models\ViewModels\SidebarMenuContextViewModel.cs" />
     <Compile Include="Models\OrdenRecaudacionMV.cs" />
     <Compile Include="Models\PagoFinancieroVM.cs" />
     <Compile Include="Models\OrdenValidacionFinancieraVM.cs" />
@@ -2880,6 +2881,7 @@
     </Content>
     <Content Include="Views\_ViewStart.cshtml" />
     <Content Include="Views\Shared\Error.cshtml" />
+    <Content Include="Views\Shared\NoAutorizado.cshtml" />
     <Content Include="Views\Error\Error.cshtml" />
     <Content Include="Views\Shared\_LayoutAOCR.cshtml" />
     <Content Include="Views\Shared\_AOCRHeaderHero.cshtml" />
@@ -2897,6 +2899,13 @@
     <Content Include="Views\Financiero\GestionarViaticos.cshtml" />
     <Content Include="Views\Financiero\ValidacionPagos.cshtml" />
     <Content Include="Views\Shared\_Sidebar.cshtml" />
+    <Content Include="Views\Shared\Menus\_MenuAdmin.cshtml" />
+    <Content Include="Views\Shared\Menus\_MenuCoordinador.cshtml" />
+    <Content Include="Views\Shared\Menus\_MenuDirector.cshtml" />
+    <Content Include="Views\Shared\Menus\_MenuFinanciero.cshtml" />
+    <Content Include="Views\Shared\Menus\_MenuInspector.cshtml" />
+    <Content Include="Views\Shared\Menus\_MenuLegal.cshtml" />
+    <Content Include="Views\Shared\Menus\_MenuRT.cshtml" />
     <Content Include="Views\Inspeccion\Detalle.cshtml" />
     <Content Include="Views\Inspeccion\Crear.cshtml" />
     <Content Include="Views\Inspeccion\Editar.cshtml" />

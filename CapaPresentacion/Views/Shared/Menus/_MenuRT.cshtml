@@ -1,0 +1,55 @@
+@model CapaPresentacion.Models.ViewModels.SidebarMenuContextViewModel
+<div class="nav-group aocr-sidebar-section mb-4">
+    <div class="group-title aocr-sidebar-section__title text-primary">
+        <i class="fas fa-user-edit mr-1"></i> Solicitante / RT
+    </div>
+    <ul class="aocr-nav">
+        @if (Model.RequiereOrden)
+        {
+            <li>
+                <a class="aocr-link aocr-sidebar-item @((Model.TieneOrdenBorrador || Model.TieneOrdenPendienteProceso) ? "text-warning fw-bold" : "")" href="@(Model.TieneOrdenPendienteProceso ? Url.Action("Index", "OrdenRecaudacion") : (Model.TieneOrdenBorrador ? Url.Action("Obligatoria", "OrdenRecaudacion") : Url.Action("Nueva", "OrdenRecaudacion")))">
+                    <i class="fas fa-file-invoice-dollar @((Model.TieneOrdenBorrador || Model.TieneOrdenPendienteProceso) ? "text-warning" : "text-primary") mr-2"></i>
+                    @(Model.TieneOrdenPendienteProceso ? "Continuar Orden Pendiente" : (Model.TieneOrdenBorrador ? "Completar Orden Pendiente" : "Nueva Orden de Recaudación"))
+                </a>
+            </li>
+            <li>
+                <a class="aocr-link aocr-sidebar-item" href="@Url.Action("Index", "OrdenRecaudacion")">
+                    <i class="fas fa-history text-white-50 mr-2"></i> Mis Órdenes
+                </a>
+            </li>
+        }
+        @if (Model.TieneAccesoSolicitudRt)
+        {
+            <li>
+                <a class="aocr-link aocr-sidebar-item" href="@Url.Action("Index", "SolicitudAOCR", new { abrir = "nueva" })">
+                    <i class="fas fa-plus text-success mr-2"></i> Nueva Solicitud AOCR
+                    <span class="badge badge-success ml-2">Habilitado</span>
+                </a>
+            </li>
+        }
+        else if (Model.EsRepresentanteRtRol)
+        {
+            <li>
+                <span class="aocr-link aocr-sidebar-item disabled text-muted" data-bs-toggle="tooltip" title="@Model.MensajeBloqueoRtSidebar">
+                    <i class="fas fa-lock text-warning mr-2"></i> Nueva Solicitud AOCR
+                </span>
+            </li>
+        }
+        @if (Model.EsRepresentanteRtRol && !Model.TieneAccesoSolicitudRt)
+        {
+            <li>
+                <span class="aocr-link aocr-sidebar-item disabled text-muted" data-bs-toggle="tooltip" title="@Model.MensajeBloqueoRtSidebar">
+                    <i class="fas fa-folder-open text-warning mr-2"></i> Mis Solicitudes
+                </span>
+            </li>
+        }
+        else
+        {
+            <li>
+                <a class="aocr-link aocr-sidebar-item" href="@Url.Action("Index", "SolicitudAOCR")">
+                    <i class="fas fa-folder-open text-white-50 mr-2"></i> Mis Solicitudes
+                </a>
+            </li>
+        }
+    </ul>
+</div>

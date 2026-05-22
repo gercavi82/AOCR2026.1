@@ -453,6 +453,7 @@ namespace CapaPresentacion.Controllers
         // GET: Carga el formulario parcial con datos de BD
         // =========================================================
         [HttpGet]
+        [AocrAuthorize(Modulo = "SolicitudAOCR", Accion = "AbrirFormularioRT", RequireCompanySelection = true, CodigoSolicitudParameter = "oid")]
         public ActionResult FormularioEmisionAOCR(int? oid, int? tipoSolicitud = null)
         {
             try
@@ -1162,6 +1163,7 @@ namespace CapaPresentacion.Controllers
         /// </summary>
         [HttpPost]
         [ValidateAntiForgeryTokenFromHeader]
+        [AocrAuthorize(Modulo = "SolicitudAOCR", Accion = "EditarRT", RequireCompanySelection = true)]
         public JsonResult GuardarProgreso()
         {
             try
@@ -2206,6 +2208,7 @@ namespace CapaPresentacion.Controllers
         [HttpPost]
         [Authorize(Roles = "Coordinador,CoordinadorInspecciones,Administrador")]
         [ValidateAntiForgeryToken]
+        [AocrAuthorize(Modulo = "SolicitudAOCR", Accion = "Aprobar", CodigoSolicitudParameter = "id")]
         public ActionResult Aprobar(string id)
         {
             if (!int.TryParse(id, out int idSolicitud))
@@ -2594,6 +2597,7 @@ namespace CapaPresentacion.Controllers
         [HttpPost]
         [Authorize(Roles = "Inspector,Coordinador,CoordinadorInspecciones,Administrador")]
         [ValidateAntiForgeryToken]
+        [AocrAuthorize(Modulo = "RevisionDocumental", Accion = "Revisar", CodigoSolicitudParameter = "id")]
         public ActionResult FinalizarRevisionDocumental(int id)
         {
             var solicitud = _solicitudDAO.ObtenerPorId(id);
@@ -2740,6 +2744,7 @@ namespace CapaPresentacion.Controllers
         [HttpPost]
         [Authorize(Roles = "DIRDAC,Direccion,JefaturaTecnica,DirectorGeneral,Administrador")]
         [ValidateAntiForgeryToken]
+        [AocrAuthorize(Modulo = "SolicitudAOCR", Accion = "AprobarJefatura", CodigoSolicitudParameter = "id")]
         public ActionResult AprobarPorJefatura(int id)
         {
             string mensajeCambio;
@@ -3252,6 +3257,7 @@ namespace CapaPresentacion.Controllers
                    "Atentamente,<br>Sistema AOCR<br>Dirección General de Aviación Civil";
         }
 
+        [AocrAuthorize(Modulo = "SolicitudAOCR", Accion = "Detalle", CodigoSolicitudParameter = "id")]
         public ActionResult Detalle(int id)
         {
             var solicitud = _solicitudDAO.ObtenerPorId(id);
@@ -3640,6 +3646,7 @@ namespace CapaPresentacion.Controllers
         /// <summary>
         /// Descarga el archivo PDF de la AOCR generada para una solicitud.
         /// </summary>
+        [AocrAuthorize(Modulo = "SolicitudAOCR", Accion = "DescargarGenerada", CodigoSolicitudParameter = "id")]
         public ActionResult DescargarAOCRGenerada(int id, bool vistaPrevia = false)
         {
             var documento = _generacionAocrService.ObtenerAocrGeneradoVigente(id);
@@ -3831,6 +3838,7 @@ namespace CapaPresentacion.Controllers
         [HttpPost]
         [Authorize(Roles = "CoordinacionLegal,CoordinadorLegal,DirectorGeneral,Administrador")]
         [ValidateAntiForgeryToken]
+        [AocrAuthorize(Modulo = "SolicitudAOCR", Accion = "Legalizar", CodigoSolicitudParameter = "id")]
         public ActionResult Legalizar(int id, string observacionLegal = "")
         {
             try

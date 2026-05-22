@@ -18,6 +18,7 @@ using CapaUtilidades;
 namespace CapaPresentacion.Controllers
 {
     [Authorize(Roles = "Financiero,CoordinadorFinanciero,Administrador")]
+    [AocrAuthorize(Modulo = "Financiero")]
     public class FinancieroController : Controller
     {
         private readonly OrdenRecaudacionDAO _ordenDAO = new OrdenRecaudacionDAO();
@@ -83,6 +84,7 @@ namespace CapaPresentacion.Controllers
         [HttpPost]
         [ValidateAntiForgeryToken]
         [RequirePermission("FIN_APROBAR_PAGO")]
+        [AocrAuthorize(Modulo = "Financiero", Accion = "AprobarOrden", CodigoOrdenParameter = "id")]
         public ActionResult AprobarOrden(int id)
         {
             var orden = _ordenDAO.ObtenerOrdenPorId(id);
@@ -139,6 +141,7 @@ namespace CapaPresentacion.Controllers
         [HttpPost]
         [ValidateAntiForgeryToken]
         [RequirePermission("FIN_APROBAR_PAGO")]
+        [AocrAuthorize(Modulo = "Financiero", Accion = "AprobarPago", CodigoOrdenParameter = "id")]
         public ActionResult AprobarPago(int id, int? pagoId)
         {
             var orden = _ordenDAO.ObtenerOrdenPorId(id);
@@ -406,6 +409,7 @@ namespace CapaPresentacion.Controllers
         [HttpPost]
         [ValidateAntiForgeryTokenAjax]
         [RequirePermission("FIN_APROBAR_PAGO")]
+        [AocrAuthorize(Modulo = "Financiero", Accion = "AprobarYEnviarAS400", CodigoOrdenParameter = "ordenId")]
         public ActionResult AprobarYEnviarAS400(int ordenId)
         {
             if (ordenId <= 0)
@@ -629,6 +633,7 @@ namespace CapaPresentacion.Controllers
         [HttpPost]
         [ValidateAntiForgeryToken]
         [RequirePermission("FIN_APROBAR_PAGO")]
+        [AocrAuthorize(Modulo = "Financiero", Accion = "RechazarOrden", CodigoOrdenParameter = "id")]
         public ActionResult RechazarOrden(int id, string motivo)
         {
             if (string.IsNullOrWhiteSpace(motivo))

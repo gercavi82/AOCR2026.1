@@ -13,6 +13,7 @@ using CapaNegocio;
 using CapaNegocio.DTOs;
 using CapaNegocio.Interfaces;
 using System.Threading.Tasks;
+using CapaPresentacion.Filters;
 using CapaPresentacion.Models;
 using CapaPresentacion.Helpers;
 using CapaModelo;
@@ -1119,6 +1120,7 @@ namespace CapaPresentacion.Controllers
         // POST: /OrdenRecaudacion/RegistrarPago/5
         [HttpGet]
         [Authorize(Roles = "Solicitante,Administrador")]
+        [AocrAuthorize(Modulo = "OrdenRecaudacion", Accion = "SubirComprobante", CodigoOrdenParameter = "id")]
         public ActionResult RegistrarPago(int id)
         {
             if (id <= 0)
@@ -1407,6 +1409,7 @@ namespace CapaPresentacion.Controllers
         [HttpPost]
         [Authorize(Roles = "Solicitante,Administrador")]
         [ValidateAntiForgeryToken]
+        [AocrAuthorize(Modulo = "OrdenRecaudacion", Accion = "SubirComprobante", CodigoOrdenParameter = "id")]
         public ActionResult RegistrarPago(int id, string Monto, string NumeroFactura, string MetodoPago, string Banco, HttpPostedFileBase ComprobanteArchivo, string Observaciones)
         {
             int idUsuario = GetUserId();
@@ -1686,6 +1689,7 @@ namespace CapaPresentacion.Controllers
         /// Descargar PDF de orden
         /// </summary>
         [HttpGet]
+        [AocrAuthorize(Modulo = "OrdenRecaudacion", Accion = "Descargar", CodigoOrdenParameter = "id")]
         public ActionResult DescargarPdf(int id, bool vistaPrevia = false)
         {
             int idUsuario = GetUserId();
@@ -1726,6 +1730,7 @@ namespace CapaPresentacion.Controllers
         }
 
         [HttpGet]
+        [AocrAuthorize(Modulo = "OrdenRecaudacion", Accion = "Descargar", CodigoOrdenParameter = "id")]
         public ActionResult DescargarFactura(int id)
         {
             int idUsuario = GetUserId();
@@ -3366,6 +3371,7 @@ namespace CapaPresentacion.Controllers
         [HttpPost]
         [ValidateAntiForgeryToken]
         [Authorize(Roles = "Administrador,Financiero")]
+        [AocrAuthorize(Modulo = "Financiero", Accion = "AprobarPago", CodigoOrdenParameter = "ordenId")]
         public ActionResult ValidarPago(int ordenId, int pagoId)
         {
             try
