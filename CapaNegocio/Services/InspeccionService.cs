@@ -220,6 +220,16 @@ namespace CapaNegocio.Services
             return _workflowService.SolicitarNuevaInspeccion(inspeccionId, observacion, usuarioId, usuarioNombre);
         }
 
+        public ResultadoOperacion AprobarNoConformidadParaNuevaInspeccion(int inspeccionId, string observacion, int usuarioId, string usuarioNombre)
+        {
+            return _workflowService.AprobarNoConformidadParaNuevaInspeccion(inspeccionId, observacion, usuarioId, usuarioNombre);
+        }
+
+        public ResultadoOperacion AprobarNoConformidadParaSubsanacionDocumental(int inspeccionId, string observacion, int usuarioId, string usuarioNombre)
+        {
+            return _workflowService.AprobarNoConformidadParaSubsanacionDocumental(inspeccionId, observacion, usuarioId, usuarioNombre);
+        }
+
         public ResultadoOperacion RegistrarNoConformidad(int inspeccionId, string descripcion, string criticidad, int usuarioId, string usuarioNombre)
         {
             return _workflowService.RegistrarNoConformidad(inspeccionId, descripcion, criticidad, usuarioId, usuarioNombre);

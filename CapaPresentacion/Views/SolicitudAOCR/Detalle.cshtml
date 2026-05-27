@@ -86,7 +86,7 @@
     var urlDetalleSolicitudBase = Url.Action("Detalle", "SolicitudAOCR", new { id = Model.CodigoSolicitud });
     var urlVerDocumentacionSolicitud = string.IsNullOrWhiteSpace(urlDetalleSolicitudBase)
         ? string.Empty
-        : urlDetalleSolicitudBase + "#documentos-rt-historial";
+        : urlDetalleSolicitudBase + "#revision-documental";
     var mostrarAccesoRevisionDocumental = User.IsInRole("Inspector") || User.IsInRole("Administrador");
     var puedeAbrirRevisionDocumentalDirecta =
         mostrarAccesoRevisionDocumental &&
@@ -112,10 +112,16 @@
     Func<string, string, string> resolverInspectorDetalle = (nombre, identificador) =>
     {
         var nombreLimpio = string.IsNullOrWhiteSpace(nombre) ? string.Empty : nombre.Trim();
+        var identificadorLimpio = string.IsNullOrWhiteSpace(identificador) ? string.Empty : identificador.Trim();
 
         if (!string.IsNullOrWhiteSpace(nombreLimpio))
         {
             return nombreLimpio;
+        }
+
+        if (!string.IsNullOrWhiteSpace(identificadorLimpio))
+        {
+            return "Asignado (" + identificadorLimpio + ")";
         }
 
         return "Sin asignar";
@@ -741,6 +747,130 @@
         color: #6a7d94;
         font-size: 0.8rem;
         line-height: 1.35;
+    }
+
+    .aocr-table-responsive {
+        width: 100%;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    .aocr-doc-review-table {
+        width: 100%;
+        min-width: 1320px;
+        table-layout: fixed;
+    }
+
+    .aocr-doc-review-table th,
+    .aocr-doc-review-table td {
+        vertical-align: top;
+    }
+
+    .aocr-doc-review-table td {
+        overflow-wrap: anywhere;
+        word-break: break-word;
+    }
+
+    .aocr-doc-review-table .aocr-doc-name {
+        font-weight: 700;
+        color: #19324b;
+    }
+
+    .aocr-doc-review-table .aocr-doc-code {
+        display: block;
+        margin-top: 0.2rem;
+        color: #6a7d94;
+        font-size: 0.76rem;
+        font-weight: 600;
+        letter-spacing: 0.02em;
+        text-transform: uppercase;
+    }
+
+    .aocr-doc-actions,
+    .aocr-action-buttons {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.45rem;
+    }
+
+    .aocr-doc-actions .btn,
+    .aocr-action-buttons .btn {
+        min-width: 120px;
+    }
+
+    .aocr-doc-observation {
+        min-width: 220px;
+    }
+
+    .aocr-doc-review-table .form-select,
+    .aocr-doc-review-table .form-control {
+        min-height: 2.35rem;
+    }
+
+    @@media (max-width: 1199.98px) {
+        .aocr-doc-review-table {
+            min-width: 1220px;
+        }
+    }
+
+    @@media (max-width: 767.98px) {
+        .aocr-table-responsive {
+            overflow: visible;
+        }
+
+        .aocr-doc-review-table,
+        .aocr-doc-review-table thead,
+        .aocr-doc-review-table tbody,
+        .aocr-doc-review-table tr,
+        .aocr-doc-review-table td {
+            display: block;
+            width: 100%;
+        }
+
+        .aocr-doc-review-table {
+            min-width: 0;
+            table-layout: auto;
+        }
+
+        .aocr-doc-review-table thead {
+            display: none;
+        }
+
+        .aocr-doc-review-table tr {
+            padding: 0.95rem 1rem;
+            border-bottom: 1px solid #e4edf7;
+        }
+
+        .aocr-doc-review-table tr:last-child {
+            border-bottom: 0;
+        }
+
+        .aocr-doc-review-table td {
+            border: 0;
+            padding: 0.32rem 0;
+            background: transparent;
+        }
+
+        .aocr-doc-review-table td::before {
+            content: attr(data-label);
+            display: block;
+            margin-bottom: 0.15rem;
+            color: #5f738c;
+            font-size: 0.74rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+        }
+
+        .aocr-doc-actions .btn,
+        .aocr-action-buttons .btn {
+            flex: 1 1 100%;
+            min-width: 0;
+        }
+
+        .aocr-doc-observation {
+            min-width: 0;
+        }
     }
 
     @@media (max-width: 1399.98px) and (min-width: 768px) {
@@ -1376,7 +1506,7 @@
                     <i class="fas fa-info-circle me-1"></i>
                     <strong>AOCR no disponible aún:</strong>
                     @(string.IsNullOrEmpty(motivoAocr)
-                        ? "La AOCR estara disponible cuando la inspeccion sea satisfactoria y el informe tecnico quede firmado por el inspector."
+                        ? "La AOCR estara disponible cuando el Informe Tecnico quede aprobado por Direccion/DIRDAC y la solicitud entre en fase AOCR."
                         : normalizeVisibleText(motivoAocr))
                 </div>
             }
@@ -1453,6 +1583,7 @@
         });
 
         <div id="revision-documental" class="card aocr-detail-card aocr-review-card success mb-4">
+            <div id="documentos-rt-historial"></div>
             <div class="card-body p-4">
                 <div class="aocr-section-title mb-3">
                     <i class="fas fa-clipboard-check"></i>
@@ -1487,15 +1618,19 @@
                 }
                 else
                 {
-                    <div class="table-responsive">
-                        <table class="table table-sm table-hover align-middle mb-0">
+                    <div class="aocr-table-responsive">
+                        <table class="table table-sm table-hover align-middle mb-0 aocr-doc-review-table">
                             <thead class="table-light">
                                 <tr>
                                     <th>Documento</th>
+                                    <th>Archivo</th>
                                     <th>Estado actual</th>
-                                    <th>Decision</th>
-                                    <th>Observacion</th>
-                                    <th class="text-end">Accion</th>
+                                    <th>Resumen / trazabilidad</th>
+                                    <th>Visualizar</th>
+                                    <th>Descargar</th>
+                                    <th>Decisión</th>
+                                    <th>Observación</th>
+                                    <th>Acción</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -1517,31 +1652,89 @@
                                         : normalizeVisibleText((doc.Observaciones ?? string.Empty).Trim());
                                     var estadoVisible = RevisionDocumentalDisplayHelper.GetVisibleStateLabel(estadoDoc);
                                     var claseBadge = RevisionDocumentalDisplayHelper.GetBadgeClass(estadoDoc);
+                                    var fechaCargaTexto = doc.FechaCarga.HasValue ? doc.FechaCarga.Value.ToString("yyyy-MM-dd HH:mm") : "—";
+                                    var usuarioRegistroTexto = normalizeVisibleText(doc.UsuarioRegistro ?? "—");
+                                    var esSubsanacion = (doc.Version ?? 1) > 1;
+                                    var etiquetaOrigen = esSubsanacion ? "Subsanación" : "Inicial";
                                     <tr>
-                                        <td>
-                                            <div class="fw-semibold">@(string.IsNullOrWhiteSpace(doc.TipoDocumento) ? "Documento" : doc.TipoDocumento)</div>
-                                            <small class="text-muted">@doc.NombreArchivo</small>
+                                        <td data-label="Documento">
+                                            <div class="aocr-doc-name">@(string.IsNullOrWhiteSpace(doc.TipoDocumentoNombre) ? (string.IsNullOrWhiteSpace(doc.TipoDocumento) ? "Documento" : doc.TipoDocumento) : doc.TipoDocumentoNombre)</div>
+                                            @if (!string.IsNullOrWhiteSpace(doc.TipoDocumentoCodigoCanonico) && !string.Equals(doc.TipoDocumentoCodigoCanonico, "OTRO", System.StringComparison.OrdinalIgnoreCase))
+                                            {
+                                                <span class="aocr-doc-code">@doc.TipoDocumentoCodigoCanonico</span>
+                                            }
                                         </td>
-                                        <td><span class="@claseBadge">@estadoVisible</span></td>
-                                        <td style="min-width: 170px;">
+                                        <td data-label="Archivo">
+                                            <div class="fw-semibold">@Html.Encode(doc.NombreArchivo)</div>
+                                            @if (!string.IsNullOrWhiteSpace(doc.NombreArchivoGuardado))
+                                            {
+                                                <small class="text-muted">@Html.Encode(doc.NombreArchivoGuardado)</small>
+                                            }
+                                        </td>
+                                        <td data-label="Estado actual"><span class="@claseBadge">@estadoVisible</span></td>
+                                        <td data-label="Resumen / trazabilidad">
+                                            <div class="aocr-rt-summary-badges">
+                                                <span class="badge bg-success">v@(doc.Version ?? 1)</span>
+                                                <span class="badge @(esSubsanacion ? "bg-warning text-dark" : "bg-primary")">@etiquetaOrigen</span>
+                                            </div>
+                                            <div class="aocr-rt-summary-meta">
+                                                <span><strong>Fecha:</strong> @fechaCargaTexto</span>
+                                                <span><strong>Por:</strong> @Html.Encode(usuarioRegistroTexto)</span>
+                                            </div>
+                                            @if (!string.IsNullOrWhiteSpace(observacionActual) && (decisionActual == "DEVUELTO" || decisionActual == "OBSERVADO"))
+                                            {
+                                                <div class="aocr-rt-summary-note"><strong>Obs.:</strong> @Html.Encode(observacionActual)</div>
+                                            }
+                                        </td>
+                                        <td data-label="Visualizar">
+                                            @if (doc.PuedeVisualizar && !string.IsNullOrWhiteSpace(doc.UrlVisualizar))
+                                            {
+                                                <div class="aocr-doc-actions">
+                                                    <a href="@doc.UrlVisualizar" class="btn btn-sm btn-outline-secondary" target="_blank" rel="noopener">
+                                                        <i class="fas fa-eye"></i> Visualizar
+                                                    </a>
+                                                </div>
+                                            }
+                                            else
+                                            {
+                                                <span class="text-muted">—</span>
+                                            }
+                                        </td>
+                                        <td data-label="Descargar">
+                                            @if (doc.PuedeDescargar && !string.IsNullOrWhiteSpace(doc.UrlDescargar))
+                                            {
+                                                <div class="aocr-doc-actions">
+                                                    <a href="@doc.UrlDescargar" class="btn btn-sm btn-outline-primary" target="_blank" rel="noopener">
+                                                        <i class="fas fa-download"></i> Descargar
+                                                    </a>
+                                                </div>
+                                            }
+                                            else
+                                            {
+                                                <span class="text-muted">—</span>
+                                            }
+                                        </td>
+                                        <td data-label="Decisión">
                                             <select name="decision" class="form-select form-select-sm js-decision-documental" data-codigo-documento="@doc.CodigoDocumento" required form="@formId">
                                                 <option value="">Seleccione</option>
                                                 <option value="ACEPTADO" @(decisionActual == "ACEPTADO" ? "selected" : null)>Aceptado</option>
-                                                <option value="DEVUELTO" @(decisionActual == "DEVUELTO" ? "selected" : null)>Rechazado</option>
-                                                <option value="OBSERVADO" @(decisionActual == "OBSERVADO" ? "selected" : null)>Solicitar modificación</option>
+                                                <option value="OBSERVADO" @(decisionActual == "OBSERVADO" ? "selected" : null)>Observado</option>
+                                                <option value="DEVUELTO" @(decisionActual == "DEVUELTO" ? "selected" : null)>Devuelto / Rechazado</option>
                                             </select>
                                         </td>
-                                        <td style="min-width: 280px;">
-                                            <input type="text" name="observacion" class="form-control form-control-sm js-observacion-documental" data-codigo-documento="@doc.CodigoDocumento" placeholder="Observacion del revisor" maxlength="500" value="@observacionActual" form="@formId" />
+                                        <td data-label="Observación">
+                                            <input type="text" name="observacion" class="form-control form-control-sm js-observacion-documental aocr-doc-observation" data-codigo-documento="@doc.CodigoDocumento" placeholder="Observación del revisor" maxlength="500" value="@observacionActual" form="@formId" />
                                         </td>
-                                        <td class="text-end">
+                                        <td data-label="Acción">
                                             <form id="@formId" method="post" action="@Url.Action("RevisarDocumentoItem", "SolicitudAOCR")" class="d-inline js-form-revision-documental">
                                                 @Html.AntiForgeryToken()
                                                 <input type="hidden" name="id" value="@Model.CodigoSolicitud" />
                                                 <input type="hidden" name="codigoDocumento" value="@doc.CodigoDocumento" />
-                                                <button type="submit" class="btn btn-sm btn-primary">
-                                                    <i class="fas fa-save"></i> Registrar
-                                                </button>
+                                                <div class="aocr-action-buttons">
+                                                    <button type="submit" class="btn btn-sm btn-primary">
+                                                        <i class="fas fa-save"></i> Registrar
+                                                    </button>
+                                                </div>
                                             </form>
                                         </td>
                                     </tr>
@@ -1573,7 +1766,7 @@
                                     <button type="button"
                                             id="btnAprobarTodosDocumentos"
                                             class="btn btn-success aocr-action-btn"
-                                            @((puedeFinalizarRevisionDocumental && todosDocumentosAceptados) ? null : "disabled=\"disabled\"")>
+                                            @((puedeFinalizarRevisionDocumental && !existeObservadoODevuelto) ? null : "disabled=\"disabled\"")>
                                         <i class="fas fa-check-double"></i>
                                         Aprobar todos los documentos
                                     </button>
@@ -1968,111 +2161,10 @@
     }
 
     @{
-        var documentosHistorialCompleto = (ViewBag.DocumentosHistorialCompleto as List<Documento>) ?? new List<Documento>();
         var documentosSubsanacion = (ViewBag.DocumentosSubsanacion as List<CapaDatos.Entidades.DocumentoSubsanacionRegistro>)
                                     ?? new List<CapaDatos.Entidades.DocumentoSubsanacionRegistro>();
         var trazabilidadCompleta = (ViewBag.TrazabilidadCompleta as List<CapaDatos.Entidades.EventoTrazabilidad>)
                                    ?? new List<CapaDatos.Entidades.EventoTrazabilidad>();
-    }
-
-    @if (documentosHistorialCompleto.Count > 0)
-    {
-        var documentosRtPorTipo = documentosHistorialCompleto
-            .GroupBy(d => (d.TipoDocumento ?? "Documento").Trim(), StringComparer.OrdinalIgnoreCase)
-            .Select(g => new
-            {
-                TipoDocumental = g.Key,
-                Documento = g.OrderByDescending(d => d.Version ?? 0)
-                    .ThenByDescending(d => d.FechaCarga ?? DateTime.MinValue)
-                    .ThenByDescending(d => d.CodigoDocumento)
-                    .First()
-            })
-            .OrderBy(x => x.TipoDocumental, StringComparer.OrdinalIgnoreCase)
-            .ToList();
-
-        <div id="documentos-rt-historial" class="card aocr-detail-card mt-4">
-            <div class="card-header bg-white border-0 pt-4 px-4 pb-3">
-                <div class="d-flex flex-column flex-lg-row justify-content-between align-items-lg-center gap-2">
-                    <div class="aocr-section-title mb-0">
-                        <i class="fas fa-layer-group"></i>
-                        <span>Documentos RT</span>
-                    </div>
-                    <span class="badge bg-light text-dark border align-self-start align-self-lg-center">@documentosRtPorTipo.Count tipo(s)</span>
-                </div>
-            </div>
-            <div class="card-body p-0">
-                <div class="table-responsive">
-                    <table class="table table-sm mb-0 aocr-responsive-table aocr-rt-latest-table">
-                        <thead class="table-light">
-                            <tr>
-                                <th>Tipo documental</th>
-                                <th>Archivo</th>
-                                <th>Resumen</th>
-                                <th>Acción</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @foreach (var item in documentosRtPorTipo)
-                            {
-                                var doc = item.Documento;
-                                var version = doc.Version ?? 1;
-                                var esSubsanacion = version > 1;
-                                var etiquetaOrigen = esSubsanacion
-                                    ? "<span class=\"badge bg-warning text-dark\">Subsanación</span>"
-                                    : "<span class=\"badge bg-primary\">Inicial</span>";
-                                var vistaPreviaUrl = Url.Action("Descargar", "Documento", new { id = doc.CodigoDocumento, vistaPrevia = true });
-                                var descargaUrl = Url.Action("Descargar", "Documento", new { id = doc.CodigoDocumento });
-                                var esPdfSolicitud = string.Equals(System.IO.Path.GetExtension(doc.NombreArchivo ?? string.Empty), ".pdf", System.StringComparison.OrdinalIgnoreCase);
-                                var observacionTexto = normalizeVisibleText(doc.Observaciones ?? string.Empty);
-                                var fechaCargaTexto = doc.FechaCarga.HasValue ? doc.FechaCarga.Value.ToString("yyyy-MM-dd HH:mm") : "—";
-                                var usuarioRegistroTexto = normalizeVisibleText(doc.UsuarioRegistro ?? "—");
-                                var estadoTexto = normalizeVisibleText(doc.Estado ?? "—");
-
-                                <tr class="table-light">
-                                    <td data-label="Tipo documental"><strong>@Html.Encode(item.TipoDocumental)</strong></td>
-                                    <td data-label="Archivo">@Html.Encode(doc.NombreArchivo)</td>
-                                    <td data-label="Resumen">
-                                        <div class="aocr-rt-summary-badges">
-                                            <span class="badge bg-success">v@(version)</span>
-                                            @Html.Raw(etiquetaOrigen)
-                                            <span class="badge bg-light text-dark border">@Html.Encode(estadoTexto)</span>
-                                        </div>
-                                        <div class="aocr-rt-summary-meta">
-                                            <span><strong>Fecha:</strong> @fechaCargaTexto</span>
-                                            <span><strong>Por:</strong> @Html.Encode(usuarioRegistroTexto)</span>
-                                        </div>
-                                        @if (!string.IsNullOrWhiteSpace(observacionTexto))
-                                        {
-                                            <div class="aocr-rt-summary-note"><strong>Obs.:</strong> @Html.Encode(observacionTexto)</div>
-                                        }
-                                    </td>
-                                    <td data-label="Acción">
-                                        @if (!string.IsNullOrWhiteSpace(doc.RutaGuardada))
-                                        {
-                                            if (esPdfSolicitud)
-                                            {
-                                                <a href="@vistaPreviaUrl"
-                                                   class="btn btn-sm btn-outline-secondary aocr-pdf-open"
-                                                   data-pdf-url="@vistaPreviaUrl"
-                                                   data-download-url="@descargaUrl"
-                                                   data-title="@doc.NombreArchivo"
-                                                   data-status="@doc.Estado"
-                                                   title="Vista previa">
-                                                    <i class="fas fa-eye"></i>
-                                                </a>
-                                            }
-                                            <a href="@descargaUrl" class="btn btn-sm btn-outline-primary" title="Descargar">
-                                                <i class="fas fa-download"></i>
-                                            </a>
-                                        }
-                                    </td>
-                                </tr>
-                            }
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
     }
 
     @if (documentosSubsanacion.Count > 0)
@@ -2267,13 +2359,12 @@
                 var obsPendientes = filas.filter(function (f) {
                     return requiereObservacion(f.decision) && !f.observacion;
                 }).length;
-                var todosAceptados = filas.length > 0 && filas.every(function (f) { return f.decision === "ACEPTADO"; });
                 var existeObservadoODevuelto = filas.some(function (f) { return f.decision === "DEVUELTO" || f.decision === "OBSERVADO"; });
 
                 var btnAprobar = document.getElementById("btnAprobarTodosDocumentos");
                 var btnObs = document.getElementById("btnRegistrarObsMasiva");
                 if (btnAprobar) {
-                    btnAprobar.disabled = !(todosAceptados && sinDecision === 0 && obsPendientes === 0);
+                    btnAprobar.disabled = !!(existeObservadoODevuelto || obsPendientes > 0);
                 }
                 if (btnObs) {
                     btnObs.disabled = !(existeObservadoODevuelto && sinDecision === 0 && obsPendientes === 0);
@@ -2295,6 +2386,22 @@
                     alert("No existen documentos para revisión masiva.");
                     return;
                 }
+                var existeObservadoODevuelto = filas.some(function (f) { return f.decision === "DEVUELTO" || f.decision === "OBSERVADO"; });
+
+                if (tipoAccion === "APROBAR_TODOS") {
+                    if (existeObservadoODevuelto) {
+                        alert("No se puede aprobar masivamente mientras exista al menos un documento observado o devuelto.");
+                        return;
+                    }
+
+                    filas = filas.map(function (fila) {
+                        return {
+                            codigoDocumento: fila.codigoDocumento,
+                            decision: fila.decision || "ACEPTADO",
+                            observacion: fila.decision === "ACEPTADO" ? "" : (fila.observacion || "")
+                        };
+                    });
+                }
 
                 var sinDecision = filas.filter(function (f) { return !f.decision; });
                 if (sinDecision.length > 0) {
@@ -2305,14 +2412,6 @@
                 var sinObs = filas.filter(function (f) { return requiereObservacion(f.decision) && !f.observacion; });
                 if (sinObs.length > 0) {
                     alert("No se puede ejecutar la acción masiva: todo documento observado/devuelto requiere observación.");
-                    return;
-                }
-
-                var todosAceptados = filas.every(function (f) { return f.decision === "ACEPTADO"; });
-                var existeObservadoODevuelto = filas.some(function (f) { return f.decision === "DEVUELTO" || f.decision === "OBSERVADO"; });
-
-                if (tipoAccion === "APROBAR_TODOS" && !todosAceptados) {
-                    alert("La aprobación masiva solo está disponible cuando todos los documentos están en Aceptado.");
                     return;
                 }
 

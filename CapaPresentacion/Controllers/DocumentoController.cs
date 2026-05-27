@@ -290,22 +290,43 @@ namespace CapaPresentacion.Controllers
                 var doc = _documentoBL.ObtenerPorId(id); // Usamos BL
                 if (doc == null) return HttpNotFound();
 
+                int usuarioId;
+                if (!TryObtenerUsuarioActualId(out usuarioId))
+                {
+                    return new HttpStatusCodeResult(HttpStatusCode.Forbidden, "Sesión expirada o usuario no identificado.");
+                }
+
+                var solicitud = _solicitudDAO.ObtenerPorId(doc.CodigoSolicitud);
+                if (solicitud == null)
+                {
+                    return HttpNotFound();
+                }
+
+                Inspeccion inspeccionVinculada;
+                string rolesActuales;
+                if (!PuedeVerDocumentosSolicitud(solicitud, usuarioId, out inspeccionVinculada, out rolesActuales))
+                {
+                    return new HttpStatusCodeResult(HttpStatusCode.Forbidden, "No tiene permisos para acceder a este documento.");
+                }
+
                 var rutaFisica = ResolverRutaFisicaDocumento(doc);
 
-                if (string.IsNullOrWhiteSpace(rutaFisica) || !System.IO.File.Exists(rutaFisica))
+                if (string.IsNullOrWhiteSpace(rutaFisica) || !EsRutaDocumentoPermitida(rutaFisica) || !System.IO.File.Exists(rutaFisica))
                 {
                     TempData["Error"] = "El archivo físico no existe en el servidor.";
                     return RedirectToAction("Lista", new { solicitudId = doc.CodigoSolicitud });
                 }
 
                 byte[] bytes = System.IO.File.ReadAllBytes(rutaFisica);
-                var esPdf = string.Equals(Path.GetExtension(doc.NombreArchivo ?? rutaFisica ?? string.Empty), ".pdf", StringComparison.OrdinalIgnoreCase);
-                if (vistaPrevia && esPdf)
+                var mimeType = ObtenerMimeTypeDocumento(doc.NombreArchivo ?? rutaFisica ?? string.Empty);
+                if (vistaPrevia && (string.Equals(mimeType, "application/pdf", StringComparison.OrdinalIgnoreCase)
+                    || mimeType.StartsWith("image/", StringComparison.OrdinalIgnoreCase)))
                 {
-                    return File(bytes, "application/pdf");
+                    Response.Headers["X-Content-Type-Options"] = "nosniff";
+                    return File(bytes, mimeType);
                 }
 
-                return File(bytes, "application/octet-stream", doc.NombreArchivo);
+                return File(bytes, string.IsNullOrWhiteSpace(mimeType) ? "application/octet-stream" : mimeType, doc.NombreArchivo);
             }
             catch
             {
@@ -939,6 +960,56 @@ namespace CapaPresentacion.Controllers
             }
 
             return Server.MapPath("~" + (ruta.StartsWith("/") ? ruta : "/" + ruta));
+        }
+
+        private bool EsRutaDocumentoPermitida(string rutaFisica)
+        {
+            if (string.IsNullOrWhiteSpace(rutaFisica))
+            {
+                return false;
+            }
+
+            var fullPath = Path.GetFullPath(rutaFisica);
+            var basesPermitidas = new List<string>();
+
+            if (!string.IsNullOrWhiteSpace(_rutaDocumentos))
+            {
+                basesPermitidas.Add(Path.GetFullPath(_rutaDocumentos));
+            }
+
+            var baseAppData = Server != null ? Server.MapPath("~/App_Data") : null;
+            if (!string.IsNullOrWhiteSpace(baseAppData))
+            {
+                basesPermitidas.Add(Path.GetFullPath(baseAppData));
+            }
+
+            return basesPermitidas
+                .Where(baseDir => !string.IsNullOrWhiteSpace(baseDir))
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .Any(baseDir =>
+                {
+                    var normalizedBase = baseDir.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+                    return string.Equals(fullPath, normalizedBase, StringComparison.OrdinalIgnoreCase)
+                        || fullPath.StartsWith(normalizedBase + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase)
+                        || fullPath.StartsWith(normalizedBase + Path.AltDirectorySeparatorChar, StringComparison.OrdinalIgnoreCase);
+                });
+        }
+
+        private static string ObtenerMimeTypeDocumento(string fileName)
+        {
+            var extension = Path.GetExtension(fileName ?? string.Empty);
+            switch ((extension ?? string.Empty).Trim().ToLowerInvariant())
+            {
+                case ".pdf":
+                    return "application/pdf";
+                case ".jpg":
+                case ".jpeg":
+                    return "image/jpeg";
+                case ".png":
+                    return "image/png";
+                default:
+                    return "application/octet-stream";
+            }
         }
 
         private List<Documento> ObtenerDocumentosVigentesParaListado(IEnumerable<Documento> documentos, SolicitudAOCR solicitud)

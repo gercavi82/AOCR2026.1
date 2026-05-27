@@ -246,7 +246,9 @@ namespace CapaPresentacion.Controllers
             }
 
             roles = roles ?? new List<string>();
-            var rolesString = roles.Count > 0 ? string.Join(",", roles.Distinct(StringComparer.OrdinalIgnoreCase)) : string.Empty;
+            var rolesString = AuthTicketRoleDataHelper.Serialize(
+                roles,
+                RoleGroupingHelper.BuildUnifiedRoles(roles).FirstOrDefault());
             var sessionTimeoutMinutes = SessionTimeoutHelper.GetTimeoutMinutes();
 
             // ============================
@@ -278,8 +280,10 @@ namespace CapaPresentacion.Controllers
             Response.Cookies.Add(cookie);
             // Forzar emisión de token antiforgery nuevo en la siguiente vista autenticada.
             ExpirarCookieAntiForgery();
+            ExpirarCookieRolSeleccionado();
 
             SincronizarSesionAutenticada(usuario, roles, model.Usuario, limpiarCompaniaActiva: true);
+            PersistirRolSeleccionado(Session["Rol"] as string, model.Recordarme ? (DateTime?)DateTime.Now.AddDays(7) : null);
 
             // Forzar cambio cuando hay marca explícita o cuando la última conexión fue limpiada (reset clave).
             if (usuario.MustChangePassword || !usuario.FechaUltimaConexion.HasValue)
@@ -404,9 +408,11 @@ namespace CapaPresentacion.Controllers
             }
 
             var esUsuarioRt = EsUsuarioRt(usuario) && !EsAdministradorSesion(usuario);
+            var rolActivo = RoleGroupingHelper.NormalizeSelectedRole(Session["Rol"] as string ?? string.Empty);
+            var requiereSeleccionCompania = esUsuarioRt || string.Equals(rolActivo, RoleGroupingHelper.Solicitante, StringComparison.OrdinalIgnoreCase);
             var companiasAsignadas = ObtenerCompaniasAsignadasConFallback(usuario);
 
-            if (!esUsuarioRt || companiasAsignadas.Count <= 1)
+            if (!requiereSeleccionCompania)
             {
                 if (companiasAsignadas.Count == 1)
                 {
@@ -424,6 +430,21 @@ namespace CapaPresentacion.Controllers
                 return RedireccionarDespuesLogin(usuarioId, returnUrlUnica);
             }
 
+            if (companiasAsignadas.Count == 1)
+            {
+                var unica = companiasAsignadas[0];
+                var nombre = !string.IsNullOrWhiteSpace(unica.CompaniaNombre)
+                    ? unica.CompaniaNombre
+                    : ResolverNombreCompaniaPorCodigo(unica.CompaniaCodigo);
+                CompaniaActivaSessionHelper.Establecer(Session, unica.CompaniaCodigo, nombre);
+
+                var returnUrlUnica = !string.IsNullOrWhiteSpace(returnUrlSeguro)
+                    ? returnUrlSeguro
+                    : Session[CompaniaActivaSessionHelper.SessionCompaniaPendienteReturnUrl] as string;
+                Session.Remove(CompaniaActivaSessionHelper.SessionCompaniaPendienteReturnUrl);
+                return RedireccionarDespuesLogin(usuarioId, returnUrlUnica);
+            }
+
             var codigoActivo = CompaniaActivaSessionHelper.ObtenerCodigo(Session);
             var vm = ConstruirSeleccionCompaniaViewModel(
                 companiasAsignadas,
@@ -431,6 +452,11 @@ namespace CapaPresentacion.Controllers
                     ? returnUrlSeguro
                     : Session[CompaniaActivaSessionHelper.SessionCompaniaPendienteReturnUrl] as string,
                 !string.IsNullOrWhiteSpace(companiaSeleccionada) ? companiaSeleccionada : codigoActivo);
+
+            if (companiasAsignadas.Count == 0)
+            {
+                ModelState.AddModelError("", "No existen companias asignadas o disponibles para el rol Solicitante. Actualice la asociacion de companias del usuario antes de continuar.");
+            }
 
             return View(vm);
         }
@@ -690,6 +716,8 @@ namespace CapaPresentacion.Controllers
             {
                 var match = roles.First(r => r.Equals(rolUnificado, StringComparison.OrdinalIgnoreCase));
                 Session["Rol"] = match;
+                PersistirRolSeleccionado(match, null);
+                ActualizarTicketAutenticacionRolSeleccionado(match);
             }
 
             return RedirectToAction("Index", "Home");
@@ -715,6 +743,7 @@ namespace CapaPresentacion.Controllers
                 Response.Cookies.Add(c);
             }
             ExpirarCookieAntiForgery();
+            ExpirarCookieRolSeleccionado();
 
             return RedirectToAction("Login", "Account");
         }
@@ -1180,7 +1209,7 @@ namespace CapaPresentacion.Controllers
                 .Distinct(StringComparer.OrdinalIgnoreCase)
                 .ToList();
             var rolesUnificados = RoleGroupingHelper.BuildUnifiedRoles(rolesRaw);
-            var rolActual = RoleGroupingHelper.NormalizeSelectedRole(Session["Rol"] as string ?? string.Empty);
+            var rolActual = ResolverRolSeleccionadoPersistido(rolesUnificados);
             var rolSeleccionado = rolesUnificados.FirstOrDefault(r =>
                 string.Equals(r, rolActual, StringComparison.OrdinalIgnoreCase));
 
@@ -1191,6 +1220,154 @@ namespace CapaPresentacion.Controllers
                 : (rolesUnificados.Count > 0 ? rolesUnificados[0] : null);
             Session.Timeout = SessionTimeoutHelper.GetTimeoutMinutes();
             Session["LastActivity"] = DateTime.Now;
+        }
+
+        private string ResolverRolSeleccionadoPersistido(IEnumerable<string> rolesUnificados)
+        {
+            var rolesDisponibles = (rolesUnificados ?? Enumerable.Empty<string>())
+                .Where(r => !string.IsNullOrWhiteSpace(r))
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
+
+            var candidatos = new[]
+            {
+                AuthTicketRoleDataHelper.ReadSelectedRoleFromCookie(Request != null ? Request.Cookies : null),
+                LeerRolSeleccionadoDesdeTicket(),
+                RoleGroupingHelper.NormalizeSelectedRole(Session["Rol"] as string ?? string.Empty)
+            };
+
+            foreach (var candidato in candidatos)
+            {
+                if (!string.IsNullOrWhiteSpace(candidato)
+                    && rolesDisponibles.Contains(candidato, StringComparer.OrdinalIgnoreCase))
+                {
+                    return candidato;
+                }
+            }
+
+            return rolesDisponibles.FirstOrDefault() ?? string.Empty;
+        }
+
+        private string LeerRolSeleccionadoDesdeTicket()
+        {
+            try
+            {
+                var authCookie = Request != null ? Request.Cookies[FormsAuthentication.FormsCookieName] : null;
+                if (authCookie == null || string.IsNullOrWhiteSpace(authCookie.Value))
+                {
+                    return string.Empty;
+                }
+
+                var authTicket = FormsAuthentication.Decrypt(authCookie.Value);
+                if (authTicket == null || authTicket.Expired)
+                {
+                    return string.Empty;
+                }
+
+                return AuthTicketRoleDataHelper.Deserialize(authTicket.UserData).SelectedRole;
+            }
+            catch
+            {
+                return string.Empty;
+            }
+        }
+
+        private void ActualizarTicketAutenticacionRolSeleccionado(string rolSeleccionado)
+        {
+            try
+            {
+                var authCookie = Request != null ? Request.Cookies[FormsAuthentication.FormsCookieName] : null;
+                if (authCookie == null || string.IsNullOrWhiteSpace(authCookie.Value))
+                {
+                    return;
+                }
+
+                var authTicket = FormsAuthentication.Decrypt(authCookie.Value);
+                if (authTicket == null || authTicket.Expired)
+                {
+                    return;
+                }
+
+                var rolesRaw = RoleGroupingHelper.ExtractRoles(Session["RolesRaw"] ?? Session["Roles"]);
+                if (rolesRaw.Count == 0)
+                {
+                    rolesRaw = AuthTicketRoleDataHelper.Deserialize(authTicket.UserData).Roles.ToList();
+                }
+
+                var expiracion = authTicket.IsPersistent && authTicket.Expiration > DateTime.Now
+                    ? authTicket.Expiration
+                    : DateTime.Now.AddMinutes(SessionTimeoutHelper.GetTimeoutMinutes());
+
+                var ticketActualizado = new FormsAuthenticationTicket(
+                    authTicket.Version,
+                    authTicket.Name,
+                    DateTime.Now,
+                    expiracion,
+                    authTicket.IsPersistent,
+                    AuthTicketRoleDataHelper.Serialize(rolesRaw, rolSeleccionado),
+                    string.IsNullOrWhiteSpace(authTicket.CookiePath) ? FormsAuthentication.FormsCookiePath : authTicket.CookiePath);
+
+                var cookie = new HttpCookie(FormsAuthentication.FormsCookieName, FormsAuthentication.Encrypt(ticketActualizado))
+                {
+                    HttpOnly = true,
+                    Secure = Request.IsSecureConnection,
+                    Path = string.IsNullOrWhiteSpace(ticketActualizado.CookiePath) ? FormsAuthentication.FormsCookiePath : ticketActualizado.CookiePath
+                };
+                CookieHelper.SetSameSiteLax(cookie);
+
+                if (authTicket.IsPersistent)
+                {
+                    cookie.Expires = expiracion;
+                }
+
+                Response.Cookies.Add(cookie);
+            }
+            catch
+            {
+            }
+        }
+
+        private void PersistirRolSeleccionado(string rolSeleccionado, DateTime? expires)
+        {
+            var rolNormalizado = RoleGroupingHelper.NormalizeSelectedRole(rolSeleccionado);
+            if (string.IsNullOrWhiteSpace(rolNormalizado) || Response == null)
+            {
+                return;
+            }
+
+            var cookie = new HttpCookie(AuthTicketRoleDataHelper.SelectedRoleCookieName, Uri.EscapeDataString(rolNormalizado))
+            {
+                HttpOnly = true,
+                Secure = Request != null && Request.IsSecureConnection,
+                Path = "/"
+            };
+            CookieHelper.SetSameSiteLax(cookie);
+
+            if (expires.HasValue)
+            {
+                cookie.Expires = expires.Value;
+            }
+
+            Response.Cookies.Add(cookie);
+        }
+
+        private void ExpirarCookieRolSeleccionado()
+        {
+            if (Response == null)
+            {
+                return;
+            }
+
+            var cookie = new HttpCookie(AuthTicketRoleDataHelper.SelectedRoleCookieName)
+            {
+                Value = string.Empty,
+                Expires = DateTime.Now.AddDays(-1),
+                HttpOnly = true,
+                Secure = Request != null && Request.IsSecureConnection,
+                Path = "/"
+            };
+            CookieHelper.SetSameSiteLax(cookie);
+            Response.Cookies.Add(cookie);
         }
 
         private void EstablecerCompaniaActiva(UsuarioCompaniaRT compania)

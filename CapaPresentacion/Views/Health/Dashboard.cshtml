@@ -159,6 +159,28 @@
     </div>
 
     <div class="row">
+        <div class="col-12 mb-4">
+            <div class="card shadow">
+                <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center">
+                    <span><i class="fas fa-tools me-2"></i>Resincronizar AOCR legacy</span>
+                    <div>
+                        <button class="btn btn-sm btn-outline-light me-2" onclick="previewLegacyAocrCandidates()" id="btnPreviewLegacyAocr">
+                            <i class="fas fa-search"></i> Consultar candidatas
+                        </button>
+                        <button class="btn btn-sm btn-warning" onclick="resyncLegacyAocrCases()" id="btnResyncLegacyAocr">
+                            <i class="fas fa-wrench"></i> Ejecutar resincronización
+                        </button>
+                    </div>
+                </div>
+                <div class="card-body" id="legacyAocrDetails">
+                    <p class="text-muted mb-2">Repara solicitudes antiguas aprobadas por Dirección que quedaron en Aceptación Documental o Documentación Completa antes de entrar al flujo AOCR.</p>
+                    <div class="small text-muted">La consulta lista solo lectura las candidatas reales. La resincronización mueve únicamente los casos con informe técnico institucional aprobado a AOCR En Elaboración.</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
         <div class="col-12 text-muted small text-end mb-3">
             Última actualización: <span id="lastUpdate">-</span>
             &nbsp;|&nbsp;
@@ -327,6 +349,106 @@
             error: function () {
                 alert('Error al procesar reintentos.');
                 document.getElementById('btnProcessRetries').disabled = false;
+            }
+        });
+    }
+
+    function resyncLegacyAocrCases() {
+        if (!confirm('¿Resincronizar solicitudes legacy aprobadas por Dirección al flujo AOCR?')) return;
+
+        var btn = document.getElementById('btnResyncLegacyAocr');
+        var previewBtn = document.getElementById('btnPreviewLegacyAocr');
+        var details = document.getElementById('legacyAocrDetails');
+        btn.disabled = true;
+        previewBtn.disabled = true;
+        details.innerHTML = '<div class="text-center py-3"><div class="spinner-border text-primary" role="status"></div><p class="mt-2 text-muted">Resincronizando casos legacy AOCR...</p></div>';
+
+        $.ajax({
+            url: '@Url.Action("ResyncLegacyAocrCases", "Health")',
+            type: 'POST',
+            data: { limit: 200, __RequestVerificationToken: tokenVal },
+            success: function (r) {
+                var html = '<div class="alert ' + (r.success ? 'alert-success' : 'alert-danger') + ' mb-3">' + (r.message || 'Sin respuesta del servidor.') + '</div>';
+                html += '<table class="table table-sm table-bordered mb-0">';
+                html += '<tr><td class="fw-bold" width="40%">Límite aplicado</td><td>' + (r.limit || 0) + '</td></tr>';
+                html += '<tr><td class="fw-bold">Candidatas</td><td>' + (r.candidateCount || 0) + '</td></tr>';
+                html += '<tr><td class="fw-bold">Sincronizadas</td><td><span class="badge bg-success">' + (r.syncedCount || 0) + '</span></td></tr>';
+                html += '<tr><td class="fw-bold">Ya generadas</td><td>' + (r.alreadyGeneratedCount || 0) + '</td></tr>';
+                html += '<tr><td class="fw-bold">Sin informe aprobado</td><td>' + (r.missingApprovedReportCount || 0) + '</td></tr>';
+                html += '<tr><td class="fw-bold">Errores</td><td><span class="badge ' + ((r.errorCount || 0) > 0 ? 'bg-danger' : 'bg-secondary') + '">' + (r.errorCount || 0) + '</span></td></tr>';
+                html += '</table>';
+
+                if (r.syncedIds && r.syncedIds.length > 0) {
+                    html += '<div class="mt-3"><strong>Solicitudes sincronizadas:</strong> ' + r.syncedIds.join(', ') + '</div>';
+                }
+
+                if (r.errors && r.errors.length > 0) {
+                    html += '<div class="mt-3"><strong>Errores reportados:</strong><ul class="mb-0">';
+                    r.errors.forEach(function (error) {
+                        html += '<li>' + error + '</li>';
+                    });
+                    html += '</ul></div>';
+                }
+
+                details.innerHTML = html;
+                btn.disabled = false;
+                previewBtn.disabled = false;
+            },
+            error: function () {
+                details.innerHTML = '<div class="alert alert-danger mb-0">No se pudo ejecutar la resincronización AOCR legacy.</div>';
+                btn.disabled = false;
+                previewBtn.disabled = false;
+            }
+        });
+    }
+
+    function previewLegacyAocrCandidates() {
+        var btn = document.getElementById('btnPreviewLegacyAocr');
+        var resyncBtn = document.getElementById('btnResyncLegacyAocr');
+        var details = document.getElementById('legacyAocrDetails');
+        btn.disabled = true;
+        resyncBtn.disabled = true;
+        details.innerHTML = '<div class="text-center py-3"><div class="spinner-border text-primary" role="status"></div><p class="mt-2 text-muted">Consultando candidatas legacy AOCR...</p></div>';
+
+        $.ajax({
+            url: '@Url.Action("PreviewLegacyAocrCandidates", "Health")',
+            type: 'POST',
+            data: { limit: 200, __RequestVerificationToken: tokenVal },
+            success: function (r) {
+                var html = '<div class="alert ' + (r.success ? 'alert-info' : 'alert-danger') + ' mb-3">' + (r.message || 'Sin respuesta del servidor.') + '</div>';
+                html += '<table class="table table-sm table-bordered mb-0">';
+                html += '<tr><td class="fw-bold" width="40%">Límite aplicado</td><td>' + (r.limit || 0) + '</td></tr>';
+                html += '<tr><td class="fw-bold">Legacy en pre-AOCR</td><td>' + (r.legacyPendingCount || 0) + '</td></tr>';
+                html += '<tr><td class="fw-bold">Listas para resincronizar</td><td><span class="badge bg-info">' + (r.readyCount || 0) + '</span></td></tr>';
+                html += '<tr><td class="fw-bold">Ya generadas</td><td>' + (r.alreadyGeneratedCount || 0) + '</td></tr>';
+                html += '<tr><td class="fw-bold">Sin informe aprobado</td><td>' + (r.missingApprovedReportCount || 0) + '</td></tr>';
+                html += '</table>';
+
+                if (r.candidates && r.candidates.length > 0) {
+                    html += '<div class="table-responsive mt-3">';
+                    html += '<table class="table table-sm table-striped table-bordered mb-0">';
+                    html += '<thead><tr><th>Solicitud</th><th>Número</th><th>Estado solicitud</th><th>Inspección</th><th>Informe</th><th>Estado informe</th></tr></thead><tbody>';
+                    r.candidates.forEach(function (candidate) {
+                        html += '<tr>';
+                        html += '<td>' + candidate.solicitudId + '</td>';
+                        html += '<td>' + (candidate.numeroSolicitud || '-') + '</td>';
+                        html += '<td>' + (candidate.estadoSolicitud || '-') + '</td>';
+                        html += '<td>' + (candidate.inspeccionId || '-') + '</td>';
+                        html += '<td>' + (candidate.informeId || '-') + '</td>';
+                        html += '<td>' + (candidate.estadoInforme || '-') + '</td>';
+                        html += '</tr>';
+                    });
+                    html += '</tbody></table></div>';
+                }
+
+                details.innerHTML = html;
+                btn.disabled = false;
+                resyncBtn.disabled = false;
+            },
+            error: function () {
+                details.innerHTML = '<div class="alert alert-danger mb-0">No se pudo consultar el inventario AOCR legacy.</div>';
+                btn.disabled = false;
+                resyncBtn.disabled = false;
             }
         });
     }

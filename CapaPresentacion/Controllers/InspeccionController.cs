@@ -54,6 +54,7 @@ namespace CapaPresentacion.Controllers
         private readonly RevisionDocumentalService _revisionDocumentalService;
         private readonly SolicitudEstadoTransitionBL _solicitudEstadoTransitionBL;
         private readonly SolicitudAocrInfraBL _solicitudAocrInfraBL;
+        private readonly GeneracionAOCRService _generacionAocrService;
 
         private const string ROL_ADMIN = "Administrador";
         private const string ROL_COORD = "CoordinadorInspecciones";
@@ -111,13 +112,19 @@ namespace CapaPresentacion.Controllers
             _revisionDocumentalService = new RevisionDocumentalService();
             _solicitudEstadoTransitionBL = new SolicitudEstadoTransitionBL();
             _solicitudAocrInfraBL = new SolicitudAocrInfraBL();
+            _generacionAocrService = new GeneracionAOCRService();
             _logger = LoggingFactoryType.Create();
         }
 
         private int ObtenerCodigoUsuario()
         {
             int id;
-            return _userContext.TryGetCodigoUsuario(Session, out id) ? id : 0;
+            if (_userContext.TryGetCodigoUsuario(Session, out id))
+            {
+                return id;
+            }
+
+            return _userContext.TryGetUserId(Session, out id) ? id : 0;
         }
 
         private int ObtenerIdUsuarioActual()
@@ -213,6 +220,43 @@ namespace CapaPresentacion.Controllers
         private bool EsRolInspector()
         {
             return User != null && User.IsInRole(ROL_INSPECTOR);
+        }
+
+        private bool EsRolInspectorSeleccionado()
+        {
+            var rolActual = RoleGroupingHelper.NormalizeSelectedRole(Session["Rol"] as string ?? string.Empty);
+            var rolesSesion = RoleGroupingHelper.ExtractRoles(Session["RolesRaw"] ?? Session["Roles"], Session["Rol"] as string);
+
+            return RoleGroupingHelper.IsInspectorTecnico(rolActual)
+                && (rolesSesion.Count == 0 || RoleGroupingHelper.HasAnyRawRole(rolesSesion, ROL_INSPECTOR, "Tecnico", "EvaluadorTecnico"));
+        }
+
+        private bool EsRolCoordinacionYJefaturaSeleccionado()
+        {
+            var rolActual = RoleGroupingHelper.NormalizeSelectedRole(Session["Rol"] as string ?? string.Empty);
+            if (RoleGroupingHelper.IsAdministrador(rolActual) || RoleGroupingHelper.IsDireccionJefaturaTecnica(rolActual))
+            {
+                return true;
+            }
+
+            if (!RoleGroupingHelper.IsCoordinacion(rolActual))
+            {
+                return false;
+            }
+
+            var rolesSesion = RoleGroupingHelper.ExtractRoles(Session["RolesRaw"] ?? Session["Roles"], Session["Rol"] as string);
+            return rolesSesion.Count == 0 || RoleGroupingHelper.HasAnyRawRole(
+                rolesSesion,
+                ROL_COORD,
+                ROL_COORD_ALIAS,
+                ROL_JEFATURA,
+                ROL_JEFE,
+                ROL_DIRECCION,
+                ROL_DIRECTOR,
+                ROL_DIRDAC,
+                ROL_LEGAL,
+                ROL_COORD_LEGAL,
+                ROL_COORDINADOR_LEGAL);
         }
 
         private bool PuedeGestionarInformeTecnicoModal(Inspeccion inspeccion)
@@ -494,7 +538,7 @@ namespace CapaPresentacion.Controllers
         [Authorize(Roles = ROLES_GESTION_INSPECCION)]
         public ActionResult Index(string vista = null)
         {
-            var esBandejaInspector = EsRolInspector();
+            var esBandejaInspector = EsRolInspectorSeleccionado();
             if (string.Equals((vista ?? string.Empty).Trim(), "revision-documental", StringComparison.OrdinalIgnoreCase))
             {
                 return RedirectToAction("Index", "RevisionDocumental");
@@ -504,7 +548,7 @@ namespace CapaPresentacion.Controllers
 
             List<Inspeccion> lista;
 
-            if (EsRolCoordinacionYJefatura())
+            if (EsRolCoordinacionYJefaturaSeleccionado())
             {
                 lista = _inspeccionBL.ListarTodas();
             }
@@ -1983,6 +2027,12 @@ namespace CapaPresentacion.Controllers
                     }
                 }
 
+                var redirectInformeFirmaUrl = ConstruirUrlDetalle(id, new Dictionary<string, string>
+                {
+                    { "autoOpenInformeTecnico", "true" },
+                    { "autoFocusInformeFirma", "true" }
+                });
+
                 TempData["Success"] = "Informe técnico finalizado y PDF generado. El documento quedó pendiente de firma del inspector.";
 
                 if (esSolicitudAjax)
@@ -1997,11 +2047,11 @@ namespace CapaPresentacion.Controllers
                         version = informe.Version,
                         pdfUrl = Url.Action("VerInforme", "Inspeccion", new { id }),
                         downloadUrl = Url.Action("DescargarInforme", "Inspeccion", new { id }),
-                        redirectUrl = Url.Action("Detalle", "Inspeccion", new { id })
+                        redirectUrl = redirectInformeFirmaUrl
                     });
                 }
 
-                return RedirectToAction("Detalle", new { id });
+                return Redirect(redirectInformeFirmaUrl);
             }
             catch (Exception ex)
             {
@@ -2286,7 +2336,11 @@ namespace CapaPresentacion.Controllers
                 TempData["Error"] = "No se pudo finalizar el informe técnico desde este panel.";
             }
 
-            return RedirectToAction("Detalle", new { id });
+            return Redirect(ConstruirUrlDetalle(id, new Dictionary<string, string>
+            {
+                { "autoOpenInformeTecnico", "true" },
+                { "autoFocusInformeFirma", "true" }
+            }));
         }
 
         [HttpPost]
@@ -2853,6 +2907,13 @@ namespace CapaPresentacion.Controllers
                 return new HttpStatusCodeResult(403, "No autorizado para cargar documentos.");
             }
 
+            var estadoActualNormalizado = CapaDatos.Constants.EstadosInspeccion.NormalizarEstado(inspeccion.Estado);
+            if (!EstadoPermiteCargaCorreccionSolicitante(estadoActualNormalizado))
+            {
+                TempData["Error"] = "La subsanación documental del RT solo se habilita después de la aprobación formal de la no conformidad por coordinación.";
+                return RedirectToAction("Detalle", new { id });
+            }
+
             var archivo = Request.Files["DocumentoSolicitante"];
             if (archivo == null || archivo.ContentLength <= 0)
             {
@@ -2897,7 +2958,7 @@ namespace CapaPresentacion.Controllers
             });
 
             var usuarioId = ObtenerCodigoUsuario();
-            var estadoActual = CapaDatos.Constants.EstadosInspeccion.NormalizarEstado(inspeccion.Estado);
+            var estadoActual = estadoActualNormalizado;
             if (CapaDatos.Constants.EstadosInspeccion.EsTransicionValida(estadoActual, CapaDatos.Constants.EstadosInspeccion.SUBSANADA))
             {
                 _inspeccionBL.CambiarEstado(id, CapaDatos.Constants.EstadosInspeccion.SUBSANADA, usuarioId, "Solicitante cargó documentación corregida.", ObtenerUsuarioActual(), "SUBSANACION_SOLICITANTE");
@@ -3218,24 +3279,23 @@ namespace CapaPresentacion.Controllers
                 "APROBADO_DIRECCION",
                 null,
                 null,
-                string.Format("Informe aprobado por DIRDAC / Dirección - Jefatura ({0}). Observación institucional: {1}. Se habilita la notificación final al RT. IP={2}", usuarioActual, string.IsNullOrWhiteSpace(observacionAprobacion) ? "Sin observación" : observacionAprobacion, ObtenerIpCliente()),
+                string.Format("Informe aprobado por DIRDAC / Dirección - Jefatura ({0}). Observación institucional: {1}. Se habilita la generación AOCR. IP={2}", usuarioActual, string.IsNullOrWhiteSpace(observacionAprobacion) ? "Sin observación" : observacionAprobacion, ObtenerIpCliente()),
                 usuarioId,
                 usuarioActual,
                 "INFORME_TECNICO_APROBADO_DIRECCION");
 
             var informeAprobado = _informeDAO.ObtenerPorId(informe.CodigoInforme) ?? informe;
-            var resultadoNotificacionRt = NotificarResultadoInformeTecnicoAlRtDesdeDireccion(inspeccion, solicitud, informeAprobado, usuarioId, usuarioActual, false);
-            SincronizarSolicitudAocrTrasFirmaFinal(inspeccion, solicitud, usuarioId, usuarioActual);
+            var resultadoSincronizacionAocr = SincronizarSolicitudAocrTrasFirmaFinal(inspeccion, solicitud, informeAprobado, usuarioId, usuarioActual);
 
             _logger.LogInfo("[GestionInspeccion] Informe aprobado por Dirección / Jefatura. InspeccionId=" + id
                 + ", InformeId=" + informe.CodigoInforme
                 + ", Usuario=" + usuarioActual);
 
-            TempData[resultadoNotificacionRt.Exitoso ? "Success" : "Warning"] = FirstNonEmpty(
-                resultadoNotificacionRt.Mensaje,
-                resultadoNotificacionRt.Exitoso
-                    ? "DIRDAC / Dirección - Jefatura aprobó el informe y se encoló la notificación final al RT."
-                    : "DIRDAC / Dirección - Jefatura aprobó el informe, pero no fue posible encolar la notificación final al RT.");
+            TempData[resultadoSincronizacionAocr.Exitoso ? "Success" : "Warning"] = FirstNonEmpty(
+                resultadoSincronizacionAocr.Mensaje,
+                resultadoSincronizacionAocr.Exitoso
+                    ? "DIRDAC / Dirección - Jefatura aprobó el informe y la AOCR quedó habilitada para generación."
+                    : "DIRDAC / Dirección - Jefatura aprobó el informe, pero no fue posible habilitar la AOCR automáticamente.");
             return RedirectToAction("RevisionDireccion", new { codigoInforme = informe.CodigoInforme });
         }
 
@@ -3767,7 +3827,20 @@ namespace CapaPresentacion.Controllers
         {
             var usuarioId = ObtenerCodigoUsuario();
             var usuarioNombre = ObtenerUsuarioActual();
-            var op = _inspeccionService.SolicitarNuevaInspeccion(id, observacion, usuarioId, usuarioNombre);
+            var op = _inspeccionService.AprobarNoConformidadParaNuevaInspeccion(id, observacion, usuarioId, usuarioNombre);
+
+            TempData[op.Exitoso ? "Success" : "Error"] = op.Mensaje;
+            return RedirectToAction("Detalle", new { id });
+        }
+
+        [HttpPost]
+        [Authorize(Roles = ROL_COORD + "," + ROL_COORD_ALIAS + "," + ROL_JEFATURA + "," + ROL_ADMIN)]
+        [ValidateAntiForgeryToken]
+        public ActionResult AprobarNcSubsanacionDocumental(int id, string observacion = "")
+        {
+            var usuarioId = ObtenerCodigoUsuario();
+            var usuarioNombre = ObtenerUsuarioActual();
+            var op = _inspeccionService.AprobarNoConformidadParaSubsanacionDocumental(id, observacion, usuarioId, usuarioNombre);
 
             TempData[op.Exitoso ? "Success" : "Error"] = op.Mensaje;
             return RedirectToAction("Detalle", new { id });
@@ -3805,6 +3878,15 @@ namespace CapaPresentacion.Controllers
             return string.Equals(estadoNormalizado, "EN_REVISION", StringComparison.OrdinalIgnoreCase)
                 || string.Equals(estadoNormalizado, "ACEPTADA", StringComparison.OrdinalIgnoreCase)
                 || string.Equals(estadoNormalizado, "APROBADO", StringComparison.OrdinalIgnoreCase);
+        }
+
+        private static bool EstadoPermiteCargaCorreccionSolicitante(string estadoActual)
+        {
+            var estadoNormalizado = EstadosInspeccion.NormalizarEstado(estadoActual);
+
+            return string.Equals(estadoNormalizado, EstadosInspeccion.OBSERVADA, StringComparison.OrdinalIgnoreCase)
+                || string.Equals(estadoNormalizado, EstadosInspeccion.SUBSANADA, StringComparison.OrdinalIgnoreCase)
+                || string.Equals(estadoNormalizado, EstadosInspeccion.OBSERVACION_DOCUMENTAL, StringComparison.OrdinalIgnoreCase);
         }
 
         private bool InspectorTieneRevisionDocumentalConfirmada(Inspeccion inspeccion)
@@ -5142,13 +5224,51 @@ namespace CapaPresentacion.Controllers
                 return false;
             }
 
-            if (string.IsNullOrWhiteSpace(informe.NoConformidades) && string.IsNullOrWhiteSpace(informe.Observaciones))
+            if (InformeTecnicoTemplateHelper.IsResultadoSatisfactorio(informe.Resultado)
+                && string.IsNullOrWhiteSpace(informe.Observaciones))
             {
-                mensaje = "Registre al menos un hallazgo técnico u observación antes de finalizar el Informe Técnico.";
+                mensaje = "Registre las observaciones del resultado satisfactorio antes de finalizar el Informe Técnico.";
+                return false;
+            }
+
+            if (InformeTecnicoTemplateHelper.IsResultadoInsatisfactorio(informe.Resultado)
+                && string.IsNullOrWhiteSpace(informe.NoConformidades))
+            {
+                mensaje = "Registre los hallazgos técnicos del resultado insatisfactorio antes de finalizar el Informe Técnico.";
                 return false;
             }
 
             return true;
+        }
+
+        private static void NormalizarSeccionesResultadoInformeTecnico(InspeccionInformeTecnico informe)
+        {
+            if (informe == null)
+            {
+                return;
+            }
+
+            var resultado = InformeTecnicoTemplateHelper.NormalizeResultadoInformeTecnico(informe.Resultado);
+            informe.Resultado = string.IsNullOrWhiteSpace(resultado) ? null : resultado;
+            informe.Observaciones = string.IsNullOrWhiteSpace(informe.Observaciones) ? null : informe.Observaciones.Trim();
+            informe.NoConformidades = string.IsNullOrWhiteSpace(informe.NoConformidades) ? null : informe.NoConformidades.Trim();
+
+            if (InformeTecnicoTemplateHelper.IsResultadoSatisfactorio(resultado))
+            {
+                informe.NoConformidades = null;
+                informe.TipoResultadoInsatisfactorio = null;
+                return;
+            }
+
+            if (InformeTecnicoTemplateHelper.IsResultadoInsatisfactorio(resultado))
+            {
+                informe.Observaciones = null;
+                return;
+            }
+
+            informe.Observaciones = null;
+            informe.NoConformidades = null;
+            informe.TipoResultadoInsatisfactorio = null;
         }
 
         private string ConstruirDetalleAuditoriaResultadoInforme(string mensajeBase, InspeccionInformeTecnico informe)
@@ -5723,7 +5843,7 @@ namespace CapaPresentacion.Controllers
                 tipoResultadoInsatisfactorio = null;
             }
 
-            return new InspeccionInformeTecnico
+            var informeFormulario = new InspeccionInformeTecnico
             {
                 CodigoInspeccion = codigoInspeccion,
                 Titulo = TomarCampoTexto(form, "titulo", 250, informeActual != null ? informeActual.Titulo : null),
@@ -5753,6 +5873,9 @@ namespace CapaPresentacion.Controllers
                 Finalizado = informeActual != null && informeActual.Finalizado,
                 CorreoEnviado = informeActual != null && informeActual.CorreoEnviado
             };
+
+            NormalizarSeccionesResultadoInformeTecnico(informeFormulario);
+            return informeFormulario;
         }
 
         private InformeTecnicoModalVm ConstruirInformeTecnicoModalViewModel(Inspeccion inspeccion, SolicitudAOCR solicitud, InspeccionInformeTecnico informe, ListaVerificacionOperacionalEae listaVerificacion, IList<DocumentoInspeccion> documentosSolicitante)
@@ -5923,11 +6046,17 @@ namespace CapaPresentacion.Controllers
                 })
                 .ToList();
 
+            var codigoSolicitud = solicitud != null ? solicitud.CodigoSolicitud : (inspeccion != null ? inspeccion.CodigoSolicitud : 0);
+            var disponibilidadAocr = codigoSolicitud > 0
+                ? _generacionAocrService.Evaluar(codigoSolicitud, ObtenerCodigoUsuario(), ObtenerRolesActualesParaGeneracionAocr())
+                : null;
+            var aocrYaGenerada = disponibilidadAocr != null && disponibilidadAocr.YaGenerado;
+
             return new RevisionInformeTecnicoDireccionViewModel
             {
                 CodigoInforme = informe != null ? informe.CodigoInforme : 0,
                 CodigoInspeccion = inspeccion != null ? inspeccion.CodigoInspeccion : 0,
-                CodigoSolicitud = solicitud != null ? solicitud.CodigoSolicitud : (inspeccion != null ? inspeccion.CodigoSolicitud : 0),
+                CodigoSolicitud = codigoSolicitud,
                 NumeroSolicitud = ObtenerNumeroSolicitudVisible(solicitud),
                 NombreOperadora = FirstNonEmpty(solicitud != null ? solicitud.RazonSocial : null, solicitud != null ? solicitud.NombreOperador : null, "No disponible"),
                 NombreInspector = FirstNonEmpty(
@@ -5955,15 +6084,97 @@ namespace CapaPresentacion.Controllers
                     : string.Empty,
                 PuedeAprobarDecisionFinal = EsRolDireccionOJefatura() && InformePuedeTomarDecisionInstitucionalFinal(informe),
                 PuedeDevolverConObservacion = EsRolDireccionOJefatura() && InformePuedeTomarDecisionInstitucionalFinal(informe),
-                PuedeReenviarNotificacionRt = EsRolDireccionOJefatura() && InformeTieneDecisionInstitucionalFinal(informe) && !(informe != null && informe.NotificadoRt),
+                PuedeReenviarNotificacionRt = false,
                 RequiereFirmaDireccion = false,
                 NotificadoRt = informe != null && informe.NotificadoRt,
                 FechaNotificacionRt = informe != null ? informe.FechaNotificacionRt : null,
+                EstadoAocr = ObtenerEstadoAocrVisibleRevision(solicitud, disponibilidadAocr),
+                PuedeGenerarAocr = disponibilidadAocr != null && disponibilidadAocr.Habilitado,
+                AocrYaGenerada = aocrYaGenerada,
+                MotivoBloqueoGenerarAocr = disponibilidadAocr != null ? disponibilidadAocr.Motivo : string.Empty,
+                UrlDetalleSolicitudAocr = codigoSolicitud > 0 ? Url.Action("Detalle", "SolicitudAOCR", new { id = codigoSolicitud }) : string.Empty,
+                UrlVistaPreviaAocr = aocrYaGenerada && codigoSolicitud > 0 ? Url.Action("DescargarAOCRGenerada", "SolicitudAOCR", new { id = codigoSolicitud, vistaPrevia = true }) : string.Empty,
                 ObservacionDireccion = string.Empty,
                 UrlVolverPendientes = ConstruirUrlPendientesDireccion(),
                 RolUsuarioActual = ObtenerRolActual(),
                 Historial = historialResumen
             };
+        }
+
+        private IEnumerable<string> ObtenerRolesActualesParaGeneracionAocr()
+        {
+            var roles = new List<string>();
+            if (User == null)
+            {
+                return roles;
+            }
+
+            var rolesConocidos = new[]
+            {
+                ROL_ADMIN,
+                ROL_DIRDAC,
+                ROL_DIRECCION,
+                ROL_DIRECTOR,
+                ROL_DIRECTOR_GENERAL,
+                ROL_JEFATURA,
+                ROL_JEFE,
+                ROL_INSPECTOR,
+                ROL_COORD,
+                ROL_COORD_ALIAS
+            };
+
+            foreach (var rol in rolesConocidos)
+            {
+                if (User.IsInRole(rol) && !roles.Contains(rol, StringComparer.OrdinalIgnoreCase))
+                {
+                    roles.Add(rol);
+                }
+            }
+
+            if (EsRolDireccionOJefatura() && !roles.Contains("DireccionJefaturaTecnica", StringComparer.OrdinalIgnoreCase))
+            {
+                roles.Add("DireccionJefaturaTecnica");
+            }
+
+            return roles;
+        }
+
+        private static string ObtenerEstadoAocrVisibleRevision(SolicitudAOCR solicitud, GeneracionAOCRService.Disponibilidad disponibilidadAocr)
+        {
+            if (disponibilidadAocr != null && disponibilidadAocr.YaGenerado)
+            {
+                return "AOCR generada";
+            }
+
+            var estadoNormalizado = EstadoSolicitud.Normalizar(solicitud != null ? solicitud.Estado : null);
+            if (string.Equals(estadoNormalizado, EstadoSolicitud.AOCR_EnElaboracion, StringComparison.OrdinalIgnoreCase))
+            {
+                return "Pendiente de generación";
+            }
+
+            if (string.Equals(estadoNormalizado, EstadoSolicitud.AOCR_EnRevision, StringComparison.OrdinalIgnoreCase))
+            {
+                return "AOCR en revisión";
+            }
+
+            if (string.Equals(estadoNormalizado, EstadoSolicitud.AOCR_Validado, StringComparison.OrdinalIgnoreCase))
+            {
+                return "AOCR validada";
+            }
+
+            if (string.Equals(estadoNormalizado, EstadoSolicitud.AOCR_Legalizado, StringComparison.OrdinalIgnoreCase))
+            {
+                return "AOCR legalizada";
+            }
+
+            if (disponibilidadAocr != null && disponibilidadAocr.Habilitado)
+            {
+                return "Pendiente de generación";
+            }
+
+            return (solicitud != null && !string.IsNullOrWhiteSpace(solicitud.Estado))
+                ? solicitud.Estado
+                : "No habilitada";
         }
 
         private bool EsHistorialRelacionadoConInformeTecnico(InspeccionHistorialEstado historial)
@@ -6443,14 +6654,13 @@ namespace CapaPresentacion.Controllers
 
             if (string.Equals(rolFirma, "DIRDAC", StringComparison.OrdinalIgnoreCase))
             {
-                var resultadoNotificacion = NotificarResultadoInformeTecnicoAlRtDesdeDireccion(inspeccion, solicitudFinal, informeFinal, usuarioId, usuarioActual, false);
-                SincronizarSolicitudAocrTrasFirmaFinal(inspeccion, solicitudFinal, usuarioId, usuarioActual);
+                var resultadoSincronizacionAocr = SincronizarSolicitudAocrTrasFirmaFinal(inspeccion, solicitudFinal, informeFinal, usuarioId, usuarioActual);
 
-                TempData[resultadoNotificacion.Exitoso ? "Success" : "Warning"] = FirstNonEmpty(
-                    resultadoNotificacion.Mensaje,
-                    resultadoNotificacion.Exitoso
-                        ? "Firma institucional aplicada correctamente. Se encoló la notificación final al RT."
-                        : "Firma institucional aplicada correctamente, pero no fue posible encolar la notificación final al RT.");
+                TempData[resultadoSincronizacionAocr.Exitoso ? "Success" : "Warning"] = FirstNonEmpty(
+                    resultadoSincronizacionAocr.Mensaje,
+                    resultadoSincronizacionAocr.Exitoso
+                        ? "Firma institucional aplicada correctamente. La AOCR quedó habilitada para generación."
+                        : "Firma institucional aplicada correctamente, pero no fue posible habilitar la AOCR automáticamente.");
             }
             else
             {
@@ -6460,36 +6670,36 @@ namespace CapaPresentacion.Controllers
             return RedirectToAction("Detalle", new { id });
         }
 
-        private void SincronizarSolicitudAocrTrasFirmaFinal(Inspeccion inspeccion, SolicitudAOCR solicitud, int usuarioId, string usuarioActual)
+        private ResultadoOperacion SincronizarSolicitudAocrTrasFirmaFinal(Inspeccion inspeccion, SolicitudAOCR solicitud, InspeccionInformeTecnico informe, int usuarioId, string usuarioActual)
         {
             if (inspeccion == null || solicitud == null || usuarioId <= 0)
             {
-                return;
-            }
-
-            var estadoActual = EstadoSolicitud.Normalizar(solicitud.Estado);
-            if (!string.Equals(estadoActual, EstadoSolicitud.EnInspeccion, StringComparison.OrdinalIgnoreCase))
-            {
-                return;
+                return ResultadoOperacion.Error("No existe contexto suficiente para habilitar la AOCR tras la aprobación institucional.");
             }
 
             string mensajeCambio;
-            var observacion = "Revision institucional final del informe tecnico completada; documentos AOCR habilitados para validacion.";
-            var actualizado = _solicitudEstadoTransitionBL.CambiarEstadoConReglasAocr(
+            var sincronizado = _generacionAocrService.MarcarPendienteGeneracionAocr(
                 solicitud.CodigoSolicitud,
-                EstadoSolicitud.AOCR_EnElaboracion,
-                observacion,
+                informe != null ? informe.CodigoInforme : 0,
                 usuarioId,
-                destino => string.Equals(destino, EstadoSolicitud.AOCR_EnElaboracion, StringComparison.OrdinalIgnoreCase),
+                usuarioActual,
                 out mensajeCambio);
 
-            if (!actualizado)
+            if (!sincronizado)
             {
                 _logger.LogWarning("[GestionInspeccion] No se pudo sincronizar solicitud AOCR tras revision final. SolicitudId=" + solicitud.CodigoSolicitud + ", InspeccionId=" + inspeccion.CodigoInspeccion + ", Mensaje=" + mensajeCambio);
-                return;
+                return ResultadoOperacion.Error(string.IsNullOrWhiteSpace(mensajeCambio)
+                    ? "No se pudo habilitar la AOCR tras la aprobación institucional."
+                    : mensajeCambio);
             }
 
+            var notificacionInterna = NotificarInternamenteAocrHabilitada(inspeccion, solicitud);
+
             _logger.LogInfo("[GestionInspeccion] Solicitud AOCR sincronizada tras revision final. SolicitudId=" + solicitud.CodigoSolicitud + ", EstadoNuevo=" + EstadoSolicitud.AOCR_EnElaboracion + ", Usuario=" + usuarioActual);
+            return ResultadoOperacion.Ok(null,
+                notificacionInterna
+                    ? FirstNonEmpty(mensajeCambio, "La AOCR quedó habilitada para generación y se notificó internamente al módulo institucional.")
+                    : FirstNonEmpty(mensajeCambio, "La AOCR quedó habilitada para generación."));
         }
 
         private ResultadoOperacion EnviarInformeADirdacInterno(Inspeccion inspeccion, SolicitudAOCR solicitud, InspeccionInformeTecnico informe, int usuarioId)
@@ -6692,6 +6902,65 @@ namespace CapaPresentacion.Controllers
                 catch (Exception ex)
                 {
                     _logger.LogError("[GestionInspeccion] No se pudo enviar notificación interna pendiente DIRDAC. UsuarioId=" + usuario.Id + ", InspeccionId=" + inspeccion.CodigoInspeccion + ", Error=" + ex);
+                }
+            }
+
+            return enviado;
+        }
+
+        private bool NotificarInternamenteAocrHabilitada(Inspeccion inspeccion, SolicitudAOCR solicitud)
+        {
+            if (inspeccion == null || solicitud == null)
+            {
+                return false;
+            }
+
+            var usuariosDireccion = new[]
+                {
+                    ROL_DIRDAC,
+                    ROL_DIRECCION,
+                    ROL_DIRECTOR_GENERAL,
+                    ROL_DIRECTOR,
+                    ROL_JEFATURA,
+                    ROL_JEFE,
+                    ROL_ADMIN
+                }
+                .SelectMany(rol => UsuarioDAO.ListarPorRol(rol) ?? new List<Usuario>())
+                .Where(usuario => usuario != null && usuario.Id > 0)
+                .GroupBy(usuario => usuario.Id)
+                .Select(grupo => grupo.First())
+                .ToList();
+
+            if (!usuariosDireccion.Any())
+            {
+                return false;
+            }
+
+            var titulo = "AOCR habilitada para generación";
+            var mensaje = string.Format(
+                "La solicitud {0} de la inspección #{1} ya cuenta con Informe Técnico aprobado por Dirección/DIRDAC. La AOCR quedó habilitada para generación.",
+                ObtenerNumeroSolicitudVisible(solicitud),
+                inspeccion.CodigoInspeccion);
+            var url = Url.Action("Detalle", "SolicitudAOCR", new { id = solicitud.CodigoSolicitud }) ?? ("/SolicitudAOCR/Detalle/" + solicitud.CodigoSolicitud);
+
+            var enviado = false;
+            foreach (var usuario in usuariosDireccion)
+            {
+                try
+                {
+                    enviado = NotificacionBL.EnviarNotificacion(
+                        usuario.Id,
+                        titulo,
+                        mensaje,
+                        "INFO",
+                        url,
+                        "SolicitudAOCR",
+                        solicitud.CodigoSolicitud,
+                        "aocr_tbsolicitud") || enviado;
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError("[GestionInspeccion] No se pudo enviar notificación interna AOCR habilitada. UsuarioId=" + usuario.Id + ", SolicitudId=" + solicitud.CodigoSolicitud + ", Error=" + ex);
                 }
             }
 

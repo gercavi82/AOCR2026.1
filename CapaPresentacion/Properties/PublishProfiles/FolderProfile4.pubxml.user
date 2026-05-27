@@ -3,7 +3,7 @@
 <Project>
   <PropertyGroup>
     <_PublishTargetUrl>C:\AOCR\publicacion1</_PublishTargetUrl>
-    <History>True|2026-05-19T20:47:00.6431779Z||;True|2026-05-19T11:41:26.8897771-05:00||;True|2026-05-19T09:30:47.2180419-05:00||;True|2026-05-18T11:27:25.2941622-05:00||;True|2026-05-14T16:19:03.9711402-05:00||;True|2026-05-14T12:02:27.9519469-05:00||;False|2026-05-14T12:01:06.5557027-05:00||;True|2026-05-14T11:02:11.7605742-05:00||;True|2026-05-13T21:46:23.4601915-05:00||;True|2026-05-13T21:15:51.1683717-05:00||;True|2026-05-13T16:28:13.8467801-05:00||;True|2026-05-13T16:09:51.3925720-05:00||;True|2026-05-13T15:55:45.0165802-05:00||;True|2026-05-13T11:29:51.6186821-05:00||;True|2026-05-13T10:16:17.1091503-05:00||;True|2026-05-01T23:08:41.9983118-05:00||;True|2026-04-24T16:07:27.9455323-05:00||;</History>
+    <History>True|2026-05-27T20:25:52.0910471Z||;True|2026-05-27T14:49:08.7947722-05:00||;True|2026-05-27T14:16:41.2962452-05:00||;True|2026-05-27T12:35:20.4346095-05:00||;True|2026-05-27T09:38:06.5450375-05:00||;True|2026-05-27T09:29:01.9376736-05:00||;True|2026-05-27T09:23:23.0834596-05:00||;True|2026-05-27T08:56:42.2957047-05:00||;True|2026-05-27T08:29:45.7993985-05:00||;True|2026-05-27T08:29:34.2708370-05:00||;True|2026-05-19T15:47:00.6431779-05:00||;True|2026-05-19T11:41:26.8897771-05:00||;True|2026-05-19T09:30:47.2180419-05:00||;True|2026-05-18T11:27:25.2941622-05:00||;True|2026-05-14T16:19:03.9711402-05:00||;True|2026-05-14T12:02:27.9519469-05:00||;False|2026-05-14T12:01:06.5557027-05:00||;True|2026-05-14T11:02:11.7605742-05:00||;True|2026-05-13T21:46:23.4601915-05:00||;True|2026-05-13T21:15:51.1683717-05:00||;True|2026-05-13T16:28:13.8467801-05:00||;True|2026-05-13T16:09:51.3925720-05:00||;True|2026-05-13T15:55:45.0165802-05:00||;True|2026-05-13T11:29:51.6186821-05:00||;True|2026-05-13T10:16:17.1091503-05:00||;True|2026-05-01T23:08:41.9983118-05:00||;True|2026-04-24T16:07:27.9455323-05:00||;</History>
     <LastFailureDetails />
   </PropertyGroup>
   <ItemGroup>
@@ -26,34 +26,34 @@
       <publishTime>07/31/2025 11:19:54</publishTime>
     </File>
     <File Include="bin/CapaDatos.dll">
-      <publishTime>05/21/2026 11:45:57</publishTime>
+      <publishTime>05/27/2026 12:34:06</publishTime>
     </File>
     <File Include="bin/CapaDatos.dll.config">
       <publishTime>04/24/2026 10:25:56</publishTime>
     </File>
     <File Include="bin/CapaDatos.pdb">
-      <publishTime>05/21/2026 11:45:57</publishTime>
+      <publishTime>05/27/2026 12:34:06</publishTime>
     </File>
     <File Include="bin/CapaModelo.dll">
-      <publishTime>05/19/2026 09:29:34</publishTime>
+      <publishTime>05/27/2026 12:34:05</publishTime>
     </File>
     <File Include="bin/CapaModelo.pdb">
-      <publishTime>05/19/2026 09:29:34</publishTime>
+      <publishTime>05/27/2026 12:34:05</publishTime>
     </File>
     <File Include="bin/CapaNegocio.dll">
-      <publishTime>05/21/2026 13:31:36</publishTime>
+      <publishTime>05/27/2026 12:34:06</publishTime>
     </File>
     <File Include="bin/CapaNegocio.dll.config">
       <publishTime>04/24/2026 10:25:56</publishTime>
     </File>
     <File Include="bin/CapaNegocio.pdb">
-      <publishTime>05/21/2026 13:31:36</publishTime>
+      <publishTime>05/27/2026 12:34:06</publishTime>
     </File>
     <File Include="bin/CapaPresentacion.dll">
-      <publishTime>05/21/2026 14:12:18</publishTime>
+      <publishTime>05/27/2026 14:47:57</publishTime>
     </File>
     <File Include="bin/CapaPresentacion.pdb">
-      <publishTime>05/21/2026 14:12:18</publishTime>
+      <publishTime>05/27/2026 14:47:57</publishTime>
     </File>
     <File Include="bin/ClassLibrary1.dll">
       <publishTime>05/20/2026 11:49:49</publishTime>
@@ -1007,7 +1007,7 @@
       <publishTime>05/08/2026 16:29:41</publishTime>
     </File>
     <File Include="Content/aocr-institucional.css">
-      <publishTime>05/12/2026 14:13:12</publishTime>
+      <publishTime>05/26/2026 18:22:55</publishTime>
     </File>
     <File Include="Content/aocr-pdf-viewer/aocr-pdf-viewer.css">
       <publishTime>05/08/2026 09:44:12</publishTime>
@@ -7811,10 +7811,10 @@
       <publishTime>04/27/2026 08:41:24</publishTime>
     </File>
     <File Include="Scripts/aocr-informe-tecnico-modal.js">
-      <publishTime>05/14/2026 16:08:26</publishTime>
+      <publishTime>05/27/2026 12:04:09</publishTime>
     </File>
     <File Include="Scripts/aocr-lv-eae-flujo-automatico.js">
-      <publishTime>05/14/2026 16:08:26</publishTime>
+      <publishTime>05/22/2026 16:08:14</publishTime>
     </File>
     <File Include="Scripts/aocr-utils.js">
       <publishTime>05/19/2026 16:46:38</publishTime>
@@ -7901,13 +7901,13 @@
       <publishTime>05/04/2026 09:31:14</publishTime>
     </File>
     <File Include="Views/Account/CambiarContrasena.cshtml">
-      <publishTime>02/09/2026 14:39:25</publishTime>
+      <publishTime>05/22/2026 11:15:30</publishTime>
     </File>
     <File Include="Views/Account/Login.cshtml">
-      <publishTime>05/12/2026 08:21:29</publishTime>
+      <publishTime>05/22/2026 08:32:18</publishTime>
     </File>
     <File Include="Views/Account/SeleccionarCompania.cshtml">
-      <publishTime>04/28/2026 11:22:09</publishTime>
+      <publishTime>05/22/2026 08:32:17</publishTime>
     </File>
     <File Include="Views/Account/_CuentasBancosPartial.cshtml">
       <publishTime>05/06/2026 09:02:34</publishTime>
@@ -7922,13 +7922,13 @@
       <publishTime>05/19/2026 09:03:26</publishTime>
     </File>
     <File Include="Views/AdminUsuarios/Create.cshtml">
-      <publishTime>02/20/2026 11:20:06</publishTime>
+      <publishTime>05/22/2026 12:06:33</publishTime>
     </File>
     <File Include="Views/AdminUsuarios/Edit.cshtml">
       <publishTime>03/09/2026 08:31:32</publishTime>
     </File>
     <File Include="Views/AdminUsuarios/Index.cshtml">
-      <publishTime>05/19/2026 09:04:27</publishTime>
+      <publishTime>05/22/2026 11:35:52</publishTime>
     </File>
     <File Include="Views/AdminUsuarios/ListarUsuariosInternosRT.cshtml">
       <publishTime>04/17/2026 16:41:03</publishTime>
@@ -7946,7 +7946,7 @@
       <publishTime>02/20/2026 11:20:56</publishTime>
     </File>
     <File Include="Views/AdminUsuarios/_UserForm.cshtml">
-      <publishTime>05/19/2026 09:03:31</publishTime>
+      <publishTime>05/22/2026 11:15:30</publishTime>
     </File>
     <File Include="Views/Certificado/CertificadoAOCR.cshtml">
       <publishTime>05/06/2026 09:02:27</publishTime>
@@ -7994,7 +7994,7 @@
       <publishTime>05/20/2026 20:44:20</publishTime>
     </File>
     <File Include="Views/CoordinacionJefatura/DashboardInspeccion.cshtml">
-      <publishTime>05/20/2026 20:44:20</publishTime>
+      <publishTime>05/26/2026 18:08:02</publishTime>
     </File>
     <File Include="Views/CoordinacionJefatura/EditarCondicionesLimitacionesAocr.cshtml">
       <publishTime>05/04/2026 09:31:13</publishTime>
@@ -8033,7 +8033,7 @@
       <publishTime>05/12/2026 08:21:29</publishTime>
     </File>
     <File Include="Views/Dashboard/Inspector.cshtml">
-      <publishTime>03/25/2026 11:11:19</publishTime>
+      <publishTime>05/27/2026 13:00:21</publishTime>
     </File>
     <File Include="Views/Direccion/AprobarSolicitudes.cshtml">
       <publishTime>04/21/2026 12:04:32</publishTime>
@@ -8084,7 +8084,7 @@
       <publishTime>03/17/2026 09:32:01</publishTime>
     </File>
     <File Include="Views/Financiero/Index.cshtml">
-      <publishTime>05/04/2026 09:31:13</publishTime>
+      <publishTime>05/22/2026 08:32:18</publishTime>
     </File>
     <File Include="Views/Financiero/ListaPagos.cshtml">
       <publishTime>03/17/2026 09:32:01</publishTime>
@@ -8111,7 +8111,7 @@
       <publishTime>03/23/2026 11:34:25</publishTime>
     </File>
     <File Include="Views/Health/Dashboard.cshtml">
-      <publishTime>03/03/2026 09:54:21</publishTime>
+      <publishTime>05/22/2026 22:16:45</publishTime>
     </File>
     <File Include="Views/Historial/_HistorialEstados.cshtml">
       <publishTime>03/17/2026 09:32:01</publishTime>
@@ -8123,7 +8123,7 @@
       <publishTime>01/28/2026 10:36:51</publishTime>
     </File>
     <File Include="Views/Home/Index.cshtml">
-      <publishTime>04/14/2026 12:15:27</publishTime>
+      <publishTime>05/26/2026 20:10:33</publishTime>
     </File>
     <File Include="Views/Informe/Crear.cshtml">
       <publishTime>03/04/2026 13:58:47</publishTime>
@@ -8147,28 +8147,28 @@
       <publishTime>05/14/2026 16:08:27</publishTime>
     </File>
     <File Include="Views/InformeTecnico/RevisionDireccion.cshtml">
-      <publishTime>05/14/2026 16:08:27</publishTime>
+      <publishTime>05/22/2026 16:49:05</publishTime>
     </File>
     <File Include="Views/InformeTecnico/_ModalInformeTecnico.cshtml">
-      <publishTime>05/14/2026 16:08:26</publishTime>
+      <publishTime>05/27/2026 12:04:09</publishTime>
     </File>
     <File Include="Views/Inspeccion/Crear.cshtml">
       <publishTime>05/19/2026 09:04:09</publishTime>
     </File>
     <File Include="Views/Inspeccion/Detalle.cshtml">
-      <publishTime>05/21/2026 14:11:54</publishTime>
+      <publishTime>05/26/2026 16:51:10</publishTime>
     </File>
     <File Include="Views/Inspeccion/Editar.cshtml">
       <publishTime>05/12/2026 08:47:33</publishTime>
     </File>
     <File Include="Views/Inspeccion/Index.cshtml">
-      <publishTime>05/20/2026 20:44:20</publishTime>
+      <publishTime>05/22/2026 11:06:20</publishTime>
     </File>
     <File Include="Views/Inspeccion/InformeTecnicoFirmaPreview.cshtml">
       <publishTime>04/27/2026 16:31:09</publishTime>
     </File>
     <File Include="Views/Inspeccion/InformeTecnicoPdf.cshtml">
-      <publishTime>05/12/2026 08:41:53</publishTime>
+      <publishTime>05/27/2026 12:07:10</publishTime>
     </File>
     <File Include="Views/Inspeccion/ListaVerificacionOperacionalEaePdf.cshtml">
       <publishTime>05/08/2026 11:26:44</publishTime>
@@ -8195,7 +8195,7 @@
       <publishTime>04/28/2026 11:22:03</publishTime>
     </File>
     <File Include="Views/Inspeccion/_ListaVerificacionOperacionalEaePanel.cshtml">
-      <publishTime>05/20/2026 20:44:20</publishTime>
+      <publishTime>05/22/2026 16:16:49</publishTime>
     </File>
     <File Include="Views/ListaVerificacion/PdfListaVerificacionEaeOficial.cshtml">
       <publishTime>05/12/2026 08:21:29</publishTime>
@@ -8213,22 +8213,22 @@
       <publishTime>03/17/2026 11:06:42</publishTime>
     </File>
     <File Include="Views/OrdenRecaudacion/Detalles.cshtml">
-      <publishTime>05/21/2026 10:49:49</publishTime>
+      <publishTime>05/22/2026 09:14:58</publishTime>
     </File>
     <File Include="Views/OrdenRecaudacion/Editar.cshtml">
-      <publishTime>05/20/2026 20:44:20</publishTime>
+      <publishTime>05/22/2026 08:35:31</publishTime>
     </File>
     <File Include="Views/OrdenRecaudacion/ExportPdf.cshtml">
       <publishTime>02/20/2026 13:32:02</publishTime>
     </File>
     <File Include="Views/OrdenRecaudacion/Index.cshtml">
-      <publishTime>05/19/2026 08:51:32</publishTime>
+      <publishTime>05/22/2026 08:32:18</publishTime>
     </File>
     <File Include="Views/OrdenRecaudacion/Nueva.cshtml">
-      <publishTime>05/12/2026 10:37:44</publishTime>
+      <publishTime>05/22/2026 08:32:18</publishTime>
     </File>
     <File Include="Views/OrdenRecaudacion/Obligatoria.cshtml">
-      <publishTime>05/19/2026 09:19:33</publishTime>
+      <publishTime>05/22/2026 08:34:24</publishTime>
     </File>
     <File Include="Views/OrdenRecaudacion/OrdenRecaudacionPDF.cshtml">
       <publishTime>05/06/2026 09:02:34</publishTime>
@@ -8273,7 +8273,7 @@
       <publishTime>02/19/2026 16:06:49</publishTime>
     </File>
     <File Include="Views/RevisionDocumental/Index.cshtml">
-      <publishTime>05/21/2026 14:11:54</publishTime>
+      <publishTime>05/22/2026 09:14:58</publishTime>
     </File>
     <File Include="Views/Rol/AsignarPermisos.cshtml">
       <publishTime>03/04/2026 13:58:47</publishTime>
@@ -8305,6 +8305,30 @@
     <File Include="Views/Shared/Error.cshtml">
       <publishTime>04/13/2026 11:17:58</publishTime>
     </File>
+    <File Include="Views/Shared/Menus/_MenuAdmin.cshtml">
+      <publishTime>05/26/2026 18:22:55</publishTime>
+    </File>
+    <File Include="Views/Shared/Menus/_MenuCoordinador.cshtml">
+      <publishTime>05/26/2026 18:22:55</publishTime>
+    </File>
+    <File Include="Views/Shared/Menus/_MenuDirector.cshtml">
+      <publishTime>05/26/2026 18:22:55</publishTime>
+    </File>
+    <File Include="Views/Shared/Menus/_MenuFinanciero.cshtml">
+      <publishTime>05/26/2026 18:22:55</publishTime>
+    </File>
+    <File Include="Views/Shared/Menus/_MenuInspector.cshtml">
+      <publishTime>05/26/2026 18:22:55</publishTime>
+    </File>
+    <File Include="Views/Shared/Menus/_MenuLegal.cshtml">
+      <publishTime>05/26/2026 18:22:55</publishTime>
+    </File>
+    <File Include="Views/Shared/Menus/_MenuRT.cshtml">
+      <publishTime>05/26/2026 18:22:55</publishTime>
+    </File>
+    <File Include="Views/Shared/NoAutorizado.cshtml">
+      <publishTime>05/22/2026 11:06:20</publishTime>
+    </File>
     <File Include="Views/Shared/_ActionToolbar.cshtml">
       <publishTime>03/17/2026 15:00:48</publishTime>
     </File>
@@ -8318,7 +8342,7 @@
       <publishTime>05/08/2026 09:44:12</publishTime>
     </File>
     <File Include="Views/Shared/_CreateModalUsuario.cshtml">
-      <publishTime>03/13/2026 15:33:32</publishTime>
+      <publishTime>05/22/2026 08:35:31</publishTime>
     </File>
     <File Include="Views/Shared/_DocumentoWorkflowActions.cshtml">
       <publishTime>05/20/2026 20:44:20</publishTime>
@@ -8339,7 +8363,7 @@
       <publishTime>03/17/2026 15:06:25</publishTime>
     </File>
     <File Include="Views/Shared/_ModalCrearUsuario.cshtml">
-      <publishTime>05/06/2026 16:23:39</publishTime>
+      <publishTime>05/22/2026 08:32:17</publishTime>
     </File>
     <File Include="Views/Shared/_NotificacionesBadge.cshtml">
       <publishTime>05/19/2026 16:46:38</publishTime>
@@ -8363,7 +8387,7 @@
       <publishTime>05/12/2026 08:21:29</publishTime>
     </File>
     <File Include="Views/Shared/_Sidebar.cshtml">
-      <publishTime>05/21/2026 11:33:40</publishTime>
+      <publishTime>05/27/2026 09:35:08</publishTime>
     </File>
     <File Include="Views/Shared/_SidebarEstadoOrdenes.cshtml">
       <publishTime>02/06/2026 11:41:27</publishTime>
@@ -8384,7 +8408,10 @@
       <publishTime>05/20/2026 20:44:20</publishTime>
     </File>
     <File Include="Views/SolicitudAOCR/Detalle.cshtml">
-      <publishTime>05/21/2026 14:41:17</publishTime>
+      <publishTime>05/27/2026 14:40:28</publishTime>
+    </File>
+    <File Include="Views/SolicitudAOCR/FormularioEmisionAOCR.cshtml">
+      <publishTime>05/27/2026 08:52:08</publishTime>
     </File>
     <File Include="Views/SolicitudAOCR/Index.cshtml">
       <publishTime>05/20/2026 20:44:20</publishTime>
@@ -8408,7 +8435,7 @@
       <publishTime>03/17/2026 11:04:08</publishTime>
     </File>
     <File Include="Views/SolicitudAOCR/Subsanar.cshtml">
-      <publishTime>05/20/2026 20:44:20</publishTime>
+      <publishTime>05/22/2026 08:32:17</publishTime>
     </File>
     <File Include="Views/SolicitudAOCR/_CreateModal.cshtml">
       <publishTime>01/28/2026 10:36:51</publishTime>
@@ -8417,7 +8444,7 @@
       <publishTime>05/20/2026 20:44:20</publishTime>
     </File>
     <File Include="Views/SolicitudAOCR/_FormularioEmisionAOCR.cshtml">
-      <publishTime>05/20/2026 20:44:20</publishTime>
+      <publishTime>05/22/2026 08:32:17</publishTime>
     </File>
     <File Include="Views/SolicitudAOCR/_FormularioEmisionAOCR_REVISION.md">
       <publishTime>01/19/2026 11:29:45</publishTime>
@@ -8489,7 +8516,7 @@
       <publishTime>01/28/2026 10:52:54</publishTime>
     </File>
     <File Include="Web.config">
-      <publishTime>05/21/2026 14:45:51</publishTime>
+      <publishTime>05/27/2026 14:48:58</publishTime>
     </File>
   </ItemGroup>
 </Project>

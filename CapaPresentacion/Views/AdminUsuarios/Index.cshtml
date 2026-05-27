@@ -1,8 +1,10 @@
 @model CapaPresentacion.Models.AdminUsuarios.AdminUsuariosIndexViewModel
 @using CapaPresentacion.Helpers
+@using System.Collections.Generic
+@using System.Linq
 
 @{
-    ViewBag.Title = "Gestión de Inspectores";
+    ViewBag.Title = "Gestión de Usuarios y Roles";
     var rolSesion = RoleGroupingHelper.NormalizeSelectedRole(Session["Rol"] != null ? Session["Rol"].ToString() : string.Empty);
     var esAdminSesion = RoleGroupingHelper.IsAdministrador(rolSesion);
     var esJefaturaSesion = RoleGroupingHelper.IsDireccionJefaturaTecnica(rolSesion);
@@ -13,6 +15,143 @@
     var gradosActivos = porcentajeActivos * 36 / 10;
     var gradosCobertura = porcentajeCoberturaRoles * 36 / 10;
     var gradosActividad = porcentajeActividad * 36 / 10;
+}
+
+@functions {
+    private static IList<string> ObtenerFamiliasRol(string rolesTexto, string rolFallback, string tipoUsuario)
+    {
+        var roles = new List<string>();
+
+        if (!string.IsNullOrWhiteSpace(rolesTexto))
+        {
+            roles.AddRange(rolesTexto
+                .Split(new[] { ',', ';' }, StringSplitOptions.RemoveEmptyEntries)
+                .Select(r => r.Trim())
+                .Where(r => !string.IsNullOrWhiteSpace(r)));
+        }
+
+        if (!string.IsNullOrWhiteSpace(rolFallback))
+        {
+            roles.Add(rolFallback.Trim());
+        }
+
+        var familias = new List<string>();
+        foreach (var rol in roles.Distinct(StringComparer.OrdinalIgnoreCase))
+        {
+            var rolNormalizado = RoleGroupingHelper.NormalizeSelectedRole(rol);
+            if (string.Equals(rolNormalizado, RoleGroupingHelper.Administrador, StringComparison.OrdinalIgnoreCase))
+            {
+                familias.Add("Administrador");
+            }
+            else if (string.Equals(rolNormalizado, RoleGroupingHelper.Solicitante, StringComparison.OrdinalIgnoreCase))
+            {
+                familias.Add("Solicitante / RT");
+            }
+            else if (string.Equals(rolNormalizado, RoleGroupingHelper.Financiero, StringComparison.OrdinalIgnoreCase))
+            {
+                familias.Add("Financiero");
+            }
+            else if (string.Equals(rolNormalizado, RoleGroupingHelper.Coordinacion, StringComparison.OrdinalIgnoreCase))
+            {
+                familias.Add("Coordinador");
+            }
+            else if (string.Equals(rolNormalizado, RoleGroupingHelper.InspectorTecnico, StringComparison.OrdinalIgnoreCase))
+            {
+                familias.Add("Inspector");
+            }
+            else if (string.Equals(rolNormalizado, RoleGroupingHelper.DireccionJefaturaTecnica, StringComparison.OrdinalIgnoreCase))
+            {
+                familias.Add("Direccion / Jefatura");
+            }
+        }
+
+        if (familias.Count == 0 && string.Equals(tipoUsuario, "Sin rol", StringComparison.OrdinalIgnoreCase))
+        {
+            familias.Add("Sin rol");
+        }
+
+        return familias
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+    }
+
+    private static string ObtenerClasePerfilBadge(string familia)
+    {
+        switch (familia)
+        {
+            case "Administrador":
+                return "bg-dark text-white";
+            case "Solicitante / RT":
+                return "bg-info text-dark";
+            case "Financiero":
+                return "bg-success text-white";
+            case "Coordinador":
+                return "bg-warning text-dark";
+            case "Inspector":
+                return "bg-primary text-white";
+            case "Direccion / Jefatura":
+                return "bg-secondary text-white";
+            default:
+                return "bg-light text-dark";
+        }
+    }
+
+    private static string ObtenerFamiliaDesdeRol(string rol)
+    {
+        var rolNormalizado = RoleGroupingHelper.NormalizeSelectedRole(rol);
+        if (string.Equals(rolNormalizado, RoleGroupingHelper.Administrador, StringComparison.OrdinalIgnoreCase))
+        {
+            return "Administrador";
+        }
+
+        if (string.Equals(rolNormalizado, RoleGroupingHelper.Solicitante, StringComparison.OrdinalIgnoreCase))
+        {
+            return "Solicitante / RT";
+        }
+
+        if (string.Equals(rolNormalizado, RoleGroupingHelper.Financiero, StringComparison.OrdinalIgnoreCase))
+        {
+            return "Financiero";
+        }
+
+        if (string.Equals(rolNormalizado, RoleGroupingHelper.Coordinacion, StringComparison.OrdinalIgnoreCase))
+        {
+            return "Coordinador";
+        }
+
+        if (string.Equals(rolNormalizado, RoleGroupingHelper.InspectorTecnico, StringComparison.OrdinalIgnoreCase))
+        {
+            return "Inspector";
+        }
+
+        if (string.Equals(rolNormalizado, RoleGroupingHelper.DireccionJefaturaTecnica, StringComparison.OrdinalIgnoreCase))
+        {
+            return "Direccion / Jefatura";
+        }
+
+        return "Sin rol";
+    }
+
+    private static string ObtenerIconoPerfil(string familia)
+    {
+        switch (familia)
+        {
+            case "Administrador":
+                return "fas fa-user-cog";
+            case "Solicitante / RT":
+                return "fas fa-id-card";
+            case "Financiero":
+                return "fas fa-dollar-sign";
+            case "Coordinador":
+                return "fas fa-sitemap";
+            case "Inspector":
+                return "fas fa-user-check";
+            case "Direccion / Jefatura":
+                return "fas fa-landmark";
+            default:
+                return "fas fa-tag";
+        }
+    }
 }
 
 <style>
@@ -475,11 +614,11 @@
                 <i class="fas fa-shield-alt"></i>
                 Gobierno de acceso y operacion
             </span>
-            <h1>Dashboard de Administracion</h1>
+            <h1>Gestión institucional de usuarios y roles</h1>
             <p>
-                Esta vista consolida usuarios, roles, aprobaciones RT y accesos operativos de la seccion
+                Esta vista consolida usuarios, roles, aprobaciones RT y accesos operativos del modulo de
                 Administracion. Se mantiene la tabla de gestion al final, pero ahora la entrada del modulo
-                muestra estado general, actividad reciente y accesos directos.
+                muestra estado general, actividad reciente y accesos directos para la operacion institucional.
             </p>
         </div>
 
@@ -786,7 +925,7 @@
         @using (Html.BeginForm("Index", "AdminUsuarios", FormMethod.Get, new { @class = "admin-filter-card" }))
         {
             <div class="row align-items-end">
-                <div class="col-md-4">
+                <div class="col-md-3">
                     <label>Busqueda</label>
                     <input type="text"
                            name="filtro"
@@ -812,6 +951,19 @@
                     </select>
                 </div>
                 <div class="col-md-2 mt-3 mt-md-0">
+                    <label>Perfil</label>
+                    <select class="form-control" name="perfil">
+                        <option value="" @(string.IsNullOrWhiteSpace(Model.PerfilFiltro) ? "selected" : null)>Todos</option>
+                        <option value="SolicitanteRT" @(Model.PerfilFiltro == "SolicitanteRT" ? "selected" : null)>Solicitante / RT</option>
+                        <option value="Financiero" @(Model.PerfilFiltro == "Financiero" ? "selected" : null)>Financiero</option>
+                        <option value="Coordinador" @(Model.PerfilFiltro == "Coordinador" ? "selected" : null)>Coordinador</option>
+                        <option value="Inspector" @(Model.PerfilFiltro == "Inspector" ? "selected" : null)>Inspector</option>
+                        <option value="Direccion" @(Model.PerfilFiltro == "Direccion" ? "selected" : null)>Direccion / Jefatura</option>
+                        <option value="Administrador" @(Model.PerfilFiltro == "Administrador" ? "selected" : null)>Administrador</option>
+                        <option value="SinRol" @(Model.PerfilFiltro == "SinRol" ? "selected" : null)>Sin rol</option>
+                    </select>
+                </div>
+                <div class="col-md-1 mt-3 mt-md-0">
                     <button type="submit" class="btn btn-primary w-100">
                         <i class="fas fa-search mr-1"></i> Filtrar
                     </button>
@@ -832,6 +984,7 @@
                         <th>Nombre</th>
                         <th>Correo</th>
                         <th>Tipo</th>
+                        <th>Perfil</th>
                         <th>Roles</th>
                         <th>Estado</th>
                         <th>Ultimo login</th>
@@ -847,6 +1000,7 @@
                             var tipoBadge = item.TipoUsuario == "Interno"
                                 ? "bg-primary"
                                 : (item.TipoUsuario == "Externo" ? "bg-info" : "bg-secondary");
+                            var familiasRol = ObtenerFamiliasRol(item.RolesTexto, item.RolFallback, item.TipoUsuario);
                             <tr>
                                 <td><strong>@item.CodigoUsuario</strong></td>
                                 <td>@(string.Format("{0} {1}", item.NombreUsuario, item.ApellidoUsuario).Trim())</td>
@@ -865,12 +1019,30 @@
                                     </span>
                                 </td>
                                 <td>
+                                    @if (familiasRol.Any())
+                                    {
+                                        foreach (var familia in familiasRol)
+                                        {
+                                            <span class="badge @ObtenerClasePerfilBadge(familia) mr-1 mb-1" style="font-size:0.78em;">
+                                                <i class="@ObtenerIconoPerfil(familia) mr-1"></i>@familia
+                                            </span>
+                                        }
+                                    }
+                                    else
+                                    {
+                                        <span class="badge bg-light text-dark">Sin clasificacion</span>
+                                    }
+                                </td>
+                                <td>
                                     @if (!string.IsNullOrWhiteSpace(item.RolesTexto))
                                     {
                                         foreach (var rol in item.RolesTexto.Split(new[] { ',' }, StringSplitOptions.RemoveEmptyEntries))
                                         {
                                             var rolTrim = rol.Trim();
-                                            <span class="badge bg-light text-dark mr-1 mb-1" style="font-size:0.78em;">@rolTrim</span>
+                                            var familiaRol = ObtenerFamiliaDesdeRol(rolTrim);
+                                            <span class="badge @ObtenerClasePerfilBadge(familiaRol) mr-1 mb-1" style="font-size:0.78em;" title="@familiaRol">
+                                                <i class="@ObtenerIconoPerfil(familiaRol) mr-1"></i>@rolTrim
+                                            </span>
                                         }
                                     }
                                     else

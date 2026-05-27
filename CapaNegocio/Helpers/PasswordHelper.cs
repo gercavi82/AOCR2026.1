@@ -110,9 +110,9 @@ namespace CapaNegocio.Helpers
 
         public static string GenerarPasswordAleatoria(int longitud = 12)
         {
-            if (longitud < 8)
+            if (longitud < 10)
             {
-                longitud = 8;
+                longitud = 10;
             }
 
             const string mayusculas = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
@@ -143,9 +143,9 @@ namespace CapaNegocio.Helpers
                 return (false, "La contraseña no puede estar vacía.");
             }
 
-            if (password.Length < 8)
+            if (password.Length < 10)
             {
-                return (false, "La contraseña debe tener al menos 8 caracteres.");
+                return (false, "La contraseña debe tener al menos 10 caracteres.");
             }
 
             if (password.Length > 128)

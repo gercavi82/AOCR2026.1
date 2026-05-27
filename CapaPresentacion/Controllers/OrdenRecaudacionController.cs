@@ -107,6 +107,12 @@ namespace CapaPresentacion.Controllers
         public ActionResult DiagnosticoSesion()
         {
             var diagnostico = new System.Text.StringBuilder();
+            var selectedRoleCookie = AuthTicketRoleDataHelper.ReadSelectedRoleFromCookie(Request != null ? Request.Cookies : null);
+            var authTicket = System.Web.Security.FormsAuthentication.Decrypt(
+                Request != null && Request.Cookies != null
+                    ? Request.Cookies[System.Web.Security.FormsAuthentication.FormsCookieName]?.Value
+                    : null);
+            var authTicketRoleData = AuthTicketRoleDataHelper.Deserialize(authTicket != null ? authTicket.UserData : null);
             diagnostico.AppendLine("=== DIAGNÃ“STICO DE SESIÃ“N ===\n");
             diagnostico.AppendLine($"Fecha/Hora: {DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}\n");
             
@@ -150,6 +156,10 @@ namespace CapaPresentacion.Controllers
             diagnostico.AppendLine($"Session['UserId']: {Session["UserId"]?.ToString() ?? "null"}");
             diagnostico.AppendLine($"Session['Correo']: {Session["Correo"]?.ToString() ?? "null"}");
             diagnostico.AppendLine($"Session['Rol']: {Session["Rol"]?.ToString() ?? "null"}");
+            diagnostico.AppendLine($"Cookie['{AuthTicketRoleDataHelper.SelectedRoleCookieName}']: {selectedRoleCookie ?? "null"}");
+            diagnostico.AppendLine($"FormsAuth.UserData: {(authTicket != null ? authTicket.UserData : "null")}");
+            diagnostico.AppendLine($"FormsAuth.SelectedRole: {authTicketRoleData.SelectedRole ?? "null"}");
+            diagnostico.AppendLine($"FormsAuth.Roles: {(authTicketRoleData.Roles != null && authTicketRoleData.Roles.Any() ? string.Join(", ", authTicketRoleData.Roles) : "null")}");
             
             // Intentar acceso a Nueva
             diagnostico.AppendLine($"\nÂ¿Puede acceder a Nueva?: {(principal != null && (principal.IsInRole("Solicitante") || principal.IsInRole("Administrador") || principal.IsInRole("Operador")) ? "SÃ" : "NO")}");
@@ -297,13 +307,16 @@ namespace CapaPresentacion.Controllers
             int idUsuario = GetUserId();
             if (idUsuario <= 0) return RedirectToAction("Login", "Account");
 
+            var esAdministrador = User != null && User.IsInRole("Administrador");
+            int? idUsuarioFiltro = esAdministrador ? (int?)null : idUsuario;
+
             CargarEstadosCombo(estado);
             CargarContinuidadOrdenUsuario(idUsuario);
 
-            var ordenes = _dao.ListarPorUsuarioModel(idUsuario, estado) ?? new List<OrdenRecaudacionModel>();
+            var ordenes = _dao.ListarPorUsuarioModel(idUsuarioFiltro, estado) ?? new List<OrdenRecaudacionModel>();
 
             // Estadï¿½sticas: tu view espera claves con mayï¿½scula
-            var est = _dao.ObtenerEstadisticas(idUsuario);
+            var est = _dao.ObtenerEstadisticas(idUsuarioFiltro);
             ViewBag.Estadisticas = MapearEstadisticasParaVista(est);
 
             return View(ordenes);
@@ -321,14 +334,17 @@ namespace CapaPresentacion.Controllers
 
             System.Diagnostics.Debug.WriteLine($"Obligatoria: Usuario ID = {idUsuario}");
 
+            var esAdministrador = User != null && User.IsInRole("Administrador");
+            int? idUsuarioFiltro = esAdministrador ? (int?)null : idUsuario;
+
             CargarEstadosCombo(null);
             CargarContinuidadOrdenUsuario(idUsuario);
 
-            var ordenes = _dao.ListarPorUsuario(idUsuario, null) ?? new List<OrdenRecaudacion>();
+            var ordenes = _dao.ListarPorUsuario(idUsuarioFiltro, null) ?? new List<OrdenRecaudacion>();
             System.Diagnostics.Debug.WriteLine(string.Format("Obligatoria: Se encontraron {0} Órdenes", ordenes.Count));
 
             // Estadisticas
-            var est = _dao.ObtenerEstadisticas(idUsuario);
+            var est = _dao.ObtenerEstadisticas(idUsuarioFiltro);
             ViewBag.Estadisticas = MapearEstadisticasParaVista(est);
 
             return View(ordenes);

@@ -1,12 +1,113 @@
+@using System
 @model CapaPresentacion.Models.ViewModels.SidebarMenuContextViewModel
+
+@{
+    var currentController = Convert.ToString(ViewContext.RouteData.Values["controller"] ?? string.Empty);
+    var currentAction = Convert.ToString(ViewContext.RouteData.Values["action"] ?? string.Empty);
+    var currentFragment = Request != null && Request.Url != null
+        ? Convert.ToString(Request.Url.Fragment ?? string.Empty)
+        : string.Empty;
+    Func<string, string, bool> isCurrent = (controller, action) =>
+        string.Equals(currentController, controller, StringComparison.OrdinalIgnoreCase)
+        && string.Equals(currentAction, action, StringComparison.OrdinalIgnoreCase);
+    Func<string, string> linkClass = variant => string.IsNullOrWhiteSpace(variant)
+        ? "aocr-link aocr-sidebar-item"
+        : "aocr-link aocr-sidebar-item " + variant;
+}
+
 <div class="nav-group aocr-sidebar-section mb-4">
-    <div class="group-title aocr-sidebar-section__title" style="color:#a78bfa;">
-        <i class="fas fa-sitemap mr-1"></i> Coordinador
+    <div class="group-title aocr-sidebar-section__title text-info">
+        <i class="fas fa-sitemap mr-1"></i> Coordinación Operativa
     </div>
     <ul class="aocr-nav">
-        <li><a class="aocr-link aocr-sidebar-item" href="@Url.Action("DashboardInspeccion", "CoordinacionJefatura")"><i class="fas fa-table-columns text-white-50 mr-2"></i> Dashboard Inspección</a></li>
-        <li><a class="aocr-link aocr-sidebar-item" href="@Url.Action("RevisionVerificacion", "CoordinacionJefatura")"><i class="fas fa-search text-white-50 mr-2"></i> Bandeja Documental</a></li>
-        <li><a class="aocr-link aocr-sidebar-item" href="@Url.Action("Index", "Tecnico")"><i class="fas fa-user-plus text-white-50 mr-2"></i> Asignación de Inspectores</a></li>
-        <li><a class="aocr-link aocr-sidebar-item" href="@Url.Action("Index", "Inspeccion")"><i class="fas fa-clipboard-check text-white-50 mr-2"></i> Gestión / Seguimiento de Inspección</a></li>
+        <li class="aocr-sidebar-subgroup">
+            <span class="aocr-sidebar-subgroup__label">
+                <i class="fas fa-user-plus text-white-50 mr-1"></i> Solicitud de Inspecciones
+                <span class="aocr-sidebar-item__badge">M5</span>
+            </span>
+            <ul class="aocr-nav aocr-nav--nested">
+                <li>
+                    <a class="@linkClass(isCurrent("Tecnico", "Index") ? "aocr-sidebar-item--active aocr-sidebar-item--primary" : "aocr-sidebar-item--primary")" href="@Url.Action("Index", "Tecnico")">
+                        <i class="fas fa-user-plus text-white-50 mr-2"></i>
+                        <span class="aocr-sidebar-item__content">
+                            <span class="aocr-sidebar-item__title">Asignar inspectores</span>
+                            <span class="aocr-sidebar-item__meta">Gestión de designación técnica por solicitud y especialidad.</span>
+                        </span>
+                    </a>
+                </li>
+                <li>
+                    <a class="@linkClass(isCurrent("CoordinacionJefatura", "RevisionVerificacion") ? "aocr-sidebar-item--active" : string.Empty)" href="@Url.Action("RevisionVerificacion", "CoordinacionJefatura")">
+                        <i class="fas fa-search text-white-50 mr-2"></i>
+                        <span class="aocr-sidebar-item__content">
+                            <span class="aocr-sidebar-item__title">Bandeja documental</span>
+                            <span class="aocr-sidebar-item__meta">Verificación de expedientes previos y control de documentos habilitantes.</span>
+                        </span>
+                    </a>
+                </li>
+            </ul>
+        </li>
+
+        <li class="aocr-sidebar-subgroup">
+            <span class="aocr-sidebar-subgroup__label">
+                <i class="fas fa-clipboard-check text-white-50 mr-1"></i> Inspecciones
+                <span class="aocr-sidebar-item__badge">M6</span>
+            </span>
+            <ul class="aocr-nav aocr-nav--nested">
+                <li>
+                    <a class="@linkClass(isCurrent("Inspeccion", "Index") ? "aocr-sidebar-item--active aocr-sidebar-item--primary" : "aocr-sidebar-item--primary")" href="@Url.Action("Index", "Inspeccion")">
+                        <i class="fas fa-clipboard-list text-white-50 mr-2"></i>
+                        <span class="aocr-sidebar-item__content">
+                            <span class="aocr-sidebar-item__title">Seguimiento operativo</span>
+                            <span class="aocr-sidebar-item__meta">Trazabilidad de inspecciones en curso, resultados y acciones pendientes.</span>
+                        </span>
+                    </a>
+                </li>
+            </ul>
+        </li>
+
+        <li class="aocr-sidebar-subgroup">
+            <span class="aocr-sidebar-subgroup__label">
+                <i class="fas fa-file-signature text-white-50 mr-1"></i> Informe Técnico y NC
+                <span class="aocr-sidebar-item__badge">M7</span>
+            </span>
+            <ul class="aocr-nav aocr-nav--nested">
+                <li>
+                    <a class="@linkClass(isCurrent("CoordinacionJefatura", "DashboardInspeccion") && string.Equals(currentFragment, "#pane-observaciones", StringComparison.OrdinalIgnoreCase) ? "aocr-sidebar-item--active aocr-sidebar-item--primary" : "aocr-sidebar-item--primary")" href="@Url.Action("DashboardInspeccion", "CoordinacionJefatura")#pane-observaciones">
+                        <i class="fas fa-triangle-exclamation text-warning mr-2"></i>
+                        <span class="aocr-sidebar-item__content">
+                            <span class="aocr-sidebar-item__title">Observaciones / NC</span>
+                            <span class="aocr-sidebar-item__meta">Acceso directo al branch de no conformidades y decisiones de coordinación.</span>
+                        </span>
+                    </a>
+                </li>
+                <li>
+                    <a class="@linkClass(isCurrent("CoordinacionJefatura", "DashboardInspeccion") && !string.Equals(currentFragment, "#pane-observaciones", StringComparison.OrdinalIgnoreCase) ? "aocr-sidebar-item--active" : string.Empty)" href="@Url.Action("DashboardInspeccion", "CoordinacionJefatura")">
+                        <i class="fas fa-table-columns text-white-50 mr-2"></i>
+                        <span class="aocr-sidebar-item__content">
+                            <span class="aocr-sidebar-item__title">Gestión integral AOCR</span>
+                            <span class="aocr-sidebar-item__meta">Vista consolidada de inspección, firmas, documental y pendientes institucionales.</span>
+                        </span>
+                    </a>
+                </li>
+            </ul>
+        </li>
+
+        <li class="aocr-sidebar-subgroup">
+            <span class="aocr-sidebar-subgroup__label">
+                <i class="fas fa-file-circle-check text-white-50 mr-1"></i> AOCR y Condiciones y Limitaciones
+                <span class="aocr-sidebar-item__badge">M8</span>
+            </span>
+            <ul class="aocr-nav aocr-nav--nested">
+                <li>
+                    <a class="@linkClass(isCurrent("CoordinacionJefatura", "RevisionVerificacion") ? "aocr-sidebar-item--active" : string.Empty)" href="@Url.Action("RevisionVerificacion", "CoordinacionJefatura")">
+                        <i class="fas fa-file-circle-check text-white-50 mr-2"></i>
+                        <span class="aocr-sidebar-item__content">
+                            <span class="aocr-sidebar-item__title">Revisión AOCR y condiciones</span>
+                            <span class="aocr-sidebar-item__meta">Control de expedientes AOCR en elaboración, revisión y validación documental.</span>
+                        </span>
+                    </a>
+                </li>
+            </ul>
+        </li>
     </ul>
 </div>

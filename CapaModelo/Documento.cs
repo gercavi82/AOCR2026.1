@@ -94,6 +94,33 @@ namespace CapaModelo
         [NotMapped]
         public string OperadoraEae { get; set; }
 
+        [NotMapped]
+        public string TipoDocumentoCodigoCanonico { get; set; }
+
+        [NotMapped]
+        public string TipoDocumentoNombre { get; set; }
+
+        [NotMapped]
+        public int OrdenVisual { get; set; }
+
+        [NotMapped]
+        public string ResumenTrazabilidad { get; set; }
+
+        [NotMapped]
+        public bool PuedeVisualizar { get; set; }
+
+        [NotMapped]
+        public bool PuedeDescargar { get; set; }
+
+        [NotMapped]
+        public string UrlVisualizar { get; set; }
+
+        [NotMapped]
+        public string UrlDescargar { get; set; }
+
+        [NotMapped]
+        public string NombreArchivoGuardado { get; set; }
+
         // ====== PROPIEDADES DE NAVEGACIÓN ======
         [ForeignKey("CodigoSolicitud")]
         public virtual SolicitudAOCR Solicitud { get; set; }

@@ -80,7 +80,7 @@
                 }
             }
         </select>
-        <small class="text-muted d-block mt-2">Seleccione una o varias companias para este usuario RT. Use clic simple para marcar o desmarcar.</small>
+        <small class="text-muted d-block mt-2">Seleccione una o varias companias para este usuario RT. Este bloque aplica cuando el usuario tenga un rol RT. Use clic simple para marcar o desmarcar.</small>
         @Html.ValidationMessageFor(m => m.CompaniasSeleccionadas, null, new { @class = "text-danger d-block mt-1" })
     </div>
 </div>
@@ -99,7 +99,7 @@
             <div class="js-password-manual-block @(Model.GenerarPassword ? "d-none" : string.Empty)">
                 @Html.LabelFor(m => m.PasswordInicial, new { @class = "form-label" })
                 @Html.PasswordFor(m => m.PasswordInicial, new { @class = "form-control", maxlength = "128", autocomplete = "new-password" })
-                <div class="form-text">Minimo 8 caracteres, con mayuscula, minuscula, numero y caracter especial.</div>
+                <div class="form-text">Minimo 10 caracteres, con mayuscula, minuscula, numero y caracter especial.</div>
                 @Html.ValidationMessageFor(m => m.PasswordInicial, null, new { @class = "text-danger" })
             </div>
         </div>

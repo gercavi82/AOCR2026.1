@@ -111,13 +111,13 @@
 <div class="aocr-view">
     <div class="row g-3 mb-4">
         <div class="col-12 col-md-6 col-xl-4">
-            @Html.Partial("_MetricCard", null, new ViewDataDictionary { { "Label", "Pendientes" }, { "Value", Model.SolicitudesPendientes }, { "Modifier", "warning" }, { "Icon", "fas fa-inbox" }, { "Caption", "Solicitudes por revisar" } })
+            @Html.Partial("_MetricCard", null, new ViewDataDictionary { { "Label", Model.ResumenPrimarioTitulo }, { "Value", Model.SolicitudesPendientes }, { "Modifier", "warning" }, { "Icon", "fas fa-inbox" }, { "Caption", Model.ResumenPrimarioCaption } })
         </div>
         <div class="col-12 col-md-6 col-xl-4">
-            @Html.Partial("_MetricCard", null, new ViewDataDictionary { { "Label", "En proceso" }, { "Value", Model.TramitesEnCurso }, { "Modifier", "info" }, { "Icon", "fas fa-gears" }, { "Caption", "Trámites en curso" } })
+            @Html.Partial("_MetricCard", null, new ViewDataDictionary { { "Label", Model.ResumenSecundarioTitulo }, { "Value", Model.TramitesEnCurso }, { "Modifier", "info" }, { "Icon", "fas fa-gears" }, { "Caption", Model.ResumenSecundarioCaption } })
         </div>
         <div class="col-12 col-md-6 col-xl-4">
-            @Html.Partial("_MetricCard", null, new ViewDataDictionary { { "Label", "Avisos" }, { "Value", Model.NotificacionesNuevas }, { "Modifier", "success" }, { "Icon", "fas fa-bell" }, { "Caption", "Notificaciones nuevas" } })
+            @Html.Partial("_MetricCard", null, new ViewDataDictionary { { "Label", Model.ResumenTerciarioTitulo }, { "Value", Model.NotificacionesNuevas }, { "Modifier", "success" }, { "Icon", "fas fa-bell" }, { "Caption", Model.ResumenTerciarioCaption } })
         </div>
     </div>
 

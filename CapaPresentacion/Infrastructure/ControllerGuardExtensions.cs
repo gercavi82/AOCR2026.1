@@ -5,6 +5,7 @@ using System.Linq;
 using System.Text.RegularExpressions;
 using System.Web;
 using System.Web.Mvc;
+using System.Web.Security;
 using CapaDatos.DAOs;
 using CapaDatos.Services;
 using CapaModelo;
@@ -89,9 +90,13 @@ namespace CapaPresentacion.Infrastructure
             var session = httpContext.Session;
             var hasBaseline = HasSessionBaseline(session);
             var needsCompanyReview = string.IsNullOrWhiteSpace(CompaniaActivaSessionHelper.ObtenerCodigo(session));
+            var ticketRoleData = ReadAuthTicketRoleData(httpContext);
+            var selectedRoleCookie = AuthTicketRoleDataHelper.ReadSelectedRoleFromCookie(
+                httpContext.Request != null ? httpContext.Request.Cookies : null);
 
             if (hasBaseline && !needsCompanyReview)
             {
+                SyncSelectedRoleFromTicket(session, string.IsNullOrWhiteSpace(selectedRoleCookie) ? ticketRoleData.SelectedRole : selectedRoleCookie);
                 return AuthenticatedSessionBootstrapStatus.Unchanged;
             }
 
@@ -103,7 +108,12 @@ namespace CapaPresentacion.Infrastructure
                 return AuthenticatedSessionBootstrapStatus.Failed;
             }
 
-            SincronizarSesionAutenticada(session, usuario, roles, loginUsado);
+            SincronizarSesionAutenticada(
+                session,
+                usuario,
+                roles,
+                loginUsado,
+                string.IsNullOrWhiteSpace(selectedRoleCookie) ? ticketRoleData.SelectedRole : selectedRoleCookie);
 
             var companyStatus = EnsureCompaniaActiva(session, usuario, roles);
             if (companyStatus == AuthenticatedSessionBootstrapStatus.RequiresCompanySelection)
@@ -289,7 +299,8 @@ namespace CapaPresentacion.Infrastructure
             HttpSessionStateBase session,
             Usuario usuario,
             IEnumerable<string> roles,
-            string loginFallback)
+            string loginFallback,
+            string selectedRoleHint)
         {
             if (session == null || usuario == null || usuario.Id <= 0)
             {
@@ -318,7 +329,7 @@ namespace CapaPresentacion.Infrastructure
                 .Distinct(StringComparer.OrdinalIgnoreCase)
                 .ToList();
             var rolesUnificados = RoleGroupingHelper.BuildUnifiedRoles(rolesRaw);
-            var rolActual = RoleGroupingHelper.NormalizeSelectedRole(session["Rol"] as string ?? string.Empty);
+            var rolActual = ResolveSelectedRole(rolesUnificados, session["Rol"] as string, selectedRoleHint);
             var rolSeleccionado = rolesUnificados.FirstOrDefault(r =>
                 string.Equals(r, rolActual, StringComparison.OrdinalIgnoreCase));
 
@@ -329,6 +340,82 @@ namespace CapaPresentacion.Infrastructure
                 : (rolesUnificados.Count > 0 ? rolesUnificados[0] : null);
             session.Timeout = SessionTimeoutHelper.GetTimeoutMinutes();
             session["LastActivity"] = DateTime.Now;
+        }
+
+        private static string ResolveSelectedRole(
+            IList<string> rolesUnificados,
+            string sessionRole,
+            string ticketRole)
+        {
+            var rolesDisponibles = rolesUnificados ?? new List<string>();
+            var candidatos = new[]
+            {
+                RoleGroupingHelper.NormalizeSelectedRole(ticketRole),
+                RoleGroupingHelper.NormalizeSelectedRole(sessionRole)
+            };
+
+            foreach (var candidato in candidatos)
+            {
+                if (!string.IsNullOrWhiteSpace(candidato)
+                    && rolesDisponibles.Contains(candidato, StringComparer.OrdinalIgnoreCase))
+                {
+                    return candidato;
+                }
+            }
+
+            return rolesDisponibles.FirstOrDefault() ?? string.Empty;
+        }
+
+        private static void SyncSelectedRoleFromTicket(HttpSessionStateBase session, string ticketRole)
+        {
+            if (session == null)
+            {
+                return;
+            }
+
+            var selectedRole = RoleGroupingHelper.NormalizeSelectedRole(ticketRole);
+            if (string.IsNullOrWhiteSpace(selectedRole))
+            {
+                return;
+            }
+
+            var rolesDisponibles = RoleGroupingHelper.BuildUnifiedRoles(ObtenerRolesSesion(session));
+            if (!rolesDisponibles.Contains(selectedRole, StringComparer.OrdinalIgnoreCase))
+            {
+                return;
+            }
+
+            session["Rol"] = selectedRole;
+            session["LastActivity"] = DateTime.Now;
+        }
+
+        private static AuthTicketRoleData ReadAuthTicketRoleData(HttpContextBase httpContext)
+        {
+            if (httpContext == null || httpContext.Request == null)
+            {
+                return new AuthTicketRoleData(Array.Empty<string>(), string.Empty);
+            }
+
+            var authCookie = httpContext.Request.Cookies[FormsAuthentication.FormsCookieName];
+            if (authCookie == null || string.IsNullOrWhiteSpace(authCookie.Value))
+            {
+                return new AuthTicketRoleData(Array.Empty<string>(), string.Empty);
+            }
+
+            try
+            {
+                var authTicket = FormsAuthentication.Decrypt(authCookie.Value);
+                if (authTicket == null || authTicket.Expired)
+                {
+                    return new AuthTicketRoleData(Array.Empty<string>(), string.Empty);
+                }
+
+                return AuthTicketRoleDataHelper.Deserialize(authTicket.UserData);
+            }
+            catch
+            {
+                return new AuthTicketRoleData(Array.Empty<string>(), string.Empty);
+            }
         }
 
         private static AuthenticatedSessionBootstrapStatus EnsureCompaniaActiva(
@@ -342,7 +429,15 @@ namespace CapaPresentacion.Infrastructure
             }
 
             var codigoActivo = CompaniaActivaSessionHelper.ObtenerCodigo(session);
-            if (!EsUsuarioRt(usuario) || EsUsuarioAdministrador(usuario, roles))
+            var rolesUnificados = RoleGroupingHelper.BuildUnifiedRoles(roles ?? Enumerable.Empty<string>());
+            var rolActivo = RoleGroupingHelper.NormalizeSelectedRole(session["Rol"] as string ?? string.Empty);
+            var rolActivoRequiereCompania = RoleGroupingHelper.IsSolicitante(rolActivo);
+            var tieneRolInternoDisponible = rolesUnificados.Any(r => !RoleGroupingHelper.IsSolicitante(r));
+            var puedeOmitirSeleccionCompania = !EsUsuarioRt(usuario)
+                || EsUsuarioAdministrador(usuario, roles)
+                || (tieneRolInternoDisponible && !rolActivoRequiereCompania);
+
+            if (puedeOmitirSeleccionCompania)
             {
                 if (!string.IsNullOrWhiteSpace(codigoActivo))
                 {

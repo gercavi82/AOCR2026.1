@@ -157,9 +157,19 @@ namespace CapaDatos.DAOs
 
         public List<SolicitudAOCR> ObtenerPorUsuario(int codigoUsuario)
         {
+            return ObtenerPorUsuario((int?)codigoUsuario);
+        }
+
+        public List<SolicitudAOCR> ObtenerPorUsuario(int? codigoUsuario)
+        {
+            if (!codigoUsuario.HasValue || codigoUsuario.Value <= 0)
+            {
+                return ObtenerTodos();
+            }
+
             return ObtenerPorFiltro(
                 "codigo_usuario = @u AND deleted_at IS NULL",
-                cmd => cmd.Parameters.AddWithValue("@u", codigoUsuario)
+                cmd => cmd.Parameters.AddWithValue("@u", codigoUsuario.Value)
             );
         }
 
@@ -542,7 +552,24 @@ namespace CapaDatos.DAOs
                     cmd.Parameters.AddWithValue("@id", id);
                     using (var rd = cmd.ExecuteReader())
                     {
-                        return rd.Read() ? Mapear(rd) : null;
+                        if (rd.Read())
+                        {
+                            return Mapear(rd);
+                        }
+                    }
+                }
+
+                const string sqlLegacy = @"SELECT *
+                                          FROM aocr_tbsolicitud
+                                          WHERE codigo_solicitud = @id
+                                            AND UPPER(TRIM(COALESCE(estado, ''))) <> 'ELIMINADO'
+                                          LIMIT 1";
+                using (var cmdLegacy = new NpgsqlCommand(sqlLegacy, cn))
+                {
+                    cmdLegacy.Parameters.AddWithValue("@id", id);
+                    using (var rdLegacy = cmdLegacy.ExecuteReader())
+                    {
+                        return rdLegacy.Read() ? Mapear(rdLegacy) : null;
                     }
                 }
             }

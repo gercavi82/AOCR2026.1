@@ -78,9 +78,9 @@
         ? informe.Resultado
         : (inspeccion != null ? inspeccion.Resultado : null);
     var notas = informe != null ? informe.Notas : null;
-    var noConformidades = informe != null && !string.IsNullOrWhiteSpace(informe.NoConformidades)
-        ? informe.NoConformidades
-        : (informe != null ? informe.Observaciones : null);
+    var observaciones = informe != null ? informe.Observaciones : null;
+    var hallazgosTecnicos = informe != null ? informe.NoConformidades : null;
+    var conclusiones = informe != null ? informe.Conclusiones : null;
     var recomendaciones = informe != null ? informe.Recomendaciones : null;
     var fechasInspeccionManual = informe != null ? informe.FechasInspeccionManual : null;
     var estacionesInspeccionManual = informe != null ? informe.EstacionesInspeccionManual : null;
@@ -96,8 +96,16 @@
     var estacionesTextoArt110 = !string.IsNullOrWhiteSpace(estacionesInspeccionManual)
         ? estacionesInspeccionManual.Trim()
         : textoNoAplica;
+    var esResultadoSatisfactorio = InformeTecnicoTemplateHelper.IsResultadoSatisfactorio(resultadoTecnico);
+    var esResultadoInsatisfactorio = InformeTecnicoTemplateHelper.IsResultadoInsatisfactorio(resultadoTecnico);
     var notasItems = obtenerItemsOTextoNoAplica(notas);
-    var noConformidadesItems = obtenerItemsOTextoNoAplica(noConformidades);
+    var observacionesItems = esResultadoSatisfactorio
+        ? obtenerItemsOTextoNoAplica(observaciones)
+        : new List<string> { textoNoAplica };
+    var hallazgosTecnicosItems = esResultadoInsatisfactorio
+        ? obtenerItemsOTextoNoAplica(hallazgosTecnicos)
+        : new List<string> { textoNoAplica };
+    var conclusionesItems = obtenerItemsOTextoNoAplica(conclusiones);
     var recomendacionesItems = obtenerItemsOTextoNoAplica(recomendaciones);
     var otrosAdjuntosItems = obtenerItemsOTextoNoAplica(informe != null ? informe.OtrosAdjuntos : null);
     var documentosAdjuntosItems = documentosAdjuntosSeleccionados.Any()
@@ -111,7 +119,6 @@
         : new List<string> { textoNoAplica };
 
     var resultadoTecnicoLabel = InformeTecnicoTemplateHelper.GetResultadoLabel(resultadoTecnico);
-    var esResultadoInsatisfactorio = InformeTecnicoTemplateHelper.IsResultadoInsatisfactorio(resultadoTecnico);
     var tipoResultadoInsatisfactorioLabel = informe != null ? InformeTecnicoTemplateHelper.GetTipoResultadoInsatisfactorioLabel(informe.TipoResultadoInsatisfactorio) : string.Empty;
     var mostrarTipoResultadoInsatisfactorio = esResultadoInsatisfactorio && !string.IsNullOrWhiteSpace(tipoResultadoInsatisfactorioLabel);
     var nombreInspectorFirma = firmadoInspector && !string.IsNullOrWhiteSpace(firmanteInspector) ? firmanteInspector : inspector;
@@ -221,22 +228,38 @@
             }
         </ul>
 
-        <div class="report-section-title">No Conformidades:</div>
-        <ul class="bullet-list">
-            @foreach (var item in noConformidadesItems)
-            {
-                <li>@item</li>
-            }
-        </ul>
-
-        <div class="report-section-title">2. CONCLUSION</div>
-        <p class="report-paragraph compact">Resultado técnico final: <strong>@resultadoTecnicoLabel</strong></p>
+        <div class="report-section-title">Resultado técnico final:</div>
+        <p class="report-paragraph compact"><strong>@resultadoTecnicoLabel</strong></p>
         @if (mostrarTipoResultadoInsatisfactorio)
         {
             <p class="report-paragraph compact">Tipo de resultado insatisfactorio: <strong>@tipoResultadoInsatisfactorioLabel</strong></p>
         }
 
-        <div class="report-section-title">3. RECOMENDACIONES:</div>
+        <div class="report-section-title">Observaciones:</div>
+        <ul class="bullet-list">
+            @foreach (var item in observacionesItems)
+            {
+                <li>@item</li>
+            }
+        </ul>
+
+        <div class="report-section-title">Hallazgos técnicos:</div>
+        <ul class="bullet-list">
+            @foreach (var item in hallazgosTecnicosItems)
+        {
+                <li>@item</li>
+        }
+        </ul>
+
+        <div class="report-section-title">Conclusiones:</div>
+        <ul class="bullet-list">
+            @foreach (var item in conclusionesItems)
+            {
+                <li>@item</li>
+            }
+        </ul>
+
+        <div class="report-section-title">Recomendaciones:</div>
         <ul class="bullet-list">
             @foreach (var item in recomendacionesItems)
             {

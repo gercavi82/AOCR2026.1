@@ -110,6 +110,7 @@ namespace CapaNegocio.Services
             { "SolicitudAOCR/EditarRT", new[] { "Solicitante", "Administrador" } },
             { "SolicitudAOCR/FinalizarRT", new[] { "Solicitante", "Administrador" } },
             { "SolicitudAOCR/Detalle", new[] { "Solicitante", "InspectorTecnico", "Coordinacion", "DireccionJefaturaTecnica", "Administrador" } },
+            { "SolicitudAOCR/Generar", new[] { "DireccionJefaturaTecnica", "Administrador" } },
             { "SolicitudAOCR/DescargarGenerada", new[] { "Solicitante", "InspectorTecnico", "Coordinacion", "DireccionJefaturaTecnica", "Administrador" } },
             { "SolicitudAOCR/Aprobar", new[] { "Coordinacion", "Administrador" } },
             { "SolicitudAOCR/AprobarJefatura", new[] { "DireccionJefaturaTecnica", "Administrador" } },
@@ -336,6 +337,26 @@ namespace CapaNegocio.Services
                 if (Comparer.Equals(accion, "Detalle") || Comparer.Equals(accion, "DescargarGenerada"))
                 {
                     return ValidarAccesoDetalleSolicitud(usuario, codigoSolicitud, out motivo);
+                }
+
+                if (Comparer.Equals(accion, "Generar"))
+                {
+                    if (!ValidarAccesoDetalleSolicitud(usuario, codigoSolicitud, out motivo))
+                    {
+                        return false;
+                    }
+
+                    var rolesGeneracion = NormalizarRoles(usuario);
+                    string motivoGeneracion;
+                    if (!new GeneracionAOCRService().PuedeGenerarAocr(codigoSolicitud.GetValueOrDefault(), usuario.UserId, rolesGeneracion, out motivoGeneracion))
+                    {
+                        motivo = string.IsNullOrWhiteSpace(motivoGeneracion)
+                            ? "La solicitud no cumple las condiciones para generar AOCR."
+                            : motivoGeneracion;
+                        return false;
+                    }
+
+                    return true;
                 }
             }
 

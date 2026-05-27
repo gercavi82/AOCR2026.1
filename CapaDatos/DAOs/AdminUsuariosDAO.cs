@@ -114,6 +114,49 @@ LIMIT 1;";
             }
         }
 
+        public SeguridadUsuarioDTO ObtenerUsuarioPorCodigoUsuario(string codigoUsuario)
+        {
+            var codigoNormalizado = (codigoUsuario ?? string.Empty).Trim();
+            if (string.IsNullOrWhiteSpace(codigoNormalizado))
+            {
+                return null;
+            }
+
+            using (var cn = CrearConexion())
+            {
+                cn.Open();
+
+                var tieneMustChangePassword = ExisteColumna(cn, "usuario", "must_change_password");
+                var selectMustChangePassword = tieneMustChangePassword
+                    ? "COALESCE(u.must_change_password, FALSE) AS \"MustChangePassword\""
+                    : "FALSE AS \"MustChangePassword\"";
+
+                var sql = @"
+SELECT
+    u.idusuario AS ""IdUsuario"",
+    u.codigousuario AS ""CodigoUsuario"",
+    COALESCE(u.nombreusuario, '') AS ""NombreUsuario"",
+    COALESCE(u.apellidousuario, '') AS ""ApellidoUsuario"",
+    COALESCE(u.correo, '') AS ""Correo"",
+    (COALESCE(NULLIF(TRIM(u.estadoactividad), ''), '1') = '1') AS ""Activo"",
+    " + selectMustChangePassword + @",
+    u.fechaultimaconexion AS ""UltimoLogin"",
+    COALESCE(u.rol, '') AS ""RolFallback""
+FROM usuario u
+WHERE UPPER(TRIM(u.codigousuario)) = UPPER(TRIM(@codigoUsuario))
+LIMIT 1;";
+
+                var usuario = cn.QueryFirstOrDefault<SeguridadUsuarioDTO>(sql, new { codigoUsuario = codigoNormalizado });
+                if (usuario == null)
+                {
+                    return null;
+                }
+
+                usuario.RolesAsignados = ObtenerRolesUsuario(usuario.IdUsuario);
+                return usuario;
+            }
+        }
+
         public bool ExisteCodigoUsuario(string codigoUsuario, int? excluirIdUsuario = null)
         {
             using (var cn = CrearConexion())

@@ -109,6 +109,52 @@
         return normalizeResultado(value) === 'INSATISFACTORIO';
     }
 
+    function isResultadoSatisfactorio(value) {
+        return normalizeResultado(value) === 'SATISFACTORIO';
+    }
+
+    function setSectionVisible(section, visible) {
+        if (!section) {
+            return;
+        }
+
+        section.style.display = visible ? '' : 'none';
+    }
+
+    function clearSectionInputs(section) {
+        if (!section) {
+            return;
+        }
+
+        Array.prototype.forEach.call(section.querySelectorAll('textarea, input[type="text"], input[type="hidden"]'), function (field) {
+            field.value = '';
+        });
+    }
+
+    function syncResultadoSections(modal) {
+        if (!modal) {
+            return;
+        }
+
+        var form = modal.querySelector('[data-aocr-informe-form="true"]');
+        if (!form) {
+            return;
+        }
+
+        var resultadoSeleccionado = form.querySelector('input[name="resultado"]:checked');
+        var resultado = normalizeResultado(resultadoSeleccionado ? resultadoSeleccionado.value : '');
+
+        Array.prototype.forEach.call(modal.querySelectorAll('[data-resultado-section]'), function (section) {
+            var valorSeccion = normalizeResultado(section.getAttribute('data-resultado-section'));
+            var visible = valorSeccion === resultado;
+            setSectionVisible(section, visible);
+
+            if (!visible) {
+                clearSectionInputs(section);
+            }
+        });
+    }
+
     function guideInsatisfactorioSelection(block) {
         if (!block) {
             return;
@@ -232,6 +278,35 @@
         }).join(', ');
     }
 
+    function syncAttachmentUploadContainer(checkbox) {
+        if (!checkbox) {
+            return;
+        }
+
+        var item = checkbox.closest('.aocr-document-item');
+        if (!item) {
+            return;
+        }
+
+        var container = item.querySelector('[data-upload-container="true"]');
+        if (!container) {
+            return;
+        }
+
+        var visible = !!checkbox.checked;
+        container.style.display = visible ? '' : 'none';
+
+        if (visible) {
+            return;
+        }
+
+        var input = container.querySelector('input[type="file"]');
+        if (input) {
+            input.value = '';
+            syncAttachmentFileSummary(input);
+        }
+    }
+
     function setButtonsBusy(modal, busy, submitMode) {
         if (!modal) {
             return;
@@ -309,6 +384,37 @@
         });
     }
 
+    function focusSignaturePanel(modal) {
+        if (!modal) {
+            return;
+        }
+
+        var panel = modal.querySelector('[data-aocr-signature-panel="true"]');
+        if (!panel) {
+            return;
+        }
+
+        if (typeof panel.scrollIntoView === 'function') {
+            panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+
+        var target = panel.querySelector('input[name="CertificadoInspector"]:not([disabled])')
+            || panel.querySelector('input[name="passwordCertificado"]:not([disabled])')
+            || panel;
+
+        if (!target || typeof target.focus !== 'function') {
+            return;
+        }
+
+        window.setTimeout(function () {
+            try {
+                target.focus({ preventScroll: true });
+            } catch (error) {
+                target.focus();
+            }
+        }, 220);
+    }
+
     function buildFormData(form, submitMode) {
         syncGeneratedDocumentFields(form);
 
@@ -324,6 +430,15 @@
 
         if (!isResultadoInsatisfactorio(resultadoSeleccionado ? resultadoSeleccionado.value : '')) {
             formData.delete('tipoResultadoInsatisfactorio');
+        }
+
+        if (isResultadoSatisfactorio(resultadoSeleccionado ? resultadoSeleccionado.value : '')) {
+            formData.set('noConformidades', '');
+        } else if (isResultadoInsatisfactorio(resultadoSeleccionado ? resultadoSeleccionado.value : '')) {
+            formData.set('observaciones', '');
+        } else {
+            formData.set('observaciones', '');
+            formData.set('noConformidades', '');
         }
 
         return formData;
@@ -432,7 +547,7 @@
             if (submitMode === 'finalizar') {
                 window.setTimeout(function () {
                     window.location.href = payload.redirectUrl || window.location.href;
-                }, 600);
+                }, 250);
             }
         })
         .catch(function (error) {
@@ -457,9 +572,18 @@
             });
         });
 
+        Array.prototype.forEach.call(modal.querySelectorAll('input[name="documentosAdjuntos"][type="checkbox"]'), function (checkbox) {
+            checkbox.addEventListener('change', function () {
+                syncAttachmentUploadContainer(checkbox);
+            });
+
+            syncAttachmentUploadContainer(checkbox);
+        });
+
         Array.prototype.forEach.call(modal.querySelectorAll('input[name="resultado"]'), function (radio) {
             radio.addEventListener('change', function () {
                 syncInsatisfactorioSection(modal, { guideUser: isResultadoInsatisfactorio(radio.value) });
+                syncResultadoSections(modal);
             });
         });
 
@@ -481,6 +605,7 @@
         }
 
         syncInsatisfactorioSection(modal, { guideUser: false });
+        syncResultadoSections(modal);
     }
 
     function ensureHost() {
@@ -495,11 +620,13 @@
         return host;
     }
 
-    function openInformeTecnicoModal(url) {
+    function openInformeTecnicoModal(url, options) {
         if (!url) {
             notify('error', 'No se encontró la ruta del Informe Técnico.');
             return Promise.resolve(false);
         }
+
+        options = options || {};
 
         var host = ensureHost();
         host.innerHTML = '<div class="aocr-loading-modal p-4 text-center text-muted">Cargando Informe Técnico...</div>';
@@ -548,7 +675,18 @@
             initInformeModal(modal);
 
             if (window.bootstrap && window.bootstrap.Modal) {
+                if (options.focusSignaturePanel) {
+                    var onShown = function () {
+                        focusSignaturePanel(modal);
+                        modal.removeEventListener('shown.bs.modal', onShown);
+                    };
+
+                    modal.addEventListener('shown.bs.modal', onShown);
+                }
+
                 window.bootstrap.Modal.getOrCreateInstance(modal).show();
+            } else if (options.focusSignaturePanel) {
+                focusSignaturePanel(modal);
             }
 
             return true;

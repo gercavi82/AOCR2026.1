@@ -339,6 +339,7 @@
     <Compile Include="Global.asax.cs">
       <DependentUpon>Global.asax</DependentUpon>
     </Compile>
+    <Compile Include="Helpers\AuthTicketRoleDataHelper.cs" />
     <Compile Include="Helpers\CompaniaActivaSessionHelper.cs" />
     <Compile Include="Helpers\AssetVersionHelper.cs" />
     <Compile Include="Helpers\CookieHelper.cs" />
@@ -2894,6 +2895,7 @@
     <Content Include="Views\Home\Contact.cshtml" />
     <Content Include="Views\Home\Index.cshtml" />
     <Content Include="Views\SolicitudAOCR\Create.cshtml" />
+    <Content Include="Views\SolicitudAOCR\FormularioEmisionAOCR.cshtml" />
     <Content Include="Views\SolicitudAOCR\Index.cshtml" />
     <Content Include="Views\SolicitudAOCR\Detalle.cshtml" />
     <Content Include="Views\Financiero\GestionarViaticos.cshtml" />

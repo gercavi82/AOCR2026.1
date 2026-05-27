@@ -322,3 +322,43 @@ Excepción: System.Web.HttpException (0x80004005): No se encuentra un método de
    en System.Web.HttpApplication.ExecuteStepImpl(IExecutionStep step)
    en System.Web.HttpApplication.ExecuteStep(IExecutionStep step, Boolean& completedSynchronously)
 
+
+=== ERROR GLOBAL 2026-05-22 22:18:13.072 ===
+URL: https://localhost:44333/Health/PreviewLegacyAocrCandidates
+Usuario: USU_ADMIN
+UserAgent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Code/1.118.1 Chrome/142.0.7444.265 Electron/39.8.8 Safari/537.36
+Excepción: System.Web.HttpException (0x80004005): No se encuentra un método de acción público 'PreviewLegacyAocrCandidates' en el controlador 'CapaPresentacion.Controllers.HealthController'.
+   en System.Web.Mvc.Controller.HandleUnknownAction(String actionName)
+   en System.Web.Mvc.Controller.<>c.<BeginExecuteCore>b__152_1(IAsyncResult asyncResult, ExecuteCoreState innerState)
+   en System.Web.Mvc.Async.AsyncResultWrapper.WrappedAsyncVoid`1.CallEndDelegate(IAsyncResult asyncResult)
+   en System.Web.Mvc.Controller.EndExecuteCore(IAsyncResult asyncResult)
+   en System.Web.Mvc.Async.AsyncResultWrapper.WrappedAsyncVoid`1.CallEndDelegate(IAsyncResult asyncResult)
+   en System.Web.Mvc.Controller.EndExecute(IAsyncResult asyncResult)
+   en System.Web.Mvc.MvcHandler.<>c.<BeginProcessRequest>b__20_1(IAsyncResult asyncResult, ProcessRequestState innerState)
+   en System.Web.Mvc.Async.AsyncResultWrapper.WrappedAsyncVoid`1.CallEndDelegate(IAsyncResult asyncResult)
+   en System.Web.Mvc.MvcHandler.EndProcessRequest(IAsyncResult asyncResult)
+   en System.Web.HttpApplication.CallHandlerExecutionStep.System.Web.HttpApplication.IExecutionStep.Execute()
+   en System.Web.HttpApplication.<>c__DisplayClass285_0.<ExecuteStepImpl>b__0()
+   en System.Web.HttpApplication.ExecuteStepImpl(IExecutionStep step)
+   en System.Web.HttpApplication.ExecuteStep(IExecutionStep step, Boolean& completedSynchronously)
+
+
+=== ERROR GLOBAL 2026-05-22 22:18:22.841 ===
+URL: https://localhost:44333/Health/PreviewLegacyAocrCandidates
+Usuario: USU_ADMIN
+UserAgent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Code/1.118.1 Chrome/142.0.7444.265 Electron/39.8.8 Safari/537.36
+Excepción: System.Web.HttpException (0x80004005): No se encuentra un método de acción público 'PreviewLegacyAocrCandidates' en el controlador 'CapaPresentacion.Controllers.HealthController'.
+   en System.Web.Mvc.Controller.HandleUnknownAction(String actionName)
+   en System.Web.Mvc.Controller.<>c.<BeginExecuteCore>b__152_1(IAsyncResult asyncResult, ExecuteCoreState innerState)
+   en System.Web.Mvc.Async.AsyncResultWrapper.WrappedAsyncVoid`1.CallEndDelegate(IAsyncResult asyncResult)
+   en System.Web.Mvc.Controller.EndExecuteCore(IAsyncResult asyncResult)
+   en System.Web.Mvc.Async.AsyncResultWrapper.WrappedAsyncVoid`1.CallEndDelegate(IAsyncResult asyncResult)
+   en System.Web.Mvc.Controller.EndExecute(IAsyncResult asyncResult)
+   en System.Web.Mvc.MvcHandler.<>c.<BeginProcessRequest>b__20_1(IAsyncResult asyncResult, ProcessRequestState innerState)
+   en System.Web.Mvc.Async.AsyncResultWrapper.WrappedAsyncVoid`1.CallEndDelegate(IAsyncResult asyncResult)
+   en System.Web.Mvc.MvcHandler.EndProcessRequest(IAsyncResult asyncResult)
+   en System.Web.HttpApplication.CallHandlerExecutionStep.System.Web.HttpApplication.IExecutionStep.Execute()
+   en System.Web.HttpApplication.<>c__DisplayClass285_0.<ExecuteStepImpl>b__0()
+   en System.Web.HttpApplication.ExecuteStepImpl(IExecutionStep step)
+   en System.Web.HttpApplication.ExecuteStep(IExecutionStep step, Boolean& completedSynchronously)
+

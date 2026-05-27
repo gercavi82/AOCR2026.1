@@ -1336,6 +1336,12 @@
                 </div>
 
                 <div class="d-flex flex-column flex-md-row gap-2 mt-3 lv-operacional-actions aocr-lv-actions">
+                    @if (tienePdf)
+                    {
+                        <a class="btn btn-outline-secondary" href="@Url.Action("VerListaVerificacionOperacionalEae", "Inspeccion", new { id = vm.CodigoInspeccion })" target="_blank" rel="noopener">
+                            <i class="fas fa-file-pdf me-1"></i> Ver PDF
+                        </a>
+                    }
                     <button type="submit" class="btn btn-outline-primary" data-lv-submit-action="guardar">
                         <i class="fas fa-save me-1"></i> Guardar LV
                     </button>

@@ -128,7 +128,7 @@
         var url = new window.URL(window.location.href);
         var changed = false;
 
-        ['lvAutoFlow', 'autoOpenInformeTecnico'].forEach(function (key) {
+        ['lvAutoFlow', 'autoOpenInformeTecnico', 'autoFocusInformeFirma'].forEach(function (key) {
             if (url.searchParams.has(key)) {
                 url.searchParams.delete(key);
                 changed = true;
@@ -284,13 +284,14 @@
         }
 
         var url = state.getAttribute('data-informe-url') || '';
+        var autoFocusSignature = (state.getAttribute('data-auto-focus-informe-firma') || 'false') === 'true';
         if (!url) {
             return;
         }
 
         window.setTimeout(function () {
             if (window.AOCRInformeTecnicoModal && typeof window.AOCRInformeTecnicoModal.open === 'function') {
-                window.AOCRInformeTecnicoModal.open(url);
+                window.AOCRInformeTecnicoModal.open(url, { focusSignaturePanel: autoFocusSignature });
                 return;
             }
 

@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Security.Cryptography;
@@ -120,6 +121,13 @@ namespace CapaPresentacion.Filters
             if (httpContext.User == null || httpContext.User.Identity == null || !httpContext.User.Identity.IsAuthenticated)
             {
                 httpContext.Items["AOCR_AUTH_RESULT"] = AocrAuthorizationResultType.Denied(Modulo ?? string.Empty, Accion ?? string.Empty, "La sesión expiró o no ha iniciado sesión.");
+                return false;
+            }
+
+            var bootstrapStatus = AuthenticatedSessionBootstrapper.EnsureSession(httpContext);
+            if (bootstrapStatus == AuthenticatedSessionBootstrapStatus.Failed)
+            {
+                httpContext.Items["AOCR_AUTH_RESULT"] = AocrAuthorizationResultType.Denied(Modulo ?? string.Empty, Accion ?? string.Empty, "No se pudo restaurar la sesión autenticada.");
                 return false;
             }
 
@@ -355,6 +363,30 @@ namespace CapaPresentacion.Filters
             int codigoUsuario;
             UserContextAccessor.TryGetCodigoUsuario(httpContext.Session, out codigoUsuario);
 
+            var sessionRoles = RoleGroupingHelper.ExtractRoles(
+                httpContext.Session != null ? (httpContext.Session["RolesRaw"] ?? httpContext.Session["Roles"]) : null,
+                httpContext.Session != null ? httpContext.Session["Rol"] as string : null);
+            var ticketRoleData = ReadFormsTicketRoleData(httpContext);
+            var ticketRoles = ticketRoleData.Roles;
+            var principalRoles = ReadPrincipalRoles(httpContext != null ? httpContext.User : null);
+            var effectiveRoles = RoleGroupingHelper.BuildUnifiedRoles(sessionRoles
+                .Concat(ticketRoles)
+                .Concat(principalRoles));
+            var selectedRole = AuthTicketRoleDataHelper.ReadSelectedRoleFromCookie(
+                httpContext != null && httpContext.Request != null ? httpContext.Request.Cookies : null);
+            if (string.IsNullOrWhiteSpace(selectedRole))
+            {
+                selectedRole = RoleGroupingHelper.NormalizeSelectedRole(ticketRoleData.SelectedRole);
+            }
+            if (string.IsNullOrWhiteSpace(selectedRole))
+            {
+                selectedRole = UserContextAccessor.GetRol(httpContext.Session);
+            }
+            if (string.IsNullOrWhiteSpace(selectedRole) && effectiveRoles.Count == 1)
+            {
+                selectedRole = effectiveRoles[0];
+            }
+
             return new AocrAuthorizationContextType
             {
                 IsAuthenticated = httpContext.User != null && httpContext.User.Identity != null && httpContext.User.Identity.IsAuthenticated,
@@ -363,13 +395,82 @@ namespace CapaPresentacion.Filters
                     ? codigoUsuario.ToString()
                     : Convert.ToString(httpContext.Session != null ? httpContext.Session["CodigoUsuario"] : null),
                 UserName = UserContextAccessor.GetNombreUsuario(httpContext.Session, httpContext.User),
-                SelectedRole = UserContextAccessor.GetRol(httpContext.Session),
-                Roles = RoleGroupingHelper.ExtractRoles(
-                    httpContext.Session != null ? (httpContext.Session["RolesRaw"] ?? httpContext.Session["Roles"]) : null,
-                    httpContext.Session != null ? httpContext.Session["Rol"] as string : null),
+                SelectedRole = selectedRole,
+                Roles = effectiveRoles,
                 CompanyCode = CompaniaActivaSessionHelper.ObtenerCodigo(httpContext.Session),
                 CompanyName = CompaniaActivaSessionHelper.ObtenerNombre(httpContext.Session)
             };
+        }
+
+        private static AuthTicketRoleData ReadFormsTicketRoleData(HttpContextBase httpContext)
+        {
+            if (httpContext == null || httpContext.Request == null)
+            {
+                return new AuthTicketRoleData(Array.Empty<string>(), string.Empty);
+            }
+
+            var authCookie = httpContext.Request.Cookies[FormsAuthentication.FormsCookieName];
+            if (authCookie == null || string.IsNullOrWhiteSpace(authCookie.Value))
+            {
+                return new AuthTicketRoleData(Array.Empty<string>(), string.Empty);
+            }
+
+            try
+            {
+                var authTicket = FormsAuthentication.Decrypt(authCookie.Value);
+                if (authTicket == null || authTicket.Expired || string.IsNullOrWhiteSpace(authTicket.UserData))
+                {
+                    return new AuthTicketRoleData(Array.Empty<string>(), string.Empty);
+                }
+
+                return AuthTicketRoleDataHelper.Deserialize(authTicket.UserData);
+            }
+            catch
+            {
+                return new AuthTicketRoleData(Array.Empty<string>(), string.Empty);
+            }
+        }
+
+        private static IList<string> ReadPrincipalRoles(System.Security.Principal.IPrincipal principal)
+        {
+            var knownRoles = new[]
+            {
+                "Administrador",
+                "Admin",
+                "Solicitante",
+                "Operador",
+                "RepresentanteTecnico",
+                "Representante Tecnico",
+                "RepresentanteLegal",
+                "RT",
+                "Inspector",
+                "Tecnico",
+                "EvaluadorTecnico",
+                "InspectorTecnico",
+                "Coordinador",
+                "CoordinadorInspecciones",
+                "Coordinacion",
+                "CoordinacionLegal",
+                "CoordinadorLegal",
+                "DIRDAC",
+                "Direccion",
+                "JefaturaTecnica",
+                "DirectorGeneral",
+                "DireccionJefaturaTecnica",
+                "Financiero",
+                "CoordinadorFinanciero",
+                "DirectorFinanciero"
+            };
+
+            if (principal == null || principal.Identity == null || !principal.Identity.IsAuthenticated)
+            {
+                return new List<string>();
+            }
+
+            return knownRoles
+                .Where(principal.IsInRole)
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
         }
 
         private static string ResolveController(HttpContextBase httpContext)

@@ -30,6 +30,16 @@ namespace CapaNegocio
             return _dao.ObtenerUsuarioPorId(idUsuario);
         }
 
+        public static SeguridadUsuarioDTO ObtenerUsuarioPorCodigoUsuario(string codigoUsuario)
+        {
+            if (string.IsNullOrWhiteSpace(codigoUsuario))
+            {
+                return null;
+            }
+
+            return _dao.ObtenerUsuarioPorCodigoUsuario(codigoUsuario);
+        }
+
         public static List<SeguridadRolDTO> ObtenerRolesActivos()
         {
             return _dao.ObtenerRolesActivos();

@@ -9,6 +9,12 @@ namespace CapaPresentacion.Models
         public int SolicitudesPendientes { get; set; }
         public int TramitesEnCurso { get; set; }
         public int NotificacionesNuevas { get; set; }
+        public string ResumenPrimarioTitulo { get; set; }
+        public string ResumenPrimarioCaption { get; set; }
+        public string ResumenSecundarioTitulo { get; set; }
+        public string ResumenSecundarioCaption { get; set; }
+        public string ResumenTerciarioTitulo { get; set; }
+        public string ResumenTerciarioCaption { get; set; }
         public bool MostrarModuloOperador { get; set; }
         public bool MostrarModuloFinanciero { get; set; }
         public bool MostrarModuloCertificacion { get; set; }

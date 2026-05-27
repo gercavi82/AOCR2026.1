@@ -127,6 +127,7 @@ namespace CapaPresentacion.Helpers
                 "DIRECCION",
                 "JEFATURATECNICA",
                 "DIRDAC",
+                "DCAV",
                 "DIRECTORGENERAL",
                 "DIRECCIONJEFATURATECNICA"))
             {

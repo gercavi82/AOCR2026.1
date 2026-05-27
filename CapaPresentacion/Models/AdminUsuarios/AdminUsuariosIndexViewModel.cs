@@ -8,6 +8,7 @@ namespace CapaPresentacion.Models.AdminUsuarios
         public string Filtro { get; set; }
         public bool? Activo { get; set; }
         public string TipoFiltro { get; set; }
+        public string PerfilFiltro { get; set; }
         public int TotalUsuarios { get; set; }
         public int UsuariosActivos { get; set; }
         public int UsuariosInactivos { get; set; }

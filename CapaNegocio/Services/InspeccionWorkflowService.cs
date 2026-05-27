@@ -71,11 +71,37 @@ namespace CapaNegocio.Services
                     return ResultadoOperacion.Error("No se puede registrar el resultado hasta que el informe técnico esté firmado por el inspector.");
                 }
 
-                var resultadoNormalizado = (resultado ?? string.Empty).Trim().ToUpperInvariant();
-                var esSatisfactorio =
-                    resultadoNormalizado == "SATISFACTORIO" ||
-                    resultadoNormalizado == "APROBADO" ||
-                    resultadoNormalizado == EstadosInspeccion.RESULTADO_SATISFACTORIO;
+                var resultadoInformeNormalizado = NormalizarResultadoInformeTecnico(informe.Resultado);
+                if (resultadoInformeNormalizado != "SATISFACTORIO" && resultadoInformeNormalizado != "INSATISFACTORIO")
+                {
+                    return ResultadoOperacion.Error("No se puede registrar el resultado porque el Informe Técnico no tiene un resultado satisfactorio o insatisfactorio válido.");
+                }
+
+                var resultadoSolicitadoNormalizado = NormalizarResultadoInformeTecnico(resultado);
+                if (!string.IsNullOrWhiteSpace(resultadoSolicitadoNormalizado)
+                    && !string.Equals(resultadoSolicitadoNormalizado, resultadoInformeNormalizado, StringComparison.OrdinalIgnoreCase))
+                {
+                    return ResultadoOperacion.Error("El resultado de inspección debe coincidir con el resultado del Informe Técnico firmado.");
+                }
+
+                var esSatisfactorio = string.Equals(resultadoInformeNormalizado, "SATISFACTORIO", StringComparison.OrdinalIgnoreCase);
+                var tipoResultadoInsatisfactorio = NormalizarTipoResultadoInsatisfactorio(informe.TipoResultadoInsatisfactorio);
+
+                if (!esSatisfactorio && string.IsNullOrWhiteSpace(tipoResultadoInsatisfactorio))
+                {
+                    return ResultadoOperacion.Error("El resultado insatisfactorio debe indicar si requiere nueva inspección o subsanación documental.");
+                }
+
+                if (!esSatisfactorio)
+                {
+                    var resultadoNc = AsegurarNoConformidadDesdeInforme(inspeccionId, informe, usuarioId, usuarioNombre);
+                    if (!resultadoNc.Exitoso)
+                    {
+                        return resultadoNc;
+                    }
+
+                    observacion = CombinarObservacionResultadoInsatisfactorio(observacion, tipoResultadoInsatisfactorio);
+                }
 
                 var estadoDestino = esSatisfactorio
                     ? EstadosInspeccion.RESULTADO_SATISFACTORIO
@@ -137,7 +163,11 @@ namespace CapaNegocio.Services
 
                 EmitirNotificacionEvento(inspeccionId, esSatisfactorio ? "APROBACION_INSPECCION" : "NC_GENERADAS", observacion);
 
-                return ResultadoOperacion.Ok(null, "Resultado de inspección registrado correctamente");
+                return ResultadoOperacion.Ok(
+                    null,
+                    esSatisfactorio
+                        ? "Resultado de inspección registrado correctamente"
+                        : ConstruirMensajeResultadoInsatisfactorio(tipoResultadoInsatisfactorio));
             }
             catch (Exception ex)
             {
@@ -245,6 +275,108 @@ namespace CapaNegocio.Services
             catch (Exception ex)
             {
                 return ResultadoOperacion.Error("Error al solicitar nueva inspección: " + ex.Message);
+            }
+        }
+
+        public ResultadoOperacion AprobarNoConformidadParaNuevaInspeccion(int inspeccionId, string observacion, int usuarioId, string usuarioNombre)
+        {
+            try
+            {
+                Inspeccion inspeccion;
+                InspeccionInformeTecnico informe;
+                var validacion = ValidarAprobacionNoConformidad(inspeccionId, "CON_INSPECCION", out inspeccion, out informe);
+                if (!validacion.Exitoso)
+                {
+                    return validacion;
+                }
+
+                var observacionFinal = ConstruirObservacionAprobacionNoConformidad(
+                    observacion,
+                    "Coordinación aprobó la NC y solicita nueva inspección.",
+                    "CON_INSPECCION");
+
+                var resultado = SolicitarNuevaInspeccion(inspeccionId, observacionFinal, usuarioId, usuarioNombre);
+                if (!resultado.Exitoso)
+                {
+                    return resultado;
+                }
+
+                _auditoriaService.RegistrarAccionInspeccion(
+                    inspeccionId,
+                    "APROBACION_NC_NUEVA_INSPECCION",
+                    usuarioId,
+                    usuarioNombre,
+                    observacionFinal,
+                    null,
+                    "TipoResultadoInsatisfactorio=CON_INSPECCION");
+
+                return ResultadoOperacion.Ok(null, "No conformidad aprobada. Se habilitó formalmente la ruta de nueva inspección.");
+            }
+            catch (Exception ex)
+            {
+                return ResultadoOperacion.Error("Error al aprobar la no conformidad para nueva inspección: " + ex.Message);
+            }
+        }
+
+        public ResultadoOperacion AprobarNoConformidadParaSubsanacionDocumental(int inspeccionId, string observacion, int usuarioId, string usuarioNombre)
+        {
+            try
+            {
+                Inspeccion inspeccion;
+                InspeccionInformeTecnico informe;
+                var validacion = ValidarAprobacionNoConformidad(inspeccionId, "SIN_INSPECCION", out inspeccion, out informe);
+                if (!validacion.Exitoso)
+                {
+                    return validacion;
+                }
+
+                var observacionFinal = ConstruirObservacionAprobacionNoConformidad(
+                    observacion,
+                    "Coordinación aprobó la NC y habilitó la subsanación documental del RT.",
+                    "SIN_INSPECCION");
+
+                inspeccion.EstadoDocumental = "OBSERVACION_DOCUMENTAL";
+                if (!string.IsNullOrWhiteSpace(observacionFinal))
+                {
+                    inspeccion.Comentarios = string.IsNullOrWhiteSpace(inspeccion.Comentarios)
+                        ? observacionFinal
+                        : (inspeccion.Comentarios + " | " + observacionFinal);
+                }
+
+                if (!_inspeccionBL.Actualizar(inspeccion, usuarioId))
+                {
+                    return ResultadoOperacion.Error("No se pudo dejar la inspección lista para subsanación documental.");
+                }
+
+                var resultado = CambiarEstadoConNotificacion(
+                    inspeccionId,
+                    EstadosInspeccion.OBSERVADA,
+                    usuarioId,
+                    usuarioNombre,
+                    observacionFinal,
+                    "NC_SUBSANACION_DOCUMENTAL");
+
+                if (!resultado.Exitoso)
+                {
+                    return resultado;
+                }
+
+                _auditoriaService.RegistrarAccionInspeccion(
+                    inspeccionId,
+                    "APROBACION_NC_SUBSANACION_DOCUMENTAL",
+                    usuarioId,
+                    usuarioNombre,
+                    observacionFinal,
+                    null,
+                    "TipoResultadoInsatisfactorio=SIN_INSPECCION");
+
+                EmitirNotificacionEvento(inspeccionId, "NC_GENERADAS", observacionFinal);
+
+                return ResultadoOperacion.Ok(null, "No conformidad aprobada. El expediente quedó observado para subsanación documental del RT.");
+            }
+            catch (Exception ex)
+            {
+                return ResultadoOperacion.Error("Error al aprobar la no conformidad para subsanación documental: " + ex.Message);
             }
         }
 
@@ -645,6 +777,237 @@ namespace CapaNegocio.Services
             }
 
             return abiertas;
+        }
+
+        private ResultadoOperacion ValidarAprobacionNoConformidad(
+            int inspeccionId,
+            string tipoResultadoEsperado,
+            out Inspeccion inspeccion,
+            out InspeccionInformeTecnico informe)
+        {
+            inspeccion = null;
+            informe = null;
+
+            if (inspeccionId <= 0)
+            {
+                return ResultadoOperacion.Error("Inspección inválida");
+            }
+
+            inspeccion = _inspeccionDAO.ObtenerPorId(inspeccionId);
+            if (inspeccion == null)
+            {
+                return ResultadoOperacion.Error("Inspección no encontrada");
+            }
+
+            var estadoActual = EstadosInspeccion.NormalizarEstado(inspeccion.Estado);
+            if (!string.Equals(estadoActual, EstadosInspeccion.RESULTADO_NO_SATISFACTORIO, StringComparison.OrdinalIgnoreCase))
+            {
+                return ResultadoOperacion.Error("La aprobación formal de NC solo puede ejecutarse cuando la inspección está en resultado no satisfactorio.");
+            }
+
+            informe = _informeDAO.ObtenerUltimoPorInspeccion(inspeccionId);
+            if (informe == null)
+            {
+                return ResultadoOperacion.Error("No existe informe técnico para sustentar la aprobación de la NC.");
+            }
+
+            if (!informe.Finalizado || !informe.FirmadoInspector)
+            {
+                return ResultadoOperacion.Error("La aprobación de la NC requiere un Informe Técnico finalizado y firmado por el inspector.");
+            }
+
+            var resultadoInforme = NormalizarResultadoInformeTecnico(informe.Resultado);
+            if (!string.Equals(resultadoInforme, "INSATISFACTORIO", StringComparison.OrdinalIgnoreCase))
+            {
+                return ResultadoOperacion.Error("La aprobación formal de NC solo aplica a informes técnicos con resultado insatisfactorio.");
+            }
+
+            var tipoResultado = NormalizarTipoResultadoInsatisfactorio(informe.TipoResultadoInsatisfactorio);
+            if (string.IsNullOrWhiteSpace(tipoResultado))
+            {
+                return ResultadoOperacion.Error("El informe técnico debe indicar si la NC requiere nueva inspección o subsanación documental.");
+            }
+
+            if (!string.Equals(tipoResultado, tipoResultadoEsperado, StringComparison.OrdinalIgnoreCase))
+            {
+                var descripcionRuta = string.Equals(tipoResultado, "CON_INSPECCION", StringComparison.OrdinalIgnoreCase)
+                    ? "nueva inspección"
+                    : "subsanación documental";
+                return ResultadoOperacion.Error("La NC registrada exige la ruta de " + descripcionRuta + " según el Informe Técnico.");
+            }
+
+            if (ContarNoConformidadesAbiertas(inspeccionId) <= 0)
+            {
+                return ResultadoOperacion.Error("No se puede aprobar la ruta de NC sin al menos una no conformidad abierta.");
+            }
+
+            if (!EstadosInspeccion.EsTransicionValida(estadoActual, EstadosInspeccion.OBSERVADA))
+            {
+                return ResultadoOperacion.Error("La inspección no admite pasar a observada para continuar la ruta de NC.");
+            }
+
+            return ResultadoOperacion.Ok(null, "Validación de NC aprobada.");
+        }
+
+        private ResultadoOperacion AsegurarNoConformidadDesdeInforme(int inspeccionId, InspeccionInformeTecnico informe, int usuarioId, string usuarioNombre)
+        {
+            if (ContarNoConformidadesAbiertas(inspeccionId) > 0)
+            {
+                return ResultadoOperacion.Ok(null, "La inspección ya cuenta con no conformidades abiertas.");
+            }
+
+            var descripcion = ConstruirDescripcionNoConformidadDesdeInforme(informe);
+            if (string.IsNullOrWhiteSpace(descripcion))
+            {
+                return ResultadoOperacion.Error("No se puede registrar un resultado insatisfactorio sin hallazgos u observaciones técnicas que respalden la no conformidad.");
+            }
+
+            var hallazgo = new Hallazgo
+            {
+                CodigoInspeccion = inspeccionId,
+                Descripcion = descripcion,
+                Criticidad = "ALTA",
+                Estado = "ABIERTO"
+            };
+
+            var usuarioRegistro = string.IsNullOrWhiteSpace(usuarioNombre) ? "sistema" : usuarioNombre;
+            var hallazgoId = _hallazgoBL.Crear(hallazgo, usuarioRegistro);
+            if (hallazgoId <= 0)
+            {
+                return ResultadoOperacion.Error("No se pudo materializar la no conformidad a partir del Informe Técnico insatisfactorio.");
+            }
+
+            _auditoriaService.RegistrarAccionInspeccion(
+                inspeccionId,
+                "NC_AUTOGENERADA_DESDE_INFORME",
+                usuarioId,
+                usuarioRegistro,
+                descripcion,
+                null,
+                "HallazgoId: " + hallazgoId + ", Origen=INFORME_TECNICO_INSATISFACTORIO");
+
+            return ResultadoOperacion.Ok(hallazgoId, "No conformidad base registrada desde el Informe Técnico.");
+        }
+
+        private static string ConstruirDescripcionNoConformidadDesdeInforme(InspeccionInformeTecnico informe)
+        {
+            if (informe == null)
+            {
+                return string.Empty;
+            }
+
+            var detalle = string.Empty;
+            var candidatos = new[]
+            {
+                informe.NoConformidades,
+                informe.Observaciones,
+                informe.Conclusiones,
+                informe.Recomendaciones
+            };
+
+            foreach (var candidato in candidatos)
+            {
+                if (!string.IsNullOrWhiteSpace(candidato))
+                {
+                    detalle = candidato.Trim();
+                    break;
+                }
+            }
+
+            if (string.IsNullOrWhiteSpace(detalle))
+            {
+                detalle = "Resultado insatisfactorio registrado en el Informe Técnico.";
+            }
+
+            var tipo = NormalizarTipoResultadoInsatisfactorio(informe.TipoResultadoInsatisfactorio);
+            if (string.Equals(tipo, "CON_INSPECCION", StringComparison.OrdinalIgnoreCase))
+            {
+                return "NC - Requiere nueva inspección. " + detalle;
+            }
+
+            if (string.Equals(tipo, "SIN_INSPECCION", StringComparison.OrdinalIgnoreCase))
+            {
+                return "NC - Requiere subsanación documental sin nueva inspección. " + detalle;
+            }
+
+            return detalle;
+        }
+
+        private static string CombinarObservacionResultadoInsatisfactorio(string observacion, string tipoResultadoInsatisfactorio)
+        {
+            var detalleTipo = string.Equals(tipoResultadoInsatisfactorio, "CON_INSPECCION", StringComparison.OrdinalIgnoreCase)
+                ? "Tipo de resultado insatisfactorio: con nueva inspección."
+                : (string.Equals(tipoResultadoInsatisfactorio, "SIN_INSPECCION", StringComparison.OrdinalIgnoreCase)
+                    ? "Tipo de resultado insatisfactorio: subsanación documental sin nueva inspección."
+                    : string.Empty);
+
+            if (string.IsNullOrWhiteSpace(detalleTipo))
+            {
+                return observacion;
+            }
+
+            if (string.IsNullOrWhiteSpace(observacion))
+            {
+                return detalleTipo;
+            }
+
+            return observacion.Trim() + " " + detalleTipo;
+        }
+
+        private static string ConstruirObservacionAprobacionNoConformidad(string observacion, string observacionPredeterminada, string tipoResultadoInsatisfactorio)
+        {
+            var baseObservacion = string.IsNullOrWhiteSpace(observacion)
+                ? observacionPredeterminada
+                : observacion.Trim();
+
+            return CombinarObservacionResultadoInsatisfactorio(baseObservacion, tipoResultadoInsatisfactorio);
+        }
+
+        private static string ConstruirMensajeResultadoInsatisfactorio(string tipoResultadoInsatisfactorio)
+        {
+            if (string.Equals(tipoResultadoInsatisfactorio, "CON_INSPECCION", StringComparison.OrdinalIgnoreCase))
+            {
+                return "Resultado insatisfactorio registrado. Se generó la no conformidad base y el expediente debe continuar por la ruta de nueva inspección.";
+            }
+
+            if (string.Equals(tipoResultadoInsatisfactorio, "SIN_INSPECCION", StringComparison.OrdinalIgnoreCase))
+            {
+                return "Resultado insatisfactorio registrado. Se generó la no conformidad base y el expediente debe continuar por la ruta de subsanación documental.";
+            }
+
+            return "Resultado insatisfactorio registrado. Se generó la no conformidad base del expediente.";
+        }
+
+        private static string NormalizarResultadoInformeTecnico(string resultado)
+        {
+            var normalizado = (resultado ?? string.Empty).Trim().ToUpperInvariant().Replace('-', '_').Replace(' ', '_');
+
+            switch (normalizado)
+            {
+                case "APROBADO":
+                case EstadosInspeccion.RESULTADO_SATISFACTORIO:
+                    return "SATISFACTORIO";
+                case "NO_SATISFACTORIO":
+                case "RECHAZADO":
+                case EstadosInspeccion.RESULTADO_NO_SATISFACTORIO:
+                    return "INSATISFACTORIO";
+                default:
+                    return normalizado;
+            }
+        }
+
+        private static string NormalizarTipoResultadoInsatisfactorio(string tipoResultado)
+        {
+            var normalizado = (tipoResultado ?? string.Empty).Trim().ToUpperInvariant().Replace('-', '_').Replace(' ', '_');
+
+            switch (normalizado)
+            {
+                case "CON_INSPECCION":
+                case "SIN_INSPECCION":
+                    return normalizado;
+                default:
+                    return string.Empty;
+            }
         }
     }
 }

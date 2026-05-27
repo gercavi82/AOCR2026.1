@@ -12,6 +12,7 @@ using Dapper;
 using CapaDatos.DAOs;
 using CapaDatos.Services;
 using CapaNegocio.Services;
+using CapaPresentacion.Helpers;
 
 namespace CapaPresentacion
 {
@@ -251,9 +252,10 @@ namespace CapaPresentacion
 
             if (authTicket == null || authTicket.Expired) return;
 
-            var rolesDesdeTicket = !string.IsNullOrEmpty(authTicket.UserData);
+            var ticketRoleData = AuthTicketRoleDataHelper.Deserialize(authTicket.UserData);
+            var rolesDesdeTicket = ticketRoleData.Roles.Count > 0;
             string[] roles = rolesDesdeTicket
-                ? authTicket.UserData.Split(new[] { ',' }, StringSplitOptions.RemoveEmptyEntries)
+                ? ticketRoleData.Roles.ToArray()
                 : GetRolesFromDB(authTicket.Name);
 
             var identity = new GenericIdentity(authTicket.Name);

@@ -1404,6 +1404,34 @@ body.aocr-body {
     padding: 0.8rem 0.85rem 0.85rem;
 }
 
+.aocr-sidebar .aocr-sidebar-context {
+    padding: 0.82rem 0.88rem;
+    background: linear-gradient(180deg, rgba(14, 32, 54, 0.58), rgba(18, 44, 72, 0.34));
+}
+
+.aocr-sidebar .aocr-sidebar-context__eyebrow {
+    margin-bottom: 0.32rem;
+    color: #89c2e0;
+    font-size: 0.65rem;
+    font-weight: 700;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+}
+
+.aocr-sidebar .aocr-sidebar-context__title {
+    color: #f4f8fb;
+    font-size: 0.9rem;
+    font-weight: 700;
+    line-height: 1.3;
+}
+
+.aocr-sidebar .aocr-sidebar-context__copy {
+    margin-top: 0.32rem;
+    color: #b9d1df;
+    font-size: 0.74rem;
+    line-height: 1.5;
+}
+
 .aocr-sidebar .compania-label {
     margin-bottom: 0.3rem;
     color: #9fcce5;
@@ -1503,6 +1531,12 @@ body.aocr-body {
     border-left: 2px solid rgba(168, 201, 220, 0.15);
 }
 
+.aocr-sidebar .aocr-sidebar-subgroup + .aocr-sidebar-subgroup {
+    margin-top: 0.45rem;
+    padding-top: 0.45rem;
+    border-top: 1px solid rgba(168, 201, 220, 0.08);
+}
+
 .aocr-sidebar .aocr-sidebar-subgroup__label {
     display: flex;
     align-items: center;
@@ -1513,6 +1547,48 @@ body.aocr-body {
     letter-spacing: 0.06em;
     text-transform: uppercase;
     color: rgba(168, 201, 220, 0.7);
+}
+
+.aocr-sidebar .aocr-sidebar-item__content {
+    display: flex;
+    flex: 1 1 auto;
+    flex-direction: column;
+    gap: 0.08rem;
+    min-width: 0;
+}
+
+.aocr-sidebar .aocr-sidebar-item__title {
+    color: inherit;
+    font-weight: 600;
+}
+
+.aocr-sidebar .aocr-sidebar-item__meta {
+    color: rgba(168, 201, 220, 0.74);
+    font-size: 0.72rem;
+    font-weight: 500;
+    letter-spacing: 0.01em;
+    line-height: 1.35;
+}
+
+.aocr-sidebar .aocr-sidebar-item__badge {
+    margin-left: auto;
+    padding: 0.14rem 0.48rem;
+    border: 1px solid rgba(168, 201, 220, 0.26);
+    border-radius: 999px;
+    color: #e6f2fb;
+    font-size: 0.64rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    line-height: 1.1;
+    text-transform: uppercase;
+    white-space: nowrap;
+}
+
+.aocr-sidebar .aocr-sidebar-item.disabled,
+.aocr-sidebar .aocr-link.disabled {
+    cursor: not-allowed;
+    opacity: 0.76;
+    pointer-events: none;
 }
 
 .aocr-sidebar .aocr-nav li {
@@ -1552,6 +1628,25 @@ body.aocr-body {
     flex: 0 0 18px;
 }
 
+.aocr-sidebar .aocr-sidebar-item--primary {
+    background: linear-gradient(90deg, rgba(56, 189, 248, 0.14), rgba(56, 189, 248, 0.08));
+    border-color: rgba(56, 189, 248, 0.2);
+    color: #ffffff;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+}
+
+.aocr-sidebar .aocr-sidebar-item--active {
+    background: linear-gradient(90deg, rgba(245, 158, 11, 0.2), rgba(56, 189, 248, 0.1));
+    border-color: rgba(245, 158, 11, 0.28);
+    color: #ffffff;
+    box-shadow: 0 10px 24px rgba(7, 17, 33, 0.18);
+}
+
+.aocr-sidebar .aocr-sidebar-item--active i,
+.aocr-sidebar .aocr-sidebar-item--primary i {
+    color: #ffd56a !important;
+}
+
 .aocr-sidebar .aocr-link:hover,
 .aocr-sidebar .aocr-sidebar-item:hover,
 .sidebar .nav-link:hover,
@@ -1564,6 +1659,13 @@ body.aocr-body {
     text-decoration: none;
     box-shadow: 0 10px 24px rgba(7, 17, 33, 0.16);
     transform: translateX(2px);
+}
+
+.aocr-sidebar .aocr-sidebar-item--active:hover,
+.aocr-sidebar .aocr-sidebar-item--primary:hover,
+.aocr-sidebar .aocr-sidebar-item--active:focus,
+.aocr-sidebar .aocr-sidebar-item--primary:focus {
+    box-shadow: 0 12px 28px rgba(7, 17, 33, 0.2);
 }
 
 .aocr-sidebar .aocr-link.text-danger,
@@ -2090,6 +2192,96 @@ table.dataTable {
 }
 
 @media (max-width: 991.98px) {
+    .aocr-sidebar-shell {
+        min-height: calc(100vh - 72px);
+        padding: 0.78rem 0.72rem 0.95rem;
+        gap: 0.68rem;
+    }
+
+    .aocr-sidebar .sidebar-header.aocr-sidebar-panel,
+    .aocr-sidebar .compania-contexto.aocr-sidebar-panel,
+    .aocr-sidebar .aocr-sidebar-context,
+    .aocr-sidebar .aocr-sidebar-alert,
+    .aocr-sidebar .nav-group.aocr-sidebar-section {
+        padding-left: 0.72rem;
+        padding-right: 0.72rem;
+    }
+
+    .aocr-sidebar .sidebar-header.aocr-sidebar-panel {
+        padding-top: 0.82rem;
+        padding-bottom: 0.78rem;
+    }
+
+    .aocr-sidebar .aocr-sidebar-context__copy,
+    .aocr-sidebar .aocr-sidebar-empty-state__copy,
+    .aocr-sidebar .user-mail {
+        font-size: 0.78rem;
+        line-height: 1.4;
+    }
+
+    .aocr-sidebar-user-card__name {
+        font-size: 0.94rem;
+    }
+
+    .aocr-sidebar-user-card__role {
+        font-size: 0.76rem;
+    }
+
+    .aocr-sidebar .aocr-role-switch__label {
+        margin-bottom: 0.28rem;
+        font-size: 0.76rem;
+    }
+
+    .aocr-sidebar .aocr-role-switch__select {
+        min-height: 36px;
+        font-size: 0.86rem;
+    }
+
+    .aocr-sidebar .menu-container.aocr-sidebar-sections {
+        gap: 0.7rem;
+    }
+
+    .aocr-sidebar .aocr-sidebar-title {
+        font-size: 0.68rem;
+        letter-spacing: 0.12em;
+    }
+
+    .aocr-sidebar .nav-group.aocr-sidebar-section {
+        padding-top: 0.78rem;
+        padding-bottom: 0.68rem;
+    }
+
+    .aocr-sidebar .group-title,
+    .aocr-sidebar .aocr-sidebar-section__title {
+        margin-bottom: 0.54rem;
+        padding-bottom: 0.56rem;
+        font-size: 0.72rem;
+    }
+
+    .aocr-sidebar .aocr-sidebar-subgroup__label {
+        padding: 0.3rem 0.65rem 0.16rem;
+        font-size: 0.66rem;
+    }
+
+    .aocr-sidebar .aocr-nav,
+    .aocr-sidebar .aocr-sidebar-footer .aocr-nav {
+        gap: 0.22rem;
+    }
+
+    .aocr-sidebar .aocr-nav--nested {
+        padding-left: 0.68rem;
+    }
+
+    .aocr-sidebar .aocr-link,
+    .aocr-sidebar .aocr-sidebar-item,
+    .sidebar .nav-link {
+        min-height: 40px;
+        padding: 0.58rem 0.64rem;
+        gap: 0.62rem;
+        font-size: 0.88rem;
+        line-height: 1.32;
+    }
+
     .aocr-page-header,
     .aocr-module-header,
     .aocr-hero-panel__layout,
@@ -2125,9 +2317,142 @@ table.dataTable {
     }
 }
 
+@media (max-height: 820px) {
+    .aocr-sidebar-shell {
+        min-height: calc(100vh - 64px);
+        padding: 0.68rem 0.64rem 0.82rem;
+        gap: 0.56rem;
+    }
+
+    .aocr-sidebar .sidebar-header.aocr-sidebar-panel,
+    .aocr-sidebar .compania-contexto.aocr-sidebar-panel,
+    .aocr-sidebar .aocr-sidebar-context,
+    .aocr-sidebar .aocr-sidebar-alert,
+    .aocr-sidebar .nav-group.aocr-sidebar-section {
+        border-radius: 12px;
+    }
+
+    .aocr-sidebar .sidebar-header.aocr-sidebar-panel {
+        padding: 0.72rem 0.7rem 0.66rem;
+    }
+
+    .aocr-sidebar-user-card {
+        gap: 0.22rem;
+    }
+
+    .aocr-sidebar-user-card__name {
+        font-size: 0.9rem;
+    }
+
+    .aocr-sidebar .chip,
+    .aocr-sidebar .chip-info {
+        padding: 0.28rem 0.58rem;
+        font-size: 0.66rem;
+    }
+
+    .aocr-sidebar .user-mail {
+        margin-top: 0.28rem;
+        font-size: 0.76rem;
+        line-height: 1.32;
+    }
+
+    .aocr-sidebar .aocr-role-switch {
+        margin-top: 0.32rem;
+    }
+
+    .aocr-sidebar .aocr-role-switch__select {
+        min-height: 34px;
+    }
+
+    .aocr-sidebar .menu-container.aocr-sidebar-sections {
+        gap: 0.56rem;
+    }
+
+    .aocr-sidebar .nav-group.aocr-sidebar-section {
+        padding: 0.7rem 0.64rem 0.62rem;
+    }
+
+    .aocr-sidebar .group-title,
+    .aocr-sidebar .aocr-sidebar-section__title {
+        margin-bottom: 0.48rem;
+        padding-bottom: 0.46rem;
+        font-size: 0.7rem;
+    }
+
+    .aocr-sidebar .aocr-nav,
+    .aocr-sidebar .aocr-sidebar-footer .aocr-nav {
+        gap: 0.2rem;
+    }
+
+    .aocr-sidebar .aocr-link,
+    .aocr-sidebar .aocr-sidebar-item,
+    .sidebar .nav-link {
+        min-height: 38px;
+        padding: 0.52rem 0.58rem;
+        font-size: 0.84rem;
+    }
+}
+
+@media (max-height: 700px) {
+    .aocr-sidebar .user-mail,
+    .aocr-sidebar .chip,
+    .aocr-sidebar .chip-info,
+    .aocr-sidebar .aocr-sidebar-context__copy {
+        display: none;
+    }
+
+    .aocr-sidebar .sidebar-header.aocr-sidebar-panel {
+        padding-top: 0.62rem;
+        padding-bottom: 0.58rem;
+    }
+
+    .aocr-sidebar .compania-contexto.aocr-sidebar-panel,
+    .aocr-sidebar .aocr-sidebar-context,
+    .aocr-sidebar .aocr-sidebar-alert,
+    .aocr-sidebar .nav-group.aocr-sidebar-section {
+        padding-top: 0.6rem;
+        padding-bottom: 0.56rem;
+    }
+
+    .aocr-sidebar .aocr-sidebar-footer {
+        gap: 0.18rem;
+    }
+}
+
 @media (max-width: 767.98px) {
     .aocr-content-shell {
         padding: 0.95rem 0.75rem 1.25rem;
+    }
+
+    .aocr-sidebar-shell {
+        padding: 0.62rem 0.58rem 0.78rem;
+        gap: 0.52rem;
+    }
+
+    .aocr-sidebar .sidebar-header.aocr-sidebar-panel,
+    .aocr-sidebar .compania-contexto.aocr-sidebar-panel,
+    .aocr-sidebar .aocr-sidebar-context,
+    .aocr-sidebar .aocr-sidebar-alert,
+    .aocr-sidebar .nav-group.aocr-sidebar-section {
+        padding-left: 0.62rem;
+        padding-right: 0.62rem;
+    }
+
+    .aocr-sidebar .nav-group.aocr-sidebar-section {
+        padding-top: 0.66rem;
+        padding-bottom: 0.58rem;
+    }
+
+    .aocr-sidebar .aocr-nav--nested {
+        padding-left: 0.56rem;
+    }
+
+    .aocr-sidebar .aocr-link,
+    .aocr-sidebar .aocr-sidebar-item,
+    .sidebar .nav-link {
+        min-height: 38px;
+        padding: 0.52rem 0.56rem;
+        font-size: 0.82rem;
     }
 
     .aocr-page-title,

@@ -177,7 +177,11 @@
     var puedeRegistrarResultado = (esInspector || esAdministrador) && !inspectorDebeRevisarDocumentos && informeTecnicoFirmadoInspector;
     var puedeRegistrarHallazgo = (User.IsInRole("Inspector") || User.IsInRole("Administrador")) && !inspectorDebeRevisarDocumentos;
     var puedeEditarInformeTecnico = (esInspector || esAdministrador) && !inspectorDebeRevisarDocumentos;
-    var puedeSubirCorreccionSolicitante = User.IsInRole("Solicitante") || User.IsInRole("Administrador");
+    var hallazgosAbiertos = hallazgosLista.Count(h => h != null && !string.Equals((h.Estado ?? string.Empty).Trim(), "CERRADO", System.StringComparison.OrdinalIgnoreCase));
+    var puedeSubirCorreccionSolicitante = (User.IsInRole("Solicitante") || User.IsInRole("Administrador"))
+        && (string.Equals(estadoActualNormalizado, EstadosInspeccion.OBSERVADA, System.StringComparison.OrdinalIgnoreCase)
+            || string.Equals(estadoActualNormalizado, EstadosInspeccion.SUBSANADA, System.StringComparison.OrdinalIgnoreCase)
+            || string.Equals(estadoActualNormalizado, EstadosInspeccion.OBSERVACION_DOCUMENTAL, System.StringComparison.OrdinalIgnoreCase));
     var esSolicitante = User.IsInRole("Solicitante");
     var esDirdac = usuarioTieneAlgunRol(new[] { "DIRDAC", "Direccion", "DirectorGeneral", "Director", "JefaturaTecnica", "Jefe" });
     var puedeAbrirModalInformeTecnico = puedeEditarInformeTecnico || esCoordinadorRevision || esDirdac;
@@ -227,6 +231,10 @@
     var autoOpenLvSignature = string.Equals(autoOpenLvFlow, "sign", System.StringComparison.OrdinalIgnoreCase);
     var autoOpenInformeTecnico = string.Equals(
         Request != null && Request.QueryString != null ? Request.QueryString["autoOpenInformeTecnico"] : null,
+        "true",
+        System.StringComparison.OrdinalIgnoreCase);
+    var autoFocusInformeFirma = string.Equals(
+        Request != null && Request.QueryString != null ? Request.QueryString["autoFocusInformeFirma"] : null,
         "true",
         System.StringComparison.OrdinalIgnoreCase);
     var urlModalInformeTecnico = Model != null && Model.CodigoInspeccion > 0
@@ -373,6 +381,20 @@
     var resultadoInformeNormalizado = InformeTecnicoTemplateHelper.NormalizeResultadoInformeTecnico(resultadoInforme);
     var tipoResultadoInsatisfactorioInforme = InformeTecnicoTemplateHelper.NormalizeTipoResultadoInsatisfactorio(informeTecnico != null ? informeTecnico.TipoResultadoInsatisfactorio : null);
     var mostrarTipoResultadoInsatisfactorioInforme = string.Equals(resultadoInformeNormalizado, "INSATISFACTORIO", System.StringComparison.OrdinalIgnoreCase);
+    var tieneNoConformidadRegistrada = hallazgosLista.Any(h => h != null);
+    var mensajeRutaResultadoInsatisfactorio = string.Equals(tipoResultadoInsatisfactorioInforme, "CON_INSPECCION", System.StringComparison.OrdinalIgnoreCase)
+        ? "La ruta institucional exige NC y posterior solicitud de nueva inspección una vez revisada por coordinación."
+        : (string.Equals(tipoResultadoInsatisfactorioInforme, "SIN_INSPECCION", System.StringComparison.OrdinalIgnoreCase)
+            ? "La ruta institucional exige NC y subsanación documental del RT sin habilitar AOCR."
+            : "La ruta institucional exige NC y definición explícita del siguiente paso antes de continuar.");
+    var coordinacionDebeDecidirRutaNc = puedeGestionarCoordinacion
+        && string.Equals(estadoActualNormalizado, EstadosInspeccion.RESULTADO_NO_SATISFACTORIO, System.StringComparison.OrdinalIgnoreCase)
+        && string.Equals(resultadoInformeNormalizado, "INSATISFACTORIO", System.StringComparison.OrdinalIgnoreCase)
+        && hallazgosAbiertos > 0;
+    var puedeAprobarNcNuevaInspeccion = coordinacionDebeDecidirRutaNc
+        && string.Equals(tipoResultadoInsatisfactorioInforme, "CON_INSPECCION", System.StringComparison.OrdinalIgnoreCase);
+    var puedeAprobarNcSubsanacionDocumental = coordinacionDebeDecidirRutaNc
+        && string.Equals(tipoResultadoInsatisfactorioInforme, "SIN_INSPECCION", System.StringComparison.OrdinalIgnoreCase);
     var observacionCriticaMovil = normalizeVisibleText(!string.IsNullOrWhiteSpace(informeTecnico != null ? informeTecnico.ObservacionDevolucion : null)
         ? informeTecnico.ObservacionDevolucion
         : documentosLista.Where(d => !string.IsNullOrWhiteSpace(d.Observacion)).Select(d => d.Observacion).FirstOrDefault());
@@ -2466,6 +2488,7 @@
 <div id="aocrLvEaeAutoFlowState"
      class="d-none"
      data-auto-open-informe="@(autoOpenInformeTecnico ? "true" : "false")"
+    data-auto-focus-informe-firma="@(autoFocusInformeFirma ? "true" : "false")"
      data-informe-url="@urlModalInformeTecnico"></div>
 
 <div class="inspection-detail-page">
@@ -2735,6 +2758,13 @@
                                                         <i class="fas fa-lock me-1"></i> Abrir LV/EAE
                                                     </button>
                                                 </span>
+                                            }
+
+                                            @if (tieneListaVerificacionVisualizable)
+                                            {
+                                                <a class="btn btn-outline-secondary" href="@listaVerificacionOperacionalEaeUrl" target="_blank" rel="noopener">
+                                                    <i class="fas fa-file-pdf me-1"></i> Ver PDF
+                                                </a>
                                             }
                                         </div>
                                     </div>
@@ -3203,24 +3233,59 @@
 
                     @if (puedeRegistrarResultado)
                     {
-                        using (Html.BeginForm("RegistrarResultado", "Inspeccion", FormMethod.Post, new { @class = "compact-form" }))
+                        if (resultadoInformeNormalizado == "INSATISFACTORIO")
                         {
-                            @Html.AntiForgeryToken()
-                            <input type="hidden" name="id" value="@Model.CodigoInspeccion" />
-                            <div class="form-field">
-                                <label>Resultado</label>
-                                <select name="resultado" class="form-control result-select" required>
-                                    <option value="" selected disabled>Seleccione</option>
-                                    <option value="SATISFACTORIO">Satisfactorio</option>
-                                    <option value="NO_SATISFACTORIO">No satisfactorio</option>
-                                </select>
+                            <div class="alert alert-warning alert-inline mb-3">
+                                <strong>Ruta no satisfactoria activa:</strong> @mensajeRutaResultadoInsatisfactorio
+                                @if (!tieneNoConformidadRegistrada)
+                                {
+                                    <span class="d-block mt-2">Al registrar el resultado, el sistema materializará una NC base desde el Informe Técnico si aún no existe. Puede complementar los hallazgos antes o después desde la sección respectiva.</span>
+                                }
                             </div>
-                            <div class="form-field">
-                                <label>Observación</label>
-                                <input type="text" name="observacion" class="form-control" placeholder="Observación del resultado" />
-                            </div>
-                            <div>
-                                <button class="btn btn-outline-primary" type="submit">Registrar resultado</button>
+
+                            if (puedeRegistrarHallazgo)
+                            {
+                                <div class="mb-3 d-flex flex-wrap gap-2">
+                                    <button class="btn btn-outline-warning" type="button" data-bs-toggle="modal" data-bs-target="#modalHallazgo">
+                                        <i class="fas fa-exclamation-triangle"></i>
+                                        @(tieneNoConformidadRegistrada ? "Complementar NC / hallazgo" : "Registrar NC / hallazgo")
+                                    </button>
+                                    <a class="btn btn-outline-secondary" href="#collapseDetalleHallazgos">
+                                        <i class="fas fa-stream"></i>
+                                        Ver seguimiento de hallazgos
+                                    </a>
+                                </div>
+                            }
+                        }
+
+                        if (resultadoInformeNormalizado == "SATISFACTORIO" || resultadoInformeNormalizado == "INSATISFACTORIO")
+                        {
+                            using (Html.BeginForm("RegistrarResultado", "Inspeccion", FormMethod.Post, new { @class = "compact-form" }))
+                            {
+                                @Html.AntiForgeryToken()
+                                <input type="hidden" name="id" value="@Model.CodigoInspeccion" />
+                                <input type="hidden" name="resultado" value="@resultadoInformeNormalizado" />
+                                <div class="form-field">
+                                    <label>Resultado</label>
+                                    <input type="text" class="form-control result-select" value="@resultadoInformeVisual" readonly />
+                                    @if (resultadoInformeNormalizado == "INSATISFACTORIO" && !string.IsNullOrWhiteSpace(tipoResultadoInsatisfactorioInforme))
+                                    {
+                                        <small class="text-muted d-block mt-1">Tipo: @InformeTecnicoTemplateHelper.GetTipoResultadoInsatisfactorioLabel(tipoResultadoInsatisfactorioInforme)</small>
+                                    }
+                                </div>
+                                <div class="form-field">
+                                    <label>Observación</label>
+                                    <input type="text" name="observacion" class="form-control" placeholder="Observación del resultado" />
+                                </div>
+                                <div>
+                                    <button class="btn btn-outline-primary" type="submit">Registrar resultado</button>
+                                </div>
+                            }
+                        }
+                        else
+                        {
+                            <div class="alert alert-warning alert-inline mb-0">
+                                Debe definir un resultado técnico válido en el Informe Técnico antes de registrar el resultado de la inspección.
                             </div>
                         }
                     }
@@ -3312,12 +3377,12 @@
 
                     @if (esSolicitante)
                     {
-                        <div class="alert alert-inline mb-3">
-                            Revise el informe final, atienda las observaciones registradas y cargue una nueva versión del documento requerido.
-                        </div>
-
                         if (puedeSubirCorreccionSolicitante)
                         {
+                            <div class="alert alert-inline mb-3">
+                                Revise el informe final, atienda las observaciones registradas y cargue una nueva versión del documento requerido.
+                            </div>
+
                             using (Html.BeginForm("SubirDocumentoSolicitante", "Inspeccion", FormMethod.Post, new { enctype = "multipart/form-data", @class = "compact-form mb-3" }))
                             {
                                 @Html.AntiForgeryToken()
@@ -3353,6 +3418,20 @@
                                     </div>
                                 </div>
                             }
+                        }
+                        else if (string.Equals(resultadoInformeNormalizado, "INSATISFACTORIO", System.StringComparison.OrdinalIgnoreCase)
+                            && string.Equals(tipoResultadoInsatisfactorioInforme, "SIN_INSPECCION", System.StringComparison.OrdinalIgnoreCase))
+                        {
+                            <div class="alert alert-warning mb-3">
+                                La subsanación documental del RT se habilitará cuando coordinación apruebe formalmente la NC y devuelva el expediente en observación.
+                            </div>
+                        }
+                        else if (string.Equals(resultadoInformeNormalizado, "INSATISFACTORIO", System.StringComparison.OrdinalIgnoreCase)
+                            && string.Equals(tipoResultadoInsatisfactorioInforme, "CON_INSPECCION", System.StringComparison.OrdinalIgnoreCase))
+                        {
+                            <div class="alert alert-info mb-3">
+                                Este resultado insatisfactorio continúa por la ruta de nueva inspección. No corresponde cargar subsanación documental en esta etapa.
+                            </div>
                         }
                     }
 
@@ -3456,6 +3535,55 @@
 
                 @if (hallazgosLista.Any())
                 {
+                    if (mostrarTipoResultadoInsatisfactorioInforme)
+                    {
+                        <div class="alert alert-warning mb-3">
+                            <strong>NC obligatoria para este branch:</strong> @mensajeRutaResultadoInsatisfactorio
+                            @if (hallazgosAbiertos > 0)
+                            {
+                                <span> Existen @hallazgosAbiertos NC abiertas pendientes de decisión formal.</span>
+                            }
+                        </div>
+
+                        if (puedeGestionarCoordinacion && hallazgosAbiertos <= 0)
+                        {
+                            <div class="alert alert-danger mb-3">
+                                Coordinación no puede decidir la ruta institucional hasta que exista al menos una NC abierta registrada por el inspector.
+                            </div>
+                        }
+
+                        if (puedeAprobarNcNuevaInspeccion || puedeAprobarNcSubsanacionDocumental)
+                        {
+                            <div class="d-flex flex-column flex-md-row gap-2 mb-3">
+                                @if (puedeAprobarNcNuevaInspeccion)
+                                {
+                                    using (Html.BeginForm("SolicitarNueva", "Inspeccion", FormMethod.Post, new { @class = "d-inline" }))
+                                    {
+                                        @Html.AntiForgeryToken()
+                                        <input type="hidden" name="id" value="@Model.CodigoInspeccion" />
+                                        <button type="submit" class="btn btn-outline-danger">
+                                            <i class="fas fa-route"></i>
+                                            Aprobar NC y solicitar nueva inspección
+                                        </button>
+                                    }
+                                }
+
+                                @if (puedeAprobarNcSubsanacionDocumental)
+                                {
+                                    using (Html.BeginForm("AprobarNcSubsanacionDocumental", "Inspeccion", FormMethod.Post, new { @class = "d-inline" }))
+                                    {
+                                        @Html.AntiForgeryToken()
+                                        <input type="hidden" name="id" value="@Model.CodigoInspeccion" />
+                                        <button type="submit" class="btn btn-outline-warning">
+                                            <i class="fas fa-file-circle-check"></i>
+                                            Aprobar NC y habilitar subsanación RT
+                                        </button>
+                                    }
+                                }
+                            </div>
+                        }
+                    }
+
                     <div class="hallazgos-list">
                         @for (var hallazgoIndex = 0; hallazgoIndex < hallazgosLista.Count; hallazgoIndex++)
                         {

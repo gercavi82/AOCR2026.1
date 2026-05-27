@@ -41,6 +41,7 @@ namespace CapaPresentacion.Controllers
         {
             Response.StatusCode = 403;
             Response.TrySkipIisCustomErrors = true;
+            Response.SuppressFormsAuthenticationRedirect = true;
             ViewBag.ErrorCode = 403;
             ViewBag.ErrorMessage = "Acceso denegado";
             ViewBag.ErrorDescription = "No tiene permisos para acceder a este recurso.";

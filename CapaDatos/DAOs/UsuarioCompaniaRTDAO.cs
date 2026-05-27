@@ -131,11 +131,6 @@ WHERE usuario_id = @usuarioId
                 .Select(g => g.First())
                 .ToList();
 
-            if (listaNormalizada.Count == 0)
-            {
-                return false;
-            }
-
             using (var cn = CrearConexion())
             {
                 cn.Open();
@@ -184,6 +179,17 @@ WHERE usuario_id = @usuarioId;";
                             {
                                 cn.Execute("DELETE FROM aocr_usuario_compania_rt WHERE usuario_id = @usuarioId;", new { usuarioId }, tx);
                             }
+
+                            if (listaNormalizada.Count == 0)
+                            {
+                                tx.Commit();
+                                return true;
+                            }
+                        }
+                        else if (listaNormalizada.Count == 0)
+                        {
+                            tx.Rollback();
+                            return false;
                         }
 
                         var setActualizar = new List<string>();

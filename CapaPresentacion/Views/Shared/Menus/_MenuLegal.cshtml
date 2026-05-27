@@ -1,11 +1,65 @@
+@using System
 @model CapaPresentacion.Models.ViewModels.SidebarMenuContextViewModel
+
+@{
+    var currentController = Convert.ToString(ViewContext.RouteData.Values["controller"] ?? string.Empty);
+    var currentAction = Convert.ToString(ViewContext.RouteData.Values["action"] ?? string.Empty);
+    Func<string, string, bool> isCurrent = (controller, action) =>
+        string.Equals(currentController, controller, StringComparison.OrdinalIgnoreCase)
+        && string.Equals(currentAction, action, StringComparison.OrdinalIgnoreCase);
+    Func<string, string> linkClass = variant => string.IsNullOrWhiteSpace(variant)
+        ? "aocr-link aocr-sidebar-item"
+        : "aocr-link aocr-sidebar-item " + variant;
+}
+
 <div class="nav-group aocr-sidebar-section mb-4">
-    <div class="group-title aocr-sidebar-section__title" style="color:#fb923c;">
-        <i class="fas fa-gavel mr-1"></i> Legalización y Emisión
+    <div class="group-title aocr-sidebar-section__title text-warning">
+        <i class="fas fa-gavel mr-1"></i> Coordinación Legal / Emisión
     </div>
     <ul class="aocr-nav">
-        <li><a class="aocr-link aocr-sidebar-item" href="@Url.Action("RevisionVerificacion", "CoordinacionJefatura")"><i class="fas fa-search text-white-50 mr-2"></i> Bandeja Documental</a></li>
-        <li><a class="aocr-link aocr-sidebar-item" href="@Url.Action("RevisarLegalizacion", "SolicitudAOCR")"><i class="fas fa-gavel text-white-50 mr-2"></i> Legalizar AOCR</a></li>
-        <li><a class="aocr-link aocr-sidebar-item" href="@Url.Action("GenerarCertificados", "CoordinacionLegal")"><i class="fas fa-file-contract text-white-50 mr-2"></i> Generar Certificados AOCR</a></li>
+        <li class="aocr-sidebar-subgroup">
+            <span class="aocr-sidebar-subgroup__label">
+                <i class="fas fa-folder-open text-white-50 mr-1"></i> Solicitud Formal AOCR
+                <span class="aocr-sidebar-item__badge">M3</span>
+            </span>
+            <ul class="aocr-nav aocr-nav--nested">
+                <li>
+                    <a class="@linkClass(isCurrent("CoordinacionJefatura", "RevisionVerificacion") ? "aocr-sidebar-item--active" : string.Empty)" href="@Url.Action("RevisionVerificacion", "CoordinacionJefatura")">
+                        <i class="fas fa-search text-white-50 mr-2"></i>
+                        <span class="aocr-sidebar-item__content">
+                            <span class="aocr-sidebar-item__title">Bandeja documental</span>
+                            <span class="aocr-sidebar-item__meta">Consulta de expedientes AOCR y control documental previo a emisión.</span>
+                        </span>
+                    </a>
+                </li>
+            </ul>
+        </li>
+
+        <li class="aocr-sidebar-subgroup">
+            <span class="aocr-sidebar-subgroup__label">
+                <i class="fas fa-certificate text-white-50 mr-1"></i> AOCR y Condiciones y Limitaciones
+                <span class="aocr-sidebar-item__badge">M8</span>
+            </span>
+            <ul class="aocr-nav aocr-nav--nested">
+                <li>
+                    <a class="@linkClass(isCurrent("SolicitudAOCR", "RevisarLegalizacion") ? "aocr-sidebar-item--active aocr-sidebar-item--primary" : "aocr-sidebar-item--primary")" href="@Url.Action("RevisarLegalizacion", "SolicitudAOCR")">
+                        <i class="fas fa-gavel text-white-50 mr-2"></i>
+                        <span class="aocr-sidebar-item__content">
+                            <span class="aocr-sidebar-item__title">Revisar legalización</span>
+                            <span class="aocr-sidebar-item__meta">Control jurídico final previo a AOCR legalizada y emitida.</span>
+                        </span>
+                    </a>
+                </li>
+                <li>
+                    <a class="@linkClass(isCurrent("CoordinacionLegal", "GenerarCertificados") ? "aocr-sidebar-item--active" : string.Empty)" href="@Url.Action("GenerarCertificados", "CoordinacionLegal")">
+                        <i class="fas fa-file-contract text-white-50 mr-2"></i>
+                        <span class="aocr-sidebar-item__content">
+                            <span class="aocr-sidebar-item__title">Certificados AOCR</span>
+                            <span class="aocr-sidebar-item__meta">Emisión de certificados y cierre documental del acto administrativo.</span>
+                        </span>
+                    </a>
+                </li>
+            </ul>
+        </li>
     </ul>
 </div>

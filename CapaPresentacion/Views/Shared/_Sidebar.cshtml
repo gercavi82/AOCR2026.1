@@ -15,6 +15,7 @@
         var nombreHeader = (Session["NombreUsuario"] as string ?? string.Empty).Trim();
         var correoHeader = (Session["Correo"] as string ?? string.Empty).Trim();
         var rolHeaderTexto = RoleGroupingHelper.ToDisplayName(rolHeader);
+        var rolSesionCrudo = (Session["Rol"] as string ?? string.Empty).Trim();
     }
 
     <div class="sidebar-header aocr-sidebar-panel text-center">
@@ -32,6 +33,7 @@
     @{
         var rolActual = RoleGroupingHelper.NormalizeSelectedRole(Session["Rol"] as string ?? string.Empty);
         var rolesRaw = RoleGroupingHelper.ExtractRoles(Session["RolesRaw"] ?? Session["Roles"], Session["Rol"] as string);
+        var rolesDisponibles = RoleGroupingHelper.BuildUnifiedRoles(rolesRaw);
         var sinRolesRaw = rolesRaw.Count == 0;
         int idUsuario = 0;
         var sessionUserId = Session["IdUsuario"] ?? Session["UserId"];
@@ -96,7 +98,7 @@
         bool esInspectorRol = RoleGroupingHelper.IsInspectorTecnico(rolActual)
             && (sinRolesRaw || RoleGroupingHelper.HasAnyRawRole(rolesRaw, "Inspector", "Tecnico", "EvaluadorTecnico"));
         bool esCoordinadorRol = RoleGroupingHelper.IsCoordinacion(rolActual)
-            && (sinRolesRaw || RoleGroupingHelper.HasAnyRawRole(rolesRaw, "Coordinador", "CoordinadorInspecciones"));
+            && (sinRolesRaw || RoleGroupingHelper.HasAnyRawRole(rolesRaw, "Coordinacion", "Coordinador", "CoordinadorInspecciones"));
         bool esFinancieroRol = RoleGroupingHelper.IsFinanciero(rolActual)
             && (sinRolesRaw || RoleGroupingHelper.HasAnyRawRole(rolesRaw, "Financiero", "CoordinadorFinanciero", "DirectorFinanciero"));
         bool esLegalRol = RoleGroupingHelper.IsCoordinacion(rolActual)
@@ -117,22 +119,22 @@
             ? "Debe generar la Orden de Recaudación para continuar con el proceso AOCR."
             : "El módulo de Solicitud AOCR se habilitará cuando Financiero apruebe el pago correspondiente.";
 
-        bool puedeSolicitante      = esAdministrador || esSolicitanteRol;
-        bool puedeRt               = esAdministrador || esRepresentanteRtRol;
-        bool puedeInspector        = esAdministrador || esInspectorRol;
-        bool puedeCoordinador      = esAdministrador || esCoordinadorRol;
+        bool puedeSolicitante      = esSolicitanteRol;
+        bool puedeRt               = esRepresentanteRtRol;
+        bool puedeInspector        = esInspectorRol;
+        bool puedeCoordinador      = esCoordinadorRol;
         bool puedeTecnica          = puedeInspector || puedeCoordinador; // alias compatibilidad
-        bool puedeFinanciero       = esAdministrador || esFinancieroRol;
-        bool puedeLegal            = esAdministrador || esLegalRol;
-        bool puedeDirdac           = esAdministrador || esDirdacRol;
+        bool puedeFinanciero       = esFinancieroRol;
+        bool puedeLegal            = esLegalRol;
+        bool puedeDirdac           = esDirdacRol;
         bool puedeDireccion        = puedeDirdac; // alias compatibilidad
-        bool puedeCoordinacionJefatura = esAdministrador || esCoordinacionJefaturaRol;
+        bool puedeCoordinacionJefatura = esCoordinacionJefaturaRol;
         bool puedeAprobarUsuarios  = esAdministrador || esAprobadorUsuariosRol;
         bool puedeAdministracion   = esAdministrador;
-        bool puedeValidarAocr      = esAdministrador || esDirdacRol || esDirectorGeneralRol;
-        bool puedeLegalizarEmitirAocr = esAdministrador || esLegalRol || esDirectorGeneralRol;
-        bool puedeAprobacionFinalDirdac = esAdministrador || esDirdacRol || esDirectorGeneralRol;
-        bool puedeCoordinadorOperativo = esAdministrador || esCoordinadorRol;
+        bool puedeValidarAocr      = esDirdacRol || esDirectorGeneralRol;
+        bool puedeLegalizarEmitirAocr = esLegalRol || esDirectorGeneralRol;
+        bool puedeAprobacionFinalDirdac = esDirdacRol || esDirectorGeneralRol;
+        bool puedeCoordinadorOperativo = esCoordinadorRol;
         bool tieneNavegacionRol = puedeSolicitante
             || puedeRt
             || puedeInspector
@@ -146,9 +148,73 @@
         // Módulo de órdenes visible solo para Solicitante/Operador externo
         bool mostrarModuloOrdenes = esSolicitanteRol;
 
+        Func<object, string[], string> leerPropiedadTexto = (source, nombres) =>
+        {
+            if (source == null || nombres == null)
+            {
+                return string.Empty;
+            }
+
+            var sourceType = source.GetType();
+            foreach (var nombre in nombres)
+            {
+                if (string.IsNullOrWhiteSpace(nombre))
+                {
+                    continue;
+                }
+
+                var property = sourceType.GetProperty(nombre);
+                if (property == null)
+                {
+                    continue;
+                }
+
+                try
+                {
+                    var rawValue = property.GetValue(source, null);
+                    var textValue = Convert.ToString(rawValue ?? string.Empty).Trim();
+                    if (!string.IsNullOrWhiteSpace(textValue))
+                    {
+                        return textValue;
+                    }
+                }
+                catch
+                {
+                }
+            }
+
+            return string.Empty;
+        };
+        Func<string[], string> resolverTextoCompania = nombres =>
+        {
+            if (nombres == null)
+            {
+                return string.Empty;
+            }
+
+            foreach (var nombre in nombres)
+            {
+                var value = Convert.ToString(ViewData[nombre] ?? string.Empty).Trim();
+                if (!string.IsNullOrWhiteSpace(value))
+                {
+                    return value;
+                }
+            }
+
+            return leerPropiedadTexto(Model, nombres);
+        };
         var companiasRtAsignadas = new List<UsuarioCompaniaRT>();
         var codigoCompaniaActiva = CompaniaActivaSessionHelper.ObtenerCodigo(Session);
+        if (string.IsNullOrWhiteSpace(codigoCompaniaActiva))
+        {
+            codigoCompaniaActiva = resolverTextoCompania(new[] { "CompaniaActivaCodigo", "CodigoCompaniaActiva", "CompaniaCodigo", "CodigoCompania" });
+        }
+
         var nombreCompaniaActiva = CompaniaActivaSessionHelper.ObtenerNombre(Session);
+        if (string.IsNullOrWhiteSpace(nombreCompaniaActiva))
+        {
+            nombreCompaniaActiva = resolverTextoCompania(new[] { "CompaniaActivaNombre", "NombreCompaniaActiva", "CompaniaNombre", "NombreCompania", "Compania" });
+        }
         var mostrarSelectorCompaniaRt = false;
         var tieneSolicitudRtHabilitada = false;
         Func<string, List<string>> parsearCompaniasLegacy = raw =>
@@ -261,19 +327,45 @@
         var menuContext = new SidebarMenuContextViewModel
         {
             EsAdministrador = esAdministrador,
+            EsSolicitanteRol = esSolicitanteRol,
             RequiereOrden = requiereOrden,
             TieneOrdenBorrador = tieneOrdenBorrador,
             TieneOrdenPendienteProceso = tieneOrdenPendienteProceso,
             TieneOrdenPendienteComprobante = tieneOrdenPendienteComprobante,
             TieneAccesoSolicitudRt = tieneAccesoSolicitudRt,
             EsRepresentanteRtRol = esRepresentanteRtRol,
+            EsInspectorRol = esInspectorRol,
+            EsCoordinadorRol = esCoordinadorRol,
+            EsFinancieroRol = esFinancieroRol,
+            EsDireccionRol = esDirdacRol,
+            EsLegalRol = esLegalRol,
             PuedeAdministracion = puedeAdministracion,
             PuedeAprobarUsuarios = puedeAprobarUsuarios,
             MensajeBloqueoRtSidebar = mensajeBloqueoRtSidebar
         };
+
+        var currentController = Convert.ToString(ViewContext.RouteData.Values["controller"] ?? string.Empty);
+        var currentAction = Convert.ToString(ViewContext.RouteData.Values["action"] ?? string.Empty);
+        Func<string, string, bool> isCurrent = (controller, action) =>
+            string.Equals(currentController, controller, StringComparison.OrdinalIgnoreCase)
+            && string.Equals(currentAction, action, StringComparison.OrdinalIgnoreCase);
+        Func<string, string> linkClass = variant => string.IsNullOrWhiteSpace(variant)
+            ? "aocr-link aocr-sidebar-item"
+            : "aocr-link aocr-sidebar-item " + variant;
     }
 
-    @if (!esAdministrador)
+    @if (rolesDisponibles.Count > 1)
+    {
+        <div class="aocr-sidebar-panel aocr-sidebar-context mb-3">
+            <div class="aocr-sidebar-context__eyebrow">Modo actual</div>
+            <div class="aocr-sidebar-context__title">@(!string.IsNullOrWhiteSpace(rolHeaderTexto) ? rolHeaderTexto : "Perfil institucional")</div>
+            <div class="aocr-sidebar-context__copy">
+                Tiene @rolesDisponibles.Count perfil(es) disponible(s). Use el selector de rol para cambiar de módulo sin saturar el menú lateral.
+            </div>
+        </div>
+    }
+
+    @if (requiereOrden)
     {
         <!-- Indicador de estado de orden fijo en el sidebar -->
         var mostrarOrdenComoHabilitada = !requiereOrden || tieneAccesoSolicitudRt;
@@ -357,7 +449,73 @@
     }
 
     <div class="menu-container aocr-sidebar-sections">
-        <div class="section-title aocr-sidebar-title">Navegación por Rol</div>
+        <div class="section-title aocr-sidebar-title">Navegación funcional</div>
+
+        <div class="nav-group aocr-sidebar-section mb-4">
+            <div class="group-title aocr-sidebar-section__title text-info">
+                <i class="fas fa-compass mr-1"></i> Inicio
+            </div>
+            <ul class="aocr-nav">
+                <li>
+                    <a class="@linkClass(isCurrent("Home", "Index") ? "aocr-sidebar-item--active aocr-sidebar-item--primary" : "aocr-sidebar-item--primary")" href="@Url.Action("Index", "Home")">
+                        <i class="fas fa-house text-info mr-2"></i>
+                        <span class="aocr-sidebar-item__content">
+                            <span class="aocr-sidebar-item__title">Panel principal AOCR</span>
+                            <span class="aocr-sidebar-item__meta">Acceso general al portal institucional y notificaciones.</span>
+                        </span>
+                    </a>
+                </li>
+
+                @if (esInspectorRol)
+                {
+                    <li>
+                        <a class="@linkClass(isCurrent("Dashboard", "Inspector") ? "aocr-sidebar-item--active" : string.Empty)" href="@Url.Action("Inspector", "Dashboard")">
+                            <i class="fas fa-gauge-high text-warning mr-2"></i>
+                            <span class="aocr-sidebar-item__content">
+                                <span class="aocr-sidebar-item__title">Inicio inspector</span>
+                                <span class="aocr-sidebar-item__meta">Resumen de inspecciones asignadas y alertas operativas.</span>
+                            </span>
+                        </a>
+                    </li>
+                }
+                else if (esCoordinadorRol || esLegalRol || esDirdacRol)
+                {
+                    <li>
+                        <a class="@linkClass(isCurrent("CoordinacionJefatura", "DashboardInspeccion") ? "aocr-sidebar-item--active" : string.Empty)" href="@Url.Action("DashboardInspeccion", "CoordinacionJefatura")">
+                            <i class="fas fa-table-columns text-white-50 mr-2"></i>
+                            <span class="aocr-sidebar-item__content">
+                                <span class="aocr-sidebar-item__title">Inicio institucional</span>
+                                <span class="aocr-sidebar-item__meta">Seguimiento integral de inspección, documental, firmas y AOCR.</span>
+                            </span>
+                        </a>
+                    </li>
+                }
+                else if (esFinancieroRol)
+                {
+                    <li>
+                        <a class="@linkClass(isCurrent("Financiero", "Dashboard") ? "aocr-sidebar-item--active" : string.Empty)" href="@Url.Action("Dashboard", "Financiero")">
+                            <i class="fas fa-chart-line text-success mr-2"></i>
+                            <span class="aocr-sidebar-item__content">
+                                <span class="aocr-sidebar-item__title">Inicio financiero</span>
+                                <span class="aocr-sidebar-item__meta">Control de órdenes, pagos, aprobaciones y reportes.</span>
+                            </span>
+                        </a>
+                    </li>
+                }
+                else if (esAdministrador)
+                {
+                    <li>
+                        <a class="@linkClass(isCurrent("Health", "Dashboard") ? "aocr-sidebar-item--active" : string.Empty)" href="@Url.Action("Dashboard", "Health")">
+                            <i class="fas fa-heart-pulse text-warning mr-2"></i>
+                            <span class="aocr-sidebar-item__content">
+                                <span class="aocr-sidebar-item__title">Inicio de mantenimiento</span>
+                                <span class="aocr-sidebar-item__meta">Monitoreo de salud, resincronización y herramientas administrativas.</span>
+                            </span>
+                        </a>
+                    </li>
+                }
+            </ul>
+        </div>
 
         @if (!tieneNavegacionRol)
         {
@@ -412,13 +570,8 @@
     <div class="aocr-sidebar-divider"></div>
 
     <div class="aocr-sidebar-footer mt-auto">
+        <div class="section-title aocr-sidebar-title">Atajos</div>
         <ul class="aocr-nav">
-            <li>
-                <a class="aocr-link aocr-sidebar-item" href="@Url.Action("Index", "Home")">
-                    <i class="fas fa-home text-info mr-2"></i> Dashboard Inicio
-                </a>
-            </li>
-
             @if (!tieneAccesoSolicitudRt && requiereOrden)
             {
                 <li>

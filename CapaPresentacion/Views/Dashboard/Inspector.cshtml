@@ -7,13 +7,31 @@
 
     var ultimas = Model.UltimasInspecciones ?? new System.Collections.Generic.List<CapaPresentacion.Models.ViewModels.InspectorInspeccionItemViewModel>();
     var alertas = Model.AlertasUrgentes ?? new System.Collections.Generic.List<CapaPresentacion.Models.ViewModels.InspectorAlertaViewModel>();
+    var estadosDisponibles = Model.EstadosDisponibles ?? new System.Collections.Generic.List<string>();
+    var tendenciaValores = Model.TendenciaAtencionValores ?? new System.Collections.Generic.List<int>();
+    var tendenciaEtiquetas = Model.TendenciaAtencionEtiquetas ?? new System.Collections.Generic.List<string>();
 
     var totalOperativo = Math.Max(1, Model.InspeccionesAsignadas);
-    var porcentajePendientes = Math.Round((decimal)Model.InspeccionesPendientes * 100m / totalOperativo, 0);
+    var porcentajeEnEjecucion = Math.Round((decimal)Model.InspeccionesEnEjecucion * 100m / totalOperativo, 0);
     var porcentajeCerradas = Math.Round((decimal)Model.InspeccionesCerradas * 100m / totalOperativo, 0);
     var porcentajeNc = Math.Round((decimal)Model.InspeccionesConNc * 100m / totalOperativo, 0);
     var porcentajeRequierenNueva = Math.Round((decimal)Model.InspeccionesRequierenNueva * 100m / totalOperativo, 0);
     var porcentajeDocsPendientes = Math.Round((decimal)Model.DocumentosPendientesRevision * 100m / totalOperativo, 0);
+    var tendenciaMaxima = tendenciaValores.Any() ? Math.Max(1, tendenciaValores.Max()) : 0;
+    var puntosTendencia = new System.Collections.Generic.List<string>();
+    var marcadoresTendencia = new System.Collections.Generic.List<string>();
+    if (tendenciaValores.Any())
+    {
+        var totalPuntos = tendenciaValores.Count;
+        for (var indice = 0; indice < totalPuntos; indice++)
+        {
+            var x = totalPuntos == 1 ? 150m : decimal.Round((290m / (totalPuntos - 1)) * indice + 5m, 2);
+            var porcentaje = tendenciaMaxima <= 0 ? 0m : (decimal)tendenciaValores[indice] / tendenciaMaxima;
+            var y = decimal.Round(122m - (porcentaje * 98m), 2);
+            puntosTendencia.Add(x.ToString(System.Globalization.CultureInfo.InvariantCulture) + "," + y.ToString(System.Globalization.CultureInfo.InvariantCulture));
+            marcadoresTendencia.Add("<circle cx=\"" + x.ToString(System.Globalization.CultureInfo.InvariantCulture) + "\" cy=\"" + y.ToString(System.Globalization.CultureInfo.InvariantCulture) + "\" r=\"4.5\" fill=\"#47b3df\"></circle>");
+        }
+    }
 
     Func<int, int> calcularAltura = valor =>
     {
@@ -338,6 +356,25 @@
         margin-bottom: 0;
     }
 
+    .insp-empty-state {
+        display: grid;
+        place-items: center;
+        min-height: 155px;
+        color: var(--insp-muted);
+        text-align: center;
+        font-size: 0.9rem;
+        border: 1px dashed rgba(17, 52, 73, 0.14);
+        border-radius: 14px;
+        background: rgba(255, 255, 255, 0.58);
+    }
+
+    .insp-summary-strip {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-bottom: 12px;
+    }
+
     @@media (max-width: 1200px) {
         .insp-grid,
         .insp-grid-secondary,
@@ -387,31 +424,45 @@
     <div class="insp-filter-card mb-3">
         @using (Html.BeginForm("Inspector", "Dashboard", System.Web.Mvc.FormMethod.Get, new { @class = "row g-2" }))
         {
-            <div class="col-md-2">
+            <div class="col-12 col-md-2">
                 <label class="form-label">Desde</label>
                 <input type="date" name="fechaDesde" value="@(Model.FechaDesde.HasValue ? Model.FechaDesde.Value.ToString("yyyy-MM-dd") : "")" class="form-control" />
             </div>
-            <div class="col-md-2">
+            <div class="col-12 col-md-2">
                 <label class="form-label">Hasta</label>
                 <input type="date" name="fechaHasta" value="@(Model.FechaHasta.HasValue ? Model.FechaHasta.Value.ToString("yyyy-MM-dd") : "")" class="form-control" />
             </div>
-            <div class="col-md-2">
+            <div class="col-12 col-md-2">
                 <label class="form-label">Estado</label>
-                <input type="text" name="estado" value="@Model.Estado" class="form-control" placeholder="Ej: EN_INSPECCION" />
+                <input type="text" name="estado" value="@Model.Estado" class="form-control" placeholder="Ej: EN_INSPECCION" list="inspEstadosDisponibles" />
+                @if (estadosDisponibles.Any())
+                {
+                    <datalist id="inspEstadosDisponibles">
+                        @foreach (var item in estadosDisponibles)
+                        {
+                            <option value="@item"></option>
+                        }
+                    </datalist>
+                }
             </div>
-            <div class="col-md-3">
+            <div class="col-12 col-md-3">
                 <label class="form-label">Compañía</label>
                 <input type="text" name="compania" value="@Model.Compania" class="form-control" placeholder="OACI o nombre" />
             </div>
-            <div class="col-md-2">
+            <div class="col-12 col-md-2">
                 <label class="form-label">Solicitud</label>
                 <input type="number" name="codigoSolicitud" value="@(Model.CodigoSolicitud.HasValue ? Model.CodigoSolicitud.Value.ToString() : "")" class="form-control" />
             </div>
-            <div class="col-md-1 d-flex align-items-end">
+            <div class="col-12 col-md-1 d-flex align-items-end">
                 <button type="submit" class="btn btn-primary w-100">Filtrar</button>
             </div>
         }
     </div>
+
+    @if (Model.SinResultadosFiltro)
+    {
+        <div class="alert alert-light border mb-3">No existen inspecciones con los filtros seleccionados.</div>
+    }
 
     <div class="insp-grid">
         <div class="insp-card insp-blue">
@@ -424,10 +475,10 @@
         <div class="insp-card tall">
             <div class="insp-label">Ejecución Activa</div>
             <div class="insp-ring-wrap">
-                <div class="insp-ring" style="--ring-percent:@porcentajePendientes; --ring-color:#47b3df;"></div>
+                <div class="insp-ring" style="--ring-percent:@porcentajeEnEjecucion; --ring-color:#47b3df;"></div>
                 <div class="insp-ring-center">
-                    <strong>@Model.InspeccionesPendientes</strong>
-                    <span>Pendientes</span>
+                    <strong>@Model.InspeccionesEnEjecucion</strong>
+                    <span>En ejecución</span>
                 </div>
                 <ul class="insp-legend">
                     <li><span><span class="insp-dot" style="background:#47b3df;"></span>Pendientes</span><strong>@Model.InspeccionesPendientes</strong></li>
@@ -501,16 +552,24 @@
 
         <div class="insp-card">
             <div class="insp-label">Tendencia de Atención</div>
-            <div class="insp-line-chart">
-                <svg viewBox="0 0 300 150" preserveAspectRatio="none" aria-hidden="true">
-                    <line x1="0" y1="128" x2="300" y2="128" stroke="#e8eef3" stroke-width="2"></line>
-                    <polyline fill="none" stroke="#47b3df" stroke-width="4" points="10,112 55,92 95,98 135,62 175,76 215,44 255,36 290,24"></polyline>
-                    <circle cx="135" cy="62" r="5" fill="#47b3df"></circle>
-                    <circle cx="215" cy="44" r="5" fill="#47b3df"></circle>
-                    <circle cx="290" cy="24" r="5" fill="#47b3df"></circle>
-                </svg>
-            </div>
-            <div class="insp-mini-note"><span>Ciclo reciente</span><span>Mejor desempeño operativo</span></div>
+            @if (!tendenciaValores.Any())
+            {
+                <div class="insp-empty-state">No existe histórico suficiente para graficar la tendencia con los filtros actuales.</div>
+            }
+            else
+            {
+                <div class="insp-line-chart">
+                    <svg viewBox="0 0 300 150" preserveAspectRatio="none" aria-hidden="true">
+                        <line x1="0" y1="128" x2="300" y2="128" stroke="#e8eef3" stroke-width="2"></line>
+                        <polyline fill="none" stroke="#47b3df" stroke-width="4" points="@string.Join(" ", puntosTendencia)"></polyline>
+                        @Html.Raw(string.Join(string.Empty, marcadoresTendencia))
+                    </svg>
+                </div>
+                <div class="insp-mini-note">
+                    <span>@(tendenciaEtiquetas.Any() ? tendenciaEtiquetas.First() : "Inicio")</span>
+                    <span>@(tendenciaEtiquetas.Any() ? tendenciaEtiquetas.Last() : "Actual")</span>
+                </div>
+            }
         </div>
 
         <div class="insp-card insp-pink">
@@ -524,6 +583,11 @@
     <div class="insp-grid-tertiary">
         <div class="insp-card">
             <div class="insp-label">Alertas Urgentes</div>
+            <div class="insp-summary-strip">
+                <span class="insp-chip"><i class="fas fa-folder-open"></i> Docs pendientes: @Model.DocumentosPendientesRevision</span>
+                <span class="insp-chip"><i class="fas fa-file-signature"></i> Informes pendientes: @Model.InformesTecnicosPendientes</span>
+                <span class="insp-chip"><i class="fas fa-rotate"></i> Subsanadas RT: @Model.DocumentacionSubsanadaRt</span>
+            </div>
             @if (!alertas.Any())
             {
                 <p class="insp-note mb-0">No existen alertas urgentes en este momento.</p>

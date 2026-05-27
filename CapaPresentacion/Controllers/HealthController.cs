@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Web.Mvc;
 using CapaDatos.Infrastructure;
 using CapaDatos.Services;
@@ -426,6 +427,116 @@ namespace CapaPresentacion.Controllers
             {
                 return Json(new { success = false, mensaje = ex.Message });
             }
+        }
+
+        [HttpPost]
+        [Authorize(Roles = "Administrador")]
+        [ValidateAntiForgeryToken]
+        public ActionResult PreviewLegacyAocrCandidates(int? limit)
+        {
+            try
+            {
+                var service = new GeneracionAOCRService();
+                var result = service.InventariarCasosLegacyPendientesAocr(limit ?? 200);
+
+                return Json(new
+                {
+                    success = true,
+                    message = result.ListasParaResync > 0
+                        ? "Consulta AOCR legacy completada."
+                        : "No se encontraron solicitudes legacy listas para resincronizar.",
+                    limit = result.LimiteAplicado,
+                    legacyPendingCount = result.LegacyPendientes,
+                    readyCount = result.ListasParaResync,
+                    alreadyGeneratedCount = result.YaGeneradas,
+                    missingApprovedReportCount = result.SinInformeAprobado,
+                    candidates = result.Candidatas.Select(c => new
+                    {
+                        solicitudId = c.CodigoSolicitud,
+                        numeroSolicitud = c.NumeroSolicitud,
+                        estadoSolicitud = c.EstadoSolicitud,
+                        inspeccionId = c.CodigoInspeccion,
+                        informeId = c.CodigoInforme,
+                        estadoInforme = c.EstadoInforme
+                    })
+                });
+            }
+            catch (Exception ex)
+            {
+                return Json(new { success = false, message = ex.Message });
+            }
+        }
+
+        [HttpPost]
+        [Authorize(Roles = "Administrador")]
+        [ValidateAntiForgeryToken]
+        public ActionResult ResyncLegacyAocrCases(int? limit)
+        {
+            try
+            {
+                var usuarioId = ObtenerUsuarioActualId();
+                if (usuarioId <= 0)
+                {
+                    return Json(new { success = false, message = "No se pudo resolver el usuario actual para la resincronización AOCR legacy." });
+                }
+
+                var service = new GeneracionAOCRService();
+                var result = service.ResincronizarCasosLegacyPendientesAocr(usuarioId, ObtenerUsuarioActualNombre(), limit ?? 200);
+
+                return Json(new
+                {
+                    success = true,
+                    message = result.Candidatas > 0
+                        ? "Resincronización AOCR legacy ejecutada."
+                        : "No se encontraron solicitudes legacy pendientes de resincronizar.",
+                    limit = result.LimiteAplicado,
+                    candidateCount = result.Candidatas,
+                    syncedCount = result.Sincronizadas,
+                    alreadyGeneratedCount = result.YaGeneradas,
+                    missingApprovedReportCount = result.SinInformeAprobado,
+                    errorCount = result.Errores,
+                    syncedIds = result.SolicitudesSincronizadas,
+                    errors = result.MensajesError
+                });
+            }
+            catch (Exception ex)
+            {
+                return Json(new { success = false, message = ex.Message });
+            }
+        }
+
+        private int ObtenerUsuarioActualId()
+        {
+            int id;
+            object valor = Session != null ? (Session["IdUsuario"] ?? Session["UserId"]) : null;
+            if (valor != null && int.TryParse(valor.ToString(), out id) && id > 0)
+            {
+                return id;
+            }
+
+            valor = Session != null ? Session["CodigoUsuario"] : null;
+            if (valor != null && int.TryParse(valor.ToString(), out id) && id > 0)
+            {
+                return id;
+            }
+
+            return 0;
+        }
+
+        private string ObtenerUsuarioActualNombre()
+        {
+            var nombreSesion = Session != null ? Session["NombreUsuario"] as string : null;
+            if (!string.IsNullOrWhiteSpace(nombreSesion))
+            {
+                return nombreSesion.Trim();
+            }
+
+            if (User != null && User.Identity != null && User.Identity.IsAuthenticated && !string.IsNullOrWhiteSpace(User.Identity.Name))
+            {
+                return User.Identity.Name.Trim();
+            }
+
+            return "sistema";
         }
 
         #endregion

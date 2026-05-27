@@ -1,0 +1,7 @@
+@model CapaPresentacion.Models.SolicitudAOCRViewModel
+@{
+    ViewBag.Title = "Solicitud AOCR";
+    Layout = "~/Views/Shared/_LayoutAOCR.cshtml";
+}
+
+@Html.Partial("_FormularioEmisionAOCR", Model)

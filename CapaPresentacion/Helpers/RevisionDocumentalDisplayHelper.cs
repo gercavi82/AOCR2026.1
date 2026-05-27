@@ -1,9 +1,47 @@
 using System;
+using System.Collections.Generic;
+using System.Linq;
 
 namespace CapaPresentacion.Helpers
 {
     public static class RevisionDocumentalDisplayHelper
     {
+        private sealed class TipoDocumentoOrdenDef
+        {
+            public TipoDocumentoOrdenDef(string codigo, string nombre, int prioridad, params string[] equivalencias)
+            {
+                Codigo = codigo;
+                Nombre = nombre;
+                Prioridad = prioridad;
+                Equivalencias = equivalencias ?? new string[0];
+            }
+
+            public string Codigo { get; private set; }
+            public string Nombre { get; private set; }
+            public int Prioridad { get; private set; }
+            public string[] Equivalencias { get; private set; }
+        }
+
+        private static readonly TipoDocumentoOrdenDef[] TiposDocumentoOrdenados = new[]
+        {
+            new TipoDocumentoOrdenDef("COMPROBANTE_PAGO", "Comprobante de pago", 1,
+                "COMPROBANTE_PAGO", "COMPROBANTE_DE_PAGO"),
+            new TipoDocumentoOrdenDef("COPIA_AOC_VALIDA", "Copia AOC válida", 2,
+                "COPIA_AOC_VALIDA", "COPIA_AOC", "AOC", "AOC_VALIDA"),
+            new TipoDocumentoOrdenDef("OPSPECS_ESPECIFICACIONES_OPERACIONALES", "OpSpecs / Especificaciones operacionales", 3,
+                "OPSPECS_ESPECIFICACIONES_OPERACIONALES", "OPSPECS", "OP_SPECS", "ESPECIFICACIONES_OPERACIONALES"),
+            new TipoDocumentoOrdenDef("MANUAL_OPERACIONES", "Manual de operaciones", 4,
+                "MANUAL_OPERACIONES", "MANUAL_DE_OPERACIONES"),
+            new TipoDocumentoOrdenDef("PERMISO_OPERACION_CNAC", "Permiso de operación CNAC", 5,
+                "PERMISO_OPERACION_CNAC", "PERMISO_OPERACION"),
+            new TipoDocumentoOrdenDef("COPIA_CERTIFICADA_PODER_REPRESENTANTE_ECUADOR", "Copia certificada del poder del representante en Ecuador", 6,
+                "COPIA_CERTIFICADA_PODER_REPRESENTANTE_ECUADOR", "PODER_REPRESENTANTE_ECUADOR", "COPIA_CERTIFICADA_PODER_REPRESENTANTE", "PODER_REPRESENTANTE"),
+            new TipoDocumentoOrdenDef("CERTIFICADO_AERONAVEGABILIDAD", "Certificado de aeronavegabilidad", 7,
+                "CERTIFICADO_AERONAVEGABILIDAD"),
+            new TipoDocumentoOrdenDef("CERTIFICADO_RUIDO_AERONAVES_EAE", "Certificado de ruido aeronaves EAE", 8,
+                "CERTIFICADO_RUIDO_AERONAVES_EAE", "CERTIFICADO_RUIDO", "CERTIFICADO_RUIDO_AERONAVES")
+        };
+
         public static bool IsAcceptedState(string estado)
         {
             var normalized = Normalize(estado);
@@ -69,9 +107,81 @@ namespace CapaPresentacion.Helpers
             return "badge bg-secondary";
         }
 
+        public static string GetCanonicalDocumentType(string tipoDocumento)
+        {
+            var normalized = NormalizeDocumentTypeKey(tipoDocumento);
+            if (string.IsNullOrWhiteSpace(normalized))
+            {
+                return "OTRO";
+            }
+
+            foreach (var def in TiposDocumentoOrdenados)
+            {
+                if (string.Equals(def.Codigo, normalized, StringComparison.OrdinalIgnoreCase)
+                    || def.Equivalencias.Any(alias => string.Equals(alias, normalized, StringComparison.OrdinalIgnoreCase)))
+                {
+                    return def.Codigo;
+                }
+            }
+
+            return "OTRO";
+        }
+
+        public static string GetDocumentGroupKey(string tipoDocumento)
+        {
+            var canonical = GetCanonicalDocumentType(tipoDocumento);
+            if (!string.Equals(canonical, "OTRO", StringComparison.OrdinalIgnoreCase))
+            {
+                return canonical;
+            }
+
+            var normalized = NormalizeDocumentTypeKey(tipoDocumento);
+            return string.IsNullOrWhiteSpace(normalized) ? "OTRO" : "OTRO_" + normalized;
+        }
+
+        public static int GetDocumentPriority(string tipoDocumento)
+        {
+            var canonical = GetCanonicalDocumentType(tipoDocumento);
+            var def = TiposDocumentoOrdenados.FirstOrDefault(item => string.Equals(item.Codigo, canonical, StringComparison.OrdinalIgnoreCase));
+            return def != null ? def.Prioridad : 99;
+        }
+
+        public static string GetDocumentDisplayName(string tipoDocumento)
+        {
+            var canonical = GetCanonicalDocumentType(tipoDocumento);
+            var def = TiposDocumentoOrdenados.FirstOrDefault(item => string.Equals(item.Codigo, canonical, StringComparison.OrdinalIgnoreCase));
+            if (def != null)
+            {
+                return def.Nombre;
+            }
+
+            return string.IsNullOrWhiteSpace(tipoDocumento) ? "Otro" : tipoDocumento.Trim();
+        }
+
         private static string Normalize(string estado)
         {
             return (estado ?? string.Empty).Trim().ToUpperInvariant();
+        }
+
+        private static string NormalizeDocumentTypeKey(string value)
+        {
+            var normalized = Normalize(value)
+                .Replace("Á", "A")
+                .Replace("É", "E")
+                .Replace("Í", "I")
+                .Replace("Ó", "O")
+                .Replace("Ú", "U")
+                .Replace("Ñ", "N")
+                .Replace("/", "_")
+                .Replace("-", "_")
+                .Replace(" ", "_");
+
+            while (normalized.Contains("__"))
+            {
+                normalized = normalized.Replace("__", "_");
+            }
+
+            return normalized.Trim('_');
         }
     }
 }

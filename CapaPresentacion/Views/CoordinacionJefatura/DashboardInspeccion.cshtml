@@ -1437,6 +1437,22 @@
         });
     }
 
+    function resolvePaneFromHash() {
+        var hash = (window.location.hash || '').replace('#', '').trim();
+        if (!hash) return 'pane-kanban';
+        return $('#' + hash).length ? hash : 'pane-kanban';
+    }
+
+    function syncHashForPane(paneId) {
+        if (!paneId) return;
+        if (window.history && window.history.replaceState) {
+            window.history.replaceState(null, document.title, window.location.pathname + window.location.search + '#' + paneId);
+            return;
+        }
+
+        window.location.hash = paneId;
+    }
+
     function bindEvents() {
         if (bound) return;
         bound = true;
@@ -1446,14 +1462,19 @@
         });
         $('#kanbanSearch').on('input.di', function () { filterKanban($(this).val()); });
         $(document).on('click.di', '.js-open-detail-modal', function () { openModal($(this).attr('data-url'), $(this).attr('data-title')); });
-        $('#diTabs .di3-nav__tab').on('click.di', function () { activateTab($(this).attr('data-pane')); });
+        $('#diTabs .di3-nav__tab').on('click.di', function () {
+            var paneId = $(this).attr('data-pane');
+            activateTab(paneId);
+            syncHashForPane(paneId);
+        });
+        $(window).on('hashchange.di', function () { activateTab(resolvePaneFromHash()); });
         $('#modalDetalleAocr').on('hidden.bs.modal.di hidden.di', function () { $('#modalDetalleAocrFrame').attr('src', 'about:blank'); });
     }
 
     function initState() {
         $('.js-dashboard-table').each(function () { initTable($(this)); });
         $('.di3-col').each(function () { $(this).find('.di3-card').attr('data-match', 'true'); kanbanVisibility($(this), false); });
-        activateTab('pane-kanban');
+        activateTab(resolvePaneFromHash());
     }
 
     $(function () {

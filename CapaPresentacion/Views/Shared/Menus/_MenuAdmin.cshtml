@@ -1,4 +1,28 @@
 @model CapaPresentacion.Models.ViewModels.SidebarMenuContextViewModel
+
+@{
+    var currentController = Convert.ToString(ViewContext.RouteData.Values["controller"] ?? string.Empty);
+    var currentAction = Convert.ToString(ViewContext.RouteData.Values["action"] ?? string.Empty);
+
+    Func<string, string, bool> isCurrent = (controller, action) =>
+        string.Equals(currentController, controller, StringComparison.OrdinalIgnoreCase)
+        && string.Equals(currentAction, action, StringComparison.OrdinalIgnoreCase);
+
+    Func<string, bool> isController = controller =>
+        string.Equals(currentController, controller, StringComparison.OrdinalIgnoreCase);
+
+    Func<string, string> linkClass = variant =>
+    {
+        var baseClass = "aocr-link aocr-sidebar-item";
+        if (!string.IsNullOrWhiteSpace(variant))
+        {
+            baseClass += " " + variant;
+        }
+
+        return baseClass;
+    };
+}
+
 <div class="nav-group aocr-sidebar-section mb-4">
     <div class="group-title aocr-sidebar-section__title text-warning">
         <i class="fas fa-user-cog mr-1"></i> Administración
@@ -7,8 +31,13 @@
         @if (Model.PuedeAdministracion)
         {
             <li>
-                <a class="aocr-link aocr-sidebar-item" href="@Url.Action("Index", "AdminUsuarios")">
-                    <i class="fas fa-gauge-high text-warning mr-2"></i> Dashboard Admin
+                <a class="@linkClass(isCurrent("AdminUsuarios", "Index") ? "aocr-sidebar-item--active aocr-sidebar-item--primary" : "aocr-sidebar-item--primary")" href="@Url.Action("Index", "AdminUsuarios")">
+                    <i class="fas fa-users-cog text-warning mr-2"></i>
+                    <span class="aocr-sidebar-item__content">
+                        <span class="aocr-sidebar-item__title">Gestión institucional de usuarios</span>
+                        <span class="aocr-sidebar-item__meta">Control maestro de perfiles, estados, filtros y mantenimiento AOCR.</span>
+                    </span>
+                    <span class="aocr-sidebar-item__badge">ADM</span>
                 </a>
             </li>
         }
@@ -16,35 +45,69 @@
         {
             <li class="aocr-sidebar-subgroup">
                 <span class="aocr-sidebar-subgroup__label">
-                    <i class="fas fa-users text-white-50 mr-1"></i> Inspectores
+                    <i class="fas fa-users text-white-50 mr-1"></i> Usuarios AOCR
+                    <span class="aocr-sidebar-item__badge">ADM</span>
                 </span>
                 <ul class="aocr-nav aocr-nav--nested">
                     @if (Model.PuedeAdministracion)
                     {
                         <li>
-                            <a class="aocr-link aocr-sidebar-item" href="@Url.Action("Index", "AdminUsuarios")">
-                                <i class="fas fa-users-cog text-white-50 mr-2"></i> Gestionar Usuarios
+                            <a class="@linkClass(isCurrent("AdminUsuarios", "Create") ? "aocr-sidebar-item--primary aocr-sidebar-item--active" : "aocr-sidebar-item--primary")" href="@Url.Action("Create", "AdminUsuarios")">
+                                <i class="fas fa-user-plus text-white-50 mr-2"></i>
+                                <span class="aocr-sidebar-item__content">
+                                    <span class="aocr-sidebar-item__title">Crear usuario</span>
+                                    <span class="aocr-sidebar-item__meta">Alta de usuarios externos e internos con perfiles AOCR.</span>
+                                </span>
+                            </a>
+                        </li>
+                        <li>
+                            <a class="@linkClass(isCurrent("AdminUsuarios", "Index") ? "aocr-sidebar-item--active" : string.Empty)" href="@Url.Action("Index", "AdminUsuarios")">
+                                <i class="fas fa-users-cog text-white-50 mr-2"></i>
+                                <span class="aocr-sidebar-item__content">
+                                    <span class="aocr-sidebar-item__title">Gestionar usuarios</span>
+                                    <span class="aocr-sidebar-item__meta">Consulta, filtros, activación e integridad de perfiles.</span>
+                                </span>
                             </a>
                         </li>
                     }
+                </ul>
+            </li>
+            <li class="aocr-sidebar-subgroup">
+                <span class="aocr-sidebar-subgroup__label">
+                    <i class="fas fa-id-badge text-white-50 mr-1"></i> Usuarios Internos RT
+                    <span class="aocr-sidebar-item__badge">RT</span>
+                </span>
+                <ul class="aocr-nav aocr-nav--nested">
                     @if (Model.EsAdministrador)
                     {
                         <li>
-                            <a class="aocr-link aocr-sidebar-item" href="@Url.Action("CrearUsuarioInternoRT", "AdminUsuarios")">
-                                <i class="fas fa-user-plus text-white-50 mr-2"></i> Crear Inspector
+                            <a class="@linkClass(isCurrent("AdminUsuarios", "CrearUsuarioInternoRT") ? "aocr-sidebar-item--active" : string.Empty)" href="@Url.Action("CrearUsuarioInternoRT", "AdminUsuarios")">
+                                <i class="fas fa-user-plus text-white-50 mr-2"></i>
+                                <span class="aocr-sidebar-item__content">
+                                    <span class="aocr-sidebar-item__title">Crear inspector interno RT</span>
+                                    <span class="aocr-sidebar-item__meta">Alta de catálogos técnicos y personal interno RT habilitado.</span>
+                                </span>
                             </a>
                         </li>
                         <li>
-                            <a class="aocr-link aocr-sidebar-item" href="@Url.Action("ListarUsuariosInternosRT", "AdminUsuarios")">
-                                <i class="fas fa-id-badge text-white-50 mr-2"></i> Inspectores
+                            <a class="@linkClass(isCurrent("AdminUsuarios", "ListarUsuariosInternosRT") || isCurrent("AdminUsuarios", "EditarUsuarioInternoRT") ? "aocr-sidebar-item--active" : string.Empty)" href="@Url.Action("ListarUsuariosInternosRT", "AdminUsuarios")">
+                                <i class="fas fa-id-badge text-white-50 mr-2"></i>
+                                <span class="aocr-sidebar-item__content">
+                                    <span class="aocr-sidebar-item__title">Ver inspectores RT</span>
+                                    <span class="aocr-sidebar-item__meta">Mantenimiento del catálogo y edición de personal interno RT.</span>
+                                </span>
                             </a>
                         </li>
                     }
                     @if (Model.PuedeAprobarUsuarios)
                     {
                         <li>
-                            <a class="aocr-link aocr-sidebar-item" href="@Url.Action("RevisarDesignaciones", "Usuario")">
-                                <i class="fas fa-clipboard-check text-white-50 mr-2"></i> Aprobar Usuarios RT
+                            <a class="@linkClass(isCurrent("Usuario", "RevisarDesignaciones") ? "aocr-sidebar-item--active" : string.Empty)" href="@Url.Action("RevisarDesignaciones", "Usuario")">
+                                <i class="fas fa-clipboard-check text-white-50 mr-2"></i>
+                                <span class="aocr-sidebar-item__content">
+                                    <span class="aocr-sidebar-item__title">Revisar designaciones RT</span>
+                                    <span class="aocr-sidebar-item__meta">Aprobación institucional de designaciones y constancias RT.</span>
+                                </span>
                             </a>
                         </li>
                     }
@@ -55,34 +118,68 @@
         {
             <li class="aocr-sidebar-subgroup">
                 <span class="aocr-sidebar-subgroup__label">
-                    <i class="fas fa-shield-alt text-white-50 mr-1"></i> Seguridad
+                    <i class="fas fa-shield-alt text-white-50 mr-1"></i> Seguridad y Configuración
+                    <span class="aocr-sidebar-item__badge">CFG</span>
                 </span>
                 <ul class="aocr-nav aocr-nav--nested">
                     <li>
-                        <a class="aocr-link aocr-sidebar-item" href="@Url.Action("PermisosRol", "AdminUsuarios")">
-                            <i class="fas fa-key text-white-50 mr-2"></i> Roles y Permisos
+                        <a class="@linkClass(isCurrent("AdminUsuarios", "PermisosRol") ? "aocr-sidebar-item--active" : string.Empty)" href="@Url.Action("PermisosRol", "AdminUsuarios")">
+                            <i class="fas fa-key text-white-50 mr-2"></i>
+                            <span class="aocr-sidebar-item__content">
+                                <span class="aocr-sidebar-item__title">Roles y permisos</span>
+                                <span class="aocr-sidebar-item__meta">Matriz de acceso, perfiles y controles institucionales.</span>
+                            </span>
                         </a>
                     </li>
                     <li>
-                        <a class="aocr-link aocr-sidebar-item" href="@Url.Action("ConfiguracionSistema", "Direccion")">
-                            <i class="fas fa-cogs text-white-50 mr-2"></i> Configuración Sistema
+                        <a class="@linkClass(isCurrent("Direccion", "ConfiguracionSistema") ? "aocr-sidebar-item--active" : string.Empty)" href="@Url.Action("ConfiguracionSistema", "Direccion")">
+                            <i class="fas fa-cogs text-white-50 mr-2"></i>
+                            <span class="aocr-sidebar-item__content">
+                                <span class="aocr-sidebar-item__title">Configuración del sistema</span>
+                                <span class="aocr-sidebar-item__meta">Parámetros institucionales y ajustes administrativos.</span>
+                            </span>
                         </a>
                     </li>
                     <li>
-                        <a class="aocr-link aocr-sidebar-item" href="@Url.Action("Index", "CorreoInstitucional")">
-                            <i class="fas fa-envelope-open-text text-white-50 mr-2"></i> Correos institucionales
+                        <a class="@linkClass(isCurrent("CorreoInstitucional", "Index") || isController("CorreoInstitucional") ? "aocr-sidebar-item--active" : string.Empty)" href="@Url.Action("Index", "CorreoInstitucional")">
+                            <i class="fas fa-envelope-open-text text-white-50 mr-2"></i>
+                            <span class="aocr-sidebar-item__content">
+                                <span class="aocr-sidebar-item__title">Correos institucionales</span>
+                                <span class="aocr-sidebar-item__meta">Mantenimiento de destinatarios y notificaciones oficiales.</span>
+                            </span>
                         </a>
                     </li>
-                    @if (Model.EsAdministrador)
-                    {
-                        <li>
-                            <a class="aocr-link aocr-sidebar-item" href="@Url.Action("Index", "SyncAdmin")">
-                                <i class="fas fa-sync-alt text-white-50 mr-2"></i> Sync RT DB2
-                            </a>
-                        </li>
-                    }
+                    <li>
+                        <a class="@linkClass(isCurrent("Health", "Dashboard") ? "aocr-sidebar-item--active" : string.Empty)" href="@Url.Action("Dashboard", "Health")">
+                            <i class="fas fa-heart-pulse text-white-50 mr-2"></i>
+                            <span class="aocr-sidebar-item__content">
+                                <span class="aocr-sidebar-item__title">Salud y monitoreo</span>
+                                <span class="aocr-sidebar-item__meta">Herramientas de health check, inventario y resincronización AOCR legacy.</span>
+                            </span>
+                        </a>
+                    </li>
                 </ul>
             </li>
+            if (Model.EsAdministrador)
+            {
+                <li class="aocr-sidebar-subgroup">
+                    <span class="aocr-sidebar-subgroup__label">
+                        <i class="fas fa-rotate text-white-50 mr-1"></i> Integraciones
+                        <span class="aocr-sidebar-item__badge">INT</span>
+                    </span>
+                    <ul class="aocr-nav aocr-nav--nested">
+                        <li>
+                            <a class="@linkClass(isCurrent("SyncAdmin", "Index") || isController("SyncAdmin") ? "aocr-sidebar-item--active" : string.Empty)" href="@Url.Action("Index", "SyncAdmin")">
+                                <i class="fas fa-sync-alt text-white-50 mr-2"></i>
+                                <span class="aocr-sidebar-item__content">
+                                    <span class="aocr-sidebar-item__title">Sync RT DB2</span>
+                                    <span class="aocr-sidebar-item__meta">Sincronización y reparación de integraciones con el registro RT externo.</span>
+                                </span>
+                            </a>
+                        </li>
+                    </ul>
+                </li>
+            }
         }
     </ul>
 </div>

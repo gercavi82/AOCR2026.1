@@ -1203,8 +1203,17 @@ namespace CapaDatos.DAOs
 
         public List<OrdenRecaudacion> ListarPorUsuario(int codigoUsuario, string estado)
         {
+            return ListarPorUsuario((int?)codigoUsuario, estado);
+        }
+
+        public List<OrdenRecaudacion> ListarPorUsuario(int? codigoUsuario, string estado)
+        {
             var estadoFiltro = string.IsNullOrWhiteSpace(estado) ? null : estado.Trim();
-            return ObtenerOrdenesInterno(codigoUsuario.ToString(), estadoFiltro);
+            var codigoUsuarioFiltro = codigoUsuario.HasValue && codigoUsuario.Value > 0
+                ? codigoUsuario.Value.ToString()
+                : null;
+
+            return ObtenerOrdenesInterno(codigoUsuarioFiltro, estadoFiltro);
         }
 
         public List<OrdenRecaudacion> ObtenerTodasLasOrdenes(string estado)
@@ -1222,6 +1231,11 @@ namespace CapaDatos.DAOs
         }
 
         public List<OrdenRecaudacionModel> ListarPorUsuarioModel(int codigoUsuario, string estado)
+        {
+            return ListarPorUsuarioModel((int?)codigoUsuario, estado);
+        }
+
+        public List<OrdenRecaudacionModel> ListarPorUsuarioModel(int? codigoUsuario, string estado)
         {
             var ordenes = ListarPorUsuario(codigoUsuario, estado);
             return ordenes.Select(MapearOrdenModel).ToList();
@@ -3896,8 +3910,15 @@ namespace CapaDatos.DAOs
 
         public Dictionary<string, object> ObtenerEstadisticas(int codigoUsuario)
         {
+            return ObtenerEstadisticas((int?)codigoUsuario);
+        }
+
+        public Dictionary<string, object> ObtenerEstadisticas(int? codigoUsuario)
+        {
             var estadisticas = new Dictionary<string, object>();
-            var codigoUsuarioStr = codigoUsuario > 0 ? codigoUsuario.ToString() : null;
+            var codigoUsuarioStr = codigoUsuario.HasValue && codigoUsuario.Value > 0
+                ? codigoUsuario.Value.ToString()
+                : null;
 
             try
             {

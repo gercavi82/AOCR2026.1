@@ -20,7 +20,7 @@ using CapaPresentacion.Models.AdminUsuarios;
 
 namespace CapaPresentacion.Controllers
 {
-    [Authorize(Roles = "Administrador,Direccion,JefaturaTecnica")]
+    [Authorize(Roles = "Administrador")]
     public class AdminUsuariosController : Controller
     {
         private readonly ILoggingService _logger = LoggingServiceFactory.Create();
@@ -105,7 +105,7 @@ namespace CapaPresentacion.Controllers
 
         [HttpGet]
         [RequirePermission("ADM_GESTION_USUARIOS")]
-        public ActionResult Index(string filtro, bool? activo, string tipo)
+        public ActionResult Index(string filtro, bool? activo, string tipo, string perfil)
         {
             var usuarios = AdminUsuariosBL.BuscarUsuarios(filtro, activo) ?? new List<SeguridadUsuarioDTO>();
 
@@ -116,6 +116,12 @@ namespace CapaPresentacion.Controllers
                 usuarios = usuarios.Where(u => string.Equals(u.TipoUsuario, tipoNorm, StringComparison.OrdinalIgnoreCase)).ToList();
             }
 
+            if (!string.IsNullOrWhiteSpace(perfil))
+            {
+                var perfilNorm = perfil.Trim();
+                usuarios = usuarios.Where(u => CoincidePerfilFiltro(u, perfilNorm)).ToList();
+            }
+
             var ahora = DateTime.Now;
 
             var vm = new AdminUsuariosIndexViewModel
@@ -123,6 +129,7 @@ namespace CapaPresentacion.Controllers
                 Filtro = filtro,
                 Activo = activo,
                 TipoFiltro = tipo,
+                PerfilFiltro = perfil,
                 Usuarios = usuarios,
                 TotalUsuarios = usuarios.Count,
                 UsuariosActivos = usuarios.Count(u => u != null && u.Activo),
@@ -156,6 +163,82 @@ namespace CapaPresentacion.Controllers
             }
 
             return View(vm);
+        }
+
+        private static bool CoincidePerfilFiltro(SeguridadUsuarioDTO usuario, string perfilFiltro)
+        {
+            if (usuario == null)
+            {
+                return false;
+            }
+
+            return ObtenerFamiliasRolUsuario(usuario)
+                .Any(f => string.Equals(f, perfilFiltro, StringComparison.OrdinalIgnoreCase));
+        }
+
+        private static IEnumerable<string> ObtenerFamiliasRolUsuario(SeguridadUsuarioDTO usuario)
+        {
+            var roles = new List<string>();
+
+            if (!string.IsNullOrWhiteSpace(usuario != null ? usuario.RolesTexto : null))
+            {
+                roles.AddRange(usuario.RolesTexto
+                    .Split(new[] { ',', ';' }, StringSplitOptions.RemoveEmptyEntries)
+                    .Select(r => r.Trim())
+                    .Where(r => !string.IsNullOrWhiteSpace(r)));
+            }
+
+            if (!string.IsNullOrWhiteSpace(usuario != null ? usuario.RolFallback : null))
+            {
+                roles.Add(usuario.RolFallback.Trim());
+            }
+
+            var familias = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            foreach (var rol in roles.Distinct(StringComparer.OrdinalIgnoreCase))
+            {
+                var rolNormalizado = RoleGroupingHelper.NormalizeSelectedRole(rol);
+                if (string.Equals(rolNormalizado, RoleGroupingHelper.Administrador, StringComparison.OrdinalIgnoreCase))
+                {
+                    familias.Add("Administrador");
+                    continue;
+                }
+
+                if (string.Equals(rolNormalizado, RoleGroupingHelper.Solicitante, StringComparison.OrdinalIgnoreCase))
+                {
+                    familias.Add("SolicitanteRT");
+                    continue;
+                }
+
+                if (string.Equals(rolNormalizado, RoleGroupingHelper.Financiero, StringComparison.OrdinalIgnoreCase))
+                {
+                    familias.Add("Financiero");
+                    continue;
+                }
+
+                if (string.Equals(rolNormalizado, RoleGroupingHelper.Coordinacion, StringComparison.OrdinalIgnoreCase))
+                {
+                    familias.Add("Coordinador");
+                    continue;
+                }
+
+                if (string.Equals(rolNormalizado, RoleGroupingHelper.InspectorTecnico, StringComparison.OrdinalIgnoreCase))
+                {
+                    familias.Add("Inspector");
+                    continue;
+                }
+
+                if (string.Equals(rolNormalizado, RoleGroupingHelper.DireccionJefaturaTecnica, StringComparison.OrdinalIgnoreCase))
+                {
+                    familias.Add("Direccion");
+                }
+            }
+
+            if (familias.Count == 0 && string.Equals(usuario.TipoUsuario, "Sin rol", StringComparison.OrdinalIgnoreCase))
+            {
+                familias.Add("SinRol");
+            }
+
+            return familias;
         }
 
         [HttpGet]
@@ -230,6 +313,146 @@ namespace CapaPresentacion.Controllers
             }
 
             return RedirectToAction("Index");
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        [RequirePermission("ADM_GESTION_USUARIOS")]
+        public ActionResult PrepararUsuarioGenerico(string perfil)
+        {
+            var perfilConfig = ObtenerPerfilGenerico(perfil);
+            if (perfilConfig == null)
+            {
+                TempData["Error"] = "Perfil genérico inválido.";
+                return RedirectToAction("Create");
+            }
+
+            var rolesActivos = AdminUsuariosBL.ObtenerRolesActivos() ?? new List<SeguridadRolDTO>();
+            SeguridadRolDTO rolBase;
+            if (!TryResolverRolGenerico(rolesActivos, perfilConfig, out rolBase))
+            {
+                TempData["Error"] = "No se encontró un rol base activo para el perfil genérico seleccionado.";
+                return RedirectToAction("Create");
+            }
+
+            var actorId = ObtenerActorId();
+            var actorCodigo = ObtenerActorCodigoUsuario();
+            var ip = Request != null ? Request.UserHostAddress : null;
+            var usuarioExistente = AdminUsuariosBL.ObtenerUsuarioPorCodigoUsuario(perfilConfig.CodigoUsuario);
+
+            int idUsuario;
+            string passwordTemporal;
+
+            if (usuarioExistente == null)
+            {
+                int nuevoId;
+                string mensajeCrear;
+                var usuarioNuevo = new SeguridadUsuarioDTO
+                {
+                    CodigoUsuario = perfilConfig.CodigoUsuario,
+                    NombreUsuario = perfilConfig.NombreUsuario,
+                    ApellidoUsuario = perfilConfig.ApellidoUsuario,
+                    Correo = perfilConfig.Correo,
+                    Activo = true
+                };
+
+                var creado = AdminUsuariosBL.CrearUsuario(
+                    usuarioNuevo,
+                    new[] { rolBase.CodigoRol },
+                    null,
+                    true,
+                    actorId,
+                    actorCodigo,
+                    ip,
+                    out nuevoId,
+                    out passwordTemporal,
+                    out mensajeCrear);
+
+                if (!creado)
+                {
+                    TempData["Error"] = mensajeCrear;
+                    return RedirectToAction("Create");
+                }
+
+                idUsuario = nuevoId;
+                TempData["Success"] = string.Format(
+                    "Usuario genérico {0} creado y listo para iniciar sesión.",
+                    perfilConfig.Titulo);
+            }
+            else
+            {
+                var usuarioActualizar = new SeguridadUsuarioDTO
+                {
+                    IdUsuario = usuarioExistente.IdUsuario,
+                    CodigoUsuario = usuarioExistente.CodigoUsuario,
+                    NombreUsuario = string.IsNullOrWhiteSpace(usuarioExistente.NombreUsuario)
+                        ? perfilConfig.NombreUsuario
+                        : usuarioExistente.NombreUsuario,
+                    ApellidoUsuario = string.IsNullOrWhiteSpace(usuarioExistente.ApellidoUsuario)
+                        ? perfilConfig.ApellidoUsuario
+                        : usuarioExistente.ApellidoUsuario,
+                    Correo = string.IsNullOrWhiteSpace(usuarioExistente.Correo)
+                        ? perfilConfig.Correo
+                        : usuarioExistente.Correo,
+                    Activo = true
+                };
+
+                string mensajeActualizar;
+                if (!AdminUsuariosBL.ActualizarUsuario(usuarioActualizar, actorId, actorCodigo, ip, out mensajeActualizar))
+                {
+                    TempData["Error"] = mensajeActualizar;
+                    return RedirectToAction("Edit", new { id = usuarioExistente.IdUsuario });
+                }
+
+                string mensajeRoles;
+                if (!AdminUsuariosBL.ReemplazarRolesUsuario(
+                    usuarioExistente.IdUsuario,
+                    new[] { rolBase.CodigoRol },
+                    actorId,
+                    actorCodigo,
+                    ip,
+                    out mensajeRoles))
+                {
+                    TempData["Error"] = mensajeRoles;
+                    return RedirectToAction("Edit", new { id = usuarioExistente.IdUsuario });
+                }
+
+                string mensajeReset;
+                if (!AdminUsuariosBL.ResetPassword(
+                    usuarioExistente.IdUsuario,
+                    true,
+                    null,
+                    actorId,
+                    actorCodigo,
+                    ip,
+                    out passwordTemporal,
+                    out mensajeReset))
+                {
+                    TempData["Error"] = mensajeReset;
+                    return RedirectToAction("Edit", new { id = usuarioExistente.IdUsuario });
+                }
+
+                idUsuario = usuarioExistente.IdUsuario;
+                TempData["Success"] = string.Format(
+                    "Usuario genérico {0} actualizado y listo para iniciar sesión.",
+                    perfilConfig.Titulo);
+            }
+
+            if (!string.IsNullOrWhiteSpace(passwordTemporal))
+            {
+                TempData["PasswordTemporal"] = string.Format(
+                    "Credenciales temporales {0}: usuario {1} / contraseña {2}",
+                    perfilConfig.Titulo,
+                    perfilConfig.CodigoUsuario,
+                    passwordTemporal);
+            }
+
+            if (EsRolRt(rolBase.Descripcion))
+            {
+                TempData["Warning"] = "El perfil genérico seleccionado usa un rol RT. Revise la asignación de compañías antes de usarlo operativamente.";
+            }
+
+            return RedirectToAction("Edit", new { id = idUsuario });
         }
 
         [HttpGet]
@@ -1287,6 +1510,147 @@ namespace CapaPresentacion.Controllers
             model.ApellidoUsuario = string.IsNullOrWhiteSpace(apellidos) ? string.Empty : apellidos;
         }
 
+        private static PerfilGenericoUsuarioConfig ObtenerPerfilGenerico(string perfil)
+        {
+            var perfilNormalizado = (perfil ?? string.Empty).Trim();
+            if (string.IsNullOrWhiteSpace(perfilNormalizado))
+            {
+                return null;
+            }
+
+            return ObtenerPerfilesGenericos()
+                .FirstOrDefault(p => string.Equals(p.Key, perfilNormalizado, StringComparison.OrdinalIgnoreCase));
+        }
+
+        private static IEnumerable<PerfilGenericoUsuarioConfig> ObtenerPerfilesGenericos()
+        {
+            return new[]
+            {
+                new PerfilGenericoUsuarioConfig(
+                    "administrador",
+                    "Administrador",
+                    "Cuenta de acceso genérico para funciones administrativas.",
+                    "GEN_ADMIN",
+                    "Administrador",
+                    "Generico",
+                    "gen.admin@aocr.test",
+                    RoleGroupingHelper.Administrador,
+                    false,
+                    "Administrador"),
+                new PerfilGenericoUsuarioConfig(
+                    "solicitante",
+                    "Solicitante / RT",
+                    "Cuenta genérica para navegación de solicitante y pruebas externas.",
+                    "GEN_SOLICITANTE",
+                    "Solicitante",
+                    "Generico",
+                    "gen.solicitante@aocr.test",
+                    RoleGroupingHelper.Solicitante,
+                    true,
+                    "Solicitante",
+                    "Operador"),
+                new PerfilGenericoUsuarioConfig(
+                    "inspector",
+                    "Inspector / Técnico",
+                    "Cuenta genérica para bandejas técnicas e inspección.",
+                    "GEN_INSPECTOR",
+                    "Inspector",
+                    "Generico",
+                    "gen.inspector@aocr.test",
+                    RoleGroupingHelper.InspectorTecnico,
+                    false,
+                    "Inspector",
+                    "Tecnico",
+                    "EvaluadorTecnico"),
+                new PerfilGenericoUsuarioConfig(
+                    "direccion",
+                    "Dirección / Jefatura",
+                    "Cuenta genérica para validaciones directivas y jefatura técnica.",
+                    "GEN_DIRECCION",
+                    "Direccion",
+                    "Generico",
+                    "gen.direccion@aocr.test",
+                    RoleGroupingHelper.DireccionJefaturaTecnica,
+                    false,
+                    "Direccion",
+                    "JefaturaTecnica",
+                    "DIRDAC",
+                    "DirectorGeneral"),
+                new PerfilGenericoUsuarioConfig(
+                    "financiero",
+                    "Financiero",
+                    "Cuenta genérica para aprobación y revisión financiera.",
+                    "GEN_FINANCIERO",
+                    "Financiero",
+                    "Generico",
+                    "gen.financiero@aocr.test",
+                    RoleGroupingHelper.Financiero,
+                    false,
+                    "Financiero",
+                    "CoordinadorFinanciero",
+                    "DirectorFinanciero"),
+                new PerfilGenericoUsuarioConfig(
+                    "coordinacion",
+                    "Coordinación",
+                    "Cuenta genérica para coordinación operativa y legal.",
+                    "GEN_COORDINACION",
+                    "Coordinacion",
+                    "Generico",
+                    "gen.coordinacion@aocr.test",
+                    RoleGroupingHelper.Coordinacion,
+                    false,
+                    "Coordinador",
+                    "Coordinacion",
+                    "CoordinadorInspecciones",
+                    "CoordinacionLegal",
+                    "CoordinadorLegal")
+            };
+        }
+
+        private static bool TryResolverRolGenerico(
+            IEnumerable<SeguridadRolDTO> rolesActivos,
+            PerfilGenericoUsuarioConfig perfil,
+            out SeguridadRolDTO rolBase)
+        {
+            rolBase = null;
+            if (perfil == null)
+            {
+                return false;
+            }
+
+            var rolesDisponibles = (rolesActivos ?? Enumerable.Empty<SeguridadRolDTO>())
+                .Where(r => r != null && r.Activo)
+                .ToList();
+
+            foreach (var alias in perfil.RolesPreferidos)
+            {
+                rolBase = rolesDisponibles.FirstOrDefault(r =>
+                    string.Equals((r.Descripcion ?? string.Empty).Trim(), alias, StringComparison.OrdinalIgnoreCase));
+                if (rolBase != null)
+                {
+                    return true;
+                }
+            }
+
+            var candidatosFamilia = rolesDisponibles
+                .Where(r => string.Equals(
+                    RoleGroupingHelper.NormalizeSelectedRole(r.Descripcion),
+                    perfil.FamiliaRol,
+                    StringComparison.OrdinalIgnoreCase));
+
+            if (perfil.EvitarRolesRt)
+            {
+                rolBase = candidatosFamilia.FirstOrDefault(r => !EsRolRt(r.Descripcion));
+                if (rolBase != null)
+                {
+                    return true;
+                }
+            }
+
+            rolBase = candidatosFamilia.FirstOrDefault();
+            return rolBase != null;
+        }
+
         private static void SepararNombreCompleto(string nombreCompleto, out string nombres, out string apellidos)
         {
             nombres = string.Empty;
@@ -1776,11 +2140,6 @@ namespace CapaPresentacion.Controllers
                 .Distinct(StringComparer.OrdinalIgnoreCase)
                 .ToList();
 
-            if (codigos.Count == 0)
-            {
-                return true;
-            }
-
             var actor = ObtenerActorCodigoUsuario();
             var asignaciones = codigos
                 .Select(c => new UsuarioCompaniaRT
@@ -1798,12 +2157,14 @@ namespace CapaPresentacion.Controllers
                 var guardado = daoCompanias.GuardarAsignaciones(usuarioId, asignaciones, actor, true);
                 if (!guardado)
                 {
-                    UsuarioDAO.ActualizarEmpresaCodigoPrincipal(usuarioId, string.Join(",", codigos));
-                    mensaje = "No se pudo persistir la relacion usuario RT - companias. Se aplico fallback legacy temporal.";
+                    UsuarioDAO.ActualizarEmpresaCodigoPrincipal(usuarioId, codigos.Count > 0 ? string.Join(",", codigos) : null);
+                    mensaje = codigos.Count > 0
+                        ? "No se pudo persistir la relacion usuario RT - companias. Se aplico fallback legacy temporal."
+                        : "No se pudo limpiar la relacion usuario RT - companias. Se aplico fallback legacy temporal.";
                     return false;
                 }
 
-                UsuarioDAO.ActualizarEmpresaCodigoPrincipal(usuarioId, codigos[0]);
+                UsuarioDAO.ActualizarEmpresaCodigoPrincipal(usuarioId, codigos.Count > 0 ? codigos[0] : null);
                 return true;
             }
             catch (Exception ex)
@@ -1918,6 +2279,92 @@ namespace CapaPresentacion.Controllers
             {
                 ModelState.AddModelError("RolesSeleccionados", "Debe seleccionar al menos un rol.");
             }
+
+            if (RequiereCompaniasRt(model.RolesSeleccionados)
+                && (model.CompaniasSeleccionadas == null || !model.CompaniasSeleccionadas.Any(c => !string.IsNullOrWhiteSpace(c))))
+            {
+                ModelState.AddModelError("CompaniasSeleccionadas", "Debe asignar al menos una compania para usuarios con perfil RT.");
+            }
+        }
+
+        private sealed class PerfilGenericoUsuarioConfig
+        {
+            public PerfilGenericoUsuarioConfig(
+                string key,
+                string titulo,
+                string descripcion,
+                string codigoUsuario,
+                string nombreUsuario,
+                string apellidoUsuario,
+                string correo,
+                string familiaRol,
+                bool evitarRolesRt,
+                params string[] rolesPreferidos)
+            {
+                Key = key;
+                Titulo = titulo;
+                Descripcion = descripcion;
+                CodigoUsuario = codigoUsuario;
+                NombreUsuario = nombreUsuario;
+                ApellidoUsuario = apellidoUsuario;
+                Correo = correo;
+                FamiliaRol = familiaRol;
+                EvitarRolesRt = evitarRolesRt;
+                RolesPreferidos = rolesPreferidos ?? new string[0];
+            }
+
+            public string Key { get; private set; }
+
+            public string Titulo { get; private set; }
+
+            public string Descripcion { get; private set; }
+
+            public string CodigoUsuario { get; private set; }
+
+            public string NombreUsuario { get; private set; }
+
+            public string ApellidoUsuario { get; private set; }
+
+            public string Correo { get; private set; }
+
+            public string FamiliaRol { get; private set; }
+
+            public bool EvitarRolesRt { get; private set; }
+
+            public string[] RolesPreferidos { get; private set; }
+        }
+
+        private bool RequiereCompaniasRt(IEnumerable<int> rolesSeleccionados)
+        {
+            var rolesLookup = new HashSet<int>((rolesSeleccionados ?? Enumerable.Empty<int>()).Where(r => r > 0));
+            if (rolesLookup.Count == 0)
+            {
+                return false;
+            }
+
+            return AdminUsuariosBL.ObtenerRolesActivos()
+                .Where(r => rolesLookup.Contains(r.CodigoRol))
+                .Select(r => (r.Descripcion ?? string.Empty).Trim())
+                .Any(EsRolRt);
+        }
+
+        private static bool EsRolRt(string descripcionRol)
+        {
+            var rolOriginal = (descripcionRol ?? string.Empty).Trim();
+            if (string.IsNullOrWhiteSpace(rolOriginal))
+            {
+                return false;
+            }
+
+            if (!string.Equals(RoleGroupingHelper.NormalizeSelectedRole(rolOriginal), RoleGroupingHelper.Solicitante, StringComparison.OrdinalIgnoreCase))
+            {
+                return false;
+            }
+
+            return rolOriginal.IndexOf("RT", StringComparison.OrdinalIgnoreCase) >= 0
+                || rolOriginal.IndexOf("RepresentanteTecnico", StringComparison.OrdinalIgnoreCase) >= 0
+                || rolOriginal.IndexOf("Representante Tecnico", StringComparison.OrdinalIgnoreCase) >= 0
+                || rolOriginal.IndexOf("Representante Técnico", StringComparison.OrdinalIgnoreCase) >= 0;
         }
 
         private int? ObtenerActorId()

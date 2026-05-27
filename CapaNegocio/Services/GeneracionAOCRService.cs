@@ -27,6 +27,9 @@ namespace CapaNegocio.Services
         private readonly InspeccionDAO _inspeccionDao;
         private readonly InspeccionInformeDAO _informeDao;
         private readonly HistorialEstadoDAO _historialDao;
+        private readonly ListaVerificacionOperacionalEaeDAO _listaVerificacionDao;
+        private readonly RevisionDocumentalService _revisionDocumentalService;
+        private readonly SolicitudEstadoTransitionBL _solicitudEstadoTransitionBl;
 
         public GeneracionAOCRService()
         {
@@ -35,6 +38,9 @@ namespace CapaNegocio.Services
             _inspeccionDao = new InspeccionDAO();
             _informeDao = new InspeccionInformeDAO();
             _historialDao = new HistorialEstadoDAO();
+            _listaVerificacionDao = new ListaVerificacionOperacionalEaeDAO();
+            _revisionDocumentalService = new RevisionDocumentalService();
+            _solicitudEstadoTransitionBl = new SolicitudEstadoTransitionBL();
         }
 
         /// <summary>Resultado de la evaluación de disponibilidad para generar AOCR.</summary>
@@ -46,6 +52,51 @@ namespace CapaNegocio.Services
             public Documento DocumentoGenerado { get; set; }
             public SolicitudAOCR Solicitud { get; set; }
             public InspeccionInformeTecnico InformeAprobado { get; set; }
+            public Inspeccion InspeccionAprobada { get; set; }
+            public ListaVerificacionOperacionalEae ListaVerificacionAprobada { get; set; }
+        }
+
+        public class LegacyAocrResyncResult
+        {
+            public int LimiteAplicado { get; set; }
+            public int Candidatas { get; set; }
+            public int Sincronizadas { get; set; }
+            public int YaGeneradas { get; set; }
+            public int SinInformeAprobado { get; set; }
+            public int Errores { get; set; }
+            public List<int> SolicitudesSincronizadas { get; set; }
+            public List<string> MensajesError { get; set; }
+
+            public LegacyAocrResyncResult()
+            {
+                SolicitudesSincronizadas = new List<int>();
+                MensajesError = new List<string>();
+            }
+        }
+
+        public class LegacyAocrCandidateDetail
+        {
+            public int CodigoSolicitud { get; set; }
+            public string NumeroSolicitud { get; set; }
+            public string EstadoSolicitud { get; set; }
+            public int CodigoInspeccion { get; set; }
+            public int CodigoInforme { get; set; }
+            public string EstadoInforme { get; set; }
+        }
+
+        public class LegacyAocrInventoryResult
+        {
+            public int LimiteAplicado { get; set; }
+            public int LegacyPendientes { get; set; }
+            public int ListasParaResync { get; set; }
+            public int YaGeneradas { get; set; }
+            public int SinInformeAprobado { get; set; }
+            public List<LegacyAocrCandidateDetail> Candidatas { get; set; }
+
+            public LegacyAocrInventoryResult()
+            {
+                Candidatas = new List<LegacyAocrCandidateDetail>();
+            }
         }
 
         /// <summary>Formato institucional del número AOCR: AOCR-YYYY-#### .</summary>
@@ -57,6 +108,11 @@ namespace CapaNegocio.Services
 
         /// <summary>Evalúa si un trámite puede generar su AOCR automáticamente.</summary>
         public Disponibilidad Evaluar(int codigoSolicitud)
+        {
+            return Evaluar(codigoSolicitud, 0, null);
+        }
+
+        public Disponibilidad Evaluar(int codigoSolicitud, int codigoUsuario, IEnumerable<string> rolesUsuario)
         {
             var resultado = new Disponibilidad { Habilitado = false };
 
@@ -75,28 +131,42 @@ namespace CapaNegocio.Services
                 resultado.DocumentoGenerado = existente;
             }
 
-            // Regla 1: estado del trámite debe permitir emisión AOCR
-            string estado = (solicitud.Estado ?? string.Empty).Trim();
-            bool estadoValido =
-                string.Equals(estado, EstadoSolicitud.AOCR_EnElaboracion, StringComparison.OrdinalIgnoreCase) ||
-                string.Equals(estado, EstadoSolicitud.AOCR_EnRevision, StringComparison.OrdinalIgnoreCase) ||
-                string.Equals(estado, EstadoSolicitud.AOCR_Validado, StringComparison.OrdinalIgnoreCase) ||
-                string.Equals(estado, EstadoSolicitud.AOCR_Legalizado, StringComparison.OrdinalIgnoreCase) ||
-                string.Equals(estado, EstadoSolicitud.AOCR_EmitidoRecibido, StringComparison.OrdinalIgnoreCase);
-
-            if (!estadoValido)
+            if (!UsuarioPuedeGenerarAocr(codigoUsuario, rolesUsuario))
             {
-                resultado.Motivo = "La AOCR estará disponible cuando la inspección sea satisfactoria y el informe técnico quede firmado por el inspector.";
+                resultado.Motivo = "No tiene permisos para generar AOCR.";
                 return resultado;
             }
 
-            // Regla 2: informe tecnico finalizado y con cierre valido del flujo tecnico AOCR.
+            var estadoDocumental = _revisionDocumentalService.ObtenerEstadoFaseDocumental(codigoSolicitud);
+            if (estadoDocumental == null || !estadoDocumental.DocumentacionAprobada)
+            {
+                resultado.Motivo = "Pendiente de aprobación documental.";
+                return resultado;
+            }
+
+            if (estadoDocumental.TieneDocumentosObservados || estadoDocumental.TieneDocumentosSubsanadosPendientes || estadoDocumental.TienePendientes || estadoDocumental.DocumentosPendientesRevision > 0)
+            {
+                resultado.Motivo = "Existen documentos pendientes de revisión u observaciones activas.";
+                return resultado;
+            }
+
+            // Regla 1: el trámite debe estar en fase AOCR o, al menos, en una etapa técnica aprobada sincronizable.
+            var estado = EstadoSolicitud.Normalizar(solicitud.Estado ?? string.Empty);
+            bool estadoValido = EstadoSolicitudPermiteGeneracion(estado);
+
+            if (!estadoValido)
+            {
+                resultado.Motivo = "El Informe Técnico ya debe estar aprobado por Dirección/DIRDAC y la solicitud debe encontrarse en fase AOCR para generar la AOCR.";
+                return resultado;
+            }
+
+            // Regla 2: informe técnico finalizado y con aprobación institucional real.
             InspeccionInformeTecnico informe = ObtenerInformeAprobado(codigoSolicitud);
             resultado.InformeAprobado = informe;
 
             if (informe == null)
             {
-                resultado.Motivo = "El informe técnico aún no ha sido generado.";
+                resultado.Motivo = "Pendiente de aprobación del Informe Técnico por Dirección/DIRDAC.";
                 return resultado;
             }
             if (!informe.Finalizado)
@@ -111,7 +181,43 @@ namespace CapaNegocio.Services
             }
             if (!InformeCompletaFaseTecnicaAocr(informe))
             {
-                resultado.Motivo = "El informe técnico todavía no completa la fase técnica que habilita la AOCR.";
+                resultado.Motivo = "Pendiente de aprobación del Informe Técnico por Dirección/DIRDAC.";
+                return resultado;
+            }
+
+            if (InformeTieneObservacionesPendientes(informe))
+            {
+                resultado.Motivo = "El informe técnico tiene observaciones o rechazo vigentes.";
+                return resultado;
+            }
+
+            if (!InformeResultadoPermiteGeneracionAocr(informe))
+            {
+                resultado.Motivo = "El informe técnico aprobado no tiene resultado satisfactorio para habilitar AOCR.";
+                return resultado;
+            }
+
+            var inspeccion = _inspeccionDao.ObtenerPorId(informe.CodigoInspeccion);
+            resultado.InspeccionAprobada = inspeccion;
+            if (!InspeccionPermiteGeneracionAocr(inspeccion))
+            {
+                resultado.Motivo = "La inspección no se encuentra aceptada o finalizada para habilitar AOCR.";
+                return resultado;
+            }
+
+            var listaVerificacion = inspeccion != null && inspeccion.CodigoInspeccion > 0
+                ? _listaVerificacionDao.ObtenerUltimaPorInspeccion(inspeccion.CodigoInspeccion)
+                : null;
+            resultado.ListaVerificacionAprobada = listaVerificacion;
+            if (listaVerificacion == null || !listaVerificacion.Finalizado)
+            {
+                resultado.Motivo = "Pendiente de finalizar LV/EAE.";
+                return resultado;
+            }
+
+            if (!listaVerificacion.FirmadoTecnico)
+            {
+                resultado.Motivo = "Pendiente de firma de la LV/EAE por el técnico responsable.";
                 return resultado;
             }
 
@@ -125,6 +231,206 @@ namespace CapaNegocio.Services
 
             resultado.Habilitado = true;
             resultado.Motivo = "Listo para generar la AOCR.";
+            return resultado;
+        }
+
+        public bool PuedeGenerarAocr(int codigoSolicitud, int codigoUsuario, IEnumerable<string> rolesUsuario, out string motivo)
+        {
+            var resultado = Evaluar(codigoSolicitud, codigoUsuario, rolesUsuario);
+            motivo = resultado != null ? resultado.Motivo : "No se pudo evaluar la generación de la AOCR.";
+            return resultado != null && resultado.Habilitado;
+        }
+
+        public string ObtenerMotivoBloqueoGeneracionAocr(int codigoSolicitud, int codigoUsuario, IEnumerable<string> rolesUsuario)
+        {
+            var resultado = Evaluar(codigoSolicitud, codigoUsuario, rolesUsuario);
+            return resultado != null ? (resultado.Motivo ?? string.Empty) : string.Empty;
+        }
+
+        public bool ExisteAocrGenerada(int codigoSolicitud)
+        {
+            return ObtenerAocrGeneradoVigente(codigoSolicitud) != null;
+        }
+
+        public bool MarcarPendienteGeneracionAocr(int codigoSolicitud, int codigoInforme, int codigoUsuario, string usuarioNombre, out string mensaje)
+        {
+            mensaje = string.Empty;
+
+            if (codigoSolicitud <= 0 || codigoUsuario <= 0)
+            {
+                mensaje = "No existe contexto suficiente para habilitar la generación de AOCR.";
+                return false;
+            }
+
+            var solicitud = _solicitudDao.ObtenerPorId(codigoSolicitud);
+            if (solicitud == null)
+            {
+                mensaje = "La solicitud AOCR no existe.";
+                return false;
+            }
+
+            var informe = codigoInforme > 0
+                ? _informeDao.ObtenerPorId(codigoInforme)
+                : ObtenerInformeAprobado(codigoSolicitud);
+
+            if (informe == null || !InformeCompletaFaseTecnicaAocr(informe))
+            {
+                mensaje = "El Informe Técnico aún no cuenta con aprobación institucional final.";
+                return false;
+            }
+
+            var estadoActual = EstadoSolicitud.Normalizar(solicitud.Estado);
+            if (string.Equals(estadoActual, EstadoSolicitud.AOCR_EnElaboracion, StringComparison.OrdinalIgnoreCase)
+                || string.Equals(estadoActual, EstadoSolicitud.AOCR_EnRevision, StringComparison.OrdinalIgnoreCase)
+                || string.Equals(estadoActual, EstadoSolicitud.AOCR_Validado, StringComparison.OrdinalIgnoreCase)
+                || string.Equals(estadoActual, EstadoSolicitud.AOCR_Legalizado, StringComparison.OrdinalIgnoreCase)
+                || string.Equals(estadoActual, EstadoSolicitud.AOCR_EmitidoRecibido, StringComparison.OrdinalIgnoreCase))
+            {
+                mensaje = "La solicitud ya se encuentra habilitada para el flujo AOCR.";
+                return true;
+            }
+
+            var observacion = "El Informe Técnico fue aprobado por Dirección/DIRDAC. Se habilita la generación de la AOCR.";
+            string mensajeCambio;
+            var actualizado = _solicitudEstadoTransitionBl.CambiarEstadoConReglasAocr(
+                codigoSolicitud,
+                EstadoSolicitud.AOCR_EnElaboracion,
+                observacion,
+                codigoUsuario,
+                destino => string.Equals(destino, EstadoSolicitud.AOCR_EnElaboracion, StringComparison.OrdinalIgnoreCase),
+                out mensajeCambio);
+
+            if (!actualizado)
+            {
+                actualizado = _solicitudDao.CambiarEstado(codigoSolicitud, EstadoSolicitud.AOCR_EnElaboracion, codigoUsuario, observacion);
+                if (!actualizado)
+                {
+                    mensaje = string.IsNullOrWhiteSpace(mensajeCambio)
+                        ? "No fue posible marcar la solicitud como pendiente de generación AOCR."
+                        : mensajeCambio;
+                    return false;
+                }
+            }
+
+            try
+            {
+                _historialDao.RegistrarCambio(
+                    codigoSolicitud,
+                    estadoActual,
+                    EstadoSolicitud.AOCR_EnElaboracion,
+                    codigoUsuario,
+                    observacion + " Evento=AOCR_HABILITADA_PARA_GENERACION. Usuario=" + (usuarioNombre ?? "sistema"));
+            }
+            catch
+            {
+                // No romper el flujo si el historial no se pudo registrar por drift de esquema.
+            }
+
+            mensaje = "La solicitud quedó en AOCR En Elaboración y la generación ya está habilitada.";
+            return true;
+        }
+
+        public LegacyAocrResyncResult ResincronizarCasosLegacyPendientesAocr(int codigoUsuario, string usuarioNombre, int maxSolicitudes = 200)
+        {
+            var resultado = new LegacyAocrResyncResult();
+
+            if (maxSolicitudes <= 0 || maxSolicitudes > 500)
+            {
+                maxSolicitudes = 200;
+            }
+
+            resultado.LimiteAplicado = maxSolicitudes;
+            var inventario = InventariarCasosLegacyPendientesAocr(maxSolicitudes);
+            resultado.Candidatas = inventario.ListasParaResync;
+
+            if (codigoUsuario <= 0)
+            {
+                resultado.Errores = 1;
+                resultado.MensajesError.Add("No existe contexto suficiente para ejecutar la resincronización AOCR legacy.");
+                return resultado;
+            }
+
+            foreach (var candidata in inventario.Candidatas)
+            {
+                try
+                {
+                    string mensaje;
+                    if (MarcarPendienteGeneracionAocr(candidata.CodigoSolicitud, candidata.CodigoInforme, codigoUsuario, usuarioNombre, out mensaje))
+                    {
+                        resultado.Sincronizadas++;
+                        resultado.SolicitudesSincronizadas.Add(candidata.CodigoSolicitud);
+                        continue;
+                    }
+
+                    resultado.Errores++;
+                    if (resultado.MensajesError.Count < 10)
+                    {
+                        resultado.MensajesError.Add("Solicitud " + candidata.CodigoSolicitud + ": " + (mensaje ?? "No se pudo resincronizar."));
+                    }
+                }
+                catch (Exception ex)
+                {
+                    resultado.Errores++;
+                    if (resultado.MensajesError.Count < 10)
+                    {
+                        resultado.MensajesError.Add("Solicitud " + candidata.CodigoSolicitud + ": " + ex.Message);
+                    }
+                }
+            }
+
+            resultado.YaGeneradas = inventario.YaGeneradas;
+            resultado.SinInformeAprobado = inventario.SinInformeAprobado;
+
+            return resultado;
+        }
+
+        public LegacyAocrInventoryResult InventariarCasosLegacyPendientesAocr(int maxSolicitudes = 200)
+        {
+            var resultado = new LegacyAocrInventoryResult();
+
+            if (maxSolicitudes <= 0 || maxSolicitudes > 500)
+            {
+                maxSolicitudes = 200;
+            }
+
+            resultado.LimiteAplicado = maxSolicitudes;
+
+            var legacyPendientes = (_solicitudDao.ObtenerTodos() ?? new List<SolicitudAOCR>())
+                .Where(s => s != null && s.CodigoSolicitud > 0)
+                .Where(s => EstadoSolicitudEsLegacyPendienteAocr(EstadoSolicitud.Normalizar(s.Estado ?? string.Empty)))
+                .OrderBy(s => s.CodigoSolicitud)
+                .Take(maxSolicitudes)
+                .ToList();
+
+            resultado.LegacyPendientes = legacyPendientes.Count;
+
+            foreach (var solicitud in legacyPendientes)
+            {
+                if (ObtenerAocrGeneradoVigente(solicitud.CodigoSolicitud) != null)
+                {
+                    resultado.YaGeneradas++;
+                    continue;
+                }
+
+                var informe = ObtenerInformeAprobado(solicitud.CodigoSolicitud);
+                if (informe == null)
+                {
+                    resultado.SinInformeAprobado++;
+                    continue;
+                }
+
+                resultado.ListasParaResync++;
+                resultado.Candidatas.Add(new LegacyAocrCandidateDetail
+                {
+                    CodigoSolicitud = solicitud.CodigoSolicitud,
+                    NumeroSolicitud = solicitud.NumeroSolicitud,
+                    EstadoSolicitud = solicitud.Estado,
+                    CodigoInspeccion = informe.CodigoInspeccion,
+                    CodigoInforme = informe.CodigoInforme,
+                    EstadoInforme = informe.EstadoInforme
+                });
+            }
+
             return resultado;
         }
 
@@ -159,6 +465,16 @@ namespace CapaNegocio.Services
                     if (ins == null) continue;
                     var inf = _informeDao.ObtenerUltimoPorInspeccion(ins.CodigoInspeccion);
                     if (inf == null) continue;
+
+                    if (!InformeCompletaFaseTecnicaAocr(inf) || InformeTieneObservacionesPendientes(inf))
+                    {
+                        continue;
+                    }
+
+                    if (!InformeResultadoPermiteGeneracionAocr(inf))
+                    {
+                        continue;
+                    }
 
                     if (mejor == null) { mejor = inf; continue; }
                     int scoreActual = (inf.Finalizado ? 1 : 0) + (inf.FirmadoInspector ? 1 : 0) + (InformeCompletaFaseTecnicaAocr(inf) ? 1 : 0);
@@ -198,6 +514,104 @@ namespace CapaNegocio.Services
             var estadoInforme = (informe.EstadoInforme ?? string.Empty).Trim().ToUpperInvariant();
             return estadoInforme == "APROBADO_DIRECCION"
                 || estadoInforme == "FIRMADO_FINAL";
+        }
+
+        private static bool InformeTieneObservacionesPendientes(InspeccionInformeTecnico informe)
+        {
+            var estadoInforme = (informe != null ? informe.EstadoInforme : null ?? string.Empty).Trim();
+            return string.Equals(estadoInforme, "OBSERVADO_DIRDAC", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(estadoInforme, "RECHAZADO_DIRDAC", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(estadoInforme, "DEVUELTO_DIRECCION", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(estadoInforme, "DEVUELTO_RT", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(estadoInforme, "OBSERVADO", StringComparison.OrdinalIgnoreCase);
+        }
+
+        private static bool InformeResultadoPermiteGeneracionAocr(InspeccionInformeTecnico informe)
+        {
+            return string.Equals(NormalizarResultadoInformeTecnico(informe != null ? informe.Resultado : null), "SATISFACTORIO", StringComparison.OrdinalIgnoreCase);
+        }
+
+        private static string NormalizarResultadoInformeTecnico(string resultado)
+        {
+            var normalizado = (resultado ?? string.Empty).Trim().ToUpperInvariant().Replace('-', '_').Replace(' ', '_');
+
+            switch (normalizado)
+            {
+                case "APROBADO":
+                case EstadosInspeccion.RESULTADO_SATISFACTORIO:
+                    return "SATISFACTORIO";
+                case "NO_SATISFACTORIO":
+                case "RECHAZADO":
+                case EstadosInspeccion.RESULTADO_NO_SATISFACTORIO:
+                    return "INSATISFACTORIO";
+                default:
+                    return normalizado;
+            }
+        }
+
+        private static bool EstadoSolicitudPermiteGeneracion(string estadoSolicitud)
+        {
+            return string.Equals(estadoSolicitud, EstadoSolicitud.AceptacionDocumental, StringComparison.OrdinalIgnoreCase)
+                || string.Equals(estadoSolicitud, EstadoSolicitud.DocumentacionCompleta, StringComparison.OrdinalIgnoreCase)
+                || string.Equals(estadoSolicitud, EstadoSolicitud.EnInspeccion, StringComparison.OrdinalIgnoreCase)
+                || string.Equals(estadoSolicitud, EstadoSolicitud.Aprobada, StringComparison.OrdinalIgnoreCase)
+                || string.Equals(estadoSolicitud, EstadoSolicitud.InspeccionRealizada, StringComparison.OrdinalIgnoreCase)
+                || string.Equals(estadoSolicitud, EstadoSolicitud.AOCR_EnElaboracion, StringComparison.OrdinalIgnoreCase)
+                || string.Equals(estadoSolicitud, EstadoSolicitud.AOCR_EnRevision, StringComparison.OrdinalIgnoreCase)
+                || string.Equals(estadoSolicitud, EstadoSolicitud.AOCR_Validado, StringComparison.OrdinalIgnoreCase)
+                || string.Equals(estadoSolicitud, EstadoSolicitud.AOCR_Legalizado, StringComparison.OrdinalIgnoreCase)
+                || string.Equals(estadoSolicitud, EstadoSolicitud.AOCR_EmitidoRecibido, StringComparison.OrdinalIgnoreCase);
+        }
+
+            private static bool EstadoSolicitudEsLegacyPendienteAocr(string estadoSolicitud)
+            {
+                return string.Equals(estadoSolicitud, EstadoSolicitud.AceptacionDocumental, StringComparison.OrdinalIgnoreCase)
+                || string.Equals(estadoSolicitud, EstadoSolicitud.DocumentacionCompleta, StringComparison.OrdinalIgnoreCase);
+            }
+
+        private static bool UsuarioPuedeGenerarAocr(int codigoUsuario, IEnumerable<string> rolesUsuario)
+        {
+            if (rolesUsuario == null)
+            {
+                return true;
+            }
+
+            var roles = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            foreach (var rol in rolesUsuario)
+            {
+                if (!string.IsNullOrWhiteSpace(rol))
+                {
+                    roles.Add(rol.Trim());
+                }
+            }
+
+            if (codigoUsuario <= 0 || roles.Count == 0)
+            {
+                return false;
+            }
+
+            return roles.Contains("Administrador")
+                || roles.Contains("DIRDAC")
+                || roles.Contains("Direccion")
+                || roles.Contains("Director")
+                || roles.Contains("DirectorGeneral")
+                || roles.Contains("JefaturaTecnica")
+                || roles.Contains("Jefe")
+                || roles.Contains("DireccionJefaturaTecnica");
+        }
+
+        private static bool InspeccionPermiteGeneracionAocr(Inspeccion inspeccion)
+        {
+            if (inspeccion == null)
+            {
+                return false;
+            }
+
+            var estado = EstadosInspeccion.NormalizarEstado(inspeccion.Estado);
+            return string.Equals(estado, EstadosInspeccion.EN_INSPECCION, StringComparison.OrdinalIgnoreCase)
+                || string.Equals(estado, EstadosInspeccion.INFORME_ELABORADO, StringComparison.OrdinalIgnoreCase)
+                || string.Equals(estado, EstadosInspeccion.RESULTADO_SATISFACTORIO, StringComparison.OrdinalIgnoreCase)
+                || string.Equals(estado, EstadosInspeccion.CERRADA, StringComparison.OrdinalIgnoreCase);
         }
 
         /// <summary>
@@ -263,7 +677,7 @@ namespace CapaNegocio.Services
                     estadoAnterior,
                     estadoAnterior,
                     usuarioId,
-                    "Generación automática de AOCR (" + (numeroAOCR ?? "S/N") + "). Archivo: " + documento.NombreArchivo);
+                    "Generación automática de AOCR (" + (numeroAOCR ?? "S/N") + "). Archivo: " + documento.NombreArchivo + ". Evento=AOCR_GENERADA.");
             }
             catch { /* no romper si el historial falla */ }
 

@@ -255,6 +255,12 @@ namespace CapaPresentacion.Models.ViewModels
         public bool RequiereFirmaDireccion { get; set; }
         public bool NotificadoRt { get; set; }
         public System.DateTime? FechaNotificacionRt { get; set; }
+        public string EstadoAocr { get; set; }
+        public bool PuedeGenerarAocr { get; set; }
+        public bool AocrYaGenerada { get; set; }
+        public string MotivoBloqueoGenerarAocr { get; set; }
+        public string UrlDetalleSolicitudAocr { get; set; }
+        public string UrlVistaPreviaAocr { get; set; }
         public string ObservacionDireccion { get; set; }
         public string UrlVolverPendientes { get; set; }
         public string RolUsuarioActual { get; set; }
@@ -278,6 +284,10 @@ namespace CapaPresentacion.Models.ViewModels
             Recomendaciones = string.Empty;
             UrlPdfInformeFirmadoInspector = string.Empty;
             UrlDescargarPdfInformeFirmadoInspector = string.Empty;
+            EstadoAocr = string.Empty;
+            MotivoBloqueoGenerarAocr = string.Empty;
+            UrlDetalleSolicitudAocr = string.Empty;
+            UrlVistaPreviaAocr = string.Empty;
             ObservacionDireccion = string.Empty;
             UrlVolverPendientes = string.Empty;
             RolUsuarioActual = string.Empty;

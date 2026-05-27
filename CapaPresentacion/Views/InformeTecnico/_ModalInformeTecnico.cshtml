@@ -86,7 +86,15 @@
         : (vm.LvEaeFinalizada ? "LV_FINALIZADA" : "LV_BORRADOR");
     var resultadoSeleccionado = InformeTecnicoTemplateHelper.NormalizeResultadoInformeTecnico(informe.Resultado);
     var tipoResultadoInsatisfactorioSeleccionado = InformeTecnicoTemplateHelper.NormalizeTipoResultadoInsatisfactorio(informe.TipoResultadoInsatisfactorio);
+    var mostrarObservacionesResultado = InformeTecnicoTemplateHelper.IsResultadoSatisfactorio(resultadoSeleccionado);
+    var mostrarHallazgosResultado = InformeTecnicoTemplateHelper.IsResultadoInsatisfactorio(resultadoSeleccionado);
     var mostrarTipoResultadoInsatisfactorio = InformeTecnicoTemplateHelper.IsResultadoInsatisfactorio(resultadoSeleccionado);
+    var urlVerListaVerificacion = vm.UsaFlujoListaVerificacionOperacionalEae && vm.CodigoInspeccion > 0
+        ? Url.Action("VerListaVerificacionOperacionalEae", "Inspeccion", new { id = vm.CodigoInspeccion })
+        : string.Empty;
+    var urlDescargarListaVerificacion = vm.UsaFlujoListaVerificacionOperacionalEae && vm.CodigoInspeccion > 0
+        ? Url.Action("DescargarListaVerificacionOperacionalEae", "Inspeccion", new { id = vm.CodigoInspeccion })
+        : string.Empty;
     var puedeEditar = vm.PuedeEditarInformeTecnico && string.IsNullOrWhiteSpace(vm.MensajeBloqueo);
     var ayudaPdf = vm.ExistePdfInformeTecnico
         ? "Documento disponible para revisión, descarga y trazabilidad del expediente técnico."
@@ -115,6 +123,13 @@
                 @if (!string.IsNullOrWhiteSpace(vm.MensajeBloqueo))
                 {
                     <div class="alert alert-warning aocr-inline-alert mt-3 mb-0">@vm.MensajeBloqueo</div>
+                }
+
+                @if (vm.FirmaInspectorPanel != null && vm.FirmaInspectorPanel.CodigoInspeccion > 0)
+                {
+                    <div class="mt-3" data-aocr-signature-panel="true" tabindex="-1">
+                        @Html.Partial("~/Views/Inspeccion/_FirmaInspectorPanel.cshtml", vm.FirmaInspectorPanel)
+                    </div>
                 }
 
                 <div class="aocr-modal-layout mt-3">
@@ -236,6 +251,40 @@
                                     <textarea name="desarrollo" class="form-control aocr-textarea-xl" placeholder="Describa el análisis técnico efectuado, verificaciones, contrastes, cumplimiento y criterios aplicados.">@desarrolloTexto</textarea>
                                 </div>
 
+                                <div class="aocr-info-card">
+                                    <h6 class="aocr-section-title">Resultado técnico final</h6>
+                                    <p class="aocr-field-help">Seleccione el resultado técnico final institucional del informe. Si marca Insatisfactorio, se habilitarán las opciones Con inspección y Sin inspección.</p>
+                                    <div class="aocr-result-options aocr-radio-group">
+                                        <label class="aocr-result-option">
+                                            <input type="radio" name="resultado" value="SATISFACTORIO" class="resultado-tecnico-radio" @(string.Equals(resultadoSeleccionado, "SATISFACTORIO", StringComparison.OrdinalIgnoreCase) ? "checked=\"checked\"" : null) />
+                                            <span>Satisfactorio</span>
+                                        </label>
+                                        <label class="aocr-result-option">
+                                            <input type="radio" name="resultado" value="INSATISFACTORIO" class="resultado-tecnico-radio" @(string.Equals(resultadoSeleccionado, "INSATISFACTORIO", StringComparison.OrdinalIgnoreCase) ? "checked=\"checked\"" : null) />
+                                            <span>Insatisfactorio</span>
+                                        </label>
+                                    </div>
+
+                                    <div id="bloqueTipoInsatisfactorio"
+                                         class="aocr-subsection aocr-collapsible-subsection @(mostrarTipoResultadoInsatisfactorio ? "is-visible" : string.Empty)"
+                                         aria-live="polite"
+                                         @(mostrarTipoResultadoInsatisfactorio ? null : "style=\"display:none;\"")>
+                                        <h6 class="aocr-section-title-sm">Tipo de resultado insatisfactorio</h6>
+                                        <p class="aocr-field-help">Seleccione una de las dos opciones para el resultado insatisfactorio: Con inspección o Sin inspección.</p>
+
+                                        <div class="aocr-result-options aocr-radio-group">
+                                            <label class="aocr-result-option">
+                                                <input type="radio" name="tipoResultadoInsatisfactorio" value="CON_INSPECCION" class="tipo-insatisfactorio-radio" @(string.Equals(tipoResultadoInsatisfactorioSeleccionado, "CON_INSPECCION", StringComparison.OrdinalIgnoreCase) ? "checked=\"checked\"" : null) />
+                                                <span>Con inspección</span>
+                                            </label>
+                                            <label class="aocr-result-option">
+                                                <input type="radio" name="tipoResultadoInsatisfactorio" value="SIN_INSPECCION" class="tipo-insatisfactorio-radio" @(string.Equals(tipoResultadoInsatisfactorioSeleccionado, "SIN_INSPECCION", StringComparison.OrdinalIgnoreCase) ? "checked=\"checked\"" : null) />
+                                                <span>Sin inspección</span>
+                                            </label>
+                                        </div>
+                                    </div>
+                                </div>
+
                                 <div class="aocr-form-grid aocr-form-grid-split">
                                     <div class="aocr-info-card">
                                         <h6 class="aocr-section-title">Resultado de la LV/EAE</h6>
@@ -245,7 +294,18 @@
                                         </div>
                                         <textarea name="notas" class="form-control aocr-textarea-lg" placeholder="Resuma cumplimiento, observaciones relevantes y resultado general de la LV/EAE.">@notasTexto</textarea>
                                     </div>
-                                    <div class="aocr-info-card">
+
+                                    <div class="aocr-info-card"
+                                         data-resultado-section="SATISFACTORIO"
+                                         @(mostrarObservacionesResultado ? null : "style=\"display:none;\"")>
+                                        <h6 class="aocr-section-title">Observaciones</h6>
+                                        <textarea name="observaciones" class="form-control aocr-textarea-lg" placeholder="Registre observaciones técnicas, restricciones o condiciones particulares.">@observacionesTexto</textarea>
+                                        <div class="aocr-field-help">Este bloque solo aplica cuando el resultado técnico final es satisfactorio.</div>
+                                    </div>
+
+                                    <div class="aocr-info-card"
+                                         data-resultado-section="INSATISFACTORIO"
+                                         @(mostrarHallazgosResultado ? null : "style=\"display:none;\"")>
                                         <h6 class="aocr-section-title">Hallazgos técnicos</h6>
                                         <textarea name="noConformidades" class="form-control aocr-textarea-lg" placeholder="Registre los hallazgos técnicos. Puede usar una línea por hallazgo o bloque técnico.">@hallazgosTexto</textarea>
                                         <div class="aocr-field-help">Puede registrar un hallazgo por línea para facilitar la lectura del borrador y del PDF.</div>
@@ -254,52 +314,12 @@
 
                                 <div class="aocr-form-grid aocr-form-grid-split">
                                     <div class="aocr-info-card">
-                                        <h6 class="aocr-section-title">Observaciones</h6>
-                                        <textarea name="observaciones" class="form-control aocr-textarea-lg" placeholder="Registre observaciones técnicas, restricciones o condiciones particulares.">@observacionesTexto</textarea>
-                                    </div>
-                                    <div class="aocr-info-card">
                                         <h6 class="aocr-section-title">Conclusiones</h6>
                                         <textarea name="conclusiones" class="form-control aocr-textarea-lg" placeholder="Emita la conclusión técnica del informe.">@conclusionesTexto</textarea>
                                     </div>
-                                </div>
-
-                                <div class="aocr-form-grid aocr-form-grid-split">
                                     <div class="aocr-info-card">
                                         <h6 class="aocr-section-title">Recomendaciones</h6>
                                         <textarea name="recomendaciones" class="form-control aocr-textarea-lg" placeholder="Indique recomendaciones, acciones correctivas o seguimiento posterior.">@recomendacionesTexto</textarea>
-                                    </div>
-                                    <div class="aocr-info-card">
-                                        <h6 class="aocr-section-title">Resultado técnico final</h6>
-                                        <p class="aocr-field-help">Seleccione el resultado técnico final institucional del informe. Si marca Insatisfactorio, se habilitarán las opciones Con inspección y Sin inspección.</p>
-                                        <div class="aocr-result-options aocr-radio-group">
-                                            <label class="aocr-result-option">
-                                                <input type="radio" name="resultado" value="SATISFACTORIO" class="resultado-tecnico-radio" @(string.Equals(resultadoSeleccionado, "SATISFACTORIO", StringComparison.OrdinalIgnoreCase) ? "checked=\"checked\"" : null) />
-                                                <span>Satisfactorio</span>
-                                            </label>
-                                            <label class="aocr-result-option">
-                                                <input type="radio" name="resultado" value="INSATISFACTORIO" class="resultado-tecnico-radio" @(string.Equals(resultadoSeleccionado, "INSATISFACTORIO", StringComparison.OrdinalIgnoreCase) ? "checked=\"checked\"" : null) />
-                                                <span>Insatisfactorio</span>
-                                            </label>
-                                        </div>
-
-                                        <div id="bloqueTipoInsatisfactorio"
-                                             class="aocr-subsection aocr-collapsible-subsection @(mostrarTipoResultadoInsatisfactorio ? "is-visible" : string.Empty)"
-                                             aria-live="polite"
-                                             @(mostrarTipoResultadoInsatisfactorio ? null : "style=\"display:none;\"")>
-                                            <h6 class="aocr-section-title-sm">Tipo de resultado insatisfactorio</h6>
-                                            <p class="aocr-field-help">Seleccione una de las dos opciones para el resultado insatisfactorio: Con inspección o Sin inspección.</p>
-
-                                            <div class="aocr-result-options aocr-radio-group">
-                                                <label class="aocr-result-option">
-                                                    <input type="radio" name="tipoResultadoInsatisfactorio" value="CON_INSPECCION" class="tipo-insatisfactorio-radio" @(string.Equals(tipoResultadoInsatisfactorioSeleccionado, "CON_INSPECCION", StringComparison.OrdinalIgnoreCase) ? "checked=\"checked\"" : null) />
-                                                    <span>Con inspección</span>
-                                                </label>
-                                                <label class="aocr-result-option">
-                                                    <input type="radio" name="tipoResultadoInsatisfactorio" value="SIN_INSPECCION" class="tipo-insatisfactorio-radio" @(string.Equals(tipoResultadoInsatisfactorioSeleccionado, "SIN_INSPECCION", StringComparison.OrdinalIgnoreCase) ? "checked=\"checked\"" : null) />
-                                                    <span>Sin inspección</span>
-                                                </label>
-                                            </div>
-                                        </div>
                                     </div>
                                 </div>
 
@@ -310,23 +330,54 @@
                                         @{ var idxAdj = 0; }
                                         @foreach (var adjunto in documentosAdjuntosBase)
                                         {
-                                            var estaSeleccionado = documentosAdjuntosSeleccionados.Any(item => string.Equals(item, adjunto, StringComparison.OrdinalIgnoreCase));
+                                            var esListaVerificacionAuto = vm.UsaFlujoListaVerificacionOperacionalEae
+                                                && vm.LvEaeFinalizada
+                                                && string.Equals(adjunto, "LISTA DE VERIFICACION", StringComparison.OrdinalIgnoreCase);
+                                            var estaSeleccionado = esListaVerificacionAuto || documentosAdjuntosSeleccionados.Any(item => string.Equals(item, adjunto, StringComparison.OrdinalIgnoreCase));
                                             var archivosAdjuntoActual = documentosAdjuntosArchivos.ContainsKey(adjunto) ? documentosAdjuntosArchivos[adjunto] : new List<string>();
                                             var resumenAdjuntoActual = archivosAdjuntoActual != null && archivosAdjuntoActual.Any()
                                                 ? "Archivos cargados: " + string.Join(", ", archivosAdjuntoActual)
-                                                : (estaSeleccionado ? "Documento marcado en el informe. Sin archivo cargado." : string.Empty);
+                                                : (esListaVerificacionAuto
+                                                    ? "Documento vinculado automáticamente desde la LV/EAE finalizada."
+                                                    : (estaSeleccionado ? "Documento marcado en el informe. Sin archivo cargado." : string.Empty));
                                             var adjFileKey = "archivoAdjunto_" + idxAdj;
                                             var adjSummaryId = "adjuntoResumenModal_" + idxAdj;
+                                            var mostrarCargaAdjunto = estaSeleccionado && !esListaVerificacionAuto;
 
                                             <div class="aocr-document-item">
-                                                <label class="aocr-document-main">
-                                                    <input type="checkbox" name="documentosAdjuntos" value="@adjunto" @(estaSeleccionado ? "checked=\"checked\"" : null) />
-                                                    <span>@adjunto</span>
-                                                </label>
-                                                <div class="aocr-document-upload">
-                                                    <input type="file" name="@adjFileKey" class="form-control form-control-sm" accept=".pdf,.jpg,.jpeg,.png,.doc,.docx,.xls,.xlsx" multiple data-file-summary-target="@adjSummaryId" />
-                                                    <small id="@adjSummaryId" class="aocr-document-note" data-existing-summary="@resumenAdjuntoActual">@resumenAdjuntoActual</small>
-                                                </div>
+                                                @if (esListaVerificacionAuto)
+                                                {
+                                                    @Html.Hidden("documentosAdjuntos", adjunto)
+                                                    <div class="aocr-document-main">
+                                                        <span>@adjunto</span>
+                                                    </div>
+                                                    <div class="aocr-document-upload" data-upload-container="true">
+                                                        <small id="@adjSummaryId" class="aocr-document-note" data-existing-summary="@resumenAdjuntoActual">
+                                                            @resumenAdjuntoActual
+                                                            @if (!string.IsNullOrWhiteSpace(urlVerListaVerificacion))
+                                                            {
+                                                                <span>
+                                                                    <a href="@urlVerListaVerificacion" target="_blank" rel="noopener">Ver PDF</a>
+                                                                    @if (!string.IsNullOrWhiteSpace(urlDescargarListaVerificacion))
+                                                                    {
+                                                                        <text> | <a href="@urlDescargarListaVerificacion" target="_blank" rel="noopener">Descargar</a></text>
+                                                                    }
+                                                                </span>
+                                                            }
+                                                        </small>
+                                                    </div>
+                                                }
+                                                else
+                                                {
+                                                    <label class="aocr-document-main">
+                                                        <input type="checkbox" name="documentosAdjuntos" value="@adjunto" @(estaSeleccionado ? "checked=\"checked\"" : null) />
+                                                        <span>@adjunto</span>
+                                                    </label>
+                                                    <div class="aocr-document-upload" data-upload-container="true" @(mostrarCargaAdjunto ? null : "style=\"display:none;\"")>
+                                                        <input type="file" name="@adjFileKey" class="form-control form-control-sm" accept=".pdf,.jpg,.jpeg,.png,.doc,.docx,.xls,.xlsx" multiple data-file-summary-target="@adjSummaryId" />
+                                                        <small id="@adjSummaryId" class="aocr-document-note" data-existing-summary="@resumenAdjuntoActual">@resumenAdjuntoActual</small>
+                                                    </div>
+                                                }
                                             </div>
 
                                             idxAdj++;
@@ -347,13 +398,6 @@
 
                             </fieldset>
                         </form>
-
-                        @if (vm.FirmaInspectorPanel != null && vm.FirmaInspectorPanel.CodigoInspeccion > 0)
-                        {
-                            <div class="mt-3">
-                                @Html.Partial("~/Views/Inspeccion/_FirmaInspectorPanel.cshtml", vm.FirmaInspectorPanel)
-                            </div>
-                        }
                     </div>
 
                     <div class="aocr-modal-side">

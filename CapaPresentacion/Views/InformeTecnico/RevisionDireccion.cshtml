@@ -104,17 +104,40 @@
                             <i class="fas fa-download"></i> Descargar PDF
                         </a>
                     }
-                    @if (vm.PuedeReenviarNotificacionRt)
+
+                    @if (!string.IsNullOrWhiteSpace(vm.UrlDetalleSolicitudAocr))
                     {
-                        using (Html.BeginForm("ReenviarNotificacionRt", "Inspeccion", FormMethod.Post, new { @class = "d-grid gap-2" }))
+                        <a class="btn btn-outline-dark" href="@vm.UrlDetalleSolicitudAocr">
+                            <i class="fas fa-folder-open"></i> Abrir Solicitud AOCR
+                        </a>
+                    }
+
+                    @if (vm.AocrYaGenerada && !string.IsNullOrWhiteSpace(vm.UrlVistaPreviaAocr))
+                    {
+                        <a class="btn btn-outline-success" href="@vm.UrlVistaPreviaAocr" target="_blank" rel="noopener">
+                            <i class="fas fa-file-pdf"></i> Ver AOCR generada
+                        </a>
+                    }
+                    else if (vm.PuedeGenerarAocr)
+                    {
+                        using (Html.BeginForm("GenerarAOCR", "SolicitudAOCR", FormMethod.Post, new { @class = "d-grid gap-2" }))
                         {
                             @Html.AntiForgeryToken()
-                            <input type="hidden" name="id" value="@vm.CodigoInspeccion" />
-                            <button type="submit" class="btn btn-outline-warning">
-                                <i class="fas fa-envelope-open-text"></i> Reenviar notificación RT
+                            <input type="hidden" name="id" value="@vm.CodigoSolicitud" />
+                            <button type="submit" class="btn btn-success" onclick="return confirm('¿Confirma la generación automática de la AOCR para esta solicitud?');">
+                                <i class="fas fa-file-signature"></i> Generar AOCR
                             </button>
                         }
                     }
+
+                    <div class="alert alert-light border mb-0">
+                        <div class="fw-semibold mb-1">Estado AOCR</div>
+                        <div>@vm.EstadoAocr</div>
+                        @if (!vm.PuedeGenerarAocr && !vm.AocrYaGenerada && !string.IsNullOrWhiteSpace(vm.MotivoBloqueoGenerarAocr))
+                        {
+                            <div class="small text-muted mt-2">@vm.MotivoBloqueoGenerarAocr</div>
+                        }
+                    </div>
                 </div>
             </div>
         </div>
@@ -213,6 +236,10 @@
                     else if (vm.NotificadoRt)
                     {
                         <div class="alert alert-success mt-3 mb-0">La notificación al RT ya fue encolada@(vm.FechaNotificacionRt.HasValue ? " el " + vm.FechaNotificacionRt.Value.ToString("dd/MM/yyyy HH:mm") : string.Empty).</div>
+                    }
+                    else if (vm.PuedeGenerarAocr || vm.AocrYaGenerada)
+                    {
+                        <div class="alert alert-info mt-3 mb-0">La notificación final al RT se mantiene en la fase AOCR y no en la aprobación del Informe Técnico.</div>
                     }
                 </div>
             </div>
