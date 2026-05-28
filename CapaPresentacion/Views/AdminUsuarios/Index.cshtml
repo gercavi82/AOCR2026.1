@@ -21,22 +21,32 @@
     private static IList<string> ObtenerFamiliasRol(string rolesTexto, string rolFallback, string tipoUsuario)
     {
         var roles = new List<string>();
+        var rolesUnicos = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
         if (!string.IsNullOrWhiteSpace(rolesTexto))
         {
-            roles.AddRange(rolesTexto
-                .Split(new[] { ',', ';' }, StringSplitOptions.RemoveEmptyEntries)
-                .Select(r => r.Trim())
-                .Where(r => !string.IsNullOrWhiteSpace(r)));
+            var segmentos = rolesTexto.Split(new[] { ',', ';' }, StringSplitOptions.RemoveEmptyEntries);
+            foreach (var segmento in segmentos)
+            {
+                var rolActual = string.IsNullOrWhiteSpace(segmento) ? string.Empty : segmento.Trim();
+                if (!string.IsNullOrWhiteSpace(rolActual) && rolesUnicos.Add(rolActual))
+                {
+                    roles.Add(rolActual);
+                }
+            }
         }
 
         if (!string.IsNullOrWhiteSpace(rolFallback))
         {
-            roles.Add(rolFallback.Trim());
+            var rolFallbackLimpio = rolFallback.Trim();
+            if (!string.IsNullOrWhiteSpace(rolFallbackLimpio) && rolesUnicos.Add(rolFallbackLimpio))
+            {
+                roles.Add(rolFallbackLimpio);
+            }
         }
 
         var familias = new List<string>();
-        foreach (var rol in roles.Distinct(StringComparer.OrdinalIgnoreCase))
+        foreach (var rol in roles)
         {
             var rolNormalizado = RoleGroupingHelper.NormalizeSelectedRole(rol);
             if (string.Equals(rolNormalizado, RoleGroupingHelper.Administrador, StringComparison.OrdinalIgnoreCase))
@@ -70,9 +80,17 @@
             familias.Add("Sin rol");
         }
 
-        return familias
-            .Distinct(StringComparer.OrdinalIgnoreCase)
-            .ToList();
+        var familiasUnicas = new List<string>();
+        var familiasRegistradas = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var familia in familias)
+        {
+            if (!string.IsNullOrWhiteSpace(familia) && familiasRegistradas.Add(familia))
+            {
+                familiasUnicas.Add(familia);
+            }
+        }
+
+        return familiasUnicas;
     }
 
     private static string ObtenerClasePerfilBadge(string familia)

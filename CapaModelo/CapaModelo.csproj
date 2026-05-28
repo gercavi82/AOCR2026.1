@@ -62,6 +62,7 @@
     <Compile Include="Common\EmailTemplateModel.cs" />
     <Compile Include="Common\EmailTemplateRenderer.cs" />
     <Compile Include="Common\ResultadoOperacion.cs" />
+    <Compile Include="Common\AocrBandejaDocumentoRow.cs" />
     <Compile Include="Common\CertificadoAOCRViewModel.cs" />
     <Compile Include="OrdenRecaudacion\HistorialEstadoOrden.cs" />
     <Compile Include="OrdenRecaudacion\ConceptoRecaudacion.cs" />

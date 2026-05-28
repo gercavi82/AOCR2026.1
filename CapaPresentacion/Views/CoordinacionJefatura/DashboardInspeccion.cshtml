@@ -17,7 +17,7 @@
     const int kanbanPreviewLimit = 5;
     var puedeGestionarAsignacion = User.IsInRole("Administrador") || User.IsInRole("Coordinador") || User.IsInRole("CoordinadorInspecciones");
     var puedeVerPendientesDirdac = User.IsInRole("Administrador") || User.IsInRole("DIRDAC") || User.IsInRole("Direccion") || User.IsInRole("Director") || User.IsInRole("JefaturaTecnica") || User.IsInRole("Jefe");
-    var puedeValidarAocr = User.IsInRole("Administrador") || User.IsInRole("DIRDAC") || User.IsInRole("Direccion") || User.IsInRole("JefaturaTecnica") || User.IsInRole("DirectorGeneral");
+    var puedeValidarAocr = User.IsInRole("Administrador") || User.IsInRole("CoordinacionLegal") || User.IsInRole("CoordinadorLegal") || User.IsInRole("Coordinador") || User.IsInRole("CoordinadorInspecciones") || User.IsInRole("DIRDAC") || User.IsInRole("Direccion") || User.IsInRole("JefaturaTecnica") || User.IsInRole("DirectorGeneral");
 
     Func<string, string, string> quickFilterUrl = (value, label) => Url.Action("DashboardInspeccion", "CoordinacionJefatura", new
     {

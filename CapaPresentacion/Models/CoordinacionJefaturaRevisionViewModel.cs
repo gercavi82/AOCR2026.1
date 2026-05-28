@@ -47,6 +47,11 @@ namespace CapaPresentacion.Models
         public bool FirmaCompleta { get; set; }
         public bool PuedeContinuar { get; set; }
         public bool ListoParaEnvioRt { get; set; }
+        public string EstadoSolicitud { get; set; }
+        public bool PuedeEnviarADirdac { get; set; }
+        public bool PuedeAprobarFinal { get; set; }
+        public bool PuedeSolicitarModificacion { get; set; }
+        public string CamposFaltantes { get; set; }
         public string MensajeEstado { get; set; }
         public string MensajeAdvertencia { get; set; }
         public string Firmantes { get; set; }

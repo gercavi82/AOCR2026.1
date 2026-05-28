@@ -1,5 +1,7 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Web;
 using System.Web.Mvc;
 using CapaNegocio;
@@ -25,6 +27,7 @@ namespace CapaPresentacion.Controllers
         private readonly AocrFirmaDocumentoDAO _firmaDocDao = new AocrFirmaDocumentoDAO();
         private readonly HistorialEstadoDAO _historialDao = new HistorialEstadoDAO();
         private readonly SolicitudAOCRDAO _solicitudDao = new SolicitudAOCRDAO();
+        private readonly AeronaveSolicitudDAO _aeronaveSolicitudDao = new AeronaveSolicitudDAO();
 
         private static string GenerarNumeroAOCR(int idSolicitud, DateTime? fecha = null)
         {
@@ -175,11 +178,23 @@ namespace CapaPresentacion.Controllers
                 return cert;
             }
 
+            var fechaUltimaFirma = ultimaFirma.CreatedAt ?? ultimaFirma.FechaFirma;
+            var certificadoYaApuntaAUnArtefactoMasNuevo =
+                !string.IsNullOrWhiteSpace(cert.RutaDocumento)
+                && cert.UpdatedAt.HasValue
+                && cert.UpdatedAt.Value >= fechaUltimaFirma
+                && !string.Equals(cert.RutaDocumento, ultimaFirma.RutaDocumento, StringComparison.OrdinalIgnoreCase);
+
+            if (certificadoYaApuntaAUnArtefactoMasNuevo)
+            {
+                return cert;
+            }
+
             if (string.Equals(cert.RutaDocumento, ultimaFirma.RutaDocumento, StringComparison.OrdinalIgnoreCase))
             {
                 if (!cert.UpdatedAt.HasValue)
                 {
-                    cert.UpdatedAt = ultimaFirma.CreatedAt ?? ultimaFirma.FechaFirma;
+                    cert.UpdatedAt = fechaUltimaFirma;
                 }
 
                 if (string.IsNullOrWhiteSpace(cert.AprobadoPor))
@@ -191,8 +206,9 @@ namespace CapaPresentacion.Controllers
             }
 
             cert.RutaDocumento = ultimaFirma.RutaDocumento;
+            cert.RutaPdf = ultimaFirma.RutaDocumento;
             cert.Estado = "APROBADO";
-            cert.UpdatedAt = ultimaFirma.CreatedAt ?? ultimaFirma.FechaFirma;
+            cert.UpdatedAt = fechaUltimaFirma;
 
             if (string.IsNullOrWhiteSpace(cert.EmitidoPor))
             {
@@ -683,6 +699,12 @@ namespace CapaPresentacion.Controllers
             string numeroCert = cert != null && !string.IsNullOrWhiteSpace(cert.NumeroCertificado)
                 ? cert.NumeroCertificado
                 : GenerarNumeroAOCR(solicitudId, solicitud.FechaSolicitud);
+            var aeronaves = _aeronaveSolicitudDao.ObtenerPorSolicitud(solicitudId) ?? new List<AeronaveSolicitud>();
+            var aeropuertosAutorizados = string.Join(" / ", new[]
+            {
+                solicitud.AeropuertosEcuador,
+                solicitud.AeropuertosEcuadorOtros
+            }.Where(x => !string.IsNullOrWhiteSpace(x)).Distinct(StringComparer.OrdinalIgnoreCase));
 
             // Cargar logo como base64
             string logoBase64 = null;
@@ -704,15 +726,16 @@ namespace CapaPresentacion.Controllers
             return new CertificadoAOCRViewModel
             {
                 NumeroAOCR = numeroCert,
-                NumeroAOCBase = solicitud.NumeroSolicitud,
+                NumeroAOCBase = PrimerTextoNoVacio(solicitud.NumeroAOC, solicitud.NumeroSolicitud, numeroCert),
+                PermisoOperacionCNAC = PrimerTextoNoVacio(solicitud.NumeroAOC, solicitud.NumeroSolicitud),
                 FechaEmision = cert?.FechaEmision ?? DateTime.Now,
                 FechaVencimiento = cert?.FechaVencimiento,
                 FechaRenovacion = null,
                 NumeroEnmienda = 1,
 
-                NombreExplotador = solicitud.NombreOperador,
+                NombreExplotador = PrimerTextoNoVacio(solicitud.NombreOperador, solicitud.NombreComercial, solicitud.RazonSocial),
                 EstadoExplotador = solicitud.Pais ?? "Ecuador",
-                RazonSocial = !string.IsNullOrWhiteSpace(solicitud.RazonSocial) ? solicitud.RazonSocial : solicitud.NombreOperador,
+                RazonSocial = PrimerTextoNoVacio(solicitud.RazonSocial, solicitud.NombreOperador, solicitud.NombreComercial),
                 RUC = solicitud.Ruc,
                 DireccionExplotador = solicitud.Direccion,
                 TelefonoExplotador = solicitud.Telefono,
@@ -726,27 +749,112 @@ namespace CapaPresentacion.Controllers
                 DireccionOperacional = solicitud.Direccion,
                 TelefonoOperacional = solicitud.Telefono,
                 CorreoOperacional = solicitud.Email,
+                GerenciaSeguridadOperacional = PrimerTextoNoVacio(solicitud.ResumenOperacionesEae, solicitud.DescripcionOperacion),
+                DireccionGSO = solicitud.Direccion,
+                TelefonoGSO = solicitud.Telefono,
+                CorreoGSO = solicitud.Email,
 
                 RepresentanteTecnico = solicitud.TecnicoResponsableNombre,
-                CorreoRT = solicitud.CorreoRepresentanteTecnico,
+                DireccionRT = solicitud.Direccion,
+                TelefonoRT = solicitud.Telefono,
+                CorreoRT = PrimerTextoNoVacio(solicitud.CorreoRepresentanteTecnico, solicitud.Email),
                 RepresentanteLegal = solicitud.RepresentanteLegal,
 
                 TipoOperacion = solicitud.TipoOperacion,
                 AlcanceOperacion = solicitud.DescripcionOperacion,
+                AeronavesDetalle = ConstruirDetalleAeronaves(aeronaves),
+                AeropuertosAutorizados = string.IsNullOrWhiteSpace(aeropuertosAutorizados) ? "No aplica" : aeropuertosAutorizados,
+                TiposOperacionAutorizados = PrimerTextoNoVacio(solicitud.TipoOperacion, solicitud.DescripcionOperacion),
+                RestriccionesCondiciones = PrimerTextoNoVacio(cert != null ? cert.Observaciones : null, solicitud.Observaciones, solicitud.ObservacionesGenerales),
+                CondicionesAdicionales = PrimerTextoNoVacio(solicitud.AprobacionesEspecialesOtros, solicitud.AprobacionesEspeciales),
+                AeronavesCondiciones = ConstruirFilasAeronavesCondiciones(aeronaves),
 
                 NombreFirmante = !string.IsNullOrWhiteSpace(solicitud.Director) ? solicitud.Director : "DIRECTOR GENERAL DE AVIACION CIVIL",
                 CargoFirmante = !string.IsNullOrWhiteSpace(solicitud.CargoDirector) ? solicitud.CargoDirector : "Director General de Aviacion Civil",
                 TituloFirmante = "DIRECTOR GENERAL DE AVIACION CIVIL",
+                CargoFirmanteCondiciones = "Director de Certificacion Aeronautica y Vigilancia Continua",
+                TituloFirmanteCondiciones = "Director de Certificacion Aeronautica y Vigilancia Continua",
 
                 Observaciones = solicitud.Observaciones,
 
-                TextoLegalEs = "Este Certificado es expedido en base al AOC # --- vigente hasta ---, y cualquier cambio al AOC original, o de las condiciones o limitaciones, que afecte las operaciones del explotador en su Estado, deberan ser notificados a esta AAC, dentro de 30 dias de dicho cambio.\nEste Certificado deja de tener efecto inmediatamente despues de la expiracion, suspension, revocacion, cancelacion o cualquier accion similar sobre el AOC.",
-                TextoLegalEn = "This certificate is issued based on the current AOC # --- until ---, and any changes to the original AOC or to the conditions or limitations that affect the operator's operations in its State, shall be notified to this CAA within 30 days of such change.\nThis certificate ceases to have effect immediately upon expiration, suspension, revocation, cancellation or any similar action on the AOC.",
+                TextoLegalEs = ConstruirTextoLegalEs(),
+                TextoLegalEn = ConstruirTextoLegalEn(),
 
                 LogoBase64 = logoBase64,
                 EscudoBase64 = escudoBase64,
                 Solicitud = solicitud
             };
+        }
+
+        private static string ConstruirDetalleAeronaves(IEnumerable<AeronaveSolicitud> aeronaves)
+        {
+            var filas = (aeronaves ?? new List<AeronaveSolicitud>())
+                .Where(a => a != null)
+                .Select(a => string.Join(" | ", new[]
+                {
+                    PrimerTextoNoVacio(((a.Marca ?? string.Empty) + " " + (a.Modelo ?? string.Empty)).Trim(), "No aplica"),
+                    PrimerTextoNoVacio(a.Matricula, "No aplica"),
+                    PrimerTextoNoVacio(a.Serie, "No aplica")
+                }))
+                .ToList();
+
+            return filas.Count > 0 ? string.Join(Environment.NewLine, filas) : "No aplica";
+        }
+
+        private static List<CertificadoAOCRAeronaveFilaViewModel> ConstruirFilasAeronavesCondiciones(IEnumerable<AeronaveSolicitud> aeronaves)
+        {
+            var filas = (aeronaves ?? new List<AeronaveSolicitud>())
+                .Where(a => a != null)
+                .Select(a => new CertificadoAOCRAeronaveFilaViewModel
+                {
+                    ModeloTipo = PrimerTextoNoVacio(((a.Marca ?? string.Empty) + " " + (a.Modelo ?? string.Empty)).Trim(), "No aplica"),
+                    Matricula = PrimerTextoNoVacio(a.Matricula, "No aplica"),
+                    Serie = PrimerTextoNoVacio(a.Serie, "No aplica"),
+                    Uio = "No aplica",
+                    Gye = "No aplica",
+                    Mec = "No aplica",
+                    Ltx = "No aplica"
+                })
+                .ToList();
+
+            while (filas.Count < 4)
+            {
+                filas.Add(new CertificadoAOCRAeronaveFilaViewModel
+                {
+                    ModeloTipo = "No aplica",
+                    Matricula = "No aplica",
+                    Serie = "No aplica",
+                    Uio = "No aplica",
+                    Gye = "No aplica",
+                    Mec = "No aplica",
+                    Ltx = "No aplica"
+                });
+            }
+
+            return filas;
+        }
+
+        private static string ConstruirTextoLegalEs()
+        {
+            return "Este certificado se emite con base en el AOC del explotador y en las condiciones y limitaciones vigentes aprobadas por la DGAC. Cualquier cambio que afecte la operacion, la vigencia, la flota o los puntos de contacto debera notificarse formalmente a esta Autoridad Aeronautica dentro de los plazos regulatorios aplicables.\nLa vigencia de este reconocimiento queda sujeta a la validez del AOC de origen, a las especificaciones operacionales aprobadas y a cualquier accion de suspension, revocatoria, cancelacion o restriccion emitida por la autoridad competente.";
+        }
+
+        private static string ConstruirTextoLegalEn()
+        {
+            return "This certificate is issued based on the operator's valid AOC and on the conditions and limitations approved by the DGAC. Any change affecting the operation, validity, fleet or contact points shall be formally notified to this Civil Aviation Authority within the applicable regulatory deadlines.\nThe validity of this recognition remains subject to the source AOC, the approved operational specifications and any suspension, revocation, cancellation or restriction issued by the competent authority.";
+        }
+
+        private static string PrimerTextoNoVacio(params string[] valores)
+        {
+            foreach (var valor in valores)
+            {
+                if (!string.IsNullOrWhiteSpace(valor))
+                {
+                    return valor.Trim();
+                }
+            }
+
+            return null;
         }
     }
 }

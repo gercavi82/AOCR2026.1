@@ -236,6 +236,8 @@ namespace CapaPresentacion.Models.ViewModels
         public string NombreOperadora { get; set; }
         public string NombreInspector { get; set; }
         public System.DateTime? FechaFirmaInspector { get; set; }
+        public string EstadoSolicitud { get; set; }
+        public string EstadoInspeccion { get; set; }
         public string EstadoInforme { get; set; }
         public string ResultadoTecnicoFinal { get; set; }
         public string TipoResultadoInsatisfactorio { get; set; }
@@ -271,6 +273,8 @@ namespace CapaPresentacion.Models.ViewModels
             NumeroSolicitud = string.Empty;
             NombreOperadora = string.Empty;
             NombreInspector = string.Empty;
+            EstadoSolicitud = string.Empty;
+            EstadoInspeccion = string.Empty;
             EstadoInforme = string.Empty;
             ResultadoTecnicoFinal = string.Empty;
             TipoResultadoInsatisfactorio = string.Empty;

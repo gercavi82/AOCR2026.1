@@ -98,7 +98,7 @@ BEGIN
             id                  SERIAL PRIMARY KEY,
             tabla               VARCHAR(100) NOT NULL,          -- Tabla afectada
             registro_id         INTEGER,                         -- ID del registro afectado
-            accion              VARCHAR(20) NOT NULL,            -- INSERT, UPDATE, DELETE, CAMBIO_ESTADO
+            accion              VARCHAR(100) NOT NULL,           -- INSERT, UPDATE, DELETE, CAMBIO_ESTADO, AOCR_* descriptivo
             campo_modificado    VARCHAR(100),                    -- Campo específico modificado
             valor_anterior      TEXT,
             valor_nuevo         TEXT,
@@ -106,7 +106,9 @@ BEGIN
             usuario_nombre      VARCHAR(100),
             ip_origen           VARCHAR(45),
             user_agent          VARCHAR(500),
-            modulo              VARCHAR(50),                     -- OrdenRecaudacion, FR3, Pago, etc.
+            modulo              VARCHAR(100),                    -- OrdenRecaudacion, FR3, Pago, AOCR, etc.
+            estado_anterior     VARCHAR(100),
+            estado_nuevo        VARCHAR(100),
             correlacion_id      VARCHAR(100),
             metadata            TEXT,                            -- JSON adicional
             fecha_creacion      TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
@@ -121,6 +123,24 @@ BEGIN
         RAISE NOTICE 'Tabla aocr_audit_trail creada exitosamente.';
     ELSE
         RAISE NOTICE 'Tabla aocr_audit_trail ya existe.';
+    END IF;
+END $$;
+
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'aocr_audit_trail') THEN
+        ALTER TABLE aocr_audit_trail ALTER COLUMN accion TYPE VARCHAR(100);
+        ALTER TABLE aocr_audit_trail ALTER COLUMN modulo TYPE VARCHAR(100);
+
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'aocr_audit_trail' AND column_name = 'estado_anterior') THEN
+            ALTER TABLE aocr_audit_trail ADD COLUMN estado_anterior VARCHAR(100);
+        END IF;
+
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'aocr_audit_trail' AND column_name = 'estado_nuevo') THEN
+            ALTER TABLE aocr_audit_trail ADD COLUMN estado_nuevo VARCHAR(100);
+        END IF;
+
+        RAISE NOTICE 'Tabla aocr_audit_trail alineada a longitudes y columnas BPMN.';
     END IF;
 END $$;
 

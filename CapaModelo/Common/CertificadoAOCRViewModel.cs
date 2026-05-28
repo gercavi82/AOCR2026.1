@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 
 namespace CapaModelo.Common
 {
@@ -57,6 +58,13 @@ namespace CapaModelo.Common
         public string TipoOperacion { get; set; }
         public string AlcanceOperacion { get; set; }
         public string AeronavesDetalle { get; set; }
+        public string AeropuertosAutorizados { get; set; }
+        public string TiposOperacionAutorizados { get; set; }
+        public string RestriccionesCondiciones { get; set; }
+        public string CondicionesAdicionales { get; set; }
+        public string CargoFirmanteCondiciones { get; set; }
+        public string TituloFirmanteCondiciones { get; set; }
+        public List<CertificadoAOCRAeronaveFilaViewModel> AeronavesCondiciones { get; set; } = new List<CertificadoAOCRAeronaveFilaViewModel>();
 
         // Firmante
         public string NombreFirmante { get; set; }
@@ -84,5 +92,16 @@ namespace CapaModelo.Common
         public string Direccion { get { return DireccionExplotador; } set { DireccionExplotador = value; } }
         public string AprobadoPor { get { return NombreFirmante; } set { NombreFirmante = value; } }
         public string CargoAprobador { get { return CargoFirmante; } set { CargoFirmante = value; } }
+    }
+
+    public class CertificadoAOCRAeronaveFilaViewModel
+    {
+        public string ModeloTipo { get; set; }
+        public string Matricula { get; set; }
+        public string Serie { get; set; }
+        public string Uio { get; set; }
+        public string Gye { get; set; }
+        public string Mec { get; set; }
+        public string Ltx { get; set; }
     }
 }

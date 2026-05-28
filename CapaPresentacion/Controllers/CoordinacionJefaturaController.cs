@@ -11,6 +11,7 @@ using CapaDatos.Constants;
 using CapaDatos.DAOs;
 using CapaDatos.Models;
 using CapaModelo;
+using CapaModelo.Common;
 using CapaNegocio;
 using CapaNegocio.Helpers;
 using CapaNegocio.Services;
@@ -52,6 +53,10 @@ namespace CapaPresentacion.Controllers
                 || User.IsInRole("CoordinadorInspecciones");
             var puedeVerPendientesDirdac = User.IsInRole("Administrador") || User.IsInRole("DIRDAC") || User.IsInRole("Direccion") || User.IsInRole("Director") || User.IsInRole("JefaturaTecnica") || User.IsInRole("Jefe");
             var puedeValidarAocr = User.IsInRole("Administrador")
+                || User.IsInRole("CoordinacionLegal")
+                || User.IsInRole("CoordinadorLegal")
+                || User.IsInRole("Coordinador")
+                || User.IsInRole("CoordinadorInspecciones")
                 || User.IsInRole("DIRDAC")
                 || User.IsInRole("Direccion")
                 || User.IsInRole("DirectorGeneral")
@@ -247,7 +252,7 @@ namespace CapaPresentacion.Controllers
                     ? urlHelper.Action("PendientesDireccion", "Inspeccion")
                     : null;
                 var urlValidarAocr = puedeValidarAocr
-                    ? urlHelper.Action("ValidarAocr", "CoordinacionJefatura")
+                    ? urlHelper.Action("ValidarAocr", "CoordinacionJefatura", new { solicitudId = codigoSolicitud })
                     : null;
                 var puedeAsignarInspector = !tieneInspector && (inspeccion == null || inspeccion.PuedeAsignarInspector);
                 var puedeValidarFila = puedeValidarAocr
@@ -261,6 +266,11 @@ namespace CapaPresentacion.Controllers
                 {
                     textoAccionPrincipal = "Firmar";
                     urlAccionPrincipal = urlFirmar;
+                }
+                else if (listoParaFirma && !string.IsNullOrWhiteSpace(urlValidarAocr))
+                {
+                    textoAccionPrincipal = "Revisar AOCR";
+                    urlAccionPrincipal = urlValidarAocr;
                 }
                 else if (string.Equals(estadoDocumental, "OBSERVADO", StringComparison.OrdinalIgnoreCase)
                     || string.Equals(estadoInspeccion, "OBSERVADA", StringComparison.OrdinalIgnoreCase)
@@ -828,17 +838,23 @@ namespace CapaPresentacion.Controllers
                 && origen.IndexOf(filtro.Trim(), StringComparison.OrdinalIgnoreCase) >= 0;
         }
 
-        [Authorize(Roles = "DIRDAC,Direccion,JefaturaTecnica,DirectorGeneral,Administrador")]
-        public ActionResult ValidarAocr()
+        [Authorize(Roles = "CoordinacionLegal,CoordinadorLegal,Coordinador,CoordinadorInspecciones,DIRDAC,Direccion,JefaturaTecnica,DirectorGeneral,Administrador")]
+        public ActionResult ValidarAocr(int? solicitudId = null)
         {
             // Evitar fuga de TempData["Error"] establecido por otras acciones.
             TempData.Remove("Error");
 
             try
             {
+                var items = ConstruirItemsValidacionAocr();
+                if (solicitudId.HasValue && solicitudId.Value > 0)
+                {
+                    items = items.Where(item => item != null && item.Solicitud != null && item.Solicitud.CodigoSolicitud == solicitudId.Value).ToList();
+                }
+
                 var model = new ValidarAocrViewModel
                 {
-                    Items = ConstruirItemsValidacionAocr()
+                    Items = items
                 };
 
                 return View("~/Views/CoordinacionJefatura/ValidarAocr.cshtml", model);
@@ -889,7 +905,30 @@ namespace CapaPresentacion.Controllers
 
                 RegistrarTrazabilidadDocumento(item.Solicitud, tipoNormalizado, descargar ? "DESCARGA" : "VISUALIZACION");
 
-                if (tipoNormalizado == "RECONOCIMIENTO")
+                var usarPlantillaOficial = item.FirmaCompleta && !habilitadoPorModificacion;
+                var documentoModel = ConstruirDocumentoPdfModel(item, null, tipoNormalizado);
+                var camposFaltantes = usarPlantillaOficial
+                    ? ObtenerCamposObligatoriosFaltantesAocrOficial(documentoModel)
+                    : ObtenerCamposObligatoriosFaltantesDocumentoAocr(documentoModel, tipoNormalizado);
+                if (camposFaltantes.Any())
+                {
+                    return new HttpStatusCodeResult(409, "El documento AOCR no puede generarse porque faltan campos obligatorios: " + string.Join(", ", camposFaltantes) + ".");
+                }
+
+                if (usarPlantillaOficial)
+                {
+                    var rutaExistenteCertificado = item.Certificado != null ? item.Certificado.RutaDocumento : null;
+                    var rutaFisicaCertificado = ResolverRutaDocumento(rutaExistenteCertificado);
+                    if (!string.IsNullOrWhiteSpace(rutaFisicaCertificado) && System.IO.File.Exists(rutaFisicaCertificado))
+                    {
+                        var nombreArchivoExistente = ConstruirNombrePdfDocumentoValidacion(item.Solicitud, tipoNormalizado, item.Certificado != null ? item.Certificado.FechaEmision : (DateTime?)null);
+                        Response.Headers["X-Content-Type-Options"] = "nosniff";
+                        PdfFileNameHelper.AplicarContentDispositionPdf(Response, descargar, nombreArchivoExistente);
+                        return File(rutaFisicaCertificado, "application/pdf");
+                    }
+                }
+
+                if (!usarPlantillaOficial && tipoNormalizado == "RECONOCIMIENTO")
                 {
                     var rutaExistente = item.Certificado != null ? item.Certificado.RutaDocumento : null;
                     var rutaFisica = ResolverRutaDocumento(rutaExistente);
@@ -902,7 +941,7 @@ namespace CapaPresentacion.Controllers
                     }
                 }
 
-                if (habilitadoPorModificacion && string.Equals(tipoNormalizado, "CONDICIONES_LIMITACIONES", StringComparison.OrdinalIgnoreCase))
+                if (!usarPlantillaOficial && habilitadoPorModificacion && string.Equals(tipoNormalizado, "CONDICIONES_LIMITACIONES", StringComparison.OrdinalIgnoreCase))
                 {
                     var documentoFirmado = _aocrFirmaDocumentoDao.ObtenerUltimoPorSolicitudTipo(item.Solicitud.CodigoSolicitud, tipoNormalizado);
                     var rutaFirmada = ResolverRutaDocumento(documentoFirmado != null ? documentoFirmado.RutaDocumento : null);
@@ -915,13 +954,17 @@ namespace CapaPresentacion.Controllers
                     }
                 }
 
-                var documentoModel = ConstruirDocumentoPdfModel(item, null, tipoNormalizado);
-                var viewName = tipoNormalizado == "RECONOCIMIENTO"
-                    ? "~/Views/CoordinacionJefatura/AocrReconocimientoPdf.cshtml"
-                    : "~/Views/CoordinacionJefatura/AocrCondicionesLimitacionesPdf.cshtml";
+                var viewName = usarPlantillaOficial
+                    ? "~/Views/Certificado/CertificadoAOCR.cshtml"
+                    : (tipoNormalizado == "RECONOCIMIENTO"
+                        ? "~/Views/CoordinacionJefatura/AocrReconocimientoPdf.cshtml"
+                        : "~/Views/CoordinacionJefatura/AocrCondicionesLimitacionesPdf.cshtml");
+                var pdfModel = usarPlantillaOficial
+                    ? (object)ConstruirCertificadoAocrViewModelOficial(documentoModel)
+                    : documentoModel;
                 var nombreArchivo = ConstruirNombrePdfDocumentoValidacion(item.Solicitud, tipoNormalizado);
 
-                var pdf = new ViewAsPdf(viewName, documentoModel)
+                var pdf = new ViewAsPdf(viewName, pdfModel)
                 {
                     PageSize = Rotativa.Options.Size.A4,
                     PageOrientation = Rotativa.Options.Orientation.Portrait,
@@ -1011,6 +1054,20 @@ namespace CapaPresentacion.Controllers
 
                 var modelEdicion = ConstruirDocumentoEdicionModel(item, tipoNormalizado);
                 var documentoModel = ConstruirDocumentoPdfModel(item, modelEdicion, tipoNormalizado);
+                var usarPlantillaOficial = item.FirmaCompleta && !PuedeEditarCondicionesLimitacionesModificacion(item, tipoNormalizado);
+                var camposFaltantes = usarPlantillaOficial
+                    ? ObtenerCamposObligatoriosFaltantesAocrOficial(documentoModel)
+                    : ObtenerCamposObligatoriosFaltantesDocumentoAocr(documentoModel, tipoNormalizado);
+                if (camposFaltantes.Any())
+                {
+                    return new HttpStatusCodeResult(409, "La vista previa AOCR requiere completar estos campos obligatorios: " + string.Join(", ", camposFaltantes) + ".");
+                }
+
+                if (usarPlantillaOficial)
+                {
+                    return View("~/Views/Certificado/CertificadoAOCR.cshtml", ConstruirCertificadoAocrViewModelOficial(documentoModel));
+                }
+
                 var viewName = tipoNormalizado == "RECONOCIMIENTO"
                     ? "~/Views/CoordinacionJefatura/AocrReconocimientoPdf.cshtml"
                     : "~/Views/CoordinacionJefatura/AocrCondicionesLimitacionesPdf.cshtml";
@@ -1089,9 +1146,23 @@ namespace CapaPresentacion.Controllers
                 }
 
                 var documentoModel = ConstruirDocumentoPdfModel(item, model, tipoNormalizado);
-                var viewName = tipoNormalizado == "RECONOCIMIENTO"
-                    ? "~/Views/CoordinacionJefatura/AocrReconocimientoPdf.cshtml"
-                    : "~/Views/CoordinacionJefatura/AocrCondicionesLimitacionesPdf.cshtml";
+                var usarPlantillaOficial = item.FirmaCompleta && !PuedeEditarCondicionesLimitacionesModificacion(item, tipoNormalizado);
+                var camposFaltantes = usarPlantillaOficial
+                    ? ObtenerCamposObligatoriosFaltantesAocrOficial(documentoModel)
+                    : ObtenerCamposObligatoriosFaltantesDocumentoAocr(documentoModel, tipoNormalizado);
+                if (camposFaltantes.Any())
+                {
+                    return new HttpStatusCodeResult(400, "No se puede generar el documento AOCR porque faltan campos obligatorios: " + string.Join(", ", camposFaltantes) + ".");
+                }
+
+                var viewName = usarPlantillaOficial
+                    ? "~/Views/Certificado/CertificadoAOCR.cshtml"
+                    : (tipoNormalizado == "RECONOCIMIENTO"
+                        ? "~/Views/CoordinacionJefatura/AocrReconocimientoPdf.cshtml"
+                        : "~/Views/CoordinacionJefatura/AocrCondicionesLimitacionesPdf.cshtml");
+                var pdfModel = usarPlantillaOficial
+                    ? (object)ConstruirCertificadoAocrViewModelOficial(documentoModel)
+                    : documentoModel;
                 var nombreArchivo = ConstruirNombrePdfDocumentoValidacion(item.Solicitud, tipoNormalizado);
                 var descargar = string.Equals(accion, "DESCARGAR", StringComparison.OrdinalIgnoreCase);
                 var firmarDigitalmente = string.Equals(accion, "FIRMAR_DESCARGAR", StringComparison.OrdinalIgnoreCase);
@@ -1101,9 +1172,9 @@ namespace CapaPresentacion.Controllers
                     return new HttpStatusCodeResult(403, "Solo los roles institucionales autorizados pueden firmar digitalmente este documento AOCR.");
                 }
 
-                RegistrarTrazabilidadDocumento(item.Solicitud, tipoNormalizado, descargar ? "DESCARGA_DESDE_PLANTILLA" : "VISUALIZACION_DESDE_PLANTILLA");
+                RegistrarTrazabilidadDocumento(item.Solicitud, tipoNormalizado, firmarDigitalmente ? "PDF_PARA_FIRMA_AOCR" : (descargar ? "DESCARGA_DESDE_PLANTILLA" : "VISUALIZACION_DESDE_PLANTILLA"));
 
-                var pdf = new ViewAsPdf(viewName, documentoModel)
+                var pdf = new ViewAsPdf(viewName, pdfModel)
                 {
                     PageSize = Rotativa.Options.Size.A4,
                     PageOrientation = Rotativa.Options.Orientation.Portrait,
@@ -1196,7 +1267,8 @@ namespace CapaPresentacion.Controllers
                             resultadoFirma.HashSha256,
                             contenidoQr,
                             infoCertificado,
-                            nombreFirmante);
+                            nombreFirmante,
+                            usarPlantillaOficial);
 
                         if (posicionFirmaVisual != null && posicionFirmaVisual.EsValida)
                         {
@@ -1373,11 +1445,11 @@ namespace CapaPresentacion.Controllers
                 .OrderByDescending(x => x.Informe.FechaFirma2 ?? x.Informe.FechaFirma1 ?? x.Informe.FechaFinalizacion ?? x.Informe.UpdatedAt ?? DateTime.MinValue)
                 .ToList();
 
+            var esModificacionDirecta = EsSolicitudModificacionDirectaSinInspeccion(solicitud, estadoSolicitud);
             var informeFirmado = informes
                 .FirstOrDefault(x => x.Informe.Finalizado && x.Informe.FirmadoInspector && x.Informe.FirmadoDirdac);
 
-            var firmaCompleta = informeFirmado != null;
-            var esModificacionDirecta = EsSolicitudModificacionDirectaSinInspeccion(solicitud, estadoSolicitud);
+            var firmaCompleta = !esModificacionDirecta && informeFirmado != null;
 
             // Incluir tambien solicitudes con informe tecnico firmado que aun no
             // han transicionado al estado AOCR En Revision (flujo incompleto en datos).
@@ -1414,6 +1486,7 @@ namespace CapaPresentacion.Controllers
                 FechaFirmaFinal = contextoActivo != null ? contextoActivo.Informe.FechaFirma2 : null,
                 FechaDisponibilidad = (contextoActivo != null ? contextoActivo.Informe.FechaFirma2 : null) ?? (certificado != null ? certificado.UpdatedAt : null) ?? solicitud.UpdatedAt,
                 Firmantes = ConstruirFirmantes(contextoActivo != null ? contextoActivo.Informe : null),
+                EstadoSolicitud = estadoSolicitud,
                 ListoParaEnvioRt = string.Equals(estadoSolicitud, EstadoSolicitud.AOCR_Validado, StringComparison.OrdinalIgnoreCase)
                     || string.Equals(estadoSolicitud, EstadoSolicitud.AOCR_Legalizado, StringComparison.OrdinalIgnoreCase)
                     || string.Equals(estadoSolicitud, EstadoSolicitud.AOCR_EmitidoRecibido, StringComparison.OrdinalIgnoreCase)
@@ -1422,6 +1495,32 @@ namespace CapaPresentacion.Controllers
             };
 
             item.Documentos = ConstruirDocumentosValidacion(item);
+            var camposObligatoriosFaltantes = new List<string>();
+            if (esModificacionDirecta)
+            {
+                camposObligatoriosFaltantes.AddRange(ObtenerCamposObligatoriosFaltantesDocumentoAocr(ConstruirDocumentoPdfModel(item, null, "CONDICIONES_LIMITACIONES"), "CONDICIONES_LIMITACIONES"));
+            }
+            else
+            {
+                camposObligatoriosFaltantes.AddRange(ObtenerCamposObligatoriosFaltantesDocumentoAocr(ConstruirDocumentoPdfModel(item, null, "RECONOCIMIENTO"), "RECONOCIMIENTO"));
+                camposObligatoriosFaltantes.AddRange(ObtenerCamposObligatoriosFaltantesDocumentoAocr(ConstruirDocumentoPdfModel(item, null, "CONDICIONES_LIMITACIONES"), "CONDICIONES_LIMITACIONES"));
+            }
+            item.CamposFaltantes = string.Join(", ", camposObligatoriosFaltantes.Where(nombre => !string.IsNullOrWhiteSpace(nombre)).Distinct(StringComparer.OrdinalIgnoreCase));
+            var tieneCamposObligatoriosPendientes = !string.IsNullOrWhiteSpace(item.CamposFaltantes);
+            item.PuedeEnviarADirdac = item.FirmaCompleta
+                && item.Documentos.All(d => d != null && d.Disponible)
+                && !tieneCamposObligatoriosPendientes
+                && string.Equals(estadoSolicitud, EstadoSolicitud.AOCR_EnElaboracion, StringComparison.OrdinalIgnoreCase);
+            item.PuedeAprobarFinal = item.FirmaCompleta
+                && item.Documentos.All(d => d != null && d.Disponible)
+                && !tieneCamposObligatoriosPendientes
+                && (string.Equals(estadoSolicitud, EstadoSolicitud.AOCR_EnRevision, StringComparison.OrdinalIgnoreCase)
+                    || string.Equals(estadoSolicitud, "ENVIADO_A_JEFATURA", StringComparison.OrdinalIgnoreCase));
+            item.PuedeSolicitarModificacion = item.FirmaCompleta
+                && !item.ListoParaEnvioRt
+                && (string.Equals(estadoSolicitud, EstadoSolicitud.AOCR_EnElaboracion, StringComparison.OrdinalIgnoreCase)
+                    || string.Equals(estadoSolicitud, EstadoSolicitud.AOCR_EnRevision, StringComparison.OrdinalIgnoreCase)
+                    || string.Equals(estadoSolicitud, "ENVIADO_A_JEFATURA", StringComparison.OrdinalIgnoreCase));
             item.PuedeContinuar = item.FirmaCompleta
                 && item.Documentos.All(d => d.Disponible)
                 && (string.Equals(estadoSolicitud, EstadoSolicitud.AOCR_EnRevision, StringComparison.OrdinalIgnoreCase)
@@ -1455,6 +1554,18 @@ namespace CapaPresentacion.Controllers
                 item.MensajeEstado = "Pendiente de firma del informe técnico";
                 item.MensajeAdvertencia = "La firma institucional del informe técnico aún no está completa; por eso los documentos AOCR no se habilitan todavía.";
             }
+            else if (item.PuedeEnviarADirdac)
+            {
+                item.MensajeEstado = "La AOCR está lista para revisión de Coordinación.";
+                item.MensajeAdvertencia = string.IsNullOrWhiteSpace(item.CamposFaltantes)
+                    ? "Revise la vista previa, registre observaciones si aplica o apruebe el envío a DIRDAC."
+                    : "La AOCR tiene campos obligatorios pendientes: " + item.CamposFaltantes + ". Solicite modificación al Inspector.";
+            }
+            else if (item.PuedeAprobarFinal)
+            {
+                item.MensajeEstado = "La AOCR está pendiente de firma DIRDAC.";
+                item.MensajeAdvertencia = "El documento ya fue remitido a revisión institucional final.";
+            }
             else if (item.Documentos.All(d => d.Disponible))
             {
                 item.MensajeEstado = item.ListoParaEnvioRt
@@ -1467,7 +1578,38 @@ namespace CapaPresentacion.Controllers
                 item.MensajeAdvertencia = string.Join(" ", item.Documentos.Where(d => !d.Disponible).Select(d => d.Observacion).Where(x => !string.IsNullOrWhiteSpace(x)));
             }
 
+            RegistrarTrazaAocrCoordinacion(item);
+
             return item;
+        }
+
+        private void RegistrarTrazaAocrCoordinacion(ValidarAocrSolicitudItemViewModel item)
+        {
+            if (item == null || item.Solicitud == null)
+            {
+                return;
+            }
+
+            var documentoAocr = item.Certificado != null ? item.Certificado.CodigoCertificado : 0;
+            var rolActual = User != null && User.Identity != null && User.Identity.IsAuthenticated
+                ? (new[] { "Coordinador", "CoordinadorInspecciones", "CoordinacionLegal", "CoordinadorLegal", "DIRDAC", "Direccion", "JefaturaTecnica", "DirectorGeneral", "Administrador" }
+                    .FirstOrDefault(rol => User.IsInRole(rol)) ?? "AUTENTICADO")
+                : "ANONIMO";
+
+            System.Diagnostics.Debug.WriteLine("[AOCR_COORD] SolicitudId=" + item.Solicitud.CodigoSolicitud
+                + " InspeccionId=" + (item.Inspeccion != null ? item.Inspeccion.CodigoInspeccion : 0)
+                + " AOCRId=" + documentoAocr
+                + " EstadoAOCR=" + (item.EstadoSolicitud ?? string.Empty)
+                + " EstadoInforme=" + (item.Informe != null ? (item.Informe.EstadoInforme ?? string.Empty) : string.Empty)
+                + " ResultadoInforme=" + (item.Informe != null ? (item.Informe.Resultado ?? string.Empty) : string.Empty)
+                + " Usuario=" + ((User != null && User.Identity != null) ? User.Identity.Name : string.Empty)
+                + " Rol=" + rolActual
+                + " PuedeRevisar=" + item.FirmaCompleta
+                + " PuedeSolicitarModificacion=" + item.PuedeSolicitarModificacion
+                + " PuedeEnviarDIRDAC=" + item.PuedeEnviarADirdac
+                + " PuedeGenerarPdfFirma=" + item.Documentos.Any(d => d != null && !string.IsNullOrWhiteSpace(d.UrlVer))
+                + " MotivoBloqueo=" + (item.MensajeAdvertencia ?? string.Empty)
+                + " CamposFaltantes=" + (item.CamposFaltantes ?? string.Empty));
         }
 
         private List<ValidarAocrDocumentoItemViewModel> ConstruirDocumentosValidacion(ValidarAocrSolicitudItemViewModel item)
@@ -1484,10 +1626,12 @@ namespace CapaPresentacion.Controllers
                 new ValidarAocrDocumentoItemViewModel
                 {
                     TipoDocumento = "RECONOCIMIENTO",
-                    NombreVisible = "Reconocimiento de Certificado de Explotador de Servicios Aereos",
+                    NombreVisible = item.FirmaCompleta
+                        ? "AOCR oficial unificada (paginas 1 y 2)"
+                        : "Reconocimiento de Certificado de Explotador de Servicios Aereos",
                     Estado = item.FirmaCompleta ? "Disponible" : (esModificacionDirecta ? "No aplica" : "Pendiente"),
                     Observacion = item.FirmaCompleta
-                        ? "Documento listo para visualizacion, revision y descarga."
+                        ? "La salida oficial AOCR1 integra reconocimiento y condiciones/limitaciones en un solo PDF institucional."
                         : (esModificacionDirecta
                             ? "La modificación directa de Condiciones y Limitaciones no genera un reconocimiento adicional."
                             : "Falta firma final del informe tecnico para habilitar este documento."),
@@ -1500,10 +1644,12 @@ namespace CapaPresentacion.Controllers
                 new ValidarAocrDocumentoItemViewModel
                 {
                     TipoDocumento = "CONDICIONES_LIMITACIONES",
-                    NombreVisible = "Condiciones y Limitaciones",
+                    NombreVisible = item.FirmaCompleta
+                        ? "Hoja 2 - Condiciones y Limitaciones (incluida en AOCR oficial)"
+                        : "Condiciones y Limitaciones",
                     Estado = item.FirmaCompleta ? "Disponible" : (esModificacionDirecta ? (condicionesFirmadas ? "Firmado" : "En preparación") : "Pendiente"),
                     Observacion = item.FirmaCompleta
-                        ? "Documento listo para visualizacion, revision y descarga."
+                        ? "La segunda pagina forma parte del mismo PDF oficial AOCR1 utilizado para preview, firma y descarga final."
                         : (esModificacionDirecta
                             ? (condicionesFirmadas
                                 ? "Documento firmado institucionalmente y listo para descarga final."
@@ -1622,6 +1768,190 @@ namespace CapaPresentacion.Controllers
                 RevisadoPor = edicion != null ? edicion.RevisadoPor : item.Informe != null ? item.Informe.UsuarioFirma2 : null,
                 AeronavesCondiciones = aeronavesCondiciones
             };
+        }
+
+        private List<string> ObtenerCamposObligatoriosFaltantesDocumentoAocr(AocrDocumentoPdfViewModel model, string tipoDocumento)
+        {
+            var faltantes = new List<string>();
+            if (model == null)
+            {
+                faltantes.Add("contexto del documento AOCR");
+                return faltantes;
+            }
+
+            var tipoNormalizado = NormalizarTipoDocumento(tipoDocumento);
+            if (tipoNormalizado == "RECONOCIMIENTO")
+            {
+                AgregarCampoFaltante(faltantes, model.NumeroAocr, "AOCR #");
+                AgregarCampoFaltante(faltantes, model.AocOriginalNumero, "AOC base");
+                AgregarCampoFaltante(faltantes, model.EstadoOtorgante, "Estado otorgante");
+                AgregarCampoFaltante(faltantes, model.NombreExplotador, "Nombre del explotador");
+                AgregarCampoFaltante(faltantes, model.EstadoExplotador, "Estado del explotador");
+                AgregarCampoFaltante(faltantes, model.PuntoContactoEcuador, "Punto de contacto Ecuador");
+                AgregarCampoFaltante(faltantes, model.PuntosContactoOperacionales, "Puntos de contacto operacionales");
+                AgregarCampoFaltante(faltantes, model.RepresentanteTecnico, "Representante técnico");
+
+                if (model.FechaEmisionDocumento == default(DateTime))
+                {
+                    faltantes.Add("Fecha de emisión");
+                }
+
+                if (!model.FechaVencimiento.HasValue)
+                {
+                    faltantes.Add("Fecha de vencimiento");
+                }
+            }
+            else if (tipoNormalizado == "CONDICIONES_LIMITACIONES")
+            {
+                AgregarCampoFaltante(faltantes, model.NumeroAocr, "AOCR #");
+                AgregarCampoFaltante(faltantes, model.RepresentanteTecnico, "Representante técnico");
+                AgregarCampoFaltante(faltantes, model.CondicionBaseOperacion, "Aeropuertos autorizados / condición base");
+
+                if (!model.FechaVencimiento.HasValue)
+                {
+                    faltantes.Add("Fecha de vencimiento");
+                }
+
+                if (model.AeronavesCondiciones == null || !model.AeronavesCondiciones.Any(fila => fila != null && !string.IsNullOrWhiteSpace(fila.ModeloTipo)))
+                {
+                    faltantes.Add("Tabla de aeronaves autorizadas");
+                }
+            }
+
+            return faltantes;
+        }
+
+        private List<string> ObtenerCamposObligatoriosFaltantesAocrOficial(AocrDocumentoPdfViewModel model)
+        {
+            return ObtenerCamposObligatoriosFaltantesDocumentoAocr(model, "RECONOCIMIENTO")
+                .Concat(ObtenerCamposObligatoriosFaltantesDocumentoAocr(model, "CONDICIONES_LIMITACIONES"))
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
+        }
+
+        private CertificadoAOCRViewModel ConstruirCertificadoAocrViewModelOficial(AocrDocumentoPdfViewModel model)
+        {
+            var solicitud = model != null ? model.Solicitud : null;
+            var aeropuertosAutorizados = string.Join(" / ", new[]
+            {
+                solicitud != null ? solicitud.AeropuertosEcuador : null,
+                solicitud != null ? solicitud.AeropuertosEcuadorOtros : null,
+                model != null ? model.CondicionBaseOperacion : null
+            }.Where(x => !string.IsNullOrWhiteSpace(x)).Distinct(StringComparer.OrdinalIgnoreCase));
+
+            var aeronavesCondiciones = ((model != null ? model.AeronavesCondiciones : null) ?? new List<AocrCondicionAeronaveFilaViewModel>())
+                .Select(fila => new CertificadoAOCRAeronaveFilaViewModel
+                {
+                    ModeloTipo = PrimerTextoAocrNoVacio(fila != null ? fila.ModeloTipo : null, "No aplica"),
+                    Matricula = PrimerTextoAocrNoVacio(fila != null ? fila.Matricula : null, "No aplica"),
+                    Serie = PrimerTextoAocrNoVacio(fila != null ? fila.Serie : null, "No aplica"),
+                    Uio = PrimerTextoAocrNoVacio(fila != null ? fila.Uio : null, "No aplica"),
+                    Gye = PrimerTextoAocrNoVacio(fila != null ? fila.Gye : null, "No aplica"),
+                    Mec = PrimerTextoAocrNoVacio(fila != null ? fila.Mec : null, "No aplica"),
+                    Ltx = PrimerTextoAocrNoVacio(fila != null ? fila.Ltx : null, "No aplica")
+                })
+                .ToList();
+
+            while (aeronavesCondiciones.Count < 4)
+            {
+                aeronavesCondiciones.Add(new CertificadoAOCRAeronaveFilaViewModel
+                {
+                    ModeloTipo = "No aplica",
+                    Matricula = "No aplica",
+                    Serie = "No aplica",
+                    Uio = "No aplica",
+                    Gye = "No aplica",
+                    Mec = "No aplica",
+                    Ltx = "No aplica"
+                });
+            }
+
+            return new CertificadoAOCRViewModel
+            {
+                NumeroAOCR = model != null ? model.NumeroAocr : null,
+                NumeroAOCBase = PrimerTextoAocrNoVacio(model != null ? model.AocOriginalNumero : null, solicitud != null ? solicitud.NumeroAOC : null, model != null ? model.NumeroAocr : null),
+                PermisoOperacionCNAC = PrimerTextoAocrNoVacio(solicitud != null ? solicitud.NumeroAOC : null, solicitud != null ? solicitud.NumeroSolicitud : null, "No aplica"),
+                NumeroEnmienda = 1,
+                FechaEmision = model != null && model.FechaEmisionDocumento != default(DateTime) ? model.FechaEmisionDocumento : DateTime.Now,
+                FechaVencimiento = model != null ? model.FechaVencimiento : null,
+                FechaRenovacion = model != null ? model.FechaRenovacion : null,
+                Solicitud = solicitud,
+                NombreExplotador = PrimerTextoAocrNoVacio(model != null ? model.NombreExplotador : null, solicitud != null ? solicitud.NombreOperador : null, solicitud != null ? solicitud.NombreComercial : null, "No aplica"),
+                EstadoExplotador = PrimerTextoAocrNoVacio(model != null ? model.EstadoExplotador : null, solicitud != null ? solicitud.Pais : null, "No aplica"),
+                RazonSocial = PrimerTextoAocrNoVacio(model != null ? model.RazonSocial : null, solicitud != null ? solicitud.RazonSocial : null, "No aplica"),
+                RUC = PrimerTextoAocrNoVacio(solicitud != null ? solicitud.Ruc : null, "No aplica"),
+                DireccionExplotador = PrimerTextoAocrNoVacio(model != null ? model.DireccionExplotador : null, solicitud != null ? solicitud.Direccion : null, "No aplica"),
+                TelefonoExplotador = PrimerTextoAocrNoVacio(model != null ? model.TelefonoExplotador : null, solicitud != null ? solicitud.Telefono : null, "No aplica"),
+                CorreoExplotador = PrimerTextoAocrNoVacio(model != null ? model.CorreoExplotador : null, solicitud != null ? solicitud.Email : null, "No aplica"),
+                PuntoContactoEcuador = PrimerTextoAocrNoVacio(model != null ? model.PuntoContactoEcuador : null, solicitud != null ? solicitud.RepresentanteLegal : null, "No aplica"),
+                DireccionContactoEcuador = PrimerTextoAocrNoVacio(model != null ? model.ContactoDireccion : null, solicitud != null ? solicitud.Direccion : null, "No aplica"),
+                TelefonoContactoEcuador = PrimerTextoAocrNoVacio(model != null ? model.ContactoTelefono : null, solicitud != null ? solicitud.Telefono : null, "No aplica"),
+                CorreoContactoEcuador = PrimerTextoAocrNoVacio(model != null ? model.ContactoCorreo : null, solicitud != null ? solicitud.Email : null, "No aplica"),
+                DireccionOperacional = PrimerTextoAocrNoVacio(model != null ? model.PuntosContactoOperacionales : null, solicitud != null ? solicitud.DescripcionOperacion : null, "No aplica"),
+                TelefonoOperacional = PrimerTextoAocrNoVacio(model != null ? model.ContactoTelefono : null, solicitud != null ? solicitud.Telefono : null, "No aplica"),
+                CorreoOperacional = PrimerTextoAocrNoVacio(model != null ? model.ContactoCorreo : null, solicitud != null ? solicitud.Email : null, "No aplica"),
+                GerenciaSeguridadOperacional = PrimerTextoAocrNoVacio(solicitud != null ? solicitud.ResumenOperacionesEae : null, model != null ? model.PuntosContactoOperacionales : null, "No aplica"),
+                DireccionGSO = PrimerTextoAocrNoVacio(solicitud != null ? solicitud.Direccion : null, "No aplica"),
+                TelefonoGSO = PrimerTextoAocrNoVacio(solicitud != null ? solicitud.Telefono : null, "No aplica"),
+                CorreoGSO = PrimerTextoAocrNoVacio(solicitud != null ? solicitud.Email : null, "No aplica"),
+                RepresentanteTecnico = PrimerTextoAocrNoVacio(model != null ? model.RepresentanteTecnico : null, solicitud != null ? solicitud.TecnicoResponsableNombre : null, "No aplica"),
+                DireccionRT = PrimerTextoAocrNoVacio(solicitud != null ? solicitud.Direccion : null, "No aplica"),
+                TelefonoRT = PrimerTextoAocrNoVacio(solicitud != null ? solicitud.Telefono : null, "No aplica"),
+                CorreoRT = PrimerTextoAocrNoVacio(solicitud != null ? solicitud.CorreoRepresentanteTecnico : null, solicitud != null ? solicitud.Email : null, "No aplica"),
+                RepresentanteLegal = PrimerTextoAocrNoVacio(solicitud != null ? solicitud.RepresentanteLegal : null, "No aplica"),
+                TipoOperacion = PrimerTextoAocrNoVacio(solicitud != null ? solicitud.TipoOperacion : null, "No aplica"),
+                AlcanceOperacion = PrimerTextoAocrNoVacio(solicitud != null ? solicitud.DescripcionOperacion : null, "No aplica"),
+                AeronavesDetalle = string.Join(Environment.NewLine, aeronavesCondiciones.Select(fila => string.Join(" | ", new[] { fila.ModeloTipo, fila.Matricula, fila.Serie }))),
+                AeropuertosAutorizados = PrimerTextoAocrNoVacio(aeropuertosAutorizados, "No aplica"),
+                TiposOperacionAutorizados = PrimerTextoAocrNoVacio(solicitud != null ? solicitud.TipoOperacion : null, solicitud != null ? solicitud.DescripcionOperacion : null, "No aplica"),
+                RestriccionesCondiciones = PrimerTextoAocrNoVacio(model != null ? model.RestriccionesCondiciones : null, model != null ? model.ObservacionesReconocimiento : null, "No aplica"),
+                CondicionesAdicionales = PrimerTextoAocrNoVacio(model != null ? model.CondicionesAdicionales : null, solicitud != null ? solicitud.AprobacionesEspecialesOtros : null, solicitud != null ? solicitud.AprobacionesEspeciales : null, "No aplica"),
+                AeronavesCondiciones = aeronavesCondiciones,
+                NombreFirmante = PrimerTextoAocrNoVacio(model != null ? model.FirmanteFinal : null, solicitud != null ? solicitud.Director : null, "DIRECTOR GENERAL DE AVIACION CIVIL"),
+                CargoFirmante = PrimerTextoAocrNoVacio(model != null ? model.CargoFirmante : null, solicitud != null ? solicitud.CargoDirector : null, "Director General de Aviacion Civil"),
+                TituloFirmante = "DIRECTOR GENERAL DE AVIACION CIVIL",
+                CargoFirmanteCondiciones = "Director de Certificacion Aeronautica y Vigilancia Continua",
+                TituloFirmanteCondiciones = "Director de Certificacion Aeronautica y Vigilancia Continua",
+                TextoLegalEs = ConstruirTextoLegalCertificadoEs(),
+                TextoLegalEn = ConstruirTextoLegalCertificadoEn(),
+                Observaciones = PrimerTextoAocrNoVacio(model != null ? model.ObservacionesReconocimiento : null, solicitud != null ? solicitud.Observaciones : null, "No aplica")
+            };
+        }
+
+        private static string ConstruirTextoLegalCertificadoEs()
+        {
+            return "Este certificado se emite con base en el AOC del explotador y en las condiciones y limitaciones aprobadas por la DGAC. Cualquier cambio que afecte la vigencia, la flota, los puntos de contacto o las especificaciones operacionales debera notificarse formalmente a esta Autoridad Aeronautica dentro de los plazos regulatorios aplicables.\nLa vigencia de este reconocimiento queda sujeta a la validez del AOC de origen, a las especificaciones operacionales aprobadas y a cualquier accion de suspension, revocatoria, cancelacion o restriccion emitida por la autoridad competente.";
+        }
+
+        private static string ConstruirTextoLegalCertificadoEn()
+        {
+            return "This certificate is issued based on the operator's valid AOC and on the conditions and limitations approved by the DGAC. Any change affecting validity, fleet, contact points or operational specifications shall be formally notified to this Civil Aviation Authority within the applicable regulatory deadlines.\nThe validity of this recognition remains subject to the source AOC, the approved operational specifications and any suspension, revocation, cancellation or restriction issued by the competent authority.";
+        }
+
+        private static string PrimerTextoAocrNoVacio(params string[] valores)
+        {
+            foreach (var valor in valores)
+            {
+                if (!string.IsNullOrWhiteSpace(valor))
+                {
+                    return valor.Trim();
+                }
+            }
+
+            return null;
+        }
+
+        private static void AgregarCampoFaltante(List<string> faltantes, string valor, string nombreCampo)
+        {
+            if (faltantes == null || string.IsNullOrWhiteSpace(nombreCampo))
+            {
+                return;
+            }
+
+            if (string.IsNullOrWhiteSpace(valor))
+            {
+                faltantes.Add(nombreCampo);
+            }
         }
 
         private ValidarAocrSolicitudItemViewModel ObtenerContextoDocumentoValidacion(int solicitudId)
@@ -2341,7 +2671,8 @@ namespace CapaPresentacion.Controllers
             string hashDocumento,
             string codigoQr,
             InformacionCertificadoDigital infoCertificado,
-            string nombreFirmante)
+            string nombreFirmante,
+            bool sincronizarCertificadoOficial)
         {
             var firma = new AocrFirmaDocumento
             {
@@ -2362,6 +2693,24 @@ namespace CapaPresentacion.Controllers
             };
 
             _aocrFirmaDocumentoDao.Registrar(firma);
+
+            if (sincronizarCertificadoOficial && item != null && item.Solicitud != null)
+            {
+                var certificado = item.Certificado ?? _certificadoDao.ObtenerPorSolicitud(item.Solicitud.CodigoSolicitud);
+                if (certificado != null && certificado.CodigoCertificado > 0)
+                {
+                    certificado.RutaDocumento = rutaDocumento;
+                    certificado.RutaPdf = rutaDocumento;
+                    certificado.NumeroCertificado = model != null ? model.NumeroAocr : item.NumeroAocr;
+                    certificado.Estado = "APROBADO";
+                    certificado.AprobadoPor = nombreFirmante;
+                    certificado.EmitidoPor = User != null && User.Identity != null ? User.Identity.Name : certificado.EmitidoPor;
+                    certificado.FechaEmision = certificado.FechaEmision ?? DateTime.Now;
+                    certificado.FechaVencimiento = model != null ? model.FechaVencimiento : certificado.FechaVencimiento;
+                    certificado.UpdatedAt = DateTime.Now;
+                    _certificadoDao.Actualizar(certificado);
+                }
+            }
 
             if (item != null && item.Solicitud != null)
             {

@@ -208,6 +208,12 @@ namespace CapaNegocio
                 return true;
             }
 
+            if ((actual == EstadoSolicitud.AOCR_EnElaboracion || actual == EstadoSolicitud.Aprobada)
+                && destino == EstadoSolicitud.AOCR_EnRevision)
+            {
+                return true;
+            }
+
             if ((actual == EstadoSolicitud.Aprobada || actual == EstadoSolicitud.AOCR_Validado) &&
                 destino == EstadoSolicitud.AOCR_Legalizado)
             {

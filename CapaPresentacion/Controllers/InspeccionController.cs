@@ -6052,6 +6052,8 @@ namespace CapaPresentacion.Controllers
                 : null;
             var aocrYaGenerada = disponibilidadAocr != null && disponibilidadAocr.YaGenerado;
 
+            RegistrarTrazaGeneracionAocr("RevisionDireccion", disponibilidadAocr);
+
             return new RevisionInformeTecnicoDireccionViewModel
             {
                 CodigoInforme = informe != null ? informe.CodigoInforme : 0,
@@ -6065,6 +6067,8 @@ namespace CapaPresentacion.Controllers
                     solicitud != null ? solicitud.TecnicoResponsableNombre : null,
                     "No disponible"),
                 FechaFirmaInspector = informe != null ? informe.FechaFirma1 : null,
+                EstadoSolicitud = FirstNonEmpty(solicitud != null ? solicitud.Estado : null, disponibilidadAocr != null ? disponibilidadAocr.EstadoSolicitud : null, "No definido"),
+                EstadoInspeccion = FirstNonEmpty(inspeccion != null ? inspeccion.Estado : null, disponibilidadAocr != null ? disponibilidadAocr.EstadoInspeccion : null, "No definido"),
                 EstadoInforme = FirstNonEmpty(informe != null ? informe.EstadoInforme : null, "BORRADOR"),
                 ResultadoTecnicoFinal = FirstNonEmpty(informe != null ? informe.Resultado : null, inspeccion != null ? inspeccion.Resultado : null, "No definido"),
                 TipoResultadoInsatisfactorio = FirstNonEmpty(informe != null ? informe.TipoResultadoInsatisfactorio : null, "No aplica"),
@@ -6169,12 +6173,37 @@ namespace CapaPresentacion.Controllers
 
             if (disponibilidadAocr != null && disponibilidadAocr.Habilitado)
             {
-                return "Pendiente de generación";
+                return "Disponible para generar";
             }
 
             return (solicitud != null && !string.IsNullOrWhiteSpace(solicitud.Estado))
                 ? solicitud.Estado
                 : "No habilitada";
+        }
+
+        private static void RegistrarTrazaGeneracionAocr(string origen, GeneracionAOCRService.Disponibilidad disponibilidad)
+        {
+            if (disponibilidad == null)
+            {
+                System.Diagnostics.Debug.WriteLine("[GenerarAOCR] Origen=" + (origen ?? "Desconocido") + " Disponibilidad=null");
+                return;
+            }
+
+            var informeId = disponibilidad.InformeAprobado != null ? disponibilidad.InformeAprobado.CodigoInforme : 0;
+            System.Diagnostics.Debug.WriteLine("[GenerarAOCR] Origen=" + (origen ?? "Desconocido")
+                + " SolicitudId=" + (disponibilidad.Solicitud != null ? disponibilidad.Solicitud.CodigoSolicitud : 0)
+                + " InspeccionId=" + (disponibilidad.InspeccionAprobada != null ? disponibilidad.InspeccionAprobada.CodigoInspeccion : 0)
+                + " InformeTecnicoId=" + informeId
+                + " EstadoSolicitud=" + (disponibilidad.EstadoSolicitud ?? string.Empty)
+                + " EstadoInspeccion=" + (disponibilidad.EstadoInspeccion ?? string.Empty)
+                + " EstadoInforme=" + (disponibilidad.EstadoInforme ?? string.Empty)
+                + " ResultadoTecnicoFinal=" + (disponibilidad.ResultadoTecnicoFinal ?? string.Empty)
+                + " AprobadoDireccion=" + disponibilidad.AprobadoDireccion
+                + " AprobadoDIRDAC=" + disponibilidad.AprobadoDirdac
+                + " TieneObservacionesPendientes=" + disponibilidad.TieneObservacionesPendientes
+                + " ExisteAOCR=" + disponibilidad.YaGenerado
+                + " PuedeGenerarAOCR=" + disponibilidad.Habilitado
+                + " MotivoBloqueo=" + (disponibilidad.Motivo ?? string.Empty));
         }
 
         private bool EsHistorialRelacionadoConInformeTecnico(InspeccionHistorialEstado historial)

@@ -11,9 +11,9 @@
     var cultura = new CultureInfo("es-EC");
 
     Func<string, string> normalizarTextoVisible = CapaPresentacion.Helpers.VisibleTextHelper.Normalize;
-    Func<string, string> textoCampo = value => !string.IsNullOrWhiteSpace(normalizarTextoVisible(value)) ? normalizarTextoVisible(value) : "PENDIENTE DE COMPLETAR";
+    Func<string, string> textoCampo = value => !string.IsNullOrWhiteSpace(normalizarTextoVisible(value)) ? normalizarTextoVisible(value) : "No aplica";
     Func<string, string> claseCampo = value => !string.IsNullOrWhiteSpace(value) ? "field-value" : "field-value pending";
-    Func<DateTime?, string> fechaCampo = value => value.HasValue ? value.Value.ToString("dd/MM/yyyy", cultura) : "PENDIENTE DE COMPLETAR";
+    Func<DateTime?, string> fechaCampo = value => value.HasValue ? value.Value.ToString("dd/MM/yyyy", cultura) : "No aplica";
 
     var representanteTecnico = Model != null ? Model.RepresentanteTecnico : null;
     var operacionAeropuertos = Model != null ? Model.CondicionBaseOperacion : null;

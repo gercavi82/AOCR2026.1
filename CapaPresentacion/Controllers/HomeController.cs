@@ -461,6 +461,19 @@ namespace CapaPresentacion.Controllers
                 });
             }
 
+            if (model.MostrarModuloOperador || model.MostrarModuloInspector || model.MostrarModuloCertificacion || model.MostrarDashboardAdministracion)
+            {
+                items.Add(new DashboardShortcutViewModel
+                {
+                    Titulo = "AOCR Generadas y Firmadas",
+                    Descripcion = "Consulta consolidada de AOCR, condiciones, firmas y PDFs finales por rol.",
+                    Icono = "fas fa-file-circle-check",
+                    Controlador = "SolicitudAOCR",
+                    Accion = "GeneradasFirmadas",
+                    Estilo = "warning"
+                });
+            }
+
             if (model.MostrarSyncRt)
             {
                 items.Add(new DashboardShortcutViewModel

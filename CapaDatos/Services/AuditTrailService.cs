@@ -50,6 +50,8 @@ namespace CapaDatos.Services
                 usuarioNombre: usuarioNombre,
                 ipOrigen: ipOrigen,
                 modulo: modulo,
+                estadoAnterior: estadoAnterior,
+                estadoNuevo: estadoNuevo,
                 metadata: metadata);
         }
 
@@ -193,6 +195,8 @@ namespace CapaDatos.Services
             string usuarioNombre = null,
             string ipOrigen = null,
             string modulo = null,
+            string estadoAnterior = null,
+            string estadoNuevo = null,
             string metadata = null,
             string userAgent = null)
         {
@@ -205,18 +209,18 @@ namespace CapaDatos.Services
                     var sql = @"
                         INSERT INTO aocr_audit_trail 
                             (tabla, registro_id, accion, campo_modificado, valor_anterior, valor_nuevo,
-                             usuario_id, usuario_nombre, ip_origen, user_agent, modulo, correlacion_id,
-                             metadata, fecha_creacion)
+                             usuario_id, usuario_nombre, ip_origen, user_agent, modulo,
+                             estado_anterior, estado_nuevo, correlacion_id, metadata, fecha_creacion)
                         VALUES 
                             (@tabla, @registroId, @accion, @campo, @valAnterior, @valNuevo,
-                             @usuarioId, @usuario, @ip, @ua, @modulo, @correlacion,
+                             @usuarioId, @usuario, @ip, @ua, @modulo, @estadoAnterior, @estadoNuevo, @correlacion,
                              @metadata, NOW())";
 
                     using (var cmd = new NpgsqlCommand(sql, conn))
                     {
                         cmd.Parameters.AddWithValue("@tabla", (object)tabla ?? DBNull.Value);
                         cmd.Parameters.AddWithValue("@registroId", registroId.HasValue ? (object)registroId.Value : DBNull.Value);
-                        cmd.Parameters.AddWithValue("@accion", (object)accion ?? DBNull.Value);
+                        cmd.Parameters.AddWithValue("@accion", (object)Truncar(accion, 100) ?? DBNull.Value);
                         cmd.Parameters.AddWithValue("@campo", (object)campoModificado ?? DBNull.Value);
                         cmd.Parameters.AddWithValue("@valAnterior", (object)Truncar(valorAnterior, 2000) ?? DBNull.Value);
                         cmd.Parameters.AddWithValue("@valNuevo", (object)Truncar(valorNuevo, 2000) ?? DBNull.Value);
@@ -224,7 +228,9 @@ namespace CapaDatos.Services
                         cmd.Parameters.AddWithValue("@usuario", (object)Truncar(usuarioNombre, 100) ?? DBNull.Value);
                         cmd.Parameters.AddWithValue("@ip", (object)ipOrigen ?? DBNull.Value);
                         cmd.Parameters.AddWithValue("@ua", (object)Truncar(userAgent, 500) ?? DBNull.Value);
-                        cmd.Parameters.AddWithValue("@modulo", (object)modulo ?? DBNull.Value);
+                        cmd.Parameters.AddWithValue("@modulo", (object)Truncar(modulo, 100) ?? DBNull.Value);
+                        cmd.Parameters.AddWithValue("@estadoAnterior", (object)Truncar(estadoAnterior, 100) ?? DBNull.Value);
+                        cmd.Parameters.AddWithValue("@estadoNuevo", (object)Truncar(estadoNuevo, 100) ?? DBNull.Value);
                         cmd.Parameters.AddWithValue("@correlacion", correlacionId);
                         cmd.Parameters.AddWithValue("@metadata", (object)metadata ?? DBNull.Value);
                         cmd.ExecuteNonQuery();
@@ -318,7 +324,7 @@ namespace CapaDatos.Services
                                 id                  SERIAL PRIMARY KEY,
                                 tabla               VARCHAR(100) NOT NULL,
                                 registro_id         INTEGER,
-                                accion              VARCHAR(20) NOT NULL,
+                                accion              VARCHAR(100) NOT NULL,
                                 campo_modificado    VARCHAR(100),
                                 valor_anterior      TEXT,
                                 valor_nuevo         TEXT,
@@ -326,11 +332,17 @@ namespace CapaDatos.Services
                                 usuario_nombre      VARCHAR(100),
                                 ip_origen           VARCHAR(45),
                                 user_agent          VARCHAR(500),
-                                modulo              VARCHAR(50),
+                                modulo              VARCHAR(100),
+                                estado_anterior     VARCHAR(100),
+                                estado_nuevo        VARCHAR(100),
                                 correlacion_id      VARCHAR(100),
                                 metadata            TEXT,
                                 fecha_creacion      TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
                             );
+                            ALTER TABLE aocr_audit_trail ALTER COLUMN accion TYPE VARCHAR(100);
+                            ALTER TABLE aocr_audit_trail ALTER COLUMN modulo TYPE VARCHAR(100);
+                            ALTER TABLE aocr_audit_trail ADD COLUMN IF NOT EXISTS estado_anterior VARCHAR(100);
+                            ALTER TABLE aocr_audit_trail ADD COLUMN IF NOT EXISTS estado_nuevo VARCHAR(100);
                             CREATE INDEX IF NOT EXISTS idx_audit_tabla ON aocr_audit_trail(tabla, registro_id);
                             CREATE INDEX IF NOT EXISTS idx_audit_accion ON aocr_audit_trail(accion);
                             CREATE INDEX IF NOT EXISTS idx_audit_usuario ON aocr_audit_trail(usuario_id);
@@ -364,8 +376,8 @@ namespace CapaDatos.Services
             {
                 var entries = new List<AuditEntry>();
                 var sql = @"
-                    SELECT id, accion, campo_modificado, valor_anterior, valor_nuevo,
-                           usuario_nombre, ip_origen, modulo, fecha_creacion
+                      SELECT id, accion, campo_modificado, valor_anterior, valor_nuevo,
+                          usuario_nombre, ip_origen, modulo, estado_anterior, estado_nuevo, fecha_creacion
                     FROM aocr_audit_trail 
                     WHERE tabla = @tabla AND registro_id = @registroId
                     ORDER BY fecha_creacion DESC 
@@ -391,7 +403,9 @@ namespace CapaDatos.Services
                                 UsuarioNombre = reader.IsDBNull(5) ? null : reader.GetString(5),
                                 IpOrigen = reader.IsDBNull(6) ? null : reader.GetString(6),
                                 Modulo = reader.IsDBNull(7) ? null : reader.GetString(7),
-                                FechaCreacion = reader.GetDateTime(8)
+                                EstadoAnterior = reader.IsDBNull(8) ? null : reader.GetString(8),
+                                EstadoNuevo = reader.IsDBNull(9) ? null : reader.GetString(9),
+                                FechaCreacion = reader.GetDateTime(10)
                             });
                         }
                     }
@@ -409,8 +423,8 @@ namespace CapaDatos.Services
             {
                 var entries = new List<AuditEntry>();
                 var sql = @"
-                    SELECT id, tabla, accion, campo_modificado, valor_anterior, valor_nuevo,
-                           usuario_nombre, ip_origen, modulo, fecha_creacion
+                      SELECT id, tabla, accion, campo_modificado, valor_anterior, valor_nuevo,
+                          usuario_nombre, ip_origen, modulo, estado_anterior, estado_nuevo, fecha_creacion
                     FROM aocr_audit_trail 
                     WHERE (tabla = 'aocr_or_orden' AND registro_id = @ordenId)
                        OR (modulo IN ('FR3', 'Pagos', 'Financiero') 
@@ -439,7 +453,9 @@ namespace CapaDatos.Services
                                 UsuarioNombre = reader.IsDBNull(6) ? null : reader.GetString(6),
                                 IpOrigen = reader.IsDBNull(7) ? null : reader.GetString(7),
                                 Modulo = reader.IsDBNull(8) ? null : reader.GetString(8),
-                                FechaCreacion = reader.GetDateTime(9)
+                                EstadoAnterior = reader.IsDBNull(9) ? null : reader.GetString(9),
+                                EstadoNuevo = reader.IsDBNull(10) ? null : reader.GetString(10),
+                                FechaCreacion = reader.GetDateTime(11)
                             });
                         }
                     }
@@ -481,6 +497,8 @@ namespace CapaDatos.Services
         public string UsuarioNombre { get; set; }
         public string IpOrigen { get; set; }
         public string Modulo { get; set; }
+        public string EstadoAnterior { get; set; }
+        public string EstadoNuevo { get; set; }
         public DateTime FechaCreacion { get; set; }
 
         public string AccionBadge

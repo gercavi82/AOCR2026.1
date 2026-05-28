@@ -70,6 +70,18 @@
                         </div>
                         <div class="col-12 col-md-6">
                             <div class="border rounded-3 p-3 h-100">
+                                <div class="small text-muted mb-1">Estado de la solicitud</div>
+                                <div class="fw-semibold">@vm.EstadoSolicitud</div>
+                            </div>
+                        </div>
+                        <div class="col-12 col-md-6">
+                            <div class="border rounded-3 p-3 h-100">
+                                <div class="small text-muted mb-1">Estado de la inspección</div>
+                                <div class="fw-semibold">@vm.EstadoInspeccion</div>
+                            </div>
+                        </div>
+                        <div class="col-12 col-md-6">
+                            <div class="border rounded-3 p-3 h-100">
                                 <div class="small text-muted mb-1">Resultado técnico propuesto</div>
                                 <div class="fw-semibold">@vm.ResultadoTecnicoFinal</div>
                             </div>
@@ -133,7 +145,11 @@
                     <div class="alert alert-light border mb-0">
                         <div class="fw-semibold mb-1">Estado AOCR</div>
                         <div>@vm.EstadoAocr</div>
-                        @if (!vm.PuedeGenerarAocr && !vm.AocrYaGenerada && !string.IsNullOrWhiteSpace(vm.MotivoBloqueoGenerarAocr))
+                        @if (vm.PuedeGenerarAocr && !vm.AocrYaGenerada)
+                        {
+                            <div class="small text-success mt-2">El Informe Técnico fue aprobado por Dirección/DIRDAC. Puede generar la AOCR.</div>
+                        }
+                        else if (!vm.PuedeGenerarAocr && !vm.AocrYaGenerada && !string.IsNullOrWhiteSpace(vm.MotivoBloqueoGenerarAocr))
                         {
                             <div class="small text-muted mt-2">@vm.MotivoBloqueoGenerarAocr</div>
                         }

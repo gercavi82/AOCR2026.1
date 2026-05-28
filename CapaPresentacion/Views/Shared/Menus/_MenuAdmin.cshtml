@@ -41,6 +41,16 @@
                 </a>
             </li>
         }
+        <li>
+            <a class="@linkClass(isCurrent("SolicitudAOCR", "GeneradasFirmadas") ? "aocr-sidebar-item--active" : string.Empty)" href="@Url.Action("GeneradasFirmadas", "SolicitudAOCR")">
+                <i class="fas fa-file-circle-check text-warning mr-2"></i>
+                <span class="aocr-sidebar-item__content">
+                    <span class="aocr-sidebar-item__title">AOCR generadas y firmadas</span>
+                    <span class="aocr-sidebar-item__meta">Bandeja transversal para auditoría operativa, soporte y control institucional.</span>
+                </span>
+                <span class="aocr-sidebar-item__badge">M8</span>
+            </a>
+        </li>
         @if (Model.PuedeAdministracion || Model.PuedeAprobarUsuarios)
         {
             <li class="aocr-sidebar-subgroup">

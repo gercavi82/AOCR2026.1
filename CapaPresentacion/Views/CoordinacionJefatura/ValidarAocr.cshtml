@@ -7,6 +7,15 @@
     Layout = "~/Views/Shared/_LayoutAOCR.cshtml";
     ViewBag.Title = "Validar AOCR";
     var items = Model != null ? Model.Items ?? new List<ValidarAocrSolicitudItemViewModel>() : new List<ValidarAocrSolicitudItemViewModel>();
+    var puedeRevisarCoordinacion = User.IsInRole("Administrador")
+        || User.IsInRole("CoordinacionLegal")
+        || User.IsInRole("CoordinadorLegal")
+        || User.IsInRole("Coordinador")
+        || User.IsInRole("CoordinadorInspecciones")
+        || User.IsInRole("DIRDAC")
+        || User.IsInRole("Direccion")
+        || User.IsInRole("DirectorGeneral")
+        || User.IsInRole("JefaturaTecnica");
     var puedeValidar = User.IsInRole("Administrador")
         || User.IsInRole("DIRDAC")
         || User.IsInRole("Direccion")
@@ -98,6 +107,10 @@
                         {
                             <div class="mt-1">@CapaPresentacion.Helpers.VisibleTextHelper.Normalize(item.MensajeAdvertencia)</div>
                         }
+                        @if (!string.IsNullOrWhiteSpace(item.EstadoSolicitud))
+                        {
+                            <div class="mt-1"><strong>Estado flujo:</strong> @item.EstadoSolicitud</div>
+                        }
                     </div>
 
                     <div class="table-responsive">
@@ -157,16 +170,56 @@
                         </table>
                     </div>
 
-                    <div class="d-flex flex-column flex-lg-row justify-content-between gap-3 mt-4">
-                        <div>
-                            <a class="btn btn-outline-dark" href="@Url.Action("Detalle", "SolicitudAOCR", new { id = solicitud.CodigoSolicitud })">Abrir detalle del tramite</a>
+                    <div class="d-flex flex-column gap-3 mt-4">
+                        <div class="d-flex flex-column flex-lg-row justify-content-between gap-3">
+                            <div class="d-flex flex-wrap gap-2">
+                                <a class="btn btn-outline-dark" href="@Url.Action("Detalle", "SolicitudAOCR", new { id = solicitud.CodigoSolicitud })">Ver expediente</a>
+                                @if (item.Documentos.Any(d => d != null && !string.IsNullOrWhiteSpace(d.UrlVer)))
+                                {
+                                    var primerDocumentoVisible = item.Documentos.FirstOrDefault(d => d != null && !string.IsNullOrWhiteSpace(d.UrlVer));
+                                    <a class="btn btn-outline-secondary" href="@primerDocumentoVisible.UrlVer" target="_blank" rel="noopener">Ver AOCR generada</a>
+                                }
+                                @if (item.Documentos.Any(d => d != null && !string.IsNullOrWhiteSpace(d.UrlDescargar)))
+                                {
+                                    var primerDocumentoDescargable = item.Documentos.FirstOrDefault(d => d != null && !string.IsNullOrWhiteSpace(d.UrlDescargar));
+                                    <a class="btn btn-outline-secondary" href="@primerDocumentoDescargable.UrlDescargar" target="_blank" rel="noopener">Descargar PDF preliminar</a>
+                                }
+                            </div>
                         </div>
-                        @if (puedeValidar && item.PuedeContinuar)
+
+                        @if (puedeRevisarCoordinacion && item.PuedeSolicitarModificacion)
+                        {
+                            <form method="post" action="@Url.Action("ObservarPorJefatura", "SolicitudAOCR")" class="card border-0 bg-light">
+                                @Html.AntiForgeryToken()
+                                <div class="card-body d-flex flex-column gap-3">
+                                    <input type="hidden" name="id" value="@solicitud.CodigoSolicitud" />
+                                    <div>
+                                        <label class="form-label fw-semibold">Solicitar modificación al Inspector</label>
+                                        <textarea name="observaciones" class="form-control" rows="3" required="required" placeholder="Detalle el campo o sección observada. Este comentario es obligatorio."></textarea>
+                                    </div>
+                                    <div class="d-flex justify-content-end">
+                                        <button type="submit" class="btn btn-outline-danger">Solicitar modificación</button>
+                                    </div>
+                                </div>
+                            </form>
+                        }
+
+                        @if (puedeRevisarCoordinacion && item.PuedeEnviarADirdac)
+                        {
+                            <form method="post" action="@Url.Action("MarcarAocrEnRevision", "SolicitudAOCR")" class="d-flex flex-column flex-md-row gap-2 align-items-stretch">
+                                @Html.AntiForgeryToken()
+                                <input type="hidden" name="id" value="@solicitud.CodigoSolicitud" />
+                                <input type="text" name="observacion" class="form-control" placeholder="Observación de remisión (opcional)" />
+                                <button type="submit" class="btn btn-success">Aprobar y enviar a DIRDAC</button>
+                            </form>
+                        }
+
+                        @if (puedeValidar && item.PuedeAprobarFinal)
                         {
                             <form method="post" action="@Url.Action("AprobarPorJefatura", "SolicitudAOCR")" class="d-flex flex-column flex-md-row gap-2 align-items-stretch">
                                 @Html.AntiForgeryToken()
                                 <input type="hidden" name="id" value="@solicitud.CodigoSolicitud" />
-                                <input type="text" name="observaciones" class="form-control" placeholder="Observacion de validacion (opcional)" />
+                                <input type="text" name="observaciones" class="form-control" placeholder="Observación de validación final (opcional)" />
                                 <button type="submit" class="btn btn-success">Validar AOCR y continuar flujo</button>
                             </form>
                         }

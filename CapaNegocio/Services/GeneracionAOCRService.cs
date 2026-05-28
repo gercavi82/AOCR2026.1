@@ -26,6 +26,7 @@ namespace CapaNegocio.Services
         private readonly DocumentoDAO _documentoDao;
         private readonly InspeccionDAO _inspeccionDao;
         private readonly InspeccionInformeDAO _informeDao;
+        private readonly HallazgoDAO _hallazgoDao;
         private readonly HistorialEstadoDAO _historialDao;
         private readonly ListaVerificacionOperacionalEaeDAO _listaVerificacionDao;
         private readonly RevisionDocumentalService _revisionDocumentalService;
@@ -37,6 +38,7 @@ namespace CapaNegocio.Services
             _documentoDao = new DocumentoDAO();
             _inspeccionDao = new InspeccionDAO();
             _informeDao = new InspeccionInformeDAO();
+            _hallazgoDao = new HallazgoDAO();
             _historialDao = new HistorialEstadoDAO();
             _listaVerificacionDao = new ListaVerificacionOperacionalEaeDAO();
             _revisionDocumentalService = new RevisionDocumentalService();
@@ -54,6 +56,16 @@ namespace CapaNegocio.Services
             public InspeccionInformeTecnico InformeAprobado { get; set; }
             public Inspeccion InspeccionAprobada { get; set; }
             public ListaVerificacionOperacionalEae ListaVerificacionAprobada { get; set; }
+            public string EstadoSolicitud { get; set; }
+            public string EstadoInspeccion { get; set; }
+            public string EstadoInforme { get; set; }
+            public string ResultadoTecnicoFinal { get; set; }
+            public bool InformeTecnicoExiste { get; set; }
+            public bool InformeTecnicoFirmadoInspector { get; set; }
+            public bool AprobadoDireccion { get; set; }
+            public bool AprobadoDirdac { get; set; }
+            public bool TieneObservacionesPendientes { get; set; }
+            public bool TieneNoConformidadActiva { get; set; }
         }
 
         public class LegacyAocrResyncResult
@@ -124,6 +136,8 @@ namespace CapaNegocio.Services
                 return resultado;
             }
 
+            resultado.EstadoSolicitud = solicitud.Estado ?? string.Empty;
+
             Documento existente = ObtenerAocrGeneradoVigente(codigoSolicitud);
             if (existente != null)
             {
@@ -161,12 +175,15 @@ namespace CapaNegocio.Services
             }
 
             // Regla 2: informe técnico finalizado y con aprobación institucional real.
+            var informeRelacionado = ObtenerUltimoInformeRelacionado(codigoSolicitud);
+            PoblarDiagnosticoInforme(resultado, informeRelacionado);
+
             InspeccionInformeTecnico informe = ObtenerInformeAprobado(codigoSolicitud);
             resultado.InformeAprobado = informe;
 
             if (informe == null)
             {
-                resultado.Motivo = "Pendiente de aprobación del Informe Técnico por Dirección/DIRDAC.";
+                resultado.Motivo = ConstruirMotivoInformeNoDisponible(informeRelacionado);
                 return resultado;
             }
             if (!informe.Finalizado)
@@ -199,9 +216,18 @@ namespace CapaNegocio.Services
 
             var inspeccion = _inspeccionDao.ObtenerPorId(informe.CodigoInspeccion);
             resultado.InspeccionAprobada = inspeccion;
-            if (!InspeccionPermiteGeneracionAocr(inspeccion))
+            resultado.EstadoInspeccion = inspeccion != null ? (inspeccion.Estado ?? string.Empty) : string.Empty;
+            if (inspeccion == null || inspeccion.CodigoInspeccion <= 0)
             {
-                resultado.Motivo = "La inspección no se encuentra aceptada o finalizada para habilitar AOCR.";
+                resultado.Motivo = "No existe una inspección asociada a la solicitud para habilitar AOCR.";
+                return resultado;
+            }
+
+            var noConformidadesActivas = ContarNoConformidadesActivas(inspeccion.CodigoInspeccion);
+            resultado.TieneNoConformidadActiva = noConformidadesActivas > 0;
+            if (resultado.TieneNoConformidadActiva)
+            {
+                resultado.Motivo = "Existen no conformidades pendientes que bloquean la emisión de la AOCR.";
                 return resultado;
             }
 
@@ -230,7 +256,7 @@ namespace CapaNegocio.Services
             }
 
             resultado.Habilitado = true;
-            resultado.Motivo = "Listo para generar la AOCR.";
+            resultado.Motivo = "El Informe Técnico fue aprobado por Dirección/DIRDAC. Puede generar la AOCR.";
             return resultado;
         }
 
@@ -489,6 +515,39 @@ namespace CapaNegocio.Services
             }
         }
 
+        private InspeccionInformeTecnico ObtenerUltimoInformeRelacionado(int codigoSolicitud)
+        {
+            try
+            {
+                var inspecciones = _inspeccionDao.ListarPorSolicitud(codigoSolicitud) ?? new List<Inspeccion>();
+                InspeccionInformeTecnico mejor = null;
+                foreach (var ins in inspecciones)
+                {
+                    if (ins == null)
+                    {
+                        continue;
+                    }
+
+                    var informe = _informeDao.ObtenerUltimoPorInspeccion(ins.CodigoInspeccion);
+                    if (informe == null)
+                    {
+                        continue;
+                    }
+
+                    if (mejor == null || ObtenerFechaOrdenInforme(informe) > ObtenerFechaOrdenInforme(mejor))
+                    {
+                        mejor = informe;
+                    }
+                }
+
+                return mejor;
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
         private static bool InformeCompletaFaseTecnicaAocr(InspeccionInformeTecnico informe)
         {
             if (informe == null)
@@ -513,6 +572,7 @@ namespace CapaNegocio.Services
 
             var estadoInforme = (informe.EstadoInforme ?? string.Empty).Trim().ToUpperInvariant();
             return estadoInforme == "APROBADO_DIRECCION"
+                || estadoInforme == "APROBADO_DIRDAC"
                 || estadoInforme == "FIRMADO_FINAL";
         }
 
@@ -529,6 +589,100 @@ namespace CapaNegocio.Services
         private static bool InformeResultadoPermiteGeneracionAocr(InspeccionInformeTecnico informe)
         {
             return string.Equals(NormalizarResultadoInformeTecnico(informe != null ? informe.Resultado : null), "SATISFACTORIO", StringComparison.OrdinalIgnoreCase);
+        }
+
+        private static string ConstruirMotivoInformeNoDisponible(InspeccionInformeTecnico informe)
+        {
+            if (informe == null)
+            {
+                return "No existe Informe Técnico asociado a la inspección.";
+            }
+
+            if (!informe.Finalizado)
+            {
+                return "El Informe Técnico aún no ha sido finalizado por el inspector.";
+            }
+
+            if (!informe.FirmadoInspector)
+            {
+                return "Debe firmar el Informe Técnico antes de continuar.";
+            }
+
+            if (InformeTieneObservacionesPendientes(informe))
+            {
+                return "El Informe Técnico tiene observaciones pendientes. Debe subsanar antes de generar AOCR.";
+            }
+
+            var resultadoNormalizado = NormalizarResultadoInformeTecnico(informe.Resultado);
+            if (string.IsNullOrWhiteSpace(resultadoNormalizado))
+            {
+                return "Debe seleccionar el resultado técnico final.";
+            }
+
+            if (string.Equals(resultadoNormalizado, "INSATISFACTORIO", StringComparison.OrdinalIgnoreCase))
+            {
+                return "El resultado técnico es no satisfactorio. No se habilita AOCR. Debe continuar el flujo de No Conformidad.";
+            }
+
+            if (!InformeCompletaFaseTecnicaAocr(informe))
+            {
+                return "El Informe Técnico satisfactorio está pendiente de aprobación por Dirección/DIRDAC.";
+            }
+
+            return "Pendiente de aprobación del Informe Técnico por Dirección/DIRDAC.";
+        }
+
+        private static void PoblarDiagnosticoInforme(Disponibilidad resultado, InspeccionInformeTecnico informe)
+        {
+            if (resultado == null || informe == null)
+            {
+                return;
+            }
+
+            resultado.InformeTecnicoExiste = true;
+            resultado.EstadoInforme = informe.EstadoInforme ?? string.Empty;
+            resultado.ResultadoTecnicoFinal = informe.Resultado ?? string.Empty;
+            resultado.InformeTecnicoFirmadoInspector = informe.FirmadoInspector;
+            resultado.AprobadoDireccion = InformeCompletaFaseTecnicaAocr(informe);
+            resultado.AprobadoDirdac = informe.FirmadoDirdac
+                || string.Equals((informe.EstadoInforme ?? string.Empty).Trim(), "APROBADO_DIRDAC", StringComparison.OrdinalIgnoreCase)
+                || string.Equals((informe.EstadoInforme ?? string.Empty).Trim(), "FIRMADO_FINAL", StringComparison.OrdinalIgnoreCase);
+            resultado.TieneObservacionesPendientes = InformeTieneObservacionesPendientes(informe);
+        }
+
+        private int ContarNoConformidadesActivas(int codigoInspeccion)
+        {
+            if (codigoInspeccion <= 0)
+            {
+                return 0;
+            }
+
+            try
+            {
+                var hallazgos = _hallazgoDao.ObtenerPorInspeccion(codigoInspeccion) ?? new List<Hallazgo>();
+                return hallazgos.Count(hallazgo => hallazgo != null
+                    && !string.Equals((hallazgo.Estado ?? string.Empty).Trim(), "CERRADO", StringComparison.OrdinalIgnoreCase)
+                    && !string.Equals((hallazgo.Estado ?? string.Empty).Trim(), "RESUELTO", StringComparison.OrdinalIgnoreCase));
+            }
+            catch
+            {
+                return 0;
+            }
+        }
+
+        private static DateTime ObtenerFechaOrdenInforme(InspeccionInformeTecnico informe)
+        {
+            if (informe == null)
+            {
+                return DateTime.MinValue;
+            }
+
+            return informe.UpdatedAt
+                ?? informe.FechaFirma2
+                ?? informe.FechaFinalizacion
+                ?? informe.FechaFirma1
+                ?? informe.CreatedAt
+                ?? DateTime.MinValue;
         }
 
         private static string NormalizarResultadoInformeTecnico(string resultado)
@@ -598,20 +752,6 @@ namespace CapaNegocio.Services
                 || roles.Contains("JefaturaTecnica")
                 || roles.Contains("Jefe")
                 || roles.Contains("DireccionJefaturaTecnica");
-        }
-
-        private static bool InspeccionPermiteGeneracionAocr(Inspeccion inspeccion)
-        {
-            if (inspeccion == null)
-            {
-                return false;
-            }
-
-            var estado = EstadosInspeccion.NormalizarEstado(inspeccion.Estado);
-            return string.Equals(estado, EstadosInspeccion.EN_INSPECCION, StringComparison.OrdinalIgnoreCase)
-                || string.Equals(estado, EstadosInspeccion.INFORME_ELABORADO, StringComparison.OrdinalIgnoreCase)
-                || string.Equals(estado, EstadosInspeccion.RESULTADO_SATISFACTORIO, StringComparison.OrdinalIgnoreCase)
-                || string.Equals(estado, EstadosInspeccion.CERRADA, StringComparison.OrdinalIgnoreCase);
         }
 
         /// <summary>

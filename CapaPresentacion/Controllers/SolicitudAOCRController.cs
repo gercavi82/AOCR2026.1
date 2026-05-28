@@ -22,6 +22,8 @@ using CapaNegocio.Helpers;
 using CapaUtilidades;
 using CapaDatos.Services;
 using CapaNegocio.Services;
+using CapaModelo.Common;
+using CapaPresentacion.Models.ViewModels;
 using Newtonsoft.Json;
 using Npgsql;
 using Rotativa;
@@ -40,6 +42,7 @@ namespace CapaPresentacion.Controllers
         private readonly SolicitudAocrCorreoService _solicitudAocrCorreoService = new SolicitudAocrCorreoService();
         private readonly SolicitudAocrService _solicitudAocrService = new SolicitudAocrService();
         private readonly GeneracionAOCRService _generacionAocrService = new GeneracionAOCRService();
+        private readonly AocrBandejaDAO _aocrBandejaDao = new AocrBandejaDAO();
 
         private readonly AeronaveSolicitudDAO _aeronaveSolDAO = new AeronaveSolicitudDAO();
         private readonly PagoDAO _pagoDAO = new PagoDAO();
@@ -87,7 +90,8 @@ namespace CapaPresentacion.Controllers
         };
 
         private const int TamanoMaximoDocumentoMb = 10;
-    private const string DocumentoTipoCondicionesLimitaciones = "CONDICIONES_LIMITACIONES";
+        private const string DocumentoTipoCondicionesLimitaciones = "CONDICIONES_LIMITACIONES";
+        private const string DocumentoTipoReconocimiento = "RECONOCIMIENTO";
 
         private bool UsuarioActualEsRt()
         {
@@ -2267,6 +2271,80 @@ namespace CapaPresentacion.Controllers
             return View(solicitudes);
         }
 
+        [Authorize]
+        public ActionResult GeneradasFirmadas(AocrGeneradasFirmadasFiltroViewModel filtros)
+        {
+            var contexto = ConstruirContextoBandeja();
+            if (!contexto.PuedeVerBandeja)
+            {
+                return new HttpStatusCodeResult(403, "No tiene permisos para consultar esta bandeja.");
+            }
+
+            filtros = filtros ?? new AocrGeneradasFirmadasFiltroViewModel();
+            if (filtros.Page <= 0)
+            {
+                filtros.Page = 1;
+            }
+
+            if (filtros.PageSize <= 0)
+            {
+                filtros.PageSize = 15;
+            }
+
+            filtros.PageSize = Math.Min(filtros.PageSize, 50);
+
+            var filas = _aocrBandejaDao.ListarGeneradasFirmadas() ?? new List<AocrBandejaDocumentoRow>();
+            var visibles = filas
+                .Where(x => DebeMostrarFilaBandeja(x, contexto))
+                .Select(x => MapearFilaBandeja(x, contexto))
+                .ToList();
+
+            visibles = AplicarFiltrosBandeja(visibles, filtros);
+
+            var totalRegistros = visibles.Count;
+            var totalFirmadas = visibles.Count(x => string.Equals(x.EstadoFinal, "Firmado", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(x.EstadoFinal, "Finalizado", StringComparison.OrdinalIgnoreCase));
+            var totalPendientesFirma = visibles.Count(x => string.Equals(x.EstadoFinal, "Pendiente firma", StringComparison.OrdinalIgnoreCase));
+            var totalObservadas = visibles.Count(x => string.Equals(x.EstadoFinal, "Observada", StringComparison.OrdinalIgnoreCase));
+            var totalConPdf = visibles.Count(x => x.TienePdfFirmado || x.TienePdfPreliminar);
+
+            var totalPaginas = Math.Max(1, (int)Math.Ceiling(totalRegistros / (double)filtros.PageSize));
+            if (filtros.Page > totalPaginas)
+            {
+                filtros.Page = totalPaginas;
+            }
+
+            var itemsPagina = visibles
+                .Skip((filtros.Page - 1) * filtros.PageSize)
+                .Take(filtros.PageSize)
+                .ToList();
+
+            var model = new AocrGeneradasFirmadasViewModel
+            {
+                Filtros = filtros,
+                Items = itemsPagina,
+                TotalRegistros = totalRegistros,
+                TotalFirmadas = totalFirmadas,
+                TotalPendientesFirma = totalPendientesFirma,
+                TotalObservadas = totalObservadas,
+                TotalConPdf = totalConPdf,
+                PaginaActual = filtros.Page,
+                TotalPaginas = totalPaginas,
+                PageSize = filtros.PageSize,
+                EsAdministrador = contexto.EsAdministrador,
+                EsSolicitante = contexto.EsSolicitante,
+                EsInspector = contexto.EsInspector,
+                EsCoordinacion = contexto.EsCoordinacion,
+                EsDireccion = contexto.EsDireccion
+            };
+
+            model.EstadosFinales = ConstruirOpcionesFiltro(visibles.Select(x => x.EstadoFinal), filtros.EstadoFinal, "Todos los estados finales");
+            model.EstadosFirma = ConstruirOpcionesFiltro(visibles.Select(x => x.EstadoFirma), filtros.EstadoFirma, "Todos los estados de firma");
+            model.TiposTramite = ConstruirOpcionesFiltro(visibles.Select(x => x.TipoTramite), filtros.TipoTramite, "Todos los trámites");
+
+            return View(model);
+        }
+
         [Authorize(Roles = "Coordinador,CoordinadorInspecciones,Administrador")]
         public ActionResult RevisarSolicitudes()
         {
@@ -2871,6 +2949,11 @@ namespace CapaPresentacion.Controllers
         [AocrAuthorize(Modulo = "SolicitudAOCR", Accion = "AprobarJefatura", CodigoSolicitudParameter = "id")]
         public ActionResult AprobarPorJefatura(int id)
         {
+            System.Diagnostics.Debug.WriteLine("[AOCR_COORD] SolicitudId=" + id
+                + " Usuario=" + (User != null && User.Identity != null ? User.Identity.Name : string.Empty)
+                + " Rol=" + ObtenerRolPrincipalAocr()
+                + " PuedeEnviarDIRDAC=False PuedeSolicitarModificacion=False PuedeGenerarPdfFirma=True");
+
             string mensajeCambio;
             if (!CambiarEstadoConReglasAocr(id, EstadoSolicitud.AOCR_Validado, "Validado por Dirección / Jefatura", out mensajeCambio))
             {
@@ -2883,19 +2966,30 @@ namespace CapaPresentacion.Controllers
         }
 
         [HttpPost]
-        [Authorize(Roles = "DIRDAC,Direccion,JefaturaTecnica,DirectorGeneral,Administrador")]
+        [Authorize(Roles = "CoordinacionLegal,CoordinadorLegal,Coordinador,CoordinadorInspecciones,DIRDAC,Direccion,JefaturaTecnica,DirectorGeneral,Administrador")]
         [ValidateAntiForgeryToken]
         public ActionResult ObservarPorJefatura(int id, string observaciones)
         {
-            string mensajeCambio;
-            if (!CambiarEstadoConReglasAocr(id, EstadoSolicitud.Observada, observaciones ?? string.Empty, out mensajeCambio))
+            if (string.IsNullOrWhiteSpace(observaciones))
             {
-                TempData["Error"] = mensajeCambio;
-                return RedirectToAction("RevisarPorJefatura");
+                TempData["Error"] = "Debe registrar una observación obligatoria para solicitar modificación al Inspector.";
+                return RedirectToAction("Detalle", new { id });
             }
 
-            TempData["Exito"] = "Se ha enviado una observación a la solicitud.";
-            return RedirectToAction("RevisarPorJefatura");
+            System.Diagnostics.Debug.WriteLine("[AOCR_COORD] SolicitudId=" + id
+                + " Usuario=" + (User != null && User.Identity != null ? User.Identity.Name : string.Empty)
+                + " Rol=" + ObtenerRolPrincipalAocr()
+                + " PuedeRevisar=True PuedeSolicitarModificacion=True PuedeEnviarDIRDAC=False PuedeGenerarPdfFirma=False MotivoBloqueo=" + observaciones.Trim());
+
+            string mensajeCambio;
+            if (!CambiarEstadoConReglasAocr(id, EstadoSolicitud.Observada, observaciones.Trim(), out mensajeCambio))
+            {
+                TempData["Error"] = mensajeCambio;
+                return RedirectToAction("Detalle", new { id });
+            }
+
+            TempData["Exito"] = "La AOCR fue devuelta al Inspector para corrección.";
+            return RedirectToAction("Detalle", new { id });
         }
 
         // =========================================================
@@ -3447,6 +3541,7 @@ namespace CapaPresentacion.Controllers
             try
             {
                 var dispAocr = _generacionAocrService.Evaluar(id, ObtenerUsuarioActualId(), ObtenerRolesActualesParaGeneracionAocr());
+                RegistrarTrazaGeneracionAocr("SolicitudDetalle", dispAocr);
                 ViewBag.PuedeGenerarAOCR = dispAocr != null && dispAocr.Habilitado;
                 ViewBag.MotivoGenerarAOCR = dispAocr != null
                     ? dispAocr.Motivo
@@ -3679,6 +3774,7 @@ namespace CapaPresentacion.Controllers
                 var usuarioId = ObtenerUsuarioActualId();
                 var rolesActuales = ObtenerRolesActualesParaGeneracionAocr();
                 var disponibilidad = _generacionAocrService.Evaluar(id, usuarioId, rolesActuales);
+                RegistrarTrazaGeneracionAocr("GenerarAOCR_POST", disponibilidad);
                 if (disponibilidad == null || disponibilidad.Solicitud == null)
                 {
                     TempData["NotificacionTipo"] = "error";
@@ -3789,6 +3885,31 @@ namespace CapaPresentacion.Controllers
             }
         }
 
+        private static void RegistrarTrazaGeneracionAocr(string origen, GeneracionAOCRService.Disponibilidad disponibilidad)
+        {
+            if (disponibilidad == null)
+            {
+                System.Diagnostics.Debug.WriteLine("[GenerarAOCR] Origen=" + (origen ?? "Desconocido") + " Disponibilidad=null");
+                return;
+            }
+
+            var informeId = disponibilidad.InformeAprobado != null ? disponibilidad.InformeAprobado.CodigoInforme : 0;
+            System.Diagnostics.Debug.WriteLine("[GenerarAOCR] Origen=" + (origen ?? "Desconocido")
+                + " SolicitudId=" + (disponibilidad.Solicitud != null ? disponibilidad.Solicitud.CodigoSolicitud : 0)
+                + " InspeccionId=" + (disponibilidad.InspeccionAprobada != null ? disponibilidad.InspeccionAprobada.CodigoInspeccion : 0)
+                + " InformeTecnicoId=" + informeId
+                + " EstadoSolicitud=" + (disponibilidad.EstadoSolicitud ?? string.Empty)
+                + " EstadoInspeccion=" + (disponibilidad.EstadoInspeccion ?? string.Empty)
+                + " EstadoInforme=" + (disponibilidad.EstadoInforme ?? string.Empty)
+                + " ResultadoTecnicoFinal=" + (disponibilidad.ResultadoTecnicoFinal ?? string.Empty)
+                + " AprobadoDireccion=" + disponibilidad.AprobadoDireccion
+                + " AprobadoDIRDAC=" + disponibilidad.AprobadoDirdac
+                + " TieneObservacionesPendientes=" + disponibilidad.TieneObservacionesPendientes
+                + " ExisteAOCR=" + disponibilidad.YaGenerado
+                + " PuedeGenerarAOCR=" + disponibilidad.Habilitado
+                + " MotivoBloqueo=" + (disponibilidad.Motivo ?? string.Empty));
+        }
+
         /// <summary>
         /// Descarga el archivo PDF de la AOCR generada para una solicitud.
         /// </summary>
@@ -3825,12 +3946,426 @@ namespace CapaPresentacion.Controllers
             return File(bytes, "application/pdf");
         }
 
+        [Authorize]
+        public ActionResult DescargarAocrFirmada(int id, bool vistaPrevia = false)
+        {
+            var solicitud = _solicitudDAO.ObtenerPorId(id);
+            if (solicitud == null)
+            {
+                return HttpNotFound();
+            }
+
+            var usuarioActualId = ObtenerUsuarioActualId();
+            var esPropietario = usuarioActualId > 0 && solicitud.CodigoUsuario == usuarioActualId;
+            var esUsuarioInterno = EsAdmin()
+                || (User != null && (
+                    User.IsInRole("DIRDAC")
+                    || User.IsInRole("Direccion")
+                    || User.IsInRole("DirectorGeneral")
+                    || User.IsInRole("JefaturaTecnica")
+                    || User.IsInRole("Coordinador")
+                    || User.IsInRole("CoordinadorInspecciones")
+                    || User.IsInRole("CoordinacionLegal")
+                    || User.IsInRole("Inspector")
+                    || User.IsInRole("Tecnico")
+                    || User.IsInRole("EvaluadorTecnico")));
+
+            if (!esPropietario && !esUsuarioInterno)
+            {
+                return new HttpStatusCodeResult(403, "No tiene permisos para acceder al documento firmado.");
+            }
+
+            var firma = _aocrFirmaDocumentoDao.ObtenerUltimoPorSolicitudTipo(id, DocumentoTipoReconocimiento);
+            string rutaDocumento = firma != null ? firma.RutaDocumento : null;
+            DateTime? fechaDocumento = firma != null ? (DateTime?)firma.FechaFirma : null;
+
+            if (string.IsNullOrWhiteSpace(rutaDocumento))
+            {
+                var certificado = new CertificadoDAO().ObtenerPorSolicitud(id);
+                if (certificado != null)
+                {
+                    rutaDocumento = certificado.RutaDocumento;
+                    fechaDocumento = certificado.UpdatedAt ?? certificado.FechaEmision;
+                }
+            }
+
+            if (string.IsNullOrWhiteSpace(rutaDocumento))
+            {
+                return HttpNotFound("No existe un PDF AOCR firmado para esta solicitud.");
+            }
+
+            var rutaFisica = ResolverRutaDocumentoAocrFirmado(rutaDocumento);
+            if (string.IsNullOrWhiteSpace(rutaFisica) || !System.IO.File.Exists(rutaFisica))
+            {
+                return HttpNotFound("No se encontró el archivo PDF firmado en almacenamiento.");
+            }
+
+            var nombreArchivo = ConstruirNombrePdfCertificadoAocr(solicitud, fechaDocumento);
+            Response.Headers["X-Content-Type-Options"] = "nosniff";
+            PdfFileNameHelper.AplicarContentDispositionPdf(Response, !vistaPrevia, nombreArchivo);
+            return File(rutaFisica, "application/pdf");
+        }
+
         private string ConstruirNombrePdfAceptacionDocumental(SolicitudAOCR solicitud, DateTime? fecha = null)
         {
             return PdfFileNameHelper.CrearNombreAceptacionDocumental(
                 ObtenerNumeroSolicitudPdf(solicitud),
                 ObtenerSegmentoOperadorPdf(solicitud),
                 fecha ?? ObtenerFechaDocumentoPdf(solicitud));
+        }
+
+        private List<AocrGeneradasFirmadasRowViewModel> AplicarFiltrosBandeja(
+            List<AocrGeneradasFirmadasRowViewModel> items,
+            AocrGeneradasFirmadasFiltroViewModel filtros)
+        {
+            var filtrados = items ?? new List<AocrGeneradasFirmadasRowViewModel>();
+            if (filtros == null)
+            {
+                return filtrados;
+            }
+
+            if (!string.IsNullOrWhiteSpace(filtros.Search))
+            {
+                var texto = filtros.Search.Trim();
+                filtrados = filtrados.Where(x =>
+                        ContieneTexto(x.NumeroSolicitud, texto)
+                        || ContieneTexto(x.NumeroAocr, texto)
+                        || ContieneTexto(x.NombreExplotador, texto)
+                        || ContieneTexto(x.InspectorNombre, texto)
+                        || ContieneTexto(x.CoordinadorNombre, texto))
+                    .ToList();
+            }
+
+            if (!string.IsNullOrWhiteSpace(filtros.EstadoFinal))
+            {
+                filtrados = filtrados.Where(x => string.Equals(x.EstadoFinal, filtros.EstadoFinal, StringComparison.OrdinalIgnoreCase)).ToList();
+            }
+
+            if (!string.IsNullOrWhiteSpace(filtros.EstadoFirma))
+            {
+                filtrados = filtrados.Where(x => string.Equals(x.EstadoFirma, filtros.EstadoFirma, StringComparison.OrdinalIgnoreCase)).ToList();
+            }
+
+            if (!string.IsNullOrWhiteSpace(filtros.TipoTramite))
+            {
+                filtrados = filtrados.Where(x => string.Equals(x.TipoTramite, filtros.TipoTramite, StringComparison.OrdinalIgnoreCase)).ToList();
+            }
+
+            if (string.Equals(filtros.SoloConPdf, "SI", StringComparison.OrdinalIgnoreCase))
+            {
+                filtrados = filtrados.Where(x => x.TienePdfFirmado || x.TienePdfPreliminar).ToList();
+            }
+
+            return filtrados;
+        }
+
+        private IList<SelectListItem> ConstruirOpcionesFiltro(IEnumerable<string> valores, string seleccionado, string opcionTodos)
+        {
+            var opciones = new List<SelectListItem>
+            {
+                new SelectListItem { Text = opcionTodos, Value = string.Empty, Selected = string.IsNullOrWhiteSpace(seleccionado) }
+            };
+
+            foreach (var valor in (valores ?? Enumerable.Empty<string>())
+                .Where(x => !string.IsNullOrWhiteSpace(x))
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .OrderBy(x => x))
+            {
+                opciones.Add(new SelectListItem
+                {
+                    Text = valor,
+                    Value = valor,
+                    Selected = string.Equals(valor, seleccionado, StringComparison.OrdinalIgnoreCase)
+                });
+            }
+
+            return opciones;
+        }
+
+        private AocrGeneradasFirmadasRowViewModel MapearFilaBandeja(AocrBandejaDocumentoRow fila, BandejaAocrContexto contexto)
+        {
+            var usaFlujoCondiciones = AocrBandejaEstadoHelper.UsaFlujoCondiciones(fila);
+            var estadoAocr = AocrBandejaEstadoHelper.ObtenerEstadoAocr(fila);
+            var estadoCondiciones = AocrBandejaEstadoHelper.ObtenerEstadoCondiciones(fila);
+            var estadoFirma = AocrBandejaEstadoHelper.ObtenerEstadoFirma(fila);
+            var estadoFinal = AocrBandejaEstadoHelper.ObtenerEstadoFinal(fila);
+            var tienePdfFirmado = AocrBandejaEstadoHelper.TieneDocumentoFinalFirmado(fila);
+            var tienePdfPreliminar = AocrBandejaEstadoHelper.TieneDocumentoPreliminar(fila);
+            var numeroAocr = PrimeraCadenaNoVacia(
+                fila.NumeroAocrReconocimiento,
+                fila.NumeroAocrCertificado,
+                fila.NumeroAocBase);
+            var inspectorNombre = PrimeraCadenaNoVacia(
+                fila.InspectorPrincipalNombreInspeccion,
+                fila.InspectorNombreSolicitud,
+                fila.InspectorApoyoNombreSolicitud);
+            var coordinadorNombre = PrimeraCadenaNoVacia(
+                fila.EmitidoPor,
+                fila.AprobadoPor,
+                fila.NombreFirmanteReconocimiento,
+                fila.NombreFirmanteCondiciones);
+            var urlHelper = new UrlHelper(ControllerContext.RequestContext);
+            var puedeGestionarInterno = contexto.EsAdministrador || contexto.EsCoordinacion || contexto.EsDireccion;
+
+            return new AocrGeneradasFirmadasRowViewModel
+            {
+                SolicitudId = fila.SolicitudId,
+                InspeccionId = fila.InspeccionId,
+                InformeId = fila.InformeId,
+                CertificadoId = fila.CertificadoId,
+                FirmaCondicionesId = fila.FirmaCondicionesId,
+                FirmaReconocimientoId = fila.FirmaReconocimientoId,
+                NumeroSolicitud = fila.NumeroSolicitud,
+                NumeroAocr = numeroAocr,
+                TipoTramite = ObtenerTipoTramiteTexto(fila.TipoSolicitud),
+                NombreExplotador = fila.NombreExplotador,
+                InspectorNombre = inspectorNombre,
+                CoordinadorNombre = coordinadorNombre,
+                EstadoInformeTecnico = fila.EstadoInformeTecnicoRaw,
+                ResultadoTecnicoFinal = fila.ResultadoTecnicoFinalRaw,
+                EstadoAocr = estadoAocr,
+                EstadoCondiciones = estadoCondiciones,
+                EstadoFirma = estadoFirma,
+                EstadoFinal = estadoFinal,
+                BadgeEstadoAocrCss = AocrBandejaEstadoHelper.ObtenerBadgeCss(estadoAocr),
+                BadgeEstadoCondicionesCss = AocrBandejaEstadoHelper.ObtenerBadgeCss(estadoCondiciones),
+                BadgeEstadoFirmaCss = AocrBandejaEstadoHelper.ObtenerBadgeCss(estadoFirma),
+                BadgeEstadoFinalCss = AocrBandejaEstadoHelper.ObtenerBadgeCss(estadoFinal),
+                FechaSolicitud = fila.FechaSolicitud,
+                FechaUltimoHito = ObtenerFechaUltimoHito(fila),
+                NombreFirmante = usaFlujoCondiciones ? fila.NombreFirmanteCondiciones : fila.NombreFirmanteReconocimiento,
+                UsaFlujoCondiciones = usaFlujoCondiciones,
+                TienePdfPreliminar = tienePdfPreliminar,
+                TienePdfFirmado = tienePdfFirmado,
+                UrlDetalleSolicitud = urlHelper.Action("Detalle", "SolicitudAOCR", new { id = fila.SolicitudId }),
+                UrlDetalleInspeccion = fila.InspeccionId.HasValue ? urlHelper.Action("Detalle", "Inspeccion", new { id = fila.InspeccionId.Value }) : null,
+                UrlHistorial = urlHelper.Action("PorSolicitud", "HistorialEstado", new { id = fila.SolicitudId }),
+                UrlPreliminar = ConstruirUrlPreliminar(urlHelper, fila, contexto, tienePdfPreliminar, usaFlujoCondiciones),
+                UrlFinal = ConstruirUrlFinal(urlHelper, fila, tienePdfFirmado, usaFlujoCondiciones),
+                UrlGestion = puedeGestionarInterno
+                    ? urlHelper.Action(
+                        "EditarDocumentoValidacionAocr",
+                        "CoordinacionJefatura",
+                        new { solicitudId = fila.SolicitudId, tipo = usaFlujoCondiciones ? DocumentoTipoCondicionesLimitaciones : DocumentoTipoReconocimiento })
+                    : null,
+                UrlValidacion = (contexto.EsCoordinacion || contexto.EsDireccion || contexto.EsAdministrador)
+                    ? urlHelper.Action("ValidarAocr", "CoordinacionJefatura", new { solicitudId = fila.SolicitudId })
+                    : null
+            };
+        }
+
+        private string ConstruirUrlPreliminar(
+            UrlHelper urlHelper,
+            AocrBandejaDocumentoRow fila,
+            BandejaAocrContexto contexto,
+            bool tienePdfPreliminar,
+            bool usaFlujoCondiciones)
+        {
+            if (!tienePdfPreliminar)
+            {
+                return null;
+            }
+
+            if (usaFlujoCondiciones)
+            {
+                if (contexto.EsCoordinacion || contexto.EsDireccion || contexto.EsAdministrador)
+                {
+                    return urlHelper.Action("DocumentoValidacionAocr", "CoordinacionJefatura", new { solicitudId = fila.SolicitudId, tipo = DocumentoTipoCondicionesLimitaciones, descargar = false });
+                }
+
+                return AocrBandejaEstadoHelper.TieneDocumentoFinalFirmado(fila)
+                    ? urlHelper.Action("DescargarCondicionesLimitacionesModificacion", "SolicitudAOCR", new { id = fila.SolicitudId, vistaPrevia = true })
+                    : null;
+            }
+
+            if (contexto.EsCoordinacion || contexto.EsDireccion || contexto.EsAdministrador)
+            {
+                return urlHelper.Action("DocumentoValidacionAocr", "CoordinacionJefatura", new { solicitudId = fila.SolicitudId, tipo = DocumentoTipoReconocimiento, descargar = false });
+            }
+
+            return !string.IsNullOrWhiteSpace(fila.RutaAocrGenerada)
+                ? urlHelper.Action("DescargarAOCRGenerada", "SolicitudAOCR", new { id = fila.SolicitudId, vistaPrevia = true })
+                : null;
+        }
+
+        private string ConstruirUrlFinal(UrlHelper urlHelper, AocrBandejaDocumentoRow fila, bool tienePdfFirmado, bool usaFlujoCondiciones)
+        {
+            if (!tienePdfFirmado)
+            {
+                return null;
+            }
+
+            return usaFlujoCondiciones
+                ? urlHelper.Action("DescargarCondicionesLimitacionesModificacion", "SolicitudAOCR", new { id = fila.SolicitudId })
+                : urlHelper.Action("DescargarAocrFirmada", "SolicitudAOCR", new { id = fila.SolicitudId });
+        }
+
+        private bool DebeMostrarFilaBandeja(AocrBandejaDocumentoRow fila, BandejaAocrContexto contexto)
+        {
+            if (fila == null || fila.SolicitudId <= 0)
+            {
+                return false;
+            }
+
+            if (contexto.EsAdministrador || contexto.EsCoordinacion || contexto.EsDireccion)
+            {
+                return true;
+            }
+
+            if (contexto.EsSolicitante)
+            {
+                if (fila.CodigoUsuario != contexto.CodigoUsuarioActual)
+                {
+                    return false;
+                }
+
+                if (string.IsNullOrWhiteSpace(contexto.CompaniaActivaCodigo))
+                {
+                    return true;
+                }
+
+                return ContieneValorLista(fila.CompaniasSeleccionadas, contexto.CompaniaActivaCodigo);
+            }
+
+            if (contexto.EsInspector)
+            {
+                return (fila.CodigoInspectorInspeccion.HasValue && contexto.CodigosInspector.Contains(fila.CodigoInspectorInspeccion.Value))
+                    || (fila.CodigoInspectorSolicitud.HasValue && contexto.CodigosInspector.Contains(fila.CodigoInspectorSolicitud.Value));
+            }
+
+            return false;
+        }
+
+        private BandejaAocrContexto ConstruirContextoBandeja()
+        {
+            var rolActual = RoleGroupingHelper.NormalizeSelectedRole(Session["Rol"]?.ToString());
+            var rolesRaw = RoleGroupingHelper.ExtractRoles(Session["RolesRaw"] ?? Session["Roles"], Session["Rol"] as string);
+            var sinRolesRaw = rolesRaw.Count == 0;
+            int codigoUsuarioActual;
+            TryObtenerUsuarioActualId(out codigoUsuarioActual);
+
+            return new BandejaAocrContexto
+            {
+                CodigoUsuarioActual = codigoUsuarioActual,
+                CompaniaActivaCodigo = ObtenerCompaniaActivaCodigo(),
+                EsAdministrador = RoleGroupingHelper.IsAdministrador(rolActual),
+                EsSolicitante = RoleGroupingHelper.IsSolicitante(rolActual),
+                EsInspector = RoleGroupingHelper.IsInspectorTecnico(rolActual)
+                    && (sinRolesRaw || RoleGroupingHelper.HasAnyRawRole(rolesRaw, "Inspector", "Tecnico", "EvaluadorTecnico")),
+                EsCoordinacion = RoleGroupingHelper.IsCoordinacion(rolActual)
+                    && (sinRolesRaw || RoleGroupingHelper.HasAnyRawRole(rolesRaw, "Coordinador", "CoordinadorInspecciones", "CoordinacionLegal", "CoordinadorLegal")),
+                EsDireccion = RoleGroupingHelper.IsDireccionJefaturaTecnica(rolActual),
+                CodigosInspector = ObtenerCodigosInspectorActual()
+            };
+        }
+
+        private HashSet<int> ObtenerCodigosInspectorActual()
+        {
+            var ids = new HashSet<int>();
+            int codigoUsuarioActual;
+            TryObtenerUsuarioActualId(out codigoUsuarioActual);
+            if (codigoUsuarioActual > 0)
+            {
+                ids.Add(codigoUsuarioActual);
+            }
+
+            var codigoUsuarioTexto = (Session["CodigoUsuario"] ?? string.Empty).ToString().Trim();
+            int codigoUsuarioNumerico;
+            if (int.TryParse(codigoUsuarioTexto, out codigoUsuarioNumerico) && codigoUsuarioNumerico > 0)
+            {
+                ids.Add(codigoUsuarioNumerico);
+            }
+
+            try
+            {
+                var inspectorActual = codigoUsuarioActual > 0
+                    ? _usuarioInternoRtDAO.ObtenerInspectorActivoPorTecnicoIdOUsuarioId(codigoUsuarioActual)
+                    : null;
+
+                if (inspectorActual == null && !string.IsNullOrWhiteSpace(codigoUsuarioTexto))
+                {
+                    inspectorActual = _usuarioInternoRtDAO.ObtenerActivoPorCodigoUsuario(codigoUsuarioTexto)
+                        ?? _usuarioInternoRtDAO.ObtenerInspectorAsignableActivo(codigoUsuarioTexto);
+                }
+
+                if (inspectorActual != null)
+                {
+                    if (inspectorActual.TecnicoId.HasValue && inspectorActual.TecnicoId.Value > 0)
+                    {
+                        ids.Add(inspectorActual.TecnicoId.Value);
+                    }
+
+                    if (inspectorActual.UsuarioId.HasValue && inspectorActual.UsuarioId.Value > 0)
+                    {
+                        ids.Add(inspectorActual.UsuarioId.Value);
+                    }
+                }
+            }
+            catch
+            {
+            }
+
+            return ids;
+        }
+
+        private static string ObtenerTipoTramiteTexto(int? tipoSolicitud)
+        {
+            switch (tipoSolicitud ?? 0)
+            {
+                case 1:
+                    return "Emisión";
+                case 2:
+                    return "Renovación";
+                case 3:
+                    return "Modificación";
+                default:
+                    return "AOCR";
+            }
+        }
+
+        private static DateTime? ObtenerFechaUltimoHito(AocrBandejaDocumentoRow fila)
+        {
+            return new[]
+            {
+                fila.FechaFirmaReconocimiento,
+                fila.FechaFirmaCondiciones,
+                fila.FechaActualizacionCertificado,
+                fila.FechaEmisionCertificado,
+                fila.FechaAocrGenerada,
+                fila.FechaEnvioInformeDirdac,
+                fila.FechaFirmaInformeDireccion,
+                fila.FechaProgramadaInspeccion,
+                fila.FechaSolicitud
+            }
+            .Where(x => x.HasValue)
+            .OrderByDescending(x => x.Value)
+            .FirstOrDefault();
+        }
+
+        private static string PrimeraCadenaNoVacia(params string[] valores)
+        {
+            return (valores ?? new string[0])
+                .FirstOrDefault(x => !string.IsNullOrWhiteSpace(x));
+        }
+
+        private static bool ContieneTexto(string valor, string texto)
+        {
+            return !string.IsNullOrWhiteSpace(valor)
+                && !string.IsNullOrWhiteSpace(texto)
+                && valor.IndexOf(texto, StringComparison.OrdinalIgnoreCase) >= 0;
+        }
+
+        private sealed class BandejaAocrContexto
+        {
+            public int CodigoUsuarioActual { get; set; }
+            public string CompaniaActivaCodigo { get; set; }
+            public bool EsAdministrador { get; set; }
+            public bool EsSolicitante { get; set; }
+            public bool EsInspector { get; set; }
+            public bool EsCoordinacion { get; set; }
+            public bool EsDireccion { get; set; }
+            public HashSet<int> CodigosInspector { get; set; } = new HashSet<int>();
+            public bool PuedeVerBandeja => EsAdministrador || EsSolicitante || EsInspector || EsCoordinacion || EsDireccion;
         }
 
         private string ConstruirNombrePdfCondicionesLimitaciones(SolicitudAOCR solicitud, DateTime? fecha = null)
@@ -4236,16 +4771,47 @@ namespace CapaPresentacion.Controllers
         }
 
         [HttpPost]
-        [Authorize(Roles = "JefaturaTecnica,Administrador")]
+        [Authorize(Roles = "CoordinacionLegal,CoordinadorLegal,Coordinador,CoordinadorInspecciones,DIRDAC,Direccion,JefaturaTecnica,DirectorGeneral,Administrador")]
         [ValidateAntiForgeryToken]
         public ActionResult MarcarAocrEnRevision(int id, string observacion = "")
         {
+            var solicitud = _solicitudDAO.ObtenerPorId(id);
+            if (solicitud == null)
+            {
+                return HttpNotFound();
+            }
+
             var aocrGenerada = _generacionAocrService.ObtenerAocrGeneradoVigente(id);
             if (aocrGenerada == null)
             {
                 TempData["Error"] = "Debe generar primero el documento AOCR antes de enviarlo a revisión.";
                 return RedirectToAction("Detalle", new { id });
             }
+
+            var estadoActual = EstadoSolicitud.Normalizar(solicitud.Estado);
+            if (string.Equals(estadoActual, EstadoSolicitud.AOCR_EnRevision, StringComparison.OrdinalIgnoreCase))
+            {
+                TempData["Exito"] = "La AOCR ya fue enviada a DIRDAC y permanece pendiente de revisión institucional.";
+                return RedirectToAction("Detalle", new { id });
+            }
+
+            if (!string.Equals(estadoActual, EstadoSolicitud.AOCR_EnElaboracion, StringComparison.OrdinalIgnoreCase)
+                && !string.Equals(estadoActual, EstadoSolicitud.Aprobada, StringComparison.OrdinalIgnoreCase))
+            {
+                TempData["Error"] = "La AOCR solo puede enviarse a DIRDAC cuando el documento se encuentra en elaboración y listo para revisión.";
+                return RedirectToAction("Detalle", new { id });
+            }
+
+            System.Diagnostics.Debug.WriteLine("[AOCR_COORD] SolicitudId=" + id
+                + " InspeccionId=" + ObtenerUltimaInspeccionVinculada(_solicitudAocrInfraBL.ListarInspeccionesPorSolicitud(id) ?? new List<Inspeccion>())?.CodigoInspeccion
+                + " AOCRId=" + aocrGenerada.CodigoDocumento
+                + " EstadoAOCR=" + (solicitud.Estado ?? string.Empty)
+                + " EstadoInforme=" + string.Empty
+                + " ResultadoInforme=" + string.Empty
+                + " Usuario=" + (User != null && User.Identity != null ? User.Identity.Name : string.Empty)
+                + " Rol=" + ObtenerRolPrincipalAocr()
+                + " PuedeRevisar=True PuedeSolicitarModificacion=True PuedeEnviarDIRDAC=True PuedeGenerarPdfFirma=True MotivoBloqueo=" + string.Empty
+                + " CamposFaltantes=" + string.Empty);
 
             string mensajeCambio;
             if (!CambiarEstadoConReglasAocr(id, EstadoSolicitud.AOCR_EnRevision, observacion ?? "AOCR en revisión", out mensajeCambio))
@@ -4254,10 +4820,33 @@ namespace CapaPresentacion.Controllers
             }
             else
             {
-                TempData["Exito"] = "Solicitud enviada a revisión AOCR.";
+                TempData["Exito"] = "La AOCR fue aprobada por Coordinación y enviada a DIRDAC para revisión/firma.";
             }
 
             return RedirectToAction("Detalle", new { id });
+        }
+
+        private string ObtenerRolPrincipalAocr()
+        {
+            if (User == null)
+            {
+                return string.Empty;
+            }
+
+            var roles = new[]
+            {
+                "Coordinador",
+                "CoordinadorInspecciones",
+                "CoordinacionLegal",
+                "CoordinadorLegal",
+                "DIRDAC",
+                "Direccion",
+                "JefaturaTecnica",
+                "DirectorGeneral",
+                "Administrador"
+            };
+
+            return roles.FirstOrDefault(rol => User.IsInRole(rol)) ?? string.Empty;
         }
 
         [HttpPost]

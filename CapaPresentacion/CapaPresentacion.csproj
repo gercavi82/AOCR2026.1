@@ -342,6 +342,7 @@
     <Compile Include="Helpers\AuthTicketRoleDataHelper.cs" />
     <Compile Include="Helpers\CompaniaActivaSessionHelper.cs" />
     <Compile Include="Helpers\AssetVersionHelper.cs" />
+    <Compile Include="Helpers\AocrBandejaEstadoHelper.cs" />
     <Compile Include="Helpers\CookieHelper.cs" />
     <Compile Include="Helpers\DashboardInspeccionBadgeHelper.cs" />
     <Compile Include="Helpers\InformeTecnicoTemplateHelper.cs" />
@@ -371,6 +372,7 @@
     <Compile Include="Models\RT\RegistroRTVM.cs" />
     <Compile Include="Models\Validation\RucCedulaValidationAttribute.cs" />
     <Compile Include="Models\ViewModels\RevisionDocumentalIndexViewModel.cs" />
+    <Compile Include="Models\ViewModels\AocrGeneradasFirmadasViewModel.cs" />
     <Compile Include="Models\ViewModels\InspectorDashboardViewModel.cs" />
     <Compile Include="Models\ViewModels\InspeccionPanelViewModels.cs" />
     <Compile Include="Models\ViewModels\AocrPdfViewerViewModel.cs" />
@@ -3007,6 +3009,7 @@
     <Content Include="Views\ReportesFinancieros\ExportPdf.cshtml" />
     <Content Include="Views\SolicitudAOCR\_CreateModal.cshtml" />
     <Content Include="Views\SolicitudAOCR\_FormularioEmisionAOCR_REVISION.md" />
+    <Content Include="Views\SolicitudAOCR\GeneradasFirmadas.cshtml" />
     <Content Include="Views\SolicitudAOCR\Modificacion.cshtml" />
     <Content Include="Views\RT\Registro.cshtml" />
     <Content Include="Views\RT\Declaracion.cshtml" />

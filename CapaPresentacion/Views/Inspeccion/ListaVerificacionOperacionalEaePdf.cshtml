@@ -5,22 +5,101 @@
 @using System.Linq
 @using CapaModelo
 
+@functions {
+    private static int CompararItemsPorOrden(ListaVerificacionOperacionalEaeItem izquierda, ListaVerificacionOperacionalEaeItem derecha)
+    {
+        var ordenIzquierda = izquierda != null ? izquierda.Orden : int.MaxValue;
+        var ordenDerecha = derecha != null ? derecha.Orden : int.MaxValue;
+        return ordenIzquierda.CompareTo(ordenDerecha);
+    }
+
+    private static List<ListaVerificacionOperacionalEaeItem> ConstruirItemsOrdenados(IEnumerable<ListaVerificacionOperacionalEaeItem> itemsOrigen)
+    {
+        var items = new List<ListaVerificacionOperacionalEaeItem>();
+        if (itemsOrigen != null)
+        {
+            foreach (var item in itemsOrigen)
+            {
+                if (item != null)
+                {
+                    items.Add(item);
+                }
+            }
+        }
+
+        items.Sort(CompararItemsPorOrden);
+        return items;
+    }
+
+    private static List<List<ListaVerificacionOperacionalEaeItem>> ConstruirGruposItems(IEnumerable<ListaVerificacionOperacionalEaeItem> itemsOrdenados)
+    {
+        var grupos = new SortedDictionary<int, List<ListaVerificacionOperacionalEaeItem>>();
+        if (itemsOrdenados != null)
+        {
+            foreach (var item in itemsOrdenados)
+            {
+                if (item == null)
+                {
+                    continue;
+                }
+
+                var claveGrupo = item.GrupoRequisitoId > 0 ? item.GrupoRequisitoId : item.Orden;
+                List<ListaVerificacionOperacionalEaeItem> grupoActual;
+                if (!grupos.TryGetValue(claveGrupo, out grupoActual))
+                {
+                    grupoActual = new List<ListaVerificacionOperacionalEaeItem>();
+                    grupos.Add(claveGrupo, grupoActual);
+                }
+
+                grupoActual.Add(item);
+            }
+        }
+
+        var resultado = new List<List<ListaVerificacionOperacionalEaeItem>>();
+        foreach (var grupo in grupos)
+        {
+            grupo.Value.Sort(CompararItemsPorOrden);
+            resultado.Add(grupo.Value);
+        }
+
+        return resultado;
+    }
+
+    private static string TextoVisible(string value)
+    {
+        return !string.IsNullOrWhiteSpace(value) ? value.Trim() : "No registra";
+    }
+
+    private static string CheckEstado(string actual, string esperado)
+    {
+        return string.Equals((actual ?? string.Empty).Trim(), esperado, StringComparison.OrdinalIgnoreCase) ? "☒" : "☐";
+    }
+
+    private static int CalcularLongitudOrientacion(IEnumerable<ListaVerificacionOperacionalEaeItem> items)
+    {
+        var total = 0;
+        if (items != null)
+        {
+            foreach (var item in items)
+            {
+                total += ((item != null ? item.OrientacionEvidencia : null) ?? string.Empty).Length;
+            }
+        }
+
+        return total;
+    }
+}
+
 @{
     Layout = "~/Views/Shared/_PdfLayoutDGACAocr.cshtml";
 
     var lista = Model != null ? Model.ListaVerificacion : null;
-    var items = lista != null && lista.Items != null
-        ? lista.Items.OrderBy(item => item.Orden).ToList()
-        : new List<ListaVerificacionOperacionalEaeItem>();
-    var gruposItems = items
-        .GroupBy(item => item.GrupoRequisitoId > 0 ? item.GrupoRequisitoId : item.Orden)
-        .OrderBy(group => group.Min(item => item.Orden))
-        .Select(group => group.OrderBy(item => item.Orden).ToList())
-        .ToList();
+    var items = lista != null ? ConstruirItemsOrdenados(lista.Items) : new List<ListaVerificacionOperacionalEaeItem>();
+    var gruposItems = ConstruirGruposItems(items);
     var cultura = new CultureInfo("es-EC");
     var fechaLista = lista != null && lista.FechaLista.HasValue ? lista.FechaLista.Value.ToString("dd/MM/yyyy", cultura) : DateTime.Now.ToString("dd/MM/yyyy", cultura);
-    Func<string, string> texto = value => !string.IsNullOrWhiteSpace(value) ? value.Trim() : "No registra";
-    Func<string, string, string> check = (actual, esperado) => string.Equals((actual ?? string.Empty).Trim(), esperado, StringComparison.OrdinalIgnoreCase) ? "☒" : "☐";
+    Func<string, string> texto = TextoVisible;
+    Func<string, string, string> check = CheckEstado;
 }
 
 @section PdfHead {
@@ -98,7 +177,7 @@
         <tr><td class="meta-label">5. Tipo/s de aeronave/s (marca, modelo, numero de serie):</td><td class="meta-value">@texto(lista != null ? lista.TiposAeronaves : null)</td></tr>
         <tr><td class="meta-label">6. Tipo de operacion:</td><td class="meta-value">@texto(lista != null ? lista.TipoOperacion : null)</td></tr>
         <tr><td class="meta-label">7. Fecha:</td><td class="meta-value">@fechaLista</td></tr>
-        <tr><td class="meta-label">8. Inspector responsable de la inspección:</td><td class="meta-value">@texto(lista != null ? lista.InspectorResponsable : null)</td></tr>
+        <tr><td class="meta-label">8. Inspector responsable de la aprobación:</td><td class="meta-value">@texto(lista != null ? lista.InspectorResponsable : null)</td></tr>
     </table>
 
     <div class="pdf-table-wrapper">
@@ -144,7 +223,7 @@
                 {
                     var filaGrupo = filasGrupo[indice];
                     var item = filaGrupo.First();
-                    var longitudOrientacion = filaGrupo.Sum(orientacion => (orientacion.OrientacionEvidencia ?? string.Empty).Length);
+                    var longitudOrientacion = CalcularLongitudOrientacion(filaGrupo);
                     var longitudComentarios = (item.PruebasNotasComentarios ?? string.Empty).Length;
                     var rowClass = (longitudOrientacion > 350 || longitudComentarios > 220) ? "allow-break" : "keep-together";
                     var esPrimeraFilaGrupo = indice == 0;

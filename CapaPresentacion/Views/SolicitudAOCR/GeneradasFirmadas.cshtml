@@ -1,0 +1,483 @@
+@using System
+@using CapaPresentacion.Models.ViewModels
+@model AocrGeneradasFirmadasViewModel
+
+@{
+    ViewBag.Title = "AOCR Generadas y Firmadas";
+}
+
+<style>
+    .aocr-tray-shell {
+        display: flex;
+        flex-direction: column;
+        gap: 1.5rem;
+    }
+
+    .aocr-tray-hero {
+        border-radius: 20px;
+        padding: 1.5rem;
+        background: linear-gradient(135deg, #0b2d48 0%, #155b79 58%, #d9eef5 100%);
+        color: #fff;
+        box-shadow: 0 24px 48px rgba(11, 45, 72, 0.16);
+    }
+
+    .aocr-tray-hero h2 {
+        margin: 0 0 .45rem;
+        font-size: 1.85rem;
+        font-weight: 700;
+    }
+
+    .aocr-tray-hero p {
+        margin: 0;
+        max-width: 960px;
+        opacity: .92;
+    }
+
+    .aocr-tray-role-caption {
+        opacity: .95;
+    }
+
+    .aocr-tray-summary {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 1rem;
+    }
+
+    .aocr-tray-summary-card {
+        border: 1px solid rgba(11, 45, 72, 0.08);
+        border-radius: 18px;
+        padding: 1rem 1.1rem;
+        background: #fff;
+        box-shadow: 0 12px 32px rgba(11, 45, 72, 0.06);
+    }
+
+    .aocr-tray-summary-card__label {
+        display: block;
+        color: #5b6773;
+        font-size: .86rem;
+        text-transform: uppercase;
+        letter-spacing: .06em;
+    }
+
+    .aocr-tray-summary-card__value {
+        display: block;
+        font-size: 1.9rem;
+        font-weight: 700;
+        color: #0b2d48;
+        line-height: 1.1;
+        margin-top: .45rem;
+    }
+
+    .aocr-tray-filters,
+    .aocr-tray-table-card,
+    .aocr-tray-empty {
+        border: 1px solid rgba(11, 45, 72, 0.08);
+        border-radius: 18px;
+        background: #fff;
+        box-shadow: 0 12px 32px rgba(11, 45, 72, 0.06);
+    }
+
+    .aocr-tray-filters {
+        padding: 1.25rem;
+    }
+
+    .aocr-tray-table-card {
+        overflow: hidden;
+    }
+
+    .aocr-tray-table-card__header {
+        padding: 1rem 1.25rem;
+        border-bottom: 1px solid rgba(11, 45, 72, 0.08);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 1rem;
+    }
+
+    .aocr-tray-table-card__header h3 {
+        margin: 0;
+        font-size: 1.15rem;
+        font-weight: 700;
+        color: #0b2d48;
+    }
+
+    .aocr-tray-table {
+        margin: 0;
+    }
+
+    .aocr-tray-table th {
+        border-top: 0;
+        background: #f6fafc;
+        color: #345065;
+        text-transform: uppercase;
+        font-size: .78rem;
+        letter-spacing: .05em;
+        white-space: nowrap;
+    }
+
+    .aocr-tray-table td {
+        vertical-align: top;
+        border-color: rgba(11, 45, 72, 0.08);
+    }
+
+    .aocr-tray-docref {
+        display: flex;
+        flex-direction: column;
+        gap: .2rem;
+    }
+
+    .aocr-tray-docref strong {
+        color: #0b2d48;
+        font-size: .96rem;
+    }
+
+    .aocr-tray-meta,
+    .aocr-tray-docref small {
+        color: #5b6773;
+    }
+
+    .aocr-tray-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: .45rem;
+    }
+
+    .aocr-tray-actions .btn {
+        border-radius: 999px;
+    }
+
+    .aocr-tray-mobile {
+        display: none;
+        padding: 1rem;
+        gap: 1rem;
+    }
+
+    .aocr-tray-mobile-card {
+        border: 1px solid rgba(11, 45, 72, 0.08);
+        border-radius: 16px;
+        padding: 1rem;
+        background: #fbfdfe;
+    }
+
+    .aocr-tray-mobile-card__top {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        gap: .75rem;
+        margin-bottom: .8rem;
+    }
+
+    .aocr-tray-mobile-card__grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: .65rem .9rem;
+        margin-bottom: .9rem;
+    }
+
+    .aocr-tray-empty {
+        padding: 2rem;
+        text-align: center;
+        color: #5b6773;
+    }
+
+    .aocr-tray-pagination {
+        padding: 1rem 1.25rem 1.25rem;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 1rem;
+        border-top: 1px solid rgba(11, 45, 72, 0.08);
+    }
+
+    @@media (max-width: 991.98px) {
+        .aocr-tray-summary {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+
+        .aocr-tray-table-wrap {
+            display: none;
+        }
+
+        .aocr-tray-mobile {
+            display: grid;
+        }
+    }
+
+    @@media (max-width: 575.98px) {
+        .aocr-tray-summary {
+            grid-template-columns: 1fr;
+        }
+
+        .aocr-tray-mobile-card__grid {
+            grid-template-columns: 1fr;
+        }
+
+        .aocr-tray-pagination {
+            flex-direction: column;
+            align-items: stretch;
+        }
+    }
+</style>
+
+<div class="container-fluid aocr-tray-shell">
+    <section class="aocr-tray-hero">
+        <h2>AOCR Generadas y Firmadas</h2>
+        <p>Consulta consolidada de expedientes AOCR y de Condiciones y Limitaciones ya generados, en revisión, enviados para firma, firmados o finalizados, sin excluir filas por ausencia de PDF o por dependencias incompletas.</p>
+        <div class="aocr-tray-role-caption mt-2">
+            @if (Model.EsSolicitante)
+            {
+                <span>Vista RT: solo trámites propios filtrados por la compañía activa cuando exista.</span>
+            }
+            else if (Model.EsInspector)
+            {
+                <span>Vista Inspector: solo solicitudes con asignación técnica relacionada al usuario actual.</span>
+            }
+            else
+            {
+                <span>Vista institucional: seguimiento integral de generación, revisión, firma y cierre documental.</span>
+            }
+        </div>
+    </section>
+
+    <section class="aocr-tray-summary">
+        <article class="aocr-tray-summary-card">
+            <span class="aocr-tray-summary-card__label">Registros visibles</span>
+            <span class="aocr-tray-summary-card__value">@Model.TotalRegistros</span>
+        </article>
+        <article class="aocr-tray-summary-card">
+            <span class="aocr-tray-summary-card__label">Firmadas / finalizadas</span>
+            <span class="aocr-tray-summary-card__value">@Model.TotalFirmadas</span>
+        </article>
+        <article class="aocr-tray-summary-card">
+            <span class="aocr-tray-summary-card__label">Pendientes de firma</span>
+            <span class="aocr-tray-summary-card__value">@Model.TotalPendientesFirma</span>
+        </article>
+        <article class="aocr-tray-summary-card">
+            <span class="aocr-tray-summary-card__label">Con PDF disponible</span>
+            <span class="aocr-tray-summary-card__value">@Model.TotalConPdf</span>
+        </article>
+    </section>
+
+    <section class="aocr-tray-filters">
+        @using (Html.BeginForm("GeneradasFirmadas", "SolicitudAOCR", FormMethod.Get, new { @class = "row" }))
+        {
+            <div class="col-lg-4 col-md-6 mb-3">
+                <label class="font-weight-bold">Buscar</label>
+                <input type="text" name="Search" value="@Model.Filtros.Search" class="form-control" placeholder="Solicitud, AOCR, explotador, inspector o coordinador" />
+            </div>
+            <div class="col-lg-2 col-md-6 mb-3">
+                <label class="font-weight-bold">Estado final</label>
+                @Html.DropDownList("EstadoFinal", Model.EstadosFinales, new { @class = "form-control" })
+            </div>
+            <div class="col-lg-2 col-md-6 mb-3">
+                <label class="font-weight-bold">Estado firma</label>
+                @Html.DropDownList("EstadoFirma", Model.EstadosFirma, new { @class = "form-control" })
+            </div>
+            <div class="col-lg-2 col-md-6 mb-3">
+                <label class="font-weight-bold">Tipo trámite</label>
+                @Html.DropDownList("TipoTramite", Model.TiposTramite, new { @class = "form-control" })
+            </div>
+            <div class="col-lg-2 col-md-6 mb-3">
+                <label class="font-weight-bold">PDF</label>
+                <select class="form-control" name="SoloConPdf">
+                    <option value="" @(string.IsNullOrWhiteSpace(Model.Filtros.SoloConPdf) ? "selected" : null)>Todos</option>
+                    <option value="SI" @(string.Equals(Model.Filtros.SoloConPdf, "SI", StringComparison.OrdinalIgnoreCase) ? "selected" : null)>Solo con PDF</option>
+                </select>
+            </div>
+            <div class="col-12 d-flex flex-wrap gap-2">
+                <input type="hidden" name="Page" value="1" />
+                <input type="hidden" name="PageSize" value="@Model.PageSize" />
+                <button type="submit" class="btn btn-primary">
+                    <i class="fas fa-filter mr-1"></i> Aplicar filtros
+                </button>
+                <a href="@Url.Action("GeneradasFirmadas", "SolicitudAOCR")" class="btn btn-outline-secondary">
+                    <i class="fas fa-rotate-left mr-1"></i> Limpiar
+                </a>
+            </div>
+        }
+    </section>
+
+    @if (!Model.TieneResultados)
+    {
+        <section class="aocr-tray-empty">
+            <h4 class="text-dark">No existen registros para los filtros aplicados.</h4>
+            <p class="mb-0">La consulta no elimina trámites por falta de PDF; si una fila no aparece es porque no se encuentra en la etapa AOCR/Condiciones visible para su rol o quedó fuera de los filtros activos.</p>
+        </section>
+    }
+    else
+    {
+        <section class="aocr-tray-table-card">
+            <div class="aocr-tray-table-card__header">
+                <div>
+                    <h3>Bandeja consolidada</h3>
+                    <span class="aocr-tray-meta">Página @Model.PaginaActual de @Model.TotalPaginas</span>
+                </div>
+                <span class="aocr-tray-meta">Observadas: @Model.TotalObservadas</span>
+            </div>
+
+            <div class="table-responsive aocr-tray-table-wrap">
+                <table class="table aocr-tray-table table-hover">
+                    <thead>
+                        <tr>
+                            <th>Trámite</th>
+                            <th>Explotador</th>
+                            <th>Inspector / Coordinación</th>
+                            <th>Informe técnico</th>
+                            <th>AOCR</th>
+                            <th>Condiciones</th>
+                            <th>Firma</th>
+                            <th>Final</th>
+                            <th>Último hito</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var item in Model.Items)
+                        {
+                            <tr>
+                                <td>
+                                    <div class="aocr-tray-docref">
+                                        <strong>@item.NumeroSolicitud</strong>
+                                        <span>@item.TipoTramite</span>
+                                        <small>@(string.IsNullOrWhiteSpace(item.NumeroAocr) ? "Sin número AOCR" : item.NumeroAocr)</small>
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="aocr-tray-docref">
+                                        <strong>@item.NombreExplotador</strong>
+                                        <small>Fecha solicitud: @(item.FechaSolicitud.HasValue ? item.FechaSolicitud.Value.ToString("dd/MM/yyyy") : "-" )</small>
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="aocr-tray-docref">
+                                        <span><strong>Inspector:</strong> @(string.IsNullOrWhiteSpace(item.InspectorNombre) ? "No asignado" : item.InspectorNombre)</span>
+                                        <span><strong>Coordinación:</strong> @(string.IsNullOrWhiteSpace(item.CoordinadorNombre) ? "Sin registro" : item.CoordinadorNombre)</span>
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="aocr-tray-docref">
+                                        <span>@(string.IsNullOrWhiteSpace(item.EstadoInformeTecnico) ? "Sin informe" : item.EstadoInformeTecnico)</span>
+                                        <small>@(string.IsNullOrWhiteSpace(item.ResultadoTecnicoFinal) ? "Sin resultado final" : item.ResultadoTecnicoFinal)</small>
+                                    </div>
+                                </td>
+                                <td><span class="@item.BadgeEstadoAocrCss">@item.EstadoAocr</span></td>
+                                <td><span class="@item.BadgeEstadoCondicionesCss">@item.EstadoCondiciones</span></td>
+                                <td><span class="@item.BadgeEstadoFirmaCss">@item.EstadoFirma</span></td>
+                                <td>
+                                    <div class="aocr-tray-docref">
+                                        <span class="@item.BadgeEstadoFinalCss">@item.EstadoFinal</span>
+                                        <small>@(string.IsNullOrWhiteSpace(item.NombreFirmante) ? "Sin firmante registrado" : item.NombreFirmante)</small>
+                                    </div>
+                                </td>
+                                <td>@(item.FechaUltimoHito.HasValue ? item.FechaUltimoHito.Value.ToString("dd/MM/yyyy HH:mm") : "-")</td>
+                                <td>
+                                    <div class="aocr-tray-actions">
+                                        <a href="@item.UrlDetalleSolicitud" class="btn btn-sm btn-outline-primary">Expediente</a>
+                                        @if (!string.IsNullOrWhiteSpace(item.UrlDetalleInspeccion))
+                                        {
+                                            <a href="@item.UrlDetalleInspeccion" class="btn btn-sm btn-outline-info">Inspección</a>
+                                        }
+                                        @if (!string.IsNullOrWhiteSpace(item.UrlHistorial))
+                                        {
+                                            <a href="@item.UrlHistorial" class="btn btn-sm btn-outline-secondary">Historial</a>
+                                        }
+                                        @if (!string.IsNullOrWhiteSpace(item.UrlPreliminar))
+                                        {
+                                            <a href="@item.UrlPreliminar" class="btn btn-sm btn-outline-dark" target="_blank" rel="noopener">Preliminar</a>
+                                        }
+                                        @if (!string.IsNullOrWhiteSpace(item.UrlFinal))
+                                        {
+                                            <a href="@item.UrlFinal" class="btn btn-sm btn-success" target="_blank" rel="noopener">PDF final</a>
+                                        }
+                                        @if (!string.IsNullOrWhiteSpace(item.UrlGestion))
+                                        {
+                                            <a href="@item.UrlGestion" class="btn btn-sm btn-warning">Gestionar</a>
+                                        }
+                                        @if (!string.IsNullOrWhiteSpace(item.UrlValidacion))
+                                        {
+                                            <a href="@item.UrlValidacion" class="btn btn-sm btn-primary">Validar</a>
+                                        }
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="aocr-tray-mobile">
+                @foreach (var item in Model.Items)
+                {
+                    <article class="aocr-tray-mobile-card">
+                        <div class="aocr-tray-mobile-card__top">
+                            <div>
+                                <strong>@item.NumeroSolicitud</strong>
+                                <div class="aocr-tray-meta">@item.TipoTramite</div>
+                            </div>
+                            <span class="@item.BadgeEstadoFinalCss">@item.EstadoFinal</span>
+                        </div>
+                        <div class="mb-2 text-dark font-weight-bold">@item.NombreExplotador</div>
+                        <div class="aocr-tray-mobile-card__grid">
+                            <div>
+                                <small class="text-muted d-block">AOCR</small>
+                                <span>@item.EstadoAocr</span>
+                            </div>
+                            <div>
+                                <small class="text-muted d-block">Condiciones</small>
+                                <span>@item.EstadoCondiciones</span>
+                            </div>
+                            <div>
+                                <small class="text-muted d-block">Firma</small>
+                                <span>@item.EstadoFirma</span>
+                            </div>
+                            <div>
+                                <small class="text-muted d-block">Inspector</small>
+                                <span>@(string.IsNullOrWhiteSpace(item.InspectorNombre) ? "No asignado" : item.InspectorNombre)</span>
+                            </div>
+                        </div>
+                        <div class="aocr-tray-actions">
+                            <a href="@item.UrlDetalleSolicitud" class="btn btn-sm btn-outline-primary">Expediente</a>
+                            @if (!string.IsNullOrWhiteSpace(item.UrlPreliminar))
+                            {
+                                <a href="@item.UrlPreliminar" class="btn btn-sm btn-outline-dark" target="_blank" rel="noopener">Preliminar</a>
+                            }
+                            @if (!string.IsNullOrWhiteSpace(item.UrlFinal))
+                            {
+                                <a href="@item.UrlFinal" class="btn btn-sm btn-success" target="_blank" rel="noopener">PDF final</a>
+                            }
+                            @if (!string.IsNullOrWhiteSpace(item.UrlGestion))
+                            {
+                                <a href="@item.UrlGestion" class="btn btn-sm btn-warning">Gestionar</a>
+                            }
+                        </div>
+                    </article>
+                }
+            </div>
+
+            <div class="aocr-tray-pagination">
+                <div class="aocr-tray-meta">Mostrando @Model.Items.Count de @Model.TotalRegistros registros filtrados.</div>
+                <div class="btn-group">
+                    @if (Model.PaginaActual > 1)
+                    {
+                        <a class="btn btn-outline-secondary" href="@Url.Action("GeneradasFirmadas", "SolicitudAOCR", new { Search = Model.Filtros.Search, EstadoFinal = Model.Filtros.EstadoFinal, EstadoFirma = Model.Filtros.EstadoFirma, TipoTramite = Model.Filtros.TipoTramite, SoloConPdf = Model.Filtros.SoloConPdf, Page = Model.PaginaActual - 1, PageSize = Model.PageSize })">Anterior</a>
+                    }
+                    else
+                    {
+                        <span class="btn btn-outline-secondary disabled">Anterior</span>
+                    }
+
+                    <span class="btn btn-light disabled">Página @Model.PaginaActual / @Model.TotalPaginas</span>
+
+                    @if (Model.PaginaActual < Model.TotalPaginas)
+                    {
+                        <a class="btn btn-outline-secondary" href="@Url.Action("GeneradasFirmadas", "SolicitudAOCR", new { Search = Model.Filtros.Search, EstadoFinal = Model.Filtros.EstadoFinal, EstadoFirma = Model.Filtros.EstadoFirma, TipoTramite = Model.Filtros.TipoTramite, SoloConPdf = Model.Filtros.SoloConPdf, Page = Model.PaginaActual + 1, PageSize = Model.PageSize })">Siguiente</a>
+                    }
+                    else
+                    {
+                        <span class="btn btn-outline-secondary disabled">Siguiente</span>
+                    }
+                </div>
+            </div>
+        </section>
+    }
+</div>

@@ -69,6 +69,15 @@
                     </a>
                 </li>
                 <li>
+                    <a class="@linkClass(isCurrent("SolicitudAOCR", "GeneradasFirmadas") ? "aocr-sidebar-item--active" : string.Empty)" href="@Url.Action("GeneradasFirmadas", "SolicitudAOCR")">
+                        <i class="fas fa-file-circle-check text-white-50 mr-2"></i>
+                        <span class="aocr-sidebar-item__content">
+                            <span class="aocr-sidebar-item__title">AOCR generadas y firmadas</span>
+                            <span class="aocr-sidebar-item__meta">Consulta ejecutiva de AOCR finales, pendientes de firma y condiciones.</span>
+                        </span>
+                    </a>
+                </li>
+                <li>
                     <a class="@linkClass(isCurrent("CoordinacionJefatura", "DashboardGerencial") ? "aocr-sidebar-item--active" : string.Empty)" href="@Url.Action("DashboardGerencial", "CoordinacionJefatura")">
                         <i class="fas fa-chart-area text-white-50 mr-2"></i>
                         <span class="aocr-sidebar-item__content">
