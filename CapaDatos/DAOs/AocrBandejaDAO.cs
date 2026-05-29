@@ -1,5 +1,7 @@
 using System.Collections.Generic;
 using System.Configuration;
+using System;
+using System.Linq;
 using CapaModelo.Common;
 using Dapper;
 using Npgsql;
@@ -20,30 +22,56 @@ namespace CapaDatos.DAOs
 
         public List<AocrBandejaDocumentoRow> ListarGeneradasFirmadas()
         {
-            const string sql = @"
+            using (var cn = new NpgsqlConnection(_connectionString))
+            {
+                cn.Open();
+                var columnasSolicitud = ObtenerColumnasTabla(cn, "aocr_tbsolicitud");
+                var columnasInspeccion = ObtenerColumnasTabla(cn, "aocr_tbinspeccion");
+                var columnasInforme = ObtenerColumnasTabla(cn, "aocr_tbinforme_inspeccion");
+                var columnasCertificado = ObtenerColumnasTabla(cn, "aocr_tbcertificado");
+                var columnasFirma = ObtenerColumnasTabla(cn, "aocr_tbfirma_documento");
+                var columnasDocumento = ObtenerColumnasTabla(cn, "aocr_tbdocumento");
+                var columnasUsuario = ObtenerColumnasTabla(cn, "usuario");
+                var whereSolicitud = columnasSolicitud.Contains("deleted_at")
+                    ? "WHERE s.deleted_at IS NULL"
+                    : "WHERE 1 = 1";
+                var joinUsuarioInspector = columnasInspeccion.Contains("codigo_inspector")
+                    && columnasUsuario.Contains("idusuario")
+                    ? "LEFT JOIN public.usuario ui ON ui.idusuario = i.codigo_inspector"
+                    : string.Empty;
+                var inspectorNombreUsuario = !string.IsNullOrWhiteSpace(joinUsuarioInspector)
+                    ? "NULLIF(TRIM(COALESCE(ui.nombreusuario, '') || ' ' || COALESCE(ui.apellidousuario, '')), '')"
+                    : "NULL::text";
+                var inspectorCodigoUsuario = !string.IsNullOrWhiteSpace(joinUsuarioInspector) && columnasUsuario.Contains("codigousuario")
+                    ? "NULLIF(TRIM(COALESCE(ui.codigousuario, '')), '')"
+                    : "NULL::text";
+
+                var sql = $@"
                 WITH solicitud_base AS (
                     SELECT
                         s.codigo_solicitud AS SolicitudId,
-                        s.numero_solicitud AS NumeroSolicitud,
-                        s.fecha_solicitud AS FechaSolicitud,
-                        s.tipo_solicitud AS TipoSolicitud,
-                        s.estado AS EstadoSolicitudRaw,
+                        {ColumnaTexto("s", "numero_solicitud", columnasSolicitud)} AS NumeroSolicitud,
+                        {ColumnaFecha("s", "fecha_solicitud", columnasSolicitud)} AS FechaSolicitud,
+                        {ColumnaEntera("s", "tipo_solicitud", columnasSolicitud)} AS TipoSolicitud,
+                        {ColumnaTexto("s", "estado", columnasSolicitud)} AS EstadoSolicitudRaw,
                         COALESCE(
-                            NULLIF(TRIM(COALESCE(s.nombre_explotador, '')), ''),
-                            NULLIF(TRIM(COALESCE(s.razon_social, '')), ''),
-                            NULLIF(TRIM(COALESCE(s.razon_social_operador, '')), ''),
-                            NULLIF(TRIM(COALESCE(s.nombre_comercial, '')), ''),
-                            NULLIF(TRIM(COALESCE(s.nombre_operador, '')), ''),
+                            NULLIF(TRIM(COALESCE({ColumnaTexto("s", "nombre_explotador", columnasSolicitud)}, '')), ''),
+                            NULLIF(TRIM(COALESCE({ColumnaTexto("s", "razon_social", columnasSolicitud)}, '')), ''),
+                            NULLIF(TRIM(COALESCE({ColumnaTexto("s", "razon_social_operador", columnasSolicitud)}, '')), ''),
+                            NULLIF(TRIM(COALESCE({ColumnaTexto("s", "nombre_comercial", columnasSolicitud)}, '')), ''),
+                            NULLIF(TRIM(COALESCE({ColumnaTexto("s", "nombre_operador", columnasSolicitud)}, '')), ''),
+                            NULLIF(TRIM(COALESCE({ColumnaTexto("s", "nombre_compania", columnasSolicitud)}, '')), ''),
+                            NULLIF(TRIM(COALESCE({ColumnaTexto("s", "compania_nombre", columnasSolicitud)}, '')), ''),
                             'SIN OPERADOR'
                         ) AS NombreExplotador,
-                        NULLIF(TRIM(COALESCE(s.numero_aoc, '')), '') AS NumeroAocBase,
-                        COALESCE(s.companias_seleccionadas, '') AS CompaniasSeleccionadas,
-                        COALESCE(s.codigo_usuario, 0) AS CodigoUsuario,
-                        s.codigo_tecnico AS CodigoInspectorSolicitud,
-                        NULLIF(TRIM(COALESCE(s.tecnico_responsable_nombre, '')), '') AS InspectorNombreSolicitud,
-                        NULLIF(TRIM(COALESCE(s.inspector_apoyo_nombre, '')), '') AS InspectorApoyoNombreSolicitud
+                        NULLIF(TRIM(COALESCE({ColumnaTexto("s", "numero_aoc", columnasSolicitud)}, '')), '') AS NumeroAocBase,
+                        COALESCE({ColumnaTexto("s", "companias_seleccionadas", columnasSolicitud)}, '') AS CompaniasSeleccionadas,
+                        COALESCE({ColumnaEntera("s", "codigo_usuario", columnasSolicitud)}, 0) AS CodigoUsuario,
+                        {ColumnaEntera("s", "codigo_tecnico", columnasSolicitud)} AS CodigoInspectorSolicitud,
+                        NULLIF(TRIM(COALESCE({ColumnaTexto("s", "tecnico_responsable_nombre", columnasSolicitud)}, '')), '') AS InspectorNombreSolicitud,
+                        NULLIF(TRIM(COALESCE({ColumnaTexto("s", "inspector_apoyo_nombre", columnasSolicitud)}, '')), '') AS InspectorApoyoNombreSolicitud
                     FROM public.aocr_tbsolicitud s
-                    WHERE s.deleted_at IS NULL
+                    {whereSolicitud}
                 )
                 SELECT
                     sb.SolicitudId,
@@ -99,89 +127,98 @@ namespace CapaDatos.DAOs
                 FROM solicitud_base sb
                 LEFT JOIN LATERAL (
                     SELECT
-                        i.codigo_inspeccion AS InspeccionId,
-                        i.numero_inspeccion AS NumeroInspeccion,
-                        i.estado AS EstadoInspeccionRaw,
-                        i.resultado AS ResultadoInspeccionRaw,
-                        i.codigo_inspector AS CodigoInspectorInspeccion,
+                        {ColumnaEntera("i", "codigo_inspeccion", columnasInspeccion)} AS InspeccionId,
+                        {ColumnaTexto("i", "numero_inspeccion", columnasInspeccion)} AS NumeroInspeccion,
+                        {ColumnaTexto("i", "estado", columnasInspeccion)} AS EstadoInspeccionRaw,
+                        {ColumnaTexto("i", "resultado", columnasInspeccion)} AS ResultadoInspeccionRaw,
+                        {ColumnaEntera("i", "codigo_inspector", columnasInspeccion)} AS CodigoInspectorInspeccion,
                         COALESCE(
-                            NULLIF(TRIM(COALESCE(i.inspector_principal_nombre, '')), ''),
-                            NULLIF(TRIM(COALESCE(i.inspector_principal, '')), '')
+                            NULLIF(TRIM(COALESCE({ColumnaTexto("i", "inspector_principal_nombre", columnasInspeccion)}, '')), ''),
+                            NULLIF(TRIM(COALESCE({ColumnaTexto("i", "inspector_principal", columnasInspeccion)}, '')), ''),
+                            {inspectorNombreUsuario},
+                            {inspectorCodigoUsuario}
                         ) AS InspectorPrincipalNombreInspeccion,
-                        i.fecha_programada AS FechaProgramadaInspeccion
+                        {ColumnaFecha("i", "fecha_programada", columnasInspeccion)} AS FechaProgramadaInspeccion
                     FROM public.aocr_tbinspeccion i
+                    {joinUsuarioInspector}
                     WHERE i.codigo_solicitud = sb.SolicitudId
-                    ORDER BY i.fecha_programada DESC NULLS LAST, i.codigo_inspeccion DESC
+                    ORDER BY {ColumnaFecha("i", "fecha_programada", columnasInspeccion)} DESC NULLS LAST, {ColumnaEntera("i", "codigo_inspeccion", columnasInspeccion)} DESC
                     LIMIT 1
                 ) insp ON TRUE
                 LEFT JOIN LATERAL (
                     SELECT
-                        inf.codigo_informe AS InformeId,
-                        inf.estado_informe AS EstadoInformeTecnicoRaw,
-                        inf.resultado AS ResultadoTecnicoFinalRaw,
-                        inf.firmado_inspector AS InformeFirmadoInspector,
-                        inf.firmado_dirdac AS InformeFirmadoDirdac,
-                        inf.ruta_pdf AS RutaInformePdf,
-                        inf.ruta_documento_firmado AS RutaInformeFirmadoPdf,
-                        inf.fecha_firma_1 AS FechaFirmaInformeInspector,
-                        inf.fecha_firma_2 AS FechaFirmaInformeDireccion,
-                        inf.fecha_envio_dirdac AS FechaEnvioInformeDirdac
+                        {ColumnaEntera("inf", "codigo_informe", columnasInforme)} AS InformeId,
+                        {ColumnaTexto("inf", "estado_informe", columnasInforme)} AS EstadoInformeTecnicoRaw,
+                        {ColumnaTexto("inf", "resultado", columnasInforme)} AS ResultadoTecnicoFinalRaw,
+                        {ColumnaBoolean("inf", "firmado_inspector", columnasInforme)} AS InformeFirmadoInspector,
+                        {ColumnaBoolean("inf", "firmado_dirdac", columnasInforme)} AS InformeFirmadoDirdac,
+                        {ColumnaTexto("inf", "ruta_pdf", columnasInforme)} AS RutaInformePdf,
+                        {ColumnaTexto("inf", "ruta_documento_firmado", columnasInforme)} AS RutaInformeFirmadoPdf,
+                        {ColumnaFecha("inf", "fecha_firma_1", columnasInforme)} AS FechaFirmaInformeInspector,
+                        {ColumnaFecha("inf", "fecha_firma_2", columnasInforme)} AS FechaFirmaInformeDireccion,
+                        {ColumnaFecha("inf", "fecha_envio_dirdac", columnasInforme)} AS FechaEnvioInformeDirdac
                     FROM public.aocr_tbinforme_inspeccion inf
                     WHERE inf.codigo_inspeccion = insp.InspeccionId
-                    ORDER BY inf.version DESC, inf.codigo_informe DESC
+                    ORDER BY {ColumnaEntera("inf", "version", columnasInforme)} DESC, {ColumnaEntera("inf", "codigo_informe", columnasInforme)} DESC
                     LIMIT 1
                 ) inf ON TRUE
                 LEFT JOIN LATERAL (
                     SELECT
-                        c.codigo_certificado AS CertificadoId,
-                        NULLIF(TRIM(COALESCE(c.numero_certificado, '')), '') AS NumeroAocrCertificado,
-                        c.estado AS EstadoCertificadoRaw,
-                        c.ruta_documento AS RutaCertificadoPdf,
-                        c.fecha_emision AS FechaEmisionCertificado,
-                        c.updated_at AS FechaActualizacionCertificado,
-                        NULLIF(TRIM(COALESCE(c.emitido_por, '')), '') AS EmitidoPor,
-                        NULLIF(TRIM(COALESCE(c.aprobado_por, '')), '') AS AprobadoPor
+                        {ColumnaEntera("c", "codigo_certificado", columnasCertificado)} AS CertificadoId,
+                        NULLIF(TRIM(COALESCE({ColumnaTexto("c", "numero_certificado", columnasCertificado)}, '')), '') AS NumeroAocrCertificado,
+                        {ColumnaTexto("c", "estado", columnasCertificado)} AS EstadoCertificadoRaw,
+                        COALESCE({ColumnaTexto("c", "ruta_documento", columnasCertificado)}, {ColumnaTexto("c", "ruta_pdf", columnasCertificado)}) AS RutaCertificadoPdf,
+                        {ColumnaFecha("c", "fecha_emision", columnasCertificado)} AS FechaEmisionCertificado,
+                        COALESCE({ColumnaFecha("c", "updated_at", columnasCertificado)}, {ColumnaFecha("c", "created_at", columnasCertificado)}, {ColumnaFecha("c", "fecha_emision", columnasCertificado)}) AS FechaActualizacionCertificado,
+                        COALESCE(
+                            NULLIF(TRIM(COALESCE({ColumnaTexto("c", "emitido_por", columnasCertificado)}, '')), ''),
+                            NULLIF(TRIM(COALESCE({ColumnaTexto("c", "firmado_por", columnasCertificado)}, '')), '')
+                        ) AS EmitidoPor,
+                        COALESCE(
+                            NULLIF(TRIM(COALESCE({ColumnaTexto("c", "aprobado_por", columnasCertificado)}, '')), ''),
+                            NULLIF(TRIM(COALESCE({ColumnaTexto("c", "firmado_por", columnasCertificado)}, '')), '')
+                        ) AS AprobadoPor
                     FROM public.aocr_tbcertificado c
                     WHERE c.codigo_solicitud = sb.SolicitudId
-                    ORDER BY COALESCE(c.updated_at, c.created_at, c.fecha_emision) DESC NULLS LAST, c.codigo_certificado DESC
+                    ORDER BY COALESCE({ColumnaFecha("c", "updated_at", columnasCertificado)}, {ColumnaFecha("c", "created_at", columnasCertificado)}, {ColumnaFecha("c", "fecha_emision", columnasCertificado)}) DESC NULLS LAST, {ColumnaEntera("c", "codigo_certificado", columnasCertificado)} DESC
                     LIMIT 1
                 ) cert ON TRUE
                 LEFT JOIN LATERAL (
                     SELECT
-                        fd.codigo_firma AS FirmaReconocimientoId,
-                        NULLIF(TRIM(COALESCE(fd.numero_aocr, '')), '') AS NumeroAocrReconocimiento,
-                        fd.ruta_documento AS RutaReconocimientoFirmado,
-                        NULLIF(TRIM(COALESCE(fd.nombre_firmante, '')), '') AS NombreFirmanteReconocimiento,
-                        NULLIF(TRIM(COALESCE(fd.cargo_firmante, '')), '') AS CargoFirmanteReconocimiento,
-                        fd.fecha_firma AS FechaFirmaReconocimiento
+                        {ColumnaEntera("fd", "codigo_firma", columnasFirma)} AS FirmaReconocimientoId,
+                        NULLIF(TRIM(COALESCE({ColumnaTexto("fd", "numero_aocr", columnasFirma)}, '')), '') AS NumeroAocrReconocimiento,
+                        {ColumnaTexto("fd", "ruta_documento", columnasFirma)} AS RutaReconocimientoFirmado,
+                        NULLIF(TRIM(COALESCE({ColumnaTexto("fd", "nombre_firmante", columnasFirma)}, '')), '') AS NombreFirmanteReconocimiento,
+                        NULLIF(TRIM(COALESCE({ColumnaTexto("fd", "cargo_firmante", columnasFirma)}, '')), '') AS CargoFirmanteReconocimiento,
+                        {ColumnaFecha("fd", "fecha_firma", columnasFirma)} AS FechaFirmaReconocimiento
                     FROM public.aocr_tbfirma_documento fd
                     WHERE fd.codigo_solicitud = sb.SolicitudId
                       AND UPPER(COALESCE(fd.tipo_documento, '')) = 'RECONOCIMIENTO'
-                    ORDER BY fd.fecha_firma DESC NULLS LAST, fd.codigo_firma DESC
+                    ORDER BY {ColumnaFecha("fd", "fecha_firma", columnasFirma)} DESC NULLS LAST, {ColumnaEntera("fd", "codigo_firma", columnasFirma)} DESC
                     LIMIT 1
                 ) frec ON TRUE
                 LEFT JOIN LATERAL (
                     SELECT
-                        fd.codigo_firma AS FirmaCondicionesId,
-                        fd.ruta_documento AS RutaCondicionesFirmado,
-                        NULLIF(TRIM(COALESCE(fd.nombre_firmante, '')), '') AS NombreFirmanteCondiciones,
-                        NULLIF(TRIM(COALESCE(fd.cargo_firmante, '')), '') AS CargoFirmanteCondiciones,
-                        fd.fecha_firma AS FechaFirmaCondiciones
+                        {ColumnaEntera("fd", "codigo_firma", columnasFirma)} AS FirmaCondicionesId,
+                        {ColumnaTexto("fd", "ruta_documento", columnasFirma)} AS RutaCondicionesFirmado,
+                        NULLIF(TRIM(COALESCE({ColumnaTexto("fd", "nombre_firmante", columnasFirma)}, '')), '') AS NombreFirmanteCondiciones,
+                        NULLIF(TRIM(COALESCE({ColumnaTexto("fd", "cargo_firmante", columnasFirma)}, '')), '') AS CargoFirmanteCondiciones,
+                        {ColumnaFecha("fd", "fecha_firma", columnasFirma)} AS FechaFirmaCondiciones
                     FROM public.aocr_tbfirma_documento fd
                     WHERE fd.codigo_solicitud = sb.SolicitudId
                       AND UPPER(COALESCE(fd.tipo_documento, '')) = 'CONDICIONES_LIMITACIONES'
-                    ORDER BY fd.fecha_firma DESC NULLS LAST, fd.codigo_firma DESC
+                    ORDER BY {ColumnaFecha("fd", "fecha_firma", columnasFirma)} DESC NULLS LAST, {ColumnaEntera("fd", "codigo_firma", columnasFirma)} DESC
                     LIMIT 1
                 ) fcond ON TRUE
                 LEFT JOIN LATERAL (
                     SELECT
-                        d.ruta_guardada AS RutaAocrGenerada,
-                        d.fecha_carga AS FechaAocrGenerada
+                        {ColumnaTexto("d", "ruta_guardada", columnasDocumento)} AS RutaAocrGenerada,
+                        {ColumnaFecha("d", "fecha_carga", columnasDocumento)} AS FechaAocrGenerada
                     FROM public.aocr_tbdocumento d
                     WHERE d.codigo_solicitud = sb.SolicitudId
                       AND UPPER(COALESCE(d.tipo_documento, '')) IN ('AOCR', 'AOCR_GENERADO', 'BORRADOR_AOCR')
                       AND COALESCE(d.tamano_bytes, 0) > 0
-                    ORDER BY d.fecha_carga DESC NULLS LAST, d.codigo_documento DESC
+                    ORDER BY {ColumnaFecha("d", "fecha_carga", columnasDocumento)} DESC NULLS LAST, {ColumnaEntera("d", "codigo_documento", columnasDocumento)} DESC
                     LIMIT 1
                 ) daocr ON TRUE
                 WHERE cert.CertificadoId IS NOT NULL
@@ -214,11 +251,43 @@ namespace CapaDatos.DAOs
                 ) DESC NULLS LAST,
                 sb.SolicitudId DESC;";
 
-            using (var cn = new NpgsqlConnection(_connectionString))
-            {
-                cn.Open();
                 return cn.Query<AocrBandejaDocumentoRow>(sql).AsList();
             }
+        }
+
+        private static HashSet<string> ObtenerColumnasTabla(NpgsqlConnection cn, string tabla)
+        {
+            const string sql = @"
+                SELECT column_name
+                FROM information_schema.columns
+                WHERE table_schema = 'public'
+                  AND table_name = @tabla;";
+
+            return new HashSet<string>(
+                cn.Query<string>(sql, new { tabla })
+                  .Where(c => !string.IsNullOrWhiteSpace(c))
+                  .Select(c => c.Trim()),
+                StringComparer.OrdinalIgnoreCase);
+        }
+
+        private static string ColumnaTexto(string alias, string columna, HashSet<string> columnas)
+        {
+            return columnas.Contains(columna) ? $"{alias}.{columna}" : "NULL::text";
+        }
+
+        private static string ColumnaEntera(string alias, string columna, HashSet<string> columnas)
+        {
+            return columnas.Contains(columna) ? $"{alias}.{columna}" : "NULL::integer";
+        }
+
+        private static string ColumnaFecha(string alias, string columna, HashSet<string> columnas)
+        {
+            return columnas.Contains(columna) ? $"{alias}.{columna}" : "NULL::timestamp";
+        }
+
+        private static string ColumnaBoolean(string alias, string columna, HashSet<string> columnas)
+        {
+            return columnas.Contains(columna) ? $"{alias}.{columna}" : "NULL::boolean";
         }
     }
 }

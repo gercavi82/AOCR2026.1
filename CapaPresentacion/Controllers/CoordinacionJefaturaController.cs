@@ -988,9 +988,15 @@ namespace CapaPresentacion.Controllers
             }
         }
 
+        [HttpGet]
         [Authorize(Roles = "Inspector,CoordinacionLegal,CoordinadorLegal,Coordinador,CoordinadorInspecciones,DIRDAC,Direccion,JefaturaTecnica,DirectorGeneral,Administrador")]
         public ActionResult EditarDocumentoValidacionAocr(int solicitudId, string tipo)
         {
+            if (Request != null)
+            {
+                return EditarDocumentoValidacionAocrSeguro(solicitudId, tipo);
+            }
+
             try
             {
                 var tipoNormalizado = NormalizarTipoDocumento(tipo);
@@ -1027,6 +1033,71 @@ namespace CapaPresentacion.Controllers
             {
                 var referencia = RegistrarErrorValidacionAocr("EditarDocumentoValidacionAocr", ex, solicitudId, null, tipo);
                 return new HttpStatusCodeResult(500, "Error interno al cargar la plantilla AOCR. Ref: " + referencia);
+            }
+        }
+
+        private ActionResult EditarDocumentoValidacionAocrSeguro(int solicitudId, string tipo)
+        {
+            var tipoNormalizado = NormalizarTipoDocumento(tipo);
+            SolicitudAOCR solicitud = null;
+            ValidarAocrSolicitudItemViewModel item = null;
+
+            try
+            {
+                RegistrarLogAocrEdit(solicitudId, tipo, null, null, true, null, "Inicio");
+
+                if (solicitudId <= 0)
+                {
+                    return VistaDocumentoValidacionNoDisponible(solicitudId, tipoNormalizado ?? tipo, null, "identificador de solicitud AOCR valido.", 400);
+                }
+
+                if (tipoNormalizado == null)
+                {
+                    return VistaDocumentoValidacionNoDisponible(solicitudId, tipo, null, "tipo de documento AOCR valido. Use RECONOCIMIENTO o CONDICIONES_LIMITACIONES.", 400);
+                }
+
+                solicitud = _solicitudDao.ObtenerPorId(solicitudId);
+                if (solicitud == null)
+                {
+                    return VistaDocumentoValidacionNoDisponible(solicitudId, tipoNormalizado, null, "solicitud AOCR existente.", 200);
+                }
+
+                item = ObtenerContextoDocumentoValidacion(solicitudId);
+                if (item == null)
+                {
+                    return VistaDocumentoValidacionNoDisponible(
+                        solicitudId,
+                        tipoNormalizado,
+                        solicitud,
+                        "contexto documental AOCR en etapa de revision, informe tecnico firmado o flujo de condiciones/limitaciones habilitado.",
+                        200);
+                }
+
+                if (!item.FirmaCompleta && !PuedeEditarCondicionesLimitacionesModificacion(item, tipoNormalizado))
+                {
+                    return VistaDocumentoValidacionNoDisponible(solicitudId, tipoNormalizado, solicitud, "firma completa del informe tecnico para habilitar este documento.", 409);
+                }
+
+                var model = ConstruirDocumentoEdicionModel(item, tipoNormalizado);
+                AplicarPosicionFirmaAocr(model, tipoNormalizado);
+                var viewName = tipoNormalizado == "RECONOCIMIENTO"
+                    ? "~/Views/CoordinacionJefatura/EditarReconocimientoAocr.cshtml"
+                    : "~/Views/CoordinacionJefatura/EditarCondicionesLimitacionesAocr.cshtml";
+
+                RegistrarLogAocrEdit(solicitudId, tipoNormalizado, solicitud, item, true, null, "OK");
+                return View(viewName, model);
+            }
+            catch (PostgresException exPg)
+            {
+                RegistrarLogAocrEdit(solicitudId, tipoNormalizado ?? tipo, solicitud, item, false, exPg.MessageText, "Error");
+                var referencia = RegistrarErrorValidacionAocr("EditarDocumentoValidacionAocr", exPg, solicitudId, null, tipo);
+                return VistaDocumentoValidacionNoDisponible(solicitudId, tipoNormalizado ?? tipo, solicitud, "carga correcta de datos desde base de datos. Ref: " + referencia, 500);
+            }
+            catch (Exception ex)
+            {
+                RegistrarLogAocrEdit(solicitudId, tipoNormalizado ?? tipo, solicitud, item, false, ex.Message, "Error");
+                var referencia = RegistrarErrorValidacionAocr("EditarDocumentoValidacionAocr", ex, solicitudId, null, tipo);
+                return VistaDocumentoValidacionNoDisponible(solicitudId, tipoNormalizado ?? tipo, solicitud, "carga interna de la pantalla de edicion. Ref: " + referencia, 500);
             }
         }
 
@@ -1966,6 +2037,78 @@ namespace CapaPresentacion.Controllers
             return ConstruirItemValidacionAocr(solicitud, inspeccionesSolicitud);
         }
 
+        private ActionResult VistaDocumentoValidacionNoDisponible(
+            int solicitudId,
+            string tipoDocumento,
+            SolicitudAOCR solicitud,
+            string motivo,
+            int statusCode)
+        {
+            if (statusCode >= 400)
+            {
+                Response.StatusCode = statusCode;
+            }
+
+            var model = new AocrDocumentoValidacionNoDisponibleViewModel
+            {
+                SolicitudId = solicitud != null ? solicitud.CodigoSolicitud : solicitudId,
+                TipoDocumento = string.IsNullOrWhiteSpace(tipoDocumento) ? "No registrado" : tipoDocumento,
+                NumeroSolicitud = solicitud != null ? solicitud.NumeroSolicitud : null,
+                NumeroAocr = solicitud != null ? solicitud.NumeroAOC : null,
+                NombreExplotador = solicitud != null
+                    ? PrimerTextoAocrNoVacio(solicitud.RazonSocial, solicitud.NombreOperador, solicitud.NombreComercial, "No registrado")
+                    : "No registrado",
+                EstadoSolicitud = solicitud != null ? solicitud.Estado : "No registrado",
+                Motivo = motivo,
+                Referencia = "[AOCR_EDIT] SolicitudId=" + solicitudId + " Tipo=" + (tipoDocumento ?? "N/A"),
+                PuedeAbrirExpediente = solicitud != null && solicitud.CodigoSolicitud > 0
+            };
+
+            RegistrarLogAocrEdit(solicitudId, tipoDocumento, solicitud, null, false, motivo, "Bloqueo");
+            return View("~/Views/CoordinacionJefatura/DocumentoValidacionAocrNoDisponible.cshtml", model);
+        }
+
+        private void RegistrarLogAocrEdit(
+            int solicitudId,
+            string tipoDocumento,
+            SolicitudAOCR solicitud,
+            ValidarAocrSolicitudItemViewModel item,
+            bool puedeEditar,
+            string motivoBloqueo,
+            string resultado)
+        {
+            try
+            {
+                var usuario = User != null && User.Identity != null ? User.Identity.Name : string.Empty;
+                var roles = Session != null
+                    ? Convert.ToString(Session["RolesRaw"] ?? Session["Roles"] ?? Session["Rol"])
+                    : string.Empty;
+                var estadoSolicitud = solicitud != null
+                    ? solicitud.Estado
+                    : item != null && item.Solicitud != null
+                        ? item.Solicitud.Estado
+                        : string.Empty;
+
+                var mensaje = "[AOCR_EDIT] SolicitudId=" + solicitudId
+                    + " Tipo=" + (tipoDocumento ?? string.Empty)
+                    + " Usuario=" + usuario
+                    + " Roles=" + roles
+                    + " ExisteAccion=True"
+                    + " ExisteSolicitud=" + (solicitud != null || (item != null && item.Solicitud != null))
+                    + " EstadoSolicitud=" + (estadoSolicitud ?? string.Empty)
+                    + " EstadoAOCR=" + (item != null ? (item.EstadoSolicitud ?? string.Empty) : string.Empty)
+                    + " PuedeEditar=" + puedeEditar
+                    + " Resultado=" + (resultado ?? string.Empty)
+                    + " MotivoBloqueo=" + (motivoBloqueo ?? string.Empty);
+
+                LogBL.RegistrarInfo(mensaje, "CoordinacionJefaturaController", ObtenerUsuarioActualIdSeguro());
+            }
+            catch
+            {
+                // La trazabilidad no debe bloquear la pantalla.
+            }
+        }
+
         private AocrDocumentoEdicionViewModel ConstruirDocumentoEdicionModel(ValidarAocrSolicitudItemViewModel item, string tipoDocumento)
         {
             var pdfModel = ConstruirDocumentoPdfModel(item, null, tipoDocumento);
@@ -2011,9 +2154,19 @@ namespace CapaPresentacion.Controllers
         private static string NormalizarTipoDocumento(string tipo)
         {
             var tipoNormalizado = (tipo ?? string.Empty).Trim().ToUpperInvariant();
-            return tipoNormalizado == "RECONOCIMIENTO" || tipoNormalizado == "CONDICIONES_LIMITACIONES"
-                ? tipoNormalizado
-                : null;
+            if (tipoNormalizado == "RECONOCIMIENTO")
+            {
+                return tipoNormalizado;
+            }
+
+            if (tipoNormalizado == "CONDICIONES"
+                || tipoNormalizado == "LIMITACIONES"
+                || tipoNormalizado == "CONDICIONES_LIMITACIONES")
+            {
+                return "CONDICIONES_LIMITACIONES";
+            }
+
+            return null;
         }
 
         private AocrDocumentoEdicionViewModel CompletarDocumentoEdicionDesdeFormulario(AocrDocumentoEdicionViewModel model)

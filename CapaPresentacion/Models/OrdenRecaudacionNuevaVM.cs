@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using CapaPresentacion.Models;
 using CapaPresentacion.Models.Validation;
+using CapaPresentacion.Models.ViewModels;
 
 
 namespace CapaPresentacion.Models
@@ -18,6 +19,13 @@ namespace CapaPresentacion.Models
 
         // Para almacenar detalles en JSON
         public string DetallesJson { get; set; }
+
+        [StringLength(500, ErrorMessage = "Máximo 500 caracteres")]
+        public string AeropuertosSolicitados { get; set; }
+
+        public bool GenerarSolicitudInspeccionAlGuardar { get; set; }
+
+        public CapaPresentacion.Models.ViewModels.SolicitudInspeccionExtPanelViewModel SolicitudInspeccionPanel { get; set; } = new CapaPresentacion.Models.ViewModels.SolicitudInspeccionExtPanelViewModel();
 
         // Lista de conceptos disponibles para selección
         public List<ConceptoOptionVM> Conceptos { get; set; } = new List<ConceptoOptionVM>();

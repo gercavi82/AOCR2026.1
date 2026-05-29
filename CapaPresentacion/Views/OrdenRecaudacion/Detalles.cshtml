@@ -1,4 +1,4 @@
-﻿@inherits System.Web.Mvc.WebViewPage<CapaDatos.Models.OrdenRecaudacionModel>
+﻿@inherits System.Web.Mvc.WebViewPage<CapaPresentacion.Models.ViewModels.OrdenRecaudacionDetallesViewModel>
 @using CapaModelo
 @using CapaDatos.Constants
 @using System.Web.Mvc
@@ -9,8 +9,8 @@
     ViewBag.Title = "Detalles de Orden";
 
     // Crear variables para facilitar el acceso
-    var modeloIncompleto = Model == null;
-    var orden = Model ?? new CapaDatos.Models.OrdenRecaudacionModel();
+    var modeloIncompleto = Model == null || Model.Orden == null;
+    var orden = Model != null && Model.Orden != null ? Model.Orden : new CapaDatos.Models.OrdenRecaudacionModel();
     var estado = EstadoOrden.NormalizarEstado(orden.Estado);
     var puedeEditar = estado == EstadoOrden.Borrador &&
         (User != null && (User.IsInRole("Solicitante") || User.IsInRole("Administrador")));
@@ -24,14 +24,14 @@
     var motivoDevolucion = esDevuelta ? (orden.Observacion ?? string.Empty).Trim() : string.Empty;
 
     // Obtener documentos y pagos desde ViewBag
-    var documentos = ViewBag.Documentos as List<CapaDatos.Models.DocumentoModel> ?? new List<CapaDatos.Models.DocumentoModel>();
-    var pagos = ViewBag.Pagos as List<CapaDatos.Models.PagoModel> ?? new List<CapaDatos.Models.PagoModel>();
-    var facturaPago = ViewBag.FacturaPago as CapaDatos.Models.FacturaPagoRegistroModel;
+    var documentos = Model != null ? (Model.Documentos ?? new List<CapaDatos.Models.DocumentoModel>()) : new List<CapaDatos.Models.DocumentoModel>();
+    var pagos = Model != null ? (Model.Pagos ?? new List<CapaDatos.Models.PagoModel>()) : new List<CapaDatos.Models.PagoModel>();
+    var facturaPago = Model != null ? Model.FacturaPago : null;
     var culturaEsEc = new CultureInfo("es-EC");
-    var tieneComprobanteValido = ViewBag.TieneComprobanteValido != null && (bool)ViewBag.TieneComprobanteValido;
-    var mensajeComprobante = ViewBag.MensajeComprobante as string ?? "Debe registrar el comprobante antes de continuar.";
+    var tieneComprobanteValido = Model != null && Model.TieneComprobanteValido;
+    var mensajeComprobante = Model != null ? (Model.MensajeComprobante ?? "Debe registrar el comprobante antes de continuar.") : "Debe registrar el comprobante antes de continuar.";
     var tieneFacturaDescargable = facturaPago != null && !string.IsNullOrWhiteSpace(facturaPago.FilePath);
-    var abrirModalPago = ViewBag.AbrirModalPago != null && (bool)ViewBag.AbrirModalPago;
+    var abrirModalPago = Model != null && Model.AbrirModalPago;
     var abrirModalPagoJs = (abrirModalPago && puedeSubirComprobante) ? "true" : "false";
 
     // Calcular total pagado
@@ -45,6 +45,9 @@
     var tienePagoAprobado = orden.Total > 0 && totalPagado >= orden.Total;
     var facturaGenerada = estado == EstadoOrden.Facturada || estado == EstadoOrden.Completada;
     var ordenCompleta = tieneSolicitudValida && tienePagoAprobado && facturaGenerada && !tieneSaldoPendiente;
+    var solicitudInspeccionPanel = Model != null ? Model.SolicitudInspeccionPanel : null;
+    var requiereSolicitudInspeccion = solicitudInspeccionPanel != null && solicitudInspeccionPanel.TieneInspeccionExt;
+    var bloquearGeneracionPorSolicitudInspeccion = requiereSolicitudInspeccion && !solicitudInspeccionPanel.PuedeContinuarConOrden;
 
 }
 
@@ -145,7 +148,7 @@
                     </div>
                     <div class="col-md-6 text-end">
                         <div class="botones-orden d-inline-flex align-items-center" style="gap: 10px;">
-                            @if (puedeGenerar)
+                            @if (puedeGenerar && !bloquearGeneracionPorSolicitudInspeccion)
                             {
                                 using (Html.BeginForm("Generar", "OrdenRecaudacion", FormMethod.Post))
                                 {
@@ -156,6 +159,13 @@
                                         <i class="fas fa-check me-1"></i> Generar Orden
                                     </button>
                                 }
+                            }
+                            else if (puedeGenerar && bloquearGeneracionPorSolicitudInspeccion)
+                            {
+                                <button type="button" class="btn btn-primary btn-sm" disabled
+                                        title="Debe generar, firmar y cargar la Solicitud de Inspecciones antes de generar la orden.">
+                                    <i class="fas fa-check me-1"></i> Generar Orden
+                                </button>
                             }
                             @if (puedeSubirComprobante)
                             {
@@ -326,6 +336,11 @@
                                 </div>
                             }
                         </div>
+
+                        @if (requiereSolicitudInspeccion)
+                        {
+                            @Html.Partial("_PanelSolicitudInspeccionesExt", solicitudInspeccionPanel)
+                        }
 
                         <!-- Pagos registrados -->
                         @if (pagos.Any())
@@ -680,6 +695,44 @@
 </div>
 
 @section Scripts {
+    <style>
+        .solicitud-inspeccion-card {
+            border: 1px solid #b8d7f0;
+            box-shadow: 0 4px 14px rgba(0, 44, 84, 0.08);
+        }
+
+        .solicitud-inspeccion-card .card-header {
+            background: #f5fbff;
+        }
+
+        .solicitud-inspeccion-actions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: .5rem;
+        }
+
+        .solicitud-inspeccion-upload {
+            margin-top: .75rem;
+        }
+
+        @@media (max-width: 576px) {
+            .solicitud-inspeccion-actions .btn,
+            .solicitud-inspeccion-file {
+                width: 100%;
+            }
+
+            .solicitud-inspeccion-file {
+                display: block;
+            }
+
+            .solicitud-inspeccion-file .form-control,
+            .solicitud-inspeccion-file .btn {
+                width: 100%;
+                margin-top: .5rem;
+                border-radius: .25rem !important;
+            }
+        }
+    </style>
     <script>
         $(document).ready(function() {
             var debeAbrirModalPago = '@abrirModalPagoJs' === 'true';
@@ -722,6 +775,27 @@
                 }
                 return true;
             });
+
+            $('#archivoSolicitudFirmada').on('change', function() {
+                var file = this.files[0];
+                if (file) {
+                    var fileSize = file.size / 1024 / 1024;
+                    var allowedExtensions = /(\.pdf)$/i;
+
+                    if (fileSize > 10) {
+                        alert('El archivo no puede exceder 10MB');
+                        $(this).val('');
+                        return false;
+                    }
+
+                    if (!allowedExtensions.exec(file.name)) {
+                        alert('Solo se permiten archivos PDF');
+                        $(this).val('');
+                        return false;
+                    }
+                }
+                return true;
+            });
         });
 
         function obtenerDatosPagoDesdeFila(button) {
@@ -757,7 +831,7 @@
                 }).append($('<input>', {
                     'type': 'hidden',
                     'name': 'ordenId',
-                    'value': '@Model.Id'
+                    'value': '@orden.Id'
                 })).append($('<input>', {
                     'type': 'hidden',
                     'name': 'pagoId',
@@ -779,7 +853,7 @@
                 }).append($('<input>', {
                     'type': 'hidden',
                     'name': 'ordenId',
-                    'value': '@Model.Id'
+                    'value': '@orden.Id'
                 })).append($('<input>', {
                     'type': 'hidden',
                     'name': 'pagoId',

@@ -1,0 +1,135 @@
+@model CapaPresentacion.Models.ViewModels.SolicitudInspeccionExtPanelViewModel
+
+@if (Model != null)
+{
+    var panelClass = Model.EsNuevaOrden && !Model.TieneInspeccionExt ? "row mb-4 d-none" : "row mb-4";
+    var placeholderAeropuertos = "Ej: Quito, Guayaquil, Manta";
+
+    <div class="@panelClass" id="panelSolicitudInspeccion">
+        <div class="col-md-12">
+            <div class="card solicitud-inspeccion-card">
+                <div class="card-header d-flex flex-wrap align-items-center justify-content-between gap-2">
+                    <h5 class="mb-0"><i class="fas fa-file-signature me-2 text-primary"></i>Solicitud de Inspecciones requerida</h5>
+                    <span class="badge bg-@Model.ClaseEstadoCss" id="estadoSolicitudInspeccion">@Model.EstadoDocumentoSolicitudInspeccion</span>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-info mb-3">
+                        @Model.MensajeEstado
+                    </div>
+
+                    @if (Model.EsNuevaOrden)
+                    {
+                        <div class="alert alert-warning d-none" id="mensajeSolicitudInspeccion"></div>
+                    }
+                    else if (!string.IsNullOrWhiteSpace(Model.MensajeSoloLectura))
+                    {
+                        <div class="alert @(Model.MostrarSoloLecturaSinFirmado ? "alert-warning" : "alert-secondary") mb-3">
+                            @Model.MensajeSoloLectura
+                        </div>
+                    }
+
+                    <div class="mb-3">
+                        <label class="form-label" for="AeropuertosSolicitados">Aeropuertos solicitados</label>
+                        @if (Model.EsNuevaOrden || Model.PuedeEditarSolicitudInspeccionExt)
+                        {
+                            <input type="text"
+                                   id="AeropuertosSolicitados"
+                                   name="AeropuertosSolicitados"
+                                   class="form-control"
+                                   maxlength="500"
+                                   value="@Model.AeropuertosSolicitados"
+                                   placeholder="@placeholderAeropuertos" />
+                            <small class="text-muted">Obligatorio al generar la Solicitud de Inspecciones.</small>
+                        }
+                        else
+                        {
+                            <input type="text"
+                                   id="AeropuertosSolicitados"
+                                   class="form-control bg-light"
+                                   value="@Model.AeropuertosSolicitados"
+                                   placeholder="@placeholderAeropuertos"
+                                   readonly="readonly" />
+                            <small class="text-muted">Campo disponible solo en modo lectura.</small>
+                        }
+                    </div>
+
+                    @if (Model.EsNuevaOrden)
+                    {
+                        <div class="solicitud-inspeccion-actions">
+                            <button type="button" class="btn btn-primary" id="btnGenerarSolicitudInspeccionNueva">
+                                <i class="fas fa-file-pdf me-1"></i> Generar Solicitud de Inspecciones
+                            </button>
+                            <button type="button" class="btn btn-outline-primary" id="btnDescargarSolicitudInspeccionNueva" disabled title="Disponible cuando exista una solicitud generada.">
+                                <i class="fas fa-download me-1"></i> Descargar Solicitud
+                            </button>
+                            <label class="btn btn-outline-secondary mb-0 disabled" id="btnSubirSolicitudInspeccionNueva" title="Disponible cuando exista una solicitud generada.">
+                                <i class="fas fa-upload me-1"></i> Subir Solicitud firmada
+                                <input type="file" class="d-none" disabled accept=".pdf" />
+                            </label>
+                        </div>
+                        <small class="text-muted d-block mt-2">
+                            Al generar, la orden se guardará como borrador y el PDF quedará asociado al concepto INSPECCION_EXT.
+                        </small>
+                    }
+                    else if (Model.PuedeEditarSolicitudInspeccionExt)
+                    {
+                        using (Html.BeginForm("GenerarSolicitudInspeccion", "OrdenRecaudacion", FormMethod.Post, new { @class = "mb-3" }))
+                        {
+                            @Html.AntiForgeryToken()
+                            @Html.Hidden("id", Model.OrdenId)
+                            @Html.Hidden("aeropuertosSolicitados", Model.AeropuertosSolicitados, new { id = "aeropuertosSolicitadosProxy" })
+                            <div class="solicitud-inspeccion-actions">
+                                <button type="submit" class="btn btn-primary" onclick="document.getElementById('aeropuertosSolicitadosProxy').value = document.getElementById('AeropuertosSolicitados').value;">
+                                    <i class="fas fa-file-pdf me-1"></i> Generar Solicitud de Inspecciones
+                                </button>
+                                @if (Model.PuedeDescargarSolicitud)
+                                {
+                                    <a href="@Model.UrlDescargarSolicitudGenerada" class="btn btn-outline-primary" target="_blank" rel="noopener">
+                                        <i class="fas fa-download me-1"></i> Descargar Solicitud
+                                    </a>
+                                }
+                                @if (Model.PuedeVerSolicitudFirmada)
+                                {
+                                    <a href="@Model.UrlVerSolicitudFirmada" class="btn btn-outline-success" target="_blank" rel="noopener">
+                                        <i class="fas fa-eye me-1"></i> Ver Solicitud firmada
+                                    </a>
+                                }
+                            </div>
+                        }
+
+                        using (Html.BeginForm("SubirSolicitudInspeccionFirmada", "OrdenRecaudacion", FormMethod.Post, new { enctype = "multipart/form-data", @class = "solicitud-inspeccion-upload" }))
+                        {
+                            @Html.AntiForgeryToken()
+                            @Html.Hidden("id", Model.OrdenId)
+                            <label class="form-label" for="archivoSolicitudFirmada">Subir Solicitud firmada</label>
+                            <div class="input-group solicitud-inspeccion-file">
+                                <input type="file"
+                                       id="archivoSolicitudFirmada"
+                                       name="archivoSolicitudFirmada"
+                                       class="form-control"
+                                       accept=".pdf"
+                                       @(Model.PuedeSubirSolicitudFirmada ? "required" : "disabled") />
+                                <button type="submit" class="btn btn-outline-secondary" @(Model.PuedeSubirSolicitudFirmada ? "" : "disabled")>
+                                    <i class="fas fa-upload me-1"></i> Subir
+                                </button>
+                            </div>
+                            <small class="text-muted">
+                                @(Model.PuedeSubirSolicitudFirmada
+                                    ? "Solo PDF. Tamaño máximo según configuración del sistema."
+                                    : "Debe generar la Solicitud de Inspecciones antes de subir el documento firmado.")
+                            </small>
+                        }
+                    }
+                    else if (Model.PuedeVerSolicitudFirmada)
+                    {
+                        <div class="solicitud-inspeccion-actions">
+                            <a href="@Model.UrlVerSolicitudFirmada" class="btn btn-outline-success" target="_blank" rel="noopener">
+                                <i class="fas fa-eye me-1"></i> Ver Solicitud firmada
+                            </a>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+}

@@ -26,21 +26,31 @@ namespace CapaPresentacion.Helpers
         {
             new TipoDocumentoOrdenDef("COMPROBANTE_PAGO", "Comprobante de pago", 1,
                 "COMPROBANTE_PAGO", "COMPROBANTE_DE_PAGO"),
-            new TipoDocumentoOrdenDef("COPIA_AOC_VALIDA", "Copia AOC válida", 2,
+            new TipoDocumentoOrdenDef("SOLICITUD_INSPECCION_EXT", "Solicitud de inspecciones generada", 98,
+                "SOLICITUD_INSPECCION_EXT", "SOLICITUD_DE_INSPECCIONES", "SOLICITUD_INSPECCIONES"),
+            new TipoDocumentoOrdenDef("SOLICITUD_INSPECCIONES_FIRMADA", "Solicitud de inspecciones firmada", 2,
+                "SOLICITUD_INSPECCIONES_FIRMADA", "SOLICITUD_DE_INSPECCIONES_FIRMADA"),
+            new TipoDocumentoOrdenDef("COPIA_AOC_VALIDA", "Copia AOC válida", 3,
                 "COPIA_AOC_VALIDA", "COPIA_AOC", "AOC", "AOC_VALIDA"),
-            new TipoDocumentoOrdenDef("OPSPECS_ESPECIFICACIONES_OPERACIONALES", "OpSpecs / Especificaciones operacionales", 3,
+            new TipoDocumentoOrdenDef("OPSPECS_ESPECIFICACIONES_OPERACIONALES", "OpSpecs / Especificaciones operacionales", 4,
                 "OPSPECS_ESPECIFICACIONES_OPERACIONALES", "OPSPECS", "OP_SPECS", "ESPECIFICACIONES_OPERACIONALES"),
-            new TipoDocumentoOrdenDef("MANUAL_OPERACIONES", "Manual de operaciones", 4,
+            new TipoDocumentoOrdenDef("MANUAL_OPERACIONES", "Manual de operaciones", 5,
                 "MANUAL_OPERACIONES", "MANUAL_DE_OPERACIONES"),
-            new TipoDocumentoOrdenDef("PERMISO_OPERACION_CNAC", "Permiso de operación CNAC", 5,
+            new TipoDocumentoOrdenDef("PERMISO_OPERACION_CNAC", "Permiso de operación CNAC", 6,
                 "PERMISO_OPERACION_CNAC", "PERMISO_OPERACION"),
-            new TipoDocumentoOrdenDef("COPIA_CERTIFICADA_PODER_REPRESENTANTE_ECUADOR", "Copia certificada del poder del representante en Ecuador", 6,
+            new TipoDocumentoOrdenDef("COPIA_CERTIFICADA_PODER_REPRESENTANTE_ECUADOR", "Copia certificada del poder del representante en Ecuador", 7,
                 "COPIA_CERTIFICADA_PODER_REPRESENTANTE_ECUADOR", "PODER_REPRESENTANTE_ECUADOR", "COPIA_CERTIFICADA_PODER_REPRESENTANTE", "PODER_REPRESENTANTE"),
-            new TipoDocumentoOrdenDef("CERTIFICADO_AERONAVEGABILIDAD", "Certificado de aeronavegabilidad", 7,
+            new TipoDocumentoOrdenDef("CERTIFICADO_AERONAVEGABILIDAD", "Certificado de aeronavegabilidad", 8,
                 "CERTIFICADO_AERONAVEGABILIDAD"),
-            new TipoDocumentoOrdenDef("CERTIFICADO_RUIDO_AERONAVES_EAE", "Certificado de ruido aeronaves EAE", 8,
+            new TipoDocumentoOrdenDef("CERTIFICADO_RUIDO_AERONAVES_EAE", "Certificado de ruido aeronaves EAE", 9,
                 "CERTIFICADO_RUIDO_AERONAVES_EAE", "CERTIFICADO_RUIDO", "CERTIFICADO_RUIDO_AERONAVES")
         };
+
+        public static bool ShouldIncludeInRevisionDocumental(string tipoDocumento)
+        {
+            var canonical = GetCanonicalDocumentType(tipoDocumento);
+            return !string.Equals(canonical, "SOLICITUD_INSPECCION_EXT", StringComparison.OrdinalIgnoreCase);
+        }
 
         public static bool IsAcceptedState(string estado)
         {

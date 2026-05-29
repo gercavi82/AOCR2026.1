@@ -1,0 +1,199 @@
+@model CapaPresentacion.Models.ViewModels.SolicitudInspeccionPdfViewModel
+@using System
+
+@{
+    Layout = "~/Views/Shared/_PdfLayoutDGAC.cshtml";
+
+    Func<string, string> valorPdf = value => string.IsNullOrWhiteSpace(value) ? "No aplica" : value.Trim();
+}
+
+@section PdfHead {
+    <style>
+        .pdf-title {
+            text-align: center;
+            font-size: 14px;
+            font-weight: bold;
+            letter-spacing: .3px;
+            margin: 0 0 4mm 0;
+            text-transform: uppercase;
+        }
+
+        .pdf-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 3mm;
+            table-layout: fixed;
+        }
+
+        .pdf-table td,
+        .pdf-table th {
+            border: 1px solid #cfd6df;
+            padding: 2.3px 5px;
+            line-height: 1.12;
+            font-size: 10px;
+            vertical-align: top;
+            overflow-wrap: anywhere;
+            word-wrap: break-word;
+        }
+
+        .pdf-label {
+            width: 32%;
+            background: #eef2f6;
+            font-weight: bold;
+        }
+
+        .pdf-paragraph {
+            text-align: justify;
+            margin: 2.5mm 0;
+            line-height: 1.18;
+            font-size: 10.2px;
+        }
+
+        .pdf-reference {
+            border: 1px solid #cfd6df;
+            padding: 1.8mm 2.4mm;
+            margin-top: 4mm;
+            margin-bottom: 0;
+            text-align: justify;
+            font-size: 8.2px;
+            line-height: 1.08;
+            page-break-inside: avoid;
+        }
+
+        .pdf-reference-title {
+            font-weight: bold;
+            margin-bottom: 1mm;
+        }
+
+        .pdf-reference p {
+            margin: 0.8mm 0 0 0;
+        }
+
+        .signature-summary {
+            margin-top: 3mm;
+            margin-bottom: 3mm;
+        }
+
+        .signature-area {
+            margin-top: 8mm;
+            text-align: center;
+            page-break-inside: avoid;
+        }
+
+        .signature-box {
+            display: inline-block;
+            width: 78mm;
+            text-align: center;
+        }
+
+        .signature-space {
+            height: 20mm;
+        }
+
+        .signature-line {
+            border-top: 1px solid #000;
+            width: 78mm;
+            margin: 0 auto 1.5mm auto;
+        }
+
+        .signature-name {
+            font-weight: bold;
+            font-size: 10px;
+            text-transform: uppercase;
+        }
+
+        .signature-role {
+            font-size: 9.5px;
+        }
+    </style>
+}
+
+<div class="pdf-title">SOLICITUD DE INSPECCIONES</div>
+
+<table class="pdf-table">
+    <tr>
+        <td class="pdf-label">Orden</td>
+        <td>@valorPdf(Model.NumeroOrden)</td>
+    </tr>
+    <tr>
+        <td class="pdf-label">Lugar y fecha</td>
+        <td>@valorPdf(Model.LugarEmision), @Model.FechaSolicitud.ToString("dd/MM/yyyy")</td>
+    </tr>
+    <tr>
+        <td class="pdf-label">Representante Técnico</td>
+        <td>@valorPdf(Model.NombreRT)</td>
+    </tr>
+    <tr>
+        <td class="pdf-label">Compañía</td>
+        <td>@valorPdf(Model.NombreCompania)</td>
+    </tr>
+    <tr>
+        <td class="pdf-label">RUC/Cédula</td>
+        <td>@valorPdf(Model.RucCedula)</td>
+    </tr>
+    <tr>
+        <td class="pdf-label">Correo RT</td>
+        <td>@valorPdf(Model.CorreoRT)</td>
+    </tr>
+    <tr>
+        <td class="pdf-label">Teléfono RT</td>
+        <td>@valorPdf(Model.TelefonoRT)</td>
+    </tr>
+    <tr>
+        <td class="pdf-label">Aeropuertos solicitados</td>
+        <td>@valorPdf(Model.AeropuertosSolicitados)</td>
+    </tr>
+</table>
+
+<p class="pdf-paragraph">
+    Yo, <strong>@valorPdf(Model.NombreRT)</strong>, en calidad de Representante Técnico de la compañía <strong>@valorPdf(Model.NombreCompania)</strong>,
+    en cumplimiento del Art. 110 del Código Aeronáutico, por medio del presente solicito formalmente la(s) inspección(es)
+    de instalaciones en los aeropuertos de <strong>@valorPdf(Model.AeropuertosSolicitados)</strong>.
+</p>
+
+<p class="pdf-paragraph">
+    Dejo expresa constancia que, una vez aceptadas las inspecciones solicitadas, y en conocimiento de las fechas para el cumplimiento
+    de las mismas, se procederá con la entrega de los boletos aéreos y traslados terrestres a los Sres. Inspectores designados,
+    hacia y desde los aeropuertos implicados.
+</p>
+
+<table class="pdf-table signature-summary">
+    <tr>
+        <td class="pdf-label">Nombre del Representante Técnico</td>
+        <td>@valorPdf(Model.NombreRT)</td>
+    </tr>
+    <tr>
+        <td class="pdf-label">Compañía</td>
+        <td>@valorPdf(Model.NombreCompania)</td>
+    </tr>
+    <tr>
+        <td class="pdf-label">Fecha</td>
+        <td>@Model.FechaSolicitud.ToString("dd/MM/yyyy")</td>
+    </tr>
+    <tr>
+        <td class="pdf-label">Firma del RT</td>
+        <td>Firma manuscrita o firma electrónica del Representante Técnico.</td>
+    </tr>
+</table>
+
+<div class="signature-area">
+    <div class="signature-box">
+        <div class="signature-space"></div>
+        <div class="signature-line"></div>
+        <div class="signature-name">@valorPdf(Model.NombreRT)</div>
+        <div class="signature-role">Representante Técnico</div>
+    </div>
+</div>
+
+<div class="pdf-reference">
+    <div class="pdf-reference-title">INFORMACION DE REFERENCIA: RESOLUCION 066-2010 (01 DE JULIO 2010), ART. 14</div>
+    <p>
+        "5. Si el solicitante interrumpe el proceso iniciado por un periodo mayor a 30 dias laborables o no cumpliere con los plazos
+        establecidos por la Autoridad, sera notificado por escrito de la finalizacion y archivo del tramite. Para el inicio de un nuevo tramite,
+        el aplicante debera cancelar un nuevo derecho.
+    </p>
+    <p>
+        6. Los valores especificados no incluyen gastos requeridos por traslado, alojamiento y viaticos de los inspectores, costos que correran
+        a cargo del solicitante y deberan ser cancelados y coordinados previos al cumplimiento de la tarea, conforme a la Reglamentacion y tarifas vigentes."
+    </p>
+</div>

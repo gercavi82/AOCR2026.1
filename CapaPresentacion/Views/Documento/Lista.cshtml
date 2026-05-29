@@ -842,6 +842,7 @@
                             var observacionFila = observacionVisible(doc);
                             var revisorFila = revisorVisible(doc);
                             var operadoraFila = operadoraVisible(doc);
+                            var tipoDocumentoVisible = RevisionDocumentalDisplayHelper.GetDocumentDisplayName(doc.TipoDocumento);
                             var esPdf = string.Equals(System.IO.Path.GetExtension(doc.NombreArchivo ?? string.Empty), ".pdf", System.StringComparison.OrdinalIgnoreCase);
                             <tr id="doc-row-@doc.CodigoDocumento"
                                 data-document-id="@doc.CodigoDocumento"
@@ -849,7 +850,7 @@
                                 data-operadora="@Html.AttributeEncode(operadoraFila ?? string.Empty)"
                                 data-fecha="@(doc.FechaCarga.HasValue ? doc.FechaCarga.Value.ToString("yyyy-MM-dd") : string.Empty)"
                                 data-estado="@estadoFilaNormalizado">
-                                <td class="documentos-table__cell" data-column-label="Tipo">@Html.Encode(doc.TipoDocumento)</td>
+                                <td class="documentos-table__cell" data-column-label="Tipo" title="@Html.AttributeEncode(doc.TipoDocumento ?? string.Empty)">@Html.Encode(tipoDocumentoVisible)</td>
                                 <td class="documentos-table__cell" data-column-label="Archivo">@Html.Encode(doc.NombreArchivo)</td>
                                 <td class="documentos-table__cell" data-column-label="Operadora / EAE">@(string.IsNullOrWhiteSpace(operadoraFila) ? "-" : Html.Encode(operadoraFila))</td>
                                 <td class="documentos-table__cell" data-column-label="Fecha de carga">@(doc.FechaCarga.HasValue ? doc.FechaCarga.Value.ToString("dd/MM/yyyy HH:mm") : "-")</td>

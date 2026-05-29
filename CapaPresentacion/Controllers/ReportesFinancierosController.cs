@@ -114,7 +114,7 @@ namespace CapaPresentacion.Controllers
                 PageSize = Size.A4,
                 PageOrientation = Orientation.Landscape,
                 PageMargins = new Margins(0, 0, 0, 0),
-                CustomSwitches = PdfBrandingHelper.StandardRotativaSwitches
+                CustomSwitches = PdfBrandingHelper.BuildStandardRotativaSwitches(Server, "ReportesFinancierosController.ExportarPdf")
             };
 
             if (!vistaPrevia)

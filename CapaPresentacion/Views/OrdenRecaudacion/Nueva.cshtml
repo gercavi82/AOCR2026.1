@@ -28,6 +28,7 @@
                 <input type="hidden" id="Total" value="0" />
                 @Html.HiddenFor(m => m.DetallesJson, new { id = "DetallesJson" })
                 @Html.HiddenFor(m => m.RucCedula, new { id = "RucCedulaGeneral" })
+                @Html.HiddenFor(m => m.GenerarSolicitudInspeccionAlGuardar, new { id = "GenerarSolicitudInspeccionAlGuardar" })
 
                 <div class="card-body">
 
@@ -183,6 +184,8 @@
                         </div>
                     </div>
 
+                    @Html.Partial("_PanelSolicitudInspeccionesExt", Model.SolicitudInspeccionPanel)
+
                     <!-- Observaciones -->
                     <div class="row mb-4">
                         <div class="col-md-12">
@@ -210,6 +213,29 @@
 
 
 @section Scripts {
+    <style>
+        .solicitud-inspeccion-card {
+            border: 1px solid #b8d7f0;
+            box-shadow: 0 4px 14px rgba(0, 44, 84, 0.08);
+        }
+
+        .solicitud-inspeccion-card .card-header {
+            background: #f5fbff;
+        }
+
+        .solicitud-inspeccion-actions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: .5rem;
+        }
+
+        @@media (max-width: 576px) {
+            .solicitud-inspeccion-actions .btn,
+            .solicitud-inspeccion-actions label.btn {
+                width: 100%;
+            }
+        }
+    </style>
     <script>
                         $(function () {
 
@@ -291,6 +317,34 @@
                         + '</tr>';
                     $tb.append(tr);
                 });
+
+                actualizarPanelSolicitudInspeccion();
+            }
+
+            function actualizarPanelSolicitudInspeccion() {
+                var existeInspeccion = $('#tablaDetalles tbody tr').filter(function () {
+                    var codigo = ($(this).find('td:first').text() || '').trim().toUpperCase();
+                    return codigo === 'INSPECCION_EXT';
+                }).length > 0;
+
+                $('#panelSolicitudInspeccion').toggleClass('d-none', !existeInspeccion);
+                if (!existeInspeccion) {
+                    $('#AeropuertosSolicitados').val('');
+                    $('#mensajeSolicitudInspeccion').addClass('d-none').text('');
+                    $('#estadoSolicitudInspeccion').text('NO_REQUERIDO').removeClass('bg-success bg-primary bg-warning bg-danger').addClass('bg-secondary');
+                    $('#btnGenerarSolicitudInspeccionNueva').prop('disabled', true);
+                    $('#btnDescargarSolicitudInspeccionNueva').prop('disabled', true);
+                    $('#btnSubirSolicitudInspeccionNueva').addClass('disabled').find('input[type=file]').prop('disabled', true);
+                    return;
+                }
+
+                $('#estadoSolicitudInspeccion').text('NO_GENERADO').removeClass('bg-success bg-primary bg-danger bg-secondary').addClass('bg-warning text-dark');
+                $('#mensajeSolicitudInspeccion')
+                    .removeClass('d-none')
+                    .text('Debe generar la Solicitud de Inspecciones.');
+                $('#btnGenerarSolicitudInspeccionNueva').prop('disabled', false);
+                $('#btnDescargarSolicitudInspeccionNueva').prop('disabled', true);
+                $('#btnSubirSolicitudInspeccionNueva').addClass('disabled').find('input[type=file]').prop('disabled', true);
             }
 
             function actualizarCamposOcultos() {
@@ -305,6 +359,12 @@
                 var compania = ($('#Orden_Compania').val() || '').trim();
                 $('#RucCedulaGeneral').val(ruc);
                 $('#Orden_NombreContribuyente').val(compania);
+            }
+
+            function restaurarBotonGenerarSolicitudInspeccion() {
+                $('#btnGenerarSolicitudInspeccionNueva')
+                    .prop('disabled', false)
+                    .html('<i class="fas fa-file-pdf me-1"></i> Generar Solicitud de Inspecciones');
             }
 
                             $('#btnAgregarConcepto').on('click', function () {
@@ -364,19 +424,103 @@
                 actualizarTotales();
             });
 
+                            function cargarDetallesIniciales() {
+                                var raw = $('#DetallesJson').val();
+                                if (!raw) {
+                                    actualizarPanelSolicitudInspeccion();
+                                    return;
+                                }
+
+                                try {
+                                    var iniciales = JSON.parse(raw) || [];
+                                    iniciales.forEach(function (item) {
+                                        var conceptoId = item.ConceptoId || item.conceptoId || 0;
+                                        var cantidad = toNumber(item.Cantidad || item.cantidad || 1);
+                                        var $opt = $('#ConceptoId option[value="' + conceptoId + '"]');
+                                        if (!$opt.length || cantidad <= 0) return;
+
+                                        var detalle = {
+                                            ConceptoId: parseInt(conceptoId, 10),
+                                            ConceptoCodigo: $opt.data('codigo') || '',
+                                            ConceptoNombre: $opt.data('nombre') || $opt.text(),
+                                            Cantidad: cantidad,
+                                            ValorUnitario: toNumber($opt.data('valor')),
+                                            PorcentajeAdmin: toNumber($opt.data('porcentaje'))
+                                        };
+                                        detalle.Subtotal = detalle.Cantidad * detalle.ValorUnitario;
+                                        detalle.Admin = detalle.Subtotal * (detalle.PorcentajeAdmin / 100.0);
+                                        detalle.TotalLinea = detalle.Subtotal + detalle.Admin;
+                                        detalles.push(detalle);
+                                    });
+
+                                    renderTabla();
+                                    actualizarTotales();
+                                } catch (e) {
+                                    actualizarPanelSolicitudInspeccion();
+                                }
+                            }
+
                             $('#formOrden').on('submit', function (e) {
                                 if (detalles.length === 0) {
                                     alert('Debe agregar al menos un concepto a la orden');
+                                    if ($('#GenerarSolicitudInspeccionAlGuardar').val() === 'true') {
+                                        $('#GenerarSolicitudInspeccionAlGuardar').val('false');
+                                        restaurarBotonGenerarSolicitudInspeccion();
+                                    }
                                     e.preventDefault();
                                     return false;
                                 }
+
+                                var solicitaGenerarInspeccion = $('#GenerarSolicitudInspeccionAlGuardar').val() === 'true' || $('#GenerarSolicitudInspeccionAlGuardar').val() === 'True';
+                                if (solicitaGenerarInspeccion) {
+                                    var existeInspeccion = detalles.some(function (d) {
+                                        return ((d.ConceptoCodigo || '').toString().trim().toUpperCase() === 'INSPECCION_EXT');
+                                    });
+                                    var aeropuertos = ($('#AeropuertosSolicitados').val() || '').trim();
+                                    if (!existeInspeccion) {
+                                        alert('La orden debe contener el concepto INSPECCION_EXT para generar la Solicitud de Inspecciones.');
+                                        $('#GenerarSolicitudInspeccionAlGuardar').val('false');
+                                        restaurarBotonGenerarSolicitudInspeccion();
+                                        e.preventDefault();
+                                        return false;
+                                    }
+                                    if (!aeropuertos) {
+                                        $('#mensajeSolicitudInspeccion')
+                                            .removeClass('d-none')
+                                            .text('Debe ingresar los aeropuertos solicitados antes de generar la Solicitud de Inspecciones.');
+                                        $('#GenerarSolicitudInspeccionAlGuardar').val('false');
+                                        restaurarBotonGenerarSolicitudInspeccion();
+                                        e.preventDefault();
+                                        return false;
+                                    }
+                                }
+
                                 $('#Orden_RucCedula').val(limpiarSoloDigitos($('#Orden_RucCedula').val(), 13));
                                 actualizarCamposOcultos();
                                 return true;
                             });
 
+                            $('#btnGenerarSolicitudInspeccionNueva').on('click', function () {
+                                var aeropuertos = ($('#AeropuertosSolicitados').val() || '').trim();
+                                $('#mensajeSolicitudInspeccion').addClass('d-none').text('');
+
+                                if (!aeropuertos) {
+                                    $('#mensajeSolicitudInspeccion')
+                                        .removeClass('d-none')
+                                        .text('Debe ingresar los aeropuertos solicitados.');
+                                    return;
+                                }
+
+                                $('#GenerarSolicitudInspeccionAlGuardar').val('true');
+                                $('#btnGenerarSolicitudInspeccionNueva')
+                                    .prop('disabled', true)
+                                    .html('<i class="fas fa-spinner fa-spin me-1"></i> Generando...');
+                                $('#formOrden').trigger('submit');
+                            });
+
                             $('#Orden_CodigoSolicitud').on('change', aplicarSolicitudSeleccionada);
                             aplicarSolicitudSeleccionada();
+                            cargarDetallesIniciales();
 
                         });
     </script>

@@ -1,6 +1,7 @@
 using System;
 using System.IO;
 using System.Web;
+using System.Text;
 using iTextSharp.text;
 using iTextSharp.text.pdf;
 
@@ -52,8 +53,25 @@ namespace CapaNegocio.Helpers
         public const string HeaderVirtualPath = "~/Content/assets/imganes/pdf/header.png";
         public const string FooterVirtualPath = "~/Content/assets/imganes/pdf/footer.png";
         public const string StandardRotativaSwitches = "--enable-local-file-access --print-media-type --background --dpi 300 --zoom 1.0";
+        public const string StandardRotativaSwitchesWithBranding = StandardRotativaSwitches + " --disable-smart-shrinking --margin-top 30mm --margin-bottom 26mm --margin-left 8mm --margin-right 8mm --header-spacing 0 --footer-spacing 0";
 
         private const string ModuleName = "PdfBrandingHelper";
+
+        public static string BuildStandardRotativaSwitches(HttpServerUtility server, string source)
+        {
+            return BuildStandardRotativaSwitchesInternal(
+                source,
+                server != null ? (Func<string, string>)server.MapPath : null,
+                virtualPath => VirtualPathUtility.ToAbsolute(virtualPath));
+        }
+
+        public static string BuildStandardRotativaSwitches(HttpServerUtilityBase server, string source)
+        {
+            return BuildStandardRotativaSwitchesInternal(
+                source,
+                server != null ? (Func<string, string>)server.MapPath : null,
+                virtualPath => VirtualPathUtility.ToAbsolute(virtualPath));
+        }
 
         public static PdfBrandingAssets ResolveAssets(string source)
         {
@@ -204,6 +222,119 @@ namespace CapaNegocio.Helpers
             {
                 // Ignorar errores secundarios de trazas.
             }
+        }
+
+        private static string BuildStandardRotativaSwitchesInternal(string source, Func<string, string> mapPath, Func<string, string> toAbsoluteVirtualPath)
+        {
+            var switches = StandardRotativaSwitchesWithBranding;
+            if (mapPath == null)
+            {
+                LogError(source, "No se pudo resolver MapPath para construir el membrete estándar del PDF.");
+                return switches;
+            }
+
+            try
+            {
+                var tempFolder = mapPath("~/App_Data/Temp/PdfBranding");
+                if (string.IsNullOrWhiteSpace(tempFolder))
+                {
+                    return switches;
+                }
+
+                Directory.CreateDirectory(tempFolder);
+
+                var headerHtmlPath = Path.Combine(tempFolder, "standard_header.html");
+                var footerHtmlPath = Path.Combine(tempFolder, "standard_footer.html");
+
+                var headerHtml = BuildStandardHeaderHtml(mapPath, toAbsoluteVirtualPath, source);
+                var footerHtml = BuildStandardFooterHtml(mapPath, toAbsoluteVirtualPath, source);
+
+                if (!string.IsNullOrWhiteSpace(headerHtml))
+                {
+                    File.WriteAllText(headerHtmlPath, headerHtml, Encoding.UTF8);
+                    switches += " --header-html \"" + ConvertPhysicalPathToFileUrl(headerHtmlPath) + "\"";
+                }
+
+                if (!string.IsNullOrWhiteSpace(footerHtml))
+                {
+                    File.WriteAllText(footerHtmlPath, footerHtml, Encoding.UTF8);
+                    switches += " --footer-html \"" + ConvertPhysicalPathToFileUrl(footerHtmlPath) + "\"";
+                }
+            }
+            catch (Exception ex)
+            {
+                LogError(source, "No se pudo construir los archivos temporales de branding estándar para wkhtmltopdf.", ex);
+            }
+
+            return switches;
+        }
+
+        private static string BuildStandardHeaderHtml(Func<string, string> mapPath, Func<string, string> toAbsoluteVirtualPath, string source)
+        {
+            var barra = ResolveHojaAssetUrl(mapPath, toAbsoluteVirtualPath, "barra.png", source);
+            var escudo = ResolveHojaAssetUrl(mapPath, toAbsoluteVirtualPath, "escudo.png", source);
+            var dgca = ResolveHojaAssetUrl(mapPath, toAbsoluteVirtualPath, "DGCA.png", source);
+
+            if (string.IsNullOrWhiteSpace(barra) || string.IsNullOrWhiteSpace(escudo) || string.IsNullOrWhiteSpace(dgca))
+            {
+                return null;
+            }
+
+            return string.Format(
+                "<!DOCTYPE html><html><head><meta charset=\"utf-8\" /><style>html,body{{margin:0;padding:0;width:194mm;height:26mm;background:transparent;overflow:hidden;}}.header{{position:relative;width:194mm;height:26mm;}}.barra{{position:absolute;top:0;right:0;width:129mm;height:3.2mm;}}.escudo{{position:absolute;left:0;top:6.2mm;width:34mm;height:auto;}}.dgca{{position:absolute;right:0;top:8.2mm;width:82mm;height:auto;}}</style></head><body><div class=\"header\"><img class=\"barra\" src=\"{0}\" alt=\"\" /><img class=\"escudo\" src=\"{1}\" alt=\"Escudo Republica del Ecuador\" /><img class=\"dgca\" src=\"{2}\" alt=\"Direccion General de Aviacion Civil\" /></div></body></html>",
+                HttpUtility.HtmlAttributeEncode(barra),
+                HttpUtility.HtmlAttributeEncode(escudo),
+                HttpUtility.HtmlAttributeEncode(dgca));
+        }
+
+        private static string BuildStandardFooterHtml(Func<string, string> mapPath, Func<string, string> toAbsoluteVirtualPath, string source)
+        {
+            var barra = ResolveHojaAssetUrl(mapPath, toAbsoluteVirtualPath, "barra.png", source);
+            var direccion = ResolveHojaAssetUrl(mapPath, toAbsoluteVirtualPath, "direccion.png", source);
+            var nuevo = ResolveHojaAssetUrl(mapPath, toAbsoluteVirtualPath, "nuevo.png", source);
+
+            if (string.IsNullOrWhiteSpace(barra) || string.IsNullOrWhiteSpace(direccion) || string.IsNullOrWhiteSpace(nuevo))
+            {
+                return null;
+            }
+
+            return string.Format(
+                "<!DOCTYPE html><html><head><meta charset=\"utf-8\" /><style>html,body{{margin:0;padding:0;width:194mm;height:26mm;background:transparent;overflow:hidden;}}.footer{{position:relative;width:194mm;height:26mm;}}.barra{{position:absolute;left:0;top:0;width:72mm;height:3.2mm;}}.direccion{{position:absolute;left:0;top:7.2mm;width:64mm;height:auto;}}.nuevo{{position:absolute;right:0;top:6.2mm;width:44mm;height:auto;}}</style></head><body><div class=\"footer\"><img class=\"barra\" src=\"{0}\" alt=\"\" /><img class=\"direccion\" src=\"{1}\" alt=\"Direccion DGAC\" /><img class=\"nuevo\" src=\"{2}\" alt=\"El Nuevo Ecuador\" /></div></body></html>",
+                HttpUtility.HtmlAttributeEncode(barra),
+                HttpUtility.HtmlAttributeEncode(direccion),
+                HttpUtility.HtmlAttributeEncode(nuevo));
+        }
+
+        private static string ResolveHojaAssetUrl(Func<string, string> mapPath, Func<string, string> toAbsoluteVirtualPath, string fileName, string source)
+        {
+            var virtualPath = "~/Content/imganes/hoja/" + fileName;
+            try
+            {
+                var physicalPath = mapPath(virtualPath);
+                if (!string.IsNullOrWhiteSpace(physicalPath) && File.Exists(physicalPath))
+                {
+                    return ConvertPhysicalPathToFileUrl(physicalPath);
+                }
+            }
+            catch (Exception ex)
+            {
+                LogError(source, "No se pudo resolver el recurso institucional " + virtualPath + ".", ex);
+            }
+
+            try
+            {
+                var absolutePath = toAbsoluteVirtualPath != null ? toAbsoluteVirtualPath(virtualPath) : null;
+                return string.IsNullOrWhiteSpace(absolutePath) ? null : absolutePath;
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
+        private static string ConvertPhysicalPathToFileUrl(string physicalPath)
+        {
+            return "file:///" + (physicalPath ?? string.Empty).Replace('\\', '/');
         }
     }
 

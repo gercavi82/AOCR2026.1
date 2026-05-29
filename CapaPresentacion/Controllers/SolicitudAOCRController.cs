@@ -92,6 +92,9 @@ namespace CapaPresentacion.Controllers
         private const int TamanoMaximoDocumentoMb = 10;
         private const string DocumentoTipoCondicionesLimitaciones = "CONDICIONES_LIMITACIONES";
         private const string DocumentoTipoReconocimiento = "RECONOCIMIENTO";
+        private const string CodigoConceptoInspeccionExt = "INSPECCION_EXT";
+        private const string TipoSolicitudInspeccionFirmada = "SOLICITUD_INSPECCIONES_FIRMADA";
+        private const string EtiquetaSolicitudInspeccionFirmada = "Solicitud de inspecciones firmada";
 
         private bool UsuarioActualEsRt()
         {
@@ -1194,11 +1197,13 @@ namespace CapaPresentacion.Controllers
                     }
                 }
 
+                SolicitudAOCR solicitudNotificacion = null;
                 if (requiereEnvioCoordinador)
                 {
+                    solicitudNotificacion = _solicitudDAO.ObtenerPorId(idFinal) ?? vm.Solicitud;
+
                     try
                     {
-                        var solicitudNotificacion = _solicitudDAO.ObtenerPorId(idFinal) ?? vm.Solicitud;
                         _solicitudAocrCorreoService.NotificarEvento(
                             solicitudNotificacion,
                             "SOLICITUD_COMPLETADA",
@@ -1207,6 +1212,18 @@ namespace CapaPresentacion.Controllers
                     catch (Exception exCorreoCoordinacion)
                     {
                         System.Diagnostics.Debug.WriteLine("[FormularioCompleto] Error notificando envío a coordinación: " + exCorreoCoordinacion.Message);
+                    }
+
+                    try
+                    {
+                        NotificarInspectorDocumentacionLista(
+                            solicitudNotificacion,
+                            usuarioId,
+                            !string.IsNullOrWhiteSpace(usuarioCorreo) ? usuarioCorreo : usuarioId.ToString());
+                    }
+                    catch (Exception exCorreoInspector)
+                    {
+                        System.Diagnostics.Debug.WriteLine("[FormularioCompleto] Error notificando documentación lista al inspector: " + exCorreoInspector.Message);
                     }
                 }
 
@@ -1495,6 +1512,12 @@ namespace CapaPresentacion.Controllers
                     {
                         System.Diagnostics.Debug.WriteLine($"[FormularioCompleto] Procesando {vm.ArchivosSubidos.Count()} documentos");
                         ProcesarArchivos(vm.ArchivosSubidos, idFinal, rutasFisicasCreadas);
+                    }
+
+                    var mensajeSolicitudInspeccionPendiente = ObtenerMensajeSolicitudInspeccionFirmadaPendiente(idFinal, vm.Solicitud);
+                    if (!string.IsNullOrWhiteSpace(mensajeSolicitudInspeccionPendiente))
+                    {
+                        throw new ApplicationException(mensajeSolicitudInspeccionPendiente);
                     }
 
                     if (bloquearModuloRtAlFinalizar)
@@ -1801,10 +1824,22 @@ namespace CapaPresentacion.Controllers
                 }
             }
 
-            return documentosObligatorios
+            var faltantes = documentosObligatorios
                 .Where(item => !cubiertos.Contains(item.Key))
                 .Select(item => item.Value)
                 .ToList();
+
+            if (codigoSolicitud.HasValue && codigoSolicitud.Value > 0)
+            {
+                var mensajeSolicitudInspeccionPendiente = ObtenerMensajeSolicitudInspeccionFirmadaPendiente(codigoSolicitud.Value, null, documentosExistentes);
+                if (!string.IsNullOrWhiteSpace(mensajeSolicitudInspeccionPendiente)
+                    && !faltantes.Contains(EtiquetaSolicitudInspeccionFirmada, StringComparer.OrdinalIgnoreCase))
+                {
+                    faltantes.Add(EtiquetaSolicitudInspeccionFirmada);
+                }
+            }
+
+            return faltantes;
         }
 
         private static void SetIfExists(object obj, string prop, object value)
@@ -2057,6 +2092,230 @@ namespace CapaPresentacion.Controllers
             servicioCorreo.enviaMensajeCorreo(destinatario, asunto, cuerpo);
         }
 
+        private string ObtenerMensajeSolicitudInspeccionFirmadaPendiente(int codigoSolicitud, SolicitudAOCR solicitud = null, IList<Documento> documentosSolicitud = null)
+        {
+            if (codigoSolicitud <= 0)
+            {
+                return string.Empty;
+            }
+
+            var solicitudEvaluada = solicitud;
+            if (solicitudEvaluada == null || solicitudEvaluada.CodigoSolicitud != codigoSolicitud)
+            {
+                solicitudEvaluada = _solicitudDAO.ObtenerPorId(codigoSolicitud);
+            }
+
+            if (!SolicitudRequiereInspeccionExtFirmada(solicitudEvaluada))
+            {
+                return string.Empty;
+            }
+
+            var documentos = documentosSolicitud ?? (_documentoDAO.ObtenerPorSolicitud(codigoSolicitud) ?? new List<Documento>());
+            if (documentos.Any(EsDocumentoSolicitudInspeccionFirmada))
+            {
+                return string.Empty;
+            }
+
+            return "Debe adjuntar todos los documentos obligatorios antes de enviar la solicitud. Faltan: " + EtiquetaSolicitudInspeccionFirmada + ".";
+        }
+
+        private bool SolicitudRequiereInspeccionExtFirmada(SolicitudAOCR solicitud)
+        {
+            if (solicitud == null || solicitud.CodigoSolicitud <= 0 || solicitud.CodigoUsuario <= 0)
+            {
+                return false;
+            }
+
+            try
+            {
+                var codigoSolicitudTexto = solicitud.CodigoSolicitud.ToString();
+                var ordenes = _ordenRecaudacionDAO.ListarPorUsuarioModel(solicitud.CodigoUsuario, null) ?? new List<CapaDatos.Models.OrdenRecaudacionModel>();
+
+                return ordenes
+                    .Where(o => o != null)
+                    .Where(o => string.Equals((o.CodigoSolicitud ?? string.Empty).Trim(), codigoSolicitudTexto, StringComparison.OrdinalIgnoreCase))
+                    .OrderByDescending(o => o.Id)
+                    .Any(OrdenContieneInspeccionExt);
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine("[SolicitudAOCR] Error validando concepto INSPECCION_EXT para solicitud " + solicitud.CodigoSolicitud + ": " + ex.Message);
+                return false;
+            }
+        }
+
+        private static bool OrdenContieneInspeccionExt(CapaDatos.Models.OrdenRecaudacionModel orden)
+        {
+            return orden != null
+                && orden.Detalles != null
+                && orden.Detalles.Any(d => d != null
+                    && string.Equals((d.ConceptoCodigo ?? string.Empty).Trim(), CodigoConceptoInspeccionExt, StringComparison.OrdinalIgnoreCase));
+        }
+
+        private static bool EsDocumentoSolicitudInspeccionFirmada(Documento documento)
+        {
+            if (documento == null || documento.CodigoDocumento <= 0)
+            {
+                return false;
+            }
+
+            var tipoCanonico = RevisionDocumentalDisplayHelper.GetCanonicalDocumentType(documento.TipoDocumento);
+            return string.Equals(tipoCanonico, TipoSolicitudInspeccionFirmada, StringComparison.OrdinalIgnoreCase)
+                || string.Equals((documento.TipoDocumento ?? string.Empty).Trim(), TipoSolicitudInspeccionFirmada, StringComparison.OrdinalIgnoreCase);
+        }
+
+        private void NotificarInspectorDocumentacionLista(SolicitudAOCR solicitud, int usuarioId, string usuarioRegistro)
+        {
+            if (solicitud == null || solicitud.CodigoSolicitud <= 0)
+            {
+                return;
+            }
+
+            try
+            {
+                var documentosFaltantes = ObtenerDocumentosObligatoriosFaltantes(solicitud.CodigoSolicitud, null, solicitud.TipoSolicitud);
+                if (documentosFaltantes.Count > 0)
+                {
+                    _solicitudAocrInfraBL.RegistrarEventoHistorialRevision(
+                        solicitud.CodigoSolicitud,
+                        null,
+                        "NOTIFICACION_DOCUMENTACION_LISTA_INSPECTOR_OMITIDA",
+                        "No se notificó al inspector porque la documentación aún está incompleta. Faltan: " + string.Join(", ", documentosFaltantes),
+                        usuarioId,
+                        usuarioRegistro);
+                    return;
+                }
+
+                var inspeccion = ObtenerUltimaInspeccionVinculada(_solicitudAocrInfraBL.ListarInspeccionesPorSolicitud(solicitud.CodigoSolicitud));
+                var codigoInspector = inspeccion != null && inspeccion.CodigoInspector.HasValue
+                    ? inspeccion.CodigoInspector.Value
+                    : (solicitud.CodigoTecnico.HasValue ? solicitud.CodigoTecnico.Value : 0);
+
+                if (codigoInspector <= 0)
+                {
+                    _solicitudAocrInfraBL.RegistrarEventoHistorialRevision(
+                        solicitud.CodigoSolicitud,
+                        null,
+                        "NOTIFICACION_DOCUMENTACION_LISTA_INSPECTOR_OMITIDA",
+                        "No se encontró inspector asignado para notificar la documentación lista para revisión.",
+                        usuarioId,
+                        usuarioRegistro);
+                    return;
+                }
+
+                var eventKey = "DOCUMENTACION_LISTA_RT_" + solicitud.CodigoSolicitud + "_" + codigoInspector;
+                var queue = new EmailQueueService();
+                if (queue.ExisteNotificacionAsync("DOCUMENTACION_LISTA_RT", eventKey, solicitud.CodigoSolicitud).GetAwaiter().GetResult())
+                {
+                    return;
+                }
+
+                var inspector = UsuarioDAO.ObtenerPorId(codigoInspector);
+                var correoInspector = inspector != null ? (inspector.Email ?? string.Empty).Trim() : string.Empty;
+                var nombreInspector = inspector != null ? FirstNonEmpty(inspector.NombreCompleto, inspector.NombreUsuario, "Inspector asignado") : "Inspector asignado";
+                var numeroSolicitud = FirstNonEmpty(solicitud.NumeroSolicitud, "#" + solicitud.CodigoSolicitud);
+                var operadora = FirstNonEmpty(solicitud.NombreComercial, solicitud.NombreOperador, solicitud.RazonSocial, "Operadora");
+                var solicitante = UsuarioDAO.ObtenerPorId(solicitud.CodigoUsuario);
+                var nombreRt = FirstNonEmpty(
+                    solicitud.RepresentanteLegal,
+                    solicitante != null ? solicitante.NombreCompleto : null,
+                    solicitante != null ? solicitante.NombreUsuario : null,
+                    "Representante Técnico");
+                var fechaEnvio = DateTime.Now;
+
+                NotificacionBL.EnviarNotificacion(
+                    codigoInspector,
+                    "Documentación AOCR lista para revisión",
+                    "El RT ha completado la carga documental de la Solicitud AOCR " + numeroSolicitud + ".",
+                    "INFO",
+                    Url.Action("Detalle", "SolicitudAOCR", new { id = solicitud.CodigoSolicitud }),
+                    "AOCR",
+                    solicitud.CodigoSolicitud,
+                    "SOLICITUD_AOCR");
+
+                if (!string.IsNullOrWhiteSpace(correoInspector))
+                {
+                    var asunto = "Solicitud AOCR " + numeroSolicitud + " - Documentación lista para revisión";
+                    var cuerpo = ConstruirHtmlCorreoDocumentacionListaInspector(
+                        nombreInspector,
+                        nombreRt,
+                        numeroSolicitud,
+                        operadora,
+                        fechaEnvio,
+                        solicitud.CodigoSolicitud);
+
+                    queue.EncolarAsync(new EmailQueueItem
+                    {
+                        Para = correoInspector,
+                        ParaNombre = nombreInspector,
+                        Asunto = asunto,
+                        Cuerpo = cuerpo,
+                        EsHtml = true,
+                        TipoNotificacion = "DOCUMENTACION_LISTA_RT",
+                        SolicitudId = solicitud.CodigoSolicitud,
+                        EventKey = eventKey,
+                        MaxIntentos = 3
+                    }).GetAwaiter().GetResult();
+                }
+
+                _solicitudAocrInfraBL.RegistrarEventoHistorialRevision(
+                    solicitud.CodigoSolicitud,
+                    null,
+                    "NOTIFICACION_DOCUMENTACION_LISTA_ENVIADA_INSPECTOR",
+                    "Notificación de documentación lista para revisión enviada al inspector asignado.",
+                    usuarioId,
+                    usuarioRegistro);
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine("[FormularioCompleto][NotificarInspectorDocumentacionLista] " + ex.Message);
+                try
+                {
+                    _solicitudAocrInfraBL.RegistrarEventoHistorialRevision(
+                        solicitud.CodigoSolicitud,
+                        null,
+                        "NOTIFICACION_DOCUMENTACION_LISTA_INSPECTOR_ERROR",
+                        "No se pudo encolar la notificación de documentación lista al inspector. Error: " + ex.Message,
+                        usuarioId,
+                        usuarioRegistro);
+                }
+                catch
+                {
+                }
+            }
+        }
+
+        private string ConstruirHtmlCorreoDocumentacionListaInspector(
+            string nombreInspector,
+            string nombreRt,
+            string numeroSolicitud,
+            string operadora,
+            DateTime fechaEnvio,
+            int codigoSolicitud)
+        {
+            string enlaceDetalle;
+            try
+            {
+                enlaceDetalle = Url.Action("Detalle", "SolicitudAOCR", new { id = codigoSolicitud }, Request != null && Request.Url != null ? Request.Url.Scheme : "http");
+            }
+            catch
+            {
+                enlaceDetalle = string.Empty;
+            }
+
+            return "Estimado/a " + HttpUtility.HtmlEncode(nombreInspector) + ",<br><br>"
+                + "Se informa que el Representante Técnico " + HttpUtility.HtmlEncode(nombreRt)
+                + " completó la carga documental de la Solicitud AOCR " + HttpUtility.HtmlEncode(numeroSolicitud)
+                + " correspondiente a la operadora " + HttpUtility.HtmlEncode(operadora) + ".<br><br>"
+                + "<strong>Fecha de envío documental:</strong> " + fechaEnvio.ToString("dd/MM/yyyy HH:mm") + "<br>"
+                + "<strong>Estado:</strong> Documentación lista para revisión documental.<br><br>"
+                + (!string.IsNullOrWhiteSpace(enlaceDetalle)
+                    ? "Puede revisar el detalle en el siguiente enlace: <a href=\"" + HttpUtility.HtmlAttributeEncode(enlaceDetalle) + "\">Ver solicitud</a>.<br><br>"
+                    : string.Empty)
+                + "Por favor, ingrese al sistema AOCR para continuar con la revisión documental.<br><br>"
+                + "Atentamente,<br>Sistema AOCR<br>Dirección General de Aviación Civil";
+        }
+
         private static string FirstNonEmpty(params string[] values)
         {
             if (values == null)
@@ -2293,11 +2552,41 @@ namespace CapaPresentacion.Controllers
 
             filtros.PageSize = Math.Min(filtros.PageSize, 50);
 
-            var filas = _aocrBandejaDao.ListarGeneradasFirmadas() ?? new List<AocrBandejaDocumentoRow>();
-            var visibles = filas
-                .Where(x => DebeMostrarFilaBandeja(x, contexto))
-                .Select(x => MapearFilaBandeja(x, contexto))
-                .ToList();
+            LogBL.RegistrarInfo(
+                $"[AOCR_BANDEJA] Inicio Usuario={Session["Usuario"] ?? User.Identity.Name} Roles={Session["RolesRaw"] ?? Session["Roles"] ?? Session["Rol"]} EsAdmin={contexto.EsAdministrador} Filtros={JsonConvert.SerializeObject(filtros)}",
+                "SolicitudAOCRController");
+
+            List<AocrGeneradasFirmadasRowViewModel> visibles;
+            try
+            {
+                var filas = _aocrBandejaDao.ListarGeneradasFirmadas() ?? new List<AocrBandejaDocumentoRow>();
+                visibles = filas
+                    .Where(x => DebeMostrarFilaBandeja(x, contexto))
+                    .Select(x => MapearFilaBandeja(x, contexto))
+                    .ToList();
+
+                LogBL.RegistrarInfo(
+                    $"[AOCR_BANDEJA] SQLColumnCheck=OK TotalRegistrosDAO={filas.Count} TotalVisiblesRol={visibles.Count}",
+                    "SolicitudAOCRController");
+            }
+            catch (PostgresException ex)
+            {
+                LogBL.RegistrarError(
+                    $"[AOCR_BANDEJA] Error=PostgresException SqlState={ex.SqlState} Usuario={Session["Usuario"] ?? User.Identity.Name}",
+                    ex.ToString(),
+                    "SolicitudAOCRController");
+                TempData["Error"] = "No se pudo cargar la bandeja AOCR. Revise la consulta de datos.";
+                return View(CrearModeloBandejaVacio(filtros, contexto));
+            }
+            catch (Exception ex)
+            {
+                LogBL.RegistrarError(
+                    $"[AOCR_BANDEJA] Error={ex.GetType().Name} Usuario={Session["Usuario"] ?? User.Identity.Name}",
+                    ex.ToString(),
+                    "SolicitudAOCRController");
+                TempData["Error"] = "No se pudo cargar la bandeja AOCR. Revise la consulta de datos.";
+                return View(CrearModeloBandejaVacio(filtros, contexto));
+            }
 
             visibles = AplicarFiltrosBandeja(visibles, filtros);
 
@@ -2342,7 +2631,51 @@ namespace CapaPresentacion.Controllers
             model.EstadosFirma = ConstruirOpcionesFiltro(visibles.Select(x => x.EstadoFirma), filtros.EstadoFirma, "Todos los estados de firma");
             model.TiposTramite = ConstruirOpcionesFiltro(visibles.Select(x => x.TipoTramite), filtros.TipoTramite, "Todos los trámites");
 
+            LogBL.RegistrarInfo(
+                $"[AOCR_BANDEJA] TotalRegistros={totalRegistros} TotalGeneradas={totalConPdf} TotalPendientesFirma={totalPendientesFirma} TotalFirmadas={totalFirmadas}",
+                "SolicitudAOCRController");
+
             return View(model);
+        }
+
+        private AocrGeneradasFirmadasViewModel CrearModeloBandejaVacio(
+            AocrGeneradasFirmadasFiltroViewModel filtros,
+            BandejaAocrContexto contexto)
+        {
+            filtros = filtros ?? new AocrGeneradasFirmadasFiltroViewModel();
+            if (filtros.Page <= 0)
+            {
+                filtros.Page = 1;
+            }
+
+            if (filtros.PageSize <= 0)
+            {
+                filtros.PageSize = 15;
+            }
+
+            filtros.PageSize = Math.Min(filtros.PageSize, 50);
+
+            return new AocrGeneradasFirmadasViewModel
+            {
+                Filtros = filtros,
+                Items = new List<AocrGeneradasFirmadasRowViewModel>(),
+                TotalRegistros = 0,
+                TotalFirmadas = 0,
+                TotalPendientesFirma = 0,
+                TotalObservadas = 0,
+                TotalConPdf = 0,
+                PaginaActual = filtros.Page,
+                TotalPaginas = 1,
+                PageSize = filtros.PageSize,
+                EsAdministrador = contexto.EsAdministrador,
+                EsSolicitante = contexto.EsSolicitante,
+                EsInspector = contexto.EsInspector,
+                EsCoordinacion = contexto.EsCoordinacion,
+                EsDireccion = contexto.EsDireccion,
+                EstadosFinales = ConstruirOpcionesFiltro(Enumerable.Empty<string>(), filtros.EstadoFinal, "Todos los estados finales"),
+                EstadosFirma = ConstruirOpcionesFiltro(Enumerable.Empty<string>(), filtros.EstadoFirma, "Todos los estados de firma"),
+                TiposTramite = ConstruirOpcionesFiltro(Enumerable.Empty<string>(), filtros.TipoTramite, "Todos los trámites")
+            };
         }
 
         [Authorize(Roles = "Coordinador,CoordinadorInspecciones,Administrador")]
@@ -4224,6 +4557,11 @@ namespace CapaPresentacion.Controllers
                     return true;
                 }
 
+                if (string.IsNullOrWhiteSpace(fila.CompaniasSeleccionadas))
+                {
+                    return true;
+                }
+
                 return ContieneValorLista(fila.CompaniasSeleccionadas, contexto.CompaniaActivaCodigo);
             }
 
@@ -5310,6 +5648,7 @@ namespace CapaPresentacion.Controllers
             var documentos = _documentoDAO.ObtenerPorSolicitud(codigoSolicitud) ?? new List<Documento>();
             return documentos
                 .Where(d => d != null && d.CodigoDocumento > 0)
+                .Where(d => RevisionDocumentalDisplayHelper.ShouldIncludeInRevisionDocumental(d.TipoDocumento))
                 .Select(d =>
                 {
                     d.TipoDocumentoCodigoCanonico = RevisionDocumentalDisplayHelper.GetCanonicalDocumentType(d.TipoDocumento);

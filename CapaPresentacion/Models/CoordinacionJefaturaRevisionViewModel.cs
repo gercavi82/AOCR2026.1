@@ -123,6 +123,20 @@ namespace CapaPresentacion.Models
         public List<AocrCondicionAeronaveFilaViewModel> AeronavesCondiciones { get; set; } = new List<AocrCondicionAeronaveFilaViewModel>();
     }
 
+    public class AocrDocumentoValidacionNoDisponibleViewModel
+    {
+        public int SolicitudId { get; set; }
+        public string TipoDocumento { get; set; }
+        public string NumeroSolicitud { get; set; }
+        public string NumeroAocr { get; set; }
+        public string NombreExplotador { get; set; }
+        public string EstadoSolicitud { get; set; }
+        public string Motivo { get; set; }
+        public string Referencia { get; set; }
+        public bool PuedeVolverBandeja { get; set; } = true;
+        public bool PuedeAbrirExpediente { get; set; }
+    }
+
     public class AocrFirmaPosicionEdicionViewModel
     {
         public int SolicitudId { get; set; }

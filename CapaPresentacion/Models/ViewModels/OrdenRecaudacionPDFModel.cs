@@ -77,4 +77,21 @@ namespace CapaPresentacion.Models.ViewModels
             TotalEnLetras = Total.ToString("N2");
         }
     }
+
+    public class SolicitudInspeccionPdfViewModel
+    {
+        public int OrdenId { get; set; }
+        public int? SolicitudId { get; set; }
+        public string NombreRT { get; set; }
+        public string NombreCompania { get; set; }
+        public string AeropuertosSolicitados { get; set; }
+        public DateTime FechaSolicitud { get; set; }
+        public string LugarEmision { get; set; }
+        public string CorreoRT { get; set; }
+        public string TelefonoRT { get; set; }
+        public string RucCedula { get; set; }
+        public string CodigoConcepto { get; set; }
+        public string NumeroOrden { get; set; }
+        public string TextoResolucion { get; set; }
+    }
 }

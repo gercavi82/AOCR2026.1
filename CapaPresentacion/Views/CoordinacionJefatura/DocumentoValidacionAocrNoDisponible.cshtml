@@ -1,0 +1,67 @@
+@model CapaPresentacion.Models.AocrDocumentoValidacionNoDisponibleViewModel
+
+@{
+    Layout = "~/Views/Shared/_LayoutAOCR.cshtml";
+    ViewBag.Title = "Documento AOCR no disponible";
+}
+
+<div class="container-fluid py-3">
+    <div class="card border-0 shadow-sm">
+        <div class="card-header bg-warning text-dark">
+            <h4 class="mb-0">
+                <i class="fas fa-exclamation-triangle mr-2"></i>
+                Documento AOCR no disponible
+            </h4>
+        </div>
+        <div class="card-body">
+            <p class="lead mb-3">
+                No se puede abrir la edici&oacute;n del documento AOCR porque falta:
+                <strong>@(Model != null && !string.IsNullOrWhiteSpace(Model.Motivo) ? Model.Motivo : "informaci&oacute;n requerida para esta etapa.")</strong>
+            </p>
+
+            <div class="table-responsive">
+                <table class="table table-sm table-bordered mb-0">
+                    <tbody>
+                        <tr>
+                            <th style="width: 220px;">Solicitud</th>
+                            <td>@(Model != null && !string.IsNullOrWhiteSpace(Model.NumeroSolicitud) ? Model.NumeroSolicitud : (Model != null ? Model.SolicitudId.ToString() : "No registrada"))</td>
+                        </tr>
+                        <tr>
+                            <th>Tipo documento</th>
+                            <td>@(Model != null && !string.IsNullOrWhiteSpace(Model.TipoDocumento) ? Model.TipoDocumento : "No registrado")</td>
+                        </tr>
+                        <tr>
+                            <th>Explotador</th>
+                            <td>@(Model != null && !string.IsNullOrWhiteSpace(Model.NombreExplotador) ? Model.NombreExplotador : "No registrado")</td>
+                        </tr>
+                        <tr>
+                            <th>Estado solicitud</th>
+                            <td>@(Model != null && !string.IsNullOrWhiteSpace(Model.EstadoSolicitud) ? Model.EstadoSolicitud : "No registrado")</td>
+                        </tr>
+                        @if (Model != null && !string.IsNullOrWhiteSpace(Model.Referencia))
+                        {
+                            <tr>
+                                <th>Referencia t&eacute;cnica</th>
+                                <td>@Model.Referencia</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        <div class="card-footer bg-white d-flex flex-wrap gap-2">
+            @if (Model == null || Model.PuedeVolverBandeja)
+            {
+                <a class="btn btn-primary" href="@Url.Action("ValidarAocr", "CoordinacionJefatura")">
+                    <i class="fas fa-list mr-1"></i> Volver a validaci&oacute;n AOCR
+                </a>
+            }
+            @if (Model != null && Model.PuedeAbrirExpediente)
+            {
+                <a class="btn btn-outline-secondary" href="@Url.Action("Detalle", "SolicitudAOCR", new { id = Model.SolicitudId })">
+                    <i class="fas fa-folder-open mr-1"></i> Abrir expediente
+                </a>
+            }
+        </div>
+    </div>
+</div>
