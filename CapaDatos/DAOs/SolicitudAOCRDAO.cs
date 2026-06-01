@@ -1185,6 +1185,21 @@ WHERE codigo_solicitud=@id AND deleted_at IS NULL;";
                                 _logger.LogWarning("[GestionInspeccion] PuedeGestionar=False. Motivo=No se actualizo solicitud en PG. SolicitudId=" + codigoSolicitud);
                                 throw new Exception("No fue posible actualizar la solicitud AOCR para registrar la asignación.");
                             }
+
+                            _logger.LogInfo(
+                                "[DOC_FLOW] SolicitudId=" + codigoSolicitud +
+                                " EstadoAnterior=" + (estadoAnterior ?? string.Empty) +
+                                " EstadoNuevo=" + (estadoNuevo ?? string.Empty) +
+                                " ResponsableAnterior=COORDINADOR" +
+                                " ResponsableNuevo=INSPECTOR" +
+                                " Usuario=" + actorAsignador +
+                                " Rol=COORDINADOR" +
+                                " Accion=ENVIAR_A_INSPECTOR" +
+                                " InspectorAsignado=" + principalCedulaPersist +
+                                " TotalDocumentos=0" +
+                                " Pendientes=0" +
+                                " Observados=0" +
+                                " MotivoBloqueo=");
                         }
 
                         int codigoInspeccion;

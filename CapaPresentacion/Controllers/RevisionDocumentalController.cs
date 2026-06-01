@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Net;
 using System.Web.Mvc;
@@ -37,37 +38,47 @@ namespace CapaPresentacion.Controllers
         {
             var solicitudes = new List<RevisionDocumentalSolicitudRowViewModel>();
             var solicitudesRegistradas = new HashSet<int>();
+            var contextoInspector = ConstruirContextoInspectorActual();
+            var codigoSolicitudes = EsAdmin()
+                ? _revisionDocumentalDao.ObtenerPendientesRevisionInspector(Enumerable.Empty<int>(), Enumerable.Empty<string>(), true)
+                : _revisionDocumentalDao.ObtenerPendientesRevisionInspector(contextoInspector.Ids, contextoInspector.Identificadores);
 
-            foreach (var inspectorId in ObtenerIdsInspectorActual().Where(id => id > 0))
+            foreach (var codigoSolicitud in codigoSolicitudes ?? Enumerable.Empty<int>())
             {
-                var codigoSolicitudes = _revisionDocumentalDao.ObtenerPendientesRevisionInspector(inspectorId) ?? new List<int>();
-                foreach (var codigoSolicitud in codigoSolicitudes)
+                if (!solicitudesRegistradas.Add(codigoSolicitud))
                 {
-                    if (!solicitudesRegistradas.Add(codigoSolicitud))
-                    {
-                        continue;
-                    }
-
-                    var solicitud = _solicitudDao.ObtenerPorId(codigoSolicitud);
-                    if (solicitud == null || !PuedeAccederRevisionDocumental(solicitud))
-                    {
-                        continue;
-                    }
-
-                    var fila = ConstruirFilaRevisionDocumental(solicitud);
-                    if (fila == null)
-                    {
-                        continue;
-                    }
-
-                    if (string.Equals(fila.EstadoDocumentalCodigo, "DOCUMENTACION_APROBADA", StringComparison.OrdinalIgnoreCase))
-                    {
-                        continue;
-                    }
-
-                    solicitudes.Add(fila);
+                    continue;
                 }
+
+                var solicitud = _solicitudDao.ObtenerPorId(codigoSolicitud);
+                var estadoRevision = solicitud != null
+                    ? _solicitudAocrInfraBl.ObtenerEstadoRevisionDocumental(solicitud.CodigoSolicitud)
+                    : null;
+
+                if (solicitud == null || !PuedeAccederRevisionDocumental(solicitud, estadoRevision, contextoInspector))
+                {
+                    continue;
+                }
+
+                var fila = ConstruirFilaRevisionDocumental(solicitud, estadoRevision);
+                if (fila == null)
+                {
+                    continue;
+                }
+
+                if (string.Equals(fila.EstadoDocumentalCodigo, "DOCUMENTACION_APROBADA", StringComparison.OrdinalIgnoreCase))
+                {
+                    continue;
+                }
+
+                solicitudes.Add(fila);
             }
+
+            Trace.TraceInformation(
+                "[DOC_FLOW] Accion=BANDEJA_INSPECTOR; Usuario=" + (Session["CodigoUsuario"] ?? User.Identity.Name ?? string.Empty) +
+                "; TotalSolicitudes=" + solicitudes.Count +
+                "; InspectorIds=" + string.Join(",", contextoInspector.Ids.OrderBy(x => x)) +
+                "; Identificadores=" + string.Join(",", contextoInspector.Identificadores.OrderBy(x => x)));
 
             var modelo = new RevisionDocumentalIndexViewModel
             {
@@ -102,7 +113,7 @@ namespace CapaPresentacion.Controllers
             return RedirectToAction("Lista", "Documento", new { solicitudId = id, modo = "revision" });
         }
 
-        private RevisionDocumentalSolicitudRowViewModel ConstruirFilaRevisionDocumental(SolicitudAOCR solicitud)
+        private RevisionDocumentalSolicitudRowViewModel ConstruirFilaRevisionDocumental(SolicitudAOCR solicitud, EstadoRevisionDocumental estadoRevision)
         {
             if (solicitud == null)
             {
@@ -110,7 +121,8 @@ namespace CapaPresentacion.Controllers
             }
 
             var documentos = ObtenerDocumentosVigentes(_documentoBl.ObtenerPorSolicitud(solicitud.CodigoSolicitud));
-            var estadoRevision = _solicitudAocrInfraBl.ObtenerEstadoRevisionDocumental(solicitud.CodigoSolicitud)
+            estadoRevision = estadoRevision
+                ?? _solicitudAocrInfraBl.ObtenerEstadoRevisionDocumental(solicitud.CodigoSolicitud)
                 ?? new EstadoRevisionDocumental { CodigoSolicitud = solicitud.CodigoSolicitud, TienePendientes = true };
 
             var estadoDocumental = ResolverEstadoDocumental(estadoRevision, documentos.Count);
@@ -145,6 +157,14 @@ namespace CapaPresentacion.Controllers
 
         private bool PuedeAccederRevisionDocumental(SolicitudAOCR solicitud)
         {
+            return PuedeAccederRevisionDocumental(
+                solicitud,
+                solicitud != null ? _solicitudAocrInfraBl.ObtenerEstadoRevisionDocumental(solicitud.CodigoSolicitud) : null,
+                ConstruirContextoInspectorActual());
+        }
+
+        private bool PuedeAccederRevisionDocumental(SolicitudAOCR solicitud, EstadoRevisionDocumental estadoRevision, InspectorIdentityContext contextoInspector)
+        {
             if (solicitud == null)
             {
                 return false;
@@ -155,20 +175,37 @@ namespace CapaPresentacion.Controllers
                 return true;
             }
 
-            var inspectorIds = ObtenerIdsInspectorActual();
-            if (solicitud.CodigoTecnico.HasValue && inspectorIds.Contains(solicitud.CodigoTecnico.Value))
+            if (estadoRevision == null || !estadoRevision.VisibleEnBandejaInspector)
+            {
+                return false;
+            }
+
+            var inspectorIds = contextoInspector != null ? contextoInspector.Ids : new HashSet<int>();
+            var identificadores = contextoInspector != null ? contextoInspector.Identificadores : new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            if ((solicitud.CodigoTecnico.HasValue && inspectorIds.Contains(solicitud.CodigoTecnico.Value))
+                || CoincideIdentificadorInspector(solicitud.TecnicoResponsableCedula, identificadores)
+                || CoincideIdentificadorInspector(solicitud.InspectorApoyoCedula, identificadores))
             {
                 return true;
             }
 
             var inspecciones = _solicitudAocrInfraBl.ListarInspeccionesPorSolicitud(solicitud.CodigoSolicitud) ?? new List<Inspeccion>();
             return inspecciones.Any(inspeccion =>
-                inspeccion != null && inspeccion.CodigoInspector.HasValue && inspectorIds.Contains(inspeccion.CodigoInspector.Value));
+                inspeccion != null
+                && ((inspeccion.CodigoInspector.HasValue && inspectorIds.Contains(inspeccion.CodigoInspector.Value))
+                    || CoincideIdentificadorInspector(inspeccion.InspectorPrincipalCedula, identificadores)
+                    || CoincideIdentificadorInspector(inspeccion.InspectorApoyoCedula, identificadores)));
         }
 
         private HashSet<int> ObtenerIdsInspectorActual()
         {
+            return ConstruirContextoInspectorActual().Ids;
+        }
+
+        private InspectorIdentityContext ConstruirContextoInspectorActual()
+        {
             var ids = new HashSet<int>();
+            var identificadores = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
             var usuarioIdActual = ObtenerIdUsuarioActual();
             var codigoUsuarioTexto = ObtenerCodigoUsuarioSesion();
             var codigoUsuarioNumerico = ObtenerCodigoUsuario();
@@ -177,6 +214,8 @@ namespace CapaPresentacion.Controllers
             {
                 ids.Add(usuarioIdActual);
             }
+
+            AgregarIdentificadorInspector(identificadores, codigoUsuarioTexto);
 
             try
             {
@@ -203,12 +242,18 @@ namespace CapaPresentacion.Controllers
                     if (inspectorActual.UsuarioId.HasValue && inspectorActual.UsuarioId.Value > 0)
                     {
                         ids.Add(inspectorActual.UsuarioId.Value);
+                        AgregarIdentificadorInspector(identificadores, inspectorActual.UsuarioId.Value.ToString());
                     }
 
                     if (inspectorActual.TecnicoId.HasValue && inspectorActual.TecnicoId.Value > 0)
                     {
                         ids.Add(inspectorActual.TecnicoId.Value);
+                        AgregarIdentificadorInspector(identificadores, inspectorActual.TecnicoId.Value.ToString());
                     }
+
+                    AgregarIdentificadorInspector(identificadores, inspectorActual.CodigoUsuario);
+                    AgregarIdentificadorInspector(identificadores, inspectorActual.Identificacion);
+                    AgregarIdentificadorInspector(identificadores, inspectorActual.UsuarioLogin);
                 }
             }
             catch
@@ -219,9 +264,14 @@ namespace CapaPresentacion.Controllers
             if (codigoUsuarioNumerico > 0)
             {
                 ids.Add(codigoUsuarioNumerico);
+                AgregarIdentificadorInspector(identificadores, codigoUsuarioNumerico.ToString());
             }
 
-            return ids;
+            return new InspectorIdentityContext
+            {
+                Ids = ids,
+                Identificadores = identificadores
+            };
         }
 
         private List<Documento> ObtenerDocumentosVigentes(IEnumerable<Documento> documentos)
@@ -353,6 +403,23 @@ namespace CapaPresentacion.Controllers
             return User != null && User.IsInRole("Administrador");
         }
 
+        private static bool CoincideIdentificadorInspector(string valor, HashSet<string> identificadores)
+        {
+            return !string.IsNullOrWhiteSpace(valor)
+                && identificadores != null
+                && identificadores.Contains(valor.Trim().ToUpperInvariant());
+        }
+
+        private static void AgregarIdentificadorInspector(HashSet<string> identificadores, string valor)
+        {
+            if (identificadores == null || string.IsNullOrWhiteSpace(valor))
+            {
+                return;
+            }
+
+            identificadores.Add(valor.Trim().ToUpperInvariant());
+        }
+
         private int ObtenerCodigoUsuario()
         {
             int id;
@@ -379,6 +446,12 @@ namespace CapaPresentacion.Controllers
             }
 
             return string.Empty;
+        }
+
+        private sealed class InspectorIdentityContext
+        {
+            public HashSet<int> Ids { get; set; }
+            public HashSet<string> Identificadores { get; set; }
         }
     }
 }

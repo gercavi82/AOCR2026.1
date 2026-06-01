@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Net;
@@ -740,8 +741,8 @@ namespace CapaPresentacion.Controllers
             var esAdmin = roles.Any(r => RoleGroupingHelper.IsAdministrador(r));
             var esCoordinacion = roles.Any(r => RoleGroupingHelper.IsCoordinacion(r));
             var esPropietario = usuarioId > 0 && solicitud != null && solicitud.CodigoUsuario == usuarioId;
-            var esInspectorAsignado = usuarioId > 0 && inspecciones
-                .Any(i => i != null && i.CodigoInspector.HasValue && i.CodigoInspector.Value == usuarioId);
+            var identidadInspector = ConstruirIdentidadInspectorActual(usuarioId);
+            var esInspectorAsignado = EsInspectorAsignadoActual(solicitud, inspecciones, identidadInspector);
 
             return esAdmin || esCoordinacion || esPropietario || esInspectorAsignado;
         }
@@ -755,14 +756,25 @@ namespace CapaPresentacion.Controllers
 
             var roles = ObtenerRolesActuales();
             var esAdmin = roles.Any(r => RoleGroupingHelper.IsAdministrador(r));
-            var esCoordinacion = roles.Any(r => RoleGroupingHelper.IsCoordinacion(r))
-                                || (User != null && User.IsInRole("CoordinadorInspecciones"));
-            var esInspectorAsignado = usuarioId > 0
-                                      && inspeccionVinculada != null
-                                      && inspeccionVinculada.CodigoInspector.HasValue
-                                      && inspeccionVinculada.CodigoInspector.Value == usuarioId;
+            if (esAdmin)
+            {
+                return true;
+            }
 
-            return esAdmin || esCoordinacion || esInspectorAsignado;
+            var estadoRevision = _solicitudAocrInfraBL.ObtenerEstadoRevisionDocumental(solicitud.CodigoSolicitud)
+                ?? new EstadoRevisionDocumental();
+            var inspecciones = _solicitudAocrInfraBL.ListarInspeccionesPorSolicitud(solicitud.CodigoSolicitud) ?? new List<Inspeccion>();
+            var identidadInspector = ConstruirIdentidadInspectorActual(usuarioId);
+            var esInspectorAsignado = EsInspectorAsignadoActual(solicitud, inspecciones, identidadInspector);
+
+            Trace.TraceInformation(
+                "[DOC_FLOW] Accion=EVALUAR_REVISION_DOCUMENTO; SolicitudId=" + solicitud.CodigoSolicitud +
+                "; UsuarioId=" + usuarioId +
+                "; ResponsableActual=" + (estadoRevision.ResponsableActual ?? string.Empty) +
+                "; Flujo=" + (estadoRevision.FlujoDocumentalCodigo ?? string.Empty) +
+                "; EsInspectorAsignado=" + esInspectorAsignado);
+
+            return esInspectorAsignado && estadoRevision.VisibleEnBandejaInspector;
         }
 
         private bool PuedeReabrirRevisionDocumental(SolicitudAOCR solicitud, int usuarioId)
@@ -776,6 +788,115 @@ namespace CapaPresentacion.Controllers
             return roles.Any(r => RoleGroupingHelper.IsAdministrador(r))
                    || roles.Any(r => RoleGroupingHelper.IsCoordinacion(r))
                    || (User != null && User.IsInRole("CoordinadorInspecciones"));
+        }
+
+        private InspectorIdentityContext ConstruirIdentidadInspectorActual(int usuarioId)
+        {
+            var ids = new HashSet<int>();
+            var identificadores = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+            if (usuarioId > 0)
+            {
+                ids.Add(usuarioId);
+                AgregarIdentificadorInspector(identificadores, usuarioId.ToString());
+            }
+
+            AgregarIdentificadorInspector(identificadores, (Session["CodigoUsuario"] ?? string.Empty).ToString());
+            if (User != null && User.Identity != null && User.Identity.IsAuthenticated)
+            {
+                AgregarIdentificadorInspector(identificadores, User.Identity.Name);
+            }
+
+            try
+            {
+                var usuarioInternoRtDao = new UsuarioInternoRTDAO();
+                var inspectorActual = usuarioId > 0
+                    ? usuarioInternoRtDao.ObtenerInspectorActivoPorTecnicoIdOUsuarioId(usuarioId)
+                    : null;
+
+                if (inspectorActual == null)
+                {
+                    var codigoUsuario = (Session["CodigoUsuario"] ?? string.Empty).ToString();
+                    if (!string.IsNullOrWhiteSpace(codigoUsuario))
+                    {
+                        inspectorActual = usuarioInternoRtDao.ObtenerActivoPorCodigoUsuario(codigoUsuario)
+                            ?? usuarioInternoRtDao.ObtenerInspectorAsignableActivo(codigoUsuario);
+                    }
+                }
+
+                if (inspectorActual != null)
+                {
+                    if (inspectorActual.UsuarioId.HasValue && inspectorActual.UsuarioId.Value > 0)
+                    {
+                        ids.Add(inspectorActual.UsuarioId.Value);
+                        AgregarIdentificadorInspector(identificadores, inspectorActual.UsuarioId.Value.ToString());
+                    }
+
+                    if (inspectorActual.TecnicoId.HasValue && inspectorActual.TecnicoId.Value > 0)
+                    {
+                        ids.Add(inspectorActual.TecnicoId.Value);
+                        AgregarIdentificadorInspector(identificadores, inspectorActual.TecnicoId.Value.ToString());
+                    }
+
+                    AgregarIdentificadorInspector(identificadores, inspectorActual.CodigoUsuario);
+                    AgregarIdentificadorInspector(identificadores, inspectorActual.Identificacion);
+                    AgregarIdentificadorInspector(identificadores, inspectorActual.UsuarioLogin);
+                }
+            }
+            catch
+            {
+            }
+
+            return new InspectorIdentityContext
+            {
+                Ids = ids,
+                Identificadores = identificadores
+            };
+        }
+
+        private static bool EsInspectorAsignadoActual(SolicitudAOCR solicitud, IEnumerable<Inspeccion> inspecciones, InspectorIdentityContext identidad)
+        {
+            if (identidad == null)
+            {
+                return false;
+            }
+
+            if (solicitud != null)
+            {
+                if (solicitud.CodigoTecnico.HasValue && identidad.Ids.Contains(solicitud.CodigoTecnico.Value))
+                {
+                    return true;
+                }
+
+                if (CoincideIdentificadorInspector(solicitud.TecnicoResponsableCedula, identidad.Identificadores)
+                    || CoincideIdentificadorInspector(solicitud.InspectorApoyoCedula, identidad.Identificadores))
+                {
+                    return true;
+                }
+            }
+
+            return (inspecciones ?? Enumerable.Empty<Inspeccion>())
+                .Any(i => i != null
+                    && ((i.CodigoInspector.HasValue && identidad.Ids.Contains(i.CodigoInspector.Value))
+                        || CoincideIdentificadorInspector(i.InspectorPrincipalCedula, identidad.Identificadores)
+                        || CoincideIdentificadorInspector(i.InspectorApoyoCedula, identidad.Identificadores)));
+        }
+
+        private static bool CoincideIdentificadorInspector(string valor, HashSet<string> identificadores)
+        {
+            return !string.IsNullOrWhiteSpace(valor)
+                && identificadores != null
+                && identificadores.Contains(valor.Trim().ToUpperInvariant());
+        }
+
+        private static void AgregarIdentificadorInspector(HashSet<string> identificadores, string valor)
+        {
+            if (identificadores == null || string.IsNullOrWhiteSpace(valor))
+            {
+                return;
+            }
+
+            identificadores.Add(valor.Trim().ToUpperInvariant());
         }
 
         private static bool EsModoRevisionDocumental(string modo)
@@ -1092,6 +1213,12 @@ namespace CapaPresentacion.Controllers
             }
 
             return "__DOC_" + documento.CodigoDocumento;
+        }
+
+        private sealed class InspectorIdentityContext
+        {
+            public HashSet<int> Ids { get; set; }
+            public HashSet<string> Identificadores { get; set; }
         }
 
         private static string ObtenerEtiquetaDocumento(Documento documento)

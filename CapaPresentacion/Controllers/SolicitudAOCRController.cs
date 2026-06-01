@@ -2539,7 +2539,7 @@ namespace CapaPresentacion.Controllers
                 return new HttpStatusCodeResult(403, "No tiene permisos para consultar esta bandeja.");
             }
 
-            filtros = filtros ?? new AocrGeneradasFirmadasFiltroViewModel();
+            filtros = NormalizarFiltrosBandeja(filtros ?? new AocrGeneradasFirmadasFiltroViewModel());
             if (filtros.Page <= 0)
             {
                 filtros.Page = 1;
@@ -2552,22 +2552,63 @@ namespace CapaPresentacion.Controllers
 
             filtros.PageSize = Math.Min(filtros.PageSize, 50);
 
-            LogBL.RegistrarInfo(
-                $"[AOCR_BANDEJA] Inicio Usuario={Session["Usuario"] ?? User.Identity.Name} Roles={Session["RolesRaw"] ?? Session["Roles"] ?? Session["Rol"]} EsAdmin={contexto.EsAdministrador} Filtros={JsonConvert.SerializeObject(filtros)}",
-                "SolicitudAOCRController");
+            LogBL.RegistrarInfo("[AOCR_BANDEJA] Inicio GeneradasFirmadas", "SolicitudAOCRController");
+            LogBL.RegistrarInfo($"[AOCR_BANDEJA] Usuario={Session["Usuario"] ?? User.Identity.Name}", "SolicitudAOCRController");
+            LogBL.RegistrarInfo($"[AOCR_BANDEJA] Roles={Session["RolesRaw"] ?? Session["Roles"] ?? Session["Rol"]}", "SolicitudAOCRController");
+            LogBL.RegistrarInfo($"[AOCR_BANDEJA] EsAdmin={contexto.EsAdministrador}", "SolicitudAOCRController");
+            LogBL.RegistrarInfo($"[AOCR_BANDEJA] CompaniaActiva={contexto.CompaniaActivaCodigo ?? string.Empty}", "SolicitudAOCRController");
+            LogBL.RegistrarInfo($"[AOCR_BANDEJA] FiltroTexto={filtros.Search ?? string.Empty}", "SolicitudAOCRController");
+            LogBL.RegistrarInfo($"[AOCR_BANDEJA] FiltroEstadoFinal={filtros.EstadoFinal ?? string.Empty}", "SolicitudAOCRController");
+            LogBL.RegistrarInfo($"[AOCR_BANDEJA] FiltroEstadoFirma={filtros.EstadoFirma ?? string.Empty}", "SolicitudAOCRController");
+            LogBL.RegistrarInfo($"[AOCR_BANDEJA] FiltroTipoTramite={filtros.TipoTramite ?? string.Empty}", "SolicitudAOCRController");
+            LogBL.RegistrarInfo($"[AOCR_BANDEJA] SQLParametros=consulta base sin parametros SQL; filtros aplicados en controlador {JsonConvert.SerializeObject(new { filtros.Search, filtros.EstadoFinal, filtros.EstadoFirma, filtros.TipoTramite, filtros.SoloConPdf })}", "SolicitudAOCRController");
 
             List<AocrGeneradasFirmadasRowViewModel> visibles;
+            int totalBaseSinFiltros = 0;
+            int totalDespuesRol = 0;
+            int totalDespuesTextoTipo = 0;
+            int totalDespuesEstado = 0;
+            int totalDespuesPdf = 0;
+            string estadosEncontrados = string.Empty;
+            string motivoSinRegistros = string.Empty;
             try
             {
                 var filas = _aocrBandejaDao.ListarGeneradasFirmadas() ?? new List<AocrBandejaDocumentoRow>();
-                visibles = filas
+                totalBaseSinFiltros = filas.Count;
+                estadosEncontrados = ResumirEstadosBandeja(filas);
+
+                var filasRol = filas
                     .Where(x => DebeMostrarFilaBandeja(x, contexto))
+                    .ToList();
+
+                totalDespuesRol = filasRol.Count;
+
+                var visiblesRol = filasRol
                     .Select(x => MapearFilaBandeja(x, contexto))
                     .ToList();
 
-                LogBL.RegistrarInfo(
-                    $"[AOCR_BANDEJA] SQLColumnCheck=OK TotalRegistrosDAO={filas.Count} TotalVisiblesRol={visibles.Count}",
-                    "SolicitudAOCRController");
+                var visiblesTextoTipo = AplicarFiltrosBusquedaYTipoBandeja(visiblesRol, filtros);
+                totalDespuesTextoTipo = visiblesTextoTipo.Count;
+
+                var visiblesEstado = AplicarFiltrosEstadoBandeja(visiblesTextoTipo, filtros);
+                totalDespuesEstado = visiblesEstado.Count;
+
+                visibles = AplicarFiltroPdfBandeja(visiblesEstado, filtros);
+                totalDespuesPdf = visibles.Count;
+                motivoSinRegistros = ResolverMotivoSinRegistros(totalBaseSinFiltros, totalDespuesRol, totalDespuesTextoTipo, totalDespuesEstado, totalDespuesPdf);
+
+                LogBL.RegistrarInfo($"[AOCR_BANDEJA] TotalBaseSinFiltros={totalBaseSinFiltros}", "SolicitudAOCRController");
+                LogBL.RegistrarInfo($"[AOCR_BANDEJA] TotalDespuesRol={totalDespuesRol}", "SolicitudAOCRController");
+                LogBL.RegistrarInfo($"[AOCR_BANDEJA] TotalDespuesEstado={totalDespuesEstado}", "SolicitudAOCRController");
+                LogBL.RegistrarInfo($"[AOCR_BANDEJA] TotalDespuesPdf={totalDespuesPdf}", "SolicitudAOCRController");
+                LogBL.RegistrarInfo($"[AOCR_BANDEJA] TotalFinal={visibles.Count}", "SolicitudAOCRController");
+                LogBL.RegistrarInfo($"[AOCR_BANDEJA] EstadosEncontrados={estadosEncontrados}", "SolicitudAOCRController");
+                LogBL.RegistrarInfo($"[AOCR_BANDEJA] MotivoSinRegistros={motivoSinRegistros}", "SolicitudAOCRController");
+
+                if (contexto.EsAdministrador && totalBaseSinFiltros > 0 && visibles.Count == 0 && TieneEstadosAocrDetectados(filas))
+                {
+                    LogBL.RegistrarAdvertencia("[AOCR_BANDEJA] ALERTA: existen estados AOCR detectados pero la bandeja no los muestra.", "SolicitudAOCRController");
+                }
             }
             catch (PostgresException ex)
             {
@@ -2587,8 +2628,6 @@ namespace CapaPresentacion.Controllers
                 TempData["Error"] = "No se pudo cargar la bandeja AOCR. Revise la consulta de datos.";
                 return View(CrearModeloBandejaVacio(filtros, contexto));
             }
-
-            visibles = AplicarFiltrosBandeja(visibles, filtros);
 
             var totalRegistros = visibles.Count;
             var totalFirmadas = visibles.Count(x => string.Equals(x.EstadoFinal, "Firmado", StringComparison.OrdinalIgnoreCase)
@@ -2626,6 +2665,8 @@ namespace CapaPresentacion.Controllers
                 EsCoordinacion = contexto.EsCoordinacion,
                 EsDireccion = contexto.EsDireccion
             };
+
+            ConfigurarEmptyStateBandeja(model, totalBaseSinFiltros, totalDespuesRol, totalDespuesTextoTipo, totalDespuesEstado, totalDespuesPdf);
 
             model.EstadosFinales = ConstruirOpcionesFiltro(visibles.Select(x => x.EstadoFinal), filtros.EstadoFinal, "Todos los estados finales");
             model.EstadosFirma = ConstruirOpcionesFiltro(visibles.Select(x => x.EstadoFirma), filtros.EstadoFirma, "Todos los estados de firma");
@@ -2672,6 +2713,8 @@ namespace CapaPresentacion.Controllers
                 EsInspector = contexto.EsInspector,
                 EsCoordinacion = contexto.EsCoordinacion,
                 EsDireccion = contexto.EsDireccion,
+                EmptyStateTitle = "No existen AOCR generadas o firmadas para los criterios seleccionados.",
+                EmptyStateMessage = "La bandeja no encontró registros visibles para el rol actual o para los filtros enviados.",
                 EstadosFinales = ConstruirOpcionesFiltro(Enumerable.Empty<string>(), filtros.EstadoFinal, "Todos los estados finales"),
                 EstadosFirma = ConstruirOpcionesFiltro(Enumerable.Empty<string>(), filtros.EstadoFirma, "Todos los estados de firma"),
                 TiposTramite = ConstruirOpcionesFiltro(Enumerable.Empty<string>(), filtros.TipoTramite, "Todos los trámites")
@@ -2803,6 +2846,13 @@ namespace CapaPresentacion.Controllers
                 return RedirectToAction("Detalle", new { id });
             }
 
+            if (!UsuarioPuedeOperarRevisionDocumental(solicitud))
+            {
+                TempData["NotificacionTipo"] = "warning";
+                TempData["NotificacionMensaje"] = "Solo el inspector asignado puede registrar decisiones documentales en esta etapa.";
+                return RedirectToAction("Detalle", new { id });
+            }
+
             var documento = _documentoDAO.ObtenerPorId(codigoDocumento);
             if (documento == null || documento.CodigoSolicitud != id)
             {
@@ -2883,6 +2933,13 @@ namespace CapaPresentacion.Controllers
             {
                 TempData["NotificacionTipo"] = "warning";
                 TempData["NotificacionMensaje"] = "La solicitud no se encuentra en una etapa habilitada para revisión documental.";
+                return RedirectToAction("Detalle", new { id });
+            }
+
+            if (!UsuarioPuedeOperarRevisionDocumental(solicitud))
+            {
+                TempData["NotificacionTipo"] = "warning";
+                TempData["NotificacionMensaje"] = "Solo el inspector asignado puede ejecutar la revisión documental masiva en esta etapa.";
                 return RedirectToAction("Detalle", new { id });
             }
 
@@ -3154,6 +3211,13 @@ namespace CapaPresentacion.Controllers
             {
                 TempData["NotificacionTipo"] = "warning";
                 TempData["NotificacionMensaje"] = "La solicitud no se encuentra en una etapa habilitada para cerrar la revisión documental.";
+                return RedirectToAction("Detalle", new { id });
+            }
+
+            if (!UsuarioPuedeOperarRevisionDocumental(solicitud))
+            {
+                TempData["NotificacionTipo"] = "warning";
+                TempData["NotificacionMensaje"] = "Solo el inspector asignado puede cerrar la revisión documental en esta etapa.";
                 return RedirectToAction("Detalle", new { id });
             }
 
@@ -4357,6 +4421,22 @@ namespace CapaPresentacion.Controllers
                 return filtrados;
             }
 
+            filtrados = AplicarFiltrosBusquedaYTipoBandeja(filtrados, filtros);
+            filtrados = AplicarFiltrosEstadoBandeja(filtrados, filtros);
+            filtrados = AplicarFiltroPdfBandeja(filtrados, filtros);
+            return filtrados;
+        }
+
+        private List<AocrGeneradasFirmadasRowViewModel> AplicarFiltrosBusquedaYTipoBandeja(
+            List<AocrGeneradasFirmadasRowViewModel> items,
+            AocrGeneradasFirmadasFiltroViewModel filtros)
+        {
+            var filtrados = items ?? new List<AocrGeneradasFirmadasRowViewModel>();
+            if (filtros == null)
+            {
+                return filtrados;
+            }
+
             if (!string.IsNullOrWhiteSpace(filtros.Search))
             {
                 var texto = filtros.Search.Trim();
@@ -4384,12 +4464,177 @@ namespace CapaPresentacion.Controllers
                 filtrados = filtrados.Where(x => string.Equals(x.TipoTramite, filtros.TipoTramite, StringComparison.OrdinalIgnoreCase)).ToList();
             }
 
+            return filtrados;
+        }
+
+        private List<AocrGeneradasFirmadasRowViewModel> AplicarFiltrosEstadoBandeja(
+            List<AocrGeneradasFirmadasRowViewModel> items,
+            AocrGeneradasFirmadasFiltroViewModel filtros)
+        {
+            var filtrados = items ?? new List<AocrGeneradasFirmadasRowViewModel>();
+            if (filtros == null)
+            {
+                return filtrados;
+            }
+
+            if (!string.IsNullOrWhiteSpace(filtros.EstadoFinal))
+            {
+                filtrados = filtrados.Where(x => string.Equals(x.EstadoFinal, filtros.EstadoFinal, StringComparison.OrdinalIgnoreCase)).ToList();
+            }
+
+            if (!string.IsNullOrWhiteSpace(filtros.EstadoFirma))
+            {
+                filtrados = filtrados.Where(x => string.Equals(x.EstadoFirma, filtros.EstadoFirma, StringComparison.OrdinalIgnoreCase)).ToList();
+            }
+
+            return filtrados;
+        }
+
+        private List<AocrGeneradasFirmadasRowViewModel> AplicarFiltroPdfBandeja(
+            List<AocrGeneradasFirmadasRowViewModel> items,
+            AocrGeneradasFirmadasFiltroViewModel filtros)
+        {
+            var filtrados = items ?? new List<AocrGeneradasFirmadasRowViewModel>();
+            if (filtros == null)
+            {
+                return filtrados;
+            }
+
             if (string.Equals(filtros.SoloConPdf, "SI", StringComparison.OrdinalIgnoreCase))
             {
                 filtrados = filtrados.Where(x => x.TienePdfFirmado || x.TienePdfPreliminar).ToList();
             }
 
             return filtrados;
+        }
+
+        private AocrGeneradasFirmadasFiltroViewModel NormalizarFiltrosBandeja(AocrGeneradasFirmadasFiltroViewModel filtros)
+        {
+            filtros = filtros ?? new AocrGeneradasFirmadasFiltroViewModel();
+            filtros.Search = (filtros.Search ?? string.Empty).Trim();
+            filtros.EstadoFinal = NormalizarFiltroTodos(filtros.EstadoFinal);
+            filtros.EstadoFirma = NormalizarFiltroTodos(filtros.EstadoFirma);
+            filtros.TipoTramite = NormalizarFiltroTodos(filtros.TipoTramite);
+            filtros.SoloConPdf = NormalizarFiltroTodos(filtros.SoloConPdf);
+            return filtros;
+        }
+
+        private static string NormalizarFiltroTodos(string valor)
+        {
+            if (string.IsNullOrWhiteSpace(valor))
+            {
+                return string.Empty;
+            }
+
+            var limpio = valor.Trim();
+            return limpio.StartsWith("Todos", StringComparison.OrdinalIgnoreCase)
+                ? string.Empty
+                : limpio;
+        }
+
+        private static string ResumirEstadosBandeja(IEnumerable<AocrBandejaDocumentoRow> filas)
+        {
+            var resumen = (filas ?? Enumerable.Empty<AocrBandejaDocumentoRow>())
+                .SelectMany(fila => new[]
+                {
+                    fila != null ? fila.EstadoSolicitudRaw : null,
+                    fila != null ? fila.EstadoCertificadoRaw : null,
+                    fila != null ? fila.EstadoInformeTecnicoRaw : null
+                })
+                .Where(valor => !string.IsNullOrWhiteSpace(valor))
+                .Select(AocrBandejaEstadoHelper.NormalizarEstadoSolicitud)
+                .GroupBy(valor => valor, StringComparer.OrdinalIgnoreCase)
+                .OrderByDescending(grupo => grupo.Count())
+                .ThenBy(grupo => grupo.Key)
+                .Select(grupo => grupo.Key + "=" + grupo.Count())
+                .ToList();
+
+            return resumen.Any() ? string.Join(", ", resumen) : "SIN_ESTADOS";
+        }
+
+        private static bool TieneEstadosAocrDetectados(IEnumerable<AocrBandejaDocumentoRow> filas)
+        {
+            return (filas ?? Enumerable.Empty<AocrBandejaDocumentoRow>())
+                .SelectMany(fila => new[]
+                {
+                    fila != null ? fila.EstadoSolicitudRaw : null,
+                    fila != null ? fila.EstadoCertificadoRaw : null,
+                    fila != null ? fila.EstadoInformeTecnicoRaw : null
+                })
+                .Where(valor => !string.IsNullOrWhiteSpace(valor))
+                .Select(AocrBandejaEstadoHelper.NormalizarEstadoSolicitud)
+                .Any(valor => string.Equals(valor, EstadoSolicitud.AOCR_EnElaboracion, StringComparison.OrdinalIgnoreCase)
+                    || string.Equals(valor, EstadoSolicitud.AOCR_Legalizado, StringComparison.OrdinalIgnoreCase)
+                    || string.Equals(valor, EstadoSolicitud.AOCR_Validado, StringComparison.OrdinalIgnoreCase)
+                    || string.Equals(valor, EstadoSolicitud.AOCR_EnRevision, StringComparison.OrdinalIgnoreCase));
+        }
+
+        private static string ResolverMotivoSinRegistros(int totalBaseSinFiltros, int totalDespuesRol, int totalDespuesTextoTipo, int totalDespuesEstado, int totalDespuesPdf)
+        {
+            if (totalBaseSinFiltros <= 0)
+            {
+                return "No existen AOCR base en el origen consultado.";
+            }
+
+            if (totalDespuesRol <= 0)
+            {
+                return "El filtro por rol, compania activa o asignacion tecnica excluyo todos los registros base.";
+            }
+
+            if (totalDespuesTextoTipo <= 0)
+            {
+                return "Los filtros de busqueda o tipo de tramite eliminaron todos los registros visibles para el rol.";
+            }
+
+            if (totalDespuesEstado <= 0)
+            {
+                return "Los filtros de estado final o estado de firma eliminaron todos los registros visibles.";
+            }
+
+            if (totalDespuesPdf <= 0)
+            {
+                return "El filtro Solo con PDF elimino todos los registros visibles.";
+            }
+
+            return "Sin exclusion adicional.";
+        }
+
+        private static void ConfigurarEmptyStateBandeja(
+            AocrGeneradasFirmadasViewModel model,
+            int totalBaseSinFiltros,
+            int totalDespuesRol,
+            int totalDespuesTextoTipo,
+            int totalDespuesEstado,
+            int totalDespuesPdf)
+        {
+            if (model == null || model.TieneResultados)
+            {
+                return;
+            }
+
+            if (totalBaseSinFiltros <= 0)
+            {
+                model.EmptyStateTitle = "No existen AOCR generadas o firmadas para los criterios seleccionados.";
+                model.EmptyStateMessage = "La consulta base no encontro AOCR en etapas visibles del flujo documental.";
+                return;
+            }
+
+            if (totalDespuesRol <= 0)
+            {
+                model.EmptyStateTitle = "Existen AOCR en el sistema, pero no son visibles para su rol actual.";
+                model.EmptyStateMessage = "Revise el rol seleccionado, la compania activa o la asignacion tecnica asociada al usuario actual.";
+                return;
+            }
+
+            if (totalDespuesTextoTipo <= 0 || totalDespuesEstado <= 0 || totalDespuesPdf <= 0)
+            {
+                model.EmptyStateTitle = "Existen AOCR en el sistema, pero no coinciden con los filtros seleccionados.";
+                model.EmptyStateMessage = "Ajuste los filtros de busqueda, estado, tipo de tramite o PDF para ampliar la bandeja.";
+                return;
+            }
+
+            model.EmptyStateTitle = "No existen AOCR generadas o firmadas para los criterios seleccionados.";
+            model.EmptyStateMessage = "La consulta no encontro registros visibles despues de aplicar los criterios actuales.";
         }
 
         private IList<SelectListItem> ConstruirOpcionesFiltro(IEnumerable<string> valores, string seleccionado, string opcionTodos)
@@ -5975,6 +6220,146 @@ namespace CapaPresentacion.Controllers
         {
             var normalizada = NormalizarDecisionRevisionDocumental(decision);
             return normalizada == "DEVUELTO" || normalizada == "OBSERVADO";
+        }
+
+        private bool UsuarioPuedeOperarRevisionDocumental(SolicitudAOCR solicitud)
+        {
+            if (solicitud == null)
+            {
+                return false;
+            }
+
+            if (User != null && User.IsInRole("Administrador"))
+            {
+                return true;
+            }
+
+            var estadoRevision = _solicitudAocrInfraBL.ObtenerEstadoRevisionDocumental(solicitud.CodigoSolicitud)
+                ?? new EstadoRevisionDocumental();
+            if (!estadoRevision.VisibleEnBandejaInspector)
+            {
+                return false;
+            }
+
+            int usuarioActualId;
+            TryObtenerUsuarioActualId(out usuarioActualId);
+            var identidadInspector = ConstruirIdentidadInspectorActual(usuarioActualId);
+            var inspecciones = _solicitudAocrInfraBL.ListarInspeccionesPorSolicitud(solicitud.CodigoSolicitud) ?? new List<Inspeccion>();
+            return EsInspectorAsignadoActual(solicitud, inspecciones, identidadInspector);
+        }
+
+        private InspectorIdentityContext ConstruirIdentidadInspectorActual(int usuarioId)
+        {
+            var ids = new HashSet<int>();
+            var identificadores = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+            if (usuarioId > 0)
+            {
+                ids.Add(usuarioId);
+                AgregarIdentificadorInspector(identificadores, usuarioId.ToString());
+            }
+
+            AgregarIdentificadorInspector(identificadores, (Session["CodigoUsuario"] ?? string.Empty).ToString());
+            if (User != null && User.Identity != null && User.Identity.IsAuthenticated)
+            {
+                AgregarIdentificadorInspector(identificadores, User.Identity.Name);
+            }
+
+            try
+            {
+                var inspectorActual = usuarioId > 0
+                    ? _usuarioInternoRtDAO.ObtenerInspectorActivoPorTecnicoIdOUsuarioId(usuarioId)
+                    : null;
+
+                if (inspectorActual == null)
+                {
+                    var codigoUsuario = (Session["CodigoUsuario"] ?? string.Empty).ToString();
+                    if (!string.IsNullOrWhiteSpace(codigoUsuario))
+                    {
+                        inspectorActual = _usuarioInternoRtDAO.ObtenerActivoPorCodigoUsuario(codigoUsuario)
+                            ?? _usuarioInternoRtDAO.ObtenerInspectorAsignableActivo(codigoUsuario);
+                    }
+                }
+
+                if (inspectorActual != null)
+                {
+                    if (inspectorActual.UsuarioId.HasValue && inspectorActual.UsuarioId.Value > 0)
+                    {
+                        ids.Add(inspectorActual.UsuarioId.Value);
+                        AgregarIdentificadorInspector(identificadores, inspectorActual.UsuarioId.Value.ToString());
+                    }
+
+                    if (inspectorActual.TecnicoId.HasValue && inspectorActual.TecnicoId.Value > 0)
+                    {
+                        ids.Add(inspectorActual.TecnicoId.Value);
+                        AgregarIdentificadorInspector(identificadores, inspectorActual.TecnicoId.Value.ToString());
+                    }
+
+                    AgregarIdentificadorInspector(identificadores, inspectorActual.CodigoUsuario);
+                    AgregarIdentificadorInspector(identificadores, inspectorActual.Identificacion);
+                    AgregarIdentificadorInspector(identificadores, inspectorActual.UsuarioLogin);
+                }
+            }
+            catch
+            {
+            }
+
+            return new InspectorIdentityContext
+            {
+                Ids = ids,
+                Identificadores = identificadores
+            };
+        }
+
+        private static bool EsInspectorAsignadoActual(SolicitudAOCR solicitud, IEnumerable<Inspeccion> inspecciones, InspectorIdentityContext identidad)
+        {
+            if (identidad == null)
+            {
+                return false;
+            }
+
+            if (solicitud != null)
+            {
+                if (solicitud.CodigoTecnico.HasValue && identidad.Ids.Contains(solicitud.CodigoTecnico.Value))
+                {
+                    return true;
+                }
+
+                if (CoincideIdentificadorInspector(solicitud.TecnicoResponsableCedula, identidad.Identificadores)
+                    || CoincideIdentificadorInspector(solicitud.InspectorApoyoCedula, identidad.Identificadores))
+                {
+                    return true;
+                }
+            }
+
+            return (inspecciones ?? Enumerable.Empty<Inspeccion>())
+                .Any(i => i != null
+                    && ((i.CodigoInspector.HasValue && identidad.Ids.Contains(i.CodigoInspector.Value))
+                        || CoincideIdentificadorInspector(i.InspectorPrincipalCedula, identidad.Identificadores)
+                        || CoincideIdentificadorInspector(i.InspectorApoyoCedula, identidad.Identificadores)));
+        }
+
+        private static bool CoincideIdentificadorInspector(string valor, HashSet<string> identificadores)
+        {
+            return !string.IsNullOrWhiteSpace(valor)
+                && identificadores != null
+                && identificadores.Contains(valor.Trim().ToUpperInvariant());
+        }
+
+        private static void AgregarIdentificadorInspector(HashSet<string> identificadores, string valor)
+        {
+            if (identificadores == null || string.IsNullOrWhiteSpace(valor))
+            {
+                return;
+            }
+
+            identificadores.Add(valor.Trim().ToUpperInvariant());
+        }
+
+        private sealed class InspectorIdentityContext
+        {
+            public HashSet<int> Ids { get; set; }
+            public HashSet<string> Identificadores { get; set; }
         }
 
         private static bool SolicitudEstaCerradaOperativamente(SolicitudAOCR solicitud)

@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Web.Mvc;
 using CapaModelo;
+using CapaDatos.DAOs;
 using CapaNegocio;
 
 namespace CapaPresentacion.Controllers
@@ -14,13 +15,13 @@ namespace CapaPresentacion.Controllers
         {
             try
             {
-                var lista = InformeBL.ObtenerTodos();
-                return View(lista ?? new List<Informe>());
+                var lista = new InspeccionInformeDAO().ListarTodos();
+                return View(lista ?? new List<InspeccionInformeTecnico>());
             }
             catch (Exception ex)
             {
                 TempData["Error"] = "Error al cargar informes: " + ex.Message;
-                return View(new List<Informe>());
+                return View(new List<InspeccionInformeTecnico>());
             }
         }
 

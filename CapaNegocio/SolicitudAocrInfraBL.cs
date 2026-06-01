@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using CapaDatos.Constants;
 using CapaDatos.DAOs;
 using CapaDatos.Entidades;
 using CapaDatos.Models;
@@ -19,6 +20,7 @@ namespace CapaNegocio
         private readonly DocumentoDAO _documentoDao = new DocumentoDAO();
         private readonly HistorialEstadoDAO _historialEstadoDao = new HistorialEstadoDAO();
         private readonly RevisionDocumentalDAO _revisionDocumentalDao = new RevisionDocumentalDAO();
+        private readonly SolicitudAOCRDAO _solicitudDao = new SolicitudAOCRDAO();
         private readonly UsuarioInternoRTDAO _usuarioInternoRtDao = new UsuarioInternoRTDAO();
         private readonly UsuarioAS400DAO _usuarioAs400Dao = new UsuarioAS400DAO(new SecureConfigurationService());
         private readonly EmpresaAS400DAO _empresaAs400Dao = new EmpresaAS400DAO(new SecureConfigurationService());
@@ -86,8 +88,12 @@ namespace CapaNegocio
             {
                 estado.TienePendientes = true;
                 estado.MensajeBloqueoDocumental = "Fase documental pendiente. No se puede continuar porque la solicitud documental no es válida.";
+                AsignarFlujoDocumental(estado, "PENDIENTE_CARGA_DOCUMENTAL", "Pendiente de carga documental", "RT");
                 return estado;
             }
+
+            var solicitud = _solicitudDao.ObtenerPorId(codigoSolicitud);
+            var inspecciones = ListarInspeccionesPorSolicitud(codigoSolicitud);
 
             var documentos = (_documentoDao.ObtenerPorSolicitud(codigoSolicitud) ?? new List<Documento>())
                 .Where(d => d != null && d.CodigoDocumento > 0)
@@ -136,6 +142,7 @@ namespace CapaNegocio
                 || estado.TieneDocumentosSubsanadosPendientes;
             estado.DocumentacionAprobada = estado.TotalDocumentosVigentes > 0 && !estado.TienePendientes;
             estado.MensajeBloqueoDocumental = ConstruirMensajeBloqueoDocumental(estado);
+            ConfigurarFlujoDocumental(estado, solicitud, inspecciones);
 
             return estado;
         }
@@ -177,6 +184,114 @@ namespace CapaNegocio
             return !string.IsNullOrWhiteSpace(tipoDocumento)
                 ? tipoDocumento.ToUpperInvariant()
                 : "__DOC_" + documento.CodigoDocumento;
+        }
+
+        private static void ConfigurarFlujoDocumental(EstadoRevisionDocumental estado, SolicitudAOCR solicitud, IEnumerable<Inspeccion> inspecciones)
+        {
+            if (estado == null)
+            {
+                return;
+            }
+
+            var estadoSolicitud = EstadoSolicitud.Normalizar(solicitud != null ? solicitud.Estado : null);
+            var tieneInspectorAsignado = TieneInspectorAsignado(solicitud, inspecciones);
+
+            if (estado.TotalDocumentosVigentes <= 0)
+            {
+                AsignarFlujoDocumental(estado, "PENDIENTE_CARGA_DOCUMENTAL", "Pendiente de carga documental", "RT");
+                return;
+            }
+
+            if (string.Equals(estadoSolicitud, EstadoSolicitud.AceptacionDocumental, StringComparison.OrdinalIgnoreCase)
+                || string.Equals(estadoSolicitud, EstadoSolicitud.DocumentacionCompleta, StringComparison.OrdinalIgnoreCase)
+                || string.Equals(estadoSolicitud, EstadoSolicitud.RequiereInspeccion, StringComparison.OrdinalIgnoreCase)
+                || string.Equals(estadoSolicitud, EstadoSolicitud.GeneradoCondicionesLimitaciones, StringComparison.OrdinalIgnoreCase)
+                || string.Equals(estadoSolicitud, EstadoSolicitud.FirmadoCoordinador, StringComparison.OrdinalIgnoreCase))
+            {
+                AsignarFlujoDocumental(estado, "REVISADA_POR_INSPECTOR", "Revision completada por inspector", "COORDINADOR");
+                return;
+            }
+
+            if (string.Equals(estadoSolicitud, EstadoSolicitud.Observada, StringComparison.OrdinalIgnoreCase))
+            {
+                AsignarFlujoDocumental(estado, "OBSERVADA_POR_INSPECTOR", "Documentacion observada", "RT");
+                return;
+            }
+
+            if (string.Equals(estadoSolicitud, EstadoSolicitud.Subsanada, StringComparison.OrdinalIgnoreCase))
+            {
+                AsignarFlujoDocumental(
+                    estado,
+                    tieneInspectorAsignado ? "SUBSANADA_POR_RT" : "PENDIENTE_COORDINADOR",
+                    tieneInspectorAsignado ? "Documentacion subsanada" : "Pendiente de coordinador",
+                    tieneInspectorAsignado ? "INSPECTOR" : "COORDINADOR");
+                return;
+            }
+
+            if (string.Equals(estadoSolicitud, EstadoSolicitud.EnRevision, StringComparison.OrdinalIgnoreCase)
+                || string.Equals(estadoSolicitud, EstadoSolicitud.DocumentacionPendiente, StringComparison.OrdinalIgnoreCase)
+                || string.Equals(estadoSolicitud, EstadoSolicitud.EnInspeccion, StringComparison.OrdinalIgnoreCase))
+            {
+                AsignarFlujoDocumental(
+                    estado,
+                    tieneInspectorAsignado ? (estado.TieneDocumentosSubsanadosPendientes ? "SUBSANADA_POR_RT" : "EN_REVISION_INSPECTOR") : "PENDIENTE_COORDINADOR",
+                    tieneInspectorAsignado ? (estado.TieneDocumentosSubsanadosPendientes ? "Documentacion subsanada" : "En revision documental") : "Pendiente de coordinador",
+                    tieneInspectorAsignado ? "INSPECTOR" : "COORDINADOR");
+                return;
+            }
+
+            if (!tieneInspectorAsignado)
+            {
+                AsignarFlujoDocumental(estado, "PENDIENTE_COORDINADOR", "Pendiente de coordinador", "COORDINADOR");
+                return;
+            }
+
+            if (estado.DocumentacionAprobada)
+            {
+                AsignarFlujoDocumental(estado, "REVISADA_POR_INSPECTOR", "Revision completada por inspector", "COORDINADOR");
+                return;
+            }
+
+            if (estado.TieneDocumentosSubsanadosPendientes)
+            {
+                AsignarFlujoDocumental(estado, "SUBSANADA_POR_RT", "Documentacion subsanada", "INSPECTOR");
+                return;
+            }
+
+            AsignarFlujoDocumental(estado, "EN_REVISION_INSPECTOR", "En revision documental", "INSPECTOR");
+        }
+
+        private static void AsignarFlujoDocumental(EstadoRevisionDocumental estado, string codigo, string nombre, string responsable)
+        {
+            estado.FlujoDocumentalCodigo = codigo ?? string.Empty;
+            estado.FlujoDocumentalNombre = nombre ?? string.Empty;
+            estado.ResponsableActual = responsable ?? string.Empty;
+            estado.VisibleEnBandejaInspector = string.Equals(estado.ResponsableActual, "INSPECTOR", StringComparison.OrdinalIgnoreCase);
+            estado.VisibleEnBandejaCoordinador = string.Equals(estado.ResponsableActual, "COORDINADOR", StringComparison.OrdinalIgnoreCase);
+            estado.VisibleEnBandejaRt = string.Equals(estado.ResponsableActual, "RT", StringComparison.OrdinalIgnoreCase);
+        }
+
+        private static bool TieneInspectorAsignado(SolicitudAOCR solicitud, IEnumerable<Inspeccion> inspecciones)
+        {
+            if (solicitud != null)
+            {
+                if (solicitud.CodigoTecnico.HasValue && solicitud.CodigoTecnico.Value > 0)
+                {
+                    return true;
+                }
+
+                if (!string.IsNullOrWhiteSpace(solicitud.TecnicoResponsableCedula)
+                    || !string.IsNullOrWhiteSpace(solicitud.InspectorApoyoCedula))
+                {
+                    return true;
+                }
+            }
+
+            return (inspecciones ?? Enumerable.Empty<Inspeccion>())
+                .Any(inspeccion => inspeccion != null
+                    && ((inspeccion.CodigoInspector.HasValue && inspeccion.CodigoInspector.Value > 0)
+                        || !string.IsNullOrWhiteSpace(inspeccion.InspectorPrincipalCedula)
+                        || !string.IsNullOrWhiteSpace(inspeccion.InspectorApoyoCedula)));
         }
 
         private static string ConstruirMensajeBloqueoDocumental(EstadoRevisionDocumental estado)

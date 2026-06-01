@@ -114,6 +114,11 @@ namespace CapaPresentacion.Helpers
         public static string ObtenerEstadoFirma(AocrBandejaDocumentoRow row)
         {
             var estadoSolicitud = NormalizarEstadoSolicitud(row != null ? row.EstadoSolicitudRaw : null);
+            if (EsEstadoFirmadoOFinalizado(estadoSolicitud))
+            {
+                return "Firmado";
+            }
+
             if (TieneDocumentoFinalFirmado(row))
             {
                 return "Firmado";
@@ -142,6 +147,12 @@ namespace CapaPresentacion.Helpers
                 || string.Equals(estadoSolicitud, EstadoSolicitud.AOCR_EmitidoRecibido, StringComparison.OrdinalIgnoreCase))
             {
                 return "Finalizado";
+            }
+
+            if (string.Equals(estadoSolicitud, EstadoSolicitud.AOCR_Legalizado, StringComparison.OrdinalIgnoreCase)
+                || string.Equals(estadoSolicitud, EstadoSolicitud.FirmadoDcav, StringComparison.OrdinalIgnoreCase))
+            {
+                return "Firmado";
             }
 
             if (EsEstadoObservado(estadoSolicitud))
@@ -194,6 +205,14 @@ namespace CapaPresentacion.Helpers
             return !string.IsNullOrWhiteSpace(estadoSolicitud)
                 && (estadoSolicitud.IndexOf("OBSERV", StringComparison.OrdinalIgnoreCase) >= 0
                     || estadoSolicitud.IndexOf("RECHAZ", StringComparison.OrdinalIgnoreCase) >= 0);
+        }
+
+        private static bool EsEstadoFirmadoOFinalizado(string estadoSolicitud)
+        {
+            return string.Equals(estadoSolicitud, EstadoSolicitud.AOCR_Legalizado, StringComparison.OrdinalIgnoreCase)
+                || string.Equals(estadoSolicitud, EstadoSolicitud.FirmadoDcav, StringComparison.OrdinalIgnoreCase)
+                || string.Equals(estadoSolicitud, EstadoSolicitud.Finalizado, StringComparison.OrdinalIgnoreCase)
+                || string.Equals(estadoSolicitud, EstadoSolicitud.AOCR_EmitidoRecibido, StringComparison.OrdinalIgnoreCase);
         }
     }
 }

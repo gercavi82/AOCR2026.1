@@ -259,10 +259,19 @@ namespace CapaModelo
         public bool TienePendientes { get; set; }
         public bool DocumentacionAprobada { get; set; }
         public string MensajeBloqueoDocumental { get; set; }
+        public string FlujoDocumentalCodigo { get; set; }
+        public string FlujoDocumentalNombre { get; set; }
+        public string ResponsableActual { get; set; }
+        public bool VisibleEnBandejaInspector { get; set; }
+        public bool VisibleEnBandejaCoordinador { get; set; }
+        public bool VisibleEnBandejaRt { get; set; }
 
         public EstadoRevisionDocumental()
         {
             MensajeBloqueoDocumental = string.Empty;
+            FlujoDocumentalCodigo = string.Empty;
+            FlujoDocumentalNombre = string.Empty;
+            ResponsableActual = string.Empty;
         }
     }
 

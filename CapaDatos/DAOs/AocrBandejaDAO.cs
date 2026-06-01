@@ -45,6 +45,41 @@ namespace CapaDatos.DAOs
                 var inspectorCodigoUsuario = !string.IsNullOrWhiteSpace(joinUsuarioInspector) && columnasUsuario.Contains("codigousuario")
                     ? "NULLIF(TRIM(COALESCE(ui.codigousuario, '')), '')"
                     : "NULL::text";
+                var estadosBandejaGeneradasFirmadas = new[]
+                {
+                    "GENERADO CONDICIONES LIMITACIONES",
+                    "GENERADO CONDICIONES Y LIMITACIONES",
+                    "EN REVISION COORDINADOR FINAL",
+                    "EN REVISION COORDINADOR",
+                    "APROBADO COORDINADOR",
+                    "APROBADA COORDINADOR",
+                    "ENVIADO DCAV",
+                    "ENVIADO DIRDAC",
+                    "ENVIADA DIRDAC",
+                    "PENDIENTE FIRMA DIRDAC",
+                    "FIRMADO DCAV",
+                    "FIRMADA DIRDAC",
+                    "FIRMADA",
+                    "FINALIZADA",
+                    "FINALIZADO",
+                    "AOCR EN ELABORACION",
+                    "AOCR GENERADA",
+                    "GENERADA",
+                    "AOCR EN REVISION",
+                    "AOCR VALIDADO",
+                    "VALIDADO",
+                    "AOCR LEGALIZADO",
+                    "LEGALIZADO",
+                    "AOCR EMITIDO",
+                    "AOCR EMITIDO RECIBIDO",
+                    "AOCR ENTREGADO",
+                    "ENVIADO A JEFATURA",
+                    "ENVIADO COORDINADOR"
+                };
+                var estadosBandejaGeneradasFirmadasSql = FormatearListaSql(estadosBandejaGeneradasFirmadas);
+                var estadoSolicitudNormalizadoSql = NormalizarEstadoSql("sb.EstadoSolicitudRaw");
+                var estadoCertificadoNormalizadoSql = NormalizarEstadoSql("cert.EstadoCertificadoRaw");
+                var estadoInformeNormalizadoSql = NormalizarEstadoSql("inf.EstadoInformeTecnicoRaw");
 
                 var sql = $@"
                 WITH solicitud_base AS (
@@ -225,21 +260,9 @@ namespace CapaDatos.DAOs
                     OR frec.FirmaReconocimientoId IS NOT NULL
                     OR fcond.FirmaCondicionesId IS NOT NULL
                     OR daocr.RutaAocrGenerada IS NOT NULL
-                    OR UPPER(COALESCE(sb.EstadoSolicitudRaw, '')) IN (
-                        'GENERADO_CONDICIONES_LIMITACIONES',
-                        'EN_REVISION_COORDINADOR_FINAL',
-                        'ENVIADO_DCAV',
-                        'FIRMADO_DCAV',
-                        'FINALIZADO',
-                        'AOCR_EN_ELABORACION',
-                        'AOCR_EN_REVISION',
-                        'AOCR_VALIDADO',
-                        'AOCR_LEGALIZADO',
-                        'AOCR_EMITIDO_RECIBIDO',
-                        'ENVIADO_A_JEFATURA',
-                        'EN REVISION COORDINADOR',
-                        'ENVIADO_COORDINADOR'
-                    )
+                    OR {estadoSolicitudNormalizadoSql} IN ({estadosBandejaGeneradasFirmadasSql})
+                    OR {estadoCertificadoNormalizadoSql} IN ({estadosBandejaGeneradasFirmadasSql})
+                    OR {estadoInformeNormalizadoSql} IN ({estadosBandejaGeneradasFirmadasSql})
                 ORDER BY COALESCE(
                     frec.FechaFirmaReconocimiento,
                     fcond.FechaFirmaCondiciones,
@@ -288,6 +311,34 @@ namespace CapaDatos.DAOs
         private static string ColumnaBoolean(string alias, string columna, HashSet<string> columnas)
         {
             return columnas.Contains(columna) ? $"{alias}.{columna}" : "NULL::boolean";
+        }
+
+        private static string NormalizarEstadoSql(string expression)
+        {
+            return $@"TRIM(
+                REPLACE(
+                    REPLACE(
+                        REPLACE(
+                            REPLACE(
+                                REPLACE(
+                                    REPLACE(
+                                        REPLACE(UPPER(COALESCE({expression}, '')), '_', ' '),
+                                    '/', ' '),
+                                'Á', 'A'),
+                            'É', 'E'),
+                        'Í', 'I'),
+                    'Ó', 'O'),
+                'Ú', 'U'))";
+        }
+
+        private static string FormatearListaSql(IEnumerable<string> valores)
+        {
+            return string.Join(", ",
+                (valores ?? Enumerable.Empty<string>())
+                    .Where(valor => !string.IsNullOrWhiteSpace(valor))
+                    .Select(valor => valor.Trim().Replace("'", "''"))
+                    .Distinct(StringComparer.OrdinalIgnoreCase)
+                    .Select(valor => $"'{valor}'"));
         }
     }
 }

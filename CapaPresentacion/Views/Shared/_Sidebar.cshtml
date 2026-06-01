@@ -96,29 +96,33 @@
     @if (sidebar.QuickActions.Any())
     {
         <div class="aocr-sidebar-block aocr-sidebar-quick-panel">
-            <div class="aocr-sidebar-block__title">Acciones rápidas</div>
-            <div class="aocr-quick-grid">
+            <div class="aocr-section-title">Acciones rápidas</div>
+            <div class="aocr-quick-actions">
                 @foreach (var item in sidebar.QuickActions)
                 {
                     if (item.Enabled)
                     {
-                        <a href="@item.Url" class="aocr-quick-pill @(item.IsActive ? "is-active" : string.Empty) badge-@item.BadgeToneClass" title="@item.Title">
-                            <i class="@item.IconClass"></i>
-                            <span class="aocr-quick-pill__text">@item.Title</span>
+                        <a href="@item.Url" class="aocr-quick-action @(item.IsActive ? "is-active" : string.Empty)" title="@item.Title">
+                            <span class="aocr-quick-icon"><i class="@item.IconClass"></i></span>
+                            <span class="aocr-quick-text">
+                                <span class="aocr-quick-title">@item.Title</span>
+                            </span>
                             @if (item.ShowBadge)
                             {
-                                <span class="aocr-quick-pill__badge">@item.BadgeCount</span>
+                                <span class="aocr-quick-badge badge-@item.BadgeToneClass">@item.BadgeCount</span>
                             }
                         </a>
                     }
                     else
                     {
-                        <span class="aocr-quick-pill is-disabled badge-@item.BadgeToneClass" data-bs-toggle="tooltip" title="@item.Tooltip">
-                            <i class="@item.IconClass"></i>
-                            <span class="aocr-quick-pill__text">@item.Title</span>
+                        <span class="aocr-quick-action is-disabled" data-bs-toggle="tooltip" title="@item.Tooltip">
+                            <span class="aocr-quick-icon"><i class="@item.IconClass"></i></span>
+                            <span class="aocr-quick-text">
+                                <span class="aocr-quick-title">@item.Title</span>
+                            </span>
                             @if (item.ShowBadge)
                             {
-                                <span class="aocr-quick-pill__badge">@item.BadgeCount</span>
+                                <span class="aocr-quick-badge badge-@item.BadgeToneClass">@item.BadgeCount</span>
                             }
                         </span>
                     }

@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Configuration;
 using System.Data;
+using System.Linq;
 using Npgsql;
 using CapaModelo;
 
@@ -129,8 +130,29 @@ namespace CapaDatos.DAOs
 
         public List<int> ObtenerPendientesRevisionInspector(int codigoInspector)
         {
+            return ObtenerPendientesRevisionInspector(
+                codigoInspector > 0 ? new[] { codigoInspector } : Enumerable.Empty<int>(),
+                Enumerable.Empty<string>(),
+                false);
+        }
+
+        public List<int> ObtenerPendientesRevisionInspector(
+            IEnumerable<int> codigosInspector,
+            IEnumerable<string> identificadoresInspector,
+            bool incluirTodasSiSinFiltro = false)
+        {
             var resultado = new List<int>();
-            if (codigoInspector <= 0)
+            var ids = (codigosInspector ?? Enumerable.Empty<int>())
+                .Where(id => id > 0)
+                .Distinct()
+                .ToArray();
+            var identificadores = (identificadoresInspector ?? Enumerable.Empty<string>())
+                .Where(valor => !string.IsNullOrWhiteSpace(valor))
+                .Select(valor => valor.Trim().ToUpperInvariant())
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToArray();
+
+            if (!incluirTodasSiSinFiltro && ids.Length == 0 && identificadores.Length == 0)
             {
                 return resultado;
             }
@@ -140,22 +162,73 @@ namespace CapaDatos.DAOs
                 cn.Open();
                 EnsureSchema(cn);
 
-                const string sql = @"
+                var columnasSolicitud = ObtenerColumnasTabla(cn, "aocr_tbsolicitud");
+                var columnasInspeccion = ObtenerColumnasTabla(cn, "aocr_tbinspeccion");
+                var condicionesAsignacion = new List<string>();
+
+                if (ids.Length > 0)
+                {
+                    condicionesAsignacion.Add("COALESCE(i.codigo_inspector, 0) = ANY(@codigos_inspector)");
+                    condicionesAsignacion.Add("COALESCE(s.codigo_tecnico, 0) = ANY(@codigos_inspector)");
+                }
+
+                if (identificadores.Length > 0)
+                {
+                    if (columnasSolicitud.Contains("tecnico_responsable_cedula"))
+                    {
+                        condicionesAsignacion.Add(NormalizarTextoSql("COALESCE(s.tecnico_responsable_cedula, '')") + " = ANY(@identificadores_inspector)");
+                    }
+
+                    if (columnasSolicitud.Contains("inspector_apoyo_cedula"))
+                    {
+                        condicionesAsignacion.Add(NormalizarTextoSql("COALESCE(s.inspector_apoyo_cedula, '')") + " = ANY(@identificadores_inspector)");
+                    }
+
+                    if (columnasInspeccion.Contains("inspector_principal_cedula"))
+                    {
+                        condicionesAsignacion.Add(NormalizarTextoSql("COALESCE(i.inspector_principal_cedula, '')") + " = ANY(@identificadores_inspector)");
+                    }
+
+                    if (columnasInspeccion.Contains("inspector_apoyo_cedula"))
+                    {
+                        condicionesAsignacion.Add(NormalizarTextoSql("COALESCE(i.inspector_apoyo_cedula, '')") + " = ANY(@identificadores_inspector)");
+                    }
+                }
+
+                if (!incluirTodasSiSinFiltro && condicionesAsignacion.Count == 0)
+                {
+                    return resultado;
+                }
+
+                var sql = @"
                     SELECT DISTINCT s.codigo_solicitud
                     FROM aocr_tbsolicitud s
                     LEFT JOIN aocr_tbinspeccion i ON i.codigo_solicitud = s.codigo_solicitud
                     WHERE s.codigo_solicitud IS NOT NULL
                       AND s.deleted_at IS NULL
-                      AND (
-                            COALESCE(i.codigo_inspector, 0) = @codigo_inspector
-                         OR COALESCE(s.codigo_tecnico, 0) = @codigo_inspector
-                      )
-                      AND UPPER(COALESCE(s.estado, '')) NOT IN ('ANULADA', 'CANCELADA')
+                      AND UPPER(COALESCE(s.estado, '')) NOT IN ('ANULADA', 'CANCELADA')";
+
+                if (condicionesAsignacion.Count > 0)
+                {
+                    sql += @"
+                      AND (" + string.Join(" OR ", condicionesAsignacion) + ")";
+                }
+
+                sql += @"
                     ORDER BY s.codigo_solicitud DESC;";
 
                 using (var cmd = new NpgsqlCommand(sql, cn))
                 {
-                    cmd.Parameters.AddWithValue("@codigo_inspector", codigoInspector);
+                    if (ids.Length > 0)
+                    {
+                        cmd.Parameters.AddWithValue("@codigos_inspector", ids);
+                    }
+
+                    if (identificadores.Length > 0)
+                    {
+                        cmd.Parameters.AddWithValue("@identificadores_inspector", identificadores);
+                    }
+
                     using (var rd = cmd.ExecuteReader())
                     {
                         while (rd.Read())
@@ -173,6 +246,38 @@ namespace CapaDatos.DAOs
             }
 
             return resultado;
+        }
+
+        private static HashSet<string> ObtenerColumnasTabla(NpgsqlConnection cn, string tableName)
+        {
+            var columnas = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            const string sql = @"
+                SELECT column_name
+                FROM information_schema.columns
+                WHERE table_schema = 'public'
+                  AND table_name = @table_name;";
+
+            using (var cmd = new NpgsqlCommand(sql, cn))
+            {
+                cmd.Parameters.AddWithValue("@table_name", tableName);
+                using (var rd = cmd.ExecuteReader())
+                {
+                    while (rd.Read())
+                    {
+                        if (!rd.IsDBNull(0))
+                        {
+                            columnas.Add(rd.GetString(0));
+                        }
+                    }
+                }
+            }
+
+            return columnas;
+        }
+
+        private static string NormalizarTextoSql(string expression)
+        {
+            return "TRIM(TRANSLATE(UPPER(" + expression + "), 'ÁÉÍÓÚ', 'AEIOU'))";
         }
 
         public Dictionary<int, RevisionDocumentalDetalle> ObtenerUltimosDetallesPorSolicitud(int codigoSolicitud)

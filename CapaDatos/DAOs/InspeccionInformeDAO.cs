@@ -217,6 +217,73 @@ namespace CapaDatos.DAOs
             return lista;
         }
 
+        public List<InspeccionInformeTecnico> ListarTodos()
+        {
+            var lista = new List<InspeccionInformeTecnico>();
+
+            using (var cn = new NpgsqlConnection(_cs))
+            {
+                cn.Open();
+                EnsureSchema(cn);
+
+                const string sql = @"
+                    SELECT codigo_informe,
+                           codigo_inspeccion,
+                           version,
+                           titulo,
+                           resumen,
+                           resultado,
+                           estado_informe,
+                           firmado_inspector,
+                           firmado_dirdac,
+                           ruta_pdf,
+                           ruta_documento_firmado,
+                           fecha_firma_1,
+                           fecha_firma_2,
+                           fecha_finalizacion,
+                           finalizado,
+                           created_at,
+                           created_by,
+                           updated_at,
+                           updated_by
+                    FROM public.aocr_tbinforme_inspeccion
+                    ORDER BY COALESCE(fecha_finalizacion, fecha_firma_2, fecha_firma_1, updated_at, created_at) DESC,
+                             codigo_informe DESC;";
+
+                using (var cmd = new NpgsqlCommand(sql, cn))
+                using (var dr = cmd.ExecuteReader())
+                {
+                    while (dr.Read())
+                    {
+                        lista.Add(new InspeccionInformeTecnico
+                        {
+                            CodigoInforme = dr.GetInt32(dr.GetOrdinal("codigo_informe")),
+                            CodigoInspeccion = dr.GetInt32(dr.GetOrdinal("codigo_inspeccion")),
+                            Version = dr.GetInt32(dr.GetOrdinal("version")),
+                            Titulo = dr["titulo"] == DBNull.Value ? null : dr["titulo"].ToString(),
+                            Resumen = dr["resumen"] == DBNull.Value ? null : dr["resumen"].ToString(),
+                            Resultado = dr["resultado"] == DBNull.Value ? null : dr["resultado"].ToString(),
+                            EstadoInforme = dr["estado_informe"] == DBNull.Value ? null : dr["estado_informe"].ToString(),
+                            FirmadoInspector = dr["firmado_inspector"] != DBNull.Value && Convert.ToBoolean(dr["firmado_inspector"]),
+                            FirmadoDirdac = dr["firmado_dirdac"] != DBNull.Value && Convert.ToBoolean(dr["firmado_dirdac"]),
+                            RutaPdf = dr["ruta_pdf"] == DBNull.Value ? null : dr["ruta_pdf"].ToString(),
+                            RutaDocumentoFirmado = dr["ruta_documento_firmado"] == DBNull.Value ? null : dr["ruta_documento_firmado"].ToString(),
+                            FechaFirma1 = dr["fecha_firma_1"] == DBNull.Value ? null : (DateTime?)Convert.ToDateTime(dr["fecha_firma_1"]),
+                            FechaFirma2 = dr["fecha_firma_2"] == DBNull.Value ? null : (DateTime?)Convert.ToDateTime(dr["fecha_firma_2"]),
+                            FechaFinalizacion = dr["fecha_finalizacion"] == DBNull.Value ? null : (DateTime?)Convert.ToDateTime(dr["fecha_finalizacion"]),
+                            Finalizado = dr["finalizado"] != DBNull.Value && Convert.ToBoolean(dr["finalizado"]),
+                            CreatedAt = dr["created_at"] == DBNull.Value ? null : (DateTime?)Convert.ToDateTime(dr["created_at"]),
+                            CreatedBy = dr["created_by"] == DBNull.Value ? null : (int?)Convert.ToInt32(dr["created_by"]),
+                            UpdatedAt = dr["updated_at"] == DBNull.Value ? null : (DateTime?)Convert.ToDateTime(dr["updated_at"]),
+                            UpdatedBy = dr["updated_by"] == DBNull.Value ? null : (int?)Convert.ToInt32(dr["updated_by"])
+                        });
+                    }
+                }
+            }
+
+            return lista;
+        }
+
         public InspeccionInformeTecnico GuardarBorrador(InspeccionInformeTecnico informe, int usuarioId)
         {
             if (informe == null)

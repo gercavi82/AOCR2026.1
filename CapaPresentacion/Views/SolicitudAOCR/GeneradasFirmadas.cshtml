@@ -300,8 +300,8 @@
     @if (!Model.TieneResultados)
     {
         <section class="aocr-tray-empty">
-            <h4 class="text-dark">No existen registros para los filtros aplicados.</h4>
-            <p class="mb-0">La consulta no elimina trámites por falta de PDF; si una fila no aparece es porque no se encuentra en la etapa AOCR/Condiciones visible para su rol o quedó fuera de los filtros activos.</p>
+            <h4 class="text-dark">@Model.EmptyStateTitle</h4>
+            <p class="mb-0">@Model.EmptyStateMessage</p>
         </section>
     }
     else

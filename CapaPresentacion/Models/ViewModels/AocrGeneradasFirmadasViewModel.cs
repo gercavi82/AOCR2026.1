@@ -74,6 +74,8 @@ namespace CapaPresentacion.Models.ViewModels
         public bool EsInspector { get; set; }
         public bool EsCoordinacion { get; set; }
         public bool EsDireccion { get; set; }
+        public string EmptyStateTitle { get; set; } = "No existen AOCR generadas o firmadas para los criterios seleccionados.";
+        public string EmptyStateMessage { get; set; } = "La consulta no elimina trámites por falta de PDF; si una fila no aparece es porque no se encuentra en la etapa AOCR visible para su rol o quedó fuera de los filtros activos.";
         public bool TieneResultados => Items != null && Items.Count > 0;
     }
 }
