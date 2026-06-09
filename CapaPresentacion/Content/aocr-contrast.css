@@ -1,0 +1,317 @@
+/* AOCR contrast guard
+   Loaded after page-level styles to keep form text readable on light surfaces. */
+
+body.aocr-body .aocr-page :where(input:not([type="checkbox"]):not([type="radio"]):not([type="button"]):not([type="submit"]):not([type="reset"]),
+textarea,
+select,
+.form-control,
+.form-select,
+.custom-select) {
+    color: #0f172a !important;
+    -webkit-text-fill-color: #0f172a !important;
+    background-color: #ffffff !important;
+    border-color: #cbd5e1 !important;
+    text-shadow: none !important;
+    opacity: 1 !important;
+}
+
+body.aocr-body .aocr-page :where(input:not([type="checkbox"]):not([type="radio"]):not([type="button"]):not([type="submit"]):not([type="reset"]),
+textarea,
+select,
+.form-control,
+.form-select,
+.custom-select):focus {
+    color: #0f172a !important;
+    -webkit-text-fill-color: #0f172a !important;
+    background-color: #ffffff !important;
+    border-color: #38bdf8 !important;
+    box-shadow: 0 0 0 0.16rem rgba(56, 189, 248, 0.22) !important;
+    outline: 0;
+}
+
+body.aocr-body .aocr-page :where(input,
+textarea,
+.form-control)::placeholder {
+    color: #64748b !important;
+    -webkit-text-fill-color: #64748b !important;
+    opacity: 1 !important;
+}
+
+body.aocr-body .aocr-page :where(input,
+textarea,
+select,
+.form-control,
+.form-select,
+.custom-select):disabled,
+body.aocr-body .aocr-page :where(input,
+textarea,
+select,
+.form-control,
+.form-select,
+.custom-select)[readonly],
+body.aocr-body .aocr-page fieldset:disabled :where(input,
+textarea,
+select,
+.form-control,
+.form-select,
+.custom-select) {
+    color: #334155 !important;
+    -webkit-text-fill-color: #334155 !important;
+    background-color: #e9eef5 !important;
+    border-color: #cbd5e1 !important;
+    opacity: 1 !important;
+}
+
+body.aocr-body .aocr-page :where(select,
+.form-select,
+.custom-select) option {
+    color: #0f172a !important;
+    -webkit-text-fill-color: #0f172a !important;
+    background-color: #ffffff !important;
+}
+
+body.aocr-body .aocr-page :where(select,
+.form-select,
+.custom-select) option:checked {
+    color: #ffffff !important;
+    -webkit-text-fill-color: #ffffff !important;
+    background-color: #0d6efd !important;
+}
+
+body.aocr-body .aocr-page :where(label,
+.form-label,
+.control-label,
+.col-form-label,
+legend) {
+    color: #0f172a !important;
+    text-shadow: none !important;
+}
+
+body.aocr-body .aocr-page :where(.form-text,
+.help-block,
+small.text-muted,
+.text-muted) {
+    color: #475569 !important;
+}
+
+body.aocr-body .aocr-page :where(.modal-content,
+.modal-body,
+.card,
+.card-body,
+.aocr-card,
+.aocr-panel,
+.aocr-form-card,
+.aocr-table-card,
+.swal2-popup) {
+    color: #0f172a;
+}
+
+body.aocr-body .aocr-page :where(.modal-content,
+.modal-body,
+.card,
+.card-body,
+.aocr-card,
+.aocr-panel,
+.aocr-form-card,
+.aocr-table-card,
+.swal2-popup) :where(input:not([type="checkbox"]):not([type="radio"]):not([type="button"]):not([type="submit"]):not([type="reset"]),
+textarea,
+select,
+.form-control,
+.form-select,
+.custom-select) {
+    color: #0f172a !important;
+    -webkit-text-fill-color: #0f172a !important;
+    background-color: #ffffff !important;
+}
+
+body.aocr-body .aocr-page :where(table,
+.table,
+.dataTable) :where(td,
+th) {
+    text-shadow: none;
+}
+
+body.aocr-body .aocr-page :where(.table,
+.dataTable) tbody :where(td,
+th,
+span,
+div,
+p) {
+    color: inherit;
+}
+
+body.aocr-body .aocr-page :where(.btn-primary,
+.btn-success,
+.btn-danger,
+.btn-dark,
+.btn-info,
+.btn-secondary,
+.btn-warning) {
+    -webkit-text-fill-color: currentColor;
+}
+
+body.aocr-body .aocr-page :where(.btn-light,
+.btn-default,
+.btn-outline-secondary,
+.btn-outline-primary,
+.btn-outline-info,
+.btn-outline-dark) {
+    -webkit-text-fill-color: currentColor;
+}
+
+body.aocr-body .aocr-page :where(input,
+textarea).text-white,
+body.aocr-body .aocr-page :where(input,
+textarea).text-light,
+body.aocr-body .aocr-page :where(select,
+.form-control,
+.form-select).text-white,
+body.aocr-body .aocr-page :where(select,
+.form-control,
+.form-select).text-light {
+    color: #0f172a !important;
+    -webkit-text-fill-color: #0f172a !important;
+}
+
+body.aocr-body .aocr-page :where(input,
+textarea,
+select,
+.form-control,
+.form-select):-webkit-autofill,
+body.aocr-body .aocr-page :where(input,
+textarea,
+select,
+.form-control,
+.form-select):-webkit-autofill:hover,
+body.aocr-body .aocr-page :where(input,
+textarea,
+select,
+.form-control,
+.form-select):-webkit-autofill:focus {
+    -webkit-text-fill-color: #0f172a !important;
+    -webkit-box-shadow: 0 0 0 1000px #ffffff inset !important;
+    caret-color: #0f172a !important;
+}
+
+body.aocr-body .aocr-page ::selection {
+    color: #ffffff;
+    background-color: #0d6efd;
+}
+
+body.aocr-body :where(.modal-content,
+.swal2-popup) {
+    color: #0f172a;
+}
+
+body.aocr-body :where(.modal-content,
+.swal2-popup) :where(input:not([type="checkbox"]):not([type="radio"]):not([type="button"]):not([type="submit"]):not([type="reset"]),
+textarea,
+select,
+.form-control,
+.form-select,
+.custom-select) {
+    color: #0f172a !important;
+    -webkit-text-fill-color: #0f172a !important;
+    background-color: #ffffff !important;
+    border-color: #cbd5e1 !important;
+    text-shadow: none !important;
+    opacity: 1 !important;
+}
+
+body.aocr-body :where(.modal-content,
+.swal2-popup) :where(input,
+textarea,
+.form-control)::placeholder {
+    color: #64748b !important;
+    -webkit-text-fill-color: #64748b !important;
+    opacity: 1 !important;
+}
+
+body.aocr-body :where(.modal-content,
+.swal2-popup) :where(input,
+textarea,
+select,
+.form-control,
+.form-select,
+.custom-select):disabled,
+body.aocr-body :where(.modal-content,
+.swal2-popup) :where(input,
+textarea,
+select,
+.form-control,
+.form-select,
+.custom-select)[readonly] {
+    color: #334155 !important;
+    -webkit-text-fill-color: #334155 !important;
+    background-color: #e9eef5 !important;
+    opacity: 1 !important;
+}
+
+body.aocr-body :where(.modal-content,
+.swal2-popup) :where(label,
+.form-label,
+.control-label,
+.col-form-label,
+legend) {
+    color: #0f172a !important;
+}
+
+body.aocr-body .aocr-session-timeout-modal,
+body.aocr-body .aocr-session-timeout-modal .modal-dialog,
+body.aocr-body .aocr-session-timeout-modal .modal-content,
+body.aocr-body .aocr-session-timeout-modal .modal-header,
+body.aocr-body .aocr-session-timeout-modal .modal-body,
+body.aocr-body .aocr-session-timeout-modal .modal-footer {
+    text-shadow: none !important;
+    opacity: 1 !important;
+    filter: none !important;
+}
+
+body.aocr-body .aocr-session-timeout-modal .modal-content {
+    background-color: #ffffff !important;
+    color: #0f172a !important;
+    -webkit-text-fill-color: #0f172a !important;
+}
+
+body.aocr-body .aocr-session-timeout-modal .modal-header {
+    background-color: #ffc107 !important;
+    color: #1f2937 !important;
+    -webkit-text-fill-color: #1f2937 !important;
+}
+
+body.aocr-body .aocr-session-timeout-modal .modal-title,
+body.aocr-body .aocr-session-timeout-modal .modal-title i {
+    color: #1f2937 !important;
+    -webkit-text-fill-color: #1f2937 !important;
+}
+
+body.aocr-body .aocr-session-timeout-modal .modal-body,
+body.aocr-body .aocr-session-timeout-modal .modal-body p,
+body.aocr-body .aocr-session-timeout-modal .modal-body span,
+body.aocr-body .aocr-session-timeout-modal #session-countdown {
+    background: transparent !important;
+    color: #0f172a !important;
+    -webkit-text-fill-color: #0f172a !important;
+}
+
+body.aocr-body .aocr-session-timeout-modal .modal-body p {
+    user-select: none;
+}
+
+body.aocr-body .aocr-session-timeout-modal .modal-body ::selection {
+    color: #0f172a !important;
+    background: transparent !important;
+}
+
+body.aocr-body .aocr-session-timeout-modal .btn-primary,
+body.aocr-body .aocr-session-timeout-modal .btn-primary i {
+    color: #ffffff !important;
+    -webkit-text-fill-color: #ffffff !important;
+}
+
+body.aocr-body .aocr-session-timeout-modal .btn-outline-secondary,
+body.aocr-body .aocr-session-timeout-modal .btn-outline-secondary i {
+    color: #475569 !important;
+    -webkit-text-fill-color: #475569 !important;
+}

@@ -43,15 +43,18 @@
     <Compile Include="Unit\OrdenRecaudacionOrchestratorTests.cs" />
     <Compile Include="Unit\ValidacionesTests.cs" />
     <Compile Include="Unit\EmailQueueTests.cs" />
+    <Compile Include="Unit\AocrFinalWorkflowAuthorizationTests.cs" />
     <Compile Include="Unit\EstadoSolicitudTransitionMatrixTests.cs" />
     <Compile Include="Unit\SolicitudEstadoTransitionBLTests.cs" />
     <Compile Include="Unit\NullSafetyRegressionTests.cs" />
+    <Compile Include="Unit\OperationalFlowCharacterizationTests.cs" />
     <Compile Include="Unit\PdfGeneratorTests.cs" />
     <Compile Include="Unit\RTServiceStateTests.cs" />
     <Compile Include="Unit\SecurityTests.cs" />
     <Compile Include="Integration\FlujoCompletoTests.cs" />
   </ItemGroup>
   <ItemGroup>
+    <ProjectReference Include="..\CapaModelo\CapaModelo.csproj" />
     <ProjectReference Include="..\CapaDatos\CapaDatos.csproj" />
     <ProjectReference Include="..\CapaNegocio\CapaNegocio.csproj" />
   </ItemGroup>

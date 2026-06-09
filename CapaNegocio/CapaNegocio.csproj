@@ -162,6 +162,8 @@
     <Compile Include="Services\NotificacionDestinatarioPolicyService.cs" />
     <Compile Include="Services\NotificacionService.cs" />
     <Compile Include="Services\CorreoInstitucionalService.cs" />
+    <Compile Include="Services\AocrFinalWorkflowService.cs" />
+    <Compile Include="Services\AocrModificationWorkflowService.cs" />
     <Compile Include="Services\AocrAuthorizationService.cs" />
     <Compile Include="Services\OrdenRecaudacionService.cs" />
     <Compile Include="Services\OrdenRecaudacionCorreoService.cs" />

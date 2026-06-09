@@ -11,10 +11,10 @@
 
 @if (roles != null && roles.Count > 1)
 {
-    <div class="aocr-role-switch mt-2">
-        <label class="aocr-role-switch__label">Cambiar de Rol:</label>
+    <div class="aocr-role-switch aocr-role-switcher mt-2">
+        <label class="aocr-role-switch__label aocr-sidebar-section-title">Cambiar de Rol:</label>
 
-        <select class="form-control form-control-sm aocr-role-switch__select"
+        <select class="form-select form-select-sm aocr-role-switch__select aocr-sidebar-select"
                 onchange="location.href = this.value;">
 
             @foreach (var rol in roles)

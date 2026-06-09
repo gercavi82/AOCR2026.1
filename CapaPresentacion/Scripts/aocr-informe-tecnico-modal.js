@@ -4,6 +4,7 @@
     }
 
     window.__aocrInformeTecnicoModalLoaded = true;
+    var attachmentInputState = typeof WeakMap !== 'undefined' ? new WeakMap() : null;
 
     function notify(type, message) {
         if (!message) {
@@ -63,6 +64,26 @@
         return !!(window.AOCR
             && typeof window.AOCR.handleUnauthorizedFetch === 'function'
             && window.AOCR.handleUnauthorizedFetch(payload));
+    }
+
+    function logPdfPreview(message, data) {
+        if (!window.console || typeof window.console.log !== 'function') {
+            return;
+        }
+
+        try {
+            window.console.log('[PDF_PREVIEW][INFORME_TECNICO] ' + message, data || {});
+        } catch (error) {
+        }
+    }
+
+    function appendCacheBuster(url) {
+        if (!url || url === '#') {
+            return url || '';
+        }
+
+        var separator = url.indexOf('?') >= 0 ? '&' : '?';
+        return url + separator + '_aocrPdfTs=' + encodeURIComponent(Date.now().toString());
     }
 
     function syncGeneratedDocumentFields(form) {
@@ -251,6 +272,139 @@
         return false;
     }
 
+    function getAttachmentState(input) {
+        if (!input) {
+            return { files: [] };
+        }
+
+        if (!attachmentInputState) {
+            if (!input.__aocrAttachmentState) {
+                input.__aocrAttachmentState = { files: [] };
+            }
+
+            return input.__aocrAttachmentState;
+        }
+
+        var state = attachmentInputState.get(input);
+        if (!state) {
+            state = { files: [] };
+            attachmentInputState.set(input, state);
+        }
+
+        return state;
+    }
+
+    function fileIdentity(file) {
+        if (!file) {
+            return '';
+        }
+
+        return [file.name || '', file.size || 0, file.lastModified || 0].join('|');
+    }
+
+    function rebuildInputFiles(input) {
+        if (!input || typeof window.DataTransfer === 'undefined') {
+            return;
+        }
+
+        var state = getAttachmentState(input);
+        var dataTransfer = new window.DataTransfer();
+        state.files.forEach(function (file) {
+            dataTransfer.items.add(file);
+        });
+        input.files = dataTransfer.files;
+    }
+
+    function renderSelectedFileList(input) {
+        if (!input) {
+            return;
+        }
+
+        var targetId = input.getAttribute('data-selected-list-target');
+        if (!targetId) {
+            return;
+        }
+
+        var target = document.getElementById(targetId);
+        if (!target) {
+            return;
+        }
+
+        var state = getAttachmentState(input);
+        var emptyText = target.getAttribute('data-empty-text') || 'Sin archivos nuevos seleccionados.';
+        target.innerHTML = '';
+
+        if (!state.files.length) {
+            target.textContent = emptyText;
+            return;
+        }
+
+        state.files.forEach(function (file, index) {
+            var row = document.createElement('div');
+            row.className = 'aocr-selected-file-row';
+
+            var name = document.createElement('span');
+            name.className = 'aocr-selected-file-name';
+            name.textContent = file.name || 'Archivo sin nombre';
+
+            var meta = document.createElement('span');
+            meta.className = 'aocr-selected-file-meta';
+            meta.textContent = file.size ? Math.round(file.size / 1024) + ' KB' : '';
+
+            var remove = document.createElement('button');
+            remove.type = 'button';
+            remove.className = 'btn btn-sm btn-outline-danger';
+            remove.textContent = 'Quitar';
+            remove.addEventListener('click', function () {
+                state.files.splice(index, 1);
+                rebuildInputFiles(input);
+                renderSelectedFileList(input);
+                syncAttachmentFileSummary(input);
+            });
+
+            row.appendChild(name);
+            row.appendChild(meta);
+            row.appendChild(remove);
+            target.appendChild(row);
+        });
+    }
+
+    function accumulateAttachmentFiles(input) {
+        if (!input) {
+            return;
+        }
+
+        var state = getAttachmentState(input);
+        var existing = {};
+        state.files.forEach(function (file) {
+            existing[fileIdentity(file)] = true;
+        });
+
+        Array.prototype.slice.call(input.files || []).forEach(function (file) {
+            var identity = fileIdentity(file);
+            if (identity && !existing[identity]) {
+                state.files.push(file);
+                existing[identity] = true;
+            }
+        });
+
+        rebuildInputFiles(input);
+        renderSelectedFileList(input);
+    }
+
+    function clearAttachmentInputState(input) {
+        if (!input) {
+            return;
+        }
+
+        var state = getAttachmentState(input);
+        state.files = [];
+        input.value = '';
+        rebuildInputFiles(input);
+        renderSelectedFileList(input);
+        syncAttachmentFileSummary(input);
+    }
+
     function syncAttachmentFileSummary(input) {
         if (!input) {
             return;
@@ -267,15 +421,22 @@
         }
 
         var existingSummary = target.getAttribute('data-existing-summary') || '';
-        var files = Array.prototype.slice.call(input.files || []);
+        var state = getAttachmentState(input);
+        var files = state.files && state.files.length
+            ? state.files.slice()
+            : Array.prototype.slice.call(input.files || []);
         if (files.length === 0) {
             target.textContent = existingSummary;
             return;
         }
 
-        target.textContent = (files.length > 1 ? 'Archivos seleccionados: ' : 'Archivo seleccionado: ') + files.map(function (file) {
+        var selectedSummary = (files.length > 1 ? 'Nuevos archivos seleccionados: ' : 'Nuevo archivo seleccionado: ') + files.map(function (file) {
             return file.name;
         }).join(', ');
+
+        target.textContent = existingSummary
+            ? existingSummary + ' | ' + selectedSummary
+            : selectedSummary;
     }
 
     function syncAttachmentUploadContainer(checkbox) {
@@ -283,7 +444,7 @@
             return;
         }
 
-        var item = checkbox.closest('.aocr-document-item');
+        var item = checkbox.closest('.aocr-document-row') || checkbox.closest('.aocr-document-item');
         if (!item) {
             return;
         }
@@ -302,8 +463,7 @@
 
         var input = container.querySelector('input[type="file"]');
         if (input) {
-            input.value = '';
-            syncAttachmentFileSummary(input);
+            clearAttachmentInputState(input);
         }
     }
 
@@ -345,8 +505,11 @@
             return;
         }
 
-        viewerRoot.setAttribute('data-pdf-url', result.pdfUrl);
-        viewerRoot.setAttribute('data-download-url', result.downloadUrl || result.pdfUrl);
+        var pdfUrl = appendCacheBuster(result.pdfUrl);
+        var downloadUrl = appendCacheBuster(result.downloadUrl || result.pdfUrl);
+
+        viewerRoot.setAttribute('data-pdf-url', pdfUrl);
+        viewerRoot.setAttribute('data-download-url', downloadUrl);
 
         var status = viewerRoot.querySelector('.aocr-pdf-status');
         if (status) {
@@ -358,6 +521,22 @@
             help.textContent = result.message || 'Vista previa actualizada correctamente.';
         }
 
+        var download = viewerRoot.querySelector('.aocr-pdf-download');
+        if (download) {
+            download.setAttribute('href', downloadUrl);
+            download.classList.remove('is-disabled');
+            download.removeAttribute('aria-disabled');
+        }
+
+        var form = modal.querySelector('[data-aocr-informe-form="true"]');
+        logPdfPreview('visor_actualizado', {
+            inspeccionId: form ? form.getAttribute('data-inspeccion-id') : '',
+            informeTecnicoId: form ? form.getAttribute('data-informe-tecnico-id') : '',
+            estadoInforme: result.estado || '',
+            pdfUrl: pdfUrl,
+            downloadUrl: downloadUrl
+        });
+
         if (window.AOCRPdfViewer && window.AOCRPdfViewer.instances) {
             var viewer = window.AOCRPdfViewer.instances[viewerRoot.id];
             if (!viewer && typeof window.AOCRPdfViewer.init === 'function') {
@@ -366,7 +545,7 @@
             }
 
             if (viewer && typeof viewer.load === 'function') {
-                viewer.load(result.pdfUrl);
+                viewer.load(pdfUrl);
             }
         }
     }
@@ -456,6 +635,13 @@
             return;
         }
 
+        logPdfPreview('solicitud_preview', {
+            urlPreview: previewUrl,
+            inspeccionId: form.getAttribute('data-inspeccion-id') || (form.querySelector('input[name="id"]') ? form.querySelector('input[name="id"]').value : ''),
+            informeTecnicoId: form.getAttribute('data-informe-tecnico-id') || '',
+            estadoInforme: form.getAttribute('data-estado-informe') || ''
+        });
+
         setButtonsBusy(modal, true, 'preview');
 
         fetch(previewUrl, {
@@ -471,8 +657,19 @@
                 }
 
                 if (!response.ok || !payload || payload.success === false) {
+                    logPdfPreview('respuesta_preview_error', {
+                        httpStatus: response.status,
+                        message: payload && payload.message ? payload.message : ''
+                    });
                     throw new Error(payload && payload.message ? payload.message : 'No se pudo generar la vista previa del informe técnico.');
                 }
+
+                logPdfPreview('respuesta_preview_ok', {
+                    httpStatus: response.status,
+                    pdfUrl: payload.pdfUrl || '',
+                    downloadUrl: payload.downloadUrl || '',
+                    estado: payload.estado || ''
+                });
 
                 return payload;
             });
@@ -487,6 +684,9 @@
             notify('success', payload.message || 'Vista previa generada correctamente.');
         })
         .catch(function (error) {
+            logPdfPreview('preview_fallo', {
+                message: error && error.message ? error.message : ''
+            });
             notify('error', error && error.message ? error.message : 'No se pudo generar la vista previa del informe técnico.');
         })
         .finally(function () {
@@ -568,8 +768,10 @@
 
         Array.prototype.forEach.call(modal.querySelectorAll('input[type="file"]'), function (input) {
             input.addEventListener('change', function () {
+                accumulateAttachmentFiles(input);
                 syncAttachmentFileSummary(input);
             });
+            renderSelectedFileList(input);
         });
 
         Array.prototype.forEach.call(modal.querySelectorAll('input[name="documentosAdjuntos"][type="checkbox"]'), function (checkbox) {
@@ -716,6 +918,15 @@
 
         var url = trigger.getAttribute('data-url') || '';
         openInformeTecnicoModal(url);
+    });
+
+    document.addEventListener('change', function (event) {
+        var checkbox = event.target;
+        if (!checkbox || !checkbox.matches('.aocr-document-row input[type="checkbox"][name="documentosAdjuntos"]')) {
+            return;
+        }
+
+        syncAttachmentUploadContainer(checkbox);
     });
 
     document.addEventListener('hidden.bs.modal', function (event) {

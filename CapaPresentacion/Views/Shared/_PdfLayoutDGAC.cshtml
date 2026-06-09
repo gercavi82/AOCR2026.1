@@ -1,5 +1,11 @@
+@inherits System.Web.Mvc.WebViewPage
+@using CapaNegocio.Helpers
 @{
     Layout = null;
+    var useInlinePdfBranding = ViewBag.UseInlinePdfBranding == true;
+    var inlinePdfBrandingAssets = useInlinePdfBranding
+        ? PdfBrandingHelper.ResolveHojaAssets("Views/Shared/_PdfLayoutDGAC.cshtml")
+        : null;
 }
 
 <!DOCTYPE html>
@@ -22,6 +28,74 @@
 
         body {
             padding: 0;
+        }
+
+        .pdf-inline-header,
+        .pdf-inline-footer {
+            position: fixed;
+            left: 8mm;
+            right: 8mm;
+            z-index: 1;
+            overflow: hidden;
+        }
+
+        .pdf-inline-header {
+            top: 0;
+            height: 30mm;
+        }
+
+        .pdf-inline-footer {
+            bottom: 0;
+            height: 26mm;
+        }
+
+        .pdf-inline-header img,
+        .pdf-inline-footer img {
+            position: absolute;
+            display: block;
+            border: 0;
+        }
+
+        .pdf-hoja-barra-header {
+            top: 0;
+            right: 0;
+            width: 129mm;
+            height: 3.2mm;
+        }
+
+        .pdf-hoja-escudo {
+            left: 0;
+            top: 6.2mm;
+            width: 34mm;
+            height: auto;
+        }
+
+        .pdf-hoja-dgca {
+            right: 0;
+            top: 8.2mm;
+            width: 82mm;
+            height: auto;
+        }
+
+        .pdf-hoja-barra-footer {
+            left: 0;
+            top: 0;
+            width: 72mm;
+            height: 3.2mm;
+        }
+
+        .pdf-hoja-direccion {
+            left: 0;
+            top: 7.2mm;
+            width: 64mm;
+            height: auto;
+        }
+
+        .pdf-hoja-nuevo {
+            right: 0;
+            top: 6.2mm;
+            width: 44mm;
+            height: auto;
         }
 
         #pdf-content {
@@ -129,6 +203,24 @@
 </head>
 
 <body>
+    @if (useInlinePdfBranding && inlinePdfBrandingAssets != null && inlinePdfBrandingAssets.TieneHeaderCompleto)
+    {
+        <div class="pdf-inline-header">
+            <img class="pdf-hoja-barra-header" src="@inlinePdfBrandingAssets.BarraDataUri" alt="" />
+            <img class="pdf-hoja-escudo" src="@inlinePdfBrandingAssets.EscudoDataUri" alt="Escudo Republica del Ecuador" />
+            <img class="pdf-hoja-dgca" src="@inlinePdfBrandingAssets.DgcaDataUri" alt="Direccion General de Aviacion Civil" />
+        </div>
+    }
+
+    @if (useInlinePdfBranding && inlinePdfBrandingAssets != null && inlinePdfBrandingAssets.TieneFooterCompleto)
+    {
+        <div class="pdf-inline-footer">
+            <img class="pdf-hoja-barra-footer" src="@inlinePdfBrandingAssets.BarraDataUri" alt="" />
+            <img class="pdf-hoja-direccion" src="@inlinePdfBrandingAssets.DireccionDataUri" alt="Direccion DGAC" />
+            <img class="pdf-hoja-nuevo" src="@inlinePdfBrandingAssets.NuevoDataUri" alt="El Nuevo Ecuador" />
+        </div>
+    }
+
     <div id="pdf-content">
         <div class="pdf-inner">
             @RenderBody()

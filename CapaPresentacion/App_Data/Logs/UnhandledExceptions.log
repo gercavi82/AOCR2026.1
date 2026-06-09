@@ -4704,3 +4704,63 @@ System.InvalidOperationException: No se encuentra la vista 'MisSolicitudes' ni s
    en System.Web.Mvc.ControllerActionInvoker.InvokeActionResultWithFilters(ControllerContext controllerContext, IList`1 filters, ActionResult actionResult)
    en System.Web.Mvc.Async.AsyncControllerActionInvoker.<>c__DisplayClass3_1.<BeginInvokeAction>b__1(IAsyncResult asyncResult)
 
+2026-06-01 16:20:21.393 | SolicitudAOCR/MisSolicitudes
+System.InvalidOperationException: No se encuentra la vista 'MisSolicitudes' ni su vista maestra o no hay un motor de búsqueda que admita las ubicaciones de búsqueda. Se buscó en las siguientes ubicaciones: 
+~/Views/SolicitudAOCR/MisSolicitudes.aspx
+~/Views/SolicitudAOCR/MisSolicitudes.ascx
+~/Views/Shared/MisSolicitudes.aspx
+~/Views/Shared/MisSolicitudes.ascx
+~/Views/SolicitudAOCR/MisSolicitudes.cshtml
+~/Views/SolicitudAOCR/MisSolicitudes.vbhtml
+~/Views/Shared/MisSolicitudes.cshtml
+~/Views/Shared/MisSolicitudes.vbhtml
+   en System.Web.Mvc.ViewResult.FindView(ControllerContext context)
+   en System.Web.Mvc.ViewResultBase.ExecuteResult(ControllerContext context)
+   en System.Web.Mvc.ControllerActionInvoker.InvokeActionResultFilterRecursive(IList`1 filters, Int32 filterIndex, ResultExecutingContext preContext, ControllerContext controllerContext, ActionResult actionResult)
+   en System.Web.Mvc.ControllerActionInvoker.InvokeActionResultFilterRecursive(IList`1 filters, Int32 filterIndex, ResultExecutingContext preContext, ControllerContext controllerContext, ActionResult actionResult)
+   en System.Web.Mvc.ControllerActionInvoker.InvokeActionResultFilterRecursive(IList`1 filters, Int32 filterIndex, ResultExecutingContext preContext, ControllerContext controllerContext, ActionResult actionResult)
+   en System.Web.Mvc.ControllerActionInvoker.InvokeActionResultFilterRecursive(IList`1 filters, Int32 filterIndex, ResultExecutingContext preContext, ControllerContext controllerContext, ActionResult actionResult)
+   en System.Web.Mvc.ControllerActionInvoker.InvokeActionResultFilterRecursive(IList`1 filters, Int32 filterIndex, ResultExecutingContext preContext, ControllerContext controllerContext, ActionResult actionResult)
+   en System.Web.Mvc.ControllerActionInvoker.InvokeActionResultWithFilters(ControllerContext controllerContext, IList`1 filters, ActionResult actionResult)
+   en System.Web.Mvc.Async.AsyncControllerActionInvoker.<>c__DisplayClass3_1.<BeginInvokeAction>b__1(IAsyncResult asyncResult)
+
+2026-06-01 16:45:15.200 | SolicitudAOCR/MisSolicitudes
+System.InvalidOperationException: No se encuentra la vista 'MisSolicitudes' ni su vista maestra o no hay un motor de búsqueda que admita las ubicaciones de búsqueda. Se buscó en las siguientes ubicaciones: 
+~/Views/SolicitudAOCR/MisSolicitudes.aspx
+~/Views/SolicitudAOCR/MisSolicitudes.ascx
+~/Views/Shared/MisSolicitudes.aspx
+~/Views/Shared/MisSolicitudes.ascx
+~/Views/SolicitudAOCR/MisSolicitudes.cshtml
+~/Views/SolicitudAOCR/MisSolicitudes.vbhtml
+~/Views/Shared/MisSolicitudes.cshtml
+~/Views/Shared/MisSolicitudes.vbhtml
+   en System.Web.Mvc.ViewResult.FindView(ControllerContext context)
+   en System.Web.Mvc.ViewResultBase.ExecuteResult(ControllerContext context)
+   en System.Web.Mvc.ControllerActionInvoker.InvokeActionResultFilterRecursive(IList`1 filters, Int32 filterIndex, ResultExecutingContext preContext, ControllerContext controllerContext, ActionResult actionResult)
+   en System.Web.Mvc.ControllerActionInvoker.InvokeActionResultFilterRecursive(IList`1 filters, Int32 filterIndex, ResultExecutingContext preContext, ControllerContext controllerContext, ActionResult actionResult)
+   en System.Web.Mvc.ControllerActionInvoker.InvokeActionResultFilterRecursive(IList`1 filters, Int32 filterIndex, ResultExecutingContext preContext, ControllerContext controllerContext, ActionResult actionResult)
+   en System.Web.Mvc.ControllerActionInvoker.InvokeActionResultFilterRecursive(IList`1 filters, Int32 filterIndex, ResultExecutingContext preContext, ControllerContext controllerContext, ActionResult actionResult)
+   en System.Web.Mvc.ControllerActionInvoker.InvokeActionResultFilterRecursive(IList`1 filters, Int32 filterIndex, ResultExecutingContext preContext, ControllerContext controllerContext, ActionResult actionResult)
+   en System.Web.Mvc.ControllerActionInvoker.InvokeActionResultWithFilters(ControllerContext controllerContext, IList`1 filters, ActionResult actionResult)
+   en System.Web.Mvc.Async.AsyncControllerActionInvoker.<>c__DisplayClass3_1.<BeginInvokeAction>b__1(IAsyncResult asyncResult)
+
+2026-06-01 16:49:26.343 | SolicitudAOCR/MisSolicitudes
+System.InvalidOperationException: No se encuentra la vista 'MisSolicitudes' ni su vista maestra o no hay un motor de búsqueda que admita las ubicaciones de búsqueda. Se buscó en las siguientes ubicaciones: 
+~/Views/SolicitudAOCR/MisSolicitudes.aspx
+~/Views/SolicitudAOCR/MisSolicitudes.ascx
+~/Views/Shared/MisSolicitudes.aspx
+~/Views/Shared/MisSolicitudes.ascx
+~/Views/SolicitudAOCR/MisSolicitudes.cshtml
+~/Views/SolicitudAOCR/MisSolicitudes.vbhtml
+~/Views/Shared/MisSolicitudes.cshtml
+~/Views/Shared/MisSolicitudes.vbhtml
+   en System.Web.Mvc.ViewResult.FindView(ControllerContext context)
+   en System.Web.Mvc.ViewResultBase.ExecuteResult(ControllerContext context)
+   en System.Web.Mvc.ControllerActionInvoker.InvokeActionResultFilterRecursive(IList`1 filters, Int32 filterIndex, ResultExecutingContext preContext, ControllerContext controllerContext, ActionResult actionResult)
+   en System.Web.Mvc.ControllerActionInvoker.InvokeActionResultFilterRecursive(IList`1 filters, Int32 filterIndex, ResultExecutingContext preContext, ControllerContext controllerContext, ActionResult actionResult)
+   en System.Web.Mvc.ControllerActionInvoker.InvokeActionResultFilterRecursive(IList`1 filters, Int32 filterIndex, ResultExecutingContext preContext, ControllerContext controllerContext, ActionResult actionResult)
+   en System.Web.Mvc.ControllerActionInvoker.InvokeActionResultFilterRecursive(IList`1 filters, Int32 filterIndex, ResultExecutingContext preContext, ControllerContext controllerContext, ActionResult actionResult)
+   en System.Web.Mvc.ControllerActionInvoker.InvokeActionResultFilterRecursive(IList`1 filters, Int32 filterIndex, ResultExecutingContext preContext, ControllerContext controllerContext, ActionResult actionResult)
+   en System.Web.Mvc.ControllerActionInvoker.InvokeActionResultWithFilters(ControllerContext controllerContext, IList`1 filters, ActionResult actionResult)
+   en System.Web.Mvc.Async.AsyncControllerActionInvoker.<>c__DisplayClass3_1.<BeginInvokeAction>b__1(IAsyncResult asyncResult)
+

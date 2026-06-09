@@ -34,6 +34,10 @@ namespace CapaPresentacion.Models
         public string IdentificacionUsuario { get; set; }
         public string CompaniaActivaCodigo { get; set; }
         public string CompaniaActivaNombre { get; set; }
+        public bool EsModoSubsanacionObservada { get; set; }
+        public List<string> DocumentosPendientesSubsanacionInputIds { get; set; } = new List<string>();
+        public List<string> DocumentosPendientesSubsanacionEtiquetas { get; set; } = new List<string>();
+        public List<string> DocumentosPendientesSubsanacionNoGestionables { get; set; } = new List<string>();
 
         // Usuario logueado - En JSON esto sera null, pero se puede ignorar
         [JsonIgnore]

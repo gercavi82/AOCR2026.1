@@ -92,9 +92,17 @@
     color: #0e4f83;
 }
 
-.aocr-pdf-btn:disabled {
+.aocr-pdf-btn:disabled,
+.aocr-pdf-btn.is-disabled {
     cursor: not-allowed;
     opacity: .45;
+    pointer-events: none;
+}
+
+.aocr-pdf-page-input:disabled {
+    background: #eef3f7;
+    color: #6c7b88;
+    cursor: not-allowed;
 }
 
 .aocr-pdf-page-state {

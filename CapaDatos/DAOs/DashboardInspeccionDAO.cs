@@ -242,9 +242,17 @@ namespace CapaDatos.DAOs
             if (items.Count == 0)
             {
                 var observaciones = new List<Observacion>();
-                observaciones.AddRange(ObservacionDAO.ObtenerPorEstado("Pendiente") ?? new List<Observacion>());
-                observaciones.AddRange(ObservacionDAO.ObtenerPorEstado("En Proceso") ?? new List<Observacion>());
-                observaciones.AddRange(ObservacionDAO.ObtenerPorEstado("Cerrada") ?? new List<Observacion>());
+                try
+                {
+                    observaciones.AddRange(ObservacionDAO.ObtenerPorEstado("Pendiente") ?? new List<Observacion>());
+                    observaciones.AddRange(ObservacionDAO.ObtenerPorEstado("En Proceso") ?? new List<Observacion>());
+                    observaciones.AddRange(ObservacionDAO.ObtenerPorEstado("Cerrada") ?? new List<Observacion>());
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine("[DashboardInspeccionDAO] Fallback de observaciones no disponible: " + ex.Message);
+                    observaciones = new List<Observacion>();
+                }
 
                 foreach (var observacion in observaciones)
                 {

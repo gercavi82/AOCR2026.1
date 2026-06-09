@@ -3,8 +3,9 @@ using System.Collections.Generic;
 namespace CapaDatos.Constants
 {
     /// <summary>
-    /// Roles del sistema AOCR con estructura jerárquica
-    /// Define quién puede hacer qué en cada etapa del workflow
+    /// LEGACY: catálogo simplificado histórico de roles AOCR.
+    /// No es fuente canónica para capas activas; usar roles crudos reales,
+    /// `RoleGroupingHelper` y `SeguridadBL` en MVC/negocio/DAO activos.
     /// </summary>
     public static class RolesAOCR
     {

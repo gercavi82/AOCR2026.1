@@ -1,4 +1,5 @@
 using System;
+using System.Net;
 using System.Net.Mail;
 using CapaModelo.Common;
 
@@ -16,8 +17,9 @@ namespace CapaDatos.Services
         public string LastError { get; private set; }
 
         // Configuración por defecto (fallback)
-        private const string DefaultSmtpServer = "172.20.16.21";
-        private const string DefaultFromAddress = "aocr@aviacioncivil.gob.ec";
+        private const string DefaultSmtpServer = "mail.aviacioncivil.gob.ec";
+        private const string DefaultFromAddress = "sistema@dgac.gob.ec";
+        private const string DefaultFromName = "aocr@aviacioncivil.gob.ec";
         private const int DefaultTimeout = 30000; // 30 segundos
 
         #region Constructores
@@ -77,13 +79,13 @@ namespace CapaDatos.Services
                     asunto = "Notificación - Sistema AOCR";
                 }
 
-                _logger.LogInfo(
-                    string.Format("Enviando correo a {0}, Asunto: {1}", coreoPara, TruncateForLog(asunto, 50)),
-                    new LogContext { CorrelationId = correlationId });
+                var fromAddress = GetEffectiveFromAddress(coreoDesde);
+                LogSmtpStart(correlationId, coreoPara, asunto, fromAddress, false);
 
                 using (var correo = new MailMessage())
                 {
-                    correo.From = new MailAddress(coreoDesde ?? GetDefaultFromAddress());
+                    correo.From = new MailAddress(fromAddress, GetDefaultFromName());
+                    AddReplyToIfDifferent(correo, coreoDesde, fromAddress);
                     correo.To.Add(coreoPara);
                     correo.Subject = asunto;
                     correo.Body = EmailTemplateRenderer.EnsureStandardLayout(
@@ -108,12 +110,12 @@ namespace CapaDatos.Services
             }
             catch (SmtpException ex)
             {
-                LastError = string.Format("SMTP {0}: {1}", ex.StatusCode, ex.Message);
+                LastError = BuildSmtpError(ex);
                 _logger.LogError(ex, new LogContext
                 {
                     CorrelationId = correlationId,
-                    ErrorCode = "SMTP_ERROR",
-                    AdditionalData = { { "Destinatario", coreoPara }, { "StatusCode", ex.StatusCode.ToString() } }
+                    ErrorCode = IsPermanentSmtpConfigurationError(ex) ? "ERROR_CONFIG_SMTP" : "SMTP_ERROR",
+                    AdditionalData = { { "Destinatario", coreoPara }, { "StatusCode", ex.StatusCode.ToString() }, { "LastError", LastError } }
                 });
                 return false;
             }
@@ -159,9 +161,13 @@ namespace CapaDatos.Services
                 if (string.IsNullOrWhiteSpace(asunto))
                     asunto = "Notificación - Sistema AOCR";
 
+                var fromAddress = GetEffectiveFromAddress(coreoDesde);
+                LogSmtpStart(correlationId, coreoPara, asunto, fromAddress, true);
+
                 using (var correo = new MailMessage())
                 {
-                    correo.From = new MailAddress(coreoDesde ?? GetDefaultFromAddress());
+                    correo.From = new MailAddress(fromAddress, GetDefaultFromName());
+                    AddReplyToIfDifferent(correo, coreoDesde, fromAddress);
                     correo.To.Add(coreoPara);
                     correo.Subject = asunto;
                     correo.Body = EmailTemplateRenderer.EnsureStandardLayout(
@@ -194,12 +200,12 @@ namespace CapaDatos.Services
             }
             catch (SmtpException ex)
             {
-                LastError = string.Format("SMTP {0}: {1}", ex.StatusCode, ex.Message);
+                LastError = BuildSmtpError(ex);
                 _logger.LogError(ex, new LogContext
                 {
                     CorrelationId = correlationId,
-                    ErrorCode = "SMTP_ERROR_ADJUNTO",
-                    AdditionalData = { { "Destinatario", coreoPara }, { "StatusCode", ex.StatusCode.ToString() } }
+                    ErrorCode = IsPermanentSmtpConfigurationError(ex) ? "ERROR_CONFIG_SMTP" : "SMTP_ERROR_ADJUNTO",
+                    AdditionalData = { { "Destinatario", coreoPara }, { "StatusCode", ex.StatusCode.ToString() }, { "LastError", LastError } }
                 });
                 return false;
             }
@@ -286,6 +292,7 @@ namespace CapaDatos.Services
             var server = GetSmtpServer();
             var smtp = new SmtpClient(server);
             smtp.Timeout = DefaultTimeout;
+            smtp.UseDefaultCredentials = false;
 
             // Si hay credenciales configuradas, usarlas
             try
@@ -301,6 +308,22 @@ namespace CapaDatos.Services
             catch
             {
                 // Usar configuración sin autenticación (relay interno)
+            }
+
+            try
+            {
+                var creds = _config.GetEmailCredentials();
+                smtp.Port = creds.SmtpPort > 0 ? creds.SmtpPort : GetConfiguredSmtpPort();
+                smtp.EnableSsl = creds.UseSsl;
+                if (!string.IsNullOrEmpty(creds.Username) && !string.IsNullOrEmpty(creds.Password))
+                {
+                    smtp.Credentials = new NetworkCredential(creds.Username, creds.Password);
+                }
+            }
+            catch
+            {
+                smtp.Port = GetConfiguredSmtpPort();
+                smtp.EnableSsl = GetConfiguredSmtpSsl();
             }
 
             return smtp;
@@ -342,7 +365,161 @@ namespace CapaDatos.Services
                 // Continuar con fallback
             }
 
-            return _config.GetAppSetting("EmailFrom") ?? DefaultFromAddress;
+            var configured = FirstNonEmpty(
+                _config.GetAppSetting("EmailFrom"),
+                _config.GetAppSetting("FromEmail"),
+                _config.GetAppSetting("MailFrom"));
+
+            return string.IsNullOrWhiteSpace(configured) ? DefaultFromAddress : configured.Trim();
+        }
+
+        private string GetDefaultFromName()
+        {
+            try
+            {
+                var creds = _config.GetEmailCredentials();
+                if (!string.IsNullOrWhiteSpace(creds.FromName))
+                {
+                    return creds.FromName.Trim();
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error obteniendo FromName desde config segura: {ex.Message}");
+            }
+
+            var configured = _config.GetAppSetting("EmailFromName");
+            return string.IsNullOrWhiteSpace(configured) ? DefaultFromName : configured.Trim();
+        }
+
+        private string GetEffectiveFromAddress(string requestedFrom)
+        {
+            var creds = _config.GetEmailCredentials();
+            var configuredFrom = FirstNonEmpty(
+                creds != null ? creds.FromAddress : null,
+                _config.GetAppSetting("EmailFrom"),
+                _config.GetAppSetting("FromEmail"),
+                _config.GetAppSetting("MailFrom"));
+
+            if (!string.IsNullOrWhiteSpace(configuredFrom))
+            {
+                return configuredFrom.Trim();
+            }
+
+            if (creds != null && !string.IsNullOrWhiteSpace(creds.Username))
+            {
+                return creds.Username.Trim();
+            }
+
+            if (!string.IsNullOrWhiteSpace(requestedFrom) &&
+                !IsRejectedAviacionCivilNoAuthAddress(requestedFrom))
+            {
+                return requestedFrom.Trim();
+            }
+
+            return DefaultFromAddress;
+        }
+
+        private void AddReplyToIfDifferent(MailMessage correo, string requestedFrom, string effectiveFrom)
+        {
+            if (correo == null || string.IsNullOrWhiteSpace(requestedFrom))
+            {
+                return;
+            }
+
+            if (string.Equals(requestedFrom.Trim(), effectiveFrom ?? string.Empty, StringComparison.OrdinalIgnoreCase))
+            {
+                return;
+            }
+
+            try
+            {
+                correo.ReplyToList.Add(new MailAddress(requestedFrom.Trim()));
+            }
+            catch
+            {
+            }
+        }
+
+        private void LogSmtpStart(string correlationId, string coreoPara, string asunto, string fromAddress, bool conAdjunto)
+        {
+            try
+            {
+                var creds = _config.GetEmailCredentials();
+                _logger.LogInfo(
+                    string.Format("[AOCR][SMTP_SEND_START] Para={0}; From={1}; Host={2}; Port={3}; SSL={4}; AuthConfigured={5}; Adjunto={6}; Asunto={7}",
+                        coreoPara,
+                        fromAddress,
+                        GetSmtpServer(),
+                        creds.SmtpPort,
+                        creds.UseSsl,
+                        !string.IsNullOrWhiteSpace(creds.Username) && !string.IsNullOrWhiteSpace(creds.Password),
+                        conAdjunto,
+                        TruncateForLog(asunto, 50)),
+                    new LogContext { CorrelationId = correlationId });
+            }
+            catch
+            {
+                _logger.LogInfo(
+                    string.Format("[AOCR][SMTP_SEND_START] Para={0}; From={1}; Asunto={2}", coreoPara, fromAddress, TruncateForLog(asunto, 50)),
+                    new LogContext { CorrelationId = correlationId });
+            }
+        }
+
+        private int GetConfiguredSmtpPort()
+        {
+            int port;
+            return int.TryParse(FirstNonEmpty(_config.GetAppSetting("Email:SmtpPort"), _config.GetAppSetting("SmtpPort")), out port) && port > 0
+                ? port
+                : 25;
+        }
+
+        private bool GetConfiguredSmtpSsl()
+        {
+            bool ssl;
+            return bool.TryParse(FirstNonEmpty(_config.GetAppSetting("Email:UseSsl"), _config.GetAppSetting("SmtpEnableSsl")), out ssl) && ssl;
+        }
+
+        private static string BuildSmtpError(SmtpException ex)
+        {
+            var detalle = string.Format("SMTP {0}: {1}", ex.StatusCode, ex.Message);
+            return IsPermanentSmtpConfigurationError(ex)
+                ? "ERROR_CONFIG_SMTP: " + detalle
+                : detalle;
+        }
+
+        private static bool IsPermanentSmtpConfigurationError(SmtpException ex)
+        {
+            if (ex == null)
+            {
+                return false;
+            }
+
+            var detalle = ((ex.Message ?? string.Empty) + " " + ex.StatusCode).Trim();
+            return detalle.IndexOf("5.7.1", StringComparison.OrdinalIgnoreCase) >= 0
+                || detalle.IndexOf("MailboxNameNotAllowed", StringComparison.OrdinalIgnoreCase) >= 0
+                || detalle.IndexOf("sender address rejected", StringComparison.OrdinalIgnoreCase) >= 0
+                || detalle.IndexOf("not logged in", StringComparison.OrdinalIgnoreCase) >= 0
+                || detalle.IndexOf("client was not authenticated", StringComparison.OrdinalIgnoreCase) >= 0
+                || detalle.IndexOf("authentication", StringComparison.OrdinalIgnoreCase) >= 0;
+        }
+
+        private static bool IsRejectedAviacionCivilNoAuthAddress(string address)
+        {
+            return string.Equals((address ?? string.Empty).Trim(), "no_reply@aviacioncivil.gob.ec", StringComparison.OrdinalIgnoreCase);
+        }
+
+        private static string FirstNonEmpty(params string[] values)
+        {
+            foreach (var value in values ?? new string[0])
+            {
+                if (!string.IsNullOrWhiteSpace(value))
+                {
+                    return value.Trim();
+                }
+            }
+
+            return null;
         }
 
         private string TruncateForLog(string text, int maxLength)

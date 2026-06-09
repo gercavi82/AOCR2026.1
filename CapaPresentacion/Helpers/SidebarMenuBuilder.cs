@@ -5,6 +5,7 @@ using System.Web;
 using System.Web.Mvc;
 using CapaDatos.Constants;
 using CapaDatos.DAOs;
+using CapaDatos.Models;
 using CapaModelo;
 using CapaNegocio.Services;
 using CapaPresentacion.Models.ViewModels;
@@ -20,11 +21,25 @@ namespace CapaPresentacion.Helpers
             public int RtObservedRequests { get; set; }
             public int RtPendingSubsanations { get; set; }
             public int RtFinalDocuments { get; set; }
+            public int RtAocrFirmadas { get; set; }
+            public int RtCondicionesFirmadas { get; set; }
+            public int RtDescargasFinales { get; set; }
             public int InspectorPendingRevision { get; set; }
+            public int InspectorTotalInspections { get; set; }
+            public int InspectorAssignedInspections { get; set; }
+            public int InspectorInProgressInspections { get; set; }
+            public int InspectorObservedInspections { get; set; }
+            public int InspectorFinishedInspections { get; set; }
             public int CoordinatorPendingAssignment { get; set; }
             public int CoordinatorDocumentalQueue { get; set; }
             public int CoordinatorFinalDocuments { get; set; }
             public int FinancialPendingOrders { get; set; }
+            public int FinancialPendingReviewOrders { get; set; }
+            public int FinancialUploadedPaymentOrders { get; set; }
+            public int FinancialObservedOrders { get; set; }
+            public int FinancialApprovedOrders { get; set; }
+            public int FinancialFacturedOrders { get; set; }
+            public int FinancialHistoryOrders { get; set; }
             public int DirdacPendingSignatures { get; set; }
             public int ExecutiveApprovalQueue { get; set; }
             public int AdminApprovalUsers { get; set; }
@@ -40,6 +55,7 @@ namespace CapaPresentacion.Helpers
             public string CurrentAction { get; set; }
             public string CurrentFragment { get; set; }
             public int UserId { get; set; }
+            public string CodigoUsuarioSesion { get; set; }
             public string UserName { get; set; }
             public string UserEmail { get; set; }
             public string RolActual { get; set; }
@@ -73,6 +89,14 @@ namespace CapaPresentacion.Helpers
             public bool MostrarSelectorCompaniaRt { get; set; }
             public IList<UsuarioCompaniaRT> CompaniasRtAsignadas { get; set; }
             public SidebarBadgeSnapshot Badges { get; set; }
+        }
+
+        private sealed class FinancialSidebarCounterRow
+        {
+            public int OrdenId { get; set; }
+            public string EstadoOrden { get; set; }
+            public string EstadoPago { get; set; }
+            public bool TieneFactura { get; set; }
         }
 
         public static SidebarMenuViewModel Build(ViewContext viewContext, ViewDataDictionary viewData, object model)
@@ -176,6 +200,7 @@ namespace CapaPresentacion.Helpers
                     : string.Empty,
                 RolActual = permission.RolActual,
                 RolesRaw = permission.RolesRaw,
+                CodigoUsuarioSesion = (session["CodigoUsuario"] as string ?? string.Empty).Trim(),
                 UserName = (session["NombreUsuario"] as string ?? string.Empty).Trim(),
                 UserEmail = (session["Correo"] as string ?? string.Empty).Trim()
             };
@@ -337,14 +362,40 @@ namespace CapaPresentacion.Helpers
 
                 context.MostrarSelectorCompaniaRt = context.CompaniasRtAsignadas.Count > 1;
 
-                if (string.IsNullOrWhiteSpace(context.CodigoCompaniaActiva) && context.CompaniasRtAsignadas.Count == 1)
+                var codigoActivoActual = (context.CodigoCompaniaActiva ?? string.Empty).Trim();
+                var companiaActiva = !string.IsNullOrWhiteSpace(codigoActivoActual)
+                    ? context.CompaniasRtAsignadas.FirstOrDefault(c =>
+                        string.Equals((c.CompaniaCodigo ?? string.Empty).Trim(), codigoActivoActual, StringComparison.OrdinalIgnoreCase))
+                    : null;
+
+                if (context.CompaniasRtAsignadas.Count > 0 && companiaActiva == null)
                 {
-                    context.CodigoCompaniaActiva = (context.CompaniasRtAsignadas[0].CompaniaCodigo ?? string.Empty).Trim();
+                    companiaActiva = context.CompaniasRtAsignadas[0];
+                    context.CodigoCompaniaActiva = (companiaActiva.CompaniaCodigo ?? string.Empty).Trim();
+                    context.NombreCompaniaActiva = !string.IsNullOrWhiteSpace(companiaActiva.CompaniaNombre)
+                        ? companiaActiva.CompaniaNombre.Trim()
+                        : context.CodigoCompaniaActiva;
+
+                    CompaniaActivaSessionHelper.Establecer(session, context.CodigoCompaniaActiva, context.NombreCompaniaActiva);
+                    try
+                    {
+                        CapaNegocio.LogBL.RegistrarInfo(
+                            string.Format(
+                                "[SIDEBAR][COMPANIA_ACTIVA] UsuarioId={0}; Rol={1}; Motivo=SesionSinCompaniaValida; CompaniaSeleccionada={2}; TotalCompanias={3}",
+                                context.UserId,
+                                context.RolActual ?? string.Empty,
+                                context.CodigoCompaniaActiva,
+                                context.CompaniasRtAsignadas.Count),
+                            "SidebarMenuBuilder");
+                    }
+                    catch
+                    {
+                    }
                 }
 
                 if (string.IsNullOrWhiteSpace(context.NombreCompaniaActiva) && !string.IsNullOrWhiteSpace(context.CodigoCompaniaActiva))
                 {
-                    var companiaActiva = context.CompaniasRtAsignadas.FirstOrDefault(c =>
+                    companiaActiva = context.CompaniasRtAsignadas.FirstOrDefault(c =>
                         string.Equals((c.CompaniaCodigo ?? string.Empty).Trim(), context.CodigoCompaniaActiva.Trim(), StringComparison.OrdinalIgnoreCase));
 
                     if (companiaActiva != null)
@@ -356,6 +407,14 @@ namespace CapaPresentacion.Helpers
                 if (string.IsNullOrWhiteSpace(context.NombreCompaniaActiva) && !string.IsNullOrWhiteSpace(context.CodigoCompaniaActiva))
                 {
                     context.NombreCompaniaActiva = context.CodigoCompaniaActiva;
+                }
+
+                if (!string.IsNullOrWhiteSpace(context.CodigoCompaniaActiva)
+                    && !string.IsNullOrWhiteSpace(context.NombreCompaniaActiva)
+                    && (string.IsNullOrWhiteSpace(CompaniaActivaSessionHelper.ObtenerCodigo(session))
+                        || string.IsNullOrWhiteSpace(CompaniaActivaSessionHelper.ObtenerNombre(session))))
+                {
+                    CompaniaActivaSessionHelper.Establecer(session, context.CodigoCompaniaActiva, context.NombreCompaniaActiva);
                 }
 
                 if (context.EsSolicitanteORT)
@@ -393,12 +452,16 @@ namespace CapaPresentacion.Helpers
         private static SidebarBadgeSnapshot LoadBadgeSnapshot(SidebarBuildContext context)
         {
             var session = context.HttpContext.Session;
-            var cacheKey = "_Sidebar_Badges_" + context.UserId + "_" + context.RolActual;
+            var cacheScope = context.EsFinancieroRol || context.EsAdministrador
+                ? "GLOBAL"
+                : (context.CodigoCompaniaActiva ?? string.Empty).Trim();
+            var cacheKey = "_Sidebar_Badges_" + context.UserId + "_" + context.RolActual + "_" + cacheScope;
             var cacheTimeKey = cacheKey + "_t";
             var cached = session[cacheKey] as SidebarBadgeSnapshot;
             var cachedTime = session[cacheTimeKey] as long?;
             var now = DateTime.UtcNow.Ticks;
-            if (cached != null && cachedTime.HasValue && (now - cachedTime.Value) < TimeSpan.FromSeconds(45).Ticks)
+            var cacheSeconds = context.EsFinancieroRol || context.EsAdministrador ? 5 : 45;
+            if (cached != null && cachedTime.HasValue && (now - cachedTime.Value) < TimeSpan.FromSeconds(cacheSeconds).Ticks)
             {
                 return cached;
             }
@@ -412,9 +475,10 @@ namespace CapaPresentacion.Helpers
                     snapshot.UnreadNotifications = NotificacionDAO.ContarNoLeidas(context.UserId);
                 }
             }
-            catch
+            catch (Exception ex)
             {
                 snapshot.UnreadNotifications = 0;
+                LogSidebarCounterError(context, "NOTIFICACIONES", ex);
             }
 
             try
@@ -426,22 +490,31 @@ namespace CapaPresentacion.Helpers
                         ? (solicitudDao.ObtenerPorUsuario(context.UserId) ?? new List<SolicitudAOCR>())
                         : (context.EsAdministrador ? (solicitudDao.ObtenerTodos() ?? new List<SolicitudAOCR>()) : new List<SolicitudAOCR>());
 
+                    solicitudes = FiltrarSolicitudesPorContextoSidebar(context, solicitudes);
                     snapshot.RtActiveRequests = solicitudes.Count(s => s != null && IsOpenWorkflowState(s.Estado));
                     snapshot.RtObservedRequests = solicitudes.Count(s => s != null && string.Equals(EstadoSolicitud.Normalizar(s.Estado), EstadoSolicitud.Observada, StringComparison.OrdinalIgnoreCase));
                     var finales = new AocrBandejaDAO().ListarGeneradasFirmadas();
-                    snapshot.RtFinalDocuments = finales != null ? finales.Count : 0;
+                    CargarContadoresDocumentosFinalesSidebar(context, finales, snapshot);
                     if (context.UserId > 0)
                     {
                         snapshot.RtPendingSubsanations = new SubsanacionDAO().ContarPendientesPorOperador(context.UserId);
+                        if (snapshot.RtPendingSubsanations <= 0)
+                        {
+                            snapshot.RtPendingSubsanations = snapshot.RtObservedRequests;
+                        }
                     }
                 }
             }
-            catch
+            catch (Exception ex)
             {
                 snapshot.RtActiveRequests = 0;
                 snapshot.RtObservedRequests = 0;
                 snapshot.RtPendingSubsanations = 0;
                 snapshot.RtFinalDocuments = 0;
+                snapshot.RtAocrFirmadas = 0;
+                snapshot.RtCondicionesFirmadas = 0;
+                snapshot.RtDescargasFinales = 0;
+                LogSidebarCounterError(context, "RT_SOLICITANTE", ex);
             }
 
             try
@@ -451,11 +524,19 @@ namespace CapaPresentacion.Helpers
                     snapshot.InspectorPendingRevision = context.UserId > 0
                         ? new RevisionDocumentalDAO().ObtenerPendientesRevisionInspector(context.UserId).Count
                         : 0;
+
+                    LoadInspectorInspectionCounters(context, snapshot);
                 }
             }
-            catch
+            catch (Exception ex)
             {
                 snapshot.InspectorPendingRevision = 0;
+                snapshot.InspectorTotalInspections = 0;
+                snapshot.InspectorAssignedInspections = 0;
+                snapshot.InspectorInProgressInspections = 0;
+                snapshot.InspectorObservedInspections = 0;
+                snapshot.InspectorFinishedInspections = 0;
+                LogSidebarCounterError(context, "INSPECTOR_REVISION_DOCUMENTAL", ex);
             }
 
             try
@@ -464,30 +545,93 @@ namespace CapaPresentacion.Helpers
                 {
                     var solicitudDao = new SolicitudAOCRDAO();
                     snapshot.CoordinatorPendingAssignment = solicitudDao.ObtenerPendientesAsignacion().Count;
-                    snapshot.ExecutiveApprovalQueue = solicitudDao.ObtenerPendientesRevision().Count;
+                    // El badge ejecutivo debe reflejar la bandeja AOCR de aprobación/firma
+                    // (AOCR En Elaboracion/En Revision/Validado), no la cola documental inicial.
+                    snapshot.ExecutiveApprovalQueue = solicitudDao.ObtenerParaBandejaEjecutivaAprobacion().Count;
                     snapshot.CoordinatorDocumentalQueue = new DashboardInspeccionDAO().ObtenerControlDocumental(200).Count;
                     var finales = new AocrBandejaDAO().ListarGeneradasFirmadas();
-                    snapshot.CoordinatorFinalDocuments = finales != null ? finales.Count : 0;
+                    CargarContadoresDocumentosFinalesSidebar(context, finales, snapshot);
+                    snapshot.CoordinatorFinalDocuments = snapshot.RtFinalDocuments;
                 }
             }
-            catch
+            catch (Exception ex)
             {
                 snapshot.CoordinatorPendingAssignment = 0;
                 snapshot.ExecutiveApprovalQueue = 0;
                 snapshot.CoordinatorDocumentalQueue = 0;
                 snapshot.CoordinatorFinalDocuments = 0;
+                LogSidebarCounterError(context, "COORDINACION_DIRECCION", ex);
             }
 
             try
             {
                 if (context.EsFinancieroRol || context.EsAdministrador)
                 {
-                    snapshot.FinancialPendingOrders = new DashboardOrdenesService().ObtenerKPIs(null).OrdenesPendientes;
+                    var ordenDao = new OrdenRecaudacionDAO();
+                    var ordenes = ordenDao.ObtenerTodasLasOrdenes(null) ?? new List<CapaDatos.Entidades.OrdenRecaudacion>();
+                    var estadosFinancieros = new List<FinancialSidebarCounterRow>();
+
+                    foreach (var orden in ordenes.Where(o => o != null))
+                    {
+                        try
+                        {
+                            var pago = ordenDao.ObtenerUltimoPagoPorOrden(orden.Id);
+                            var factura = ordenDao.ObtenerFacturaPagoPorOrden(orden.Id);
+                            var tieneFactura = FinancialOrderStateHelper.TieneFacturaRegistrada(
+                                factura != null ? factura.NumeroFactura : null,
+                                factura != null ? factura.Fr3Estado : null,
+                                factura != null ? factura.Fr3Numero : null);
+
+                            estadosFinancieros.Add(new FinancialSidebarCounterRow
+                            {
+                                OrdenId = orden.Id,
+                                EstadoOrden = orden.Estado,
+                                EstadoPago = pago != null ? pago.Estado : null,
+                                TieneFactura = tieneFactura
+                            });
+                        }
+                        catch (Exception exOrden)
+                        {
+                            LogSidebarCounterError(context, "FINANCIERO_ORDEN_" + orden.Id, exOrden);
+                        }
+                    }
+
+                    snapshot.FinancialPendingReviewOrders = estadosFinancieros.Count(o => FinancialOrderStateHelper.EsPendienteGestion(o.EstadoOrden, o.EstadoPago, o.TieneFactura));
+                    snapshot.FinancialUploadedPaymentOrders = estadosFinancieros.Count(o => FinancialOrderStateHelper.CoincideFiltro(o.EstadoOrden, o.EstadoPago, o.TieneFactura, EstadoOrden.EnRevisionFinanciera));
+                    snapshot.FinancialObservedOrders = estadosFinancieros.Count(o => FinancialOrderStateHelper.EsObservada(o.EstadoOrden, o.EstadoPago));
+                    snapshot.FinancialApprovedOrders = estadosFinancieros.Count(o => FinancialOrderStateHelper.EsAprobadaOFacturada(o.EstadoOrden, o.EstadoPago, o.TieneFactura));
+                    snapshot.FinancialFacturedOrders = estadosFinancieros.Count(o => o.TieneFactura);
+                    snapshot.FinancialHistoryOrders = estadosFinancieros.Count(o => FinancialOrderStateHelper.EsHistorialFinanciero(o.EstadoOrden, o.EstadoPago, o.TieneFactura));
+                    snapshot.FinancialPendingOrders = snapshot.FinancialPendingReviewOrders;
+
+                    CapaNegocio.LogBL.RegistrarInfo(
+                        string.Format(
+                            "[SIDEBAR_COUNTERS][FINANCIERO] UsuarioId={0}; Rol={1}; ReglaCompania=GLOBAL_SIN_FILTRO_COMPANIA; TotalOrdenesBase={2}; TotalOrdenesClasificadas={3}; Pendientes={4}; Cargados={5}; Observados={6}; Aprobados={7}; FacturasFr3={8}; Historial={9}; EstadosBase={10}",
+                            context.UserId,
+                            context.RolActual ?? string.Empty,
+                            ordenes.Count,
+                            estadosFinancieros.Count,
+                            snapshot.FinancialPendingReviewOrders,
+                            snapshot.FinancialUploadedPaymentOrders,
+                            snapshot.FinancialObservedOrders,
+                            snapshot.FinancialApprovedOrders,
+                            snapshot.FinancialFacturedOrders,
+                            snapshot.FinancialHistoryOrders,
+                            ResumirEstadosFinancieros(estadosFinancieros)),
+                        "SidebarMenuBuilder",
+                        context.UserId > 0 ? (int?)context.UserId : null);
                 }
             }
-            catch
+            catch (Exception ex)
             {
                 snapshot.FinancialPendingOrders = 0;
+                snapshot.FinancialPendingReviewOrders = 0;
+                snapshot.FinancialUploadedPaymentOrders = 0;
+                snapshot.FinancialObservedOrders = 0;
+                snapshot.FinancialApprovedOrders = 0;
+                snapshot.FinancialFacturedOrders = 0;
+                snapshot.FinancialHistoryOrders = 0;
+                LogSidebarCounterError(context, "FINANCIERO_GLOBAL", ex);
             }
 
             try
@@ -497,9 +641,10 @@ namespace CapaPresentacion.Helpers
                     snapshot.DirdacPendingSignatures = new InspeccionInformeDAO().ListarPendientesFirmaDirdac().Count;
                 }
             }
-            catch
+            catch (Exception ex)
             {
                 snapshot.DirdacPendingSignatures = 0;
+                LogSidebarCounterError(context, "DIRDAC_FIRMAS", ex);
             }
 
             try
@@ -510,14 +655,410 @@ namespace CapaPresentacion.Helpers
                     snapshot.AdminApprovalUsers = pendientes != null ? pendientes.Count : 0;
                 }
             }
-            catch
+            catch (Exception ex)
             {
                 snapshot.AdminApprovalUsers = 0;
+                LogSidebarCounterError(context, "ADMIN_USUARIOS", ex);
             }
 
+            LogSidebarCounters(context, snapshot, cacheSeconds, cacheScope);
             session[cacheKey] = snapshot;
             session[cacheTimeKey] = now;
             return snapshot;
+        }
+
+        private static void LoadInspectorInspectionCounters(SidebarBuildContext context, SidebarBadgeSnapshot snapshot)
+        {
+            var inspectorIds = ResolveInspectorFilterIds(context);
+            var inspectorTextIds = ResolveInspectorFilterTextIds(context, inspectorIds);
+            var dao = new InspeccionDAO();
+            var inspeccionesBase = dao.ListarTodas() ?? new List<Inspeccion>();
+            var inspeccionesAsignadas = inspectorIds
+                .SelectMany(id => dao.ListarPorInspector(id) ?? new List<Inspeccion>())
+                .Concat(inspeccionesBase.Where(ins => InspectorMatchesTextIdentifiers(ins, inspectorTextIds)))
+                .Where(ins => ins != null && ins.CodigoInspeccion > 0)
+                .GroupBy(ins => ins.CodigoInspeccion)
+                .Select(group => group.OrderByDescending(ins => ins.UpdatedAt ?? DateTime.MinValue).First())
+                .ToList();
+
+            snapshot.InspectorTotalInspections = inspeccionesAsignadas.Count;
+            snapshot.InspectorAssignedInspections = inspeccionesAsignadas.Count(ins => EsEstadoInspeccionAsignada(ins.Estado));
+            snapshot.InspectorInProgressInspections = inspeccionesAsignadas.Count(ins => EsEstadoInspeccionEnFase(ins.Estado));
+            snapshot.InspectorObservedInspections = inspeccionesAsignadas.Count(ins => EsEstadoInspeccionObservada(ins.Estado));
+            snapshot.InspectorFinishedInspections = inspeccionesAsignadas.Count(ins => EsEstadoInspeccionFinalizada(ins.Estado));
+
+            LogSidebarInspecciones(context, inspectorIds, inspeccionesBase, inspeccionesAsignadas, snapshot);
+        }
+
+        private static HashSet<int> ResolveInspectorFilterIds(SidebarBuildContext context)
+        {
+            var ids = new HashSet<int>();
+            if (context != null && context.UserId > 0)
+            {
+                ids.Add(context.UserId);
+            }
+
+            int codigoUsuarioNumerico = 0;
+            if (context != null && int.TryParse(context.CodigoUsuarioSesion, out codigoUsuarioNumerico) && codigoUsuarioNumerico > 0)
+            {
+                ids.Add(codigoUsuarioNumerico);
+            }
+
+            try
+            {
+                var usuarioRtDao = new UsuarioInternoRTDAO();
+                UsuarioInternoRTRegistro inspectorActual = null;
+
+                if (context != null && context.UserId > 0)
+                {
+                    inspectorActual = usuarioRtDao.ObtenerInspectorActivoPorTecnicoIdOUsuarioId(context.UserId);
+                }
+
+                if (inspectorActual == null && context != null && !string.IsNullOrWhiteSpace(context.CodigoUsuarioSesion))
+                {
+                    inspectorActual = usuarioRtDao.ObtenerActivoPorCodigoUsuario(context.CodigoUsuarioSesion)
+                        ?? usuarioRtDao.ObtenerInspectorAsignableActivo(context.CodigoUsuarioSesion);
+                }
+
+                if (inspectorActual == null && codigoUsuarioNumerico > 0)
+                {
+                    inspectorActual = usuarioRtDao.ObtenerInspectorActivoPorTecnicoIdOUsuarioId(codigoUsuarioNumerico);
+                }
+
+                if (inspectorActual != null)
+                {
+                    if (inspectorActual.UsuarioId.HasValue && inspectorActual.UsuarioId.Value > 0)
+                    {
+                        ids.Add(inspectorActual.UsuarioId.Value);
+                    }
+
+                    if (inspectorActual.TecnicoId.HasValue && inspectorActual.TecnicoId.Value > 0)
+                    {
+                        ids.Add(inspectorActual.TecnicoId.Value);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                LogSidebarCounterError(context, "INSPECTOR_IDS", ex);
+            }
+
+            return ids;
+        }
+
+        private static HashSet<string> ResolveInspectorFilterTextIds(SidebarBuildContext context, IEnumerable<int> inspectorIds)
+        {
+            var ids = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            if (context != null)
+            {
+                AddTextId(ids, context.CodigoUsuarioSesion);
+                AddTextId(ids, context.UserName);
+            }
+
+            foreach (var id in inspectorIds ?? Enumerable.Empty<int>())
+            {
+                if (id > 0)
+                {
+                    AddTextId(ids, id.ToString());
+                }
+            }
+
+            return ids;
+        }
+
+        private static void AddTextId(HashSet<string> ids, string value)
+        {
+            if (ids == null || string.IsNullOrWhiteSpace(value))
+            {
+                return;
+            }
+
+            ids.Add(value.Trim());
+        }
+
+        private static bool InspectorMatchesTextIdentifiers(Inspeccion inspeccion, HashSet<string> inspectorTextIds)
+        {
+            if (inspeccion == null || inspectorTextIds == null || inspectorTextIds.Count == 0)
+            {
+                return false;
+            }
+
+            return TextIdentifierMatches(inspeccion.CodigoInspector.HasValue ? inspeccion.CodigoInspector.Value.ToString() : null, inspectorTextIds)
+                || TextIdentifierMatches(inspeccion.InspectorPrincipalCedula, inspectorTextIds)
+                || TextIdentifierMatches(inspeccion.InspectorApoyoCedula, inspectorTextIds);
+        }
+
+        private static bool TextIdentifierMatches(string value, HashSet<string> inspectorTextIds)
+        {
+            return !string.IsNullOrWhiteSpace(value) && inspectorTextIds.Contains(value.Trim());
+        }
+
+        private static bool EsEstadoInspeccionAsignada(string estado)
+        {
+            var normalizado = EstadosInspeccion.NormalizarEstado(estado);
+            return string.Equals(normalizado, EstadosInspeccion.ACEPTADA, StringComparison.OrdinalIgnoreCase)
+                || string.Equals(normalizado, EstadosInspeccion.VERIFICACION_SOLICITUD, StringComparison.OrdinalIgnoreCase)
+                || string.Equals(normalizado, EstadosInspeccion.SUBSANADA, StringComparison.OrdinalIgnoreCase)
+                || string.Equals(normalizado, EstadosInspeccion.PAGO_VALIDADO, StringComparison.OrdinalIgnoreCase)
+                || string.Equals(normalizado, EstadosInspeccion.VIATICOS_REQUERIDOS, StringComparison.OrdinalIgnoreCase);
+        }
+
+        private static bool EsEstadoInspeccionEnFase(string estado)
+        {
+            var normalizado = EstadosInspeccion.NormalizarEstado(estado);
+            return string.Equals(normalizado, EstadosInspeccion.EN_INSPECCION, StringComparison.OrdinalIgnoreCase)
+                || string.Equals(normalizado, EstadosInspeccion.INFORME_ELABORADO, StringComparison.OrdinalIgnoreCase);
+        }
+
+        private static bool EsEstadoInspeccionObservada(string estado)
+        {
+            var normalizado = EstadosInspeccion.NormalizarEstado(estado);
+            return string.Equals(normalizado, EstadosInspeccion.OBSERVADA, StringComparison.OrdinalIgnoreCase)
+                || string.Equals(normalizado, EstadosInspeccion.OBSERVACION_DOCUMENTAL, StringComparison.OrdinalIgnoreCase)
+                || string.Equals(normalizado, EstadosInspeccion.RESULTADO_NO_SATISFACTORIO, StringComparison.OrdinalIgnoreCase);
+        }
+
+        private static bool EsEstadoInspeccionFinalizada(string estado)
+        {
+            var normalizado = EstadosInspeccion.NormalizarEstado(estado);
+            return string.Equals(normalizado, EstadosInspeccion.RESULTADO_SATISFACTORIO, StringComparison.OrdinalIgnoreCase)
+                || string.Equals(normalizado, EstadosInspeccion.CERRADA, StringComparison.OrdinalIgnoreCase);
+        }
+
+        private static void LogSidebarInspecciones(
+            SidebarBuildContext context,
+            IEnumerable<int> inspectorIds,
+            IList<Inspeccion> inspeccionesBase,
+            IList<Inspeccion> inspeccionesAsignadas,
+            SidebarBadgeSnapshot snapshot)
+        {
+            try
+            {
+                var lista = inspeccionesAsignadas ?? new List<Inspeccion>();
+                CapaNegocio.LogBL.RegistrarInfo(
+                    string.Format(
+                        "[SIDEBAR][INSPECCIONES] Usuario={0}; RolActivo={1}; UserIdSesion={2}; CodigoUsuarioSesion={3}; CompaniaActiva={4}; IdsFiltroInspector={5}; TotalBaseInspecciones={6}; TotalFiltradoInspector={7}; TotalMisInspecciones={8}; TotalAsignadas={9}; TotalFaseInspeccion={10}; TotalObservaciones={11}; TotalFinalizadas={12}; EstadosEncontrados={13}; IdsInspeccionesEncontradas={14}",
+                        context != null ? (context.UserName ?? string.Empty) : string.Empty,
+                        context != null ? (context.RolActual ?? string.Empty) : string.Empty,
+                        context != null ? context.UserId : 0,
+                        context != null ? (context.CodigoUsuarioSesion ?? string.Empty) : string.Empty,
+                        context != null ? (string.IsNullOrWhiteSpace(context.CodigoCompaniaActiva) ? "No definida" : context.CodigoCompaniaActiva) : string.Empty,
+                        string.Join(",", (inspectorIds ?? Enumerable.Empty<int>()).OrderBy(id => id)),
+                        inspeccionesBase != null ? inspeccionesBase.Count : 0,
+                        lista.Count,
+                        snapshot.InspectorTotalInspections,
+                        snapshot.InspectorAssignedInspections,
+                        snapshot.InspectorInProgressInspections,
+                        snapshot.InspectorObservedInspections,
+                        snapshot.InspectorFinishedInspections,
+                        string.Join(", ", lista.GroupBy(ins => EstadosInspeccion.NormalizarEstado(ins.Estado)).OrderBy(g => g.Key).Select(g => g.Key + ":" + g.Count())),
+                        string.Join(",", lista.Select(ins => ins.CodigoInspeccion).OrderBy(id => id))),
+                    "SidebarMenuBuilder",
+                    context != null && context.UserId > 0 ? (int?)context.UserId : null);
+            }
+            catch
+            {
+            }
+        }
+
+        private static void LogSidebarCounters(SidebarBuildContext context, SidebarBadgeSnapshot snapshot, int cacheSeconds, string cacheScope)
+        {
+            try
+            {
+                var companiaActiva = string.IsNullOrWhiteSpace(context.CodigoCompaniaActiva)
+                    ? "No definida"
+                    : context.CodigoCompaniaActiva;
+
+                CapaNegocio.LogBL.RegistrarInfo(
+                    string.Format(
+                        "[SIDEBAR_COUNTERS] UsuarioId={0}; Usuario={1}; Rol={2}; RolesRaw={3}; CompaniaActiva={4}; CacheSeconds={5}; CacheScope={6}; Notificaciones={7}; RtActivas={8}; RtObservadas={9}; RtSubsanaciones={10}; RtFinales={11}; RtAocrFirmadas={12}; RtCondicionesFirmadas={13}; RtDescargasFinales={14}; InspectorRevision={15}; CoordAsignacion={16}; CoordDocumental={17}; CoordFinales={18}; FinPendientes={19}; FinCargados={20}; FinObservados={21}; FinAprobados={22}; FinFacturasFr3={23}; FinHistorial={24}; DirdacFirmas={25}; EjecutivoAprobacion={26}; AdminUsuarios={27}",
+                        context.UserId,
+                        context.UserName ?? string.Empty,
+                        context.RolActual ?? string.Empty,
+                        string.Join(",", context.RolesRaw ?? new List<string>()),
+                        companiaActiva,
+                        cacheSeconds,
+                        cacheScope ?? string.Empty,
+                        snapshot.UnreadNotifications,
+                        snapshot.RtActiveRequests,
+                        snapshot.RtObservedRequests,
+                        snapshot.RtPendingSubsanations,
+                        snapshot.RtFinalDocuments,
+                        snapshot.RtAocrFirmadas,
+                        snapshot.RtCondicionesFirmadas,
+                        snapshot.RtDescargasFinales,
+                        snapshot.InspectorPendingRevision,
+                        snapshot.CoordinatorPendingAssignment,
+                        snapshot.CoordinatorDocumentalQueue,
+                        snapshot.CoordinatorFinalDocuments,
+                        snapshot.FinancialPendingReviewOrders,
+                        snapshot.FinancialUploadedPaymentOrders,
+                        snapshot.FinancialObservedOrders,
+                        snapshot.FinancialApprovedOrders,
+                        snapshot.FinancialFacturedOrders,
+                        snapshot.FinancialHistoryOrders,
+                        snapshot.DirdacPendingSignatures,
+                        snapshot.ExecutiveApprovalQueue,
+                        snapshot.AdminApprovalUsers),
+                    "SidebarMenuBuilder",
+                    context.UserId > 0 ? (int?)context.UserId : null);
+            }
+            catch
+            {
+            }
+        }
+
+        private static void LogSidebarCounterError(SidebarBuildContext context, string contador, Exception ex)
+        {
+            try
+            {
+                CapaNegocio.LogBL.RegistrarError(
+                    string.Format(
+                        "[SIDEBAR_COUNTERS][ERROR] Contador={0}; UsuarioId={1}; Rol={2}; CompaniaActiva={3}",
+                        contador ?? string.Empty,
+                        context != null ? context.UserId : 0,
+                        context != null ? (context.RolActual ?? string.Empty) : string.Empty,
+                        context != null ? (context.CodigoCompaniaActiva ?? string.Empty) : string.Empty),
+                    ex != null ? ex.ToString() : null,
+                    "SidebarMenuBuilder",
+                    context != null && context.UserId > 0 ? (int?)context.UserId : null);
+            }
+            catch
+            {
+            }
+        }
+
+        private static string ResumirEstadosFinancieros(IEnumerable<FinancialSidebarCounterRow> estados)
+        {
+            try
+            {
+                return string.Join(", ", (estados ?? Enumerable.Empty<FinancialSidebarCounterRow>())
+                    .GroupBy(o => (FinancialOrderStateHelper.ResolverEstadoOperativo(o.EstadoOrden, o.EstadoPago, o.TieneFactura) ?? "SIN_ESTADO").Trim())
+                    .OrderBy(g => g.Key)
+                    .Select(g => g.Key + ":" + g.Count()));
+            }
+            catch
+            {
+                return string.Empty;
+            }
+        }
+
+        private static List<SolicitudAOCR> FiltrarSolicitudesPorContextoSidebar(SidebarBuildContext context, IEnumerable<SolicitudAOCR> solicitudes)
+        {
+            var lista = (solicitudes ?? Enumerable.Empty<SolicitudAOCR>())
+                .Where(s => s != null)
+                .ToList();
+
+            if (context == null || context.EsAdministrador || !context.EsSolicitanteORT)
+            {
+                return lista;
+            }
+
+            if (!string.IsNullOrWhiteSpace(context.CodigoCompaniaActiva))
+            {
+                lista = lista
+                    .Where(s => string.IsNullOrWhiteSpace(s.CompaniasSeleccionadas)
+                        || ContieneValorListaSidebar(s.CompaniasSeleccionadas, context.CodigoCompaniaActiva))
+                    .ToList();
+            }
+
+            return lista;
+        }
+
+        private static void CargarContadoresDocumentosFinalesSidebar(
+            SidebarBuildContext context,
+            IEnumerable<CapaModelo.Common.AocrBandejaDocumentoRow> filas,
+            SidebarBadgeSnapshot snapshot)
+        {
+            if (snapshot == null)
+            {
+                return;
+            }
+
+            var visibles = (filas ?? Enumerable.Empty<CapaModelo.Common.AocrBandejaDocumentoRow>())
+                .Where(fila => DebeMostrarDocumentoFinalSidebar(context, fila))
+                .GroupBy(fila => fila.SolicitudId)
+                .Select(group => group.First())
+                .ToList();
+
+            snapshot.RtAocrFirmadas = visibles.Count(fila =>
+                !AocrBandejaEstadoHelper.UsaFlujoCondiciones(fila)
+                && AocrBandejaEstadoHelper.TieneDocumentoFinalFirmado(fila));
+
+            snapshot.RtCondicionesFirmadas = visibles.Count(fila =>
+                AocrBandejaEstadoHelper.UsaFlujoCondiciones(fila)
+                && AocrBandejaEstadoHelper.TieneDocumentoFinalFirmado(fila));
+
+            snapshot.RtDescargasFinales = visibles.Count(fila =>
+                AocrBandejaEstadoHelper.TieneDocumentoFinalFirmado(fila)
+                || AocrBandejaEstadoHelper.TieneDocumentoPreliminar(fila));
+
+            snapshot.RtFinalDocuments = snapshot.RtDescargasFinales;
+        }
+
+        private static bool DebeMostrarDocumentoFinalSidebar(SidebarBuildContext context, CapaModelo.Common.AocrBandejaDocumentoRow fila)
+        {
+            if (context == null || fila == null || fila.SolicitudId <= 0)
+            {
+                return false;
+            }
+
+            if (context.EsAdministrador || context.EsCoordinadorRol || context.EsLegalRol || context.EsDirdacRol || context.EsDirectorGeneralRol)
+            {
+                return true;
+            }
+
+            if (context.EsSolicitanteORT)
+            {
+                if (context.UserId > 0 && fila.CodigoUsuario != context.UserId)
+                {
+                    return false;
+                }
+
+                if (string.IsNullOrWhiteSpace(context.CodigoCompaniaActiva) || string.IsNullOrWhiteSpace(fila.CompaniasSeleccionadas))
+                {
+                    return true;
+                }
+
+                return ContieneValorListaSidebar(fila.CompaniasSeleccionadas, context.CodigoCompaniaActiva);
+            }
+
+            if (context.EsInspectorRol)
+            {
+                return (fila.CodigoInspectorInspeccion.HasValue && fila.CodigoInspectorInspeccion.Value == context.UserId)
+                    || (fila.CodigoInspectorSolicitud.HasValue && fila.CodigoInspectorSolicitud.Value == context.UserId);
+            }
+
+            return false;
+        }
+
+        private static bool ContieneValorListaSidebar(string valores, string buscado)
+        {
+            var objetivo = (buscado ?? string.Empty).Trim();
+            if (string.IsNullOrWhiteSpace(valores) || string.IsNullOrWhiteSpace(objetivo))
+            {
+                return false;
+            }
+
+            return valores
+                .Split(new[] { ',', ';', '|', '\n', '\r', '\t' }, StringSplitOptions.RemoveEmptyEntries)
+                .Select(x => x.Trim())
+                .Any(x => string.Equals(x, objetivo, StringComparison.OrdinalIgnoreCase));
+        }
+
+        private static bool IsFinancialPendingReviewState(string estado)
+        {
+            return FinancialOrderStateHelper.EsPendienteGestion(estado, null, false);
+        }
+
+        private static bool IsFinancialObservedState(string estado)
+        {
+            return FinancialOrderStateHelper.EsObservada(estado, null);
+        }
+
+        private static bool IsFinancialApprovedState(string estado)
+        {
+            return FinancialOrderStateHelper.EsAprobadaOFacturada(estado, null, false);
         }
 
         private static SidebarStatusCardViewModel BuildOrderStatusCard(SidebarBuildContext context)
@@ -580,7 +1121,7 @@ namespace CapaPresentacion.Helpers
             group.Items.Add(CreateItem(context, "home", "Panel principal", "Acceso general al portal institucional AOCR.", "fas fa-house", "Home", "Index", null, null, "info", true, true, string.Empty, new[] { "Index" }, null, null, string.Empty));
             group.Items.Add(CreateItem(context, "dashboard-inspector", "Dashboard técnico", "Resumen de inspecciones asignadas y alertas operativas.", "fas fa-gauge-high", "Dashboard", "Inspector", null, context.Badges.InspectorPendingRevision, "warning", context.EsInspectorRol || context.EsAdministrador, true, string.Empty, new[] { "Inspector" }, null, null, string.Empty));
             group.Items.Add(CreateItem(context, "dashboard-coordinacion", "Bandeja integral", "Seguimiento integral de revisión documental, AOCR, firmas e inspección.", "fas fa-table-columns", "CoordinacionJefatura", "DashboardInspeccion", null, context.Badges.CoordinatorDocumentalQueue, "info", context.EsCoordinadorRol || context.EsLegalRol || context.EsAdministrador, true, string.Empty, new[] { "DashboardInspeccion", "RevisionVerificacion" }, null, null, string.Empty));
-            group.Items.Add(CreateItem(context, "dashboard-financiero", "Dashboard financiero", "Control de órdenes, pagos y aprobaciones financieras.", "fas fa-chart-line", "Financiero", "Dashboard", null, context.Badges.FinancialPendingOrders, "warning", context.EsFinancieroRol || context.EsAdministrador, true, string.Empty, new[] { "Dashboard", "Index" }, null, null, string.Empty));
+            group.Items.Add(CreateItem(context, "dashboard-financiero", "Dashboard financiero", "Control de órdenes, pagos y aprobaciones financieras.", "fas fa-chart-line", "Financiero", "Dashboard", null, context.Badges.FinancialPendingReviewOrders, "warning", context.EsFinancieroRol || context.EsAdministrador, true, string.Empty, new[] { "Dashboard", "Index" }, null, null, string.Empty));
             group.Items.Add(CreateItem(context, "dashboard-direccion", "Dashboard dirección", "Vista ejecutiva de firmas, pendientes y documentos finales.", "fas fa-chart-area", "CoordinacionJefatura", "DashboardGerencial", null, context.Badges.DirdacPendingSignatures, "danger", context.EsDirdacRol || context.EsDirectorGeneralRol || context.EsAdministrador, true, string.Empty, new[] { "DashboardGerencial", "ValidarAocr" }, null, null, string.Empty));
             group.Items.Add(CreateItem(context, "dashboard-admin", "Panel global y salud", "Monitoreo del sistema, mantenimiento e integraciones.", "fas fa-heart-pulse", "Health", "Dashboard", null, 0, "neutral", context.EsAdministrador, true, string.Empty, new[] { "Dashboard" }, null, null, string.Empty));
             group.Items.Add(CreateItem(context, "notificaciones", "Notificaciones", "Avisos del sistema, alertas y novedades del flujo AOCR.", "fas fa-bell", "Notificacion", "Index", null, context.Badges.UnreadNotifications, "info", true, true, string.Empty, new[] { "Index" }, null, null, string.Empty));
@@ -617,7 +1158,7 @@ namespace CapaPresentacion.Helpers
             {
                 pendientesController = "Financiero";
                 pendientesAction = "Index";
-                pendientesBadge = context.Badges.FinancialPendingOrders;
+                pendientesBadge = context.Badges.FinancialPendingReviewOrders;
                 pendientesVisible = true;
                 pendientesTitle = "Pagos pendientes";
                 pendientesDescription = "Órdenes y comprobantes que esperan validación financiera.";
@@ -645,17 +1186,23 @@ namespace CapaPresentacion.Helpers
             var ordenAction = context.TieneOrdenPendienteProceso ? "Index" : (context.TieneOrdenBorrador ? "Obligatoria" : "Nueva");
             var ordenTitle = context.TieneOrdenPendienteProceso ? "Continuar orden de recaudación" : (context.TieneOrdenBorrador ? "Completar orden de recaudación" : "Nueva orden de recaudación");
 
+            group.Items.Add(CreateItem(context, "registro-rt", "Registro RT", "Registro y designación del Representante Técnico ante la DGAC.", "fas fa-id-card", "RT", "Registro", null, 0, "neutral", context.EsSolicitanteORT || context.EsAdministrador, true, string.Empty, new[] { "Registro", "Declaracion", "Designacion" }, null, null, string.Empty));
             group.Items.Add(CreateItem(context, "ordenes-rt", ordenTitle, "Gestión económica habilitante del trámite AOCR.", "fas fa-file-invoice-dollar", "OrdenRecaudacion", ordenAction, null, context.TieneOrdenPendienteProceso || context.TieneOrdenBorrador ? 1 : 0, "warning", context.EsSolicitanteORT || context.EsAdministrador, true, string.Empty, new[] { "Nueva", "Obligatoria", "Index", "Detalles" }, null, null, string.Empty));
-            group.Items.Add(CreateItem(context, "ordenes-financiero", "Órdenes de recaudación", "Consulta integral de órdenes para revisión, historial y seguimiento.", "fas fa-receipt", "Financiero", "TodasOrdenes", null, context.Badges.FinancialPendingOrders, "warning", context.EsFinancieroRol || context.EsAdministrador, true, string.Empty, new[] { "TodasOrdenes" }, null, null, string.Empty));
+            group.Items.Add(CreateItem(context, "ordenes-financiero", "Órdenes de recaudación", "Consulta integral de órdenes para revisión, historial y seguimiento.", "fas fa-receipt", "Financiero", "TodasOrdenes", null, context.Badges.FinancialPendingReviewOrders + context.Badges.FinancialObservedOrders, "warning", context.EsFinancieroRol || context.EsAdministrador, true, string.Empty, new[] { "TodasOrdenes" }, null, null, string.Empty));
             group.Items.Add(CreateItem(context, "solicitud-emision", "Solicitud AOCR", "Inicia o continúa la emisión o renovación formal de AOCR.", "fas fa-file-signature", "SolicitudAOCR", "FormularioEmisionAOCR", new { tipoSolicitud = 1 }, context.Badges.RtActiveRequests, "info", context.EsSolicitanteORT || context.EsAdministrador, context.TieneAccesoSolicitudRt || context.EsAdministrador, context.EsAdministrador || context.TieneAccesoSolicitudRt ? string.Empty : context.MensajeBloqueoRtSidebar, new[] { "FormularioEmisionAOCR", "Index" }, "tipoSolicitud", "1", string.Empty));
             group.Items.Add(CreateItem(context, "solicitud-renovacion", "Renovación AOCR", "Gestiona renovaciones con el mismo flujo documental institucional.", "fas fa-rotate", "SolicitudAOCR", "FormularioEmisionAOCR", new { tipoSolicitud = 2 }, 0, "neutral", context.EsSolicitanteORT || context.EsAdministrador, context.TieneAccesoSolicitudRt || context.EsAdministrador, context.EsAdministrador || context.TieneAccesoSolicitudRt ? string.Empty : context.MensajeBloqueoRtSidebar, new[] { "FormularioEmisionAOCR" }, "tipoSolicitud", "2", string.Empty));
             group.Items.Add(CreateItem(context, "modificacion", "Condiciones y limitaciones", "Solicitud formal de modificación operativa y regulatoria.", "fas fa-sliders", "SolicitudAOCR", "FormularioEmisionAOCR", new { tipoSolicitud = 3 }, context.Badges.RtObservedRequests, "warning", context.EsSolicitanteORT || context.EsAdministrador, context.TieneAccesoSolicitudRt || context.EsAdministrador, context.EsAdministrador || context.TieneAccesoSolicitudRt ? string.Empty : context.MensajeBloqueoRtSidebar, new[] { "FormularioEmisionAOCR", "Index" }, "tipoSolicitud", "3", string.Empty));
             group.Items.Add(CreateItem(context, "documentos-expediente", "Documentos y expediente", "Carga y organización documental del expediente AOCR.", "fas fa-folder-open", "Documento", "Subir", null, 0, "neutral", context.EsSolicitanteORT || context.EsAdministrador, true, string.Empty, new[] { "Subir", "Lista" }, null, null, string.Empty));
             group.Items.Add(CreateItem(context, "revision-documental", "Revisión documental", "Validación documental previa a la fase técnica o de emisión.", "fas fa-file-check", context.EsInspectorRol ? "RevisionDocumental" : "CoordinacionJefatura", context.EsInspectorRol ? "Index" : "RevisionVerificacion", null, context.EsInspectorRol ? context.Badges.InspectorPendingRevision : context.Badges.CoordinatorDocumentalQueue, context.EsInspectorRol ? "warning" : "info", context.EsInspectorRol || context.EsCoordinadorRol || context.EsLegalRol || context.EsAdministrador, true, string.Empty, new[] { context.EsInspectorRol ? "Index" : "RevisionVerificacion" }, null, null, string.Empty));
-            group.Items.Add(CreateItem(context, "inspecciones", "Inspecciones", "Bandeja principal de ejecución, seguimiento y control operativo.", "fas fa-plane-departure", "Inspeccion", "Index", null, 0, "neutral", context.EsInspectorRol || context.EsCoordinadorRol || context.EsAdministrador, true, string.Empty, new[] { "Index", "Detalle" }, null, null, string.Empty));
+            group.Items.Add(CreateItem(context, "inspecciones", "Inspecciones", "Bandeja principal de ejecución, seguimiento y control operativo.", "fas fa-plane-departure", "Inspeccion", "Index", null, context.EsInspectorRol ? context.Badges.InspectorTotalInspections : 0, "neutral", context.EsInspectorRol || context.EsCoordinadorRol || context.EsAdministrador, true, string.Empty, new[] { "Index", "Detalle" }, null, null, string.Empty));
             group.Items.Add(CreateItem(context, "lv-eae", "Lista de Verificación LV/EAE", "Checklist y evidencias de verificación operacional en inspección.", "fas fa-list-check", "Inspeccion", "Index", new { vista = "operativa" }, 0, "neutral", context.EsInspectorRol || context.EsCoordinadorRol || context.EsAdministrador, true, string.Empty, new[] { "Index" }, "vista", "operativa", string.Empty));
             group.Items.Add(CreateItem(context, "informe-nc", "Informe técnico y no conformidades", "Resultados, hallazgos, subsanaciones y cierre técnico del trámite.", "fas fa-file-signature", "Inspeccion", context.EsDirdacRol ? "PendientesDireccion" : "Index", null, context.EsDirdacRol ? context.Badges.DirdacPendingSignatures : 0, context.EsDirdacRol ? "danger" : "neutral", context.EsInspectorRol || context.EsCoordinadorRol || context.EsDirdacRol || context.EsAdministrador, true, string.Empty, new[] { context.EsDirdacRol ? "PendientesDireccion" : "Index", "Detalle" }, null, null, string.Empty));
-            group.Items.Add(CreateItem(context, "aocr-condiciones", "AOCR y condiciones", "Revisión, validación, legalización y emisión final de documentos AOCR.", "fas fa-certificate", context.EsDirdacRol ? "CoordinacionJefatura" : (context.EsLegalRol ? "SolicitudAOCR" : "SolicitudAOCR"), context.EsDirdacRol ? "ValidarAocr" : (context.EsLegalRol ? "RevisarLegalizacion" : "GeneradasFirmadas"), null, context.Badges.ExecutiveApprovalQueue, "info", context.EsSolicitanteORT || context.EsInspectorRol || context.EsCoordinadorRol || context.EsLegalRol || context.EsDirdacRol || context.EsAdministrador, true, string.Empty, new[] { context.EsDirdacRol ? "ValidarAocr" : (context.EsLegalRol ? "RevisarLegalizacion" : "GeneradasFirmadas") }, null, null, string.Empty));
+            var aocrCondicionesBadge = context.EsSolicitanteORT
+                ? context.Badges.RtDescargasFinales
+                : (context.EsDirdacRol || context.EsCoordinadorRol || context.EsLegalRol || context.EsAdministrador
+                    ? context.Badges.ExecutiveApprovalQueue + context.Badges.CoordinatorFinalDocuments
+                    : 0);
+            group.Items.Add(CreateItem(context, "aocr-condiciones", "AOCR y condiciones", "Revisión, validación, legalización y emisión final de documentos AOCR.", "fas fa-certificate", context.EsDirdacRol ? "CoordinacionJefatura" : (context.EsLegalRol ? "SolicitudAOCR" : "SolicitudAOCR"), context.EsDirdacRol ? "ValidarAocr" : (context.EsLegalRol ? "RevisarLegalizacion" : "GeneradasFirmadas"), null, aocrCondicionesBadge, "info", context.EsSolicitanteORT || context.EsInspectorRol || context.EsCoordinadorRol || context.EsLegalRol || context.EsDirdacRol || context.EsAdministrador, true, string.Empty, new[] { context.EsDirdacRol ? "ValidarAocr" : (context.EsLegalRol ? "RevisarLegalizacion" : "GeneradasFirmadas") }, null, null, string.Empty));
             group.Items.Add(CreateItem(context, "documentos-finales", "Documentos finales", "AOCR generadas, firmadas, condiciones emitidas y PDFs institucionales.", "fas fa-file-circle-check", "SolicitudAOCR", "GeneradasFirmadas", null, context.Badges.RtFinalDocuments > 0 ? context.Badges.RtFinalDocuments : context.Badges.CoordinatorFinalDocuments, "success", true, true, string.Empty, new[] { "GeneradasFirmadas" }, null, null, string.Empty));
             group.Visible = group.Items.Any(item => item.Visible);
             return group;
@@ -690,10 +1237,10 @@ namespace CapaPresentacion.Helpers
         private static SidebarMenuGroupViewModel BuildFinancieroGroup(SidebarBuildContext context)
         {
             var group = NewGroup("financiero", "Financiero", "fas fa-money-bill-wave", "Aquí gestiona pagos, órdenes, reportes y trazabilidad económica.", "success");
-            group.Items.Add(CreateItem(context, "fin-validar", "Pagos pendientes", "Validación de comprobantes y cierre financiero del trámite.", "fas fa-check-circle", "Financiero", "Index", null, context.Badges.FinancialPendingOrders, "warning", context.EsFinancieroRol || context.EsAdministrador, true, string.Empty, new[] { "Index", "Dashboard" }, null, null, string.Empty));
-            group.Items.Add(CreateItem(context, "fin-ordenes", "Órdenes generadas", "Bandeja completa de órdenes, pagos observados y aprobados.", "fas fa-receipt", "Financiero", "TodasOrdenes", null, context.Badges.FinancialPendingOrders, "info", context.EsFinancieroRol || context.EsAdministrador, true, string.Empty, new[] { "TodasOrdenes" }, null, null, string.Empty));
-            group.Items.Add(CreateItem(context, "fin-reportes", "Facturas, FR3 y reportes", "Consulta analítica, exportable y documental de la recaudación.", "fas fa-file-invoice", "ReportesFinancieros", "Index", null, 0, "neutral", context.EsFinancieroRol || context.EsAdministrador, true, string.Empty, new[] { "Index" }, null, null, string.Empty));
-            group.Items.Add(CreateItem(context, "fin-historial", "Historial financiero", "Histórico de órdenes, pagos procesados y resultados de validación.", "fas fa-clock-rotate-left", "Financiero", "TodasOrdenes", null, 0, "neutral", context.EsFinancieroRol || context.EsAdministrador, true, string.Empty, new[] { "TodasOrdenes" }, null, null, string.Empty));
+            group.Items.Add(CreateItem(context, "fin-validar", "Pagos pendientes", "Validación de comprobantes y cierre financiero del trámite.", "fas fa-check-circle", "Financiero", "Index", new { estado = "PENDIENTES_FINANCIERO" }, context.Badges.FinancialPendingReviewOrders, "warning", context.EsFinancieroRol || context.EsAdministrador, true, string.Empty, new[] { "Index", "Dashboard" }, "estado", "PENDIENTES_FINANCIERO", string.Empty));
+            group.Items.Add(CreateItem(context, "fin-ordenes", "Órdenes generadas", "Bandeja completa de órdenes, pagos observados y aprobados.", "fas fa-receipt", "Financiero", "TodasOrdenes", null, context.Badges.FinancialPendingReviewOrders + context.Badges.FinancialObservedOrders + context.Badges.FinancialApprovedOrders, "info", context.EsFinancieroRol || context.EsAdministrador, true, string.Empty, new[] { "TodasOrdenes" }, null, null, string.Empty));
+            group.Items.Add(CreateItem(context, "fin-reportes", "Facturas, FR3 y reportes", "Consulta analítica, exportable y documental de la recaudación.", "fas fa-file-invoice", "ReportesFinancieros", "Index", null, context.Badges.FinancialFacturedOrders, "success", context.EsFinancieroRol || context.EsAdministrador, true, string.Empty, new[] { "Index" }, null, null, string.Empty));
+            group.Items.Add(CreateItem(context, "fin-historial", "Historial financiero", "Histórico de órdenes, pagos procesados y resultados de validación.", "fas fa-clock-rotate-left", "Financiero", "TodasOrdenes", null, context.Badges.FinancialHistoryOrders, "neutral", context.EsFinancieroRol || context.EsAdministrador, true, string.Empty, new[] { "TodasOrdenes" }, null, null, string.Empty));
             group.Visible = group.Items.Any(item => item.Visible);
             return group;
         }
@@ -720,18 +1267,21 @@ namespace CapaPresentacion.Helpers
 
             string panelController = "Home";
             string panelAction = "Index";
+            object panelRouteValues = null;
             string panelDescription = "Vista general del portal institucional AOCR.";
-            int panelBadge = 0;
+            int? panelBadge = null;
 
             string workController = "SolicitudAOCR";
             string workAction = "MisSolicitudes";
+            object workRouteValues = null;
             string workDescription = "Acceso directo a la bandeja operativa del rol actual.";
-            int workBadge = context.Badges.RtActiveRequests;
+            int? workBadge = context.Badges.RtActiveRequests;
 
             string pendingController = "SolicitudAOCR";
             string pendingAction = "MisSolicitudes";
+            object pendingRouteValues = null;
             string pendingDescription = "Sus trámites AOCR activos, observados o en proceso institucional.";
-            int pendingBadge = context.Badges.RtActiveRequests;
+            int? pendingBadge = context.Badges.RtActiveRequests;
 
             if (context.EsInspectorRol)
             {
@@ -768,15 +1318,17 @@ namespace CapaPresentacion.Helpers
                 panelController = "Financiero";
                 panelAction = "Dashboard";
                 panelDescription = "Vista financiera con pagos, órdenes y aprobaciones pendientes.";
-                panelBadge = context.Badges.FinancialPendingOrders;
+                panelBadge = null;
                 workController = "Financiero";
                 workAction = "Index";
+                workRouteValues = new { estado = "PENDIENTES_FINANCIERO" };
                 workDescription = "Bandeja diaria de pagos, comprobantes y validaciones.";
-                workBadge = context.Badges.FinancialPendingOrders;
+                workBadge = null;
                 pendingController = "Financiero";
                 pendingAction = "Index";
+                pendingRouteValues = new { estado = "PENDIENTES_FINANCIERO" };
                 pendingDescription = "Pagos, comprobantes y observaciones pendientes de gestión.";
-                pendingBadge = context.Badges.FinancialPendingOrders;
+                pendingBadge = context.Badges.FinancialPendingReviewOrders;
             }
             else if (context.EsDirdacRol || context.EsDirectorGeneralRol)
             {
@@ -807,10 +1359,10 @@ namespace CapaPresentacion.Helpers
                 pendingBadge = context.Badges.ExecutiveApprovalQueue;
             }
 
-            group.Items.Add(CreateItem(context, "inicio-panel", "Panel principal", panelDescription, "fas fa-house", panelController, panelAction, null, panelBadge, "info", true, true, string.Empty, new[] { panelAction }, null, null, string.Empty));
-            group.Items.Add(CreateItem(context, "inicio-pendientes", "Mis pendientes", pendingDescription, "fas fa-inbox", pendingController, pendingAction, null, pendingBadge, "warning", true, true, string.Empty, new[] { pendingAction }, null, null, string.Empty));
+            group.Items.Add(CreateItem(context, "inicio-panel", "Panel principal", panelDescription, "fas fa-house", panelController, panelAction, panelRouteValues, panelBadge, "info", true, true, string.Empty, new[] { panelAction }, null, null, string.Empty));
+            group.Items.Add(CreateItem(context, "inicio-pendientes", "Mis pendientes", pendingDescription, "fas fa-inbox", pendingController, pendingAction, pendingRouteValues, pendingBadge, "warning", true, true, string.Empty, new[] { pendingAction }, null, null, string.Empty));
             group.Items.Add(CreateItem(context, "inicio-notificaciones", "Notificaciones", "Avisos del sistema, alertas y novedades del flujo AOCR.", "fas fa-bell", "Notificacion", "Index", null, context.Badges.UnreadNotifications, "info", true, true, string.Empty, new[] { "Index" }, null, null, string.Empty));
-            group.Items.Add(CreateItem(context, "inicio-bandeja", "Bandeja de trabajo", workDescription, "fas fa-briefcase", workController, workAction, null, workBadge, "neutral", true, true, string.Empty, new[] { workAction }, null, null, string.Empty));
+            group.Items.Add(CreateItem(context, "inicio-bandeja", "Bandeja de trabajo", workDescription, "fas fa-briefcase", workController, workAction, workRouteValues, workBadge, "neutral", true, true, string.Empty, new[] { workAction }, null, null, string.Empty));
             group.Visible = group.Items.Any(item => item.Visible);
             return group;
         }
@@ -828,17 +1380,17 @@ namespace CapaPresentacion.Helpers
             group.Items.Add(CreateDisabledItem(context, "op-rt-facturas", "Facturas y comprobantes", "Consulta documental de facturas y soportes económicos del trámite.", "fas fa-file-invoice", "Disponible desde el detalle de la orden o la gestión financiera asociada.", context.EsSolicitanteORT));
             group.Items.Add(CreateItem(context, "op-rt-historial", "Historial de pagos", "Histórico de órdenes, pagos procesados y revisiones realizadas.", "fas fa-clock-rotate-left", "OrdenRecaudacion", "Index", null, 0, "neutral", context.EsSolicitanteORT, true, string.Empty, new[] { "Index" }, null, null, string.Empty));
 
-            group.Items.Add(CreateItem(context, "op-fin-pendientes", "Pagos pendientes", "Pagos y comprobantes pendientes de validación financiera.", "fas fa-hourglass-half", "Financiero", "Index", null, context.Badges.FinancialPendingOrders, "warning", context.EsFinancieroRol, true, string.Empty, new[] { "Index", "Dashboard" }, null, null, string.Empty));
-            group.Items.Add(CreateItem(context, "op-fin-cargados", "Pagos cargados", "Comprobantes recibidos y listos para revisión financiera.", "fas fa-cloud-upload-alt", "Financiero", "Index", null, context.Badges.FinancialPendingOrders, "info", context.EsFinancieroRol, true, string.Empty, new[] { "Index" }, null, null, string.Empty));
-            group.Items.Add(CreateItem(context, "op-fin-observados", "Pagos observados", "Casos con inconsistencias o requerimientos de ajuste financiero.", "fas fa-exclamation-circle", "Financiero", "Index", null, context.Badges.FinancialPendingOrders, "danger", context.EsFinancieroRol, true, string.Empty, new[] { "Index" }, null, null, string.Empty));
-            group.Items.Add(CreateItem(context, "op-fin-aprobados", "Pagos aprobados", "Órdenes con validación financiera completada.", "fas fa-check-circle", "Financiero", "TodasOrdenes", null, 0, "success", context.EsFinancieroRol, true, string.Empty, new[] { "TodasOrdenes" }, null, null, string.Empty));
-            group.Items.Add(CreateItem(context, "op-fin-fr3", "Facturas / FR3", "Consulta de reportes, facturación y consolidado financiero.", "fas fa-file-invoice", "ReportesFinancieros", "Index", null, 0, "neutral", context.EsFinancieroRol, true, string.Empty, new[] { "Index" }, null, null, string.Empty));
-            group.Items.Add(CreateItem(context, "op-fin-historial", "Historial financiero", "Histórico completo de órdenes, pagos y resultados de validación.", "fas fa-clock-rotate-left", "Financiero", "TodasOrdenes", null, 0, "neutral", context.EsFinancieroRol, true, string.Empty, new[] { "TodasOrdenes" }, null, null, string.Empty));
+            group.Items.Add(CreateItem(context, "op-fin-pendientes", "Pagos pendientes", "Pagos y comprobantes pendientes de validación financiera.", "fas fa-hourglass-half", "Financiero", "Index", new { estado = "PENDIENTES_FINANCIERO" }, context.Badges.FinancialPendingReviewOrders, "warning", context.EsFinancieroRol, true, string.Empty, new[] { "Index", "Dashboard" }, "estado", "PENDIENTES_FINANCIERO", string.Empty));
+            group.Items.Add(CreateItem(context, "op-fin-cargados", "Pagos cargados", "Comprobantes recibidos y listos para revisión financiera.", "fas fa-cloud-upload-alt", "Financiero", "Index", new { estado = EstadoOrden.EnRevisionFinanciera }, context.Badges.FinancialUploadedPaymentOrders, "info", context.EsFinancieroRol, true, string.Empty, new[] { "Index" }, "estado", EstadoOrden.EnRevisionFinanciera, string.Empty));
+            group.Items.Add(CreateItem(context, "op-fin-observados", "Pagos observados", "Casos con inconsistencias o requerimientos de ajuste financiero.", "fas fa-exclamation-circle", "Financiero", "Index", new { estado = EstadoOrden.Devuelta }, context.Badges.FinancialObservedOrders, "danger", context.EsFinancieroRol, true, string.Empty, new[] { "Index" }, "estado", EstadoOrden.Devuelta, string.Empty));
+            group.Items.Add(CreateItem(context, "op-fin-aprobados", "Pagos aprobados", "Órdenes con validación financiera completada.", "fas fa-check-circle", "Financiero", "TodasOrdenes", new { estado = EstadoOrden.Facturada }, context.Badges.FinancialApprovedOrders, "success", context.EsFinancieroRol, true, string.Empty, new[] { "TodasOrdenes" }, "estado", EstadoOrden.Facturada, string.Empty));
+            group.Items.Add(CreateItem(context, "op-fin-fr3", "Facturas / FR3", "Consulta de reportes, facturación y consolidado financiero.", "fas fa-file-invoice", "ReportesFinancieros", "Index", null, context.Badges.FinancialFacturedOrders, "success", context.EsFinancieroRol, true, string.Empty, new[] { "Index" }, null, null, string.Empty));
+            group.Items.Add(CreateItem(context, "op-fin-historial", "Historial financiero", "Histórico completo de órdenes, pagos y resultados de validación.", "fas fa-clock-rotate-left", "Financiero", "TodasOrdenes", null, context.Badges.FinancialHistoryOrders, "neutral", context.EsFinancieroRol, true, string.Empty, new[] { "TodasOrdenes" }, null, null, string.Empty));
 
-            group.Items.Add(CreateItem(context, "op-admin-todas", "Todas las órdenes", "Consulta transversal de órdenes, pagos y trazabilidad económica.", "fas fa-layer-group", "Financiero", "TodasOrdenes", null, context.Badges.FinancialPendingOrders, "info", context.EsAdministrador, true, string.Empty, new[] { "TodasOrdenes" }, null, null, string.Empty));
+            group.Items.Add(CreateItem(context, "op-admin-todas", "Todas las órdenes", "Consulta transversal de órdenes, pagos y trazabilidad económica.", "fas fa-layer-group", "Financiero", "TodasOrdenes", null, context.Badges.FinancialHistoryOrders, "info", context.EsAdministrador, true, string.Empty, new[] { "TodasOrdenes" }, null, null, string.Empty));
             group.Items.Add(CreateDisabledItem(context, "op-admin-conceptos", "Conceptos de recaudación", "Mantenimiento institucional de conceptos y criterios económicos.", "fas fa-list-alt", "Disponible desde la parametrización funcional del sistema.", context.EsAdministrador));
-            group.Items.Add(CreateItem(context, "op-admin-pagos", "Pagos y facturas", "Vista consolidada de pagos, comprobantes y reportes FR3.", "fas fa-file-invoice-dollar", "ReportesFinancieros", "Index", null, 0, "neutral", context.EsAdministrador, true, string.Empty, new[] { "Index" }, null, null, string.Empty));
-            group.Items.Add(CreateItem(context, "op-admin-historial", "Historial financiero", "Seguimiento histórico económico para auditoría administrativa.", "fas fa-clock-rotate-left", "Financiero", "TodasOrdenes", null, 0, "neutral", context.EsAdministrador, true, string.Empty, new[] { "TodasOrdenes" }, null, null, string.Empty));
+            group.Items.Add(CreateItem(context, "op-admin-pagos", "Pagos y facturas", "Vista consolidada de pagos, comprobantes y reportes FR3.", "fas fa-file-invoice-dollar", "ReportesFinancieros", "Index", null, context.Badges.FinancialFacturedOrders, "success", context.EsAdministrador, true, string.Empty, new[] { "Index" }, null, null, string.Empty));
+            group.Items.Add(CreateItem(context, "op-admin-historial", "Historial financiero", "Seguimiento histórico económico para auditoría administrativa.", "fas fa-clock-rotate-left", "Financiero", "TodasOrdenes", null, context.Badges.FinancialHistoryOrders, "neutral", context.EsAdministrador, true, string.Empty, new[] { "TodasOrdenes" }, null, null, string.Empty));
 
             group.Visible = group.Items.Any(item => item.Visible);
             return group;
@@ -901,11 +1453,11 @@ namespace CapaPresentacion.Helpers
         {
             var group = NewGroup("inspecciones-main", "Inspecciones", "fas fa-plane-departure", "Asignación, ejecución, seguimiento y cierre del trabajo técnico de inspección.", "primary");
 
-            group.Items.Add(CreateItem(context, "insp-mis", "Mis inspecciones", "Bandeja principal de inspecciones asignadas al inspector.", "fas fa-plane", "Inspeccion", "Index", null, 0, "neutral", context.EsInspectorRol, true, string.Empty, new[] { "Index", "Detalle" }, null, null, string.Empty));
-            group.Items.Add(CreateItem(context, "insp-asignadas", "Inspecciones asignadas", "Casos asignados al inspector para atención técnica.", "fas fa-user-check", "Inspeccion", "Index", null, 0, "info", context.EsInspectorRol, true, string.Empty, new[] { "Index" }, null, null, string.Empty));
-            group.Items.Add(CreateItem(context, "insp-ejecutar", "Ejecutar inspección", "Ingreso al flujo operativo y al detalle de la inspección asignada.", "fas fa-play", "Inspeccion", "Index", null, 0, "neutral", context.EsInspectorRol, true, string.Empty, new[] { "Index" }, null, null, string.Empty));
-            group.Items.Add(CreateItem(context, "insp-observadas", "Inspecciones con observaciones", "Casos técnicos con observaciones o ajustes pendientes.", "fas fa-triangle-exclamation", "Inspeccion", "Index", null, 0, "danger", context.EsInspectorRol, true, string.Empty, new[] { "Index" }, null, null, string.Empty));
-            group.Items.Add(CreateItem(context, "insp-finalizadas", "Inspecciones finalizadas", "Consulta de inspecciones concluidas y cerradas.", "fas fa-circle-check", "Inspeccion", "Index", null, 0, "success", context.EsInspectorRol, true, string.Empty, new[] { "Index" }, null, null, string.Empty));
+            group.Items.Add(CreateItem(context, "insp-mis", "Mis inspecciones", "Bandeja principal de inspecciones asignadas al inspector.", "fas fa-plane", "Inspeccion", "Index", null, context.Badges.InspectorTotalInspections, "neutral", context.EsInspectorRol, true, string.Empty, new[] { "Index", "Detalle" }, null, null, string.Empty));
+            group.Items.Add(CreateItem(context, "insp-asignadas", "Inspecciones asignadas", "Casos asignados al inspector para atención técnica.", "fas fa-user-check", "Inspeccion", "Index", new { estado = "ASIGNADA" }, context.Badges.InspectorAssignedInspections, "info", context.EsInspectorRol, true, string.Empty, new[] { "Index" }, "estado", "ASIGNADA", string.Empty));
+            group.Items.Add(CreateItem(context, "insp-ejecutar", "Fase inspección", "Ingreso al flujo operativo y al detalle de la inspección asignada.", "fas fa-play", "Inspeccion", "Index", new { estado = "EN_INSPECCION" }, context.Badges.InspectorInProgressInspections, "neutral", context.EsInspectorRol, true, string.Empty, new[] { "Index" }, "estado", "EN_INSPECCION", string.Empty));
+            group.Items.Add(CreateItem(context, "insp-observadas", "Inspecciones con observaciones", "Casos técnicos con observaciones o ajustes pendientes.", "fas fa-triangle-exclamation", "Inspeccion", "Index", new { estado = "OBSERVADA" }, context.Badges.InspectorObservedInspections, "danger", context.EsInspectorRol, true, string.Empty, new[] { "Index" }, "estado", "OBSERVADA", string.Empty));
+            group.Items.Add(CreateItem(context, "insp-finalizadas", "Inspecciones finalizadas", "Consulta de inspecciones concluidas y cerradas.", "fas fa-circle-check", "Inspeccion", "Index", new { estado = "FINALIZADA" }, context.Badges.InspectorFinishedInspections, "success", context.EsInspectorRol, true, string.Empty, new[] { "Index" }, "estado", "FINALIZADA", string.Empty));
 
             group.Items.Add(CreateItem(context, "insp-coord-asignar", "Asignar inspector", "Designación y seguimiento de inspectores para cada solicitud.", "fas fa-user-plus", "Tecnico", "Index", null, context.Badges.CoordinatorPendingAssignment, "warning", context.EsCoordinadorRol, true, string.Empty, new[] { "Index" }, null, null, string.Empty));
             group.Items.Add(CreateItem(context, "insp-coord-curso", "Inspecciones en curso", "Seguimiento de inspecciones en ejecución y trabajo operativo activo.", "fas fa-route", "Inspeccion", "Index", null, 0, "info", context.EsCoordinadorRol, true, string.Empty, new[] { "Index" }, null, null, string.Empty));
@@ -937,6 +1489,11 @@ namespace CapaPresentacion.Helpers
             group.Items.Add(CreateItem(context, "inf-admin-todos", "Todos los informes técnicos", "Consulta administrativa transversal de informes y su estado.", "fas fa-layer-group", "Informe", "Index", null, 0, "neutral", context.EsAdministrador, true, string.Empty, new[] { "Index" }, null, null, string.Empty));
             group.Items.Add(CreateItem(context, "inf-admin-seguimiento", "Seguimiento de informes", "Vista consolidada de revisión, observación y aprobación de informes.", "fas fa-chart-line", "CoordinacionJefatura", "DashboardGerencial", null, context.Badges.DirdacPendingSignatures, "info", context.EsAdministrador, true, string.Empty, new[] { "DashboardGerencial" }, null, null, string.Empty));
 
+            if (IsInformeTecnicoFlowActive(context))
+            {
+                group.Expanded = true;
+            }
+
             group.Visible = group.Items.Any(item => item.Visible);
             return group;
         }
@@ -955,9 +1512,9 @@ namespace CapaPresentacion.Helpers
             group.Items.Add(CreateItem(context, "aocr-coord-enviar", "Enviar a DIRDAC", "Remisión institucional de AOCR listos para firma o validación final.", "fas fa-share", "CoordinacionJefatura", "DashboardInspeccion", null, context.Badges.ExecutiveApprovalQueue, "info", context.EsCoordinadorRol || context.EsLegalRol, true, string.Empty, new[] { "DashboardInspeccion" }, null, null, string.Empty));
             group.Items.Add(CreateItem(context, "aocr-coord-firma", "AOCR listas para firma", "Casos AOCR preparados para la fase final de firma institucional.", "fas fa-stamp", "CoordinacionJefatura", "ValidarAocr", null, context.Badges.ExecutiveApprovalQueue, "warning", context.EsCoordinadorRol || context.EsLegalRol, true, string.Empty, new[] { "ValidarAocr" }, null, null, string.Empty));
 
-            group.Items.Add(CreateItem(context, "aocr-rt-firmadas", "AOCR firmadas", "Consulta de AOCR emitidas y firmadas disponibles para el RT.", "fas fa-certificate", "SolicitudAOCR", "GeneradasFirmadas", null, context.Badges.RtFinalDocuments, "success", context.EsSolicitanteORT, true, string.Empty, new[] { "GeneradasFirmadas" }, null, null, string.Empty));
-            group.Items.Add(CreateItem(context, "aocr-rt-condiciones", "Condiciones firmadas", "Condiciones y limitaciones emitidas para descarga o consulta.", "fas fa-file-contract", "SolicitudAOCR", "GeneradasFirmadas", null, context.Badges.RtFinalDocuments, "success", context.EsSolicitanteORT, true, string.Empty, new[] { "GeneradasFirmadas" }, null, null, string.Empty));
-            group.Items.Add(CreateItem(context, "aocr-rt-descargar", "Descargar documentos finales", "Descarga de AOCR, condiciones y documentos finales emitidos.", "fas fa-download", "SolicitudAOCR", "GeneradasFirmadas", null, context.Badges.RtFinalDocuments, "success", context.EsSolicitanteORT, true, string.Empty, new[] { "GeneradasFirmadas" }, null, null, string.Empty));
+            group.Items.Add(CreateItem(context, "aocr-rt-firmadas", "AOCR firmadas", "Consulta de AOCR emitidas y firmadas disponibles para el RT.", "fas fa-certificate", "SolicitudAOCR", "GeneradasFirmadas", null, context.Badges.RtAocrFirmadas, "success", context.EsSolicitanteORT, true, string.Empty, new[] { "GeneradasFirmadas" }, null, null, string.Empty));
+            group.Items.Add(CreateItem(context, "aocr-rt-condiciones", "Condiciones firmadas", "Condiciones y limitaciones emitidas para descarga o consulta.", "fas fa-file-contract", "SolicitudAOCR", "GeneradasFirmadas", null, context.Badges.RtCondicionesFirmadas, "success", context.EsSolicitanteORT, true, string.Empty, new[] { "GeneradasFirmadas" }, null, null, string.Empty));
+            group.Items.Add(CreateItem(context, "aocr-rt-descargar", "Descargar documentos finales", "Descarga de AOCR, condiciones y documentos finales emitidos.", "fas fa-download", "SolicitudAOCR", "GeneradasFirmadas", null, context.Badges.RtDescargasFinales, "success", context.EsSolicitanteORT, true, string.Empty, new[] { "GeneradasFirmadas" }, null, null, string.Empty));
 
             group.Items.Add(CreateItem(context, "aocr-admin-firmadas", "AOCR generadas y firmadas", "Consulta integral de AOCR y condiciones finalizadas.", "fas fa-file-circle-check", "SolicitudAOCR", "GeneradasFirmadas", null, context.Badges.CoordinatorFinalDocuments, "success", context.EsAdministrador, true, string.Empty, new[] { "GeneradasFirmadas" }, null, null, string.Empty));
             group.Items.Add(CreateItem(context, "aocr-admin-todas", "Todas las AOCR", "Seguimiento administrativo global del universo de AOCR emitidas o en proceso.", "fas fa-layer-group", "SolicitudAOCR", "GeneradasFirmadas", null, context.Badges.CoordinatorFinalDocuments, "neutral", context.EsAdministrador, true, string.Empty, new[] { "GeneradasFirmadas" }, null, null, string.Empty));
@@ -1055,6 +1612,7 @@ namespace CapaPresentacion.Helpers
             group.Items.Add(CreateDisabledItem(context, "adm-conceptos", "Conceptos de recaudación", "Administración de conceptos asociados a órdenes y pagos.", "fas fa-money-check-dollar", "Disponible desde la parametrización económica del sistema.", context.PuedeAdministracion));
             group.Items.Add(CreateItem(context, "adm-parametros", "Parámetros del sistema", "Configuración funcional y técnica del entorno AOCR.", "fas fa-cogs", "Direccion", "ConfiguracionSistema", null, 0, "neutral", context.PuedeAdministracion, true, string.Empty, new[] { "ConfiguracionSistema" }, null, null, string.Empty));
             group.Items.Add(CreateItem(context, "adm-correos", "Cola de correos", "Mantenimiento de destinatarios y comunicaciones institucionales.", "fas fa-envelope-open-text", "CorreoInstitucional", "Index", null, 0, "neutral", context.PuedeAdministracion, true, string.Empty, new[] { "Index" }, null, null, string.Empty));
+            group.Items.Add(CreateItem(context, "adm-correos-prueba", "Correos de prueba", "Ejecución controlada de plantillas reales hacia el buzón sandbox administrativo.", "fas fa-paper-plane", "Notificacion", "CorreosPrueba", null, 0, "neutral", context.EsAdministrador, true, string.Empty, new[] { "CorreosPrueba" }, null, null, string.Empty));
             group.Items.Add(CreateItem(context, "adm-auditoria", "Auditoría general", "Monitoreo global, salud del sistema y trazabilidad funcional.", "fas fa-heart-pulse", "Health", "Dashboard", null, 0, "neutral", context.PuedeAdministracion, true, string.Empty, new[] { "Dashboard" }, null, null, string.Empty));
             group.Items.Add(CreateItem(context, "adm-logs", "Logs funcionales", "Herramientas de monitoreo, revisión y soporte institucional.", "fas fa-clipboard-list", "Health", "Dashboard", null, 0, "neutral", context.PuedeAdministracion, true, string.Empty, new[] { "Dashboard" }, null, null, string.Empty));
             group.Items.Add(CreateItem(context, "adm-designaciones", "Designaciones RT", "Aprobación institucional de designaciones y constancias RT.", "fas fa-id-badge", "Usuario", "RevisarDesignaciones", null, context.Badges.AdminApprovalUsers, "warning", context.PuedeAprobarUsuarios, true, string.Empty, new[] { "RevisarDesignaciones" }, null, null, string.Empty));
@@ -1078,9 +1636,9 @@ namespace CapaPresentacion.Helpers
             if (context.EsInspectorRol)
             {
                 actions.Add(CreateQuickAction(context, "qa-revision", "Revisar documentos", "fas fa-file-check", "RevisionDocumental", "Index", null, context.Badges.InspectorPendingRevision, "warning", true, true, string.Empty));
-                actions.Add(CreateQuickAction(context, "qa-inspecciones", "Mis inspecciones", "fas fa-plane-departure", "Inspeccion", "Index", null, 0, "neutral", true, true, string.Empty));
+                actions.Add(CreateQuickAction(context, "qa-inspecciones", "Mis inspecciones", "fas fa-plane-departure", "Inspeccion", "Index", null, context.Badges.InspectorTotalInspections, "neutral", true, true, string.Empty));
                 actions.Add(CreateQuickAction(context, "qa-informe", "Informe Técnico", "fas fa-file-lines", "Informe", "Index", null, 0, "neutral", true, true, string.Empty));
-                actions.Add(CreateQuickAction(context, "qa-aocr-corregir", "AOCR por corregir", "fas fa-certificate", "Inspeccion", "Index", null, 0, "warning", true, true, string.Empty));
+                actions.Add(CreateQuickAction(context, "qa-aocr-corregir", "AOCR por corregir", "fas fa-certificate", "Inspeccion", "Index", new { estado = "OBSERVADA" }, context.Badges.InspectorObservedInspections, "warning", true, true, string.Empty));
             }
 
             if (context.EsCoordinadorRol || context.EsLegalRol)
@@ -1098,8 +1656,8 @@ namespace CapaPresentacion.Helpers
 
             if (context.EsFinancieroRol)
             {
-                actions.Add(CreateQuickAction(context, "qa-pagos", "Revisar pagos", "fas fa-money-check-dollar", "Financiero", "Index", null, context.Badges.FinancialPendingOrders, "warning", true, true, string.Empty));
-                actions.Add(CreateQuickAction(context, "qa-observados-fin", "Pagos observados", "fas fa-triangle-exclamation", "Financiero", "Index", null, context.Badges.FinancialPendingOrders, "danger", true, true, string.Empty));
+                actions.Add(CreateQuickAction(context, "qa-pagos", "Revisar pagos", "fas fa-money-check-dollar", "Financiero", "Index", new { estado = "PENDIENTES_FINANCIERO" }, context.Badges.FinancialPendingReviewOrders, "warning", true, true, string.Empty));
+                actions.Add(CreateQuickAction(context, "qa-observados-fin", "Pagos observados", "fas fa-triangle-exclamation", "Financiero", "Index", new { estado = EstadoOrden.Devuelta }, context.Badges.FinancialObservedOrders, "danger", true, true, string.Empty));
             }
 
             if (context.EsAdministrador)
@@ -1240,6 +1798,37 @@ namespace CapaPresentacion.Helpers
             }
 
             return true;
+        }
+
+        private static bool IsInformeTecnicoFlowActive(SidebarBuildContext context)
+        {
+            if (context == null || string.IsNullOrWhiteSpace(context.CurrentController))
+            {
+                return false;
+            }
+
+            if (string.Equals(context.CurrentController, "Informe", StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+
+            if (!string.Equals(context.CurrentController, "Inspeccion", StringComparison.OrdinalIgnoreCase))
+            {
+                return false;
+            }
+
+            var informeActions = new[]
+            {
+                "ModalInformeTecnico",
+                "GuardarInformeTecnico",
+                "PrevisualizarInformeTecnico",
+                "FinalizarInformeTecnico",
+                "VerPreviewInformeTecnico",
+                "VerInforme",
+                "DescargarInforme"
+            };
+
+            return informeActions.Any(action => string.Equals(context.CurrentAction, action, StringComparison.OrdinalIgnoreCase));
         }
 
         private static string ResolveCompanyText(SidebarBuildContext context, string[] names)

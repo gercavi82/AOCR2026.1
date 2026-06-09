@@ -1,5 +1,8 @@
-@model IEnumerable<System.Tuple<CapaModelo.Inspeccion, CapaModelo.SolicitudAOCR, CapaModelo.InspeccionInformeTecnico>>
+@inherits System.Web.Mvc.WebViewPage<IEnumerable<System.Tuple<CapaModelo.Inspeccion, CapaModelo.SolicitudAOCR, CapaModelo.InspeccionInformeTecnico>>>
 @using System.Linq
+@using System.Collections.Generic
+@using System.Web.Mvc
+@using System.Web.Mvc.Html
 
 @{
     Layout = "~/Views/Shared/_LayoutAOCR.cshtml";

@@ -1,4 +1,7 @@
-﻿@model List<CapaModelo.Log>
+﻿@inherits System.Web.Mvc.WebViewPage<List<CapaModelo.Log>>
+@using System.Linq
+@using System.Web.Mvc
+@using System.Web.Mvc.Html
 @{
     ViewData["Title"] = "Logs del Sistema";
 }
@@ -91,7 +94,7 @@
             </div>
         </div>
         <div class="col-md-3">
-            <div class="card text-center bg-warning text-white">
+            <div class="card text-center bg-warning text-dark">
                 <div class="card-body">
                     <h3>@Model.Count(l => l.Nivel == "WARNING")</h3>
                     <p class="mb-0">WARNING</p>

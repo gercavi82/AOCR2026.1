@@ -236,6 +236,7 @@
 
     .ger-bar {
         width: 16px;
+        height: var(--bar-height, 8px);
         border-radius: 10px 10px 0 0;
         min-height: 8px;
     }
@@ -383,27 +384,27 @@
             </div>
             <div class="ger-bars">
                 <div class="ger-bar-item">
-                    <div class="ger-bar-stack"><div class="ger-bar" style="height:@(calcularAltura(vm.SolicitudesPendientes))px;background:#47b3df;"></div></div>
+                    <div class="ger-bar-stack"><div class="ger-bar" style="--bar-height:@(calcularAltura(vm.SolicitudesPendientes))px;background:#47b3df;"></div></div>
                     <span class="ger-bar-label">Pend.</span>
                 </div>
                 <div class="ger-bar-item">
-                    <div class="ger-bar-stack"><div class="ger-bar" style="height:@(calcularAltura(vm.SolicitudesObservadas))px;background:#f06a5f;"></div></div>
+                    <div class="ger-bar-stack"><div class="ger-bar" style="--bar-height:@(calcularAltura(vm.SolicitudesObservadas))px;background:#f06a5f;"></div></div>
                     <span class="ger-bar-label">Obs.</span>
                 </div>
                 <div class="ger-bar-item">
-                    <div class="ger-bar-stack"><div class="ger-bar" style="height:@(calcularAltura(vm.AocrEnRevision))px;background:#f5c84b;"></div></div>
+                    <div class="ger-bar-stack"><div class="ger-bar" style="--bar-height:@(calcularAltura(vm.AocrEnRevision))px;background:#f5c84b;"></div></div>
                     <span class="ger-bar-label">Rev.</span>
                 </div>
                 <div class="ger-bar-item">
-                    <div class="ger-bar-stack"><div class="ger-bar" style="height:@(calcularAltura(vm.AocrValidados))px;background:#47b3df;"></div></div>
+                    <div class="ger-bar-stack"><div class="ger-bar" style="--bar-height:@(calcularAltura(vm.AocrValidados))px;background:#47b3df;"></div></div>
                     <span class="ger-bar-label">Val.</span>
                 </div>
                 <div class="ger-bar-item">
-                    <div class="ger-bar-stack"><div class="ger-bar" style="height:@(calcularAltura(vm.AocrLegalizados))px;background:#d892ca;"></div></div>
+                    <div class="ger-bar-stack"><div class="ger-bar" style="--bar-height:@(calcularAltura(vm.AocrLegalizados))px;background:#d892ca;"></div></div>
                     <span class="ger-bar-label">Leg.</span>
                 </div>
                 <div class="ger-bar-item">
-                    <div class="ger-bar-stack"><div class="ger-bar" style="height:@(calcularAltura(vm.AocrEmitidosRecibidos))px;background:#7bc043;"></div></div>
+                    <div class="ger-bar-stack"><div class="ger-bar" style="--bar-height:@(calcularAltura(vm.AocrEmitidosRecibidos))px;background:#7bc043;"></div></div>
                     <span class="ger-bar-label">Emit.</span>
                 </div>
             </div>

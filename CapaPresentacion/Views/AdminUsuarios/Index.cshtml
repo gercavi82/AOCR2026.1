@@ -1,7 +1,9 @@
-@model CapaPresentacion.Models.AdminUsuarios.AdminUsuariosIndexViewModel
+@inherits System.Web.Mvc.WebViewPage<CapaPresentacion.Models.AdminUsuarios.AdminUsuariosIndexViewModel>
 @using CapaPresentacion.Helpers
 @using System.Collections.Generic
 @using System.Linq
+@using System.Web.Mvc
+@using System.Web.Mvc.Html
 
 @{
     ViewBag.Title = "Gestión de Usuarios y Roles";
@@ -454,6 +456,7 @@
     }
 
     .admin-bar__fill {
+        width: var(--bar-width, 0%);
         height: 100%;
         border-radius: inherit;
     }
@@ -746,7 +749,7 @@
                         <span>@Model.UsuariosActivos / @Model.TotalUsuarios</span>
                     </div>
                     <div class="admin-bar__track">
-                        <div class="admin-bar__fill" style="width:@porcentajeActivos%; background:#0f766e;"></div>
+                        <div class="admin-bar__fill" style="--bar-width:@porcentajeActivos%; background:#0f766e;"></div>
                     </div>
                 </div>
                 <div>
@@ -755,7 +758,7 @@
                         <span>@Model.UsuariosConRoles / @Model.TotalUsuarios</span>
                     </div>
                     <div class="admin-bar__track">
-                        <div class="admin-bar__fill" style="width:@porcentajeCoberturaRoles%; background:#1d4ed8;"></div>
+                        <div class="admin-bar__fill" style="--bar-width:@porcentajeCoberturaRoles%; background:#1d4ed8;"></div>
                     </div>
                 </div>
                 <div>
@@ -764,7 +767,7 @@
                         <span>@Model.UsuariosConAccesoReciente / @Model.TotalUsuarios</span>
                     </div>
                     <div class="admin-bar__track">
-                        <div class="admin-bar__fill" style="width:@porcentajeActividad%; background:#d97706;"></div>
+                        <div class="admin-bar__fill" style="--bar-width:@porcentajeActividad%; background:#d97706;"></div>
                     </div>
                 </div>
             </div>

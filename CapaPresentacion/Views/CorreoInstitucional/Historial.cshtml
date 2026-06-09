@@ -1,4 +1,8 @@
-@model IEnumerable<CapaDatos.Models.CorreoInstitucionalHistorialModel>
+@inherits System.Web.Mvc.WebViewPage<IEnumerable<CapaDatos.Models.CorreoInstitucionalHistorialModel>>
+@using System.Linq
+@using System.Web.Mvc
+@using System.Web.Mvc.Html
+
 @{
     var correo = ViewBag.CorreoInstitucional as CapaDatos.Models.CorreoInstitucionalModel;
     ViewBag.Title = "Historial de correos institucionales";

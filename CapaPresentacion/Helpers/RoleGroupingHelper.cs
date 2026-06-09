@@ -17,16 +17,36 @@ namespace CapaPresentacion.Helpers
         private static readonly string[] UnifiedRoleOrder =
         {
             Administrador,
-            Solicitante,
-            InspectorTecnico,
+            Coordinacion,
             DireccionJefaturaTecnica,
             Financiero,
-            Coordinacion
+            InspectorTecnico,
+            Solicitante
         };
 
         private static readonly HashSet<string> HiddenRawRoles = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
         {
             "RECEPCION"
+        };
+
+        private static readonly HashSet<string> TechnicalRawRoles = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+        {
+            "TECNICO",
+            "TÉCNICO",
+            "TECNICA",
+            "TÉCNICA",
+            "INSPECTOR",
+            "INSPECTORTECNICO",
+            "INSPECTOR TÉCNICO",
+            "INSPECTOR TECNICO",
+            "EVALUADORTECNICO",
+            "EVALUADOR TECNICO",
+            "EVALUADOR TÉCNICO"
+        };
+
+        private static readonly HashSet<string> ForcedCoordinacionUsers = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+        {
+            "GEN_COORDINACION"
         };
 
         public static IList<string> ExtractRoles(object rolesObject, string extraRole = null)
@@ -89,6 +109,58 @@ namespace CapaPresentacion.Helpers
             }
 
             return orderedRoles;
+        }
+
+        public static IList<string> SanitizeRawRolesForUser(string username, IEnumerable<string> rawRoles)
+        {
+            var roles = (rawRoles ?? Enumerable.Empty<string>())
+                .Where(role => !string.IsNullOrWhiteSpace(role))
+                .Select(role => role.Trim())
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
+
+            if (!IsForcedCoordinacionUser(username))
+            {
+                return roles;
+            }
+
+            var filtered = roles
+                .Where(role => !TechnicalRawRoles.Contains(Simplify(role)))
+                .ToList();
+
+            if (!filtered.Any(role => NormalizeSelectedRole(role).Equals(Coordinacion, StringComparison.OrdinalIgnoreCase)))
+            {
+                filtered.Add(Coordinacion);
+            }
+
+            return filtered
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
+        }
+
+        public static string ResolveSelectedRoleForUser(string username, IEnumerable<string> unifiedRoles, string selectedRole)
+        {
+            var roles = (unifiedRoles ?? Enumerable.Empty<string>())
+                .Where(role => !string.IsNullOrWhiteSpace(role))
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
+
+            if (IsForcedCoordinacionUser(username) &&
+                roles.Contains(Coordinacion, StringComparer.OrdinalIgnoreCase))
+            {
+                return Coordinacion;
+            }
+
+            var normalizedSelected = NormalizeSelectedRole(selectedRole);
+            return !string.IsNullOrWhiteSpace(normalizedSelected) &&
+                   roles.Contains(normalizedSelected, StringComparer.OrdinalIgnoreCase)
+                ? normalizedSelected
+                : (roles.FirstOrDefault() ?? string.Empty);
+        }
+
+        public static bool IsForcedCoordinacionUser(string username)
+        {
+            return !string.IsNullOrWhiteSpace(username) && ForcedCoordinacionUsers.Contains(username.Trim());
         }
 
         public static string NormalizeSelectedRole(string role)

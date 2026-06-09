@@ -1,5 +1,6 @@
-﻿@{
-    var estadoRaw = (ViewData["Estado"] as string ?? string.Empty).Trim();
+﻿@inherits System.Web.Mvc.WebViewPage
+@{
+    var estadoRaw = Convert.ToString(ViewData["Estado"] ?? string.Empty).Trim();
     var estadoNorm = estadoRaw.ToUpperInvariant().Replace("-", "_").Replace(" ", "_");
     var badgeClass = "status-en-revision";
     var badgeText = string.IsNullOrWhiteSpace(estadoRaw) ? "Sin estado" : estadoRaw;

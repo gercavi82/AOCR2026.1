@@ -1,4 +1,5 @@
-@model CapaPresentacion.Models.SubsanacionViewModel
+﻿@inherits System.Web.Mvc.WebViewPage<CapaPresentacion.Models.SubsanacionViewModel>
+@using System
 @using CapaDatos.Constants
 @using CapaPresentacion.Helpers
 @using System.Linq
@@ -8,6 +9,9 @@
 @{
     ViewBag.Title = "Subsanar Documentación";
     Layout = "~/Views/Shared/_LayoutAOCR.cshtml";
+    var documentosPendientesSubsanacion = (Model.DocumentosObservados ?? Enumerable.Empty<CapaPresentacion.Models.DocumentoSubsanacionVM>())
+        .Where(doc => doc != null)
+        .ToList();
 }
 
 <style>
@@ -146,12 +150,16 @@
                     <h5 class="mb-0 fw-bold">Corrección de Documentos</h5>
                 </div>
                 <p class="text-muted mb-3">
-                    <i class="fas fa-info-circle me-1"></i>Suba los documentos corregidos. Solo necesita reemplazar los documentos que el inspector observó.
+                    <i class="fas fa-info-circle me-1"></i>Suba los documentos corregidos. Cada carga se registrará como nueva versión y conservará el documento anterior.
                 </p>
+                <div class="alert alert-light border mb-3" role="alert">
+                    <i class="fas fa-list-check text-primary me-1"></i>
+                    Se muestran solo los documentos pendientes de subsanación: <strong>@documentosPendientesSubsanacion.Count</strong>.
+                </div>
 
-                @if (Model.DocumentosObservados != null && Model.DocumentosObservados.Any())
+                @if (documentosPendientesSubsanacion.Any())
                 {
-                    foreach (var doc in Model.DocumentosObservados)
+                    foreach (var doc in documentosPendientesSubsanacion)
                     {
                         <div class="doc-upload-card mb-3" id="docCard_@doc.CodigoDocumento">
                             <div class="d-flex justify-content-between align-items-start mb-2">
@@ -193,6 +201,7 @@
                                 <input type="file" class="form-control form-control-sm doc-file-input"
                                        name="archivos_@doc.CodigoDocumento"
                                        accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png"
+                                       multiple
                                        data-card="docCard_@doc.CodigoDocumento" />
                                 <div class="file-name-display d-none" id="fileName_@doc.CodigoDocumento"></div>
                             </div>
@@ -203,7 +212,7 @@
                 {
                     <div class="text-center py-4 text-muted">
                         <i class="fas fa-folder-open fa-2x mb-2 d-block"></i>
-                        No se encontraron documentos asociados a esta solicitud.
+                        No se encontraron documentos pendientes de subsanación para esta solicitud.
                     </div>
                 }
 
@@ -242,7 +251,10 @@
 
             if (this.files && this.files.length > 0) {
                 card.addClass('has-file');
-                display.text('\u2713 ' + this.files[0].name).removeClass('d-none');
+                var nombres = Array.prototype.slice.call(this.files).map(function (file) {
+                    return file.name;
+                });
+                display.text('\u2713 ' + nombres.length + ' archivo(s): ' + nombres.join(', ')).removeClass('d-none');
             } else {
                 card.removeClass('has-file');
                 display.addClass('d-none');

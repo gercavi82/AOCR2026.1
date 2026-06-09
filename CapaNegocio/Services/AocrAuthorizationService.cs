@@ -31,12 +31,14 @@ namespace CapaNegocio.Services
         public string CodigoUsuario { get; set; }
         public string UserName { get; set; }
         public string SelectedRole { get; set; }
+        public IList<string> RawRoles { get; set; }
         public IList<string> Roles { get; set; }
         public string CompanyCode { get; set; }
         public string CompanyName { get; set; }
 
         public AocrAuthorizationContext()
         {
+            RawRoles = new List<string>();
             Roles = new List<string>();
         }
     }
@@ -114,7 +116,10 @@ namespace CapaNegocio.Services
             { "SolicitudAOCR/DescargarGenerada", new[] { "Solicitante", "InspectorTecnico", "Coordinacion", "DireccionJefaturaTecnica", "Administrador" } },
             { "SolicitudAOCR/Aprobar", new[] { "Coordinacion", "Administrador" } },
             { "SolicitudAOCR/AprobarJefatura", new[] { "DireccionJefaturaTecnica", "Administrador" } },
-            { "SolicitudAOCR/Legalizar", new[] { "DireccionJefaturaTecnica", "Administrador" } },
+            // Legalizar/Emitir: los roles legales (CoordinacionLegal/CoordinadorLegal) se normalizan a "Coordinacion";
+            // el filtro [Authorize(Roles=...)] del controlador ya restringe a los roles legales raw.
+            { "SolicitudAOCR/Legalizar", new[] { "Coordinacion", "DireccionJefaturaTecnica", "Administrador" } },
+            { "SolicitudAOCR/Emitir", new[] { "Coordinacion", "DireccionJefaturaTecnica", "Administrador" } },
             { "SolicitudAOCR/DecisionInstitucional", new[] { "DireccionJefaturaTecnica", "Administrador" } },
             { "Coordinador/AsignarInspector", new[] { "Coordinacion", "Administrador" } },
             { "RevisionDocumental/Index", new[] { "InspectorTecnico", "Coordinacion", "DireccionJefaturaTecnica", "Administrador" } },

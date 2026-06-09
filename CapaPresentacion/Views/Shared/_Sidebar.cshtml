@@ -1,9 +1,12 @@
 @inherits System.Web.Mvc.WebViewPage
 @using System.Linq
+@using System.Web.Mvc
+@using System.Web.Mvc.Html
 @using CapaPresentacion.Services
 
 @{
     var sidebar = SidebarMenuService.BuildForView(ViewContext, ViewData, Model);
+    Func<int, string> sidebarBadgeText = value => value >= 100 ? "99+" : value.ToString();
 }
 
 <div class="aocr-sidebar-shell text-white" data-aocr-sidebar>
@@ -64,8 +67,8 @@
         </div>
     }
 
-    <div class="aocr-sidebar-block compania-contexto">
-        <div class="aocr-sidebar-block__title">Compañía activa</div>
+    <div class="aocr-sidebar-block compania-contexto aocr-company-switcher">
+        <div class="aocr-sidebar-block__title aocr-sidebar-section-title">Compañía activa</div>
         <div class="compania-name">
             @if (!string.IsNullOrWhiteSpace(sidebar.ActiveCompanyCode))
             {
@@ -81,7 +84,7 @@
                 @Html.AntiForgeryToken()
                 <input type="hidden" name="returnUrl" value="@sidebar.ReturnUrl" />
                 <div class="input-group input-group-sm aocr-sidebar-company-form">
-                    <select name="companiaCodigo" class="form-select form-select-sm" required>
+                    <select name="companiaCodigo" class="form-select form-select-sm aocr-sidebar-select" required>
                         @foreach (var compania in sidebar.Companias)
                         {
                             <option value="@compania.Code" @(compania.Selected ? "selected" : null)>[@compania.Code] @compania.Name</option>
@@ -96,7 +99,7 @@
     @if (sidebar.QuickActions.Any())
     {
         <div class="aocr-sidebar-block aocr-sidebar-quick-panel">
-            <div class="aocr-section-title">Acciones rápidas</div>
+            <div class="aocr-section-title aocr-sidebar-section-title aocr-quick-actions-title">Acciones rápidas</div>
             <div class="aocr-quick-actions">
                 @foreach (var item in sidebar.QuickActions)
                 {
@@ -109,7 +112,7 @@
                             </span>
                             @if (item.ShowBadge)
                             {
-                                <span class="aocr-quick-badge badge-@item.BadgeToneClass">@item.BadgeCount</span>
+                                <span class="aocr-quick-badge badge-@item.BadgeToneClass">@sidebarBadgeText(item.BadgeCount)</span>
                             }
                         </a>
                     }
@@ -122,7 +125,7 @@
                             </span>
                             @if (item.ShowBadge)
                             {
-                                <span class="aocr-quick-badge badge-@item.BadgeToneClass">@item.BadgeCount</span>
+                                <span class="aocr-quick-badge badge-@item.BadgeToneClass">@sidebarBadgeText(item.BadgeCount)</span>
                             }
                         </span>
                     }
@@ -167,7 +170,7 @@
                             <span class="aocr-menu-title">@group.Title</span>
                             @if (group.ShowBadge)
                             {
-                                <span class="aocr-menu-badge">@group.BadgeCount</span>
+                                <span class="aocr-menu-badge">@sidebarBadgeText(group.BadgeCount)</span>
                             }
                             <span class="aocr-menu-arrow" aria-hidden="true"><i class="fas fa-chevron-right"></i></span>
                         </button>
@@ -190,7 +193,7 @@
                                         </span>
                                         @if (item.ShowBadge)
                                         {
-                                            <span class="aocr-subnav-link-badge badge-@item.BadgeToneClass">@item.BadgeCount</span>
+                                            <span class="aocr-subnav-link-badge badge-@item.BadgeToneClass">@sidebarBadgeText(item.BadgeCount)</span>
                                         }
                                     </a>
                                 }
@@ -209,7 +212,7 @@
                                         </span>
                                         @if (item.ShowBadge)
                                         {
-                                            <span class="aocr-subnav-link-badge badge-@item.BadgeToneClass">@item.BadgeCount</span>
+                                            <span class="aocr-subnav-link-badge badge-@item.BadgeToneClass">@sidebarBadgeText(item.BadgeCount)</span>
                                         }
                                     </span>
                                 }

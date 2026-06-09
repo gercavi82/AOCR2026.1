@@ -238,9 +238,7 @@ namespace CapaPresentacion.Controllers
                     inspeccion != null ? inspeccion.UltimaActualizacion : null,
                     inspeccion != null ? inspeccion.FechaAsignacion : null);
 
-                var urlDetalle = inspeccion != null
-                    ? urlHelper.Action("Detalle", "Inspeccion", new { id = inspeccion.CodigoInspeccion })
-                    : urlHelper.Action("Detalle", "SolicitudAOCR", new { id = codigoSolicitud });
+                var urlDetalle = urlHelper.Action("Detalle", "SolicitudAOCR", new { id = codigoSolicitud });
                 var urlVerDocumento = documento != null && documento.CodigoInspeccion.HasValue && documento.TienePdf
                     ? urlHelper.Action("VerInforme", "Inspeccion", new { id = documento.CodigoInspeccion.Value })
                     : null;

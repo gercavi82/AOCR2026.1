@@ -1,7 +1,9 @@
-@model CapaPresentacion.Models.DashboardInspeccionViewModel
+﻿@inherits System.Web.Mvc.WebViewPage<CapaPresentacion.Models.DashboardInspeccionViewModel>
 @using System
 @using System.Linq
 @using System.Web
+@using System.Web.Mvc
+@using System.Web.Mvc.Html
 @using CapaPresentacion.Helpers
 @{
     Layout = "~/Views/Shared/_LayoutAOCR.cshtml";
@@ -213,18 +215,25 @@
     letter-spacing: -.02em;
     margin: 0 0 4px;
     line-height: 1.2;
+    color: #fff !important;
 }
 .di3-hero__sub {
     font-size: .88rem;
     opacity: .75;
     margin: 0;
     line-height: 1.4;
+    color: #fff !important;
 }
 .di3-hero__greeting {
     font-size: .82rem;
     opacity: .6;
     margin-top: 6px;
+    color: #fff !important;
 }
+.di3-hero__crumb,
+.di3-hero__crumb span,
+.di3-hero__crumb strong,
+.di3-hero__crumb i { color: rgba(255,255,255,.88) !important; }
 .di3-hero__actions {
     display: flex;
     gap: 8px;
@@ -615,8 +624,8 @@
     background: radial-gradient(circle, rgba(255,255,255,.06), transparent 70%);
     pointer-events: none;
 }
-.di3-panel--kb .di3-panel__title { color: #fff; font-size: 1.15rem; }
-.di3-panel--kb .di3-panel__sub { color: rgba(255,255,255,.6); }
+.di3-panel--kb .di3-panel__title { color: #fff !important; font-size: 1.15rem; }
+.di3-panel--kb .di3-panel__sub { color: rgba(255,255,255,.75) !important; }
 .di3-panel--kb .di3-search input {
     background: rgba(255,255,255,.1);
     border-color: rgba(255,255,255,.18);
@@ -629,7 +638,7 @@
     box-shadow: 0 0 0 3px rgba(255,255,255,.08);
 }
 .di3-panel--kb .di3-search i { color: rgba(255,255,255,.45); }
-.di3-panel--kb .di3-kb-stats { font-size: .78rem; color: rgba(255,255,255,.5); margin-top: 4px; }
+.di3-panel--kb .di3-kb-stats { font-size: .78rem; color: rgba(255,255,255,.72) !important; margin-top: 4px; }
 
 /* Kanban grid */
 .di3-kanban {
@@ -1112,11 +1121,11 @@
 
     @* ── LEVEL 4: NAVIGATION TABS ── *@
     <div class="di3-nav" id="diTabs" role="tablist">
-        <button class="di3-nav__tab active" id="tab-kanban" data-pane="pane-kanban" type="button" role="tab" aria-selected="true">
-            <i class="fas fa-grip"></i> Tablero <span class="di3-nav__count">@gestionIntegral.Count</span>
+        <button class="di3-nav__tab" id="tab-kanban" data-pane="pane-kanban" type="button" role="tab" aria-selected="false">
+            <i class="fas fa-grip"></i> Flujo visual <span class="di3-nav__count">@gestionIntegral.Count</span>
         </button>
-        <button class="di3-nav__tab" id="tab-bandeja" data-pane="pane-bandeja" type="button" role="tab" aria-selected="false">
-            <i class="fas fa-table-columns"></i> Bandeja <span class="di3-nav__count">@gestionIntegral.Count</span>
+        <button class="di3-nav__tab active" id="tab-bandeja" data-pane="pane-bandeja" type="button" role="tab" aria-selected="true">
+            <i class="fas fa-table-columns"></i> Bandeja operativa <span class="di3-nav__count">@gestionIntegral.Count</span>
         </button>
         <button class="di3-nav__tab" id="tab-firmas" data-pane="pane-firmas" type="button" role="tab" aria-selected="false">
             <i class="fas fa-signature"></i> Firmas <span class="di3-nav__count">@firmas.Count</span>
@@ -1127,11 +1136,11 @@
     </div>
 
     @* ── PANE: KANBAN ── *@
-    <div class="di3-pane active" id="pane-kanban" role="tabpanel">
+    <div class="di3-pane" id="pane-kanban" role="tabpanel">
         <div class="di3-panel di3-panel--kb">
             <div class="di3-panel__head">
                 <div>
-                    <h3 class="di3-panel__title"><i class="fas fa-grip" style="opacity:.5;margin-right:6px;"></i>Tablero Operativo AOCR</h3>
+                    <h3 class="di3-panel__title"><i class="fas fa-grip" style="opacity:.5;margin-right:6px;"></i>Flujo visual AOCR</h3>
                     <p class="di3-panel__sub">Detecte bloqueos, priorice acciones y visualice el flujo completo</p>
                     <p class="di3-kb-stats">@gestionIntegral.Count trámite@(gestionIntegral.Count != 1 ? "s" : "") · 6 columnas</p>
                 </div>
@@ -1161,12 +1170,12 @@
     </div>
 
     @* ── PANE: BANDEJA (TABLE) ── *@
-    <div class="di3-pane" id="pane-bandeja" role="tabpanel">
+    <div class="di3-pane active" id="pane-bandeja" role="tabpanel">
         <div class="di3-panel">
             <div class="di3-panel__head">
                 <div>
-                    <h3 class="di3-panel__title"><i class="fas fa-table-columns" style="opacity:.5;margin-right:6px;"></i>Bandeja principal AOCR</h3>
-                    <p class="di3-panel__sub">Tabla unificada para auditoría, búsqueda avanzada y trazabilidad</p>
+                    <h3 class="di3-panel__title"><i class="fas fa-table-columns" style="opacity:.5;margin-right:6px;"></i>Bandeja operativa AOCR</h3>
+                    <p class="di3-panel__sub">Vista principal para revisar, filtrar y abrir expedientes sin depender del tablero visual</p>
                 </div>
             </div>
             <div class="di3-panel__body">
@@ -1439,8 +1448,8 @@
 
     function resolvePaneFromHash() {
         var hash = (window.location.hash || '').replace('#', '').trim();
-        if (!hash) return 'pane-kanban';
-        return $('#' + hash).length ? hash : 'pane-kanban';
+        if (!hash) return 'pane-bandeja';
+        return $('#' + hash).length ? hash : 'pane-bandeja';
     }
 
     function syncHashForPane(paneId) {

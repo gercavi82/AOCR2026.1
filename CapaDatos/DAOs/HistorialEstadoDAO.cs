@@ -407,6 +407,21 @@ namespace CapaDatos.DAOs
             int codigoUsuario,
             string observaciones)
         {
+            return RegistrarCambioYObtenerCodigo(
+                codigoSolicitud,
+                estadoAnterior,
+                estadoNuevo,
+                codigoUsuario,
+                observaciones).HasValue;
+        }
+
+        public int? RegistrarCambioYObtenerCodigo(
+            int codigoSolicitud,
+            string estadoAnterior,
+            string estadoNuevo,
+            int codigoUsuario,
+            string observaciones)
+        {
             try
             {
                 using (var cn = CrearConexion())
@@ -418,7 +433,8 @@ namespace CapaDatos.DAOs
                         INSERT INTO {schema.Tabla}
                         ({schema.CodigoSolicitud}, {schema.EstadoAnterior}, {schema.EstadoNuevo}, {schema.CodigoUsuario}, {schema.Observaciones}, {schema.FechaCambio})
                         VALUES
-                        (@sol, @ant, @nuevo, @user, @obs, @fecha);";
+                        (@sol, @ant, @nuevo, @user, @obs, @fecha)
+                        RETURNING {schema.CodigoHistorial};";
 
                     using (var cmd = new NpgsqlCommand(sql, cn))
                     {
@@ -429,14 +445,20 @@ namespace CapaDatos.DAOs
                         cmd.Parameters.AddWithValue("@obs", (object)observaciones ?? DBNull.Value);
                         cmd.Parameters.AddWithValue("@fecha", DateTime.Now);
 
-                        return cmd.ExecuteNonQuery() > 0;
+                        var result = cmd.ExecuteScalar();
+                        if (result == null || result == DBNull.Value)
+                        {
+                            return null;
+                        }
+
+                        return Convert.ToInt32(result);
                     }
                 }
             }
             catch (PostgresException ex) when (EsErrorEstructuraHistorial(ex))
             {
-                LogEstructuraHistorialInvalida(nameof(RegistrarCambio), $"{TablaCanonica}/{TablaLegacy}", ex);
-                return false;
+                LogEstructuraHistorialInvalida(nameof(RegistrarCambioYObtenerCodigo), $"{TablaCanonica}/{TablaLegacy}", ex);
+                return null;
             }
         }
 

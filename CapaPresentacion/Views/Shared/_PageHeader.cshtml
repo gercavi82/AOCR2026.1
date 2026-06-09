@@ -1,4 +1,5 @@
-﻿@using System.Collections
+﻿@inherits System.Web.Mvc.WebViewPage
+@using System.Collections
 @using System.Collections.Generic
 @using System.Web
 @{
@@ -41,7 +42,7 @@
     if (string.Equals(controllerName, "CoordinacionJefatura", StringComparison.OrdinalIgnoreCase)) { controllerLabel = "Coordinacion y Jefatura"; }
     else if (string.Equals(controllerName, "SolicitudAOCR", StringComparison.OrdinalIgnoreCase)) { controllerLabel = "Solicitudes AOCR"; }
     else if (string.Equals(controllerName, "Direccion", StringComparison.OrdinalIgnoreCase)) { controllerLabel = "Direccion / Jefatura"; }
-    else if (string.Equals(controllerName, "Tecnico", StringComparison.OrdinalIgnoreCase)) { controllerLabel = "Gestion Tecnica"; }
+    else if (string.Equals(controllerName, "Tecnico", StringComparison.OrdinalIgnoreCase)) { controllerLabel = "Asignacion de Inspector"; }
     else if (string.Equals(controllerName, "Financiero", StringComparison.OrdinalIgnoreCase)) { controllerLabel = "Financiero"; }
     else if (string.Equals(controllerName, "Dashboard", StringComparison.OrdinalIgnoreCase)) { controllerLabel = "Dashboard"; }
 }

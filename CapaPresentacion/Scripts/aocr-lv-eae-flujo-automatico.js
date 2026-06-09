@@ -94,18 +94,49 @@
 
     function submitFormAsAjax(form, submitter) {
         var formData = new FormData(form);
+        var headers = { 'X-Requested-With': 'XMLHttpRequest' };
+        var antiForgeryInput = form.querySelector('input[name="__RequestVerificationToken"]')
+            || document.querySelector('#__AjaxAntiForgeryForm input[name="__RequestVerificationToken"]')
+            || document.querySelector('input[name="__RequestVerificationToken"]');
 
         if (submitter && submitter.name && !formData.has(submitter.name)) {
             formData.append(submitter.name, submitter.value || '');
         }
 
+        if (antiForgeryInput && antiForgeryInput.value) {
+            if (!formData.has('__RequestVerificationToken')) {
+                formData.append('__RequestVerificationToken', antiForgeryInput.value);
+            }
+
+            headers.RequestVerificationToken = antiForgeryInput.value;
+            headers.__RequestVerificationToken = antiForgeryInput.value;
+        }
+
         return fetch(form.action, {
             method: (form.method || 'POST').toUpperCase(),
             credentials: 'same-origin',
-            headers: { 'X-Requested-With': 'XMLHttpRequest' },
+            headers: headers,
             body: formData
         })
         .then(function (response) {
+            if (response && response.redirected && /\/Account\/Login/i.test(response.url || '')) {
+                var loginPayload = {
+                    success: false,
+                    code: 401,
+                    requiresLogin: true,
+                    redirectUrl: window.AOCR && typeof window.AOCR.buildLoginUrl === 'function'
+                        ? window.AOCR.buildLoginUrl()
+                        : response.url,
+                    message: 'La sesi\u00f3n expir\u00f3 o la aplicaci\u00f3n se reinici\u00f3. Inicie sesi\u00f3n nuevamente y vuelva a finalizar la LV/EAE.'
+                };
+
+                if (handleUnauthorizedPayload(loginPayload)) {
+                    return null;
+                }
+
+                throw new Error(loginPayload.message);
+            }
+
             return readResponsePayload(response).then(function (payload) {
                 if (handleUnauthorizedPayload(payload)) {
                     return null;

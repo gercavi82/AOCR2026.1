@@ -1,8 +1,10 @@
-@model CapaPresentacion.Models.ViewModels.InformeTecnicoModalVm
+@inherits System.Web.Mvc.WebViewPage<CapaPresentacion.Models.ViewModels.InformeTecnicoModalVm>
 @using System
 @using System.Collections.Generic
 @using System.Globalization
 @using System.Linq
+@using System.Web.Mvc
+@using System.Web.Mvc.Html
 @using CapaModelo
 @using CapaPresentacion.Helpers
 @using CapaPresentacion.Models.ViewModels
@@ -56,6 +58,7 @@
     var documentosAdjuntosBase = InformeTecnicoTemplateHelper.GetDocumentosAdjuntosBase();
     var documentosAdjuntosSeleccionados = InformeTecnicoTemplateHelper.SplitLines(informe.DocumentosAdjuntos);
     var documentosAdjuntosArchivos = InformeTecnicoTemplateHelper.ParseDocumentosAdjuntosArchivos(informe.DocumentosAdjuntosArchivos);
+    var documentosAdjuntosArchivoItems = InformeTecnicoTemplateHelper.ParseDocumentosAdjuntosArchivoItems(informe.DocumentosAdjuntosArchivos);
     var documentosRevisadosTexto = !string.IsNullOrWhiteSpace(informe.Evidencias)
         ? informe.Evidencias
         : (documentos.Any()
@@ -78,6 +81,13 @@
     var numeroLicenciaInspector = !string.IsNullOrWhiteSpace(informe.NumeroLicenciaInspector)
         ? informe.NumeroLicenciaInspector
         : inspectorCedula;
+    Func<long, string> formatoPesoArchivo = bytes =>
+    {
+        if (bytes <= 0) return string.Empty;
+        if (bytes >= 1024 * 1024) return (bytes / 1024m / 1024m).ToString("0.##", cultura) + " MB";
+        if (bytes >= 1024) return (bytes / 1024m).ToString("0.##", cultura) + " KB";
+        return bytes + " B";
+    };
     var estadoInformeVisual = !string.IsNullOrWhiteSpace(vm.EstadoInformeTecnico)
         ? vm.EstadoInformeTecnico
         : "BORRADOR_INFORME";
@@ -171,6 +181,9 @@
                               class="aocr-informe-modal-form"
                               data-aocr-informe-form="true"
                               data-preview-url="@vm.UrlPrevisualizar"
+                              data-inspeccion-id="@vm.CodigoInspeccion"
+                              data-informe-tecnico-id="@(informe != null ? informe.CodigoInforme : 0)"
+                              data-estado-informe="@estadoInformeVisual"
                               data-operador="@operadorVisual">
                             @Html.AntiForgeryToken()
                             @Html.Hidden("id", vm.CodigoInspeccion)
@@ -323,10 +336,15 @@
                                     </div>
                                 </div>
 
-                                <div class="aocr-info-card">
-                                    <h6 class="aocr-section-title">Documentos y anexos</h6>
+                                <div class="aocr-info-card aocr-documents-panel">
+                                    <div class="aocr-documents-header">
+                                        <div>
+                                            <h6>Documentos y anexos</h6>
+                                            <p>Seleccione los documentos que forman parte del informe técnico y adjunte los respaldos correspondientes.</p>
+                                        </div>
+                                    </div>
                                     <input type="hidden" name="documentosAdjuntosPresent" value="true" />
-                                    <div class="aocr-document-grid">
+                                    <div class="aocr-documents-list">
                                         @{ var idxAdj = 0; }
                                         @foreach (var adjunto in documentosAdjuntosBase)
                                         {
@@ -335,6 +353,9 @@
                                                 && string.Equals(adjunto, "LISTA DE VERIFICACION", StringComparison.OrdinalIgnoreCase);
                                             var estaSeleccionado = esListaVerificacionAuto || documentosAdjuntosSeleccionados.Any(item => string.Equals(item, adjunto, StringComparison.OrdinalIgnoreCase));
                                             var archivosAdjuntoActual = documentosAdjuntosArchivos.ContainsKey(adjunto) ? documentosAdjuntosArchivos[adjunto] : new List<string>();
+                                            var archivosItemsAdjuntoActual = documentosAdjuntosArchivoItems
+                                                .Where(item => item != null && string.Equals(item.Categoria, adjunto, StringComparison.OrdinalIgnoreCase))
+                                                .ToList();
                                             var resumenAdjuntoActual = archivosAdjuntoActual != null && archivosAdjuntoActual.Any()
                                                 ? "Archivos cargados: " + string.Join(", ", archivosAdjuntoActual)
                                                 : (esListaVerificacionAuto
@@ -342,40 +363,121 @@
                                                     : (estaSeleccionado ? "Documento marcado en el informe. Sin archivo cargado." : string.Empty));
                                             var adjFileKey = "archivoAdjunto_" + idxAdj;
                                             var adjSummaryId = "adjuntoResumenModal_" + idxAdj;
+                                            var adjSelectedId = "adjuntoSeleccionTemporal_" + idxAdj;
                                             var mostrarCargaAdjunto = estaSeleccionado && !esListaVerificacionAuto;
+                                            var tieneArchivosAdjunto = (archivosAdjuntoActual != null && archivosAdjuntoActual.Any()) || archivosItemsAdjuntoActual.Any();
+                                            var estadoAdjuntoTexto = esListaVerificacionAuto
+                                                ? "Automático"
+                                                : (tieneArchivosAdjunto ? "Con archivos" : (estaSeleccionado ? "Seleccionado" : "Opcional"));
+                                            var estadoAdjuntoClase = esListaVerificacionAuto
+                                                ? "is-auto"
+                                                : (tieneArchivosAdjunto || estaSeleccionado ? "is-ok" : "is-pending");
 
-                                            <div class="aocr-document-item">
+                                            <div class="aocr-document-row">
                                                 @if (esListaVerificacionAuto)
                                                 {
                                                     @Html.Hidden("documentosAdjuntos", adjunto)
-                                                    <div class="aocr-document-main">
-                                                        <span>@adjunto</span>
-                                                    </div>
-                                                    <div class="aocr-document-upload" data-upload-container="true">
-                                                        <small id="@adjSummaryId" class="aocr-document-note" data-existing-summary="@resumenAdjuntoActual">
-                                                            @resumenAdjuntoActual
+                                                    <div class="aocr-document-row-main">
+                                                        <div class="aocr-document-check">
+                                                            <i class="fas fa-link text-primary" aria-hidden="true"></i>
+                                                        </div>
+                                                        <div class="aocr-document-info">
+                                                            <span class="aocr-document-title">@adjunto</span>
+                                                            <span class="aocr-document-description">Documento vinculado automáticamente desde la LV/EAE finalizada.</span>
+                                                            <span class="aocr-document-status @estadoAdjuntoClase">@estadoAdjuntoTexto</span>
+                                                        </div>
+                                                        <div class="aocr-document-actions">
                                                             @if (!string.IsNullOrWhiteSpace(urlVerListaVerificacion))
                                                             {
-                                                                <span>
-                                                                    <a href="@urlVerListaVerificacion" target="_blank" rel="noopener">Ver PDF</a>
+                                                                <a href="@urlVerListaVerificacion" target="_blank" rel="noopener"><i class="fas fa-eye"></i> Ver PDF</a>
+                                                            }
+                                                            @if (!string.IsNullOrWhiteSpace(urlDescargarListaVerificacion))
+                                                            {
+                                                                <a href="@urlDescargarListaVerificacion" target="_blank" rel="noopener"><i class="fas fa-download"></i> Descargar</a>
+                                                            }
+                                                        </div>
+                                                    </div>
+                                                    <div class="aocr-document-upload" data-upload-container="true">
+                                                        <small id="@adjSummaryId" class="aocr-document-note" data-existing-summary="@resumenAdjuntoActual">@resumenAdjuntoActual</small>
+                                                        <div class="aocr-attachment-list aocr-attachment-list--server">
+                                                            <div class="aocr-attachment-list-title">Documento vinculado</div>
+                                                            <div class="aocr-attachment-row">
+                                                                <div>
+                                                                    <span class="aocr-attachment-name">Lista de Verificación Operacional LV/EAE</span>
+                                                                    <span class="aocr-attachment-meta">Automático</span>
+                                                                </div>
+                                                                <div class="aocr-attachment-actions">
+                                                                    @if (!string.IsNullOrWhiteSpace(urlVerListaVerificacion))
+                                                                    {
+                                                                        <a href="@urlVerListaVerificacion" target="_blank" rel="noopener">Ver PDF</a>
+                                                                    }
                                                                     @if (!string.IsNullOrWhiteSpace(urlDescargarListaVerificacion))
                                                                     {
-                                                                        <text> | <a href="@urlDescargarListaVerificacion" target="_blank" rel="noopener">Descargar</a></text>
+                                                                        <a href="@urlDescargarListaVerificacion" target="_blank" rel="noopener">Descargar</a>
                                                                     }
-                                                                </span>
-                                                            }
-                                                        </small>
+                                                                </div>
+                                                            </div>
+                                                        </div>
                                                     </div>
                                                 }
                                                 else
                                                 {
-                                                    <label class="aocr-document-main">
-                                                        <input type="checkbox" name="documentosAdjuntos" value="@adjunto" @(estaSeleccionado ? "checked=\"checked\"" : null) />
-                                                        <span>@adjunto</span>
-                                                    </label>
+                                                    <div class="aocr-document-row-main">
+                                                        <div class="aocr-document-check">
+                                                            <input type="checkbox" name="documentosAdjuntos" value="@adjunto" @(estaSeleccionado ? "checked=\"checked\"" : null) />
+                                                        </div>
+                                                        <div class="aocr-document-info">
+                                                            <span class="aocr-document-title">@adjunto</span>
+                                                            <span class="aocr-document-description">Marque este documento si forma parte del informe técnico y adjunte los respaldos disponibles.</span>
+                                                            <span class="aocr-document-status @estadoAdjuntoClase">@estadoAdjuntoTexto</span>
+                                                        </div>
+                                                        <div class="aocr-document-actions"></div>
+                                                    </div>
                                                     <div class="aocr-document-upload" data-upload-container="true" @(mostrarCargaAdjunto ? null : "style=\"display:none;\"")>
-                                                        <input type="file" name="@adjFileKey" class="form-control form-control-sm" accept=".pdf,.jpg,.jpeg,.png,.doc,.docx,.xls,.xlsx" multiple data-file-summary-target="@adjSummaryId" />
+                                                        <input type="file" name="@adjFileKey" class="form-control form-control-sm" accept=".pdf,.jpg,.jpeg,.png,.doc,.docx,.xls,.xlsx" multiple data-file-summary-target="@adjSummaryId" data-selected-list-target="@adjSelectedId" />
                                                         <small id="@adjSummaryId" class="aocr-document-note" data-existing-summary="@resumenAdjuntoActual">@resumenAdjuntoActual</small>
+                                                        <div class="aocr-attachment-list aocr-attachment-list--server">
+                                                            <div class="aocr-attachment-list-title">Archivos cargados</div>
+                                                            @if (archivosItemsAdjuntoActual.Any())
+                                                            {
+                                                                foreach (var archivoItem in archivosItemsAdjuntoActual)
+                                                                {
+                                                                    var fechaArchivo = archivoItem.FechaCarga.HasValue ? archivoItem.FechaCarga.Value.ToString("dd/MM/yyyy HH:mm", cultura) : "Fecha no registrada";
+                                                                    var pesoArchivo = formatoPesoArchivo(archivoItem.PesoBytes);
+                                                                    var urlVerAdjunto = !string.IsNullOrWhiteSpace(archivoItem.NombreFisico)
+                                                                        ? Url.Action("VerAdjuntoInformeTecnico", "Inspeccion", new { id = inspeccion.CodigoInspeccion, archivo = archivoItem.NombreFisico })
+                                                                        : string.Empty;
+                                                                    var urlDescargarAdjunto = !string.IsNullOrWhiteSpace(archivoItem.NombreFisico)
+                                                                        ? Url.Action("DescargarAdjuntoInformeTecnico", "Inspeccion", new { id = inspeccion.CodigoInspeccion, archivo = archivoItem.NombreFisico })
+                                                                        : string.Empty;
+                                                                    <div class="aocr-attachment-row">
+                                                                        <div>
+                                                                            <span class="aocr-attachment-name" title="@archivoItem.NombreOriginal">@archivoItem.NombreOriginal</span>
+                                                                            <span class="aocr-attachment-meta">v@(archivoItem.Version <= 0 ? 1 : archivoItem.Version) | @fechaArchivo | @(string.IsNullOrWhiteSpace(archivoItem.UsuarioCarga) ? "Usuario no registrado" : archivoItem.UsuarioCarga) @(string.IsNullOrWhiteSpace(pesoArchivo) ? "" : "| " + pesoArchivo)</span>
+                                                                        </div>
+                                                                        <div class="aocr-attachment-actions">
+                                                                            @if (!string.IsNullOrWhiteSpace(urlVerAdjunto))
+                                                                            {
+                                                                                <a href="@urlVerAdjunto" target="_blank" rel="noopener">Ver</a>
+                                                                                <a href="@urlDescargarAdjunto" target="_blank" rel="noopener">Descargar</a>
+                                                                            }
+                                                                            else
+                                                                            {
+                                                                                <span>Sin enlace</span>
+                                                                            }
+                                                                        </div>
+                                                                    </div>
+                                                                }
+                                                            }
+                                                            else
+                                                            {
+                                                                <div class="aocr-attachment-empty">Sin archivos cargados en esta categoría.</div>
+                                                            }
+                                                        </div>
+                                                        <div class="aocr-attachment-list aocr-attachment-list--pending">
+                                                            <div class="aocr-attachment-list-title">Nuevos archivos seleccionados</div>
+                                                            <div id="@adjSelectedId" class="aocr-selected-file-list" data-empty-text="Sin archivos nuevos seleccionados.">Sin archivos nuevos seleccionados.</div>
+                                                        </div>
                                                     </div>
                                                 }
                                             </div>
@@ -384,14 +486,62 @@
                                         }
                                     </div>
 
-                                    <div class="aocr-form-grid aocr-form-grid-split mt-3">
-                                        <div class="aocr-form-field">
+                                    <div class="aocr-extra-attachments-panel">
+                                        <div class="aocr-extra-card">
                                             <label>Otros adjuntos</label>
                                             <textarea name="otrosAdjuntos" class="form-control aocr-textarea-sm" placeholder="Ingrese otros documentos adjuntos; puede usar una línea por documento.">@otrosAdjuntosTexto</textarea>
                                         </div>
-                                        <div class="aocr-form-field">
+                                        <div class="aocr-extra-card">
                                             <label>Cargar archivos adicionales</label>
-                                            <input type="file" name="otrosAdjuntosArchivo" class="form-control" multiple accept=".pdf,.jpg,.jpeg,.png,.doc,.docx,.xls,.xlsx" />
+                                            @{
+                                                var otrosAdjuntosItemsArchivo = documentosAdjuntosArchivoItems
+                                                    .Where(item => item != null && string.Equals(item.Categoria, "OTROS ADJUNTOS", StringComparison.OrdinalIgnoreCase))
+                                                    .ToList();
+                                            }
+                                            <input type="file" name="otrosAdjuntosArchivo" class="form-control" multiple accept=".pdf,.jpg,.jpeg,.png,.doc,.docx,.xls,.xlsx" data-file-summary-target="otrosAdjuntosResumenModal" data-selected-list-target="otrosAdjuntosSeleccionTemporal" />
+                                            <small id="otrosAdjuntosResumenModal" class="aocr-document-note" data-existing-summary="@(otrosAdjuntosItemsArchivo.Any() ? "Archivos cargados: " + otrosAdjuntosItemsArchivo.Count : string.Empty)"></small>
+                                            <div class="aocr-attachment-list aocr-attachment-list--server">
+                                                <div class="aocr-attachment-list-title">Archivos cargados</div>
+                                                @if (otrosAdjuntosItemsArchivo.Any())
+                                                {
+                                                    foreach (var archivoItem in otrosAdjuntosItemsArchivo)
+                                                    {
+                                                        var fechaArchivo = archivoItem.FechaCarga.HasValue ? archivoItem.FechaCarga.Value.ToString("dd/MM/yyyy HH:mm", cultura) : "Fecha no registrada";
+                                                        var pesoArchivo = formatoPesoArchivo(archivoItem.PesoBytes);
+                                                        var urlVerAdjunto = !string.IsNullOrWhiteSpace(archivoItem.NombreFisico)
+                                                            ? Url.Action("VerAdjuntoInformeTecnico", "Inspeccion", new { id = inspeccion.CodigoInspeccion, archivo = archivoItem.NombreFisico })
+                                                            : string.Empty;
+                                                        var urlDescargarAdjunto = !string.IsNullOrWhiteSpace(archivoItem.NombreFisico)
+                                                            ? Url.Action("DescargarAdjuntoInformeTecnico", "Inspeccion", new { id = inspeccion.CodigoInspeccion, archivo = archivoItem.NombreFisico })
+                                                            : string.Empty;
+                                                        <div class="aocr-attachment-row">
+                                                            <div>
+                                                                <span class="aocr-attachment-name" title="@archivoItem.NombreOriginal">@archivoItem.NombreOriginal</span>
+                                                                <span class="aocr-attachment-meta">v@(archivoItem.Version <= 0 ? 1 : archivoItem.Version) | @fechaArchivo | @(string.IsNullOrWhiteSpace(archivoItem.UsuarioCarga) ? "Usuario no registrado" : archivoItem.UsuarioCarga) @(string.IsNullOrWhiteSpace(pesoArchivo) ? "" : "| " + pesoArchivo)</span>
+                                                            </div>
+                                                            <div class="aocr-attachment-actions">
+                                                                @if (!string.IsNullOrWhiteSpace(urlVerAdjunto))
+                                                                {
+                                                                    <a href="@urlVerAdjunto" target="_blank" rel="noopener">Ver</a>
+                                                                    <a href="@urlDescargarAdjunto" target="_blank" rel="noopener">Descargar</a>
+                                                                }
+                                                                else
+                                                                {
+                                                                    <span>Sin enlace</span>
+                                                                }
+                                                            </div>
+                                                        </div>
+                                                    }
+                                                }
+                                                else
+                                                {
+                                                    <div class="aocr-attachment-empty">Sin archivos adicionales cargados.</div>
+                                                }
+                                            </div>
+                                            <div class="aocr-attachment-list aocr-attachment-list--pending">
+                                                <div class="aocr-attachment-list-title">Nuevos archivos seleccionados</div>
+                                                <div id="otrosAdjuntosSeleccionTemporal" class="aocr-selected-file-list" data-empty-text="Sin archivos nuevos seleccionados.">Sin archivos nuevos seleccionados.</div>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>

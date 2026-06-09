@@ -44,6 +44,7 @@ namespace CapaDatos.Services
         public int? OrdenId { get; set; } // Columna: orden_id (FK a aocr_or_orden)
         public string EventKey { get; set; } // Idempotencia (si existe en BD)
         public string ErrorDetalle { get; set; }
+        public int Intentos { get; set; }
         
         // Propiedades solo en memoria (no persistidas en BD)
         public string ParaNombre { get; set; }
@@ -630,6 +631,7 @@ namespace CapaDatos.Services
                 EventKey = GetString(reader, "event_key"),
                 TipoNotificacion = GetString(reader, "tipo_notificacion"),
                 ErrorDetalle = GetString(reader, "error_message"),
+                Intentos = GetInt(reader, "intentos"),
                 CorrelationId = GetString(reader, "correlation_id"),
                 Adjuntos = new List<EmailAttachmentItem>()
             };
@@ -697,9 +699,9 @@ namespace CapaDatos.Services
         private const int DefaultMaxIntentos = 3;
         private static readonly TimeSpan[] RetryDelays = new[]
         {
-            TimeSpan.FromMinutes(1),
             TimeSpan.FromMinutes(5),
-            TimeSpan.FromMinutes(15)
+            TimeSpan.FromMinutes(15),
+            TimeSpan.FromMinutes(30)
         };
 
         public EmailQueueProcessor(
@@ -860,6 +862,16 @@ namespace CapaDatos.Services
         {
             _logger.LogWarning(string.Format("Error enviando email {0}: {1}", item.Id, error), context);
 
+            if (EsErrorConfiguracionSmtp(error))
+            {
+                var detalle = string.IsNullOrWhiteSpace(error)
+                    ? "Configuracion SMTP invalida o remitente no autorizado."
+                    : error;
+                await _queueService.ActualizarEstadoAsync(item.Id, "ERROR_CONFIG_SMTP", detalle);
+                _logger.LogError(string.Format("[AOCR][EMAIL_PERMANENT_ERROR] Email {0} marcado como ERROR_CONFIG_SMTP. Error={1}", item.Id, detalle), context);
+                return;
+            }
+
             if (EsErrorNoReintentable(error))
             {
                 await _queueService.ActualizarEstadoAsync(item.Id, "ERROR_NO_REINTENTABLE", error);
@@ -868,22 +880,42 @@ namespace CapaDatos.Services
             }
 
             // Calcular cuántos intentos se han hecho basándose en ProximoIntento
-            int intentosEstimados = CalcularIntentosDesdeProximoIntento(item);
+            var intentosActuales = Math.Max(0, item.Intentos);
+            var maxIntentos = item.MaxIntentos > 0 ? item.MaxIntentos : DefaultMaxIntentos;
 
-            if (intentosEstimados >= (item.MaxIntentos > 0 ? item.MaxIntentos : DefaultMaxIntentos))
+            if (intentosActuales >= maxIntentos)
             {
                 // Máximo de intentos alcanzado
                 await _queueService.ActualizarEstadoAsync(item.Id, "ERROR", error);
                 _logger.LogError(string.Format("Email {0} marcado como ERROR después de ~{1} intentos",
-                    item.Id, intentosEstimados), context);
+                    item.Id, intentosActuales), context);
             }
             else
             {
                 // Programar reintento con backoff
-                var delayIndex = Math.Min(intentosEstimados, RetryDelays.Length - 1);
+                var delayIndex = Math.Min(intentosActuales, RetryDelays.Length - 1);
                 var delay = RetryDelays[delayIndex];
                 await _queueService.ReprogramarReintentoAsync(item.Id, delay);
+                _logger.LogWarning(string.Format("[AOCR][EMAIL_RETRY] Email {0} reprogramado. IntentoActual={1}; MaxIntentos={2}; DelayMin={3}",
+                    item.Id, intentosActuales, maxIntentos, delay.TotalMinutes), context);
             }
+        }
+
+        private static bool EsErrorConfiguracionSmtp(string error)
+        {
+            var detalle = (error ?? string.Empty).Trim();
+            if (string.IsNullOrWhiteSpace(detalle))
+            {
+                return false;
+            }
+
+            return detalle.IndexOf("ERROR_CONFIG_SMTP", StringComparison.OrdinalIgnoreCase) >= 0
+                || detalle.IndexOf("5.7.1", StringComparison.OrdinalIgnoreCase) >= 0
+                || detalle.IndexOf("MailboxNameNotAllowed", StringComparison.OrdinalIgnoreCase) >= 0
+                || detalle.IndexOf("sender address rejected", StringComparison.OrdinalIgnoreCase) >= 0
+                || detalle.IndexOf("not logged in", StringComparison.OrdinalIgnoreCase) >= 0
+                || detalle.IndexOf("client was not authenticated", StringComparison.OrdinalIgnoreCase) >= 0
+                || detalle.IndexOf("authentication", StringComparison.OrdinalIgnoreCase) >= 0;
         }
 
         private static bool EsErrorNoReintentable(string error)

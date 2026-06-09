@@ -4,6 +4,7 @@ using System.Linq;
 using System.Web;
 using System.Web.Mvc;
 using CapaNegocio;
+using CapaPresentacion.Helpers;
 
 namespace CapaPresentacion.Filters
 {
@@ -29,7 +30,7 @@ namespace CapaPresentacion.Filters
                 return true;
             }
 
-            var roles = ObtenerRoles(httpContext.User);
+            var roles = ObtenerRoles(httpContext);
             var codigoUsuario = ObtenerCodigoUsuario(httpContext);
 
             return SeguridadBL.UsuarioTienePermiso(codigoUsuario, _codigoPermiso, roles);
@@ -78,26 +79,53 @@ namespace CapaPresentacion.Filters
                     }));
         }
 
-        private static List<string> ObtenerRoles(System.Security.Principal.IPrincipal user)
+        private static List<string> ObtenerRoles(HttpContextBase httpContext)
         {
+            var roles = new List<string>();
             var catalogo = new[]
             {
                 "Administrador",
                 "Financiero",
+                "Coordinador",
+                "CoordinadorInspecciones",
                 "CoordinadorFinanciero",
                 "DirectorFinanciero",
                 "CoordinacionLegal",
                 "CoordinadorLegal",
                 "DirectorGeneral",
                 "Direccion",
+                "DIRDAC",
+                "DCAV",
                 "JefaturaTecnica",
                 "Solicitante",
                 "Operador",
                 "Inspector",
-                "Tecnico"
+                "Tecnico",
+                "EvaluadorTecnico"
             };
 
-            return catalogo.Where(r => user.IsInRole(r)).ToList();
+            if (httpContext != null && httpContext.Session != null)
+            {
+                var rolSeleccionado = Convert.ToString(httpContext.Session["Rol"]);
+                var rolesSesion = RoleGroupingHelper.ExtractRoles(httpContext.Session["Roles"], rolSeleccionado);
+                var rolesRawSesion = RoleGroupingHelper.ExtractRoles(httpContext.Session["RolesRaw"], rolSeleccionado);
+
+                roles.AddRange(rolesSesion);
+                roles.AddRange(rolesRawSesion);
+                roles.AddRange(RoleGroupingHelper.BuildUnifiedRoles(rolesRawSesion.Concat(rolesSesion)));
+            }
+
+            var user = httpContext != null ? httpContext.User : null;
+            if (user != null)
+            {
+                roles.AddRange(catalogo.Where(user.IsInRole));
+            }
+
+            return roles
+                .Where(r => !string.IsNullOrWhiteSpace(r))
+                .Select(r => r.Trim())
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
         }
 
         private static string ObtenerCodigoUsuario(HttpContextBase httpContext)

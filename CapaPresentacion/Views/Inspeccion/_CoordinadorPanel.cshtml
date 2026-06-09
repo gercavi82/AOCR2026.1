@@ -1,7 +1,9 @@
 @* ============================================================
    Partial: Panel Coordinador — aprobar / devolver el informe
    ============================================================ *@
-@model CapaPresentacion.Models.ViewModels.CoordinadorPanelVm
+@inherits System.Web.Mvc.WebViewPage<CapaPresentacion.Models.ViewModels.CoordinadorPanelVm>
+@using System.Web.Mvc
+@using System.Web.Mvc.Html
 @{
     var vm = Model ?? new CapaPresentacion.Models.ViewModels.CoordinadorPanelVm();
     var informeTecnico = vm.InformeTecnico;

@@ -1,4 +1,6 @@
-@model CapaPresentacion.Models.AdminUsuarios.AdminUsuarioTransferenciaViewModel
+@inherits System.Web.Mvc.WebViewPage<CapaPresentacion.Models.AdminUsuarios.AdminUsuarioTransferenciaViewModel>
+@using System.Web.Mvc
+@using System.Web.Mvc.Html
 
 @{
     ViewBag.Title = "Transferir / Eliminar usuario";
@@ -141,7 +143,7 @@
                 @Html.LabelFor(m => m.UsuarioDestinoId, new { @class = "form-label" })
                 @Html.DropDownListFor(
                     m => m.UsuarioDestinoId,
-                    Model.UsuariosDestino ?? new List<SelectListItem>(),
+                    Model.UsuariosDestino ?? new List<System.Web.Mvc.SelectListItem>(),
                     "-- Seleccione usuario destino --",
                     new { @class = "form-control" })
                 @Html.ValidationMessageFor(m => m.UsuarioDestinoId, "", new { @class = "text-danger" })

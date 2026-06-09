@@ -55,6 +55,10 @@ namespace CapaNegocio.Services
             var from = ConfigurationManager.AppSettings["MailFrom"]
                 ?? ConfigurationManager.AppSettings["EmailFrom"]
                 ?? ConfigurationManager.AppSettings["Email:FromAddress"]
+                ?? "no_reply@aviacioncivil.gob.ec";
+            var fromName = ConfigurationManager.AppSettings["Email:FromName"]
+                ?? ConfigurationManager.AppSettings["EmailFromName"]
+                ?? ConfigurationManager.AppSettings["FromName"]
                 ?? "aocr@aviacioncivil.gob.ec";
             var enableSslStr = ConfigurationManager.AppSettings["SmtpEnableSsl"];
 
@@ -69,7 +73,7 @@ namespace CapaNegocio.Services
 
             using (var msg = new MailMessage())
             {
-                msg.From = new MailAddress(from, "AOCR");
+                msg.From = new MailAddress(from, fromName);
                 msg.To.Add(para);
                 msg.Subject = asunto;
                 msg.IsBodyHtml = true;
@@ -123,6 +127,10 @@ namespace CapaNegocio.Services
                 var from = ConfigurationManager.AppSettings["MailFrom"]
                     ?? ConfigurationManager.AppSettings["EmailFrom"]
                     ?? ConfigurationManager.AppSettings["Email:FromAddress"]
+                    ?? "no_reply@aviacioncivil.gob.ec";
+                var fromName = ConfigurationManager.AppSettings["Email:FromName"]
+                    ?? ConfigurationManager.AppSettings["EmailFromName"]
+                    ?? ConfigurationManager.AppSettings["FromName"]
                     ?? "aocr@aviacioncivil.gob.ec";
                 var enableSslStr = ConfigurationManager.AppSettings["SmtpEnableSsl"];
 
@@ -137,7 +145,7 @@ namespace CapaNegocio.Services
 
                 using (var msg = new MailMessage())
                 {
-                    msg.From = new MailAddress(from, "AOCR");
+                    msg.From = new MailAddress(from, fromName);
                     msg.To.Add(para);
                     msg.Subject = asunto;
                     msg.IsBodyHtml = true;

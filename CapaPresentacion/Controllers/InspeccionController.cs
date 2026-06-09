@@ -78,7 +78,10 @@ namespace CapaPresentacion.Controllers
         private const string ROLES_GESTION_INSPECCION_CON_SOLICITANTE =
             ROLES_GESTION_INSPECCION + "," + ROL_SOLICITANTE;
         private const string ROLES_FIRMA_DIRDAC = ROL_DIRECCION + "," + ROL_DIRECTOR + "," + ROL_DIRECTOR_GENERAL + "," + ROL_JEFATURA + "," + ROL_JEFE + "," + ROL_ADMIN + "," + ROL_DIRDAC;
-        private const string ROLES_ACCESO_DECISION_INSTITUCIONAL_FINAL = ROL_INSPECTOR + "," + ROL_COORD + "," + ROL_COORD_ALIAS + "," + ROL_JEFATURA + "," + ROL_JEFE + "," + ROL_DIRECCION + "," + ROL_DIRECTOR + "," + ROL_DIRECTOR_GENERAL + "," + ROL_DIRDAC + "," + ROL_ADMIN;
+        // La decisión institucional final es exclusiva de DIRDAC/Dirección/Jefatura (más Administrador).
+        // Inspector y Coordinador no deben tener acceso ni siquiera a nivel de atributo: el guard interno
+        // EsRolDireccionOJefatura() ya los rechazaba, esto alinea la primera capa de autorización.
+        private const string ROLES_ACCESO_DECISION_INSTITUCIONAL_FINAL = ROLES_FIRMA_DIRDAC;
 
         // Seguridad: tamaño máximo permitido para PDF (10MB)
         private const int MAX_PDF_BYTES = 10 * 1024 * 1024;
@@ -124,7 +127,50 @@ namespace CapaPresentacion.Controllers
                 return id;
             }
 
-            return _userContext.TryGetUserId(Session, out id) ? id : 0;
+            if (_userContext.TryGetUserId(Session, out id))
+            {
+                return id;
+            }
+
+            if (User != null &&
+                User.Identity != null &&
+                User.Identity.IsAuthenticated &&
+                !string.IsNullOrWhiteSpace(User.Identity.Name))
+            {
+                try
+                {
+                    var usuario = UsuarioDAO.ObtenerPorNombreUsuario(User.Identity.Name.Trim());
+                    if (usuario != null && usuario.Id > 0)
+                    {
+                        Session["UserId"] = usuario.Id;
+                        Session["IdUsuario"] = usuario.Id;
+                        Session["CodigoUsuario"] = !string.IsNullOrWhiteSpace(usuario.CodigoUsuario)
+                            ? usuario.CodigoUsuario.Trim()
+                            : usuario.Id.ToString(CultureInfo.InvariantCulture);
+                        Session["NombreUsuario"] = !string.IsNullOrWhiteSpace(usuario.NombreCompleto)
+                            ? usuario.NombreCompleto.Trim()
+                            : (!string.IsNullOrWhiteSpace(usuario.NombreUsuario) ? usuario.NombreUsuario.Trim() : User.Identity.Name.Trim());
+                        Session["Correo"] = !string.IsNullOrWhiteSpace(usuario.Email)
+                            ? usuario.Email.Trim()
+                            : (Session["Correo"] as string ?? string.Empty);
+
+                        if (int.TryParse(Convert.ToString(Session["CodigoUsuario"], CultureInfo.InvariantCulture), out id) && id > 0)
+                        {
+                            _logger.LogWarning("[GestionInspeccion] Sesion reconstruida desde FormsAuth. User=" + User.Identity.Name + ", CodigoUsuario=" + id + ", UserId=" + usuario.Id);
+                            return id;
+                        }
+
+                        _logger.LogWarning("[GestionInspeccion] Sesion reconstruida desde FormsAuth sin CodigoUsuario numerico. User=" + User.Identity.Name + ", UserId=" + usuario.Id);
+                        return usuario.Id;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning("[GestionInspeccion] No se pudo reconstruir sesion desde FormsAuth. User=" + User.Identity.Name + ", Error=" + ex.Message);
+                }
+            }
+
+            return 0;
         }
 
         private int ObtenerIdUsuarioActual()
@@ -526,19 +572,111 @@ namespace CapaPresentacion.Controllers
             if (EsRolInspector())
             {
                 var inspectorIds = ObtenerIdsInspectorActual();
-                return ins.CodigoInspector.HasValue && inspectorIds.Contains(ins.CodigoInspector.Value);
+                if (ins.CodigoInspector.HasValue && inspectorIds.Contains(ins.CodigoInspector.Value))
+                {
+                    return true;
+                }
+
+                var codigoUsuarioTexto = ObtenerCodigoUsuarioSesion();
+                return InspectorTextoCoincide(ins.InspectorPrincipalCedula, codigoUsuarioTexto)
+                    || InspectorTextoCoincide(ins.InspectorApoyoCedula, codigoUsuarioTexto);
             }
 
             return false;
+        }
+
+        private static bool InspectorTextoCoincide(string valorAsignado, string codigoUsuarioSesion)
+        {
+            return !string.IsNullOrWhiteSpace(valorAsignado)
+                && !string.IsNullOrWhiteSpace(codigoUsuarioSesion)
+                && string.Equals(valorAsignado.Trim(), codigoUsuarioSesion.Trim(), StringComparison.OrdinalIgnoreCase);
+        }
+
+        private static List<Inspeccion> FiltrarInspeccionesPorEstadoMenu(IEnumerable<Inspeccion> inspecciones, string estadoFiltro)
+        {
+            var lista = (inspecciones ?? Enumerable.Empty<Inspeccion>()).Where(ins => ins != null).ToList();
+            if (string.IsNullOrWhiteSpace(estadoFiltro))
+            {
+                return lista;
+            }
+
+            return lista.Where(ins => CoincideFiltroEstadoInspeccion(ins.Estado, estadoFiltro)).ToList();
+        }
+
+        private static bool CoincideFiltroEstadoInspeccion(string estadoInspeccion, string estadoFiltro)
+        {
+            var filtro = (estadoFiltro ?? string.Empty).Trim().ToUpperInvariant()
+                .Replace(" ", "_")
+                .Replace("-", "_");
+
+            if (string.IsNullOrWhiteSpace(filtro))
+            {
+                return true;
+            }
+
+            var estado = EstadosInspeccion.NormalizarEstado(estadoInspeccion);
+            switch (filtro)
+            {
+                case "ASIGNADA":
+                case "ASIGNADO":
+                case "ACEPTADA":
+                    return string.Equals(estado, EstadosInspeccion.ACEPTADA, StringComparison.OrdinalIgnoreCase)
+                        || string.Equals(estado, EstadosInspeccion.VERIFICACION_SOLICITUD, StringComparison.OrdinalIgnoreCase)
+                        || string.Equals(estado, EstadosInspeccion.SUBSANADA, StringComparison.OrdinalIgnoreCase)
+                        || string.Equals(estado, EstadosInspeccion.PAGO_VALIDADO, StringComparison.OrdinalIgnoreCase)
+                        || string.Equals(estado, EstadosInspeccion.VIATICOS_REQUERIDOS, StringComparison.OrdinalIgnoreCase);
+                case "EN_INSPECCION":
+                case "FASE_INSPECCION":
+                case "EN_CURSO":
+                case "EN_PROCESO":
+                    return string.Equals(estado, EstadosInspeccion.EN_INSPECCION, StringComparison.OrdinalIgnoreCase)
+                        || string.Equals(estado, EstadosInspeccion.INFORME_ELABORADO, StringComparison.OrdinalIgnoreCase);
+                case "OBSERVADA":
+                case "OBSERVADAS":
+                case "OBSERVACION":
+                    return string.Equals(estado, EstadosInspeccion.OBSERVADA, StringComparison.OrdinalIgnoreCase)
+                        || string.Equals(estado, EstadosInspeccion.OBSERVACION_DOCUMENTAL, StringComparison.OrdinalIgnoreCase)
+                        || string.Equals(estado, EstadosInspeccion.RESULTADO_NO_SATISFACTORIO, StringComparison.OrdinalIgnoreCase);
+                case "FINALIZADA":
+                case "FINALIZADAS":
+                case "CERRADA":
+                    return string.Equals(estado, EstadosInspeccion.RESULTADO_SATISFACTORIO, StringComparison.OrdinalIgnoreCase)
+                        || string.Equals(estado, EstadosInspeccion.CERRADA, StringComparison.OrdinalIgnoreCase);
+                default:
+                    return string.Equals(estado, EstadosInspeccion.NormalizarEstado(filtro), StringComparison.OrdinalIgnoreCase);
+            }
+        }
+
+        private void LogInspeccionIndexSidebarCompare(IEnumerable<Inspeccion> inspecciones, string estadoFiltro, IEnumerable<int> inspectorIds)
+        {
+            try
+            {
+                var lista = (inspecciones ?? Enumerable.Empty<Inspeccion>()).Where(ins => ins != null).ToList();
+                _logger.LogInfo("[INSPECCION_INDEX][SIDEBAR_COMPARE] Cantidad=" + lista.Count
+                    + "; IDs=" + string.Join(",", lista.Select(ins => ins.CodigoInspeccion).OrderBy(id => id))
+                    + "; Estados=" + string.Join(", ", lista.GroupBy(ins => EstadosInspeccion.NormalizarEstado(ins.Estado)).OrderBy(g => g.Key).Select(g => g.Key + ":" + g.Count()))
+                    + "; Usuario=" + ObtenerUsuarioActual()
+                    + "; UserIdSesion=" + ObtenerIdUsuarioActual()
+                    + "; CodigoUsuarioSesion=" + (string.IsNullOrWhiteSpace(ObtenerCodigoUsuarioSesion()) ? "N/D" : ObtenerCodigoUsuarioSesion())
+                    + "; Rol=" + ObtenerRolActual()
+                    + "; EstadoFiltro=" + (estadoFiltro ?? string.Empty)
+                    + "; IdsFiltroInspector=" + string.Join(",", inspectorIds ?? Enumerable.Empty<int>()));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning("[INSPECCION_INDEX][SIDEBAR_COMPARE] No se pudo registrar comparativo. Error=" + ex.Message);
+            }
         }
 
         // ============================================================
         // ✅ LISTADO (POR ROL)
         // ============================================================
         [Authorize(Roles = ROLES_GESTION_INSPECCION)]
-        public ActionResult Index(string vista = null)
+        public ActionResult Index(string vista = null, string estado = null)
         {
             var esBandejaInspector = EsRolInspectorSeleccionado();
+            var estadoFiltro = (estado ?? string.Empty).Trim();
+            var inspectorIdsLog = new List<int>();
             if (string.Equals((vista ?? string.Empty).Trim(), "revision-documental", StringComparison.OrdinalIgnoreCase))
             {
                 return RedirectToAction("Index", "RevisionDocumental");
@@ -555,6 +693,7 @@ namespace CapaPresentacion.Controllers
             else
             {
                 var inspectorIds = ObtenerIdsInspectorActual().Where(id => id > 0).ToList();
+                inspectorIdsLog = inspectorIds;
                 var inspeccionesNoHabilitadas = 0;
                 _logger.LogInfo("[InspeccionesController] Inspector actual. UserIdSesion=" + ObtenerIdUsuarioActual() + ", CodigoUsuarioSesion=" + (string.IsNullOrWhiteSpace(ObtenerCodigoUsuarioSesion()) ? "N/D" : ObtenerCodigoUsuarioSesion()) + ", IdsFiltro=" + string.Join(",", inspectorIds));
 
@@ -588,6 +727,9 @@ namespace CapaPresentacion.Controllers
 
                 ViewBag.CantidadInspeccionesNoHabilitadas = inspeccionesNoHabilitadas;
             }
+
+            lista = FiltrarInspeccionesPorEstadoMenu(lista, estadoFiltro);
+            LogInspeccionIndexSidebarCompare(lista, estadoFiltro, inspectorIdsLog);
 
             if (lista == null)
             {
@@ -634,6 +776,7 @@ namespace CapaPresentacion.Controllers
             ViewBag.EstadosRevisionDocumentalPorInspeccion = estadosRevisionPorInspeccion;
             ViewBag.EsBandejaInspector = esBandejaInspector;
             ViewBag.VistaActualInspeccion = vista ?? string.Empty;
+            ViewBag.EstadoFiltroInspeccion = estadoFiltro;
 
             return View("~/Views/Inspeccion/Index.cshtml", lista);
         }
@@ -1437,6 +1580,20 @@ namespace CapaPresentacion.Controllers
 
         [HttpGet]
         [Authorize(Roles = ROLES_GESTION_INSPECCION_CON_SOLICITANTE)]
+        public ActionResult VerAdjuntoInformeTecnico(int id, string archivo)
+        {
+            return ServirAdjuntoInformeTecnico(id, archivo, false);
+        }
+
+        [HttpGet]
+        [Authorize(Roles = ROLES_GESTION_INSPECCION_CON_SOLICITANTE)]
+        public ActionResult DescargarAdjuntoInformeTecnico(int id, string archivo)
+        {
+            return ServirAdjuntoInformeTecnico(id, archivo, true);
+        }
+
+        [HttpGet]
+        [Authorize(Roles = ROLES_GESTION_INSPECCION_CON_SOLICITANTE)]
         public ActionResult VerLvEaeOficial(int codigoInspeccion)
         {
             return GenerarResultadoPdfListaVerificacionOperacionalEaeOficial(codigoInspeccion, false);
@@ -1522,6 +1679,26 @@ namespace CapaPresentacion.Controllers
             {
                 _logger.LogInfo("[GestionInspeccion] VerInforme resolvio ruta alternativa. InspeccionId=" + id + ", RutaUsada=" + rutaRelativa + ", RutaPreferida=" + rutasCandidatas[0]);
             }
+
+            var fileInfo = new FileInfo(fullPath);
+            if (!fileInfo.Exists || fileInfo.Length <= 0)
+            {
+                _logger.LogWarning("[INFORME_TECNICO][PDF_FINAL] Archivo final invalido. InspeccionId=" + id
+                    + ", RutaRelativa=" + (rutaRelativa ?? string.Empty)
+                    + ", RutaFisica=" + (fullPath ?? string.Empty)
+                    + ", Existe=" + fileInfo.Exists
+                    + ", Tamanio=" + (fileInfo.Exists ? fileInfo.Length : 0));
+                Response.TrySkipIisCustomErrors = true;
+                return new HttpStatusCodeResult(404, "El archivo del informe tecnico esta vacio o no se encuentra disponible. Regenerelo antes de visualizarlo.");
+            }
+
+            _logger.LogInfo("[INFORME_TECNICO][PDF_FINAL] Sirviendo PDF final. InspeccionId=" + id
+                + ", InformeTecnicoId=" + (informeTecnico != null ? informeTecnico.CodigoInforme.ToString() : "0")
+                + ", EstadoInforme=" + (informeTecnico != null ? (informeTecnico.EstadoInforme ?? string.Empty) : string.Empty)
+                + ", RutaRelativa=" + (rutaRelativa ?? string.Empty)
+                + ", RutaFisica=" + (fullPath ?? string.Empty)
+                + ", Tamanio=" + fileInfo.Length
+                + ", Descargar=" + descargar);
 
             Response.Headers["X-Content-Type-Options"] = "nosniff";
             PdfFileNameHelper.AplicarContentDispositionPdf(Response, descargar, ConstruirNombrePdfInformeTecnico(inspeccion, solicitud, informeTecnico));
@@ -1615,6 +1792,64 @@ namespace CapaPresentacion.Controllers
             Response.Headers["X-Content-Type-Options"] = "nosniff";
             PdfFileNameHelper.AplicarContentDispositionPdf(Response, descargar, ConstruirNombrePdfListaVerificacionOperacionalEae(inspeccion, solicitud, lista));
             return File(fullPath, "application/pdf");
+        }
+
+        private ActionResult ServirAdjuntoInformeTecnico(int id, string archivo, bool descargar)
+        {
+            if (id <= 0 || string.IsNullOrWhiteSpace(archivo))
+            {
+                return new HttpStatusCodeResult(400, "Adjunto inválido.");
+            }
+
+            var inspeccion = _inspeccionDAO.ObtenerPorId(id);
+            if (inspeccion == null)
+            {
+                return HttpNotFound("Inspección no encontrada.");
+            }
+
+            if (!PuedeAccederInspeccion(inspeccion))
+            {
+                return new HttpStatusCodeResult(403, "No autorizado para acceder al adjunto.");
+            }
+
+            var informe = _informeDAO.ObtenerUltimoPorInspeccion(id);
+            var adjuntos = InformeTecnicoTemplateHelper.ParseDocumentosAdjuntosArchivoItems(informe != null ? informe.DocumentosAdjuntosArchivos : null);
+            var nombreFisico = Path.GetFileName(archivo);
+            var adjunto = adjuntos.FirstOrDefault(x => x != null
+                && !string.IsNullOrWhiteSpace(x.NombreFisico)
+                && string.Equals(Path.GetFileName(x.NombreFisico), nombreFisico, StringComparison.OrdinalIgnoreCase));
+
+            if (adjunto == null)
+            {
+                _logger.LogWarning("[ANEXOS_INFORME_TECNICO] Intento de acceso a adjunto no registrado. InspeccionId=" + id
+                    + ", Archivo=" + archivo
+                    + ", Usuario=" + ObtenerUsuarioActual());
+                return HttpNotFound("El adjunto no está registrado en el informe técnico.");
+            }
+
+            var basePath = Server.MapPath(CARPETA_VIRTUAL_ADJUNTOS_INFORME);
+            var fullPath = Path.Combine(basePath, nombreFisico);
+            if (!EsRutaDentroDeBase(fullPath, basePath) || !System.IO.File.Exists(fullPath))
+            {
+                _logger.LogWarning("[ANEXOS_INFORME_TECNICO] Archivo físico no encontrado. InspeccionId=" + id
+                    + ", Archivo=" + nombreFisico
+                    + ", Ruta=" + fullPath);
+                return HttpNotFound("El archivo adjunto ya no existe en el servidor.");
+            }
+
+            var contentType = !string.IsNullOrWhiteSpace(adjunto.ContentType)
+                ? adjunto.ContentType
+                : MimeMapping.GetMimeMapping(adjunto.NombreOriginal ?? nombreFisico);
+            var nombreDescarga = string.IsNullOrWhiteSpace(adjunto.NombreOriginal) ? nombreFisico : adjunto.NombreOriginal;
+
+            Response.Headers["X-Content-Type-Options"] = "nosniff";
+            if (!descargar)
+            {
+                Response.Headers["Content-Disposition"] = "inline; filename=\"" + nombreDescarga.Replace("\"", string.Empty) + "\"";
+                return File(fullPath, contentType);
+            }
+
+            return File(fullPath, contentType, nombreDescarga);
         }
 
         private ActionResult GenerarResultadoPdfListaVerificacionOperacionalEaeOficial(int codigoInspeccion, bool descargar)
@@ -2141,9 +2376,51 @@ namespace CapaPresentacion.Controllers
                 informePreview.EstadoInforme = "EN_PREVISUALIZACION";
                 informePreview.Finalizado = false;
 
+                var rutaDefinitiva = ResolverRutaRelativaInformeDisponible(
+                    informeActual != null ? informeActual.RutaDocumentoFirmado : null,
+                    inspeccion.RutaInforme,
+                    informeActual != null ? informeActual.RutaPdf : null);
+                var rutaFisicaDefinitiva = !string.IsNullOrWhiteSpace(rutaDefinitiva)
+                    ? Server.MapPath("~" + rutaDefinitiva)
+                    : string.Empty;
+                var existeDefinitivo = !string.IsNullOrWhiteSpace(rutaFisicaDefinitiva) && System.IO.File.Exists(rutaFisicaDefinitiva);
+                var tamanioDefinitivo = existeDefinitivo ? new FileInfo(rutaFisicaDefinitiva).Length : 0;
+
                 var pdfBytes = GenerarPdfInformeTecnico(inspeccion, solicitud, informePreview, true);
+                if (pdfBytes == null || pdfBytes.Length <= 0)
+                {
+                    _logger.LogWarning("[INFORME_TECNICO][PDF_PREVIEW] PDF temporal generado vacio. InspeccionId=" + id
+                        + ", InformeTecnicoId=" + informePreview.CodigoInforme
+                        + ", EstadoInforme=" + (informeActual != null ? (informeActual.EstadoInforme ?? string.Empty) : "BORRADOR_INFORME")
+                        + ", ExistePdfDefinitivo=" + existeDefinitivo
+                        + ", RutaPdfDefinitivo=" + (rutaFisicaDefinitiva ?? string.Empty)
+                        + ", TamanioDefinitivo=" + tamanioDefinitivo
+                        + ", Usuario=" + ObtenerUsuarioActual()
+                        + ", Rol=" + ObtenerRolActual());
+                    return DevolverJsonErrorInformeTecnico(500, "La vista previa del informe tecnico se genero vacia. Revise la plantilla PDF y vuelva a intentarlo.");
+                }
+
                 var token = GuardarInformeTecnicoPreviewPdf(id, usuarioId, pdfBytes);
+                var rutaTemporal = Path.Combine(Server.MapPath(CARPETA_VIRTUAL_TEMP_PDF), token + ".pdf");
+                var existeTemporal = System.IO.File.Exists(rutaTemporal);
+                var tamanioTemporal = existeTemporal ? new FileInfo(rutaTemporal).Length : 0;
                 var pdfUrl = Url.Action("VerPreviewInformeTecnico", "Inspeccion", new { token = token });
+
+                _logger.LogInfo("[INFORME_TECNICO][PDF_PREVIEW] Vista previa generada. InspeccionId=" + id
+                    + ", InformeTecnicoId=" + informePreview.CodigoInforme
+                    + ", EstadoInforme=" + (informeActual != null ? (informeActual.EstadoInforme ?? string.Empty) : "BORRADOR_INFORME")
+                    + ", ExistePdfDefinitivo=" + existeDefinitivo
+                    + ", RutaPdfDefinitivo=" + (rutaFisicaDefinitiva ?? string.Empty)
+                    + ", ExisteArchivoDefinitivo=" + existeDefinitivo
+                    + ", TamanioDefinitivo=" + tamanioDefinitivo
+                    + ", GeneraTemporal=true"
+                    + ", RutaTemporal=" + rutaTemporal
+                    + ", ExisteTemporal=" + existeTemporal
+                    + ", TamanioTemporal=" + tamanioTemporal
+                    + ", Token=" + token
+                    + ", UrlPreview=" + (pdfUrl ?? string.Empty)
+                    + ", Usuario=" + ObtenerUsuarioActual()
+                    + ", Rol=" + ObtenerRolActual());
 
                 if (!previewSilent)
                 {
@@ -2216,13 +2493,42 @@ namespace CapaPresentacion.Controllers
                 var fullPath = Path.Combine(basePath, safeToken + ".pdf");
                 if (!EsRutaDentroDeBase(fullPath, basePath) || !System.IO.File.Exists(fullPath))
                 {
+                    _logger.LogWarning("[INFORME_TECNICO][PDF_PREVIEW_SERVE] Temporal no encontrado. Token=" + safeToken
+                        + ", InspeccionId=" + codigoInspeccion
+                        + ", RutaTemporal=" + fullPath
+                        + ", Usuario=" + ObtenerUsuarioActual()
+                        + ", Rol=" + ObtenerRolActual());
+                    Response.TrySkipIisCustomErrors = true;
                     return HttpNotFound("La vista previa expiró o no se encuentra disponible. Vuelva a generarla.");
+                }
+
+                var fileInfo = new FileInfo(fullPath);
+                if (!fileInfo.Exists || fileInfo.Length <= 0)
+                {
+                    _logger.LogWarning("[INFORME_TECNICO][PDF_PREVIEW_SERVE] Temporal invalido. Token=" + safeToken
+                        + ", InspeccionId=" + codigoInspeccion
+                        + ", RutaTemporal=" + fullPath
+                        + ", Existe=" + fileInfo.Exists
+                        + ", Tamanio=" + (fileInfo.Exists ? fileInfo.Length : 0)
+                        + ", Usuario=" + ObtenerUsuarioActual()
+                        + ", Rol=" + ObtenerRolActual());
+                    Response.TrySkipIisCustomErrors = true;
+                    return new HttpStatusCodeResult(404, "La vista previa del informe tecnico esta vacia o ya no se encuentra disponible. Vuelva a generarla.");
                 }
 
                 var solicitud = _solicitudDAO.ObtenerPorId(inspeccion.CodigoSolicitud);
                 NormalizarDatosOperadorSolicitud(solicitud);
                 Response.Headers["X-Content-Type-Options"] = "nosniff";
+                Response.Cache.SetCacheability(HttpCacheability.NoCache);
+                Response.Cache.SetNoStore();
+                Response.Cache.SetExpires(DateTime.UtcNow.AddMinutes(-1));
                 PdfFileNameHelper.AplicarContentDispositionPdf(Response, false, ConstruirNombrePdfInformeTecnico(inspeccion, solicitud, null, "Vista_Previa"));
+                _logger.LogInfo("[INFORME_TECNICO][PDF_PREVIEW_SERVE] Sirviendo temporal. Token=" + safeToken
+                    + ", InspeccionId=" + codigoInspeccion
+                    + ", RutaTemporal=" + fullPath
+                    + ", Tamanio=" + fileInfo.Length
+                    + ", Usuario=" + ObtenerUsuarioActual()
+                    + ", Rol=" + ObtenerRolActual());
                 return File(fullPath, "application/pdf");
             }
             catch (Exception ex)
@@ -2362,12 +2668,30 @@ namespace CapaPresentacion.Controllers
                 var finalizar = EsAccionFinalizarListaVerificacionOperacionalEae(submitActionRaw, finalizarRaw);
 
                 id = ResolverCodigoInspeccionDesdeRequest(idRaw);
+                var identity = User != null ? User.Identity : null;
+                var authCookie = Request != null && Request.Cookies != null
+                    ? Request.Cookies[System.Web.Security.FormsAuthentication.FormsCookieName]
+                    : null;
+                var antiForgeryFormToken = form != null ? form["__RequestVerificationToken"] : null;
+                var antiForgeryHeaderToken = Request != null
+                    ? (Request.Headers["RequestVerificationToken"] ?? Request.Headers["__RequestVerificationToken"] ?? Request.Headers["X-CSRF-TOKEN"])
+                    : null;
                 _logger.LogInfo("[GestionInspeccion] GuardarListaVerificacionOperacionalEae recibido. InspeccionId=" + id
                     + ", IdRaw=" + (idRaw ?? string.Empty)
                     + ", CodigoInspeccionRaw=" + (codigoInspeccionRaw ?? string.Empty)
                     + ", SubmitAction=" + (submitActionRaw ?? string.Empty)
                     + ", FinalizarRaw=" + (finalizarRaw ?? string.Empty)
-                    + ", Finalizar=" + finalizar);
+                    + ", Finalizar=" + finalizar
+                    + ", Ajax=" + esSolicitudAjax
+                    + ", Authenticated=" + (identity != null && identity.IsAuthenticated)
+                    + ", User=" + (identity != null ? (identity.Name ?? string.Empty) : string.Empty)
+                    + ", RolActual=" + ObtenerRolActual()
+                    + ", CodigoUsuarioSesion=" + ObtenerCodigoUsuarioSesion()
+                    + ", SessionId=" + (Session != null ? (Session.SessionID ?? string.Empty) : string.Empty)
+                    + ", AuthCookie=" + (authCookie != null && !string.IsNullOrWhiteSpace(authCookie.Value))
+                    + ", AntiForgeryFormLen=" + (string.IsNullOrWhiteSpace(antiForgeryFormToken) ? 0 : antiForgeryFormToken.Length)
+                    + ", AntiForgeryHeaderLen=" + (string.IsNullOrWhiteSpace(antiForgeryHeaderToken) ? 0 : antiForgeryHeaderToken.Length)
+                    + ", UrlReferrer=" + (Request != null && Request.UrlReferrer != null ? Request.UrlReferrer.ToString() : string.Empty));
 
                 if (id <= 0)
                 {
@@ -5763,33 +6087,23 @@ namespace CapaPresentacion.Controllers
         private InspeccionInformeTecnico ConstruirInformeTecnicoDesdeFormulario(int codigoInspeccion, System.Collections.Specialized.NameValueCollection form, InspeccionInformeTecnico informeActual, bool guardarAdjuntos)
         {
             var documentosAdjuntosItems = InformeTecnicoTemplateHelper.SplitLines(TomarDocumentosAdjuntos(form, informeActual != null ? informeActual.DocumentosAdjuntos : null)).ToList();
-            var documentosAdjuntosArchivos = InformeTecnicoTemplateHelper.ParseDocumentosAdjuntosArchivos(informeActual != null ? informeActual.DocumentosAdjuntosArchivos : null);
+            var documentosAdjuntosArchivoItems = InformeTecnicoTemplateHelper.ParseDocumentosAdjuntosArchivoItems(informeActual != null ? informeActual.DocumentosAdjuntosArchivos : null).ToList();
             var otrosAdjuntos = TomarCampoTexto(form, "otrosAdjuntos", 4000, informeActual != null ? informeActual.OtrosAdjuntos : null);
             if (guardarAdjuntos)
             {
-                var adjuntosBaseGuardados = new Dictionary<string, List<string>>(StringComparer.OrdinalIgnoreCase);
-                var archivosOtrosAdjuntos = GuardarArchivosAdjuntosInforme(codigoInspeccion, adjuntosBaseGuardados);
+                var archivosNuevos = GuardarArchivosAdjuntosInforme(
+                    codigoInspeccion,
+                    informeActual != null ? informeActual.CodigoInforme : 0,
+                    documentosAdjuntosArchivoItems);
+                documentosAdjuntosArchivoItems.AddRange(archivosNuevos);
 
-                foreach (var adjuntoBase in adjuntosBaseGuardados)
+                foreach (var adjuntoBase in archivosNuevos
+                    .Where(x => x != null && !EsCategoriaOtrosAdjuntosInforme(x.Categoria))
+                    .GroupBy(x => x.Categoria, StringComparer.OrdinalIgnoreCase))
                 {
-                    if (string.IsNullOrWhiteSpace(adjuntoBase.Key) || adjuntoBase.Value == null || adjuntoBase.Value.Count == 0)
+                    if (string.IsNullOrWhiteSpace(adjuntoBase.Key))
                     {
                         continue;
-                    }
-
-                    List<string> archivosRegistrados;
-                    if (!documentosAdjuntosArchivos.TryGetValue(adjuntoBase.Key, out archivosRegistrados) || archivosRegistrados == null)
-                    {
-                        archivosRegistrados = new List<string>();
-                        documentosAdjuntosArchivos[adjuntoBase.Key] = archivosRegistrados;
-                    }
-
-                    foreach (var nombreArchivo in adjuntoBase.Value.Where(x => !string.IsNullOrWhiteSpace(x)))
-                    {
-                        if (!archivosRegistrados.Any(x => string.Equals(x, nombreArchivo, StringComparison.OrdinalIgnoreCase)))
-                        {
-                            archivosRegistrados.Add(nombreArchivo);
-                        }
                     }
 
                     if (!documentosAdjuntosItems.Any(x => string.Equals(x, adjuntoBase.Key, StringComparison.OrdinalIgnoreCase)))
@@ -5798,6 +6112,11 @@ namespace CapaPresentacion.Controllers
                     }
                 }
 
+                var archivosOtrosAdjuntos = archivosNuevos
+                    .Where(x => x != null && EsCategoriaOtrosAdjuntosInforme(x.Categoria))
+                    .Select(x => x.NombreOriginal)
+                    .Where(x => !string.IsNullOrWhiteSpace(x))
+                    .ToList();
                 if (archivosOtrosAdjuntos.Count > 0)
                 {
                     var otrosAdjuntosItems = InformeTecnicoTemplateHelper.SplitLines(otrosAdjuntos).ToList();
@@ -5818,21 +6137,32 @@ namespace CapaPresentacion.Controllers
                 }
             }
 
+            foreach (var categoriaConArchivo in documentosAdjuntosArchivoItems
+                .Where(x => x != null && !EsCategoriaOtrosAdjuntosInforme(x.Categoria) && !string.IsNullOrWhiteSpace(x.Categoria))
+                .Select(x => x.Categoria)
+                .Distinct(StringComparer.OrdinalIgnoreCase))
+            {
+                if (!documentosAdjuntosItems.Any(x => string.Equals(x, categoriaConArchivo, StringComparison.OrdinalIgnoreCase)))
+                {
+                    documentosAdjuntosItems.Add(categoriaConArchivo);
+                }
+            }
+
             var documentosAdjuntosNormalizados = new HashSet<string>(
                 documentosAdjuntosItems.Where(x => !string.IsNullOrWhiteSpace(x)),
                 StringComparer.OrdinalIgnoreCase);
-            documentosAdjuntosArchivos = documentosAdjuntosArchivos
-                .Where(x => documentosAdjuntosNormalizados.Contains(x.Key)
-                    && x.Value != null
-                    && x.Value.Any(nombre => !string.IsNullOrWhiteSpace(nombre)))
-                .ToDictionary(
-                    x => x.Key,
-                    x => x.Value
-                        .Where(nombre => !string.IsNullOrWhiteSpace(nombre))
-                        .Select(nombre => nombre.Trim())
-                        .Distinct(StringComparer.OrdinalIgnoreCase)
-                        .ToList(),
-                    StringComparer.OrdinalIgnoreCase);
+            documentosAdjuntosArchivoItems = documentosAdjuntosArchivoItems
+                .Where(x => x != null
+                    && !string.IsNullOrWhiteSpace(x.NombreOriginal)
+                    && (EsCategoriaOtrosAdjuntosInforme(x.Categoria) || documentosAdjuntosNormalizados.Contains(x.Categoria)))
+                .GroupBy(x => new
+                {
+                    Categoria = (x.Categoria ?? string.Empty).Trim().ToUpperInvariant(),
+                    NombreOriginal = (x.NombreOriginal ?? string.Empty).Trim().ToUpperInvariant(),
+                    NombreFisico = (x.NombreFisico ?? string.Empty).Trim().ToUpperInvariant()
+                })
+                .Select(g => g.First())
+                .ToList();
             var documentosAdjuntos = InformeTecnicoTemplateHelper.SerializeLines(documentosAdjuntosItems);
             var resultadoInforme = InformeTecnicoTemplateHelper.NormalizeResultadoInformeTecnico(
                 TomarCampoTexto(form, "resultado", 120, informeActual != null ? informeActual.Resultado : null));
@@ -5861,7 +6191,7 @@ namespace CapaPresentacion.Controllers
                 Notas = TomarCampoTexto(form, "notas", 8000, informeActual != null ? informeActual.Notas : null),
                 NoConformidades = TomarCampoTexto(form, "noConformidades", 8000, informeActual != null ? informeActual.NoConformidades : null),
                 DocumentosAdjuntos = documentosAdjuntos,
-                DocumentosAdjuntosArchivos = InformeTecnicoTemplateHelper.SerializeDocumentosAdjuntosArchivos(documentosAdjuntosArchivos),
+                DocumentosAdjuntosArchivos = InformeTecnicoTemplateHelper.SerializeDocumentosAdjuntosArchivoItems(documentosAdjuntosArchivoItems),
                 OtrosAdjuntos = otrosAdjuntos,
                 Resultado = resultadoInforme,
                 TipoResultadoInsatisfactorio = tipoResultadoInsatisfactorio,
@@ -6331,17 +6661,37 @@ namespace CapaPresentacion.Controllers
             };
         }
 
-        private List<string> GuardarArchivosAdjuntosInforme(int codigoInspeccion, IDictionary<string, List<string>> adjuntosBaseGuardados)
+        private static bool EsCategoriaOtrosAdjuntosInforme(string categoria)
         {
-            var otrosAdjuntosGuardados = new List<string>();
+            return string.Equals((categoria ?? string.Empty).Trim(), "OTROS ADJUNTOS", StringComparison.OrdinalIgnoreCase);
+        }
+
+        private List<InformeTecnicoTemplateHelper.DocumentoAdjuntoArchivoItem> GuardarArchivosAdjuntosInforme(
+            int codigoInspeccion,
+            int codigoInformeTecnico,
+            IEnumerable<InformeTecnicoTemplateHelper.DocumentoAdjuntoArchivoItem> archivosExistentes)
+        {
+            var archivosGuardados = new List<InformeTecnicoTemplateHelper.DocumentoAdjuntoArchivoItem>();
             var documentosAdjuntosBase = InformeTecnicoTemplateHelper.GetDocumentosAdjuntosBase();
-            if (Request == null || Request.Files == null || Request.Files.Count == 0) { return otrosAdjuntosGuardados; }
+            if (Request == null || Request.Files == null || Request.Files.Count == 0) { return archivosGuardados; }
 
             var basePath = Server.MapPath(CARPETA_VIRTUAL_ADJUNTOS_INFORME);
             if (!Directory.Exists(basePath)) { Directory.CreateDirectory(basePath); }
 
             var allowedExtensions = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
             { ".pdf", ".jpg", ".jpeg", ".png", ".doc", ".docx", ".xls", ".xlsx" };
+            var existentes = (archivosExistentes ?? Enumerable.Empty<InformeTecnicoTemplateHelper.DocumentoAdjuntoArchivoItem>())
+                .Where(x => x != null)
+                .ToList();
+
+            var recibidos = 0;
+            var guardados = 0;
+            _logger.LogInfo("[ANEXOS_INFORME_TECNICO] Inicio carga de adjuntos. InspeccionId=" + codigoInspeccion
+                + ", Usuario=" + ObtenerUsuarioActual()
+                + ", Rol=" + ObtenerRolActual()
+                + ", RequestFiles=" + Request.Files.Count
+                + ", ExistianArchivosPrevios=" + existentes.Count
+                + ", Accion=AGREGAR");
 
             for (int i = 0; i < Request.Files.Count; i++)
             {
@@ -6353,48 +6703,86 @@ namespace CapaPresentacion.Controllers
                 var esAdjuntoBase = key.StartsWith("archivoAdjunto_", StringComparison.OrdinalIgnoreCase);
                 var esAdjuntoLibre = key.StartsWith("otrosAdjuntosArchivo", StringComparison.OrdinalIgnoreCase);
                 if (!esAdjuntoBase && !esAdjuntoLibre) { continue; }
+                recibidos++;
 
                 var ext = Path.GetExtension(file.FileName);
-                if (string.IsNullOrWhiteSpace(ext) || !allowedExtensions.Contains(ext)) { continue; }
+                if (string.IsNullOrWhiteSpace(ext) || !allowedExtensions.Contains(ext))
+                {
+                    _logger.LogWarning("[ANEXOS_INFORME_TECNICO] Archivo omitido por extension no permitida. InspeccionId=" + codigoInspeccion
+                        + ", Campo=" + key
+                        + ", NombreOriginal=" + (file.FileName ?? string.Empty)
+                        + ", Extension=" + (ext ?? string.Empty)
+                        + ", Bytes=" + file.ContentLength);
+                    continue;
+                }
 
-                var safeFileName = string.Format("adj_{0}_{1}_{2}_{3}{4}",
-                    codigoInspeccion, key, DateTime.Now.ToString("yyyyMMddHHmmssfff"), i, ext);
+                var keySeguro = new string(key.Select(ch => char.IsLetterOrDigit(ch) || ch == '_' || ch == '-' ? ch : '_').ToArray());
+                var safeFileName = string.Format("adj_{0}_{1}_{2}_{3}_{4}{5}",
+                    codigoInspeccion,
+                    keySeguro,
+                    DateTime.Now.ToString("yyyyMMddHHmmssfff"),
+                    i,
+                    Guid.NewGuid().ToString("N"),
+                    ext);
                 var fullPath = Path.Combine(basePath, safeFileName);
                 file.SaveAs(fullPath);
+                guardados++;
 
                 var nombreVisible = LimpiarNombreArchivoVisible(file.FileName);
-
-                if (esAdjuntoBase && adjuntosBaseGuardados != null)
+                var categoria = "OTROS ADJUNTOS";
+                if (esAdjuntoBase)
                 {
                     var rawIndex = key.Substring("archivoAdjunto_".Length);
                     int indiceAdjunto;
-                    if (int.TryParse(rawIndex, out indiceAdjunto) && indiceAdjunto >= 0 && indiceAdjunto < documentosAdjuntosBase.Count && !string.IsNullOrWhiteSpace(nombreVisible))
+                    if (int.TryParse(rawIndex, out indiceAdjunto) && indiceAdjunto >= 0 && indiceAdjunto < documentosAdjuntosBase.Count)
                     {
-                        var etiquetaAdjunto = documentosAdjuntosBase[indiceAdjunto];
-                        List<string> archivosAdjunto;
-                        if (!adjuntosBaseGuardados.TryGetValue(etiquetaAdjunto, out archivosAdjunto) || archivosAdjunto == null)
-                        {
-                            archivosAdjunto = new List<string>();
-                            adjuntosBaseGuardados[etiquetaAdjunto] = archivosAdjunto;
-                        }
-
-                        if (!archivosAdjunto.Any(x => string.Equals(x, nombreVisible, StringComparison.OrdinalIgnoreCase)))
-                        {
-                            archivosAdjunto.Add(nombreVisible);
-                        }
+                        categoria = documentosAdjuntosBase[indiceAdjunto];
                     }
                 }
 
-                if (esAdjuntoLibre)
+                var version = existentes
+                    .Concat(archivosGuardados)
+                    .Count(x => x != null && string.Equals(x.Categoria, categoria, StringComparison.OrdinalIgnoreCase)) + 1;
+
+                archivosGuardados.Add(new InformeTecnicoTemplateHelper.DocumentoAdjuntoArchivoItem
                 {
-                    if (!string.IsNullOrWhiteSpace(nombreVisible))
-                    {
-                        otrosAdjuntosGuardados.Add(nombreVisible);
-                    }
-                }
+                    Categoria = categoria,
+                    NombreOriginal = nombreVisible,
+                    NombreFisico = safeFileName,
+                    FechaCarga = DateTime.Now,
+                    UsuarioCarga = ObtenerUsuarioActual(),
+                    ContentType = file.ContentType,
+                    PesoBytes = file.ContentLength,
+                    Version = version,
+                    EsAutomatico = false
+                });
+
+                _logger.LogInfo("[ANEXOS_INFORME_TECNICO] Archivo guardado. InspeccionId=" + codigoInspeccion
+                    + ", InformeTecnicoId=" + codigoInformeTecnico
+                    + ", Campo=" + key
+                    + ", Categoria=" + categoria
+                    + ", Tipo=" + (esAdjuntoBase ? "DOCUMENTO_BASE" : "OTRO_ADJUNTO")
+                    + ", NombreOriginal=" + (file.FileName ?? string.Empty)
+                    + ", NombreVisible=" + (nombreVisible ?? string.Empty)
+                    + ", NombreFisico=" + safeFileName
+                    + ", RutaFisica=" + fullPath
+                    + ", Ruta=" + CARPETA_VIRTUAL_ADJUNTOS_INFORME
+                    + ", Bytes=" + file.ContentLength
+                    + ", Version=" + version
+                    + ", CantidadRecibida=" + recibidos
+                    + ", CantidadGuardada=" + guardados
+                    + ", ExistianArchivosPrevios=" + existentes.Any(x => x != null && string.Equals(x.Categoria, categoria, StringComparison.OrdinalIgnoreCase))
+                    + ", Accion=AGREGAR");
             }
 
-            return otrosAdjuntosGuardados;
+            _logger.LogInfo("[ANEXOS_INFORME_TECNICO] Fin carga de adjuntos. InspeccionId=" + codigoInspeccion
+                + ", Recibidos=" + recibidos
+                + ", Guardados=" + guardados
+                + ", OtrosAdjuntosGuardados=" + archivosGuardados.Count(x => x != null && EsCategoriaOtrosAdjuntosInforme(x.Categoria))
+                + ", DocumentosBaseConArchivo=" + archivosGuardados.Count(x => x != null && !EsCategoriaOtrosAdjuntosInforme(x.Categoria))
+                + ", Accion=AGREGAR");
+
+            return archivosGuardados;
         }
 
         private string GuardarInformeTecnicoFirmadoPdf(int codigoInspeccion, int version, string sufijo, byte[] pdfBytes)

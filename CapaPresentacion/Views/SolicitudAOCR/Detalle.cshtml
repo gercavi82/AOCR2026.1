@@ -268,6 +268,7 @@
         }
 
         if (normalized == EstadoSolicitud.EnRevision
+            || normalized == EstadoSolicitud.Subsanada
             || normalized == EstadoSolicitud.AOCR_EnRevision
             || normalized == EstadoSolicitud.AOCR_EnElaboracion
             || normalized == EstadoSolicitud.RequiereInspeccion
@@ -805,6 +806,49 @@
     .aocr-doc-review-table .form-select,
     .aocr-doc-review-table .form-control {
         min-height: 2.35rem;
+        background-color: #ffffff !important;
+        color: #0f172a !important;
+        opacity: 1;
+        text-shadow: none;
+        -webkit-text-fill-color: #0f172a;
+    }
+
+    .aocr-doc-review-table .form-select {
+        color-scheme: light;
+        cursor: pointer;
+    }
+
+    .aocr-doc-review-table .form-select option,
+    .aocr-doc-review-table .form-select option:checked,
+    .aocr-doc-review-table .form-select option:hover,
+    .aocr-doc-review-table .form-select option:focus {
+        background-color: #ffffff;
+        color: #0f172a !important;
+        -webkit-text-fill-color: #0f172a;
+    }
+
+    .aocr-doc-review-table .form-control::placeholder,
+    .aocr-doc-review-table .form-select:invalid {
+        color: #64748b !important;
+        opacity: 1;
+        -webkit-text-fill-color: #64748b;
+    }
+
+    .aocr-doc-review-table .form-select:focus,
+    .aocr-doc-review-table .form-control:focus {
+        border-color: #1b6ec2;
+        box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.18);
+        color: #0f172a !important;
+        -webkit-text-fill-color: #0f172a;
+    }
+
+    .aocr-doc-review-table .form-select:disabled,
+    .aocr-doc-review-table .form-control:disabled,
+    .aocr-doc-review-table .form-control[readonly] {
+        background-color: #eef2f6 !important;
+        color: #334155 !important;
+        opacity: 1;
+        -webkit-text-fill-color: #334155;
     }
 
     @@media (max-width: 1199.98px) {
@@ -1792,21 +1836,21 @@
             <div class="card-body p-4">
                 <div class="aocr-section-title mb-3">
                     <i class="fas fa-file-signature"></i>
-                    <span>Autorizacion final</span>
+                    <span>Revision final de Coordinacion</span>
                 </div>
-                <p class="text-muted mb-3">El inspector ya aceptó la solicitud y la factura. La coordinación debe firmar la autorización final antes de poner el PDF a disposición del RT.</p>
+                <p class="text-muted mb-3">El inspector ya aceptó la solicitud y la factura. Coordinación registra la revisión final del expediente; la firma final institucional se gestiona posteriormente con DIRDAC/DCAV cuando corresponda.</p>
                 <form method="post" action="@Url.Action("FirmarAceptacionDocumental", "SolicitudAOCR")">
                     @Html.AntiForgeryToken()
                     @Html.Hidden("id", Model.CodigoSolicitud)
                     <div class="row g-3 align-items-end">
                         <div class="col-md-8">
-                            <label class="form-label fw-semibold" for="observacionAceptacion">Observacion de autorizacion</label>
-                            <textarea class="form-control" id="observacionAceptacion" name="observacion" rows="3" placeholder="Constancia interna de la autorización final firmada."></textarea>
+                            <label class="form-label fw-semibold" for="observacionAceptacion">Observacion de revision final</label>
+                            <textarea class="form-control" id="observacionAceptacion" name="observacion" rows="3" placeholder="Constancia interna de la revisión final de Coordinación."></textarea>
                         </div>
                         <div class="col-md-4 d-flex justify-content-end">
                             <button type="submit" class="btn btn-success aocr-action-btn w-100">
                                 <i class="fas fa-pen-nib"></i>
-                                Firmar autorizacion final
+                                Registrar revision final
                             </button>
                         </div>
                     </div>
@@ -1822,9 +1866,9 @@
                 <div>
                     <div class="aocr-section-title mb-2">
                         <i class="fas fa-file-pdf"></i>
-                        <span>Autorizacion final firmada</span>
+                        <span>Revision final registrada</span>
                     </div>
-                    <p class="text-muted mb-0">El documento de autorización final ya está listo para consulta y descarga.</p>
+                    <p class="text-muted mb-0">La revisión final de Coordinación ya fue registrada en el expediente.</p>
                     @if (esPropietario && estadoActual == EstadoSolicitud.FirmadoCoordinador)
                     {
                         <div class="small text-secondary mt-2">La primera descarga del RT cerrará esta fase como <strong>FINALIZADO</strong>.</div>
@@ -1837,7 +1881,7 @@
                     </a>
                     <a href="@Url.Action("DescargarAceptacionDocumental", "SolicitudAOCR", new { id = Model.CodigoSolicitud })" class="btn btn-outline-primary aocr-action-btn">
                         <i class="fas fa-download"></i>
-                        Descargar autorizacion
+                        Descargar constancia
                     </a>
                 </div>
             </div>

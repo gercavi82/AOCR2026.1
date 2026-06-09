@@ -62,6 +62,20 @@ namespace AOCR.Tests.Unit
         }
 
         [TestMethod]
+        public void AocrTransitions_ShouldUseRawRolesInsteadOfUnifiedRoleBuckets()
+        {
+            var context = LeerArchivoRepositorio("CapaNegocio\\Services\\AocrAuthorizationService.cs");
+            var factory = LeerArchivoRepositorio("CapaPresentacion\\Infrastructure\\AocrAuthorizationContextFactory.cs");
+            var controller = LeerArchivoRepositorio("CapaPresentacion\\Controllers\\SolicitudAOCRController.cs");
+
+            StringAssert.Contains(context, "public IList<string> RawRoles { get; set; }", "El contexto AOCR debe conservar los roles crudos además de los unificados.");
+            StringAssert.Contains(factory, "RawRoles = rawRoles,", "El factory AOCR debe poblar los roles crudos desde sesión, ticket y principal autenticado.");
+            StringAssert.Contains(factory, "RoleGroupingHelper.BuildUnifiedRoles(rawRoles)", "Los roles unificados deben derivarse desde la colección cruda preservada.");
+            StringAssert.Contains(controller, "var rolesActuales = contexto.RawRoles ?? contexto.Roles ?? new List<string>();", "La trazabilidad y las decisiones AOCR deben preferir roles crudos para evitar falsos negativos por buckets unificados.");
+            StringAssert.Contains(controller, "var rolesActuales = (contextoAocr.RawRoles ?? contextoAocr.Roles ?? new List<string>()).ToList();", "Las transiciones AOCR deben evaluarse con roles crudos antes de caer al fallback unificado.");
+        }
+
+        [TestMethod]
         public void RevisionDireccion_View_ShouldExposeAocrStatusAndGenerateAction()
         {
             var content = LeerArchivoRepositorio("CapaPresentacion\\Views\\InformeTecnico\\RevisionDireccion.cshtml");
@@ -138,8 +152,11 @@ namespace AOCR.Tests.Unit
         public void AocrGating_ShouldRequireApprovedTechnicalReportWithSatisfactoryOutcome()
         {
             var controller = LeerArchivoRepositorio("CapaPresentacion\\Controllers\\SolicitudAOCRController.cs");
-            StringAssert.Contains(controller, "InformeTecnicoTemplateHelper.IsResultadoSatisfactorio(informeCandidato.Resultado)", "La compuerta AOCR del controlador debe exigir un Informe Técnico satisfactorio al seleccionar la inspección válida.");
-            StringAssert.Contains(controller, "No se puede avanzar a AOCR final sin una inspección satisfactoria con Informe Técnico aprobado y resultado satisfactorio.", "El mensaje institucional debe explicar que AOCR requiere informe técnico satisfactorio.");
+            StringAssert.Contains(controller, "_aocrFinalWorkflowService.ValidarInspeccionSatisfactoriaParaAocr(id)", "La compuerta AOCR del controlador debe delegar la validación de inspección satisfactoria al servicio institucional final.");
+
+            var finalWorkflowService = LeerArchivoRepositorio("CapaNegocio\\Services\\AocrFinalWorkflowService.cs");
+            StringAssert.Contains(finalWorkflowService, "if (!InformeResultadoSatisfactorio(informeCandidato.Resultado))", "La compuerta AOCR del servicio final debe exigir un Informe Técnico satisfactorio al seleccionar la inspección válida.");
+            StringAssert.Contains(finalWorkflowService, "No se puede avanzar a AOCR final sin una inspección satisfactoria con Informe Técnico aprobado y resultado satisfactorio.", "El mensaje institucional debe explicar que AOCR requiere informe técnico satisfactorio.");
 
             var service = LeerArchivoRepositorio("CapaNegocio\\Services\\GeneracionAOCRService.cs");
             StringAssert.Contains(service, "if (!InformeResultadoPermiteGeneracionAocr(informe))", "La evaluación AOCR debe bloquear informes aprobados cuyo resultado no sea satisfactorio.");

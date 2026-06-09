@@ -245,10 +245,15 @@ namespace CapaPresentacion.Controllers
                 };
             }
 
-            roles = roles ?? new List<string>();
+            roles = RoleGroupingHelper.SanitizeRawRolesForUser(
+                !string.IsNullOrWhiteSpace(usuario.NombreUsuario) ? usuario.NombreUsuario : model.Usuario,
+                roles ?? new List<string>()).ToList();
             var rolesString = AuthTicketRoleDataHelper.Serialize(
                 roles,
-                RoleGroupingHelper.BuildUnifiedRoles(roles).FirstOrDefault());
+                RoleGroupingHelper.ResolveSelectedRoleForUser(
+                    !string.IsNullOrWhiteSpace(usuario.NombreUsuario) ? usuario.NombreUsuario : model.Usuario,
+                    RoleGroupingHelper.BuildUnifiedRoles(roles),
+                    string.Empty));
             var sessionTimeoutMinutes = SessionTimeoutHelper.GetTimeoutMinutes();
 
             // ============================
@@ -698,8 +703,22 @@ namespace CapaPresentacion.Controllers
 
         private ActionResult RedirectToLocal(string returnUrl)
         {
-            if (!string.IsNullOrWhiteSpace(returnUrl) && Url.IsLocalUrl(returnUrl))
-                return Redirect(returnUrl);
+            string motivo;
+            var returnUrlPermitido = ResolverReturnUrlPermitido(returnUrl, ObtenerRolesSesion(), out motivo);
+            if (!string.IsNullOrWhiteSpace(returnUrlPermitido))
+            {
+                return Redirect(returnUrlPermitido);
+            }
+
+            if (!string.IsNullOrWhiteSpace(returnUrl))
+            {
+                _logger.LogWarning(string.Format(
+                    "[AUTH][RETURN_URL] ReturnUrl descartado en RedirectToLocal. Usuario={0}; Roles={1}; ReturnUrl={2}; Motivo={3}; Destino=Dashboard/Index",
+                    Session["CodigoUsuario"] as string ?? string.Empty,
+                    string.Join(",", ObtenerRolesSesion()),
+                    returnUrl,
+                    motivo ?? string.Empty));
+            }
 
             return RedirectToAction("Index", "Dashboard");
         }
@@ -723,7 +742,7 @@ namespace CapaPresentacion.Controllers
             return RedirectToAction("Index", "Home");
         }
 
-        [Authorize]
+        [AllowAnonymous]
         public ActionResult Logout()
         {
             FormsAuthentication.SignOut();
@@ -955,7 +974,13 @@ namespace CapaPresentacion.Controllers
                 // best-effort
             }
 
-            return roles
+            var usuarioClave = FirstNonEmpty(
+                Session["NombreUsuario"] as string,
+                Session["CodigoUsuario"] as string,
+                Session["Email"] as string,
+                User != null && User.Identity != null ? User.Identity.Name : null);
+
+            return RoleGroupingHelper.SanitizeRawRolesForUser(usuarioClave, roles)
                 .Where(r => !string.IsNullOrWhiteSpace(r))
                 .Select(r => r.Trim())
                 .Distinct(StringComparer.OrdinalIgnoreCase)
@@ -1142,6 +1167,19 @@ namespace CapaPresentacion.Controllers
             return false;
         }
 
+        private static string FirstNonEmpty(params string[] values)
+        {
+            foreach (var value in values ?? new string[0])
+            {
+                if (!string.IsNullOrWhiteSpace(value))
+                {
+                    return value.Trim();
+                }
+            }
+
+            return string.Empty;
+        }
+
         private List<string> CompletarRolesUsuario(Usuario usuario, IEnumerable<string> rolesBase)
         {
             var roles = (rolesBase ?? Enumerable.Empty<string>())
@@ -1203,13 +1241,17 @@ namespace CapaPresentacion.Controllers
                 CompaniaActivaSessionHelper.Limpiar(Session);
             }
 
-            var rolesRaw = (roles ?? Enumerable.Empty<string>())
+            var usuarioClaveRoles = FirstNonEmpty(usuario.NombreUsuario, usuario.CodigoUsuario, usuario.Email, loginFallback);
+            var rolesRaw = RoleGroupingHelper.SanitizeRawRolesForUser(usuarioClaveRoles, roles ?? Enumerable.Empty<string>())
                 .Where(r => !string.IsNullOrWhiteSpace(r))
                 .Select(r => r.Trim())
                 .Distinct(StringComparer.OrdinalIgnoreCase)
                 .ToList();
             var rolesUnificados = RoleGroupingHelper.BuildUnifiedRoles(rolesRaw);
-            var rolActual = ResolverRolSeleccionadoPersistido(rolesUnificados);
+            var rolActual = RoleGroupingHelper.ResolveSelectedRoleForUser(
+                usuarioClaveRoles,
+                rolesUnificados,
+                ResolverRolSeleccionadoPersistido(rolesUnificados));
             var rolSeleccionado = rolesUnificados.FirstOrDefault(r =>
                 string.Equals(r, rolActual, StringComparison.OrdinalIgnoreCase));
 
@@ -1218,8 +1260,48 @@ namespace CapaPresentacion.Controllers
             Session["Rol"] = !string.IsNullOrWhiteSpace(rolSeleccionado)
                 ? rolSeleccionado
                 : (rolesUnificados.Count > 0 ? rolesUnificados[0] : null);
+            Session["RolActivo"] = Session["Rol"];
+            Session["RolActual"] = Session["Rol"];
             Session.Timeout = SessionTimeoutHelper.GetTimeoutMinutes();
             Session["LastActivity"] = DateTime.Now;
+
+            try
+            {
+                var rolesTicket = LeerRolesDesdeTicket();
+                var rolesBd = new List<string>();
+                try
+                {
+                    rolesBd = RoleGroupingHelper.SanitizeRawRolesForUser(
+                        usuarioClaveRoles,
+                        UsuarioDAO.ObtenerRoles(usuario.Id) ?? new List<string>()).ToList();
+                }
+                catch
+                {
+                    rolesBd = new List<string>();
+                }
+
+                _logger.LogInfo(string.Format(
+                    "[AOCR][ROLES_SYNC] Usuario={0}; RolesBD={1}; RolesTicket={2}; RolesSession={3}; RolActivo={4}; Resultado=OK",
+                    usuarioClaveRoles,
+                    string.Join(",", rolesBd),
+                    string.Join(",", rolesTicket),
+                    string.Join(",", rolesRaw),
+                    Session["Rol"] as string ?? string.Empty));
+
+                _logger.LogInfo(string.Format(
+                    "[AOCR][ROL_ACTIVO_RESUELTO] UsuarioId={0}; Login={1}; RolesRaw={2}; RolesUnificados={3}; RolPersistido={4}; RolActivo={5}; LimpiarCompania={6}; CompaniaActiva={7}",
+                    usuario.Id,
+                    Session["CodigoUsuario"] as string ?? string.Empty,
+                    string.Join(",", rolesRaw),
+                    string.Join(",", rolesUnificados),
+                    rolActual ?? string.Empty,
+                    Session["Rol"] as string ?? string.Empty,
+                    limpiarCompaniaActiva,
+                    Session[CompaniaActivaSessionHelper.SessionCompaniaActivaCodigo] as string ?? string.Empty));
+            }
+            catch
+            {
+            }
         }
 
         private string ResolverRolSeleccionadoPersistido(IEnumerable<string> rolesUnificados)
@@ -1272,6 +1354,30 @@ namespace CapaPresentacion.Controllers
             }
         }
 
+        private IList<string> LeerRolesDesdeTicket()
+        {
+            try
+            {
+                var authCookie = Request != null ? Request.Cookies[FormsAuthentication.FormsCookieName] : null;
+                if (authCookie == null || string.IsNullOrWhiteSpace(authCookie.Value))
+                {
+                    return new List<string>();
+                }
+
+                var authTicket = FormsAuthentication.Decrypt(authCookie.Value);
+                if (authTicket == null || authTicket.Expired)
+                {
+                    return new List<string>();
+                }
+
+                return AuthTicketRoleDataHelper.Deserialize(authTicket.UserData).Roles;
+            }
+            catch
+            {
+                return new List<string>();
+            }
+        }
+
         private void ActualizarTicketAutenticacionRolSeleccionado(string rolSeleccionado)
         {
             try
@@ -1293,6 +1399,14 @@ namespace CapaPresentacion.Controllers
                 {
                     rolesRaw = AuthTicketRoleDataHelper.Deserialize(authTicket.UserData).Roles.ToList();
                 }
+
+                rolesRaw = RoleGroupingHelper.SanitizeRawRolesForUser(
+                    Session["CodigoUsuario"] as string ?? authTicket.Name,
+                    rolesRaw).ToList();
+                rolSeleccionado = RoleGroupingHelper.ResolveSelectedRoleForUser(
+                    Session["CodigoUsuario"] as string ?? authTicket.Name,
+                    RoleGroupingHelper.BuildUnifiedRoles(rolesRaw),
+                    rolSeleccionado);
 
                 var expiracion = authTicket.IsPersistent && authTicket.Expiration > DateTime.Now
                     ? authTicket.Expiration
@@ -1671,16 +1785,164 @@ namespace CapaPresentacion.Controllers
             }
         }
 
+        private string ResolverReturnUrlPermitido(string returnUrl, IEnumerable<string> roles, out string motivo)
+        {
+            motivo = "ReturnUrl vacio";
+            if (string.IsNullOrWhiteSpace(returnUrl))
+            {
+                return null;
+            }
+
+            if (!Url.IsLocalUrl(returnUrl))
+            {
+                motivo = "ReturnUrl no local";
+                return null;
+            }
+
+            var path = ObtenerPathLocalNormalizado(returnUrl);
+            if (string.IsNullOrWhiteSpace(path))
+            {
+                motivo = "No se pudo resolver path local";
+                return null;
+            }
+
+            if (path.StartsWith("/Account/Login", StringComparison.OrdinalIgnoreCase) ||
+                path.StartsWith("/Account/Logout", StringComparison.OrdinalIgnoreCase))
+            {
+                motivo = "ReturnUrl apunta a Account/Login o Account/Logout";
+                return null;
+            }
+
+            if (!UsuarioPuedeAccederReturnUrl(path, roles, out motivo))
+            {
+                return null;
+            }
+
+            motivo = "ReturnUrl permitido";
+            return returnUrl;
+        }
+
+        private string ObtenerPathLocalNormalizado(string returnUrl)
+        {
+            var raw = (returnUrl ?? string.Empty).Trim();
+            if (string.IsNullOrWhiteSpace(raw))
+            {
+                return string.Empty;
+            }
+
+            var queryIndex = raw.IndexOf('?');
+            if (queryIndex >= 0)
+            {
+                raw = raw.Substring(0, queryIndex);
+            }
+
+            if (!raw.StartsWith("/", StringComparison.Ordinal))
+            {
+                raw = "/" + raw;
+            }
+
+            var appPath = Request != null ? (Request.ApplicationPath ?? string.Empty) : string.Empty;
+            if (!string.IsNullOrWhiteSpace(appPath) &&
+                !string.Equals(appPath, "/", StringComparison.Ordinal) &&
+                raw.StartsWith(appPath, StringComparison.OrdinalIgnoreCase))
+            {
+                raw = raw.Substring(appPath.Length);
+                if (!raw.StartsWith("/", StringComparison.Ordinal))
+                {
+                    raw = "/" + raw;
+                }
+            }
+            else if (raw.StartsWith("/aocr/", StringComparison.OrdinalIgnoreCase))
+            {
+                raw = raw.Substring("/aocr".Length);
+            }
+
+            return raw;
+        }
+
+        private bool UsuarioPuedeAccederReturnUrl(string path, IEnumerable<string> roles, out string motivo)
+        {
+            var rolesUsuario = (roles ?? Enumerable.Empty<string>())
+                .Where(r => !string.IsNullOrWhiteSpace(r))
+                .Select(r => r.Trim())
+                .ToList();
+            rolesUsuario.AddRange(RoleGroupingHelper.BuildUnifiedRoles(rolesUsuario));
+            rolesUsuario = rolesUsuario
+                .Where(r => !string.IsNullOrWhiteSpace(r))
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
+
+            if (path.StartsWith("/Tecnico", StringComparison.OrdinalIgnoreCase))
+            {
+                var permitido = rolesUsuario.Any(r =>
+                    string.Equals(r, "Administrador", StringComparison.OrdinalIgnoreCase) ||
+                    string.Equals(r, "Coordinacion", StringComparison.OrdinalIgnoreCase) ||
+                    string.Equals(r, "Coordinador", StringComparison.OrdinalIgnoreCase) ||
+                    string.Equals(r, "CoordinadorInspecciones", StringComparison.OrdinalIgnoreCase) ||
+                    string.Equals(r, "CoordinacionLegal", StringComparison.OrdinalIgnoreCase) ||
+                    string.Equals(r, "CoordinadorLegal", StringComparison.OrdinalIgnoreCase));
+
+                motivo = permitido
+                    ? "Ruta Tecnico permitida por rol"
+                    : "Ruta Tecnico no permitida para roles=" + string.Join(",", rolesUsuario);
+                return permitido;
+            }
+
+            if (path.StartsWith("/Error", StringComparison.OrdinalIgnoreCase))
+            {
+                motivo = "ReturnUrl a Error descartado";
+                return false;
+            }
+
+            motivo = "Ruta local permitida por validacion generica";
+            return true;
+        }
+
         private ActionResult RedireccionarDespuesLogin(int usuarioId, string returnUrl)
         {
-            if (!string.IsNullOrWhiteSpace(returnUrl) && Url.IsLocalUrl(returnUrl))
+            var rolesSesion = ObtenerRolesSesion();
+            string motivoReturnUrl;
+            var returnUrlPermitido = ResolverReturnUrlPermitido(returnUrl, rolesSesion, out motivoReturnUrl);
+            if (!string.IsNullOrWhiteSpace(returnUrlPermitido))
             {
-                return Redirect(returnUrl);
+                _logger.LogInfo(string.Format(
+                    "[AUTH][LOGIN_REDIRECT] UsuarioId={0}; Login={1}; Roles={2}; ReturnUrl={3}; Destino={4}; Motivo={5}",
+                    usuarioId,
+                    Session["CodigoUsuario"] as string ?? string.Empty,
+                    string.Join(",", rolesSesion),
+                    returnUrl ?? string.Empty,
+                    returnUrlPermitido,
+                    motivoReturnUrl));
+                return Redirect(returnUrlPermitido);
+            }
+
+            if (!string.IsNullOrWhiteSpace(returnUrl))
+            {
+                _logger.LogWarning(string.Format(
+                    "[AUTH][LOGIN_REDIRECT] ReturnUrl descartado. UsuarioId={0}; Login={1}; Roles={2}; ReturnUrl={3}; Motivo={4}",
+                    usuarioId,
+                    Session["CodigoUsuario"] as string ?? string.Empty,
+                    string.Join(",", rolesSesion),
+                    returnUrl,
+                    motivoReturnUrl));
             }
 
             var rolSesion = RoleGroupingHelper.NormalizeSelectedRole(Session["Rol"] as string ?? string.Empty);
+            if (RoleGroupingHelper.IsCoordinacion(rolSesion))
+            {
+                _logger.LogInfo(string.Format(
+                    "[AUTH][LOGIN_REDIRECT] Destino por rol coordinacion. UsuarioId={0}; Rol={1}; Destino=Tecnico/Index",
+                    usuarioId,
+                    rolSesion));
+                return RedirectToAction("Index", "Tecnico");
+            }
+
             if (!RoleGroupingHelper.IsSolicitante(rolSesion))
             {
+                _logger.LogInfo(string.Format(
+                    "[AUTH][LOGIN_REDIRECT] Destino por rol interno. UsuarioId={0}; Rol={1}; Destino=Dashboard/Index",
+                    usuarioId,
+                    rolSesion));
                 return RedirectToAction("Index", "Dashboard");
             }
 
@@ -1701,7 +1963,10 @@ namespace CapaPresentacion.Controllers
 
             if (tieneOrdenGeneradaOPagada)
             {
-                return RedirectToLocal(returnUrl);
+                _logger.LogInfo(string.Format(
+                    "[AUTH][LOGIN_REDIRECT] Destino solicitante con orden habilitante. UsuarioId={0}; Destino=Dashboard/Index",
+                    usuarioId));
+                return RedirectToAction("Index", "Dashboard");
             }
 
             if (tieneOrdenPendiente || tieneOrdenBorrador)

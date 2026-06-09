@@ -234,6 +234,103 @@
     border-radius: 6px;
 }
 
+.main-sidebar.aocr-sidebar .aocr-sidebar-section-title,
+.main-sidebar.aocr-sidebar .aocr-section-title,
+.main-sidebar.aocr-sidebar .aocr-quick-actions-title {
+    color: rgba(245, 249, 255, 0.78) !important;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+.aocr-sidebar-company-form {
+    display: flex;
+    align-items: stretch;
+    width: 100%;
+}
+
+.main-sidebar.aocr-sidebar .aocr-sidebar-select,
+.main-sidebar.aocr-sidebar .aocr-role-switch__select,
+.main-sidebar.aocr-sidebar .aocr-sidebar-company-form .form-select {
+    flex: 1 1 auto;
+    min-width: 0;
+    min-height: 32px;
+    padding: 0.25rem 1.55rem 0.25rem 0.55rem;
+    border: 1px solid rgba(190, 222, 238, 0.72) !important;
+    background-color: #ffffff !important;
+    color: #12344d !important;
+    font-size: 0.78rem;
+    font-weight: 700;
+    line-height: 1.25;
+    text-shadow: none;
+    box-shadow: none;
+    -webkit-text-fill-color: #12344d;
+}
+
+.main-sidebar.aocr-sidebar .aocr-sidebar-company-form .form-select {
+    width: 1%;
+}
+
+.main-sidebar.aocr-sidebar .aocr-role-switch__select {
+    width: 100%;
+}
+
+.main-sidebar.aocr-sidebar .aocr-sidebar-select:focus,
+.main-sidebar.aocr-sidebar .aocr-role-switch__select:focus,
+.main-sidebar.aocr-sidebar .aocr-sidebar-company-form .form-select:focus {
+    border-color: #8edfff !important;
+    box-shadow: 0 0 0 0.14rem rgba(142, 223, 255, 0.22);
+    color: #12344d !important;
+    -webkit-text-fill-color: #12344d;
+}
+
+.main-sidebar.aocr-sidebar .aocr-sidebar-select option,
+.main-sidebar.aocr-sidebar .aocr-role-switch__select option,
+.main-sidebar.aocr-sidebar .aocr-sidebar-company-form .form-select option {
+    background-color: #ffffff;
+    color: #12344d !important;
+    font-weight: 600;
+    -webkit-text-fill-color: #12344d;
+}
+
+.main-sidebar.aocr-sidebar .aocr-sidebar-select option:checked,
+.main-sidebar.aocr-sidebar .aocr-role-switch__select option:checked,
+.main-sidebar.aocr-sidebar .aocr-sidebar-company-form .form-select option:checked {
+    background-color: #0d6efd;
+    color: #ffffff !important;
+    -webkit-text-fill-color: #ffffff;
+}
+
+.main-sidebar.aocr-sidebar .select2-container--default .select2-selection--single,
+.main-sidebar.aocr-sidebar .bootstrap-select .dropdown-toggle {
+    background-color: #ffffff !important;
+    color: #12344d !important;
+    border-color: rgba(190, 222, 238, 0.72) !important;
+    -webkit-text-fill-color: #12344d;
+}
+
+.main-sidebar.aocr-sidebar .select2-container--default .select2-selection--single .select2-selection__rendered,
+.main-sidebar.aocr-sidebar .bootstrap-select .dropdown-menu li a,
+.main-sidebar.aocr-sidebar .bootstrap-select .dropdown-menu li a span.text {
+    color: #12344d !important;
+    -webkit-text-fill-color: #12344d;
+}
+
+.main-sidebar.aocr-sidebar .select2-dropdown,
+.main-sidebar.aocr-sidebar .select2-results__option,
+.main-sidebar.aocr-sidebar .bootstrap-select .dropdown-menu {
+    background-color: #ffffff !important;
+    color: #12344d !important;
+}
+
+.main-sidebar.aocr-sidebar .select2-results__option--highlighted,
+.main-sidebar.aocr-sidebar .bootstrap-select .dropdown-menu li.active a,
+.main-sidebar.aocr-sidebar .bootstrap-select .dropdown-menu li.selected a {
+    background-color: #0d6efd !important;
+    color: #ffffff !important;
+    -webkit-text-fill-color: #ffffff;
+}
+
 .aocr-sidebar-company-form .btn-outline-info {
     color: #8edfff;
     border-color: rgba(142, 223, 255, 0.6);
@@ -274,7 +371,7 @@
     color: #fff;
     text-decoration: none;
     box-sizing: border-box;
-    overflow: hidden;
+    overflow: visible;
 }
 
 .aocr-quick-action:hover,
@@ -324,7 +421,8 @@
 .aocr-quick-badge,
 .aocr-menu-badge,
 .aocr-subnav-link-badge {
-    min-width: 20px;
+    box-sizing: border-box;
+    min-width: 22px;
     height: 20px;
     padding: 0 6px;
     border-radius: 999px;
@@ -335,6 +433,7 @@
     font-weight: 700;
     line-height: 1;
     white-space: nowrap;
+    flex-shrink: 0;
 }
 
 .aocr-quick-badge {
@@ -387,6 +486,7 @@
     width: 100%;
     display: flex;
     align-items: center;
+    justify-content: space-between;
     gap: 0.65rem;
     min-height: 40px;
     padding: 0.58rem 0.7rem;
@@ -397,6 +497,8 @@
     text-align: left;
     text-decoration: none;
     transition: background .18s ease, color .18s ease;
+    box-sizing: border-box;
+    overflow: visible;
 }
 
 .aocr-menu-link:hover,
@@ -423,7 +525,7 @@
 }
 
 .aocr-menu-title {
-    flex: 1 1 auto;
+    flex: 1 1 0;
     min-width: 0;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -436,6 +538,7 @@
     background: rgba(135, 219, 118, 0.85);
     color: #fff;
     flex: 0 0 auto;
+    margin-left: auto;
 }
 
 .aocr-menu-arrow {
@@ -562,6 +665,7 @@
 .aocr-subnav-link {
     display: flex;
     align-items: flex-start;
+    justify-content: space-between;
     gap: 0.65rem;
     min-height: 48px;
     padding: 0.7rem 0.75rem;
@@ -569,6 +673,8 @@
     color: rgba(255, 255, 255, 0.92);
     text-decoration: none;
     transition: background .18s ease;
+    box-sizing: border-box;
+    overflow: visible;
 }
 
 .aocr-subnav-link:hover,
@@ -592,7 +698,7 @@
 }
 
 .aocr-subnav-link-copy {
-    flex: 1 1 auto;
+    flex: 1 1 0;
     min-width: 0;
 }
 

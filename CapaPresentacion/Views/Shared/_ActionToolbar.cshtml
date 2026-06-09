@@ -1,4 +1,5 @@
-﻿@using System.Web
+﻿@inherits System.Web.Mvc.WebViewPage
+@using System.Web
 @{
     var nuevoUrl = ViewData["NuevoUrl"] as string ?? string.Empty;
     var nuevoTexto = ViewData["NuevoTexto"] as string ?? "Nuevo";

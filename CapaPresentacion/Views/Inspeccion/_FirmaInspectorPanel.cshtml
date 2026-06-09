@@ -1,7 +1,9 @@
 @* ============================================================
    Partial: Panel de firma del Inspector — rediseño ergonómico
    ============================================================ *@
-@model CapaPresentacion.Models.ViewModels.FirmaInspectorPanelVm
+@inherits System.Web.Mvc.WebViewPage<CapaPresentacion.Models.ViewModels.FirmaInspectorPanelVm>
+@using System.Web.Mvc
+@using System.Web.Mvc.Html
 @{
     var vm = Model ?? new CapaPresentacion.Models.ViewModels.FirmaInspectorPanelVm();
     var informeTecnico = vm.InformeTecnico;

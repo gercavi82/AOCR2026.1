@@ -12,6 +12,7 @@ using EmailServiceData = CapaDatos.Services.EmailService;
 using CapaNegocio.Services;
 using CapaPresentacion.Models;
 using CapaPresentacion.Filters;
+using CapaPresentacion.Helpers;
 using CapaPresentacion.Infrastructure;
 using CapaUtilidades;
 
@@ -39,28 +40,33 @@ namespace CapaPresentacion.Controllers
         {
             var estadoFiltro = NormalizarFiltroDashboard(estado);
             var ordenesEnt = _ordenDAO.ObtenerTodasLasOrdenes(null) ?? new List<CapaDatos.Entidades.OrdenRecaudacion>();
-            var ordenes = ordenesEnt.Select(MapearOrden).ToList();
+            var contextos = ConstruirContextosFinancieros(ordenesEnt);
+            var contextosFiltrados = contextos;
 
             if (!string.Equals(estadoFiltro, "TODAS", StringComparison.OrdinalIgnoreCase))
             {
-                ordenes = ordenes
-                    .Where(o => CoincideEstadoDashboard(o != null ? o.Estado : null, estadoFiltro))
+                contextosFiltrados = contextos
+                    .Where(c => CoincideEstadoDashboard(
+                        c.OrdenEntidad != null ? c.OrdenEntidad.Estado : null,
+                        c.PagoEntidad != null ? c.PagoEntidad.Estado : null,
+                        c.TieneFacturaRegistrada,
+                        estadoFiltro))
                     .ToList();
             }
 
+            RegistrarDiagnosticoFinanciero("INDEX", estado, estadoFiltro, contextos, contextosFiltrados);
+
             var vms = new List<OrdenValidacionFinancieraVM>();
-            foreach (var orden in ordenes)
+            foreach (var contexto in contextosFiltrados)
             {
-                // El DAO espera id de orden para resolver internamente el codigo_solicitud correcto.
-                var pagoEnt = _ordenDAO.ObtenerUltimoPagoPorOrden(orden?.Id ?? 0);
-                var pago = MapearPago(pagoEnt);
-                var factura = _ordenDAO.ObtenerFacturaPagoPorOrden(orden?.Id ?? 0);
+                var orden = contexto.Orden;
+                var pago = contexto.Pago;
+                var factura = contexto.Factura;
                 var fr3Estado = factura?.Fr3Estado;
                 var fr3Numero = factura?.Fr3Numero;
                 var fr3Error = factura?.Fr3Error;
-                var tieneFacturaRegistrada = factura != null && !string.IsNullOrWhiteSpace(factura.NumeroFactura);
                 var puedeReintentarFr3 = FacturacionAS400Service.IsEnabled() &&
-                                         tieneFacturaRegistrada &&
+                                         contexto.TieneFacturaRegistrada &&
                                          (string.Equals(fr3Estado, "FR3_ERROR", StringComparison.OrdinalIgnoreCase) ||
                                           string.Equals(fr3Estado, "PENDIENTE", StringComparison.OrdinalIgnoreCase) ||
                                           (string.IsNullOrWhiteSpace(fr3Estado) &&
@@ -799,57 +805,159 @@ namespace CapaPresentacion.Controllers
         {
             var estadoFiltro = NormalizarFiltroDashboard(estado);
             var ordenesEnt = _ordenDAO.ObtenerTodasLasOrdenes(null) ?? new List<CapaDatos.Entidades.OrdenRecaudacion>();
-            var ordenes = ordenesEnt.Select(MapearOrden).ToList();
+            var contextos = ConstruirContextosFinancieros(ordenesEnt);
+            var contextosFiltrados = contextos;
             if (!string.Equals(estadoFiltro, "TODAS", StringComparison.OrdinalIgnoreCase))
             {
-                ordenes = ordenes.Where(o => CoincideEstadoDashboard(o != null ? o.Estado : null, estadoFiltro)).ToList();
+                contextosFiltrados = contextos
+                    .Where(c => CoincideEstadoDashboard(
+                        c.OrdenEntidad != null ? c.OrdenEntidad.Estado : null,
+                        c.PagoEntidad != null ? c.PagoEntidad.Estado : null,
+                        c.TieneFacturaRegistrada,
+                        estadoFiltro))
+                    .ToList();
             }
 
-            return View(ordenes);
+            RegistrarDiagnosticoFinanciero("TODAS_ORDENES", estado, estadoFiltro, contextos, contextosFiltrados);
+
+            ViewBag.EstadoFiltro = estadoFiltro;
+            ViewBag.TotalSinFiltro = contextos.Count;
+            ViewBag.TotalFiltrado = contextosFiltrados.Count;
+
+            return View(contextosFiltrados.Select(c => c.Orden).Where(o => o != null).ToList());
         }
 
         #region Helpers
         private static string NormalizarEstadoDashboard(string estado)
         {
-            var actual = EstadoOrden.NormalizarEstado(estado);
-            if (actual == EstadoOrden.Pendiente || actual == EstadoOrden.Generada)
-            {
-                return EstadoOrden.Generada;
-            }
-
-            return actual;
+            return FinancialOrderStateHelper.NormalizarEstadoDashboard(estado);
         }
 
         private static string NormalizarFiltroDashboard(string estado)
         {
-            var actual = (estado ?? string.Empty).Trim().ToUpperInvariant().Replace(" ", "_");
-            if (string.IsNullOrWhiteSpace(actual))
-            {
-                return "TODAS";
-            }
-
-            switch (actual)
-            {
-                case "TODAS":
-                    return "TODAS";
-                case "PROCESADA":
-                case "EN_REVISION":
-                case "EN_REVISION_FINANCIERA":
-                    return EstadoOrden.EnRevisionFinanciera;
-                case "PENDIENTE":
-                case "GENERADA":
-                    return EstadoOrden.Generada;
-                default:
-                    return NormalizarEstadoDashboard(actual);
-            }
+            return FinancialOrderStateHelper.NormalizarFiltro(estado);
         }
 
         private static bool CoincideEstadoDashboard(string estadoOrden, string estadoFiltro)
         {
-            return string.Equals(
-                NormalizarEstadoDashboard(estadoOrden),
-                NormalizarFiltroDashboard(estadoFiltro),
-                StringComparison.OrdinalIgnoreCase);
+            return CoincideEstadoDashboard(estadoOrden, null, false, estadoFiltro);
+        }
+
+        private static bool CoincideEstadoDashboard(string estadoOrden, string estadoPago, bool tieneFacturaRegistrada, string estadoFiltro)
+        {
+            return FinancialOrderStateHelper.CoincideFiltro(estadoOrden, estadoPago, tieneFacturaRegistrada, estadoFiltro);
+        }
+
+        private static bool EsPendienteGestionFinanciera(string estadoOrden)
+        {
+            return FinancialOrderStateHelper.EsPendienteGestion(estadoOrden, null, false);
+        }
+
+        private sealed class OrdenFinancieraContext
+        {
+            public CapaDatos.Entidades.OrdenRecaudacion OrdenEntidad { get; set; }
+            public OrdenRecaudacionModel Orden { get; set; }
+            public CapaDatos.Entidades.Pago PagoEntidad { get; set; }
+            public PagoModel Pago { get; set; }
+            public FacturaPagoRegistroModel Factura { get; set; }
+            public bool TieneFacturaRegistrada { get; set; }
+            public string EstadoFinanciero { get; set; }
+        }
+
+        private List<OrdenFinancieraContext> ConstruirContextosFinancieros(IEnumerable<CapaDatos.Entidades.OrdenRecaudacion> ordenesEnt)
+        {
+            var contextos = new List<OrdenFinancieraContext>();
+            foreach (var ordenEnt in ordenesEnt ?? Enumerable.Empty<CapaDatos.Entidades.OrdenRecaudacion>())
+            {
+                if (ordenEnt == null)
+                {
+                    continue;
+                }
+
+                var pagoEnt = _ordenDAO.ObtenerUltimoPagoPorOrden(ordenEnt.Id);
+                var factura = _ordenDAO.ObtenerFacturaPagoPorOrden(ordenEnt.Id);
+                var tieneFacturaRegistrada = FinancialOrderStateHelper.TieneFacturaRegistrada(
+                    factura != null ? factura.NumeroFactura : null,
+                    factura != null ? factura.Fr3Estado : null,
+                    factura != null ? factura.Fr3Numero : null);
+                var estadoFinanciero = FinancialOrderStateHelper.ResolverEstadoOperativo(
+                    ordenEnt.Estado,
+                    pagoEnt != null ? pagoEnt.Estado : null,
+                    tieneFacturaRegistrada);
+                var orden = MapearOrden(ordenEnt);
+                if (orden != null)
+                {
+                    orden.Estado = estadoFinanciero;
+                }
+
+                contextos.Add(new OrdenFinancieraContext
+                {
+                    OrdenEntidad = ordenEnt,
+                    Orden = orden,
+                    PagoEntidad = pagoEnt,
+                    Pago = MapearPago(pagoEnt),
+                    Factura = factura,
+                    TieneFacturaRegistrada = tieneFacturaRegistrada,
+                    EstadoFinanciero = estadoFinanciero
+                });
+            }
+
+            return contextos;
+        }
+
+        private void RegistrarDiagnosticoFinanciero(
+            string accion,
+            string estadoSolicitado,
+            string estadoFiltro,
+            IList<OrdenFinancieraContext> baseContextos,
+            IList<OrdenFinancieraContext> filtrados)
+        {
+            try
+            {
+                var baseLista = baseContextos ?? new List<OrdenFinancieraContext>();
+                var filtradaLista = filtrados ?? new List<OrdenFinancieraContext>();
+                var usuario = Session != null
+                    ? Convert.ToString(Session["Usuario"] ?? Session["NombreUsuario"] ?? User.Identity.Name)
+                    : User.Identity.Name;
+                var roles = Session != null
+                    ? Convert.ToString(Session["RolesRaw"] ?? Session["Roles"] ?? Session["Rol"] ?? string.Empty)
+                    : string.Empty;
+                var companiaActiva = Session != null
+                    ? (CompaniaActivaSessionHelper.ObtenerCodigo(Session) ?? string.Empty)
+                    : string.Empty;
+                var esFinanciero = User != null && User.IsInRole("Financiero");
+                var estadosBase = string.Join(", ", baseLista
+                    .GroupBy(c => string.IsNullOrWhiteSpace(c.EstadoFinanciero) ? "SIN_ESTADO" : c.EstadoFinanciero)
+                    .OrderBy(g => g.Key)
+                    .Select(g => g.Key + ":" + g.Count()));
+                var ids = string.Join(",", filtradaLista
+                    .Where(c => c.OrdenEntidad != null)
+                    .Take(50)
+                    .Select(c => c.OrdenEntidad.Id));
+
+                CapaNegocio.LogBL.RegistrarInfo(
+                    string.Format(
+                        "[FINANCIERO][{0}] Usuario={1}; Roles={2}; CompaniaActiva={3}; EstadoSolicitado={4}; EstadoNormalizado={5}; EsFinanciero={6}; TotalBase={7}; TotalFiltradoEstado={8}; TotalFinal={9}; EstadosBase={10}; OrdenIds={11}; ReglaCompania=Financiero/Admin sin filtro obligatorio por compania activa.",
+                        accion,
+                        usuario ?? string.Empty,
+                        roles ?? string.Empty,
+                        string.IsNullOrWhiteSpace(companiaActiva) ? "No definida" : companiaActiva,
+                        estadoSolicitado ?? string.Empty,
+                        estadoFiltro ?? string.Empty,
+                        esFinanciero,
+                        baseLista.Count,
+                        filtradaLista.Count,
+                        filtradaLista.Count,
+                        estadosBase,
+                        ids),
+                    "FinancieroController");
+            }
+            catch (Exception ex)
+            {
+                CapaNegocio.LogBL.RegistrarAdvertencia(
+                    "[FINANCIERO][DIAGNOSTICO] No se pudo registrar diagnostico: " + ex.Message,
+                    "FinancieroController");
+            }
         }
 
         private OrdenRecaudacionModel MapearOrden(CapaDatos.Entidades.OrdenRecaudacion o)

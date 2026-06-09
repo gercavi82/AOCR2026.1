@@ -41,7 +41,7 @@
                         <div class="row g-2">
                             <div class="col-md-6">
                                 <label class="form-label small fw-bold">Aeropuerto <span class="text-danger">*</span></label>
-                                @Html.DropDownListFor(m => m.Aeropuerto, ViewBag.Aeropuertos as IEnumerable<SelectListItem>, new { @class = "form-select form-select-sm", required = "required" })
+                                @Html.DropDownListFor(m => m.Aeropuerto, ViewBag.Aeropuertos as IEnumerable<System.Web.Mvc.SelectListItem>, new { @class = "form-select form-select-sm", required = "required" })
                             </div>
                             <div class="col-md-6">
                                 <label class="form-label small fw-bold">Año</label>
@@ -65,11 +65,11 @@
                             </div>
                             <div class="col-md-6">
                                 <label class="form-label small fw-bold">Tipo Operación</label>
-                                @Html.DropDownListFor(m => m.TipoOperacion, ViewBag.TiposOperacion as IEnumerable<SelectListItem>, new { @class = "form-select form-select-sm" })
+                                @Html.DropDownListFor(m => m.TipoOperacion, ViewBag.TiposOperacion as IEnumerable<System.Web.Mvc.SelectListItem>, new { @class = "form-select form-select-sm" })
                             </div>
                             <div class="col-md-6">
                                 <label class="form-label small fw-bold">Nacional/Internacional</label>
-                                @Html.DropDownListFor(m => m.NacInter, ViewBag.NacInter as IEnumerable<SelectListItem>, new { @class = "form-select form-select-sm" })
+                                @Html.DropDownListFor(m => m.NacInter, ViewBag.NacInter as IEnumerable<System.Web.Mvc.SelectListItem>, new { @class = "form-select form-select-sm" })
                             </div>
                             <div class="col-md-4">
                                 <label class="form-label small fw-bold">Origen</label>
@@ -173,7 +173,7 @@
                             </div>
                             <div class="col-md-6">
                                 <label class="form-label small fw-bold">Forma de Pago</label>
-                                @Html.DropDownListFor(m => m.FormaPago, ViewBag.FormasPago as IEnumerable<SelectListItem>, new { @class = "form-select form-select-sm" })
+                                @Html.DropDownListFor(m => m.FormaPago, ViewBag.FormasPago as IEnumerable<System.Web.Mvc.SelectListItem>, new { @class = "form-select form-select-sm" })
                             </div>
                             <div class="col-md-6">
                                 <label class="form-label small fw-bold">Código Banco</label>

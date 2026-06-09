@@ -4,6 +4,8 @@
 @using System.Web.Mvc
 @using System.Web.Mvc.Html
 @using System.Web
+@using Newtonsoft.Json
+@using CapaPresentacion.Helpers
 @{
     Layout = null;
     var sol = Model != null ? Model.Solicitud : null;
@@ -48,6 +50,14 @@
     var marcaOpsNoRegulares = tipoOperacionNormalizado.Contains("NO REGULAR");
     var marcaPasajeros = tipoOperacionNormalizado.Contains("PASAJEROS");
     var marcaCarga = tipoOperacionNormalizado.Contains("CARGA");
+    var modoSubsanacionObservada = Model != null && Model.EsModoSubsanacionObservada;
+    var documentosPendientesInputIdsJson = JsonConvert.SerializeObject(Model != null ? (Model.DocumentosPendientesSubsanacionInputIds ?? new List<string>()) : new List<string>());
+    var documentosPendientesEtiquetasTexto = string.Join(", ", Model != null ? (Model.DocumentosPendientesSubsanacionEtiquetas ?? new List<string>()) : new List<string>());
+    var documentosPendientesNoGestionablesTexto = string.Join(", ", Model != null ? (Model.DocumentosPendientesSubsanacionNoGestionables ?? new List<string>()) : new List<string>());
+    var restringirAnexosPorSubsanacion = modoSubsanacionObservada
+        && Model != null
+        && Model.DocumentosPendientesSubsanacionInputIds != null
+        && Model.DocumentosPendientesSubsanacionInputIds.Any();
 }
 
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
@@ -102,6 +112,35 @@
         color: #fff;
     }
 
+    .aocr-wizard .modo-subsanacion-alert,
+    .aocr-wizard .modo-subsanacion-alert strong,
+    .aocr-wizard .modo-subsanacion-alert span {
+        color: #1f2937 !important;
+    }
+
+    .aocr-wizard .modo-subsanacion-alert {
+        border-radius: 6px;
+        font-size: 0.92rem;
+        line-height: 1.45;
+    }
+
+    .aocr-wizard .modo-subsanacion-alert.alert-warning {
+        background-color: #ffc107;
+        border-color: #e0a800;
+    }
+
+    .aocr-wizard .modo-subsanacion-alert.alert-info {
+        background-color: #e8f4fb;
+        border-color: #8cc6df;
+    }
+
+    .aocr-wizard .modo-subsanacion-alert a,
+    .aocr-wizard .modo-subsanacion-alert .alert-link {
+        color: #0645ad !important;
+        font-weight: 700;
+        text-decoration: underline;
+    }
+
     .aocr-wizard .card-custom {
         border: 0;
         border-radius: 12px;
@@ -129,11 +168,49 @@
     .aocr-wizard .form-control {
         border-radius: 8px;
         border: 1px solid #d1d5db;
+        background-color: #ffffff;
+        color: #111827 !important;
+        text-shadow: none;
+        -webkit-text-fill-color: #111827;
+    }
+
+    .aocr-wizard .form-control::placeholder {
+        color: #6b7280 !important;
+        opacity: 1;
+        -webkit-text-fill-color: #6b7280;
+    }
+
+    .aocr-wizard .form-control[readonly],
+    .aocr-wizard .form-control:disabled,
+    .aocr-wizard input[readonly],
+    .aocr-wizard input:disabled,
+    .aocr-wizard textarea[readonly],
+    .aocr-wizard textarea:disabled,
+    .aocr-wizard select[readonly],
+    .aocr-wizard select:disabled {
+        background-color: #eef2f6 !important;
+        color: #1f2937 !important;
+        opacity: 1;
+        text-shadow: none;
+        -webkit-text-fill-color: #1f2937;
+    }
+
+    .aocr-wizard .input-group-text {
+        background-color: #eef2f6;
+        border-color: #d1d5db;
+        color: #1f2937 !important;
+        -webkit-text-fill-color: #1f2937;
+    }
+
+    .aocr-wizard label {
+        color: #111827 !important;
     }
 
     .aocr-wizard .form-control:focus {
         border-color: #1b4f72;
         box-shadow: 0 0 0 0.2rem rgba(27, 79, 114, 0.15);
+        color: #111827 !important;
+        -webkit-text-fill-color: #111827;
     }
 
     .aocr-wizard .anexo-item {
@@ -628,11 +705,39 @@
                 <div class="tab-pane fade" id="anexos" role="tabpanel" aria-labelledby="list-anexos-list">
                     <div class="card card-custom">
                         <div class="card-header-custom">
-                            <h5 class="mb-0 font-weight-bold">Documentacion y Anexos</h5>
+                            <h5 class="mb-0 font-weight-bold">Documentación y Anexos</h5>
                         </div>
                         <div class="card-body card-body-custom">
                             <div style="max-height: 65vh; overflow-y: auto; padding: 10px;">
                                 <form id="formAnexos">
+                                    @if (modoSubsanacionObservada)
+                                    {
+                                        var claseAlertaSubsanacion = restringirAnexosPorSubsanacion
+                                            ? "alert alert-warning border-warning"
+                                            : "alert alert-info border-info";
+                                        <div class="@claseAlertaSubsanacion modo-subsanacion-alert">
+                                            <div>
+                                                <strong>@(restringirAnexosPorSubsanacion ? "Modo subsanación documental." : "Subsanación documental pendiente.")</strong>
+                                                @(restringirAnexosPorSubsanacion
+                                                    ? "Solo se habilitan los documentos observados para nueva carga."
+                                                    : "Puede continuar cargando información y anexos en este formulario; los pendientes listados se corrigen en otra pantalla.")
+                                            </div>
+                                            @if (!string.IsNullOrWhiteSpace(documentosPendientesEtiquetasTexto))
+                                            {
+                                                <div class="mt-1"><strong>Pendientes:</strong> <span>@documentosPendientesEtiquetasTexto</span></div>
+                                            }
+                                            @if (!string.IsNullOrWhiteSpace(documentosPendientesNoGestionablesTexto))
+                                            {
+                                                <div class="mt-2">
+                                                    <strong>Estos documentos no se corrigen en este formulario:</strong> <span>@documentosPendientesNoGestionablesTexto.</span>
+                                                    @if (codigoSolicitud > 0)
+                                                    {
+                                                        <a href="@Url.Action("Subsanar", "SolicitudAOCR", new { id = codigoSolicitud })" class="alert-link">Abrir la pantalla de subsanación</a>
+                                                    }
+                                                </div>
+                                            }
+                                        </div>
+                                    }
 
 
                                     <div class="anexo-item border border-primary rounded p-3 mb-3">
@@ -1029,6 +1134,70 @@
     Usar document.write aqui destruye el documento actual cuando Bootstrap o Swal aun no terminan de cargar. *@
 
 <script>
+    const modoSubsanacionObservada = @Html.Raw(modoSubsanacionObservada ? "true" : "false");
+    const restringirAnexosPorSubsanacion = @Html.Raw(restringirAnexosPorSubsanacion ? "true" : "false");
+    const documentosPendientesSubsanacionInputIds = @Html.Raw(documentosPendientesInputIdsJson);
+
+    function obtenerInputsArchivosFormulario() {
+        return [
+            'archivoAOC',
+            'archivoOpSpecs',
+            'archivoManualOperaciones',
+            'archivoPermisoOperacion',
+            'archivoCertificadoRuido',
+            'archivoCertificadoAeronavegabilidad',
+            'archivoPoderRepresentante',
+            'archivoFacturaPago',
+            'archivoOtro'
+        ];
+    }
+
+    function inputHabilitadoEnModoSubsanacion(inputId) {
+        return !restringirAnexosPorSubsanacion || documentosPendientesSubsanacionInputIds.indexOf(inputId) >= 0;
+    }
+
+    function obtenerInputsArchivosActivos() {
+        return obtenerInputsArchivosFormulario().filter(function (inputId) {
+            return inputHabilitadoEnModoSubsanacion(inputId);
+        });
+    }
+
+    function aplicarModoSubsanacionObservada() {
+        if (!restringirAnexosPorSubsanacion) {
+            return;
+        }
+
+        obtenerInputsArchivosFormulario().forEach(function (inputId) {
+            var input = document.getElementById(inputId);
+            if (!input) {
+                return;
+            }
+
+            var contenedor = $(input).closest('.anexo-item');
+            var habilitado = inputHabilitadoEnModoSubsanacion(inputId);
+
+            if (!habilitado) {
+                if (contenedor.length) {
+                    contenedor.hide();
+                    contenedor.find(':input').each(function () {
+                        this.disabled = true;
+                        this.required = false;
+                    });
+                }
+                else {
+                    input.disabled = true;
+                    input.required = false;
+                }
+
+                return;
+            }
+
+            if (contenedor.length) {
+                contenedor.addClass('border-warning');
+            }
+        });
+    }
+
     $(document).ready(function () {
 
         // Funcion para actualizar el contador de aeronaves
@@ -1287,6 +1456,7 @@
         inicializarDropzoneCarga('archivoCertificadoAeronavegabilidad', 'dropzoneArchivoCertificadoAeronavegabilidad');
         actualizarResumenArchivos('archivoCertificadoRuido');
         actualizarResumenArchivos('archivoCertificadoAeronavegabilidad');
+        aplicarModoSubsanacionObservada();
     });
     function abrirSelectorArchivos(idInput) {
         const input = document.getElementById(idInput);
@@ -1692,7 +1862,11 @@
             obligatorios.push({ id: 'archivoCertificadoRuido', nombre: 'Certificado de Ruido de Aeronaves' });
         }
 
-    const faltantes = obligatorios.filter(function (item) {
+        const obligatoriosActivos = obligatorios.filter(function (item) {
+            return inputHabilitadoEnModoSubsanacion(item.id);
+        });
+
+        const faltantes = obligatoriosActivos.filter(function (item) {
       const input = document.getElementById(item.id);
       return !input || !input.files || input.files.length === 0;
     });
@@ -2098,17 +2272,7 @@
     formData.append('Solicitud.NombreOperador', vm.Solicitud.NombreOperador || '');
     formData.append('Solicitud.CompaniasSeleccionadas', vm.Solicitud.CompaniasSeleccionadas || '');
 
-    const inputsArchivos = [
-      'archivoAOC',
-      'archivoOpSpecs',
-      'archivoManualOperaciones',
-      'archivoPermisoOperacion',
-      'archivoCertificadoRuido',
-      'archivoCertificadoAeronavegabilidad',
-      'archivoPoderRepresentante',
-      'archivoFacturaPago',
-      'archivoOtro'
-    ];
+        const inputsArchivos = obtenerInputsArchivosActivos();
     const inputsMultiples = ['archivoCertificadoRuido', 'archivoCertificadoAeronavegabilidad'];
     inputsArchivos.forEach(function (inputId) {
       const input = document.getElementById(inputId);

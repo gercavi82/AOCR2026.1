@@ -70,7 +70,7 @@ namespace CapaDatos.DAOs
             return EstadosAsignacionInicialSql
                 .Concat(EstadosAsignacionInicialCanonicos)
                 .Where(e => !string.IsNullOrWhiteSpace(e))
-                .Select(e => e.Trim().ToUpperInvariant())
+                .Select(e => e.Trim().ToUpperInvariant().Replace("_", " "))
                 .Distinct(StringComparer.OrdinalIgnoreCase)
                 .ToList();
         }
@@ -434,13 +434,15 @@ namespace CapaDatos.DAOs
                 placeholders.Add("@e" + i);
             }
 
-                                                var sql = @"
+            const string estadoSolicitudNormalizadoSql = "REPLACE(TRIM(TRANSLATE(UPPER(COALESCE(s.estado, '')), 'ÁÉÍÓÚ', 'AEIOU')), '_', ' ')";
+
+            var sql = @"
                                 SELECT s.*
                                 FROM aocr_tbsolicitud s
-                                                                WHERE TRIM(TRANSLATE(UPPER(COALESCE(s.estado, '')), 'ÁÉÍÓÚ', 'AEIOU')) IN (" + string.Join(", ", placeholders) + @")
+                                                                WHERE " + estadoSolicitudNormalizadoSql + @" IN (" + string.Join(", ", placeholders) + @")
                                                                     AND s.deleted_at IS NULL
                                                                     AND (
-                                                                        TRIM(TRANSLATE(UPPER(COALESCE(s.estado, '')), 'ÁÉÍÓÚ', 'AEIOU')) IN ('ACEPTACION DOCUMENTAL', 'ACEPTACION_DOCUMENTAL')
+                                                                        " + estadoSolicitudNormalizadoSql + @" IN ('ACEPTACION DOCUMENTAL', 'PENDIENTE ASIGNACION RT', 'PENDIENTE ASIGNACION TECNICA', 'PENDIENTE ASIGNACION', 'REQUIERE INSPECCION')
                                                                         OR EXISTS (
                                     SELECT 1
                                     FROM aocr_or_orden o
@@ -453,6 +455,7 @@ namespace CapaDatos.DAOs
                                             FROM aocr_tbinspeccion i
                                             WHERE i.codigo_solicitud = s.codigo_solicitud
                                                 AND i.codigo_inspector IS NOT NULL
+                                                AND " + estadoSolicitudNormalizadoSql + @" <> 'ACEPTACION DOCUMENTAL'
                                     )
                                 ORDER BY s.fecha_solicitud DESC";
 
@@ -490,7 +493,7 @@ namespace CapaDatos.DAOs
                         FROM aocr_tbsolicitud s
                         LEFT JOIN aocr_tbinspeccion i ON i.codigo_solicitud = s.codigo_solicitud
                         WHERE s.deleted_at IS NULL
-                          AND UPPER(COALESCE(s.estado, '')) = ANY (@estados);";
+                          AND REPLACE(TRIM(TRANSLATE(UPPER(COALESCE(s.estado, '')), 'ÁÉÍÓÚ', 'AEIOU')), '_', ' ') = ANY (@estados);";
 
                     using (var cmdDiagIns = new NpgsqlCommand(sqlDiagnosticoInspeccion, cn))
                     {
@@ -1122,6 +1125,24 @@ WHERE codigo_solicitud=@id AND deleted_at IS NULL;";
                             return false;
                         }
 
+                        var diagnosticoDocumentos = ObtenerDiagnosticoDocumentosAsignacion(cn, tx, codigoSolicitud, estadoAnterior);
+                        _logger.LogInfo(
+                            "[AOCR][DOC_FLOW_DOCUMENTOS_CHECK] SolicitudId=" + codigoSolicitud +
+                            " TotalDocumentos=" + diagnosticoDocumentos.TotalDocumentos +
+                            " Pendientes=" + diagnosticoDocumentos.Pendientes +
+                            " Observados=" + diagnosticoDocumentos.Observados +
+                            " Aceptados=" + diagnosticoDocumentos.Aceptados +
+                            " EstadoDocumental=" + (diagnosticoDocumentos.EstadoDocumental ?? string.Empty) +
+                            " PuedeEnviarInspector=" + diagnosticoDocumentos.PuedeEnviarInspector +
+                            " MotivoBloqueo=" + (diagnosticoDocumentos.MotivoBloqueo ?? string.Empty));
+
+                        if (!diagnosticoDocumentos.PuedeEnviarInspector)
+                        {
+                            mensaje = diagnosticoDocumentos.MotivoBloqueo;
+                            tx.Rollback();
+                            return false;
+                        }
+
                         var inspectorPrincipalCodigo = inspectorPrincipal.UsuarioId.HasValue && inspectorPrincipal.UsuarioId.Value > 0
                             ? inspectorPrincipal.UsuarioId
                             : (inspectorPrincipal.TecnicoId.HasValue && inspectorPrincipal.TecnicoId.Value > 0
@@ -1196,10 +1217,10 @@ WHERE codigo_solicitud=@id AND deleted_at IS NULL;";
                                 " Rol=COORDINADOR" +
                                 " Accion=ENVIAR_A_INSPECTOR" +
                                 " InspectorAsignado=" + principalCedulaPersist +
-                                " TotalDocumentos=0" +
-                                " Pendientes=0" +
-                                " Observados=0" +
-                                " MotivoBloqueo=");
+                                " TotalDocumentos=" + diagnosticoDocumentos.TotalDocumentos +
+                                " Pendientes=" + diagnosticoDocumentos.Pendientes +
+                                " Observados=" + diagnosticoDocumentos.Observados +
+                                " MotivoBloqueo=" + (diagnosticoDocumentos.MotivoBloqueo ?? string.Empty));
                         }
 
                         int codigoInspeccion;
@@ -1706,6 +1727,108 @@ LIMIT 1;";
             }
 
             return FirstNonEmpty(solicitud.CorreoRepresentanteTecnico, solicitud.Email);
+        }
+
+        private sealed class DocumentoAsignacionDiagnostico
+        {
+            public int TotalDocumentos { get; set; }
+            public int Pendientes { get; set; }
+            public int Observados { get; set; }
+            public int Aceptados { get; set; }
+            public string EstadoDocumental { get; set; }
+            public bool PuedeEnviarInspector { get; set; }
+            public string MotivoBloqueo { get; set; }
+        }
+
+        private static DocumentoAsignacionDiagnostico ObtenerDiagnosticoDocumentosAsignacion(
+            NpgsqlConnection cn,
+            NpgsqlTransaction tx,
+            int codigoSolicitud,
+            string estadoDocumental)
+        {
+            var diagnostico = new DocumentoAsignacionDiagnostico
+            {
+                EstadoDocumental = estadoDocumental ?? string.Empty,
+                PuedeEnviarInspector = true,
+                MotivoBloqueo = string.Empty
+            };
+
+            var columnas = ObtenerColumnasTabla(cn, "aocr_tbdocumento");
+            if (columnas.Count == 0)
+            {
+                diagnostico.MotivoBloqueo = "Tabla aocr_tbdocumento no disponible para diagnostico documental.";
+                return diagnostico;
+            }
+
+            if (!columnas.Contains("codigo_solicitud"))
+            {
+                diagnostico.MotivoBloqueo = "La tabla aocr_tbdocumento no tiene columna codigo_solicitud para vincular documentos.";
+                return diagnostico;
+            }
+
+            var estadoSql = columnas.Contains("estado")
+                ? "UPPER(COALESCE(estado, ''))"
+                : "''";
+            var validadoSql = columnas.Contains("validado")
+                ? "COALESCE(validado, FALSE)"
+                : "FALSE";
+            var where = "codigo_solicitud = @codigo_solicitud";
+            if (columnas.Contains("deleted_at"))
+            {
+                where += " AND deleted_at IS NULL";
+            }
+
+            var sql = @"
+                SELECT
+                    COUNT(*)::int AS total_documentos,
+                    COALESCE(SUM(CASE
+                        WHEN " + estadoSql + @" LIKE '%PEND%'
+                          OR " + estadoSql + @" LIKE '%BORR%'
+                          OR " + estadoSql + @" LIKE '%SUBSAN%'
+                        THEN 1 ELSE 0 END), 0)::int AS pendientes,
+                    COALESCE(SUM(CASE
+                        WHEN " + estadoSql + @" LIKE '%OBS%'
+                          OR " + estadoSql + @" LIKE '%RECH%'
+                          OR " + estadoSql + @" LIKE '%DEVUEL%'
+                        THEN 1 ELSE 0 END), 0)::int AS observados,
+                    COALESCE(SUM(CASE
+                        WHEN " + validadoSql + @" = TRUE
+                          OR " + estadoSql + @" LIKE '%VALID%'
+                          OR " + estadoSql + @" LIKE '%ACEPT%'
+                          OR " + estadoSql + @" LIKE '%APROB%'
+                        THEN 1 ELSE 0 END), 0)::int AS aceptados
+                FROM aocr_tbdocumento
+                WHERE " + where + ";";
+
+            using (var cmd = new NpgsqlCommand(sql, cn, tx))
+            {
+                cmd.Parameters.AddWithValue("@codigo_solicitud", codigoSolicitud);
+                using (var rd = cmd.ExecuteReader())
+                {
+                    if (rd.Read())
+                    {
+                        diagnostico.TotalDocumentos = Convert.ToInt32(rd["total_documentos"]);
+                        diagnostico.Pendientes = Convert.ToInt32(rd["pendientes"]);
+                        diagnostico.Observados = Convert.ToInt32(rd["observados"]);
+                        diagnostico.Aceptados = Convert.ToInt32(rd["aceptados"]);
+                    }
+                }
+            }
+
+            if (diagnostico.TotalDocumentos == 0)
+            {
+                diagnostico.MotivoBloqueo = "Sin documentos vinculados a la solicitud; se mantiene el flujo por estado documental.";
+                return diagnostico;
+            }
+
+            if (diagnostico.Pendientes > 0 || diagnostico.Observados > 0)
+            {
+                diagnostico.PuedeEnviarInspector = false;
+                diagnostico.MotivoBloqueo = "No se puede enviar a inspeccion porque existen documentos pendientes u observados.";
+                return diagnostico;
+            }
+
+            return diagnostico;
         }
 
         private static HashSet<string> ObtenerColumnasTabla(NpgsqlConnection cn, string tabla)

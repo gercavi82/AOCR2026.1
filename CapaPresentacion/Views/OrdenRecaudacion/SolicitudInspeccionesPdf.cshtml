@@ -1,4 +1,4 @@
-@model CapaPresentacion.Models.ViewModels.SolicitudInspeccionPdfViewModel
+@inherits System.Web.Mvc.WebViewPage<CapaPresentacion.Models.ViewModels.SolicitudInspeccionPdfViewModel>
 @using System
 
 @{
@@ -9,6 +9,11 @@
 
 @section PdfHead {
     <style>
+        #pdf-content {
+            padding-top: 42mm;
+            padding-bottom: 34mm;
+        }
+
         .pdf-title {
             text-align: center;
             font-size: 14px;
@@ -186,14 +191,14 @@
 </div>
 
 <div class="pdf-reference">
-    <div class="pdf-reference-title">INFORMACION DE REFERENCIA: RESOLUCION 066-2010 (01 DE JULIO 2010), ART. 14</div>
+    <div class="pdf-reference-title">INFORMACIÓN DE REFERENCIA: RESOLUCIÓN 066-2010 (01 DE JULIO 2010), ART. 14</div>
     <p>
-        "5. Si el solicitante interrumpe el proceso iniciado por un periodo mayor a 30 dias laborables o no cumpliere con los plazos
-        establecidos por la Autoridad, sera notificado por escrito de la finalizacion y archivo del tramite. Para el inicio de un nuevo tramite,
-        el aplicante debera cancelar un nuevo derecho.
+        "5. Si el solicitante interrumpe el proceso iniciado por un periodo mayor a 30 días laborables o no cumpliere con los plazos
+        establecidos por la Autoridad, será notificado por escrito de la finalización y archivo del trámite. Para el inicio de un nuevo trámite,
+        el aplicante deberá cancelar un nuevo derecho.
     </p>
     <p>
-        6. Los valores especificados no incluyen gastos requeridos por traslado, alojamiento y viaticos de los inspectores, costos que correran
-        a cargo del solicitante y deberan ser cancelados y coordinados previos al cumplimiento de la tarea, conforme a la Reglamentacion y tarifas vigentes."
+        6. Los valores especificados no incluyen gastos requeridos por traslado, alojamiento y viáticos de los inspectores, costos que correrán
+        a cargo del solicitante y deberán ser cancelados y coordinados previos al cumplimiento de la tarea, conforme a la Reglamentación y tarifas vigentes."
     </p>
 </div>

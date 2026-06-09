@@ -440,6 +440,34 @@
         color: #4a6778;
     }
 
+    .fin-modal .modal-content {
+        background: #ffffff;
+        color: #173042;
+    }
+
+    .fin-modal .modal-header,
+    .fin-modal .modal-body,
+    .fin-modal .modal-footer {
+        background: #ffffff;
+    }
+
+    .fin-modal .modal-title,
+    .fin-modal .modal-body,
+    .fin-modal .modal-body strong,
+    .fin-modal .form-label {
+        color: #173042 !important;
+    }
+
+    .fin-modal .text-muted {
+        color: #64748b !important;
+    }
+
+    .fin-modal .alert-info {
+        background: #d9edf7;
+        border-color: #bce8f1;
+        color: #0c4a5a !important;
+    }
+
     @@media (max-width: 1200px) {
         .fin-kpi-grid,
         .fin-chart-grid {
@@ -855,15 +883,6 @@
                 i++;
             }
         }
-        else
-        {
-            <tr>
-                <td colspan="9" class="text-center aocr-no-results">
-                    <i class="fas fa-inbox" style="font-size:1.5rem;display:block;margin-bottom:0.4rem;opacity:0.4;"></i>
-                    No hay registros para el estado seleccionado.
-                </td>
-            </tr>
-        }
     </tbody>
 </table>
 </div>
@@ -871,7 +890,7 @@
 </div>
 
 
-<div class="modal fade" id="modalRechazarOrden" tabindex="-1" aria-hidden="true">
+<div class="modal fade fin-modal" id="modalRechazarOrden" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog">
         <div class="modal-content">
             <div class="modal-header">
@@ -898,7 +917,7 @@
     </div>
 </div>
 
-<div class="modal fade" id="modalAprobarPagoFactura" tabindex="-1" aria-hidden="true">
+<div class="modal fade fin-modal" id="modalAprobarPagoFactura" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog">
         <div class="modal-content">
             <div class="modal-header">
@@ -922,7 +941,7 @@
 
                     <div class="alert alert-info py-2" role="alert">
                         <i class="fas fa-info-circle me-1"></i>
-                        Se aprobara la orden y se enviara la facturacion FR3 al AS400 solo despues de validar el comprobante de pago.
+                        Se aprobará la orden y se enviará la facturación FR3 al AS400 solo después de validar el comprobante de pago.
                     </div>
                 </div>
                 <div class="modal-footer">

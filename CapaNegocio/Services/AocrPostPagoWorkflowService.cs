@@ -681,7 +681,7 @@ namespace CapaNegocio.Services
         private static List<Usuario> ObtenerCoordinadores()
         {
             var result = new Dictionary<int, Usuario>();
-            foreach (var rol in new[] { RolesAOCR.COORDINADOR_INSPECCIONES, "Coordinador", RolesAOCR.JEFATURA_TECNICA, RolesAOCR.ADMINISTRADOR })
+            foreach (var rol in new[] { "CoordinadorInspecciones", "Coordinador", "JefaturaTecnica", "Administrador" })
             {
                 foreach (var usuario in UsuarioDAO.ListarPorRol(rol) ?? new List<Usuario>())
                 {

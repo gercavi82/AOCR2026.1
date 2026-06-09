@@ -4,6 +4,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Net.Mail;
 using CapaModelo;
 
 // ✅ IMPORTA DAOs
@@ -382,6 +383,69 @@ namespace CapaNegocio
             return notificacionInternaOk || correoOk;
         }
 
+        public static bool EncolarCorreoCambioEstadoPrueba(string emailDestino, string nombreDestino, int codigoSolicitud, string nuevoEstado, out string mensaje)
+        {
+            mensaje = string.Empty;
+
+            try
+            {
+                var correoNormalizado = (emailDestino ?? string.Empty).Trim();
+                if (string.IsNullOrWhiteSpace(correoNormalizado))
+                {
+                    mensaje = "Debe especificar un correo destino para la prueba.";
+                    return false;
+                }
+
+                if (!EsCorreoValido(correoNormalizado))
+                {
+                    mensaje = "El correo destino no tiene un formato válido.";
+                    return false;
+                }
+
+                var estado = (nuevoEstado ?? string.Empty).Trim();
+                if (string.IsNullOrWhiteSpace(estado))
+                {
+                    mensaje = "Debe especificar el estado a utilizar en el correo de prueba.";
+                    return false;
+                }
+
+                var estadoNormalizado = EstadoSolicitud.Normalizar(estado);
+                string tipo;
+                string titulo;
+                ResolverMetaCambioEstado(estado, out tipo, out titulo);
+
+                var queueItem = new EmailQueueItem
+                {
+                    Para = correoNormalizado,
+                    ParaNombre = string.IsNullOrWhiteSpace(nombreDestino) ? "Usuario AOCR" : nombreDestino.Trim(),
+                    Asunto = "AOCR - " + titulo,
+                    Cuerpo = ConstruirCuerpoCorreoCambioEstado(
+                        string.IsNullOrWhiteSpace(nombreDestino) ? "Usuario AOCR" : nombreDestino.Trim(),
+                        codigoSolicitud,
+                        estadoNormalizado,
+                        tipo),
+                    EsHtml = true,
+                    Estado = "PENDIENTE",
+                    SolicitudId = codigoSolicitud,
+                    TipoNotificacion = "AOCR_CAMBIO_ESTADO_PRUEBA",
+                    EventKey = ConstruirEventKeyCambioEstadoPrueba(codigoSolicitud, correoNormalizado, estadoNormalizado),
+                    CorrelationId = Guid.NewGuid().ToString("N").Substring(0, 12),
+                    MaxIntentos = 3
+                };
+
+                var queueService = new EmailQueueService();
+                queueService.EncolarAsync(queueItem).GetAwaiter().GetResult();
+                mensaje = "Correo de prueba de cambio de estado encolado correctamente.";
+                return true;
+            }
+            catch (Exception ex)
+            {
+                mensaje = "Error al encolar correo de prueba: " + ex.Message;
+                LogBL.RegistrarError("Error al encolar correo de prueba de cambio de estado", ex.ToString(), "Notificacion");
+                return false;
+            }
+        }
+
         private static bool EncolarCorreoCambioEstadoIdempotente(int codigoUsuario, int codigoSolicitud, string estadoNormalizado, string titulo, string tipo)
         {
             try
@@ -428,6 +492,48 @@ namespace CapaNegocio
         {
             var estado = (estadoNormalizado ?? string.Empty).Trim().ToUpperInvariant();
             return string.Format("AOCR:CAMBIO_ESTADO:{0}:{1}:{2}", codigoSolicitud, codigoUsuario, estado);
+        }
+
+        private static string ConstruirEventKeyCambioEstadoPrueba(int codigoSolicitud, string emailDestino, string estadoNormalizado)
+        {
+            var estado = (estadoNormalizado ?? string.Empty).Trim().ToUpperInvariant();
+            var correo = (emailDestino ?? string.Empty).Trim().ToUpperInvariant();
+            return string.Format("AOCR:CAMBIO_ESTADO:PRUEBA:{0}:{1}:{2}", codigoSolicitud, estado, correo);
+        }
+
+        private static bool EsCorreoValido(string correo)
+        {
+            try
+            {
+                var mailAddress = new MailAddress(correo ?? string.Empty);
+                return string.Equals(mailAddress.Address, (correo ?? string.Empty).Trim(), StringComparison.OrdinalIgnoreCase);
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        private static void ResolverMetaCambioEstado(string estado, out string tipo, out string titulo)
+        {
+            tipo = "INFO";
+            titulo = "Cambio de Estado";
+
+            if (estado == "Observada" || estado == "Rechazada")
+            {
+                tipo = "WARNING";
+                titulo = "Solicitud Observada";
+            }
+            else if (estado == "Anulada")
+            {
+                tipo = "ERROR";
+                titulo = "Solicitud Anulada";
+            }
+            else if (estado == "AOCR Emitido/Recibido" || estado == "Certificado Emitido" || estado == "Aprobada")
+            {
+                tipo = "SUCCESS";
+                titulo = "Solicitud Aprobada";
+            }
         }
 
         private static string ConstruirCuerpoCorreoCambioEstado(string nombreDestino, int codigoSolicitud, string estadoNormalizado, string tipo)

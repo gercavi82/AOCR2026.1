@@ -131,6 +131,16 @@ namespace CapaPresentacion
                     return;
                 }
 
+                if (TryNormalizeAuthenticatedLoginRedirect(context, request, response))
+                {
+                    return;
+                }
+
+                if (TryNormalizeAjaxLoginRedirect(context, request, response))
+                {
+                    return;
+                }
+
                 if (response.StatusCode != 400)
                 {
                     return;
@@ -205,21 +215,167 @@ namespace CapaPresentacion
             }
 
             response.SuppressFormsAuthenticationRedirect = true;
-            response.StatusCode = 403;
 
             if (IsAjaxLikeRequest(request))
             {
+                response.StatusCode = 403;
                 response.TrySkipIisCustomErrors = true;
+            }
+            else
+            {
+                var destino = VirtualPathUtility.ToAbsolute("~/Error/NoAutorizado");
+                response.StatusCode = 302;
+                response.RedirectLocation = destino;
+                response.AddHeader("Location", destino);
             }
 
             PerfLogger.LogWarning(string.Format(
-                "[AUTH] 401 autenticado normalizado a 403. Path={0}; Method={1}; User={2}; Ajax={3}",
+                "[AUTH] 401 autenticado normalizado. Path={0}; Method={1}; User={2}; Ajax={3}; Destino={4}",
                 path,
                 request.HttpMethod,
                 identity.Name ?? string.Empty,
-                IsAjaxLikeRequest(request)));
+                IsAjaxLikeRequest(request),
+                IsAjaxLikeRequest(request) ? "403" : VirtualPathUtility.ToAbsolute("~/Error/NoAutorizado")));
 
             return true;
+        }
+
+        private static bool TryNormalizeAuthenticatedLoginRedirect(HttpContext context, HttpRequest request, HttpResponse response)
+        {
+            if (context == null || request == null || response == null)
+            {
+                return false;
+            }
+
+            if (!IsFormsLoginRedirect(response))
+            {
+                return false;
+            }
+
+            var identity = context.User != null ? context.User.Identity : null;
+            if (identity == null || !identity.IsAuthenticated)
+            {
+                return false;
+            }
+
+            var path = request.Url != null ? request.Url.AbsolutePath : request.Path;
+            if (string.IsNullOrWhiteSpace(path) ||
+                path.StartsWith(VirtualPathUtility.ToAbsolute("~/Account/Login"), StringComparison.OrdinalIgnoreCase) ||
+                path.StartsWith(VirtualPathUtility.ToAbsolute("~/Account/Logout"), StringComparison.OrdinalIgnoreCase) ||
+                path.StartsWith(VirtualPathUtility.ToAbsolute("~/Error"), StringComparison.OrdinalIgnoreCase))
+            {
+                return false;
+            }
+
+            var redirectOriginal = response.RedirectLocation ?? string.Empty;
+            var destino = VirtualPathUtility.ToAbsolute("~/Error/NoAutorizado");
+
+            response.Clear();
+            response.SuppressFormsAuthenticationRedirect = true;
+            response.TrySkipIisCustomErrors = true;
+
+            if (IsAjaxLikeRequest(request))
+            {
+                response.StatusCode = 403;
+                response.ContentType = "application/json; charset=utf-8";
+                response.Write("{\"success\":false,\"code\":403,\"requiresLogin\":false,\"message\":\"No tiene permisos para acceder a este recurso.\"}");
+            }
+            else
+            {
+                response.StatusCode = 302;
+                response.RedirectLocation = destino;
+                response.AddHeader("Location", destino);
+            }
+
+            PerfLogger.LogWarning(string.Format(
+                "[AUTH][DENIED] Redireccion a Login bloqueada para usuario autenticado. Path={0}; Method={1}; User={2}; RedirectOriginal={3}; Destino={4}",
+                request.RawUrl ?? string.Empty,
+                request.HttpMethod,
+                identity.Name ?? string.Empty,
+                redirectOriginal,
+                IsAjaxLikeRequest(request) ? "JSON_403" : destino));
+
+            context.ApplicationInstance.CompleteRequest();
+            return true;
+        }
+
+        private static bool TryNormalizeAjaxLoginRedirect(HttpContext context, HttpRequest request, HttpResponse response)
+        {
+            if (context == null || request == null || response == null)
+            {
+                return false;
+            }
+
+            if (!IsAjaxLikeRequest(request))
+            {
+                return false;
+            }
+
+            var loginRedirect = IsFormsLoginRedirect(response);
+            if (response.StatusCode != 401 && !loginRedirect)
+            {
+                return false;
+            }
+
+            var identity = context.User != null ? context.User.Identity : null;
+            if (identity != null && identity.IsAuthenticated)
+            {
+                return false;
+            }
+
+            response.Clear();
+            response.SuppressFormsAuthenticationRedirect = true;
+            response.TrySkipIisCustomErrors = true;
+            response.StatusCode = 401;
+            response.ContentType = "application/json; charset=utf-8";
+
+            var returnUrl = request.RawUrl ?? (request.Url != null ? request.Url.PathAndQuery : string.Empty);
+            var loginUrl = VirtualPathUtility.ToAbsolute("~/Account/Login");
+            if (!string.IsNullOrWhiteSpace(returnUrl))
+            {
+                loginUrl += "?ReturnUrl=" + HttpUtility.UrlEncode(returnUrl);
+            }
+
+            response.Write("{\"success\":false,\"code\":401,\"requiresLogin\":true,\"redirectUrl\":\""
+                + JsonEscape(loginUrl)
+                + "\",\"message\":\"La sesion expiro o la aplicacion se reinicio. Inicie sesion nuevamente y vuelva a intentar finalizar la LV/EAE.\"}");
+
+            PerfLogger.LogWarning(string.Format(
+                "[AUTH][AJAX] Respuesta no autenticada normalizada a JSON 401. Path={0}; Method={1}; RedirectLogin={2}; AuthCookie={3}",
+                request.RawUrl ?? string.Empty,
+                request.HttpMethod,
+                loginRedirect,
+                request.Cookies[FormsAuthentication.FormsCookieName] != null));
+
+            context.ApplicationInstance.CompleteRequest();
+            return true;
+        }
+
+        private static bool IsFormsLoginRedirect(HttpResponse response)
+        {
+            if (response == null || response.StatusCode != 302)
+            {
+                return false;
+            }
+
+            var redirectLocation = response.RedirectLocation ?? string.Empty;
+            return redirectLocation.IndexOf("/Account/Login", StringComparison.OrdinalIgnoreCase) >= 0
+                || redirectLocation.IndexOf("Account%2fLogin", StringComparison.OrdinalIgnoreCase) >= 0
+                || redirectLocation.IndexOf("Account%2FLogin", StringComparison.OrdinalIgnoreCase) >= 0;
+        }
+
+        private static string JsonEscape(string value)
+        {
+            if (string.IsNullOrEmpty(value))
+            {
+                return string.Empty;
+            }
+
+            return value
+                .Replace("\\", "\\\\")
+                .Replace("\"", "\\\"")
+                .Replace("\r", "\\r")
+                .Replace("\n", "\\n");
         }
 
         private static bool IsAjaxLikeRequest(HttpRequest request)
@@ -254,9 +410,50 @@ namespace CapaPresentacion
 
             var ticketRoleData = AuthTicketRoleDataHelper.Deserialize(authTicket.UserData);
             var rolesDesdeTicket = ticketRoleData.Roles.Count > 0;
-            string[] roles = rolesDesdeTicket
-                ? ticketRoleData.Roles.ToArray()
-                : GetRolesFromDB(authTicket.Name);
+            var rolesTicket = RoleGroupingHelper.SanitizeRawRolesForUser(authTicket.Name, ticketRoleData.Roles).ToArray();
+            var rolesDb = RoleGroupingHelper.SanitizeRawRolesForUser(authTicket.Name, GetRolesFromDB(authTicket.Name)).ToArray();
+            var rolesBase = rolesDb.Length > 0
+                ? rolesDb
+                : (rolesDesdeTicket ? rolesTicket : new string[] { });
+            string[] roles = rolesBase
+                .Concat(RoleGroupingHelper.BuildUnifiedRoles(rolesBase))
+                .Where(r => !string.IsNullOrWhiteSpace(r))
+                .Select(r => r.Trim())
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToArray();
+
+            var selectedRole = RoleGroupingHelper.ResolveSelectedRoleForUser(
+                authTicket.Name,
+                RoleGroupingHelper.BuildUnifiedRoles(rolesBase),
+                ticketRoleData.SelectedRole);
+
+            if (!RolesEquivalent(rolesTicket, rolesBase) ||
+                !string.Equals(ticketRoleData.SelectedRole ?? string.Empty, selectedRole ?? string.Empty, StringComparison.OrdinalIgnoreCase))
+            {
+                ReemitirTicketRoles(authTicket, rolesBase, selectedRole);
+            }
+
+            try
+            {
+                var rolesSession = new string[] { };
+                if (Context != null && Context.Session != null)
+                {
+                    rolesSession = RoleGroupingHelper
+                        .ExtractRoles(Context.Session["RolesRaw"] ?? Context.Session["Roles"])
+                        .ToArray();
+                }
+                PerfLogger.LogInfo(string.Format(
+                    "[AOCR][ROLES_SYNC] Usuario={0}; RolesBD={1}; RolesTicket={2}; RolesSession={3}; RolActivo={4}; Resultado={5}",
+                    authTicket.Name,
+                    string.Join(",", rolesDb),
+                    string.Join(",", rolesTicket),
+                    string.Join(",", rolesSession),
+                    selectedRole ?? string.Empty,
+                    rolesDb.Length > 0 ? "OK_BD" : "OK_TICKET_SANITIZADO"));
+            }
+            catch
+            {
+            }
 
             var identity = new GenericIdentity(authTicket.Name);
             var principal = new GenericPrincipal(identity, roles);
@@ -269,9 +466,72 @@ namespace CapaPresentacion
                 PerfLogger.LogInfo(string.Format(
                     "[PERF][LOGIN] AuthenticateRequest usuario={0}; rolesSource={1}; roles={2}; total={3} ms",
                     authTicket.Name,
-                    rolesDesdeTicket ? "ticket" : "db",
+                    rolesDb.Length > 0 ? "db" : (rolesDesdeTicket ? "ticket" : "empty"),
                     roles != null ? roles.Length : 0,
                     authStopwatch.ElapsedMilliseconds));
+            }
+        }
+
+        private static bool RolesEquivalent(string[] left, string[] right)
+        {
+            var a = (left ?? new string[] { })
+                .Where(x => !string.IsNullOrWhiteSpace(x))
+                .Select(x => x.Trim())
+                .OrderBy(x => x, StringComparer.OrdinalIgnoreCase)
+                .ToArray();
+            var b = (right ?? new string[] { })
+                .Where(x => !string.IsNullOrWhiteSpace(x))
+                .Select(x => x.Trim())
+                .OrderBy(x => x, StringComparer.OrdinalIgnoreCase)
+                .ToArray();
+
+            return a.SequenceEqual(b, StringComparer.OrdinalIgnoreCase);
+        }
+
+        private static void ReemitirTicketRoles(FormsAuthenticationTicket authTicket, string[] roles, string selectedRole)
+        {
+            try
+            {
+                if (authTicket == null || HttpContext.Current == null)
+                {
+                    return;
+                }
+
+                var expiracion = authTicket.IsPersistent && authTicket.Expiration > DateTime.Now
+                    ? authTicket.Expiration
+                    : DateTime.Now.AddMinutes(SessionTimeoutHelper.GetTimeoutMinutes());
+                var ticketActualizado = new FormsAuthenticationTicket(
+                    authTicket.Version,
+                    authTicket.Name,
+                    DateTime.Now,
+                    expiracion,
+                    authTicket.IsPersistent,
+                    AuthTicketRoleDataHelper.Serialize(roles, selectedRole),
+                    string.IsNullOrWhiteSpace(authTicket.CookiePath) ? FormsAuthentication.FormsCookiePath : authTicket.CookiePath);
+
+                var cookie = new HttpCookie(FormsAuthentication.FormsCookieName, FormsAuthentication.Encrypt(ticketActualizado))
+                {
+                    HttpOnly = true,
+                    Secure = HttpContext.Current.Request != null && HttpContext.Current.Request.IsSecureConnection,
+                    Path = string.IsNullOrWhiteSpace(ticketActualizado.CookiePath) ? FormsAuthentication.FormsCookiePath : ticketActualizado.CookiePath
+                };
+                CookieHelper.SetSameSiteLax(cookie);
+
+                if (authTicket.IsPersistent)
+                {
+                    cookie.Expires = expiracion;
+                }
+
+                HttpContext.Current.Response.Cookies.Add(cookie);
+                PerfLogger.LogInfo(string.Format(
+                    "[AOCR][ROLES_SYNC] Usuario={0}; TicketReemitido=True; RolesTicketNuevo={1}; RolActivo={2}; Resultado=OK",
+                    authTicket.Name,
+                    string.Join(",", roles ?? new string[] { }),
+                    selectedRole ?? string.Empty));
+            }
+            catch (Exception ex)
+            {
+                PerfLogger.LogWarning("[AOCR][ROLES_SYNC] No se pudo reemitir ticket de roles: " + ex.Message);
             }
         }
 

@@ -15,6 +15,7 @@ namespace CapaPresentacion.Controllers
     public class TecnicoController : Controller
     {
         private const string CatalogoInspectoresLabel = "Catalogo institucional de inspectores activos";
+        private const string RolesGestionInspecciones = "Administrador,Coordinador,CoordinadorInspecciones,Coordinacion,CoordinacionLegal,CoordinadorLegal";
 
         private readonly CapaNegocio.Services.ILoggingService _logger;
         private readonly SolicitudAocrCorreoService _solicitudAocrCorreoService;
@@ -29,15 +30,15 @@ namespace CapaPresentacion.Controllers
         // =======================================================
         // BANDEJA STANDALONE - Asignación de inspectores
         // =======================================================
-        [Authorize(Roles = "Administrador,Coordinador,CoordinadorInspecciones")]
+        [Authorize(Roles = RolesGestionInspecciones)]
         public ActionResult Index()
         {
-            _logger.LogInfo("[InspeccionesController] Inicio pantalla gestion (Tecnico/Index). Usuario=" + ObtenerUsuarioActual() + ", Rol=" + ObtenerRolActual());
+            _logger.LogInfo("[AOCR][ASIGNACION_INSPECTOR] Entrada Tecnico/Index heredado. Usuario=" + ObtenerUsuarioActual() + ", RolesDetectados=" + ObtenerRolActual() + ", RolesRequeridos=" + RolesGestionInspecciones);
 
             var pendientes = SolicitudAOCRBL.ObtenerPendientesAsignacion() ?? new List<SolicitudAOCR>();
             ViewBag.TotalPendientes = pendientes.Count;
 
-            _logger.LogInfo("[InspeccionesController] Bandeja standalone de asignacion cargada. Pendientes=" + pendientes.Count);
+            _logger.LogInfo("[AOCR][ASIGNACION_INSPECTOR] Bandeja de coordinacion cargada. Usuario=" + ObtenerUsuarioActual() + ", Pendientes=" + pendientes.Count);
 
             return View("Index", pendientes);
         }
@@ -46,7 +47,7 @@ namespace CapaPresentacion.Controllers
         // ASIGNAR INSPECTOR (GET)
         // =======================================================
         [HttpGet]
-        [Authorize(Roles = "Administrador,Coordinador,CoordinadorInspecciones")]
+        [Authorize(Roles = RolesGestionInspecciones)]
         public ActionResult AsignarInspector(int? solicitudId, string tipoInspector = "OPS")
         {
             _logger.LogInfo("[InspeccionesController] Inicio pantalla gestion de asignacion. Usuario=" + ObtenerUsuarioActual() + ", Rol=" + ObtenerRolActual() + ", SolicitudId=" + (solicitudId.HasValue ? solicitudId.Value.ToString() : "null"));
@@ -70,7 +71,14 @@ namespace CapaPresentacion.Controllers
 
             var esReasignacion = TieneInspectorAsignado(solicitud);
 
-            var tipoInspectorNormalizado = NormalizarTipoInspector(tipoInspector);
+            string motivoTipo;
+            bool inferidoTipo;
+            var tipoInspectorNormalizado = ResolverTipoInspector(solicitud.CodigoSolicitud, tipoInspector, true, out inferidoTipo, out motivoTipo);
+            if (string.IsNullOrWhiteSpace(tipoInspectorNormalizado))
+            {
+                TempData["Error"] = motivoTipo;
+                return RedirectToAction("AsignarInspector", new { solicitudId = solicitud.CodigoSolicitud, tipoInspector = "OPS" });
+            }
             var inspectores = UsuarioInternoRTBL.ListarInspectoresAsignables(tipoInspectorNormalizado) ?? new List<CapaDatos.Models.UsuarioInternoRTRegistro>();
             var origenInspectores = CatalogoInspectoresLabel;
 
@@ -122,7 +130,7 @@ namespace CapaPresentacion.Controllers
         // ASIGNAR INSPECTOR (POST)
         // =======================================================
         [HttpPost]
-        [Authorize(Roles = "Administrador,Coordinador,CoordinadorInspecciones")]
+        [Authorize(Roles = RolesGestionInspecciones)]
         [ValidateAntiForgeryToken]
         public ActionResult AsignarInspector(
             int solicitudId,
@@ -162,7 +170,14 @@ namespace CapaPresentacion.Controllers
                 var esReasignacion = TieneInspectorAsignado(solicitud);
                 _logger.LogInfo("[GestionInspeccion] EstadoActual=" + (solicitud == null ? "(solicitud-null)" : (solicitud.Estado ?? "(null)")));
 
-                var tipoInspectorNormalizado = NormalizarTipoInspector(tipoInspector);
+                string motivoTipo;
+                bool inferidoTipo;
+                var tipoInspectorNormalizado = ResolverTipoInspector(solicitudId, tipoInspector, true, out inferidoTipo, out motivoTipo);
+                if (string.IsNullOrWhiteSpace(tipoInspectorNormalizado))
+                {
+                    TempData["Error"] = motivoTipo;
+                    return RedirectToAction("AsignarInspector", new { solicitudId, tipoInspector = "OPS" });
+                }
                 var inspectorPrincipalRegistro = UsuarioInternoRTBL.ObtenerInspectorAsignable(inspectorPrincipal, tipoInspectorNormalizado);
                 if (inspectorPrincipalRegistro == null)
                 {
@@ -256,12 +271,18 @@ namespace CapaPresentacion.Controllers
         }
 
         [HttpGet]
-        [Authorize(Roles = "Administrador,Coordinador,CoordinadorInspecciones")]
+        [Authorize(Roles = RolesGestionInspecciones)]
         public JsonResult ListarInspectoresActivos(string tipoInspector = "OPS")
         {
             _logger.LogInfo("[InspeccionesController] Inicio endpoint AJAX inspectores. Usuario=" + ObtenerUsuarioActual() + ", Rol=" + ObtenerRolActual() + ", TipoInspector=" + (tipoInspector ?? ""));
 
-            var tipoNormalizado = NormalizarTipoInspector(tipoInspector);
+            string motivoTipo;
+            bool inferidoTipo;
+            var tipoNormalizado = ResolverTipoInspector(0, tipoInspector, true, out inferidoTipo, out motivoTipo);
+            if (string.IsNullOrWhiteSpace(tipoNormalizado))
+            {
+                return Json(new { success = false, message = motivoTipo }, JsonRequestBehavior.AllowGet);
+            }
             var data = UsuarioInternoRTBL.ListarInspectoresAsignables(tipoNormalizado) ?? new List<CapaDatos.Models.UsuarioInternoRTRegistro>();
 
             var payload = data
@@ -287,20 +308,37 @@ namespace CapaPresentacion.Controllers
             return RedirectToAction("Index", "Tecnico");
         }
 
-        private static string NormalizarTipoInspector(string tipoInspector)
+        private string ResolverTipoInspector(int solicitudId, string tipoInspector, bool permitirInferirOps, out bool inferido, out string motivo)
         {
+            var frontend = tipoInspector ?? string.Empty;
+            inferido = false;
+            motivo = string.Empty;
+
             if (string.IsNullOrWhiteSpace(tipoInspector))
             {
+                if (!permitirInferirOps)
+                {
+                    motivo = "Seleccione el tipo de inspector antes de asignar.";
+                    _logger.LogWarning("[AOCR][TIPO_INSPECTOR_VALIDACION] SolicitudId=" + solicitudId + ", TipoInspectorFrontend=, TipoInspectorBackend=, TipoInspectorFinal=, Inferido=False, Motivo=" + motivo);
+                    return string.Empty;
+                }
+
+                inferido = true;
+                motivo = "TipoInspector no recibido; se infiere OPS por configuracion de solicitud.";
+                _logger.LogWarning("[AOCR][TIPO_INSPECTOR_VALIDACION] SolicitudId=" + solicitudId + ", TipoInspectorFrontend=" + frontend + ", TipoInspectorBackend=, TipoInspectorFinal=OPS, Inferido=True, Motivo=" + motivo);
                 return "OPS";
             }
 
             var value = tipoInspector.Trim().ToUpperInvariant();
             if (value == "OPS" || value == "AIR" || value == "TODOS")
             {
+                _logger.LogInfo("[AOCR][TIPO_INSPECTOR_VALIDACION] SolicitudId=" + solicitudId + ", TipoInspectorFrontend=" + frontend + ", TipoInspectorBackend=" + value + ", TipoInspectorFinal=" + value + ", Inferido=False, Motivo=OK");
                 return value;
             }
 
-            return "OPS";
+            motivo = "Tipo de inspector invalido. Seleccione OPS, AIR o TODOS.";
+            _logger.LogWarning("[AOCR][TIPO_INSPECTOR_VALIDACION] SolicitudId=" + solicitudId + ", TipoInspectorFrontend=" + frontend + ", TipoInspectorBackend=" + value + ", TipoInspectorFinal=, Inferido=False, Motivo=" + motivo);
+            return string.Empty;
         }
 
         private string ObtenerUsuarioActual()
@@ -316,7 +354,7 @@ namespace CapaPresentacion.Controllers
 
         private string ObtenerRolActual()
         {
-            var roles = new[] { "Administrador", "Coordinador", "CoordinadorInspecciones" }
+            var roles = RolesGestionInspecciones.Split(',')
                 .Where(r => User != null && User.IsInRole(r))
                 .ToList();
 

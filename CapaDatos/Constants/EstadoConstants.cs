@@ -294,6 +294,8 @@ namespace CapaDatos.Constants
                 case "SOLICITUD_CREADA":
                     return Pendiente;
                 case "DOCUMENTACION_PENDIENTE":
+                case "EN_REVISION_DOCUMENTAL":
+                case "EN REVISION DOCUMENTAL":
                 case "ENVIADO":
                 case "PREPARANDO":
                 case "ENVIADO_COORDINADOR":

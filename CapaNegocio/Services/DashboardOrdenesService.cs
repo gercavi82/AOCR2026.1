@@ -73,7 +73,7 @@ namespace CapaNegocio.Services
                             SELECT 
                                 COUNT(*) as total_ordenes,
                                 SUM(CASE 
-                                    WHEN UPPER(estado) IN ('BORRADOR', 'GENERADA', 'ENVIADA', 'APROBADA') 
+                                    WHEN UPPER(estado) IN ('BORRADOR', 'PENDIENTE', 'GENERADA', 'ENVIADA', 'APROBADA', 'PROCESADA', 'EN_REVISION', 'EN_REVISION_FINANCIERA')
                                     THEN 1 ELSE 0 
                                 END) as pendientes,
                                 SUM(CASE 
@@ -90,7 +90,7 @@ namespace CapaNegocio.Services
                                 END) as rechazadas,
                                 COALESCE(SUM(total), 0) as monto_total,
                                 COALESCE(SUM(CASE 
-                                    WHEN UPPER(estado) IN ('BORRADOR', 'GENERADA', 'ENVIADA', 'APROBADA') 
+                                    WHEN UPPER(estado) IN ('BORRADOR', 'PENDIENTE', 'GENERADA', 'ENVIADA', 'APROBADA', 'PROCESADA', 'EN_REVISION', 'EN_REVISION_FINANCIERA')
                                     THEN total ELSE 0 
                                 END), 0) as monto_pendiente,
                                 COALESCE(SUM(CASE 

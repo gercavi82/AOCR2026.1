@@ -33,7 +33,13 @@ namespace CapaNegocio.Services
             _logger = LoggingServiceFactory.Create();
         }
 
-        public ResultadoOperacion NotificarEvento(Inspeccion inspeccion, SolicitudAOCR solicitud, string evento, string observacion)
+        public ResultadoOperacion NotificarEvento(
+            Inspeccion inspeccion,
+            SolicitudAOCR solicitud,
+            string evento,
+            string observacion,
+            string emailDestino = null,
+            string nombreDestino = null)
         {
             try
             {
@@ -48,11 +54,16 @@ namespace CapaNegocio.Services
                     return ResultadoOperacion.Ok(null, "Evento sin plantilla de correo configurada.");
                 }
 
-                var destinatarios = _policyService.ResolverDestinatarios(solicitud, inspeccion, plantilla.GruposDestinatarios);
+                var destinatarios = ResolverDestinatarios(solicitud, inspeccion, plantilla, emailDestino, nombreDestino);
                 if (destinatarios.Count == 0)
                 {
                     return ResultadoOperacion.Ok(null, "Evento sin destinatarios de correo resolubles.");
                 }
+
+                // Marca temporal por minuto: evita duplicados por doble envío en la misma transición
+                // sin bloquear reenvíos legítimos del mismo evento en momentos posteriores del flujo.
+                var marcaEvento = DateTime.Now.ToString("yyyyMMddHHmm");
+                var eventoNormalizado = (evento ?? string.Empty).Trim().ToUpperInvariant();
 
                 foreach (var destinatario in destinatarios)
                 {
@@ -64,7 +75,8 @@ namespace CapaNegocio.Services
                         Cuerpo = ConstruirCuerpoHtml(destinatario.Nombre, plantilla, inspeccion, solicitud, observacion),
                         Estado = "PENDIENTE",
                         SolicitudId = solicitud.CodigoSolicitud,
-                        TipoNotificacion = "INSPECCION_" + (evento ?? string.Empty).Trim().ToUpperInvariant(),
+                        TipoNotificacion = "INSPECCION_" + eventoNormalizado,
+                        EventKey = "INSPECCION:" + eventoNormalizado + ":" + inspeccion.CodigoInspeccion + ":" + destinatario.Email + ":" + marcaEvento,
                         EsHtml = true
                     };
 
@@ -78,6 +90,34 @@ namespace CapaNegocio.Services
                 _logger.LogWarning("InspeccionCorreoService.NotificarEvento: " + ex.Message);
                 return ResultadoOperacion.Error("No fue posible encolar correos del evento de inspección.");
             }
+        }
+
+        private List<NotificacionDestinatario> ResolverDestinatarios(
+            SolicitudAOCR solicitud,
+            Inspeccion inspeccion,
+            PlantillaCorreoInspeccion plantilla,
+            string emailDestino,
+            string nombreDestino)
+        {
+            var correoNormalizado = (emailDestino ?? string.Empty).Trim();
+            if (!string.IsNullOrWhiteSpace(correoNormalizado))
+            {
+                if (!CorreoInstitucionalService.EsCorreoValido(correoNormalizado))
+                {
+                    return new List<NotificacionDestinatario>();
+                }
+
+                return new List<NotificacionDestinatario>
+                {
+                    new NotificacionDestinatario
+                    {
+                        Email = correoNormalizado,
+                        Nombre = string.IsNullOrWhiteSpace(nombreDestino) ? "Usuario AOCR" : nombreDestino.Trim()
+                    }
+                };
+            }
+
+            return _policyService.ResolverDestinatarios(solicitud, inspeccion, plantilla.GruposDestinatarios);
         }
 
         public ResultadoOperacion NotificarInformeTecnicoFirmadoFinal(Inspeccion inspeccion, SolicitudAOCR solicitud, InspeccionInformeTecnico informe, byte[] pdfFirmado, string enlaceDocumento, string observacion)

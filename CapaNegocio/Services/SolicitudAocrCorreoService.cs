@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using CapaDatos.Services;
 using CapaModelo;
 using CapaModelo.Common;
@@ -26,7 +27,14 @@ namespace CapaNegocio.Services
             _logger = LoggingServiceFactory.Create();
         }
 
-        public ResultadoOperacion NotificarEvento(SolicitudAOCR solicitud, string evento, string observacion)
+        public ResultadoOperacion NotificarEvento(
+            SolicitudAOCR solicitud,
+            string evento,
+            string observacion,
+            string emailDestino = null,
+            string nombreDestino = null,
+            int? codigoHistorial = null,
+            string correlationId = null)
         {
             try
             {
@@ -41,7 +49,7 @@ namespace CapaNegocio.Services
                     return ResultadoOperacion.Ok(null, "Evento de solicitud sin plantilla de correo configurada.");
                 }
 
-                var destinatarios = _policyService.ResolverDestinatarios(solicitud, null, plantilla.GruposDestinatarios);
+                var destinatarios = ResolverDestinatarios(solicitud, plantilla, emailDestino, nombreDestino);
                 if (destinatarios.Count == 0)
                 {
                     return ResultadoOperacion.Ok(null, "Evento de solicitud sin destinatarios resolubles.");
@@ -49,6 +57,24 @@ namespace CapaNegocio.Services
 
                 foreach (var destinatario in destinatarios)
                 {
+                    var tipoNotificacion = "SOLICITUD_" + (evento ?? string.Empty).Trim().ToUpperInvariant();
+                    var eventKey = EsEventoConIdempotenciaFuerteHabilitada(evento)
+                        ? BuildAocrEventKey(evento, solicitud.CodigoSolicitud, codigoHistorial, correlationId, destinatario.Email)
+                        : null;
+
+                    if (!string.IsNullOrWhiteSpace(eventKey))
+                    {
+                        var existeEnCola = _emailQueueService
+                            .ExisteNotificacionAsync(tipoNotificacion, eventKey, solicitud.CodigoSolicitud)
+                            .GetAwaiter()
+                            .GetResult();
+
+                        if (existeEnCola)
+                        {
+                            continue;
+                        }
+                    }
+
                     var item = new EmailQueueItem
                     {
                         Para = destinatario.Email,
@@ -57,7 +83,9 @@ namespace CapaNegocio.Services
                         Cuerpo = ConstruirCuerpoHtml(destinatario.Nombre, plantilla, solicitud, observacion),
                         Estado = "PENDIENTE",
                         SolicitudId = solicitud.CodigoSolicitud,
-                        TipoNotificacion = "SOLICITUD_" + (evento ?? string.Empty).Trim().ToUpperInvariant(),
+                        TipoNotificacion = tipoNotificacion,
+                        EventKey = eventKey,
+                        CorrelationId = string.IsNullOrWhiteSpace(correlationId) ? null : correlationId.Trim(),
                         EsHtml = true
                     };
 
@@ -71,6 +99,106 @@ namespace CapaNegocio.Services
                 _logger.LogWarning("SolicitudAocrCorreoService.NotificarEvento: " + ex.Message);
                 return ResultadoOperacion.Error("No fue posible encolar correos del evento de solicitud AOCR.");
             }
+        }
+
+        private List<NotificacionDestinatario> ResolverDestinatarios(
+            SolicitudAOCR solicitud,
+            PlantillaSolicitudCorreo plantilla,
+            string emailDestino,
+            string nombreDestino)
+        {
+            var correoNormalizado = (emailDestino ?? string.Empty).Trim();
+            if (!string.IsNullOrWhiteSpace(correoNormalizado))
+            {
+                if (!CorreoInstitucionalService.EsCorreoValido(correoNormalizado))
+                {
+                    return new List<NotificacionDestinatario>();
+                }
+
+                return new List<NotificacionDestinatario>
+                {
+                    new NotificacionDestinatario
+                    {
+                        Email = correoNormalizado,
+                        Nombre = string.IsNullOrWhiteSpace(nombreDestino) ? "Usuario AOCR" : nombreDestino.Trim()
+                    }
+                };
+            }
+
+            return _policyService.ResolverDestinatarios(solicitud, null, plantilla.GruposDestinatarios);
+        }
+
+        internal static string BuildAocrEventKey(
+            string evento,
+            int solicitudId,
+            int? codigoHistorial,
+            string correlationId,
+            string destinatario)
+        {
+            if (solicitudId <= 0 || string.IsNullOrWhiteSpace(destinatario))
+            {
+                return null;
+            }
+
+            var eventoNormalizado = NormalizarEventoParaEventKey(evento);
+            if (string.IsNullOrWhiteSpace(eventoNormalizado))
+            {
+                return null;
+            }
+
+            var destinatarioNormalizado = destinatario.Trim().ToLowerInvariant();
+            if (codigoHistorial.HasValue && codigoHistorial.Value > 0)
+            {
+                return string.Format(
+                    CultureInfo.InvariantCulture,
+                    "AOCR:{0}:{1}:{2}:{3}",
+                    eventoNormalizado,
+                    solicitudId,
+                    codigoHistorial.Value,
+                    destinatarioNormalizado);
+            }
+
+            var correlationNormalizado = string.IsNullOrWhiteSpace(correlationId)
+                ? null
+                : correlationId.Trim().ToUpperInvariant();
+            if (!string.IsNullOrWhiteSpace(correlationNormalizado))
+            {
+                return string.Format(
+                    CultureInfo.InvariantCulture,
+                    "AOCR:{0}:{1}:{2}:{3}",
+                    eventoNormalizado,
+                    solicitudId,
+                    correlationNormalizado,
+                    destinatarioNormalizado);
+            }
+
+            return null;
+        }
+
+        private static bool EsEventoConIdempotenciaFuerteHabilitada(string evento)
+        {
+            var eventoNormalizado = (evento ?? string.Empty).Trim().ToUpperInvariant();
+            return string.Equals(eventoNormalizado, "OBSERVADA", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(eventoNormalizado, "REVISION_DOCUMENTAL_OBSERVADA", StringComparison.OrdinalIgnoreCase);
+        }
+
+        private static string NormalizarEventoParaEventKey(string evento)
+        {
+            var eventoNormalizado = (evento ?? string.Empty).Trim().ToUpperInvariant();
+            if (string.IsNullOrWhiteSpace(eventoNormalizado))
+            {
+                return null;
+            }
+
+            if (string.Equals(eventoNormalizado, "OBSERVADA", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(eventoNormalizado, "REVISION_DOCUMENTAL_OBSERVADA", StringComparison.OrdinalIgnoreCase))
+            {
+                return "SOLICITUD_OBSERVADA";
+            }
+
+            return eventoNormalizado.StartsWith("SOLICITUD_", StringComparison.OrdinalIgnoreCase)
+                ? eventoNormalizado
+                : "SOLICITUD_" + eventoNormalizado;
         }
 
         private static PlantillaSolicitudCorreo ConstruirPlantilla(SolicitudAOCR solicitud, string evento)
@@ -184,12 +312,13 @@ namespace CapaNegocio.Services
                     };
 
                 case "ACEPTACION_COORDINADOR_FIRMADA":
+                case "REVISION_FINAL_COORDINACION_REGISTRADA":
                     return new PlantillaSolicitudCorreo
                     {
-                        Asunto = "AOCR - Aceptación documental firmada #" + solicitud.CodigoSolicitud,
-                        Titulo = "Aceptación documental firmada",
-                        Mensaje = "La coordinación firmó la aceptación documental de la solicitud AOCR. " +
-                                  "El documento final ya se encuentra disponible para su descarga desde el expediente.",
+                        Asunto = "AOCR - Revisión final de Coordinación #" + solicitud.CodigoSolicitud,
+                        Titulo = "Revisión final de Coordinación registrada",
+                        Mensaje = "La Coordinación registró la revisión final de la solicitud AOCR. " +
+                                  "Continúa el flujo institucional para la validación y firma final que corresponda.",
                         GruposDestinatarios = new[]
                         {
                             NotificacionDestinatarioPolicyService.GrupoRepresentanteTecnico,

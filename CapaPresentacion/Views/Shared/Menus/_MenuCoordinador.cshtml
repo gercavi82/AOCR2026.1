@@ -1,5 +1,5 @@
+﻿@inherits System.Web.Mvc.WebViewPage<CapaPresentacion.Models.ViewModels.SidebarMenuContextViewModel>
 @using System
-@model CapaPresentacion.Models.ViewModels.SidebarMenuContextViewModel
 
 @{
     var currentController = Convert.ToString(ViewContext.RouteData.Values["controller"] ?? string.Empty);
@@ -30,8 +30,8 @@
                     <a class="@linkClass(isCurrent("Tecnico", "Index") ? "aocr-sidebar-item--active aocr-sidebar-item--primary" : "aocr-sidebar-item--primary")" href="@Url.Action("Index", "Tecnico")">
                         <i class="fas fa-user-plus text-white-50 mr-2"></i>
                         <span class="aocr-sidebar-item__content">
-                            <span class="aocr-sidebar-item__title">Asignar inspectores</span>
-                            <span class="aocr-sidebar-item__meta">Gestión de designación técnica por solicitud y especialidad.</span>
+                            <span class="aocr-sidebar-item__title">Asignación de inspector</span>
+                            <span class="aocr-sidebar-item__meta">Gestión coordinadora de designación por solicitud y especialidad.</span>
                         </span>
                     </a>
                 </li>

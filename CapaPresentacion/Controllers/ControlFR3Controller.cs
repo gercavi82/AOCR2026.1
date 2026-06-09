@@ -50,6 +50,7 @@ namespace CapaPresentacion.Controllers
                 ViewBag.Estado = estado;
                 CargarAeropuertosCombo(aeropuerto);
                 CargarEstadosCombo(estado);
+                RegistrarDiagnosticoFiltros("Index", estado, controles != null ? controles.Count : 0);
 
                 return View(controles);
             }
@@ -57,6 +58,12 @@ namespace CapaPresentacion.Controllers
             {
                 System.Diagnostics.Debug.WriteLine("Error en ControlFR3.Index: " + ex.Message);
                 TempData["Error"] = "Error al cargar los controles FR3: " + ex.Message;
+                ViewBag.Aeropuerto = aeropuerto;
+                ViewBag.Anio = anio ?? DateTime.Now.Year.ToString();
+                ViewBag.Estado = estado;
+                CargarAeropuertosCombo(aeropuerto);
+                CargarEstadosCombo(estado);
+                RegistrarDiagnosticoFiltros("Index.Error", estado, 0);
                 return View(new List<ControlFR3>());
             }
         }
@@ -419,6 +426,19 @@ namespace CapaPresentacion.Controllers
             }
 
             ViewBag.Estados = estados;
+        }
+
+        private void RegistrarDiagnosticoFiltros(string pantalla, string estadoSeleccionado, int registros)
+        {
+            var estados = ViewBag.Estados as IEnumerable<SelectListItem>;
+            System.Diagnostics.Debug.WriteLine(string.Format(
+                "[FILTROS][ControlFR3.{0}] Usuario={1}; Rol={2}; EstadoSeleccionado={3}; EstadosCargados={4}; Registros={5}",
+                pantalla ?? string.Empty,
+                User != null && User.Identity != null ? User.Identity.Name : string.Empty,
+                Session != null ? (Session["Rol"] as string ?? string.Empty) : string.Empty,
+                estadoSeleccionado ?? string.Empty,
+                estados != null ? estados.Count() : 0,
+                registros));
         }
 
         private void CargarTipoOperacionCombo(string seleccionado)

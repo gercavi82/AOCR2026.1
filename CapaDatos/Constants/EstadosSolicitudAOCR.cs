@@ -3,7 +3,9 @@ using System.Collections.Generic;
 namespace CapaDatos.Constants
 {
     /// <summary>
-    /// Estados del workflow de Solicitudes AOCR según diagrama oficial
+    /// LEGACY: diagrama simplificado histórico de estados AOCR.
+    /// No es fuente canónica para flujo activo; usar `EstadoConstants`
+    /// y `SolicitudEstadoTransitionBL` para estados y transiciones reales.
     /// </summary>
     public static class EstadosSolicitudAOCR
     {

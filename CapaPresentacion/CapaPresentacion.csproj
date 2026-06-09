@@ -345,6 +345,7 @@
     <Compile Include="Helpers\AocrBandejaEstadoHelper.cs" />
     <Compile Include="Helpers\CookieHelper.cs" />
     <Compile Include="Helpers\DashboardInspeccionBadgeHelper.cs" />
+    <Compile Include="Helpers\FinancialOrderStateHelper.cs" />
     <Compile Include="Helpers\InformeTecnicoTemplateHelper.cs" />
     <Compile Include="Helpers\NotificacionCorreoHelper.cs" />
     <Compile Include="Helpers\OrdenRecaudacionPagoHelper.cs" />
@@ -358,8 +359,10 @@
     <Compile Include="Infrastructure\OrdenRecaudacionFilters.cs" />
     <Compile Include="Infrastructure\OrdenRecaudacionRoutes.cs" />
     <Compile Include="Infrastructure\ControllerGuardExtensions.cs" />
+    <Compile Include="Infrastructure\AocrAuthorizationContextFactory.cs" />
     <Compile Include="Infrastructure\UserContextAccessor.cs" />
     <Compile Include="Models\CambiarContrasenaViewModel.cs" />
+    <Compile Include="Models\CorreoPruebaViewModel.cs" />
     <Compile Include="Models\AdminUsuarios\AdminRolPermisosViewModel.cs" />
     <Compile Include="Models\AdminUsuarios\AdminUsuarioTransferenciaViewModel.cs" />
     <Compile Include="Models\AdminUsuarios\AdminUsuarioInternoRTViewModel.cs" />
@@ -411,6 +414,7 @@
   </ItemGroup>
   <ItemGroup>
     <Content Include="Content\aocr-institucional.css" />
+    <Content Include="Content\aocr-contrast.css" />
     <Content Include="Content\aocr-datatables.css" />
     <Content Include="Content\aocr-informe-tecnico.css" />
     <Content Include="Content\aocr-responsive.css" />
@@ -906,6 +910,9 @@
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
     <Content Include="Content\imganes\Warning.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Content\imganes\hoja\Hoja_membretada_DGAC_2025.pdf">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
     <Content Include="Content\js\menu-navigation.js" />
@@ -3031,6 +3038,7 @@
     <Content Include="Views\Shared\_NotificacionesBadge.cshtml" />
     <Content Include="Views\SolicitudAOCR\AceptacionDocumentalPdf.cshtml" />
     <Content Include="Views\SolicitudAOCR\CertificadoAOCR.cshtml" />
+    <Content Include="Views\Notificacion\CorreosPrueba.cshtml" />
     <Content Include="Views\Notificacion\Index.cshtml" />
     <Content Include="Views\OrdenRecaudacion\ExportPdf.cshtml" />
     <Content Include="Views\AdminUsuarios\Create.cshtml" />

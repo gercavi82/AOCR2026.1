@@ -1,6 +1,8 @@
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
+using System.Text;
 using CapaDatos.Constants;
 using CapaDatos.DAOs;
 using CapaDatos.Entidades;
@@ -97,6 +99,7 @@ namespace CapaNegocio
 
             var documentos = (_documentoDao.ObtenerPorSolicitud(codigoSolicitud) ?? new List<Documento>())
                 .Where(d => d != null && d.CodigoDocumento > 0)
+                .Where(d => DebeIncluirEnRevisionDocumental(d.TipoDocumento))
                 .GroupBy(ObtenerClaveDocumentoRevision, StringComparer.OrdinalIgnoreCase)
                 .Select(g => g
                     .OrderByDescending(d => d.Version ?? 0)
@@ -180,10 +183,125 @@ namespace CapaNegocio
                 return string.Empty;
             }
 
-            var tipoDocumento = (documento.TipoDocumento ?? string.Empty).Trim();
+            var tipoDocumento = ObtenerGrupoDocumentoRevision(documento.TipoDocumento);
             return !string.IsNullOrWhiteSpace(tipoDocumento)
-                ? tipoDocumento.ToUpperInvariant()
+                ? tipoDocumento
                 : "__DOC_" + documento.CodigoDocumento;
+        }
+
+        private static bool DebeIncluirEnRevisionDocumental(string tipoDocumento)
+        {
+            var canonical = ObtenerTipoDocumentoCanonicoRevision(tipoDocumento);
+            return !string.Equals(canonical, "SOLICITUD_INSPECCION_EXT", StringComparison.OrdinalIgnoreCase);
+        }
+
+        private static string ObtenerGrupoDocumentoRevision(string tipoDocumento)
+        {
+            var canonical = ObtenerTipoDocumentoCanonicoRevision(tipoDocumento);
+            if (!string.Equals(canonical, "OTRO", StringComparison.OrdinalIgnoreCase))
+            {
+                return canonical;
+            }
+
+            var normalized = NormalizarClaveTipoDocumentoRevision(tipoDocumento);
+            return string.IsNullOrWhiteSpace(normalized) ? "OTRO" : "OTRO_" + normalized;
+        }
+
+        private static string ObtenerTipoDocumentoCanonicoRevision(string tipoDocumento)
+        {
+            var normalized = NormalizarClaveTipoDocumentoRevision(tipoDocumento);
+            if (string.IsNullOrWhiteSpace(normalized))
+            {
+                return "OTRO";
+            }
+
+            switch (normalized)
+            {
+                case "COMPROBANTE_PAGO":
+                case "COMPROBANTE_DE_PAGO":
+                    return "COMPROBANTE_PAGO";
+
+                case "SOLICITUD_INSPECCION_EXT":
+                case "SOLICITUD_DE_INSPECCIONES":
+                case "SOLICITUD_INSPECCIONES":
+                    return "SOLICITUD_INSPECCION_EXT";
+
+                case "SOLICITUD_INSPECCIONES_FIRMADA":
+                case "SOLICITUD_DE_INSPECCIONES_FIRMADA":
+                    return "SOLICITUD_INSPECCIONES_FIRMADA";
+
+                case "COPIA_AOC_VALIDA":
+                case "COPIA_AOC":
+                case "AOC":
+                case "AOC_VALIDA":
+                    return "COPIA_AOC_VALIDA";
+
+                case "OPSPECS_ESPECIFICACIONES_OPERACIONALES":
+                case "OPSPECS":
+                case "OP_SPECS":
+                case "ESPECIFICACIONES_OPERACIONALES":
+                    return "OPSPECS_ESPECIFICACIONES_OPERACIONALES";
+
+                case "MANUAL_OPERACIONES":
+                case "MANUAL_DE_OPERACIONES":
+                    return "MANUAL_OPERACIONES";
+
+                case "PERMISO_OPERACION_CNAC":
+                case "PERMISO_OPERACION":
+                    return "PERMISO_OPERACION_CNAC";
+
+                case "COPIA_CERTIFICADA_PODER_REPRESENTANTE_ECUADOR":
+                case "PODER_REPRESENTANTE_ECUADOR":
+                case "COPIA_CERTIFICADA_PODER_REPRESENTANTE":
+                case "PODER_REPRESENTANTE":
+                    return "COPIA_CERTIFICADA_PODER_REPRESENTANTE_ECUADOR";
+
+                case "CERTIFICADO_AERONAVEGABILIDAD":
+                    return "CERTIFICADO_AERONAVEGABILIDAD";
+
+                case "CERTIFICADO_RUIDO_AERONAVES_EAE":
+                case "CERTIFICADO_RUIDO":
+                case "CERTIFICADO_RUIDO_AERONAVES":
+                    return "CERTIFICADO_RUIDO_AERONAVES_EAE";
+
+                default:
+                    return "OTRO";
+            }
+        }
+
+        private static string NormalizarClaveTipoDocumentoRevision(string value)
+        {
+            var text = (value ?? string.Empty).Trim();
+            if (string.IsNullOrWhiteSpace(text))
+            {
+                return string.Empty;
+            }
+
+            var normalized = text.Normalize(NormalizationForm.FormD);
+            var builder = new StringBuilder(normalized.Length);
+            foreach (var ch in normalized)
+            {
+                if (CharUnicodeInfo.GetUnicodeCategory(ch) != UnicodeCategory.NonSpacingMark)
+                {
+                    builder.Append(ch);
+                }
+            }
+
+            normalized = builder
+                .ToString()
+                .Normalize(NormalizationForm.FormC)
+                .Trim()
+                .ToUpperInvariant()
+                .Replace("/", "_")
+                .Replace("-", "_")
+                .Replace(" ", "_");
+
+            while (normalized.Contains("__"))
+            {
+                normalized = normalized.Replace("__", "_");
+            }
+
+            return normalized.Trim('_');
         }
 
         private static void ConfigurarFlujoDocumental(EstadoRevisionDocumental estado, SolicitudAOCR solicitud, IEnumerable<Inspeccion> inspecciones)

@@ -12,6 +12,30 @@
     { "Subtitle", "Creación de orden para el flujo financiero AOCR" }
 })
 
+<style>
+    .aocr-form-card .form-control,
+    .aocr-form-card .form-select,
+    .aocr-form-card input.form-control,
+    .aocr-form-card textarea.form-control,
+    .aocr-form-card .form-control[readonly],
+    .aocr-form-card .form-control:disabled,
+    .aocr-form-card .form-control.bg-light {
+        color: #172033 !important;
+        -webkit-text-fill-color: #172033;
+    }
+
+    .aocr-form-card .form-control::placeholder,
+    .aocr-form-card textarea.form-control::placeholder {
+        color: #6b7280 !important;
+        opacity: 1;
+    }
+
+    .aocr-form-card .form-control[readonly],
+    .aocr-form-card .form-control.bg-light {
+        background-color: #f8fafc !important;
+    }
+</style>
+
 <div class="card aocr-form-card">
     <div class="card-header" style="background: linear-gradient(135deg, var(--aocr-primary), var(--aocr-secondary)); color:#fff; border-radius: var(--aocr-radius-md) var(--aocr-radius-md) 0 0;">
         <h3 class="card-title mb-0">
@@ -208,7 +232,6 @@
                 </div>
             }
         </div>
-    </div>
 
 
 

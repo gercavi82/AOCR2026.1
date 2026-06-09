@@ -25,7 +25,7 @@
 
     if (tiposInspectorSelectList != null)
     {
-        var tipoSeleccionadoItem = tiposInspectorSelectList.Cast<SelectListItem>().FirstOrDefault(x => x.Value == tipoInspectorSeleccionado);
+        var tipoSeleccionadoItem = tiposInspectorSelectList.Cast<System.Web.Mvc.SelectListItem>().FirstOrDefault(x => x.Value == tipoInspectorSeleccionado);
         if (tipoSeleccionadoItem != null && !string.IsNullOrWhiteSpace(tipoSeleccionadoItem.Text))
         {
             tipoInspectorTexto = tipoSeleccionadoItem.Text;
@@ -733,14 +733,35 @@
             }
 
             var ajaxUrl = "@Url.Action("ListarInspectoresActivos", "Tecnico")" + "?tipoInspector=" + encodeURIComponent(tipoInspector);
-            fetch(ajaxUrl, {
-                method: "GET",
-                headers: { "X-Requested-With": "XMLHttpRequest" }
-            })
-            .then(function (response) {
-                return response.json();
-            })
+            var inspectorPromise = window.AOCR && typeof window.AOCR.fetchJson === "function"
+                ? window.AOCR.fetchJson(ajaxUrl, { method: "GET" })
+                : fetch(ajaxUrl, {
+                    method: "GET",
+                    headers: { "X-Requested-With": "XMLHttpRequest" }
+                }).then(function (response) {
+                    return response.text().then(function (text) {
+                        var data = {};
+                        try {
+                            data = text ? JSON.parse(text) : {};
+                        } catch (parseError) {
+                            throw new Error("La respuesta de inspectores no fue JSON valido. HTTP " + response.status);
+                        }
+
+                        if (!response.ok || data.success === false || data.ok === false) {
+                            throw new Error((data && (data.message || data.mensaje || data.error)) || ("No se pudo cargar inspectores. HTTP " + response.status));
+                        }
+
+                        return data;
+                    });
+                });
+
+            inspectorPromise
             .then(function (data) {
+                if (!data) {
+                    logWarn("No se recibio informacion AJAX de inspectores.");
+                    return;
+                }
+
                 logInfo("Respuesta AJAX completa", data);
                 var total = data && data.items ? data.items.length : 0;
                 var origen = data && data.origen ? data.origen : "(sin-origen)";

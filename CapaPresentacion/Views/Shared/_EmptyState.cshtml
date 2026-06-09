@@ -1,4 +1,5 @@
-﻿@using System.Web
+﻿@inherits System.Web.Mvc.WebViewPage
+@using System.Web
 @{
     var icon = ViewData["Icon"] as string ?? "fas fa-inbox";
     var title = ViewData["Title"] as string ?? "Sin registros";

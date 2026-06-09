@@ -1,4 +1,7 @@
-@model List<CapaModelo.Notificacion>
+@inherits System.Web.Mvc.WebViewPage<List<CapaModelo.Notificacion>>
+@using System.Linq
+@using System.Web.Mvc
+@using System.Web.Mvc.Html
 @{
     ViewBag.Title = "Mis Notificaciones";
     Layout = "~/Views/Shared/_LayoutAOCR.cshtml";

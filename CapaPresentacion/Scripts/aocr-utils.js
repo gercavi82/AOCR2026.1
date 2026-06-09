@@ -27,6 +27,64 @@
         window.alert(message);
     }
 
+    function toPlainError(reason, fallbackMessage) {
+        if (reason instanceof Error) {
+            return reason;
+        }
+
+        var message = fallbackMessage || 'Error inesperado al procesar la solicitud.';
+
+        if (typeof reason === 'string' && reason.trim()) {
+            message = reason.trim();
+        } else if (reason && typeof reason === 'object') {
+            message = reason.message || reason.mensaje || reason.error || reason.statusText || message;
+        }
+
+        var error = new Error(message);
+        if (reason && typeof reason === 'object') {
+            try {
+                Object.keys(reason).forEach(function (key) {
+                    if (!(key in error)) {
+                        error[key] = reason[key];
+                    }
+                });
+            } catch (ignore) {
+            }
+        }
+
+        return error;
+    }
+
+    function logPromiseDiagnostic(tag, reason, extra) {
+        var details = {
+            reason: reason,
+            type: typeof reason,
+            message: reason && reason.message ? reason.message : (typeof reason === 'string' ? reason : ''),
+            status: reason && reason.status ? reason.status : null,
+            responseText: reason && reason.responseText ? String(reason.responseText).substring(0, 500) : '',
+            stack: reason && reason.stack ? reason.stack : '',
+            keys: [],
+            url: window.location && window.location.href ? window.location.href : ''
+        };
+
+        if (extra) {
+            Object.keys(extra).forEach(function (key) {
+                details[key] = extra[key];
+            });
+        }
+
+        try {
+            details.keys = reason && typeof reason === 'object' ? Object.keys(reason).slice(0, 20) : [];
+        } catch (ignore) {
+        }
+
+        window.__AOCR_LAST_UNHANDLED_REJECTION__ = details;
+
+        if (window.console && typeof window.console.error === 'function') {
+            window.console.error(tag, details);
+        }
+    }
+
     function createJsonResponse(payload, statusCode, originalResponse){
         var headers = new Headers();
         headers.set('content-type', 'application/json; charset=utf-8');
@@ -190,10 +248,109 @@
         return false;
     };
 
+    window.AOCR.toError = toPlainError;
+
+    window.AOCR.fetchJson = function(url, options) {
+        if (!url) {
+            var emptyUrlError = new Error('No se recibio una URL valida para la solicitud AJAX.');
+            if (window.console && typeof window.console.error === 'function') {
+                window.console.error('[AOCR][FETCH_JSON_ERROR]', { url: url, error: emptyUrlError });
+            }
+            notify(emptyUrlError.message, 'error');
+            return Promise.resolve(null);
+        }
+
+        options = options || {};
+        var headers = {};
+
+        if (options.headers) {
+            Object.keys(options.headers).forEach(function (key) {
+                headers[key] = options.headers[key];
+            });
+        }
+
+        headers['X-Requested-With'] = headers['X-Requested-With'] || 'XMLHttpRequest';
+
+        return fetch(url, Object.assign({}, options, {
+            credentials: options.credentials || 'same-origin',
+            headers: headers
+        })).then(function(response) {
+            var contentType = response.headers ? (response.headers.get('content-type') || '') : '';
+
+            if (response.status === 401) {
+                throw new Error('Su sesion expiro. Inicie sesion nuevamente.');
+            }
+
+            if (response.status === 403) {
+                throw new Error('No tiene permisos para ejecutar esta accion con el rol activo actual.');
+            }
+
+            if (!response.ok) {
+                return response.text().then(function(text) {
+                    throw new Error('Error HTTP ' + response.status + ' en ' + url + ': ' + String(text || '').substring(0, 500));
+                });
+            }
+
+            if (contentType.indexOf('application/json') < 0) {
+                return response.text().then(function(text) {
+                    if (window.AOCR.isLoginMarkup(text)) {
+                        throw new Error('El servidor devolvio la pantalla de login en una solicitud AJAX.');
+                    }
+
+                    throw new Error('El servidor no devolvio JSON. Respuesta recibida: ' + String(text || '').substring(0, 300));
+                });
+            }
+
+            return response.json().then(function(data) {
+                if (data && data.success === false) {
+                    throw new Error(data.message || data.mensaje || 'La operacion no fue exitosa.');
+                }
+
+                return data;
+            });
+        }).catch(function(reason) {
+            var error = toPlainError(reason);
+            if (window.console && typeof window.console.error === 'function') {
+                window.console.error('[AOCR][FETCH_JSON_ERROR]', {
+                    url: url,
+                    error: error,
+                    message: error.message,
+                    stack: error.stack
+                });
+            }
+            notify(error.message || 'Error inesperado al procesar la solicitud.', 'error');
+            return null;
+        });
+    };
+
+    window.AOCR.installGlobalDiagnostics = function(){
+        if (!window.__aocrGlobalDiagnosticsInstalled) {
+            window.addEventListener('unhandledrejection', function(event) {
+                logPromiseDiagnostic('[AOCR][UNHANDLED_PROMISE]', event.reason);
+            });
+
+            window.addEventListener('error', function(event) {
+                if (window.console && typeof window.console.error === 'function') {
+                    window.console.error('[AOCR][JS_ERROR]', {
+                        message: event.message,
+                        source: event.filename,
+                        line: event.lineno,
+                        column: event.colno,
+                        error: event.error,
+                        url: window.location && window.location.href ? window.location.href : ''
+                    });
+                }
+            });
+
+            window.__aocrGlobalDiagnosticsInstalled = true;
+        }
+    };
+
     window.AOCR.installGlobalHttpHandlers = function(){
         if (window.fetch && !window.__aocrFetchWrapped) {
             var originalFetch = window.fetch;
             window.fetch = function () {
+                var requestUrl = arguments && arguments.length ? arguments[0] : '';
                 return originalFetch.apply(this, arguments).then(function (response) {
                     var contentType = response && response.headers
                         ? (response.headers.get('content-type') || '')
@@ -233,6 +390,10 @@
                     }
 
                     return response;
+                }).catch(function (reason) {
+                    var error = toPlainError(reason, 'No se pudo completar la solicitud fetch.');
+                    logPromiseDiagnostic('[AOCR][FETCH_ERROR]', error, { requestUrl: requestUrl });
+                    throw error;
                 });
             };
 
@@ -285,6 +446,7 @@
         return $opt;
     };
 
+    window.AOCR.installGlobalDiagnostics();
     window.AOCR.installGlobalHttpHandlers();
 
 })(window);

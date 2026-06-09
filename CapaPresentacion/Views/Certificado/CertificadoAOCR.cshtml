@@ -1,6 +1,8 @@
-@model CapaModelo.Common.CertificadoAOCRViewModel
+@inherits System.Web.Mvc.WebViewPage<CapaModelo.Common.CertificadoAOCRViewModel>
 @using System.Globalization
 @using System.Linq
+@using System.Web.Mvc
+@using System.Web.Mvc.Html
 @{
     Layout = "~/Views/Shared/_PdfLayoutDGACAocr.cshtml";
     var cultureEs = new CultureInfo("es-EC");

@@ -1,4 +1,5 @@
-﻿@using System.Web
+﻿@inherits System.Web.Mvc.WebViewPage
+@using System.Web
 @{
     var kicker = ViewData["Kicker"] as string ?? string.Empty;
     var title = ViewData["Title"] as string ?? string.Empty;

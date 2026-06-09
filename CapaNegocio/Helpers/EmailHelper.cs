@@ -17,10 +17,10 @@ namespace CapaNegocio.Helpers
         {
             try
             {
-                string smtpServer = ConfigurationManager.AppSettings["SmtpServer"] ?? "172.20.16.21";
+                string smtpServer = ConfigurationManager.AppSettings["SmtpServer"] ?? "mail.aviacioncivil.gob.ec";
                 int puerto = int.TryParse(ConfigurationManager.AppSettings["Email:SmtpPort"], out int p) ? p : 25;
                 bool useSsl = bool.TryParse(ConfigurationManager.AppSettings["Email:UseSsl"], out bool ssl) && ssl;
-                string remitente = ConfigurationManager.AppSettings["EmailFrom"] ?? "aocr@aviacioncivil.gob.ec";
+                string remitente = ConfigurationManager.AppSettings["EmailFrom"] ?? "no_reply@aviacioncivil.gob.ec";
                 string nombreRemitente = ConfigurationManager.AppSettings["EmailFromName"] ?? "Sistema AOCR";
                 string usuario = ConfigurationManager.AppSettings["Email:Username"] ?? "";
                 string password = ConfigurationManager.AppSettings["Email:Password"] ?? "";

@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using CapaDatos.Constants;
 using CapaDatos.DAOs;
 using CapaDatos.Entidades;
 using CapaModelo;
@@ -67,26 +66,26 @@ namespace CapaNegocio.Services
 
                     case GrupoCoordinacionInspeccion:
                         AgregarUsuariosPorRol(destinatarios,
-                            RolesAOCR.COORDINADOR_INSPECCIONES,
+                            "CoordinadorInspecciones",
                             "Coordinador",
-                            RolesAOCR.JEFATURA_TECNICA,
-                            RolesAOCR.ADMINISTRADOR);
+                            "JefaturaTecnica",
+                            "Administrador");
                         AgregarCorreosInstitucionales(destinatarios, CorreoInstitucionalService.CoordinadorAocr);
                         break;
 
                     case GrupoCoordinacionLegal:
                         AgregarUsuariosPorRol(destinatarios,
                             "CoordinacionLegal",
-                            RolesAOCR.COORDINADOR_LEGAL,
-                            RolesAOCR.ADMINISTRADOR);
+                            "CoordinadorLegal",
+                            "Administrador");
                         break;
 
                     case GrupoDireccionFinal:
                         AgregarUsuariosPorRol(destinatarios,
                             "Direccion",
                             "DirectorGeneral",
-                            RolesAOCR.JEFATURA_TECNICA,
-                            RolesAOCR.ADMINISTRADOR);
+                            "JefaturaTecnica",
+                            "Administrador");
                         break;
 
                     case GrupoDireccionJefaturaRevisionInforme:
@@ -95,16 +94,16 @@ namespace CapaNegocio.Services
                             "Direccion",
                             "DirectorGeneral",
                             "Director",
-                            RolesAOCR.JEFATURA_TECNICA,
+                            "JefaturaTecnica",
                             "Jefe");
                         break;
 
                     case GrupoFinanciero:
                         AgregarUsuariosPorRol(destinatarios,
                             "Financiero",
-                            RolesAOCR.COORDINADOR_FINANCIERO,
-                            RolesAOCR.DIRECTOR_FINANCIERO,
-                            RolesAOCR.ADMINISTRADOR);
+                            "CoordinadorFinanciero",
+                            "DirectorFinanciero",
+                            "Administrador");
                         break;
                 }
             }
@@ -134,9 +133,9 @@ namespace CapaNegocio.Services
                     case GrupoFinanciero:
                         AgregarUsuariosPorRol(destinatarios,
                             "Financiero",
-                            RolesAOCR.COORDINADOR_FINANCIERO,
-                            RolesAOCR.DIRECTOR_FINANCIERO,
-                            RolesAOCR.ADMINISTRADOR);
+                            "CoordinadorFinanciero",
+                            "DirectorFinanciero",
+                            "Administrador");
                         break;
                 }
             }

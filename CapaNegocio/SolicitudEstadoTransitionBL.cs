@@ -32,6 +32,27 @@ namespace CapaNegocio
             Func<string, bool> puedeTransicionar,
             out string mensaje)
         {
+            return CambiarEstadoConReglasAocr(
+                codigoSolicitud,
+                nuevoEstado,
+                observacion,
+                usuarioId,
+                puedeTransicionar,
+                out mensaje,
+                false,
+                false);
+        }
+
+        public bool CambiarEstadoConReglasAocr(
+            int codigoSolicitud,
+            string nuevoEstado,
+            string observacion,
+            int usuarioId,
+            Func<string, bool> puedeTransicionar,
+            out string mensaje,
+            bool omitirCorreoGenericoCambioEstado,
+            bool omitirCorreoWorkflowEstado)
+        {
             mensaje = string.Empty;
 
             if (codigoSolicitud <= 0)
@@ -75,9 +96,10 @@ namespace CapaNegocio
                 return false;
             }
 
+            int? codigoHistorial = null;
             try
             {
-                new HistorialEstadoDAO().RegistrarCambio(
+                codigoHistorial = new HistorialEstadoDAO().RegistrarCambioYObtenerCodigo(
                     codigoSolicitud,
                     estadoActual,
                     estadoDestino,
@@ -91,7 +113,14 @@ namespace CapaNegocio
 
             try
             {
-                NotificarCambioEstadoAocr(solicitud, codigoSolicitud, estadoActual, estadoDestino);
+                NotificarCambioEstadoAocr(
+                    solicitud,
+                    codigoSolicitud,
+                    estadoActual,
+                    estadoDestino,
+                    codigoHistorial,
+                    omitirCorreoGenericoCambioEstado,
+                    omitirCorreoWorkflowEstado);
             }
             catch
             {
@@ -230,71 +259,155 @@ namespace CapaNegocio
         }
 
         private static void NotificarCambioEstadoAocr(
-            SolicitudAOCR solicitud, int codigoSolicitud, string estadoAnterior, string estadoDestino)
+            SolicitudAOCR solicitud,
+            int codigoSolicitud,
+            string estadoAnterior,
+            string estadoDestino,
+            int? codigoHistorial,
+            bool omitirCorreoGenericoCambioEstado,
+            bool omitirCorreoWorkflowEstado)
         {
             if (solicitud == null || codigoSolicitud <= 0)
             {
                 return;
             }
 
+            var eventoCorreoWorkflow = ResolverEventoCorreoPorEstado(estadoAnterior, estadoDestino);
+            var omitirCorreoGenerico =
+                omitirCorreoGenericoCambioEstado || DebeOmitirCorreoGenericoCambioEstado(eventoCorreoWorkflow);
+
             // Notificaciones en-sistema (campana)
             if (solicitud.CodigoUsuario > 0)
             {
-                NotificacionBL.NotificarCambioEstado(solicitud.CodigoUsuario, codigoSolicitud, estadoDestino);
+                NotificarCambioEstadoInternoSinCorreoGenericoSiCorresponde(
+                    solicitud.CodigoUsuario,
+                    codigoSolicitud,
+                    estadoDestino,
+                    omitirCorreoGenerico);
             }
 
             if (solicitud.CodigoTecnico.HasValue && solicitud.CodigoTecnico.Value > 0 &&
                 solicitud.CodigoTecnico.Value != solicitud.CodigoUsuario)
             {
-                NotificacionBL.NotificarCambioEstado(solicitud.CodigoTecnico.Value, codigoSolicitud, estadoDestino);
+                NotificarCambioEstadoInternoSinCorreoGenericoSiCorresponde(
+                    solicitud.CodigoTecnico.Value,
+                    codigoSolicitud,
+                    estadoDestino,
+                    omitirCorreoGenerico);
             }
 
             // Notificaciones por correo según transición
-            try { DispatchCorreoEventoPorEstado(solicitud, estadoAnterior, estadoDestino); } catch { }
+            if (!omitirCorreoWorkflowEstado)
+            {
+                try { DispatchCorreoEventoPorEstado(solicitud, estadoAnterior, estadoDestino, codigoHistorial); } catch { }
+            }
+        }
+
+        private static bool DebeOmitirCorreoGenericoCambioEstado(string eventoCorreoWorkflow)
+        {
+            return string.Equals(eventoCorreoWorkflow, "OBSERVADA", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(eventoCorreoWorkflow, "ACEPTACION_DOCUMENTAL", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(eventoCorreoWorkflow, "PAGO_APROBADO", StringComparison.OrdinalIgnoreCase);
+        }
+
+        private static void NotificarCambioEstadoInternoSinCorreoGenericoSiCorresponde(
+            int codigoUsuario,
+            int codigoSolicitud,
+            string estadoDestino,
+            bool omitirCorreoGenericoCambioEstado)
+        {
+            if (!omitirCorreoGenericoCambioEstado)
+            {
+                NotificacionBL.NotificarCambioEstado(codigoUsuario, codigoSolicitud, estadoDestino);
+                return;
+            }
+
+            string tipo;
+            string titulo;
+            ResolverTituloYTipoNotificacionInterna(estadoDestino, out titulo, out tipo);
+
+            NotificacionBL.EnviarNotificacion(
+                codigoUsuario,
+                titulo,
+                $"La solicitud #{codigoSolicitud} cambió a estado: {estadoDestino}",
+                tipo,
+                TiposNotificacion.Urls.Solicitud(codigoSolicitud),
+                "SolicitudAOCR",
+                codigoSolicitud,
+                "aocr_tbsolicitud");
+        }
+
+        private static void ResolverTituloYTipoNotificacionInterna(string estadoDestino, out string titulo, out string tipo)
+        {
+            tipo = "INFO";
+            titulo = "Cambio de Estado";
+
+            if (string.Equals(estadoDestino, EstadoSolicitud.Observada, StringComparison.OrdinalIgnoreCase)
+                || string.Equals(estadoDestino, EstadoSolicitud.Rechazada, StringComparison.OrdinalIgnoreCase))
+            {
+                tipo = "WARNING";
+                titulo = "Solicitud Observada";
+                return;
+            }
+
+            if (string.Equals(estadoDestino, EstadoSolicitud.Anulada, StringComparison.OrdinalIgnoreCase))
+            {
+                tipo = "ERROR";
+                titulo = "Solicitud Anulada";
+                return;
+            }
+
+            if (string.Equals(estadoDestino, EstadoSolicitud.AOCR_EmitidoRecibido, StringComparison.OrdinalIgnoreCase)
+                || string.Equals(estadoDestino, EstadoSolicitud.CertificadoEmitido, StringComparison.OrdinalIgnoreCase)
+                || string.Equals(estadoDestino, EstadoSolicitud.Aprobada, StringComparison.OrdinalIgnoreCase))
+            {
+                tipo = "SUCCESS";
+                titulo = "Solicitud Aprobada";
+            }
         }
 
         private static void DispatchCorreoEventoPorEstado(
-            SolicitudAOCR solicitud, string estadoAnterior, string estadoDestino)
+            SolicitudAOCR solicitud, string estadoAnterior, string estadoDestino, int? codigoHistorial)
         {
-            string evento = null;
+            var evento = ResolverEventoCorreoPorEstado(estadoAnterior, estadoDestino);
+            if (evento == null) { return; }
+            new SolicitudAocrCorreoService().NotificarEvento(solicitud, evento, null, null, null, codigoHistorial);
+        }
+
+        private static string ResolverEventoCorreoPorEstado(string estadoAnterior, string estadoDestino)
+        {
             switch (estadoDestino)
             {
                 case EstadoSolicitud.Observada:
-                    evento = "OBSERVADA";
-                    break;
+                    return "OBSERVADA";
 
                 case EstadoSolicitud.Subsanada:
-                    evento = "SUBSANADA";
-                    break;
+                    return "SUBSANADA";
 
                 case EstadoSolicitud.AceptacionDocumental:
-                    evento = "ACEPTACION_DOCUMENTAL";
-                    break;
+                    return "ACEPTACION_DOCUMENTAL";
 
                 case EstadoSolicitud.PendienteAsignacionRT:
-                    evento = "PENDIENTE_ASIGNACION_INSPECTOR";
-                    break;
+                    return "PENDIENTE_ASIGNACION_INSPECTOR";
 
                 case EstadoSolicitud.SolicitudCreada:
                 case EstadoSolicitud.DocumentacionPendiente:
-                    // Pago aprobado: RT puede continuar la solicitud
                     if (estadoAnterior == EstadoSolicitud.PagoPendiente ||
                         estadoAnterior == EstadoSolicitud.PagoValidado)
                     {
-                        evento = "PAGO_APROBADO";
+                        return "PAGO_APROBADO";
                     }
-                    break;
+                    return null;
 
                 case EstadoSolicitud.AOCR_Legalizado:
-                    evento = "AOCR_LEGALIZADO";
-                    break;
+                    return "AOCR_LEGALIZADO";
 
                 case EstadoSolicitud.AOCR_EmitidoRecibido:
-                    evento = "AOCR_EMITIDO_RECIBIDO";
-                    break;
+                    return "AOCR_EMITIDO_RECIBIDO";
+
+                default:
+                    return null;
             }
-            if (evento == null) { return; }
-            new SolicitudAocrCorreoService().NotificarEvento(solicitud, evento, null);
         }
     }
 }

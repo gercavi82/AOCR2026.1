@@ -137,17 +137,30 @@ namespace CapaPresentacion.Controllers
             var filtroNormalizado = _bl.NormalizarFiltros(filtros);
             var resumen = _bl.ObtenerResumen(filtroNormalizado);
             var ordenes = incluirOrdenes ? _bl.ObtenerOrdenes(filtroNormalizado) : new List<ReporteOrdenDTO>();
+            var estadosDisponibles = CrearEstados(filtroNormalizado.EstadoNormalizado);
+            var usuariosDisponibles = ConvertirASelectList(_bl.ObtenerUsuariosSolicitantes(), filtroNormalizado.UsuarioSolicitanteId?.ToString());
+            var tramitesDisponibles = ConvertirASelectList(_bl.ObtenerTiposTramite(), filtroNormalizado.TipoTramiteId?.ToString());
+            var rolesGestionDisponibles = ConvertirASelectList(_bl.ObtenerRolesGestion(), filtroNormalizado.RolGestion);
+            var unidadesDisponibles = ConvertirASelectList(_bl.ObtenerUnidades(), filtroNormalizado.Unidad);
+
+            System.Diagnostics.Debug.WriteLine(string.Format(
+                "[FILTROS][ReportesFinancieros] Usuario={0}; Rol={1}; EstadoSeleccionado={2}; EstadosCargados={3}; Ordenes={4}",
+                User != null && User.Identity != null ? User.Identity.Name : string.Empty,
+                Session != null ? (Session["Rol"] as string ?? string.Empty) : string.Empty,
+                filtroNormalizado.EstadoNormalizado ?? string.Empty,
+                estadosDisponibles.Count,
+                ordenes.Count));
 
             return new ReportesFinancierosViewModel
             {
                 Filtros = filtroNormalizado,
                 Resumen = resumen,
                 Ordenes = ordenes,
-                EstadosDisponibles = CrearEstados(filtroNormalizado.EstadoNormalizado),
-                UsuariosDisponibles = ConvertirASelectList(_bl.ObtenerUsuariosSolicitantes(), filtroNormalizado.UsuarioSolicitanteId?.ToString()),
-                TramitesDisponibles = ConvertirASelectList(_bl.ObtenerTiposTramite(), filtroNormalizado.TipoTramiteId?.ToString()),
-                RolesGestionDisponibles = ConvertirASelectList(_bl.ObtenerRolesGestion(), filtroNormalizado.RolGestion),
-                UnidadesDisponibles = ConvertirASelectList(_bl.ObtenerUnidades(), filtroNormalizado.Unidad)
+                EstadosDisponibles = estadosDisponibles,
+                UsuariosDisponibles = usuariosDisponibles,
+                TramitesDisponibles = tramitesDisponibles,
+                RolesGestionDisponibles = rolesGestionDisponibles,
+                UnidadesDisponibles = unidadesDisponibles
             };
         }
 

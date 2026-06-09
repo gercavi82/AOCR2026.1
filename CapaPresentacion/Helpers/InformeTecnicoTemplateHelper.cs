@@ -6,6 +6,19 @@ namespace CapaPresentacion.Helpers
 {
     public static class InformeTecnicoTemplateHelper
     {
+        public sealed class DocumentoAdjuntoArchivoItem
+        {
+            public string Categoria { get; set; }
+            public string NombreOriginal { get; set; }
+            public string NombreFisico { get; set; }
+            public DateTime? FechaCarga { get; set; }
+            public string UsuarioCarga { get; set; }
+            public string ContentType { get; set; }
+            public long PesoBytes { get; set; }
+            public int Version { get; set; }
+            public bool EsAutomatico { get; set; }
+        }
+
         public sealed class ServicioEstacionFila
         {
             public string Key { get; set; }
@@ -83,7 +96,12 @@ namespace CapaPresentacion.Helpers
 
         public static IDictionary<string, List<string>> ParseDocumentosAdjuntosArchivos(string serialized)
         {
-            var values = new Dictionary<string, List<string>>(StringComparer.OrdinalIgnoreCase);
+            return ToDocumentosAdjuntosArchivosDictionary(ParseDocumentosAdjuntosArchivoItems(serialized));
+        }
+
+        public static IList<DocumentoAdjuntoArchivoItem> ParseDocumentosAdjuntosArchivoItems(string serialized)
+        {
+            var values = new List<DocumentoAdjuntoArchivoItem>();
             if (string.IsNullOrWhiteSpace(serialized))
             {
                 return values;
@@ -93,14 +111,50 @@ namespace CapaPresentacion.Helpers
             var lines = normalized.Split(new[] { '\n' }, StringSplitOptions.RemoveEmptyEntries);
             foreach (var line in lines)
             {
-                var parts = line.Split(new[] { '|' }, 2);
-                if (parts.Length == 0)
+                var parts = line.Split('|');
+                if (parts.Length < 2)
                 {
                     continue;
                 }
 
-                var key = CleanLine(parts[0]);
-                var fileName = parts.Length > 1 ? NormalizeFileName(parts[1]) : null;
+                var categoria = CleanLine(parts[0]);
+                var nombreOriginal = NormalizeFileName(parts[1]);
+                if (string.IsNullOrWhiteSpace(categoria) || string.IsNullOrWhiteSpace(nombreOriginal))
+                {
+                    continue;
+                }
+
+                long ticks;
+                long peso;
+                int version;
+                var fecha = parts.Length > 3 && long.TryParse(parts[3], out ticks) && ticks > 0
+                    ? (DateTime?)new DateTime(ticks, DateTimeKind.Local)
+                    : null;
+
+                values.Add(new DocumentoAdjuntoArchivoItem
+                {
+                    Categoria = categoria,
+                    NombreOriginal = nombreOriginal,
+                    NombreFisico = parts.Length > 2 ? NormalizeFileName(parts[2]) : null,
+                    FechaCarga = fecha,
+                    UsuarioCarga = parts.Length > 4 ? CleanLine(parts[4]) : null,
+                    ContentType = parts.Length > 5 ? CleanLine(parts[5]) : null,
+                    PesoBytes = parts.Length > 6 && long.TryParse(parts[6], out peso) ? peso : 0,
+                    Version = parts.Length > 7 && int.TryParse(parts[7], out version) && version > 0 ? version : 1,
+                    EsAutomatico = parts.Length > 8 && string.Equals(CleanLine(parts[8]), "AUTO", StringComparison.OrdinalIgnoreCase)
+                });
+            }
+
+            return values;
+        }
+
+        public static IDictionary<string, List<string>> ToDocumentosAdjuntosArchivosDictionary(IEnumerable<DocumentoAdjuntoArchivoItem> items)
+        {
+            var values = new Dictionary<string, List<string>>(StringComparer.OrdinalIgnoreCase);
+            foreach (var item in items ?? Enumerable.Empty<DocumentoAdjuntoArchivoItem>())
+            {
+                var key = CleanLine(item != null ? item.Categoria : null);
+                var fileName = NormalizeFileName(item != null ? item.NombreOriginal : null);
                 if (string.IsNullOrWhiteSpace(key) || string.IsNullOrWhiteSpace(fileName))
                 {
                     continue;
@@ -172,6 +226,48 @@ namespace CapaPresentacion.Helpers
                 {
                     lines.Add(key + "|" + normalizedFileName);
                 }
+            }
+
+            return lines.Count == 0 ? null : string.Join("\n", lines);
+        }
+
+        public static string SerializeDocumentosAdjuntosArchivoItems(IEnumerable<DocumentoAdjuntoArchivoItem> values)
+        {
+            if (values == null)
+            {
+                return null;
+            }
+
+            var lines = new List<string>();
+            foreach (var item in values.Where(x => x != null))
+            {
+                var categoria = NormalizeCell(item.Categoria);
+                var nombreOriginal = NormalizeFileName(item.NombreOriginal);
+                if (string.IsNullOrWhiteSpace(categoria) || string.IsNullOrWhiteSpace(nombreOriginal))
+                {
+                    continue;
+                }
+
+                var nombreFisico = NormalizeFileName(item.NombreFisico) ?? string.Empty;
+                var fechaTicks = item.FechaCarga.HasValue ? item.FechaCarga.Value.Ticks.ToString() : string.Empty;
+                var usuario = NormalizeCell(item.UsuarioCarga);
+                var contentType = NormalizeCell(item.ContentType);
+                var peso = item.PesoBytes > 0 ? item.PesoBytes.ToString() : string.Empty;
+                var version = item.Version > 0 ? item.Version.ToString() : "1";
+                var origen = item.EsAutomatico ? "AUTO" : "MANUAL";
+
+                lines.Add(string.Join("|", new[]
+                {
+                    categoria,
+                    nombreOriginal,
+                    nombreFisico,
+                    fechaTicks,
+                    usuario,
+                    contentType,
+                    peso,
+                    version,
+                    origen
+                }));
             }
 
             return lines.Count == 0 ? null : string.Join("\n", lines);

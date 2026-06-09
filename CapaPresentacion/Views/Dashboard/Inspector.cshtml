@@ -1,6 +1,8 @@
-@model CapaPresentacion.Models.ViewModels.InspectorDashboardViewModel
+@inherits System.Web.Mvc.WebViewPage<CapaPresentacion.Models.ViewModels.InspectorDashboardViewModel>
 @using System
 @using System.Linq
+@using System.Web.Mvc
+@using System.Web.Mvc.Html
 @{
     Layout = "~/Views/Shared/_LayoutAOCR.cshtml";
     ViewBag.Title = "Dashboard Inspector";
@@ -272,6 +274,7 @@
 
     .insp-bar {
         width: 16px;
+        height: var(--bar-height, 8px);
         border-radius: 10px 10px 0 0;
         min-height: 8px;
     }
@@ -421,7 +424,7 @@
         </div>
     </div>
 
-    <div class="insp-filter-card mb-3">
+    <div class="insp-filter-card mb-3 aocr-filtros-busqueda">
         @using (Html.BeginForm("Inspector", "Dashboard", System.Web.Mvc.FormMethod.Get, new { @class = "row g-2" }))
         {
             <div class="col-12 col-md-2">
@@ -528,23 +531,23 @@
             </div>
             <div class="insp-bars">
                 <div class="insp-bar-item">
-                    <div class="insp-bar-stack"><div class="insp-bar" style="height:@(calcularAltura(Model.InspeccionesPendientes))px;background:#47b3df;"></div></div>
+                    <div class="insp-bar-stack"><div class="insp-bar" style="--bar-height:@(calcularAltura(Model.InspeccionesPendientes))px;background:#47b3df;"></div></div>
                     <span class="insp-bar-label">Pend.</span>
                 </div>
                 <div class="insp-bar-item">
-                    <div class="insp-bar-stack"><div class="insp-bar" style="height:@(calcularAltura(Model.InspeccionesConNc))px;background:#f06a5f;"></div></div>
+                    <div class="insp-bar-stack"><div class="insp-bar" style="--bar-height:@(calcularAltura(Model.InspeccionesConNc))px;background:#f06a5f;"></div></div>
                     <span class="insp-bar-label">NC</span>
                 </div>
                 <div class="insp-bar-item">
-                    <div class="insp-bar-stack"><div class="insp-bar" style="height:@(calcularAltura(Model.InspeccionesCerradas))px;background:#7bc043;"></div></div>
+                    <div class="insp-bar-stack"><div class="insp-bar" style="--bar-height:@(calcularAltura(Model.InspeccionesCerradas))px;background:#7bc043;"></div></div>
                     <span class="insp-bar-label">Cerr.</span>
                 </div>
                 <div class="insp-bar-item">
-                    <div class="insp-bar-stack"><div class="insp-bar" style="height:@(calcularAltura(Model.InspeccionesRequierenNueva))px;background:#d892ca;"></div></div>
+                    <div class="insp-bar-stack"><div class="insp-bar" style="--bar-height:@(calcularAltura(Model.InspeccionesRequierenNueva))px;background:#d892ca;"></div></div>
                     <span class="insp-bar-label">Nueva</span>
                 </div>
                 <div class="insp-bar-item">
-                    <div class="insp-bar-stack"><div class="insp-bar" style="height:@(calcularAltura(Model.DocumentosPendientesRevision))px;background:#f5c84b;"></div></div>
+                    <div class="insp-bar-stack"><div class="insp-bar" style="--bar-height:@(calcularAltura(Model.DocumentosPendientesRevision))px;background:#f5c84b;"></div></div>
                     <span class="insp-bar-label">Docs</span>
                 </div>
             </div>

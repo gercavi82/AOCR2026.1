@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using System.Data;
 using System.Linq;
-using CapaDatos.Constants;
 using CapaDatos.Models;
 using CapaModelo;
 using Dapper;
@@ -12,9 +11,11 @@ namespace CapaDatos.DAOs
 {
     public class UsuarioInternoRTDAO
     {
+        private const string RolInspector = "Inspector";
+
         private static readonly string[] RolesInspectorCompatibles =
         {
-            RolesAOCR.INSPECTOR,
+            RolInspector,
             "Inspectores"
         };
 
@@ -975,7 +976,7 @@ LIMIT 1;";
                 NombreCompleto = ConstruirNombreUsuarioFallback(usuario),
                 Tipo = tipoNormalizado,
                 CorreoInstitucional = (usuario.Email ?? string.Empty).Trim(),
-                RolInterno = RolesAOCR.INSPECTOR,
+                RolInterno = RolInspector,
                 EstadoAs400 = "AC",
                 Activo = true,
                 Observaciones = "Catálogo fallback desde usuario / rol"

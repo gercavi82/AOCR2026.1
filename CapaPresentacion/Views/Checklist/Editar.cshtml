@@ -4,6 +4,9 @@
 @using System.Web.Mvc.Html
 @{
     ViewBag.Title = "Editar Checklist";
+    var fechaCreacionTexto = Model != null && Model.CreatedAt.HasValue
+        ? Model.CreatedAt.Value.ToString("dd/MM/yyyy HH:mm")
+        : string.Empty;
 }
 
 <div class="container">
@@ -42,25 +45,27 @@
                         <div class="row">
                             <div class="col-md-4 mb-3">
                                 @Html.LabelFor(m => m.Cumple, "Cumple", new { @class = "form-label" })
-                                <select name="Cumple" class="form-select">
-                                    <option value="" @(string.IsNullOrEmpty(Model.Cumple) ? "selected" : "")>Seleccione...</option>
-                                    <option value="Si" @(Model.Cumple == "Si" ? "selected" : "")>Sí</option>
-                                    <option value="No" @(Model.Cumple == "No" ? "selected" : "")>No</option>
-                                    <option value="N/A" @(Model.Cumple == "N/A" ? "selected" : "")>N/A</option>
-                                </select>
+                                @Html.DropDownListFor(m => m.Cumple, new[]
+                                {
+                                    new System.Web.Mvc.SelectListItem { Value = "", Text = "Seleccione..." },
+                                    new System.Web.Mvc.SelectListItem { Value = "Si", Text = "Sí" },
+                                    new System.Web.Mvc.SelectListItem { Value = "No", Text = "No" },
+                                    new System.Web.Mvc.SelectListItem { Value = "N/A", Text = "N/A" }
+                                }, new { @class = "form-select" })
                             </div>
                             <div class="col-md-4 mb-3">
                                 @Html.LabelFor(m => m.Criticidad, "Criticidad", new { @class = "form-label" })
-                                <select name="Criticidad" class="form-select">
-                                    <option value="" @(string.IsNullOrEmpty(Model.Criticidad) ? "selected" : "")>Seleccione...</option>
-                                    <option value="Alta" @(Model.Criticidad == "Alta" ? "selected" : "")>Alta</option>
-                                    <option value="Media" @(Model.Criticidad == "Media" ? "selected" : "")>Media</option>
-                                    <option value="Baja" @(Model.Criticidad == "Baja" ? "selected" : "")>Baja</option>
-                                </select>
+                                @Html.DropDownListFor(m => m.Criticidad, new[]
+                                {
+                                    new System.Web.Mvc.SelectListItem { Value = "", Text = "Seleccione..." },
+                                    new System.Web.Mvc.SelectListItem { Value = "Alta", Text = "Alta" },
+                                    new System.Web.Mvc.SelectListItem { Value = "Media", Text = "Media" },
+                                    new System.Web.Mvc.SelectListItem { Value = "Baja", Text = "Baja" }
+                                }, new { @class = "form-select" })
                             </div>
                             <div class="col-md-4 mb-3">
                                 <label class="form-label">Fecha Creación</label>
-                                <input type="text" class="form-control" value="@Model.CreatedAt?.ToString("dd/MM/yyyy HH:mm")" readonly />
+                                <input type="text" class="form-control" value="@fechaCreacionTexto" readonly="readonly" />
                             </div>
                         </div>
 

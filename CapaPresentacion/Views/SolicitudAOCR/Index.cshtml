@@ -2,6 +2,7 @@
 @using CapaModelo
 @using System.Web.Mvc
 @using System.Web.Mvc.Html
+@using CapaPresentacion.Helpers
 @{
     ViewBag.Title = "Operador";
     Layout = "~/Views/Shared/_LayoutAOCR.cshtml";
@@ -487,6 +488,7 @@
         var datosGlobales = [];
         var dtTable = null;
         var filtroActivo = 'all';
+        var filtroInicial = (urlParams.get('filtro') || '').toLowerCase();
 
         function esRespuestaLoginHtml(payload) {
             return typeof payload === 'string'
@@ -671,6 +673,10 @@
                     if (filtroActivo === 'all') return true;
                     return rowData[7] === filtroActivo;
                 });
+
+                if (filtroActivo !== 'all') {
+                    dtTable.draw();
+                }
             }
 
             // Wait for DataTables lazy-load or init immediately
@@ -692,6 +698,13 @@
                 dtTable.draw();
             }
         });
+
+        if (filtroInicial) {
+            var filtroInicialBtn = $('.sol-filter[data-filter="' + filtroInicial + '"]');
+            if (filtroInicialBtn.length) {
+                filtroInicialBtn.trigger('click');
+            }
+        }
 
         // Modal
         $('#btnEmisionAOCR').on('click', function(e) {

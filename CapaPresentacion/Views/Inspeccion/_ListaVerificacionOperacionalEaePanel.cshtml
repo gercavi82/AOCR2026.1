@@ -1,7 +1,9 @@
-@model CapaPresentacion.Models.ViewModels.ListaVerificacionOperacionalEaePanelVm
+@inherits System.Web.Mvc.WebViewPage<CapaPresentacion.Models.ViewModels.ListaVerificacionOperacionalEaePanelVm>
 @using System
 @using System.Collections.Generic
 @using System.Linq
+@using System.Web.Mvc
+@using System.Web.Mvc.Html
 @using CapaModelo
 @using CapaPresentacion.Helpers
 @using CapaPresentacion.Models.ViewModels
@@ -518,6 +520,66 @@
         width: 100%;
     }
 
+    #bloqueListaVerificacionOperacionalEae .aocr-lv-form,
+    #bloqueListaVerificacionOperacionalEae .aocr-lv-form table,
+    #bloqueListaVerificacionOperacionalEae .aocr-lv-form tbody,
+    #bloqueListaVerificacionOperacionalEae .aocr-lv-form td {
+        color: #111827 !important;
+        -webkit-text-fill-color: #111827;
+    }
+
+    #bloqueListaVerificacionOperacionalEae .aocr-lv-form th {
+        color: #111827 !important;
+        -webkit-text-fill-color: #111827;
+    }
+
+    #bloqueListaVerificacionOperacionalEae .aocr-lv-form input,
+    #bloqueListaVerificacionOperacionalEae .aocr-lv-form textarea,
+    #bloqueListaVerificacionOperacionalEae .aocr-lv-form select,
+    #bloqueListaVerificacionOperacionalEae .aocr-lv-form .form-control,
+    #bloqueListaVerificacionOperacionalEae .aocr-lv-form [contenteditable="true"] {
+        background-color: #ffffff !important;
+        color: #111827 !important;
+        opacity: 1;
+        text-shadow: none;
+        -webkit-text-fill-color: #111827;
+    }
+
+    #bloqueListaVerificacionOperacionalEae .aocr-lv-form input::placeholder,
+    #bloqueListaVerificacionOperacionalEae .aocr-lv-form textarea::placeholder {
+        color: #64748b !important;
+        opacity: 1;
+        -webkit-text-fill-color: #64748b;
+    }
+
+    #bloqueListaVerificacionOperacionalEae .aocr-lv-form input:focus,
+    #bloqueListaVerificacionOperacionalEae .aocr-lv-form textarea:focus,
+    #bloqueListaVerificacionOperacionalEae .aocr-lv-form select:focus,
+    #bloqueListaVerificacionOperacionalEae .aocr-lv-form [contenteditable="true"]:focus {
+        background-color: #ffffff !important;
+        color: #111827 !important;
+        border-color: #0d6efd;
+        box-shadow: 0 0 0 2px rgba(13, 110, 253, 0.15);
+        -webkit-text-fill-color: #111827;
+    }
+
+    #bloqueListaVerificacionOperacionalEae .aocr-lv-form input[readonly],
+    #bloqueListaVerificacionOperacionalEae .aocr-lv-form textarea[readonly],
+    #bloqueListaVerificacionOperacionalEae .aocr-lv-form input:disabled,
+    #bloqueListaVerificacionOperacionalEae .aocr-lv-form textarea:disabled,
+    #bloqueListaVerificacionOperacionalEae .aocr-lv-form select:disabled {
+        background-color: #f8fafc !important;
+        color: #334155 !important;
+        opacity: 1;
+        -webkit-text-fill-color: #334155;
+    }
+
+    #bloqueListaVerificacionOperacionalEae .aocr-lv-form [contenteditable="true"] {
+        min-height: 32px;
+        padding: 6px 8px;
+        outline: 1px solid #cbd5e1;
+    }
+
     #bloqueListaVerificacionOperacionalEae .aocr-lv-document-header {
         background: #fff;
         color: #000;
@@ -594,6 +656,8 @@
         font-size: 0.82rem;
         font-weight: 700;
         line-height: 1.2;
+        color: #111827 !important;
+        -webkit-text-fill-color: #111827;
     }
 
     #bloqueListaVerificacionOperacionalEae .aocr-lv-field-input,
@@ -604,11 +668,15 @@
         border: 0;
         border-radius: 0;
         padding: 0;
-        background: transparent;
+        background: #ffffff !important;
+        color: #111827 !important;
         box-shadow: none;
         font-size: 0.82rem;
         font-weight: 400;
         line-height: 1.25;
+        opacity: 1;
+        text-shadow: none;
+        -webkit-text-fill-color: #111827;
     }
 
     #bloqueListaVerificacionOperacionalEae .aocr-lv-field-textarea {
@@ -621,6 +689,8 @@
     #bloqueListaVerificacionOperacionalEae .aocr-lv-field-date:focus {
         outline: 1px dashed #666;
         outline-offset: 2px;
+        color: #111827 !important;
+        -webkit-text-fill-color: #111827;
     }
 
     #bloqueListaVerificacionOperacionalEae .lv-missing-target {
@@ -714,16 +784,36 @@
         border: 0;
         border-radius: 0;
         padding: 0;
-        background: transparent;
+        background: #ffffff !important;
+        color: #111827 !important;
         box-shadow: none;
         font-size: 0.79rem;
         line-height: 1.25;
+        opacity: 1;
         resize: vertical;
+        text-shadow: none;
+        -webkit-text-fill-color: #111827;
+    }
+
+    #bloqueListaVerificacionOperacionalEae .aocr-lv-table .lv-observacion::placeholder {
+        color: #6b7280 !important;
+        opacity: 1;
+        -webkit-text-fill-color: #6b7280;
     }
 
     #bloqueListaVerificacionOperacionalEae .aocr-lv-table .lv-observacion:focus {
         outline: 1px dashed #666;
         outline-offset: 2px;
+        color: #111827 !important;
+        -webkit-text-fill-color: #111827;
+    }
+
+    #bloqueListaVerificacionOperacionalEae .aocr-lv-table .lv-observacion:disabled,
+    #bloqueListaVerificacionOperacionalEae .aocr-lv-table .lv-observacion[readonly] {
+        background: #f8fafc !important;
+        color: #334155 !important;
+        opacity: 1;
+        -webkit-text-fill-color: #334155;
     }
 
     #bloqueListaVerificacionOperacionalEae .aocr-lv-th-number {
@@ -984,7 +1074,7 @@
 
 <div class="card section-card soft-card" id="bloqueListaVerificacionOperacionalEae">
     <div class="card-body">
-        <div class="aocr-lv-wrapper">
+        <div class="aocr-lv-wrapper aocr-lv-form">
         <div class="section-heading">
             <div class="section-icon">
                 <i class="fas fa-clipboard-check"></i>

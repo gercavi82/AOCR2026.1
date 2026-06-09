@@ -337,7 +337,7 @@ namespace CapaPresentacion.Controllers
         }
 
         // GET: /OrdenRecaudacion/Obligatoria
-        public ActionResult Obligatoria()
+        public ActionResult Obligatoria(string estado = null)
         {
             int idUsuario = GetUserId();
             if (idUsuario <= 0)
@@ -351,10 +351,10 @@ namespace CapaPresentacion.Controllers
             var esAdministrador = User != null && User.IsInRole("Administrador");
             int? idUsuarioFiltro = esAdministrador ? (int?)null : idUsuario;
 
-            CargarEstadosCombo(null);
+            CargarEstadosCombo(estado);
             CargarContinuidadOrdenUsuario(idUsuario);
 
-            var ordenes = _dao.ListarPorUsuario(idUsuarioFiltro, null) ?? new List<OrdenRecaudacion>();
+            var ordenes = _dao.ListarPorUsuario(idUsuarioFiltro, estado) ?? new List<OrdenRecaudacion>();
             System.Diagnostics.Debug.WriteLine(string.Format("Obligatoria: Se encontraron {0} Órdenes", ordenes.Count));
 
             // Estadisticas
@@ -2928,7 +2928,7 @@ namespace CapaPresentacion.Controllers
                 RucCedula = FirstNonEmpty(orden.RucCedula, "No aplica"),
                 CodigoConcepto = CodigoConceptoInspeccionExt,
                 NumeroOrden = FirstNonEmpty(orden.NumeroOrden, orden.Id.ToString()),
-                TextoResolucion = "Resolucion 066-2010 (01 de julio de 2010), Art. 14"
+                TextoResolucion = "Resolución 066-2010 (01 de julio de 2010), Art. 14"
             };
         }
 
@@ -2943,10 +2943,15 @@ namespace CapaPresentacion.Controllers
                 PageSize = Rotativa.Options.Size.A4,
                 PageOrientation = Rotativa.Options.Orientation.Portrait,
                 PageMargins = new Rotativa.Options.Margins(0, 0, 0, 0),
-                CustomSwitches = PdfBrandingHelper.BuildStandardRotativaSwitches(Server, "OrdenRecaudacionController.BuildSolicitudInspeccionPdfBytes")
+                CustomSwitches = PdfBrandingHelper.StandardRotativaSwitchesInlineBranding
             };
 
             var bytes = pdf.BuildFile(ControllerContext);
+            bytes = PdfBrandingHelper.ApplyLetterheadBackground(
+                bytes,
+                Server,
+                "OrdenRecaudacionController.BuildSolicitudInspeccionPdfBytes");
+
             paginasGeneradas = ObtenerNumeroPaginasPdf(bytes);
             return bytes;
         }
@@ -4497,7 +4502,7 @@ namespace CapaPresentacion.Controllers
 
             var items = new List<SelectListItem>
             {
-                new SelectListItem { Text = "TODAS", Value = "" },
+                new SelectListItem { Text = "Todos los estados", Value = "" },
                 new SelectListItem { Text = "BORRADOR", Value = "BORRADOR" },
                 new SelectListItem { Text = "PENDIENTE", Value = "PENDIENTE" },
                 new SelectListItem { Text = "PROCESADA", Value = "PROCESADA" },
@@ -4674,6 +4679,7 @@ namespace CapaPresentacion.Controllers
         [HttpPost]
         [ValidateAntiForgeryToken]
         [Authorize(Roles = "Administrador,Financiero")]
+        [AocrAuthorize(Modulo = "Financiero", Accion = "RechazarPago", CodigoOrdenParameter = "ordenId")]
         public ActionResult RechazarPago(int ordenId, int pagoId, string motivo)
         {
             try

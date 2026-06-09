@@ -94,9 +94,45 @@ namespace CapaPresentacion.Infrastructure
             var selectedRoleCookie = AuthTicketRoleDataHelper.ReadSelectedRoleFromCookie(
                 httpContext.Request != null ? httpContext.Request.Cookies : null);
 
+            var selectedRoleHint = !string.IsNullOrWhiteSpace(selectedRoleCookie)
+                ? selectedRoleCookie
+                : (!string.IsNullOrWhiteSpace(session["Rol"] as string)
+                    ? session["Rol"] as string
+                    : ticketRoleData.SelectedRole);
             if (hasBaseline && !needsCompanyReview)
             {
-                SyncSelectedRoleFromTicket(session, string.IsNullOrWhiteSpace(selectedRoleCookie) ? ticketRoleData.SelectedRole : selectedRoleCookie);
+                if (!string.IsNullOrWhiteSpace(selectedRoleHint)
+                    && !SelectedRoleIsAvailableInSession(session, selectedRoleHint))
+                {
+                    Usuario usuarioBaseline;
+                    List<string> rolesBaseline;
+                    string loginBaseline;
+                    if (TryResolveAuthenticatedUser(httpContext, out usuarioBaseline, out rolesBaseline, out loginBaseline))
+                    {
+                        SincronizarSesionAutenticada(
+                            session,
+                            usuarioBaseline,
+                            rolesBaseline,
+                            loginBaseline,
+                            selectedRoleHint);
+
+                        LogRolActivo(
+                            "RESTAURADO_ROLES_COMPLETOS",
+                            httpContext,
+                            session,
+                            "Rol seleccionado no estaba disponible en la sesion parcial; se completaron roles desde fuente confiable.");
+
+                        return AuthenticatedSessionBootstrapStatus.Restored;
+                    }
+
+                    LogRolActivo(
+                        "ROL_SELECCIONADO_NO_DISPONIBLE",
+                        httpContext,
+                        session,
+                        "No se pudo completar la sesion para el rol seleccionado " + selectedRoleHint + ".");
+                }
+
+                SyncSelectedRoleFromTicket(session, selectedRoleHint);
                 return AuthenticatedSessionBootstrapStatus.Unchanged;
             }
 
@@ -113,7 +149,7 @@ namespace CapaPresentacion.Infrastructure
                 usuario,
                 roles,
                 loginUsado,
-                string.IsNullOrWhiteSpace(selectedRoleCookie) ? ticketRoleData.SelectedRole : selectedRoleCookie);
+                selectedRoleHint);
 
             var companyStatus = EnsureCompaniaActiva(session, usuario, roles);
             if (companyStatus == AuthenticatedSessionBootstrapStatus.RequiresCompanySelection)
@@ -271,19 +307,18 @@ namespace CapaPresentacion.Infrastructure
                 .Distinct(StringComparer.OrdinalIgnoreCase)
                 .ToList();
 
-            if (roles.Count == 0 && usuario != null && usuario.Id > 0)
+            if (usuario != null && usuario.Id > 0)
             {
                 try
                 {
-                    roles = UsuarioDAO.ObtenerRoles(usuario.Id) ?? new List<string>();
+                    roles.AddRange(UsuarioDAO.ObtenerRoles(usuario.Id) ?? new List<string>());
                 }
                 catch
                 {
-                    roles = new List<string>();
                 }
             }
 
-            if (roles.Count == 0 && usuario != null && !string.IsNullOrWhiteSpace(usuario.Rol))
+            if (usuario != null && !string.IsNullOrWhiteSpace(usuario.Rol))
             {
                 roles.Add(usuario.Rol.Trim());
             }
@@ -293,6 +328,18 @@ namespace CapaPresentacion.Infrastructure
                 .Select(r => r.Trim())
                 .Distinct(StringComparer.OrdinalIgnoreCase)
                 .ToList();
+        }
+
+        private static bool SelectedRoleIsAvailableInSession(HttpSessionStateBase session, string selectedRole)
+        {
+            var normalizedSelectedRole = RoleGroupingHelper.NormalizeSelectedRole(selectedRole);
+            if (string.IsNullOrWhiteSpace(normalizedSelectedRole))
+            {
+                return true;
+            }
+
+            var rolesDisponibles = RoleGroupingHelper.BuildUnifiedRoles(ObtenerRolesSesion(session));
+            return rolesDisponibles.Contains(normalizedSelectedRole, StringComparer.OrdinalIgnoreCase);
         }
 
         private static void SincronizarSesionAutenticada(
@@ -387,6 +434,34 @@ namespace CapaPresentacion.Infrastructure
 
             session["Rol"] = selectedRole;
             session["LastActivity"] = DateTime.Now;
+        }
+
+        private static void LogRolActivo(
+            string resultado,
+            HttpContextBase httpContext,
+            HttpSessionStateBase session,
+            string detalle)
+        {
+            try
+            {
+                LoggingServiceFactory.Create().LogWarning(string.Format(
+                    "[AOCR][ROL_ACTIVO] Usuario={0}; Rol={1}; Roles={2}; RolesRaw={3}; Compania={4}; Path={5}; Resultado={6}; Detalle={7}",
+                    httpContext != null && httpContext.User != null && httpContext.User.Identity != null
+                        ? httpContext.User.Identity.Name
+                        : string.Empty,
+                    session != null ? Convert.ToString(session["Rol"]) : string.Empty,
+                    session != null ? Convert.ToString(session["Roles"]) : string.Empty,
+                    session != null ? Convert.ToString(session["RolesRaw"]) : string.Empty,
+                    session != null ? CompaniaActivaSessionHelper.ObtenerCodigo(session) : string.Empty,
+                    httpContext != null && httpContext.Request != null && httpContext.Request.Url != null
+                        ? httpContext.Request.Url.AbsolutePath
+                        : string.Empty,
+                    resultado ?? string.Empty,
+                    detalle ?? string.Empty));
+            }
+            catch
+            {
+            }
         }
 
         private static AuthTicketRoleData ReadAuthTicketRoleData(HttpContextBase httpContext)

@@ -1,7 +1,9 @@
 @* ============================================================
    Partial: Panel DIRDAC / Dirección - Jefatura
    ============================================================ *@
-@model CapaPresentacion.Models.ViewModels.DireccionJefaturaPanelVm
+@inherits System.Web.Mvc.WebViewPage<CapaPresentacion.Models.ViewModels.DireccionJefaturaPanelVm>
+@using System.Web.Mvc
+@using System.Web.Mvc.Html
 @{
     var vm = Model ?? new CapaPresentacion.Models.ViewModels.DireccionJefaturaPanelVm();
     var informeTecnico = vm.InformeTecnico;
